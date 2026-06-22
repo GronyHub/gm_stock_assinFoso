@@ -2,7 +2,6 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import { useState } from 'react'
 
 type NavUser = { name?: string | null; role?: string; username?: string }
 
@@ -11,14 +10,15 @@ const allLinks = [
   { href: '/sales/new', label: '+ Receipt', roles: ['owner','manager','staff'] },
   { href: '/bills/new', label: '+ Bill', roles: ['owner','manager','staff'] },
   { href: '/expenses/new', label: '+ Expense', roles: ['owner','manager','staff'] },
-  { href: '/stock', label: 'Stock', roles: ['owner','manager','staff'] },
   { href: '/stock/count', label: 'Count', roles: ['owner','manager','staff'] },
   { href: '/cash-at-bank', label: 'Cash at Bank', roles: ['owner','manager'] },
+  { href: '/losses', label: 'Losses', roles: ['owner','manager','staff'] },
+  { href: '/analysis', label: 'Analysis', roles: ['owner','manager','staff'] },
+  { href: '/item', label: 'Item', roles: ['owner','manager','staff'] },
 ]
 
 export default function Nav({ user }: { user: NavUser }) {
   const pathname = usePathname()
-  const [open, setOpen] = useState(false)
   const links = allLinks.filter(l => l.roles.includes(user.role || ''))
 
   return (
@@ -26,7 +26,7 @@ export default function Nav({ user }: { user: NavUser }) {
       <div className="max-w-5xl mx-auto px-4 flex items-center justify-between h-14">
         <Link href="/dashboard" className="font-bold text-white text-lg tracking-tight">Grony</Link>
 
-        {/* Desktop links */}
+        {/* Desktop links only */}
         <div className="hidden md:flex items-center gap-1">
           {links.map(l => (
             <Link key={l.href} href={l.href}
@@ -43,34 +43,9 @@ export default function Nav({ user }: { user: NavUser }) {
             className="text-sm text-gray-400 hover:text-white transition">Sign out</button>
         </div>
 
-        {/* Mobile hamburger */}
-        <button className="md:hidden text-gray-400 p-2 -mr-2" onClick={() => setOpen(!open)}
-          aria-label="Menu">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            {open
-              ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/>
-              : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16"/>}
-          </svg>
-        </button>
+        {/* Mobile: just show user name */}
+        <span className="md:hidden text-sm text-gray-400">{user.name}</span>
       </div>
-
-      {/* Mobile menu */}
-      {open && (
-        <div className="md:hidden bg-gray-900 border-t border-gray-800 px-4 pb-4 pt-2 space-y-1">
-          {links.map(l => (
-            <Link key={l.href} href={l.href} onClick={() => setOpen(false)}
-              className={`flex items-center px-3 py-3.5 rounded-xl text-base font-medium transition
-                ${pathname === l.href ? 'bg-blue-600 text-white' : 'text-gray-300 hover:text-white hover:bg-gray-800'}`}>
-              {l.label}
-            </Link>
-          ))}
-          <div className="pt-3 mt-2 border-t border-gray-800 flex items-center justify-between px-3">
-            <span className="text-gray-400">{user.name}</span>
-            <button onClick={() => signOut({ callbackUrl: '/login' })}
-              className="text-red-400 text-base py-1">Sign out</button>
-          </div>
-        </div>
-      )}
     </nav>
   )
 }
