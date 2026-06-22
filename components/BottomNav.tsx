@@ -1,15 +1,15 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
 type Props = { role: string }
 
-const row1 = [
+const row1Base = [
   { href: '/dashboard', label: 'Home', icon: '⊞' },
   { href: '/sales/new', label: 'Receipt', icon: '🧾' },
   { href: '/bills/new', label: 'Bill', icon: '📦' },
   { href: '/expenses/new', label: 'Expense', icon: '💸' },
-  { href: '/stock/count', label: 'Count', icon: '📋' },
 ]
 
 const row2All = [
@@ -35,8 +35,21 @@ export default function BottomNav({ role }: Props) {
   const pathname = usePathname()
   const isStaff = role === 'staff'
   const row2 = row2All.filter(t => !(isStaff && t.staffHide))
+  const [overdueCount, setOverdueCount] = useState<number | null>(null)
+
+  useEffect(() => {
+    fetch('/api/stock/overdue')
+      .then(r => r.json())
+      .then(data => setOverdueCount(data.length))
+      .catch(() => {})
+  }, [])
 
   const isActive = (href: string) => pathname === href
+
+  const row1 = [
+    ...row1Base,
+    { href: '/stock/count', label: overdueCount ? `Count(${overdueCount})` : 'Count', icon: '📋' },
+  ]
 
   return (
     <div className="md:hidden fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-800 z-50"
