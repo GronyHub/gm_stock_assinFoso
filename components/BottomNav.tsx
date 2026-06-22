@@ -38,9 +38,10 @@ export default function BottomNav({ role }: Props) {
   const [overdueCount, setOverdueCount] = useState<number | null>(null)
 
   useEffect(() => {
-    fetch('/api/stock/overdue')
-      .then(r => r.json())
-      .then(data => setOverdueCount(data.length))
+    Promise.all([
+      fetch('/api/stock/daily').then(r => r.json()),
+      fetch('/api/stock/overdue').then(r => r.json()),
+    ]).then(([daily, overdue]) => setOverdueCount(daily.length + overdue.length))
       .catch(() => {})
   }, [])
 
