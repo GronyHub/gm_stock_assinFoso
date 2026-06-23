@@ -97,9 +97,6 @@ export default function BillsPage() {
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-sm font-bold text-gray-900">{fmt(bill.total)}</p>
-                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${statusBadge(bill.status)}`}>
-                    {bill.status}
-                  </span>
                 </div>
               </div>
             </button>
@@ -118,14 +115,9 @@ export default function BillsPage() {
 
             <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-4">
               {/* Bill header */}
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-lg font-bold text-gray-900">{selected.vendor_name ?? 'Unknown vendor'}</p>
-                  <p className="text-sm text-gray-400">{fmtDate(selected.bill_date)} · {selected.bill_number}</p>
-                </div>
-                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusBadge(selected.status)}`}>
-                  {selected.status}
-                </span>
+              <div>
+                <p className="text-lg font-bold text-gray-900">{selected.vendor_name ?? 'Unknown vendor'}</p>
+                <p className="text-sm text-gray-400">{fmtDate(selected.bill_date)} · {selected.bill_number}</p>
               </div>
 
               <div className="border-t border-gray-100" />
