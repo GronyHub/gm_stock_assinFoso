@@ -54,7 +54,7 @@ function computeRows(rows: DayRow[]): ComputedRow[] {
     }
     result.push({ ...row, expected_soh: expected, loss })
   }
-  return result
+  return result.reverse()
 }
 
 function fmtQ(val: string | null) {
@@ -335,10 +335,10 @@ export default function InventoryPage() {
                         <tr className="text-left text-gray-400 border-b border-gray-100">
                           <th className="pb-2 font-medium pr-3">Date</th>
                           <th className="pb-2 font-medium text-right pr-3">Count</th>
-                          <th className="pb-2 font-medium text-right pr-3">WIC Sales</th>
-                          <th className="pb-2 font-medium text-right pr-3">GMC Sales</th>
-                          <th className="pb-2 font-medium text-right pr-3">Bills In</th>
-                          <th className="pb-2 font-medium text-right pr-3">Expected</th>
+                          <th className="pb-2 font-medium text-right pr-3">-WIC</th>
+                          <th className="pb-2 font-medium text-right pr-3">-GMC</th>
+                          <th className="pb-2 font-medium text-right pr-3">+Bills</th>
+                          <th className="pb-2 font-medium text-right pr-3">Expt</th>
                           <th className="pb-2 font-medium text-right">Loss/Gain</th>
                         </tr>
                       </thead>
