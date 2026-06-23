@@ -66,18 +66,7 @@ export default function Nav({ user }: { user: NavUser }) {
               <p className="font-semibold text-gray-900">{user.name}</p>
               <p className="text-xs text-gray-400 capitalize">{user.role}</p>
             </div>
-            <div className="flex-1 overflow-y-auto py-2">
-              {links.map(l => (
-                <Link key={l.href} href={l.href} onClick={() => setOpen(false)}
-                  className={`flex items-center px-4 py-3 text-sm font-medium transition
-                    ${(pathname === l.href || pathname.startsWith(l.href + '/'))
-                      ? 'bg-blue-50 text-blue-600'
-                      : 'text-gray-700 hover:bg-gray-50'}`}>
-                  {l.label}
-                </Link>
-              ))}
-            </div>
-            <div className="border-t border-gray-100 p-4 space-y-2" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+            <div className="p-4 space-y-2">
               <Link href="/profile" onClick={() => setOpen(false)}
                 className="block w-full text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl py-3 text-center transition">
                 My Profile
