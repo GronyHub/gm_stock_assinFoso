@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 
 type Item = {
   id: number
@@ -68,7 +68,7 @@ function fmtN(val: number | null) {
   return <>{val % 1 === 0 ? val : val.toFixed(2)}</>
 }
 
-function soh(item: Item) {
+function sohFmt(item: Item) {
   const n = Number(item.calculated_soh)
   return n % 1 === 0 ? n.toString() : n.toFixed(2)
 }
@@ -82,15 +82,16 @@ export default function InventoryPage() {
   const [addForm, setAddForm] = useState(EMPTY_FORM)
   const [adding, setAdding] = useState(false)
 
-  // Selected item + edit
-  const [selected, setSelected] = useState<Item | null>(null)
-  const [editing, setEditing] = useState(false)
+  // Accordion state
+  const [expanded, setExpanded] = useState<Set<number>>(new Set())
+  const [lossData, setLossData] = useState<Map<number, ComputedRow[]>>(new Map())
+  const [loadingIds, setLoadingIds] = useState<Set<number>>(new Set())
+  const [expandingAll, setExpandingAll] = useState(false)
+
+  // Edit state per item
+  const [editingId, setEditingId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
-
-  // Loss history
-  const [rows, setRows] = useState<ComputedRow[]>([])
-  const [rowsLoading, setRowsLoading] = useState(false)
 
   useEffect(() => {
     fetch('/api/items').then(r => r.json()).then(data => { setItems(data); setLoading(false) })
@@ -106,17 +107,51 @@ export default function InventoryPage() {
     })
   }, [items, search, group])
 
-  async function selectItem(item: Item) {
-    setSelected(item)
-    setEditing(false)
-    setRows([])
-    setRowsLoading(true)
-    const res = await fetch(`/api/losses/${item.id}`)
-    setRows(computeRows(await res.json()))
-    setRowsLoading(false)
+  const allExpanded = filtered.length > 0 && filtered.every(i => expanded.has(i.id))
+
+  const fetchLoss = useCallback(async (id: number) => {
+    if (lossData.has(id)) return
+    setLoadingIds(prev => new Set(prev).add(id))
+    const res = await fetch(`/api/losses/${id}`)
+    const data: DayRow[] = await res.json()
+    setLossData(prev => new Map(prev).set(id, computeRows(data)))
+    setLoadingIds(prev => { const s = new Set(prev); s.delete(id); return s })
+  }, [lossData])
+
+  function toggleItem(id: number) {
+    setExpanded(prev => {
+      const s = new Set(prev)
+      if (s.has(id)) { s.delete(id) } else { s.add(id); fetchLoss(id) }
+      return s
+    })
+  }
+
+  async function expandAll() {
+    setExpandingAll(true)
+    const toFetch = filtered.filter(i => !lossData.has(i.id))
+    await Promise.all(toFetch.map(async i => {
+      const res = await fetch(`/api/losses/${i.id}`)
+      const data: DayRow[] = await res.json()
+      setLossData(prev => new Map(prev).set(i.id, computeRows(data)))
+    }))
+    setExpanded(prev => {
+      const s = new Set(prev)
+      filtered.forEach(i => s.add(i.id))
+      return s
+    })
+    setExpandingAll(false)
+  }
+
+  function collapseAll() {
+    setExpanded(prev => {
+      const s = new Set(prev)
+      filtered.forEach(i => s.delete(i.id))
+      return s
+    })
   }
 
   function startEdit(item: Item) {
+    setEditingId(item.id)
     setEditForm({
       item_name: item.item_name,
       cf_group: item.cf_group ?? '',
@@ -125,13 +160,11 @@ export default function InventoryPage() {
       units_per_pack: item.units_per_pack ? parseFloat(item.units_per_pack).toString() : '',
       unit_name: item.unit_name ?? '',
     })
-    setEditing(true)
   }
 
-  async function saveEdit() {
-    if (!selected) return
+  async function saveEdit(item: Item) {
     setSaving(true)
-    const res = await fetch(`/api/items/${selected.id}`, {
+    const res = await fetch(`/api/items/${item.id}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         item_name: editForm.item_name || undefined,
@@ -145,10 +178,8 @@ export default function InventoryPage() {
     setSaving(false)
     if (res.ok) {
       const updated = await res.json()
-      const merged = { ...selected, ...updated, calculated_soh: selected.calculated_soh }
-      setItems(prev => prev.map(i => i.id === selected.id ? merged : i))
-      setSelected(merged)
-      setEditing(false)
+      setItems(prev => prev.map(i => i.id === item.id ? { ...i, ...updated, calculated_soh: i.calculated_soh } : i))
+      setEditingId(null)
     }
   }
 
@@ -175,13 +206,7 @@ export default function InventoryPage() {
     }
   }
 
-  const totalLoss = useMemo(() =>
-    parseFloat(rows.reduce((sum, r) => sum + (r.loss ?? 0), 0).toFixed(4)), [rows])
-
   if (loading) return <div className="py-20 text-center text-gray-400">Loading...</div>
-
-  const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded-xl px-3 py-2.5 text-base text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-400'
-  const labelCls = 'text-xs text-gray-500 font-medium mb-1 block'
 
   return (
     <div className="py-4">
@@ -191,7 +216,7 @@ export default function InventoryPage() {
           <h1 className="text-xl font-bold">Inventory</h1>
           <p className="text-sm text-gray-400 mt-0.5">{filtered.length} of {items.length} items</p>
         </div>
-        <button onClick={() => { setShowAdd(true); setSelected(null) }}
+        <button onClick={() => setShowAdd(v => !v)}
           className="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2 rounded-xl transition">
           + Add Item
         </button>
@@ -213,168 +238,146 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {/* Search + group filter */}
+      {/* Search */}
       <input type="text" value={search} onChange={e => setSearch(e.target.value)}
         placeholder="Search items..."
         className="w-full mb-2 bg-white border border-gray-200 rounded-xl px-4 py-3 text-base
           text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-400" />
 
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-3">
-        {groups.map(g => (
-          <button key={g} onClick={() => setGroup(g === 'All' ? null : g)}
-            className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition
-              ${(g === 'All' && !group) || g === group ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:text-gray-700'}`}>
-            {g}
-          </button>
-        ))}
-      </div>
-
-      {/* Master-detail */}
-      <div className="md:flex md:gap-4 md:h-[calc(100vh-240px)]">
-
-        {/* Left: item list */}
-        <div className={`md:w-2/5 md:overflow-y-auto space-y-2 ${selected ? 'hidden md:block' : 'block'}`}>
-          {filtered.length === 0 && <p className="text-center text-gray-400 py-10">No items found.</p>}
-          {filtered.map(item => (
-            <button key={item.id} onClick={() => selectItem(item)}
-              className={`w-full text-left rounded-xl border p-3 transition
-                ${selected?.id === item.id ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
-              <div className="flex items-start justify-between gap-2 mb-1.5">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{item.item_name}</p>
-                  {item.cf_group && <p className="text-xs text-gray-400 mt-0.5">{item.cf_group}</p>}
-                </div>
-                <span className="text-xs font-bold text-gray-700 shrink-0">SOH: {soh(item)}</span>
-              </div>
-              <div className="grid grid-cols-3 gap-x-3 text-xs text-gray-500">
-                <div>
-                  <p className="text-gray-400">Sell</p>
-                  <p className="font-medium text-gray-700">{item.selling_rate ? `GH₵${fmt(item.selling_rate)}` : '—'}</p>
-                </div>
-                <div>
-                  <p className="text-gray-400">Cost</p>
-                  <p className="font-medium text-gray-700">{item.purchase_rate ? `GH₵${fmt(item.purchase_rate)}` : '—'}</p>
-                </div>
-                <div>
-                  <p className="text-gray-400">Unit</p>
-                  <p className="font-medium text-gray-700">{item.unit_name ?? '—'}</p>
-                </div>
-              </div>
+      {/* Group filter + Expand All */}
+      <div className="flex items-center gap-2 mb-3">
+        <div className="flex gap-2 overflow-x-auto pb-1 flex-1">
+          {groups.map(g => (
+            <button key={g} onClick={() => setGroup(g === 'All' ? null : g)}
+              className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition
+                ${(g === 'All' && !group) || g === group ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:text-gray-700'}`}>
+              {g}
             </button>
           ))}
         </div>
+        <button
+          onClick={allExpanded ? collapseAll : expandAll}
+          disabled={expandingAll}
+          className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full bg-gray-800 text-white hover:bg-gray-700 disabled:opacity-50 transition whitespace-nowrap">
+          {expandingAll ? 'Loading...' : allExpanded ? 'Collapse All' : 'Expand All'}
+        </button>
+      </div>
 
-        {/* Right: detail + loss history */}
-        {selected && (
-          <div className="md:flex-1 md:overflow-y-auto space-y-3">
-            {/* Mobile back */}
-            <button onClick={() => setSelected(null)}
-              className="md:hidden flex items-center gap-1 text-blue-600 text-sm font-medium">
-              &larr; Back
-            </button>
+      {/* Accordion list */}
+      <div className="space-y-2">
+        {filtered.length === 0 && <p className="text-center text-gray-400 py-10">No items found.</p>}
+        {filtered.map(item => {
+          const isOpen = expanded.has(item.id)
+          const isLoading = loadingIds.has(item.id)
+          const rows = lossData.get(item.id) ?? []
+          const totalLoss = parseFloat(rows.reduce((s, r) => s + (r.loss ?? 0), 0).toFixed(4))
+          const isEditing = editingId === item.id
 
-            <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
-              {editing ? (
-                <>
-                  <p className="text-sm font-semibold text-gray-900">Edit Item</p>
-                  <ItemForm form={editForm} onChange={setEditForm} groups={groups.filter(g => g !== 'All')} />
-                  <div className="flex gap-2">
-                    <button onClick={saveEdit} disabled={saving}
-                      className="flex-1 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-3 transition">
-                      {saving ? 'Saving...' : 'Save'}
-                    </button>
-                    <button onClick={() => setEditing(false)}
-                      className="px-4 py-3 rounded-xl bg-gray-100 text-gray-600 text-sm font-semibold">Cancel</button>
+          return (
+            <div key={item.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              {/* Item header — always visible, tap to expand */}
+              <button onClick={() => toggleItem(item.id)}
+                className="w-full text-left p-3 hover:bg-gray-50 transition">
+                <div className="flex items-start justify-between gap-2 mb-1.5">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{item.item_name}</p>
+                    {item.cf_group && <p className="text-xs text-gray-400 mt-0.5">{item.cf_group}</p>}
                   </div>
-                </>
-              ) : (
-                <>
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-base font-bold text-gray-900">{selected.item_name}</p>
-                      {selected.cf_group && <p className="text-xs text-gray-400">{selected.cf_group}</p>}
-                    </div>
-                    <button onClick={() => startEdit(selected)}
-                      className="shrink-0 text-xs text-blue-600 font-semibold px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 transition">
-                      Edit
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-4 gap-3 bg-slate-50 rounded-xl p-3 text-xs">
-                    <div><p className="text-gray-400">SOH</p><p className="font-bold text-gray-900">{soh(selected)}</p></div>
-                    <div><p className="text-gray-400">Selling</p><p className="font-bold text-gray-900">{selected.selling_rate ? `GH₵${fmt(selected.selling_rate)}` : '—'}</p></div>
-                    <div><p className="text-gray-400">Cost</p><p className="font-bold text-gray-900">{selected.purchase_rate ? `GH₵${fmt(selected.purchase_rate)}` : '—'}</p></div>
-                    <div><p className="text-gray-400">Unit</p><p className="font-bold text-gray-900">{selected.unit_name ?? '—'}</p></div>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Loss history */}
-            {!editing && (
-              <div className="bg-white border border-gray-200 rounded-xl p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm font-semibold text-gray-700">Loss History</p>
-                  {rows.length > 0 && (
-                    <div className="text-right">
-                      <p className="text-xs text-gray-400">Cumulative Loss</p>
-                      <p className={`text-sm font-bold ${totalLoss > 0 ? 'text-red-600' : totalLoss < 0 ? 'text-green-600' : 'text-gray-500'}`}>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {isOpen && rows.length > 0 && totalLoss !== 0 && (
+                      <span className={`text-xs font-bold ${totalLoss > 0 ? 'text-red-500' : 'text-green-600'}`}>
                         {totalLoss > 0 ? '+' : ''}{totalLoss % 1 === 0 ? totalLoss : totalLoss.toFixed(2)}
-                      </p>
+                      </span>
+                    )}
+                    <span className="text-gray-400 text-sm">{isOpen ? '▲' : '▼'}</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-4 gap-x-3 text-xs">
+                  <div><p className="text-gray-400">SOH</p><p className="font-bold text-gray-800">{sohFmt(item)}</p></div>
+                  <div><p className="text-gray-400">Sell</p><p className="font-medium text-gray-700">{item.selling_rate ? `GH₵${fmt(item.selling_rate)}` : '—'}</p></div>
+                  <div><p className="text-gray-400">Cost</p><p className="font-medium text-gray-700">{item.purchase_rate ? `GH₵${fmt(item.purchase_rate)}` : '—'}</p></div>
+                  <div><p className="text-gray-400">Unit</p><p className="font-medium text-gray-700">{item.unit_name ?? '—'}</p></div>
+                </div>
+              </button>
+
+              {/* Expanded detail */}
+              {isOpen && (
+                <div className="border-t border-gray-100 p-3 space-y-3">
+                  {/* Edit toggle */}
+                  {isEditing ? (
+                    <div className="space-y-3">
+                      <ItemForm form={editForm} onChange={setEditForm} groups={groups.filter(g => g !== 'All')} />
+                      <div className="flex gap-2">
+                        <button onClick={() => saveEdit(item)} disabled={saving}
+                          className="flex-1 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2.5 transition">
+                          {saving ? 'Saving...' : 'Save'}
+                        </button>
+                        <button onClick={() => setEditingId(null)}
+                          className="px-4 py-2.5 rounded-xl bg-gray-100 text-gray-600 text-sm font-semibold">Cancel</button>
+                      </div>
                     </div>
+                  ) : (
+                    <button onClick={e => { e.stopPropagation(); startEdit(item) }}
+                      className="text-xs text-blue-600 font-semibold px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 transition">
+                      Edit Item
+                    </button>
+                  )}
+
+                  {/* Loss history */}
+                  {!isEditing && (
+                    isLoading ? (
+                      <p className="text-center text-gray-400 py-4 text-xs">Loading history...</p>
+                    ) : rows.length === 0 ? (
+                      <p className="text-center text-gray-400 py-4 text-xs">No activity found.</p>
+                    ) : (
+                      <div className="overflow-x-auto -mx-3 px-3">
+                        <table className="w-full text-xs min-w-[480px]">
+                          <thead>
+                            <tr className="text-left text-gray-400 border-b border-gray-100">
+                              <th className="pb-1.5 font-medium pr-2">Date</th>
+                              <th className="pb-1.5 font-medium text-right pr-2">Count</th>
+                              <th className="pb-1.5 font-medium text-right pr-2">-WIC</th>
+                              <th className="pb-1.5 font-medium text-right pr-2">-GMC</th>
+                              <th className="pb-1.5 font-medium text-right pr-2">+Bills</th>
+                              <th className="pb-1.5 font-medium text-right pr-2">Expt</th>
+                              <th className="pb-1.5 font-medium text-right">Loss/Gain</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-50">
+                            {rows.map((row, i) => (
+                              <tr key={i} className={row.loss !== null && row.loss > 0.001 ? 'bg-red-50' : ''}>
+                                <td className="py-1.5 pr-2 text-gray-500 whitespace-nowrap">{fmtDate(row.date)}</td>
+                                <td className="py-1.5 pr-2 text-right font-semibold text-gray-900">{fmtQ(row.qty_counted)}</td>
+                                <td className="py-1.5 pr-2 text-right text-gray-600">{fmtQ(row.wic_qty)}</td>
+                                <td className="py-1.5 pr-2 text-right text-gray-600">{fmtQ(row.gmc_qty)}</td>
+                                <td className="py-1.5 pr-2 text-right text-blue-600">{fmtQ(row.bills_qty)}</td>
+                                <td className="py-1.5 pr-2 text-right text-gray-400">{fmtN(row.expected_soh)}</td>
+                                <td className="py-1.5 text-right font-semibold">
+                                  {row.loss === null ? <span className="text-gray-300">—</span>
+                                    : row.loss > 0.001 ? <span className="text-red-600">+{row.loss % 1 === 0 ? row.loss : row.loss.toFixed(2)}</span>
+                                    : row.loss < -0.001 ? <span className="text-green-600">{row.loss % 1 === 0 ? row.loss : row.loss.toFixed(2)}</span>
+                                    : <span className="text-gray-400">0</span>}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr className="border-t-2 border-gray-200">
+                              <td colSpan={6} className="pt-2 text-right text-xs font-semibold text-gray-500 pr-2">Total</td>
+                              <td className={`pt-2 text-right text-xs font-bold ${totalLoss > 0 ? 'text-red-600' : totalLoss < 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                                {totalLoss > 0 ? '+' : ''}{totalLoss % 1 === 0 ? totalLoss : totalLoss.toFixed(2)}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    )
                   )}
                 </div>
-
-                {rowsLoading ? (
-                  <p className="text-center text-gray-400 py-8">Loading...</p>
-                ) : rows.length === 0 ? (
-                  <p className="text-center text-gray-400 py-8">No activity found.</p>
-                ) : (
-                  <div className="overflow-x-auto -mx-4 px-4">
-                    <table className="w-full text-xs min-w-[560px]">
-                      <thead>
-                        <tr className="text-left text-gray-400 border-b border-gray-100">
-                          <th className="pb-2 font-medium pr-3">Date</th>
-                          <th className="pb-2 font-medium text-right pr-3">Count</th>
-                          <th className="pb-2 font-medium text-right pr-3">-WIC</th>
-                          <th className="pb-2 font-medium text-right pr-3">-GMC</th>
-                          <th className="pb-2 font-medium text-right pr-3">+Bills</th>
-                          <th className="pb-2 font-medium text-right pr-3">Expt</th>
-                          <th className="pb-2 font-medium text-right">Loss/Gain</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-50">
-                        {rows.map((row, i) => (
-                          <tr key={i} className={row.loss !== null && row.loss > 0.001 ? 'bg-red-50' : ''}>
-                            <td className="py-2 pr-3 text-gray-600 whitespace-nowrap">{fmtDate(row.date)}</td>
-                            <td className="py-2 pr-3 text-right font-semibold text-gray-900">{fmtQ(row.qty_counted)}</td>
-                            <td className="py-2 pr-3 text-right text-gray-600">{fmtQ(row.wic_qty)}</td>
-                            <td className="py-2 pr-3 text-right text-gray-600">{fmtQ(row.gmc_qty)}</td>
-                            <td className="py-2 pr-3 text-right text-blue-600">{fmtQ(row.bills_qty)}</td>
-                            <td className="py-2 pr-3 text-right text-gray-400">{fmtN(row.expected_soh)}</td>
-                            <td className="py-2 text-right font-semibold">
-                              {row.loss === null ? <span className="text-gray-300">—</span>
-                                : row.loss > 0.001 ? <span className="text-red-600">+{row.loss % 1 === 0 ? row.loss : row.loss.toFixed(2)}</span>
-                                : row.loss < -0.001 ? <span className="text-green-600">{row.loss % 1 === 0 ? row.loss : row.loss.toFixed(2)}</span>
-                                : <span className="text-gray-400">0</span>}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                        <tr className="border-t-2 border-gray-200">
-                          <td colSpan={6} className="pt-3 text-right text-xs font-semibold text-gray-500 pr-3">Total</td>
-                          <td className={`pt-3 text-right text-sm font-bold ${totalLoss > 0 ? 'text-red-600' : totalLoss < 0 ? 'text-green-600' : 'text-gray-400'}`}>
-                            {totalLoss > 0 ? '+' : ''}{totalLoss % 1 === 0 ? totalLoss : totalLoss.toFixed(2)}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )
