@@ -77,7 +77,7 @@ export default function Nav({ user }: { user: NavUser }) {
                 </Link>
               ))}
             </div>
-            <div className="border-t border-gray-100 p-4 space-y-2">
+            <div className="border-t border-gray-100 p-4 space-y-2" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
               <Link href="/profile" onClick={() => setOpen(false)}
                 className="block w-full text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl py-3 text-center transition">
                 My Profile
