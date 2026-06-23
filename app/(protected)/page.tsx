@@ -28,7 +28,7 @@ export default async function DashboardPage() {
       : Promise.resolve([]),
   ])
 
-  const fmt = (n: number) => `GHS ${Number(n).toLocaleString('en-GH', { minimumFractionDigits: 2 })}`
+  const fmt = (n: number) => `₵${Number(n).toLocaleString('en-GH', { minimumFractionDigits: 2 })}`
 
   return (
     <div className="py-6 space-y-6">

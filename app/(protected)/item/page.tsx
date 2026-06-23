@@ -292,8 +292,8 @@ export default function InventoryPage() {
                 </div>
                 <div className="grid grid-cols-4 gap-x-3 text-xs">
                   <div><p className="text-gray-400">SOH</p><p className="font-bold text-gray-800">{sohFmt(item)}</p></div>
-                  <div><p className="text-gray-400">Sell</p><p className="font-medium text-gray-700">{item.selling_rate ? `GH₵${fmt(item.selling_rate)}` : '—'}</p></div>
-                  <div><p className="text-gray-400">Cost</p><p className="font-medium text-gray-700">{item.purchase_rate ? `GH₵${fmt(item.purchase_rate)}` : '—'}</p></div>
+                  <div><p className="text-gray-400">Sell</p><p className="font-medium text-gray-700">{item.selling_rate ? `₵${fmt(item.selling_rate)}` : '—'}</p></div>
+                  <div><p className="text-gray-400">Cost</p><p className="font-medium text-gray-700">{item.purchase_rate ? `₵${fmt(item.purchase_rate)}` : '—'}</p></div>
                   <div><p className="text-gray-400">Unit</p><p className="font-medium text-gray-700">{item.unit_name ?? '—'}</p></div>
                 </div>
               </button>

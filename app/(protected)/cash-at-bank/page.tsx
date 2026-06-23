@@ -18,7 +18,7 @@ export default async function CashAtBankPage() {
     LIMIT 90
   `
 
-  const fmt = (n: any) => n == null ? '—' : `GHS ${Number(n).toLocaleString('en-GH', { minimumFractionDigits: 2 })}`
+  const fmt = (n: any) => n == null ? '—' : `₵${Number(n).toLocaleString('en-GH', { minimumFractionDigits: 2 })}`
   const n = (v: any) => v == null ? '—' : Number(v).toLocaleString('en-GH', { minimumFractionDigits: 0 })
   const nz = (v: any) => (v == null || Number(v) === 0) ? '' : n(v)
 

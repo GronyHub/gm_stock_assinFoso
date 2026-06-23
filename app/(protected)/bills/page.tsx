@@ -23,7 +23,7 @@ type BillLine = {
 function fmt(val: string | null) {
   if (!val) return '—'
   const n = parseFloat(val)
-  return isNaN(n) ? val : `GH₵ ${n.toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return isNaN(n) ? val : `₵ ${n.toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 

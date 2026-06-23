@@ -124,13 +124,13 @@ export default function NewBillPage() {
               ))}
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Total</label>
-                <p className="text-base text-gray-900 font-medium py-2.5">GHS {(l.qty * l.price).toFixed(2)}</p>
+                <p className="text-base text-gray-900 font-medium py-2.5">₵ {(l.qty * l.price).toFixed(2)}</p>
               </div>
             </div>
           </div>
         ))}
 
-        {lines.length > 0 && <div className="text-right text-gray-900 font-bold text-xl py-1">Total: GHS {total.toFixed(2)}</div>}
+        {lines.length > 0 && <div className="text-right text-gray-900 font-bold text-xl py-1">Total: ₵ {total.toFixed(2)}</div>}
 
         <button type="submit" disabled={!lines.length || saving}
           className="w-full bg-orange-600 hover:bg-orange-500 active:bg-orange-700 disabled:opacity-40 text-white font-semibold rounded-xl py-4 text-base transition">

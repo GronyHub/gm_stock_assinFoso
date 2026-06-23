@@ -124,7 +124,7 @@ export default function NewReceiptPage() {
         </div>
 
         <div>
-          <label className="text-sm text-gray-600 block mb-1.5">Cash Counted (GHS)</label>
+          <label className="text-sm text-gray-600 block mb-1.5">Cash Counted (₵)</label>
           <input type="number" step="0.01" value={cashCounted} onChange={e => setCashCounted(e.target.value)}
             placeholder="0.00" inputMode="decimal" className={inputCls} />
         </div>
@@ -212,7 +212,7 @@ export default function NewReceiptPage() {
                             </div>
                             <div className="flex items-center justify-between mt-0.5">
                               <span className="text-xs text-gray-400">{item.group}</span>
-                              <span className="text-xs font-semibold text-blue-600">GHS {item.selling_price.toFixed(2)}</span>
+                              <span className="text-xs font-semibold text-blue-600">₵ {item.selling_price.toFixed(2)}</span>
                             </div>
                           </button>
                         ))}
@@ -238,11 +238,11 @@ export default function NewReceiptPage() {
           <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-2">
             <div className="flex justify-between text-sm text-gray-600">
               <span>Sub Total</span>
-              <span>GHS {total.toFixed(2)}</span>
+              <span>₵ {total.toFixed(2)}</span>
             </div>
             <div className="flex justify-between font-bold text-gray-900 text-base border-t border-gray-200 pt-2">
-              <span>Total (GHS)</span>
-              <span>GHS {total.toFixed(2)}</span>
+              <span>Total (₵)</span>
+              <span>₵ {total.toFixed(2)}</span>
             </div>
           </div>
         )}

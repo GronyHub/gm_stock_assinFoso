@@ -5,6 +5,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params
   const lines = await sql`
     SELECT
+      id,
       COALESCE(resolved_name, raw_item_name) AS item_name,
       quantity,
       item_price,

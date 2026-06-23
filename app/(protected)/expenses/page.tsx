@@ -19,7 +19,7 @@ type Tab = 'all' | 'properties' | 'at_shop' | 'away'
 
 function fmtAmt(val: string) {
   const n = parseFloat(val)
-  return `GH₵ ${n.toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return `₵ ${n.toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -186,7 +186,7 @@ export default function ExpensesPage() {
                 onChange={e => setForm(f => ({ ...f, expense_date: e.target.value }))} className={inputCls} />
             </div>
             <div>
-              <label className={labelCls}>Amount (GH₵)</label>
+              <label className={labelCls}>Amount (₵)</label>
               <input type="number" min="0" step="0.01" inputMode="decimal" placeholder="0.00"
                 value={form.amount}
                 onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} className={inputCls} />

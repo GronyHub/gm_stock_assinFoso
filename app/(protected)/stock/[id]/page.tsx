@@ -68,7 +68,7 @@ export default async function ItemHistoryPage({ params }: { params: Promise<{ id
             <div className="flex items-center justify-between">
               <p className="text-gray-400 text-sm">{fmtDate(String(t.txn_date).slice(0,10))}</p>
               {t.line_total != null && (
-                <p className="text-gray-300 text-sm">GHS {Number(t.line_total).toFixed(2)}</p>
+                <p className="text-gray-300 text-sm">₵{Number(t.line_total).toFixed(2)}</p>
               )}
             </div>
             {t.reference && <p className="text-gray-500 text-xs mt-1">{t.reference}</p>}
@@ -105,10 +105,10 @@ export default async function ItemHistoryPage({ params }: { params: Promise<{ id
                   {t.qty_change != null ? (Number(t.qty_change) > 0 ? '+' : '') + Number(t.qty_change).toFixed(0) : '—'}
                 </td>
                 <td className="px-3 py-2 text-right text-gray-400">
-                  {t.unit_price != null ? `GHS ${Number(t.unit_price).toFixed(2)}` : '—'}
+                  {t.unit_price != null ? `₵${Number(t.unit_price).toFixed(2)}` : '—'}
                 </td>
                 <td className="px-3 py-2 text-right text-gray-300">
-                  {t.line_total != null ? `GHS ${Number(t.line_total).toFixed(2)}` : '—'}
+                  {t.line_total != null ? `₵${Number(t.line_total).toFixed(2)}` : '—'}
                 </td>
               </tr>
             ))}

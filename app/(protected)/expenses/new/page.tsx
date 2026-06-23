@@ -56,7 +56,7 @@ export default function NewExpensePage() {
           </select>
         </div>
         <div>
-          <label className="text-sm text-gray-600 block mb-1.5">Amount (GHS)</label>
+          <label className="text-sm text-gray-600 block mb-1.5">Amount (₵)</label>
           <input type="number" min="0" step="0.01" value={amount}
             onChange={e => setAmount(e.target.value)} placeholder="0.00"
             inputMode="decimal"
