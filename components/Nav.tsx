@@ -7,12 +7,11 @@ import { useState } from 'react'
 type NavUser = { name?: string | null; role?: string; username?: string }
 
 const allLinks = [
-  { href: '/dashboard', label: 'Dashboard', roles: ['owner','manager','staff'] },
+  { href: '/stock/count', label: 'Flags', roles: ['owner','manager','staff'] },
   { href: '/sales', label: 'Sales', roles: ['owner','manager','staff'] },
   { href: '/bills', label: 'Bills', roles: ['owner','manager','staff'] },
   { href: '/expenses', label: 'Expenses', roles: ['owner','manager','staff'] },
   { href: '/rota', label: 'Rota', roles: ['owner','manager'] },
-  { href: '/stock/count', label: 'Flags', roles: ['owner','manager','staff'] },
   { href: '/stock/counts', label: 'Counts', roles: ['owner','manager','staff'] },
   { href: '/cash-at-bank', label: 'Cash at Bank', roles: ['owner','manager'] },
   { href: '/analysis', label: 'Analysis', roles: ['owner','manager','staff'] },
@@ -29,7 +28,7 @@ export default function Nav({ user }: { user: NavUser }) {
     <>
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-5xl mx-auto px-4 flex items-center justify-between h-14">
-          <Link href="/dashboard" className="font-bold text-gray-900 text-lg tracking-tight">Grony</Link>
+          <Link href="/stock/count" className="font-bold text-gray-900 text-lg tracking-tight">Grony</Link>
 
           {/* Desktop links */}
           <div className="hidden md:flex items-center gap-1">

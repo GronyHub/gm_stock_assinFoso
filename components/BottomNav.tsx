@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 type Props = { role: string }
 
 const row1Base = [
-  { href: '/dashboard', label: 'Home', icon: '\u{1F3E0}' },
+  { href: '/stock/count', label: 'Flags', icon: '\u{1F6A9}' },
   { href: '/sales', label: 'Sales', icon: '\u{1F9FE}' },
   { href: '/bills', label: 'Bills', icon: '\u{1F4CB}' },
   { href: '/expenses', label: 'Expenses', icon: '\u{1F4B8}' },
@@ -48,7 +48,7 @@ export default function BottomNav({ role }: Props) {
 
   const row1 = [
     ...row1Base,
-    { href: '/stock/count', label: overdueCount ? `Count(${overdueCount})` : 'Count', icon: '\u{1F4DD}' },
+    { href: '/stock/counts', label: 'Counts', icon: '\u{1F4DD}' },
   ]
 
   return (
