@@ -2,23 +2,16 @@
 import { useState, useEffect, useRef } from 'react'
 import { fmtDate } from '@/lib/fmtDate'
 
+// ── Types ─────────────────────────────────────────────────────────────────────
+
 type Item = {
-  item_id: number
-  item_name: string
-  cf_group: string | null
-  calculated_soh: number
-  last_count_date: string | null
-  days_overdue: number | null
+  item_id: number; item_name: string; cf_group: string | null
+  calculated_soh: number; last_count_date: string | null; days_overdue: number | null
 }
 
 type Flags = {
-  noCash: any[]
-  missingDays: any[]
-  duplicates: any[]
-  costGteSell: any[]
-  notInInventory: any[]
-  noGroup: any[]
-  noStaffTimes: any[]
+  noCash: any[]; missingDays: any[]; duplicates: any[]
+  costGteSell: any[]; notInInventory: any[]; noGroup: any[]; noStaffTimes: any[]
 }
 
 type InvItem = { id: number; canonical_name: string }
@@ -30,11 +23,18 @@ type NameRes = {
 
 const ALL_TABS = ['Daily', '15-Day', 'No Cash', 'Missing Days', 'No Times', 'Duplicates', 'Cost≥Price', 'Not in Inv.', 'No Group', 'Inv. Done', 'Inv. Todo'] as const
 type Tab = typeof ALL_TABS[number]
+const STAFF = ['joe', 'bino', 'james', 'rawlings']
+
+// ── Shared UI ─────────────────────────────────────────────────────────────────
 
 function Badge({ n }: { n: number }) {
   if (!n) return null
   return <span className="ml-1 bg-red-100 text-red-600 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{n}</span>
 }
+
+const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-400'
+
+// ── Count cards ───────────────────────────────────────────────────────────────
 
 function CountCard({ item, onSaved }: { item: Item; onSaved: (id: number) => void }) {
   const [customQty, setCustomQty] = useState('')
@@ -84,32 +84,238 @@ function CountCard({ item, onSaved }: { item: Item; onSaved: (id: number) => voi
   )
 }
 
-function FlagTable({ headers, rows, empty }: { headers: string[]; rows: (string | number | null)[][]; empty: string }) {
-  if (!rows.length) return <p className="py-10 text-center text-gray-400 text-sm">{empty}</p>
+// ── Flag fix row wrappers ─────────────────────────────────────────────────────
+
+function FixRow({ label, sub, onFixed, children }: {
+  label: string; sub?: string; onFixed?: () => void; children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(false)
   return (
-    <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="bg-gray-50 border-b border-gray-200">
-          <tr>{headers.map(h => <th key={h} className="text-left px-3 py-2 text-xs font-semibold text-gray-500">{h}</th>)}</tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100">
-          {rows.map((row, i) => (
-            <tr key={i} className="hover:bg-gray-50">
-              {row.map((cell, j) => <td key={j} className="px-3 py-2 text-gray-800">{cell ?? '—'}</td>)}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-2.5 gap-2">
+        <div className="min-w-0">
+          <p className="text-sm text-gray-900 font-medium truncate">{label}</p>
+          {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
+        </div>
+        <button onClick={() => setOpen(o => !o)}
+          className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition">
+          {open ? 'Close' : 'Fix'}
+        </button>
+      </div>
+      {open && <div className="px-3 pb-3 pt-1 border-t border-gray-100 space-y-2">{children}</div>}
     </div>
   )
 }
 
+// No Cash — enter cash counted
+function NoCashFix({ r, onFixed }: { r: any; onFixed: (id: number) => void }) {
+  const [cash, setCash] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function save() {
+    if (!cash) return
+    setSaving(true)
+    await fetch(`/api/sales/${r.id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cash_counted: Number(cash) }),
+    })
+    setSaving(false)
+    onFixed(r.id)
+  }
+
+  return (
+    <FixRow label={r.receipt_number} sub={`${fmtDate(r.receipt_date)} · ₵${Number(r.invoice_amount).toFixed(2)}`}>
+      <input type="number" min="0" step="0.01" inputMode="decimal" placeholder="Cash counted (₵)"
+        value={cash} onChange={e => setCash(e.target.value)} className={inputCls} />
+      <button onClick={save} disabled={!cash || saving}
+        className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2.5 transition">
+        {saving ? 'Saving…' : 'Save Cash Counted'}
+      </button>
+    </FixRow>
+  )
+}
+
+// Missing Days — create a minimal receipt for that date
+function MissingDayFix({ date, onFixed }: { date: string; onFixed: (d: string) => void }) {
+  const [total, setTotal] = useState('')
+  const [cash, setCash] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function markNoSales() {
+    setSaving(true)
+    await fetch('/api/sales/receipt', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date, total: 0, customerName: 'No Sales Day' }),
+    })
+    setSaving(false)
+    onFixed(date)
+  }
+
+  async function addReceipt() {
+    if (!total) return
+    setSaving(true)
+    await fetch('/api/sales/receipt', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date, total: Number(total), cashCounted: cash ? Number(cash) : null, customerName: 'Walk In Customer' }),
+    })
+    setSaving(false)
+    onFixed(date)
+  }
+
+  return (
+    <FixRow label={fmtDate(date)} sub="No sales receipt on this day">
+      <input type="number" min="0" step="0.01" inputMode="decimal" placeholder="Sales total (₵) — leave blank if no sales"
+        value={total} onChange={e => setTotal(e.target.value)} className={inputCls} />
+      {total && (
+        <input type="number" min="0" step="0.01" inputMode="decimal" placeholder="Cash counted (₵, optional)"
+          value={cash} onChange={e => setCash(e.target.value)} className={inputCls} />
+      )}
+      <div className="flex gap-2">
+        {total ? (
+          <button onClick={addReceipt} disabled={saving}
+            className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2.5 transition">
+            {saving ? 'Saving…' : 'Create Receipt'}
+          </button>
+        ) : (
+          <button onClick={markNoSales} disabled={saving}
+            className="flex-1 bg-gray-500 hover:bg-gray-400 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2.5 transition">
+            {saving ? 'Saving…' : 'Mark as No Sales Day'}
+          </button>
+        )}
+      </div>
+    </FixRow>
+  )
+}
+
+// No Times — add staff times for a past date
+function NoTimesFix({ date, onFixed }: { date: string; onFixed: (d: string) => void }) {
+  const [staff, setStaff] = useState(STAFF[0])
+  const [timeIn, setTimeIn] = useState('')
+  const [timeOut, setTimeOut] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function save() {
+    if (!timeIn) return
+    setSaving(true)
+    await fetch('/api/staff-times/entry', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ staff_name: staff, work_date: date, actual_in: timeIn, actual_out: timeOut || null }),
+    })
+    setSaving(false)
+    onFixed(date)
+  }
+
+  return (
+    <FixRow label={fmtDate(date)} sub="No staff times recorded">
+      <select value={staff} onChange={e => setStaff(e.target.value)} className={inputCls}>
+        {STAFF.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+      </select>
+      <div className="grid grid-cols-2 gap-2">
+        <input placeholder="Time In (e.g. 8:30am)" value={timeIn} onChange={e => setTimeIn(e.target.value)} className={inputCls} />
+        <input placeholder="Time Out (optional)" value={timeOut} onChange={e => setTimeOut(e.target.value)} className={inputCls} />
+      </div>
+      <button onClick={save} disabled={!timeIn || saving}
+        className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2.5 transition">
+        {saving ? 'Saving…' : 'Save Times'}
+      </button>
+    </FixRow>
+  )
+}
+
+// Duplicates — dismiss pair as not a duplicate
+function DuplicateFix({ r, onFixed }: { r: any; onFixed: (key: string) => void }) {
+  const key = `${r.id1}-${r.id2}`
+  return (
+    <FixRow label={r.name1} sub={`vs. ${r.name2}`}>
+      <p className="text-xs text-gray-500">If these are genuinely different items, dismiss this pair. If one is a real duplicate, delete it from Inventory.</p>
+      <button onClick={() => onFixed(key)}
+        className="w-full bg-gray-600 hover:bg-gray-500 text-white text-sm font-semibold rounded-xl py-2.5 transition">
+        Dismiss — Not a Duplicate
+      </button>
+    </FixRow>
+  )
+}
+
+// Cost >= Price — fix the item's cost price
+function CostPriceFix({ r, onFixed }: { r: any; onFixed: (itemId: number) => void }) {
+  const [cost, setCost] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function save() {
+    if (!cost) return
+    setSaving(true)
+    await fetch(`/api/items/${r.item_id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ purchase_rate: Number(cost) }),
+    })
+    setSaving(false)
+    onFixed(r.item_id)
+  }
+
+  return (
+    <FixRow label={r.item_name}
+      sub={`${r.receipt_number} · Sold ₵${Number(r.selling_price).toFixed(2)} · Cost ₵${Number(r.cost_price).toFixed(2)}`}>
+      <input type="number" min="0" step="0.01" inputMode="decimal"
+        placeholder={`New cost price (currently ₵${Number(r.cost_price).toFixed(2)})`}
+        value={cost} onChange={e => setCost(e.target.value)} className={inputCls} />
+      <button onClick={save} disabled={!cost || saving}
+        className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2.5 transition">
+        {saving ? 'Saving…' : 'Update Cost Price'}
+      </button>
+    </FixRow>
+  )
+}
+
+// Not in Inv. — redirect to Inv. Todo tab
+function NotInInvRow({ r, onSwitchTab }: { r: any; onSwitchTab: () => void }) {
+  return (
+    <div className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-3 py-2.5 gap-2">
+      <div className="min-w-0">
+        <p className="text-sm text-gray-900 font-medium truncate">{r.item_name}</p>
+        <p className="text-xs text-gray-400 mt-0.5">{r.source}</p>
+      </div>
+      <button onClick={onSwitchTab}
+        className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition">
+        Resolve →
+      </button>
+    </div>
+  )
+}
+
+// No Group — assign a group
+function NoGroupFix({ r, onFixed }: { r: any; onFixed: (id: number) => void }) {
+  const [group, setGroup] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function save() {
+    if (!group.trim()) return
+    setSaving(true)
+    await fetch(`/api/items/${r.id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cf_group: group.trim() }),
+    })
+    setSaving(false)
+    onFixed(r.id)
+  }
+
+  return (
+    <FixRow label={r.item_name} sub={`Status: ${r.status}`}>
+      <input placeholder="Group name (e.g. Photo Papers)" value={group}
+        onChange={e => setGroup(e.target.value)} className={inputCls} />
+      <button onClick={save} disabled={!group.trim() || saving}
+        className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2.5 transition">
+        {saving ? 'Saving…' : 'Assign Group'}
+      </button>
+    </FixRow>
+  )
+}
+
+// ── Name resolution components ────────────────────────────────────────────────
+
 function NameResolveRow({
   name, count, items, onResolved,
 }: {
-  name: string
-  count: number
-  items: InvItem[]
+  name: string; count: number; items: InvItem[]
   onResolved: (name: string, canonical: string, itemId: number) => void
 }) {
   const [search, setSearch] = useState('')
@@ -123,19 +329,18 @@ function NameResolveRow({
     : []
 
   useEffect(() => {
-    function onClickOutside(e: MouseEvent) {
+    function onOut(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
     }
-    document.addEventListener('mousedown', onClickOutside)
-    return () => document.removeEventListener('mousedown', onClickOutside)
+    document.addEventListener('mousedown', onOut)
+    return () => document.removeEventListener('mousedown', onOut)
   }, [])
 
   async function save() {
     if (!selected) return
     setSaving(true)
     await fetch('/api/flags/name-resolution', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ raw_name: name, item_id: selected.id, canonical_name: selected.canonical_name }),
     })
     setSaving(false)
@@ -148,20 +353,16 @@ function NameResolveRow({
         <p className="text-sm font-medium text-gray-900 leading-snug">{name}</p>
         <span className="shrink-0 text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{count} line{count !== 1 ? 's' : ''}</span>
       </div>
-
       <div ref={ref} className="relative">
-        <input
-          value={search}
+        <input value={search}
           onChange={e => { setSearch(e.target.value); setSelected(null); setOpen(true) }}
           onFocus={() => setOpen(true)}
           placeholder="Search inventory to match…"
-          className="w-full bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-400"
-        />
+          className={inputCls} />
         {open && filtered.length > 0 && (
           <div className="absolute z-10 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden max-h-48 overflow-y-auto">
             {filtered.map(item => (
-              <button key={item.id}
-                onMouseDown={e => e.preventDefault()}
+              <button key={item.id} onMouseDown={e => e.preventDefault()}
                 onClick={() => { setSelected(item); setSearch(item.canonical_name); setOpen(false) }}
                 className="w-full text-left px-3 py-2 text-sm text-gray-800 hover:bg-blue-50 border-b border-gray-100 last:border-0">
                 {item.canonical_name}
@@ -175,7 +376,6 @@ function NameResolveRow({
           </div>
         )}
       </div>
-
       {selected && (
         <button onClick={save} disabled={saving}
           className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2.5 transition">
@@ -186,6 +386,8 @@ function NameResolveRow({
   )
 }
 
+// ── Main page ─────────────────────────────────────────────────────────────────
+
 export default function StockCountPage() {
   const [tab, setTab] = useState<Tab>('Daily')
   const [dailyItems, setDailyItems] = useState<Item[]>([])
@@ -195,6 +397,13 @@ export default function StockCountPage() {
   const [flagsLoading, setFlagsLoading] = useState(false)
   const [nameRes, setNameRes] = useState<NameRes | null>(null)
   const [nameResLoading, setNameResLoading] = useState(false)
+  // Dismissed duplicate keys stored in state (persisted to localStorage)
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    const stored = localStorage.getItem('dismissed_duplicates')
+    if (stored) setDismissed(new Set(JSON.parse(stored)))
+  }, [])
 
   useEffect(() => {
     Promise.all([
@@ -233,6 +442,14 @@ export default function StockCountPage() {
   function removeDaily(id: number) { setDailyItems(prev => prev.filter(i => i.item_id !== id)) }
   function removeOverdue(id: number) { setOverdueItems(prev => prev.filter(i => i.item_id !== id)) }
 
+  function dismissDuplicate(key: string) {
+    setDismissed(prev => {
+      const next = new Set(prev).add(key)
+      localStorage.setItem('dismissed_duplicates', JSON.stringify([...next]))
+      return next
+    })
+  }
+
   function handleResolved(rawName: string, canonical: string, itemId: number) {
     setNameRes(prev => {
       if (!prev) return prev
@@ -248,82 +465,108 @@ export default function StockCountPage() {
   if (loading) return <div className="py-20 text-center text-gray-600">Loading…</div>
 
   const countItems = tab === 'Daily' ? dailyItems : overdueItems
+  const isCountTab = tab === 'Daily' || tab === '15-Day'
+  const isNameResTab = tab === 'Inv. Done' || tab === 'Inv. Todo'
+
+  const activeDups = flags ? flags.duplicates.filter((r: any) => !dismissed.has(`${r.id1}-${r.id2}`)) : []
 
   function renderFlags() {
     if (flagsLoading || !flags) return <div className="py-10 text-center text-gray-400">Loading…</div>
+
     if (tab === 'No Cash') return (
       <div className="space-y-2">
         <p className="text-xs text-gray-400">{flags.noCash.length} walk-in receipt{flags.noCash.length !== 1 ? 's' : ''} missing cash counted</p>
-        <FlagTable
-          headers={['Receipt No.', 'Date', 'Invoice']}
-          rows={flags.noCash.map(r => [r.receipt_number, fmtDate(r.receipt_date), `₵${Number(r.invoice_amount).toFixed(2)}`])}
-          empty="All walk-in receipts have cash counted recorded."
-        />
+        {flags.noCash.length === 0
+          ? <p className="py-10 text-center text-gray-400 text-sm">All walk-in receipts have cash counted recorded.</p>
+          : flags.noCash.map((r: any) => (
+            <NoCashFix key={r.id} r={r} onFixed={id =>
+              setFlags(f => f ? { ...f, noCash: f.noCash.filter((x: any) => x.id !== id) } : f)
+            } />
+          ))
+        }
       </div>
     )
+
     if (tab === 'Missing Days') return (
       <div className="space-y-2">
         <p className="text-xs text-gray-400">{flags.missingDays.length} day{flags.missingDays.length !== 1 ? 's' : ''} with no sales receipts (excluding Sundays)</p>
-        <FlagTable
-          headers={['Date']}
-          rows={flags.missingDays.map(r => [fmtDate(r.missing_date)])}
-          empty="No missing days found."
-        />
+        {flags.missingDays.length === 0
+          ? <p className="py-10 text-center text-gray-400 text-sm">No missing days found.</p>
+          : flags.missingDays.map((r: any) => (
+            <MissingDayFix key={r.missing_date} date={r.missing_date} onFixed={d =>
+              setFlags(f => f ? { ...f, missingDays: f.missingDays.filter((x: any) => x.missing_date !== d) } : f)
+            } />
+          ))
+        }
       </div>
     )
+
     if (tab === 'No Times') return (
       <div className="space-y-2">
         <p className="text-xs text-gray-400">{flags.noStaffTimes.length} day{flags.noStaffTimes.length !== 1 ? 's' : ''} with no staff times recorded (excluding Sundays)</p>
-        <FlagTable
-          headers={['Date']}
-          rows={flags.noStaffTimes.map(r => [fmtDate(r.missing_date)])}
-          empty="All working days have staff times recorded."
-        />
+        {flags.noStaffTimes.length === 0
+          ? <p className="py-10 text-center text-gray-400 text-sm">All working days have staff times recorded.</p>
+          : flags.noStaffTimes.map((r: any) => (
+            <NoTimesFix key={r.missing_date} date={r.missing_date} onFixed={d =>
+              setFlags(f => f ? { ...f, noStaffTimes: f.noStaffTimes.filter((x: any) => x.missing_date !== d) } : f)
+            } />
+          ))
+        }
       </div>
     )
+
     if (tab === 'Duplicates') return (
       <div className="space-y-2">
-        <p className="text-xs text-gray-400">{flags.duplicates.length} possible duplicate pair{flags.duplicates.length !== 1 ? 's' : ''} (similarity &gt; 65%)</p>
-        <FlagTable
-          headers={['Item 1', 'Item 2']}
-          rows={flags.duplicates.map(r => [r.name1, r.name2])}
-          empty="No duplicate or similar item names found."
-        />
+        <p className="text-xs text-gray-400">{activeDups.length} possible duplicate pair{activeDups.length !== 1 ? 's' : ''} (similarity &gt; 65%)</p>
+        {activeDups.length === 0
+          ? <p className="py-10 text-center text-gray-400 text-sm">No duplicate or similar item names found.</p>
+          : activeDups.map((r: any) => (
+            <DuplicateFix key={`${r.id1}-${r.id2}`} r={r} onFixed={dismissDuplicate} />
+          ))
+        }
       </div>
     )
+
     if (tab === 'Cost≥Price') return (
       <div className="space-y-2">
         <p className="text-xs text-gray-400">{flags.costGteSell.length} line{flags.costGteSell.length !== 1 ? 's' : ''} where cost price ≥ selling price</p>
-        <FlagTable
-          headers={['Receipt', 'Date', 'Item', 'Sold At', 'Cost']}
-          rows={flags.costGteSell.map(r => [
-            r.receipt_number, fmtDate(r.receipt_date), r.item_name,
-            `₵${Number(r.selling_price).toFixed(2)}`, `₵${Number(r.cost_price).toFixed(2)}`,
-          ])}
-          empty="No items sold at or below cost price."
-        />
+        {flags.costGteSell.length === 0
+          ? <p className="py-10 text-center text-gray-400 text-sm">No items sold at or below cost price.</p>
+          : flags.costGteSell.map((r: any, i: number) => (
+            <CostPriceFix key={`${r.item_id}-${i}`} r={r} onFixed={itemId =>
+              setFlags(f => f ? { ...f, costGteSell: f.costGteSell.filter((x: any) => x.item_id !== itemId) } : f)
+            } />
+          ))
+        }
       </div>
     )
+
     if (tab === 'Not in Inv.') return (
       <div className="space-y-2">
-        <p className="text-xs text-gray-400">{flags.notInInventory.length} item name{flags.notInInventory.length !== 1 ? 's' : ''} not found in inventory</p>
-        <FlagTable
-          headers={['Item Name', 'Source']}
-          rows={flags.notInInventory.map(r => [r.item_name, r.source])}
-          empty="All items in receipts and counts are in inventory."
-        />
+        <p className="text-xs text-gray-400">{flags.notInInventory.length} item name{flags.notInInventory.length !== 1 ? 's' : ''} not found in inventory — use Resolve to match them</p>
+        {flags.notInInventory.length === 0
+          ? <p className="py-10 text-center text-gray-400 text-sm">All items in receipts and counts are in inventory.</p>
+          : flags.notInInventory.map((r: any, i: number) => (
+            <NotInInvRow key={i} r={r} onSwitchTab={() => setTab('Inv. Todo')} />
+          ))
+        }
       </div>
     )
+
     if (tab === 'No Group') return (
       <div className="space-y-2">
         <p className="text-xs text-gray-400">{flags.noGroup.length} item{flags.noGroup.length !== 1 ? 's' : ''} with no group assigned</p>
-        <FlagTable
-          headers={['Item Name', 'Status']}
-          rows={flags.noGroup.map(r => [r.item_name, r.status])}
-          empty="All items have a group assigned."
-        />
+        {flags.noGroup.length === 0
+          ? <p className="py-10 text-center text-gray-400 text-sm">All items have a group assigned.</p>
+          : flags.noGroup.map((r: any) => (
+            <NoGroupFix key={r.id} r={r} onFixed={id =>
+              setFlags(f => f ? { ...f, noGroup: f.noGroup.filter((x: any) => x.id !== id) } : f)
+            } />
+          ))
+        }
       </div>
     )
+
     return null
   }
 
@@ -332,17 +575,12 @@ export default function StockCountPage() {
 
     if (tab === 'Inv. Todo') return (
       <div className="space-y-2">
-        <p className="text-xs text-gray-400">{nameRes.unmatched.length} receipt line name{nameRes.unmatched.length !== 1 ? 's' : ''} not matched to inventory — search and select the correct item to resolve</p>
+        <p className="text-xs text-gray-400">{nameRes.unmatched.length} receipt line name{nameRes.unmatched.length !== 1 ? 's' : ''} not matched — search and select the correct inventory item</p>
         {nameRes.unmatched.length === 0
           ? <p className="py-10 text-center text-gray-400 text-sm">All names matched.</p>
           : nameRes.unmatched.map(u => (
-            <NameResolveRow
-              key={u.name}
-              name={u.name}
-              count={u.line_count}
-              items={nameRes.items}
-              onResolved={handleResolved}
-            />
+            <NameResolveRow key={u.name} name={u.name} count={u.line_count}
+              items={nameRes.items} onResolved={handleResolved} />
           ))
         }
       </div>
@@ -351,11 +589,31 @@ export default function StockCountPage() {
     if (tab === 'Inv. Done') return (
       <div className="space-y-2">
         <p className="text-xs text-gray-400">{nameRes.matched.length} receipt line name{nameRes.matched.length !== 1 ? 's' : ''} matched to inventory</p>
-        <FlagTable
-          headers={['Receipt Name', 'Matched To', 'Lines']}
-          rows={nameRes.matched.map(r => [r.name, r.canonical_name, r.line_count])}
-          empty="No matched names yet."
-        />
+        {nameRes.matched.length === 0
+          ? <p className="py-10 text-center text-gray-400 text-sm">No matched names yet.</p>
+          : (
+            <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Receipt Name</th>
+                    <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Matched To</th>
+                    <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Lines</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {nameRes.matched.map((r, i) => (
+                    <tr key={i} className="hover:bg-gray-50">
+                      <td className="px-3 py-2 text-gray-800">{r.name}</td>
+                      <td className="px-3 py-2 text-blue-700 font-medium">{r.canonical_name}</td>
+                      <td className="px-3 py-2 text-gray-500">{r.line_count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        }
       </div>
     )
 
@@ -366,7 +624,7 @@ export default function StockCountPage() {
     'No Cash': flags.noCash.length,
     'Missing Days': flags.missingDays.length,
     'No Times': flags.noStaffTimes.length,
-    'Duplicates': flags.duplicates.length,
+    'Duplicates': activeDups.length,
     'Cost≥Price': flags.costGteSell.length,
     'Not in Inv.': flags.notInInventory.length,
     'No Group': flags.noGroup.length,
@@ -376,9 +634,6 @@ export default function StockCountPage() {
     'Inv. Todo': nameRes.unmatched.length,
     'Inv. Done': nameRes.matched.length,
   } : {}
-
-  const isCountTab = tab === 'Daily' || tab === '15-Day'
-  const isNameResTab = tab === 'Inv. Done' || tab === 'Inv. Todo'
 
   return (
     <div className="py-4 space-y-4">
@@ -408,7 +663,9 @@ export default function StockCountPage() {
       {/* Content */}
       {isCountTab ? (
         countItems.length === 0 ? (
-          <p className="py-10 text-center text-gray-400 text-sm">{tab === 'Daily' ? 'All daily items counted!' : 'All items up to date!'}</p>
+          <p className="py-10 text-center text-gray-400 text-sm">
+            {tab === 'Daily' ? 'All daily items counted!' : 'All items up to date!'}
+          </p>
         ) : (
           <div className="space-y-3">
             {countItems.map(item => (

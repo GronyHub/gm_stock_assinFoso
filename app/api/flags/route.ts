@@ -143,8 +143,8 @@ export async function GET() {
 
     // 4. Sales lines where cost >= selling price
     safeQuery(() => sql`
-      SELECT sr.receipt_number, sr.receipt_date::text AS receipt_date,
-             COALESCE(srl.resolved_name, srl.raw_item_name) AS item_name,
+      SELECT sr.id AS receipt_id, sr.receipt_number, sr.receipt_date::text AS receipt_date,
+             i.id AS item_id, COALESCE(srl.resolved_name, srl.raw_item_name) AS item_name,
              srl.item_price AS selling_price,
              i.purchase_rate AS cost_price
       FROM sales_receipt_lines srl
