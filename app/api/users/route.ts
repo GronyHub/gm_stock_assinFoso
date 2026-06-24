@@ -25,3 +25,15 @@ export async function POST(req: NextRequest) {
   `
   return NextResponse.json(row)
 }
+
+export async function PATCH(req: NextRequest) {
+  const session = await auth()
+  if ((session?.user as any)?.role !== 'owner') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const { id, role } = await req.json()
+  if (!id || !role) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+  const [row] = await sql`
+    UPDATE app_users SET role = ${role} WHERE id = ${id}
+    RETURNING id, username, display_name, role
+  `
+  return NextResponse.json(row)
+}

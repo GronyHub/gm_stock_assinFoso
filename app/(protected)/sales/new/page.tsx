@@ -1,12 +1,11 @@
 'use client'
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
-type Item = { id: number; name: string; group: string; soh: number; selling_price: number }
-type Line = { item: Item | null; qty: number; price: number; search: string; open: boolean }
+type Item = { id: number; name: string; group: string | null; soh: number; selling_price: number }
+type Line = { item: Item | null; qty: number; price: number; search: string }
 
-const EMPTY_LINE = (): Line => ({ item: null, qty: 1, price: 0, search: '', open: false })
-
+const EMPTY_LINE = (): Line => ({ item: null, qty: 1, price: 0, search: '' })
 const inputCls = 'w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-base text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-400'
 
 export default function NewReceiptPage() {
@@ -15,29 +14,33 @@ export default function NewReceiptPage() {
   const [cashCounted, setCashCounted] = useState('')
   const [lines, setLines] = useState<Line[]>([EMPTY_LINE()])
   const [allItems, setAllItems] = useState<Item[]>([])
+  const [loadingItems, setLoadingItems] = useState(true)
+  const [activeIdx, setActiveIdx] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState('')
   const router = useRouter()
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const dropdownRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    fetch('/api/items/all').then(r => r.json()).then(setAllItems)
+    fetch('/api/items/all')
+      .then(r => r.json())
+      .then(d => { setAllItems(Array.isArray(d) ? d : []); setLoadingItems(false) })
+      .catch(() => setLoadingItems(false))
   }, [])
 
-  // Close dropdowns on outside click
+  // Close dropdown on outside tap/click
   useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setLines(prev => prev.map(l => ({ ...l, open: false })))
+    function handler(e: Event) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setActiveIdx(null)
       }
     }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    document.addEventListener('pointerdown', handler)
+    return () => document.removeEventListener('pointerdown', handler)
   }, [])
 
   function filteredItems(search: string) {
-    if (!search) return allItems
+    if (!search.trim()) return allItems
     const q = search.toLowerCase()
     return allItems.filter(i =>
       i.name.toLowerCase().includes(q) ||
@@ -45,20 +48,21 @@ export default function NewReceiptPage() {
     )
   }
 
-  function setLineField<K extends keyof Line>(idx: number, field: K, val: Line[K]) {
+  function updateLine<K extends keyof Line>(idx: number, field: K, val: Line[K]) {
     setLines(prev => prev.map((l, i) => i === idx ? { ...l, [field]: val } : l))
   }
 
   function selectItem(idx: number, item: Item) {
-    setLines(prev => prev.map((l, i) => i === idx
-      ? { ...l, item, search: item.name, price: item.selling_price, qty: 1, open: false }
-      : l
-    ))
-    // Add a new empty line if this was the last one
     setLines(prev => {
-      if (idx === prev.length - 1) return [...prev, EMPTY_LINE()]
-      return prev
+      const next = prev.map((l, i) => i === idx
+        ? { ...l, item, search: item.name, price: item.selling_price, qty: 1 }
+        : l
+      )
+      // Auto-add a new empty row if this was the last one
+      if (idx === prev.length - 1) return [...next, EMPTY_LINE()]
+      return next
     })
+    setActiveIdx(null)
   }
 
   function removeLine(idx: number) {
@@ -66,10 +70,7 @@ export default function NewReceiptPage() {
       const next = prev.filter((_, i) => i !== idx)
       return next.length === 0 ? [EMPTY_LINE()] : next
     })
-  }
-
-  function addLine() {
-    setLines(prev => [...prev, EMPTY_LINE()])
+    setActiveIdx(null)
   }
 
   const filledLines = lines.filter(l => l.item)
@@ -132,43 +133,48 @@ export default function NewReceiptPage() {
             placeholder="0.00" inputMode="decimal" className={inputCls} />
         </div>
 
-        {/* Item lines table */}
+        {/* Item lines */}
         <div>
-          <label className="text-sm text-gray-600 block mb-2">Items</label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm text-gray-600">Items</label>
+            {loadingItems
+              ? <span className="text-xs text-gray-400">Loading items…</span>
+              : <span className="text-xs text-gray-400">{allItems.length} items available</span>}
+          </div>
+
           <div className="bg-white border border-gray-200 rounded-xl">
             {/* Header */}
             <div className="grid grid-cols-[1fr_80px_90px_80px_28px] gap-2 px-3 py-2 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wide rounded-t-xl">
-              <span>Item Details</span>
+              <span>Item</span>
               <span className="text-right">Rate</span>
               <span className="text-right">Qty</span>
               <span className="text-right">Amount</span>
               <span />
             </div>
 
-            {/* Lines */}
-            <div ref={dropdownRef} className="divide-y divide-gray-100">
+            <div ref={containerRef} className="divide-y divide-gray-100">
               {lines.map((line, idx) => {
+                const isOpen = activeIdx === idx
                 const results = filteredItems(line.search)
                 return (
                   <div key={idx} className="relative">
                     <div className="grid grid-cols-[1fr_80px_90px_80px_28px] gap-2 px-3 py-2.5 items-center">
                       {/* Item search */}
-                      <div className="relative">
+                      <div>
                         <input
                           value={line.search}
                           onChange={e => {
-                            setLineField(idx, 'search', e.target.value)
-                            setLineField(idx, 'open', true)
-                            setLineField(idx, 'item', null)
+                            updateLine(idx, 'search', e.target.value)
+                            updateLine(idx, 'item', null)
+                            setActiveIdx(idx)
                           }}
-                          onFocus={() => setLineField(idx, 'open', true)}
-                          placeholder="Type or click to select an item"
+                          onFocus={() => setActiveIdx(idx)}
+                          placeholder="Type or select item"
+                          autoComplete="off"
                           className="w-full text-sm text-gray-900 placeholder-gray-400 outline-none py-1"
                         />
                         {line.item && (
-                          <p className="text-[10px] text-gray-400 mt-0.5">
-                            SOH: {line.item.soh} pcs
-                          </p>
+                          <p className="text-[10px] text-gray-400 mt-0.5">SOH: {line.item.soh} pcs</p>
                         )}
                       </div>
 
@@ -176,7 +182,7 @@ export default function NewReceiptPage() {
                       <input
                         type="number" min="0" step="0.01"
                         value={line.price}
-                        onChange={e => setLineField(idx, 'price', Number(e.target.value))}
+                        onChange={e => updateLine(idx, 'price', Number(e.target.value))}
                         inputMode="decimal"
                         className="w-full text-right text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-400"
                       />
@@ -185,33 +191,34 @@ export default function NewReceiptPage() {
                       <input
                         type="number" min="0.01" step="any"
                         value={line.qty}
-                        onChange={e => setLineField(idx, 'qty', Number(e.target.value))}
+                        onChange={e => updateLine(idx, 'qty', Number(e.target.value))}
                         inputMode="decimal"
                         className="w-full text-right text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-400"
                       />
 
                       {/* Amount */}
                       <p className="text-right text-sm font-medium text-gray-900">
-                        {line.item ? (line.qty * line.price).toFixed(2) : '0'}
+                        {line.item ? (line.qty * line.price).toFixed(2) : '—'}
                       </p>
 
                       {/* Remove */}
                       <button type="button" onClick={() => removeLine(idx)}
-                        className="text-gray-300 hover:text-red-400 transition text-lg leading-none">
+                        className="text-gray-300 hover:text-red-400 transition text-xl leading-none">
                         ×
                       </button>
                     </div>
 
-                    {/* Dropdown */}
-                    {line.open && results.length > 0 && (
-                      <div className="absolute left-0 right-0 z-30 bg-white border border-gray-200 shadow-xl rounded-xl mt-0 max-h-64 overflow-y-auto">
+                    {/* Dropdown — renders below the row, inside the table */}
+                    {isOpen && results.length > 0 && (
+                      <div className="absolute left-0 right-0 z-50 bg-white border border-gray-200 shadow-2xl rounded-xl max-h-60 overflow-y-auto"
+                        style={{ top: '100%' }}>
                         {results.map(item => (
                           <button key={item.id} type="button"
-                            onMouseDown={() => selectItem(idx, item)}
-                            className="w-full text-left px-4 py-3 hover:bg-blue-50 transition border-b border-gray-50 last:border-0">
+                            onPointerDown={e => { e.preventDefault(); selectItem(idx, item) }}
+                            className="w-full text-left px-4 py-3 hover:bg-blue-50 active:bg-blue-100 transition border-b border-gray-50 last:border-0">
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-medium text-gray-900">{item.name}</span>
-                              <span className="text-xs text-gray-400">SOH: {item.soh} pcs</span>
+                              <span className="text-xs text-gray-400">SOH: {item.soh}</span>
                             </div>
                             <div className="flex items-center justify-between mt-0.5">
                               <span className="text-xs text-gray-400">{item.group ?? ''}</span>
@@ -226,9 +233,8 @@ export default function NewReceiptPage() {
               })}
             </div>
 
-            {/* Add row */}
             <div className="px-3 py-2 border-t border-gray-100">
-              <button type="button" onClick={addLine}
+              <button type="button" onClick={() => setLines(prev => [...prev, EMPTY_LINE()])}
                 className="text-sm text-blue-600 hover:text-blue-500 font-semibold transition">
                 + Add New Row
               </button>
