@@ -12,9 +12,10 @@ export async function POST(req: NextRequest) {
   const total = lines.reduce((s: number, l: any) => s + Number(l.total), 0)
   const receiptNumber = `APP-${date.replace(/-/g,'')}-${Date.now().toString().slice(-4)}`
 
+  const enteredBy = session.user?.name || (session.user as any)?.username || null
   const [receipt] = await sql`
-    INSERT INTO sales_receipts (receipt_number, receipt_date, total, cash_counted, source)
-    VALUES (${receiptNumber}, ${date}, ${total}, ${cashCounted ?? null}, 'app')
+    INSERT INTO sales_receipts (receipt_number, receipt_date, total, cash_counted, source, entered_by)
+    VALUES (${receiptNumber}, ${date}, ${total}, ${cashCounted ?? null}, 'app', ${enteredBy})
     RETURNING id
   `
 

@@ -7,7 +7,7 @@ export async function GET() {
     SELECT
       e.id, e.expense_date::date AS expense_date, e.expense_account,
       e.cf_justify, e.vendor_name, e.amount, e.cf_expense_type,
-      e.is_property, COALESCE(ep.property_status, 'at_shop') AS property_status
+      e.is_property, COALESCE(ep.property_status, 'at_shop') AS property_status, e.entered_by
     FROM expenses e
     LEFT JOIN expense_properties ep ON ep.expense_id = e.id
     ORDER BY e.expense_date DESC, e.id DESC
@@ -30,13 +30,14 @@ export async function POST(req: NextRequest) {
   const entryNumber = String(entry[0].next)
   const isProp = is_property ?? false
 
+  const enteredBy = session.user?.name || (session.user as any)?.username || null
   const [row] = await sql`
     INSERT INTO expenses (expense_date, expense_account, cf_justify, vendor_name, amount, total,
-                          cf_expense_type, is_property, source, entry_number)
+                          cf_expense_type, is_property, source, entry_number, entered_by)
     VALUES (${expense_date}, ${expense_account}, ${cf_justify ?? null}, ${vendor_name ?? null},
-            ${amount}, ${amount}, ${cf_expense_type ?? null}, ${isProp}, 'app', ${entryNumber})
+            ${amount}, ${amount}, ${cf_expense_type ?? null}, ${isProp}, 'app', ${entryNumber}, ${enteredBy})
     RETURNING id, expense_date::date AS expense_date, expense_account, cf_justify,
-              vendor_name, amount, cf_expense_type, is_property
+              vendor_name, amount, cf_expense_type, is_property, entered_by
   `
 
   if (isProp) {

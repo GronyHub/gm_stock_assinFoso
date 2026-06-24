@@ -26,7 +26,7 @@ export async function GET() {
 
   // All records for all staff
   const recent = await sql`
-    SELECT staff_name, work_date::text, actual_in, actual_out
+    SELECT staff_name, work_date::text, actual_in, actual_out, entered_by
     FROM staff_times
     ORDER BY work_date DESC, staff_name
   `
@@ -55,19 +55,20 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  const enteredBy = session?.user?.name || (session?.user as any)?.username || null
   if (action === 'in') {
     await sql`
-      INSERT INTO staff_times (staff_name, work_date, actual_in)
-      VALUES (${username}, ${today}, ${time})
+      INSERT INTO staff_times (staff_name, work_date, actual_in, entered_by)
+      VALUES (${username}, ${today}, ${time}, ${enteredBy})
       ON CONFLICT (staff_name, work_date)
-      DO UPDATE SET actual_in = ${time}
+      DO UPDATE SET actual_in = ${time}, entered_by = ${enteredBy}
     `
   } else {
     await sql`
-      INSERT INTO staff_times (staff_name, work_date, actual_out)
-      VALUES (${username}, ${today}, ${time})
+      INSERT INTO staff_times (staff_name, work_date, actual_out, entered_by)
+      VALUES (${username}, ${today}, ${time}, ${enteredBy})
       ON CONFLICT (staff_name, work_date)
-      DO UPDATE SET actual_out = ${time}
+      DO UPDATE SET actual_out = ${time}, entered_by = ${enteredBy}
     `
   }
 

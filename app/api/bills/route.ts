@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET() {
   const rows = await sql`
-    SELECT id, bill_number, bill_date::date AS bill_date, vendor_name, total, status
+    SELECT id, bill_number, bill_date::date AS bill_date, vendor_name, total, status, entered_by
     FROM bills
     ORDER BY bill_date DESC, id DESC
   `
@@ -21,9 +21,10 @@ export async function POST(req: NextRequest) {
   const total = lines.reduce((s: number, l: any) => s + Number(l.total), 0)
   const billNumber = `APP-BILL-${date.replace(/-/g,'')}-${Date.now().toString().slice(-4)}`
 
+  const enteredBy = session.user?.name || (session.user as any)?.username || null
   const [bill] = await sql`
-    INSERT INTO bills (bill_number, bill_date, vendor_id, vendor_name, total, subtotal, status, source)
-    VALUES (${billNumber}, ${date}, ${vendorId ?? null}, ${vendorName ?? null}, ${total}, ${total}, 'paid', 'app')
+    INSERT INTO bills (bill_number, bill_date, vendor_id, vendor_name, total, subtotal, status, source, entered_by)
+    VALUES (${billNumber}, ${date}, ${vendorId ?? null}, ${vendorName ?? null}, ${total}, ${total}, 'paid', 'app', ${enteredBy})
     RETURNING id
   `
 

@@ -10,7 +10,8 @@ export async function GET() {
       customer_name,
       total AS invoice_amount,
       cash_counted,
-      (cash_counted - total) AS wnw
+      (cash_counted - total) AS wnw,
+      entered_by
     FROM sales_receipts
     ORDER BY receipt_date DESC, id DESC
   `

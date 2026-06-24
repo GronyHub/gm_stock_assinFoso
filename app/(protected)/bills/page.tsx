@@ -10,6 +10,7 @@ type Bill = {
   vendor_name: string | null
   total: string
   status: string
+  entered_by: string | null
 }
 
 type BillLine = {
@@ -91,7 +92,7 @@ export default function BillsPage() {
                   <p className="text-sm font-semibold text-gray-900 truncate">
                     {bill.vendor_name ?? 'Unknown vendor'}
                   </p>
-                  <p className="text-xs text-gray-400 mt-0.5">{fmtDate(bill.bill_date)}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{fmtDate(bill.bill_date)}{bill.entered_by ? ` · ${bill.entered_by}` : ''}</p>
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-sm font-bold text-gray-900">{fmt(bill.total)}</p>
@@ -115,7 +116,7 @@ export default function BillsPage() {
               {/* Bill header */}
               <div>
                 <p className="text-lg font-bold text-gray-900">{selected.vendor_name ?? 'Unknown vendor'}</p>
-                <p className="text-sm text-gray-400">{fmtDate(selected.bill_date)} · {selected.bill_number}</p>
+                <p className="text-sm text-gray-400">{fmtDate(selected.bill_date)} · {selected.bill_number}{selected.entered_by ? ` · ${selected.entered_by}` : ''}</p>
               </div>
 
               <div className="border-t border-gray-100" />

@@ -8,7 +8,7 @@ type Tab = typeof TABS[number]
 
 type Mine = { actual_in: string | null; actual_out: string | null }
 type StaffRow = { staff_name: string; actual_in: string | null; actual_out: string | null }
-type RecentRow = { staff_name: string; work_date: string; actual_in: string | null; actual_out: string | null }
+type RecentRow = { staff_name: string; work_date: string; actual_in: string | null; actual_out: string | null; entered_by: string | null }
 
 // Ghana is UTC+0 always
 function ghanaFmt12Now() {
