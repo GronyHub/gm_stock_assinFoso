@@ -7,12 +7,14 @@ type Props = { role: string }
 
 const row1Base = [
   { href: '/stock/count', label: 'Flags', icon: '\u{1F6A9}' },
+  { href: '/sales', label: 'Sales', icon: '\u{1F9FE}' },
+  { href: '/bills', label: 'Bills', icon: '\u{1F4CB}' },
   { href: '/transactions', label: 'Day Book', icon: '\u{1F4D2}' },
-  { href: '/expenses', label: 'Expenses', icon: '\u{1F4B8}' },
-  { href: '/item', label: 'Items', icon: '\u{1F4E6}' },
 ]
 
 const row2All = [
+  { href: '/expenses', label: 'Expenses', icon: '\u{1F4B8}', staffHide: false },
+  { href: '/item', label: 'Items', icon: '\u{1F4E6}', staffHide: false },
   { href: '/cash-at-bank', label: 'CAB', icon: '\u{1F3E6}', staffHide: true },
   { href: '/analysis', label: 'Analysis', icon: '\u{1F4CA}', staffHide: false },
   { href: '/staff', label: 'Staff', icon: '\u{1F465}', staffHide: false },
