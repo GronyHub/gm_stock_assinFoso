@@ -72,6 +72,10 @@ export default function Nav({ user }: { user: NavUser }) {
                 className="block w-full text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-xl py-3 text-center transition">
                 Times
               </Link>
+              <Link href="/payslips" onClick={() => setOpen(false)}
+                className="block w-full text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl py-3 text-center transition">
+                Payslips
+              </Link>
               <Link href="/profile" onClick={() => setOpen(false)}
                 className="block w-full text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl py-3 text-center transition">
                 My Profile
