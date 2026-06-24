@@ -2,99 +2,70 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { NextResponse } from 'next/server'
 
-async function safeFetch<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
-  try { return await fn() } catch { return fallback }
-}
-
 export async function GET() {
-  const session = await auth()
-  if (!session) return NextResponse.json([], { status: 401 })
+  try {
+    const session = await auth()
+    if (!session) return NextResponse.json([], { status: 401 })
 
-  const [bills, sales, counts, expenses] = await Promise.all([
-    safeFetch(async () => {
+    const results: any[] = []
+
+    // Bills
+    try {
       const rows = await sql`
-        SELECT
-          'bill'          AS type,
-          b.id,
-          b.bill_date::text AS date,
-          b.vendor_name   AS description,
-          b.total::text   AS total,
-          b.bill_number   AS ref,
-          NULL            AS by,
-          COUNT(bl.id)    AS item_count
-        FROM bills b
-        LEFT JOIN bill_lines bl ON bl.bill_id = b.id
-        GROUP BY b.id, b.bill_date, b.vendor_name, b.total, b.bill_number
-        ORDER BY b.bill_date DESC, b.id DESC
-        LIMIT 300
+        SELECT 'bill' AS type, id, bill_date::text AS date,
+               vendor_name AS description, total::text AS total,
+               bill_number AS ref
+        FROM bills ORDER BY bill_date DESC, id DESC LIMIT 300
       `
-      return rows
-    }, []),
+      results.push(...rows)
+    } catch {}
 
-    safeFetch(async () => {
+    // Sales
+    try {
       const rows = await sql`
-        SELECT
-          'sale'              AS type,
-          sr.id,
-          sr.receipt_date::text AS date,
-          sr.customer_name    AS description,
-          sr.total::text      AS total,
-          sr.receipt_number   AS ref,
-          NULL                AS by,
-          COUNT(srl.id)       AS item_count
-        FROM sales_receipts sr
-        LEFT JOIN sales_receipt_lines srl ON srl.receipt_id = sr.id
-        GROUP BY sr.id, sr.receipt_date, sr.customer_name, sr.total, sr.receipt_number
-        ORDER BY sr.receipt_date DESC, sr.id DESC
-        LIMIT 300
+        SELECT 'sale' AS type, id, receipt_date::text AS date,
+               customer_name AS description, total::text AS total,
+               receipt_number AS ref
+        FROM sales_receipts ORDER BY receipt_date DESC, id DESC LIMIT 300
       `
-      return rows
-    }, []),
+      results.push(...rows)
+    } catch {}
 
-    safeFetch(async () => {
+    // Counts (grouped by date + person)
+    try {
       const rows = await sql`
-        SELECT
-          'count'                         AS type,
-          MIN(id)                         AS id,
-          count_date::text                AS date,
-          COALESCE(counted_by, 'Unknown') AS description,
-          NULL                            AS total,
-          NULL                            AS ref,
-          counted_by                      AS by,
-          COUNT(*)::int                   AS item_count
+        SELECT 'count' AS type, MIN(id) AS id, count_date::text AS date,
+               COALESCE(counted_by, 'Unknown') AS description,
+               NULL AS total, NULL AS ref,
+               COUNT(*)::int AS item_count, counted_by AS by
         FROM stock_counts
         GROUP BY count_date, counted_by
-        ORDER BY count_date DESC
-        LIMIT 200
+        ORDER BY count_date DESC LIMIT 200
       `
-      return rows
-    }, []),
+      results.push(...rows)
+    } catch {}
 
-    safeFetch(async () => {
+    // Expenses
+    try {
       const rows = await sql`
-        SELECT
-          'expense'                                               AS type,
-          id,
-          expense_date::text                                      AS date,
-          COALESCE(expense_account, cf_expense_type, 'Expense')  AS description,
-          amount::text                                            AS total,
-          NULL                                                    AS ref,
-          entered_by                                              AS by,
-          1                                                       AS item_count
-        FROM expenses
-        ORDER BY expense_date DESC, id DESC
-        LIMIT 200
+        SELECT 'expense' AS type, id, expense_date::text AS date,
+               COALESCE(expense_account, 'Expense') AS description,
+               amount::text AS total, NULL AS ref
+        FROM expenses ORDER BY expense_date DESC, id DESC LIMIT 200
       `
-      return rows
-    }, []),
-  ])
+      results.push(...rows)
+    } catch {}
 
-  // Merge and sort by date desc, id desc
-  const all = [...bills, ...sales, ...counts, ...expenses].sort((a: any, b: any) => {
-    const dateDiff = b.date.localeCompare(a.date)
-    if (dateDiff !== 0) return dateDiff
-    return (b.id as number) - (a.id as number)
-  })
+    // Sort by date desc, id desc
+    results.sort((a, b) => {
+      const d = String(b.date ?? '').localeCompare(String(a.date ?? ''))
+      if (d !== 0) return d
+      return Number(b.id ?? 0) - Number(a.id ?? 0)
+    })
 
-  return NextResponse.json(all)
+    return NextResponse.json(results)
+  } catch (e) {
+    console.error('transactions route error:', e)
+    return NextResponse.json([])
+  }
 }
