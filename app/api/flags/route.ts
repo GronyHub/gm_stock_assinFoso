@@ -5,6 +5,40 @@ async function safeQuery(query: () => Promise<any[]>, fallback: any[] = []): Pro
   try { return await query() } catch (e) { console.error('[flags]', e); return fallback }
 }
 
+// ── Duplicate filtering rules ────────────────────────────────────────────────
+
+function paperSize(n: string) { return n.match(/\b(A3|A4|A5)\b/i)?.[1]?.toUpperCase() ?? null }
+function paperGrams(n: string) { return n.match(/\b(\d{2,3})\s*(?:g\b|grams?\b|gsm\b)/i)?.[1] ?? null }
+function isGramPaper(n: string) { return paperSize(n) !== null && paperGrams(n) !== null && !/toner|refill|cartridge/i.test(n) }
+
+function tonerCode(n: string): string | null {
+  // Match codes like 105A, 55A, CF217A — alphanumeric ending in a letter
+  const m = [...n.matchAll(/\b([A-Z]?\d{1,4}[A-Z])\b/gi)].map(x => x[1].toUpperCase())
+  return m[0] ?? null
+}
+function isToner(n: string) { return /\b(toner|cartridge)\b/i.test(n) }
+
+function inkVolume(n: string) { return n.match(/\b(\d+)\s*ml\b/i)?.[1] ?? null }
+function inkColor(n: string) {
+  const m = n.match(/[-–]\s*(.+)$/)
+  return m ? m[1].trim().toLowerCase().replace(/\s+/g, ' ') : null
+}
+function isInk(n: string) { return /\bink\b/i.test(n) && /\d\s*ml/i.test(n) && !/toner/i.test(n) }
+
+function shouldKeepPair(n1: string, n2: string): boolean {
+  if (isGramPaper(n1) && isGramPaper(n2)) {
+    return paperSize(n1) === paperSize(n2) && paperGrams(n1) === paperGrams(n2)
+  }
+  if (isToner(n1) && isToner(n2)) {
+    const c1 = tonerCode(n1), c2 = tonerCode(n2)
+    return c1 !== null && c1 === c2
+  }
+  if (isInk(n1) && isInk(n2)) {
+    return inkVolume(n1) === inkVolume(n2) && inkColor(n1) === inkColor(n2)
+  }
+  return true
+}
+
 export async function GET() {
   const [
     noCash,
@@ -121,5 +155,7 @@ export async function GET() {
     `),
   ])
 
-  return NextResponse.json({ noCash, missingDays, duplicates, costGteSell, notInInventory, noGroup, noStaffTimes })
+  const filteredDups = duplicates.filter((r: any) => shouldKeepPair(r.name1, r.name2))
+
+  return NextResponse.json({ noCash, missingDays, duplicates: filteredDups, costGteSell, notInInventory, noGroup, noStaffTimes })
 }
