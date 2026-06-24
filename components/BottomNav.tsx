@@ -29,8 +29,10 @@ export default function BottomNav({ role }: Props) {
       <div className="flex overflow-x-auto scrollbar-none px-1 py-1 gap-0">
         {tabs.map(t => (
           <Link key={t.href} href={t.href}
-            className={`flex flex-col items-center justify-center px-2.5 py-1 rounded-lg shrink-0 transition-colors
-              ${isActive(t.href) ? 'text-blue-600' : 'text-gray-400'}`}>
+            className={`flex flex-col items-center justify-center px-2.5 py-1 rounded-lg shrink-0 transition-all
+              ${isActive(t.href)
+                ? 'text-blue-600 bg-blue-50 ring-1 ring-blue-200'
+                : 'text-gray-400'}`}>
             <span className="text-[13px] leading-none">{t.icon}</span>
             <span className={`text-[8px] mt-0.5 font-medium leading-none whitespace-nowrap
               ${isActive(t.href) ? 'text-blue-600' : 'text-gray-400'}`}>
