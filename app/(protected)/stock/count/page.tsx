@@ -256,15 +256,26 @@ function NoTimesFix({ date, onFixed }: { date: string; onFixed: (d: string) => v
   )
 }
 
-// Duplicates — dismiss pair as not a duplicate
-function DuplicateFix({ r, onFixed }: { r: any; onFixed: (key: string) => void }) {
-  const key = `${r.id1}-${r.id2}`
+// Duplicates — mark as different items
+function DuplicateFix({ r, onFixed }: { r: any; onFixed: (id1: number, id2: number) => void }) {
+  const [saving, setSaving] = useState(false)
+
+  async function markDifferent() {
+    setSaving(true)
+    await fetch('/api/flags/dismiss-duplicate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id1: r.id1, id2: r.id2, name1: r.name1, name2: r.name2 }),
+    })
+    setSaving(false)
+    onFixed(r.id1, r.id2)
+  }
+
   return (
     <FixRow label={r.name1} sub={`vs. ${r.name2}`}>
-      <p className="text-xs text-gray-500">If these are genuinely different items, dismiss this pair. If one is a real duplicate, delete it from Inventory.</p>
-      <button onClick={() => onFixed(key)}
-        className="w-full bg-gray-600 hover:bg-gray-500 text-white text-sm font-semibold rounded-xl py-2.5 transition">
-        Dismiss — Not a Duplicate
+      <p className="text-xs text-gray-500">Tap <strong>Different</strong> if these are genuinely separate items. To remove a real duplicate, delete it from Items.</p>
+      <button onClick={markDifferent} disabled={saving}
+        className="w-full bg-gray-600 hover:bg-gray-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2.5 transition">
+        {saving ? 'Saving…' : 'Different — Not a Duplicate'}
       </button>
     </FixRow>
   )
@@ -431,12 +442,18 @@ export default function StockCountPage() {
   const [flagsLoading, setFlagsLoading] = useState(false)
   const [nameRes, setNameRes] = useState<NameRes | null>(null)
   const [nameResLoading, setNameResLoading] = useState(false)
-  // Dismissed duplicate keys stored in state (persisted to localStorage)
+  // Dismissed duplicate pairs — loaded from DB, keyed as "id1-id2"
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    const stored = localStorage.getItem('dismissed_duplicates')
-    if (stored) setDismissed(new Set(JSON.parse(stored)))
+    // Clear any legacy localStorage dismissals and load from DB
+    localStorage.removeItem('dismissed_duplicates')
+    fetch('/api/flags/dismiss-duplicate')
+      .then(r => r.json())
+      .then((rows: { item_id1: number; item_id2: number }[]) => {
+        if (Array.isArray(rows)) setDismissed(new Set(rows.map(r => `${r.item_id1}-${r.item_id2}`)))
+      })
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -476,12 +493,9 @@ export default function StockCountPage() {
   function removeDaily(id: number) { setDailyItems(prev => prev.filter(i => i.item_id !== id)) }
   function removeOverdue(id: number) { setOverdueItems(prev => prev.filter(i => i.item_id !== id)) }
 
-  function dismissDuplicate(key: string) {
-    setDismissed(prev => {
-      const next = new Set(prev).add(key)
-      localStorage.setItem('dismissed_duplicates', JSON.stringify([...next]))
-      return next
-    })
+  function dismissDuplicate(id1: number, id2: number) {
+    const lo = Math.min(id1, id2), hi = Math.max(id1, id2)
+    setDismissed(prev => new Set(prev).add(`${lo}-${hi}`))
   }
 
   function handleResolved(rawName: string, canonical: string, itemId: number) {
@@ -502,7 +516,10 @@ export default function StockCountPage() {
   const isCountTab = tab === 'Daily' || tab === '15-Day'
   const isNameResTab = tab === 'Inv. Done' || tab === 'Inv. Todo'
 
-  const activeDups = flags ? flags.duplicates.filter((r: any) => !dismissed.has(`${r.id1}-${r.id2}`)) : []
+  const activeDups = flags ? flags.duplicates.filter((r: any) => {
+    const lo = Math.min(r.id1, r.id2), hi = Math.max(r.id1, r.id2)
+    return !dismissed.has(`${lo}-${hi}`)
+  }) : []
 
   function renderFlags() {
     if (flagsLoading || !flags) return <div className="py-10 text-center text-gray-400">Loading…</div>
@@ -555,7 +572,7 @@ export default function StockCountPage() {
         {activeDups.length === 0
           ? <p className="py-10 text-center text-gray-400 text-sm">No duplicate or similar item names found.</p>
           : activeDups.map((r: any) => (
-            <DuplicateFix key={`${r.id1}-${r.id2}`} r={r} onFixed={dismissDuplicate} />
+            <DuplicateFix key={`${r.id1}-${r.id2}`} r={r} onFixed={(id1, id2) => dismissDuplicate(id1, id2)} />
           ))
         }
       </div>

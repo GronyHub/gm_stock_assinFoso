@@ -123,6 +123,10 @@ export async function GET() {
             AND b.canonical_name NOT ILIKE 'old stop%'
             AND a.canonical_name NOT ILIKE 'old-stop%'
             AND b.canonical_name NOT ILIKE 'old-stop%'
+            AND NOT EXISTS (
+              SELECT 1 FROM dismissed_duplicates dd
+              WHERE dd.item_id1 = LEAST(a.id, b.id) AND dd.item_id2 = GREATEST(a.id, b.id)
+            )
           ORDER BY a.canonical_name
         `
       } catch {
@@ -138,6 +142,10 @@ export async function GET() {
             AND b.canonical_name NOT ILIKE 'old stop%'
             AND a.canonical_name NOT ILIKE 'old-stop%'
             AND b.canonical_name NOT ILIKE 'old-stop%'
+            AND NOT EXISTS (
+              SELECT 1 FROM dismissed_duplicates dd
+              WHERE dd.item_id1 = LEAST(a.id, b.id) AND dd.item_id2 = GREATEST(a.id, b.id)
+            )
           ORDER BY a.canonical_name
         `
       }
