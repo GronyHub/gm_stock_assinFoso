@@ -118,7 +118,13 @@ export default function StockCountPage() {
     const flagTabs: Tab[] = ['No Cash', 'Missing Days', 'No Times', 'Duplicates', 'Cost≥Price', 'Not in Inv.', 'No Group']
     if (flagTabs.includes(tab) && !flags && !flagsLoading) {
       setFlagsLoading(true)
-      fetch('/api/flags').then(r => r.json()).then(d => { setFlags(d); setFlagsLoading(false) })
+      fetch('/api/flags')
+        .then(r => r.ok ? r.json() : Promise.reject(r.status))
+        .then(d => { setFlags(d); setFlagsLoading(false) })
+        .catch(() => {
+          setFlags({ noCash: [], missingDays: [], duplicates: [], costGteSell: [], notInInventory: [], noGroup: [], noStaffTimes: [] })
+          setFlagsLoading(false)
+        })
     }
   }, [tab, flags, flagsLoading])
 
