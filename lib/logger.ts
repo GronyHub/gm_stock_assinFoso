@@ -1,11 +1,4 @@
 import sql from '@/lib/db'
-import webpush from 'web-push'
-
-webpush.setVapidDetails(
-  process.env.VAPID_EMAIL!,
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-)
 
 export async function logActivity(staffName: string, action: string, details?: string) {
   try {
@@ -22,8 +15,18 @@ export async function logActivity(staffName: string, action: string, details?: s
 }
 
 async function sendPushToAll(staffName: string, action: string, details?: string) {
+  const vapidEmail = process.env.VAPID_EMAIL
+  const vapidPublic = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+  const vapidPrivate = process.env.VAPID_PRIVATE_KEY
+  if (!vapidEmail || !vapidPublic || !vapidPrivate) return
+
   try {
+    const webpush = (await import('web-push')).default
+    webpush.setVapidDetails(vapidEmail, vapidPublic, vapidPrivate)
+
     const subs = await sql`SELECT endpoint, p256dh, auth FROM push_subscriptions`
+    if (!subs.length) return
+
     const payload = JSON.stringify({
       title: 'Grony',
       body: `${staffName}: ${action}${details ? ` — ${details}` : ''}`,
