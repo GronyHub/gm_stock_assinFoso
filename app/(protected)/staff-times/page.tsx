@@ -199,12 +199,15 @@ export default function StaffTimesPage() {
   const [error, setError] = useState('')
 
   function fetchData() {
-    fetch('/api/staff-times/today').then(r => r.json()).then(d => {
-      setMine(d.mine)
-      setToday(d.today)
-      setAll(d.recent)
-      setLoading(false)
-    })
+    fetch('/api/staff-times/today')
+      .then(r => r.json())
+      .then(d => {
+        setMine(d.mine ?? null)
+        setToday(Array.isArray(d.today) ? d.today : [])
+        setAll(Array.isArray(d.recent) ? d.recent : [])
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
   }
 
   useEffect(() => { fetchData() }, [])

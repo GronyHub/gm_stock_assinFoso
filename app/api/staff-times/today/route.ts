@@ -7,31 +7,42 @@ export async function GET() {
   const sessionUser = session?.user as any
   if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const today = new Date().toISOString().slice(0, 10)
+  try {
+    const today = new Date().toISOString().slice(0, 10)
 
-  // All staff times for today
-  const todayRows = await sql`
-    SELECT staff_name, actual_in, actual_out
-    FROM staff_times
-    WHERE work_date = ${today}
-    ORDER BY staff_name
-  `
+    const todayRows = await sql`
+      SELECT staff_name, actual_in, actual_out
+      FROM staff_times
+      WHERE work_date = ${today}
+      ORDER BY staff_name
+    `
 
-  // Current user's today entry
-  const username = sessionUser.username ?? sessionUser.name
-  const [mine] = await sql`
-    SELECT actual_in, actual_out FROM staff_times
-    WHERE staff_name = ${username} AND work_date = ${today}
-  `
+    const username = sessionUser.username ?? sessionUser.name
+    const [mine] = await sql`
+      SELECT actual_in, actual_out FROM staff_times
+      WHERE staff_name = ${username} AND work_date = ${today}
+    `
 
-  // All records for all staff
-  const recent = await sql`
-    SELECT staff_name, work_date::text, actual_in, actual_out, entered_by
-    FROM staff_times
-    ORDER BY work_date DESC, staff_name
-  `
+    let recent: any[] = []
+    try {
+      recent = await sql`
+        SELECT staff_name, work_date::text, actual_in, actual_out, entered_by
+        FROM staff_times
+        ORDER BY work_date DESC, staff_name
+      `
+    } catch {
+      recent = await sql`
+        SELECT staff_name, work_date::text, actual_in, actual_out, NULL AS entered_by
+        FROM staff_times
+        ORDER BY work_date DESC, staff_name
+      `
+    }
 
-  return NextResponse.json({ today: todayRows, mine: mine ?? null, recent })
+    return NextResponse.json({ today: todayRows, mine: mine ?? null, recent })
+  } catch (e) {
+    console.error('staff-times GET error:', e)
+    return NextResponse.json({ today: [], mine: null, recent: [] })
+  }
 }
 
 export async function POST(req: NextRequest) {
