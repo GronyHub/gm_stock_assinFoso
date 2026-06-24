@@ -63,27 +63,28 @@ export default function Nav({ user }: { user: NavUser }) {
       {open && (
         <div className="md:hidden fixed inset-0 z-40" onClick={() => setOpen(false)}>
           <div className="absolute inset-0 bg-black/30" />
-          <div className="absolute top-14 right-0 bottom-0 w-64 bg-white shadow-xl flex flex-col"
+          <div className="absolute top-14 right-0 bottom-0 w-64 bg-white shadow-xl flex flex-col overflow-y-auto"
             onClick={e => e.stopPropagation()}>
             <div className="px-4 py-3 border-b border-gray-100">
               <p className="font-semibold text-gray-900">{user.name}</p>
               <p className="text-xs text-gray-400 capitalize">{user.role}</p>
             </div>
-            <div className="p-4 space-y-2">
-              <Link href="/staff" onClick={() => setOpen(false)}
-                className="block w-full text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-xl py-3 text-center transition">
-                Staff
-              </Link>
+            <div className="p-4 space-y-1.5 flex-1">
+              {links.map(l => (
+                <Link key={l.href} href={l.href} onClick={() => setOpen(false)}
+                  className={`block w-full text-sm font-semibold px-4 py-3 rounded-xl text-center transition
+                    ${pathname === l.href || pathname.startsWith(l.href + '/')
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+                  {l.label}
+                </Link>
+              ))}
+            </div>
+            <div className="p-4 border-t border-gray-100 space-y-1.5">
               <Link href="/profile" onClick={() => setOpen(false)}
                 className="block w-full text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl py-3 text-center transition">
                 My Profile
               </Link>
-              {user.role === 'owner' && (
-                <Link href="/users" onClick={() => setOpen(false)}
-                  className="block w-full text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl py-3 text-center transition">
-                  Users
-                </Link>
-              )}
               <button onClick={() => signOut({ callbackUrl: '/login' })}
                 className="w-full text-sm font-semibold text-red-500 bg-red-50 hover:bg-red-100 rounded-xl py-3 transition">
                 Sign out
