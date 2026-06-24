@@ -3,12 +3,21 @@ import sql from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET() {
-  const rows = await sql`
-    SELECT id, bill_number, bill_date::date AS bill_date, vendor_name, total, status, entered_by
-    FROM bills
-    ORDER BY bill_date DESC, id DESC
-  `
-  return NextResponse.json(rows)
+  try {
+    const rows = await sql`
+      SELECT id, bill_number, bill_date::date AS bill_date, vendor_name, total, status, entered_by
+      FROM bills
+      ORDER BY bill_date DESC, id DESC
+    `
+    return NextResponse.json(rows)
+  } catch {
+    const rows = await sql`
+      SELECT id, bill_number, bill_date::date AS bill_date, vendor_name, total, status, NULL AS entered_by
+      FROM bills
+      ORDER BY bill_date DESC, id DESC
+    `
+    return NextResponse.json(rows)
+  }
 }
 
 export async function POST(req: NextRequest) {

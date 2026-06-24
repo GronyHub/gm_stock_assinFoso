@@ -63,7 +63,8 @@ export default function ExpensesPage() {
   useEffect(() => {
     fetch('/api/expenses')
       .then(r => r.json())
-      .then(data => { setExpenses(data); setLoading(false) })
+      .then(data => { setExpenses(Array.isArray(data) ? data : []); setLoading(false) })
+      .catch(() => setLoading(false))
   }, [])
 
   const filtered = useMemo(() => {

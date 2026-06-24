@@ -57,7 +57,10 @@ export default function SalesPage() {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    fetch('/api/sales').then(r => r.json()).then(data => { setReceipts(data); setLoading(false) })
+    fetch('/api/sales')
+      .then(r => r.json())
+      .then(data => { setReceipts(Array.isArray(data) ? data : []); setLoading(false) })
+      .catch(() => setLoading(false))
   }, [])
 
   const filtered = useMemo(() => {

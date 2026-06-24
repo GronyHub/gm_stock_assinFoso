@@ -45,7 +45,8 @@ export default function BillsPage() {
   useEffect(() => {
     fetch('/api/bills')
       .then(r => r.json())
-      .then(data => { setBills(data); setLoading(false) })
+      .then(data => { setBills(Array.isArray(data) ? data : []); setLoading(false) })
+      .catch(() => setLoading(false))
   }, [])
 
   async function selectBill(bill: Bill) {
