@@ -39,7 +39,10 @@ export default function NewReceiptPage() {
   function filteredItems(search: string) {
     if (!search) return allItems
     const q = search.toLowerCase()
-    return allItems.filter(i => i.name.toLowerCase().includes(q) || i.group.toLowerCase().includes(q))
+    return allItems.filter(i =>
+      i.name.toLowerCase().includes(q) ||
+      (i.group ?? '').toLowerCase().includes(q)
+    )
   }
 
   function setLineField<K extends keyof Line>(idx: number, field: K, val: Line[K]) {
@@ -211,7 +214,7 @@ export default function NewReceiptPage() {
                               <span className="text-xs text-gray-400">SOH: {item.soh} pcs</span>
                             </div>
                             <div className="flex items-center justify-between mt-0.5">
-                              <span className="text-xs text-gray-400">{item.group}</span>
+                              <span className="text-xs text-gray-400">{item.group ?? ''}</span>
                               <span className="text-xs font-semibold text-blue-600">₵ {item.selling_price.toFixed(2)}</span>
                             </div>
                           </button>
