@@ -56,7 +56,9 @@ export async function GET() {
             LOWER(TRIM(a.canonical_name)) = LOWER(TRIM(b.canonical_name))
             OR SIMILARITY(LOWER(a.canonical_name), LOWER(b.canonical_name)) > 0.7
           )
-        WHERE a.status NOT IN ('inactive') AND b.status NOT IN ('inactive')
+        WHERE LOWER(a.status) = 'active' AND LOWER(b.status) = 'active'
+          AND a.canonical_name NOT ILIKE 'old stop%'
+          AND b.canonical_name NOT ILIKE 'old stop%'
         ORDER BY a.canonical_name
       `
     }),
@@ -98,7 +100,7 @@ export async function GET() {
       SELECT id, canonical_name AS item_name, status
       FROM items
       WHERE (cf_group IS NULL OR TRIM(cf_group) = '')
-        AND status NOT IN ('inactive')
+        AND LOWER(status) = 'active'
       ORDER BY canonical_name
     `),
 
