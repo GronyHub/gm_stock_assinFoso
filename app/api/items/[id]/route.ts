@@ -1,6 +1,28 @@
 import sql from '@/lib/db'
 import { NextResponse } from 'next/server'
 
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  try {
+    const [row] = await sql`
+      SELECT i.id, i.canonical_name, i.cf_group, i.selling_rate AS selling_price,
+             i.purchase_rate, COALESCE(s.calculated_soh, 0) AS calculated_soh
+      FROM items i
+      LEFT JOIN item_stock_summary s ON s.item_id = i.id
+      WHERE i.id = ${Number(id)}
+    `
+    if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    return NextResponse.json(row)
+  } catch {
+    const [row] = await sql`
+      SELECT id, canonical_name, cf_group, selling_rate AS selling_price, purchase_rate, 0 AS calculated_soh
+      FROM items WHERE id = ${Number(id)}
+    `
+    if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    return NextResponse.json(row)
+  }
+}
+
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const body = await req.json()

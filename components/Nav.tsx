@@ -9,11 +9,9 @@ type NavUser = { name?: string | null; role?: string; username?: string }
 const allLinks = [
   { href: '/stock/count', label: 'Flags', roles: ['owner','manager','staff'] },
   { href: '/item', label: 'Items', roles: ['owner','manager','staff'] },
-  { href: '/sales', label: 'Sales', roles: ['owner','manager','staff'] },
-  { href: '/bills', label: 'Bills', roles: ['owner','manager','staff'] },
+  { href: '/transactions', label: 'Transactions', roles: ['owner','manager','staff'] },
   { href: '/expenses', label: 'Expenses', roles: ['owner','manager','staff'] },
   { href: '/rota', label: 'Rota', roles: ['owner','manager'] },
-  { href: '/stock/counts', label: 'Counts', roles: ['owner','manager','staff'] },
   { href: '/cash-at-bank', label: 'Cash at Bank', roles: ['owner','manager'] },
   { href: '/staff', label: 'Staff', roles: ['owner','manager','staff'] },
   { href: '/analysis', label: 'Analysis', roles: ['owner','manager','staff'] },
