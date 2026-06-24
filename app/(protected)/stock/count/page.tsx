@@ -12,6 +12,7 @@ type Item = {
 type Flags = {
   noCash: any[]; missingDays: any[]; duplicates: any[]
   costGteSell: any[]; notInInventory: any[]; noGroup: any[]; noStaffTimes: any[]; uncheckedCab: any[]
+  groupNames: string[]
 }
 
 type InvItem = { id: number; canonical_name: string }
@@ -285,6 +286,7 @@ function DuplicateFix({ r, onFixed }: { r: any; onFixed: (id1: number, id2: numb
 function CostPriceFix({ r, onFixed }: { r: any; onFixed: (itemId: number) => void }) {
   const [cost, setCost] = useState('')
   const [saving, setSaving] = useState(false)
+  const [expanded, setExpanded] = useState(false)
 
   async function save() {
     if (!cost) return
@@ -298,16 +300,41 @@ function CostPriceFix({ r, onFixed }: { r: any; onFixed: (itemId: number) => voi
   }
 
   return (
-    <FixRow label={r.item_name}
-      sub={`${r.receipt_number} · Sold ₵${Number(r.selling_price).toFixed(2)} · Cost ₵${Number(r.cost_price).toFixed(2)}`}>
-      <input type="number" min="0" step="0.01" inputMode="decimal"
-        placeholder={`New cost price (currently ₵${Number(r.cost_price).toFixed(2)})`}
-        value={cost} onChange={e => setCost(e.target.value)} className={inputCls} />
-      <button onClick={save} disabled={!cost || saving}
-        className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2.5 transition">
-        {saving ? 'Saving…' : 'Update Cost Price'}
+    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      {/* Clickable header row */}
+      <button onClick={() => setExpanded(e => !e)}
+        className="w-full text-left px-3 py-2.5 hover:bg-gray-50 transition">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-gray-900 truncate">{r.item_name}</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {fmtDate(r.receipt_date)} · {r.receipt_number}
+            </p>
+            <p className="text-xs text-red-500 mt-0.5">
+              Sold ₵{Number(r.selling_price).toFixed(2)} · Cost ₵{Number(r.cost_price).toFixed(2)}
+            </p>
+          </div>
+          <span className="shrink-0 text-xs text-blue-600 font-semibold mt-0.5">{expanded ? '▲' : '▼'}</span>
+        </div>
       </button>
-    </FixRow>
+
+      {expanded && (
+        <div className="px-3 pb-3 space-y-2 border-t border-gray-100">
+          {/* Link to the sales receipt */}
+          <a href={`/sales?receipt=${r.receipt_id}`} target="_blank" rel="noreferrer"
+            className="flex items-center gap-1.5 text-xs text-blue-600 font-semibold py-1.5 hover:underline">
+            Open receipt {r.receipt_number} →
+          </a>
+          <input type="number" min="0" step="0.01" inputMode="decimal"
+            placeholder={`New cost price (currently ₵${Number(r.cost_price).toFixed(2)})`}
+            value={cost} onChange={e => setCost(e.target.value)} className={inputCls} />
+          <button onClick={save} disabled={!cost || saving}
+            className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2.5 transition">
+            {saving ? 'Saving…' : 'Update Cost Price'}
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -327,17 +354,20 @@ function NotInInvRow({ r, onSwitchTab }: { r: any; onSwitchTab: () => void }) {
   )
 }
 
-// No Group — assign a group
-function NoGroupFix({ r, onFixed }: { r: any; onFixed: (id: number) => void }) {
-  const [group, setGroup] = useState('')
+// No Group — assign a group from populated dropdown + free text fallback
+function NoGroupFix({ r, groupNames, onFixed }: { r: any; groupNames: string[]; onFixed: (id: number) => void }) {
+  const [selected, setSelected] = useState('')
+  const [custom, setCustom] = useState('')
   const [saving, setSaving] = useState(false)
 
+  const group = selected === '__custom__' ? custom.trim() : selected
+
   async function save() {
-    if (!group.trim()) return
+    if (!group) return
     setSaving(true)
     await fetch(`/api/items/${r.id}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cf_group: group.trim() }),
+      body: JSON.stringify({ cf_group: group }),
     })
     setSaving(false)
     onFixed(r.id)
@@ -345,9 +375,16 @@ function NoGroupFix({ r, onFixed }: { r: any; onFixed: (id: number) => void }) {
 
   return (
     <FixRow label={r.item_name} sub={`Status: ${r.status}`}>
-      <input placeholder="Group name (e.g. Photo Papers)" value={group}
-        onChange={e => setGroup(e.target.value)} className={inputCls} />
-      <button onClick={save} disabled={!group.trim() || saving}
+      <select value={selected} onChange={e => setSelected(e.target.value)} className={inputCls}>
+        <option value="">— Select a group —</option>
+        {groupNames.map(g => <option key={g} value={g}>{g}</option>)}
+        <option value="__custom__">+ New group name…</option>
+      </select>
+      {selected === '__custom__' && (
+        <input placeholder="Type new group name" value={custom}
+          onChange={e => setCustom(e.target.value)} className={inputCls} />
+      )}
+      <button onClick={save} disabled={!group || saving}
         className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2.5 transition">
         {saving ? 'Saving…' : 'Assign Group'}
       </button>
@@ -610,7 +647,7 @@ export default function StockCountPage() {
         {flags.noGroup.length === 0
           ? <p className="py-10 text-center text-gray-400 text-sm">All items have a group assigned.</p>
           : flags.noGroup.map((r: any) => (
-            <NoGroupFix key={r.id} r={r} onFixed={id =>
+            <NoGroupFix key={r.id} r={r} groupNames={flags.groupNames ?? []} onFixed={id =>
               setFlags(f => f ? { ...f, noGroup: f.noGroup.filter((x: any) => x.id !== id) } : f)
             } />
           ))

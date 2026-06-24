@@ -236,5 +236,12 @@ export async function GET() {
 
   const filteredDups = duplicates.filter((r: any) => shouldKeepPair(r.name1, r.name2))
 
-  return NextResponse.json({ noCash, missingDays, duplicates: filteredDups, costGteSell, notInInventory, noGroup, noStaffTimes, uncheckedCab })
+  const groupNames = await safeQuery(() => sql`
+    SELECT DISTINCT TRIM(cf_group) AS group_name
+    FROM items
+    WHERE cf_group IS NOT NULL AND TRIM(cf_group) <> ''
+    ORDER BY group_name
+  `)
+
+  return NextResponse.json({ noCash, missingDays, duplicates: filteredDups, costGteSell, notInInventory, noGroup, noStaffTimes, uncheckedCab, groupNames: groupNames.map((r: any) => r.group_name) })
 }

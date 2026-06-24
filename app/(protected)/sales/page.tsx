@@ -1,6 +1,7 @@
 'use client'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { fmtDate } from '@/lib/fmtDate'
 
 type Receipt = {
@@ -44,12 +45,16 @@ const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded-xl px-3 py-2
 const labelCls = 'text-xs text-gray-400 font-medium mb-1 block'
 
 export default function SalesPage() {
+  const searchParams = useSearchParams()
+  const autoReceiptId = searchParams.get('receipt')
+
   const [receipts, setReceipts] = useState<Receipt[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<Receipt | null>(null)
   const [lines, setLines] = useState<Line[]>([])
   const [linesLoading, setLinesLoading] = useState(false)
   const [search, setSearch] = useState('')
+  const autoOpened = useRef(false)
 
   const [editing, setEditing] = useState(false)
   const [editForm, setEditForm] = useState({ receipt_date: '', customer_name: '', cash_counted: '' })
@@ -62,6 +67,14 @@ export default function SalesPage() {
       .then(data => { setReceipts(Array.isArray(data) ? data : []); setLoading(false) })
       .catch(() => setLoading(false))
   }, [])
+
+  // Auto-open receipt when arriving from a flag link (?receipt=ID)
+  useEffect(() => {
+    if (!autoReceiptId || autoOpened.current || receipts.length === 0) return
+    const match = receipts.find(r => r.id === Number(autoReceiptId))
+    if (match) { autoOpened.current = true; selectReceipt(match) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoReceiptId, receipts])
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
