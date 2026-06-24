@@ -15,6 +15,7 @@ const allLinks = [
   { href: '/rota', label: 'Rota', roles: ['owner','manager'] },
   { href: '/stock/counts', label: 'Counts', roles: ['owner','manager','staff'] },
   { href: '/cash-at-bank', label: 'Cash at Bank', roles: ['owner','manager'] },
+  { href: '/staff', label: 'Staff', roles: ['owner','manager','staff'] },
   { href: '/analysis', label: 'Analysis', roles: ['owner','manager','staff'] },
   { href: '/logs', label: 'Logs', roles: ['owner','manager','staff'] },
   { href: '/users', label: 'Users', roles: ['owner'] },
@@ -69,13 +70,9 @@ export default function Nav({ user }: { user: NavUser }) {
               <p className="text-xs text-gray-400 capitalize">{user.role}</p>
             </div>
             <div className="p-4 space-y-2">
-              <Link href="/staff-times" onClick={() => setOpen(false)}
+              <Link href="/staff" onClick={() => setOpen(false)}
                 className="block w-full text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-xl py-3 text-center transition">
-                Times
-              </Link>
-              <Link href="/payslips" onClick={() => setOpen(false)}
-                className="block w-full text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl py-3 text-center transition">
-                Payslips
+                Staff
               </Link>
               <Link href="/profile" onClick={() => setOpen(false)}
                 className="block w-full text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl py-3 text-center transition">
