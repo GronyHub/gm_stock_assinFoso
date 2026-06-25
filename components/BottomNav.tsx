@@ -6,7 +6,6 @@ import { signOut } from 'next-auth/react'
 type Props = { role: string }
 
 const allTabs = [
-  { href: '/stock/count',  label: 'Flags',    roles: ['owner','manager','staff'] },
   { href: '/sales',        label: 'Sales',    roles: ['owner','manager','staff'] },
   { href: '/bills',        label: 'Bills',    roles: ['owner','manager','staff'] },
   { href: '/stock/counts', label: 'Counts',   roles: ['owner','manager','staff'] },

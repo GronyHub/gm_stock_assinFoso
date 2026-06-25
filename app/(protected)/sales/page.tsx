@@ -68,6 +68,194 @@ function wnwColor(wnw: string | null) {
 
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 placeholder-gray-400 outline-none focus:ring-1 focus:ring-blue-400'
 
+const TABS = ['List', 'No Cash', 'Missing Days', 'Cost Price'] as const
+type Tab = typeof TABS[number]
+
+function Badge({ n }: { n: number }) {
+  if (!n) return null
+  return <span className="ml-1 bg-red-100 text-red-600 text-[9px] font-bold px-1 py-0.5 rounded-full">{n}</span>
+}
+
+function FixRow({ label, sub, children }: { label: string; sub?: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div>
+      <div className="flex items-center justify-between px-2 py-1.5 gap-2">
+        <div className="min-w-0 flex-1">
+          <span className="text-[10px] text-gray-900 font-semibold">{label}</span>
+          {sub && <span className="ml-2 text-[9px] text-gray-400">{sub}</span>}
+        </div>
+        <button onClick={() => setOpen(o => !o)}
+          className="shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition">
+          {open ? 'Close' : 'Fix'}
+        </button>
+      </div>
+      {open && <div className="px-2 pb-2 border-t border-gray-50 space-y-1.5 pt-1.5">{children}</div>}
+    </div>
+  )
+}
+
+// No Cash — enter cash counted
+function NoCashFix({ r, onFixed }: { r: any; onFixed: (id: number) => void }) {
+  const [cash, setCash] = useState('')
+  const [saving, setSaving] = useState(false)
+  async function save() {
+    if (!cash) return
+    setSaving(true)
+    await fetch(`/api/sales/${r.id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cash_counted: Number(cash) }),
+    })
+    setSaving(false)
+    onFixed(r.id)
+  }
+  return (
+    <FixRow label={r.receipt_number} sub={`${fmtDate(r.receipt_date)} · ₵${Number(r.invoice_amount).toFixed(2)}`}>
+      <input type="number" min="0" step="0.01" inputMode="decimal" placeholder="Cash counted (₵)"
+        value={cash} onChange={e => setCash(e.target.value)} className={inputCls} />
+      <button onClick={save} disabled={!cash || saving}
+        className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
+        {saving ? 'Saving…' : 'Save Cash Counted'}
+      </button>
+    </FixRow>
+  )
+}
+
+const NO_WORK_REASONS = [
+  'No work — Public Holiday',
+  'No work — Christmas Day',
+  'No work — Good Friday',
+  'No work — Easter Monday',
+  'No work — Independence Day',
+  'No work — Special Assignment',
+  'No work — Shop Closed',
+  'No work — Staff Training',
+  'No work — Other',
+]
+
+// Missing Days — create a minimal receipt for that date
+function MissingDayFix({ date, onFixed }: { date: string; onFixed: (d: string) => void }) {
+  const [total, setTotal] = useState('')
+  const [cash, setCash] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [showNoWork, setShowNoWork] = useState(false)
+  const [noWorkReason, setNoWorkReason] = useState(NO_WORK_REASONS[0])
+
+  async function markNoWork() {
+    setSaving(true)
+    await fetch('/api/flags/no-work', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ work_date: date, reason: noWorkReason }),
+    })
+    setSaving(false)
+    onFixed(date)
+  }
+
+  async function addReceipt() {
+    if (!total) return
+    setSaving(true)
+    await fetch('/api/sales/receipt', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date, total: Number(total), cashCounted: cash ? Number(cash) : null, customerName: 'Walk In Customer' }),
+    })
+    setSaving(false)
+    onFixed(date)
+  }
+
+  return (
+    <FixRow label={fmtDate(date)} sub="No sales receipt on this day">
+      {showNoWork ? (
+        <div className="space-y-1.5">
+          <select value={noWorkReason} onChange={e => setNoWorkReason(e.target.value)} className={inputCls}>
+            {NO_WORK_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+          <div className="flex gap-1">
+            <button onClick={markNoWork} disabled={saving}
+              className="flex-1 bg-red-500 hover:bg-red-400 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
+              {saving ? 'Saving…' : 'Confirm No Work'}
+            </button>
+            <button onClick={() => setShowNoWork(false)} disabled={saving}
+              className="px-3 py-1.5 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <input type="number" min="0" step="0.01" inputMode="decimal" placeholder="Sales total (₵) — leave blank if no sales"
+            value={total} onChange={e => setTotal(e.target.value)} className={inputCls} />
+          {total && (
+            <input type="number" min="0" step="0.01" inputMode="decimal" placeholder="Cash counted (₵, optional)"
+              value={cash} onChange={e => setCash(e.target.value)} className={inputCls} />
+          )}
+          <div className="flex gap-1">
+            {total ? (
+              <button onClick={addReceipt} disabled={saving}
+                className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
+                {saving ? 'Saving…' : 'Create Receipt'}
+              </button>
+            ) : (
+              <button onClick={() => setShowNoWork(true)}
+                className="flex-1 bg-orange-500 hover:bg-orange-400 text-white text-[10px] font-semibold rounded py-1.5 transition">
+                No Work
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </FixRow>
+  )
+}
+
+// Cost >= Price — fix the item's cost price
+function CostPriceFix({ r, onFixed }: { r: any; onFixed: (itemId: number) => void }) {
+  const [cost, setCost] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+
+  async function save() {
+    if (!cost) return
+    setSaving(true)
+    await fetch(`/api/items/${r.item_id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ purchase_rate: Number(cost) }),
+    })
+    setSaving(false)
+    onFixed(r.item_id)
+  }
+
+  return (
+    <div>
+      <button onClick={() => setExpanded(e => !e)}
+        className="w-full text-left px-2 py-1.5 hover:bg-gray-50 transition">
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <span className="text-[10px] font-semibold text-gray-900 truncate block">{r.item_name}</span>
+            <span className="text-[9px] text-gray-400">{fmtDate(r.receipt_date)} · </span>
+            <span className="text-[9px] text-red-500">₵{Number(r.selling_price).toFixed(2)} sell · ₵{Number(r.cost_price).toFixed(2)} cost</span>
+          </div>
+          <span className="shrink-0 text-[9px] text-blue-600 font-semibold">{expanded ? '▲' : '▼'}</span>
+        </div>
+      </button>
+      {expanded && (
+        <div className="px-2 pb-2 border-t border-gray-50 space-y-1.5 pt-1.5">
+          <a href={`/sales?receipt=${r.receipt_id}`}
+            className="text-[9px] text-blue-600 font-semibold hover:underline">
+            Open receipt {r.receipt_number} →
+          </a>
+          <input type="number" min="0" step="0.01" inputMode="decimal"
+            placeholder={`New cost price (currently ₵${Number(r.cost_price).toFixed(2)})`}
+            value={cost} onChange={e => setCost(e.target.value)} className={inputCls} />
+          <button onClick={save} disabled={!cost || saving}
+            className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
+            {saving ? 'Saving…' : 'Update Cost Price'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SalesPageInner() {
   const searchParams = useSearchParams()
   const autoReceiptId = searchParams.get('receipt')
@@ -83,6 +271,24 @@ function SalesPageInner() {
   const [editForm, setEditForm] = useState({ receipt_date: '', customer_name: '', cash_counted: '' })
   const [editLines, setEditLines] = useState<EditLine[]>([])
   const [saving, setSaving] = useState(false)
+
+  const [tab, setTab] = useState<Tab>('List')
+  const [flags, setFlags] = useState<any | null>(null)
+  const [flagsLoading, setFlagsLoading] = useState(false)
+
+  useEffect(() => {
+    const flagTabs: Tab[] = ['No Cash', 'Missing Days', 'Cost Price']
+    if (flagTabs.includes(tab) && !flags && !flagsLoading) {
+      setFlagsLoading(true)
+      fetch('/api/flags')
+        .then(r => r.ok ? r.json() : Promise.reject(r.status))
+        .then(d => { setFlags(d); setFlagsLoading(false) })
+        .catch(() => {
+          setFlags({ noCash: [], missingDays: [], costGteSell: [] })
+          setFlagsLoading(false)
+        })
+    }
+  }, [tab, flags, flagsLoading])
 
   useEffect(() => {
     Promise.all([
@@ -180,17 +386,39 @@ function SalesPageInner() {
     <div className="-mx-4 -mt-4 flex flex-col h-[calc(100dvh-60px)] md:h-[calc(100dvh-56px)]">
 
       {/* Top bar */}
-      <div className="flex items-center gap-2 px-2 py-1.5 border-b border-gray-200 bg-white shrink-0">
-        <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-          placeholder={`Search ${receipts.length} receipts…`}
-          className="flex-1 text-[10px] text-gray-900 placeholder-gray-300 bg-gray-50 border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
-        <Link href="/sales/new"
-          className="shrink-0 bg-blue-600 text-white text-[10px] font-bold px-2.5 py-1 rounded transition hover:bg-blue-500">
-          + New
-        </Link>
+      <div className="shrink-0 border-b border-gray-200 bg-white">
+        <div className="flex items-center gap-2 px-2 py-1.5">
+          <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+            placeholder={`Search ${receipts.length}…`}
+            className="w-20 flex-1 min-w-0 text-[10px] text-gray-900 placeholder-gray-300 bg-gray-50 border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+          <div className="flex gap-1 overflow-x-auto shrink-0 max-w-[65%]">
+            {TABS.map(t => {
+              const cnt = t === 'No Cash' ? (flags?.noCash.length ?? 0)
+                : t === 'Missing Days' ? (flags?.missingDays.length ?? 0)
+                : t === 'Cost Price' ? (flags?.costGteSell.length ?? 0)
+                : 0
+              return (
+                <button key={t} onClick={() => setTab(t)}
+                  className={`shrink-0 text-[9px] font-semibold px-1.5 py-1 rounded transition whitespace-nowrap
+                    ${tab === t ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                  {t}<Badge n={cnt} />
+                </button>
+              )
+            })}
+          </div>
+        </div>
+        {tab === 'List' && (
+          <div className="flex justify-end px-2 pb-1.5">
+            <Link href="/sales/new"
+              className="shrink-0 bg-blue-600 text-white text-[9px] font-bold px-2 py-1 rounded transition hover:bg-blue-500">
+              + New
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Split body */}
+      {tab === 'List' && (
       <div className="flex flex-1 min-h-0">
 
         {/* ── LEFT: receipts table ── */}
@@ -356,6 +584,61 @@ function SalesPageInner() {
           )}
         </div>
       </div>
+      )}
+
+      {tab === 'No Cash' && (
+        <div className="flex-1 overflow-y-auto min-h-0 py-2">
+          <p className="text-[10px] text-gray-400 px-2 mb-1">
+            {flagsLoading || !flags ? 'Loading…' : `${flags.noCash.length} walk-in receipt${flags.noCash.length !== 1 ? 's' : ''} missing cash counted`}
+          </p>
+          {flagsLoading || !flags ? null : flags.noCash.length === 0
+            ? <p className="py-4 text-center text-gray-400 text-[10px]">All walk-in receipts have cash counted recorded.</p>
+            : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
+                {flags.noCash.map((r: any) => (
+                  <NoCashFix key={r.id} r={r} onFixed={id =>
+                    setFlags((f: any) => f ? { ...f, noCash: f.noCash.filter((x: any) => x.id !== id) } : f)
+                  } />
+                ))}
+              </div>
+          }
+        </div>
+      )}
+
+      {tab === 'Missing Days' && (
+        <div className="flex-1 overflow-y-auto min-h-0 py-2">
+          <p className="text-[10px] text-gray-400 px-2 mb-1">
+            {flagsLoading || !flags ? 'Loading…' : `${flags.missingDays.length} day${flags.missingDays.length !== 1 ? 's' : ''} with no sales receipts (excluding Sundays)`}
+          </p>
+          {flagsLoading || !flags ? null : flags.missingDays.length === 0
+            ? <p className="py-4 text-center text-gray-400 text-[10px]">No missing days found.</p>
+            : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
+                {flags.missingDays.map((r: any) => (
+                  <MissingDayFix key={r.missing_date} date={r.missing_date} onFixed={d =>
+                    setFlags((f: any) => f ? { ...f, missingDays: f.missingDays.filter((x: any) => x.missing_date !== d) } : f)
+                  } />
+                ))}
+              </div>
+          }
+        </div>
+      )}
+
+      {tab === 'Cost Price' && (
+        <div className="flex-1 overflow-y-auto min-h-0 py-2">
+          <p className="text-[10px] text-gray-400 px-2 mb-1">
+            {flagsLoading || !flags ? 'Loading…' : `${flags.costGteSell.length} line${flags.costGteSell.length !== 1 ? 's' : ''} where cost price ≥ selling price`}
+          </p>
+          {flagsLoading || !flags ? null : flags.costGteSell.length === 0
+            ? <p className="py-4 text-center text-gray-400 text-[10px]">No items sold at or below cost price.</p>
+            : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
+                {flags.costGteSell.map((r: any, i: number) => (
+                  <CostPriceFix key={`${r.item_id}-${i}`} r={r} onFixed={itemId =>
+                    setFlags((f: any) => f ? { ...f, costGteSell: f.costGteSell.filter((x: any) => x.item_id !== itemId) } : f)
+                  } />
+                ))}
+              </div>
+          }
+        </div>
+      )}
     </div>
   )
 }

@@ -1,2 +1,2 @@
 import { redirect } from 'next/navigation'
-export default function RootPage() { redirect('/stock/count') }
+export default function RootPage() { redirect('/stock/counts?tab=Daily') }

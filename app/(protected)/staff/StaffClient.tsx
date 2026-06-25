@@ -20,8 +20,13 @@ const SEVERITY_COLORS: Record<string, string> = {
   serious: 'bg-red-100 text-red-600',
 }
 
-const TABS = ['Times', 'Payslips', 'Violations', 'Role'] as const
+const TABS = ['Times', 'Payslips', 'Violations', 'Role', 'No Times'] as const
 type Tab = (typeof TABS)[number]
+
+function Badge({ n }: { n: number }) {
+  if (!n) return null
+  return <span className="ml-1 bg-red-100 text-red-600 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{n}</span>
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -482,7 +487,90 @@ function ViolationsTab({ role }: { role: string }) {
   )
 }
 
-// ── ROLE TAB ──────────────────────────────────────────────────────────────────
+// ── NO TIMES TAB ──────────────────────────────────────────────────────────────
+
+function FixRow({ label, sub, children }: { label: string; sub?: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div>
+      <div className="flex items-center justify-between px-3 py-1.5 gap-2">
+        <div className="min-w-0 flex-1">
+          <span className="text-[11px] text-gray-900 font-semibold">{label}</span>
+          {sub && <span className="ml-2 text-[10px] text-gray-400">{sub}</span>}
+        </div>
+        <button onClick={() => setOpen(o => !o)}
+          className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition">
+          {open ? 'Close' : 'Fix'}
+        </button>
+      </div>
+      {open && <div className="px-3 pb-2 border-t border-gray-50 space-y-1.5 pt-1.5">{children}</div>}
+    </div>
+  )
+}
+
+function NoTimesFix({ date, onFixed }: { date: string; onFixed: (d: string) => void }) {
+  const [staff, setStaff] = useState(STAFF[0])
+  const [timeIn, setTimeIn] = useState('')
+  const [timeOut, setTimeOut] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function save() {
+    if (!timeIn) return
+    setSaving(true)
+    await fetch('/api/staff-times/entry', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ staff_name: staff, work_date: date, actual_in: timeIn, actual_out: timeOut || null }),
+    })
+    setSaving(false)
+    onFixed(date)
+  }
+
+  return (
+    <FixRow label={fmtDate(date)} sub="No staff times recorded">
+      <select value={staff} onChange={e => setStaff(e.target.value)} className={inputCls}>
+        {STAFF.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+      </select>
+      <div className="grid grid-cols-2 gap-2">
+        <input placeholder="Time In (e.g. 8:30am)" value={timeIn} onChange={e => setTimeIn(e.target.value)} className={inputCls} />
+        <input placeholder="Time Out (optional)" value={timeOut} onChange={e => setTimeOut(e.target.value)} className={inputCls} />
+      </div>
+      <button onClick={save} disabled={!timeIn || saving}
+        className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-semibold rounded-lg py-1.5 transition">
+        {saving ? 'Saving…' : 'Save Times'}
+      </button>
+    </FixRow>
+  )
+}
+
+function NoTimesTab() {
+  const [noStaffTimes, setNoStaffTimes] = useState<any[] | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/flags')
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(d => { setNoStaffTimes(d.noStaffTimes ?? []); setLoading(false) })
+      .catch(() => { setNoStaffTimes([]); setLoading(false) })
+  }, [])
+
+  if (loading || !noStaffTimes) return <div className="py-10 text-center text-gray-400">Loading…</div>
+
+  return (
+    <div>
+      <p className="text-[10px] text-gray-400 px-1 mb-1">{noStaffTimes.length} day{noStaffTimes.length !== 1 ? 's' : ''} with no staff times recorded (excluding Sundays)</p>
+      {noStaffTimes.length === 0
+        ? <p className="py-4 text-center text-gray-400 text-xs">All working days have staff times recorded.</p>
+        : <div className="bg-white border border-gray-200 rounded-lg overflow-hidden divide-y divide-gray-100">
+            {noStaffTimes.map((r: any) => (
+              <NoTimesFix key={r.missing_date} date={r.missing_date} onFixed={d =>
+                setNoStaffTimes(prev => prev ? prev.filter((x: any) => x.missing_date !== d) : prev)
+              } />
+            ))}
+          </div>
+      }
+    </div>
+  )
+}
 
 function RoleTab({ role }: { role: string }) {
   const [users, setUsers] = useState<AppUser[]>([])
@@ -569,6 +657,7 @@ export default function StaffClient({ role }: { role: string }) {
       {tab === 'Payslips' && <PayslipsTab />}
       {tab === 'Violations' && <ViolationsTab role={role} />}
       {tab === 'Role' && <RoleTab role={role} />}
+      {tab === 'No Times' && <NoTimesTab />}
     </div>
   )
 }

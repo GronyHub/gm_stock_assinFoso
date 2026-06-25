@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { fmtDate } from '@/lib/fmtDate'
 
 type Item = {
@@ -68,6 +68,188 @@ function fmt(val: string | null) {
 
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
 
+const TABS = ['List', 'No Group', 'Duplicates', 'Not in Inv.', 'Inv. Done', 'Inv. Todo'] as const
+type Tab = typeof TABS[number]
+
+function Badge({ n }: { n: number }) {
+  if (!n) return null
+  return <span className="ml-1 bg-red-100 text-red-600 text-[9px] font-bold px-1 py-0.5 rounded-full">{n}</span>
+}
+
+function FixRow({ label, sub, children }: { label: string; sub?: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div>
+      <div className="flex items-center justify-between px-2 py-1.5 gap-2">
+        <div className="min-w-0 flex-1">
+          <span className="text-[10px] text-gray-900 font-semibold">{label}</span>
+          {sub && <span className="ml-2 text-[9px] text-gray-400">{sub}</span>}
+        </div>
+        <button onClick={() => setOpen(o => !o)}
+          className="shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition">
+          {open ? 'Close' : 'Fix'}
+        </button>
+      </div>
+      {open && <div className="px-2 pb-2 border-t border-gray-50 space-y-1.5 pt-1.5">{children}</div>}
+    </div>
+  )
+}
+
+// Duplicates — mark as different items
+function DuplicateFix({ r, onFixed }: { r: any; onFixed: (id1: number, id2: number) => void }) {
+  const [saving, setSaving] = useState(false)
+  async function markDifferent() {
+    setSaving(true)
+    await fetch('/api/flags/dismiss-duplicate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id1: r.id1, id2: r.id2, name1: r.name1, name2: r.name2 }),
+    })
+    setSaving(false)
+    onFixed(r.id1, r.id2)
+  }
+  return (
+    <FixRow label={r.name1} sub={`vs. ${r.name2}`}>
+      <p className="text-[10px] text-gray-500">Tap <strong>Different</strong> if these are genuinely separate items. To remove a real duplicate, delete it from the item list.</p>
+      <button onClick={markDifferent} disabled={saving}
+        className="w-full bg-gray-600 hover:bg-gray-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
+        {saving ? 'Saving…' : 'Different — Not a Duplicate'}
+      </button>
+    </FixRow>
+  )
+}
+
+// Not in Inv. — jump to Inv. Todo tab
+function NotInInvRow({ r, onSwitchTab }: { r: any; onSwitchTab: () => void }) {
+  return (
+    <div className="flex items-center justify-between px-2 py-1.5 gap-2">
+      <div className="min-w-0 flex-1">
+        <span className="text-[10px] text-gray-900 font-semibold truncate block">{r.item_name}</span>
+        <span className="text-[9px] text-gray-400">{r.source}</span>
+      </div>
+      <button onClick={onSwitchTab}
+        className="shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition">
+        Resolve →
+      </button>
+    </div>
+  )
+}
+
+// No Group — assign a group from populated dropdown + free text fallback
+function NoGroupFix({ r, groupNames, onFixed }: { r: any; groupNames: string[]; onFixed: (id: number) => void }) {
+  const [selected, setSelected] = useState('')
+  const [custom, setCustom] = useState('')
+  const [saving, setSaving] = useState(false)
+  const group = selected === '__custom__' ? custom.trim() : selected
+  async function save() {
+    if (!group) return
+    setSaving(true)
+    await fetch(`/api/items/${r.id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cf_group: group }),
+    })
+    setSaving(false)
+    onFixed(r.id)
+  }
+  return (
+    <FixRow label={r.item_name} sub={`Status: ${r.status}`}>
+      <select value={selected} onChange={e => setSelected(e.target.value)} className={inputCls}>
+        <option value="">— Select a group —</option>
+        {groupNames.map(g => <option key={g} value={g}>{g}</option>)}
+        <option value="__custom__">+ New group name…</option>
+      </select>
+      {selected === '__custom__' && (
+        <input placeholder="Type new group name" value={custom}
+          onChange={e => setCustom(e.target.value)} className={inputCls} />
+      )}
+      <button onClick={save} disabled={!group || saving}
+        className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
+        {saving ? 'Saving…' : 'Assign Group'}
+      </button>
+    </FixRow>
+  )
+}
+
+type InvItem = { id: number; canonical_name: string }
+type NameRes = {
+  unmatched: { name: string; line_count: number }[]
+  matched: { name: string; canonical_name: string; line_count: number }[]
+  items: InvItem[]
+}
+
+function NameResolveRow({
+  name, count, items, onResolved,
+}: {
+  name: string; count: number; items: InvItem[]
+  onResolved: (name: string, canonical: string, itemId: number) => void
+}) {
+  const [search, setSearch] = useState('')
+  const [selected, setSelected] = useState<InvItem | null>(null)
+  const [open, setOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  const filtered = search.length >= 1
+    ? items.filter(i => i.canonical_name.toLowerCase().includes(search.toLowerCase())).slice(0, 25)
+    : []
+
+  useEffect(() => {
+    function onOut(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onOut)
+    return () => document.removeEventListener('mousedown', onOut)
+  }, [])
+
+  async function save() {
+    if (!selected) return
+    setSaving(true)
+    await fetch('/api/flags/name-resolution', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ raw_name: name, item_id: selected.id, canonical_name: selected.canonical_name }),
+    })
+    setSaving(false)
+    onResolved(name, selected.canonical_name, selected.id)
+  }
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg p-2 space-y-1.5 mx-2 mb-1.5">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[10px] font-medium text-gray-900 leading-snug">{name}</p>
+        <span className="shrink-0 text-[9px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">{count} line{count !== 1 ? 's' : ''}</span>
+      </div>
+      <div ref={ref} className="relative">
+        <input value={search}
+          onChange={e => { setSearch(e.target.value); setSelected(null); setOpen(true) }}
+          onFocus={() => setOpen(true)}
+          placeholder="Search inventory to match…"
+          className={inputCls} />
+        {open && filtered.length > 0 && (
+          <div className="absolute z-10 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden max-h-40 overflow-y-auto">
+            {filtered.map(item => (
+              <button key={item.id} onMouseDown={e => e.preventDefault()}
+                onClick={() => { setSelected(item); setSearch(item.canonical_name); setOpen(false) }}
+                className="w-full text-left px-2 py-1.5 text-[10px] text-gray-800 hover:bg-blue-50 border-b border-gray-100 last:border-0">
+                {item.canonical_name}
+              </button>
+            ))}
+          </div>
+        )}
+        {open && search.length >= 1 && filtered.length === 0 && (
+          <div className="absolute z-10 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg px-2 py-1.5 text-[10px] text-gray-400">
+            No match found
+          </div>
+        )}
+      </div>
+      {selected && (
+        <button onClick={save} disabled={saving}
+          className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
+          {saving ? 'Saving…' : `Map → ${selected.canonical_name}`}
+        </button>
+      )}
+    </div>
+  )
+}
+
 export default function InventoryPage() {
   const [items, setItems] = useState<Item[]>([])
   const [loading, setLoading] = useState(true)
@@ -81,6 +263,64 @@ export default function InventoryPage() {
   const [showAdd, setShowAdd] = useState(false)
   const [addForm, setAddForm] = useState(EMPTY_FORM)
   const [adding, setAdding] = useState(false)
+
+  const [tab, setTab] = useState<Tab>('List')
+  const [flags, setFlags] = useState<any | null>(null)
+  const [flagsLoading, setFlagsLoading] = useState(false)
+  const [nameRes, setNameRes] = useState<NameRes | null>(null)
+  const [nameResLoading, setNameResLoading] = useState(false)
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    fetch('/api/flags/dismiss-duplicate')
+      .then(r => r.json())
+      .then((rows: { item_id1: number; item_id2: number }[]) => {
+        if (Array.isArray(rows)) setDismissed(new Set(rows.map(r => `${r.item_id1}-${r.item_id2}`)))
+      })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    const flagTabs: Tab[] = ['No Group', 'Duplicates', 'Not in Inv.']
+    if (flagTabs.includes(tab) && !flags && !flagsLoading) {
+      setFlagsLoading(true)
+      fetch('/api/flags')
+        .then(r => r.ok ? r.json() : Promise.reject(r.status))
+        .then(d => { setFlags(d); setFlagsLoading(false) })
+        .catch(() => {
+          setFlags({ noGroup: [], duplicates: [], notInInventory: [], groupNames: [] })
+          setFlagsLoading(false)
+        })
+    }
+  }, [tab, flags, flagsLoading])
+
+  useEffect(() => {
+    const nameResTabs: Tab[] = ['Inv. Done', 'Inv. Todo']
+    if (nameResTabs.includes(tab) && !nameRes && !nameResLoading) {
+      setNameResLoading(true)
+      fetch('/api/flags/name-resolution')
+        .then(r => r.json())
+        .then(d => { setNameRes(d); setNameResLoading(false) })
+        .catch(() => { setNameRes({ unmatched: [], matched: [], items: [] }); setNameResLoading(false) })
+    }
+  }, [tab, nameRes, nameResLoading])
+
+  function dismissDuplicate(id1: number, id2: number) {
+    const lo = Math.min(id1, id2), hi = Math.max(id1, id2)
+    setDismissed(prev => new Set(prev).add(`${lo}-${hi}`))
+  }
+
+  function handleResolved(rawName: string, canonical: string, itemId: number) {
+    setNameRes(prev => {
+      if (!prev) return prev
+      const row = prev.unmatched.find(u => u.name === rawName)
+      return {
+        ...prev,
+        unmatched: prev.unmatched.filter(u => u.name !== rawName),
+        matched: [{ name: rawName, canonical_name: canonical, line_count: row?.line_count ?? 1 }, ...prev.matched],
+      }
+    })
+  }
 
   useEffect(() => {
     Promise.all([
@@ -173,6 +413,11 @@ export default function InventoryPage() {
 
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
 
+  const activeDups = flags ? flags.duplicates.filter((r: any) => {
+    const lo = Math.min(r.id1, r.id2), hi = Math.max(r.id1, r.id2)
+    return !dismissed.has(`${lo}-${hi}`)
+  }) : []
+
   return (
     <div className="-mx-4 -mt-4 flex flex-col h-[calc(100dvh-60px)] md:h-[calc(100dvh-56px)]">
 
@@ -180,25 +425,45 @@ export default function InventoryPage() {
       <div className="shrink-0 border-b border-gray-200 bg-white">
         <div className="flex items-center gap-2 px-2 py-1.5">
           <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-            placeholder={`Search ${filtered.length} of ${items.length} items…`}
-            className="flex-1 text-[10px] text-gray-900 placeholder-gray-300 bg-gray-50 border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
-          <button onClick={() => { setShowAdd(v => !v); setSelectedId(null) }}
-            className="shrink-0 bg-blue-600 text-white text-[10px] font-bold px-2.5 py-1 rounded hover:bg-blue-500">
-            + Add
-          </button>
+            placeholder={`Search ${filtered.length} of ${items.length}…`}
+            className="w-24 flex-1 min-w-0 text-[10px] text-gray-900 placeholder-gray-300 bg-gray-50 border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+          <div className="flex gap-1 overflow-x-auto shrink-0 max-w-[60%]">
+            {TABS.map(t => {
+              const cnt = t === 'No Group' ? (flags?.noGroup.length ?? 0)
+                : t === 'Duplicates' ? activeDups.length
+                : t === 'Not in Inv.' ? (flags?.notInInventory.length ?? 0)
+                : t === 'Inv. Done' ? (nameRes?.matched.length ?? 0)
+                : t === 'Inv. Todo' ? (nameRes?.unmatched.length ?? 0)
+                : 0
+              return (
+                <button key={t} onClick={() => setTab(t)}
+                  className={`shrink-0 text-[9px] font-semibold px-1.5 py-1 rounded transition whitespace-nowrap
+                    ${tab === t ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                  {t}<Badge n={cnt} />
+                </button>
+              )
+            })}
+          </div>
         </div>
-        {/* Group chips */}
-        <div className="flex gap-1 px-2 pb-1.5 overflow-x-auto">
-          {groups.map(g => (
-            <button key={g} onClick={() => setGroup(g === 'All' ? null : g)}
-              className={`shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded-full transition
-                ${(g === 'All' && !group) || g === group ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
-              {g}
+        {/* Group chips + Add — only in List tab */}
+        {tab === 'List' && (
+          <div className="flex items-center gap-1 px-2 pb-1.5 overflow-x-auto">
+            {groups.map(g => (
+              <button key={g} onClick={() => setGroup(g === 'All' ? null : g)}
+                className={`shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded-full transition
+                  ${(g === 'All' && !group) || g === group ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                {g}
+              </button>
+            ))}
+            <button onClick={() => { setShowAdd(v => !v); setSelectedId(null) }}
+              className="shrink-0 ml-auto bg-blue-600 text-white text-[9px] font-bold px-2 py-0.5 rounded hover:bg-blue-500">
+              + Add
             </button>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
 
+      {tab === 'List' && (
       <div className="flex flex-1 min-h-0">
 
         {/* LEFT: items table */}
@@ -334,6 +599,101 @@ export default function InventoryPage() {
           )}
         </div>
       </div>
+      )}
+
+      {tab === 'No Group' && (
+        <div className="flex-1 overflow-y-auto min-h-0 py-2">
+          <p className="text-[10px] text-gray-400 px-2 mb-1">
+            {flagsLoading || !flags ? 'Loading…' : `${flags.noGroup.length} item${flags.noGroup.length !== 1 ? 's' : ''} with no group assigned`}
+          </p>
+          {flagsLoading || !flags ? null : flags.noGroup.length === 0
+            ? <p className="py-4 text-center text-gray-400 text-[10px]">All items have a group assigned.</p>
+            : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
+                {flags.noGroup.map((r: any) => (
+                  <NoGroupFix key={r.id} r={r} groupNames={flags.groupNames ?? []} onFixed={id =>
+                    setFlags((f: any) => f ? { ...f, noGroup: f.noGroup.filter((x: any) => x.id !== id) } : f)
+                  } />
+                ))}
+              </div>
+          }
+        </div>
+      )}
+
+      {tab === 'Duplicates' && (
+        <div className="flex-1 overflow-y-auto min-h-0 py-2">
+          <p className="text-[10px] text-gray-400 px-2 mb-1">
+            {flagsLoading || !flags ? 'Loading…' : `${activeDups.length} possible duplicate pair${activeDups.length !== 1 ? 's' : ''} (similarity > 65%)`}
+          </p>
+          {flagsLoading || !flags ? null : activeDups.length === 0
+            ? <p className="py-4 text-center text-gray-400 text-[10px]">No duplicate or similar item names found.</p>
+            : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
+                {activeDups.map((r: any) => (
+                  <DuplicateFix key={`${r.id1}-${r.id2}`} r={r} onFixed={(id1, id2) => dismissDuplicate(id1, id2)} />
+                ))}
+              </div>
+          }
+        </div>
+      )}
+
+      {tab === 'Not in Inv.' && (
+        <div className="flex-1 overflow-y-auto min-h-0 py-2">
+          <p className="text-[10px] text-gray-400 px-2 mb-1">
+            {flagsLoading || !flags ? 'Loading…' : `${flags.notInInventory.length} item name${flags.notInInventory.length !== 1 ? 's' : ''} not found in inventory`}
+          </p>
+          {flagsLoading || !flags ? null : flags.notInInventory.length === 0
+            ? <p className="py-4 text-center text-gray-400 text-[10px]">All items in receipts and counts are in inventory.</p>
+            : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
+                {flags.notInInventory.map((r: any, i: number) => (
+                  <NotInInvRow key={i} r={r} onSwitchTab={() => setTab('Inv. Todo')} />
+                ))}
+              </div>
+          }
+        </div>
+      )}
+
+      {tab === 'Inv. Todo' && (
+        <div className="flex-1 overflow-y-auto min-h-0 py-2">
+          <p className="text-[10px] text-gray-400 px-2 mb-1">
+            {nameResLoading || !nameRes ? 'Loading…' : `${nameRes.unmatched.length} receipt line name${nameRes.unmatched.length !== 1 ? 's' : ''} not matched`}
+          </p>
+          {nameResLoading || !nameRes ? null : nameRes.unmatched.length === 0
+            ? <p className="py-4 text-center text-gray-400 text-[10px]">All names matched.</p>
+            : nameRes.unmatched.map(u => (
+                <NameResolveRow key={u.name} name={u.name} count={u.line_count}
+                  items={nameRes.items} onResolved={handleResolved} />
+              ))
+          }
+        </div>
+      )}
+
+      {tab === 'Inv. Done' && (
+        <div className="flex-1 overflow-y-auto min-h-0 py-2">
+          <p className="text-[10px] text-gray-400 px-2 mb-1">
+            {nameResLoading || !nameRes ? 'Loading…' : `${nameRes.matched.length} receipt line name${nameRes.matched.length !== 1 ? 's' : ''} matched to inventory`}
+          </p>
+          {nameResLoading || !nameRes ? null : nameRes.matched.length === 0
+            ? <p className="py-4 text-center text-gray-400 text-[10px]">No matched names yet.</p>
+            : <table className="w-full border-collapse text-[10px]">
+                <thead className="sticky top-0 bg-gray-100 z-10">
+                  <tr>
+                    <th className="text-left px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">Receipt Name</th>
+                    <th className="text-left px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">Matched To</th>
+                    <th className="text-left px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">Lines</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {nameRes.matched.map((r, i) => (
+                    <tr key={i}>
+                      <td className="px-2 py-1 text-gray-800">{r.name}</td>
+                      <td className="px-2 py-1 text-blue-700 font-medium">{r.canonical_name}</td>
+                      <td className="px-2 py-1 text-gray-500">{r.line_count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+          }
+        </div>
+      )}
     </div>
   )
 }

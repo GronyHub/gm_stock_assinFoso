@@ -21,7 +21,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
     <div className="py-4 space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-bold">Stock Summary</h1>
-        <Link href="/stock/count"
+        <Link href="/stock/counts?tab=Daily"
           className="bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition">
           + Count
         </Link>
