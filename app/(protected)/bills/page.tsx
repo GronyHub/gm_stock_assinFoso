@@ -34,13 +34,6 @@ function fmt(val: string | null) {
   return isNaN(n) ? '—' : n.toLocaleString('en-GH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
-function stBadge(s: string) {
-  const l = s.toLowerCase()
-  if (l === 'paid') return { label: 'P', cls: 'text-green-600' }
-  if (l === 'overdue') return { label: 'OD', cls: 'text-red-600' }
-  return { label: 'Op', cls: 'text-orange-500' }
-}
-
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
 
 export default function BillsPage() {
@@ -125,19 +118,16 @@ export default function BillsPage() {
                 <th className="text-left px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">DATE</th>
                 <th className="text-left px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">VENDOR</th>
                 <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">AMT</th>
-                <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">ST</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(b => {
-                const st = stBadge(b.status)
                 return (
                   <tr key={b.id} onClick={() => selectBill(b)}
                     className={`cursor-pointer border-b border-gray-100 transition ${selected?.id === b.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
                     <td className="px-0.5 py-0.5 text-gray-700 whitespace-nowrap">{fmtShort(b.bill_date)}</td>
                     <td className="px-0.5 py-0.5 text-gray-700 truncate max-w-[70px]">{b.vendor_name ?? '—'}</td>
                     <td className="px-0.5 py-0.5 text-right text-gray-900 font-semibold">{fmt(b.total)}</td>
-                    <td className={`px-0.5 py-0.5 text-right font-bold ${st.cls}`}>{st.label}</td>
                   </tr>
                 )
               })}
