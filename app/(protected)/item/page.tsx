@@ -27,14 +27,18 @@ const EMPTY_FORM = {
   item_name: '', cf_group: '', selling_rate: '', purchase_rate: '', units_per_pack: '', unit_name: '',
 }
 
-function fmt(val: string | null) {
-  if (!val) return '—'
-  const n = parseFloat(val)
-  return isNaN(n) ? val : n % 1 === 0 ? n.toString() : n.toFixed(2)
+function numVal(val: string | null) { return val ? parseFloat(val) || 0 : 0 }
+
+function fmtN(n: number | null) {
+  if (n === null) return '—'
+  return n % 1 === 0 ? String(n) : n.toFixed(2)
 }
 
-
-function numVal(val: string | null) { return val ? parseFloat(val) || 0 : 0 }
+function fmtQ(val: string | null) {
+  if (!val) return '—'
+  const n = parseFloat(val)
+  return n % 1 === 0 ? String(n) : n.toFixed(2)
+}
 
 function computeRows(rows: DayRow[]): ComputedRow[] {
   const result: ComputedRow[] = []
@@ -55,41 +59,28 @@ function computeRows(rows: DayRow[]): ComputedRow[] {
   return result.reverse()
 }
 
-function fmtQ(val: string | null) {
-  if (!val) return <span className="text-gray-300">—</span>
+function fmt(val: string | null) {
+  if (!val) return '—'
   const n = parseFloat(val)
-  return <>{n % 1 === 0 ? n : n.toFixed(2)}</>
+  return isNaN(n) ? val : n % 1 === 0 ? n.toString() : n.toFixed(2)
 }
 
-function fmtN(val: number | null) {
-  if (val === null) return <span className="text-gray-300">—</span>
-  return <>{val % 1 === 0 ? val : val.toFixed(2)}</>
-}
-
-function sohFmt(item: Item) {
-  const n = Number(item.calculated_soh)
-  return n % 1 === 0 ? n.toString() : n.toFixed(2)
-}
+const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
 
 export default function InventoryPage() {
   const [items, setItems] = useState<Item[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [group, setGroup] = useState<string | null>(null)
-  const [showAdd, setShowAdd] = useState(false)
-  const [addForm, setAddForm] = useState(EMPTY_FORM)
-  const [adding, setAdding] = useState(false)
-
-  // Accordion state
-  const [expanded, setExpanded] = useState<Set<number>>(new Set())
-  const [lossData, setLossData] = useState<Map<number, ComputedRow[]>>(new Map())
-  const [loadingIds, setLoadingIds] = useState<Set<number>>(new Set())
-  const [expandingAll, setExpandingAll] = useState(false)
-
-  // Edit state per item
+  const [selected, setSelected] = useState<Item | null>(null)
+  const [lossRows, setLossRows] = useState<ComputedRow[]>([])
+  const [lossLoading, setLossLoading] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
+  const [showAdd, setShowAdd] = useState(false)
+  const [addForm, setAddForm] = useState(EMPTY_FORM)
+  const [adding, setAdding] = useState(false)
 
   useEffect(() => {
     fetch('/api/items').then(r => r.json()).then(data => { setItems(data); setLoading(false) })
@@ -105,51 +96,19 @@ export default function InventoryPage() {
     })
   }, [items, search, group])
 
-  const allExpanded = filtered.length > 0 && filtered.every(i => expanded.has(i.id))
-
-  const fetchLoss = useCallback(async (id: number) => {
-    if (lossData.has(id)) return
-    setLoadingIds(prev => new Set(prev).add(id))
-    const res = await fetch(`/api/losses/${id}`)
+  const fetchLoss = useCallback(async (item: Item) => {
+    setLossLoading(true)
+    const res = await fetch(`/api/losses/${item.id}`)
     const data: DayRow[] = await res.json()
-    setLossData(prev => new Map(prev).set(id, computeRows(data)))
-    setLoadingIds(prev => { const s = new Set(prev); s.delete(id); return s })
-  }, [lossData])
+    setLossRows(computeRows(data))
+    setLossLoading(false)
+  }, [])
 
-  function toggleItem(id: number) {
-    setExpanded(prev => {
-      const s = new Set(prev)
-      if (s.has(id)) { s.delete(id) } else { s.add(id); fetchLoss(id) }
-      return s
-    })
-  }
-
-  async function expandAll() {
-    setExpandingAll(true)
-    const toFetch = filtered.filter(i => !lossData.has(i.id))
-    await Promise.all(toFetch.map(async i => {
-      const res = await fetch(`/api/losses/${i.id}`)
-      const data: DayRow[] = await res.json()
-      setLossData(prev => new Map(prev).set(i.id, computeRows(data)))
-    }))
-    setExpanded(prev => {
-      const s = new Set(prev)
-      filtered.forEach(i => s.add(i.id))
-      return s
-    })
-    setExpandingAll(false)
-  }
-
-  function collapseAll() {
-    setExpanded(prev => {
-      const s = new Set(prev)
-      filtered.forEach(i => s.delete(i.id))
-      return s
-    })
+  function selectItem(item: Item) {
+    setSelected(item); setEditingId(null); setLossRows([]); fetchLoss(item)
   }
 
   function startEdit(item: Item) {
-    setEditingId(item.id)
     setEditForm({
       item_name: item.item_name,
       cf_group: item.cf_group ?? '',
@@ -158,11 +117,13 @@ export default function InventoryPage() {
       units_per_pack: item.units_per_pack ? parseFloat(item.units_per_pack).toString() : '',
       unit_name: item.unit_name ?? '',
     })
+    setEditingId(item.id)
   }
 
-  async function saveEdit(item: Item) {
+  async function saveEdit() {
+    if (!selected) return
     setSaving(true)
-    const res = await fetch(`/api/items/${item.id}`, {
+    const res = await fetch(`/api/items/${selected.id}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         item_name: editForm.item_name || undefined,
@@ -176,7 +137,8 @@ export default function InventoryPage() {
     setSaving(false)
     if (res.ok) {
       const updated = await res.json()
-      setItems(prev => prev.map(i => i.id === item.id ? { ...i, ...updated, calculated_soh: i.calculated_soh } : i))
+      setItems(prev => prev.map(i => i.id === selected.id ? { ...i, ...updated, calculated_soh: i.calculated_soh } : i))
+      setSelected(s => s ? { ...s, ...updated } : s)
       setEditingId(null)
     }
   }
@@ -199,183 +161,164 @@ export default function InventoryPage() {
     if (res.ok) {
       const newItem = await res.json()
       setItems(prev => [...prev, { ...newItem, calculated_soh: 0 }])
-      setAddForm(EMPTY_FORM)
-      setShowAdd(false)
+      setAddForm(EMPTY_FORM); setShowAdd(false)
     }
   }
 
-  if (loading) return <div className="py-20 text-center text-gray-400">Loading...</div>
+  if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
+
+  const totalLoss = parseFloat(lossRows.reduce((s, r) => s + (r.loss ?? 0), 0).toFixed(4))
 
   return (
-    <div className="py-4">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <h1 className="text-xl font-bold">Inventory</h1>
-          <p className="text-sm text-gray-400 mt-0.5">{filtered.length} of {items.length} items</p>
+    <div className="-mx-4 -mt-4 flex flex-col" style={{ height: 'calc(100dvh - 56px - 60px)' }}>
+
+      {/* Top bar */}
+      <div className="shrink-0 border-b border-gray-200 bg-white">
+        <div className="flex items-center gap-2 px-2 py-1.5">
+          <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+            placeholder={`Search ${filtered.length} of ${items.length} items…`}
+            className="flex-1 text-[10px] text-gray-900 placeholder-gray-300 bg-gray-50 border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+          <button onClick={() => { setShowAdd(v => !v); setSelected(null) }}
+            className="shrink-0 bg-blue-600 text-white text-[10px] font-bold px-2.5 py-1 rounded hover:bg-blue-500">
+            + Add
+          </button>
         </div>
-        <button onClick={() => setShowAdd(v => !v)}
-          className="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2 rounded-xl transition">
-          + Add Item
-        </button>
-      </div>
-
-      {/* Add form */}
-      {showAdd && (
-        <div className="bg-white border border-blue-300 rounded-xl p-4 space-y-3 mb-3">
-          <p className="text-gray-900 font-semibold">New Item</p>
-          <ItemForm form={addForm} onChange={setAddForm} groups={groups.filter(g => g !== 'All')} />
-          <div className="flex gap-2">
-            <button onClick={saveAdd} disabled={adding || !addForm.item_name.trim()}
-              className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-3 transition">
-              {adding ? 'Saving...' : 'Save Item'}
-            </button>
-            <button onClick={() => setShowAdd(false)}
-              className="px-4 py-3 rounded-xl bg-gray-100 text-gray-600 text-sm font-semibold">Cancel</button>
-          </div>
-        </div>
-      )}
-
-      {/* Search */}
-      <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-        placeholder="Search items..."
-        className="w-full mb-2 bg-white border border-gray-200 rounded-xl px-4 py-3 text-base
-          text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-400" />
-
-      {/* Group filter + Expand All */}
-      <div className="flex items-center gap-2 mb-3">
-        <div className="flex gap-2 overflow-x-auto pb-1 flex-1">
+        {/* Group chips */}
+        <div className="flex gap-1 px-2 pb-1.5 overflow-x-auto">
           {groups.map(g => (
             <button key={g} onClick={() => setGroup(g === 'All' ? null : g)}
-              className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition
-                ${(g === 'All' && !group) || g === group ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:text-gray-700'}`}>
+              className={`shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded-full transition
+                ${(g === 'All' && !group) || g === group ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
               {g}
             </button>
           ))}
         </div>
-        <button
-          onClick={allExpanded ? collapseAll : expandAll}
-          disabled={expandingAll}
-          className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full bg-gray-800 text-white hover:bg-gray-700 disabled:opacity-50 transition whitespace-nowrap">
-          {expandingAll ? 'Loading...' : allExpanded ? 'Collapse All' : 'Expand All'}
-        </button>
       </div>
 
-      {/* Accordion list */}
-      <div className="space-y-2">
-        {filtered.length === 0 && <p className="text-center text-gray-400 py-10">No items found.</p>}
-        {filtered.map(item => {
-          const isOpen = expanded.has(item.id)
-          const isLoading = loadingIds.has(item.id)
-          const rows = lossData.get(item.id) ?? []
-          const totalLoss = parseFloat(rows.reduce((s, r) => s + (r.loss ?? 0), 0).toFixed(4))
-          const isEditing = editingId === item.id
+      <div className="flex flex-1 min-h-0">
 
-          return (
-            <div key={item.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-              {/* Item header — always visible, tap to expand */}
-              <button onClick={() => toggleItem(item.id)}
-                className="w-full text-left p-3 hover:bg-gray-50 transition">
-                <div className="flex items-start justify-between gap-2 mb-1.5">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">{item.item_name}</p>
-                    {item.cf_group && <p className="text-xs text-gray-400 mt-0.5">{item.cf_group}</p>}
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {isOpen && rows.length > 0 && totalLoss !== 0 && (
-                      <span className={`text-xs font-bold ${totalLoss > 0 ? 'text-red-500' : 'text-green-600'}`}>
-                        {totalLoss > 0 ? '+' : ''}{totalLoss % 1 === 0 ? totalLoss : totalLoss.toFixed(2)}
-                      </span>
-                    )}
-                    <span className="text-gray-400 text-sm">{isOpen ? '▲' : '▼'}</span>
-                  </div>
+        {/* LEFT: items table */}
+        <div className="w-1/2 border-r border-gray-200 overflow-y-auto min-h-0">
+          <table className="w-full border-collapse text-[10px]">
+            <thead className="sticky top-0 bg-gray-100 z-10">
+              <tr>
+                <th className="text-left px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">ITEM</th>
+                <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">SOH</th>
+                <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">SP</th>
+                <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">CP</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(item => {
+                const soh = Number(item.calculated_soh)
+                return (
+                  <tr key={item.id} onClick={() => selectItem(item)}
+                    className={`cursor-pointer border-b border-gray-100 transition ${selected?.id === item.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
+                    <td className="px-0.5 py-0.5 text-gray-900 truncate max-w-[90px]">{item.item_name}</td>
+                    <td className={`px-0.5 py-0.5 text-right font-bold ${soh <= 0 ? 'text-red-500' : 'text-gray-900'}`}>{soh % 1 === 0 ? soh : soh.toFixed(2)}</td>
+                    <td className="px-0.5 py-0.5 text-right text-blue-600">{item.selling_rate ? fmt(item.selling_rate) : '—'}</td>
+                    <td className="px-0.5 py-0.5 text-right text-green-600">{item.purchase_rate ? fmt(item.purchase_rate) : '—'}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* RIGHT: detail / edit / add */}
+        <div className="w-1/2 overflow-y-auto min-h-0 bg-white">
+          {showAdd ? (
+            <div className="p-2 space-y-2">
+              <p className="text-[10px] font-bold text-gray-600">New Item</p>
+              <ItemForm form={addForm} onChange={setAddForm} groups={groups.filter(g => g !== 'All')} />
+              <div className="flex gap-1">
+                <button onClick={saveAdd} disabled={adding || !addForm.item_name.trim()}
+                  className="flex-1 bg-blue-600 text-white text-[10px] font-bold rounded py-1 disabled:opacity-40">
+                  {adding ? 'Saving…' : 'Save'}
+                </button>
+                <button onClick={() => setShowAdd(false)}
+                  className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
+              </div>
+            </div>
+          ) : !selected ? (
+            <p className="text-[10px] text-gray-400 text-center py-10">Select an item</p>
+          ) : editingId === selected.id ? (
+            <div className="p-2 space-y-2">
+              <p className="text-[10px] font-bold text-gray-600">Edit Item</p>
+              <ItemForm form={editForm} onChange={setEditForm} groups={groups.filter(g => g !== 'All')} />
+              <div className="flex gap-1">
+                <button onClick={saveEdit} disabled={saving}
+                  className="flex-1 bg-green-600 text-white text-[10px] font-bold rounded py-1 disabled:opacity-40">
+                  {saving ? 'Saving…' : 'Save'}
+                </button>
+                <button onClick={() => setEditingId(null)}
+                  className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-between px-2 py-1 bg-gray-50 border-b border-gray-200">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-bold text-gray-900 truncate">{selected.item_name}</p>
+                  <p className="text-[9px] text-gray-400">{selected.cf_group ?? 'No group'} · SOH: {Number(selected.calculated_soh)}</p>
                 </div>
-                <div className="grid grid-cols-4 gap-x-3 text-xs">
-                  <div><p className="text-gray-400">SOH</p><p className="font-bold text-gray-800">{sohFmt(item)}</p></div>
-                  <div><p className="text-gray-400">Sell</p><p className="font-medium text-gray-700">{item.selling_rate ? `₵${fmt(item.selling_rate)}` : '—'}</p></div>
-                  <div><p className="text-gray-400">Cost</p><p className="font-medium text-gray-700">{item.purchase_rate ? `₵${fmt(item.purchase_rate)}` : '—'}</p></div>
-                  <div><p className="text-gray-400">Unit</p><p className="font-medium text-gray-700">{item.unit_name ?? '—'}</p></div>
-                </div>
-              </button>
+                <button onClick={() => startEdit(selected)}
+                  className="shrink-0 text-[9px] text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100 ml-1">
+                  Edit
+                </button>
+              </div>
 
-              {/* Expanded detail */}
-              {isOpen && (
-                <div className="border-t border-gray-100 p-3 space-y-3">
-                  {/* Edit toggle */}
-                  {isEditing ? (
-                    <div className="space-y-3">
-                      <ItemForm form={editForm} onChange={setEditForm} groups={groups.filter(g => g !== 'All')} />
-                      <div className="flex gap-2">
-                        <button onClick={() => saveEdit(item)} disabled={saving}
-                          className="flex-1 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2.5 transition">
-                          {saving ? 'Saving...' : 'Save'}
-                        </button>
-                        <button onClick={() => setEditingId(null)}
-                          className="px-4 py-2.5 rounded-xl bg-gray-100 text-gray-600 text-sm font-semibold">Cancel</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button onClick={e => { e.stopPropagation(); startEdit(item) }}
-                      className="text-xs text-blue-600 font-semibold px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 transition">
-                      Edit Item
-                    </button>
-                  )}
-
-                  {/* Loss history */}
-                  {!isEditing && (
-                    isLoading ? (
-                      <p className="text-center text-gray-400 py-4 text-xs">Loading history...</p>
-                    ) : rows.length === 0 ? (
-                      <p className="text-center text-gray-400 py-4 text-xs">No activity found.</p>
-                    ) : (
-                      <div className="overflow-x-auto -mx-3 px-3">
-                        <table className="w-full text-xs min-w-[480px]">
-                          <thead>
-                            <tr className="text-left text-gray-400 border-b border-gray-100">
-                              <th className="pb-1.5 font-medium pr-2">Date</th>
-                              <th className="pb-1.5 font-medium text-right pr-2">Count</th>
-                              <th className="pb-1.5 font-medium text-right pr-2">-WIC</th>
-                              <th className="pb-1.5 font-medium text-right pr-2">-GMC</th>
-                              <th className="pb-1.5 font-medium text-right pr-2">+Bills</th>
-                              <th className="pb-1.5 font-medium text-right pr-2">Expt</th>
-                              <th className="pb-1.5 font-medium text-right">Loss/Gain</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-50">
-                            {rows.map((row, i) => (
-                              <tr key={i} className={row.loss !== null && row.loss > 0.001 ? 'bg-red-50' : ''}>
-                                <td className="py-1.5 pr-2 text-gray-500 whitespace-nowrap">{fmtDate(row.date)}</td>
-                                <td className="py-1.5 pr-2 text-right font-semibold text-gray-900">{fmtQ(row.qty_counted)}</td>
-                                <td className="py-1.5 pr-2 text-right text-gray-600">{fmtQ(row.wic_qty)}</td>
-                                <td className="py-1.5 pr-2 text-right text-gray-600">{fmtQ(row.gmc_qty)}</td>
-                                <td className="py-1.5 pr-2 text-right text-blue-600">{fmtQ(row.bills_qty)}</td>
-                                <td className="py-1.5 pr-2 text-right text-gray-400">{fmtN(row.expected_soh)}</td>
-                                <td className="py-1.5 text-right font-semibold">
-                                  {row.loss === null ? <span className="text-gray-300">—</span>
-                                    : row.loss > 0.001 ? <span className="text-red-600">+{row.loss % 1 === 0 ? row.loss : row.loss.toFixed(2)}</span>
-                                    : row.loss < -0.001 ? <span className="text-green-600">{row.loss % 1 === 0 ? row.loss : row.loss.toFixed(2)}</span>
-                                    : <span className="text-gray-400">0</span>}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                          <tfoot>
-                            <tr className="border-t-2 border-gray-200">
-                              <td colSpan={6} className="pt-2 text-right text-xs font-semibold text-gray-500 pr-2">Total</td>
-                              <td className={`pt-2 text-right text-xs font-bold ${totalLoss > 0 ? 'text-red-600' : totalLoss < 0 ? 'text-green-600' : 'text-gray-400'}`}>
-                                {totalLoss > 0 ? '+' : ''}{totalLoss % 1 === 0 ? totalLoss : totalLoss.toFixed(2)}
-                              </td>
-                            </tr>
-                          </tfoot>
-                        </table>
-                      </div>
-                    )
-                  )}
+              {/* Loss history table */}
+              {lossLoading ? (
+                <p className="text-[10px] text-gray-400 text-center py-6">Loading…</p>
+              ) : lossRows.length === 0 ? (
+                <p className="text-[10px] text-gray-400 text-center py-6">No activity.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-[9px] min-w-[280px]">
+                    <thead className="sticky top-0 bg-gray-100 z-10">
+                      <tr>
+                        <th className="text-left px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">DATE</th>
+                        <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">CNT</th>
+                        <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">-WIC</th>
+                        <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">-GMC</th>
+                        <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">+BL</th>
+                        <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">EXP</th>
+                        <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">L/G</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {lossRows.map((row, i) => (
+                        <tr key={i} className={`border-b border-gray-100 ${row.loss !== null && row.loss > 0.001 ? 'bg-red-50' : ''}`}>
+                          <td className="px-0.5 py-0.5 text-gray-500 whitespace-nowrap">{fmtDate(row.date)}</td>
+                          <td className="px-0.5 py-0.5 text-right font-semibold text-gray-900">{fmtQ(row.qty_counted)}</td>
+                          <td className="px-0.5 py-0.5 text-right text-gray-600">{fmtQ(row.wic_qty)}</td>
+                          <td className="px-0.5 py-0.5 text-right text-gray-600">{fmtQ(row.gmc_qty)}</td>
+                          <td className="px-0.5 py-0.5 text-right text-blue-600">{fmtQ(row.bills_qty)}</td>
+                          <td className="px-0.5 py-0.5 text-right text-gray-400">{fmtN(row.expected_soh)}</td>
+                          <td className="px-0.5 py-0.5 text-right font-semibold">
+                            {row.loss === null ? <span className="text-gray-300">—</span>
+                              : row.loss > 0.001 ? <span className="text-red-600">+{fmtN(row.loss)}</span>
+                              : row.loss < -0.001 ? <span className="text-green-600">{fmtN(row.loss)}</span>
+                              : <span className="text-gray-400">0</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t-2 border-gray-200 bg-gray-50">
+                        <td colSpan={6} className="px-0.5 py-1 text-right font-bold text-gray-500">Total L/G</td>
+                        <td className={`px-0.5 py-1 text-right font-bold ${totalLoss > 0 ? 'text-red-600' : totalLoss < 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                          {totalLoss > 0 ? '+' : ''}{fmtN(totalLoss)}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
                 </div>
               )}
-            </div>
-          )
-        })}
+            </>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -384,40 +327,39 @@ export default function InventoryPage() {
 function ItemForm({ form, onChange, groups }: { form: typeof EMPTY_FORM; onChange: (f: typeof EMPTY_FORM) => void; groups: string[] }) {
   const set = (k: keyof typeof EMPTY_FORM) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     onChange({ ...form, [k]: e.target.value })
-  const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded-xl px-3 py-2.5 text-base text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-400'
-  const labelCls = 'text-xs text-gray-500 font-medium mb-1 block'
+  const cls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
   return (
-    <div className="space-y-3">
+    <div className="space-y-1.5">
       <div>
-        <label className={labelCls}>Item Name *</label>
-        <input value={form.item_name} onChange={set('item_name')} placeholder="Item name" className={inputCls} />
+        <p className="text-[9px] text-gray-400 mb-0.5">Name *</p>
+        <input value={form.item_name} onChange={set('item_name')} placeholder="Item name" className={cls} />
       </div>
       <div>
-        <label className={labelCls}>Group</label>
-        <select value={form.cf_group} onChange={set('cf_group')} className={inputCls}>
+        <p className="text-[9px] text-gray-400 mb-0.5">Group</p>
+        <select value={form.cf_group} onChange={set('cf_group')} className={cls}>
           <option value="">— No group —</option>
           {groups.map(g => <option key={g} value={g}>{g}</option>)}
         </select>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-1">
         <div>
-          <label className={labelCls}>Selling Price (GH&#8373;)</label>
+          <p className="text-[9px] text-gray-400 mb-0.5">Sell (₵)</p>
           <input type="number" min="0" step="0.01" inputMode="decimal"
-            value={form.selling_rate} onChange={set('selling_rate')} placeholder="0.00" className={inputCls} />
+            value={form.selling_rate} onChange={set('selling_rate')} placeholder="0.00" className={cls} />
         </div>
         <div>
-          <label className={labelCls}>Cost Price (GH&#8373;)</label>
+          <p className="text-[9px] text-gray-400 mb-0.5">Cost (₵)</p>
           <input type="number" min="0" step="0.01" inputMode="decimal"
-            value={form.purchase_rate} onChange={set('purchase_rate')} placeholder="0.00" className={inputCls} />
+            value={form.purchase_rate} onChange={set('purchase_rate')} placeholder="0.00" className={cls} />
         </div>
         <div>
-          <label className={labelCls}>Units / Pack</label>
+          <p className="text-[9px] text-gray-400 mb-0.5">Units/Pack</p>
           <input type="number" min="0" step="1" inputMode="decimal"
-            value={form.units_per_pack} onChange={set('units_per_pack')} placeholder="e.g. 50" className={inputCls} />
+            value={form.units_per_pack} onChange={set('units_per_pack')} placeholder="e.g. 50" className={cls} />
         </div>
         <div>
-          <label className={labelCls}>Unit Name</label>
-          <input value={form.unit_name} onChange={set('unit_name')} placeholder="e.g. Pieces" className={inputCls} />
+          <p className="text-[9px] text-gray-400 mb-0.5">Unit Name</p>
+          <input value={form.unit_name} onChange={set('unit_name')} placeholder="e.g. Pcs" className={cls} />
         </div>
       </div>
     </div>
