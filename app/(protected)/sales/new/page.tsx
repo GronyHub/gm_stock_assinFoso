@@ -149,8 +149,10 @@ export default function NewReceiptPage() {
                     <p className="text-[10px] font-semibold text-gray-900 leading-tight" style={{ wordBreak: 'break-word' }}>{item.name}</p>
                     <p className="text-[9px] leading-tight">
                       <span className="text-blue-600 font-bold">₵{Number(item.selling_price).toFixed(2)}</span>
-                      <span className="text-gray-400"> · cost ₵{Number(item.cost_price).toFixed(2)}</span>
-                      <span className="text-gray-400"> · {Number(item.soh)} pcs</span>
+                      <span className="text-gray-400"> · </span>
+                      <span className="text-green-600 font-bold">CP ₵{Number(item.cost_price).toFixed(2)}</span>
+                      <span className="text-gray-400"> · </span>
+                      <span className="text-red-500 font-bold">{Number(item.soh)} pcs</span>
                     </p>
                   </div>
                   <button type="button"
