@@ -12,6 +12,7 @@ export default function NewReceiptPage() {
   const [allItems, setAllItems] = useState<Item[]>([])
   const [loadingItems, setLoadingItems] = useState(true)
   const [search, setSearch] = useState('')
+  const [searchFocused, setSearchFocused] = useState(false)
   const [activeGroup, setActiveGroup] = useState<string | null>(null)
   const [cart, setCart] = useState<CartLine[]>([])
   const [saving, setSaving] = useState(false)
@@ -38,8 +39,8 @@ export default function NewReceiptPage() {
       items = items.filter(i => i.name.toLowerCase().includes(q) || (i.group ?? '').toLowerCase().includes(q))
     } else if (activeGroup && activeGroup !== 'All') {
       items = items.filter(i => (i.group ?? 'Other') === activeGroup)
-    } else if (!search.trim() && !activeGroup) {
-      return [] // show nothing until group or search selected
+    } else if (!searchFocused && !activeGroup) {
+      return [] // show nothing until search focused or group selected
     }
     return items
   })()
@@ -114,6 +115,8 @@ export default function NewReceiptPage() {
           <input
             value={search}
             onChange={e => { setSearch(e.target.value); setActiveGroup(null) }}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
             placeholder={loadingItems ? 'Loading…' : `Search ${allItems.length} items…`}
             disabled={loadingItems}
             className="w-full text-[11px] text-gray-900 placeholder-gray-300 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400"
