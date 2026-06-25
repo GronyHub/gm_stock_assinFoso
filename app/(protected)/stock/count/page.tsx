@@ -35,9 +35,9 @@ function Badge({ n }: { n: number }) {
 
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-900 placeholder-gray-400 outline-none focus:ring-1 focus:ring-blue-400'
 
-// ── Count cards ───────────────────────────────────────────────────────────────
+// ── Count table row ───────────────────────────────────────────────────────────
 
-function CountCard({ item, onSaved }: { item: Item; onSaved: (id: number) => void }) {
+function CountRow({ item, onSaved }: { item: Item; onSaved: (id: number) => void }) {
   const [customQty, setCustomQty] = useState('')
   const [saving, setSaving] = useState(false)
   const soh = Number(item.calculated_soh)
@@ -55,55 +55,57 @@ function CountCard({ item, onSaved }: { item: Item; onSaved: (id: number) => voi
   const overdue = item.days_overdue
   const badgeClass = overdue === null || overdue === 0 ? 'bg-orange-100 text-orange-600'
     : overdue <= 2 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-600'
-  const badgeLabel = overdue === null ? 'Never counted' : overdue === 0 ? 'Not today' : `${overdue}d overdue`
+  const badgeLabel = overdue === null ? 'Never' : overdue === 0 ? 'Today' : `${overdue}d`
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg px-3 py-2 space-y-1.5">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-xs text-gray-900 font-semibold leading-snug">{item.item_name}</p>
-          {item.cf_group && <p className="text-gray-400 text-[10px]">{item.cf_group}</p>}
+    <tr className="border-b border-gray-100 last:border-0">
+      <td className="px-2 py-1.5 min-w-0">
+        <p className="text-[11px] text-gray-900 font-semibold leading-tight truncate max-w-[120px]">{item.item_name}</p>
+        {item.cf_group && <p className="text-[9px] text-gray-400 leading-tight truncate">{item.cf_group}</p>}
+      </td>
+      <td className="px-1 py-1.5 text-center text-[11px] font-bold text-gray-900 whitespace-nowrap">{soh}</td>
+      <td className="px-1 py-1.5">
+        <span className={`text-[9px] font-semibold px-1 py-0.5 rounded-full whitespace-nowrap ${badgeClass}`}>{badgeLabel}</span>
+      </td>
+      <td className="px-1 py-1.5">
+        <div className="flex items-center gap-1">
+          <button onClick={() => submit(soh)} disabled={saving}
+            className="bg-green-700 hover:bg-green-600 disabled:opacity-40 text-white text-[10px] font-semibold rounded px-1.5 py-1 whitespace-nowrap transition">
+            {saving ? '…' : `=${soh}`}
+          </button>
+          <input type="number" min="0" step="any" value={customQty} onChange={e => setCustomQty(e.target.value)}
+            placeholder="qty" inputMode="decimal"
+            className="w-12 bg-gray-100 border border-gray-200 rounded px-1 py-1 text-[11px] text-center outline-none focus:ring-1 focus:ring-blue-400" />
+          <button onClick={() => { if (customQty !== '') submit(Number(customQty)) }}
+            disabled={customQty === '' || saving}
+            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-30 text-white text-[10px] font-semibold rounded px-1.5 py-1 transition">
+            Save
+          </button>
         </div>
-        <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${badgeClass}`}>{badgeLabel}</span>
-      </div>
-      <p className="text-[10px] text-gray-500">SOH: <span className="text-gray-900 font-bold text-xs">{soh}</span></p>
-      <div className="flex items-center gap-1.5">
-        <button onClick={() => submit(soh)} disabled={saving}
-          className="flex-1 bg-green-700 hover:bg-green-600 disabled:opacity-40 text-white text-[11px] font-semibold rounded-lg py-1.5 transition">
-          {saving ? 'Saving…' : `Same (${soh})`}
-        </button>
-        <input type="number" min="0" step="any" value={customQty} onChange={e => setCustomQty(e.target.value)}
-          placeholder="New qty" inputMode="decimal"
-          className="w-20 bg-gray-100 border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-gray-900 placeholder-gray-400 outline-none focus:ring-1 focus:ring-blue-400 text-center" />
-        <button onClick={() => { if (customQty !== '') submit(Number(customQty)) }}
-          disabled={customQty === '' || saving}
-          className="bg-blue-600 hover:bg-blue-500 disabled:opacity-30 text-white text-[11px] font-semibold rounded-lg px-3 py-1.5 transition">
-          Save
-        </button>
-      </div>
-    </div>
+      </td>
+    </tr>
   )
 }
 
 // ── Flag fix row wrappers ─────────────────────────────────────────────────────
 
-function FixRow({ label, sub, onFixed, children }: {
-  label: string; sub?: string; onFixed?: () => void; children: React.ReactNode
+function FixRow({ label, sub, children }: {
+  label: string; sub?: string; children: React.ReactNode
 }) {
   const [open, setOpen] = useState(false)
   return (
-    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+    <div>
       <div className="flex items-center justify-between px-3 py-1.5 gap-2">
-        <div className="min-w-0">
-          <p className="text-xs text-gray-900 font-semibold truncate">{label}</p>
-          {sub && <p className="text-[10px] text-gray-400">{sub}</p>}
+        <div className="min-w-0 flex-1">
+          <span className="text-[11px] text-gray-900 font-semibold">{label}</span>
+          {sub && <span className="ml-2 text-[10px] text-gray-400">{sub}</span>}
         </div>
         <button onClick={() => setOpen(o => !o)}
-          className="shrink-0 text-[10px] font-semibold px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition">
+          className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition">
           {open ? 'Close' : 'Fix'}
         </button>
       </div>
-      {open && <div className="px-3 pb-2 pt-1 border-t border-gray-100 space-y-1.5">{children}</div>}
+      {open && <div className="px-3 pb-2 border-t border-gray-50 space-y-1.5 pt-1.5">{children}</div>}
     </div>
   )
 }
@@ -300,36 +302,29 @@ function CostPriceFix({ r, onFixed }: { r: any; onFixed: (itemId: number) => voi
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-      {/* Clickable header row */}
+    <div>
       <button onClick={() => setExpanded(e => !e)}
-        className="w-full text-left px-3 py-2.5 hover:bg-gray-50 transition">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-gray-900 truncate">{r.item_name}</p>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {fmtDate(r.receipt_date)} · {r.receipt_number}
-            </p>
-            <p className="text-xs text-red-500 mt-0.5">
-              Sold ₵{Number(r.selling_price).toFixed(2)} · Cost ₵{Number(r.cost_price).toFixed(2)}
-            </p>
+        className="w-full text-left px-3 py-1.5 hover:bg-gray-50 transition">
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <span className="text-[11px] font-semibold text-gray-900 truncate block">{r.item_name}</span>
+            <span className="text-[9px] text-gray-400">{fmtDate(r.receipt_date)} · </span>
+            <span className="text-[9px] text-red-500">₵{Number(r.selling_price).toFixed(2)} sell · ₵{Number(r.cost_price).toFixed(2)} cost</span>
           </div>
-          <span className="shrink-0 text-xs text-blue-600 font-semibold mt-0.5">{expanded ? '▲' : '▼'}</span>
+          <span className="shrink-0 text-[10px] text-blue-600 font-semibold">{expanded ? '▲' : '▼'}</span>
         </div>
       </button>
-
       {expanded && (
-        <div className="px-3 pb-3 space-y-2 border-t border-gray-100">
-          {/* Link to the sales receipt */}
+        <div className="px-3 pb-2 border-t border-gray-50 space-y-1.5 pt-1.5">
           <a href={`/sales?receipt=${r.receipt_id}`} target="_blank" rel="noreferrer"
-            className="flex items-center gap-1.5 text-xs text-blue-600 font-semibold py-1.5 hover:underline">
+            className="text-[10px] text-blue-600 font-semibold hover:underline">
             Open receipt {r.receipt_number} →
           </a>
           <input type="number" min="0" step="0.01" inputMode="decimal"
             placeholder={`New cost price (currently ₵${Number(r.cost_price).toFixed(2)})`}
             value={cost} onChange={e => setCost(e.target.value)} className={inputCls} />
           <button onClick={save} disabled={!cost || saving}
-            className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2.5 transition">
+            className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white text-xs font-semibold rounded-lg py-1.5 transition">
             {saving ? 'Saving…' : 'Update Cost Price'}
           </button>
         </div>
@@ -341,13 +336,13 @@ function CostPriceFix({ r, onFixed }: { r: any; onFixed: (itemId: number) => voi
 // Not in Inv. — redirect to Inv. Todo tab
 function NotInInvRow({ r, onSwitchTab }: { r: any; onSwitchTab: () => void }) {
   return (
-    <div className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-3 py-2.5 gap-2">
-      <div className="min-w-0">
-        <p className="text-sm text-gray-900 font-medium truncate">{r.item_name}</p>
-        <p className="text-xs text-gray-400 mt-0.5">{r.source}</p>
+    <div className="flex items-center justify-between px-3 py-1.5 gap-2">
+      <div className="min-w-0 flex-1">
+        <span className="text-[11px] text-gray-900 font-semibold truncate block">{r.item_name}</span>
+        <span className="text-[9px] text-gray-400">{r.source}</span>
       </div>
       <button onClick={onSwitchTab}
-        className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition">
+        className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition">
         Resolve →
       </button>
     </div>
@@ -562,117 +557,131 @@ export default function StockCountPage() {
     if (flagsLoading || !flags) return <div className="py-10 text-center text-gray-400">Loading…</div>
 
     if (tab === 'No Cash') return (
-      <div className="space-y-2">
-        <p className="text-xs text-gray-400">{flags.noCash.length} walk-in receipt{flags.noCash.length !== 1 ? 's' : ''} missing cash counted</p>
+      <div>
+        <p className="text-[10px] text-gray-400 px-1 mb-1">{flags.noCash.length} walk-in receipt{flags.noCash.length !== 1 ? 's' : ''} missing cash counted</p>
         {flags.noCash.length === 0
           ? <p className="py-4 text-center text-gray-400 text-xs">All walk-in receipts have cash counted recorded.</p>
-          : flags.noCash.map((r: any) => (
-            <NoCashFix key={r.id} r={r} onFixed={id =>
-              setFlags(f => f ? { ...f, noCash: f.noCash.filter((x: any) => x.id !== id) } : f)
-            } />
-          ))
+          : <div className="bg-white border border-gray-200 rounded-lg overflow-hidden divide-y divide-gray-100">
+              {flags.noCash.map((r: any) => (
+                <NoCashFix key={r.id} r={r} onFixed={id =>
+                  setFlags(f => f ? { ...f, noCash: f.noCash.filter((x: any) => x.id !== id) } : f)
+                } />
+              ))}
+            </div>
         }
       </div>
     )
 
     if (tab === 'Missing Days') return (
-      <div className="space-y-2">
-        <p className="text-xs text-gray-400">{flags.missingDays.length} day{flags.missingDays.length !== 1 ? 's' : ''} with no sales receipts (excluding Sundays)</p>
+      <div>
+        <p className="text-[10px] text-gray-400 px-1 mb-1">{flags.missingDays.length} day{flags.missingDays.length !== 1 ? 's' : ''} with no sales receipts (excluding Sundays)</p>
         {flags.missingDays.length === 0
           ? <p className="py-4 text-center text-gray-400 text-xs">No missing days found.</p>
-          : flags.missingDays.map((r: any) => (
-            <MissingDayFix key={r.missing_date} date={r.missing_date} onFixed={d =>
-              setFlags(f => f ? { ...f, missingDays: f.missingDays.filter((x: any) => x.missing_date !== d) } : f)
-            } />
-          ))
+          : <div className="bg-white border border-gray-200 rounded-lg overflow-hidden divide-y divide-gray-100">
+              {flags.missingDays.map((r: any) => (
+                <MissingDayFix key={r.missing_date} date={r.missing_date} onFixed={d =>
+                  setFlags(f => f ? { ...f, missingDays: f.missingDays.filter((x: any) => x.missing_date !== d) } : f)
+                } />
+              ))}
+            </div>
         }
       </div>
     )
 
     if (tab === 'No Times') return (
-      <div className="space-y-2">
-        <p className="text-xs text-gray-400">{flags.noStaffTimes.length} day{flags.noStaffTimes.length !== 1 ? 's' : ''} with no staff times recorded (excluding Sundays)</p>
+      <div>
+        <p className="text-[10px] text-gray-400 px-1 mb-1">{flags.noStaffTimes.length} day{flags.noStaffTimes.length !== 1 ? 's' : ''} with no staff times recorded (excluding Sundays)</p>
         {flags.noStaffTimes.length === 0
           ? <p className="py-4 text-center text-gray-400 text-xs">All working days have staff times recorded.</p>
-          : flags.noStaffTimes.map((r: any) => (
-            <NoTimesFix key={r.missing_date} date={r.missing_date} onFixed={d =>
-              setFlags(f => f ? { ...f, noStaffTimes: f.noStaffTimes.filter((x: any) => x.missing_date !== d) } : f)
-            } />
-          ))
+          : <div className="bg-white border border-gray-200 rounded-lg overflow-hidden divide-y divide-gray-100">
+              {flags.noStaffTimes.map((r: any) => (
+                <NoTimesFix key={r.missing_date} date={r.missing_date} onFixed={d =>
+                  setFlags(f => f ? { ...f, noStaffTimes: f.noStaffTimes.filter((x: any) => x.missing_date !== d) } : f)
+                } />
+              ))}
+            </div>
         }
       </div>
     )
 
     if (tab === 'Duplicates') return (
-      <div className="space-y-2">
-        <p className="text-xs text-gray-400">{activeDups.length} possible duplicate pair{activeDups.length !== 1 ? 's' : ''} (similarity &gt; 65%)</p>
+      <div>
+        <p className="text-[10px] text-gray-400 px-1 mb-1">{activeDups.length} possible duplicate pair{activeDups.length !== 1 ? 's' : ''} (similarity &gt; 65%)</p>
         {activeDups.length === 0
           ? <p className="py-4 text-center text-gray-400 text-xs">No duplicate or similar item names found.</p>
-          : activeDups.map((r: any) => (
-            <DuplicateFix key={`${r.id1}-${r.id2}`} r={r} onFixed={(id1, id2) => dismissDuplicate(id1, id2)} />
-          ))
+          : <div className="bg-white border border-gray-200 rounded-lg overflow-hidden divide-y divide-gray-100">
+              {activeDups.map((r: any) => (
+                <DuplicateFix key={`${r.id1}-${r.id2}`} r={r} onFixed={(id1, id2) => dismissDuplicate(id1, id2)} />
+              ))}
+            </div>
         }
       </div>
     )
 
     if (tab === 'Cost≥Price') return (
-      <div className="space-y-2">
-        <p className="text-xs text-gray-400">{flags.costGteSell.length} line{flags.costGteSell.length !== 1 ? 's' : ''} where cost price ≥ selling price</p>
+      <div>
+        <p className="text-[10px] text-gray-400 px-1 mb-1">{flags.costGteSell.length} line{flags.costGteSell.length !== 1 ? 's' : ''} where cost price ≥ selling price</p>
         {flags.costGteSell.length === 0
           ? <p className="py-4 text-center text-gray-400 text-xs">No items sold at or below cost price.</p>
-          : flags.costGteSell.map((r: any, i: number) => (
-            <CostPriceFix key={`${r.item_id}-${i}`} r={r} onFixed={itemId =>
-              setFlags(f => f ? { ...f, costGteSell: f.costGteSell.filter((x: any) => x.item_id !== itemId) } : f)
-            } />
-          ))
+          : <div className="bg-white border border-gray-200 rounded-lg overflow-hidden divide-y divide-gray-100">
+              {flags.costGteSell.map((r: any, i: number) => (
+                <CostPriceFix key={`${r.item_id}-${i}`} r={r} onFixed={itemId =>
+                  setFlags(f => f ? { ...f, costGteSell: f.costGteSell.filter((x: any) => x.item_id !== itemId) } : f)
+                } />
+              ))}
+            </div>
         }
       </div>
     )
 
     if (tab === 'Not in Inv.') return (
-      <div className="space-y-2">
-        <p className="text-xs text-gray-400">{flags.notInInventory.length} item name{flags.notInInventory.length !== 1 ? 's' : ''} not found in inventory — use Resolve to match them</p>
+      <div>
+        <p className="text-[10px] text-gray-400 px-1 mb-1">{flags.notInInventory.length} item name{flags.notInInventory.length !== 1 ? 's' : ''} not found in inventory</p>
         {flags.notInInventory.length === 0
           ? <p className="py-4 text-center text-gray-400 text-xs">All items in receipts and counts are in inventory.</p>
-          : flags.notInInventory.map((r: any, i: number) => (
-            <NotInInvRow key={i} r={r} onSwitchTab={() => setTab('Inv. Todo')} />
-          ))
+          : <div className="bg-white border border-gray-200 rounded-lg overflow-hidden divide-y divide-gray-100">
+              {flags.notInInventory.map((r: any, i: number) => (
+                <NotInInvRow key={i} r={r} onSwitchTab={() => setTab('Inv. Todo')} />
+              ))}
+            </div>
         }
       </div>
     )
 
     if (tab === 'No Group') return (
-      <div className="space-y-2">
-        <p className="text-xs text-gray-400">{flags.noGroup.length} item{flags.noGroup.length !== 1 ? 's' : ''} with no group assigned</p>
+      <div>
+        <p className="text-[10px] text-gray-400 px-1 mb-1">{flags.noGroup.length} item{flags.noGroup.length !== 1 ? 's' : ''} with no group assigned</p>
         {flags.noGroup.length === 0
           ? <p className="py-4 text-center text-gray-400 text-xs">All items have a group assigned.</p>
-          : flags.noGroup.map((r: any) => (
-            <NoGroupFix key={r.id} r={r} groupNames={flags.groupNames ?? []} onFixed={id =>
-              setFlags(f => f ? { ...f, noGroup: f.noGroup.filter((x: any) => x.id !== id) } : f)
-            } />
-          ))
+          : <div className="bg-white border border-gray-200 rounded-lg overflow-hidden divide-y divide-gray-100">
+              {flags.noGroup.map((r: any) => (
+                <NoGroupFix key={r.id} r={r} groupNames={flags.groupNames ?? []} onFixed={id =>
+                  setFlags(f => f ? { ...f, noGroup: f.noGroup.filter((x: any) => x.id !== id) } : f)
+                } />
+              ))}
+            </div>
         }
       </div>
     )
 
     if (tab === 'CAB Weekly') return (
-      <div className="space-y-2">
-        <p className="text-xs text-gray-400">{flags.uncheckedCab.length} week{flags.uncheckedCab.length !== 1 ? 's' : ''} with no Cash at Bank confirmation recorded</p>
+      <div>
+        <p className="text-[10px] text-gray-400 px-1 mb-1">{flags.uncheckedCab.length} week{flags.uncheckedCab.length !== 1 ? 's' : ''} with no Cash at Bank confirmation</p>
         {flags.uncheckedCab.length === 0
           ? <p className="py-4 text-center text-gray-400 text-xs">All weeks have a cash-at-bank confirmation.</p>
-          : flags.uncheckedCab.map((r: any) => (
-            <div key={r.week_start}
-              className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-3 py-2.5 gap-2">
-              <div>
-                <p className="text-sm font-medium text-gray-900">{fmtDate(r.week_start)} – {fmtDate(r.week_end)}</p>
-                <p className="text-xs text-gray-400 mt-0.5">No cab_total recorded this week</p>
-              </div>
-              <a href="/cash-at-bank"
-                className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition">
-                Go to CAB →
-              </a>
+          : <div className="bg-white border border-gray-200 rounded-lg overflow-hidden divide-y divide-gray-100">
+              {flags.uncheckedCab.map((r: any) => (
+                <div key={r.week_start} className="flex items-center justify-between px-3 py-1.5 gap-2">
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[11px] font-semibold text-gray-900">{fmtDate(r.week_start)} – {fmtDate(r.week_end)}</span>
+                  </div>
+                  <a href="/cash-at-bank"
+                    className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition">
+                    Go to CAB →
+                  </a>
+                </div>
+              ))}
             </div>
-          ))
         }
       </div>
     )
@@ -684,39 +693,41 @@ export default function StockCountPage() {
     if (nameResLoading || !nameRes) return <div className="py-10 text-center text-gray-400">Loading…</div>
 
     if (tab === 'Inv. Todo') return (
-      <div className="space-y-2">
-        <p className="text-xs text-gray-400">{nameRes.unmatched.length} receipt line name{nameRes.unmatched.length !== 1 ? 's' : ''} not matched — search and select the correct inventory item</p>
+      <div>
+        <p className="text-[10px] text-gray-400 px-1 mb-1">{nameRes.unmatched.length} receipt line name{nameRes.unmatched.length !== 1 ? 's' : ''} not matched</p>
         {nameRes.unmatched.length === 0
           ? <p className="py-4 text-center text-gray-400 text-xs">All names matched.</p>
-          : nameRes.unmatched.map(u => (
-            <NameResolveRow key={u.name} name={u.name} count={u.line_count}
-              items={nameRes.items} onResolved={handleResolved} />
-          ))
+          : <div className="space-y-1.5">
+              {nameRes.unmatched.map(u => (
+                <NameResolveRow key={u.name} name={u.name} count={u.line_count}
+                  items={nameRes.items} onResolved={handleResolved} />
+              ))}
+            </div>
         }
       </div>
     )
 
     if (tab === 'Inv. Done') return (
-      <div className="space-y-2">
-        <p className="text-xs text-gray-400">{nameRes.matched.length} receipt line name{nameRes.matched.length !== 1 ? 's' : ''} matched to inventory</p>
+      <div>
+        <p className="text-[10px] text-gray-400 px-1 mb-1">{nameRes.matched.length} receipt line name{nameRes.matched.length !== 1 ? 's' : ''} matched to inventory</p>
         {nameRes.matched.length === 0
           ? <p className="py-4 text-center text-gray-400 text-xs">No matched names yet.</p>
           : (
-            <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className="bg-white border border-gray-200 rounded-lg overflow-x-auto">
+              <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Receipt Name</th>
-                    <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Matched To</th>
-                    <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Lines</th>
+                    <th className="text-left px-3 py-1.5 text-[10px] font-semibold text-gray-500">Receipt Name</th>
+                    <th className="text-left px-3 py-1.5 text-[10px] font-semibold text-gray-500">Matched To</th>
+                    <th className="text-left px-3 py-1.5 text-[10px] font-semibold text-gray-500">Lines</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {nameRes.matched.map((r, i) => (
                     <tr key={i} className="hover:bg-gray-50">
-                      <td className="px-3 py-2 text-gray-800">{r.name}</td>
-                      <td className="px-3 py-2 text-blue-700 font-medium">{r.canonical_name}</td>
-                      <td className="px-3 py-2 text-gray-500">{r.line_count}</td>
+                      <td className="px-3 py-1.5 text-[11px] text-gray-800">{r.name}</td>
+                      <td className="px-3 py-1.5 text-[11px] text-blue-700 font-medium">{r.canonical_name}</td>
+                      <td className="px-3 py-1.5 text-[11px] text-gray-500">{r.line_count}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -778,10 +789,22 @@ export default function StockCountPage() {
             {tab === 'Daily' ? 'All daily items counted!' : 'All items up to date!'}
           </p>
         ) : (
-          <div className="space-y-1.5">
-            {countItems.map(item => (
-              <CountCard key={item.item_id} item={item} onSaved={tab === 'Daily' ? removeDaily : removeOverdue} />
-            ))}
+          <div className="bg-white border border-gray-200 rounded-lg overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-2 py-1.5 text-[10px] font-semibold text-gray-500">Item</th>
+                  <th className="text-center px-1 py-1.5 text-[10px] font-semibold text-gray-500">SOH</th>
+                  <th className="px-1 py-1.5 text-[10px] font-semibold text-gray-500">Status</th>
+                  <th className="px-1 py-1.5 text-[10px] font-semibold text-gray-500">Count</th>
+                </tr>
+              </thead>
+              <tbody>
+                {countItems.map(item => (
+                  <CountRow key={item.item_id} item={item} onSaved={tab === 'Daily' ? removeDaily : removeOverdue} />
+                ))}
+              </tbody>
+            </table>
           </div>
         )
       ) : isNameResTab ? renderNameRes() : renderFlags()}
