@@ -26,7 +26,7 @@ export default function Nav({ user }: { user: NavUser }) {
   const links = allLinks.filter(l => l.roles.includes(user.role || ''))
 
   return (
-    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <nav className="hidden md:block bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-5xl mx-auto px-4 flex items-center justify-between h-14">
         <Link href="/stock/count" className="font-bold text-gray-900 text-lg tracking-tight">Grony</Link>
 

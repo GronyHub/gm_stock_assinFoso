@@ -102,7 +102,7 @@ export default function NewReceiptPage() {
 
   return (
     // Full-height two-column split
-    <div className="flex gap-0 -mx-4 -mt-4" style={{ height: 'calc(100dvh - 56px - 60px)' }}>
+    <div className="flex gap-0 -mx-4 -mt-4 h-[calc(100dvh-60px)] md:h-[calc(100dvh-56px)]">
 
       {/* ── LEFT: Item Catalogue ────────────────────────────── */}
       <div className="w-1/2 flex flex-col border-r border-gray-200 bg-white min-h-0">

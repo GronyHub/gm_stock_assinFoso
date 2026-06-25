@@ -170,7 +170,7 @@ export default function InventoryPage() {
   const totalLoss = parseFloat(lossRows.reduce((s, r) => s + (r.loss ?? 0), 0).toFixed(4))
 
   return (
-    <div className="-mx-4 -mt-4 flex flex-col" style={{ height: 'calc(100dvh - 56px - 60px)' }}>
+    <div className="-mx-4 -mt-4 flex flex-col h-[calc(100dvh-60px)] md:h-[calc(100dvh-56px)]">
 
       {/* Top bar */}
       <div className="shrink-0 border-b border-gray-200 bg-white">
