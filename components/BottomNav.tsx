@@ -1,26 +1,30 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { signOut } from 'next-auth/react'
 
 type Props = { role: string }
 
 const allTabs = [
-  { href: '/stock/count',  label: 'Flags',    staffShow: true },
-  { href: '/sales',        label: 'Sales',    staffShow: true },
-  { href: '/bills',        label: 'Bills',    staffShow: true },
-  { href: '/stock/counts', label: 'Counts',   staffShow: true },
-  { href: '/transactions', label: 'DS',    staffShow: true },
-  { href: '/expenses',     label: 'Exp.',  staffShow: true },
-  { href: '/item',         label: 'Items',    staffShow: true },
-  { href: '/staff',        label: 'Staff',    staffShow: true },
-  { href: '/analysis',     label: 'Analysis', staffShow: true },
-  { href: '/cash-at-bank', label: 'CAB',      staffShow: false },
+  { href: '/stock/count',  label: 'Flags',    roles: ['owner','manager','staff'] },
+  { href: '/sales',        label: 'Sales',    roles: ['owner','manager','staff'] },
+  { href: '/bills',        label: 'Bills',    roles: ['owner','manager','staff'] },
+  { href: '/stock/counts', label: 'Counts',   roles: ['owner','manager','staff'] },
+  { href: '/transactions', label: 'DS',       roles: ['owner','manager','staff'] },
+  { href: '/expenses',     label: 'Exp.',     roles: ['owner','manager','staff'] },
+  { href: '/item',         label: 'Items',    roles: ['owner','manager','staff'] },
+  { href: '/staff',        label: 'Staff',    roles: ['owner','manager','staff'] },
+  { href: '/analysis',     label: 'Analysis', roles: ['owner','manager','staff'] },
+  { href: '/rota',         label: 'Rota',     roles: ['owner','manager'] },
+  { href: '/cash-at-bank', label: 'CAB',      roles: ['owner','manager'] },
+  { href: '/logs',         label: 'Logs',     roles: ['owner','manager','staff'] },
+  { href: '/users',        label: 'Users',    roles: ['owner'] },
+  { href: '/profile',      label: 'Profile',  roles: ['owner','manager','staff'] },
 ]
 
 export default function BottomNav({ role }: Props) {
   const pathname = usePathname()
-  const isStaff = role === 'staff'
-  const tabs = allTabs.filter(t => !isStaff || t.staffShow)
+  const tabs = allTabs.filter(t => t.roles.includes(role))
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
 
   return (
@@ -36,6 +40,10 @@ export default function BottomNav({ role }: Props) {
             <span className="text-[9px] font-semibold leading-none whitespace-nowrap">{t.label}</span>
           </Link>
         ))}
+        <button onClick={() => signOut({ callbackUrl: '/login' })}
+          className="flex items-center justify-center px-1.5 py-1.5 rounded-lg shrink-0 transition-all text-red-400">
+          <span className="text-[9px] font-semibold leading-none whitespace-nowrap">Sign out</span>
+        </button>
       </div>
     </div>
   )
