@@ -7,16 +7,18 @@ type CartLine = { item: Item; qty: number; price: number }
 
 export default function NewReceiptPage() {
   const [date, setDate] = useState('')
-  useEffect(() => { setDate(new Date().toISOString().slice(0, 10)) }, [])
-  const [customer, setCustomer] = useState('')
+  const [customer, setCustomer] = useState('Walk-in Customer')
   const [cashCounted, setCashCounted] = useState('')
   const [allItems, setAllItems] = useState<Item[]>([])
   const [loadingItems, setLoadingItems] = useState(true)
   const [search, setSearch] = useState('')
+  const [activeGroup, setActiveGroup] = useState<string | null>(null)
   const [cart, setCart] = useState<CartLine[]>([])
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState('')
   const router = useRouter()
+
+  useEffect(() => { setDate(new Date().toISOString().slice(0, 10)) }, [])
 
   useEffect(() => {
     fetch('/api/items/all')
@@ -25,25 +27,38 @@ export default function NewReceiptPage() {
       .catch(() => setLoadingItems(false))
   }, [])
 
-  const filtered = search.trim()
-    ? allItems.filter(i =>
-        i.name.toLowerCase().includes(search.toLowerCase()) ||
-        (i.group ?? '').toLowerCase().includes(search.toLowerCase())
-      )
-    : allItems
+  // Groups derived from items
+  const groups = ['All', ...Array.from(new Set(allItems.map(i => i.group ?? 'Other'))).sort()]
+
+  // Items shown in catalogue panel
+  const catalogueItems = (() => {
+    let items = allItems
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      items = items.filter(i => i.name.toLowerCase().includes(q) || (i.group ?? '').toLowerCase().includes(q))
+    } else if (activeGroup && activeGroup !== 'All') {
+      items = items.filter(i => (i.group ?? 'Other') === activeGroup)
+    } else if (!search.trim() && !activeGroup) {
+      return [] // show nothing until group or search selected
+    }
+    return items
+  })()
 
   function addToCart(item: Item) {
     setCart(prev => {
-      const existing = prev.findIndex(l => l.item.id === item.id)
-      if (existing >= 0) {
-        return prev.map((l, i) => i === existing ? { ...l, qty: l.qty + 1 } : l)
-      }
+      const idx = prev.findIndex(l => l.item.id === item.id)
+      if (idx >= 0) return prev.map((l, i) => i === idx ? { ...l, qty: l.qty + 1 } : l)
       return [...prev, { item, qty: 1, price: Number(item.selling_price) }]
     })
   }
 
-  function updateCart(idx: number, field: 'qty' | 'price', val: number) {
-    setCart(prev => prev.map((l, i) => i === idx ? { ...l, [field]: val } : l))
+  function updateQty(idx: number, qty: number) {
+    if (qty <= 0) { removeFromCart(idx); return }
+    setCart(prev => prev.map((l, i) => i === idx ? { ...l, qty } : l))
+  }
+
+  function updatePrice(idx: number, price: number) {
+    setCart(prev => prev.map((l, i) => i === idx ? { ...l, price } : l))
   }
 
   function removeFromCart(idx: number) {
@@ -53,8 +68,7 @@ export default function NewReceiptPage() {
   const total = cart.reduce((s, l) => s + l.qty * l.price, 0)
   const change = cashCounted ? Number(cashCounted) - total : null
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  async function handleSubmit() {
     if (!cart.length) return
     setSaving(true)
     const res = await fetch('/api/sales/receipt', {
@@ -62,7 +76,7 @@ export default function NewReceiptPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         date,
-        customerName: customer || 'Walk In Customer',
+        customerName: customer || 'Walk-in Customer',
         cashCounted: cashCounted ? Number(cashCounted) : null,
         lines: cart.map(l => ({
           itemId: l.item.id,
@@ -83,141 +97,145 @@ export default function NewReceiptPage() {
 
   if (done) return (
     <div className="py-20 text-center">
-      <p className="text-green-600 font-bold text-xl">✓ Saved</p>
-      <p className="text-gray-600 mt-1">Receipt {done}</p>
+      <p className="text-green-600 font-bold text-lg">✓ Saved</p>
+      <p className="text-gray-500 text-sm mt-1">{done}</p>
     </div>
   )
 
   return (
-    <div className="py-3 space-y-3 max-w-2xl">
-      <h1 className="text-base font-bold text-gray-900">New Sales Receipt</h1>
+    // Full-height two-column split
+    <div className="flex gap-0 -mx-4 -mt-4" style={{ height: 'calc(100dvh - 56px - 60px)' }}>
 
-      {/* Header fields */}
-      <div className="bg-white border border-gray-200 rounded-xl p-3 space-y-2">
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="text-[10px] text-gray-400 font-semibold uppercase">Date</label>
-            <input type="date" value={date} onChange={e => setDate(e.target.value)}
-              className="w-full mt-0.5 text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-400" />
-          </div>
-          <div>
-            <label className="text-[10px] text-gray-400 font-semibold uppercase">Customer</label>
-            <input value={customer} onChange={e => setCustomer(e.target.value)}
-              placeholder="Walk In Customer"
-              className="w-full mt-0.5 text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-400 placeholder-gray-300" />
-          </div>
-        </div>
-        <div>
-          <label className="text-[10px] text-gray-400 font-semibold uppercase">Cash Counted (₵)</label>
-          <input type="number" step="0.01" inputMode="decimal" value={cashCounted}
-            onChange={e => setCashCounted(e.target.value)} placeholder="0.00"
-            className="w-full mt-0.5 text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-400 placeholder-gray-300" />
-        </div>
-      </div>
-
-      {/* Cart */}
-      {cart.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-600">Cart ({cart.length} item{cart.length !== 1 ? 's' : ''})</span>
-            <span className="text-xs font-bold text-gray-900">₵{total.toFixed(2)}</span>
-          </div>
-          {/* Cart header row */}
-          <div className="grid grid-cols-[1fr_60px_70px_28px] gap-1 px-3 py-1 border-b border-gray-100">
-            <span className="text-[9px] text-gray-400 font-semibold uppercase">Item</span>
-            <span className="text-[9px] text-gray-400 font-semibold uppercase text-center">Qty</span>
-            <span className="text-[9px] text-gray-400 font-semibold uppercase text-center">Price ₵</span>
-            <span />
-          </div>
-          <div className="divide-y divide-gray-100">
-            {cart.map((l, idx) => (
-              <div key={idx} className="grid grid-cols-[1fr_60px_70px_28px] gap-1 items-center px-3 py-1.5">
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-gray-900 truncate">{l.item.name}</p>
-                  <p className="text-[9px] text-gray-400">={`₵${(l.qty * l.price).toFixed(2)}`}</p>
-                </div>
-                <input type="number" min="0.01" step="any" inputMode="decimal"
-                  value={l.qty}
-                  onChange={e => updateCart(idx, 'qty', Number(e.target.value))}
-                  className="w-full text-center text-xs text-gray-900 bg-gray-50 border border-gray-200 rounded px-1 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
-                <input type="number" min="0" step="0.01" inputMode="decimal"
-                  value={l.price}
-                  onChange={e => updateCart(idx, 'price', Number(e.target.value))}
-                  className="w-full text-center text-xs text-gray-900 bg-gray-50 border border-gray-200 rounded px-1 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
-                <button type="button" onClick={() => removeFromCart(idx)}
-                  className="text-gray-300 hover:text-red-400 text-lg font-bold leading-none text-center transition">
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-
-          {/* Totals */}
-          <div className="border-t border-gray-200 px-3 py-2 space-y-1">
-            <div className="flex justify-between text-sm font-bold text-gray-900">
-              <span>Total</span>
-              <span>₵{total.toFixed(2)}</span>
-            </div>
-            {change !== null && (
-              <div className="flex justify-between text-xs">
-                <span className="text-gray-500">Change</span>
-                <span className={`font-semibold ${change >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                  ₵{change.toFixed(2)}
-                </span>
-              </div>
-            )}
-          </div>
-
-          <form onSubmit={handleSubmit} className="px-3 pb-3">
-            <button type="submit" disabled={!cart.length || saving}
-              className="w-full bg-green-600 hover:bg-green-500 active:bg-green-700 disabled:opacity-40 text-white font-semibold rounded-xl py-3 text-sm transition">
-              {saving ? 'Saving…' : 'Save Receipt'}
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* Item picker */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <div className="px-3 py-2 border-b border-gray-100">
+      {/* ── LEFT: Item Catalogue ────────────────────────────── */}
+      <div className="w-1/2 flex flex-col border-r border-gray-200 bg-white min-h-0">
+        {/* Search */}
+        <div className="px-2 py-1.5 border-b border-gray-100">
+          <p className="text-[9px] font-bold text-gray-400 uppercase mb-1">Item Catalogue</p>
           <input
             value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder={loadingItems ? 'Loading items…' : `Search ${allItems.length} items…`}
+            onChange={e => { setSearch(e.target.value); setActiveGroup(null) }}
+            placeholder={loadingItems ? 'Loading…' : `Search ${allItems.length} items…`}
             disabled={loadingItems}
-            className="w-full text-sm text-gray-900 placeholder-gray-400 bg-transparent outline-none"
+            className="w-full text-[11px] text-gray-900 placeholder-gray-300 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400"
           />
         </div>
 
-        {loadingItems ? (
-          <p className="py-8 text-center text-gray-400 text-sm">Loading…</p>
-        ) : filtered.length === 0 ? (
-          <p className="py-6 text-center text-gray-400 text-sm">No items match "{search}"</p>
-        ) : (
-          <div className="max-h-[55vh] overflow-y-auto divide-y divide-gray-100">
-            {filtered.map(item => {
+        {/* Group chips */}
+        <div className="flex flex-wrap gap-1 px-2 py-1.5 border-b border-gray-100 overflow-x-auto">
+          {groups.map(g => (
+            <button key={g} type="button"
+              onClick={() => { setActiveGroup(g === activeGroup ? null : g); setSearch('') }}
+              className={`shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded-full transition
+                ${activeGroup === g ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+              {g}
+            </button>
+          ))}
+        </div>
+
+        {/* Item list */}
+        <div className="flex-1 overflow-y-auto min-h-0">
+          {loadingItems ? (
+            <p className="text-[10px] text-gray-400 text-center py-6">Loading…</p>
+          ) : !activeGroup && !search.trim() ? (
+            <p className="text-[10px] text-gray-400 text-center py-6">Select a group or search</p>
+          ) : catalogueItems.length === 0 ? (
+            <p className="text-[10px] text-gray-400 text-center py-6">No items found</p>
+          ) : (
+            catalogueItems.map(item => {
               const inCart = cart.find(l => l.item.id === item.id)
               return (
-                <button key={item.id} type="button"
-                  onPointerDown={e => { e.preventDefault(); addToCart(item) }}
-                  className="w-full text-left px-3 py-2 hover:bg-blue-50 active:bg-blue-100 transition flex items-center justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-gray-900 leading-tight truncate">{item.name}</p>
-                    <p className="text-[9px] text-gray-400 leading-tight">{item.group ?? ''}{item.group ? ' · ' : ''}SOH: {item.soh}</p>
+                <div key={item.id} className="flex items-center px-2 py-1.5 border-b border-gray-50 gap-1">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-semibold text-gray-900 leading-tight" style={{ wordBreak: 'break-word' }}>{item.name}</p>
+                    <p className="text-[9px] text-blue-600 font-bold">₵{Number(item.selling_price).toFixed(2)}</p>
                   </div>
-                  <div className="shrink-0 flex items-center gap-2">
-                    <span className="text-xs font-bold text-gray-700">₵{Number(item.selling_price).toFixed(2)}</span>
-                    {inCart ? (
-                      <span className="text-[9px] font-bold bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">×{inCart.qty}</span>
-                    ) : (
-                      <span className="text-[9px] font-bold bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full">+</span>
-                    )}
-                  </div>
-                </button>
+                  <button type="button"
+                    onClick={() => addToCart(item)}
+                    className={`shrink-0 w-6 h-6 rounded-full text-white text-sm font-bold flex items-center justify-center transition
+                      ${inCart ? 'bg-green-600' : 'bg-blue-500 hover:bg-blue-600'}`}>
+                    {inCart ? `${inCart.qty}` : '+'}
+                  </button>
+                </div>
               )
-            })}
+            })
+          )}
+        </div>
+      </div>
+
+      {/* ── RIGHT: Receipt ─────────────────────────────────── */}
+      <div className="w-1/2 flex flex-col bg-gray-50 min-h-0">
+
+        {/* Receipt header */}
+        <div className="px-2 py-1.5 bg-white border-b border-gray-200 space-y-1">
+          <p className="text-[9px] font-bold text-gray-400 uppercase">New Sales Receipt</p>
+          <div className="grid grid-cols-2 gap-1">
+            <div>
+              <p className="text-[9px] text-gray-400">Date</p>
+              <input type="date" value={date} onChange={e => setDate(e.target.value)}
+                className="w-full text-[10px] text-gray-900 bg-gray-50 border border-gray-200 rounded px-1 py-0.5 outline-none" />
+            </div>
+            <div>
+              <p className="text-[9px] text-gray-400">Customer</p>
+              <input value={customer} onChange={e => setCustomer(e.target.value)}
+                className="w-full text-[10px] text-gray-900 bg-gray-50 border border-gray-200 rounded px-1 py-0.5 outline-none" />
+            </div>
           </div>
-        )}
+        </div>
+
+        {/* Cart items */}
+        <div className="flex-1 overflow-y-auto min-h-0">
+          {cart.length === 0 ? (
+            <p className="text-[10px] text-gray-400 text-center py-8">Tap + to add items</p>
+          ) : (
+            <>
+              {/* Cart header */}
+              <div className="grid grid-cols-[1fr_32px_44px_14px] gap-0.5 px-2 py-1 bg-gray-100 border-b border-gray-200 sticky top-0">
+                <span className="text-[8px] text-gray-500 font-semibold uppercase">Item</span>
+                <span className="text-[8px] text-gray-500 font-semibold uppercase text-center">Qty</span>
+                <span className="text-[8px] text-gray-500 font-semibold uppercase text-center">Price</span>
+                <span />
+              </div>
+              {cart.map((l, idx) => (
+                <div key={idx} className="grid grid-cols-[1fr_32px_44px_14px] gap-0.5 items-center px-2 py-1 border-b border-gray-100">
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-semibold text-gray-900 leading-tight truncate">{l.item.name}</p>
+                    <p className="text-[8px] text-gray-400">₵{(l.qty * l.price).toFixed(2)}</p>
+                  </div>
+                  <input type="number" min="1" step="any" inputMode="decimal"
+                    value={l.qty}
+                    onChange={e => updateQty(idx, Number(e.target.value))}
+                    className="w-full text-center text-[9px] text-gray-900 bg-white border border-gray-200 rounded px-0.5 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
+                  <input type="number" min="0" step="0.01" inputMode="decimal"
+                    value={l.price}
+                    onChange={e => updatePrice(idx, Number(e.target.value))}
+                    className="w-full text-center text-[9px] text-gray-900 bg-white border border-gray-200 rounded px-0.5 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
+                  <button type="button" onClick={() => removeFromCart(idx)}
+                    className="text-gray-300 hover:text-red-400 text-xs font-bold text-center leading-none transition">×</button>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+
+        {/* Footer: total + cash + save */}
+        <div className="border-t border-gray-200 bg-white px-2 py-1.5 space-y-1">
+          <div className="flex justify-between text-[10px] font-bold text-gray-900">
+            <span>{cart.length} item{cart.length !== 1 ? 's' : ''}</span>
+            <span>₵{total.toFixed(2)}</span>
+          </div>
+          <input type="number" step="0.01" inputMode="decimal" value={cashCounted}
+            onChange={e => setCashCounted(e.target.value)} placeholder="Cash counted (₵)"
+            className="w-full text-[10px] text-gray-900 bg-gray-50 border border-gray-200 rounded px-2 py-0.5 outline-none placeholder-gray-300" />
+          {change !== null && (
+            <p className={`text-[10px] font-bold text-right ${change >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+              Change: ₵{change.toFixed(2)}
+            </p>
+          )}
+          <button type="button" onClick={handleSubmit} disabled={!cart.length || saving}
+            className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white font-bold text-[11px] rounded-lg py-1.5 transition">
+            {saving ? 'Saving…' : `Save Receipt — ₵${total.toFixed(2)}`}
+          </button>
+        </div>
       </div>
     </div>
   )
