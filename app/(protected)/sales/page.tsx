@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { fmtDate } from '@/lib/fmtDate'
@@ -44,7 +44,7 @@ function wnwColor(wnw: string | null) {
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded-xl px-3 py-2.5 text-base text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-400'
 const labelCls = 'text-xs text-gray-400 font-medium mb-1 block'
 
-export default function SalesPage() {
+function SalesPageInner() {
   const searchParams = useSearchParams()
   const autoReceiptId = searchParams.get('receipt')
 
@@ -348,5 +348,13 @@ export default function SalesPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function SalesPage() {
+  return (
+    <Suspense fallback={<div className="py-10 text-center text-gray-400 text-sm">Loading…</div>}>
+      <SalesPageInner />
+    </Suspense>
   )
 }
