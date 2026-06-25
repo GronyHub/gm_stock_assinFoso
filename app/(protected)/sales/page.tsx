@@ -4,6 +4,25 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { fmtDate } from '@/lib/fmtDate'
 
+const MONTHS = ['Ja','Fe','Mr','Ap','My','Ju','Jl','Au','Se','Oc','No','De']
+const DAYS   = ['Su','Mo','Tu','We','Th','Fr','Sa']
+
+function fmtShort(dateStr: string) {
+  const d = new Date(dateStr)
+  const day   = d.getUTCDate()
+  const mo    = MONTHS[d.getUTCMonth()]
+  const yr    = String(d.getUTCFullYear()).slice(-2)
+  const dow   = DAYS[d.getUTCDay()]
+  return `${day} ${mo} ${yr}-${dow}`
+}
+
+function fmtCust(name: string | null) {
+  if (!name) return 'WIC'
+  const u = name.toLowerCase()
+  if (u.includes('walk') || u.includes('wic')) return 'WIC'
+  return 'GMC'
+}
+
 type Receipt = {
   id: number
   receipt_number: string
@@ -170,11 +189,11 @@ function SalesPageInner() {
           <table className="w-full border-collapse text-[10px]">
             <thead className="sticky top-0 bg-gray-100 z-10">
               <tr>
-                <th className="text-left px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">DATE</th>
-                <th className="text-left px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">CUST.</th>
-                <th className="text-right px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">CC</th>
-                <th className="text-right px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">INV.</th>
-                <th className="text-right px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">WNW</th>
+                <th className="text-left px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200 whitespace-nowrap">DATE</th>
+                <th className="text-left px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">CST</th>
+                <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">CC</th>
+                <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">INV</th>
+                <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">WNW</th>
               </tr>
             </thead>
             <tbody>
@@ -183,11 +202,11 @@ function SalesPageInner() {
                   onClick={() => selectReceipt(r)}
                   className={`cursor-pointer border-b border-gray-100 transition
                     ${selected?.id === r.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-                  <td className="px-1.5 py-1 text-gray-700 whitespace-nowrap">{fmtDate(r.receipt_date)}</td>
-                  <td className="px-1.5 py-1 text-gray-700 truncate max-w-[60px]">{r.customer_name ?? 'WIC'}</td>
-                  <td className="px-1.5 py-1 text-right text-gray-700">{fmt(r.cash_counted)}</td>
-                  <td className="px-1.5 py-1 text-right text-gray-900 font-semibold">{fmt(r.invoice_amount)}</td>
-                  <td className={`px-1.5 py-1 text-right font-semibold ${wnwColor(r.wnw)}`}>{fmt(r.wnw)}</td>
+                  <td className="px-0.5 py-0.5 text-gray-700 whitespace-nowrap">{fmtShort(r.receipt_date)}</td>
+                  <td className="px-0.5 py-0.5 text-gray-700">{fmtCust(r.customer_name)}</td>
+                  <td className="px-0.5 py-0.5 text-right text-gray-700">{fmt(r.cash_counted)}</td>
+                  <td className="px-0.5 py-0.5 text-right text-gray-900 font-semibold">{fmt(r.invoice_amount)}</td>
+                  <td className={`px-0.5 py-0.5 text-right font-semibold ${wnwColor(r.wnw)}`}>{fmt(r.wnw)}</td>
                 </tr>
               ))}
             </tbody>
