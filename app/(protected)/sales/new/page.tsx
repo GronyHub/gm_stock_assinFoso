@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
-type Item = { id: number; name: string; group: string | null; soh: number; selling_price: string | number }
+type Item = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number }
 type CartLine = { item: Item; qty: number; price: number }
 
 export default function NewReceiptPage() {
@@ -147,7 +147,11 @@ export default function NewReceiptPage() {
                 <div key={item.id} className="flex items-center px-2 py-1.5 border-b border-gray-50 gap-1">
                   <div className="flex-1 min-w-0">
                     <p className="text-[10px] font-semibold text-gray-900 leading-tight" style={{ wordBreak: 'break-word' }}>{item.name}</p>
-                    <p className="text-[9px] text-blue-600 font-bold">₵{Number(item.selling_price).toFixed(2)}</p>
+                    <p className="text-[9px] leading-tight">
+                      <span className="text-blue-600 font-bold">₵{Number(item.selling_price).toFixed(2)}</span>
+                      <span className="text-gray-400"> · cost ₵{Number(item.cost_price).toFixed(2)}</span>
+                      <span className="text-gray-400"> · {Number(item.soh)} pcs</span>
+                    </p>
                   </div>
                   <button type="button"
                     onClick={() => addToCart(item)}
@@ -189,18 +193,16 @@ export default function NewReceiptPage() {
           ) : (
             <>
               {/* Cart header */}
-              <div className="grid grid-cols-[1fr_32px_44px_14px] gap-0.5 px-2 py-1 bg-gray-100 border-b border-gray-200 sticky top-0">
+              <div className="grid grid-cols-[1fr_28px_38px_38px_14px] gap-0.5 px-2 py-1 bg-gray-100 border-b border-gray-200 sticky top-0">
                 <span className="text-[8px] text-gray-500 font-semibold uppercase">Item</span>
                 <span className="text-[8px] text-gray-500 font-semibold uppercase text-center">Qty</span>
                 <span className="text-[8px] text-gray-500 font-semibold uppercase text-center">Price</span>
+                <span className="text-[8px] text-gray-500 font-semibold uppercase text-center">Total</span>
                 <span />
               </div>
               {cart.map((l, idx) => (
-                <div key={idx} className="grid grid-cols-[1fr_32px_44px_14px] gap-0.5 items-center px-2 py-1 border-b border-gray-100">
-                  <div className="min-w-0">
-                    <p className="text-[9px] font-semibold text-gray-900 leading-tight truncate">{l.item.name}</p>
-                    <p className="text-[8px] text-gray-400">₵{(l.qty * l.price).toFixed(2)}</p>
-                  </div>
+                <div key={idx} className="grid grid-cols-[1fr_28px_38px_38px_14px] gap-0.5 items-center px-2 py-1 border-b border-gray-100">
+                  <p className="text-[9px] font-semibold text-gray-900 leading-tight truncate">{l.item.name}</p>
                   <input type="number" min="1" step="any" inputMode="decimal"
                     value={l.qty}
                     onChange={e => updateQty(idx, Number(e.target.value))}
@@ -209,6 +211,7 @@ export default function NewReceiptPage() {
                     value={l.price}
                     onChange={e => updatePrice(idx, Number(e.target.value))}
                     className="w-full text-center text-[9px] text-gray-900 bg-white border border-gray-200 rounded px-0.5 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
+                  <p className="text-[9px] font-bold text-gray-900 text-center">₵{(l.qty * l.price).toFixed(0)}</p>
                   <button type="button" onClick={() => removeFromCart(idx)}
                     className="text-gray-300 hover:text-red-400 text-xs font-bold text-center leading-none transition">×</button>
                 </div>

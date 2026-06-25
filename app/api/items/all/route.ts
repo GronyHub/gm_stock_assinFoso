@@ -9,7 +9,8 @@ export async function GET() {
     const rows = await sql`
       SELECT i.id, i.canonical_name AS name, i.cf_group AS "group",
              COALESCE(s.calculated_soh, 0) AS soh,
-             COALESCE(i.selling_rate, 0) AS selling_price
+             COALESCE(i.selling_rate, 0) AS selling_price,
+             COALESCE(i.purchase_rate, 0) AS cost_price
       FROM items i
       LEFT JOIN item_stock_summary s ON s.item_id = i.id
       WHERE LOWER(i.status) NOT IN ('inactive','service')
@@ -21,7 +22,8 @@ export async function GET() {
       const rows = await sql`
         SELECT id, canonical_name AS name, cf_group AS "group",
                0 AS soh,
-               COALESCE(selling_rate, 0) AS selling_price
+               COALESCE(selling_rate, 0) AS selling_price,
+               COALESCE(purchase_rate, 0) AS cost_price
         FROM items
         WHERE LOWER(status) NOT IN ('inactive','service')
         ORDER BY canonical_name
