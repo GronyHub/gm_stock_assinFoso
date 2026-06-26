@@ -56,36 +56,51 @@ export async function POST(req: NextRequest) {
 
   const username = sessionUser.username ?? sessionUser.name
   const today = new Date().toISOString().slice(0, 10)
-
-  if (action === 'out') {
-    const [existing] = await sql`
-      SELECT actual_in FROM staff_times WHERE staff_name = ${username} AND work_date = ${today}
-    `
-    if (!existing?.actual_in) {
-      return NextResponse.json({ error: 'You must record Time In first' }, { status: 400 })
-    }
-  }
-
   const enteredBy = session?.user?.name || (session?.user as any)?.username || null
-  if (action === 'in') {
-    await sql`
-      INSERT INTO staff_times (staff_name, work_date, actual_in, entered_by)
-      VALUES (${username}, ${today}, ${time}, ${enteredBy})
-      ON CONFLICT (staff_name, work_date)
-      DO UPDATE SET actual_in = ${time}, entered_by = ${enteredBy}
-    `
-  } else {
-    await sql`
-      INSERT INTO staff_times (staff_name, work_date, actual_out, entered_by)
-      VALUES (${username}, ${today}, ${time}, ${enteredBy})
-      ON CONFLICT (staff_name, work_date)
-      DO UPDATE SET actual_out = ${time}, entered_by = ${enteredBy}
-    `
-  }
 
-  const [updated] = await sql`
-    SELECT actual_in, actual_out FROM staff_times
-    WHERE staff_name = ${username} AND work_date = ${today}
-  `
-  return NextResponse.json(updated)
+  try {
+    if (action === 'out') {
+      const [existing] = await sql`
+        SELECT actual_in FROM staff_times WHERE staff_name = ${username} AND work_date = ${today}
+      `
+      if (!existing?.actual_in) {
+        return NextResponse.json({ error: 'You must record Time In first' }, { status: 400 })
+      }
+    }
+
+    // Avoid relying on a specific ON CONFLICT target constraint existing —
+    // check for an existing row first, then UPDATE or INSERT accordingly.
+    const [existingRow] = await sql`
+      SELECT id FROM staff_times WHERE staff_name = ${username} AND work_date = ${today}
+    `
+
+    if (existingRow) {
+      if (action === 'in') {
+        await sql`UPDATE staff_times SET actual_in = ${time}, entered_by = ${enteredBy} WHERE id = ${existingRow.id}`
+      } else {
+        await sql`UPDATE staff_times SET actual_out = ${time}, entered_by = ${enteredBy} WHERE id = ${existingRow.id}`
+      }
+    } else {
+      if (action === 'in') {
+        await sql`
+          INSERT INTO staff_times (staff_name, work_date, actual_in, entered_by)
+          VALUES (${username}, ${today}, ${time}, ${enteredBy})
+        `
+      } else {
+        await sql`
+          INSERT INTO staff_times (staff_name, work_date, actual_out, entered_by)
+          VALUES (${username}, ${today}, ${time}, ${enteredBy})
+        `
+      }
+    }
+
+    const [updated] = await sql`
+      SELECT actual_in, actual_out FROM staff_times
+      WHERE staff_name = ${username} AND work_date = ${today}
+    `
+    return NextResponse.json(updated)
+  } catch (e) {
+    console.error('staff-times POST error:', e)
+    return NextResponse.json({ error: 'Could not save your time. Please try again.' }, { status: 500 })
+  }
 }
