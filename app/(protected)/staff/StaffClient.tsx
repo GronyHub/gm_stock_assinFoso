@@ -29,7 +29,8 @@ const SHORT_DAY = ['Su','Mo','Tu','We','Th','Fr','Sa']
 function fmtShortDate(raw: string): string {
   const d = new Date(raw.length === 10 ? raw + 'T00:00:00' : raw)
   if (isNaN(d.getTime())) return raw
-  return `${d.getDate()} ${SHORT_MON[d.getMonth()]}-${SHORT_DAY[d.getDay()]}`
+  const yr = String(d.getFullYear()).slice(-2)
+  return `${d.getDate()} ${SHORT_MON[d.getMonth()]} ${yr}-${SHORT_DAY[d.getDay()]}`
 }
 
 const FULL_MON = ['January','February','March','April','May','June','July','August','September','October','November','December']
