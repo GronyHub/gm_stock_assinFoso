@@ -4,6 +4,25 @@ import { fmtDate } from '@/lib/fmtDate'
 
 const STAFF = ['joe', 'bino', 'james', 'rawlings']
 
+function nowAsHHMM() {
+  const d = new Date()
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+function hhmmTo12h(hhmm: string): string {
+  const [hStr, mStr] = hhmm.split(':')
+  let h = parseInt(hStr, 10)
+  const m = mStr
+  const suffix = h >= 12 ? 'pm' : 'am'
+  if (h === 0) h = 12
+  else if (h > 12) h -= 12
+  return `${h}:${m}${suffix}`
+}
+
+function nowAs12h(): string {
+  return hhmmTo12h(nowAsHHMM())
+}
+
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded-xl px-3 py-2.5 text-base text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-400'
 const labelCls = 'text-xs text-gray-400 font-medium mb-1 block'
 
@@ -86,7 +105,8 @@ function TimesTab() {
   const [mine, setMine] = useState<Mine>(null)
   const [recent, setRecent] = useState<RecentRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [timeInput, setTimeInput] = useState('')
+  const [pickingTime, setPickingTime] = useState(false)
+  const [customTime, setCustomTime] = useState(nowAsHHMM())
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
 
@@ -105,17 +125,18 @@ function TimesTab() {
   useEffect(() => { load() }, [])
 
   async function clock(action: 'in' | 'out') {
-    if (!timeInput.trim()) { setErr('Enter a time first'); return }
+    const time = pickingTime ? hhmmTo12h(customTime) : nowAs12h()
     setSaving(true); setErr('')
     const res = await fetch('/api/staff-times/today', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, time: timeInput.trim() }),
+      body: JSON.stringify({ action, time }),
     })
     setSaving(false)
     if (res.ok) {
       const updated = await res.json()
       setMine(updated)
-      setTimeInput('')
+      setPickingTime(false)
+      setCustomTime(nowAsHHMM())
       load()
     } else {
       const d = await res.json().catch(() => ({}))
@@ -142,17 +163,35 @@ function TimesTab() {
             <span className="font-semibold text-orange-600">{mine?.actual_out ?? '—'}</span>
           </div>
         </div>
-        <input value={timeInput} onChange={e => setTimeInput(e.target.value)}
-          placeholder="e.g. 8:30am" className={inputCls} />
+
+        {!pickingTime ? (
+          <button onClick={() => setPickingTime(true)}
+            className="w-full text-center text-xs text-blue-600 font-medium py-1">
+            Not now? Tap to pick a different time →
+          </button>
+        ) : (
+          <div className="space-y-1.5">
+            <label className={labelCls}>Time to record</label>
+            <div className="flex items-center gap-2">
+              <input type="time" value={customTime} onChange={e => setCustomTime(e.target.value)}
+                className={inputCls + ' flex-1'} />
+              <button onClick={() => setPickingTime(false)}
+                className="shrink-0 text-xs text-gray-400 font-medium px-2 py-2.5">
+                Use now
+              </button>
+            </div>
+          </div>
+        )}
+
         {err && <p className="text-xs text-red-500">{err}</p>}
         <div className="flex gap-2">
           <button onClick={() => clock('in')} disabled={saving}
             className="flex-1 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2.5 transition">
-            {saving ? '…' : 'Clock In'}
+            {saving ? '…' : `Clock In${pickingTime ? '' : ' (Now)'}`}
           </button>
           <button onClick={() => clock('out')} disabled={saving}
             className="flex-1 bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2.5 transition">
-            {saving ? '…' : 'Clock Out'}
+            {saving ? '…' : `Clock Out${pickingTime ? '' : ' (Now)'}`}
           </button>
         </div>
       </div>
@@ -519,7 +558,11 @@ function NoTimesFix({ date, onFixed }: { date: string; onFixed: (d: string) => v
     setSaving(true)
     await fetch('/api/staff-times/entry', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ staff_name: staff, work_date: date, actual_in: timeIn, actual_out: timeOut || null }),
+      body: JSON.stringify({
+        staff_name: staff, work_date: date,
+        actual_in: hhmmTo12h(timeIn),
+        actual_out: timeOut ? hhmmTo12h(timeOut) : null,
+      }),
     })
     setSaving(false)
     onFixed(date)
@@ -531,8 +574,14 @@ function NoTimesFix({ date, onFixed }: { date: string; onFixed: (d: string) => v
         {STAFF.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
       </select>
       <div className="grid grid-cols-2 gap-2">
-        <input placeholder="Time In (e.g. 8:30am)" value={timeIn} onChange={e => setTimeIn(e.target.value)} className={inputCls} />
-        <input placeholder="Time Out (optional)" value={timeOut} onChange={e => setTimeOut(e.target.value)} className={inputCls} />
+        <div>
+          <label className={labelCls}>Time In</label>
+          <input type="time" value={timeIn} onChange={e => setTimeIn(e.target.value)} className={inputCls} />
+        </div>
+        <div>
+          <label className={labelCls}>Time Out (optional)</label>
+          <input type="time" value={timeOut} onChange={e => setTimeOut(e.target.value)} className={inputCls} />
+        </div>
       </div>
       <button onClick={save} disabled={!timeIn || saving}
         className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-semibold rounded-lg py-1.5 transition">
