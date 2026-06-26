@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
+import { logActivity } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET() {
@@ -120,6 +121,13 @@ export async function POST(req: NextRequest) {
       SELECT actual_in, actual_out FROM staff_times
       WHERE staff_name = ${username} AND work_date = ${today}
     `
+
+    await logActivity(
+      enteredBy ?? username,
+      action === 'in' ? 'clocked in' : 'clocked out',
+      time
+    )
+
     return NextResponse.json(updated)
   } catch (e) {
     console.error('staff-times POST error:', e)
