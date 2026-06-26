@@ -11,6 +11,7 @@ export async function GET() {
     const rows = await sql`
       SELECT staff_name, work_date::text AS date, actual_in, actual_out
       FROM staff_times
+      WHERE staff_name <> '__shop_open__'
       ORDER BY work_date DESC, staff_name
     `
     // Group by date
