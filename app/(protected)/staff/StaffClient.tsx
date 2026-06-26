@@ -23,6 +23,18 @@ function nowAs12h(): string {
   return hhmmTo12h(nowAsHHMM())
 }
 
+function to12hToHHMM(t: string | null | undefined): string {
+  if (!t) return ''
+  const m = t.trim().match(/^(\d{1,2}):(\d{2})(am|pm)$/i)
+  if (!m) return ''
+  let h = parseInt(m[1], 10)
+  const min = m[2]
+  const suffix = m[3].toLowerCase()
+  if (suffix === 'pm' && h !== 12) h += 12
+  if (suffix === 'am' && h === 12) h = 0
+  return `${String(h).padStart(2, '0')}:${min}`
+}
+
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded-xl px-3 py-2.5 text-base text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-400'
 const labelCls = 'text-xs text-gray-400 font-medium mb-1 block'
 
@@ -100,7 +112,7 @@ function groupByDate(rows: RecentRow[]) {
   return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0]))
 }
 
-function TimesTab() {
+function TimesTab({ username }: { username: string }) {
   const [today, setToday] = useState<TodayRow[]>([])
   const [mine, setMine] = useState<Mine>(null)
   const [recent, setRecent] = useState<RecentRow[]>([])
@@ -109,6 +121,11 @@ function TimesTab() {
   const [customTime, setCustomTime] = useState(nowAsHHMM())
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
+
+  const [editDate, setEditDate] = useState<string | null>(null)
+  const [editIn, setEditIn] = useState('')
+  const [editOut, setEditOut] = useState('')
+  const [savingEdit, setSavingEdit] = useState(false)
 
   function load() {
     fetch('/api/staff-times/today')
@@ -145,6 +162,28 @@ function TimesTab() {
   }
 
   const grouped = groupByDate(recent)
+
+  function openEdit(date: string, map: Record<string, { in: string | null; out: string | null }>) {
+    setEditDate(date)
+    setEditIn(to12hToHHMM(map[username]?.in))
+    setEditOut(to12hToHHMM(map[username]?.out))
+  }
+
+  async function saveEdit() {
+    if (!editDate || !editIn) return
+    setSavingEdit(true)
+    await fetch('/api/staff-times/entry', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        staff_name: username, work_date: editDate,
+        actual_in: hhmmTo12h(editIn),
+        actual_out: editOut ? hhmmTo12h(editOut) : null,
+      }),
+    })
+    setSavingEdit(false)
+    setEditDate(null)
+    load()
+  }
 
   if (loading) return <div className="py-10 text-center text-gray-400">Loading…</div>
 
@@ -238,17 +277,61 @@ function TimesTab() {
             {grouped.map(([date, map]) => (
               <tr key={date} className="hover:bg-gray-50">
                 <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmtDate(date)}</td>
-                {STAFF.map(s => (
-                  <>
-                    <td key={s + 'i'} className="text-center px-1 py-2 text-green-700">{map[s]?.in ?? <span className="text-gray-200">—</span>}</td>
-                    <td key={s + 'o'} className="text-center px-1 py-2 text-orange-600">{map[s]?.out ?? <span className="text-gray-200">—</span>}</td>
-                  </>
-                ))}
+                {STAFF.map(s => {
+                  const isMine = s === username
+                  const cellIn = map[s]?.in ?? <span className="text-gray-200">—</span>
+                  const cellOut = map[s]?.out ?? <span className="text-gray-200">—</span>
+                  if (isMine) {
+                    return (
+                      <td key={s} colSpan={2} className="px-1 py-2">
+                        <button onClick={() => openEdit(date, map)}
+                          className="w-full flex items-center justify-center gap-2 rounded-lg hover:bg-blue-50 py-0.5 transition">
+                          <span className="text-green-700 text-center">{cellIn}</span>
+                          <span className="text-orange-600 text-center">{cellOut}</span>
+                        </button>
+                      </td>
+                    )
+                  }
+                  return (
+                    <>
+                      <td key={s + 'i'} className="text-center px-1 py-2 text-green-700">{cellIn}</td>
+                      <td key={s + 'o'} className="text-center px-1 py-2 text-orange-600">{cellOut}</td>
+                    </>
+                  )
+                })}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* Edit my time modal */}
+      {editDate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => setEditDate(null)}>
+          <div className="bg-white rounded-2xl p-5 w-full max-w-sm space-y-3 shadow-xl" onClick={e => e.stopPropagation()}>
+            <p className="font-bold text-gray-900">Edit my time — {fmtDate(editDate)}</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className={labelCls}>Time In</label>
+                <input type="time" value={editIn} onChange={e => setEditIn(e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Time Out</label>
+                <input type="time" value={editOut} onChange={e => setEditOut(e.target.value)} className={inputCls} />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={saveEdit} disabled={!editIn || savingEdit}
+                className="flex-1 bg-green-600 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2.5">
+                {savingEdit ? 'Saving…' : 'Save'}
+              </button>
+              <button onClick={() => setEditDate(null)} className="px-4 py-2.5 bg-gray-100 text-gray-600 text-sm font-semibold rounded-xl">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Analytics */}
       <p className="text-sm font-semibold text-gray-700">Analytics</p>
@@ -1038,7 +1121,7 @@ function RotaTab() {
 
 // ── MAIN ──────────────────────────────────────────────────────────────────────
 
-export default function StaffClient({ role }: { role: string }) {
+export default function StaffClient({ role, username }: { role: string; username: string }) {
   const [tab, setTab] = useState<Tab>('Times')
 
   return (
@@ -1055,7 +1138,7 @@ export default function StaffClient({ role }: { role: string }) {
         ))}
       </div>
 
-      {tab === 'Times' && <TimesTab />}
+      {tab === 'Times' && <TimesTab username={username} />}
       {tab === 'Payslips' && <PayslipsTab />}
       {tab === 'Violations' && <ViolationsTab role={role} />}
       {tab === 'Role' && <RoleTab role={role} />}
