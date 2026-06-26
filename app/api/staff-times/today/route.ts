@@ -76,21 +76,43 @@ export async function POST(req: NextRequest) {
 
     if (existingRow) {
       if (action === 'in') {
-        await sql`UPDATE staff_times SET actual_in = ${time}, entered_by = ${enteredBy} WHERE id = ${existingRow.id}`
+        try {
+          await sql`UPDATE staff_times SET actual_in = ${time}, entered_by = ${enteredBy} WHERE id = ${existingRow.id}`
+        } catch {
+          await sql`UPDATE staff_times SET actual_in = ${time} WHERE id = ${existingRow.id}`
+        }
       } else {
-        await sql`UPDATE staff_times SET actual_out = ${time}, entered_by = ${enteredBy} WHERE id = ${existingRow.id}`
+        try {
+          await sql`UPDATE staff_times SET actual_out = ${time}, entered_by = ${enteredBy} WHERE id = ${existingRow.id}`
+        } catch {
+          await sql`UPDATE staff_times SET actual_out = ${time} WHERE id = ${existingRow.id}`
+        }
       }
     } else {
       if (action === 'in') {
-        await sql`
-          INSERT INTO staff_times (staff_name, work_date, actual_in, entered_by)
-          VALUES (${username}, ${today}, ${time}, ${enteredBy})
-        `
+        try {
+          await sql`
+            INSERT INTO staff_times (staff_name, work_date, actual_in, entered_by)
+            VALUES (${username}, ${today}, ${time}, ${enteredBy})
+          `
+        } catch {
+          await sql`
+            INSERT INTO staff_times (staff_name, work_date, actual_in)
+            VALUES (${username}, ${today}, ${time})
+          `
+        }
       } else {
-        await sql`
-          INSERT INTO staff_times (staff_name, work_date, actual_out, entered_by)
-          VALUES (${username}, ${today}, ${time}, ${enteredBy})
-        `
+        try {
+          await sql`
+            INSERT INTO staff_times (staff_name, work_date, actual_out, entered_by)
+            VALUES (${username}, ${today}, ${time}, ${enteredBy})
+          `
+        } catch {
+          await sql`
+            INSERT INTO staff_times (staff_name, work_date, actual_out)
+            VALUES (${username}, ${today}, ${time})
+          `
+        }
       }
     }
 
@@ -101,6 +123,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(updated)
   } catch (e) {
     console.error('staff-times POST error:', e)
-    return NextResponse.json({ error: 'Could not save your time. Please try again.' }, { status: 500 })
+    const detail = e instanceof Error ? e.message : String(e)
+    return NextResponse.json({ error: `Could not save your time: ${detail}` }, { status: 500 })
   }
 }
