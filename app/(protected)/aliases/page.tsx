@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
+import Link from 'next/link'
 
 type Unresolved = { name: string; cnt: number; confirmed: boolean }
 type Item = { id: number; canonical_name: string; cf_group: string | null }
@@ -101,7 +102,12 @@ export default function AliasReviewPage() {
       {/* Top bar */}
       <div className="shrink-0 px-2 py-1.5 border-b border-gray-200 bg-white space-y-1">
         <div className="flex items-center justify-between">
-          <p className="text-[10px] font-bold text-gray-700">Alias Review</p>
+          <div className="flex items-center gap-2">
+            <p className="text-[10px] font-bold text-gray-700">Alias Review</p>
+            <Link href="/aliases/wide" className="text-[9px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded hover:bg-blue-100">
+              Wide Table →
+            </Link>
+          </div>
           <div className="flex gap-2 text-[9px]">
             <span className="text-orange-500 font-bold">{pending} pending</span>
             <span className="text-green-600 font-bold">{confirmed} confirmed</span>
