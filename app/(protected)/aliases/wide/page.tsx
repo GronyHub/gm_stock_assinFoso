@@ -20,12 +20,20 @@ export default function AliasEditorPage() {
   // Delete
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
+  // Move alias
+  const [movingAlias, setMovingAlias] = useState<Alias | null>(null)
+  const [moveSearch, setMoveSearch] = useState('')
+  const [moving, setMoving] = useState(false)
+
   useEffect(() => { load() }, [])
 
   async function load() {
     setLoading(true)
     const d = await fetch('/api/aliases/wide').then(r => r.json())
-    setRows(Array.isArray(d) ? d : [])
+    const updated = Array.isArray(d) ? d : []
+    setRows(updated)
+    // keep selected in sync
+    setSelected(prev => prev ? (updated.find((r: Row) => r.item_id === prev.item_id) ?? null) : null)
     setLoading(false)
   }
 
@@ -45,8 +53,17 @@ export default function AliasEditorPage() {
     })
   }, [rows, search, group])
 
+  const moveTargets = useMemo(() => {
+    const q = moveSearch.toLowerCase()
+    if (!q) return rows.filter(r => r.item_id !== selected?.item_id).slice(0, 40)
+    return rows
+      .filter(r => r.item_id !== selected?.item_id &&
+        (r.canonical_name.toLowerCase().includes(q) || (r.cf_group ?? '').toLowerCase().includes(q)))
+      .slice(0, 40)
+  }, [rows, moveSearch, selected])
+
   function selectRow(r: Row) {
-    setSelected(r); setNewAlias(''); setAddError('')
+    setSelected(r); setNewAlias(''); setAddError(''); setMovingAlias(null); setMoveSearch('')
   }
 
   async function addAlias() {
@@ -58,28 +75,29 @@ export default function AliasEditorPage() {
       body: JSON.stringify({ alias_name: newAlias.trim(), item_id: selected.item_id, alias_type: newType }),
     })
     setAdding(false)
-    if (res.ok) {
-      setNewAlias('')
-      // Refresh just this item's aliases by reloading all
-      const d = await fetch('/api/aliases/wide').then(r => r.json())
-      const updated = Array.isArray(d) ? d : []
-      setRows(updated)
-      const refreshed = updated.find((r: Row) => r.item_id === selected.item_id)
-      if (refreshed) setSelected(refreshed)
-    } else {
-      setAddError('Failed to add — alias may already exist')
-    }
+    if (res.ok) { setNewAlias(''); await load() }
+    else setAddError('Failed — alias may already exist for this item')
   }
 
   async function deleteAlias(aliasId: number) {
     setDeletingId(aliasId)
     await fetch(`/api/aliases/${aliasId}`, { method: 'DELETE' })
     setDeletingId(null)
-    const d = await fetch('/api/aliases/wide').then(r => r.json())
-    const updated = Array.isArray(d) ? d : []
-    setRows(updated)
-    const refreshed = updated.find((r: Row) => r.item_id === selected?.item_id)
-    if (refreshed) setSelected(refreshed)
+    await load()
+  }
+
+  async function moveAlias(targetItemId: number) {
+    if (!movingAlias) return
+    setMoving(true)
+    await fetch(`/api/aliases/${movingAlias.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ item_id: targetItemId }),
+    })
+    setMoving(false)
+    setMovingAlias(null)
+    setMoveSearch('')
+    await load()
   }
 
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
@@ -136,7 +154,38 @@ export default function AliasEditorPage() {
         <div className="w-1/2 overflow-y-auto min-h-0 bg-white flex flex-col">
           {!selected ? (
             <p className="text-[10px] text-gray-400 text-center py-10">Select an item to edit its aliases</p>
+          ) : movingAlias ? (
+            /* ── MOVE MODE ── */
+            <div className="flex flex-col h-full">
+              <div className="px-2 py-1.5 bg-orange-50 border-b border-orange-200 shrink-0">
+                <p className="text-[9px] text-orange-500 font-semibold uppercase">Moving alias</p>
+                <p className="text-[10px] font-bold text-gray-900 break-words">{movingAlias.name}</p>
+                <p className="text-[9px] text-gray-400 mt-0.5">Pick the correct canonical item below</p>
+              </div>
+              <div className="px-2 py-1.5 border-b border-gray-100 shrink-0">
+                <input value={moveSearch} onChange={e => setMoveSearch(e.target.value)}
+                  placeholder="Search canonical items…" autoFocus
+                  className="w-full text-[10px] bg-gray-50 border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-orange-400 text-gray-900" />
+              </div>
+              <div className="flex-1 overflow-y-auto min-h-0">
+                {moveTargets.map(r => (
+                  <div key={r.item_id}
+                    onClick={() => !moving && moveAlias(r.item_id)}
+                    className="px-2 py-1.5 border-b border-gray-100 cursor-pointer hover:bg-orange-50 transition">
+                    <p className="text-[10px] font-semibold text-gray-900">{r.canonical_name}</p>
+                    {r.cf_group && <p className="text-[9px] text-gray-400">{r.cf_group}</p>}
+                  </div>
+                ))}
+              </div>
+              <div className="px-2 py-1.5 border-t border-gray-200 shrink-0">
+                <button onClick={() => { setMovingAlias(null); setMoveSearch('') }}
+                  className="w-full text-[10px] font-semibold text-gray-600 bg-gray-100 rounded py-1 hover:bg-gray-200 transition">
+                  Cancel
+                </button>
+              </div>
+            </div>
           ) : (
+            /* ── NORMAL MODE ── */
             <>
               {/* Header */}
               <div className="px-2 py-1.5 bg-gray-50 border-b border-gray-200 shrink-0">
@@ -144,7 +193,7 @@ export default function AliasEditorPage() {
                 <p className="text-[9px] text-gray-400">{selected.cf_group ?? 'No group'} · {selected.aliases.length} alias{selected.aliases.length !== 1 ? 'es' : ''}</p>
               </div>
 
-              {/* Add alias form */}
+              {/* Add alias */}
               <div className="px-2 py-1.5 border-b border-gray-200 shrink-0 space-y-1">
                 <p className="text-[9px] font-semibold text-gray-500 uppercase">Add alias</p>
                 <input value={newAlias} onChange={e => setNewAlias(e.target.value)}
@@ -178,7 +227,7 @@ export default function AliasEditorPage() {
                       <tr>
                         <th className="text-left px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">ALIAS NAME</th>
                         <th className="text-left px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">TYPE</th>
-                        <th className="px-1.5 py-1 border-b border-gray-200" />
+                        <th className="px-1.5 py-1 border-b border-gray-200 text-right font-semibold text-gray-500">ACTIONS</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -186,7 +235,13 @@ export default function AliasEditorPage() {
                         <tr key={a.id} className="border-b border-gray-100 hover:bg-gray-50">
                           <td className="px-1.5 py-0.5 text-gray-900 break-words">{a.name}</td>
                           <td className="px-1.5 py-0.5 text-gray-400 whitespace-nowrap">{a.type}</td>
-                          <td className="px-1.5 py-0.5 text-right">
+                          <td className="px-1.5 py-0.5 text-right whitespace-nowrap">
+                            {/* Move */}
+                            <button onClick={() => { setMovingAlias(a); setMoveSearch('') }}
+                              className="text-[9px] text-orange-500 font-semibold hover:text-orange-600 mr-2 transition">
+                              Move
+                            </button>
+                            {/* Delete */}
                             <button onClick={() => deleteAlias(a.id)}
                               disabled={deletingId === a.id}
                               className="text-gray-300 hover:text-red-500 font-bold text-xs transition disabled:opacity-40">
