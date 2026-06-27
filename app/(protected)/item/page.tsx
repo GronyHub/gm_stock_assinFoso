@@ -1,6 +1,7 @@
 'use client'
-import { useState, useEffect, useRef, Component, type ReactNode } from 'react'
+import { useState, useEffect, useRef, Component, Suspense, type ReactNode } from 'react'
 import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
 
 class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boolean; message: string }> {
@@ -104,8 +105,15 @@ function TabIcon({ icon, label, active, onClick }: { icon: string; label: string
   )
 }
 
-export default function ItemHubPage() {
-  const [outerTab, setOuterTab] = useState<OuterTab>('today')
+const VALID_TABS: OuterTab[] = ['today', 'items', 'sales', 'bills', 'counts', 'expenses', 'cab', 'staff']
+
+function ItemHubPageInner() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const initialTab = searchParams.get('tab') as OuterTab | null
+  const [outerTab, setOuterTab] = useState<OuterTab>(
+    initialTab && VALID_TABS.includes(initialTab) ? initialTab : 'today'
+  )
   const prevTabRef = useRef<OuterTab>('items')
   const [group, setGroup]               = useState<string | null>(null)
   const [productType, setProductType]   = useState<'all' | 'goods' | 'services'>('all')
@@ -150,6 +158,7 @@ export default function ItemHubPage() {
     setAnaOpen(false)
     setAddForm(null)
     if (t !== 'items') setProductType('all')
+    router.replace(t === 'today' ? '/item' : `/item?tab=${t}`, { scroll: false })
   }
 
   const groups = ['All', ...Array.from(new Set(items.map(i => i.cf_group ?? 'Ungrouped'))).sort()]
@@ -361,5 +370,13 @@ export default function ItemHubPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function ItemHubPage() {
+  return (
+    <Suspense fallback={<div className="py-20 text-center text-gray-400 text-xs">Loading…</div>}>
+      <ItemHubPageInner />
+    </Suspense>
   )
 }
