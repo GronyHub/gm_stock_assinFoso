@@ -2,6 +2,21 @@
 import { useState, useEffect, useRef, Component, type ReactNode } from 'react'
 import Link from 'next/link'
 import { signOut } from 'next-auth/react'
+import { usePolling } from '@/lib/usePolling'
+import ItemsTab from './_components/ItemsTab'
+import SalesTab from './_components/SalesTab'
+import BillsTab from './_components/BillsTab'
+import CountsTab from './_components/CountsTab'
+import ExpensesTab from './_components/ExpensesTab'
+import CABTab from './_components/CABTab'
+import dynamic from 'next/dynamic'
+import type { AnaSection } from './_components/AnalyticsPanel'
+
+const TodayContent   = dynamic(() => import('./_components/TodayContent'), { ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div> })
+const NewSaleForm    = dynamic(() => import('../sales/new/page'),    { ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div> })
+const NewBillForm    = dynamic(() => import('../bills/new/page'),    { ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div> })
+const NewExpenseForm = dynamic(() => import('../expenses/new/page'), { ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div> })
+const AnalyticsPanel = dynamic(() => import('./_components/AnalyticsPanel'), { ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div> })
 
 class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boolean }> {
   state = { error: false }
@@ -17,26 +32,12 @@ class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boole
     return this.props.children
   }
 }
-import { usePolling } from '@/lib/usePolling'
-import ItemsTab from './_components/ItemsTab'
-import SalesTab from './_components/SalesTab'
-import BillsTab from './_components/BillsTab'
-import CountsTab from './_components/CountsTab'
-import ExpensesTab from './_components/ExpensesTab'
-import CABTab from './_components/CABTab'
-import dynamic from 'next/dynamic'
-const TodayContent    = dynamic(() => import('./_components/TodayContent'), { ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div> })
-const NewSaleForm     = dynamic(() => import('../sales/new/page'),     { ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div> })
-const NewBillForm     = dynamic(() => import('../bills/new/page'),     { ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div> })
-const NewExpenseForm  = dynamic(() => import('../expenses/new/page'),  { ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div> })
-import type { AnaSection } from './_components/AnalyticsPanel'
-const AnalyticsPanel  = dynamic(() => import('./_components/AnalyticsPanel'), { ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div> })
+
+type OuterTab = 'today' | 'items' | 'sales' | 'bills' | 'counts' | 'expenses' | 'cab'
 
 const ANA_SECTION: Partial<Record<OuterTab, AnaSection>> = {
   items: 'Items', sales: 'Sales', bills: 'Bills', counts: 'Counts', expenses: 'Expenses',
 }
-
-type OuterTab = 'today' | 'items' | 'sales' | 'bills' | 'counts' | 'expenses' | 'cab'
 
 type Item = {
   id: number
