@@ -18,6 +18,7 @@ export default function NewReceiptPage({ onSuccess }: { onSuccess?: () => void }
   const [cart, setCart] = useState<CartLine[]>([])
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState('')
+  const [error, setError] = useState('')
   const router = useRouter()
 
   useEffect(() => { setDate(new Date().toISOString().slice(0, 10)) }, [])
@@ -71,27 +72,35 @@ export default function NewReceiptPage({ onSuccess }: { onSuccess?: () => void }
   async function handleSubmit() {
     if (!cart.length) return
     setSaving(true)
-    const res = await fetch('/api/sales/receipt', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        date,
-        customerName: customer || 'Walk-in Customer',
-        cashCounted: cashCounted ? Number(cashCounted) : null,
-        lines: cart.map(l => ({
-          itemId: l.item.id,
-          itemName: l.item.name,
-          qty: l.qty,
-          price: l.price,
-          total: l.qty * l.price,
-        })),
-      }),
-    })
-    setSaving(false)
-    if (res.ok) {
-      const d = await res.json()
-      setDone(d.receiptNumber)
-      setTimeout(() => onSuccess ? onSuccess() : router.push('/sales'), 1500)
+    setError('')
+    try {
+      const res = await fetch('/api/sales/receipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date,
+          customerName: customer || 'Walk-in Customer',
+          cashCounted: cashCounted ? Number(cashCounted) : null,
+          lines: cart.map(l => ({
+            itemId: l.item.id,
+            itemName: l.item.name,
+            qty: l.qty,
+            price: l.price,
+            total: l.qty * l.price,
+          })),
+        }),
+      })
+      const d = await res.json().catch(() => ({}))
+      setSaving(false)
+      if (res.ok) {
+        setDone(d.receiptNumber)
+        setTimeout(() => onSuccess ? onSuccess() : router.push('/sales'), 1500)
+      } else {
+        setError(d.error || 'Could not save receipt. Please try again.')
+      }
+    } catch (e) {
+      setSaving(false)
+      setError('Network error — could not reach the server. Please try again.')
     }
   }
 
@@ -233,6 +242,9 @@ placeholder={loadingItems ? 'Loading…' : `Search ${allItems.length} items…`}
             <p className={`text-[10px] font-bold text-right ${change >= 0 ? 'text-green-600' : 'text-red-500'}`}>
               Change: ₵{change.toFixed(2)}
             </p>
+          )}
+          {error && (
+            <p className="text-[10px] text-red-500 font-medium text-center">{error}</p>
           )}
           <button type="button" onClick={handleSubmit} disabled={!cart.length || saving}
             className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white font-bold text-[11px] rounded-lg py-1.5 transition">

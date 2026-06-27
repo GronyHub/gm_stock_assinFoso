@@ -13,19 +13,37 @@ export default function NewExpensePage({ onSuccess }: { onSuccess?: () => void }
   const [amount, setAmount] = useState('')
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(false)
+  const [error, setError] = useState('')
   const router = useRouter()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!amount || !description) return
     setSaving(true)
-    const res = await fetch('/api/expenses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date, description, account, amount: Number(amount) }),
-    })
-    setSaving(false)
-    if (res.ok) { setDone(true); setTimeout(() => onSuccess ? onSuccess() : router.push('/dashboard'), 1200) }
+    setError('')
+    try {
+      const res = await fetch('/api/expenses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          expense_date: date,
+          expense_account: account,
+          cf_justify: description,
+          amount: Number(amount),
+        }),
+      })
+      const d = await res.json().catch(() => ({}))
+      setSaving(false)
+      if (res.ok) {
+        setDone(true)
+        setTimeout(() => onSuccess ? onSuccess() : router.push('/dashboard'), 1200)
+      } else {
+        setError(d.error || 'Could not save expense. Please try again.')
+      }
+    } catch {
+      setSaving(false)
+      setError('Network error — could not reach the server. Please try again.')
+    }
   }
 
   if (done) return (
@@ -64,6 +82,7 @@ export default function NewExpensePage({ onSuccess }: { onSuccess?: () => void }
             inputMode="decimal"
             className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-base text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-400" />
         </div>
+        {error && <p className="text-sm text-red-500 font-medium text-center">{error}</p>}
         <button type="submit" disabled={!description || !amount || saving}
           className="w-full bg-purple-600 hover:bg-purple-500 active:bg-purple-700 disabled:opacity-40 text-gray-900 font-semibold rounded-xl py-4 text-base transition">
           {saving ? 'Saving…' : 'Save Expense'}

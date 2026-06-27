@@ -45,24 +45,36 @@ export async function POST(req: NextRequest) {
   const isProp = is_property ?? false
 
   const enteredBy = session.user?.name || (session.user as any)?.username || null
-  const [row] = await sql`
-    INSERT INTO expenses (expense_date, expense_account, cf_justify, vendor_name, amount, total,
-                          cf_expense_type, is_property, source, entry_number, entered_by)
-    VALUES (${expense_date}, ${expense_account}, ${cf_justify ?? null}, ${vendor_name ?? null},
-            ${amount}, ${amount}, ${cf_expense_type ?? null}, ${isProp}, 'app', ${entryNumber}, ${enteredBy})
-    RETURNING id, expense_date::date AS expense_date, expense_account, cf_justify,
-              vendor_name, amount, cf_expense_type, is_property, entered_by
-  `
 
-  if (isProp) {
-    await sql`
-      INSERT INTO expense_properties (expense_id, property_status)
-      VALUES (${row.id}, 'at_shop') ON CONFLICT (expense_id) DO NOTHING
+  try {
+    const [row] = await sql`
+      INSERT INTO expenses (expense_date, expense_account, cf_justify, vendor_name, amount, total,
+                            cf_expense_type, is_property, source, entry_number, entered_by)
+      VALUES (${expense_date}, ${expense_account}, ${cf_justify ?? null}, ${vendor_name ?? null},
+              ${amount}, ${amount}, ${cf_expense_type ?? null}, ${isProp}, 'app', ${entryNumber}, ${enteredBy})
+      RETURNING id, expense_date::date AS expense_date, expense_account, cf_justify,
+                vendor_name, amount, cf_expense_type, is_property, entered_by
     `
+
+    if (isProp) {
+      await sql`
+        INSERT INTO expense_properties (expense_id, property_status)
+        VALUES (${row.id}, 'at_shop') ON CONFLICT (expense_id) DO NOTHING
+      `
+    }
+
+    try {
+      const [existing] = await sql`SELECT 1 FROM cash_at_bank WHERE entry_date = ${expense_date}`
+      if (!existing) await sql`INSERT INTO cash_at_bank (entry_date) VALUES (${expense_date})`
+    } catch (e) {
+      console.error('cash_at_bank ensure-row error (non-fatal):', e)
+    }
+
+    await logActivity(enteredBy ?? 'Unknown', 'added expense', `${expense_account} · ₵${Number(amount).toFixed(2)} on ${expense_date}`)
+    return NextResponse.json({ ...row, property_status: isProp ? 'at_shop' : null })
+  } catch (e) {
+    console.error('expenses POST error:', e)
+    const detail = e instanceof Error ? e.message : String(e)
+    return NextResponse.json({ error: `Could not save expense: ${detail}` }, { status: 500 })
   }
-
-  await sql`INSERT INTO cash_at_bank (entry_date) VALUES (${expense_date}) ON CONFLICT (entry_date) DO NOTHING`
-
-  await logActivity(enteredBy ?? 'Unknown', 'added expense', `${expense_account} · ₵${Number(amount).toFixed(2)} on ${expense_date}`)
-  return NextResponse.json({ ...row, property_status: isProp ? 'at_shop' : null })
 }

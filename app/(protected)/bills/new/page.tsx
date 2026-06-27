@@ -18,6 +18,7 @@ export default function NewBillPage({ onSuccess }: { onSuccess?: () => void } = 
   const [results, setResults] = useState<Item[]>([])
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(false)
+  const [error, setError] = useState('')
   const router = useRouter()
   const debounce = useRef<ReturnType<typeof setTimeout>>(null)
 
@@ -43,14 +44,26 @@ export default function NewBillPage({ onSuccess }: { onSuccess?: () => void } = 
     e.preventDefault()
     if (!lines.length) return
     setSaving(true)
-    const res = await fetch('/api/bills', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date, vendorId: vendorId || null, vendorName: vendorName || null,
-        lines: lines.map(l => ({ itemId: l.item.id, itemName: l.item.name, qty: l.qty, price: l.price, total: l.qty * l.price })) }),
-    })
-    setSaving(false)
-    if (res.ok) { setDone(true); setTimeout(() => onSuccess ? onSuccess() : router.push('/dashboard'), 1200) }
+    setError('')
+    try {
+      const res = await fetch('/api/bills', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date, vendorId: vendorId || null, vendorName: vendorName || null,
+          lines: lines.map(l => ({ itemId: l.item.id, itemName: l.item.name, qty: l.qty, price: l.price, total: l.qty * l.price })) }),
+      })
+      const d = await res.json().catch(() => ({}))
+      setSaving(false)
+      if (res.ok) {
+        setDone(true)
+        setTimeout(() => onSuccess ? onSuccess() : router.push('/dashboard'), 1200)
+      } else {
+        setError(d.error || 'Could not save bill. Please try again.')
+      }
+    } catch {
+      setSaving(false)
+      setError('Network error — could not reach the server. Please try again.')
+    }
   }
 
   if (done) return (
@@ -134,6 +147,7 @@ export default function NewBillPage({ onSuccess }: { onSuccess?: () => void } = 
 
         {lines.length > 0 && <div className="text-right text-gray-900 font-bold text-xl py-1">Total: ₵ {total.toFixed(2)}</div>}
 
+        {error && <p className="text-sm text-red-500 font-medium text-center">{error}</p>}
         <button type="submit" disabled={!lines.length || saving}
           className="w-full bg-orange-600 hover:bg-orange-500 active:bg-orange-700 disabled:opacity-40 text-white font-semibold rounded-xl py-4 text-base transition">
           {saving ? 'Saving…' : 'Save Bill'}

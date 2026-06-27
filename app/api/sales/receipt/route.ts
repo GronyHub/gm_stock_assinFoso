@@ -17,26 +17,39 @@ export async function POST(req: NextRequest) {
 
   const enteredBy = session.user?.name || (session.user as any)?.username || null
   const customer = customerName ?? null
-  const [receipt] = await sql`
-    INSERT INTO sales_receipts (receipt_number, receipt_date, customer_name, total, cash_counted, source, entered_by)
-    VALUES (${receiptNumber}, ${date}, ${customer}, ${total}, ${cashCounted ?? null}, 'app', ${enteredBy})
-    RETURNING id
-  `
 
-  for (const l of (lines ?? [])) {
-    await sql`
-      INSERT INTO sales_receipt_lines
-        (receipt_id, item_id, raw_item_name, resolved_name, quantity, item_price, item_total, unresolved, source)
-      VALUES (${receipt.id}, ${l.itemId}, ${l.itemName}, ${l.itemName}, ${l.qty}, ${l.price}, ${l.total}, false, 'app')
+  try {
+    const [receipt] = await sql`
+      INSERT INTO sales_receipts (receipt_number, receipt_date, customer_name, total, cash_counted, source, entered_by)
+      VALUES (${receiptNumber}, ${date}, ${customer}, ${total}, ${cashCounted ?? null}, 'app', ${enteredBy})
+      RETURNING id
     `
+
+    for (const l of (lines ?? [])) {
+      await sql`
+        INSERT INTO sales_receipt_lines
+          (receipt_id, item_id, raw_item_name, resolved_name, quantity, item_price, item_total, unresolved, source)
+        VALUES (${receipt.id}, ${l.itemId}, ${l.itemName}, ${l.itemName}, ${l.qty}, ${l.price}, ${l.total}, false, 'app')
+      `
+    }
+
+    // Ensure cash_at_bank has a row for this date -- avoid relying on a named
+    // unique constraint existing for ON CONFLICT (see staff_times incident);
+    // check first, then insert only if missing.
+    try {
+      const [existing] = await sql`SELECT 1 FROM cash_at_bank WHERE entry_date = ${date}`
+      if (!existing) {
+        await sql`INSERT INTO cash_at_bank (entry_date) VALUES (${date})`
+      }
+    } catch (e) {
+      console.error('cash_at_bank ensure-row error (non-fatal):', e)
+    }
+
+    await logActivity(enteredBy ?? 'Unknown', 'added sale receipt', `${receiptNumber} · ₵${total.toFixed(2)} on ${date}`)
+    return NextResponse.json({ ok: true, receiptNumber })
+  } catch (e) {
+    console.error('sales receipt POST error:', e)
+    const detail = e instanceof Error ? e.message : String(e)
+    return NextResponse.json({ error: `Could not save receipt: ${detail}` }, { status: 500 })
   }
-
-  // Ensure cash_at_bank has a row for this date
-  await sql`
-    INSERT INTO cash_at_bank (entry_date) VALUES (${date})
-    ON CONFLICT (entry_date) DO NOTHING
-  `
-
-  await logActivity(enteredBy ?? 'Unknown', 'added sale receipt', `${receiptNumber} · ₵${total.toFixed(2)} on ${date}`)
-  return NextResponse.json({ ok: true, receiptNumber })
 }
