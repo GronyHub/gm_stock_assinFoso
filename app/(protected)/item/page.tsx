@@ -3,14 +3,18 @@ import { useState, useEffect, useRef, Component, type ReactNode } from 'react'
 import Link from 'next/link'
 import { signOut } from 'next-auth/react'
 
-class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boolean }> {
-  state = { error: false }
-  static getDerivedStateFromError() { return { error: true } }
+class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boolean; message: string }> {
+  state = { error: false, message: '' }
+  static getDerivedStateFromError(err: any) { return { error: true, message: err?.message || String(err) } }
+  componentDidCatch(err: any, info: any) { console.error('TabErrorBoundary caught:', err, info) }
   render() {
     if (this.state.error) return (
-      <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-400">
+      <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-400 px-4">
         <p className="text-sm">This tab failed to load.</p>
-        <button onClick={() => this.setState({ error: false })}
+        {this.state.message && (
+          <p className="text-xs text-red-500 font-mono break-all text-center max-w-sm">{this.state.message}</p>
+        )}
+        <button onClick={() => this.setState({ error: false, message: '' })}
           className="text-xs text-blue-600 underline">Retry</button>
       </div>
     )
