@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { fmtDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
+import { usePresenceReporter } from '@/lib/usePresenceReporter'
 
 type Item = {
   id: number
@@ -267,6 +268,7 @@ export default function ItemsTab({ items, group, productType, search, violation,
   const [saving, setSaving] = useState(false)
   const [addForm, setAddForm] = useState(EMPTY_FORM)
   const [adding, setAdding] = useState(false)
+  usePresenceReporter(showAdd ? 'adding an item' : editingId != null ? 'editing an item' : null)
   const [flags, setFlags] = useState<any | null>(null)
   const [flagsLoading, setFlagsLoading] = useState(false)
   const [nameRes, setNameRes] = useState<NameRes | null>(null)

@@ -2,6 +2,7 @@ import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import sql from './db'
+import { logActivity } from './logger'
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -38,4 +39,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   pages: { signIn: '/login' },
   session: { strategy: 'jwt' },
+  events: {
+    async signIn({ user }) {
+      const name = (user as any)?.username ?? user?.name ?? 'Unknown'
+      try { await logActivity(name, 'logged in', '') } catch {}
+    },
+    async signOut(message: any) {
+      const name = message?.token?.username ?? message?.token?.name ?? message?.session?.user?.username ?? 'Unknown'
+      try { await logActivity(name, 'logged out', '') } catch {}
+    },
+  },
 })
