@@ -67,6 +67,7 @@ const VIOLATIONS: Record<OuterTab, { key: string; label: string }[]> = {
     { key: 'no_cp',      label: 'No CP' },
     { key: 'no_group',   label: 'No Group' },
     { key: 'duplicates', label: 'Duplicates' },
+    { key: 'aliases',    label: 'Aliases' },
   ],
   sales: [
     { key: 'no_cash',      label: 'No Cash' },
@@ -85,7 +86,6 @@ const VIOLATIONS: Record<OuterTab, { key: string; label: string }[]> = {
 }
 
 const HAMBURGER_LINKS = [
-  { href: '/aliases',  label: 'Aliases'  },
   { href: '/analysis', label: 'Analysis' },
   { href: '/logs',     label: 'Logs'     },
   { href: '/users',    label: 'Users'    },
@@ -127,9 +127,9 @@ function ItemHubPageInner() {
   const [group, setGroup]               = useState<string | null>(null)
   const [productType, setProductType]   = useState<'all' | 'goods' | 'services'>('all')
   const [search, setSearch]             = useState('')
-  const [violation, setViolation]       = useState<string | null>(null)
+  const [violation, setViolation]       = useState<string | null>(searchParams.get('violation'))
+  const [violationOpen, setViolationOpen] = useState(!!searchParams.get('violation'))
   const [groupOpen, setGroupOpen]       = useState(false)
-  const [violationOpen, setViolationOpen] = useState(false)
   const [anaOpen, setAnaOpen]           = useState(false)
   const [hamburgerOpen, setHamburgerOpen] = useState(false)
   const [addForm, setAddForm]             = useState<'item' | 'sale' | 'bill' | 'expense' | null>(null)

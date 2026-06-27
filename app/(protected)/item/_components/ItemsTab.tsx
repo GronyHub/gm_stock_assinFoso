@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { fmtDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
 import { usePresenceReporter } from '@/lib/usePresenceReporter'
+import AliasesTab from './AliasesTab'
 
 type Item = {
   id: number
@@ -442,6 +443,14 @@ export default function ItemsTab({ items, group, productType, search, violation,
               ))}
             </div>
         )}
+      </div>
+    )
+  }
+
+  if (violation === 'aliases') {
+    return (
+      <div className="h-full min-h-0 flex flex-col">
+        <AliasesTab />
       </div>
     )
   }
