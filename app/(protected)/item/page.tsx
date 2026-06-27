@@ -90,7 +90,6 @@ export default function ItemHubPage() {
   const [groupOpen, setGroupOpen]       = useState(false)
   const [violationOpen, setViolationOpen] = useState(false)
   const [hamburgerOpen, setHamburgerOpen] = useState(false)
-  const [addOpen, setAddOpen]             = useState(false)
   const [addForm, setAddForm]             = useState<'sale' | 'bill' | 'expense' | null>(null)
   const groupRef     = useRef<HTMLDivElement>(null)
   const violRef      = useRef<HTMLDivElement>(null)
@@ -122,6 +121,7 @@ export default function ItemHubPage() {
   function changeTab(t: OuterTab) {
     setOuterTab(t)
     setViolation(null)
+    setAddForm(null)
     if (t !== 'items') setProductType('all')
   }
 
@@ -155,15 +155,6 @@ export default function ItemHubPage() {
             <button onClick={() => changeTab('cab')}      className={tabCls(outerTab === 'cab')}>CAB</button>
           </div>
 
-          {/* + toggle — outside overflow-x-auto so it isn't clipped */}
-          <div className="shrink-0 pt-1.5 pb-1">
-            <button onClick={() => setAddOpen(o => !o)}
-              className={`w-8 h-8 flex items-center justify-center rounded-lg transition font-bold text-xl leading-none
-                ${addOpen ? 'bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
-              {addOpen ? '×' : '+'}
-            </button>
-          </div>
-
           {/* Hamburger — outside overflow-x-auto so dropdown isn't clipped */}
           <div className="relative shrink-0 pt-1.5 pb-1" ref={hamburgerRef}>
             <button onClick={() => setHamburgerOpen(o => !o)}
@@ -188,19 +179,6 @@ export default function ItemHubPage() {
             )}
           </div>
         </div>
-
-        {/* Add sub-tab row — shown when + is active */}
-        {addOpen && (
-          <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 border-t border-blue-100">
-            {(['sale', 'bill', 'expense'] as const).map(f => (
-              <button key={f} onClick={() => setAddForm(addForm === f ? null : f)}
-                className={`flex-1 text-center text-xs font-semibold py-1.5 rounded-lg border transition
-                  ${addForm === f ? 'bg-blue-600 text-white border-blue-600' : 'bg-white border-blue-200 text-blue-700 hover:bg-blue-100'}`}>
-                {f === 'sale' ? 'New Sale' : f === 'bill' ? 'New Bill' : 'New Expense'}
-              </button>
-            ))}
-          </div>
-        )}
 
         {/* Row 2: groups + violations + search — hidden on Today tab */}
         {showControls && (
@@ -269,17 +247,29 @@ export default function ItemHubPage() {
 
             {/* Search */}
             <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search items…"
-              className="flex-1 min-w-0 text-xs bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+              placeholder="Search…"
+              className="min-w-0 w-24 flex-1 text-xs bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+
+            {/* New button — Sales, Bills, Expenses only */}
+            {(['sales', 'bills', 'expenses'] as OuterTab[]).includes(outerTab) && (() => {
+              const formKey = outerTab === 'sales' ? 'sale' : outerTab === 'bills' ? 'bill' : 'expense'
+              return (
+                <button onClick={() => setAddForm(addForm === formKey ? null : formKey)}
+                  className={`shrink-0 text-xs font-semibold px-3 py-1 rounded-lg transition
+                    ${addForm ? 'bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
+                  {addForm ? '×' : 'New'}
+                </button>
+              )
+            })()}
           </div>
         )}
       </div>
 
       {/* ── Content ── */}
       <div className="flex-1 min-h-0 overflow-y-auto">
-        {addForm === 'sale'    && <div className="px-4"><NewSaleForm    onSuccess={() => { setAddForm(null); setAddOpen(false); changeTab('sales') }} /></div>}
-        {addForm === 'bill'    && <div className="px-4"><NewBillForm    onSuccess={() => { setAddForm(null); setAddOpen(false); changeTab('bills') }} /></div>}
-        {addForm === 'expense' && <div className="px-4"><NewExpenseForm onSuccess={() => { setAddForm(null); setAddOpen(false); changeTab('expenses') }} /></div>}
+        {addForm === 'sale'    && <div className="px-4"><NewSaleForm    onSuccess={() => { setAddForm(null); changeTab('sales') }} /></div>}
+        {addForm === 'bill'    && <div className="px-4"><NewBillForm    onSuccess={() => { setAddForm(null); changeTab('bills') }} /></div>}
+        {addForm === 'expense' && <div className="px-4"><NewExpenseForm onSuccess={() => { setAddForm(null); changeTab('expenses') }} /></div>}
         {!addForm && outerTab === 'today' && (
           <TabErrorBoundary>
             <div className="h-full overflow-y-auto px-4">
