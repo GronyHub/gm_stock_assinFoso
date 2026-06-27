@@ -91,15 +91,15 @@ const HAMBURGER_LINKS = [
 ]
 
 function tabCls(active: boolean) {
-  return `shrink-0 flex flex-col items-center justify-center gap-0.5 px-2 py-1 rounded-lg transition w-14
+  return `flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 px-0.5 py-2 rounded-lg transition
     ${active ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`
 }
 
 function TabIcon({ icon, label, active, onClick }: { icon: string; label: string; active: boolean; onClick: () => void }) {
   return (
     <button onClick={onClick} className={tabCls(active)}>
-      <span className="text-base leading-none">{icon}</span>
-      <span className="text-[10px] font-semibold leading-none">{label}</span>
+      <span className="text-sm leading-none">{icon}</span>
+      <span className="text-[9px] font-semibold leading-none truncate max-w-full">{label}</span>
     </button>
   )
 }
@@ -174,21 +174,21 @@ export default function ItemHubPage() {
       <div className="shrink-0 bg-white border-b border-gray-200">
 
         {/* Row 1: scrollable tabs + hamburger (hamburger outside scroll area to avoid clip) */}
-        <div className="flex items-center pr-2">
-          <div className="flex items-center gap-1 px-2 pt-1.5 pb-1 overflow-x-auto flex-1 min-w-0">
+        <div className="flex items-center pr-1.5">
+          <div className="flex items-center gap-0.5 px-1 pt-1.5 pb-1 flex-1 min-w-0">
             <TabIcon icon="📦" label="Items"    active={outerTab === 'items'}    onClick={() => changeTab('items')} />
             <TabIcon icon="💰" label="Sales"    active={outerTab === 'sales'}    onClick={() => changeTab('sales')} />
             <TabIcon icon="🧾" label="Bills"    active={outerTab === 'bills'}    onClick={() => changeTab('bills')} />
-            <TabIcon icon="🔢" label="Counts"   active={outerTab === 'counts'}   onClick={() => changeTab('counts')} />
+            <TabIcon icon="🔢" label="CNT"      active={outerTab === 'counts'}   onClick={() => changeTab('counts')} />
             <TabIcon icon="💸" label="Exp."     active={outerTab === 'expenses'} onClick={() => changeTab('expenses')} />
             <TabIcon icon="🏦" label="CAB"      active={outerTab === 'cab'}      onClick={() => changeTab('cab')} />
             <TabIcon icon="👤" label="Staff"    active={outerTab === 'staff'}    onClick={() => changeTab('staff')} />
           </div>
 
-          {/* Hamburger — outside overflow-x-auto so dropdown isn't clipped */}
+          {/* Hamburger — outside the flex tabs row so dropdown isn't clipped */}
           <div className="relative shrink-0 pt-1.5 pb-1" ref={hamburgerRef}>
             <button onClick={() => setHamburgerOpen(o => !o)}
-              className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition font-bold text-lg leading-none">
+              className="w-6 h-6 flex items-center justify-center rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 transition font-bold text-sm leading-none">
               &#9776;
             </button>
             {hamburgerOpen && (
