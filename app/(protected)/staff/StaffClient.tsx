@@ -311,10 +311,23 @@ function TimesTab({ username }: { username: string }) {
           <tbody className="divide-y divide-gray-100">
             {grouped.map(([date, map], i) => {
               const monthKey = date.slice(0, 7)
-              const nextMonthKey = grouped[i + 1]?.[0]?.slice(0, 7)
-              const isMonthEnd = nextMonthKey !== monthKey
+              const prevMonthKey = grouped[i - 1]?.[0]?.slice(0, 7)
+              const isMonthStart = prevMonthKey !== monthKey
               return (
                 <Fragment key={date}>
+                  {isMonthStart && (
+                    <tr className="bg-gray-100 border-t-2 border-b-2 border-gray-300">
+                      <td className="px-1.5 py-2 text-[10px] font-bold text-gray-600 leading-tight">{monthKeyLabel(monthKey)}<br/>Total</td>
+                      {STAFF.map(s => {
+                        const mins = monthMinutesFor(s, monthKey)
+                        return (
+                          <td key={s} className="text-center px-0.5 py-2 text-[10px] font-bold text-gray-700">
+                            {mins ? minsToHrs(mins) : '—'}
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  )}
                   <tr className="hover:bg-gray-50">
                     <td className="px-1.5 py-1.5 text-gray-600 leading-tight">{fmtShortDate(date)}</td>
                     {STAFF.map(s => {
@@ -340,19 +353,6 @@ function TimesTab({ username }: { username: string }) {
                       return <td key={s} className="px-0.5 py-1 text-center">{content}</td>
                     })}
                   </tr>
-                  {isMonthEnd && (
-                    <tr className="bg-gray-100 border-t-2 border-b-2 border-gray-300">
-                      <td className="px-1.5 py-2 text-[10px] font-bold text-gray-600 leading-tight">{monthKeyLabel(monthKey)}<br/>Total</td>
-                      {STAFF.map(s => {
-                        const mins = monthMinutesFor(s, monthKey)
-                        return (
-                          <td key={s} className="text-center px-0.5 py-2 text-[10px] font-bold text-gray-700">
-                            {mins ? minsToHrs(mins) : '—'}
-                          </td>
-                        )
-                      })}
-                    </tr>
-                  )}
                 </Fragment>
               )
             })}
