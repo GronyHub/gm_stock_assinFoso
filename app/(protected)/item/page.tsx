@@ -83,6 +83,7 @@ function tabCls(active: boolean) {
 
 export default function ItemHubPage() {
   const [outerTab, setOuterTab] = useState<OuterTab>('items')
+  const prevTabRef = useRef<OuterTab>('items')
   const [group, setGroup]               = useState<string | null>(null)
   const [productType, setProductType]   = useState<'all' | 'goods' | 'services'>('all')
   const [search, setSearch]             = useState('')
@@ -120,6 +121,7 @@ export default function ItemHubPage() {
   }, [])
 
   function changeTab(t: OuterTab) {
+    if (outerTab !== t) prevTabRef.current = outerTab
     setOuterTab(t)
     setViolation(null)
     setAddForm(null)
@@ -273,7 +275,7 @@ export default function ItemHubPage() {
           const dx = e.changedTouches[0].clientX - swipeRef.current.x
           const dy = e.changedTouches[0].clientY - swipeRef.current.y
           swipeRef.current = null
-          if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) changeTab(outerTab === 'today' ? 'items' : 'today')
+          if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) changeTab(outerTab === 'today' ? prevTabRef.current : 'today')
         }}>
         {addForm === 'sale'    && <div className="px-4"><NewSaleForm    onSuccess={() => { setAddForm(null); changeTab('sales') }} /></div>}
         {addForm === 'bill'    && <div className="px-4"><NewBillForm    onSuccess={() => { setAddForm(null); changeTab('bills') }} /></div>}
