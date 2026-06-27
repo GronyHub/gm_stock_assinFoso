@@ -24,7 +24,11 @@ import BillsTab from './_components/BillsTab'
 import CountsTab from './_components/CountsTab'
 import ExpensesTab from './_components/ExpensesTab'
 import CABTab from './_components/CABTab'
-import TodayContent from './_components/TodayContent'
+import dynamic from 'next/dynamic'
+const TodayContent = dynamic(() => import('./_components/TodayContent'), {
+  ssr: false,
+  loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div>,
+})
 
 type OuterTab = 'today' | 'items' | 'sales' | 'bills' | 'counts' | 'expenses' | 'cab'
 
