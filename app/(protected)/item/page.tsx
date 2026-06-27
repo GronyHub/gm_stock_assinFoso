@@ -9,7 +9,7 @@ import BillsTab from './_components/BillsTab'
 import CountsTab from './_components/CountsTab'
 import ExpensesTab from './_components/ExpensesTab'
 import CABTab from './_components/CABTab'
-import TodayPage from '../today/page'
+import TodayContent from './_components/TodayContent'
 
 type OuterTab = 'today' | 'items' | 'sales' | 'bills' | 'counts' | 'expenses' | 'cab'
 
@@ -239,7 +239,7 @@ export default function ItemHubPage() {
       <div className="flex-1 min-h-0">
         {outerTab === 'today' && (
           <div className="h-full overflow-y-auto px-4">
-            <TodayPage />
+            <TodayContent />
           </div>
         )}
         {outerTab === 'items' && (
