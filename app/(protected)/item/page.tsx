@@ -29,6 +29,11 @@ const TodayContent    = dynamic(() => import('./_components/TodayContent'), { ss
 const NewSaleForm     = dynamic(() => import('../sales/new/page'),     { ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div> })
 const NewBillForm     = dynamic(() => import('../bills/new/page'),     { ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div> })
 const NewExpenseForm  = dynamic(() => import('../expenses/new/page'),  { ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div> })
+import AnalyticsPanel, { type AnaSection } from './_components/AnalyticsPanel'
+
+const ANA_SECTION: Partial<Record<OuterTab, AnaSection>> = {
+  items: 'Items', sales: 'Sales', bills: 'Bills', counts: 'Counts', expenses: 'Expenses',
+}
 
 type OuterTab = 'today' | 'items' | 'sales' | 'bills' | 'counts' | 'expenses' | 'cab'
 
@@ -68,12 +73,11 @@ const VIOLATIONS: Record<OuterTab, { key: string; label: string }[]> = {
 }
 
 const HAMBURGER_LINKS = [
-  { href: '/aliases',  label: 'Aliases'  },
-  { href: '/analysis', label: 'Analysis' },
-  { href: '/staff',    label: 'Staff'    },
-  { href: '/logs',     label: 'Logs'     },
-  { href: '/users',    label: 'Users'    },
-  { href: '/profile',  label: 'Profile'  },
+  { href: '/aliases', label: 'Aliases' },
+  { href: '/staff',   label: 'Staff'   },
+  { href: '/logs',    label: 'Logs'    },
+  { href: '/users',   label: 'Users'   },
+  { href: '/profile', label: 'Profile' },
 ]
 
 function tabCls(active: boolean) {
@@ -92,6 +96,7 @@ export default function ItemHubPage() {
   const [violationOpen, setViolationOpen] = useState(false)
   const [hamburgerOpen, setHamburgerOpen] = useState(false)
   const [addForm, setAddForm]             = useState<'item' | 'sale' | 'bill' | 'expense' | null>(null)
+  const [anaOpen, setAnaOpen]             = useState(false)
   const groupRef     = useRef<HTMLDivElement>(null)
   const hamburgerRef = useRef<HTMLDivElement>(null)
   const swipeRef     = useRef<{ x: number; y: number } | null>(null)
@@ -124,6 +129,7 @@ export default function ItemHubPage() {
     setViolation(null)
     setViolationOpen(false)
     setAddForm(null)
+    setAnaOpen(false)
     if (t !== 'items') setProductType('all')
   }
 
@@ -241,13 +247,22 @@ export default function ItemHubPage() {
             {(['items', 'sales', 'bills', 'expenses'] as OuterTab[]).includes(outerTab) && (() => {
               const formKey = outerTab === 'items' ? 'item' : outerTab === 'sales' ? 'sale' : outerTab === 'bills' ? 'bill' : 'expense'
               return (
-                <button onClick={() => setAddForm(addForm === formKey ? null : formKey)}
+                <button onClick={() => { setAddForm(addForm === formKey ? null : formKey); setAnaOpen(false) }}
                   className={`shrink-0 text-xs font-semibold px-3 py-1 rounded-lg transition
-                    ${addForm ? 'bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
-                  {addForm ? '×' : 'New'}
+                    ${addForm === formKey ? 'bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
+                  {addForm === formKey ? '×' : 'New'}
                 </button>
               )
             })()}
+
+            {/* Ana button — all tabs except Today and CAB */}
+            {ANA_SECTION[outerTab] && (
+              <button onClick={() => { setAnaOpen(o => !o); setAddForm(null); setViolationOpen(false); setViolation(null) }}
+                className={`shrink-0 text-xs font-semibold px-3 py-1 rounded-lg transition
+                  ${anaOpen ? 'bg-purple-700 text-white' : 'bg-purple-100 text-purple-700 hover:bg-purple-200'}`}>
+                {anaOpen ? '×' : 'Ana'}
+              </button>
+            )}
           </div>
         )}
 
@@ -275,17 +290,21 @@ export default function ItemHubPage() {
           swipeRef.current = null
           if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) changeTab(outerTab === 'today' ? prevTabRef.current : 'today')
         }}>
-        {addForm === 'sale'    && outerTab === 'sales'    && <div className="px-4"><NewSaleForm    onSuccess={() => { setAddForm(null); changeTab('sales') }} /></div>}
-        {addForm === 'bill'    && outerTab === 'bills'    && <div className="px-4"><NewBillForm    onSuccess={() => { setAddForm(null); changeTab('bills') }} /></div>}
-        {addForm === 'expense' && outerTab === 'expenses' && <div className="px-4"><NewExpenseForm onSuccess={() => { setAddForm(null); changeTab('expenses') }} /></div>}
-        {outerTab === 'today' && !(addForm === 'sale' || addForm === 'bill' || addForm === 'expense') && (
+        {/* Analytics panel — replaces content when Ana is open */}
+        {anaOpen && ANA_SECTION[outerTab] && <AnalyticsPanel section={ANA_SECTION[outerTab]!} />}
+
+        {/* Normal tab content — hidden when Ana is open */}
+        {!anaOpen && addForm === 'sale'    && outerTab === 'sales'    && <div className="px-4"><NewSaleForm    onSuccess={() => { setAddForm(null); changeTab('sales') }} /></div>}
+        {!anaOpen && addForm === 'bill'    && outerTab === 'bills'    && <div className="px-4"><NewBillForm    onSuccess={() => { setAddForm(null); changeTab('bills') }} /></div>}
+        {!anaOpen && addForm === 'expense' && outerTab === 'expenses' && <div className="px-4"><NewExpenseForm onSuccess={() => { setAddForm(null); changeTab('expenses') }} /></div>}
+        {!anaOpen && outerTab === 'today' && !(addForm === 'sale' || addForm === 'bill' || addForm === 'expense') && (
           <TabErrorBoundary>
             <div className="h-full overflow-y-auto px-4">
               <TodayContent />
             </div>
           </TabErrorBoundary>
         )}
-        {outerTab === 'items' && (
+        {!anaOpen && outerTab === 'items' && (
           itemsLoading
             ? <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
             : <ItemsTab
@@ -299,10 +318,10 @@ export default function ItemHubPage() {
                 onCloseAdd={() => setAddForm(null)}
               />
         )}
-        {addForm !== 'sale'    && outerTab === 'sales'    && <SalesTab items={items} groupFilter={group} search={search} violation={violation} />}
-        {addForm !== 'bill'    && outerTab === 'bills'    && <BillsTab items={items} groupFilter={group} search={search} />}
-        {outerTab === 'counts'   && <CountsTab items={items} groupFilter={group} search={search} violation={violation} />}
-        {addForm !== 'expense' && outerTab === 'expenses' && <ExpensesTab search={search} />}
+        {!anaOpen && addForm !== 'sale'    && outerTab === 'sales'    && <SalesTab items={items} groupFilter={group} search={search} violation={violation} />}
+        {!anaOpen && addForm !== 'bill'    && outerTab === 'bills'    && <BillsTab items={items} groupFilter={group} search={search} />}
+        {!anaOpen && outerTab === 'counts'   && <CountsTab items={items} groupFilter={group} search={search} violation={violation} />}
+        {!anaOpen && addForm !== 'expense' && outerTab === 'expenses' && <ExpensesTab search={search} />}
         {outerTab === 'cab'      && <CABTab />}
       </div>
     </div>
