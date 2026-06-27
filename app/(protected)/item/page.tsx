@@ -29,7 +29,8 @@ const TodayContent    = dynamic(() => import('./_components/TodayContent'), { ss
 const NewSaleForm     = dynamic(() => import('../sales/new/page'),     { ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div> })
 const NewBillForm     = dynamic(() => import('../bills/new/page'),     { ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div> })
 const NewExpenseForm  = dynamic(() => import('../expenses/new/page'),  { ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div> })
-import AnalyticsPanel, { type AnaSection } from './_components/AnalyticsPanel'
+import type { AnaSection } from './_components/AnalyticsPanel'
+const AnalyticsPanel  = dynamic(() => import('./_components/AnalyticsPanel'), { ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div> })
 
 const ANA_SECTION: Partial<Record<OuterTab, AnaSection>> = {
   items: 'Items', sales: 'Sales', bills: 'Bills', counts: 'Counts', expenses: 'Expenses',
