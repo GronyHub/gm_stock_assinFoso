@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 import { fmtDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
 
@@ -241,6 +242,9 @@ type Props = {
 }
 
 export default function SalesTab({ items, groupFilter, search, violation }: Props) {
+  const { data: session } = useSession()
+  const role = (session?.user as any)?.role
+  const canDelete = ['owner', 'manager'].includes(role)
   const [receipts, setReceipts] = useState<Receipt[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -249,6 +253,8 @@ export default function SalesTab({ items, groupFilter, search, violation }: Prop
   const [editForm, setEditForm] = useState({ receipt_date: '', customer_name: '', cash_counted: '' })
   const [editLines, setEditLines] = useState<EditLine[]>([])
   const [saving, setSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [flags, setFlags] = useState<any | null>(null)
   const [flagsLoading, setFlagsLoading] = useState(false)
 
@@ -325,6 +331,25 @@ export default function SalesTab({ items, groupFilter, search, violation }: Prop
       item_price: l.item_price ? parseFloat(l.item_price).toString() : '0',
     })))
     setEditingId(r.id)
+  }
+
+  async function deleteReceipt(id: number) {
+    setDeletingId(id)
+    const res = await fetch(`/api/sales/${id}`, { method: 'DELETE' })
+    setDeletingId(null)
+    setConfirmDeleteId(null)
+    if (res.ok) {
+      setReceipts(prev => prev.filter(r => r.id !== id))
+      setLinesMap(prev => {
+        const next = { ...prev }
+        delete next[id]
+        return next
+      })
+      if (editingId === id) setEditingId(null)
+    } else {
+      const d = await res.json().catch(() => ({}))
+      alert(d.error || 'Could not delete receipt.')
+    }
   }
 
   function updateEditLine(idx: number, field: keyof EditLine, val: string) {
@@ -531,7 +556,26 @@ export default function SalesTab({ items, groupFilter, search, violation }: Prop
                     </button>
                     <button onClick={() => setEditingId(null)}
                       className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
+                    {canDelete && (
+                      <button onClick={() => setConfirmDeleteId(r.id)}
+                        className="px-3 py-1 bg-red-50 text-red-600 text-[10px] font-semibold rounded">Delete</button>
+                    )}
                   </div>
+                  {confirmDeleteId === r.id && (
+                    <div className="mt-1.5 px-2 py-2 bg-red-50 border border-red-100 rounded flex items-center justify-between gap-2">
+                      <span className="text-[10px] text-red-700 font-medium">Delete this receipt permanently?</span>
+                      <div className="flex gap-1 shrink-0">
+                        <button onClick={() => deleteReceipt(r.id)} disabled={deletingId === r.id}
+                          className="text-[9px] font-bold text-white bg-red-600 hover:bg-red-500 disabled:opacity-40 px-2 py-1 rounded">
+                          {deletingId === r.id ? 'Deleting…' : 'Yes, Delete'}
+                        </button>
+                        <button onClick={() => setConfirmDeleteId(null)}
+                          className="text-[9px] font-semibold text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <>
@@ -540,11 +584,34 @@ export default function SalesTab({ items, groupFilter, search, violation }: Prop
                       <p className="text-[10px] font-bold text-gray-900">{r.customer_name ?? 'Walk-in Customer'}</p>
                       <p className="text-[9px] text-gray-400">{fmtDate(r.receipt_date)} · {r.receipt_number}</p>
                     </div>
-                    <button onClick={() => startEdit(r)}
-                      className="text-[9px] text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100 transition">
-                      Edit
-                    </button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button onClick={() => startEdit(r)}
+                        className="text-[9px] text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100 transition">
+                        Edit
+                      </button>
+                      {canDelete && (
+                        <button onClick={() => setConfirmDeleteId(r.id)}
+                          className="text-[9px] text-red-600 font-semibold bg-red-50 px-2 py-0.5 rounded hover:bg-red-100 transition">
+                          Delete
+                        </button>
+                      )}
+                    </div>
                   </div>
+                  {confirmDeleteId === r.id && (
+                    <div className="px-2 py-2 bg-red-50 border-b border-red-100 flex items-center justify-between gap-2">
+                      <span className="text-[10px] text-red-700 font-medium">Delete this receipt permanently?</span>
+                      <div className="flex gap-1 shrink-0">
+                        <button onClick={() => deleteReceipt(r.id)} disabled={deletingId === r.id}
+                          className="text-[9px] font-bold text-white bg-red-600 hover:bg-red-500 disabled:opacity-40 px-2 py-1 rounded">
+                          {deletingId === r.id ? 'Deleting…' : 'Yes, Delete'}
+                        </button>
+                        <button onClick={() => setConfirmDeleteId(null)}
+                          className="text-[9px] font-semibold text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   {rLines.length === 0 ? (
                     <p className="text-[10px] text-gray-400 text-center py-4">No items.</p>
                   ) : (

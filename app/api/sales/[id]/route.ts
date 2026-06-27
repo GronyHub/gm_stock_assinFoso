@@ -1,4 +1,6 @@
+import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
+import { logActivity } from '@/lib/logger'
 import { NextResponse } from 'next/server'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -35,4 +37,33 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   `
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json(row)
+}
+
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const role = (session.user as any)?.role
+  if (!['owner', 'manager'].includes(role)) {
+    return NextResponse.json({ error: 'Only owner or manager can delete a receipt' }, { status: 403 })
+  }
+
+  const { id } = await params
+  const receiptId = Number(id)
+
+  try {
+    const [receipt] = await sql`SELECT receipt_number, total FROM sales_receipts WHERE id = ${receiptId}`
+    if (!receipt) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+    await sql`DELETE FROM sales_receipt_lines WHERE receipt_id = ${receiptId}`
+    await sql`DELETE FROM sales_receipts WHERE id = ${receiptId}`
+
+    const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
+    await logActivity(actor, 'deleted sale receipt', `${receipt.receipt_number} · ₵${Number(receipt.total).toFixed(2)}`)
+
+    return NextResponse.json({ ok: true })
+  } catch (e) {
+    console.error('sales receipt DELETE error:', e)
+    const detail = e instanceof Error ? e.message : String(e)
+    return NextResponse.json({ error: `Could not delete receipt: ${detail}` }, { status: 500 })
+  }
 }
