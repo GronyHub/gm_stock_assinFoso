@@ -10,7 +10,6 @@ import CountsTab from './_components/CountsTab'
 import ExpensesTab from './_components/ExpensesTab'
 import CABTab from './_components/CABTab'
 import dynamic from 'next/dynamic'
-import type { AnaSection } from './_components/AnalyticsPanel'
 
 const TodayContent   = dynamic(() => import('./_components/TodayContent'), { ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div> })
 const NewSaleForm    = dynamic(() => import('../sales/new/page'),    { ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div> })
@@ -34,6 +33,7 @@ class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boole
 }
 
 type OuterTab = 'today' | 'items' | 'sales' | 'bills' | 'counts' | 'expenses' | 'cab'
+type AnaSection = 'Items' | 'Sales' | 'Bills' | 'Counts' | 'Expenses'
 
 const ANA_SECTION: Partial<Record<OuterTab, AnaSection>> = {
   items: 'Items', sales: 'Sales', bills: 'Bills', counts: 'Counts', expenses: 'Expenses',

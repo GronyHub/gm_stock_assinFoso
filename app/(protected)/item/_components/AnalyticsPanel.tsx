@@ -6,7 +6,7 @@ import {
 } from 'recharts'
 import { usePolling } from '@/lib/usePolling'
 
-export type AnaSection = 'Items' | 'Sales' | 'Bills' | 'Counts' | 'Expenses'
+type AnaSection = 'Items' | 'Sales' | 'Bills' | 'Counts' | 'Expenses'
 
 const SHORT_MON = ['Ja','Fe','Mr','Ap','My','Ju','Jl','Au','Se','Oc','No','De']
 function monthLabel(k: string) {
