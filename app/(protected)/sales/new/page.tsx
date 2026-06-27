@@ -1,11 +1,13 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { usePresenceReporter } from '@/lib/usePresenceReporter'
 
 type Item = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number }
 type CartLine = { item: Item; qty: number; price: number }
 
 export default function NewReceiptPage({ onSuccess }: { onSuccess?: () => void } = {}) {
+  usePresenceReporter('entering a sale')
   const [date, setDate] = useState('')
   const [customer, setCustomer] = useState('Walk-in Customer')
   const [cashCounted, setCashCounted] = useState('')

@@ -1,10 +1,12 @@
 ﻿'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { usePresenceReporter } from '@/lib/usePresenceReporter'
 
 const ACCOUNTS = ['Office Expenses','Rent','Utilities','Salaries','Transport','Repairs','Supplies','Other']
 
 export default function NewExpensePage({ onSuccess }: { onSuccess?: () => void } = {}) {
+  usePresenceReporter('entering an expense')
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
   const [description, setDescription] = useState('')
   const [account, setAccount] = useState('Other')

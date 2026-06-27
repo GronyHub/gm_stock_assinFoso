@@ -1,12 +1,14 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { usePresenceReporter } from '@/lib/usePresenceReporter'
 
 type Item = { id: number; name: string; group: string; soh: number }
 type Vendor = { id: number; name: string }
 type Line = { item: Item; qty: number; price: number }
 
 export default function NewBillPage({ onSuccess }: { onSuccess?: () => void } = {}) {
+  usePresenceReporter('entering a bill')
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [vendorId, setVendorId] = useState('')
