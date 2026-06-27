@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef, Component, Suspense, type ReactNode } from 'react'
+import { useState, useEffect, useRef, useMemo, Component, Suspense, type ReactNode } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
@@ -93,14 +93,22 @@ const HAMBURGER_LINKS = [
 ]
 
 function tabCls(active: boolean) {
-  return `flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 px-0.5 py-2 rounded-lg transition
+  return `relative flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 px-0.5 py-2 rounded-lg transition
     ${active ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`
 }
 
-function TabIcon({ icon, label, active, onClick }: { icon: string; label: string; active: boolean; onClick: () => void }) {
+function TabIcon({ icon, label, active, onClick, count }: { icon: string; label: string; active: boolean; onClick: () => void; count?: number }) {
   return (
-    <button onClick={onClick} className={tabCls(active)}>
-      <span className="text-sm leading-none">{icon}</span>
+    <button onClick={onClick} className={tabCls(active)}
+      title={count ? `${count} violation${count !== 1 ? 's' : ''} need attention` : undefined}>
+      <span className="relative text-sm leading-none">
+        {icon}
+        {!!count && (
+          <span className="absolute -top-1.5 -right-2.5 min-w-[14px] h-[14px] px-[3px] rounded-full bg-red-600 text-white text-[8px] font-bold flex items-center justify-center leading-none">
+            {count > 99 ? '99+' : count}
+          </span>
+        )}
+      </span>
       <span className="text-[9px] font-semibold leading-none truncate max-w-full">{label}</span>
     </button>
   )
@@ -141,6 +149,39 @@ function ItemHubPageInner() {
 
   useEffect(() => { loadItems() }, [])
   usePolling(loadItems, 5000)
+
+  const [globalFlags, setGlobalFlags] = useState<any | null>(null)
+  const [pendingCounts, setPendingCounts] = useState<{ daily: number; overdue: number }>({ daily: 0, overdue: 0 })
+
+  function loadBadgeData() {
+    fetch('/api/flags').then(r => r.ok ? r.json() : null).then(d => { if (d) setGlobalFlags(d) }).catch(() => {})
+    Promise.all([
+      fetch('/api/stock/daily').then(r => r.json()).catch(() => []),
+      fetch('/api/stock/overdue').then(r => r.json()).catch(() => []),
+    ]).then(([daily, overdue]) => {
+      setPendingCounts({
+        daily: Array.isArray(daily) ? daily.length : 0,
+        overdue: Array.isArray(overdue) ? overdue.length : 0,
+      })
+    }).catch(() => {})
+  }
+
+  useEffect(() => { loadBadgeData() }, [])
+  usePolling(loadBadgeData, 20000)
+
+  const badgeCounts: Partial<Record<OuterTab, number>> = useMemo(() => {
+    const negSoh = items.filter(i => Number(i.calculated_soh) <= 0).length
+    const noSp = items.filter(i => !i.selling_rate || parseFloat(i.selling_rate) === 0).length
+    const noCp = items.filter(i => !i.purchase_rate || parseFloat(i.purchase_rate) === 0).length
+    const f = globalFlags
+    return {
+      items: negSoh + noSp + noCp + (f?.noGroup?.length ?? 0) + (f?.duplicates?.length ?? 0),
+      sales: (f?.noCash?.length ?? 0) + (f?.missingDays?.length ?? 0) + (f?.costGteSell?.length ?? 0) + (f?.dupReceipts?.length ?? 0),
+      counts: pendingCounts.daily + pendingCounts.overdue,
+      cab: f?.uncheckedCab?.length ?? 0,
+      staff: f?.noStaffTimes?.length ?? 0,
+    }
+  }, [items, globalFlags, pendingCounts])
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -186,13 +227,13 @@ function ItemHubPageInner() {
         {/* Row 1: scrollable tabs + hamburger (hamburger outside scroll area to avoid clip) */}
         <div className="flex items-center pr-1.5">
           <div className="flex items-center gap-0.5 px-1 pt-1.5 pb-1 flex-1 min-w-0">
-            <TabIcon icon="📦" label="Items"    active={outerTab === 'items'}    onClick={() => changeTab('items')} />
-            <TabIcon icon="💰" label="Sales"    active={outerTab === 'sales'}    onClick={() => changeTab('sales')} />
+            <TabIcon icon="📦" label="Items"    active={outerTab === 'items'}    onClick={() => changeTab('items')}    count={badgeCounts.items} />
+            <TabIcon icon="💰" label="Sales"    active={outerTab === 'sales'}    onClick={() => changeTab('sales')}    count={badgeCounts.sales} />
             <TabIcon icon="🧾" label="Bills"    active={outerTab === 'bills'}    onClick={() => changeTab('bills')} />
-            <TabIcon icon="🔢" label="CNT"      active={outerTab === 'counts'}   onClick={() => changeTab('counts')} />
+            <TabIcon icon="🔢" label="CNT"      active={outerTab === 'counts'}   onClick={() => changeTab('counts')}   count={badgeCounts.counts} />
             <TabIcon icon="💸" label="Exp."     active={outerTab === 'expenses'} onClick={() => changeTab('expenses')} />
-            <TabIcon icon="🏦" label="CAB"      active={outerTab === 'cab'}      onClick={() => changeTab('cab')} />
-            <TabIcon icon="👤" label="Staff"    active={outerTab === 'staff'}    onClick={() => changeTab('staff')} />
+            <TabIcon icon="🏦" label="CAB"      active={outerTab === 'cab'}      onClick={() => changeTab('cab')}      count={badgeCounts.cab} />
+            <TabIcon icon="👤" label="Staff"    active={outerTab === 'staff'}    onClick={() => changeTab('staff')}    count={badgeCounts.staff} />
           </div>
 
           {/* Hamburger — outside the flex tabs row so dropdown isn't clipped */}
