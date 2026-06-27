@@ -273,7 +273,7 @@ export default function ItemHubPage() {
           const dx = e.changedTouches[0].clientX - swipeRef.current.x
           const dy = e.changedTouches[0].clientY - swipeRef.current.y
           swipeRef.current = null
-          if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) changeTab('today')
+          if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) changeTab(outerTab === 'today' ? 'items' : 'today')
         }}>
         {addForm === 'sale'    && <div className="px-4"><NewSaleForm    onSuccess={() => { setAddForm(null); changeTab('sales') }} /></div>}
         {addForm === 'bill'    && <div className="px-4"><NewBillForm    onSuccess={() => { setAddForm(null); changeTab('bills') }} /></div>}
