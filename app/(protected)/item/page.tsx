@@ -82,7 +82,7 @@ function tabCls(active: boolean) {
 }
 
 export default function ItemHubPage() {
-  const [outerTab, setOuterTab] = useState<OuterTab>('items')
+  const [outerTab, setOuterTab] = useState<OuterTab>('today')
   const prevTabRef = useRef<OuterTab>('items')
   const [group, setGroup]               = useState<string | null>(null)
   const [productType, setProductType]   = useState<'all' | 'goods' | 'services'>('all')
