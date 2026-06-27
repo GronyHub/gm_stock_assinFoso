@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { useSession, signOut } from 'next-auth/react'
+import { signOut } from 'next-auth/react'
 import { usePolling } from '@/lib/usePolling'
 import ItemsTab from './_components/ItemsTab'
 import SalesTab from './_components/SalesTab'
@@ -49,12 +49,12 @@ const VIOLATIONS: Record<OuterTab, { key: string; label: string }[]> = {
 }
 
 const HAMBURGER_LINKS = [
-  { href: '/aliases',      label: 'Aliases',  roles: ['owner','manager','staff'] },
-  { href: '/analysis',     label: 'Analysis', roles: ['owner','manager','staff'] },
-  { href: '/staff',        label: 'Staff',    roles: ['owner','manager','staff'] },
-  { href: '/logs',         label: 'Logs',     roles: ['owner','manager','staff'] },
-  { href: '/users',        label: 'Users',    roles: ['owner'] },
-  { href: '/profile',      label: 'Profile',  roles: ['owner','manager','staff'] },
+  { href: '/aliases',  label: 'Aliases'  },
+  { href: '/analysis', label: 'Analysis' },
+  { href: '/staff',    label: 'Staff'    },
+  { href: '/logs',     label: 'Logs'     },
+  { href: '/users',    label: 'Users'    },
+  { href: '/profile',  label: 'Profile'  },
 ]
 
 function tabCls(active: boolean) {
@@ -63,9 +63,6 @@ function tabCls(active: boolean) {
 }
 
 export default function ItemHubPage() {
-  const { data: session } = useSession()
-  const role = (session?.user as any)?.role ?? 'staff'
-
   const [outerTab, setOuterTab] = useState<OuterTab>('today')
   const [group, setGroup]               = useState<string | null>(null)
   const [productType, setProductType]   = useState<'all' | 'goods' | 'services'>('all')
@@ -117,7 +114,7 @@ export default function ItemHubPage() {
   ].filter(Boolean).join(' · ')
 
   const showControls = outerTab !== 'today'
-  const hamburgerLinks = HAMBURGER_LINKS.filter(l => l.roles.includes(role))
+  const hamburgerLinks = HAMBURGER_LINKS
 
   return (
     <div className="-mx-4 -mt-4 flex flex-col h-[100dvh] md:h-[calc(100dvh-56px)]">
