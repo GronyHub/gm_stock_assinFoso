@@ -4,7 +4,12 @@ import Nav from '@/components/Nav'
 import PushSubscriber from '@/components/PushSubscriber'
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth()
+  let session
+  try {
+    session = await auth()
+  } catch {
+    redirect('/login')
+  }
   if (!session) redirect('/login')
   return (
     <div className="min-h-screen flex flex-col">
