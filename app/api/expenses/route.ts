@@ -47,14 +47,27 @@ export async function POST(req: NextRequest) {
   const enteredBy = session.user?.name || (session.user as any)?.username || null
 
   try {
-    const [row] = await sql`
-      INSERT INTO expenses (expense_date, expense_account, cf_justify, vendor_name, amount, total,
-                            cf_expense_type, is_property, source, entry_number, entered_by)
-      VALUES (${expense_date}, ${expense_account}, ${cf_justify ?? null}, ${vendor_name ?? null},
-              ${amount}, ${amount}, ${cf_expense_type ?? null}, ${isProp}, 'app', ${entryNumber}, ${enteredBy})
-      RETURNING id, expense_date::date AS expense_date, expense_account, cf_justify,
-                vendor_name, amount, cf_expense_type, is_property, entered_by
-    `
+    let row
+    try {
+      [row] = await sql`
+        INSERT INTO expenses (expense_date, expense_account, cf_justify, vendor_name, amount, total,
+                              cf_expense_type, is_property, source, entry_number, entered_by)
+        VALUES (${expense_date}, ${expense_account}, ${cf_justify ?? null}, ${vendor_name ?? null},
+                ${amount}, ${amount}, ${cf_expense_type ?? null}, ${isProp}, 'app', ${entryNumber}, ${enteredBy})
+        RETURNING id, expense_date::date AS expense_date, expense_account, cf_justify,
+                  vendor_name, amount, cf_expense_type, is_property, entered_by
+      `
+    } catch (e) {
+      console.error('expenses insert with entered_by failed, retrying without it:', e)
+      ;[row] = await sql`
+        INSERT INTO expenses (expense_date, expense_account, cf_justify, vendor_name, amount, total,
+                              cf_expense_type, is_property, source, entry_number)
+        VALUES (${expense_date}, ${expense_account}, ${cf_justify ?? null}, ${vendor_name ?? null},
+                ${amount}, ${amount}, ${cf_expense_type ?? null}, ${isProp}, 'app', ${entryNumber})
+        RETURNING id, expense_date::date AS expense_date, expense_account, cf_justify,
+                  vendor_name, amount, cf_expense_type, is_property
+      `
+    }
 
     if (isProp) {
       await sql`

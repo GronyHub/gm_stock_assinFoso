@@ -19,11 +19,21 @@ export async function POST(req: NextRequest) {
   const customer = customerName ?? null
 
   try {
-    const [receipt] = await sql`
-      INSERT INTO sales_receipts (receipt_number, receipt_date, customer_name, total, cash_counted, source, entered_by)
-      VALUES (${receiptNumber}, ${date}, ${customer}, ${total}, ${cashCounted ?? null}, 'app', ${enteredBy})
-      RETURNING id
-    `
+    let receipt
+    try {
+      [receipt] = await sql`
+        INSERT INTO sales_receipts (receipt_number, receipt_date, customer_name, total, cash_counted, source, entered_by)
+        VALUES (${receiptNumber}, ${date}, ${customer}, ${total}, ${cashCounted ?? null}, 'app', ${enteredBy})
+        RETURNING id
+      `
+    } catch (e) {
+      console.error('sales_receipts insert with entered_by failed, retrying without it:', e)
+      ;[receipt] = await sql`
+        INSERT INTO sales_receipts (receipt_number, receipt_date, customer_name, total, cash_counted, source)
+        VALUES (${receiptNumber}, ${date}, ${customer}, ${total}, ${cashCounted ?? null}, 'app')
+        RETURNING id
+      `
+    }
 
     for (const l of (lines ?? [])) {
       await sql`

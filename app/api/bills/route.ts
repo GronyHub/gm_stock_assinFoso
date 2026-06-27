@@ -34,11 +34,21 @@ export async function POST(req: NextRequest) {
   const enteredBy = session.user?.name || (session.user as any)?.username || null
 
   try {
-    const [bill] = await sql`
-      INSERT INTO bills (bill_number, bill_date, vendor_id, vendor_name, total, subtotal, status, source, entered_by)
-      VALUES (${billNumber}, ${date}, ${vendorId ?? null}, ${vendorName ?? null}, ${total}, ${total}, 'paid', 'app', ${enteredBy})
-      RETURNING id
-    `
+    let bill
+    try {
+      [bill] = await sql`
+        INSERT INTO bills (bill_number, bill_date, vendor_id, vendor_name, total, subtotal, status, source, entered_by)
+        VALUES (${billNumber}, ${date}, ${vendorId ?? null}, ${vendorName ?? null}, ${total}, ${total}, 'paid', 'app', ${enteredBy})
+        RETURNING id
+      `
+    } catch (e) {
+      console.error('bills insert with entered_by failed, retrying without it:', e)
+      ;[bill] = await sql`
+        INSERT INTO bills (bill_number, bill_date, vendor_id, vendor_name, total, subtotal, status, source)
+        VALUES (${billNumber}, ${date}, ${vendorId ?? null}, ${vendorName ?? null}, ${total}, ${total}, 'paid', 'app')
+        RETURNING id
+      `
+    }
 
     for (const l of lines) {
       await sql`
