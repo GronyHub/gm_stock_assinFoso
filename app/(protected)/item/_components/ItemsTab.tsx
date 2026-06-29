@@ -544,14 +544,14 @@ export default function ItemsTab({ items, group, productType, search, violation,
                         <thead>
                           <tr>
                             <th className="text-left px-0.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">DATE</th>
+                            <th className="text-right px-0.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">L/G</th>
+                            <th className="text-right px-0.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">₵</th>
                             <th className="text-right px-0.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">CNT</th>
                             <th className="text-right px-0.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">-WIC</th>
                             <th className="text-right px-0.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">-GMC</th>
                             <th className="text-right px-0.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">SP</th>
                             <th className="text-right px-0.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">+BL</th>
                             <th className="text-right px-0.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">EXP</th>
-                            <th className="text-right px-0.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">L/G</th>
-                            <th className="text-right px-0.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">₵</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -561,12 +561,6 @@ export default function ItemsTab({ items, group, productType, search, violation,
                             return (
                             <tr key={i} className={`border-b border-gray-100 ${row.loss !== null && row.loss > 0.001 ? 'bg-red-50' : ''}`}>
                               <td className="px-0.5 py-0.5 text-gray-500 whitespace-nowrap">{fmtDate(row.date)}</td>
-                              <td className="px-0.5 py-0.5 text-right font-semibold text-gray-900">{fmtQ(row.qty_counted)}</td>
-                              <td className="px-0.5 py-0.5 text-right text-gray-600">{fmtQ(row.wic_qty)}</td>
-                              <td className="px-0.5 py-0.5 text-right text-gray-600">{fmtQ(row.gmc_qty)}</td>
-                              <td className="px-0.5 py-0.5 text-right text-blue-500">{fmtQ(row.sell_price)}</td>
-                              <td className="px-0.5 py-0.5 text-right text-blue-600">{fmtQ(row.bills_qty)}</td>
-                              <td className="px-0.5 py-0.5 text-right text-gray-400">{fmtN(row.expected_soh)}</td>
                               <td className="px-0.5 py-0.5 text-right font-semibold">
                                 {row.loss === null ? <span className="text-gray-300">—</span>
                                   : row.loss > 0.001 ? <span className="text-red-600">-{fmtN(row.loss)}</span>
@@ -579,6 +573,12 @@ export default function ItemsTab({ items, group, productType, search, violation,
                                   : lossVal < -0.01 ? <span className="text-green-600">+{fmtN(Math.abs(lossVal))}</span>
                                   : <span className="text-gray-400">0</span>}
                               </td>
+                              <td className="px-0.5 py-0.5 text-right font-semibold text-gray-900">{fmtQ(row.qty_counted)}</td>
+                              <td className="px-0.5 py-0.5 text-right text-gray-600">{fmtQ(row.wic_qty)}</td>
+                              <td className="px-0.5 py-0.5 text-right text-gray-600">{fmtQ(row.gmc_qty)}</td>
+                              <td className="px-0.5 py-0.5 text-right text-blue-500">{fmtQ(row.sell_price)}</td>
+                              <td className="px-0.5 py-0.5 text-right text-blue-600">{fmtQ(row.bills_qty)}</td>
+                              <td className="px-0.5 py-0.5 text-right text-gray-400">{fmtN(row.expected_soh)}</td>
                             </tr>
                             )
                           })}
