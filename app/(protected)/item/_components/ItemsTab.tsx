@@ -544,8 +544,8 @@ export default function ItemsTab({ items, group, productType, search, violation,
                         <thead>
                           <tr>
                             <th className="text-left pr-1 py-0.5 font-bold text-gray-500 border-b border-gray-200">DATE</th>
-                            <th className="text-right px-0 py-0.5 font-bold text-gray-500 border-b border-gray-200">L/G</th>
                             <th className="text-right px-0 py-0.5 font-bold text-gray-500 border-b border-gray-200">₵</th>
+                            <th className="text-right px-0 py-0.5 font-bold text-gray-500 border-b border-gray-200">L/G</th>
                             <th className="text-right px-0 py-0.5 font-bold text-gray-500 border-b border-gray-200">CNT</th>
                             <th className="text-right px-0 py-0.5 font-bold text-gray-500 border-b border-gray-200">WIC</th>
                             <th className="text-right px-0 py-0.5 font-bold text-gray-500 border-b border-gray-200">GMC</th>
@@ -562,15 +562,15 @@ export default function ItemsTab({ items, group, productType, search, violation,
                             <tr key={i} className={`border-b border-gray-100 ${row.loss !== null && row.loss > 0.001 ? 'bg-red-50' : ''}`}>
                               <td className="pr-1 py-0.5 font-bold text-gray-500 whitespace-nowrap">{fmtDate(row.date)}</td>
                               <td className="px-0 py-0.5 text-right font-bold">
-                                {row.loss === null ? <span className="text-gray-300">—</span>
-                                  : row.loss > 0.001 ? <span className="text-red-600">-{fmtN(row.loss)}</span>
-                                  : row.loss < -0.001 ? <span className="text-green-600">+{fmtN(Math.abs(row.loss))}</span>
-                                  : <span className="text-gray-400">0</span>}
-                              </td>
-                              <td className="px-0 py-0.5 text-right font-bold">
                                 {lossVal === null ? <span className="text-gray-300">—</span>
                                   : lossVal > 0.01 ? <span className="text-red-600">-{fmtN(lossVal)}</span>
                                   : lossVal < -0.01 ? <span className="text-green-600">+{fmtN(Math.abs(lossVal))}</span>
+                                  : <span className="text-gray-400">0</span>}
+                              </td>
+                              <td className="px-0 py-0.5 text-right font-bold">
+                                {row.loss === null ? <span className="text-gray-300">—</span>
+                                  : row.loss > 0.001 ? <span className="text-red-600">-{fmtN(row.loss)}</span>
+                                  : row.loss < -0.001 ? <span className="text-green-600">+{fmtN(Math.abs(row.loss))}</span>
                                   : <span className="text-gray-400">0</span>}
                               </td>
                               <td className="px-0 py-0.5 text-right font-bold text-gray-900">{fmtQ(row.qty_counted)}</td>
@@ -591,8 +591,8 @@ export default function ItemsTab({ items, group, productType, search, violation,
                             return (
                               <tr className="border-t-2 border-gray-200 bg-gray-50">
                                 <td className="pr-1 py-1 font-bold text-gray-500">Total</td>
-                                <td className={cls}>{totalLoss > 0.001 ? `-${fmtN(totalLoss)}` : totalLoss < -0.001 ? `+${fmtN(Math.abs(totalLoss))}` : '0'}</td>
                                 <td className={cls}>{totalCost > 0.01 ? `-₵${fmtN(totalCost)}` : totalCost < -0.01 ? `+₵${fmtN(Math.abs(totalCost))}` : '₵0'}</td>
+                                <td className={cls}>{totalLoss > 0.001 ? `-${fmtN(totalLoss)}` : totalLoss < -0.001 ? `+${fmtN(Math.abs(totalLoss))}` : '0'}</td>
                                 <td colSpan={6} />
                               </tr>
                             )
