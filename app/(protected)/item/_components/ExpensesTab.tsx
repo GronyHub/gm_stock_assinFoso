@@ -31,18 +31,164 @@ function fmt(val: string) {
   return isNaN(n) ? '—' : n.toLocaleString('en-GH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
+function fmtTotal(expenses: Expense[]) {
+  const total = expenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0)
+  return total.toLocaleString('en-GH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+}
+
 const STATUS_COLORS: Record<string, string> = {
   at_shop: 'text-green-600', not_at_shop: 'text-orange-500', spoilt: 'text-red-500',
 }
 
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
 
+const ACCOUNTS = ['Office Expenses','Rent','Utilities','Salaries','Transport','Repairs','Supplies','Other']
+
+const TH = 'text-left px-1 py-1 font-semibold text-gray-700 border border-black'
+const TD = 'px-1 py-1 border border-black'
+
+type TableProps = {
+  rows: Expense[]
+  editId: number | null
+  confirmDeleteId: number | null
+  deleting: boolean
+  saving: boolean
+  form: typeof EMPTY_FORM
+  onEdit: (e: Expense) => void
+  onCloseEdit: () => void
+  onFormChange: (f: typeof EMPTY_FORM) => void
+  onSaveEdit: () => void
+  onDeleteStart: (id: number) => void
+  onDeleteConfirm: (id: number) => void
+  onDeleteCancel: () => void
+  onPropertyStatus: (e: Expense, status: string) => void
+  hideAccount?: boolean
+}
+
 const EMPTY_FORM = {
   expense_date: '', expense_account: '', cf_justify: '', vendor_name: '',
   amount: '', cf_expense_type: '', is_property: false,
 }
 
-const ACCOUNTS = ['Office Expenses','Rent','Utilities','Salaries','Transport','Repairs','Supplies','Other']
+function ExpenseTable({ rows, editId, confirmDeleteId, deleting, saving, form, onEdit, onCloseEdit,
+  onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, onPropertyStatus, hideAccount }: TableProps) {
+  return (
+    <table className="w-full border-collapse text-[10px] border border-black">
+      <thead className="sticky top-0 bg-gray-100 z-10">
+        <tr>
+          <th className={`${TH} whitespace-nowrap`}>DATE</th>
+          {!hideAccount && <th className={TH}>ACCOUNT</th>}
+          <th className={TH}>DESCRIPTION</th>
+          <th className={TH}>JUSTIFY</th>
+          <th className={TH}>VENDOR</th>
+          <th className={`${TH} text-right`}>AMT</th>
+          <th className={TH}>BY</th>
+          <th className="px-1 py-1 border border-black" />
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map(e => (
+          <>
+            <tr key={e.id} className="hover:bg-gray-50">
+              <td className={`${TD} text-gray-600 whitespace-nowrap`}>{fmtShort(e.expense_date)}</td>
+              {!hideAccount && <td className={`${TD} text-gray-900 font-semibold`}>{e.expense_account}</td>}
+              <td className={`${TD} text-gray-700`}>{e.description ?? '—'}</td>
+              <td className={`${TD} text-gray-700`}>{e.cf_justify ?? '—'}</td>
+              <td className={`${TD} text-gray-500`}>{e.vendor_name ?? '—'}</td>
+              <td className={`${TD} text-right font-bold text-gray-900`}>₵{fmt(e.amount)}</td>
+              <td className={`${TD} text-blue-500`}>{e.entered_by ?? '—'}</td>
+              <td className={TD}>
+                <div className="flex items-center gap-1 justify-end">
+                  <button onClick={() => editId === e.id ? onCloseEdit() : onEdit(e)}
+                    className="text-[9px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded hover:bg-blue-100">
+                    {editId === e.id ? 'Close' : 'Edit'}
+                  </button>
+                  {confirmDeleteId === e.id ? (
+                    <>
+                      <button onClick={() => onDeleteConfirm(e.id)} disabled={deleting}
+                        className="text-[9px] text-white font-semibold bg-red-600 px-1.5 py-0.5 rounded hover:bg-red-700 disabled:opacity-40">
+                        {deleting ? '…' : 'Yes'}
+                      </button>
+                      <button onClick={onDeleteCancel}
+                        className="text-[9px] text-gray-600 font-semibold bg-gray-100 px-1.5 py-0.5 rounded">
+                        No
+                      </button>
+                    </>
+                  ) : (
+                    <button onClick={() => onDeleteStart(e.id)}
+                      className="text-[9px] text-red-600 font-semibold bg-red-50 px-1.5 py-0.5 rounded hover:bg-red-100">
+                      Del
+                    </button>
+                  )}
+                </div>
+              </td>
+            </tr>
+            {editId === e.id && (
+              <tr key={`edit-${e.id}`} className="bg-blue-50/40 border-b border-blue-200">
+                <td colSpan={hideAccount ? 7 : 8} className="px-2 py-2">
+                  <div className="grid grid-cols-2 gap-1 max-w-lg">
+                    <div>
+                      <p className="text-[9px] text-gray-400 mb-0.5">Date</p>
+                      <input type="date" value={form.expense_date}
+                        onChange={ev => onFormChange({ ...form, expense_date: ev.target.value })} className={inputCls} />
+                    </div>
+                    <div>
+                      <p className="text-[9px] text-gray-400 mb-0.5">Amount (₵)</p>
+                      <input type="number" min="0" step="0.01" inputMode="decimal" value={form.amount}
+                        onChange={ev => onFormChange({ ...form, amount: ev.target.value })} className={inputCls} />
+                    </div>
+                    <div>
+                      <p className="text-[9px] text-gray-400 mb-0.5">Account</p>
+                      <select value={form.expense_account}
+                        onChange={ev => onFormChange({ ...form, expense_account: ev.target.value })} className={inputCls}>
+                        {ACCOUNTS.map(a => <option key={a}>{a}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <p className="text-[9px] text-gray-400 mb-0.5">Justify</p>
+                      <input value={form.cf_justify}
+                        onChange={ev => onFormChange({ ...form, cf_justify: ev.target.value })} className={inputCls} />
+                    </div>
+                    <div>
+                      <p className="text-[9px] text-gray-400 mb-0.5">Vendor</p>
+                      <input value={form.vendor_name}
+                        onChange={ev => onFormChange({ ...form, vendor_name: ev.target.value })} className={inputCls} />
+                    </div>
+                    <div>
+                      <p className="text-[9px] text-gray-400 mb-0.5">Type</p>
+                      <input value={form.cf_expense_type}
+                        onChange={ev => onFormChange({ ...form, cf_expense_type: ev.target.value })} className={inputCls} />
+                    </div>
+                  </div>
+                  {e.is_property && (
+                    <div className="mt-1">
+                      <p className="text-[9px] text-gray-400 mb-0.5">Property Status</p>
+                      <select value={e.property_status ?? 'at_shop'}
+                        onChange={ev => onPropertyStatus(e, ev.target.value)}
+                        className={`${inputCls} w-auto ${STATUS_COLORS[e.property_status ?? ''] ?? 'text-gray-600'}`}>
+                        <option value="at_shop">At Shop</option>
+                        <option value="not_at_shop">Not at Shop</option>
+                        <option value="spoilt">Spoilt</option>
+                      </select>
+                    </div>
+                  )}
+                  <div className="flex gap-1 mt-2">
+                    <button onClick={onSaveEdit} disabled={saving}
+                      className="bg-green-600 text-white text-[10px] font-bold rounded px-3 py-1 disabled:opacity-40">
+                      {saving ? 'Saving…' : 'Save'}
+                    </button>
+                    <button onClick={onCloseEdit}
+                      className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
+                  </div>
+                </td>
+              </tr>
+            )}
+          </>
+        ))}
+      </tbody>
+    </table>
+  )
+}
 
 type Props = { search: string }
 
@@ -50,6 +196,7 @@ export default function ExpensesTab({ search }: Props) {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<ExpTab>('all')
+  const [byAccount, setByAccount] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
   const [form, setForm] = useState({ ...EMPTY_FORM })
   const [saving, setSaving] = useState(false)
@@ -75,10 +222,21 @@ export default function ExpensesTab({ search }: Props) {
     if (!q) return list
     return list.filter(e =>
       e.expense_account.toLowerCase().includes(q) ||
+      (e.description ?? '').toLowerCase().includes(q) ||
       (e.cf_justify ?? '').toLowerCase().includes(q) ||
       (e.vendor_name ?? '').toLowerCase().includes(q)
     )
   }, [expenses, tab, search])
+
+  const grouped = useMemo(() => {
+    const map = new Map<string, Expense[]>()
+    for (const e of filtered) {
+      const key = e.expense_account || 'Uncategorised'
+      if (!map.has(key)) map.set(key, [])
+      map.get(key)!.push(e)
+    }
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]))
+  }, [filtered])
 
   function openEdit(e: Expense) {
     setForm({
@@ -133,6 +291,18 @@ export default function ExpensesTab({ search }: Props) {
     if (res.ok) setExpenses(prev => prev.map(e => e.id === expense.id ? { ...e, property_status: status } : e))
   }
 
+  const tableProps = {
+    editId, confirmDeleteId, deleting, saving, form,
+    onEdit: openEdit,
+    onCloseEdit: () => setEditId(null),
+    onFormChange: setForm,
+    onSaveEdit: saveEdit,
+    onDeleteStart: (id: number) => { setConfirmDeleteId(id); setEditId(null) },
+    onDeleteConfirm: deleteExpense,
+    onDeleteCancel: () => setConfirmDeleteId(null),
+    onPropertyStatus: setPropertyStatus,
+  }
+
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
 
   const expTabs: { key: ExpTab; label: string }[] = [
@@ -142,7 +312,7 @@ export default function ExpensesTab({ search }: Props) {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0">
+      <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0 flex-wrap">
         {expTabs.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition
@@ -150,125 +320,34 @@ export default function ExpensesTab({ search }: Props) {
             {t.label}
           </button>
         ))}
+        <div className="w-px h-3 bg-gray-300 shrink-0" />
+        <button onClick={() => setByAccount(b => !b)}
+          className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition
+            ${byAccount ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
+          By Account
+        </button>
         <span className="ml-auto text-[9px] text-gray-400">{filtered.length} records</span>
       </div>
 
       <div className="flex-1 overflow-y-auto min-h-0">
-        <table className="w-full border-collapse text-[10px] border border-black">
-          <thead className="sticky top-0 bg-gray-100 z-10">
-            <tr>
-              <th className="text-left px-1 py-1 font-semibold text-gray-700 border border-black whitespace-nowrap">DATE</th>
-              <th className="text-left px-1 py-1 font-semibold text-gray-700 border border-black">ACCOUNT</th>
-              <th className="text-left px-1 py-1 font-semibold text-gray-700 border border-black">DESCRIPTION</th>
-              <th className="text-left px-1 py-1 font-semibold text-gray-700 border border-black">JUSTIFY</th>
-              <th className="text-left px-1 py-1 font-semibold text-gray-700 border border-black">VENDOR</th>
-              <th className="text-right px-1 py-1 font-semibold text-gray-700 border border-black">AMT</th>
-              <th className="text-left px-1 py-1 font-semibold text-gray-700 border border-black">BY</th>
-              <th className="px-1 py-1 border border-black" />
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map(e => (
-              <>
-                <tr key={e.id} className="hover:bg-gray-50">
-                  <td className="px-1 py-1 text-gray-600 whitespace-nowrap border border-black">{fmtShort(e.expense_date)}</td>
-                  <td className="px-1 py-1 text-gray-900 font-semibold border border-black">{e.expense_account}</td>
-                  <td className="px-1 py-1 text-gray-700 border border-black">{e.description ?? '—'}</td>
-                  <td className="px-1 py-1 text-gray-700 border border-black">{e.cf_justify ?? '—'}</td>
-                  <td className="px-1 py-1 text-gray-500 border border-black">{e.vendor_name ?? '—'}</td>
-                  <td className="px-1 py-1 text-right font-bold text-gray-900 border border-black">₵{fmt(e.amount)}</td>
-                  <td className="px-1 py-1 text-blue-500 border border-black">{e.entered_by ?? '—'}</td>
-                  <td className="px-1 py-1 border border-black">
-                    <div className="flex items-center gap-1 justify-end">
-                      <button onClick={() => editId === e.id ? setEditId(null) : openEdit(e)}
-                        className="text-[9px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded hover:bg-blue-100">
-                        {editId === e.id ? 'Close' : 'Edit'}
-                      </button>
-                      {confirmDeleteId === e.id ? (
-                        <>
-                          <button onClick={() => deleteExpense(e.id)} disabled={deleting}
-                            className="text-[9px] text-white font-semibold bg-red-600 px-1.5 py-0.5 rounded hover:bg-red-700 disabled:opacity-40">
-                            {deleting ? '…' : 'Yes'}
-                          </button>
-                          <button onClick={() => setConfirmDeleteId(null)}
-                            className="text-[9px] text-gray-600 font-semibold bg-gray-100 px-1.5 py-0.5 rounded">
-                            No
-                          </button>
-                        </>
-                      ) : (
-                        <button onClick={() => { setConfirmDeleteId(e.id); setEditId(null) }}
-                          className="text-[9px] text-red-600 font-semibold bg-red-50 px-1.5 py-0.5 rounded hover:bg-red-100">
-                          Del
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-                {editId === e.id && (
-                  <tr key={`edit-${e.id}`} className="bg-blue-50/40 border-b border-blue-200">
-                    <td colSpan={8} className="px-2 py-2">
-                      <div className="grid grid-cols-2 gap-1 max-w-lg">
-                        <div>
-                          <p className="text-[9px] text-gray-400 mb-0.5">Date</p>
-                          <input type="date" value={form.expense_date}
-                            onChange={e => setForm(f => ({ ...f, expense_date: e.target.value }))} className={inputCls} />
-                        </div>
-                        <div>
-                          <p className="text-[9px] text-gray-400 mb-0.5">Amount (₵)</p>
-                          <input type="number" min="0" step="0.01" inputMode="decimal" value={form.amount}
-                            onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} className={inputCls} />
-                        </div>
-                        <div>
-                          <p className="text-[9px] text-gray-400 mb-0.5">Account</p>
-                          <select value={form.expense_account}
-                            onChange={e => setForm(f => ({ ...f, expense_account: e.target.value }))} className={inputCls}>
-                            {ACCOUNTS.map(a => <option key={a}>{a}</option>)}
-                          </select>
-                        </div>
-                        <div>
-                          <p className="text-[9px] text-gray-400 mb-0.5">Description</p>
-                          <input value={form.cf_justify}
-                            onChange={e => setForm(f => ({ ...f, cf_justify: e.target.value }))} className={inputCls} />
-                        </div>
-                        <div>
-                          <p className="text-[9px] text-gray-400 mb-0.5">Vendor</p>
-                          <input value={form.vendor_name}
-                            onChange={e => setForm(f => ({ ...f, vendor_name: e.target.value }))} className={inputCls} />
-                        </div>
-                        <div>
-                          <p className="text-[9px] text-gray-400 mb-0.5">Type</p>
-                          <input value={form.cf_expense_type}
-                            onChange={e => setForm(f => ({ ...f, cf_expense_type: e.target.value }))} className={inputCls} />
-                        </div>
-                      </div>
-                      {e.is_property && (
-                        <div className="mt-1">
-                          <p className="text-[9px] text-gray-400 mb-0.5">Property Status</p>
-                          <select value={e.property_status ?? 'at_shop'}
-                            onChange={ev => setPropertyStatus(e, ev.target.value)}
-                            className={`${inputCls} w-auto ${STATUS_COLORS[e.property_status ?? ''] ?? 'text-gray-600'}`}>
-                            <option value="at_shop">At Shop</option>
-                            <option value="not_at_shop">Not at Shop</option>
-                            <option value="spoilt">Spoilt</option>
-                          </select>
-                        </div>
-                      )}
-                      <div className="flex gap-1 mt-2">
-                        <button onClick={saveEdit} disabled={saving}
-                          className="bg-green-600 text-white text-[10px] font-bold rounded px-3 py-1 disabled:opacity-40">
-                          {saving ? 'Saving…' : 'Save'}
-                        </button>
-                        <button onClick={() => setEditId(null)}
-                          className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </>
-            ))}
-          </tbody>
-        </table>
-        {filtered.length === 0 && <p className="text-[10px] text-gray-400 text-center py-10">No expenses</p>}
+        {byAccount ? (
+          grouped.length === 0
+            ? <p className="text-[10px] text-gray-400 text-center py-10">No expenses</p>
+            : grouped.map(([account, rows]) => (
+              <div key={account} className="mb-4">
+                <div className="flex items-center justify-between px-2 py-1 bg-blue-600 sticky top-0 z-20">
+                  <p className="text-[10px] font-bold text-white">{account}</p>
+                  <p className="text-[9px] text-blue-200">{rows.length} record{rows.length !== 1 ? 's' : ''} · ₵{fmtTotal(rows)}</p>
+                </div>
+                <ExpenseTable rows={rows} {...tableProps} hideAccount />
+              </div>
+            ))
+        ) : (
+          <>
+            <ExpenseTable rows={filtered} {...tableProps} />
+            {filtered.length === 0 && <p className="text-[10px] text-gray-400 text-center py-10">No expenses</p>}
+          </>
+        )}
       </div>
     </div>
   )
