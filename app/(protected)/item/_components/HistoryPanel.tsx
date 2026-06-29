@@ -10,9 +10,9 @@ function fmtTime(iso: string) {
   return `${d.getDate()} ${MONTHS[d.getMonth()]} '${String(d.getFullYear()).slice(-2)} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
 }
 
-type Props = { keywords: string[] }
+type Props = { keywords: string[]; onEntryClick?: (log: Log) => void }
 
-export default function HistoryPanel({ keywords }: Props) {
+export default function HistoryPanel({ keywords, onEntryClick }: Props) {
   const [logs, setLogs] = useState<Log[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -43,7 +43,9 @@ export default function HistoryPanel({ keywords }: Props) {
         </thead>
         <tbody>
           {logs.map(log => (
-            <tr key={log.id} className="hover:bg-gray-50">
+            <tr key={log.id}
+              onClick={() => onEntryClick?.(log)}
+              className={`hover:bg-yellow-50 ${onEntryClick ? 'cursor-pointer' : ''}`}>
               <td className="px-1 py-1 text-gray-500 whitespace-nowrap border border-black">{fmtTime(log.created_at)}</td>
               <td className="px-1 py-1 font-semibold text-blue-600 border border-black">{log.staff_name}</td>
               <td className="px-1 py-1 text-gray-800 border border-black">{log.action}</td>

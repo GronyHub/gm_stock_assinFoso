@@ -92,6 +92,7 @@ export default function CountsTab({ items, groupFilter, search, violation }: Pro
   const [records, setRecords] = useState<CountRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [showHistory, setShowHistory] = useState(false)
+  const [highlightId, setHighlightId] = useState<number | null>(null)
   const [editQty, setEditQty] = useState('')
   const [editNotes, setEditNotes] = useState('')
   const [saving, setSaving] = useState(false)
@@ -220,7 +221,24 @@ export default function CountsTab({ items, groupFilter, search, violation }: Pro
         </button>
         <span className="text-[9px] font-semibold text-purple-700">Counts History</span>
       </div>
-      <HistoryPanel keywords={['stock', 'count']} />
+      <HistoryPanel keywords={['stock', 'count']} onEntryClick={log => {
+        // "counted stock": "ItemName · qty 5"
+        // "edited stock count": "ItemName · qty 5 on 2024-01-15"
+        const itemMatch = log.details?.match(/^(.+?) ·/)
+        const dateMatch = log.details?.match(/on (\d{4}-\d{2}-\d{2})/)
+        const itemName = itemMatch?.[1]
+        const date = dateMatch?.[1]
+        const target = records.find(r =>
+          r.item_name === itemName && (date ? r.count_date.startsWith(date) : true)
+        )
+        setShowHistory(false)
+        if (target) {
+          setHighlightId(target.id)
+          setTimeout(() => {
+            document.getElementById(`count-${target.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }, 50)
+        }
+      }} />
     </div>
   )
 
@@ -249,7 +267,8 @@ export default function CountsTab({ items, groupFilter, search, violation }: Pro
           <tbody>
             {filtered.map(r => (
               <>
-                <tr key={r.id} className="hover:bg-gray-50">
+                <tr key={r.id} id={`count-${r.id}`}
+                  className={`hover:bg-gray-50 transition-colors ${highlightId === r.id ? 'bg-yellow-100' : ''}`}>
                   <td className="px-1 py-1 text-gray-600 whitespace-nowrap border border-black">{fmtShort(r.count_date)}</td>
                   <td className="px-1 py-1 text-gray-900 font-semibold border border-black">{r.item_name}</td>
                   <td className="px-1 py-1 text-gray-500 border border-black">{r.cf_group ?? '—'}</td>

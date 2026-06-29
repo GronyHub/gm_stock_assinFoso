@@ -50,6 +50,7 @@ const TD = 'px-1 py-1 border border-black'
 
 type TableProps = {
   rows: Expense[]
+  highlightId?: number | null
   editId: number | null
   confirmDeleteId: number | null
   deleting: boolean
@@ -72,7 +73,7 @@ const EMPTY_FORM = {
   amount: '', cf_expense_type: '', is_property: false,
 }
 
-function ExpenseTable({ rows, editId, confirmDeleteId, deleting, saving, form, onEdit, onCloseEdit,
+function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, saving, form, onEdit, onCloseEdit,
   onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, onPropertyStatus, hideAccount, hideVendor }: TableProps) {
   return (
     <table className="w-full border-collapse text-[10px] border border-black">
@@ -91,7 +92,8 @@ function ExpenseTable({ rows, editId, confirmDeleteId, deleting, saving, form, o
       <tbody>
         {rows.map(e => (
           <>
-            <tr key={e.id} className="hover:bg-gray-50">
+            <tr key={e.id} id={`expense-${e.id}`}
+              className={`hover:bg-gray-50 transition-colors ${highlightId === e.id ? 'bg-yellow-100' : ''}`}>
               <td className={`${TD} text-gray-600 whitespace-nowrap`}>{fmtShort(e.expense_date)}</td>
               {!hideAccount && <td className={`${TD} text-gray-900 font-semibold`}>{e.expense_account}</td>}
               <td className={`${TD} text-gray-700`}>{e.description ?? '—'}</td>
@@ -200,6 +202,7 @@ export default function ExpensesTab({ search }: Props) {
   const [tab, setTab] = useState<ExpTab>('all')
   const [groupBy, setGroupBy] = useState<'none' | 'account' | 'vendor'>('none')
   const [showHistory, setShowHistory] = useState(false)
+  const [highlightId, setHighlightId] = useState<number | null>(null)
   const [editId, setEditId] = useState<number | null>(null)
   const [form, setForm] = useState({ ...EMPTY_FORM })
   const [saving, setSaving] = useState(false)
@@ -299,7 +302,7 @@ export default function ExpensesTab({ search }: Props) {
   }
 
   const tableProps = {
-    editId, confirmDeleteId, deleting, saving, form,
+    highlightId, editId, confirmDeleteId, deleting, saving, form,
     onEdit: openEdit,
     onCloseEdit: () => setEditId(null),
     onFormChange: setForm,
@@ -347,7 +350,24 @@ export default function ExpensesTab({ search }: Props) {
         <span className="ml-auto text-[9px] text-gray-400">{filtered.length} records</span>
       </div>
 
-      {showHistory && <HistoryPanel keywords={['expense']} />}
+      {showHistory && <HistoryPanel keywords={['expense']} onEntryClick={log => {
+        // "added expense": "account · ₵200 on 2024-01-15"
+        const dateMatch = log.details?.match(/on (\d{4}-\d{2}-\d{2})/)
+        const accountMatch = log.details?.match(/^(.+?) ·/)
+        const date = dateMatch?.[1]
+        const account = accountMatch?.[1]
+        const target = expenses.find(e =>
+          (date ? e.expense_date?.startsWith(date) : true) &&
+          (account ? e.expense_account === account : true)
+        )
+        setShowHistory(false)
+        if (target) {
+          setHighlightId(target.id)
+          setTimeout(() => {
+            document.getElementById(`expense-${target.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }, 50)
+        }
+      }} />}
 
       {!showHistory && <div className="flex-1 overflow-y-auto min-h-0">
         {groupBy !== 'none' ? (

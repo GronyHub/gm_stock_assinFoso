@@ -135,7 +135,21 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
         </button>
         <span className="text-[9px] font-semibold text-purple-700">Bills History</span>
       </div>
-      <HistoryPanel keywords={['bill']} />
+      <HistoryPanel keywords={['bill']} onEntryClick={log => {
+        // "added bill": "BL-001 · ₵500 from Vendor"  →  bill_number = first token
+        // "edited bill": "Bill #5 — Vendor"            →  numeric id after #
+        const editMatch = log.details?.match(/Bill #(\d+)/)
+        const addMatch = log.details?.match(/^([^\s·]+)/)
+        let target: Bill | undefined
+        if (editMatch) {
+          const id = Number(editMatch[1])
+          target = bills.find(b => b.id === id)
+        } else if (addMatch) {
+          target = bills.find(b => b.bill_number === addMatch[1])
+        }
+        setShowHistory(false)
+        if (target) setTimeout(() => jumpTo(target!), 50)
+      }} />
     </div>
   )
 

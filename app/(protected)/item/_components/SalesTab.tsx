@@ -503,7 +503,14 @@ export default function SalesTab({ items, groupFilter, search, violation }: Prop
         </button>
         <span className="text-[9px] font-semibold text-purple-700">Sales History</span>
       </div>
-      <HistoryPanel keywords={['sale', 'receipt']} />
+      <HistoryPanel keywords={['sale', 'receipt']} onEntryClick={log => {
+        // "added sale receipt": "SR-001 · ₵300 on date"  →  receipt_number = first token
+        // "deleted sale receipt": "SR-001 · ₵300"         →  same
+        const match = log.details?.match(/^([^\s·]+)/)
+        const target = match ? receipts.find(r => r.receipt_number === match[1]) : undefined
+        setShowHistory(false)
+        if (target) setTimeout(() => jumpTo(target!), 50)
+      }} />
     </div>
   )
 
