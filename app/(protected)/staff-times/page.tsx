@@ -203,7 +203,7 @@ export default function StaffTimesPage() {
   const { data: session } = useSession()
   const role = (session?.user as any)?.role
   const username = ((session?.user as any)?.username ?? session?.user?.name ?? '').toLowerCase()
-  const isAdmin = role === 'owner' || role === 'admin' || username === 'rawlings'
+  const isAdmin = role === 'owner' || role === 'admin' || username === 'rawlings' || username === 'grony'
 
   const [tab, setTab] = useState<Tab>('Time In')
   const [mine, setMine] = useState<Mine | null>(null)

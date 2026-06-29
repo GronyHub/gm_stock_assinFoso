@@ -10,7 +10,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const u = session.user as any
   const username = (u?.username ?? u?.name ?? '').toLowerCase()
-  if (u?.role !== 'owner' && u?.role !== 'admin' && username !== 'rawlings') {
+  if (u?.role !== 'owner' && u?.role !== 'admin' && username !== 'rawlings' && username !== 'grony') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -34,7 +34,7 @@ export async function DELETE(_req: NextRequest, { params }: Ctx) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const u = session.user as any
   const username = (u?.username ?? u?.name ?? '').toLowerCase()
-  if (u?.role !== 'owner' && u?.role !== 'admin' && username !== 'rawlings') {
+  if (u?.role !== 'owner' && u?.role !== 'admin' && username !== 'rawlings' && username !== 'grony') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
