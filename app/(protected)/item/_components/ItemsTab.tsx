@@ -584,19 +584,19 @@ export default function ItemsTab({ items, group, productType, search, violation,
                           })}
                         </tbody>
                         <tfoot>
-                          <tr className="border-t-2 border-gray-200 bg-gray-50">
-                            <td colSpan={7} className="px-0 py-1 text-right font-bold text-gray-500">Total</td>
-                            <td className={`px-0 py-1 text-right font-bold ${totalLoss > 0 ? 'text-red-600' : totalLoss < 0 ? 'text-green-600' : 'text-gray-400'}`}>
-                              {totalLoss > 0.001 ? `-${fmtN(totalLoss)}` : totalLoss < -0.001 ? `+${fmtN(Math.abs(totalLoss))}` : '0'}
-                            </td>
-                            <td className={`px-0 py-1 text-right font-bold ${totalLoss > 0 ? 'text-red-600' : totalLoss < 0 ? 'text-green-600' : 'text-gray-400'}`}>
-                              {(() => {
-                                const sp2 = item.selling_rate ? parseFloat(String(item.selling_rate)) : 0
-                                const totalCost = parseFloat(lossRows.reduce((s, r) => s + (r.loss !== null ? r.loss * sp2 : 0), 0).toFixed(2))
-                                return totalCost > 0.01 ? `-${fmtN(totalCost)}` : totalCost < -0.01 ? `+${fmtN(Math.abs(totalCost))}` : '0'
-                              })()}
-                            </td>
-                          </tr>
+                          {(() => {
+                            const sp2 = item.selling_rate ? parseFloat(String(item.selling_rate)) : 0
+                            const totalCost = parseFloat(lossRows.reduce((s, r) => s + (r.loss !== null ? r.loss * sp2 : 0), 0).toFixed(2))
+                            const cls = `px-0 py-1 text-right font-bold ${totalLoss > 0 ? 'text-red-600' : totalLoss < 0 ? 'text-green-600' : 'text-gray-400'}`
+                            return (
+                              <tr className="border-t-2 border-gray-200 bg-gray-50">
+                                <td className="pr-1 py-1 font-bold text-gray-500">Total</td>
+                                <td className={cls}>{totalLoss > 0.001 ? `-${fmtN(totalLoss)}` : totalLoss < -0.001 ? `+${fmtN(Math.abs(totalLoss))}` : '0'}</td>
+                                <td className={cls}>{totalCost > 0.01 ? `-${fmtN(totalCost)}` : totalCost < -0.01 ? `+${fmtN(Math.abs(totalCost))}` : '0'}</td>
+                                <td colSpan={6} />
+                              </tr>
+                            )
+                          })()}
                         </tfoot>
                       </table>
                     </div>
