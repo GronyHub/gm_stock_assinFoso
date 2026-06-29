@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
+import { distanceMeters, SHOP_LAT, SHOP_LNG, ALLOWED_RADIUS_METERS } from '@/lib/geo'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET() {
@@ -51,13 +52,35 @@ export async function POST(req: NextRequest) {
   const sessionUser = session?.user as any
   if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { action, time } = await req.json()
+  const { action, time, latitude, longitude } = await req.json()
   if (!action || !time) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
   if (!['in', 'out'].includes(action)) return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
 
   const username = sessionUser.username ?? sessionUser.name
   const today = new Date().toISOString().slice(0, 10)
   const enteredBy = session?.user?.name || (session?.user as any)?.username || null
+
+  const lat = parseFloat(latitude)
+  const lng = parseFloat(longitude)
+  const hasLocation = !isNaN(lat) && !isNaN(lng)
+  const distance = hasLocation ? distanceMeters(lat, lng, SHOP_LAT, SHOP_LNG) : null
+  const accepted = hasLocation && distance !== null && distance <= ALLOWED_RADIUS_METERS
+
+  try {
+    await sql`
+      INSERT INTO clock_locations (staff_name, action, latitude, longitude, distance_meters, accepted)
+      VALUES (${username}, ${action}, ${hasLocation ? lat : null}, ${hasLocation ? lng : null}, ${distance}, ${accepted})
+    `
+  } catch (e) {
+    console.error('clock_locations insert failed (non-fatal):', e)
+  }
+
+  if (!hasLocation) {
+    return NextResponse.json({ error: 'Location is required to clock in/out. Please enable location services and try again.' }, { status: 400 })
+  }
+  if (!accepted) {
+    return NextResponse.json({ error: `You're too far from the shop to clock in/out (about ${Math.round(distance!)}m away).` }, { status: 400 })
+  }
 
   try {
     if (action === 'out') {

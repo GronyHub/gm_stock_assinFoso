@@ -176,12 +176,38 @@ function TimesTab({ username }: { username: string }) {
   useEffect(() => { load() }, [])
   usePolling(load, 5000, !pickingTime && editDate === null)
 
+  function getLocation(): Promise<GeolocationPosition> {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('Your browser does not support location services.'))
+        return
+      }
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true, timeout: 15000, maximumAge: 0,
+      })
+    })
+  }
+
   async function clock(action: 'in' | 'out') {
     const time = pickingTime ? hhmmTo12h(customTime) : nowAs12h()
-    setSaving(true); setErr('')
+    setErr('')
+    setSaving(true)
+
+    let latitude: number | null = null, longitude: number | null = null
+    try {
+      const pos = await getLocation()
+      latitude = pos.coords.latitude
+      longitude = pos.coords.longitude
+    } catch (e: any) {
+      setSaving(false)
+      if (e?.code === 1) setErr('Location access was denied. Please enable location services for this site and try again.')
+      else setErr(e?.message || 'Could not get your location. Make sure GPS is turned on and try again.')
+      return
+    }
+
     const res = await fetch('/api/staff-times/today', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, time }),
+      body: JSON.stringify({ action, time, latitude, longitude }),
     })
     setSaving(false)
     if (res.ok) {
@@ -277,6 +303,7 @@ function TimesTab({ username }: { username: string }) {
             {saving ? '…' : `Clock Out${pickingTime ? '' : ' (Now)'}`}
           </button>
         </div>
+        <p className="text-[11px] text-gray-400 text-center">📍 Location must be enabled — you must be at the shop to clock in/out.</p>
       </div>
 
       {/* Today's times for all staff */}

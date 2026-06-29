@@ -9,9 +9,10 @@ const env = Object.fromEntries(
 const sql = neon(env.DATABASE_URL)
 
 await sql`
-  CREATE TABLE IF NOT EXISTS login_locations (
+  CREATE TABLE IF NOT EXISTS clock_locations (
     id SERIAL PRIMARY KEY,
-    username TEXT NOT NULL,
+    staff_name TEXT NOT NULL,
+    action TEXT NOT NULL,
     latitude DOUBLE PRECISION,
     longitude DOUBLE PRECISION,
     distance_meters DOUBLE PRECISION,
@@ -19,5 +20,5 @@ await sql`
     created_at TIMESTAMP DEFAULT NOW()
   )
 `
-console.log('✓ login_locations')
+console.log('✓ clock_locations')
 console.log('Done.')
