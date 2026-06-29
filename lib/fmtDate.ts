@@ -13,5 +13,6 @@ export function fmtDate(raw: string | null | undefined): string {
   const d = new Date(raw.length === 10 ? raw + 'T00:00:00' : raw)
   if (isNaN(d.getTime())) return String(raw)
   const day = d.getDate()
-  return `${day}${ordinal(day)} ${MON[d.getMonth()]} ${d.getFullYear()}-${DAY[d.getDay()]}`
+  const yr = String(d.getFullYear()).slice(-2)
+  return `${day} ${MON[d.getMonth()]} '${yr}-${DAY[d.getDay()]}`
 }
