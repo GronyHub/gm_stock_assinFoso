@@ -502,12 +502,12 @@ export default function ItemsTab({ items, group, productType, search, violation,
           const soh = Number(item.calculated_soh)
           return (
             <div key={item.id} data-left-item={item.id} onClick={() => { scrollingFromClick.current = true; jumpTo(item); setTimeout(() => { scrollingFromClick.current = false }, 1000) }}
-              className={`cursor-pointer border-b border-gray-100 px-2 py-1.5 transition ${selectedId === item.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-              <p className="text-[10px] text-gray-900 font-semibold truncate leading-tight">{item.item_name}</p>
+              className={`cursor-pointer border-b border-gray-100 px-2 py-1.5 transition ${selectedId === item.id ? 'bg-blue-600 text-white' : 'hover:bg-gray-50'}`}>
+              <p className={`text-[10px] font-semibold truncate leading-tight ${selectedId === item.id ? 'text-white' : 'text-gray-900'}`}>{item.item_name}</p>
               <div className="flex gap-2 text-[9px] mt-0.5">
-                <span className={soh <= 0 ? 'text-red-500 font-bold' : 'text-gray-500'}>SOH:{soh % 1 === 0 ? soh : soh.toFixed(2)}</span>
-                <span className="text-blue-500">SP:{item.selling_rate ? fmt(item.selling_rate) : '—'}</span>
-                <span className="text-green-500">CP:{item.purchase_rate ? fmt(item.purchase_rate) : '—'}</span>
+                <span className={soh <= 0 ? 'text-red-300 font-bold' : selectedId === item.id ? 'text-blue-100' : 'text-gray-500'}>SOH:{soh % 1 === 0 ? soh : soh.toFixed(2)}</span>
+                <span className={selectedId === item.id ? 'text-blue-200' : 'text-blue-500'}>SP:{item.selling_rate ? fmt(item.selling_rate) : '—'}</span>
+                <span className={selectedId === item.id ? 'text-green-200' : 'text-green-500'}>CP:{item.purchase_rate ? fmt(item.purchase_rate) : '—'}</span>
               </div>
             </div>
           )
