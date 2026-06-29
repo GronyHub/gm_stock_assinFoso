@@ -1089,47 +1089,87 @@ function FixRow({ label, sub, children }: { label: string; sub?: string; childre
   )
 }
 
+const ABSENCE_STATUSES = ['ABSENT', 'ON LEAVE', 'TRAVELLED', 'ON ASSIGNMENT']
+
+type StaffEntry = { mode: 'work' | 'away'; timeIn: string; timeOut: string; status: string }
+
 function NoTimesFix({ date, onFixed }: { date: string; onFixed: (d: string) => void }) {
-  const [staff, setStaff] = useState(STAFF[0])
-  const [timeIn, setTimeIn] = useState('')
-  const [timeOut, setTimeOut] = useState('')
+  const [entries, setEntries] = useState<Record<string, StaffEntry>>(
+    () => Object.fromEntries(STAFF.map(s => [s, { mode: 'work', timeIn: '', timeOut: '', status: 'ABSENT' }]))
+  )
   const [saving, setSaving] = useState(false)
 
+  function upd(s: string, patch: Partial<StaffEntry>) {
+    setEntries(prev => ({ ...prev, [s]: { ...prev[s], ...patch } }))
+  }
+
+  const allFilled = STAFF.every(s => {
+    const e = entries[s]
+    return e.mode === 'away' || (e.mode === 'work' && e.timeIn)
+  })
+
   async function save() {
-    if (!timeIn) return
     setSaving(true)
-    await fetch('/api/staff-times/entry', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        staff_name: staff, work_date: date,
-        actual_in: hhmmTo12h(timeIn),
-        actual_out: timeOut ? hhmmTo12h(timeOut) : null,
-      }),
-    })
+    await Promise.all(STAFF.map(s => {
+      const e = entries[s]
+      return fetch('/api/staff-times/entry', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          staff_name: s, work_date: date,
+          actual_in: e.mode === 'work' && e.timeIn ? hhmmTo12h(e.timeIn) : null,
+          actual_out: e.mode === 'work' && e.timeOut ? hhmmTo12h(e.timeOut) : null,
+          status: e.mode === 'away' ? e.status : null,
+        }),
+      })
+    }))
     setSaving(false)
     onFixed(date)
   }
 
   return (
-    <>
-      <select value={staff} onChange={e => setStaff(e.target.value)} className={inputCls}>
-        {STAFF.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-      </select>
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className={labelCls}>Time In</label>
-          <input type="time" value={timeIn} onChange={e => setTimeIn(e.target.value)} className={inputCls} />
-        </div>
-        <div>
-          <label className={labelCls}>Time Out (optional)</label>
-          <input type="time" value={timeOut} onChange={e => setTimeOut(e.target.value)} className={inputCls} />
-        </div>
-      </div>
-      <button onClick={save} disabled={!timeIn || saving}
-        className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-semibold rounded-lg py-1.5 transition">
-        {saving ? 'Saving…' : 'Save Times'}
+    <div className="space-y-2">
+      {STAFF.map(s => {
+        const e = entries[s]
+        const cap = s.charAt(0).toUpperCase() + s.slice(1)
+        return (
+          <div key={s} className="bg-gray-50 rounded-xl p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${STAFF_COLORS[cap] ?? 'bg-gray-100 text-gray-600'}`}>{cap}</span>
+              <div className="flex gap-1">
+                <button onClick={() => upd(s, { mode: 'work' })}
+                  className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-lg transition ${e.mode === 'work' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>
+                  Worked
+                </button>
+                <button onClick={() => upd(s, { mode: 'away' })}
+                  className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-lg transition ${e.mode === 'away' ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>
+                  Away
+                </button>
+              </div>
+            </div>
+            {e.mode === 'work' ? (
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className={labelCls}>Time In *</label>
+                  <input type="time" value={e.timeIn} onChange={ev => upd(s, { timeIn: ev.target.value })} className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Time Out</label>
+                  <input type="time" value={e.timeOut} onChange={ev => upd(s, { timeOut: ev.target.value })} className={inputCls} />
+                </div>
+              </div>
+            ) : (
+              <select value={e.status} onChange={ev => upd(s, { status: ev.target.value })} className={inputCls}>
+                {ABSENCE_STATUSES.map(st => <option key={st} value={st}>{st}</option>)}
+              </select>
+            )}
+          </div>
+        )
+      })}
+      <button onClick={save} disabled={!allFilled || saving}
+        className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-semibold rounded-lg py-2 transition">
+        {saving ? 'Saving…' : `Save All Staff (${STAFF.length})`}
       </button>
-    </>
+    </div>
   )
 }
 
