@@ -41,19 +41,19 @@ const EMPTY_FORM = {
   amount: '', cf_expense_type: '', is_property: false,
 }
 
+const ACCOUNTS = ['Office Expenses','Rent','Utilities','Salaries','Transport','Repairs','Supplies','Other']
+
 type Props = { search: string }
 
 export default function ExpensesTab({ search }: Props) {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<ExpTab>('all')
-  const [selected, setSelected] = useState<Expense | null>(null)
-  const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
   const [form, setForm] = useState({ ...EMPTY_FORM })
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
 
   function loadExpenses() {
     fetch('/api/expenses')
@@ -63,7 +63,7 @@ export default function ExpensesTab({ search }: Props) {
   }
 
   useEffect(() => { loadExpenses() }, [])
-  usePolling(loadExpenses, 5000, editId === null && !showForm)
+  usePolling(loadExpenses, 5000, editId === null)
 
   const filtered = useMemo(() => {
     let list = expenses
@@ -79,10 +79,6 @@ export default function ExpensesTab({ search }: Props) {
     )
   }, [expenses, tab, search])
 
-  function openAdd() {
-    setForm({ ...EMPTY_FORM }); setEditId(null); setShowForm(true); setSelected(null)
-  }
-
   function openEdit(e: Expense) {
     setForm({
       expense_date: e.expense_date?.slice(0, 10) ?? '',
@@ -93,10 +89,12 @@ export default function ExpensesTab({ search }: Props) {
       cf_expense_type: e.cf_expense_type ?? '',
       is_property: e.is_property,
     })
-    setEditId(e.id); setShowForm(true)
+    setEditId(e.id)
+    setConfirmDeleteId(null)
   }
 
-  async function saveForm() {
+  async function saveEdit() {
+    if (!editId) return
     setSaving(true)
     const body = {
       expense_date: form.expense_date || undefined,
@@ -107,15 +105,12 @@ export default function ExpensesTab({ search }: Props) {
       cf_expense_type: form.cf_expense_type || null,
       is_property: form.is_property,
     }
-    const res = editId
-      ? await fetch(`/api/expenses/${editId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-      : await fetch('/api/expenses', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    const res = await fetch(`/api/expenses/${editId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     setSaving(false)
     if (res.ok) {
       const updated: Expense = await res.json()
-      setExpenses(prev => editId ? prev.map(e => e.id === editId ? { ...e, ...updated } : e) : [updated, ...prev])
-      if (editId && selected?.id === editId) setSelected(s => s ? { ...s, ...updated } : s)
-      setShowForm(false)
+      setExpenses(prev => prev.map(e => e.id === editId ? { ...e, ...updated } : e))
+      setEditId(null)
     }
   }
 
@@ -125,8 +120,7 @@ export default function ExpensesTab({ search }: Props) {
     setDeleting(false)
     if (res.ok) {
       setExpenses(prev => prev.filter(e => e.id !== id))
-      setSelected(null)
-      setConfirmDelete(false)
+      setConfirmDeleteId(null)
     }
   }
 
@@ -135,10 +129,7 @@ export default function ExpensesTab({ search }: Props) {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ property_status: status }),
     })
-    if (res.ok) {
-      setExpenses(prev => prev.map(e => e.id === expense.id ? { ...e, property_status: status } : e))
-      if (selected?.id === expense.id) setSelected(s => s ? { ...s, property_status: status } : s)
-    }
+    if (res.ok) setExpenses(prev => prev.map(e => e.id === expense.id ? { ...e, property_status: status } : e))
   }
 
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
@@ -158,172 +149,123 @@ export default function ExpensesTab({ search }: Props) {
             {t.label}
           </button>
         ))}
-        <div className="flex-1" />
-        <button onClick={openAdd}
-          className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100">
-          + New
-        </button>
+        <span className="ml-auto text-[9px] text-gray-400">{filtered.length} records</span>
       </div>
 
-      <div className="flex flex-1 min-h-0">
-        <div className="w-1/2 border-r border-gray-200 overflow-y-auto min-h-0">
-          <table className="w-full border-collapse text-[10px]">
-            <thead className="sticky top-0 bg-gray-100 z-10">
-              <tr>
-                <th className="text-left px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">DATE</th>
-                <th className="text-left px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">ACCOUNT</th>
-                <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">AMT</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(e => (
-                <tr key={e.id} onClick={() => { setSelected(e); setShowForm(false); setConfirmDelete(false) }}
-                  className={`cursor-pointer border-b border-gray-100 transition ${selected?.id === e.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-                  <td className="px-0.5 py-0.5 text-gray-700 whitespace-nowrap">{fmtShort(e.expense_date)}</td>
-                  <td className="px-0.5 py-0.5 text-gray-900 truncate max-w-[80px]">{e.expense_account}</td>
-                  <td className="px-0.5 py-0.5 text-right font-semibold text-gray-900">{fmt(e.amount)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {filtered.length === 0 && <p className="text-[10px] text-gray-400 text-center py-10">No expenses</p>}
-        </div>
-
-        <div className="w-1/2 overflow-y-auto min-h-0 bg-white">
-          {showForm ? (
-            <div className="p-2 space-y-2">
-              <p className="text-[10px] font-bold text-gray-600">{editId ? 'Edit' : 'New'} Expense</p>
-              <div className="grid grid-cols-2 gap-1">
-                <div>
-                  <p className="text-[9px] text-gray-400 mb-0.5">Date</p>
-                  <input type="date" value={form.expense_date}
-                    onChange={e => setForm(f => ({ ...f, expense_date: e.target.value }))} className={inputCls} />
-                </div>
-                <div>
-                  <p className="text-[9px] text-gray-400 mb-0.5">Amount (₵)</p>
-                  <input type="number" min="0" step="0.01" inputMode="decimal" value={form.amount}
-                    onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} className={inputCls} />
-                </div>
-              </div>
-              <div>
-                <p className="text-[9px] text-gray-400 mb-0.5">Account</p>
-                <input value={form.expense_account}
-                  onChange={e => setForm(f => ({ ...f, expense_account: e.target.value }))} className={inputCls} />
-              </div>
-              <div>
-                <p className="text-[9px] text-gray-400 mb-0.5">Justification</p>
-                <input value={form.cf_justify}
-                  onChange={e => setForm(f => ({ ...f, cf_justify: e.target.value }))} className={inputCls} />
-              </div>
-              <div className="grid grid-cols-2 gap-1">
-                <div>
-                  <p className="text-[9px] text-gray-400 mb-0.5">Vendor</p>
-                  <input value={form.vendor_name}
-                    onChange={e => setForm(f => ({ ...f, vendor_name: e.target.value }))} className={inputCls} />
-                </div>
-                <div>
-                  <p className="text-[9px] text-gray-400 mb-0.5">Type</p>
-                  <input value={form.cf_expense_type}
-                    onChange={e => setForm(f => ({ ...f, cf_expense_type: e.target.value }))} className={inputCls} />
-                </div>
-              </div>
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <input type="checkbox" checked={form.is_property}
-                  onChange={e => setForm(f => ({ ...f, is_property: e.target.checked }))}
-                  className="w-3 h-3 accent-blue-600" />
-                <span className="text-[10px] text-gray-700">Is property</span>
-              </label>
-              <div className="flex gap-1">
-                <button onClick={saveForm} disabled={saving}
-                  className="flex-1 bg-green-600 text-white text-[10px] font-bold rounded py-1 disabled:opacity-40">
-                  {saving ? 'Saving…' : 'Save'}
-                </button>
-                <button onClick={() => setShowForm(false)}
-                  className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
-              </div>
-            </div>
-          ) : !selected ? (
-            <p className="text-[10px] text-gray-400 text-center py-10">Select an expense</p>
-          ) : (
-            <div className="p-2 space-y-2">
-              <div className="flex items-start justify-between">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-bold text-gray-900 leading-snug">{selected.expense_account}</p>
-                  <p className="text-[9px] text-gray-400">{fmtShort(selected.expense_date)}</p>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <button onClick={() => openEdit(selected)}
-                    className="text-[9px] text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100">
-                    Edit
-                  </button>
-                  {!confirmDelete ? (
-                    <button onClick={() => setConfirmDelete(true)}
-                      className="text-[9px] text-red-600 font-semibold bg-red-50 px-2 py-0.5 rounded hover:bg-red-100">
-                      Delete
-                    </button>
-                  ) : (
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => deleteExpense(selected.id)} disabled={deleting}
-                        className="text-[9px] text-white font-semibold bg-red-600 px-2 py-0.5 rounded hover:bg-red-700 disabled:opacity-40">
-                        {deleting ? '…' : 'Confirm'}
+      <div className="flex-1 overflow-y-auto min-h-0">
+        <table className="w-full border-collapse text-[10px]">
+          <thead className="sticky top-0 bg-gray-100 z-10">
+            <tr>
+              <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200 whitespace-nowrap">DATE</th>
+              <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">ACCOUNT</th>
+              <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">DESCRIPTION</th>
+              <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">VENDOR</th>
+              <th className="text-right px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">AMT</th>
+              <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">BY</th>
+              <th className="px-1 py-1 border-b border-gray-200" />
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(e => (
+              <>
+                <tr key={e.id} className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="px-1 py-1 text-gray-600 whitespace-nowrap">{fmtShort(e.expense_date)}</td>
+                  <td className="px-1 py-1 text-gray-900 font-semibold">{e.expense_account}</td>
+                  <td className="px-1 py-1 text-gray-700">{e.cf_justify ?? '—'}</td>
+                  <td className="px-1 py-1 text-gray-500">{e.vendor_name ?? '—'}</td>
+                  <td className="px-1 py-1 text-right font-bold text-gray-900">₵{fmt(e.amount)}</td>
+                  <td className="px-1 py-1 text-blue-500">{e.entered_by ?? '—'}</td>
+                  <td className="px-1 py-1">
+                    <div className="flex items-center gap-1 justify-end">
+                      <button onClick={() => editId === e.id ? setEditId(null) : openEdit(e)}
+                        className="text-[9px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded hover:bg-blue-100">
+                        {editId === e.id ? 'Close' : 'Edit'}
                       </button>
-                      <button onClick={() => setConfirmDelete(false)}
-                        className="text-[9px] text-gray-600 font-semibold bg-gray-100 px-2 py-0.5 rounded hover:bg-gray-200">
-                        Cancel
-                      </button>
+                      {confirmDeleteId === e.id ? (
+                        <>
+                          <button onClick={() => deleteExpense(e.id)} disabled={deleting}
+                            className="text-[9px] text-white font-semibold bg-red-600 px-1.5 py-0.5 rounded hover:bg-red-700 disabled:opacity-40">
+                            {deleting ? '…' : 'Yes'}
+                          </button>
+                          <button onClick={() => setConfirmDeleteId(null)}
+                            className="text-[9px] text-gray-600 font-semibold bg-gray-100 px-1.5 py-0.5 rounded">
+                            No
+                          </button>
+                        </>
+                      ) : (
+                        <button onClick={() => { setConfirmDeleteId(e.id); setEditId(null) }}
+                          className="text-[9px] text-red-600 font-semibold bg-red-50 px-1.5 py-0.5 rounded hover:bg-red-100">
+                          Del
+                        </button>
+                      )}
                     </div>
-                  )}
-                </div>
-              </div>
-              <table className="w-full border-collapse text-[10px]">
-                <tbody>
-                  <tr className="border-b border-gray-100">
-                    <td className="py-0.5 text-gray-400">Amount</td>
-                    <td className="py-0.5 text-right font-bold text-gray-900">₵{fmt(selected.amount)}</td>
+                  </td>
+                </tr>
+                {editId === e.id && (
+                  <tr key={`edit-${e.id}`} className="bg-blue-50/40 border-b border-blue-200">
+                    <td colSpan={7} className="px-2 py-2">
+                      <div className="grid grid-cols-2 gap-1 max-w-lg">
+                        <div>
+                          <p className="text-[9px] text-gray-400 mb-0.5">Date</p>
+                          <input type="date" value={form.expense_date}
+                            onChange={e => setForm(f => ({ ...f, expense_date: e.target.value }))} className={inputCls} />
+                        </div>
+                        <div>
+                          <p className="text-[9px] text-gray-400 mb-0.5">Amount (₵)</p>
+                          <input type="number" min="0" step="0.01" inputMode="decimal" value={form.amount}
+                            onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} className={inputCls} />
+                        </div>
+                        <div>
+                          <p className="text-[9px] text-gray-400 mb-0.5">Account</p>
+                          <select value={form.expense_account}
+                            onChange={e => setForm(f => ({ ...f, expense_account: e.target.value }))} className={inputCls}>
+                            {ACCOUNTS.map(a => <option key={a}>{a}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <p className="text-[9px] text-gray-400 mb-0.5">Description</p>
+                          <input value={form.cf_justify}
+                            onChange={e => setForm(f => ({ ...f, cf_justify: e.target.value }))} className={inputCls} />
+                        </div>
+                        <div>
+                          <p className="text-[9px] text-gray-400 mb-0.5">Vendor</p>
+                          <input value={form.vendor_name}
+                            onChange={e => setForm(f => ({ ...f, vendor_name: e.target.value }))} className={inputCls} />
+                        </div>
+                        <div>
+                          <p className="text-[9px] text-gray-400 mb-0.5">Type</p>
+                          <input value={form.cf_expense_type}
+                            onChange={e => setForm(f => ({ ...f, cf_expense_type: e.target.value }))} className={inputCls} />
+                        </div>
+                      </div>
+                      {e.is_property && (
+                        <div className="mt-1">
+                          <p className="text-[9px] text-gray-400 mb-0.5">Property Status</p>
+                          <select value={e.property_status ?? 'at_shop'}
+                            onChange={ev => setPropertyStatus(e, ev.target.value)}
+                            className={`${inputCls} w-auto ${STATUS_COLORS[e.property_status ?? ''] ?? 'text-gray-600'}`}>
+                            <option value="at_shop">At Shop</option>
+                            <option value="not_at_shop">Not at Shop</option>
+                            <option value="spoilt">Spoilt</option>
+                          </select>
+                        </div>
+                      )}
+                      <div className="flex gap-1 mt-2">
+                        <button onClick={saveEdit} disabled={saving}
+                          className="bg-green-600 text-white text-[10px] font-bold rounded px-3 py-1 disabled:opacity-40">
+                          {saving ? 'Saving…' : 'Save'}
+                        </button>
+                        <button onClick={() => setEditId(null)}
+                          className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
+                      </div>
+                    </td>
                   </tr>
-                  {selected.cf_justify && (
-                    <tr className="border-b border-gray-100">
-                      <td className="py-0.5 text-gray-400">Justify</td>
-                      <td className="py-0.5 text-right text-gray-700">{selected.cf_justify}</td>
-                    </tr>
-                  )}
-                  {selected.vendor_name && (
-                    <tr className="border-b border-gray-100">
-                      <td className="py-0.5 text-gray-400">Vendor</td>
-                      <td className="py-0.5 text-right text-gray-700">{selected.vendor_name}</td>
-                    </tr>
-                  )}
-                  {selected.cf_expense_type && (
-                    <tr className="border-b border-gray-100">
-                      <td className="py-0.5 text-gray-400">Type</td>
-                      <td className="py-0.5 text-right text-gray-700">{selected.cf_expense_type}</td>
-                    </tr>
-                  )}
-                  {selected.entered_by && (
-                    <tr className="border-b border-gray-100">
-                      <td className="py-0.5 text-gray-400">By</td>
-                      <td className="py-0.5 text-right text-blue-500">{selected.entered_by}</td>
-                    </tr>
-                  )}
-                  {selected.is_property && (
-                    <tr>
-                      <td className="py-0.5 text-gray-400">Property</td>
-                      <td className="py-0.5 text-right">
-                        <select value={selected.property_status ?? 'at_shop'}
-                          onChange={e => setPropertyStatus(selected, e.target.value)}
-                          className={`text-[10px] border border-gray-200 rounded px-1 py-0.5 outline-none ${STATUS_COLORS[selected.property_status ?? ''] ?? 'text-gray-600'}`}>
-                          <option value="at_shop">At Shop</option>
-                          <option value="not_at_shop">Not at Shop</option>
-                          <option value="spoilt">Spoilt</option>
-                        </select>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                )}
+              </>
+            ))}
+          </tbody>
+        </table>
+        {filtered.length === 0 && <p className="text-[10px] text-gray-400 text-center py-10">No expenses</p>}
       </div>
     </div>
   )
