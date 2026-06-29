@@ -243,6 +243,12 @@ function ItemHubPageInner() {
 
         {/* Row 1: scrollable tabs + hamburger (hamburger outside scroll area to avoid clip) */}
         <div className="flex items-center pr-1.5">
+          {/* Home — fixed, outside the scrollable flex area */}
+          <button onClick={() => changeTab('today')}
+            className={`shrink-0 flex flex-col items-center justify-center gap-0.5 px-2 pt-1.5 pb-1 rounded-lg transition
+              ${outerTab === 'today' ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}>
+            <span className="text-lg leading-none">🏠</span>
+          </button>
           <div className="flex items-center gap-0.5 px-1 pt-1.5 pb-1 flex-1 min-w-0">
             <TabIcon icon="📦" label="Items"    active={outerTab === 'items'}    onClick={() => changeTab('items')}    count={badgeCounts.items} />
             <TabIcon icon="💰" label="Sales"    active={outerTab === 'sales'}    onClick={() => changeTab('sales')}    count={badgeCounts.sales} />
