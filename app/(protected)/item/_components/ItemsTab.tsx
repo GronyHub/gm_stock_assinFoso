@@ -556,7 +556,8 @@ export default function ItemsTab({ items, group, productType, search, violation,
                         </thead>
                         <tbody>
                           {lossRows.map((row, i) => {
-                            const lossVal = row.loss !== null && row.sell_price !== null ? row.loss * parseFloat(String(row.sell_price)) : null
+                            const sp = item.selling_rate ? parseFloat(String(item.selling_rate)) : null
+                            const lossVal = row.loss !== null && sp !== null ? row.loss * sp : null
                             return (
                             <tr key={i} className={`border-b border-gray-100 ${row.loss !== null && row.loss > 0.001 ? 'bg-red-50' : ''}`}>
                               <td className="px-0.5 py-0.5 text-gray-500 whitespace-nowrap">{fmtDate(row.date)}</td>
@@ -590,7 +591,8 @@ export default function ItemsTab({ items, group, productType, search, violation,
                             </td>
                             <td className={`px-0.5 py-1 text-right font-bold ${totalLoss > 0 ? 'text-red-600' : totalLoss < 0 ? 'text-green-600' : 'text-gray-400'}`}>
                               {(() => {
-                                const totalCost = parseFloat(lossRows.reduce((s, r) => s + (r.loss !== null && r.sell_price !== null ? r.loss * parseFloat(String(r.sell_price)) : 0), 0).toFixed(2))
+                                const sp2 = item.selling_rate ? parseFloat(String(item.selling_rate)) : 0
+                                const totalCost = parseFloat(lossRows.reduce((s, r) => s + (r.loss !== null ? r.loss * sp2 : 0), 0).toFixed(2))
                                 return totalCost > 0 ? fmtN(totalCost) : totalCost < 0 ? fmtN(totalCost) : '0'
                               })()}
                             </td>
