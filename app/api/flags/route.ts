@@ -196,14 +196,15 @@ export async function GET() {
       ORDER BY canonical_name
     `),
 
-    // 7. Days with a sales receipt but no staff times entered (exclude Sundays and today)
+    // 7. Days with a sales receipt but no staff times entered (exclude today)
     safeQuery(() => sql`
       SELECT DISTINCT receipt_date::date::text AS missing_date
-      FROM sales_receipts
-      WHERE receipt_date::date < CURRENT_DATE
-        AND EXTRACT(DOW FROM receipt_date::date) <> 0
-        AND receipt_date::date NOT IN (
-          SELECT DISTINCT work_date FROM staff_times WHERE actual_in IS NOT NULL
+      FROM sales_receipts sr
+      WHERE sr.receipt_date::date < CURRENT_DATE
+        AND NOT EXISTS (
+          SELECT 1 FROM staff_times st
+          WHERE st.work_date = sr.receipt_date::date
+            AND st.actual_in IS NOT NULL
         )
       ORDER BY missing_date DESC
     `),
