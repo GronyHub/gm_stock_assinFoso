@@ -769,8 +769,12 @@ function PayslipsTab() {
 
 function ViolationsTab({ role, username }: { role: string; username: string }) {
   const isAdmin = role === 'owner' || role === 'admin' || username === 'rawlings' || username === 'grony'
+  const PAYSLIP_MONTHS = ['2026-04', '2026-05']
+  const PAYSLIP_MONTH_LABELS: Record<string, string> = { '2026-04': 'April 2026', '2026-05': 'May 2026' }
+
   const [violations, setViolations] = useState<Violation[]>([])
   const [noTimesDays, setNoTimesDays] = useState<string[]>([])
+  const [missingPayslips, setMissingPayslips] = useState<{ staff: string; month: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ staff_name: STAFF[0], violation: '', details: '', severity: 'minor', points: '5' })
@@ -781,9 +785,21 @@ function ViolationsTab({ role, username }: { role: string; username: string }) {
     Promise.all([
       fetch('/api/staff/violations').then(r => r.json()),
       fetch('/api/flags').then(r => r.json()),
-    ]).then(([v, flags]) => {
+      fetch('/api/payslips').then(r => r.json()),
+    ]).then(([v, flags, payslips]) => {
       setViolations(Array.isArray(v) ? v : [])
       setNoTimesDays((flags?.noStaffTimes ?? []).map((r: any) => r.missing_date))
+      // Find staff + month combos where payslip is missing
+      const existing = new Set(
+        (Array.isArray(payslips) ? payslips : []).map((p: any) => `${p.staff_name}|${p.pay_month?.slice(0, 7)}`)
+      )
+      const missing: { staff: string; month: string }[] = []
+      for (const month of PAYSLIP_MONTHS) {
+        for (const s of STAFF) {
+          if (!existing.has(`${s}|${month}`)) missing.push({ staff: s, month })
+        }
+      }
+      setMissingPayslips(missing)
       setLoading(false)
     }).catch(() => setLoading(false))
   }, [])
@@ -930,6 +946,52 @@ function ViolationsTab({ role, username }: { role: string; username: string }) {
           </div>
         ))
       }
+
+      {/* ── Missing Payslips ── */}
+      <div className="border-t border-gray-200 pt-4">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-sm font-semibold text-gray-700">Missing Payslips</p>
+          {missingPayslips.length > 0 && (
+            <span className="text-[10px] font-bold bg-red-100 text-red-600 px-2 py-0.5 rounded-full">
+              {missingPayslips.length} missing
+            </span>
+          )}
+        </div>
+        <p className="text-[11px] text-gray-400 mb-3">
+          Joe must provide payslips for all staff for April 2026 and May 2026.
+        </p>
+        {missingPayslips.length === 0 ? (
+          <p className="py-4 text-center text-gray-400 text-xs">All payslips are in. ✓</p>
+        ) : (
+          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
+            {PAYSLIP_MONTHS.map(month => {
+              const staffMissing = missingPayslips.filter(p => p.month === month).map(p => p.staff)
+              if (staffMissing.length === 0) return (
+                <div key={month} className="flex items-center justify-between px-4 py-3">
+                  <span className="text-sm font-semibold text-gray-700">{PAYSLIP_MONTH_LABELS[month]}</span>
+                  <span className="text-xs text-green-600 font-semibold">Complete ✓</span>
+                </div>
+              )
+              return (
+                <div key={month} className="px-4 py-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-gray-700">{PAYSLIP_MONTH_LABELS[month]}</span>
+                    <span className="text-[10px] text-orange-600 font-semibold">{staffMissing.length} missing</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {staffMissing.map(s => (
+                      <span key={s} className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STAFF_COLORS[s.charAt(0).toUpperCase()+s.slice(1)] ?? 'bg-gray-100 text-gray-600'}`}>
+                        {s.charAt(0).toUpperCase()+s.slice(1)}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-gray-400">Assigned to: <span className="font-semibold text-blue-600">Joe</span></p>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
 
       {/* ── Missing Staff Times ── */}
       <div className="border-t border-gray-200 pt-4">
