@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { fmtDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
+import HistoryPanel from './HistoryPanel'
 
 type Item = { id: number; item_name: string; cf_group: string | null }
 
@@ -244,6 +245,7 @@ export default function SalesTab({ items, groupFilter, search, violation }: Prop
   const [receipts, setReceipts] = useState<Receipt[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [showHistory, setShowHistory] = useState(false)
   const [linesMap, setLinesMap] = useState<Record<number, Line[]>>({})
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState({ receipt_date: '', customer_name: '', cash_counted: '' })
@@ -492,17 +494,35 @@ export default function SalesTab({ items, groupFilter, search, violation }: Prop
   }
 
   // Normal list view
+  if (showHistory) return (
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0">
+        <button onClick={() => setShowHistory(false)}
+          className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-purple-600 text-white transition">
+          ← Back
+        </button>
+        <span className="text-[9px] font-semibold text-purple-700">Sales History</span>
+      </div>
+      <HistoryPanel keywords={['sale', 'receipt']} />
+    </div>
+  )
+
   return (
-    <div className="flex h-full min-h-0">
-      <div className="w-1/2 border-r border-gray-200 overflow-y-auto min-h-0">
-        <div className="flex justify-end px-2 py-1 border-b border-gray-100 bg-gray-50 sticky top-0 z-10">
-          <Link href="/sales/new"
+    <div className="flex flex-col h-full min-h-0">
+    <div className="flex items-center justify-between px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
+      <button onClick={() => setShowHistory(true)}
+        className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700 transition">
+        History
+      </button>
+      <Link href="/sales/new"
             className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100">
             + New Receipt
           </Link>
-        </div>
+    </div>
+    <div className="flex flex-1 min-h-0">
+      <div className="w-1/2 border-r border-gray-200 overflow-y-auto min-h-0">
         <table className="w-full border-collapse text-[10px]">
-          <thead className="sticky top-8 bg-gray-100 z-10">
+          <thead className="sticky top-0 bg-gray-100 z-10">
             <tr>
               <th className="text-left px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200 whitespace-nowrap">DATE</th>
               <th className="text-left px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">CST</th>
@@ -717,6 +737,7 @@ export default function SalesTab({ items, groupFilter, search, violation }: Prop
         })}
         {filtered.length === 0 && <p className="text-[10px] text-gray-400 text-center py-10">No receipts</p>}
       </div>
+    </div>
     </div>
   )
 }

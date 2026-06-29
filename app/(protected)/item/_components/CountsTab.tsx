@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
 import { usePolling } from '@/lib/usePolling'
+import HistoryPanel from './HistoryPanel'
 
 type Item = { id: number; item_name: string; cf_group: string | null }
 
@@ -90,6 +91,7 @@ type Props = {
 export default function CountsTab({ items, groupFilter, search, violation }: Props) {
   const [records, setRecords] = useState<CountRecord[]>([])
   const [loading, setLoading] = useState(true)
+  const [showHistory, setShowHistory] = useState(false)
   const [editQty, setEditQty] = useState('')
   const [editNotes, setEditNotes] = useState('')
   const [saving, setSaving] = useState(false)
@@ -209,8 +211,27 @@ export default function CountsTab({ items, groupFilter, search, violation }: Pro
   }
 
   // List view
+  if (showHistory) return (
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0">
+        <button onClick={() => setShowHistory(false)}
+          className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-purple-600 text-white transition">
+          ← Back
+        </button>
+        <span className="text-[9px] font-semibold text-purple-700">Counts History</span>
+      </div>
+      <HistoryPanel keywords={['stock', 'count']} />
+    </div>
+  )
+
   return (
     <div className="flex flex-col h-full min-h-0">
+      <div className="flex items-center justify-end px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
+        <button onClick={() => setShowHistory(true)}
+          className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700 transition">
+          History
+        </button>
+      </div>
       <div className="flex-1 overflow-y-auto min-h-0">
         <table className="w-full border-collapse text-[10px] border border-black">
           <thead className="sticky top-0 bg-gray-100 z-10">
