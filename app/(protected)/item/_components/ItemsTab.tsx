@@ -457,17 +457,48 @@ export default function ItemsTab({ items, group, productType, search, violation,
 
   if (lossLoading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
 
+  const leftPaneRef = useRef<HTMLDivElement>(null)
+  const rightPaneRef = useRef<HTMLDivElement>(null)
+  const scrollingFromClick = useRef(false)
+
+  useEffect(() => {
+    const rightPane = rightPaneRef.current
+    if (!rightPane) return
+    const observer = new IntersectionObserver(entries => {
+      if (scrollingFromClick.current) return
+      let topEntry: IntersectionObserverEntry | null = null
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          if (!topEntry || entry.boundingClientRect.top < topEntry.boundingClientRect.top) topEntry = entry
+        }
+      }
+      if (!topEntry) return
+      const id = Number((topEntry.target as HTMLElement).dataset.itemId)
+      if (!id || id === selectedId) return
+      setSelectedId(id)
+      const leftPane = leftPaneRef.current
+      const leftEl = leftPane?.querySelector(`[data-left-item="${id}"]`) as HTMLElement | null
+      if (leftEl && leftPane) {
+        const paneTop = leftPane.getBoundingClientRect().top
+        const elTop = leftEl.getBoundingClientRect().top
+        leftPane.scrollBy({ top: elTop - paneTop - leftPane.clientHeight / 2, behavior: 'smooth' })
+      }
+    }, { root: rightPane, threshold: 0.1 })
+    rightPane.querySelectorAll('[data-item-id]').forEach(el => observer.observe(el))
+    return () => observer.disconnect()
+  }, [filteredItems])
+
   return (
     <div className="flex h-full min-h-0">
       {/* LEFT: compact item cards */}
-      <div className="w-1/3 border-r border-gray-200 overflow-y-auto min-h-0">
+      <div ref={leftPaneRef} className="w-1/3 border-r border-gray-200 overflow-y-auto min-h-0">
         <div className="px-2 py-1 border-b border-gray-100 bg-gray-50 sticky top-0 z-10">
           <span className="text-[9px] text-gray-400">{filteredItems.length} items</span>
         </div>
         {filteredItems.map(item => {
           const soh = Number(item.calculated_soh)
           return (
-            <div key={item.id} onClick={() => jumpTo(item)}
+            <div key={item.id} data-left-item={item.id} onClick={() => { scrollingFromClick.current = true; jumpTo(item); setTimeout(() => { scrollingFromClick.current = false }, 1000) }}
               className={`cursor-pointer border-b border-gray-100 px-2 py-1.5 transition ${selectedId === item.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
               <p className="text-[10px] text-gray-900 font-semibold truncate leading-tight">{item.item_name}</p>
               <div className="flex gap-2 text-[9px] mt-0.5">
@@ -484,7 +515,7 @@ export default function ItemsTab({ items, group, productType, search, violation,
       </div>
 
       {/* RIGHT: add form + loss history */}
-      <div className="w-2/3 overflow-y-auto min-h-0 bg-white pr-2">
+      <div ref={rightPaneRef} className="w-2/3 overflow-y-auto min-h-0 bg-white pr-2">
         {showAdd && (
           <div className="p-2 space-y-2 border-b border-gray-200">
             <p className="text-[10px] font-bold text-gray-600">New Item</p>
@@ -520,7 +551,7 @@ export default function ItemsTab({ items, group, productType, search, violation,
                 </div>
               ) : (
                 <>
-                  <div className="flex items-center justify-between px-2 py-1 bg-blue-600 border-b border-blue-700 sticky top-0 z-10">
+                  <div data-item-id={item.id} className="flex items-center justify-between px-2 py-1 bg-blue-600 border-b border-blue-700 sticky top-0 z-10">
                     <div className="min-w-0 flex-1">
                       <p className="text-[10px] font-bold text-white truncate">{item.item_name}</p>
                       <p className="text-[9px] text-blue-200">{item.cf_group ?? 'No group'} · SOH: {Number(item.calculated_soh)}</p>
