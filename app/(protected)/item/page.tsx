@@ -23,19 +23,20 @@ class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boole
   }
 }
 import { usePolling } from '@/lib/usePolling'
-import ItemsTab from './_components/ItemsTab'
-import SalesTab from './_components/SalesTab'
-import BillsTab from './_components/BillsTab'
-import CountsTab from './_components/CountsTab'
-import ExpensesTab from './_components/ExpensesTab'
-import CABTab from './_components/CABTab'
 import dynamic from 'next/dynamic'
-const TodayContent    = dynamic(() => import('./_components/TodayContent'), { ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div> })
-const NewSaleForm     = dynamic(() => import('../sales/new/page'),     { ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div> })
-const NewBillForm     = dynamic(() => import('../bills/new/page'),     { ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div> })
-const NewExpenseForm  = dynamic(() => import('../expenses/new/page'),  { ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div> })
-const AnalyticsPanel  = dynamic(() => import('./_components/AnalyticsPanel'), { ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-xs">Loading analytics…</div> })
-const StaffClient     = dynamic(() => import('../staff/StaffClient'), { ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div> })
+const loading = (h: string) => <div className={`py-10 text-center text-gray-400 text-sm`}>{h}</div>
+const ItemsTab       = dynamic(() => import('./_components/ItemsTab'),        { ssr: false, loading: () => loading('Loading…') })
+const SalesTab       = dynamic(() => import('./_components/SalesTab'),        { ssr: false, loading: () => loading('Loading…') })
+const BillsTab       = dynamic(() => import('./_components/BillsTab'),        { ssr: false, loading: () => loading('Loading…') })
+const CountsTab      = dynamic(() => import('./_components/CountsTab'),       { ssr: false, loading: () => loading('Loading…') })
+const ExpensesTab    = dynamic(() => import('./_components/ExpensesTab'),     { ssr: false, loading: () => loading('Loading…') })
+const CABTab         = dynamic(() => import('./_components/CABTab'),          { ssr: false, loading: () => loading('Loading…') })
+const TodayContent   = dynamic(() => import('./_components/TodayContent'),    { ssr: false, loading: () => loading('Loading…') })
+const NewSaleForm    = dynamic(() => import('../sales/new/page'),             { ssr: false, loading: () => loading('Loading…') })
+const NewBillForm    = dynamic(() => import('../bills/new/page'),             { ssr: false, loading: () => loading('Loading…') })
+const NewExpenseForm = dynamic(() => import('../expenses/new/page'),          { ssr: false, loading: () => loading('Loading…') })
+const AnalyticsPanel = dynamic(() => import('./_components/AnalyticsPanel'),  { ssr: false, loading: () => loading('Loading analytics…') })
+const StaffClient    = dynamic(() => import('../staff/StaffClient'),          { ssr: false, loading: () => loading('Loading…') })
 
 // Defined locally (not imported from AnalyticsPanel.tsx) -- a cross-file type
 // import here previously caused the analytics/recharts bundle to get pulled
