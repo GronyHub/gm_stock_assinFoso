@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
     SELECT COALESCE(MAX(entry_number::int), 0) + 1 AS next FROM expenses WHERE entry_number ~ '^[0-9]+$'
   `
   const entryNumber = String(entry[0].next)
+  const zohoExpenseId = `APP-${Date.now()}-${entryNumber}`
   const isProp = is_property ?? false
 
   const enteredBy = session.user?.name || (session.user as any)?.username || null
@@ -50,9 +51,9 @@ export async function POST(req: NextRequest) {
     let row
     try {
       [row] = await sql`
-        INSERT INTO expenses (expense_date, expense_account, cf_justify, vendor_name, amount, total,
+        INSERT INTO expenses (zoho_expense_id, expense_date, expense_account, cf_justify, vendor_name, amount, total,
                               cf_expense_type, is_property, source, entry_number, entered_by)
-        VALUES (${expense_date}, ${expense_account}, ${cf_justify ?? null}, ${vendor_name ?? null},
+        VALUES (${zohoExpenseId}, ${expense_date}, ${expense_account}, ${cf_justify ?? null}, ${vendor_name ?? null},
                 ${amount}, ${amount}, ${cf_expense_type ?? null}, ${isProp}, 'app', ${entryNumber}, ${enteredBy})
         RETURNING id, expense_date::date AS expense_date, expense_account, cf_justify,
                   vendor_name, amount, cf_expense_type, is_property, entered_by
@@ -60,9 +61,9 @@ export async function POST(req: NextRequest) {
     } catch (e) {
       console.error('expenses insert with entered_by failed, retrying without it:', e)
       ;[row] = await sql`
-        INSERT INTO expenses (expense_date, expense_account, cf_justify, vendor_name, amount, total,
+        INSERT INTO expenses (zoho_expense_id, expense_date, expense_account, cf_justify, vendor_name, amount, total,
                               cf_expense_type, is_property, source, entry_number)
-        VALUES (${expense_date}, ${expense_account}, ${cf_justify ?? null}, ${vendor_name ?? null},
+        VALUES (${zohoExpenseId}, ${expense_date}, ${expense_account}, ${cf_justify ?? null}, ${vendor_name ?? null},
                 ${amount}, ${amount}, ${cf_expense_type ?? null}, ${isProp}, 'app', ${entryNumber})
         RETURNING id, expense_date::date AS expense_date, expense_account, cf_justify,
                   vendor_name, amount, cf_expense_type, is_property
