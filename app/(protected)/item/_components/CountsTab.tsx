@@ -212,31 +212,31 @@ export default function CountsTab({ items, groupFilter, search, violation }: Pro
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex-1 overflow-y-auto min-h-0">
-        <table className="w-full border-collapse text-[10px]">
+        <table className="w-full border-collapse text-[10px] border border-black">
           <thead className="sticky top-0 bg-gray-100 z-10">
             <tr>
-              <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200 whitespace-nowrap">DATE</th>
-              <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">ITEM</th>
-              <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">GROUP</th>
-              <th className="text-center px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">QTY</th>
-              <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">BY</th>
-              <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">SRC</th>
-              <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">NOTES</th>
-              <th className="px-1 py-1 border-b border-gray-200" />
+              <th className="text-left px-1 py-1 font-semibold text-gray-700 border border-black whitespace-nowrap">DATE</th>
+              <th className="text-left px-1 py-1 font-semibold text-gray-700 border border-black">ITEM</th>
+              <th className="text-left px-1 py-1 font-semibold text-gray-700 border border-black">GROUP</th>
+              <th className="text-center px-1 py-1 font-semibold text-gray-700 border border-black">QTY</th>
+              <th className="text-left px-1 py-1 font-semibold text-gray-700 border border-black">BY</th>
+              <th className="text-left px-1 py-1 font-semibold text-gray-700 border border-black">SRC</th>
+              <th className="text-left px-1 py-1 font-semibold text-gray-700 border border-black">NOTES</th>
+              <th className="px-1 py-1 border border-black" />
             </tr>
           </thead>
           <tbody>
             {filtered.map(r => (
               <>
-                <tr key={r.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="px-1 py-1 text-gray-600 whitespace-nowrap">{fmtShort(r.count_date)}</td>
-                  <td className="px-1 py-1 text-gray-900 font-semibold">{r.item_name}</td>
-                  <td className="px-1 py-1 text-gray-500">{r.cf_group ?? '—'}</td>
-                  <td className="px-1 py-1 text-center font-bold text-gray-900">{Number(r.quantity_counted)}</td>
-                  <td className="px-1 py-1 text-blue-500">{r.counted_by ?? '—'}</td>
-                  <td className="px-1 py-1 text-gray-500">{r.source ?? '—'}</td>
-                  <td className="px-1 py-1 text-gray-500 italic">{r.notes ?? '—'}</td>
-                  <td className="px-1 py-1">
+                <tr key={r.id} className="hover:bg-gray-50">
+                  <td className="px-1 py-1 text-gray-600 whitespace-nowrap border border-black">{fmtShort(r.count_date)}</td>
+                  <td className="px-1 py-1 text-gray-900 font-semibold border border-black">{r.item_name}</td>
+                  <td className="px-1 py-1 text-gray-500 border border-black">{r.cf_group ?? '—'}</td>
+                  <td className="px-1 py-1 text-center font-bold text-gray-900 border border-black">{Number(r.quantity_counted)}</td>
+                  <td className="px-1 py-1 text-blue-500 border border-black">{r.counted_by ?? '—'}</td>
+                  <td className="px-1 py-1 text-gray-500 border border-black">{r.source ?? '—'}</td>
+                  <td className="px-1 py-1 text-gray-500 italic border border-black">{r.notes ?? '—'}</td>
+                  <td className="px-1 py-1 border border-black">
                     <button onClick={() => editingId === r.id ? setEditingId(null) : startEdit(r)}
                       className="text-[9px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded hover:bg-blue-100 whitespace-nowrap">
                       {editingId === r.id ? 'Close' : 'Edit'}

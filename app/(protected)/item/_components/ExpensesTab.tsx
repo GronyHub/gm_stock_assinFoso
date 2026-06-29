@@ -153,29 +153,29 @@ export default function ExpensesTab({ search }: Props) {
       </div>
 
       <div className="flex-1 overflow-y-auto min-h-0">
-        <table className="w-full border-collapse text-[10px]">
+        <table className="w-full border-collapse text-[10px] border border-black">
           <thead className="sticky top-0 bg-gray-100 z-10">
             <tr>
-              <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200 whitespace-nowrap">DATE</th>
-              <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">ACCOUNT</th>
-              <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">JUSTIFY</th>
-              <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">VENDOR</th>
-              <th className="text-right px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">AMT</th>
-              <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">BY</th>
-              <th className="px-1 py-1 border-b border-gray-200" />
+              <th className="text-left px-1 py-1 font-semibold text-gray-700 border border-black whitespace-nowrap">DATE</th>
+              <th className="text-left px-1 py-1 font-semibold text-gray-700 border border-black">ACCOUNT</th>
+              <th className="text-left px-1 py-1 font-semibold text-gray-700 border border-black">JUSTIFY</th>
+              <th className="text-left px-1 py-1 font-semibold text-gray-700 border border-black">VENDOR</th>
+              <th className="text-right px-1 py-1 font-semibold text-gray-700 border border-black">AMT</th>
+              <th className="text-left px-1 py-1 font-semibold text-gray-700 border border-black">BY</th>
+              <th className="px-1 py-1 border border-black" />
             </tr>
           </thead>
           <tbody>
             {filtered.map(e => (
               <>
-                <tr key={e.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="px-1 py-1 text-gray-600 whitespace-nowrap">{fmtShort(e.expense_date)}</td>
-                  <td className="px-1 py-1 text-gray-900 font-semibold">{e.expense_account}</td>
-                  <td className="px-1 py-1 text-gray-700">{e.cf_justify ?? '—'}</td>
-                  <td className="px-1 py-1 text-gray-500">{e.vendor_name ?? '—'}</td>
-                  <td className="px-1 py-1 text-right font-bold text-gray-900">₵{fmt(e.amount)}</td>
-                  <td className="px-1 py-1 text-blue-500">{e.entered_by ?? '—'}</td>
-                  <td className="px-1 py-1">
+                <tr key={e.id} className="hover:bg-gray-50">
+                  <td className="px-1 py-1 text-gray-600 whitespace-nowrap border border-black">{fmtShort(e.expense_date)}</td>
+                  <td className="px-1 py-1 text-gray-900 font-semibold border border-black">{e.expense_account}</td>
+                  <td className="px-1 py-1 text-gray-700 border border-black">{e.cf_justify ?? '—'}</td>
+                  <td className="px-1 py-1 text-gray-500 border border-black">{e.vendor_name ?? '—'}</td>
+                  <td className="px-1 py-1 text-right font-bold text-gray-900 border border-black">₵{fmt(e.amount)}</td>
+                  <td className="px-1 py-1 text-blue-500 border border-black">{e.entered_by ?? '—'}</td>
+                  <td className="px-1 py-1 border border-black">
                     <div className="flex items-center gap-1 justify-end">
                       <button onClick={() => editId === e.id ? setEditId(null) : openEdit(e)}
                         className="text-[9px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded hover:bg-blue-100">
