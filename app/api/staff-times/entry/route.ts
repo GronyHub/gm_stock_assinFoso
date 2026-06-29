@@ -3,11 +3,9 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 
-// Ensure status column exists (runs once, no-op after first time)
-async function ensureStatusCol() {
-  try {
-    await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS status TEXT`
-  } catch {}
+async function ensureCols() {
+  await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS entered_by TEXT`.catch(() => {})
+  await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS status TEXT`.catch(() => {})
 }
 
 export async function POST(req: NextRequest) {
@@ -22,7 +20,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Provide either a time or a status' }, { status: 400 })
   }
 
-  await ensureStatusCol()
+  await ensureCols()
   const enteredBy = (session.user as any)?.username || session.user?.name || null
 
   try {
