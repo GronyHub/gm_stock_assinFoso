@@ -333,8 +333,8 @@ export default function ItemsTab({ items, group, productType, search, violation,
     let list = items.filter(i => {
       const matchGroup = !group || group === 'All' ? true : (i.cf_group ?? 'Ungrouped') === group
       const matchType = productType === 'all' ? true
-        : productType === 'services' ? i.product_type === 'services'
-        : i.product_type !== 'services'
+        : productType === 'services' ? i.product_type === 'service'
+        : i.product_type !== 'service'
       return matchGroup && matchType && i.item_name.toLowerCase().includes(q)
     })
     if (violation === 'neg_soh') list = list.filter(i => Number(i.calculated_soh) <= 0)
@@ -494,7 +494,7 @@ export default function ItemsTab({ items, group, productType, search, violation,
   return (
     <div className="flex h-full min-h-0">
       {/* LEFT: compact item cards */}
-      <div ref={leftPaneRef} className="w-1/3 border-r border-gray-200 overflow-y-auto min-h-0">
+      <div ref={leftPaneRef} className="w-1/3 border-r-4 border-blue-600 overflow-y-auto min-h-0">
         <div className="px-2 py-1 border-b border-gray-100 bg-gray-50 sticky top-0 z-10">
           <span className="text-[9px] text-gray-400">{filteredItems.length} items</span>
         </div>

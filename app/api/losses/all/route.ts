@@ -5,14 +5,17 @@ export async function GET() {
   const rows = await sql`
     WITH all_dates AS (
       SELECT item_id, count_date::date AS d FROM stock_counts
+        WHERE quantity_counted IS NOT NULL
       UNION
       SELECT srl.item_id, sr.receipt_date::date
         FROM sales_receipt_lines srl
         JOIN sales_receipts sr ON sr.id = srl.receipt_id
+        WHERE srl.quantity IS NOT NULL
       UNION
       SELECT bl.item_id, b.bill_date::date
         FROM bill_lines bl
         JOIN bills b ON b.id = bl.bill_id
+        WHERE bl.quantity IS NOT NULL
     ),
     daily_counts AS (
       SELECT item_id, count_date::date AS d, SUM(quantity_counted) AS qty_counted
