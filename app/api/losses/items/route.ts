@@ -9,8 +9,6 @@ export async function GET() {
     LEFT JOIN items i ON i.id = s.item_id
     WHERE s.item_name NOT ILIKE 'old stop%'
       AND s.item_name NOT ILIKE 'old- stop%'
-      AND s.item_name NOT ILIKE 'service%'
-      AND s.item_name NOT ILIKE 'service-%'
     ORDER BY s.item_name ASC
   `
   return NextResponse.json(rows)
