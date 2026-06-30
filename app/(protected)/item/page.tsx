@@ -438,7 +438,7 @@ function ItemHubPageInner() {
         )}
         {!anaOpen && outerTab === 'loss' && !violation && (
           <TabErrorBoundary>
-            <LossTab onOpenItem={() => {}} />
+            <LossTab onOpenItem={() => {}} search={search} group={group} productType={productType} />
           </TabErrorBoundary>
         )}
       </div>
