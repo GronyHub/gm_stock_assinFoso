@@ -146,10 +146,17 @@ function ItemEditForm({ form, onChange, groups }: { form: typeof EMPTY_FORM; onC
 }
 
 /* ── expanded item detail ── */
-function ItemDetail({ item, groups, onSaved }: { item: SummaryRow; groups: string[]; onSaved: (u: Partial<SummaryRow>) => void }) {
+function ItemDetail({ item, groups, currentAliases, currentMatches, onSaved, onRelationsSaved }: {
+  item: SummaryRow; groups: string[]
+  currentAliases: string; currentMatches: string
+  onSaved: (u: Partial<SummaryRow>) => void
+  onRelationsSaved: (aliasesStr: string, matchesStr: string) => void
+}) {
   const [dayRows, setDayRows] = useState<DayRow[] | null>(null)
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [aliasesText, setAliasesText] = useState('')
+  const [matchesText, setMatchesText] = useState('')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -160,6 +167,8 @@ function ItemDetail({ item, groups, onSaved }: { item: SummaryRow; groups: strin
 
   function startEdit() {
     setForm({ item_name: item.item_name, cf_group: item.cf_group ?? '', selling_rate: item.sp ?? '', purchase_rate: item.cp ?? '', units_per_pack: '', unit_name: '' })
+    setAliasesText(currentAliases)
+    setMatchesText(currentMatches)
     setEditing(true)
   }
 
@@ -176,8 +185,17 @@ function ItemDetail({ item, groups, onSaved }: { item: SummaryRow; groups: strin
         unit_name: form.unit_name || null,
       }),
     })
+
+    const aliasList = aliasesText.split(',').map(s => s.trim()).filter(Boolean)
+    const matchList = matchesText.split(',').map(s => s.trim()).filter(Boolean)
+    await fetch(`/api/items/${item.item_id}/relations`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ aliases: aliasList, matches: matchList }),
+    })
+
     setSaving(false); setEditing(false)
     onSaved({ item_name: form.item_name || item.item_name, cf_group: form.cf_group || null, sp: form.selling_rate || item.sp, cp: form.purchase_rate || item.cp })
+    onRelationsSaved(aliasList.join(', '), matchList.join(', '))
   }
 
   const computed = dayRows ? computeRows(dayRows) : null
@@ -207,7 +225,25 @@ function ItemDetail({ item, groups, onSaved }: { item: SummaryRow; groups: strin
         </div>
       </div>
 
-      {editing && <ItemEditForm form={form} onChange={setForm} groups={groups} />}
+      {editing && (
+        <div className="px-2 pb-2 space-y-1.5">
+          <ItemEditForm form={form} onChange={setForm} groups={groups} />
+          <div>
+            <label className="text-[8px] font-bold text-gray-500 block mb-0.5">Aliases (comma-separated)</label>
+            <input value={aliasesText} onChange={e => setAliasesText(e.target.value)}
+              placeholder="e.g. old name 1, old name 2"
+              className="w-full bg-gray-100 border border-gray-300 rounded px-1.5 py-1 text-[9px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
+          </div>
+          <div>
+            <label className="text-[8px] font-bold text-gray-500 block mb-0.5">
+              {item.product_type === 'service' ? 'Goods used for this service' : 'Services this good is used for'} (comma-separated)
+            </label>
+            <input value={matchesText} onChange={e => setMatchesText(e.target.value)}
+              placeholder="e.g. Service - Passport Printing (4x6)"
+              className="w-full bg-gray-100 border border-gray-300 rounded px-1.5 py-1 text-[9px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
+          </div>
+        </div>
+      )}
 
       {/* detail table */}
       {!dayRows ? (
@@ -461,7 +497,14 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
                 {isOpen && (
                   <tr key={`${row.item_id}-d`}>
                     <td colSpan={15} className="px-1 pb-2 pt-0.5 bg-blue-50">
-                      <ItemDetail item={row} groups={groupNames} onSaved={u => patchRow(row.item_id, u)} />
+                      <ItemDetail item={row} groups={groupNames}
+                        currentAliases={aliasMap[row.item_id] ?? ''}
+                        currentMatches={matchMap[row.item_name.trim().toLowerCase()] ?? ''}
+                        onSaved={u => patchRow(row.item_id, u)}
+                        onRelationsSaved={(aliasesStr, matchesStr) => {
+                          setAliasMap(prev => ({ ...prev, [row.item_id]: aliasesStr }))
+                          setMatchMap(prev => ({ ...prev, [row.item_name.trim().toLowerCase()]: matchesStr }))
+                        }} />
                     </td>
                   </tr>
                 )}
