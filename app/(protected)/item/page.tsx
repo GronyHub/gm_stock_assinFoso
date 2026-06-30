@@ -70,6 +70,7 @@ const VIOLATIONS: Record<OuterTab, { key: string; label: string }[]> = {
     { key: 'no_group',   label: 'No Group' },
     { key: 'duplicates', label: 'Duplicates' },
     { key: 'aliases',    label: 'Aliases' },
+    { key: 'service_violation', label: 'Service' },
   ],
   sales: [
     { key: 'no_cash',      label: 'No Cash' },
@@ -153,6 +154,7 @@ function ItemHubPageInner() {
 
   const [globalFlags, setGlobalFlags] = useState<any | null>(null)
   const [pendingCounts, setPendingCounts] = useState<{ daily: number; overdue: number }>({ daily: 0, overdue: 0 })
+  const [serviceViolationCount, setServiceViolationCount] = useState(0)
 
   function loadBadgeData() {
     fetch('/api/flags').then(r => r.ok ? r.json() : null).then(d => { if (d) setGlobalFlags(d) }).catch(() => {})
@@ -164,6 +166,12 @@ function ItemHubPageInner() {
         daily: Array.isArray(daily) ? daily.length : 0,
         overdue: Array.isArray(overdue) ? overdue.length : 0,
       })
+    }).catch(() => {})
+    fetch('/api/losses/summary').then(r => r.ok ? r.json() : []).then(d => {
+      const list = Array.isArray(d) ? d : []
+      setServiceViolationCount(list.filter((r: any) =>
+        r.product_type === 'service' && (Number(r.cnt) !== 0 || Number(r.gmc) !== 0 || Number(r.bl) !== 0)
+      ).length)
     }).catch(() => {})
   }
 
@@ -187,13 +195,14 @@ function ItemHubPageInner() {
       dup_receipt: f?.dupReceipts?.length ?? 0,
       daily: pendingCounts.daily,
       '15day': pendingCounts.overdue,
+      service_violation: serviceViolationCount,
     }
-  }, [items, globalFlags, pendingCounts])
+  }, [items, globalFlags, pendingCounts, serviceViolationCount])
 
   const badgeCounts: Partial<Record<OuterTab, number>> = useMemo(() => {
     const v = violationCounts
     return {
-      loss: v.neg_soh + v.no_sp + v.no_cp + v.no_group + v.duplicates,
+      loss: v.neg_soh + v.no_sp + v.no_cp + v.no_group + v.duplicates + v.service_violation,
       sales: v.no_cash + v.missing_days + v.cost_price + v.dup_receipt,
       counts: v.daily + v['15day'],
       cab: globalFlags?.uncheckedCab?.length ?? 0,

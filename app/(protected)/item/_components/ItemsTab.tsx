@@ -287,9 +287,12 @@ export default function ItemsTab({ items, group, productType, search, violation,
   const [nameRes, setNameRes] = useState<NameRes | null>(null)
   const [nameResLoading, setNameResLoading] = useState(false)
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
+  const [lossSummary, setLossSummary] = useState<any[] | null>(null)
+  const [lossSummaryLoading, setLossSummaryLoading] = useState(false)
 
   const needsFlags = violation === 'no_group' || violation === 'duplicates'
   const needsNameRes = violation === 'inv_done' || violation === 'inv_todo'
+  const needsLossSummary = violation === 'service_violation'
 
   useEffect(() => {
     fetch('/api/losses/all').then(r => r.json()).then(lossData => {
@@ -323,6 +326,16 @@ export default function ItemsTab({ items, group, productType, search, violation,
         .catch(() => { setFlags({ noGroup: [], duplicates: [], notInInventory: [], groupNames: [] }); setFlagsLoading(false) })
     }
   }, [needsFlags, flags, flagsLoading])
+
+  useEffect(() => {
+    if (needsLossSummary && !lossSummary && !lossSummaryLoading) {
+      setLossSummaryLoading(true)
+      fetch('/api/losses/summary')
+        .then(r => r.ok ? r.json() : Promise.reject())
+        .then(d => { setLossSummary(Array.isArray(d) ? d : []); setLossSummaryLoading(false) })
+        .catch(() => { setLossSummary([]); setLossSummaryLoading(false) })
+    }
+  }, [needsLossSummary, lossSummary, lossSummaryLoading])
 
   useEffect(() => {
     if (needsNameRes && !nameRes && !nameResLoading) {
@@ -496,6 +509,40 @@ export default function ItemsTab({ items, group, productType, search, violation,
   }
 
   // Flags panels (violation = no_group | duplicates | inv_todo | inv_done)
+  const serviceViolations = useMemo(() => {
+    if (!lossSummary) return []
+    return lossSummary.filter((r: any) =>
+      r.product_type === 'service' && (Number(r.cnt) !== 0 || Number(r.gmc) !== 0 || Number(r.bl) !== 0)
+    )
+  }, [lossSummary])
+
+  if (violation === 'service_violation') {
+    return (
+      <div className="flex-1 overflow-y-auto min-h-0 py-2 h-full">
+        <p className="text-[10px] text-gray-400 px-2 mb-1">
+          {lossSummaryLoading || !lossSummary
+            ? 'Loading…'
+            : `${serviceViolations.length} service item${serviceViolations.length !== 1 ? 's' : ''} with count/GMC/bill activity`}
+        </p>
+        {!lossSummaryLoading && lossSummary && (serviceViolations.length === 0
+          ? <p className="py-4 text-center text-gray-400 text-[10px]">No service items have count/GMC/bill activity.</p>
+          : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
+              {serviceViolations.map((r: any) => (
+                <div key={r.item_id} className="px-2 py-1.5">
+                  <p className="text-[10px] font-semibold text-gray-900 truncate">{r.item_name}</p>
+                  <p className="text-[9px] text-gray-400 mt-0.5">
+                    {Number(r.cnt) !== 0 && <span className="mr-2">CNT: {r.cnt}</span>}
+                    {Number(r.gmc) !== 0 && <span className="mr-2">GMC: {r.gmc}</span>}
+                    {Number(r.bl) !== 0 && <span>BL: {r.bl}</span>}
+                  </p>
+                </div>
+              ))}
+            </div>
+        )}
+      </div>
+    )
+  }
+
   if (violation === 'no_group') {
     return (
       <div className="flex-1 overflow-y-auto min-h-0 py-2 h-full">
