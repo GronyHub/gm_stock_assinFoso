@@ -44,7 +44,7 @@ export async function GET() {
   const [itemRows, dayRows] = await Promise.all([
     sql`
       SELECT s.item_id, s.item_name, s.cf_group, s.calculated_soh,
-             i.selling_rate, i.purchase_rate
+             i.selling_rate, i.purchase_rate, i.product_type
       FROM item_stock_summary s
       LEFT JOIN items i ON i.id = s.item_id
       WHERE s.item_name NOT ILIKE 'old stop%'
@@ -112,6 +112,7 @@ export async function GET() {
       item_id: item.item_id,
       item_name: item.item_name,
       cf_group: item.cf_group,
+      product_type: item.product_type,
       soh: item.calculated_soh,
       sp: item.selling_rate,
       cp: item.purchase_rate,
