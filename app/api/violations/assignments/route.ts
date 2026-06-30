@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
+import { logActivity } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET() {
@@ -22,30 +23,45 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if ((session.user as any)?.role !== 'owner') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-
-  const { violation_type, staff_name, settings } = await req.json()
-
-  if (violation_type) {
-    if (staff_name) {
-      await sql`
-        INSERT INTO violation_assignments (violation_type, staff_name)
-        VALUES (${violation_type}, ${staff_name})
-        ON CONFLICT (violation_type) DO UPDATE SET staff_name = ${staff_name}
-      `
-    } else {
-      await sql`DELETE FROM violation_assignments WHERE violation_type = ${violation_type}`
-    }
+  const role = (session.user as any)?.role
+  if (!['owner', 'manager'].includes(role)) {
+    return NextResponse.json({ error: 'Only owner or manager can change assignments' }, { status: 403 })
   }
 
-  if (settings && typeof settings === 'object') {
-    for (const [key, value] of Object.entries(settings)) {
-      await sql`
-        INSERT INTO violation_settings (key, value) VALUES (${key}, ${String(value)})
-        ON CONFLICT (key) DO UPDATE SET value = ${String(value)}
-      `
-    }
-  }
+  try {
+    const { violation_type, staff_name, violation_label, settings } = await req.json()
 
-  return NextResponse.json({ ok: true })
+    if (violation_type) {
+      if (staff_name) {
+        const [existing] = await sql`SELECT 1 FROM violation_assignments WHERE violation_type = ${violation_type}`
+        if (existing) {
+          await sql`UPDATE violation_assignments SET staff_name = ${staff_name} WHERE violation_type = ${violation_type}`
+        } else {
+          await sql`INSERT INTO violation_assignments (violation_type, staff_name) VALUES (${violation_type}, ${staff_name})`
+        }
+        const actor = session.user?.name || (session.user as any)?.username || 'Unknown'
+        const label = violation_label || violation_type
+        await logActivity(actor, 'assigned task', `'${label}' to ${staff_name}`)
+      } else {
+        await sql`DELETE FROM violation_assignments WHERE violation_type = ${violation_type}`
+      }
+    }
+
+    if (settings && typeof settings === 'object') {
+      for (const [key, value] of Object.entries(settings)) {
+        const [existing] = await sql`SELECT 1 FROM violation_settings WHERE key = ${key}`
+        if (existing) {
+          await sql`UPDATE violation_settings SET value = ${String(value)} WHERE key = ${key}`
+        } else {
+          await sql`INSERT INTO violation_settings (key, value) VALUES (${key}, ${String(value)})`
+        }
+      }
+    }
+
+    return NextResponse.json({ ok: true })
+  } catch (e) {
+    console.error('violation assignments POST error:', e)
+    const detail = e instanceof Error ? e.message : String(e)
+    return NextResponse.json({ error: `Could not save: ${detail}` }, { status: 500 })
+  }
 }
