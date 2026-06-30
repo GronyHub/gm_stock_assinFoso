@@ -637,6 +637,12 @@ export default function ItemsTab({ items, group, productType, search, violation,
               className={`cursor-pointer border-b-2 border-black px-2 py-1.5 transition ${selectedId === item.id ? 'bg-blue-600 text-white' : 'hover:bg-gray-50'}`}>
               <p className={`text-[10px] font-semibold truncate leading-tight ${selectedId === item.id ? 'text-white' : 'text-gray-900'}`}>{item.item_name}</p>
               <div className="flex gap-2 text-[9px] mt-0.5">
+                <span className={selectedId === item.id ? 'text-blue-100' : 'text-gray-500'}>{item.cf_group || 'No group'}</span>
+                <span className={item.product_type === 'service' ? (selectedId === item.id ? 'text-purple-200' : 'text-purple-500') : (selectedId === item.id ? 'text-teal-200' : 'text-teal-600')}>
+                  {item.product_type === 'service' ? 'Service' : 'Good'}
+                </span>
+              </div>
+              <div className="flex gap-2 text-[9px] mt-0.5">
                 <span className={soh <= 0 ? 'text-red-300 font-bold' : selectedId === item.id ? 'text-blue-100' : 'text-gray-500'}>SOH:{soh % 1 === 0 ? soh : soh.toFixed(2)}</span>
                 <span className={selectedId === item.id ? 'text-blue-200' : 'text-blue-500'}>SP:{item.selling_rate ? fmt(item.selling_rate) : '—'}</span>
                 <span className={selectedId === item.id ? 'text-green-200' : 'text-green-500'}>CP:{item.purchase_rate ? fmt(item.purchase_rate) : '—'}</span>
@@ -689,7 +695,12 @@ export default function ItemsTab({ items, group, productType, search, violation,
                   <div data-item-id={item.id} className="flex items-center justify-between px-2 py-1 bg-blue-600 border-b border-blue-700 sticky top-0 z-10">
                     <div className="min-w-0 flex-1">
                       <p className="text-[10px] font-bold text-white truncate">{item.item_name}</p>
-                      <p className="text-[9px] text-blue-200">{item.cf_group ?? 'No group'} · SOH: {Number(item.calculated_soh)}</p>
+                      <p className="text-[9px] text-blue-200">
+                        {item.cf_group ?? 'No group'} · SOH: {Number(item.calculated_soh)} ·{' '}
+                        <span className={item.product_type === 'service' ? 'text-purple-200' : 'text-teal-200'}>
+                          {item.product_type === 'service' ? 'Service' : 'Good'}
+                        </span>
+                      </p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <a href={`/stock/${item.id}`}
