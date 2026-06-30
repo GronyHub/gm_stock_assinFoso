@@ -146,17 +146,173 @@ function ItemEditForm({ form, onChange, groups }: { form: typeof EMPTY_FORM; onC
 }
 
 /* ── expanded item detail ── */
-function ItemDetail({ item, groups, currentAliases, currentMatches, onSaved, onRelationsSaved }: {
+/* ── Alias picker: search unresolved raw names, attach/detach to this item ── */
+type AliasRecord = { id: number; name: string }
+type UnresolvedName = { name: string; cnt: number; confirmed: boolean }
+
+function AliasPicker({ itemId, current, onChange }: {
+  itemId: number
+  current: AliasRecord[]
+  onChange: (next: AliasRecord[]) => void
+}) {
+  const [salesNames, setSalesNames] = useState<UnresolvedName[] | null>(null)
+  const [billNames, setBillNames] = useState<UnresolvedName[] | null>(null)
+  const [query, setQuery] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/aliases/unresolved').then(r => r.json()).then(d => setSalesNames(Array.isArray(d) ? d : []))
+    fetch('/api/aliases/unresolved-bills').then(r => r.json()).then(d => setBillNames(Array.isArray(d) ? d : []))
+  }, [])
+
+  const candidates = useMemo(() => {
+    const seen = new Set(current.map(a => a.name.toLowerCase().trim()))
+    const all = [
+      ...(salesNames ?? []).map(n => ({ ...n, source: 'sales' as const })),
+      ...(billNames ?? []).map(n => ({ ...n, source: 'bills' as const })),
+    ]
+    const q = query.trim().toLowerCase()
+    return all
+      .filter(n => !n.confirmed && !seen.has(n.name.toLowerCase().trim()))
+      .filter(n => !q || n.name.toLowerCase().includes(q))
+      .slice(0, 25)
+  }, [salesNames, billNames, current, query])
+
+  async function add(name: string, source: 'sales' | 'bills') {
+    setBusy(true)
+    const res = await fetch('/api/aliases/confirm', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alias_name: name, item_id: itemId, source }),
+    })
+    setBusy(false)
+    if (res.ok) onChange([...current, { id: -Date.now(), name }]) // optimistic id placeholder, refreshed on next load
+  }
+
+  async function remove(alias: AliasRecord) {
+    setBusy(true)
+    await fetch(`/api/aliases/${alias.id}`, { method: 'DELETE' })
+    setBusy(false)
+    onChange(current.filter(a => a.id !== alias.id))
+  }
+
+  return (
+    <div className="space-y-1">
+      {current.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {current.map(a => (
+            <span key={a.id} className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-[8px] font-semibold px-1.5 py-0.5 rounded-full">
+              {a.name}
+              <button onClick={() => remove(a)} disabled={busy} className="text-blue-400 hover:text-red-500 font-bold">×</button>
+            </span>
+          ))}
+        </div>
+      )}
+      <input value={query} onChange={e => setQuery(e.target.value)}
+        placeholder="Search unresolved names to attach…"
+        className="w-full bg-gray-100 border border-gray-300 rounded px-1.5 py-1 text-[9px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
+      {query.trim() && (
+        <div className="border border-gray-200 rounded bg-white max-h-28 overflow-y-auto">
+          {candidates.length === 0 ? (
+            <p className="text-[8px] text-gray-400 px-1.5 py-1">No matching unresolved names</p>
+          ) : candidates.map(c => (
+            <button key={`${c.source}-${c.name}`} onClick={() => add(c.name, c.source)} disabled={busy}
+              className="w-full text-left px-1.5 py-1 text-[8px] text-gray-800 hover:bg-blue-50 border-b border-gray-100 last:border-0 flex items-center justify-between">
+              <span className="truncate">{c.name}</span>
+              <span className="text-gray-400 shrink-0 ml-1">{c.source} · {c.cnt}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ── Match picker: search canonical items of the opposite product_type ── */
+type MatchRecord = { id: number; name: string }
+type CandidateItem = { item_id: number; item_name: string; product_type: string | null }
+
+function MatchPicker({ itemId, itemName, isService, current, candidatePool, onChange }: {
+  itemId: number; itemName: string; isService: boolean
+  current: MatchRecord[]
+  candidatePool: CandidateItem[]
+  onChange: (next: MatchRecord[]) => void
+}) {
+  const [query, setQuery] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const candidates = useMemo(() => {
+    const seen = new Set(current.map(m => m.name.toLowerCase().trim()))
+    const q = query.trim().toLowerCase()
+    return candidatePool
+      .filter(c => !seen.has(c.item_name.toLowerCase().trim()))
+      .filter(c => !q || c.item_name.toLowerCase().includes(q))
+      .slice(0, 25)
+  }, [candidatePool, current, query])
+
+  async function add(name: string) {
+    setBusy(true)
+    const body = isService ? { good_name: name, service_name: itemName } : { good_name: itemName, service_name: name }
+    const res = await fetch('/api/good-service-matches', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const d = await res.json().catch(() => null)
+    setBusy(false)
+    if (res.ok) onChange([...current, { id: d?.id ?? -Date.now(), name }])
+  }
+
+  async function remove(match: MatchRecord) {
+    setBusy(true)
+    await fetch(`/api/good-service-matches/${match.id}`, { method: 'DELETE' })
+    setBusy(false)
+    onChange(current.filter(m => m.id !== match.id))
+  }
+
+  return (
+    <div className="space-y-1">
+      {current.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {current.map(m => (
+            <span key={m.id} className="inline-flex items-center gap-1 bg-purple-50 text-purple-700 text-[8px] font-semibold px-1.5 py-0.5 rounded-full">
+              {m.name}
+              <button onClick={() => remove(m)} disabled={busy} className="text-purple-400 hover:text-red-500 font-bold">×</button>
+            </span>
+          ))}
+        </div>
+      )}
+      <input value={query} onChange={e => setQuery(e.target.value)}
+        placeholder={`Search ${isService ? 'goods' : 'services'} to attach…`}
+        className="w-full bg-gray-100 border border-gray-300 rounded px-1.5 py-1 text-[9px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
+      {query.trim() && (
+        <div className="border border-gray-200 rounded bg-white max-h-28 overflow-y-auto">
+          {candidates.length === 0 ? (
+            <p className="text-[8px] text-gray-400 px-1.5 py-1">No matching {isService ? 'goods' : 'services'}</p>
+          ) : candidates.map(c => (
+            <button key={c.item_id} onClick={() => add(c.item_name)} disabled={busy}
+              className="w-full text-left px-1.5 py-1 text-[8px] text-gray-800 hover:bg-purple-50 border-b border-gray-100 last:border-0 truncate">
+              {c.item_name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+
+function ItemDetail({ item, groups, currentAliases, currentMatches, candidatePool, autoEdit, onSaved, onRelationsSaved }: {
   item: SummaryRow; groups: string[]
-  currentAliases: string; currentMatches: string
+  currentAliases: AliasRecord[]; currentMatches: MatchRecord[]
+  candidatePool: CandidateItem[]
+  autoEdit: boolean
   onSaved: (u: Partial<SummaryRow>) => void
-  onRelationsSaved: (aliasesStr: string, matchesStr: string) => void
+  onRelationsSaved: (aliases: AliasRecord[], matches: MatchRecord[]) => void
 }) {
   const [dayRows, setDayRows] = useState<DayRow[] | null>(null)
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
-  const [aliasesText, setAliasesText] = useState('')
-  const [matchesText, setMatchesText] = useState('')
+  const [aliases, setAliases] = useState<AliasRecord[]>(currentAliases)
+  const [matches, setMatches] = useState<MatchRecord[]>(currentMatches)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -167,10 +323,15 @@ function ItemDetail({ item, groups, currentAliases, currentMatches, onSaved, onR
 
   function startEdit() {
     setForm({ item_name: item.item_name, cf_group: item.cf_group ?? '', selling_rate: item.sp ?? '', purchase_rate: item.cp ?? '', units_per_pack: '', unit_name: '' })
-    setAliasesText(currentAliases)
-    setMatchesText(currentMatches)
+    setAliases(currentAliases)
+    setMatches(currentMatches)
     setEditing(true)
   }
+
+  useEffect(() => {
+    if (autoEdit) startEdit()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoEdit])
 
   async function saveEdit() {
     setSaving(true)
@@ -185,17 +346,9 @@ function ItemDetail({ item, groups, currentAliases, currentMatches, onSaved, onR
         unit_name: form.unit_name || null,
       }),
     })
-
-    const aliasList = aliasesText.split(',').map(s => s.trim()).filter(Boolean)
-    const matchList = matchesText.split(',').map(s => s.trim()).filter(Boolean)
-    await fetch(`/api/items/${item.item_id}/relations`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ aliases: aliasList, matches: matchList }),
-    })
-
     setSaving(false); setEditing(false)
     onSaved({ item_name: form.item_name || item.item_name, cf_group: form.cf_group || null, sp: form.selling_rate || item.sp, cp: form.purchase_rate || item.cp })
-    onRelationsSaved(aliasList.join(', '), matchList.join(', '))
+    onRelationsSaved(aliases, matches)
   }
 
   const computed = dayRows ? computeRows(dayRows) : null
@@ -226,21 +379,18 @@ function ItemDetail({ item, groups, currentAliases, currentMatches, onSaved, onR
       </div>
 
       {editing && (
-        <div className="px-2 pb-2 space-y-1.5">
+        <div className="px-2 pb-2 space-y-2">
           <ItemEditForm form={form} onChange={setForm} groups={groups} />
           <div>
-            <label className="text-[8px] font-bold text-gray-500 block mb-0.5">Aliases (comma-separated)</label>
-            <input value={aliasesText} onChange={e => setAliasesText(e.target.value)}
-              placeholder="e.g. old name 1, old name 2"
-              className="w-full bg-gray-100 border border-gray-300 rounded px-1.5 py-1 text-[9px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
+            <label className="text-[8px] font-bold text-gray-500 block mb-0.5">Aliases</label>
+            <AliasPicker itemId={item.item_id} current={aliases} onChange={setAliases} />
           </div>
           <div>
             <label className="text-[8px] font-bold text-gray-500 block mb-0.5">
-              {item.product_type === 'service' ? 'Goods used for this service' : 'Services this good is used for'} (comma-separated)
+              {item.product_type === 'service' ? 'Goods used for this service' : 'Services this good is used for'}
             </label>
-            <input value={matchesText} onChange={e => setMatchesText(e.target.value)}
-              placeholder="e.g. Service - Passport Printing (4x6)"
-              className="w-full bg-gray-100 border border-gray-300 rounded px-1.5 py-1 text-[9px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
+            <MatchPicker itemId={item.item_id} itemName={item.item_name} isService={item.product_type === 'service'}
+              current={matches} candidatePool={candidatePool} onChange={setMatches} />
           </div>
         </div>
       )}
@@ -327,8 +477,9 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   const [loading, setLoading] = useState(true)
   const [sort, setSort] = useState<{ col: SortCol; dir: SortDir }>({ col: 'lgAmt', dir: 'desc' })
   const [expandedId, setExpandedId] = useState<number | null>(null)
-  const [aliasMap, setAliasMap] = useState<Record<number, string>>({})
-  const [matchMap, setMatchMap] = useState<Record<string, string>>({})
+  const [editTriggerId, setEditTriggerId] = useState<number | null>(null)
+  const [aliasRecords, setAliasRecords] = useState<Record<number, AliasRecord[]>>({})
+  const [matchRecords, setMatchRecords] = useState<Record<string, MatchRecord[]>>({})
 
   useEffect(() => {
     fetch('/api/losses/summary').then(r => r.json())
@@ -336,40 +487,40 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
       .catch(() => setLoading(false))
   }, [])
 
-  useEffect(() => {
+  function loadMatches() {
     fetch('/api/good-service-matches').then(r => r.json())
-      .then((d: { good_name: string; service_name: string }[]) => {
+      .then((d: { id: number; good_name: string; service_name: string }[]) => {
         if (!Array.isArray(d)) return
         // Bidirectional: a Good's key collects its Services, a Service's key collects its Goods
-        const acc: Record<string, Set<string>> = {}
-        for (const { good_name, service_name } of d) {
+        const acc: Record<string, MatchRecord[]> = {}
+        for (const { id, good_name, service_name } of d) {
           const gk = good_name.trim().toLowerCase()
           const sk = service_name.trim().toLowerCase()
-          if (!acc[gk]) acc[gk] = new Set()
-          acc[gk].add(service_name.trim())
-          if (!acc[sk]) acc[sk] = new Set()
-          acc[sk].add(good_name.trim())
+          if (!acc[gk]) acc[gk] = []
+          acc[gk].push({ id, name: service_name.trim() })
+          if (!acc[sk]) acc[sk] = []
+          acc[sk].push({ id, name: good_name.trim() })
         }
-        const map: Record<string, string> = {}
-        for (const k in acc) map[k] = Array.from(acc[k]).join(', ')
-        setMatchMap(map)
+        setMatchRecords(acc)
       })
       .catch(() => {})
-  }, [])
+  }
+  useEffect(() => { loadMatches() }, [])
 
-  useEffect(() => {
+  function loadAliases() {
     fetch('/api/aliases/wide').then(r => r.json())
       .then((d: any[]) => {
         if (!Array.isArray(d)) return
-        const map: Record<number, string> = {}
+        const map: Record<number, AliasRecord[]> = {}
         for (const row of d) {
-          const names = (row.aliases ?? []).map((a: any) => a.name).filter(Boolean)
-          if (names.length) map[row.item_id] = names.join(', ')
+          const records = (row.aliases ?? []).map((a: any) => ({ id: a.id, name: a.name })).filter((a: AliasRecord) => a.name)
+          if (records.length) map[row.item_id] = records
         }
-        setAliasMap(map)
+        setAliasRecords(map)
       })
       .catch(() => {})
-  }, [])
+  }
+  useEffect(() => { loadAliases() }, [])
 
   function handleSort(col: SortCol) {
     setSort(s => s.col === col
@@ -384,6 +535,13 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
 
   const groupNames = useMemo(() =>
     Array.from(new Set(rows.map(r => r.cf_group ?? 'Ungrouped'))).sort()
+  , [rows])
+
+  const goodsPool = useMemo<CandidateItem[]>(() =>
+    rows.filter(r => r.product_type !== 'service').map(r => ({ item_id: r.item_id, item_name: r.item_name, product_type: r.product_type }))
+  , [rows])
+  const servicesPool = useMemo<CandidateItem[]>(() =>
+    rows.filter(r => r.product_type === 'service').map(r => ({ item_id: r.item_id, item_name: r.item_name, product_type: r.product_type }))
   , [rows])
 
   const filtered = useMemo(() => {
@@ -429,6 +587,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
             <col style={{width:'18px'}} />
             <col style={{width:'220px'}} />
             <col style={{width:'220px'}} />
+            <col style={{width:'50px'}} />
           </colgroup>
           <thead className="sticky top-0 z-20">
             <tr className="bg-gray-50">
@@ -447,11 +606,12 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
               <th className={`${thBase} text-center text-gray-400`}>▸</th>
               <th className={`${thBase} text-left pl-1.5`}>Aliases</th>
               <th className={`${thBase} text-left pl-1.5`}>Matches</th>
+              <th className={`${thBase} text-center`}>Edit</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && (
-              <tr><td colSpan={15} className="py-10 text-center text-gray-400 text-[9px]">No items</td></tr>
+              <tr><td colSpan={16} className="py-10 text-center text-gray-400 text-[9px]">No items</td></tr>
             )}
             {filtered.map(row => {
               const lossAmt = row.lgAmt > 0, gainAmt = row.lgAmt < 0
@@ -460,7 +620,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
               const isOpen = expandedId === row.item_id
               return <>
                 <tr key={row.item_id}
-                  onClick={() => setExpandedId(isOpen ? null : row.item_id)}
+                  onClick={() => { setExpandedId(isOpen ? null : row.item_id); setEditTriggerId(null) }}
                   className={`cursor-pointer transition
                     ${isOpen ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
                   <td className={`pl-1 pr-0 py-0.5 font-bold text-gray-900 whitespace-nowrap overflow-hidden sticky left-0 z-10 border border-black ${isOpen ? 'bg-blue-50' : 'bg-white'}`}
@@ -486,24 +646,35 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
                     {row.product_type === 'service' ? 'Svc' : 'Goo'}
                   </td>
                   <td className="text-center py-0.5 font-bold text-gray-400 border border-black">{isOpen ? '▾' : '▸'}</td>
-                  <td className="pl-1.5 py-0.5 font-bold text-gray-500 truncate overflow-hidden border border-black" title={aliasMap[row.item_id]}>
-                    {aliasMap[row.item_id] || '—'}
+                  <td className="pl-1.5 py-0.5 font-bold text-gray-500 truncate overflow-hidden border border-black"
+                    title={(aliasRecords[row.item_id] ?? []).map(a => a.name).join(', ')}>
+                    {(aliasRecords[row.item_id] ?? []).map(a => a.name).join(', ') || '—'}
                   </td>
                   <td className="pl-1.5 py-0.5 font-bold text-gray-500 truncate overflow-hidden border border-black"
-                    title={matchMap[row.item_name.trim().toLowerCase()]}>
-                    {matchMap[row.item_name.trim().toLowerCase()] || '—'}
+                    title={(matchRecords[row.item_name.trim().toLowerCase()] ?? []).map(m => m.name).join(', ')}>
+                    {(matchRecords[row.item_name.trim().toLowerCase()] ?? []).map(m => m.name).join(', ') || '—'}
+                  </td>
+                  <td className="text-center py-0.5 border border-black">
+                    <button
+                      onClick={e => { e.stopPropagation(); setExpandedId(row.item_id); setEditTriggerId(row.item_id) }}
+                      className="text-[8px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+                      Edit
+                    </button>
                   </td>
                 </tr>
                 {isOpen && (
                   <tr key={`${row.item_id}-d`}>
-                    <td colSpan={15} className="px-1 pb-2 pt-0.5 bg-blue-50">
+                    <td colSpan={16} className="px-1 pb-2 pt-0.5 bg-blue-50">
                       <ItemDetail item={row} groups={groupNames}
-                        currentAliases={aliasMap[row.item_id] ?? ''}
-                        currentMatches={matchMap[row.item_name.trim().toLowerCase()] ?? ''}
+                        currentAliases={aliasRecords[row.item_id] ?? []}
+                        currentMatches={matchRecords[row.item_name.trim().toLowerCase()] ?? []}
+                        candidatePool={row.product_type === 'service' ? goodsPool : servicesPool}
+                        autoEdit={editTriggerId === row.item_id}
                         onSaved={u => patchRow(row.item_id, u)}
-                        onRelationsSaved={(aliasesStr, matchesStr) => {
-                          setAliasMap(prev => ({ ...prev, [row.item_id]: aliasesStr }))
-                          setMatchMap(prev => ({ ...prev, [row.item_name.trim().toLowerCase()]: matchesStr }))
+                        onRelationsSaved={(newAliases, newMatches) => {
+                          setAliasRecords(prev => ({ ...prev, [row.item_id]: newAliases }))
+                          setMatchRecords(prev => ({ ...prev, [row.item_name.trim().toLowerCase()]: newMatches }))
+                          setEditTriggerId(null)
                         }} />
                     </td>
                   </tr>
