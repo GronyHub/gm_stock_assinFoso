@@ -258,12 +258,20 @@ type Props = {
   onItemsChanged: (items: Item[]) => void
   showAdd?: boolean
   onCloseAdd?: () => void
+  jumpToItemId?: number | null
+  onJumpDone?: () => void
 }
 
-export default function ItemsTab({ items, group, productType, search, violation, onItemsChanged, showAdd = false, onCloseAdd }: Props) {
+export default function ItemsTab({ items, group, productType, search, violation, onItemsChanged, showAdd = false, onCloseAdd, jumpToItemId, onJumpDone }: Props) {
   const [lossMap, setLossMap] = useState<Record<number, DayRow[]>>({})
   const [lossLoading, setLossLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (!jumpToItemId) return
+    const item = items.find(i => i.id === jumpToItemId)
+    if (item) { jumpTo(item); onJumpDone?.() }
+  }, [jumpToItemId])
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)

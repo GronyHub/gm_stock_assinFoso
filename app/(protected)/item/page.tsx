@@ -37,6 +37,7 @@ const NewBillForm    = dynamic(() => import('../bills/new/page'),             { 
 const NewExpenseForm = dynamic(() => import('../expenses/new/page'),          { ssr: false, loading: () => loading('Loading…') })
 const AnalyticsPanel = dynamic(() => import('./_components/AnalyticsPanel'),  { ssr: false, loading: () => loading('Loading analytics…') })
 const StaffClient    = dynamic(() => import('../staff/StaffClient'),          { ssr: false, loading: () => loading('Loading…') })
+const LossTab        = dynamic(() => import('./_components/LossTab'),         { ssr: false, loading: () => loading('Loading…') })
 
 // Defined locally (not imported from AnalyticsPanel.tsx) -- a cross-file type
 // import here previously caused the analytics/recharts bundle to get pulled
@@ -46,7 +47,7 @@ const ANA_SECTION: Partial<Record<OuterTab, AnaSection>> = {
   items: 'Items', sales: 'Sales', bills: 'Bills', counts: 'Counts', expenses: 'Expenses',
 }
 
-type OuterTab = 'today' | 'items' | 'sales' | 'bills' | 'counts' | 'expenses' | 'cab' | 'staff'
+type OuterTab = 'today' | 'items' | 'sales' | 'bills' | 'counts' | 'expenses' | 'cab' | 'staff' | 'loss'
 
 type Item = {
   id: number
@@ -84,6 +85,7 @@ const VIOLATIONS: Record<OuterTab, { key: string; label: string }[]> = {
   expenses: [],
   cab: [],
   staff: [],
+  loss: [],
 }
 
 const HAMBURGER_LINKS = [
@@ -115,7 +117,7 @@ function TabIcon({ icon, label, active, onClick, count }: { icon: string; label:
   )
 }
 
-const VALID_TABS: OuterTab[] = ['today', 'items', 'sales', 'bills', 'counts', 'expenses', 'cab', 'staff']
+const VALID_TABS: OuterTab[] = ['today', 'items', 'sales', 'bills', 'counts', 'expenses', 'cab', 'staff', 'loss']
 
 function ItemHubPageInner() {
   const router = useRouter()
@@ -133,6 +135,7 @@ function ItemHubPageInner() {
   const [anaOpen, setAnaOpen]           = useState(false)
   const [hamburgerOpen, setHamburgerOpen] = useState(false)
   const [addForm, setAddForm]             = useState<'item' | 'sale' | 'bill' | 'expense' | null>(null)
+  const [jumpToItemId, setJumpToItemId]   = useState<number | null>(null)
   const groupRef     = useRef<HTMLDivElement>(null)
   const hamburgerRef = useRef<HTMLDivElement>(null)
 
@@ -227,7 +230,7 @@ function ItemHubPageInner() {
     productType !== 'all' ? (productType === 'goods' ? 'Goods' : 'Services') : null,
   ].filter(Boolean).join(' · ')
 
-  const showControls = outerTab !== 'today' && outerTab !== 'staff'
+  const showControls = outerTab !== 'today' && outerTab !== 'staff' && outerTab !== 'loss'
   const { data: session } = useSession()
   const role = (session?.user as any)?.role ?? 'staff'
   const username = (session?.user as any)?.username ?? session?.user?.name ?? ''
@@ -255,6 +258,7 @@ function ItemHubPageInner() {
             <TabIcon icon="💸" label="Exp."     active={outerTab === 'expenses'} onClick={() => changeTab('expenses')} />
             <TabIcon icon="🏦" label="CAB"      active={outerTab === 'cab'}      onClick={() => changeTab('cab')}      count={badgeCounts.cab} />
             <TabIcon icon="👤" label="Staff"    active={outerTab === 'staff'}    onClick={() => changeTab('staff')}    count={badgeCounts.staff} />
+            <TabIcon icon="📉" label="Loss"     active={outerTab === 'loss'}     onClick={() => changeTab('loss')} />
           </div>
 
           {/* Hamburger — outside the flex tabs row so dropdown isn't clipped */}
@@ -420,6 +424,8 @@ function ItemHubPageInner() {
                 onItemsChanged={setItems}
                 showAdd={addForm === 'item'}
                 onCloseAdd={() => setAddForm(null)}
+                jumpToItemId={jumpToItemId}
+                onJumpDone={() => setJumpToItemId(null)}
               />
         )}
         {!anaOpen && addForm !== 'sale'    && outerTab === 'sales'    && <SalesTab items={items} groupFilter={group} search={search} violation={violation} />}
@@ -430,6 +436,11 @@ function ItemHubPageInner() {
         {!anaOpen && outerTab === 'staff'    && (
           <TabErrorBoundary>
             <StaffClient role={role} username={username} embedded />
+          </TabErrorBoundary>
+        )}
+        {!anaOpen && outerTab === 'loss'     && (
+          <TabErrorBoundary>
+            <LossTab onOpenItem={id => { changeTab('items'); setJumpToItemId(id) }} />
           </TabErrorBoundary>
         )}
       </div>
