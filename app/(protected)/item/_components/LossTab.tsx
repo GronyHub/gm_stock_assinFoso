@@ -103,7 +103,7 @@ function rowSortVal(row: SummaryRow, col: SortCol): number | string {
 }
 
 /* ── compact th with sort indicator ── */
-const thBase = 'py-1 font-bold cursor-pointer select-none whitespace-nowrap border-b border-gray-200'
+const thBase = 'py-1 font-bold cursor-pointer select-none whitespace-nowrap border border-black'
 function SortTh({ label, col, sort, onSort, cls = '' }: {
   label: string; col: SortCol
   sort: { col: SortCol; dir: SortDir }
@@ -338,7 +338,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Table — all columns fit on screen; Item column compact */}
-      <div className="flex-1 min-h-0 overflow-auto rounded-xl border border-gray-200 bg-white">
+      <div className="flex-1 min-h-0 overflow-auto rounded-xl border border-black bg-white">
         <table className="w-full table-fixed border-collapse text-[8px]">
           <colgroup>
             <col style={{width:'19%'}} />
@@ -356,8 +356,8 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
             <col style={{width:'5%'}} />
           </colgroup>
           <thead className="sticky top-0 z-20">
-            <tr className="bg-gray-50 border-b border-gray-200">
-              <SortTh label="Item" col="item_name" sort={sort} onSort={handleSort} cls="text-left pl-1.5 sticky left-0 z-30 bg-gray-50 border-r border-gray-200" />
+            <tr className="bg-gray-50">
+              <SortTh label="Item" col="item_name" sort={sort} onSort={handleSort} cls="text-left pl-1.5 sticky left-0 z-30 bg-gray-50 border-black" />
               <SortTh label="₵L/G" col="lgAmt" {...thProps} cls="text-center" />
               <SortTh label="L/G" col="lgQty" {...thProps} cls="text-center" />
               <SortTh label="CNT" col="cnt" {...thProps} cls="text-center" />
@@ -384,30 +384,30 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
               return <>
                 <tr key={row.item_id}
                   onClick={() => setExpandedId(isOpen ? null : row.item_id)}
-                  className={`cursor-pointer border-b border-gray-100 transition
+                  className={`cursor-pointer transition
                     ${isOpen ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-                  <td className={`pl-1.5 py-0.5 font-semibold text-gray-900 truncate overflow-hidden sticky left-0 z-10 border-r border-gray-200 ${isOpen ? 'bg-blue-50' : 'bg-white'}`}>{row.item_name}</td>
-                  <td className={`text-center py-0.5 font-bold tabular-nums ${lossAmt ? 'text-red-600' : gainAmt ? 'text-green-600' : 'text-gray-300'}`}>
+                  <td className={`pl-1.5 py-0.5 font-semibold text-gray-900 truncate overflow-hidden sticky left-0 z-10 border border-black ${isOpen ? 'bg-blue-50' : 'bg-white'}`}>{row.item_name}</td>
+                  <td className={`text-center py-0.5 font-bold tabular-nums border border-black ${lossAmt ? 'text-red-600' : gainAmt ? 'text-green-600' : 'text-gray-300'}`}>
                     {fmtAmt(row.lgAmt)}
                   </td>
-                  <td className={`text-center py-0.5 tabular-nums ${lossQty ? 'text-red-500' : gainQty ? 'text-green-600' : 'text-gray-300'}`}>
+                  <td className={`text-center py-0.5 tabular-nums border border-black ${lossQty ? 'text-red-500' : gainQty ? 'text-green-600' : 'text-gray-300'}`}>
                     {fmtLg(row.lgQty)}
                   </td>
-                  <td className="text-center py-0.5 text-gray-700 tabular-nums">{fmtQ(row.cnt)}</td>
-                  <td className="text-center py-0.5 text-gray-700 tabular-nums">{fmtQ(row.wic)}</td>
-                  <td className="text-center py-0.5 text-gray-700 tabular-nums">{fmtQ(row.gmc)}</td>
-                  <td className="text-center py-0.5 text-blue-600 tabular-nums">{fmtQ(row.bl)}</td>
-                  <td className={`text-center py-0.5 tabular-nums ${soh <= 0 ? 'text-red-500' : 'text-gray-700'}`}>
+                  <td className="text-center py-0.5 text-gray-700 tabular-nums border border-black">{fmtQ(row.cnt)}</td>
+                  <td className="text-center py-0.5 text-gray-700 tabular-nums border border-black">{fmtQ(row.wic)}</td>
+                  <td className="text-center py-0.5 text-gray-700 tabular-nums border border-black">{fmtQ(row.gmc)}</td>
+                  <td className="text-center py-0.5 text-blue-600 tabular-nums border border-black">{fmtQ(row.bl)}</td>
+                  <td className={`text-center py-0.5 tabular-nums border border-black ${soh <= 0 ? 'text-red-500' : 'text-gray-700'}`}>
                     {soh % 1 === 0 ? soh : soh.toFixed(1)}
                   </td>
-                  <td className="text-center py-0.5 text-blue-600 tabular-nums">{fmtCcy(row.sp)}</td>
-                  <td className="text-center py-0.5 text-green-600 tabular-nums">{fmtCcy(row.cp)}</td>
-                  <td className="text-center py-0.5 text-gray-500" title={row.cf_group ?? undefined}>{(row.cf_group ?? '—').slice(0, 3)}</td>
-                  <td className={`text-center py-0.5 font-semibold ${row.product_type === 'service' ? 'text-purple-500' : 'text-teal-600'}`}
+                  <td className="text-center py-0.5 text-blue-600 tabular-nums border border-black">{fmtCcy(row.sp)}</td>
+                  <td className="text-center py-0.5 text-green-600 tabular-nums border border-black">{fmtCcy(row.cp)}</td>
+                  <td className="text-center py-0.5 text-gray-500 border border-black" title={row.cf_group ?? undefined}>{(row.cf_group ?? '—').slice(0, 3)}</td>
+                  <td className={`text-center py-0.5 font-semibold border border-black ${row.product_type === 'service' ? 'text-purple-500' : 'text-teal-600'}`}
                     title={row.product_type === 'service' ? 'Service' : 'Good'}>
                     {row.product_type === 'service' ? 'Svc' : 'Goo'}
                   </td>
-                  <td className="text-center py-0.5 text-gray-400">{isOpen ? '▾' : '▸'}</td>
+                  <td className="text-center py-0.5 text-gray-400 border border-black">{isOpen ? '▾' : '▸'}</td>
                 </tr>
                 {isOpen && (
                   <tr key={`${row.item_id}-d`}>
