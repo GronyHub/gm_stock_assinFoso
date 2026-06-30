@@ -403,30 +403,30 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
                   onClick={() => setExpandedId(isOpen ? null : row.item_id)}
                   className={`cursor-pointer transition
                     ${isOpen ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-                  <td className={`pl-1 pr-0 py-0.5 font-semibold font-mono text-gray-900 whitespace-nowrap overflow-hidden sticky left-0 z-10 border border-black ${isOpen ? 'bg-blue-50' : 'bg-white'}`}
+                  <td className={`pl-1 pr-0 py-0.5 font-bold text-gray-900 whitespace-nowrap overflow-hidden sticky left-0 z-10 border border-black ${isOpen ? 'bg-blue-50' : 'bg-white'}`}
                     title={row.item_name}>{row.item_name.slice(0, 20)}</td>
                   <td className={`text-center py-0.5 font-bold tabular-nums border border-black ${lossAmt ? 'text-red-600' : gainAmt ? 'text-green-600' : 'text-gray-300'}`}>
                     {fmtAmt(row.lgAmt)}
                   </td>
-                  <td className={`text-center py-0.5 tabular-nums border border-black ${lossQty ? 'text-red-500' : gainQty ? 'text-green-600' : 'text-gray-300'}`}>
+                  <td className={`text-center py-0.5 font-bold tabular-nums border border-black ${lossQty ? 'text-red-500' : gainQty ? 'text-green-600' : 'text-gray-300'}`}>
                     {fmtLg(row.lgQty)}
                   </td>
-                  <td className="text-center py-0.5 text-gray-700 tabular-nums border border-black">{fmtQ(row.cnt)}</td>
-                  <td className="text-center py-0.5 text-gray-700 tabular-nums border border-black">{fmtQ(row.wic)}</td>
-                  <td className="text-center py-0.5 text-gray-700 tabular-nums border border-black">{fmtQ(row.gmc)}</td>
-                  <td className="text-center py-0.5 text-blue-600 tabular-nums border border-black">{fmtQ(row.bl)}</td>
-                  <td className={`text-center py-0.5 tabular-nums border border-black ${soh <= 0 ? 'text-red-500' : 'text-gray-700'}`}>
+                  <td className="text-center py-0.5 font-bold text-gray-700 tabular-nums border border-black">{fmtQ(row.cnt)}</td>
+                  <td className="text-center py-0.5 font-bold text-gray-700 tabular-nums border border-black">{fmtQ(row.wic)}</td>
+                  <td className="text-center py-0.5 font-bold text-gray-700 tabular-nums border border-black">{fmtQ(row.gmc)}</td>
+                  <td className="text-center py-0.5 font-bold text-blue-600 tabular-nums border border-black">{fmtQ(row.bl)}</td>
+                  <td className={`text-center py-0.5 font-bold tabular-nums border border-black ${soh <= 0 ? 'text-red-500' : 'text-gray-700'}`}>
                     {soh % 1 === 0 ? soh : soh.toFixed(1)}
                   </td>
-                  <td className="text-center py-0.5 text-blue-600 tabular-nums border border-black">{fmtCcy(row.sp)}</td>
-                  <td className="text-center py-0.5 text-green-600 tabular-nums border border-black">{fmtCcy(row.cp)}</td>
-                  <td className="text-center py-0.5 text-gray-500 border border-black" title={row.cf_group ?? undefined}>{(row.cf_group ?? '—').slice(0, 3)}</td>
-                  <td className={`text-center py-0.5 font-semibold border border-black ${row.product_type === 'service' ? 'text-purple-500' : 'text-teal-600'}`}
+                  <td className="text-center py-0.5 font-bold text-blue-600 tabular-nums border border-black">{fmtCcy(row.sp)}</td>
+                  <td className="text-center py-0.5 font-bold text-green-600 tabular-nums border border-black">{fmtCcy(row.cp)}</td>
+                  <td className="text-center py-0.5 font-bold text-gray-500 border border-black" title={row.cf_group ?? undefined}>{(row.cf_group ?? '—').slice(0, 3)}</td>
+                  <td className={`text-center py-0.5 font-bold border border-black ${row.product_type === 'service' ? 'text-purple-500' : 'text-teal-600'}`}
                     title={row.product_type === 'service' ? 'Service' : 'Good'}>
                     {row.product_type === 'service' ? 'Svc' : 'Goo'}
                   </td>
-                  <td className="text-center py-0.5 text-gray-400 border border-black">{isOpen ? '▾' : '▸'}</td>
-                  <td className="pl-1.5 py-0.5 text-gray-500 truncate overflow-hidden border border-black" title={aliasMap[row.item_id]}>
+                  <td className="text-center py-0.5 font-bold text-gray-400 border border-black">{isOpen ? '▾' : '▸'}</td>
+                  <td className="pl-1.5 py-0.5 font-bold text-gray-500 truncate overflow-hidden border border-black" title={aliasMap[row.item_id]}>
                     {aliasMap[row.item_id] || '—'}
                   </td>
                 </tr>
