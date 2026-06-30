@@ -417,6 +417,84 @@ export default function ItemsTab({ items, group, productType, search, violation,
     }
   }
 
+  // Flat table for simple filter violations
+  if (violation === 'neg_soh' || violation === 'no_sp' || violation === 'no_cp') {
+    const violatedItems = filteredItems  // already filtered by violation in useMemo
+    return (
+      <div className="flex flex-col h-full min-h-0">
+        <p className="shrink-0 text-[10px] text-gray-400 px-2 py-1">{violatedItems.length} item{violatedItems.length !== 1 ? 's' : ''}</p>
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <table className="w-full table-fixed border-collapse text-[8px]">
+            <colgroup>
+              <col style={{width:'30%'}} />
+              <col style={{width:'15%'}} />
+              <col style={{width:'10%'}} />
+              <col style={{width:'11%'}} />
+              <col style={{width:'11%'}} />
+              <col style={{width:'13%'}} />
+              <col style={{width:'10%'}} />
+            </colgroup>
+            <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200">
+              <tr className="text-[8px] font-bold text-gray-500">
+                <th className="text-left pl-2 py-1">Item</th>
+                <th className="text-left py-1">Group</th>
+                <th className="text-center py-1">SOH</th>
+                <th className="text-center py-1">SP</th>
+                <th className="text-center py-1">CP</th>
+                <th className="text-center py-1">Units/pack</th>
+                <th className="text-center py-1">Edit</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-100">
+              {violatedItems.length === 0 && (
+                <tr><td colSpan={7} className="py-8 text-center text-gray-400">No violations found.</td></tr>
+              )}
+              {violatedItems.map(item => {
+                const soh = Number(item.calculated_soh)
+                const isEditing = editingId === item.id
+                return (
+                  <>
+                    <tr key={item.id} className={isEditing ? 'bg-blue-50' : 'hover:bg-gray-50'}>
+                      <td className="pl-2 py-1 font-semibold text-gray-900 truncate overflow-hidden">{item.item_name}</td>
+                      <td className="py-1 text-gray-500 truncate overflow-hidden">{item.cf_group ?? <span className="text-red-400">—</span>}</td>
+                      <td className={`text-center py-1 font-bold tabular-nums ${soh <= 0 ? 'text-red-600' : 'text-gray-700'}`}>{soh % 1 === 0 ? soh : soh.toFixed(2)}</td>
+                      <td className={`text-center py-1 tabular-nums ${!item.selling_rate || parseFloat(item.selling_rate) === 0 ? 'text-red-500 font-bold' : 'text-blue-600'}`}>
+                        {item.selling_rate && parseFloat(item.selling_rate) !== 0 ? parseFloat(item.selling_rate).toFixed(2) : '—'}
+                      </td>
+                      <td className={`text-center py-1 tabular-nums ${!item.purchase_rate || parseFloat(item.purchase_rate) === 0 ? 'text-red-500 font-bold' : 'text-green-600'}`}>
+                        {item.purchase_rate && parseFloat(item.purchase_rate) !== 0 ? parseFloat(item.purchase_rate).toFixed(2) : '—'}
+                      </td>
+                      <td className="text-center py-1 text-gray-500">
+                        {item.units_per_pack ? `${item.units_per_pack}${item.unit_name ? ' ' + item.unit_name : ''}` : '—'}
+                      </td>
+                      <td className="text-center py-1">
+                        {isEditing ? (
+                          <div className="flex gap-0.5 justify-center">
+                            <button onClick={saveEdit} disabled={saving} className="text-[8px] font-bold text-white bg-green-600 px-1.5 py-0.5 rounded disabled:opacity-50">{saving ? '…' : 'Save'}</button>
+                            <button onClick={() => setEditingId(null)} className="text-[8px] font-bold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded">✕</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => startEdit(item)} className="text-[8px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded hover:bg-blue-100">Edit</button>
+                        )}
+                      </td>
+                    </tr>
+                    {isEditing && (
+                      <tr key={`${item.id}-edit`} className="bg-blue-50">
+                        <td colSpan={7} className="px-2 pb-2">
+                          <ItemForm form={editForm} onChange={setEditForm} groups={groupNames} />
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )
+  }
+
   // Flags panels (violation = no_group | duplicates | inv_todo | inv_done)
   if (violation === 'no_group') {
     return (
