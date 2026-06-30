@@ -47,18 +47,28 @@ export async function GET(_req: Request, { params }: { params: Promise<{ itemId:
       JOIN bills b ON b.id = bl.bill_id
       WHERE bl.item_id = ${id}
       GROUP BY b.bill_date::date
+    ),
+    daily_sp AS (
+      SELECT sr.receipt_date::date AS d, AVG(srl.item_price) AS sp
+      FROM sales_receipt_lines srl
+      JOIN sales_receipts sr ON sr.id = srl.receipt_id
+      WHERE srl.item_id = ${id} AND srl.item_price IS NOT NULL
+        AND (sr.customer_name IS NULL OR sr.customer_name <> 'Grony Multimedia as Customer')
+      GROUP BY sr.receipt_date::date
     )
     SELECT
-      ad.d AS date,
+      ad.d::text AS date,
       dc.qty_counted,
       dw.qty  AS wic_qty,
       dg.qty  AS gmc_qty,
-      db.qty  AS bills_qty
+      db.qty  AS bills_qty,
+      dsp.sp  AS sell_price
     FROM all_dates ad
     LEFT JOIN daily_counts dc ON dc.d = ad.d
     LEFT JOIN daily_wic    dw ON dw.d = ad.d
     LEFT JOIN daily_gmc    dg ON dg.d = ad.d
     LEFT JOIN daily_bills  db ON db.d = ad.d
+    LEFT JOIN daily_sp    dsp ON dsp.d = ad.d
     ORDER BY ad.d ASC
   `
 
