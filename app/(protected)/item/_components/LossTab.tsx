@@ -291,11 +291,26 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   const [loading, setLoading] = useState(true)
   const [sort, setSort] = useState<{ col: SortCol; dir: SortDir }>({ col: 'lgAmt', dir: 'desc' })
   const [expandedId, setExpandedId] = useState<number | null>(null)
+  const [aliasMap, setAliasMap] = useState<Record<number, string>>({})
 
   useEffect(() => {
     fetch('/api/losses/summary').then(r => r.json())
       .then(d => { setRows(Array.isArray(d) ? d : []); setLoading(false) })
       .catch(() => setLoading(false))
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/aliases/wide').then(r => r.json())
+      .then((d: any[]) => {
+        if (!Array.isArray(d)) return
+        const map: Record<number, string> = {}
+        for (const row of d) {
+          const names = (row.aliases ?? []).map((a: any) => a.name).filter(Boolean)
+          if (names.length) map[row.item_id] = names.join(', ')
+        }
+        setAliasMap(map)
+      })
+      .catch(() => {})
   }, [])
 
   function handleSort(col: SortCol) {
@@ -339,21 +354,22 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
     <div className="flex flex-col h-full min-h-0">
       {/* Table — all columns fit on screen; Item column compact */}
       <div className="flex-1 min-h-0 overflow-auto rounded-xl border border-black bg-white">
-        <table className="w-full table-fixed border-collapse text-[8px]">
+        <table className="border-collapse text-[8px] min-w-max">
           <colgroup>
-            <col style={{width:'19%'}} />
-            <col style={{width:'8%'}} />
-            <col style={{width:'7%'}} />
-            <col style={{width:'7%'}} />
-            <col style={{width:'7%'}} />
-            <col style={{width:'7%'}} />
-            <col style={{width:'6%'}} />
-            <col style={{width:'7%'}} />
-            <col style={{width:'8%'}} />
-            <col style={{width:'7%'}} />
-            <col style={{width:'6%'}} />
-            <col style={{width:'6%'}} />
-            <col style={{width:'5%'}} />
+            <col style={{width:'70px'}} />
+            <col style={{width:'30px'}} />
+            <col style={{width:'26px'}} />
+            <col style={{width:'26px'}} />
+            <col style={{width:'26px'}} />
+            <col style={{width:'26px'}} />
+            <col style={{width:'22px'}} />
+            <col style={{width:'26px'}} />
+            <col style={{width:'30px'}} />
+            <col style={{width:'26px'}} />
+            <col style={{width:'22px'}} />
+            <col style={{width:'22px'}} />
+            <col style={{width:'18px'}} />
+            <col style={{width:'220px'}} />
           </colgroup>
           <thead className="sticky top-0 z-20">
             <tr className="bg-gray-50">
@@ -370,11 +386,12 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
               <SortTh label="Grp" col="cf_group" {...thProps} cls="text-center" />
               <SortTh label="Typ" col="product_type" {...thProps} cls="text-center" />
               <th className={`${thBase} text-center text-gray-400`}>▸</th>
+              <th className={`${thBase} text-left pl-1.5`}>Aliases</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && (
-              <tr><td colSpan={13} className="py-10 text-center text-gray-400 text-[9px]">No items</td></tr>
+              <tr><td colSpan={14} className="py-10 text-center text-gray-400 text-[9px]">No items</td></tr>
             )}
             {filtered.map(row => {
               const lossAmt = row.lgAmt > 0, gainAmt = row.lgAmt < 0
@@ -408,10 +425,13 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
                     {row.product_type === 'service' ? 'Svc' : 'Goo'}
                   </td>
                   <td className="text-center py-0.5 text-gray-400 border border-black">{isOpen ? '▾' : '▸'}</td>
+                  <td className="pl-1.5 py-0.5 text-gray-500 truncate overflow-hidden border border-black" title={aliasMap[row.item_id]}>
+                    {aliasMap[row.item_id] || '—'}
+                  </td>
                 </tr>
                 {isOpen && (
                   <tr key={`${row.item_id}-d`}>
-                    <td colSpan={13} className="px-1 pb-2 pt-0.5 bg-blue-50">
+                    <td colSpan={14} className="px-1 pb-2 pt-0.5 bg-blue-50">
                       <ItemDetail item={row} groups={groupNames} onSaved={u => patchRow(row.item_id, u)} />
                     </td>
                   </tr>
