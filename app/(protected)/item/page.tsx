@@ -250,7 +250,7 @@ function ItemHubPageInner() {
             <span className="text-lg leading-none">🏠</span>
           </button>
           <div className="flex items-center gap-0.5 px-1 pt-1.5 pb-1 flex-1 min-w-0">
-            <TabIcon icon="📉" label="Items"    active={outerTab === 'loss'}     onClick={() => changeTab('loss')}     count={badgeCounts.loss} />
+            <TabIcon icon="📉" label="Loss"     active={outerTab === 'loss'}     onClick={() => changeTab('loss')}     count={badgeCounts.loss} />
             <TabIcon icon="💰" label="Sales"    active={outerTab === 'sales'}    onClick={() => changeTab('sales')}    count={badgeCounts.sales} />
             <TabIcon icon="🧾" label="Bills"    active={outerTab === 'bills'}    onClick={() => changeTab('bills')} />
             <TabIcon icon="🔢" label="CNT"      active={outerTab === 'counts'}   onClick={() => changeTab('counts')}   count={badgeCounts.counts} />
