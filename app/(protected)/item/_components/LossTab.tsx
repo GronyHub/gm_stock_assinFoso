@@ -354,9 +354,9 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
     <div className="flex flex-col h-full min-h-0">
       {/* Table — all columns fit on screen; Item column compact */}
       <div className="flex-1 min-h-0 overflow-auto rounded-xl border border-black bg-white">
-        <table className="border-collapse text-[8px] min-w-max">
+        <table className="table-fixed border-collapse text-[8px]">
           <colgroup>
-            <col style={{width:'70px'}} />
+            <col style={{width:'56px'}} />
             <col style={{width:'30px'}} />
             <col style={{width:'26px'}} />
             <col style={{width:'26px'}} />
@@ -373,7 +373,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
           </colgroup>
           <thead className="sticky top-0 z-20">
             <tr className="bg-gray-50">
-              <SortTh label="Item" col="item_name" sort={sort} onSort={handleSort} cls="text-left pl-1.5 sticky left-0 z-30 bg-gray-50 border-black" />
+              <SortTh label="Item" col="item_name" sort={sort} onSort={handleSort} cls="text-left pl-1 sticky left-0 z-30 bg-gray-50 border-black" />
               <SortTh label="₵L/G" col="lgAmt" {...thProps} cls="text-center" />
               <SortTh label="L/G" col="lgQty" {...thProps} cls="text-center" />
               <SortTh label="CNT" col="cnt" {...thProps} cls="text-center" />
@@ -403,7 +403,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
                   onClick={() => setExpandedId(isOpen ? null : row.item_id)}
                   className={`cursor-pointer transition
                     ${isOpen ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-                  <td className={`pl-1.5 py-0.5 font-semibold text-gray-900 truncate overflow-hidden sticky left-0 z-10 border border-black ${isOpen ? 'bg-blue-50' : 'bg-white'}`}>{row.item_name}</td>
+                  <td className={`pl-1 py-0.5 font-semibold text-gray-900 truncate overflow-hidden sticky left-0 z-10 border border-black ${isOpen ? 'bg-blue-50' : 'bg-white'}`}>{row.item_name}</td>
                   <td className={`text-center py-0.5 font-bold tabular-nums border border-black ${lossAmt ? 'text-red-600' : gainAmt ? 'text-green-600' : 'text-gray-300'}`}>
                     {fmtAmt(row.lgAmt)}
                   </td>
