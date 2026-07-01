@@ -552,9 +552,17 @@ function TimesTab({ username, role }: { username: string; role: string }) {
           <table className="w-full text-[11px] table-fixed">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="text-left px-1.5 py-2 text-gray-500 font-semibold w-[22%]">Date</th>
+                <th rowSpan={2} className="text-left px-1.5 py-1 text-gray-500 font-semibold align-bottom">Date</th>
                 {STAFF.map(s => (
-                  <th key={s} className="text-center px-0.5 py-2 text-gray-500 font-semibold capitalize">{s}</th>
+                  <th key={s} colSpan={2} className="text-center px-0.5 py-1 text-gray-500 font-semibold capitalize border-l border-gray-200">{s}</th>
+                ))}
+              </tr>
+              <tr>
+                {STAFF.map(s => (
+                  <Fragment key={s}>
+                    <th className="text-center px-0.5 py-0.5 text-green-600 font-medium border-l border-gray-200">In</th>
+                    <th className="text-center px-0.5 py-0.5 text-orange-500 font-medium">Out</th>
+                  </Fragment>
                 ))}
               </tr>
             </thead>
@@ -567,11 +575,11 @@ function TimesTab({ username, role }: { username: string; role: string }) {
                   <Fragment key={date}>
                     {isMonthStart && (
                       <tr className="bg-gray-100 border-t-2 border-b-2 border-gray-300">
-                        <td className="px-1.5 py-2 text-[10px] font-bold text-gray-600 leading-tight">{monthKeyLabel(monthKey)}<br/>Total</td>
+                        <td className="px-1.5 py-2 text-[9px] font-bold text-gray-600 leading-tight">{monthKeyLabel(monthKey)}<br/>Total</td>
                         {STAFF.map(s => {
                           const mins = monthMinutesFor(s, monthKey)
                           return (
-                            <td key={s} className="text-center px-0.5 py-2 text-[10px] font-bold text-gray-700">
+                            <td key={s} colSpan={2} className="text-center px-0.5 py-2 text-[9px] font-bold text-gray-700 border-l border-gray-200">
                               {mins ? minsToHrs(mins) : '—'}
                             </td>
                           )
@@ -579,28 +587,31 @@ function TimesTab({ username, role }: { username: string; role: string }) {
                       </tr>
                     )}
                     <tr className="hover:bg-gray-50">
-                      <td className="px-1.5 py-1.5 text-gray-600 leading-tight">{fmtShortDate(date)}</td>
+                      <td className="px-1.5 py-1 text-gray-600 leading-tight whitespace-nowrap">{fmtShortDate(date)}</td>
                       {STAFF.map(s => {
                         const isMine = s === username
                         const cellIn = map[s]?.in ?? <span className="text-gray-200">—</span>
                         const cellOut = map[s]?.out ?? <span className="text-gray-200">—</span>
-                        const content = (
-                          <div className="flex flex-col items-center leading-tight">
-                            <span className="text-green-700">{cellIn}</span>
-                            <span className="text-orange-600">{cellOut}</span>
-                          </div>
-                        )
                         if (isMine) {
                           return (
-                            <td key={s} className="px-0.5 py-1">
-                              <button onClick={() => openEdit(date, map)}
-                                className="w-full rounded-lg hover:bg-blue-50 py-0.5 transition">
-                                {content}
-                              </button>
-                            </td>
+                            <Fragment key={s}>
+                              <td className="px-0.5 py-0.5 border-l border-gray-200">
+                                <button onClick={() => openEdit(date, map)}
+                                  className="w-full text-center text-green-700 rounded hover:bg-blue-50 py-0.5 transition">{cellIn}</button>
+                              </td>
+                              <td className="px-0.5 py-0.5">
+                                <button onClick={() => openEdit(date, map)}
+                                  className="w-full text-center text-orange-600 rounded hover:bg-blue-50 py-0.5 transition">{cellOut}</button>
+                              </td>
+                            </Fragment>
                           )
                         }
-                        return <td key={s} className="px-0.5 py-1 text-center">{content}</td>
+                        return (
+                          <Fragment key={s}>
+                            <td className="px-0.5 py-0.5 text-center text-green-700 border-l border-gray-200">{cellIn}</td>
+                            <td className="px-0.5 py-0.5 text-center text-orange-600">{cellOut}</td>
+                          </Fragment>
+                        )
                       })}
                     </tr>
                   </Fragment>
@@ -1860,7 +1871,8 @@ function AssignmentsTab({ role }: { role: string }) {
   const [settings, setSettings] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
-  const canManage = role === 'owner'
+  const [error, setError] = useState('')
+  const canManage = ['owner', 'manager'].includes(role)
 
   function load() {
     fetch('/api/violations/assignments')
@@ -1872,28 +1884,39 @@ function AssignmentsTab({ role }: { role: string }) {
   useEffect(() => { load() }, [])
 
   async function assign(type: string, staff: string) {
-    setSaving(type)
-    await fetch('/api/violations/assignments', {
+    setSaving(type); setError('')
+    const label = VIOLATION_TYPES.find(v => v.type === type)?.label ?? type
+    const res = await fetch('/api/violations/assignments', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ violation_type: type, staff_name: staff || null }),
+      body: JSON.stringify({ violation_type: type, staff_name: staff || null, violation_label: label }),
     })
-    setAssignments(prev => ({ ...prev, [type]: staff }))
     setSaving(null)
+    if (res.ok) {
+      setAssignments(prev => ({ ...prev, [type]: staff }))
+    } else {
+      const d = await res.json().catch(() => ({}))
+      setError(d.error || 'Could not save assignment. Please try again.')
+    }
   }
 
   async function saveSettings() {
-    setSaving('__settings__')
-    await fetch('/api/violations/assignments', {
+    setSaving('__settings__'); setError('')
+    const res = await fetch('/api/violations/assignments', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ settings }),
     })
     setSaving(null)
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      setError(d.error || 'Could not save settings. Please try again.')
+    }
   }
 
   if (loading) return <div className="py-10 text-center text-gray-400">Loading…</div>
 
   return (
     <div className="space-y-4">
+      {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
       <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
         <p className="text-sm font-semibold text-gray-700">Auto-Penalty Settings</p>
         <p className="text-[11px] text-gray-400">
@@ -1941,7 +1964,7 @@ function AssignmentsTab({ role }: { role: string }) {
         ))}
       </div>
 
-      {!canManage && <p className="text-[11px] text-gray-400 text-center">Only the owner can change assignments.</p>}
+      {!canManage && <p className="text-[11px] text-gray-400 text-center">Only the owner or manager can change assignments.</p>}
     </div>
   )
 }

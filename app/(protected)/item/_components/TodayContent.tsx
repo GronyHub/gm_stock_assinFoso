@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 import { fmtDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
 import DayBookFeed from '@/components/DayBookFeed'
@@ -220,18 +221,27 @@ function AnnouncementsPanel() {
 
 const fmt = (v: any) => `₵${Number(v ?? 0).toLocaleString('en-GH', { maximumFractionDigits: 0 })}`
 
-function Card({ title, children, href, linkLabel }: { title: string; children: React.ReactNode; href?: string; linkLabel?: string }) {
+function Section({ title, href, linkLabel, children }: { title: string; children: React.ReactNode; href?: string; linkLabel?: string }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-2">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-gray-700">{title}</p>
+    <div className="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5">
+      <div className="flex items-center justify-between mb-0.5">
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{title}</p>
         {href && (
-          <Link href={href} className="text-xs text-blue-600 font-semibold hover:underline">
+          <Link href={href} className="text-[10px] text-blue-600 font-semibold">
             {linkLabel ?? 'View →'}
           </Link>
         )}
       </div>
       {children}
+    </div>
+  )
+}
+
+function Row({ label, value, valueClass }: { label: string; value: React.ReactNode; valueClass?: string }) {
+  return (
+    <div className="flex items-center justify-between py-[1px] text-[11px] leading-tight">
+      <span className="text-gray-500">{label}</span>
+      <span className={`font-semibold ${valueClass ?? 'text-gray-800'}`}>{value}</span>
     </div>
   )
 }
@@ -253,14 +263,56 @@ function oldestDays(rows: any[], field: string): number | null {
   return Math.max(...rows.map(r => daysSince(r[field])))
 }
 
+function timeOfDay(ts: string): string {
+  const d = new Date(ts)
+  return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+}
+
 const AUTO_PENALIZABLE = new Set(['missing_days', 'no_cash', 'cost_gte_sell', 'no_staff_times', 'unchecked_cab'])
 
 export default function TodayPage() {
+  const { data: session } = useSession()
+  const role = (session?.user as any)?.role
+  const canPost = ['owner', 'manager'].includes(role)
+
   const [data, setData] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
   const [flags, setFlags] = useState<any | null>(null)
   const [assignments, setAssignments] = useState<Record<string, string>>({})
   const [vSettings, setVSettings] = useState<Record<string, string>>({})
+  const [announcements, setAnnouncements] = useState<any[]>([])
+  const [showPost, setShowPost] = useState(false)
+  const [postText, setPostText] = useState('')
+  const [posting, setPosting] = useState(false)
+  const [logs, setLogs] = useState<any[]>([])
+
+  function loadAnnouncements() {
+    fetch('/api/announcements').then(r => r.ok ? r.json() : []).then(d => setAnnouncements(Array.isArray(d) ? d : [])).catch(() => {})
+  }
+
+  async function postAnnouncement() {
+    if (!postText.trim()) return
+    setPosting(true)
+    const res = await fetch('/api/announcements', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: postText.trim() }),
+    })
+    setPosting(false)
+    if (res.ok) { setPostText(''); setShowPost(false); loadAnnouncements() }
+  }
+
+  async function removeAnnouncement(id: number) {
+    await fetch('/api/announcements', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    loadAnnouncements()
+  }
+
+  function loadLogs() {
+    fetch('/api/logs').then(r => r.ok ? r.json() : []).then(d => {
+      const todayStr = new Date().toISOString().slice(0, 10)
+      const todays = (Array.isArray(d) ? d : []).filter((l: any) => String(l.created_at).slice(0, 10) === todayStr)
+      setLogs(todays.slice(0, 12))
+    }).catch(() => {})
+  }
 
   function load() {
     fetch('/api/today/summary')
@@ -281,9 +333,11 @@ export default function TodayPage() {
       .catch(() => {})
   }
 
-  useEffect(() => { load(); loadFlags(); loadAssignments() }, [])
+  useEffect(() => { load(); loadFlags(); loadAssignments(); loadAnnouncements(); loadLogs() }, [])
   usePolling(load, 10000)
   usePolling(loadFlags, 30000)
+  usePolling(loadAnnouncements, 30000)
+  usePolling(loadLogs, 15000)
 
   const violations = useMemo(() => {
     if (!flags) return []
@@ -341,104 +395,110 @@ export default function TodayPage() {
   const expenses = data.expenses ?? {}
 
   return (
-    <div className="py-4 space-y-4">
-      <div>
-        <h1 className="text-xl font-bold text-gray-900">Today</h1>
-        <p className="text-sm text-gray-400">{fmtDate(data.date)}</p>
+    <div className="py-2 space-y-1.5">
+      <div className="flex items-center justify-between">
+        <h1 className="text-base font-bold text-gray-900">Today</h1>
+        <p className="text-[10px] text-gray-400">{fmtDate(data.date)}</p>
       </div>
 
-      <Card title="Sales" href="/sales">
-        <div className="flex gap-2">
-          <div className="flex-1 bg-blue-50 rounded-lg px-3 py-2">
-            <p className="text-[10px] text-gray-400">Total</p>
-            <p className="text-base font-bold text-blue-700">{fmt(sales.total)}</p>
-          </div>
-          <div className="flex-1 bg-gray-50 rounded-lg px-3 py-2">
-            <p className="text-[10px] text-gray-400">WIC</p>
-            <p className="text-sm font-semibold text-gray-700">{fmt(sales.wic)}</p>
-          </div>
-          <div className="flex-1 bg-gray-50 rounded-lg px-3 py-2">
-            <p className="text-[10px] text-gray-400">GMC</p>
-            <p className="text-sm font-semibold text-gray-700">{fmt(sales.gmc)}</p>
-          </div>
+      <div className="bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
+        <div className="flex items-center justify-between mb-0.5">
+          <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wide">📢 Announcements</p>
+          {canPost && (
+            <button onClick={() => setShowPost(s => !s)} className="text-[10px] text-amber-700 font-semibold">
+              {showPost ? 'Cancel' : '+ Post'}
+            </button>
+          )}
         </div>
-        <p className="text-xs text-gray-400">{sales.count ?? 0} receipt{Number(sales.count) !== 1 ? 's' : ''} today</p>
-        <Link href="/sales/new" className="inline-block text-xs font-semibold bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-500">
-          + New Sale
-        </Link>
-      </Card>
+        {showPost && (
+          <div className="flex gap-1 mb-1">
+            <input value={postText} onChange={e => setPostText(e.target.value)}
+              placeholder="Write an announcement…"
+              className="flex-1 bg-white border border-amber-300 rounded px-2 py-1 text-[11px] text-gray-900 outline-none focus:ring-1 focus:ring-amber-400" />
+            <button onClick={postAnnouncement} disabled={posting || !postText.trim()}
+              className="text-[10px] font-semibold bg-amber-600 text-white px-2 py-1 rounded disabled:opacity-40">
+              {posting ? '…' : 'Post'}
+            </button>
+          </div>
+        )}
+        {announcements.length === 0 ? (
+          <p className="text-[11px] text-gray-400 py-[1px]">No announcements.</p>
+        ) : (
+          announcements.map(a => (
+            <div key={a.id} className="flex items-start justify-between gap-2 py-[2px] text-[11px] leading-tight">
+              <span className="text-gray-700 min-w-0">{a.message}
+                <span className="text-gray-400"> — <span className="capitalize">{a.posted_by}</span>, {timeOfDay(a.created_at)}</span>
+              </span>
+              {canPost && (
+                <button onClick={() => removeAnnouncement(a.id)} className="text-amber-400 hover:text-red-500 font-bold shrink-0">×</button>
+              )}
+            </div>
+          ))
+        )}
+      </div>
 
-      <Card title="Bills" href="/bills">
-        <div className="flex items-center justify-between">
-          <p className="text-base font-bold text-orange-600">{fmt(bills.total)}</p>
-          <p className="text-xs text-gray-400">{bills.count ?? 0} bill{Number(bills.count) !== 1 ? 's' : ''} today</p>
-        </div>
-      </Card>
+      <Section title="Sales" href="/sales">
+        <Row label="Total" value={fmt(sales.total)} valueClass="text-blue-700" />
+        <Row label="WIC" value={fmt(sales.wic)} />
+        <Row label="GMC" value={fmt(sales.gmc)} />
+        <Row label="Receipts" value={sales.count ?? 0} />
+        <Link href="/sales/new" className="inline-block text-[10px] font-semibold text-blue-600 mt-0.5">+ New Sale</Link>
+      </Section>
 
-      <Card title="Expenses" href="/expenses">
-        <div className="flex items-center justify-between">
-          <p className="text-base font-bold text-red-500">{fmt(expenses.total)}</p>
-          <p className="text-xs text-gray-400">{expenses.count ?? 0} entr{Number(expenses.count) === 1 ? 'y' : 'ies'} today</p>
-        </div>
-      </Card>
+      <Section title="Bills" href="/bills">
+        <Row label="Total" value={fmt(bills.total)} valueClass="text-orange-600" />
+        <Row label="Bills" value={bills.count ?? 0} />
+      </Section>
 
-      <Card title="Stock Counting" href="/stock/counts?tab=Daily" linkLabel="Count Now →">
+      <Section title="Expenses" href="/expenses">
+        <Row label="Total" value={fmt(expenses.total)} valueClass="text-red-500" />
+        <Row label="Entries" value={expenses.count ?? 0} />
+      </Section>
+
+      <Section title="Stock Counting" href="/stock/counts?tab=Daily" linkLabel="Count Now →">
         {data.pendingDailyCount > 0 ? (
-          <p className="text-sm text-gray-700">
-            <span className="font-bold text-orange-600">{data.pendingDailyCount}</span> daily item{data.pendingDailyCount !== 1 ? 's' : ''} still need counting today
-          </p>
+          <Row label="Pending" value={`${data.pendingDailyCount} item${data.pendingDailyCount !== 1 ? 's' : ''}`} valueClass="text-orange-600" />
         ) : (
-          <p className="text-sm text-green-600 font-medium">All daily items counted ✓</p>
+          <Row label="Status" value="All counted ✓" valueClass="text-green-600" />
         )}
-      </Card>
+      </Section>
 
-      <Card title="Staff Today" href="/staff">
+      <Section title="Staff Today" href="/staff">
         {(!data.staffToday || data.staffToday.length === 0) ? (
-          <p className="text-sm text-gray-400">No one has clocked in yet.</p>
+          <p className="text-[11px] text-gray-400 py-[1px]">No one clocked in yet.</p>
         ) : (
-          <div className="space-y-1.5">
-            {data.staffToday.map((s: any) => (
-              <div key={s.staff_name} className="flex items-center justify-between text-sm">
-                <span className="font-medium capitalize text-gray-700">{s.staff_name}</span>
-                <span className="text-xs text-gray-500">
-                  <span className="text-green-700">{s.actual_in ?? '—'}</span>
-                  {' → '}
-                  <span className="text-orange-600">{s.actual_out ?? '—'}</span>
-                </span>
-              </div>
-            ))}
-          </div>
+          data.staffToday.map((s: any) => (
+            <Row key={s.staff_name} label={s.staff_name} valueClass="capitalize"
+              value={<><span className="text-green-700">{s.actual_in ?? '—'}</span> → <span className="text-orange-600">{s.actual_out ?? '—'}</span></>} />
+          ))
         )}
-      </Card>
+      </Section>
 
-      <Card title="Cash at Bank" href="/cash-at-bank">
+      <Section title="Cash at Bank" href="/cash-at-bank">
         {data.latestCab ? (
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-600">Last confirmed: {fmtDate(String(data.latestCab.entry_date).slice(0,10))}</span>
-            <span className={`font-semibold ${Number(data.latestCab.deficit) < 0 ? 'text-red-500' : 'text-green-600'}`}>
-              {data.latestCab.deficit != null ? fmt(data.latestCab.deficit) : ''}
-            </span>
-          </div>
+          <Row label={`Confirmed ${fmtDate(String(data.latestCab.entry_date).slice(0,10))}`}
+            value={data.latestCab.deficit != null ? fmt(data.latestCab.deficit) : '—'}
+            valueClass={Number(data.latestCab.deficit) < 0 ? 'text-red-500' : 'text-green-600'} />
         ) : (
-          <p className="text-sm text-gray-400">No confirmed cash-at-bank entry yet.</p>
+          <p className="text-[11px] text-gray-400 py-[1px]">No confirmed entry yet.</p>
         )}
-      </Card>
+      </Section>
 
-      <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-2">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold text-gray-700">
+      <div className="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5">
+        <div className="flex items-center justify-between mb-0.5">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">
             Needs Attention {totalViolations > 0 && <span className="text-red-500">({totalViolations})</span>}
           </p>
-          <Link href="/staff?tab=Assignments" className="text-xs text-blue-600 font-semibold hover:underline">
+          <Link href="/staff?tab=Assignments" className="text-[10px] text-blue-600 font-semibold">
             Assign →
           </Link>
         </div>
         {!flags ? (
-          <p className="text-sm text-gray-400">Loading…</p>
+          <p className="text-[11px] text-gray-400 py-[1px]">Loading…</p>
         ) : violations.length === 0 ? (
-          <p className="text-sm text-green-600 font-medium">Nothing outstanding — all clear ✓</p>
+          <p className="text-[11px] text-green-600 font-medium py-[1px]">All clear ✓</p>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div>
             {violations.map(v => {
               const assignedTo = assignments[v.type]
               const canAutoPenalize = AUTO_PENALIZABLE.has(v.type)
@@ -446,24 +506,18 @@ export default function TodayPage() {
               const atRisk = canAutoPenalize && assignedTo && v.days != null && v.days >= threshold
               return (
                 <Link key={v.href} href={v.href}
-                  className="flex items-center justify-between py-2 hover:bg-gray-50 -mx-1 px-1 rounded transition gap-2">
-                  <div className="min-w-0">
-                    <span className="text-sm text-gray-700">
-                      <span className="font-bold text-red-500">{v.count}</span> {v.label}
-                      {v.days != null && <span className="text-gray-400"> — {agePhrase(v.days)}</span>}
-                    </span>
-                    <div className="text-[11px] mt-0.5">
-                      {assignedTo ? (
-                        <span className={atRisk ? 'text-red-500 font-semibold' : 'text-gray-400'}>
-                          Assigned: <span className="capitalize">{assignedTo}</span>
-                          {atRisk && ' — penalty pending'}
-                        </span>
-                      ) : (
-                        <span className="text-gray-300">Unassigned</span>
-                      )}
-                    </div>
-                  </div>
-                  <span className="text-xs text-blue-600 font-semibold shrink-0">Fix →</span>
+                  className="flex items-center justify-between py-[2px] text-[11px] leading-tight hover:bg-gray-50 -mx-1 px-1 rounded transition gap-2">
+                  <span className="min-w-0 truncate">
+                    <span className="font-bold text-red-500">{v.count}</span>{' '}
+                    <span className="text-gray-700">{v.label}</span>
+                    {v.days != null && <span className="text-gray-400"> — {agePhrase(v.days)}</span>}
+                    {assignedTo && (
+                      <span className={`ml-1 ${atRisk ? 'text-red-500 font-semibold' : 'text-gray-300'}`}>
+                        · <span className="capitalize">{assignedTo}</span>{atRisk && ' ⚠'}
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-[10px] text-blue-600 font-semibold shrink-0">Fix →</span>
                 </Link>
               )
             })}
