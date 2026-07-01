@@ -16,10 +16,15 @@ export async function PUT(req: NextRequest) {
   const session = await auth()
   const sessionUser = session?.user as any
   const isAdmin = sessionUser?.role === 'owner' || sessionUser?.role === 'admin'
-  if (!isAdmin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const sessionUsername: string = sessionUser?.username ?? sessionUser?.name ?? ''
 
+  const body = await req.json()
   const { staff_name, full_name, start_date, date_of_birth, ghana_card,
-          ssnit_number, phone, address, bank_name, bank_account, momo_number } = await req.json()
+          ssnit_number, phone, address, bank_name, bank_account, momo_number } = body
+
+  // Allow self-update: staff can edit their own profile row
+  const isSelf = staff_name?.toLowerCase() === sessionUsername?.toLowerCase()
+  if (!isAdmin && !isSelf) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const [row] = await sql`
     UPDATE staff_profiles SET

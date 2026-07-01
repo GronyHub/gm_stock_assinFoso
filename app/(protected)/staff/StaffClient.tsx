@@ -728,6 +728,54 @@ const ALL_STAFF_NAMES = ['Joe', 'Bino', 'James', 'Rawlings', 'Grony']
 
 type PayView = 'monthly' | 'staff' | 'profiles'
 
+type PayFlag = { staff: string; month: string; issue: string; severity: 'warn' | 'error' }
+
+function detectPayFlags(payslips: Payslip[]): PayFlag[] {
+  const flags: PayFlag[] = []
+  for (const p of payslips) {
+    const m = monthLabel(p.pay_month)
+    const isFlat = p.staff_name === 'Grony'
+
+    // Missing hours for non-flat staff
+    const hours = p.hours_worked != null ? parseFloat(p.hours_worked) : null
+    if (!isFlat && (hours === null || hours === 0)) {
+      flags.push({ staff: p.staff_name, month: m, issue: 'Hours not recorded — pay may be estimated', severity: 'warn' })
+    }
+
+    // Hours present but pay_for_hours is zero/null
+    const payHrs = p.pay_for_hours != null ? parseFloat(p.pay_for_hours) : null
+    if (!isFlat && hours && hours > 0 && (!payHrs || payHrs === 0)) {
+      flags.push({ staff: p.staff_name, month: m, issue: 'Hours recorded but pay-for-hours is zero', severity: 'error' })
+    }
+
+    // Rate anomaly: pay_for_hours / hours should be between 4.50 and 6.00
+    if (!isFlat && hours && hours > 0 && payHrs && payHrs > 0) {
+      const rate = payHrs / hours
+      if (rate < 4.50 || rate > 6.50) {
+        flags.push({ staff: p.staff_name, month: m, issue: `Effective rate ₵${rate.toFixed(2)}/h — expected ₵5.00–₵5.50`, severity: 'warn' })
+      }
+    }
+
+    // Component sum ≠ stored total (only if all components are present)
+    const total = p.total_salary != null ? parseFloat(p.total_salary) : null
+    const computed = [p.pay_for_hours, p.pay_for_overtime, p.pay_for_longevity, p.duty_allowance, p.data_allowance]
+      .reduce((s, v) => s + (v != null ? parseFloat(v) : 0), 0)
+    if (total !== null && computed > 0 && Math.abs(total - computed) > 0.10) {
+      flags.push({
+        staff: p.staff_name, month: m,
+        issue: `Total ₵${total.toFixed(2)} ≠ component sum ₵${computed.toFixed(2)} (diff ₵${Math.abs(total - computed).toFixed(2)})`,
+        severity: 'error',
+      })
+    }
+
+    // Missing longevity for non-Grony staff
+    if (!isFlat && (p.longevity_days == null || parseFloat(p.longevity_days) === 0)) {
+      flags.push({ staff: p.staff_name, month: m, issue: 'Longevity days not set', severity: 'warn' })
+    }
+  }
+  return flags
+}
+
 function PayslipsTab() {
   const [payslips, setPayslips] = useState<Payslip[]>([])
   const [profiles, setProfiles] = useState<StaffProfile[]>([])
@@ -757,6 +805,8 @@ function PayslipsTab() {
 
   const months = useMemo(() =>
     [...new Set(payslips.map(p => p.pay_month))].sort(), [payslips])
+
+  const payFlags = useMemo(() => detectPayFlags(payslips), [payslips])
 
   // Monthly view: all staff for selected month
   const monthlyData = useMemo(() =>
@@ -800,7 +850,28 @@ function PayslipsTab() {
         {viewBtn('monthly',  '📅 By Month')}
         {viewBtn('staff',    '👤 By Staff')}
         {viewBtn('profiles', '🪪 Profiles')}
+        {payFlags.length > 0 && viewBtn('flags' as any, `⚠️ Flags (${payFlags.length})`)}
       </div>
+
+      {/* ── FLAGS VIEW ──────────────────────────────────────────────────────────── */}
+      {(view as string) === 'flags' && (
+        <div className="space-y-2">
+          <p className="text-xs text-gray-500">These payslip records have data that doesn't add up. Fix the underlying staff times or payslip entries to resolve them.</p>
+          {payFlags.map((f, i) => (
+            <div key={i} className={`rounded-xl border px-3 py-2.5 flex gap-3 items-start
+              ${f.severity === 'error' ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
+              <span className="mt-0.5 text-base">{f.severity === 'error' ? '🔴' : '🟡'}</span>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STAFF_COLORS[f.staff] ?? 'bg-gray-100 text-gray-600'}`}>{f.staff}</span>
+                  <span className="text-[10px] font-semibold text-gray-500">{f.month}</span>
+                </div>
+                <p className="text-xs text-gray-800 mt-1">{f.issue}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* ── MONTHLY VIEW ─────────────────────────────────────────────────────── */}
       {view === 'monthly' && (
