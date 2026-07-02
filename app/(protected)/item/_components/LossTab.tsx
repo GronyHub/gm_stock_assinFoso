@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useMemo } from 'react'
+import { Fragment, useState, useEffect, useMemo } from 'react'
 import { fmtDate } from '@/lib/fmtDate'
 
 /* ── types ── */
@@ -562,8 +562,6 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
     return list
   }, [rows, search, group, productType, sort])
 
-  const expandedRow = useMemo(() => rows.find(r => r.item_id === expandedId) ?? null, [rows, expandedId])
-
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
 
   const thProps = { sort, onSort: handleSort }
@@ -621,7 +619,8 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
               const soh = parseFloat(row.soh ?? '0') || 0
               const isOpen = expandedId === row.item_id
               return (
-                <tr key={row.item_id}
+                <Fragment key={row.item_id}>
+                <tr
                   onClick={() => { setExpandedId(isOpen ? null : row.item_id); setEditTriggerId(null) }}
                   className={`cursor-pointer transition
                     ${isOpen ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
@@ -664,29 +663,35 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
                     </button>
                   </td>
                 </tr>
+                {isOpen && (
+                  <tr>
+                    {/* colSpan makes this cell as wide as the scrollable table, but the inner
+                        wrapper is sticky-pinned to the left edge and capped to the visible
+                        viewport width (like the frozen Item column above), so the detail
+                        table renders at phone width directly under the row that opened it. */}
+                    <td colSpan={16} className="p-0 border border-black bg-blue-50">
+                      <div className="sticky left-0 w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] max-h-[50vh] overflow-y-auto px-0.5 pb-2 pt-0.5">
+                        <ItemDetail item={row} groups={groupNames}
+                          currentAliases={aliasRecords[row.item_id] ?? []}
+                          currentMatches={matchRecords[row.item_name.trim().toLowerCase()] ?? []}
+                          candidatePool={row.product_type === 'service' ? goodsPool : servicesPool}
+                          autoEdit={editTriggerId === row.item_id}
+                          onSaved={u => patchRow(row.item_id, u)}
+                          onRelationsSaved={(newAliases, newMatches) => {
+                            setAliasRecords(prev => ({ ...prev, [row.item_id]: newAliases }))
+                            setMatchRecords(prev => ({ ...prev, [row.item_name.trim().toLowerCase()]: newMatches }))
+                            setEditTriggerId(null)
+                          }} />
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               )
             })}
           </tbody>
         </table>
       </div>
-
-      {/* Expanded item detail — rendered outside the wide scrollable table so it
-          fits a phone screen instead of inheriting the summary table's column width */}
-      {expandedRow && (
-        <div className="shrink-0 max-h-[50vh] overflow-y-auto px-0.5 pt-1">
-          <ItemDetail item={expandedRow} groups={groupNames}
-            currentAliases={aliasRecords[expandedRow.item_id] ?? []}
-            currentMatches={matchRecords[expandedRow.item_name.trim().toLowerCase()] ?? []}
-            candidatePool={expandedRow.product_type === 'service' ? goodsPool : servicesPool}
-            autoEdit={editTriggerId === expandedRow.item_id}
-            onSaved={u => patchRow(expandedRow.item_id, u)}
-            onRelationsSaved={(newAliases, newMatches) => {
-              setAliasRecords(prev => ({ ...prev, [expandedRow.item_id]: newAliases }))
-              setMatchRecords(prev => ({ ...prev, [expandedRow.item_name.trim().toLowerCase()]: newMatches }))
-              setEditTriggerId(null)
-            }} />
-        </div>
-      )}
     </div>
   )
 }
