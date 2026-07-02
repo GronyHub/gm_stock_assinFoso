@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
+import { isOwnerLevel } from '@/lib/roles'
 import bcrypt from 'bcryptjs'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -10,16 +11,22 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   const sessionUser = session?.user as any
   const { id } = await params
   const userId = Number(id)
+  const isSelf = String(sessionUser?.id) === id
 
-  // Owner can edit anyone; non-owner can only edit themselves
-  if (sessionUser?.role !== 'owner' && String(sessionUser?.id) !== id) {
+  // Owner and Joe can edit anyone; everyone else can only edit themselves
+  if (!isOwnerLevel(sessionUser) && !isSelf) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { display_name, email, role, password } = await req.json()
+  const [target] = await sql`SELECT username, role FROM app_users WHERE id = ${userId}`
+  if (!target) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const updates: string[] = []
-  const args: Record<string, unknown> = { id: userId }
+  // The owner account itself can only be edited by the real owner, not by Joe's owner-level access
+  const targetIsProtected = target.role === 'owner' || target.username?.toLowerCase() === 'grony'
+  const canEditTarget = isSelf || sessionUser?.role === 'owner' || (isOwnerLevel(sessionUser) && !targetIsProtected)
+  if (!canEditTarget) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const { display_name, email, role, password } = await req.json()
 
   if (display_name !== undefined) {
     const [row] = await sql`UPDATE app_users SET display_name = ${display_name} WHERE id = ${userId} RETURNING id`
@@ -28,7 +35,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   if (email !== undefined) {
     await sql`UPDATE app_users SET email = ${email || null} WHERE id = ${userId}`
   }
-  if (role !== undefined && sessionUser?.role === 'owner') {
+  if (role !== undefined && isOwnerLevel(sessionUser) && !targetIsProtected) {
     await sql`UPDATE app_users SET role = ${role} WHERE id = ${userId}`
   }
   if (password) {

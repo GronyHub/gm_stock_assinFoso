@@ -3,6 +3,7 @@ import Credentials from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import sql from './db'
 import { logActivity } from './logger'
+import { IMPERSONATE_COOKIE } from './impersonate-cookie'
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -32,11 +33,41 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) { token.role = (user as any).role; token.username = (user as any).username }
       return token
     },
-    session({ session, token }) {
+    async session({ session, token }) {
       if (session.user) {
         ;(session.user as any).id = token.sub
         ;(session.user as any).role = token.role
         ;(session.user as any).username = token.username
+
+        const realRole = token.role as string | undefined
+        const realUsername = ((token.username as string | undefined) ?? '').toLowerCase()
+        const isOwnerLevel = realRole === 'owner' || realUsername === 'joe'
+
+        // Owner/Joe can temporarily view the app as another staff member (see lib/impersonate-cookie.ts).
+        // Reading the cookie can only happen inside a real request (Server Component / Route Handler);
+        // guard it so an unsupported context (e.g. proxy.ts) never breaks authentication.
+        if (isOwnerLevel) {
+          try {
+            const { cookies } = await import('next/headers')
+            const store = await cookies()
+            const impersonating = store.get(IMPERSONATE_COOKIE)?.value
+            if (impersonating && impersonating.toLowerCase() !== realUsername) {
+              const rows = await sql`SELECT username, display_name, role FROM app_users WHERE LOWER(username) = LOWER(${impersonating})`
+              if (rows.length) {
+                const target = rows[0]
+                ;(session.user as any).realRole = realRole
+                ;(session.user as any).realUsername = token.username
+                ;(session.user as any).realName = session.user.name
+                ;(session.user as any).role = target.role
+                ;(session.user as any).username = target.username
+                session.user.name = target.display_name
+                ;(session.user as any).impersonating = true
+              }
+            }
+          } catch {
+            // not in a readable-cookie context — leave the real session untouched
+          }
+        }
       }
       return session
     },

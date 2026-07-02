@@ -1359,7 +1359,7 @@ function ViolationsTab({ role, username, vtab, setVtab }: { role: string; userna
                       </span>
                     )}
                   </div>
-                  {role === 'owner' && (
+                  {(role === 'owner' || username === 'joe') && (
                     <button onClick={() => remove(v.id)} className="text-xs text-red-400 hover:text-red-600 font-semibold shrink-0">Delete</button>
                   )}
                 </div>
@@ -1557,10 +1557,11 @@ function NoTimesFix({ date, onFixed }: { date: string; onFixed: (d: string) => v
 
 
 
-function RoleTab({ role }: { role: string }) {
+function RoleTab({ role, username }: { role: string; username: string }) {
   const [users, setUsers] = useState<AppUser[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<number | null>(null)
+  const canManageRoles = role === 'owner' || username === 'joe'
 
   useEffect(() => {
     fetch('/api/users').then(r => r.json())
@@ -1581,7 +1582,7 @@ function RoleTab({ role }: { role: string }) {
     }
   }
 
-  if (role !== 'owner') {
+  if (!canManageRoles) {
     return <p className="py-10 text-center text-gray-400 text-sm">Only the owner can manage roles.</p>
   }
 
@@ -1595,26 +1596,30 @@ function RoleTab({ role }: { role: string }) {
 
   return (
     <div className="space-y-2">
-      {users.map(u => (
-        <div key={u.id} className="bg-white border border-gray-200 rounded-xl p-3 flex items-center gap-3">
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-900">{u.display_name}</p>
-            <p className="text-xs text-gray-400">@{u.username}{u.email ? ` · ${u.email}` : ''}</p>
+      {users.map(u => {
+        // Joe's owner-level access does not extend to editing the owner's own account
+        const protectedFromMe = role !== 'owner' && (u.role === 'owner' || u.username?.toLowerCase() === 'grony')
+        return (
+          <div key={u.id} className="bg-white border border-gray-200 rounded-xl p-3 flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900">{u.display_name}</p>
+              <p className="text-xs text-gray-400">@{u.username}{u.email ? ` · ${u.email}` : ''}</p>
+            </div>
+            <select
+              value={u.role}
+              onChange={e => changeRole(u, e.target.value)}
+              disabled={saving === u.id || protectedFromMe}
+              className="shrink-0 text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700 outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-50">
+              <option value="staff">Staff</option>
+              <option value="manager">Manager</option>
+              <option value="owner">Owner</option>
+            </select>
+            <span className={`shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${ROLE_COLORS[u.role] ?? 'bg-gray-100 text-gray-500'}`}>
+              {saving === u.id ? '…' : u.role}
+            </span>
           </div>
-          <select
-            value={u.role}
-            onChange={e => changeRole(u, e.target.value)}
-            disabled={saving === u.id}
-            className="shrink-0 text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700 outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-50">
-            <option value="staff">Staff</option>
-            <option value="manager">Manager</option>
-            <option value="owner">Owner</option>
-          </select>
-          <span className={`shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${ROLE_COLORS[u.role] ?? 'bg-gray-100 text-gray-500'}`}>
-            {saving === u.id ? '…' : u.role}
-          </span>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
@@ -2361,7 +2366,7 @@ function StaffClientInner({ role, username, embedded }: { role: string; username
       {tab === 'Times' && <TimesTab username={username} role={role} />}
       {tab === 'Payslips' && <PayslipsTab />}
       {tab === 'Violations' && <ViolationsTab role={role} username={username} vtab={vtab} setVtab={setVtab} />}
-      {tab === 'Role' && <RoleTab role={role} />}
+      {tab === 'Role' && <RoleTab role={role} username={username} />}
       {tab === 'Rota' && <RotaTab />}
       {tab === 'Analytics' && <AnalyticsTab />}
       {tab === 'Assignments' && <AssignmentsTab role={role} username={username} />}

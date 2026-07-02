@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
+import { isOwnerLevel } from '@/lib/roles'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET() {
@@ -7,11 +8,10 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const sessionUser = session.user as any
-  const role = sessionUser?.role
   const username: string = sessionUser?.username ?? sessionUser?.name ?? ''
 
   // owner and joe see all; others see only their own profile
-  const canSeeAll = role === 'owner' || username === 'joe'
+  const canSeeAll = isOwnerLevel(sessionUser)
 
   const rows = canSeeAll
     ? await sql`
@@ -33,7 +33,7 @@ export async function GET() {
 export async function PUT(req: NextRequest) {
   const session = await auth()
   const sessionUser = session?.user as any
-  const isAdmin = sessionUser?.role === 'owner' || sessionUser?.role === 'admin'
+  const isAdmin = isOwnerLevel(sessionUser)
   const sessionUsername: string = sessionUser?.username ?? sessionUser?.name ?? ''
 
   const body = await req.json()

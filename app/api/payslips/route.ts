@@ -1,16 +1,16 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
+import { isOwnerLevel } from '@/lib/roles'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const role = (session.user as any)?.role
   const username = (session.user as any)?.username
 
   // owner and joe see all; others see only their own
-  const canSeeAll = role === 'owner' || username === 'joe'
+  const canSeeAll = isOwnerLevel(session.user as any)
 
   // Map username → staff_name in payslips table
   const nameMap: Record<string, string> = {
