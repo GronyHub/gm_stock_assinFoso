@@ -18,17 +18,26 @@ export async function GET(_req: Request, { params }: { params: Promise<{ itemId:
         AND sr.customer_name = 'Grony Multimedia as Customer'
       GROUP BY sr.receipt_date::date
     ),
-    daily_consumed_via_service AS (
+    daily_consumed_by_service AS (
       -- Deduction from another service's own real (WIC) sales, if that service declares
       -- converts_to_item_id = this item (e.g. Passport Printing consuming this paper).
-      SELECT sr.receipt_date::date AS d, SUM(srl.quantity * COALESCE(src.units_per_pack, 1)) AS qty
+      -- Kept per-source (grouped by service too) so callers can show a breakdown, not
+      -- just a combined total, when more than one service draws on the same stock.
+      SELECT sr.receipt_date::date AS d, src.id AS source_id, src.canonical_name AS source_name,
+             SUM(srl.quantity * COALESCE(src.units_per_pack, 1)) AS qty
       FROM sales_receipt_lines srl
       JOIN sales_receipts sr ON sr.id = srl.receipt_id
       JOIN items src ON src.id = srl.item_id
       WHERE src.converts_to_item_id = ${id}
         AND src.product_type = 'service'
         AND (sr.customer_name IS NULL OR sr.customer_name <> 'Grony Multimedia as Customer')
-      GROUP BY sr.receipt_date::date
+      GROUP BY sr.receipt_date::date, src.id, src.canonical_name
+    ),
+    daily_consumed_via_service AS (
+      SELECT d, SUM(qty) AS qty,
+             json_agg(json_build_object('name', source_name, 'qty', qty) ORDER BY source_name) AS breakdown
+      FROM daily_consumed_by_service
+      GROUP BY d
     ),
     all_dates AS (
       SELECT count_date::date AS d FROM stock_counts WHERE item_id = ${id}
@@ -109,7 +118,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ itemId:
       db.qty  AS bills_qty,
       dsp.sp  AS sell_price,
       da.aliases,
-      dci.qty AS converted_in_qty
+      dci.qty AS converted_in_qty,
+      dcs.breakdown AS wic_breakdown
     FROM all_dates ad
     LEFT JOIN daily_counts dc ON dc.d = ad.d
     LEFT JOIN daily_wic    dw ON dw.d = ad.d

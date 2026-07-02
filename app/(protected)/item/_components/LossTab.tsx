@@ -31,6 +31,7 @@ type DayRow = {
   sell_price: string | null
   aliases: string | null
   converted_in_qty: string | null
+  wic_breakdown: { name: string; qty: number }[] | null
 }
 type ComputedRow = DayRow & { expected_soh: number | null; loss: number | null }
 
@@ -68,6 +69,9 @@ function fmtLg(v: number) {
   if (v === 0) return '—'
   const s = Math.abs(v) % 1 === 0 ? String(Math.abs(v)) : Math.abs(v).toFixed(2)
   return (v > 0 ? '+' : '-') + s
+}
+function shortSourceName(name: string) {
+  return name.replace(/^service\s*-\s*/i, '').slice(0, 10)
 }
 
 function computeRows(rows: DayRow[]): ComputedRow[] {
@@ -387,6 +391,15 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
   const totalCost = parseFloat((totalLoss * sp).toFixed(2))
   const lgCls = `text-center font-bold border-l border-gray-300 py-0.5 ${totalLoss > 0 ? 'text-red-600' : totalLoss < 0 ? 'text-green-600' : 'text-gray-400'}`
 
+  // When 2+ services independently draw on this item's stock, show each one as its own
+  // column (instead of one combined WIC number) so they can be told apart.
+  const breakdownNames = computed
+    ? Array.from(new Set(computed.flatMap(r => (r.wic_breakdown ?? []).map(b => b.name)))).sort()
+    : []
+  const showBreakdown = breakdownNames.length >= 2
+  const breakdownColW = showBreakdown ? Math.max(4, Math.min(7, Math.floor(16 / breakdownNames.length))) : 0
+  const aliasW = 100 - 76 - (showBreakdown ? 0 : 7) - breakdownColW * breakdownNames.length
+
   return (
     <div className="bg-white border border-gray-200 rounded-lg overflow-hidden mt-0.5">
       {editing && (
@@ -422,20 +435,35 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
             <col style={{width:'10%'}} />
             <col style={{width:'8%'}} />
             <col style={{width:'8%'}} />
+            {showBreakdown
+              ? breakdownNames.map(n => <col key={n} style={{width:`${breakdownColW}%`}} />)
+              : <col style={{width:'7%'}} />}
             <col style={{width:'7%'}} />
             <col style={{width:'7%'}} />
             <col style={{width:'7%'}} />
             <col style={{width:'7%'}} />
             <col style={{width:'7%'}} />
-            <col style={{width:'7%'}} />
-            <col style={{width:'17%'}} />
+            <col style={{width:`${aliasW}%`}} />
           </colgroup>
           <thead>
             <tr className="bg-amber-400 text-gray-800 font-bold">
-              {['DATE','₵','L/G','CNT','WIC','GMC','SP','BL','CNV','EXP','ALIAS'].map((h,i) => (
-                <th key={h} className={`py-0.5 border-b-2 border-gray-400 ${i > 0 ? 'text-center border-l border-gray-400' : 'text-left pl-1'}`}
-                  title={h === 'CNV' ? 'Converted in from another item\'s GMC take' : undefined}>{h}</th>
-              ))}
+              <th className="py-0.5 border-b-2 border-gray-400 text-left pl-1">DATE</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">₵</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">L/G</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">CNT</th>
+              {showBreakdown
+                ? breakdownNames.map(n => (
+                    <th key={n} title={n} className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">
+                      {shortSourceName(n)}
+                    </th>
+                  ))
+                : <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">WIC</th>}
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">GMC</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">SP</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">BL</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Converted in from another item's GMC take">CNV</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">EXP</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">ALIAS</th>
             </tr>
           </thead>
           <tbody>
@@ -457,7 +485,13 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                       : <span className="text-gray-400">0</span>}
                   </td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-900">{fmtQs(row.qty_counted)}</td>
-                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.wic_qty)}</td>
+                  {showBreakdown
+                    ? breakdownNames.map(n => (
+                        <td key={n} className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">
+                          {fmtQ(row.wic_breakdown?.find(b => b.name === n)?.qty ?? 0)}
+                        </td>
+                      ))
+                    : <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.wic_qty)}</td>}
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.gmc_qty)}</td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-blue-500">{fmtQs(row.sell_price)}</td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-blue-600">{fmtQs(row.bills_qty)}</td>
@@ -475,7 +509,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
               <td className="pl-1 py-0.5 text-gray-500">Total</td>
               <td className={lgCls}>{totalCost > 0.01 ? `-₵${fmtN(totalCost)}` : totalCost < -0.01 ? `+₵${fmtN(Math.abs(totalCost))}` : '0'}</td>
               <td className={lgCls}>{totalLoss > 0.001 ? `-${fmtN(totalLoss)}` : totalLoss < -0.001 ? `+${fmtN(Math.abs(totalLoss))}` : '0'}</td>
-              <td colSpan={8} />
+              <td colSpan={showBreakdown ? 7 + breakdownNames.length : 8} />
             </tr>
           </tfoot>
         </table>
