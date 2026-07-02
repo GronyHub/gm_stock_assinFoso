@@ -12,6 +12,7 @@ export async function GET() {
         i.purchase_rate,
         i.units_per_pack,
         i.unit_name,
+        i.converts_to_item_id,
         COALESCE(i.product_type, 'goods') AS product_type,
         COALESCE(s.calculated_soh, 0) AS calculated_soh
       FROM items i

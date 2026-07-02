@@ -11,12 +11,15 @@ type SummaryRow = {
   soh: string | null
   sp: string | null
   cp: string | null
+  units_per_pack: string | null
+  converts_to_item_id: number | null
   lgAmt: number
   lgQty: number
   cnt: number
   wic: number
   gmc: number
   bl: number
+  cnv: number
 }
 
 type DayRow = {
@@ -27,13 +30,14 @@ type DayRow = {
   bills_qty: string | null
   sell_price: string | null
   aliases: string | null
+  converted_in_qty: string | null
 }
 type ComputedRow = DayRow & { expected_soh: number | null; loss: number | null }
 
 type SortCol = 'item_name' | 'cf_group' | 'product_type' | 'lgAmt' | 'lgQty' | 'cnt' | 'wic' | 'gmc' | 'bl' | 'soh' | 'sp' | 'cp'
 type SortDir = 'asc' | 'desc'
 
-const EMPTY_FORM = { item_name: '', cf_group: '', selling_rate: '', purchase_rate: '', units_per_pack: '', unit_name: '' }
+const EMPTY_FORM = { item_name: '', cf_group: '', selling_rate: '', purchase_rate: '', units_per_pack: '', unit_name: '', converts_to_item_id: '' }
 
 /* ── helpers ── */
 function numVal(v: string | null) { return v ? parseFloat(v) || 0 : 0 }
@@ -71,12 +75,13 @@ function computeRows(rows: DayRow[]): ComputedRow[] {
   let prev: number | null = null
   for (const row of rows) {
     const bills = numVal(row.bills_qty), wic = numVal(row.wic_qty), gmc = numVal(row.gmc_qty)
+    const convertedIn = numVal(row.converted_in_qty)
     const counted = row.qty_counted !== null ? parseFloat(row.qty_counted) : null
     let expected: number | null = null, loss: number | null = null
     if (prev === null) {
       if (counted !== null) { prev = counted; expected = counted }
     } else {
-      expected = parseFloat((prev + bills - wic - gmc).toFixed(4))
+      expected = parseFloat((prev + bills + convertedIn - wic - gmc).toFixed(4))
       if (counted !== null) { loss = parseFloat((expected - counted).toFixed(4)); prev = counted }
       else prev = expected
     }
@@ -123,7 +128,10 @@ function SortTh({ label, col, sort, onSort, cls = '' }: {
 /* ── edit form ── */
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-1.5 py-0.5 text-[9px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
 
-function ItemEditForm({ form, onChange, groups }: { form: typeof EMPTY_FORM; onChange: (f: typeof EMPTY_FORM) => void; groups: string[] }) {
+function ItemEditForm({ form, onChange, groups, itemId, allItems }: {
+  form: typeof EMPTY_FORM; onChange: (f: typeof EMPTY_FORM) => void; groups: string[]
+  itemId: number; allItems: { item_id: number; item_name: string }[]
+}) {
   const set = (k: keyof typeof EMPTY_FORM) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     onChange({ ...form, [k]: e.target.value })
   return (
@@ -140,6 +148,17 @@ function ItemEditForm({ form, onChange, groups }: { form: typeof EMPTY_FORM; onC
       <div className="grid grid-cols-2 gap-1">
         <input placeholder="Units/pack" type="number" value={form.units_per_pack} onChange={set('units_per_pack')} className={inputCls} />
         <input placeholder="Unit" value={form.unit_name} onChange={set('unit_name')} className={inputCls} />
+      </div>
+      <div>
+        <label className="text-[8px] font-bold text-gray-500 block mb-0.5">
+          On GMC, credit "Units/pack" of this item into:
+        </label>
+        <select value={form.converts_to_item_id} onChange={set('converts_to_item_id')} className={inputCls}>
+          <option value="">— No conversion —</option>
+          {allItems.filter(i => i.item_id !== itemId).map(i => (
+            <option key={i.item_id} value={i.item_id}>{i.item_name}</option>
+          ))}
+        </select>
       </div>
     </div>
   )
@@ -300,8 +319,8 @@ function MatchPicker({ itemId, itemName, isService, current, candidatePool, onCh
 }
 
 
-function ItemDetail({ item, groups, currentAliases, currentMatches, candidatePool, autoEdit, onSaved, onRelationsSaved }: {
-  item: SummaryRow; groups: string[]
+function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, autoEdit, onSaved, onRelationsSaved }: {
+  item: SummaryRow; groups: string[]; allItems: { item_id: number; item_name: string }[]
   currentAliases: AliasRecord[]; currentMatches: MatchRecord[]
   candidatePool: CandidateItem[]
   autoEdit: boolean
@@ -322,7 +341,11 @@ function ItemDetail({ item, groups, currentAliases, currentMatches, candidatePoo
   }, [item.item_id])
 
   function startEdit() {
-    setForm({ item_name: item.item_name, cf_group: item.cf_group ?? '', selling_rate: item.sp ?? '', purchase_rate: item.cp ?? '', units_per_pack: '', unit_name: '' })
+    setForm({
+      item_name: item.item_name, cf_group: item.cf_group ?? '', selling_rate: item.sp ?? '', purchase_rate: item.cp ?? '',
+      units_per_pack: item.units_per_pack ?? '', unit_name: '',
+      converts_to_item_id: item.converts_to_item_id ? String(item.converts_to_item_id) : '',
+    })
     setAliases(currentAliases)
     setMatches(currentMatches)
     setEditing(true)
@@ -344,10 +367,15 @@ function ItemDetail({ item, groups, currentAliases, currentMatches, candidatePoo
         purchase_rate: form.purchase_rate ? parseFloat(form.purchase_rate) : null,
         units_per_pack: form.units_per_pack ? parseFloat(form.units_per_pack) : null,
         unit_name: form.unit_name || null,
+        converts_to_item_id: form.converts_to_item_id ? Number(form.converts_to_item_id) : null,
       }),
     })
     setSaving(false); setEditing(false)
-    onSaved({ item_name: form.item_name || item.item_name, cf_group: form.cf_group || null, sp: form.selling_rate || item.sp, cp: form.purchase_rate || item.cp })
+    onSaved({
+      item_name: form.item_name || item.item_name, cf_group: form.cf_group || null, sp: form.selling_rate || item.sp, cp: form.purchase_rate || item.cp,
+      units_per_pack: form.units_per_pack || null,
+      converts_to_item_id: form.converts_to_item_id ? Number(form.converts_to_item_id) : null,
+    })
     onRelationsSaved(aliases, matches)
   }
 
@@ -365,7 +393,7 @@ function ItemDetail({ item, groups, currentAliases, currentMatches, candidatePoo
             <button onClick={saveEdit} disabled={saving} className="text-[8px] font-bold text-white bg-green-600 px-1.5 py-0.5 rounded disabled:opacity-50">{saving ? '…' : 'Save'}</button>
             <button onClick={() => setEditing(false)} className="text-[8px] font-bold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded">✕</button>
           </div>
-          <ItemEditForm form={form} onChange={setForm} groups={groups} />
+          <ItemEditForm form={form} onChange={setForm} groups={groups} itemId={item.item_id} allItems={allItems} />
           <div>
             <label className="text-[8px] font-bold text-gray-500 block mb-0.5">Aliases</label>
             <AliasPicker itemId={item.item_id} current={aliases} onChange={setAliases} />
@@ -388,7 +416,7 @@ function ItemDetail({ item, groups, currentAliases, currentMatches, candidatePoo
       ) : (
         <table className="w-full table-fixed border-collapse text-[8px]">
           <colgroup>
-            <col style={{width:'17%'}} />
+            <col style={{width:'15%'}} />
             <col style={{width:'10%'}} />
             <col style={{width:'8%'}} />
             <col style={{width:'8%'}} />
@@ -397,12 +425,14 @@ function ItemDetail({ item, groups, currentAliases, currentMatches, candidatePoo
             <col style={{width:'7%'}} />
             <col style={{width:'7%'}} />
             <col style={{width:'7%'}} />
-            <col style={{width:'22%'}} />
+            <col style={{width:'7%'}} />
+            <col style={{width:'17%'}} />
           </colgroup>
           <thead>
             <tr className="bg-amber-400 text-gray-800 font-bold">
-              {['DATE','₵','L/G','CNT','WIC','GMC','SP','BL','EXP','ALIAS'].map((h,i) => (
-                <th key={h} className={`py-0.5 border-b-2 border-gray-400 ${i > 0 ? 'text-center border-l border-gray-400' : 'text-left pl-1'}`}>{h}</th>
+              {['DATE','₵','L/G','CNT','WIC','GMC','SP','BL','CNV','EXP','ALIAS'].map((h,i) => (
+                <th key={h} className={`py-0.5 border-b-2 border-gray-400 ${i > 0 ? 'text-center border-l border-gray-400' : 'text-left pl-1'}`}
+                  title={h === 'CNV' ? 'Converted in from another item\'s GMC take' : undefined}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -429,6 +459,7 @@ function ItemDetail({ item, groups, currentAliases, currentMatches, candidatePoo
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.gmc_qty)}</td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-blue-500">{fmtQs(row.sell_price)}</td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-blue-600">{fmtQs(row.bills_qty)}</td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-teal-600">{fmtQs(row.converted_in_qty)}</td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-400">{fmtN(row.expected_soh)}</td>
                   <td className="pl-1 py-0.5 border-l border-gray-300 text-purple-700 font-semibold overflow-hidden">
                     <span className="block truncate" title={row.aliases ?? ''}>{row.aliases ?? <span className="text-gray-300">—</span>}</span>
@@ -442,7 +473,7 @@ function ItemDetail({ item, groups, currentAliases, currentMatches, candidatePoo
               <td className="pl-1 py-0.5 text-gray-500">Total</td>
               <td className={lgCls}>{totalCost > 0.01 ? `-₵${fmtN(totalCost)}` : totalCost < -0.01 ? `+₵${fmtN(Math.abs(totalCost))}` : '0'}</td>
               <td className={lgCls}>{totalLoss > 0.001 ? `-${fmtN(totalLoss)}` : totalLoss < -0.001 ? `+${fmtN(Math.abs(totalLoss))}` : '0'}</td>
-              <td colSpan={7} />
+              <td colSpan={8} />
             </tr>
           </tfoot>
         </table>
@@ -527,6 +558,9 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   , [rows])
   const servicesPool = useMemo<CandidateItem[]>(() =>
     rows.filter(r => r.product_type === 'service').map(r => ({ item_id: r.item_id, item_name: r.item_name, product_type: r.product_type }))
+  , [rows])
+  const allItemsList = useMemo(() =>
+    rows.map(r => ({ item_id: r.item_id, item_name: r.item_name })).sort((a, b) => a.item_name.localeCompare(b.item_name))
   , [rows])
 
   const filtered = useMemo(() => {
@@ -633,7 +667,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
               showing as a visible bar. */}
           <td colSpan={16} className="p-0 border border-black">
             <div className="sticky left-0 w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] max-h-[50vh] overflow-y-auto bg-blue-50 px-0.5 pb-2 pt-0.5">
-              <ItemDetail item={row} groups={groupNames}
+              <ItemDetail item={row} groups={groupNames} allItems={allItemsList}
                 currentAliases={aliasRecords[row.item_id] ?? []}
                 currentMatches={matchRecords[row.item_name.trim().toLowerCase()] ?? []}
                 candidatePool={row.product_type === 'service' ? goodsPool : servicesPool}
