@@ -128,9 +128,9 @@ function SortTh({ label, col, sort, onSort, cls = '' }: {
 /* ── edit form ── */
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-1.5 py-0.5 text-[9px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
 
-function ItemEditForm({ form, onChange, groups, itemId, allItems }: {
+function ItemEditForm({ form, onChange, groups, itemId, isService, allItems }: {
   form: typeof EMPTY_FORM; onChange: (f: typeof EMPTY_FORM) => void; groups: string[]
-  itemId: number; allItems: { item_id: number; item_name: string }[]
+  itemId: number; isService: boolean; allItems: { item_id: number; item_name: string }[]
 }) {
   const set = (k: keyof typeof EMPTY_FORM) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     onChange({ ...form, [k]: e.target.value })
@@ -151,7 +151,9 @@ function ItemEditForm({ form, onChange, groups, itemId, allItems }: {
       </div>
       <div>
         <label className="text-[8px] font-bold text-gray-500 block mb-0.5">
-          On GMC, credit "Units/pack" of this item into:
+          {isService
+            ? 'On sale (WIC), deduct "Units/pack" of this service from:'
+            : 'On GMC, credit "Units/pack" of this item into:'}
         </label>
         <select value={form.converts_to_item_id} onChange={set('converts_to_item_id')} className={inputCls}>
           <option value="">— No conversion —</option>
@@ -393,7 +395,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
             <button onClick={saveEdit} disabled={saving} className="text-[8px] font-bold text-white bg-green-600 px-1.5 py-0.5 rounded disabled:opacity-50">{saving ? '…' : 'Save'}</button>
             <button onClick={() => setEditing(false)} className="text-[8px] font-bold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded">✕</button>
           </div>
-          <ItemEditForm form={form} onChange={setForm} groups={groups} itemId={item.item_id} allItems={allItems} />
+          <ItemEditForm form={form} onChange={setForm} groups={groups} itemId={item.item_id} isService={item.product_type === 'service'} allItems={allItems} />
           <div>
             <label className="text-[8px] font-bold text-gray-500 block mb-0.5">Aliases</label>
             <AliasPicker itemId={item.item_id} current={aliases} onChange={setAliases} />

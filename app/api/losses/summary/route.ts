@@ -54,12 +54,14 @@ export async function GET() {
         AND s.item_name NOT ILIKE 'old- stop%'
       ORDER BY s.item_name ASC
     `,
-    // GMC (an item "sold" to the internal 'Grony Multimedia as Customer' account) can be
-    // configured, per source item, to auto-credit another item's stock -- e.g. taking one
-    // "4x6 packs" pack for shop use credits 50 (its units_per_pack) onto "4x6 Photo Paper
-    // Singles". This is derived live from the same sales data GMC/WIC already come from,
-    // so it applies automatically to every GMC entry, past and future, with no separate
-    // write path to keep in sync.
+    // A good with converts_to_item_id set is credited into its target when it's GMC'd
+    // (internal use) -- e.g. taking one "4x6 packs" pack for shop use credits 50 (its
+    // units_per_pack) onto "4x6 Photo Paper Singles". A service with converts_to_item_id
+    // set instead *deducts* from its target's own WIC, using the service's own real (WIC)
+    // sale quantity -- e.g. every "Service - Passport Printing" sold for a real customer
+    // consumes 1 (its units_per_pack) singles sheet. Both are derived live from the same
+    // sales data GMC/WIC already come from, so they apply automatically to every entry,
+    // past and future, with no separate write path to keep in sync.
     sql`
       WITH daily_counts AS (
         SELECT item_id, count_date::date AS d, SUM(quantity_counted) AS qty_counted
@@ -88,7 +90,17 @@ export async function GET() {
         FROM daily_gmc dg
         JOIN items i ON i.id = dg.item_id
         WHERE i.converts_to_item_id IS NOT NULL
+          AND COALESCE(i.product_type, 'goods') <> 'service'
         GROUP BY i.converts_to_item_id, dg.d
+      ),
+      daily_consumed_via_service AS (
+        SELECT i.converts_to_item_id AS item_id, dw.d,
+               SUM(dw.qty * COALESCE(i.units_per_pack, 1)) AS qty
+        FROM daily_wic dw
+        JOIN items i ON i.id = dw.item_id
+        WHERE i.converts_to_item_id IS NOT NULL
+          AND i.product_type = 'service'
+        GROUP BY i.converts_to_item_id, dw.d
       ),
       all_dates AS (
         SELECT item_id, d FROM daily_counts
@@ -96,9 +108,12 @@ export async function GET() {
         UNION SELECT item_id, d FROM daily_gmc
         UNION SELECT item_id, d FROM daily_bills
         UNION SELECT item_id, d FROM daily_converted_in
+        UNION SELECT item_id, d FROM daily_consumed_via_service
       )
       SELECT ad.item_id, ad.d::text AS date,
-             dc.qty_counted, dw.qty AS wic_qty, dg.qty AS gmc_qty, db.qty AS bills_qty,
+             dc.qty_counted,
+             COALESCE(dw.qty, 0) + COALESCE(dcs.qty, 0) AS wic_qty,
+             dg.qty AS gmc_qty, db.qty AS bills_qty,
              dci.qty AS converted_in_qty
       FROM all_dates ad
       LEFT JOIN daily_counts dc ON dc.item_id = ad.item_id AND dc.d = ad.d
@@ -106,6 +121,7 @@ export async function GET() {
       LEFT JOIN daily_gmc    dg ON dg.item_id = ad.item_id AND dg.d = ad.d
       LEFT JOIN daily_bills  db ON db.item_id = ad.item_id AND db.d = ad.d
       LEFT JOIN daily_converted_in dci ON dci.item_id = ad.item_id AND dci.d = ad.d
+      LEFT JOIN daily_consumed_via_service dcs ON dcs.item_id = ad.item_id AND dcs.d = ad.d
       ORDER BY ad.item_id, ad.d ASC
     `,
   ])
