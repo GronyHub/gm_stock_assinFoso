@@ -140,8 +140,9 @@ const DUTY    = 50.00
 const DATA    = 100.00
 const LONG_DAYS  = { Joe: 1578, Bino: 667, James: 1787, Rawlings: 283 }
 const LONG_RATE  = 0.05
-const HOURLY_STAFF = ['Bino', 'James', 'Rawlings']  // Joe is flat ₵2,000
-const FLAT_SALARIES = { Joe: 2000 }                  // flat per month, no hours breakdown
+// Joe is flat ₵2,000 from June 2026 onwards; for months before that he's hourly
+const HOURLY_STAFF = ['Bino', 'James', 'Rawlings']
+const JOE_FLAT_FROM = '2026-06-01'  // Joe flat ₵2,000 starting this month
 
 async function generateMonthFromTimes(startDate, endDate, payMonth, periodLabel) {
   console.log(`  Generating ${periodLabel}…`)
@@ -177,18 +178,35 @@ async function generateMonthFromTimes(startDate, endDate, payMonth, periodLabel)
     `
     console.log(`   ✓ ${name.padEnd(10)} ${hours.toFixed(2)}h  ${fmt(total)}`)
   }
-  // Flat-salary staff
-  for (const [name, flatAmt] of Object.entries(FLAT_SALARIES)) {
+  // Joe: flat ₵2,000 from June 2026, hourly before that
+  if (payMonth >= JOE_FLAT_FROM) {
     await sql`
       INSERT INTO payslips (staff_name,pay_month,payment_period,hours_worked,pay_for_hours,
         overtime_hours,pay_for_overtime,longevity_days,pay_for_longevity,duty_allowance,data_allowance,ssnit,total_salary)
-      VALUES (${name},${payMonth},${periodLabel},null,null,null,null,null,null,null,null,null,${flatAmt})
+      VALUES ('Joe',${payMonth},${periodLabel},null,null,null,null,null,null,null,null,null,2000)
       ON CONFLICT (staff_name, pay_month) DO UPDATE SET
         hours_worked=null, pay_for_hours=null, longevity_days=null,
         pay_for_longevity=null, duty_allowance=null, data_allowance=null,
-        overtime_hours=null, pay_for_overtime=null, total_salary=${flatAmt}
+        overtime_hours=null, pay_for_overtime=null, total_salary=2000
     `
-    console.log(`   ✓ ${name.padEnd(10)} flat  ${fmt(flatAmt)}`)
+    console.log(`   ✓ Joe        flat  ${fmt(2000)}`)
+  } else {
+    const joeHours = minsToHrs(staffMins['Joe'] ?? 0)
+    const joePayHrs = parseFloat((joeHours * HOURLY).toFixed(2))
+    const joeLongDays = LONG_DAYS['Joe']
+    const joePayLong = parseFloat((joeLongDays * LONG_RATE).toFixed(2))
+    const joeTotal = parseFloat((joePayHrs + joePayLong + DUTY + DATA).toFixed(2))
+    await sql`
+      INSERT INTO payslips (staff_name,pay_month,payment_period,hours_worked,pay_for_hours,
+        overtime_hours,pay_for_overtime,longevity_days,pay_for_longevity,duty_allowance,data_allowance,ssnit,total_salary)
+      VALUES ('Joe',${payMonth},${periodLabel},${joeHours},${joePayHrs},
+        0,0,${joeLongDays},${joePayLong},${DUTY},${DATA},null,${joeTotal})
+      ON CONFLICT (staff_name, pay_month) DO UPDATE SET
+        hours_worked=${joeHours}, pay_for_hours=${joePayHrs}, longevity_days=${joeLongDays},
+        pay_for_longevity=${joePayLong}, duty_allowance=${DUTY}, data_allowance=${DATA},
+        overtime_hours=0, pay_for_overtime=0, total_salary=${joeTotal}
+    `
+    console.log(`   ✓ Joe        ${joeHours.toFixed(2)}h  ${fmt(joeTotal)}`)
   }
   console.log()
 }
