@@ -1,5 +1,5 @@
 'use client'
-import { Fragment, useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { fmtDate } from '@/lib/fmtDate'
 
 /* ── types ── */
@@ -389,7 +389,6 @@ function ItemDetail({ item, groups, currentAliases, currentMatches, candidatePoo
         <table className="w-full table-fixed border-collapse text-[8px]">
           <colgroup>
             <col style={{width:'17%'}} />
-            <col style={{width:'22%'}} />
             <col style={{width:'10%'}} />
             <col style={{width:'8%'}} />
             <col style={{width:'8%'}} />
@@ -398,10 +397,11 @@ function ItemDetail({ item, groups, currentAliases, currentMatches, candidatePoo
             <col style={{width:'7%'}} />
             <col style={{width:'7%'}} />
             <col style={{width:'7%'}} />
+            <col style={{width:'22%'}} />
           </colgroup>
           <thead>
             <tr className="bg-amber-400 text-gray-800 font-bold">
-              {['DATE','ALIAS','₵','L/G','CNT','WIC','GMC','SP','BL','EXP'].map((h,i) => (
+              {['DATE','₵','L/G','CNT','WIC','GMC','SP','BL','EXP','ALIAS'].map((h,i) => (
                 <th key={h} className={`py-0.5 border-b-2 border-gray-400 ${i > 0 ? 'text-center border-l border-gray-400' : 'text-left pl-1'}`}>{h}</th>
               ))}
             </tr>
@@ -412,9 +412,6 @@ function ItemDetail({ item, groups, currentAliases, currentMatches, candidatePoo
               return (
                 <tr key={i} className={`border-b border-gray-200 ${row.loss !== null && row.loss > 0.001 ? 'bg-red-50' : ''}`}>
                   <td className="pl-1 py-0.5 font-bold text-gray-500 whitespace-nowrap overflow-hidden">{fmtDate(row.date)}</td>
-                  <td className="pl-1 py-0.5 border-l border-gray-300 text-purple-700 font-semibold overflow-hidden">
-                    <span className="block truncate" title={row.aliases ?? ''}>{row.aliases ?? <span className="text-gray-300">—</span>}</span>
-                  </td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300">
                     {lossVal === null ? <span className="text-gray-300">—</span>
                       : lossVal > 0.01 ? <span className="text-red-600">-{fmtN(lossVal)}</span>
@@ -433,6 +430,9 @@ function ItemDetail({ item, groups, currentAliases, currentMatches, candidatePoo
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-blue-500">{fmtQs(row.sell_price)}</td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-blue-600">{fmtQs(row.bills_qty)}</td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-400">{fmtN(row.expected_soh)}</td>
+                  <td className="pl-1 py-0.5 border-l border-gray-300 text-purple-700 font-semibold overflow-hidden">
+                    <span className="block truncate" title={row.aliases ?? ''}>{row.aliases ?? <span className="text-gray-300">—</span>}</span>
+                  </td>
                 </tr>
               )
             })}
@@ -551,29 +551,90 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
 
   const thProps = { sort, onSort: handleSort }
 
+  const colgroup = (
+    <colgroup>
+      <col style={{width:'104px'}} />
+      <col style={{width:'30px'}} />
+      <col style={{width:'26px'}} />
+      <col style={{width:'26px'}} />
+      <col style={{width:'26px'}} />
+      <col style={{width:'26px'}} />
+      <col style={{width:'22px'}} />
+      <col style={{width:'26px'}} />
+      <col style={{width:'30px'}} />
+      <col style={{width:'26px'}} />
+      <col style={{width:'22px'}} />
+      <col style={{width:'22px'}} />
+      <col style={{width:'18px'}} />
+      <col style={{width:'220px'}} />
+      <col style={{width:'220px'}} />
+      <col style={{width:'50px'}} />
+    </colgroup>
+  )
+
+  function renderRow(row: SummaryRow) {
+    const lossAmt = row.lgAmt > 0, gainAmt = row.lgAmt < 0
+    const lossQty = row.lgQty > 0, gainQty = row.lgQty < 0
+    const soh = parseFloat(row.soh ?? '0') || 0
+    const isOpen = expandedId === row.item_id
+    return (
+      <tr key={row.item_id}
+        onClick={() => { setExpandedId(isOpen ? null : row.item_id); setEditTriggerId(null) }}
+        className={`cursor-pointer transition
+          ${isOpen ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
+        <td className={`pl-1 pr-0 py-0.5 font-bold text-gray-900 whitespace-nowrap overflow-hidden sticky left-0 z-10 border border-black ${isOpen ? 'bg-blue-50' : 'bg-white'}`}
+          title={row.item_name}>{row.item_name.slice(0, 20)}</td>
+        <td className={`text-center py-0.5 font-bold tabular-nums border border-black ${lossAmt ? 'text-red-600' : gainAmt ? 'text-green-600' : 'text-gray-300'}`}>
+          {fmtAmt(row.lgAmt)}
+        </td>
+        <td className={`text-center py-0.5 font-bold tabular-nums border border-black ${lossQty ? 'text-red-500' : gainQty ? 'text-green-600' : 'text-gray-300'}`}>
+          {fmtLg(row.lgQty)}
+        </td>
+        <td className="text-center py-0.5 font-bold text-gray-700 tabular-nums border border-black">{fmtQ(row.cnt)}</td>
+        <td className="text-center py-0.5 font-bold text-gray-700 tabular-nums border border-black">{fmtQ(row.wic)}</td>
+        <td className="text-center py-0.5 font-bold text-gray-700 tabular-nums border border-black">{fmtQ(row.gmc)}</td>
+        <td className="text-center py-0.5 font-bold text-blue-600 tabular-nums border border-black">{fmtQ(row.bl)}</td>
+        <td className={`text-center py-0.5 font-bold tabular-nums border border-black ${soh <= 0 ? 'text-red-500' : 'text-gray-700'}`}>
+          {soh % 1 === 0 ? soh : soh.toFixed(1)}
+        </td>
+        <td className="text-center py-0.5 font-bold text-blue-600 tabular-nums border border-black">{fmtCcy(row.sp)}</td>
+        <td className="text-center py-0.5 font-bold text-green-600 tabular-nums border border-black">{fmtCcy(row.cp)}</td>
+        <td className="text-center py-0.5 font-bold text-gray-500 border border-black" title={row.cf_group ?? undefined}>{(row.cf_group ?? '—').slice(0, 3)}</td>
+        <td className={`text-center py-0.5 font-bold border border-black ${row.product_type === 'service' ? 'text-purple-500' : 'text-teal-600'}`}
+          title={row.product_type === 'service' ? 'Service' : 'Good'}>
+          {row.product_type === 'service' ? 'Svc' : 'Goo'}
+        </td>
+        <td className="text-center py-0.5 font-bold text-gray-400 border border-black">{isOpen ? '▾' : '▸'}</td>
+        <td className="pl-1.5 py-0.5 font-bold text-gray-500 truncate overflow-hidden border border-black"
+          title={(aliasRecords[row.item_id] ?? []).map(a => a.name).join(', ')}>
+          {(aliasRecords[row.item_id] ?? []).map(a => a.name).join(', ') || '—'}
+        </td>
+        <td className="pl-1.5 py-0.5 font-bold text-gray-500 truncate overflow-hidden border border-black"
+          title={(matchRecords[row.item_name.trim().toLowerCase()] ?? []).map(m => m.name).join(', ')}>
+          {(matchRecords[row.item_name.trim().toLowerCase()] ?? []).map(m => m.name).join(', ') || '—'}
+        </td>
+        <td className="text-center py-0.5 border border-black">
+          <button
+            onClick={e => { e.stopPropagation(); setExpandedId(row.item_id); setEditTriggerId(row.item_id) }}
+            className="text-[8px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+            Edit
+          </button>
+        </td>
+      </tr>
+    )
+  }
+
+  const expandedIndex = filtered.findIndex(r => r.item_id === expandedId)
+  const expandedRow = expandedIndex === -1 ? null : filtered[expandedIndex]
+  const beforeRows = expandedIndex === -1 ? filtered : filtered.slice(0, expandedIndex + 1)
+  const afterRows = expandedIndex === -1 ? [] : filtered.slice(expandedIndex + 1)
+
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Table — all columns fit on screen; Item column compact */}
       <div className="flex-1 min-h-0 overflow-auto rounded-xl border border-black bg-white">
         <table className="table-fixed border-collapse text-[8px]">
-          <colgroup>
-            <col style={{width:'104px'}} />
-            <col style={{width:'30px'}} />
-            <col style={{width:'26px'}} />
-            <col style={{width:'26px'}} />
-            <col style={{width:'26px'}} />
-            <col style={{width:'26px'}} />
-            <col style={{width:'22px'}} />
-            <col style={{width:'26px'}} />
-            <col style={{width:'30px'}} />
-            <col style={{width:'26px'}} />
-            <col style={{width:'22px'}} />
-            <col style={{width:'22px'}} />
-            <col style={{width:'18px'}} />
-            <col style={{width:'220px'}} />
-            <col style={{width:'220px'}} />
-            <col style={{width:'50px'}} />
-          </colgroup>
+          {colgroup}
           <thead className="sticky top-0 z-20">
             <tr className="bg-gray-50">
               <SortTh label="Item" col="item_name" sort={sort} onSort={handleSort} cls="text-left pl-1 pr-0 sticky left-0 z-30 bg-gray-50 border-black" />
@@ -598,84 +659,37 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
             {filtered.length === 0 && (
               <tr><td colSpan={16} className="py-10 text-center text-gray-400 text-[9px]">No items</td></tr>
             )}
-            {filtered.map(row => {
-              const lossAmt = row.lgAmt > 0, gainAmt = row.lgAmt < 0
-              const lossQty = row.lgQty > 0, gainQty = row.lgQty < 0
-              const soh = parseFloat(row.soh ?? '0') || 0
-              const isOpen = expandedId === row.item_id
-              return (
-                <Fragment key={row.item_id}>
-                <tr
-                  onClick={() => { setExpandedId(isOpen ? null : row.item_id); setEditTriggerId(null) }}
-                  className={`cursor-pointer transition
-                    ${isOpen ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-                  <td className={`pl-1 pr-0 py-0.5 font-bold text-gray-900 whitespace-nowrap overflow-hidden sticky left-0 z-10 border border-black ${isOpen ? 'bg-blue-50' : 'bg-white'}`}
-                    title={row.item_name}>{row.item_name.slice(0, 20)}</td>
-                  <td className={`text-center py-0.5 font-bold tabular-nums border border-black ${lossAmt ? 'text-red-600' : gainAmt ? 'text-green-600' : 'text-gray-300'}`}>
-                    {fmtAmt(row.lgAmt)}
-                  </td>
-                  <td className={`text-center py-0.5 font-bold tabular-nums border border-black ${lossQty ? 'text-red-500' : gainQty ? 'text-green-600' : 'text-gray-300'}`}>
-                    {fmtLg(row.lgQty)}
-                  </td>
-                  <td className="text-center py-0.5 font-bold text-gray-700 tabular-nums border border-black">{fmtQ(row.cnt)}</td>
-                  <td className="text-center py-0.5 font-bold text-gray-700 tabular-nums border border-black">{fmtQ(row.wic)}</td>
-                  <td className="text-center py-0.5 font-bold text-gray-700 tabular-nums border border-black">{fmtQ(row.gmc)}</td>
-                  <td className="text-center py-0.5 font-bold text-blue-600 tabular-nums border border-black">{fmtQ(row.bl)}</td>
-                  <td className={`text-center py-0.5 font-bold tabular-nums border border-black ${soh <= 0 ? 'text-red-500' : 'text-gray-700'}`}>
-                    {soh % 1 === 0 ? soh : soh.toFixed(1)}
-                  </td>
-                  <td className="text-center py-0.5 font-bold text-blue-600 tabular-nums border border-black">{fmtCcy(row.sp)}</td>
-                  <td className="text-center py-0.5 font-bold text-green-600 tabular-nums border border-black">{fmtCcy(row.cp)}</td>
-                  <td className="text-center py-0.5 font-bold text-gray-500 border border-black" title={row.cf_group ?? undefined}>{(row.cf_group ?? '—').slice(0, 3)}</td>
-                  <td className={`text-center py-0.5 font-bold border border-black ${row.product_type === 'service' ? 'text-purple-500' : 'text-teal-600'}`}
-                    title={row.product_type === 'service' ? 'Service' : 'Good'}>
-                    {row.product_type === 'service' ? 'Svc' : 'Goo'}
-                  </td>
-                  <td className="text-center py-0.5 font-bold text-gray-400 border border-black">{isOpen ? '▾' : '▸'}</td>
-                  <td className="pl-1.5 py-0.5 font-bold text-gray-500 truncate overflow-hidden border border-black"
-                    title={(aliasRecords[row.item_id] ?? []).map(a => a.name).join(', ')}>
-                    {(aliasRecords[row.item_id] ?? []).map(a => a.name).join(', ') || '—'}
-                  </td>
-                  <td className="pl-1.5 py-0.5 font-bold text-gray-500 truncate overflow-hidden border border-black"
-                    title={(matchRecords[row.item_name.trim().toLowerCase()] ?? []).map(m => m.name).join(', ')}>
-                    {(matchRecords[row.item_name.trim().toLowerCase()] ?? []).map(m => m.name).join(', ') || '—'}
-                  </td>
-                  <td className="text-center py-0.5 border border-black">
-                    <button
-                      onClick={e => { e.stopPropagation(); setExpandedId(row.item_id); setEditTriggerId(row.item_id) }}
-                      className="text-[8px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
-                      Edit
-                    </button>
-                  </td>
-                </tr>
-                {isOpen && (
-                  <tr>
-                    {/* colSpan makes this cell as wide as the scrollable table, but the inner
-                        wrapper is sticky-pinned to the left edge and capped to the visible
-                        viewport width (like the frozen Item column above), so the detail
-                        table renders at phone width directly under the row that opened it. */}
-                    <td colSpan={16} className="p-0 border border-black bg-blue-50">
-                      <div className="sticky left-0 w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] max-h-[50vh] overflow-y-auto px-0.5 pb-2 pt-0.5">
-                        <ItemDetail item={row} groups={groupNames}
-                          currentAliases={aliasRecords[row.item_id] ?? []}
-                          currentMatches={matchRecords[row.item_name.trim().toLowerCase()] ?? []}
-                          candidatePool={row.product_type === 'service' ? goodsPool : servicesPool}
-                          autoEdit={editTriggerId === row.item_id}
-                          onSaved={u => patchRow(row.item_id, u)}
-                          onRelationsSaved={(newAliases, newMatches) => {
-                            setAliasRecords(prev => ({ ...prev, [row.item_id]: newAliases }))
-                            setMatchRecords(prev => ({ ...prev, [row.item_name.trim().toLowerCase()]: newMatches }))
-                            setEditTriggerId(null)
-                          }} />
-                      </div>
-                    </td>
-                  </tr>
-                )}
-                </Fragment>
-              )
-            })}
+            {beforeRows.map(renderRow)}
           </tbody>
         </table>
+
+        {/* Expanded item detail — a plain block (not a table cell) so it renders at
+            phone width with no leftover cell background, sticky-pinned to the left
+            edge so it stays visible however far the table above is scrolled right. */}
+        {expandedRow && (
+          <div className="sticky left-0 w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] max-h-[50vh] overflow-y-auto bg-blue-50 px-0.5 pb-2 pt-0.5 border-x border-b border-black">
+            <ItemDetail item={expandedRow} groups={groupNames}
+              currentAliases={aliasRecords[expandedRow.item_id] ?? []}
+              currentMatches={matchRecords[expandedRow.item_name.trim().toLowerCase()] ?? []}
+              candidatePool={expandedRow.product_type === 'service' ? goodsPool : servicesPool}
+              autoEdit={editTriggerId === expandedRow.item_id}
+              onSaved={u => patchRow(expandedRow.item_id, u)}
+              onRelationsSaved={(newAliases, newMatches) => {
+                setAliasRecords(prev => ({ ...prev, [expandedRow.item_id]: newAliases }))
+                setMatchRecords(prev => ({ ...prev, [expandedRow.item_name.trim().toLowerCase()]: newMatches }))
+                setEditTriggerId(null)
+              }} />
+          </div>
+        )}
+
+        {afterRows.length > 0 && (
+          <table className="table-fixed border-collapse text-[8px]">
+            {colgroup}
+            <tbody>
+              {afterRows.map(renderRow)}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   )
