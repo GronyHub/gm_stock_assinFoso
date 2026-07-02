@@ -359,27 +359,12 @@ function ItemDetail({ item, groups, currentAliases, currentMatches, candidatePoo
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg overflow-hidden mt-0.5">
-      {/* blue header */}
-      <div className="flex items-center justify-between px-2 py-1 bg-blue-600">
-        <div className="min-w-0 flex-1">
-          <p className="text-[9px] font-bold text-white truncate">{item.item_name}</p>
-          <p className="text-[8px] text-blue-200 truncate">{item.cf_group ?? 'No group'} · SOH {parseFloat(item.soh ?? '0') || 0} · SP {item.sp ? parseFloat(item.sp).toFixed(0) : '—'}</p>
-        </div>
-        <div className="flex items-center gap-1 shrink-0 ml-1">
-          <a href={`/stock/${item.item_id}`} className="text-[8px] font-bold text-blue-600 bg-white px-1.5 py-0.5 rounded">360°</a>
-          {editing ? (
-            <>
-              <button onClick={saveEdit} disabled={saving} className="text-[8px] font-bold text-green-700 bg-white px-1.5 py-0.5 rounded disabled:opacity-50">{saving ? '…' : 'Save'}</button>
-              <button onClick={() => setEditing(false)} className="text-[8px] font-bold text-gray-600 bg-white px-1.5 py-0.5 rounded">✕</button>
-            </>
-          ) : (
-            <button onClick={startEdit} className="text-[8px] font-bold text-blue-600 bg-white px-1.5 py-0.5 rounded">Edit</button>
-          )}
-        </div>
-      </div>
-
       {editing && (
-        <div className="px-2 pb-2 space-y-2">
+        <div className="px-2 pt-1.5 pb-2 space-y-2">
+          <div className="flex items-center justify-end gap-1">
+            <button onClick={saveEdit} disabled={saving} className="text-[8px] font-bold text-white bg-green-600 px-1.5 py-0.5 rounded disabled:opacity-50">{saving ? '…' : 'Save'}</button>
+            <button onClick={() => setEditing(false)} className="text-[8px] font-bold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded">✕</button>
+          </div>
           <ItemEditForm form={form} onChange={setForm} groups={groups} />
           <div>
             <label className="text-[8px] font-bold text-gray-500 block mb-0.5">Aliases</label>
