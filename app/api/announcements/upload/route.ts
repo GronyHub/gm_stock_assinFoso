@@ -27,6 +27,12 @@ export async function POST(req: NextRequest) {
   const ext = file.name.split('.').pop() ?? 'bin'
   const filename = `announcements/${author}-${Date.now()}.${ext}`
 
-  const blob = await put(filename, file, { access: 'public' })
-  return NextResponse.json({ url: blob.url, contentType: file.type })
+  try {
+    const blob = await put(filename, file, { access: 'public' })
+    return NextResponse.json({ url: blob.url, contentType: file.type })
+  } catch (e) {
+    console.error('announcements upload error:', e)
+    const detail = e instanceof Error ? e.message : String(e)
+    return NextResponse.json({ error: `Upload failed: ${detail}` }, { status: 500 })
+  }
 }
