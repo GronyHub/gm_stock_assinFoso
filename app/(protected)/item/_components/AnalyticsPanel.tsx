@@ -138,6 +138,88 @@ function ItemTrendsCard() {
   )
 }
 
+type CashTrendRow = {
+  month: string
+  walkin_count: number; walkin_counted: number
+  total_cash_counted: number; total_invoiced: number
+  avg_discrepancy: number
+}
+
+// Recent-half vs prior-half average, same rule as the item-trend badges.
+function splitTrend(series: number[]): { pct: number; direction: 'up' | 'down' | 'flat' } {
+  const half = Math.floor(series.length / 2)
+  const recent = series.slice(-half)
+  const prior = series.slice(0, series.length - half)
+  const recentAvg = recent.reduce((a, b) => a + b, 0) / (recent.length || 1)
+  const priorAvg = prior.reduce((a, b) => a + b, 0) / (prior.length || 1)
+  if (priorAvg === 0 && recentAvg === 0) return { pct: 0, direction: 'flat' }
+  if (priorAvg === 0) return { pct: 100, direction: 'up' }
+  const pct = ((recentAvg - priorAvg) / priorAvg) * 100
+  return { pct: Math.round(pct * 10) / 10, direction: pct > 10 ? 'up' : pct < -10 ? 'down' : 'flat' }
+}
+
+function CashCountedTrendCard() {
+  const [rows, setRows] = useState<CashTrendRow[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/analysis/cash-trends')
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(d => { setRows(Array.isArray(d) ? d : []); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  const monthly = useMemo(() => rows.filter(r => r.month).map(r => ({
+    month: monthLabel(r.month),
+    cashCounted: n(r.total_cash_counted),
+    invoiced: n(r.total_invoiced),
+    compliance: r.walkin_count > 0 ? Math.round((n(r.walkin_counted) / n(r.walkin_count)) * 1000) / 10 : 0,
+  })), [rows])
+
+  const complianceTrend = useMemo(() => splitTrend(monthly.map(m => m.compliance)), [monthly])
+  const latest = monthly[monthly.length - 1]
+
+  if (loading) return <Card title="Cash Counted Trend"><p className="text-xs text-gray-400 py-4 text-center">Loading…</p></Card>
+  if (!monthly.length) return <Card title="Cash Counted Trend"><p className="text-xs text-gray-400 py-4 text-center">No walk-in receipts yet.</p></Card>
+
+  return (
+    <>
+      <div className="flex gap-2 flex-wrap mb-3">
+        <Pill label="Latest Cash Counted" value={latest ? fc(latest.cashCounted) : '—'} color="#3b82f6" />
+        <Pill label="Latest Compliance" value={latest ? `${latest.compliance}%` : '—'} />
+        <div className="bg-gray-50 rounded-lg px-3 py-2 flex-1 min-w-[100px] flex items-center justify-between">
+          <p className="text-[10px] text-gray-400">Compliance Trend</p>
+          <TrendBadge direction={complianceTrend.direction} pct={complianceTrend.pct} />
+        </div>
+      </div>
+      <Card title="Cash Counted vs Invoiced" subtitle="Walk-in customer receipts only.">
+        <ResponsiveContainer width="100%" height={200}>
+          <LineChart data={monthly} margin={{ left: -20 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+            <YAxis tick={{ fontSize: 10 }} />
+            <Tooltip wrapperStyle={{ fontSize: 11 }} formatter={(v: any) => fc(v)} />
+            <Legend wrapperStyle={{ fontSize: 10 }} />
+            <Line type="monotone" dataKey="invoiced" name="Invoiced" stroke="#94a3b8" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="cashCounted" name="Cash Counted" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
+          </LineChart>
+        </ResponsiveContainer>
+      </Card>
+      <Card title="Cash Count Compliance" subtitle="% of walk-in receipts with cash actually counted.">
+        <ResponsiveContainer width="100%" height={160}>
+          <LineChart data={monthly} margin={{ left: -20 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+            <YAxis tick={{ fontSize: 10 }} unit="%" />
+            <Tooltip wrapperStyle={{ fontSize: 11 }} formatter={(v: any) => `${v}%`} />
+            <Line type="monotone" dataKey="compliance" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} />
+          </LineChart>
+        </ResponsiveContainer>
+      </Card>
+    </>
+  )
+}
+
 export default function AnalyticsPanel({ section }: { section: AnaSection }) {
   const [data, setData] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
@@ -206,6 +288,7 @@ export default function AnalyticsPanel({ section }: { section: AnaSection }) {
           </BarChart>
         </ResponsiveContainer>
       </Card>
+      <CashCountedTrendCard />
       <Card title="Cash Discrepancy Trend" subtitle="Avg (cash − invoice). Negative = shortage.">
         <ResponsiveContainer width="100%" height={160}>
           <LineChart data={cashDiscrepancy} margin={{ left: -20 }}>
