@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useMemo, Fragment, Suspense, useCallback } from 'react'
+import { useState, useEffect, useMemo, useRef, Fragment, Suspense, useCallback } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { fmtDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
@@ -728,7 +728,7 @@ const PAY_COLS = [
 
 const ALL_STAFF_NAMES = ['Joe', 'Bino', 'James', 'Rawlings', 'Grony']
 
-type PayView = 'monthly' | 'staff' | 'profiles'
+type PayView = 'monthly' | 'staff' | 'profiles' | 'build'
 
 type PayFlag = { staff: string; month: string; issue: string; severity: 'warn' | 'error' }
 
@@ -805,6 +805,12 @@ function PayslipsTab() {
     })
   }, [])
 
+  function refreshPayslips() {
+    return fetch('/api/payslips').then(r => r.json())
+      .then(p => { const ps = Array.isArray(p) ? p : []; setPayslips(ps); return ps })
+      .catch(() => [])
+  }
+
   const months = useMemo(() =>
     [...new Set(payslips.map(p => p.pay_month))].sort(), [payslips])
 
@@ -851,6 +857,7 @@ function PayslipsTab() {
       <div className="flex gap-2 overflow-x-auto pb-1">
         {viewBtn('monthly',  '📅 By Month')}
         {viewBtn('staff',    '👤 By Staff')}
+        {viewBtn('build',    '🧮 Build')}
         {viewBtn('profiles', '🪪 Profiles')}
         {payFlags.length > 0 && viewBtn('flags' as any, `⚠️ Flags (${payFlags.length})`)}
       </div>
@@ -1063,6 +1070,11 @@ function PayslipsTab() {
         </div>
       )}
 
+      {/* ── BUILD VIEW ───────────────────────────────────────────────────────── */}
+      {view === 'build' && (
+        <PayslipBuilder payslips={payslips} onSaved={refreshPayslips} />
+      )}
+
       {/* ── PROFILES VIEW ─────────────────────────────────────────────────────── */}
       {view === 'profiles' && (
         <div className="space-y-3">
@@ -1132,6 +1144,244 @@ function PayslipsTab() {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+// ── PAYSLIP BUILDER ───────────────────────────────────────────────────────────
+
+type BuildRow = {
+  hours_worked: string; hourly_rate: string
+  overtime_hours: string; overtime_rate: string
+  longevity_days: string; longevity_rate: string
+  duty_allowance: string; data_allowance: string; childcare_allowance: string
+  ssnit: string; flat_total: string
+}
+
+function n(v: string): number { const x = parseFloat(v); return isNaN(x) ? 0 : x }
+
+function daysInMonth(ym: string): number {
+  const [y, m] = ym.split('-').map(Number)
+  return new Date(y, m, 0).getDate()
+}
+function lastDayOfMonth(ym: string): string {
+  return `${ym}-${String(daysInMonth(ym)).padStart(2, '0')}`
+}
+function monthNameOf(ym: string): string {
+  const [y, m] = ym.split('-').map(Number)
+  return new Date(y, m - 1, 1).toLocaleString('default', { month: 'long' })
+}
+function ordinalSuffix(d: number): string {
+  if (d === 1 || d === 21 || d === 31) return 'st'
+  if (d === 2 || d === 22) return 'nd'
+  if (d === 3 || d === 23) return 'rd'
+  return 'th'
+}
+function paymentPeriodLabel(ym: string): string {
+  const [y] = ym.split('-')
+  const days = daysInMonth(ym)
+  const name = monthNameOf(ym)
+  return `1st ${name}, ${y} to ${days}${ordinalSuffix(days)} ${name}, ${y}`
+}
+function nextMonthAfter(ym: string): string {
+  const [y, m] = ym.split('-').map(Number)
+  const d = new Date(y, m, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+function lastPayslipFor(payslips: Payslip[], staffName: string, buildMonth: string): Payslip | null {
+  const beforeDate = lastDayOfMonth(buildMonth)
+  const candidates = payslips.filter(p => p.staff_name === staffName && p.pay_month < beforeDate)
+  if (!candidates.length) return null
+  return candidates.reduce((a, b) => (a.pay_month > b.pay_month ? a : b))
+}
+
+function prefillRow(payslips: Payslip[], staffName: string, buildMonth: string, hours: number): BuildRow {
+  const last = lastPayslipFor(payslips, staffName, buildMonth)
+  if (!last) {
+    return {
+      hours_worked: String(hours), hourly_rate: '5.50', overtime_hours: '0', overtime_rate: '5.50',
+      longevity_days: '0', longevity_rate: '0.05', duty_allowance: '0', data_allowance: '0',
+      childcare_allowance: '0', ssnit: '0', flat_total: staffName === 'Grony' ? '4000' : '',
+    }
+  }
+  const lastHours = last.hours_worked != null ? parseFloat(last.hours_worked) : 0
+  const lastPayHrs = last.pay_for_hours != null ? parseFloat(last.pay_for_hours) : 0
+  const hourlyRate = lastHours > 0 ? lastPayHrs / lastHours : 5.50
+  const lastOtHrs = last.overtime_hours != null ? parseFloat(last.overtime_hours) : 0
+  const lastPayOt = last.pay_for_overtime != null ? parseFloat(last.pay_for_overtime) : 0
+  const otRate = lastOtHrs > 0 ? lastPayOt / lastOtHrs : hourlyRate
+  const lastLongDays = last.longevity_days != null ? parseFloat(last.longevity_days) : 0
+  const lastPayLong = last.pay_for_longevity != null ? parseFloat(last.pay_for_longevity) : 0
+  const longRate = lastLongDays > 0 ? lastPayLong / lastLongDays : 0.05
+  const newLongDays = lastLongDays > 0 ? lastLongDays + daysInMonth(buildMonth) : 0
+  const isFlatLast = last.total_salary != null && lastHours === 0 && lastLongDays === 0 &&
+    (last.duty_allowance == null || parseFloat(last.duty_allowance) === 0)
+
+  return {
+    hours_worked: String(hours),
+    hourly_rate: hourlyRate.toFixed(2),
+    overtime_hours: '0',
+    overtime_rate: otRate.toFixed(2),
+    longevity_days: String(Math.round(newLongDays)),
+    longevity_rate: longRate.toFixed(2),
+    duty_allowance: last.duty_allowance ?? '0',
+    data_allowance: last.data_allowance ?? '0',
+    childcare_allowance: last.childcare_allowance ?? '0',
+    ssnit: last.ssnit ?? '0',
+    flat_total: isFlatLast ? String(last.total_salary) : '',
+  }
+}
+
+function NumField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <label className="block">
+      <span className="block text-[10px] text-gray-400 mb-0.5">{label}</span>
+      <input type="number" step="0.01" value={value} onChange={e => onChange(e.target.value)}
+        className="w-full bg-gray-100 border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-400" />
+    </label>
+  )
+}
+
+function PayslipBuilder({ payslips, onSaved }: { payslips: Payslip[]; onSaved: () => Promise<Payslip[]> }) {
+  const existingMonths = useMemo(() => [...new Set(payslips.map(p => p.pay_month))].sort(), [payslips])
+  const defaultBuildMonth = useMemo(() => {
+    const latest = existingMonths[existingMonths.length - 1]
+    return latest ? nextMonthAfter(latest.slice(0, 7)) : new Date().toISOString().slice(0, 7)
+  }, [existingMonths])
+
+  const [buildMonth, setBuildMonth] = useState(defaultBuildMonth)
+  const [hoursByStaff, setHoursByStaff] = useState<Record<string, number>>({})
+  const [rows, setRows] = useState<Record<string, BuildRow>>({})
+  const [loadingHours, setLoadingHours] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [saved, setSaved] = useState(false)
+  const prefilledMonth = useRef<string | null>(null)
+
+  function loadHoursAndPrefill(month: string, force = false) {
+    if (prefilledMonth.current === month && !force) return
+    setLoadingHours(true)
+    fetch(`/api/staff-times/monthly?month=${month}`)
+      .then(r => r.json())
+      .then(d => {
+        const hours = d.hours ?? {}
+        setHoursByStaff(hours)
+        const next: Record<string, BuildRow> = {}
+        for (const name of ALL_STAFF_NAMES) {
+          next[name] = prefillRow(payslips, name, month, hours[name] ?? 0)
+        }
+        setRows(next)
+        prefilledMonth.current = month
+      })
+      .catch(() => setError('Could not load staff hours for that month.'))
+      .finally(() => setLoadingHours(false))
+  }
+
+  useEffect(() => { loadHoursAndPrefill(buildMonth) }, [buildMonth]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function updateRow(name: string, field: keyof BuildRow, value: string) {
+    setRows(prev => ({ ...prev, [name]: { ...prev[name], [field]: value } }))
+    setSaved(false)
+  }
+
+  function computeTotals(row: BuildRow) {
+    const payForHours = n(row.hours_worked) * n(row.hourly_rate)
+    const payForOt = n(row.overtime_hours) * n(row.overtime_rate)
+    const payForLongevity = n(row.longevity_days) * n(row.longevity_rate)
+    const computedTotal = payForHours + payForOt + payForLongevity + n(row.duty_allowance) + n(row.data_allowance) + n(row.childcare_allowance) - n(row.ssnit)
+    const finalTotal = row.flat_total.trim() !== '' ? n(row.flat_total) : computedTotal
+    return { payForHours, payForOt, payForLongevity, computedTotal, finalTotal }
+  }
+
+  async function saveAll() {
+    setSaving(true); setError(''); setSaved(false)
+    const pay_month = lastDayOfMonth(buildMonth)
+    const payment_period = paymentPeriodLabel(buildMonth)
+    const entries = ALL_STAFF_NAMES.map(name => {
+      const row = rows[name]
+      const { payForHours, payForOt, payForLongevity, finalTotal } = computeTotals(row)
+      return {
+        staff_name: name, payment_period,
+        hours_worked: n(row.hours_worked), pay_for_hours: payForHours,
+        overtime_hours: n(row.overtime_hours), pay_for_overtime: payForOt,
+        longevity_days: n(row.longevity_days), pay_for_longevity: payForLongevity,
+        duty_allowance: n(row.duty_allowance), data_allowance: n(row.data_allowance),
+        childcare_allowance: n(row.childcare_allowance), ssnit: n(row.ssnit),
+        total_salary: finalTotal,
+      }
+    })
+    const res = await fetch('/api/payslips', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pay_month, entries }),
+    })
+    setSaving(false)
+    if (res.ok) {
+      const updated = await onSaved()
+      prefilledMonth.current = null
+      const monthsAfter = [...new Set(updated.map(p => p.pay_month))].sort()
+      const latest = monthsAfter[monthsAfter.length - 1]
+      if (latest) setBuildMonth(nextMonthAfter(latest.slice(0, 7)))
+      setSaved(true)
+    } else {
+      const d = await res.json().catch(() => ({}))
+      setError(d.error || 'Could not save payslips. Please try again.')
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="bg-white border border-gray-200 rounded-xl p-3 flex items-center justify-between gap-2 flex-wrap">
+        <div>
+          <label className="block text-[10px] text-gray-400 mb-0.5">Pay Month</label>
+          <input type="month" value={buildMonth} onChange={e => setBuildMonth(e.target.value)}
+            className="bg-gray-100 border border-gray-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-blue-400" />
+        </div>
+        <button onClick={() => loadHoursAndPrefill(buildMonth, true)} disabled={loadingHours}
+          className="text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 disabled:opacity-40">
+          {loadingHours ? 'Loading…' : '🔄 Refresh Hours'}
+        </button>
+      </div>
+
+      {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
+      {saved && <p className="text-xs text-green-600 font-medium">Saved — payslips for {monthNameOf(buildMonth)} are live.</p>}
+
+      {ALL_STAFF_NAMES.map(name => {
+        const row = rows[name]
+        if (!row) return null
+        const { payForHours, payForOt, payForLongevity, computedTotal, finalTotal } = computeTotals(row)
+        return (
+          <div key={name} className="bg-white border border-gray-200 rounded-xl p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${STAFF_COLORS[name] ?? 'bg-gray-100 text-gray-600'}`}>{name}</span>
+              <span className="text-base font-bold text-blue-700">{fmtC(String(finalTotal))}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <NumField label={`Hours Worked (${hoursByStaff[name] ?? 0}h logged)`} value={row.hours_worked} onChange={v => updateRow(name, 'hours_worked', v)} />
+              <NumField label={`Hourly Rate → ₵${payForHours.toFixed(2)}`} value={row.hourly_rate} onChange={v => updateRow(name, 'hourly_rate', v)} />
+              <NumField label="Overtime Hours" value={row.overtime_hours} onChange={v => updateRow(name, 'overtime_hours', v)} />
+              <NumField label={`OT Rate → ₵${payForOt.toFixed(2)}`} value={row.overtime_rate} onChange={v => updateRow(name, 'overtime_rate', v)} />
+              <NumField label="Longevity Days" value={row.longevity_days} onChange={v => updateRow(name, 'longevity_days', v)} />
+              <NumField label={`Longevity Rate → ₵${payForLongevity.toFixed(2)}`} value={row.longevity_rate} onChange={v => updateRow(name, 'longevity_rate', v)} />
+              <NumField label="Duty Allowance" value={row.duty_allowance} onChange={v => updateRow(name, 'duty_allowance', v)} />
+              <NumField label="Data Allowance" value={row.data_allowance} onChange={v => updateRow(name, 'data_allowance', v)} />
+              <NumField label="Childcare Allowance" value={row.childcare_allowance} onChange={v => updateRow(name, 'childcare_allowance', v)} />
+              <NumField label="SSNIT (deducted)" value={row.ssnit} onChange={v => updateRow(name, 'ssnit', v)} />
+            </div>
+            <div className="flex items-center justify-between gap-2 pt-1 border-t border-gray-100">
+              <span className="text-[11px] text-gray-400">Computed: {fmtC(String(computedTotal))}</span>
+              <div className="w-40">
+                <NumField label="Flat Total Override" value={row.flat_total} onChange={v => updateRow(name, 'flat_total', v)} />
+              </div>
+            </div>
+          </div>
+        )
+      })}
+
+      <button onClick={saveAll} disabled={saving || loadingHours}
+        className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-bold rounded-xl py-3 transition">
+        {saving ? 'Saving…' : `Save Payslips for ${monthNameOf(buildMonth)}`}
+      </button>
     </div>
   )
 }
