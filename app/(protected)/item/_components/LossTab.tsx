@@ -425,19 +425,21 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
         </div>
       )}
 
-      {/* detail table */}
+      {/* detail table -- the Available/Used narrative format is only for items
+          where 2+ services share stock (e.g. 4x6 singles); every other item
+          keeps the original DATE/₵/L-G/WIC/GMC/SP/BL/CNV/EXP layout. */}
       {!dayRows ? (
         <p className="text-[9px] text-gray-400 text-center py-3">Loading…</p>
       ) : computed!.length === 0 ? (
         <p className="text-[9px] text-gray-400 text-center py-3">No activity.</p>
-      ) : (
+      ) : showBreakdown ? (
         <table className="w-full table-fixed border-collapse text-[8px]">
           <colgroup>
             <col style={{width:'11%'}} />
             <col style={{width:'6%'}} />
             <col style={{width:'6%'}} />
             <col style={{width:'7%'}} />
-            {showBreakdown && breakdownNames.map(n => <col key={n} style={{width:`${breakdownColW}%`}} />)}
+            {breakdownNames.map(n => <col key={n} style={{width:`${breakdownColW}%`}} />)}
             <col style={{width:'7%'}} />
             <col style={{width:'6%'}} />
             <col style={{width:'6%'}} />
@@ -454,7 +456,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
               <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Converted in from another item's GMC take">CNV</th>
               <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400 bg-black text-white"
                 title="Available = previous stock + bills received + converted in">AVAIL</th>
-              {showBreakdown && breakdownNames.map(n => (
+              {breakdownNames.map(n => (
                 <th key={n} title={n} className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">
                   {shortSourceName(n)}
                 </th>
@@ -479,7 +481,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-900">{fmtQs(row.qty_counted)}</td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-teal-600">{fmtQs(row.converted_in_qty)}</td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-400 bg-black text-white">{fmtN(row.available)}</td>
-                  {showBreakdown && breakdownNames.map(n => (
+                  {breakdownNames.map(n => (
                     <td key={n} className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">
                       {fmtQ(row.wic_breakdown?.find(b => b.name === n)?.qty ?? 0)}
                     </td>
@@ -515,6 +517,77 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
               <td className={lgCls}>{totalLoss > 0.001 ? `-${fmtN(totalLoss)}` : totalLoss < -0.001 ? `+${fmtN(Math.abs(totalLoss))}` : '0'}</td>
               <td className={lgCls}>{totalCost > 0.01 ? `-₵${fmtN(totalCost)}` : totalCost < -0.01 ? `+₵${fmtN(Math.abs(totalCost))}` : '0'}</td>
               <td colSpan={4} />
+            </tr>
+          </tfoot>
+        </table>
+      ) : (
+        <table className="w-full table-fixed border-collapse text-[8px]">
+          <colgroup>
+            <col style={{width:'15%'}} />
+            <col style={{width:'10%'}} />
+            <col style={{width:'8%'}} />
+            <col style={{width:'8%'}} />
+            <col style={{width:'7%'}} />
+            <col style={{width:'7%'}} />
+            <col style={{width:'7%'}} />
+            <col style={{width:'7%'}} />
+            <col style={{width:'7%'}} />
+            <col style={{width:'7%'}} />
+            <col style={{width:'17%'}} />
+          </colgroup>
+          <thead>
+            <tr className="bg-amber-400 text-gray-800 font-bold">
+              <th className="py-0.5 border-b-2 border-gray-400 text-left pl-1">DATE</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">₵</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">L/G</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">CNT</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">WIC</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">GMC</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">SP</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">BL</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Converted in from another item's GMC take">CNV</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">EXP</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">ALIAS</th>
+            </tr>
+          </thead>
+          <tbody>
+            {computed!.map((row, i) => {
+              const lossVal = row.loss !== null ? row.loss * sp : null
+              return (
+                <tr key={i} className={`border-b border-gray-200 ${row.loss !== null && row.loss > 0.001 ? 'bg-red-50' : ''}`}>
+                  <td className="pl-1 py-0.5 font-bold text-gray-500 whitespace-nowrap overflow-hidden">{fmtDate(row.date)}</td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300">
+                    {lossVal === null ? <span className="text-gray-300">—</span>
+                      : lossVal > 0.01 ? <span className="text-red-600">-{fmtN(lossVal)}</span>
+                      : lossVal < -0.01 ? <span className="text-green-600">+{fmtN(Math.abs(lossVal))}</span>
+                      : <span className="text-gray-400">0</span>}
+                  </td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300">
+                    {row.loss === null ? <span className="text-gray-300">—</span>
+                      : row.loss > 0.001 ? <span className="text-red-600">-{fmtN(row.loss)}</span>
+                      : row.loss < -0.001 ? <span className="text-green-600">+{fmtN(Math.abs(row.loss))}</span>
+                      : <span className="text-gray-400">0</span>}
+                  </td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-900">{fmtQs(row.qty_counted)}</td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.wic_qty)}</td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.gmc_qty)}</td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-blue-500">{fmtQs(row.sell_price)}</td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-blue-600">{fmtQs(row.bills_qty)}</td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-teal-600">{fmtQs(row.converted_in_qty)}</td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-400">{fmtN(row.expected_soh)}</td>
+                  <td className="pl-1 py-0.5 border-l border-gray-300 text-purple-700 font-semibold overflow-hidden">
+                    <span className="block truncate" title={row.aliases ?? ''}>{row.aliases ?? <span className="text-gray-300">—</span>}</span>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold text-[8px]">
+              <td className="pl-1 py-0.5 text-gray-500">Total</td>
+              <td className={lgCls}>{totalCost > 0.01 ? `-₵${fmtN(totalCost)}` : totalCost < -0.01 ? `+₵${fmtN(Math.abs(totalCost))}` : '0'}</td>
+              <td className={lgCls}>{totalLoss > 0.001 ? `-${fmtN(totalLoss)}` : totalLoss < -0.001 ? `+${fmtN(Math.abs(totalLoss))}` : '0'}</td>
+              <td colSpan={8} />
             </tr>
           </tfoot>
         </table>
