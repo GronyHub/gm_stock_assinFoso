@@ -28,8 +28,12 @@ export async function POST(req: NextRequest) {
   const filename = `announcements/${author}-${Date.now()}.${ext}`
 
   try {
-    const blob = await put(filename, file, { access: 'public' })
-    return NextResponse.json({ url: blob.url, contentType: file.type })
+    // The store is provisioned as private-only, so blobs must be written with
+    // access: 'private' and read back through our own authenticated proxy route
+    // (app/api/announcements/media) rather than a direct public CDN URL.
+    const blob = await put(filename, file, { access: 'private' })
+    const url = `/api/announcements/media?p=${encodeURIComponent(blob.pathname)}`
+    return NextResponse.json({ url, contentType: file.type })
   } catch (e) {
     console.error('announcements upload error:', e)
     const detail = e instanceof Error ? e.message : String(e)
