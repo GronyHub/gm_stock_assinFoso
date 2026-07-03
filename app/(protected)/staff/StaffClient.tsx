@@ -1259,6 +1259,34 @@ function PayslipBuilder({ payslips, onSaved }: { payslips: Payslip[]; onSaved: (
   const [saved, setSaved] = useState(false)
   const prefilledMonth = useRef<string | null>(null)
 
+  const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set(ALL_STAFF_NAMES))
+  const [bulkValues, setBulkValues] = useState<Partial<BuildRow>>({})
+
+  function toggleBulkStaff(name: string) {
+    setBulkSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(name)) next.delete(name); else next.add(name)
+      return next
+    })
+  }
+
+  function applyBulk() {
+    setRows(prev => {
+      const next = { ...prev }
+      for (const name of bulkSelected) {
+        if (!next[name]) continue
+        const updated = { ...next[name] }
+        for (const key of Object.keys(bulkValues) as (keyof BuildRow)[]) {
+          const v = bulkValues[key]
+          if (v !== undefined && v !== '') updated[key] = v
+        }
+        next[name] = updated
+      }
+      return next
+    })
+    setSaved(false)
+  }
+
   function loadHoursAndPrefill(month: string, force = false) {
     if (prefilledMonth.current === month && !force) return
     setLoadingHours(true)
@@ -1340,6 +1368,37 @@ function PayslipBuilder({ payslips, onSaved }: { payslips: Payslip[]; onSaved: (
         <button onClick={() => loadHoursAndPrefill(buildMonth, true)} disabled={loadingHours}
           className="text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 disabled:opacity-40">
           {loadingHours ? 'Loading…' : '🔄 Refresh Hours'}
+        </button>
+      </div>
+
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 space-y-2">
+        <p className="text-xs font-bold text-blue-800">Bulk Apply</p>
+        <p className="text-[10px] text-blue-600">Fill in only the fields you want to set for everyone checked below — leave the rest blank to keep each staff's own value.</p>
+        <div className="flex flex-wrap gap-1.5">
+          <button onClick={() => setBulkSelected(new Set(ALL_STAFF_NAMES))}
+            className="shrink-0 text-[10px] font-semibold px-2 py-1 rounded-lg bg-white border border-blue-200 text-blue-700">All</button>
+          <button onClick={() => setBulkSelected(new Set())}
+            className="shrink-0 text-[10px] font-semibold px-2 py-1 rounded-lg bg-white border border-blue-200 text-blue-700">None</button>
+          {ALL_STAFF_NAMES.map(name => (
+            <label key={name} className="flex items-center gap-1 text-xs bg-white border border-blue-200 rounded-lg px-2 py-1 cursor-pointer">
+              <input type="checkbox" checked={bulkSelected.has(name)} onChange={() => toggleBulkStaff(name)} />
+              {name}
+            </label>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <NumField label="Hourly Rate" value={bulkValues.hourly_rate ?? ''} onChange={v => setBulkValues(b => ({ ...b, hourly_rate: v }))} />
+          <NumField label="OT Rate" value={bulkValues.overtime_rate ?? ''} onChange={v => setBulkValues(b => ({ ...b, overtime_rate: v }))} />
+          <NumField label="Longevity Rate" value={bulkValues.longevity_rate ?? ''} onChange={v => setBulkValues(b => ({ ...b, longevity_rate: v }))} />
+          <NumField label="Duty Allowance" value={bulkValues.duty_allowance ?? ''} onChange={v => setBulkValues(b => ({ ...b, duty_allowance: v }))} />
+          <NumField label="Data Allowance" value={bulkValues.data_allowance ?? ''} onChange={v => setBulkValues(b => ({ ...b, data_allowance: v }))} />
+          <NumField label="Childcare Allowance" value={bulkValues.childcare_allowance ?? ''} onChange={v => setBulkValues(b => ({ ...b, childcare_allowance: v }))} />
+          <NumField label="SSNIT" value={bulkValues.ssnit ?? ''} onChange={v => setBulkValues(b => ({ ...b, ssnit: v }))} />
+          <NumField label="Flat Total Override" value={bulkValues.flat_total ?? ''} onChange={v => setBulkValues(b => ({ ...b, flat_total: v }))} />
+        </div>
+        <button onClick={applyBulk} disabled={bulkSelected.size === 0}
+          className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-bold rounded-lg py-2 transition">
+          Apply to {bulkSelected.size} staff
         </button>
       </div>
 
