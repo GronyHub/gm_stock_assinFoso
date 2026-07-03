@@ -294,11 +294,10 @@ function ItemHubPageInner() {
           </div>
         </div>
 
-        {/* Loss sub-view row: Items / Sales / Bills */}
+        {/* Loss sub-view row: Sales / Bills — Items is the Loss tab's own default view */}
         {outerTab === 'loss' && (
           <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 border-t border-blue-100 overflow-x-auto">
             {([
-              { key: 'items', label: '📦 Items' },
               { key: 'sales', label: '💰 Sales' },
               { key: 'bills', label: '🧾 Bills' },
             ] as { key: LossView; label: string }[]).map(v => (
