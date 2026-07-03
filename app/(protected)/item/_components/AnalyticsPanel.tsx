@@ -6,8 +6,6 @@ import {
 } from 'recharts'
 import { usePolling } from '@/lib/usePolling'
 
-type AnaSection = 'Items' | 'Sales' | 'Bills' | 'Counts' | 'Expenses' | 'Cash'
-
 const SHORT_MON = ['Ja','Fe','Mr','Ap','My','Ju','Jl','Au','Se','Oc','No','De']
 function monthLabel(k: string | null | undefined) {
   if (!k) return '—'
@@ -220,7 +218,11 @@ function CashCountedTrendCard() {
   )
 }
 
-export default function AnalyticsPanel({ section }: { section: AnaSection }) {
+function SectionHeader({ icon, label }: { icon: string; label: string }) {
+  return <p className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-2 px-1">{icon} {label}</p>
+}
+
+export default function AnalyticsPanel() {
   const [data, setData] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -247,8 +249,48 @@ export default function AnalyticsPanel({ section }: { section: AnaSection }) {
   if (loading) return <div className="py-10 text-center text-gray-400 text-xs">Loading analytics…</div>
   if (!data)   return <div className="py-10 text-center text-gray-400 text-xs">Could not load analytics.</div>
 
-  if (section === 'Sales') return (
+  return (
     <div className="px-3 pt-3 pb-6">
+
+      <SectionHeader icon="📉" label="Items" />
+      <ItemTrendsCard />
+      <Card title="Top 10 Items by Cumulative Loss" subtitle="Counted qty short of what the ledger expected.">
+        <ResponsiveContainer width="100%" height={Math.max(160, (data.topLossItems?.length ?? 0) * 30)}>
+          <BarChart data={(data.topLossItems ?? []).map((r: any) => ({ name: r.item_name, loss: n(r.total_loss) }))} layout="vertical" margin={{ left: 10 }}>
+            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+            <XAxis type="number" tick={{ fontSize: 10 }} />
+            <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} width={110} />
+            <Tooltip wrapperStyle={{ fontSize: 11 }} />
+            <Bar dataKey="loss" fill="#dc2626" radius={[0,4,4,0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </Card>
+      <Card title="Stock Value by Group" subtitle="SOH × cost price per category.">
+        <ResponsiveContainer width="100%" height={Math.max(180, (data.stockValueByGroup?.length ?? 0) * 28)}>
+          <BarChart data={(data.stockValueByGroup ?? []).map((r: any) => ({ name: r.cf_group, value: n(r.value) }))} layout="vertical" margin={{ left: 10 }}>
+            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+            <XAxis type="number" tick={{ fontSize: 10 }} />
+            <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} width={110} />
+            <Tooltip wrapperStyle={{ fontSize: 11 }} formatter={(v: any) => fc(v)} />
+            <Bar dataKey="value" fill="#22c55e" radius={[0,4,4,0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </Card>
+      <Card title={`Out of Stock (${data.lowStockItems?.length ?? 0})`} subtitle="SOH at or below zero.">
+        {(!data.lowStockItems || data.lowStockItems.length === 0)
+          ? <p className="text-xs text-gray-400 py-1">Nothing out of stock.</p>
+          : <div className="max-h-48 overflow-y-auto divide-y divide-gray-100">
+              {data.lowStockItems.map((r: any, i: number) => (
+                <div key={i} className="flex items-center justify-between py-1 text-xs">
+                  <span className="text-gray-700">{r.item_name}</span>
+                  <span className="text-red-500 font-semibold">{n(r.soh)}</span>
+                </div>
+              ))}
+            </div>
+        }
+      </Card>
+
+      <SectionHeader icon="💰" label="Sales" />
       <div className="flex gap-2 flex-wrap mb-3">
         <Pill label="Total Revenue" value={fc(totalRevenue)} color="#3b82f6" />
         <Pill label="Months" value={String(monthlyRevenue.length)} />
@@ -288,28 +330,8 @@ export default function AnalyticsPanel({ section }: { section: AnaSection }) {
           </BarChart>
         </ResponsiveContainer>
       </Card>
-    </div>
-  )
 
-  if (section === 'Cash') return (
-    <div className="px-3 pt-3 pb-6">
-      <CashCountedTrendCard />
-      <Card title="Cash Discrepancy Trend" subtitle="Avg (cash − invoice). Negative = shortage.">
-        <ResponsiveContainer width="100%" height={160}>
-          <LineChart data={cashDiscrepancy} margin={{ left: -20 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="month" tick={{ fontSize: 10 }} />
-            <YAxis tick={{ fontSize: 10 }} />
-            <Tooltip wrapperStyle={{ fontSize: 11 }} formatter={(v: any) => fc(v)} />
-            <Line type="monotone" dataKey="avg" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} />
-          </LineChart>
-        </ResponsiveContainer>
-      </Card>
-    </div>
-  )
-
-  if (section === 'Bills') return (
-    <div className="px-3 pt-3 pb-6">
+      <SectionHeader icon="🧾" label="Bills" />
       <div className="flex gap-2 flex-wrap mb-3">
         <Pill label="Total Spend" value={fc(totalBills)} color="#f97316" />
       </div>
@@ -346,11 +368,32 @@ export default function AnalyticsPanel({ section }: { section: AnaSection }) {
           </BarChart>
         </ResponsiveContainer>
       </Card>
-    </div>
-  )
 
-  if (section === 'Expenses') return (
-    <div className="px-3 pt-3 pb-6">
+      <SectionHeader icon="🔢" label="Counts" />
+      <Card title="Stock Counts per Month">
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={countsPerMonth} margin={{ left: -20 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+            <YAxis tick={{ fontSize: 10 }} />
+            <Tooltip wrapperStyle={{ fontSize: 11 }} />
+            <Bar dataKey="count" fill="#6366f1" radius={[3,3,0,0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </Card>
+      <Card title="Most Frequently Counted Items">
+        <ResponsiveContainer width="100%" height={Math.max(160, (data.mostCountedItems?.length ?? 0) * 30)}>
+          <BarChart data={(data.mostCountedItems ?? []).map((r: any) => ({ name: r.item_name, count: n(r.times_counted) }))} layout="vertical" margin={{ left: 10 }}>
+            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+            <XAxis type="number" tick={{ fontSize: 10 }} />
+            <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} width={110} />
+            <Tooltip wrapperStyle={{ fontSize: 11 }} />
+            <Bar dataKey="count" fill="#6366f1" radius={[0,4,4,0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </Card>
+
+      <SectionHeader icon="💸" label="Expenses" />
       <div className="flex gap-2 flex-wrap mb-3">
         <Pill label="Total Expenses" value={fc(totalExp)} color="#dc2626" />
       </div>
@@ -377,73 +420,18 @@ export default function AnalyticsPanel({ section }: { section: AnaSection }) {
           </PieChart>
         </ResponsiveContainer>
       </Card>
-    </div>
-  )
 
-  if (section === 'Items') return (
-    <div className="px-3 pt-3 pb-6">
-      <ItemTrendsCard />
-      <Card title="Top 10 Items by Cumulative Loss" subtitle="Counted qty short of what the ledger expected.">
-        <ResponsiveContainer width="100%" height={Math.max(160, (data.topLossItems?.length ?? 0) * 30)}>
-          <BarChart data={(data.topLossItems ?? []).map((r: any) => ({ name: r.item_name, loss: n(r.total_loss) }))} layout="vertical" margin={{ left: 10 }}>
-            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-            <XAxis type="number" tick={{ fontSize: 10 }} />
-            <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} width={110} />
-            <Tooltip wrapperStyle={{ fontSize: 11 }} />
-            <Bar dataKey="loss" fill="#dc2626" radius={[0,4,4,0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </Card>
-      <Card title="Stock Value by Group" subtitle="SOH × cost price per category.">
-        <ResponsiveContainer width="100%" height={Math.max(180, (data.stockValueByGroup?.length ?? 0) * 28)}>
-          <BarChart data={(data.stockValueByGroup ?? []).map((r: any) => ({ name: r.cf_group, value: n(r.value) }))} layout="vertical" margin={{ left: 10 }}>
-            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-            <XAxis type="number" tick={{ fontSize: 10 }} />
-            <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} width={110} />
-            <Tooltip wrapperStyle={{ fontSize: 11 }} formatter={(v: any) => fc(v)} />
-            <Bar dataKey="value" fill="#22c55e" radius={[0,4,4,0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </Card>
-      <Card title={`Out of Stock (${data.lowStockItems?.length ?? 0})`} subtitle="SOH at or below zero.">
-        {(!data.lowStockItems || data.lowStockItems.length === 0)
-          ? <p className="text-xs text-gray-400 py-1">Nothing out of stock.</p>
-          : <div className="max-h-48 overflow-y-auto divide-y divide-gray-100">
-              {data.lowStockItems.map((r: any, i: number) => (
-                <div key={i} className="flex items-center justify-between py-1 text-xs">
-                  <span className="text-gray-700">{r.item_name}</span>
-                  <span className="text-red-500 font-semibold">{n(r.soh)}</span>
-                </div>
-              ))}
-            </div>
-        }
-      </Card>
-    </div>
-  )
-
-  // Counts
-  return (
-    <div className="px-3 pt-3 pb-6">
-      <Card title="Stock Counts per Month">
-        <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={countsPerMonth} margin={{ left: -20 }}>
+      <SectionHeader icon="🏦" label="Cash" />
+      <CashCountedTrendCard />
+      <Card title="Cash Discrepancy Trend" subtitle="Avg (cash − invoice). Negative = shortage.">
+        <ResponsiveContainer width="100%" height={160}>
+          <LineChart data={cashDiscrepancy} margin={{ left: -20 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="month" tick={{ fontSize: 10 }} />
             <YAxis tick={{ fontSize: 10 }} />
-            <Tooltip wrapperStyle={{ fontSize: 11 }} />
-            <Bar dataKey="count" fill="#6366f1" radius={[3,3,0,0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </Card>
-      <Card title="Most Frequently Counted Items">
-        <ResponsiveContainer width="100%" height={Math.max(160, (data.mostCountedItems?.length ?? 0) * 30)}>
-          <BarChart data={(data.mostCountedItems ?? []).map((r: any) => ({ name: r.item_name, count: n(r.times_counted) }))} layout="vertical" margin={{ left: 10 }}>
-            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-            <XAxis type="number" tick={{ fontSize: 10 }} />
-            <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} width={110} />
-            <Tooltip wrapperStyle={{ fontSize: 11 }} />
-            <Bar dataKey="count" fill="#6366f1" radius={[0,4,4,0]} />
-          </BarChart>
+            <Tooltip wrapperStyle={{ fontSize: 11 }} formatter={(v: any) => fc(v)} />
+            <Line type="monotone" dataKey="avg" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} />
+          </LineChart>
         </ResponsiveContainer>
       </Card>
     </div>
