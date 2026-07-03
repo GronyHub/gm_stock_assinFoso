@@ -1,8 +1,12 @@
 import sql from '@/lib/db'
 import { NextResponse } from 'next/server'
+import { auth } from '@/lib/auth'
+import { isOwnerLevel } from '@/lib/roles'
 
 export async function GET() {
   try {
+    const session = await auth()
+    const canSeeAmounts = isOwnerLevel(session?.user as any)
     const [
       monthlyRevenue,
       dailyRevenue30,
@@ -69,13 +73,21 @@ export async function GET() {
         GROUP BY 1 ORDER BY spend DESC LIMIT 10
       `,
       // EXPENSES ──────────────────────────────────────────────────────────
+      // Salaries is a confidential category (owner/Joe only) -- excluded from
+      // these aggregate totals for everyone else, matching the redaction
+      // already applied in /api/expenses and /api/transactions.
       sql`
         SELECT to_char(expense_date, 'YYYY-MM') AS month, SUM(amount) AS total
-        FROM expenses WHERE expense_date IS NOT NULL GROUP BY 1 ORDER BY 1
+        FROM expenses
+        WHERE expense_date IS NOT NULL
+          AND (${canSeeAmounts} OR COALESCE(cf_expense_type, 'Uncategorized') <> 'Salaries')
+        GROUP BY 1 ORDER BY 1
       `,
       sql`
         SELECT COALESCE(cf_expense_type, 'Uncategorized') AS category, SUM(amount) AS total
-        FROM expenses GROUP BY 1 ORDER BY total DESC
+        FROM expenses
+        WHERE (${canSeeAmounts} OR COALESCE(cf_expense_type, 'Uncategorized') <> 'Salaries')
+        GROUP BY 1 ORDER BY total DESC
       `,
       // ITEMS ─────────────────────────────────────────────────────────────
       sql`
