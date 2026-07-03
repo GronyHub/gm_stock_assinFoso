@@ -6,7 +6,7 @@ import {
 } from 'recharts'
 import { usePolling } from '@/lib/usePolling'
 
-type AnaSection = 'Items' | 'Sales' | 'Bills' | 'Counts' | 'Expenses'
+type AnaSection = 'Items' | 'Sales' | 'Bills' | 'Counts' | 'Expenses' | 'Cash'
 
 const SHORT_MON = ['Ja','Fe','Mr','Ap','My','Ju','Jl','Au','Se','Oc','No','De']
 function monthLabel(k: string | null | undefined) {
@@ -288,6 +288,11 @@ export default function AnalyticsPanel({ section }: { section: AnaSection }) {
           </BarChart>
         </ResponsiveContainer>
       </Card>
+    </div>
+  )
+
+  if (section === 'Cash') return (
+    <div className="px-3 pt-3 pb-6">
       <CashCountedTrendCard />
       <Card title="Cash Discrepancy Trend" subtitle="Avg (cash − invoice). Negative = shortage.">
         <ResponsiveContainer width="100%" height={160}>

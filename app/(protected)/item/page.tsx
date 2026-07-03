@@ -42,9 +42,9 @@ const LossTab        = dynamic(() => import('./_components/LossTab'),         { 
 // Defined locally (not imported from AnalyticsPanel.tsx) -- a cross-file type
 // import here previously caused the analytics/recharts bundle to get pulled
 // into the server bundle and crash the page on Vercel with a black screen.
-type AnaSection = 'Items' | 'Sales' | 'Bills' | 'Counts' | 'Expenses'
+type AnaSection = 'Items' | 'Sales' | 'Bills' | 'Counts' | 'Expenses' | 'Cash'
 const ANA_SECTION: Partial<Record<OuterTab, AnaSection>> = {
-  loss: 'Items', sales: 'Sales', bills: 'Bills', counts: 'Counts', expenses: 'Expenses',
+  loss: 'Items', sales: 'Sales', bills: 'Bills', counts: 'Counts', expenses: 'Expenses', cab: 'Cash',
 }
 
 type OuterTab = 'today' | 'sales' | 'bills' | 'counts' | 'expenses' | 'cab' | 'staff' | 'loss'
