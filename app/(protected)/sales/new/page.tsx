@@ -9,7 +9,8 @@ type CartLine = { item: Item; qty: number; price: number }
 export default function NewReceiptPage({ onSuccess }: { onSuccess?: () => void } = {}) {
   usePresenceReporter('entering a sale')
   const [date, setDate] = useState('')
-  const [customer, setCustomer] = useState('Walk-in Customer')
+  const [saleType, setSaleType] = useState<'WIC' | 'GMC'>('WIC')
+  const [customer, setCustomer] = useState('')
   const [cashCounted, setCashCounted] = useState('')
   const [allItems, setAllItems] = useState<Item[]>([])
   const [loadingItems, setLoadingItems] = useState(true)
@@ -74,12 +75,13 @@ export default function NewReceiptPage({ onSuccess }: { onSuccess?: () => void }
     setSaving(true)
     setError('')
     try {
+      const customerName = saleType === 'GMC' ? 'Grony Multimedia as Customer' : (customer.trim() || null)
       const res = await fetch('/api/sales/receipt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           date,
-          customerName: customer || 'Walk-in Customer',
+          customerName,
           cashCounted: cashCounted ? Number(cashCounted) : null,
           lines: cart.map(l => ({
             itemId: l.item.id,
@@ -188,11 +190,30 @@ placeholder={loadingItems ? 'Loading…' : `Search ${allItems.length} items…`}
                 className="w-full text-[10px] text-gray-900 bg-gray-50 border border-gray-200 rounded px-1 py-0.5 outline-none" />
             </div>
             <div>
-              <p className="text-[9px] text-gray-400">Customer</p>
-              <input value={customer} onChange={e => setCustomer(e.target.value)}
-                className="w-full text-[10px] text-gray-900 bg-gray-50 border border-gray-200 rounded px-1 py-0.5 outline-none" />
+              <p className="text-[9px] text-gray-400">Sale Type</p>
+              <div className="flex gap-1">
+                <button type="button" onClick={() => setSaleType('WIC')}
+                  className={`flex-1 text-[10px] font-bold py-0.5 rounded transition
+                    ${saleType === 'WIC' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                  WIC
+                </button>
+                <button type="button" onClick={() => setSaleType('GMC')}
+                  className={`flex-1 text-[10px] font-bold py-0.5 rounded transition
+                    ${saleType === 'GMC' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                  GMC
+                </button>
+              </div>
             </div>
           </div>
+          {saleType === 'WIC' ? (
+            <div>
+              <p className="text-[9px] text-gray-400">Customer (optional — leave blank for a walk-in)</p>
+              <input value={customer} onChange={e => setCustomer(e.target.value)} placeholder="Walk-in Customer"
+                className="w-full text-[10px] text-gray-900 bg-gray-50 border border-gray-200 rounded px-1 py-0.5 outline-none placeholder-gray-300" />
+            </div>
+          ) : (
+            <p className="text-[9px] text-purple-600 font-semibold">Internal use — recorded as &quot;Grony Multimedia as Customer&quot;</p>
+          )}
         </div>
 
         {/* Cart items */}
@@ -248,7 +269,7 @@ placeholder={loadingItems ? 'Loading…' : `Search ${allItems.length} items…`}
           )}
           <button type="button" onClick={handleSubmit} disabled={!cart.length || saving}
             className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white font-bold text-[11px] rounded-lg py-1.5 transition">
-            {saving ? 'Saving…' : `Save Receipt — ₵${total.toFixed(2)}`}
+            {saving ? 'Saving…' : `Save ${saleType} Receipt — ₵${total.toFixed(2)}`}
           </button>
         </div>
       </div>
