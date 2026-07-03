@@ -1,5 +1,10 @@
 import sql from '@/lib/db'
 
+// Actions that shouldn't also become a public Announcements post: login/logout
+// fire twice a day per staff member with no real info, and 'posted announcement'
+// is already an announcement itself (posting it again would duplicate the feed).
+const ANNOUNCEMENT_EXCLUDED_ACTIONS = new Set(['logged in', 'logged out', 'posted announcement'])
+
 export async function logActivity(staffName: string, action: string, details?: string) {
   try {
     await sql`
@@ -8,6 +13,18 @@ export async function logActivity(staffName: string, action: string, details?: s
     `
   } catch {
     // don't let logging failure break the main action
+  }
+
+  if (!ANNOUNCEMENT_EXCLUDED_ACTIONS.has(action)) {
+    try {
+      const body = details ? `${action} — ${details}` : action
+      await sql`
+        INSERT INTO announcements (body, author, media_urls)
+        VALUES (${body}, ${staffName}, '[]'::jsonb)
+      `
+    } catch {
+      // don't let this break the main action either
+    }
   }
 
   // fire push to all subscribers (non-blocking)
