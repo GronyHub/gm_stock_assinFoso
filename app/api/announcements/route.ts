@@ -6,10 +6,11 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET() {
   try {
     const rows = await sql`
-      SELECT id, message, posted_by, created_at
+      SELECT id, message AS body, posted_by AS author,
+             COALESCE(media_urls, '[]'::jsonb) AS media_urls, created_at
       FROM announcements
       ORDER BY created_at DESC
-      LIMIT 5
+      LIMIT 30
     `
     return NextResponse.json(rows)
   } catch (e) {
@@ -26,18 +27,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Only owner or manager can post announcements' }, { status: 403 })
   }
 
-  const { message } = await req.json()
-  if (!message || !message.trim()) return NextResponse.json({ error: 'Message is required' }, { status: 400 })
+  const { body, media_urls } = await req.json()
+  const text = typeof body === 'string' ? body.trim() : ''
+  const media: { url: string; type: string }[] = Array.isArray(media_urls)
+    ? media_urls.filter((m: any) => m?.url)
+    : []
+  if (!text && media.length === 0) return NextResponse.json({ error: 'Message or media is required' }, { status: 400 })
 
   const actor = session.user?.name || (session.user as any)?.username || 'Unknown'
 
   try {
     const [row] = await sql`
-      INSERT INTO announcements (message, posted_by)
-      VALUES (${message.trim()}, ${actor})
-      RETURNING id, message, posted_by, created_at
+      INSERT INTO announcements (message, posted_by, media_urls)
+      VALUES (${text}, ${actor}, ${JSON.stringify(media)}::jsonb)
+      RETURNING id, message AS body, posted_by AS author,
+                COALESCE(media_urls, '[]'::jsonb) AS media_urls, created_at
     `
-    await logActivity(actor, 'posted announcement', message.trim())
+    await logActivity(actor, 'posted announcement', text || `${media.length} attachment(s)`)
     return NextResponse.json(row)
   } catch (e) {
     console.error('announcements POST error:', e)

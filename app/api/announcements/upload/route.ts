@@ -5,6 +5,7 @@ import { put } from '@vercel/blob'
 const ALLOWED_TYPES = [
   'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic',
   'video/mp4', 'video/quicktime', 'video/webm', 'video/3gpp',
+  'audio/webm', 'audio/mp4', 'audio/mpeg', 'audio/mp3', 'audio/ogg', 'audio/wav', 'audio/x-m4a', 'audio/aac',
 ]
 const MAX_SIZE = 50 * 1024 * 1024 // 50 MB
 
