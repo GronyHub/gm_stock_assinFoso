@@ -42,8 +42,8 @@ const LossTab        = dynamic(() => import('./_components/LossTab'),         { 
 
 type OuterTab = 'today' | 'loss' | 'errors' | 'data' | 'expenses' | 'cab' | 'staff'
 
-// Sales and Bills live as submenus inside the Loss tab.
-type LossView = 'items' | 'sales' | 'bills'
+// Sales, Bills, and Counts live as submenus inside the Loss tab.
+type LossView = 'items' | 'sales' | 'bills' | 'counts'
 
 type Item = {
   id: number
@@ -294,12 +294,13 @@ function ItemHubPageInner() {
           </div>
         </div>
 
-        {/* Loss sub-view row: Sales / Bills — Items is the Loss tab's own default view */}
+        {/* Loss sub-view row: Sales / Bills / Counts — Items is the Loss tab's own default view */}
         {outerTab === 'loss' && (
           <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 border-t border-blue-100 overflow-x-auto">
             {([
-              { key: 'sales', label: '💰 Sales' },
-              { key: 'bills', label: '🧾 Bills' },
+              { key: 'sales',  label: '💰 Sales' },
+              { key: 'bills',  label: '🧾 Bills' },
+              { key: 'counts', label: '📋 Counts' },
             ] as { key: LossView; label: string }[]).map(v => (
               <button key={v.key} onClick={() => { setLossView(v.key); setAddForm(null) }}
                 className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap transition
@@ -366,8 +367,8 @@ function ItemHubPageInner() {
               placeholder="Search…"
               className="min-w-0 w-24 flex-1 text-xs bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
 
-            {/* New button — Loss (Items/Sales/Bills submenu) and Expenses only */}
-            {(outerTab === 'loss' || outerTab === 'expenses') && (() => {
+            {/* New button — Loss (Items/Sales/Bills submenu) and Expenses only; Counts has no add-form */}
+            {(outerTab === 'expenses' || (outerTab === 'loss' && lossView !== 'counts')) && (() => {
               const formKey = outerTab === 'expenses' ? 'expense' : lossView === 'items' ? 'item' : lossView === 'sales' ? 'sale' : 'bill'
               return (
                 <button onClick={() => setAddForm(addForm === formKey ? null : formKey)}
@@ -437,6 +438,9 @@ function ItemHubPageInner() {
         )}
         {addForm !== 'bill' && outerTab === 'loss' && lossView === 'bills' && (
           <BillsTab items={items} groupFilter={group} search={search} />
+        )}
+        {outerTab === 'loss' && lossView === 'counts' && (
+          <CountsTab items={items} groupFilter={group} search={search} violation={null} />
         )}
         {outerTab === 'errors' && violation && (() => {
           const category = ERROR_VIOLATIONS.find(v => v.key === violation)?.category
