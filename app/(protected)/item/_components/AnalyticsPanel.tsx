@@ -210,7 +210,7 @@ function ItemTrendsCard() {
 }
 
 type CashTrendRow = {
-  day: string
+  day?: string; month?: string
   walkin_count: number; walkin_counted: number
   total_cash_counted: number; total_invoiced: number
   avg_discrepancy: number
@@ -230,28 +230,39 @@ function splitTrend(series: number[]): { pct: number; direction: 'up' | 'down' |
 }
 
 function CashCountedTrendCard() {
-  const [rows, setRows] = useState<CashTrendRow[]>([])
+  const [dailyRows, setDailyRows] = useState<CashTrendRow[]>([])
+  const [monthlyRows, setMonthlyRows] = useState<CashTrendRow[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetch('/api/analysis/cash-trends')
       .then(r => r.ok ? r.json() : Promise.reject())
-      .then(d => { setRows(Array.isArray(d) ? d : []); setLoading(false) })
+      .then(d => {
+        setDailyRows(Array.isArray(d.daily) ? d.daily : [])
+        setMonthlyRows(Array.isArray(d.monthly) ? d.monthly : [])
+        setLoading(false)
+      })
       .catch(() => setLoading(false))
   }, [])
 
-  const daily = useMemo(() => rows.filter(r => r.day).map(r => ({
+  const daily = useMemo(() => dailyRows.filter(r => r.day).map(r => ({
     day: dayLabel(r.day),
     cashCounted: n(r.total_cash_counted),
     invoiced: n(r.total_invoiced),
     compliance: r.walkin_count > 0 ? Math.round((n(r.walkin_counted) / n(r.walkin_count)) * 1000) / 10 : 0,
-  })), [rows])
+  })), [dailyRows])
+
+  const monthly = useMemo(() => monthlyRows.filter(r => r.month).map(r => ({
+    month: monthLabel(r.month),
+    cashCounted: n(r.total_cash_counted),
+    invoiced: n(r.total_invoiced),
+  })), [monthlyRows])
 
   const complianceTrend = useMemo(() => splitTrend(daily.map(d => d.compliance)), [daily])
   const latest = daily[daily.length - 1]
 
   if (loading) return <Card title="Cash Counted Trend"><p className="text-xs text-gray-400 py-4 text-center">Loading…</p></Card>
-  if (!daily.length) return <Card title="Cash Counted Trend"><p className="text-xs text-gray-400 py-4 text-center">No walk-in receipts yet.</p></Card>
+  if (!daily.length && !monthly.length) return <Card title="Cash Counted Trend"><p className="text-xs text-gray-400 py-4 text-center">No walk-in receipts yet.</p></Card>
 
   return (
     <>
@@ -295,6 +306,19 @@ function CashCountedTrendCard() {
             <YAxis tick={{ fontSize: 10 }} unit="%" />
             <Tooltip wrapperStyle={{ fontSize: 11 }} formatter={(v: any) => `${v}%`} />
             <Line type="monotone" dataKey="compliance" stroke="#22c55e" strokeWidth={2} dot={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      </Card>
+      <Card title="Cash Counted Trend — All Time" subtitle="Monthly, since 6 Nov 2023.">
+        <ResponsiveContainer width="100%" height={220}>
+          <LineChart data={monthly} margin={{ left: -20 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <XAxis dataKey="month" tick={{ fontSize: 9 }} interval={Math.max(0, Math.floor(monthly.length / 12))} />
+            <YAxis tick={{ fontSize: 10 }} />
+            <Tooltip wrapperStyle={{ fontSize: 11 }} formatter={(v: any) => fc(v)} />
+            <Legend wrapperStyle={{ fontSize: 10 }} />
+            <Line type="monotone" dataKey="invoiced" name="Invoiced" stroke="#94a3b8" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="cashCounted" name="Cash Counted" stroke="#3b82f6" strokeWidth={2} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </Card>
