@@ -1357,8 +1357,20 @@ function PayslipBuilder({ payslips, onSaved }: { payslips: Payslip[]; onSaved: (
     }
   }
 
+  const grandTotal = useMemo(() => {
+    return ALL_STAFF_NAMES.reduce((sum, name) => {
+      const row = rows[name]
+      return row ? sum + computeTotals(row).finalTotal : sum
+    }, 0)
+  }, [rows])
+
   return (
     <div className="space-y-3">
+      <div className="sticky top-0 z-20 bg-blue-600 text-white rounded-xl px-4 py-2.5 flex items-center justify-between shadow">
+        <span className="text-xs font-semibold uppercase tracking-wide opacity-90">Total Payroll — {monthNameOf(buildMonth)}</span>
+        <span className="text-lg font-bold">{fmtC(String(grandTotal))}</span>
+      </div>
+
       <div className="bg-white border border-gray-200 rounded-xl p-3 flex items-center justify-between gap-2 flex-wrap">
         <div>
           <label className="block text-[10px] text-gray-400 mb-0.5">Pay Month</label>
