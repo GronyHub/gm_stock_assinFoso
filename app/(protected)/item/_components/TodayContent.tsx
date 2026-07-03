@@ -355,13 +355,14 @@ function oldestDays(rows: any[], field: string): number | null {
   return Math.max(...rows.map(r => daysSince(r[field])))
 }
 
-const AUTO_PENALIZABLE = new Set(['missing_days', 'no_cash', 'cost_gte_sell', 'no_staff_times', 'unchecked_cab'])
+const AUTO_PENALIZABLE = new Set(['missing_days', 'no_cash', 'cost_gte_sell', 'no_staff_times', 'unchecked_cab', 'dup_receipts'])
 
 export default function TodayPage() {
   const [data, setData] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
   const [flags, setFlags] = useState<any | null>(null)
   const [assignments, setAssignments] = useState<Record<string, string>>({})
+  const [deadlines, setDeadlines] = useState<Record<string, string>>({})
   const [vSettings, setVSettings] = useState<Record<string, string>>({})
   const [logs, setLogs] = useState<any[]>([])
 
@@ -388,7 +389,7 @@ export default function TodayPage() {
   function loadAssignments() {
     fetch('/api/violations/assignments')
       .then(r => r.json())
-      .then(d => { setAssignments(d.assignments ?? {}); setVSettings(d.settings ?? {}) })
+      .then(d => { setAssignments(d.assignments ?? {}); setDeadlines(d.deadlines ?? {}); setVSettings(d.settings ?? {}) })
       .catch(() => {})
   }
 
@@ -543,8 +544,10 @@ export default function TodayPage() {
             {violations.map(v => {
               const assignedTo = assignments[v.type]
               const canAutoPenalize = AUTO_PENALIZABLE.has(v.type)
+              const deadline = deadlines[v.type]
               const threshold = parseInt(vSettings.threshold_days ?? '3', 10)
-              const atRisk = canAutoPenalize && assignedTo && v.days != null && v.days >= threshold
+              const overdue = deadline ? daysSince(deadline) >= 1 : v.days != null && v.days >= threshold
+              const atRisk = canAutoPenalize && assignedTo && overdue
               return (
                 <Link key={v.href} href={v.href}
                   className="flex items-center justify-between py-[2px] text-[11px] leading-tight hover:bg-gray-50 -mx-1 px-1 rounded transition gap-2">
@@ -554,7 +557,9 @@ export default function TodayPage() {
                     {v.days != null && <span className="text-gray-400"> — {agePhrase(v.days)}</span>}
                     {assignedTo && (
                       <span className={`ml-1 ${atRisk ? 'text-red-500 font-semibold' : 'text-gray-300'}`}>
-                        · <span className="capitalize">{assignedTo}</span>{atRisk && ' ⚠'}
+                        · <span className="capitalize">{assignedTo}</span>
+                        {deadline && <span> (due {fmtDate(deadline)})</span>}
+                        {atRisk && ' ⚠'}
                       </span>
                     )}
                   </span>

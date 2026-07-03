@@ -2218,6 +2218,7 @@ const VIOLATION_TYPES: { type: string; label: string; auto: boolean }[] = [
 
 function AssignmentsTab({ role, username }: { role: string; username: string }) {
   const [assignments, setAssignments] = useState<Record<string, string>>({})
+  const [deadlines, setDeadlines] = useState<Record<string, string>>({})
   const [settings, setSettings] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
@@ -2227,7 +2228,7 @@ function AssignmentsTab({ role, username }: { role: string; username: string }) 
   function load() {
     fetch('/api/violations/assignments')
       .then(r => r.json())
-      .then(d => { setAssignments(d.assignments ?? {}); setSettings(d.settings ?? {}); setLoading(false) })
+      .then(d => { setAssignments(d.assignments ?? {}); setDeadlines(d.deadlines ?? {}); setSettings(d.settings ?? {}); setLoading(false) })
       .catch(() => setLoading(false))
   }
 
@@ -2238,7 +2239,7 @@ function AssignmentsTab({ role, username }: { role: string; username: string }) 
     const label = VIOLATION_TYPES.find(v => v.type === type)?.label ?? type
     const res = await fetch('/api/violations/assignments', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ violation_type: type, staff_name: staff || null, violation_label: label }),
+      body: JSON.stringify({ violation_type: type, staff_name: staff || null, violation_label: label, deadline: deadlines[type] || null }),
     })
     setSaving(null)
     if (res.ok) {
@@ -2246,6 +2247,24 @@ function AssignmentsTab({ role, username }: { role: string; username: string }) 
     } else {
       const d = await res.json().catch(() => ({}))
       setError(d.error || 'Could not save assignment. Please try again.')
+    }
+  }
+
+  async function setDeadline(type: string, deadline: string) {
+    const staff = assignments[type]
+    if (!staff) { setError('Assign a staff member before setting a deadline.'); return }
+    setSaving(type); setError('')
+    const label = VIOLATION_TYPES.find(v => v.type === type)?.label ?? type
+    const res = await fetch('/api/violations/assignments', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ violation_type: type, staff_name: staff, violation_label: label, deadline: deadline || null }),
+    })
+    setSaving(null)
+    if (res.ok) {
+      setDeadlines(prev => ({ ...prev, [type]: deadline }))
+    } else {
+      const d = await res.json().catch(() => ({}))
+      setError(d.error || 'Could not save deadline. Please try again.')
     }
   }
 
@@ -2271,7 +2290,8 @@ function AssignmentsTab({ role, username }: { role: string; username: string }) 
         <p className="text-sm font-semibold text-gray-700">Auto-Penalty Settings</p>
         <p className="text-[11px] text-gray-400">
           Once an assigned violation has been outstanding this many days, the assigned staff member is
-          automatically penalized the points below. Checked daily.
+          automatically penalized the points below. Checked daily. If an assignment has its own deadline
+          set, that fixed date is used instead of this rolling threshold.
         </p>
         <div className="grid grid-cols-2 gap-2">
           <div>
@@ -2298,20 +2318,30 @@ function AssignmentsTab({ role, username }: { role: string; username: string }) 
       </div>
 
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
-        {VIOLATION_TYPES.map(v => (
-          <div key={v.type} className="flex items-center justify-between gap-3 px-4 py-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm text-gray-800">{v.label}</p>
-              {!v.auto && <p className="text-[10px] text-gray-400">No auto-penalty — no fixed date to measure against.</p>}
+        {VIOLATION_TYPES.map(v => {
+          const assignedStaff = assignments[v.type] ?? ''
+          return (
+            <div key={v.type} className="flex items-center justify-between gap-3 px-4 py-3 flex-wrap">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-gray-800">{v.label}</p>
+                {!v.auto && <p className="text-[10px] text-gray-400">No auto-penalty — no fixed date to measure against.</p>}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <input type="date" value={deadlines[v.type] ?? ''}
+                  disabled={!canManage || !assignedStaff || saving === v.type}
+                  onChange={e => setDeadline(v.type, e.target.value)}
+                  title="Deadline — overdue triggers auto-penalty"
+                  className="bg-gray-100 border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-60" />
+                <select value={assignedStaff} disabled={!canManage || saving === v.type}
+                  onChange={e => assign(v.type, e.target.value)}
+                  className="bg-gray-100 border border-gray-200 rounded-lg px-2 py-1.5 text-sm capitalize outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-60">
+                  <option value="">Unassigned</option>
+                  {STAFF.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                </select>
+              </div>
             </div>
-            <select value={assignments[v.type] ?? ''} disabled={!canManage || saving === v.type}
-              onChange={e => assign(v.type, e.target.value)}
-              className="shrink-0 bg-gray-100 border border-gray-200 rounded-lg px-2 py-1.5 text-sm capitalize outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-60">
-              <option value="">Unassigned</option>
-              {STAFF.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-            </select>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {!canManage && <p className="text-[11px] text-gray-400 text-center">Only the owner or manager can change assignments.</p>}
