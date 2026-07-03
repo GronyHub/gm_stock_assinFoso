@@ -177,6 +177,7 @@ function ItemTrendsCard() {
   }, [trends, search, sortBy])
 
   return (
+    <>
     <Card title="Sales Trend — All Items" subtitle={`WIC revenue by month, ${monthLabel(months[0])} – ${monthLabel(months[months.length - 1])}.`}>
       <div className="flex items-center gap-1.5 mb-2">
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search item or group…"
@@ -206,6 +207,10 @@ function ItemTrendsCard() {
         </div>
       )}
     </Card>
+      <Recommendation>
+        Sort by % Change to spot items trending down before they become a problem, and items trending up that may need a bigger stock buffer. An item with a flat sparkline near ₵0 either just launched or has stalled, so check which before assuming it is fine.
+      </Recommendation>
+    </>
   )
 }
 
@@ -285,6 +290,9 @@ function CashCountedTrendCard() {
           </LineChart>
         </ResponsiveContainer>
       </Card>
+      <Recommendation>
+        A sudden dip usually means a receipt is missing its cash count, not that less cash actually came in -- cross-check against the Cash Counted vs Invoiced chart below before assuming a real drop in sales.
+      </Recommendation>
       <Card title="Cash Counted vs Invoiced" subtitle="Last 30 days.">
         <ResponsiveContainer width="100%" height={200}>
           <LineChart data={daily} margin={{ left: -20 }}>
@@ -298,6 +306,9 @@ function CashCountedTrendCard() {
           </LineChart>
         </ResponsiveContainer>
       </Card>
+      <Recommendation>
+        The gray (Invoiced) and blue (Cash Counted) lines should track closely. A persistent gap between them, not just a one-day blip, points to an ongoing under- or over-counting habit worth raising with whoever counts cash most often.
+      </Recommendation>
       <Card title="Cash Count Compliance" subtitle="% of receipts with cash actually counted, per day.">
         <ResponsiveContainer width="100%" height={160}>
           <LineChart data={daily} margin={{ left: -20 }}>
@@ -309,6 +320,9 @@ function CashCountedTrendCard() {
           </LineChart>
         </ResponsiveContainer>
       </Card>
+      <Recommendation>
+        Days below 100% mean at least one receipt went unreconciled. If this dips repeatedly on the same day of the week or under the same staff member, that is the actual pattern to fix, not a one-off reminder.
+      </Recommendation>
       <Card title="Cash Counted Trend — All Time" subtitle="Monthly, since 6 Nov 2023.">
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={monthly} margin={{ left: -20 }}>
@@ -322,6 +336,9 @@ function CashCountedTrendCard() {
           </LineChart>
         </ResponsiveContainer>
       </Card>
+      <Recommendation>
+        Use this view for seasonality -- e.g. a slow month every year around the same time is normal and not worth chasing, but a sustained drop from the long-run average across several months is.
+      </Recommendation>
     </>
   )
 }
@@ -408,7 +425,7 @@ function LossSection() {
         </ResponsiveContainer>
       </Card>
       <Recommendation>
-        High unit-loss usually points to a process issue -- spillage, portioning, or miscounting -- rather than theft. Review how these specific items are measured, packaged, or handled, especially if they're low-value but high-quantity.
+        High unit-loss usually points to a process issue -- spillage, portioning, or miscounting -- rather than theft. Review how these specific items are measured, packaged, or handled, especially if they are low-value but high-quantity.
       </Recommendation>
 
       <Card title="Items with the Least Losses" subtitle="Smallest net discrepancy among actively-tracked items.">
@@ -515,6 +532,9 @@ function ViolationsSection() {
           </PieChart>
         </ResponsiveContainer>
       </Card>
+      <Recommendation>
+        A category that is consistently the largest slice, month after month, points to a process gap in that part of the app rather than a one-off oversight -- e.g. Counts dominating usually means the daily/15-day schedule itself is unrealistic for current staffing, not that staff are being careless.
+      </Recommendation>
     </>
   )
 }
@@ -585,6 +605,9 @@ export default function AnalyticsPanel() {
           </BarChart>
         </ResponsiveContainer>
       </Card>
+      <Recommendation>
+        This is an all-time count-vs-ledger shortfall, not a monthly figure -- see the Loss submenu for the same ranking broken out by ₵ value, unit quantity, and month-over-month trend.
+      </Recommendation>
       <Card title="Stock Value by Group" subtitle="SOH × cost price per category.">
         <ResponsiveContainer width="100%" height={Math.max(180, (data.stockValueByGroup?.length ?? 0) * 28)}>
           <BarChart data={(data.stockValueByGroup ?? []).map((r: any) => ({ name: r.cf_group, value: n(r.value) }))} layout="vertical" margin={{ left: 10 }}>
@@ -596,6 +619,9 @@ export default function AnalyticsPanel() {
           </BarChart>
         </ResponsiveContainer>
       </Card>
+      <Recommendation>
+        This is capital sitting on the shelf, at cost -- not revenue. A group with a large bar here but low sales in the Sales Trend list below is capital that could be freed up by reordering less of it.
+      </Recommendation>
       <Card title={`Out of Stock (${data.lowStockItems?.length ?? 0})`} subtitle="SOH at or below zero.">
         {(!data.lowStockItems || data.lowStockItems.length === 0)
           ? <p className="text-xs text-gray-400 py-1">Nothing out of stock.</p>
@@ -609,6 +635,9 @@ export default function AnalyticsPanel() {
             </div>
         }
       </Card>
+      <Recommendation>
+        A negative SOH usually means a count is overdue or a sale was logged against the wrong item, not that stock is literally below zero -- check the recent counts for that item before reordering to correct it.
+      </Recommendation>
       <DeadStockCard />
       <Recommendation>
         Goods with no sale in 90+ days (or never sold at all) are tying up capital and shelf space with little demand. Consider a discount or bundle promotion to clear them, cut future reorder quantities, or discontinue items that stay stale for multiple review cycles.
@@ -637,6 +666,9 @@ export default function AnalyticsPanel() {
           </BarChart>
         </ResponsiveContainer>
       </Card>
+      <Recommendation>
+        GMC (purple) is internal use, not revenue -- it is here for context on how much stock goes to the shops own work versus paying customers (blue). A rising GMC share relative to WIC is worth a look if it is not matched by service sales elsewhere.
+      </Recommendation>
       <Card title="Daily Revenue — Last 30 Days">
         <ResponsiveContainer width="100%" height={180}>
           <LineChart data={dailyRevenue30} margin={{ left: -20 }}>
@@ -648,6 +680,9 @@ export default function AnalyticsPanel() {
           </LineChart>
         </ResponsiveContainer>
       </Card>
+      <Recommendation>
+        Zero-revenue days that are not Sundays usually mean a receipt was not entered, not that the shop was actually closed -- cross-check against the Missing Sales Days violation before treating it as a slow day.
+      </Recommendation>
       <Card title="Top 10 Items by Revenue">
         <ResponsiveContainer width="100%" height={Math.max(160, (data.topItemsBySales?.length ?? 0) * 30)}>
           <BarChart data={(data.topItemsBySales ?? []).map((r: any) => ({ name: r.item_name, revenue: n(r.revenue) }))} layout="vertical" margin={{ left: 10 }}>
@@ -659,6 +694,9 @@ export default function AnalyticsPanel() {
           </BarChart>
         </ResponsiveContainer>
       </Card>
+      <Recommendation>
+        These are your revenue anchors -- make sure they are never the ones showing up in Slow-Moving Stock or Out of Stock under Items, since running out of a top earner costs more than running out of anything else.
+      </Recommendation>
       </>}
 
       {section === 'Bills' && <>
@@ -676,6 +714,9 @@ export default function AnalyticsPanel() {
           </BarChart>
         </ResponsiveContainer>
       </Card>
+      <Recommendation>
+        A spike in one month is usually a bulk restock, not a cost problem -- compare against Stock Value by Group under Items to see whether that spend actually turned into shelf stock or just cash out the door.
+      </Recommendation>
       <Card title="Top 10 Vendors by Spend">
         <ResponsiveContainer width="100%" height={Math.max(160, (data.topVendorsBySpend?.length ?? 0) * 30)}>
           <BarChart data={(data.topVendorsBySpend ?? []).map((r: any) => ({ name: r.vendor_name, total: n(r.total) }))} layout="vertical" margin={{ left: 10 }}>
@@ -687,6 +728,9 @@ export default function AnalyticsPanel() {
           </BarChart>
         </ResponsiveContainer>
       </Card>
+      <Recommendation>
+        Heavy reliance on one vendor is a supply-chain risk, not just a cost line -- if the top bar here is far ahead of the second, it is worth having at least one backup supplier lined up for that vendors goods.
+      </Recommendation>
       <Card title="Top 10 Items by Bill Spend">
         <ResponsiveContainer width="100%" height={Math.max(160, (data.topItemsByBillSpend?.length ?? 0) * 30)}>
           <BarChart data={(data.topItemsByBillSpend ?? []).map((r: any) => ({ name: r.item_name, spend: n(r.spend) }))} layout="vertical" margin={{ left: 10 }}>
@@ -698,6 +742,9 @@ export default function AnalyticsPanel() {
           </BarChart>
         </ResponsiveContainer>
       </Card>
+      <Recommendation>
+        Cross-check this list against Goods with the Most Losses under the Loss submenu -- an item that is both expensive to restock and losing stock to shrinkage is the highest-priority fix in the whole shop.
+      </Recommendation>
       </>}
 
       {section === 'Counts' && <>
@@ -712,6 +759,9 @@ export default function AnalyticsPanel() {
           </BarChart>
         </ResponsiveContainer>
       </Card>
+      <Recommendation>
+        A month with noticeably fewer counts than usual is the leading indicator for a spike in loss the following month -- if this dips, expect (and look out for) the Losses Trend under the Loss submenu to follow.
+      </Recommendation>
       <Card title="Most Frequently Counted Items">
         <ResponsiveContainer width="100%" height={Math.max(160, (data.mostCountedItems?.length ?? 0) * 30)}>
           <BarChart data={(data.mostCountedItems ?? []).map((r: any) => ({ name: r.item_name, count: n(r.times_counted) }))} layout="vertical" margin={{ left: 10 }}>
@@ -723,6 +773,9 @@ export default function AnalyticsPanel() {
           </BarChart>
         </ResponsiveContainer>
       </Card>
+      <Recommendation>
+        These are usually the Daily Count items by design, so a high number here is expected, not a red flag. Watch instead for items that are NOT on this list but should be -- high-value goods counted rarely are the ones most likely to develop unnoticed loss.
+      </Recommendation>
       </>}
 
       {section === 'Expenses' && <>
@@ -740,6 +793,9 @@ export default function AnalyticsPanel() {
           </BarChart>
         </ResponsiveContainer>
       </Card>
+      <Recommendation>
+        This total includes every category, including Salaries -- a monthly jump does not necessarily mean discretionary spending grew, check Expenses by Category below before reacting to a spike here.
+      </Recommendation>
       <Card title="Expenses by Category">
         <ResponsiveContainer width="100%" height={260}>
           <PieChart>
@@ -752,6 +808,9 @@ export default function AnalyticsPanel() {
           </PieChart>
         </ResponsiveContainer>
       </Card>
+      <Recommendation>
+        If one slice dominates every month, it is a fixed cost (rent, salaries) and not worth chasing -- the categories worth investigating are the smaller, more variable ones that suddenly grow relative to their usual share.
+      </Recommendation>
       </>}
 
       {section === 'Cash' && <>
@@ -767,6 +826,9 @@ export default function AnalyticsPanel() {
           </LineChart>
         </ResponsiveContainer>
       </Card>
+      <Recommendation>
+        A consistent shortage (line below zero, month after month) is a different problem than one bad month -- the former points to a process or trust issue worth addressing directly, the latter is more likely a one-off counting mistake.
+      </Recommendation>
       </>}
     </div>
   )
