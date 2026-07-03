@@ -39,8 +39,9 @@ const AnalyticsPanel = dynamic(() => import('./_components/AnalyticsPanel'),  { 
 const StaffClient    = dynamic(() => import('../staff/StaffClient'),          { ssr: false, loading: () => loading('Loading…') })
 const NoStaffTimesList = dynamic(() => import('../staff/StaffClient').then(m => ({ default: m.NoStaffTimesList })), { ssr: false, loading: () => loading('Loading…') })
 const LossTab        = dynamic(() => import('./_components/LossTab'),         { ssr: false, loading: () => loading('Loading…') })
+const ProfitLossTab  = dynamic(() => import('./_components/ProfitLossTab'),   { ssr: false, loading: () => loading('Loading…') })
 
-type OuterTab = 'today' | 'loss' | 'errors' | 'data' | 'expenses' | 'cab' | 'staff'
+type OuterTab = 'today' | 'loss' | 'errors' | 'data' | 'pl' | 'expenses' | 'cab' | 'staff'
 
 // Sales, Bills, and Counts live as submenus inside the Loss tab.
 type LossView = 'items' | 'sales' | 'bills' | 'counts'
@@ -84,6 +85,7 @@ const VIOLATIONS: Record<OuterTab, { key: string; label: string; category?: Erro
   loss: [],
   errors: ERROR_VIOLATIONS,
   data: [],
+  pl: [],
   expenses: [],
   cab: [],
   staff: [],
@@ -120,7 +122,7 @@ function TabIcon({ icon, label, active, onClick, count }: { icon: string; label:
   )
 }
 
-const VALID_TABS: OuterTab[] = ['today', 'loss', 'errors', 'data', 'expenses', 'cab', 'staff']
+const VALID_TABS: OuterTab[] = ['today', 'loss', 'errors', 'data', 'pl', 'expenses', 'cab', 'staff']
 
 function ItemHubPageInner() {
   const router = useRouter()
@@ -240,10 +242,11 @@ function ItemHubPageInner() {
     productType !== 'all' ? (productType === 'goods' ? 'Goods' : 'Services') : null,
   ].filter(Boolean).join(' · ')
 
-  const showControls = outerTab !== 'today' && outerTab !== 'staff' && outerTab !== 'data'
+  const showControls = outerTab !== 'today' && outerTab !== 'staff' && outerTab !== 'data' && outerTab !== 'pl'
   const { data: session } = useSession()
   const role = (session?.user as any)?.role ?? 'staff'
   const username = (session?.user as any)?.username ?? session?.user?.name ?? ''
+  const canSeePL = role === 'owner' || username === 'joe'
   const hamburgerLinks = HAMBURGER_LINKS
 
   return (
@@ -264,6 +267,9 @@ function ItemHubPageInner() {
             <TabIcon icon="📉" label="Loss"     active={outerTab === 'loss'}     onClick={() => changeTab('loss')} />
             <TabIcon icon="⚠️" label="Errors"   active={outerTab === 'errors'}   onClick={() => changeTab('errors')}   count={badgeCounts.errors} />
             <TabIcon icon="🔢" label="Data"     active={outerTab === 'data'}     onClick={() => changeTab('data')} />
+            {canSeePL && (
+              <TabIcon icon="📈" label="P&L"     active={outerTab === 'pl'}       onClick={() => changeTab('pl')} />
+            )}
             <TabIcon icon="💸" label="Exp."     active={outerTab === 'expenses'} onClick={() => changeTab('expenses')} />
             <TabIcon icon="🏦" label="CAB"      active={outerTab === 'cab'}      onClick={() => changeTab('cab')} />
             <TabIcon icon="👤" label="Staff"    active={outerTab === 'staff'}    onClick={() => changeTab('staff')} />
@@ -412,6 +418,11 @@ function ItemHubPageInner() {
         {outerTab === 'data' && (
           <TabErrorBoundary>
             <AnalyticsPanel />
+          </TabErrorBoundary>
+        )}
+        {outerTab === 'pl' && (
+          <TabErrorBoundary>
+            <ProfitLossTab />
           </TabErrorBoundary>
         )}
         {outerTab === 'today' && !(addForm === 'sale' || addForm === 'bill' || addForm === 'expense') && (
