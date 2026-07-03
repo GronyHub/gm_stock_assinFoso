@@ -218,11 +218,18 @@ function CashCountedTrendCard() {
   )
 }
 
-function SectionHeader({ icon, label }: { icon: string; label: string }) {
-  return <p className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-2 px-1">{icon} {label}</p>
-}
+const SECTIONS = [
+  { key: 'Items',    icon: '📉' },
+  { key: 'Sales',    icon: '💰' },
+  { key: 'Bills',    icon: '🧾' },
+  { key: 'Counts',   icon: '🔢' },
+  { key: 'Expenses', icon: '💸' },
+  { key: 'Cash',     icon: '🏦' },
+] as const
+type AnaSection = (typeof SECTIONS)[number]['key']
 
 export default function AnalyticsPanel() {
+  const [section, setSection] = useState<AnaSection>('Items')
   const [data, setData] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -252,7 +259,17 @@ export default function AnalyticsPanel() {
   return (
     <div className="px-3 pt-3 pb-6">
 
-      <SectionHeader icon="📉" label="Items" />
+      <div className="flex gap-1.5 overflow-x-auto pb-3 -mx-3 px-3">
+        {SECTIONS.map(s => (
+          <button key={s.key} onClick={() => setSection(s.key)}
+            className={`shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition
+              ${section === s.key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+            <span>{s.icon}</span>{s.key}
+          </button>
+        ))}
+      </div>
+
+      {section === 'Items' && <>
       <ItemTrendsCard />
       <Card title="Top 10 Items by Cumulative Loss" subtitle="Counted qty short of what the ledger expected.">
         <ResponsiveContainer width="100%" height={Math.max(160, (data.topLossItems?.length ?? 0) * 30)}>
@@ -289,8 +306,9 @@ export default function AnalyticsPanel() {
             </div>
         }
       </Card>
+      </>}
 
-      <SectionHeader icon="💰" label="Sales" />
+      {section === 'Sales' && <>
       <div className="flex gap-2 flex-wrap mb-3">
         <Pill label="Total Revenue" value={fc(totalRevenue)} color="#3b82f6" />
         <Pill label="Months" value={String(monthlyRevenue.length)} />
@@ -330,8 +348,9 @@ export default function AnalyticsPanel() {
           </BarChart>
         </ResponsiveContainer>
       </Card>
+      </>}
 
-      <SectionHeader icon="🧾" label="Bills" />
+      {section === 'Bills' && <>
       <div className="flex gap-2 flex-wrap mb-3">
         <Pill label="Total Spend" value={fc(totalBills)} color="#f97316" />
       </div>
@@ -368,8 +387,9 @@ export default function AnalyticsPanel() {
           </BarChart>
         </ResponsiveContainer>
       </Card>
+      </>}
 
-      <SectionHeader icon="🔢" label="Counts" />
+      {section === 'Counts' && <>
       <Card title="Stock Counts per Month">
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={countsPerMonth} margin={{ left: -20 }}>
@@ -392,8 +412,9 @@ export default function AnalyticsPanel() {
           </BarChart>
         </ResponsiveContainer>
       </Card>
+      </>}
 
-      <SectionHeader icon="💸" label="Expenses" />
+      {section === 'Expenses' && <>
       <div className="flex gap-2 flex-wrap mb-3">
         <Pill label="Total Expenses" value={fc(totalExp)} color="#dc2626" />
       </div>
@@ -420,8 +441,9 @@ export default function AnalyticsPanel() {
           </PieChart>
         </ResponsiveContainer>
       </Card>
+      </>}
 
-      <SectionHeader icon="🏦" label="Cash" />
+      {section === 'Cash' && <>
       <CashCountedTrendCard />
       <Card title="Cash Discrepancy Trend" subtitle="Avg (cash − invoice). Negative = shortage.">
         <ResponsiveContainer width="100%" height={160}>
@@ -434,6 +456,7 @@ export default function AnalyticsPanel() {
           </LineChart>
         </ResponsiveContainer>
       </Card>
+      </>}
     </div>
   )
 }
