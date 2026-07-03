@@ -190,6 +190,17 @@ function CashCountedTrendCard() {
           <TrendBadge direction={complianceTrend.direction} pct={complianceTrend.pct} />
         </div>
       </div>
+      <Card title="Cash Counted Trend" subtitle="Total cash counted per month, walk-in customer receipts only.">
+        <ResponsiveContainer width="100%" height={200}>
+          <LineChart data={monthly} margin={{ left: -20 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+            <YAxis tick={{ fontSize: 10 }} />
+            <Tooltip wrapperStyle={{ fontSize: 11 }} formatter={(v: any) => fc(v)} />
+            <Line type="monotone" dataKey="cashCounted" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
+          </LineChart>
+        </ResponsiveContainer>
+      </Card>
       <Card title="Cash Counted vs Invoiced" subtitle="Walk-in customer receipts only.">
         <ResponsiveContainer width="100%" height={200}>
           <LineChart data={monthly} margin={{ left: -20 }}>
