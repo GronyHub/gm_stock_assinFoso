@@ -11,8 +11,9 @@ export async function logActivity(staffName: string, action: string, details?: s
       INSERT INTO activity_logs (staff_name, action, details)
       VALUES (${staffName}, ${action}, ${details ?? null})
     `
-  } catch {
+  } catch (e) {
     // don't let logging failure break the main action
+    console.error('activity_logs insert error:', e)
   }
 
   if (!ANNOUNCEMENT_EXCLUDED_ACTIONS.has(action)) {
@@ -22,8 +23,9 @@ export async function logActivity(staffName: string, action: string, details?: s
         INSERT INTO announcements (body, author, media_urls)
         VALUES (${body}, ${staffName}, '[]'::jsonb)
       `
-    } catch {
+    } catch (e) {
       // don't let this break the main action either
+      console.error('auto-announcement insert error:', e)
     }
   }
 
