@@ -1537,7 +1537,6 @@ const VIOLATION_ICONS: Record<ViolationView, React.ReactNode> = {
 }
 
 function ViolationsTab({ role, username, vtab, setVtab }: { role: string; username: string; vtab: ViolationView; setVtab: (v: ViolationView) => void }) {
-  const isAdmin = role === 'owner' || role === 'admin' || username === 'rawlings' || username === 'grony' || username === 'joe'
   const PAYSLIP_MONTHS = ['2026-04', '2026-05']
   const PAYSLIP_MONTH_LABELS: Record<string, string> = { '2026-04': 'April 2026', '2026-05': 'May 2026' }
 
@@ -1795,22 +1794,8 @@ function ViolationsTab({ role, username, vtab, setVtab }: { role: string; userna
       {vview === 'Times' && (
         <div className="space-y-3">
           <p className="text-[11px] text-gray-400">Days that have a sales receipt but no staff time was entered.</p>
-          {noTimesDays.length === 0
-            ? <p className="py-10 text-center text-gray-400 text-sm">All sales days have staff times recorded.</p>
-            : (
-              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
-                {noTimesDays.map(date => (
-                  <FixRow key={date} label={fmtDate(date)} sub="No staff times recorded">
-                    {isAdmin ? (
-                      <NoTimesFix date={date} onFixed={d => setNoTimesDays(prev => prev.filter(x => x !== d))} />
-                    ) : (
-                      <p className="text-xs text-gray-400 py-1">Only Rawlings or the owner can add times.</p>
-                    )}
-                  </FixRow>
-                ))}
-              </div>
-            )
-          }
+          <NoStaffTimesList dates={noTimesDays} role={role} username={username}
+            onFixed={d => setNoTimesDays(prev => prev.filter(x => x !== d))} />
         </div>
       )}
     </div>
@@ -1834,6 +1819,26 @@ function FixRow({ label, sub, children }: { label: string; sub?: string; childre
         </button>
       </div>
       {open && <div className="px-3 pb-2 border-t border-gray-50 space-y-1.5 pt-1.5">{children}</div>}
+    </div>
+  )
+}
+
+// Shared between the Staff → Violations → Times view and the Errors tab's
+// "No Staff Times" violation, so both stay in sync with one implementation.
+export function NoStaffTimesList({ dates, role, username, onFixed }: { dates: string[]; role: string; username: string; onFixed: (d: string) => void }) {
+  const isAdmin = role === 'owner' || role === 'admin' || username === 'rawlings' || username === 'grony' || username === 'joe'
+  if (dates.length === 0) return <p className="py-10 text-center text-gray-400 text-sm">All sales days have staff times recorded.</p>
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
+      {dates.map(date => (
+        <FixRow key={date} label={fmtDate(date)} sub="No staff times recorded">
+          {isAdmin ? (
+            <NoTimesFix date={date} onFixed={onFixed} />
+          ) : (
+            <p className="text-xs text-gray-400 py-1">Only Rawlings or the owner can add times.</p>
+          )}
+        </FixRow>
+      ))}
     </div>
   )
 }
