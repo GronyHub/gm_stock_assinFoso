@@ -80,6 +80,70 @@ function TrendBadge({ direction, pct }: { direction: 'up' | 'down' | 'flat'; pct
   )
 }
 
+type DeadStockItem = {
+  item_id: number; item_name: string; cf_group: string | null
+  soh: number; stock_value: number; last_sale_date: string | null; days_since_sale: number | null
+}
+
+function StalenessBadge({ days }: { days: number | null }) {
+  const cls = days === null || days >= 90 ? 'bg-red-50 text-red-700' : days >= 30 ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'
+  return (
+    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${cls}`}>
+      {days === null ? 'Never sold' : `${days}d`}
+    </span>
+  )
+}
+
+function DeadStockCard() {
+  const [items, setItems] = useState<DeadStockItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+
+  useEffect(() => {
+    fetch('/api/analysis/dead-stock')
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(d => { setItems(d.items ?? []); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return items
+    const q = search.trim().toLowerCase()
+    return items.filter(i => i.item_name.toLowerCase().includes(q) || (i.cf_group ?? '').toLowerCase().includes(q))
+  }, [items, search])
+
+  const stale90 = useMemo(() => items.filter(i => i.days_since_sale === null || i.days_since_sale >= 90), [items])
+  const stuckValue = useMemo(() => stale90.reduce((s, i) => s + i.stock_value, 0), [stale90])
+
+  return (
+    <Card title="Slow-Moving Stock" subtitle="In stock, but no walk-in sale in a while -- sorted by longest unsold.">
+      <div className="flex gap-2 flex-wrap mb-2">
+        <Pill label="90+ Days / Never Sold" value={String(stale90.length)} color="#dc2626" />
+        <Pill label="Value Tied Up" value={fc(stuckValue)} color="#dc2626" />
+      </div>
+      <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search item or group…"
+        className="w-full text-xs bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-400 mb-2" />
+      {loading ? (
+        <p className="text-xs text-gray-400 py-4 text-center">Loading…</p>
+      ) : filtered.length === 0 ? (
+        <p className="text-xs text-gray-400 py-4 text-center">No in-stock goods found.</p>
+      ) : (
+        <div className="max-h-[380px] overflow-y-auto divide-y divide-gray-100">
+          {filtered.map(i => (
+            <div key={i.item_id} className="flex items-center gap-2 py-1.5">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-gray-800 truncate">{i.item_name}</p>
+                <p className="text-[9px] text-gray-400 truncate">{i.cf_group ?? 'Ungrouped'} · SOH {i.soh} · {fc(i.stock_value)}</p>
+              </div>
+              <StalenessBadge days={i.days_since_sale} />
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  )
+}
+
 type ItemTrend = {
   item_id: number; item_name: string; cf_group: string | null; product_type: string
   revenue_series: number[]; qty_series: number[]
@@ -445,6 +509,10 @@ export default function AnalyticsPanel() {
             </div>
         }
       </Card>
+      <DeadStockCard />
+      <Recommendation>
+        Goods with no sale in 90+ days (or never sold at all) are tying up capital and shelf space with little demand. Consider a discount or bundle promotion to clear them, cut future reorder quantities, or discontinue items that stay stale for multiple review cycles.
+      </Recommendation>
       </>}
 
       {section === 'Loss' && <LossSection />}
