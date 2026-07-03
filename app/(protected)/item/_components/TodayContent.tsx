@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
-import { fmtDate } from '@/lib/fmtDate'
+import { fmtDate, fmtOrdinalDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
 import DayBookFeed from '@/components/DayBookFeed'
 
@@ -357,12 +357,26 @@ function oldestDays(rows: any[], field: string): number | null {
 
 const AUTO_PENALIZABLE = new Set(['missing_days', 'no_cash', 'cost_gte_sell', 'no_staff_times', 'unchecked_cab', 'dup_receipts'])
 
+const SHORT_LABEL: Record<string, string> = {
+  missing_days: 'Sales Receipts',
+  no_cash: 'Cash Counts',
+  cost_gte_sell: 'Cost Prices',
+  no_staff_times: 'Staff Times',
+  unchecked_cab: 'Cash at Bank',
+  no_group: 'Item Groups',
+  duplicates: 'Duplicate Items',
+  not_in_inventory: 'Inventory Names',
+  dup_receipts: 'Duplicate Receipts',
+}
+
 export default function TodayPage() {
   const [data, setData] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
   const [flags, setFlags] = useState<any | null>(null)
   const [assignments, setAssignments] = useState<Record<string, string>>({})
   const [deadlines, setDeadlines] = useState<Record<string, string>>({})
+  const [assignedBy, setAssignedBy] = useState<Record<string, string>>({})
+  const [assignedOn, setAssignedOn] = useState<Record<string, string>>({})
   const [vSettings, setVSettings] = useState<Record<string, string>>({})
   const [logs, setLogs] = useState<any[]>([])
 
@@ -389,7 +403,11 @@ export default function TodayPage() {
   function loadAssignments() {
     fetch('/api/violations/assignments')
       .then(r => r.json())
-      .then(d => { setAssignments(d.assignments ?? {}); setDeadlines(d.deadlines ?? {}); setVSettings(d.settings ?? {}) })
+      .then(d => {
+        setAssignments(d.assignments ?? {}); setDeadlines(d.deadlines ?? {})
+        setAssignedBy(d.assignedBy ?? {}); setAssignedOn(d.assignedOn ?? {})
+        setVSettings(d.settings ?? {})
+      })
       .catch(() => {})
   }
 
@@ -548,23 +566,45 @@ export default function TodayPage() {
               const threshold = parseInt(vSettings.threshold_days ?? '3', 10)
               const overdue = deadline ? daysSince(deadline) >= 1 : v.days != null && v.days >= threshold
               const atRisk = canAutoPenalize && assignedTo && overdue
+
+              if (!assignedTo) {
+                return (
+                  <Link key={v.href} href={v.href}
+                    className="flex items-center justify-between py-[2px] text-[11px] leading-tight hover:bg-gray-50 -mx-1 px-1 rounded transition gap-2">
+                    <span className="min-w-0 truncate">
+                      <span className="font-bold text-red-500">{v.count}</span>{' '}
+                      <span className="text-gray-700">{v.label}</span>
+                      {v.days != null && <span className="text-gray-400"> — {agePhrase(v.days)}</span>}
+                    </span>
+                    <span className="text-[10px] text-blue-600 font-semibold shrink-0">Fix →</span>
+                  </Link>
+                )
+              }
+
+              const remaining = deadline ? -daysSince(deadline) : (canAutoPenalize && v.days != null ? threshold - v.days : null)
+              const remainingPhrase = remaining == null
+                ? 'please complete'
+                : remaining > 0
+                  ? `you have ${remaining} day${remaining !== 1 ? 's' : ''} more to complete`
+                  : remaining === 0
+                    ? 'due today to complete'
+                    : `overdue by ${Math.abs(remaining)} day${Math.abs(remaining) !== 1 ? 's' : ''} to complete`
+              const on = assignedOn[v.type]
+              const by = assignedBy[v.type]
+
               return (
-                <Link key={v.href} href={v.href}
-                  className="flex items-center justify-between py-[2px] text-[11px] leading-tight hover:bg-gray-50 -mx-1 px-1 rounded transition gap-2">
-                  <span className="min-w-0 truncate">
-                    <span className="font-bold text-red-500">{v.count}</span>{' '}
-                    <span className="text-gray-700">{v.label}</span>
-                    {v.days != null && <span className="text-gray-400"> — {agePhrase(v.days)}</span>}
-                    {assignedTo && (
-                      <span className={`ml-1 ${atRisk ? 'text-red-500 font-semibold' : 'text-gray-300'}`}>
-                        · <span className="capitalize">{assignedTo}</span>
-                        {deadline && <span> (due {fmtDate(deadline)})</span>}
-                        {atRisk && ' ⚠'}
-                      </span>
-                    )}
-                  </span>
-                  <span className="text-[10px] text-blue-600 font-semibold shrink-0">Fix →</span>
-                </Link>
+                <div key={v.href} className={`py-[3px] text-[11px] leading-snug ${atRisk ? 'text-red-500' : 'text-gray-700'}`}>
+                  <span className="capitalize font-semibold">{assignedTo}</span>, {remainingPhrase}{' '}
+                  <span className="font-bold text-red-500">{v.count}</span>{' '}
+                  {SHORT_LABEL[v.type] ?? v.label}{' '}
+                  <Link href={v.href} className="text-blue-600 font-semibold">View</Link>
+                  {atRisk && ' ⚠'}
+                  {on && (
+                    <span className="text-gray-400">
+                      {' '}(TAO {fmtOrdinalDate(on)}{by && <> by <span className="capitalize">{by}</span></>})
+                    </span>
+                  )}
+                </div>
               )
             })}
           </div>
