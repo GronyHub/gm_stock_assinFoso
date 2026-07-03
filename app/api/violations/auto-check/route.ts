@@ -82,12 +82,25 @@ async function getInstances(violationType: string): Promise<{ label: string; ins
       `
       return { label: 'No Cash at Bank confirmation', instances: rows.map((r: any) => ({ key: r.week_start, date: r.week_start, details: `Week of ${r.week_start} \u2013 ${r.week_end}` })) }
     }
+    case 'dup_receipts': {
+      const rows = await sql`
+        SELECT
+          receipt_date::text AS receipt_date,
+          CASE WHEN customer_name = 'Grony Multimedia as Customer' THEN 'GMC' ELSE 'WIC' END AS customer_type,
+          COUNT(*) AS receipt_count,
+          STRING_AGG(receipt_number, ', ' ORDER BY receipt_number) AS receipt_numbers
+        FROM sales_receipts
+        GROUP BY receipt_date::date, CASE WHEN customer_name = 'Grony Multimedia as Customer' THEN 'GMC' ELSE 'WIC' END
+        HAVING COUNT(*) > 1
+      `
+      return { label: 'Duplicate WIC/GMC receipts', instances: rows.map((r: any) => ({ key: `${r.receipt_date}-${r.customer_type}`, date: r.receipt_date, details: `${r.customer_type} on ${r.receipt_date}: ${r.receipt_count} receipts (${r.receipt_numbers})` })) }
+    }
     default:
       return { label: violationType, instances: [] }
   }
 }
 
-const AUTO_TYPES = ['missing_days', 'no_cash', 'cost_gte_sell', 'no_staff_times', 'unchecked_cab']
+const AUTO_TYPES = ['missing_days', 'no_cash', 'cost_gte_sell', 'no_staff_times', 'unchecked_cab', 'dup_receipts']
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')

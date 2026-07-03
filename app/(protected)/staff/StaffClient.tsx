@@ -2213,6 +2213,7 @@ const VIOLATION_TYPES: { type: string; label: string; auto: boolean }[] = [
   { type: 'no_group', label: 'Items with no group assigned', auto: false },
   { type: 'duplicates', label: 'Possible duplicate item pairs', auto: false },
   { type: 'not_in_inventory', label: 'Item names not found in inventory', auto: false },
+  { type: 'dup_receipts', label: 'Days with duplicate WIC/GMC receipts', auto: true },
 ]
 
 function AssignmentsTab({ role, username }: { role: string; username: string }) {

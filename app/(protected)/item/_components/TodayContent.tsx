@@ -440,6 +440,11 @@ export default function TodayPage() {
       label: 'item name' + (flags.notInInventory.length !== 1 ? 's' : '') + ' not found in inventory',
       count: flags.notInInventory.length, days: null, href: '/item?tab=Not in Inv.',
     })
+    if (flags.dupReceipts?.length) list.push({
+      type: 'dup_receipts',
+      label: 'day' + (flags.dupReceipts.length !== 1 ? 's' : '') + ' with duplicate WIC/GMC receipts',
+      count: flags.dupReceipts.length, days: oldestDays(flags.dupReceipts, 'receipt_date'), href: '/sales?tab=Dup Receipts',
+    })
     return list.sort((a, b) => b.count - a.count)
   }, [flags])
 
