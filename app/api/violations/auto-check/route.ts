@@ -29,10 +29,12 @@ async function getInstances(violationType: string): Promise<{ label: string; ins
       return { label: 'Sales Receipt not entered', instances: rows.map((r: any) => ({ key: r.missing_date, date: r.missing_date, details: `Date: ${r.missing_date}` })) }
     }
     case 'no_cash': {
+      // Walk-in receipts created through the app store customer_name as NULL --
+      // older/imported rows may still have the literal string.
       const rows = await sql`
         SELECT id, receipt_number, receipt_date::text AS receipt_date
         FROM sales_receipts
-        WHERE LOWER(TRIM(customer_name)) = 'walk in customer'
+        WHERE (customer_name IS NULL OR LOWER(TRIM(customer_name)) = 'walk in customer')
           AND (cash_counted IS NULL OR cash_counted = 0)
       `
       return { label: 'Walk-in receipt missing cash counted', instances: rows.map((r: any) => ({ key: String(r.id), date: r.receipt_date, details: `Receipt ${r.receipt_number}` })) }

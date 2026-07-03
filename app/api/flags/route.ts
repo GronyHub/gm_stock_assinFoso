@@ -82,11 +82,14 @@ export async function GET() {
   ] = await Promise.all([
 
     // 1. Walk-in customers with no cash counted
+    // Walk-in receipts created through the app store customer_name as NULL --
+    // "Walk-in Customer" is only a display fallback, never the literal saved
+    // value. Older/imported rows may still have the literal string.
     safeQuery(() => sql`
       SELECT id, receipt_number, receipt_date::text AS receipt_date,
              customer_name, total AS invoice_amount
       FROM sales_receipts
-      WHERE LOWER(TRIM(customer_name)) = 'walk in customer'
+      WHERE (customer_name IS NULL OR LOWER(TRIM(customer_name)) = 'walk in customer')
         AND (cash_counted IS NULL OR cash_counted = 0)
       ORDER BY receipt_date DESC
     `),
