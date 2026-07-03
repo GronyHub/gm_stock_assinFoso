@@ -40,7 +40,10 @@ const StaffClient    = dynamic(() => import('../staff/StaffClient'),          { 
 const NoStaffTimesList = dynamic(() => import('../staff/StaffClient').then(m => ({ default: m.NoStaffTimesList })), { ssr: false, loading: () => loading('Loading…') })
 const LossTab        = dynamic(() => import('./_components/LossTab'),         { ssr: false, loading: () => loading('Loading…') })
 
-type OuterTab = 'today' | 'loss' | 'errors' | 'data' | 'sales' | 'bills' | 'expenses' | 'cab' | 'staff'
+type OuterTab = 'today' | 'loss' | 'errors' | 'data' | 'expenses' | 'cab' | 'staff'
+
+// Sales and Bills live as submenus inside the Loss tab.
+type LossView = 'items' | 'sales' | 'bills'
 
 type Item = {
   id: number
@@ -81,8 +84,6 @@ const VIOLATIONS: Record<OuterTab, { key: string; label: string; category?: Erro
   loss: [],
   errors: ERROR_VIOLATIONS,
   data: [],
-  sales: [],
-  bills: [],
   expenses: [],
   cab: [],
   staff: [],
@@ -119,7 +120,7 @@ function TabIcon({ icon, label, active, onClick, count }: { icon: string; label:
   )
 }
 
-const VALID_TABS: OuterTab[] = ['today', 'loss', 'errors', 'data', 'sales', 'bills', 'expenses', 'cab', 'staff']
+const VALID_TABS: OuterTab[] = ['today', 'loss', 'errors', 'data', 'expenses', 'cab', 'staff']
 
 function ItemHubPageInner() {
   const router = useRouter()
@@ -130,6 +131,7 @@ function ItemHubPageInner() {
   )
   const [group, setGroup]               = useState<string | null>(null)
   const [productType, setProductType]   = useState<'all' | 'goods' | 'services'>('all')
+  const [lossView, setLossView]         = useState<LossView>('items')
   const [search, setSearch]             = useState('')
   const [violation, setViolation]       = useState<string | null>(searchParams.get('violation'))
   const [violationOpen, setViolationOpen] = useState(!!searchParams.get('violation'))
@@ -225,6 +227,7 @@ function ItemHubPageInner() {
     setViolationOpen(t === 'errors')
     setAddForm(null)
     if (t !== 'loss') setProductType('all')
+    if (t === 'loss') setLossView('items')
     router.replace(t === 'today' ? '/item' : `/item?tab=${t}`, { scroll: false })
   }
 
@@ -261,8 +264,6 @@ function ItemHubPageInner() {
             <TabIcon icon="📉" label="Loss"     active={outerTab === 'loss'}     onClick={() => changeTab('loss')} />
             <TabIcon icon="⚠️" label="Errors"   active={outerTab === 'errors'}   onClick={() => changeTab('errors')}   count={badgeCounts.errors} />
             <TabIcon icon="🔢" label="Data"     active={outerTab === 'data'}     onClick={() => changeTab('data')} />
-            <TabIcon icon="💰" label="Sales"    active={outerTab === 'sales'}    onClick={() => changeTab('sales')} />
-            <TabIcon icon="🧾" label="Bills"    active={outerTab === 'bills'}    onClick={() => changeTab('bills')} />
             <TabIcon icon="💸" label="Exp."     active={outerTab === 'expenses'} onClick={() => changeTab('expenses')} />
             <TabIcon icon="🏦" label="CAB"      active={outerTab === 'cab'}      onClick={() => changeTab('cab')} />
             <TabIcon icon="👤" label="Staff"    active={outerTab === 'staff'}    onClick={() => changeTab('staff')} />
@@ -292,6 +293,23 @@ function ItemHubPageInner() {
             )}
           </div>
         </div>
+
+        {/* Loss sub-view row: Items / Sales / Bills */}
+        {outerTab === 'loss' && (
+          <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 border-t border-blue-100 overflow-x-auto">
+            {([
+              { key: 'items', label: '📦 Items' },
+              { key: 'sales', label: '💰 Sales' },
+              { key: 'bills', label: '🧾 Bills' },
+            ] as { key: LossView; label: string }[]).map(v => (
+              <button key={v.key} onClick={() => { setLossView(v.key); setAddForm(null) }}
+                className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap transition
+                  ${lossView === v.key ? 'bg-blue-600 text-white' : 'bg-white border border-blue-200 text-blue-700 hover:bg-blue-100'}`}>
+                {v.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Row 2: groups + violations + search — hidden on Today tab */}
         {showControls && (
@@ -349,9 +367,9 @@ function ItemHubPageInner() {
               placeholder="Search…"
               className="min-w-0 w-24 flex-1 text-xs bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
 
-            {/* New button — Loss/Items, Sales, Bills, Expenses only */}
-            {(['loss', 'sales', 'bills', 'expenses'] as OuterTab[]).includes(outerTab) && (() => {
-              const formKey = outerTab === 'loss' ? 'item' : outerTab === 'sales' ? 'sale' : outerTab === 'bills' ? 'bill' : 'expense'
+            {/* New button — Loss (Items/Sales/Bills submenu) and Expenses only */}
+            {(outerTab === 'loss' || outerTab === 'expenses') && (() => {
+              const formKey = outerTab === 'expenses' ? 'expense' : lossView === 'items' ? 'item' : lossView === 'sales' ? 'sale' : 'bill'
               return (
                 <button onClick={() => setAddForm(addForm === formKey ? null : formKey)}
                   className={`shrink-0 text-xs font-semibold px-3 py-1 rounded-lg transition
@@ -388,8 +406,8 @@ function ItemHubPageInner() {
 
       {/* ── Content ── */}
       <div className="flex-1 min-h-0 overflow-y-auto">
-        {addForm === 'sale'    && outerTab === 'sales'    && <div className="px-4"><NewSaleForm    onSuccess={() => { setAddForm(null); changeTab('sales') }} /></div>}
-        {addForm === 'bill'    && outerTab === 'bills'    && <div className="px-4"><NewBillForm    onSuccess={() => { setAddForm(null); changeTab('bills') }} /></div>}
+        {addForm === 'sale'    && outerTab === 'loss'     && lossView === 'sales' && <div className="px-4"><NewSaleForm    onSuccess={() => setAddForm(null)} /></div>}
+        {addForm === 'bill'    && outerTab === 'loss'     && lossView === 'bills' && <div className="px-4"><NewBillForm    onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'expense' && outerTab === 'expenses' && <div className="px-4"><NewExpenseForm onSuccess={() => { setAddForm(null); changeTab('expenses') }} /></div>}
         {outerTab === 'data' && (
           <TabErrorBoundary>
@@ -403,8 +421,6 @@ function ItemHubPageInner() {
             </div>
           </TabErrorBoundary>
         )}
-        {addForm !== 'sale'    && outerTab === 'sales'    && <SalesTab items={items} groupFilter={group} search={search} violation={violation} />}
-        {addForm !== 'bill'    && outerTab === 'bills'    && <BillsTab items={items} groupFilter={group} search={search} />}
         {addForm !== 'expense' && outerTab === 'expenses' && <ExpensesTab search={search} />}
         {outerTab === 'cab'      && <CABTab />}
         {outerTab === 'staff'    && (
@@ -412,10 +428,16 @@ function ItemHubPageInner() {
             <StaffClient role={role} username={username} embedded />
           </TabErrorBoundary>
         )}
-        {outerTab === 'loss' && (
+        {outerTab === 'loss' && lossView === 'items' && (
           <TabErrorBoundary>
             <LossTab onOpenItem={() => {}} search={search} group={group} productType={productType} />
           </TabErrorBoundary>
+        )}
+        {addForm !== 'sale' && outerTab === 'loss' && lossView === 'sales' && (
+          <SalesTab items={items} groupFilter={group} search={search} violation={null} />
+        )}
+        {addForm !== 'bill' && outerTab === 'loss' && lossView === 'bills' && (
+          <BillsTab items={items} groupFilter={group} search={search} />
         )}
         {outerTab === 'errors' && violation && (() => {
           const category = ERROR_VIOLATIONS.find(v => v.key === violation)?.category
