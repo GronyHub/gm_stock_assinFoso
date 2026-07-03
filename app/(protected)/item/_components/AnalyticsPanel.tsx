@@ -146,7 +146,7 @@ function ItemTrendsCard() {
 }
 
 type CashTrendRow = {
-  month: string
+  day: string
   walkin_count: number; walkin_counted: number
   total_cash_counted: number; total_invoiced: number
   avg_discrepancy: number
@@ -176,18 +176,18 @@ function CashCountedTrendCard() {
       .catch(() => setLoading(false))
   }, [])
 
-  const monthly = useMemo(() => rows.filter(r => r.month).map(r => ({
-    month: monthLabel(r.month),
+  const daily = useMemo(() => rows.filter(r => r.day).map(r => ({
+    day: dayLabel(r.day),
     cashCounted: n(r.total_cash_counted),
     invoiced: n(r.total_invoiced),
     compliance: r.walkin_count > 0 ? Math.round((n(r.walkin_counted) / n(r.walkin_count)) * 1000) / 10 : 0,
   })), [rows])
 
-  const complianceTrend = useMemo(() => splitTrend(monthly.map(m => m.compliance)), [monthly])
-  const latest = monthly[monthly.length - 1]
+  const complianceTrend = useMemo(() => splitTrend(daily.map(d => d.compliance)), [daily])
+  const latest = daily[daily.length - 1]
 
   if (loading) return <Card title="Cash Counted Trend"><p className="text-xs text-gray-400 py-4 text-center">Loading…</p></Card>
-  if (!monthly.length) return <Card title="Cash Counted Trend"><p className="text-xs text-gray-400 py-4 text-center">No walk-in receipts yet.</p></Card>
+  if (!daily.length) return <Card title="Cash Counted Trend"><p className="text-xs text-gray-400 py-4 text-center">No walk-in receipts yet.</p></Card>
 
   return (
     <>
@@ -199,38 +199,38 @@ function CashCountedTrendCard() {
           <TrendBadge direction={complianceTrend.direction} pct={complianceTrend.pct} />
         </div>
       </div>
-      <Card title="Cash Counted Trend" subtitle="Total cash counted per month, walk-in customer receipts only.">
+      <Card title="Cash Counted Trend" subtitle="Total cash counted per day, last 30 days.">
         <ResponsiveContainer width="100%" height={200}>
-          <LineChart data={monthly} margin={{ left: -20 }}>
+          <LineChart data={daily} margin={{ left: -20 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+            <XAxis dataKey="day" tick={{ fontSize: 9 }} interval={2} />
             <YAxis tick={{ fontSize: 10 }} />
             <Tooltip wrapperStyle={{ fontSize: 11 }} formatter={(v: any) => fc(v)} />
-            <Line type="monotone" dataKey="cashCounted" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
+            <Line type="monotone" dataKey="cashCounted" stroke="#3b82f6" strokeWidth={2} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </Card>
-      <Card title="Cash Counted vs Invoiced" subtitle="Walk-in customer receipts only.">
+      <Card title="Cash Counted vs Invoiced" subtitle="Last 30 days.">
         <ResponsiveContainer width="100%" height={200}>
-          <LineChart data={monthly} margin={{ left: -20 }}>
+          <LineChart data={daily} margin={{ left: -20 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+            <XAxis dataKey="day" tick={{ fontSize: 9 }} interval={2} />
             <YAxis tick={{ fontSize: 10 }} />
             <Tooltip wrapperStyle={{ fontSize: 11 }} formatter={(v: any) => fc(v)} />
             <Legend wrapperStyle={{ fontSize: 10 }} />
             <Line type="monotone" dataKey="invoiced" name="Invoiced" stroke="#94a3b8" strokeWidth={2} dot={false} />
-            <Line type="monotone" dataKey="cashCounted" name="Cash Counted" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
+            <Line type="monotone" dataKey="cashCounted" name="Cash Counted" stroke="#3b82f6" strokeWidth={2} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </Card>
-      <Card title="Cash Count Compliance" subtitle="% of walk-in receipts with cash actually counted.">
+      <Card title="Cash Count Compliance" subtitle="% of receipts with cash actually counted, per day.">
         <ResponsiveContainer width="100%" height={160}>
-          <LineChart data={monthly} margin={{ left: -20 }}>
+          <LineChart data={daily} margin={{ left: -20 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+            <XAxis dataKey="day" tick={{ fontSize: 9 }} interval={2} />
             <YAxis tick={{ fontSize: 10 }} unit="%" />
             <Tooltip wrapperStyle={{ fontSize: 11 }} formatter={(v: any) => `${v}%`} />
-            <Line type="monotone" dataKey="compliance" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} />
+            <Line type="monotone" dataKey="compliance" stroke="#22c55e" strokeWidth={2} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </Card>
