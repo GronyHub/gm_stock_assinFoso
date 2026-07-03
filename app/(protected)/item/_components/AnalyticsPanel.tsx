@@ -43,6 +43,101 @@ function Pill({ label, value, color }: { label: string; value: string; color?: s
   )
 }
 
+// Plain SVG rather than recharts -- a trend list can render one of these per
+// item (potentially hundreds), and a recharts instance per row is too heavy.
+function Sparkline({ data, color }: { data: number[]; color: string }) {
+  const w = 64, h = 24, pad = 3
+  const max = Math.max(...data, 0.0001)
+  const points = data.map((v, i) => {
+    const x = pad + (data.length > 1 ? (i / (data.length - 1)) * (w - pad * 2) : 0)
+    const y = h - pad - (v / max) * (h - pad * 2)
+    return [x, y]
+  })
+  const path = points.map(p => p.join(',')).join(' ')
+  const [lastX, lastY] = points[points.length - 1] ?? [pad, h - pad]
+  return (
+    <svg width={w} height={h} className="shrink-0" aria-hidden>
+      <polyline points={path} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={lastX} cy={lastY} r={2.5} fill={color} />
+    </svg>
+  )
+}
+
+function TrendBadge({ direction, pct }: { direction: 'up' | 'down' | 'flat'; pct: number }) {
+  const cls = direction === 'up' ? 'text-green-700 bg-green-50' : direction === 'down' ? 'text-red-700 bg-red-50' : 'text-gray-500 bg-gray-100'
+  const arrow = direction === 'up' ? '▲' : direction === 'down' ? '▼' : '—'
+  return (
+    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${cls}`}>
+      {arrow} {Math.abs(pct).toFixed(0)}%
+    </span>
+  )
+}
+
+type ItemTrend = {
+  item_id: number; item_name: string; cf_group: string | null; product_type: string
+  revenue_series: number[]; qty_series: number[]
+  total_revenue: number; total_qty: number
+  pct_change: number; direction: 'up' | 'down' | 'flat'
+}
+
+function ItemTrendsCard() {
+  const [months, setMonths] = useState<string[]>([])
+  const [trends, setTrends] = useState<ItemTrend[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [sortBy, setSortBy] = useState<'revenue' | 'change'>('revenue')
+
+  useEffect(() => {
+    fetch('/api/analysis/item-trends')
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(d => { setMonths(d.months ?? []); setTrends(d.trends ?? []); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  const filtered = useMemo(() => {
+    let list = trends
+    if (search.trim()) {
+      const q = search.trim().toLowerCase()
+      list = list.filter(t => t.item_name.toLowerCase().includes(q) || (t.cf_group ?? '').toLowerCase().includes(q))
+    }
+    return [...list].sort((a, b) => sortBy === 'revenue'
+      ? b.total_revenue - a.total_revenue
+      : Math.abs(b.pct_change) - Math.abs(a.pct_change))
+  }, [trends, search, sortBy])
+
+  return (
+    <Card title="Sales Trend — All Items" subtitle={`WIC revenue by month, ${monthLabel(months[0])} – ${monthLabel(months[months.length - 1])}.`}>
+      <div className="flex items-center gap-1.5 mb-2">
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search item or group…"
+          className="min-w-0 flex-1 text-xs bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-400" />
+        <button onClick={() => setSortBy(s => s === 'revenue' ? 'change' : 'revenue')}
+          className="shrink-0 text-[10px] font-semibold px-2 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200">
+          Sort: {sortBy === 'revenue' ? 'Revenue' : '% Change'}
+        </button>
+      </div>
+      {loading ? (
+        <p className="text-xs text-gray-400 py-4 text-center">Loading…</p>
+      ) : filtered.length === 0 ? (
+        <p className="text-xs text-gray-400 py-4 text-center">No items found.</p>
+      ) : (
+        <div className="max-h-[420px] overflow-y-auto divide-y divide-gray-100">
+          {filtered.map(t => (
+            <div key={t.item_id} className="flex items-center gap-2 py-1.5">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-gray-800 truncate">{t.item_name}</p>
+                <p className="text-[9px] text-gray-400 truncate">{t.cf_group ?? 'Ungrouped'}</p>
+              </div>
+              <Sparkline data={t.revenue_series} color="#3b82f6" />
+              <p className="text-xs font-bold text-gray-900 w-16 text-right shrink-0">{fc(t.total_revenue)}</p>
+              <TrendBadge direction={t.direction} pct={t.pct_change} />
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  )
+}
+
 export default function AnalyticsPanel({ section }: { section: AnaSection }) {
   const [data, setData] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
@@ -199,6 +294,7 @@ export default function AnalyticsPanel({ section }: { section: AnaSection }) {
 
   if (section === 'Items') return (
     <div className="px-3 pt-3 pb-6">
+      <ItemTrendsCard />
       <Card title="Top 10 Items by Cumulative Loss" subtitle="Counted qty short of what the ledger expected.">
         <ResponsiveContainer width="100%" height={Math.max(160, (data.topLossItems?.length ?? 0) * 30)}>
           <BarChart data={(data.topLossItems ?? []).map((r: any) => ({ name: r.item_name, loss: n(r.total_loss) }))} layout="vertical" margin={{ left: 10 }}>
