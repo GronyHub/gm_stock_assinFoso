@@ -16,6 +16,7 @@ type Tx = {
   ref: string | null
   by: string | null
   item_count: number
+  hidden?: boolean
 }
 
 type Presence = { staff_name: string; actual_in: string | null; actual_out: string | null }
@@ -290,7 +291,9 @@ function TxRow({ tx, onItemTap }: { tx: Tx; onItemTap: (id: number, name: string
           </p>
         </div>
         <div className="text-right shrink-0">
-          {total != null && (
+          {tx.hidden ? (
+            <p className="text-sm font-semibold text-gray-400">🔒 Hidden</p>
+          ) : total != null && (
             <p className={`text-sm font-bold ${tx.type === 'expense' ? 'text-red-600' : 'text-gray-900'}`}>
               {fmtMoney(total)}
             </p>
@@ -357,7 +360,7 @@ function DayGroup({ date, txs, presence, onItemTap }: {
   onItemTap: (id: number, name: string) => void
 }) {
   const salesTotal = txs.filter(t => t.type === 'sale').reduce((s, t) => s + Number(t.total ?? 0), 0)
-  const expenseTotal = txs.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.total ?? 0), 0)
+  const expenseTotal = txs.filter(t => t.type === 'expense' && !t.hidden).reduce((s, t) => s + Number(t.total ?? 0), 0)
 
   return (
     <div>

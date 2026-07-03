@@ -1,11 +1,13 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
+import { isOwnerLevel, isConfidentialExpense } from '@/lib/roles'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
   try {
     const session = await auth()
     if (!session) return NextResponse.json([], { status: 401 })
+    const canSeeAmounts = isOwnerLevel(session.user as any)
 
     const results: any[] = []
 
@@ -50,10 +52,15 @@ export async function GET() {
       const rows = await sql`
         SELECT 'expense' AS type, id, expense_date::text AS date,
                COALESCE(expense_account, 'Expense') AS description,
-               amount::text AS total, NULL AS ref
+               amount::text AS total, NULL AS ref, expense_account
         FROM expenses ORDER BY expense_date DESC, id DESC LIMIT 200
       `
-      results.push(...rows)
+      results.push(...rows.map((r: any) => {
+        if (!canSeeAmounts && isConfidentialExpense(r.expense_account)) {
+          return { ...r, total: null, hidden: true }
+        }
+        return r
+      }))
     } catch {}
 
     // Sort by date desc, id desc

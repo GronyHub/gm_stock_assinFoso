@@ -10,7 +10,8 @@ type Expense = {
   description: string | null
   cf_justify: string | null
   vendor_name: string | null
-  amount: string
+  amount: string | null
+  amount_hidden?: boolean
   cf_expense_type: string | null
   is_property: boolean
   property_status: string | null
@@ -27,13 +28,14 @@ function fmtShort(dateStr: string) {
   return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(-2)}-${DAYS[d.getUTCDay()]}`
 }
 
-function fmt(val: string) {
+function fmt(val: string | null) {
+  if (val == null) return '—'
   const n = parseFloat(val)
   return isNaN(n) ? '—' : n.toLocaleString('en-GH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
 function fmtTotal(expenses: Expense[]) {
-  const total = expenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0)
+  const total = expenses.reduce((s, e) => s + (e.amount != null ? parseFloat(e.amount) || 0 : 0), 0)
   return total.toLocaleString('en-GH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
@@ -99,9 +101,12 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
               <td className={`${TD} text-gray-700`}>{e.description ?? '—'}</td>
               <td className={`${TD} text-gray-700`}>{e.cf_justify ?? '—'}</td>
               {!hideVendor && <td className={`${TD} text-gray-500`}>{e.vendor_name ?? '—'}</td>}
-              <td className={`${TD} text-right font-bold text-gray-900`}>₵{fmt(e.amount)}</td>
+              <td className={`${TD} text-right font-bold text-gray-900`}>{e.amount_hidden ? '🔒 Hidden' : `₵${fmt(e.amount)}`}</td>
               <td className={`${TD} text-blue-500`}>{e.entered_by ?? '—'}</td>
               <td className={TD}>
+                {e.amount_hidden ? (
+                  <p className="text-[9px] text-gray-300 text-right">—</p>
+                ) : (
                 <div className="flex items-center gap-1 justify-end">
                   <button onClick={() => editId === e.id ? onCloseEdit() : onEdit(e)}
                     className="text-[9px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded hover:bg-blue-100">
@@ -125,6 +130,7 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
                     </button>
                   )}
                 </div>
+                )}
               </td>
             </tr>
             {editId === e.id && (
@@ -249,12 +255,13 @@ export default function ExpensesTab({ search }: Props) {
   }, [filtered, groupBy])
 
   function openEdit(e: Expense) {
+    if (e.amount_hidden) return
     setForm({
       expense_date: e.expense_date?.slice(0, 10) ?? '',
       expense_account: e.expense_account,
       cf_justify: e.cf_justify ?? '',
       vendor_name: e.vendor_name ?? '',
-      amount: parseFloat(e.amount).toString(),
+      amount: e.amount != null ? parseFloat(e.amount).toString() : '',
       cf_expense_type: e.cf_expense_type ?? '',
       is_property: e.is_property,
     })
@@ -377,7 +384,9 @@ export default function ExpensesTab({ search }: Props) {
               <div key={label} className="mb-4">
                 <div className="flex items-center justify-between px-2 py-1 bg-blue-600 sticky top-0 z-20">
                   <p className="text-[10px] font-bold text-white">{label}</p>
-                  <p className="text-[9px] text-blue-200">{rows.length} record{rows.length !== 1 ? 's' : ''} · ₵{fmtTotal(rows)}</p>
+                  <p className="text-[9px] text-blue-200">
+                    {rows.length} record{rows.length !== 1 ? 's' : ''} · {rows.some(r => r.amount_hidden) ? '🔒 Hidden' : `₵${fmtTotal(rows)}`}
+                  </p>
                 </div>
                 <ExpenseTable rows={rows} {...tableProps}
                   hideAccount={groupBy === 'account'}

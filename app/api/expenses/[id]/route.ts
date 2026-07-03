@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
+import { isOwnerLevel, isConfidentialExpense } from '@/lib/roles'
 import { NextRequest, NextResponse } from 'next/server'
 
 type Ctx = { params: Promise<{ id: string }> }
@@ -10,6 +11,13 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
 
   const { id } = await params
   const { expense_date, expense_account, cf_justify, vendor_name, amount, cf_expense_type, is_property } = await req.json()
+
+  if (!isOwnerLevel(session.user as any)) {
+    const [existing] = await sql`SELECT expense_account FROM expenses WHERE id = ${Number(id)}`
+    if (existing && (isConfidentialExpense(existing.expense_account) || isConfidentialExpense(expense_account))) {
+      return NextResponse.json({ error: 'Only the owner or Joe can edit a Salaries expense' }, { status: 403 })
+    }
+  }
 
   const [row] = await sql`
     UPDATE expenses SET
@@ -44,6 +52,14 @@ export async function DELETE(_req: NextRequest, { params }: Ctx) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
+
+  if (!isOwnerLevel(session.user as any)) {
+    const [existing] = await sql`SELECT expense_account FROM expenses WHERE id = ${Number(id)}`
+    if (existing && isConfidentialExpense(existing.expense_account)) {
+      return NextResponse.json({ error: 'Only the owner or Joe can delete a Salaries expense' }, { status: 403 })
+    }
+  }
+
   await sql`DELETE FROM expense_properties WHERE expense_id = ${Number(id)}`
   const [row] = await sql`DELETE FROM expenses WHERE id = ${Number(id)} RETURNING id`
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
