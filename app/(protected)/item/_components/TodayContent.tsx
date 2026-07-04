@@ -87,6 +87,8 @@ function AnnouncementsPanel() {
   const canManage = ['owner', 'manager'].includes(role)
 
   const [posts, setPosts] = useState<Announcement[]>([])
+  const [hasMore, setHasMore] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [body, setBody] = useState('')
   const [media, setMedia] = useState<MediaFile[]>([])
   const [posting, setPosting] = useState(false)
@@ -99,11 +101,52 @@ function AnnouncementsPanel() {
   const recordedChunksRef = useRef<Blob[]>([])
   const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  const PAGE_SIZE = 30
+
+  // Merges rather than replaces, so posts loaded further back via "Load older"
+  // don't get wiped out by the next 15s poll (which only ever asks for the
+  // latest page) -- that was why older announcements used to disappear.
   function load() {
     fetch('/api/announcements')
       .then(r => r.json())
-      .then(d => { if (Array.isArray(d)) setPosts(d) })
+      .then((d: Announcement[]) => {
+        if (!Array.isArray(d)) return
+        setPosts(prev => {
+          if (prev.length === 0) {
+            if (d.length < PAGE_SIZE) setHasMore(false)
+            return d
+          }
+          const existingIds = new Set(prev.map(p => p.id))
+          const fresh = d.filter(p => !existingIds.has(p.id))
+          if (fresh.length === 0) return prev
+          return [...fresh, ...prev].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        })
+      })
       .catch(() => {})
+  }
+
+  async function loadMore() {
+    if (loadingMore || !hasMore || posts.length === 0) return
+    setLoadingMore(true)
+    try {
+      const oldest = posts[posts.length - 1]
+      const res = await fetch(`/api/announcements?before=${encodeURIComponent(oldest.created_at)}`)
+      const d: Announcement[] = await res.json()
+      if (Array.isArray(d) && d.length > 0) {
+        setPosts(prev => {
+          const existingIds = new Set(prev.map(p => p.id))
+          const older = d.filter(p => !existingIds.has(p.id))
+          return [...prev, ...older]
+        })
+        if (d.length < PAGE_SIZE) setHasMore(false)
+      } else {
+        setHasMore(false)
+      }
+    } catch {
+      // leave hasMore as-is -- user can just tap the button again
+    } finally {
+      setLoadingMore(false)
+    }
   }
 
   useEffect(() => { load() }, [])
@@ -367,6 +410,14 @@ function AnnouncementsPanel() {
               </div>
             )
           })}
+          {hasMore && (
+            <div className="flex justify-center py-2">
+              <button onClick={loadMore} disabled={loadingMore}
+                className="text-[10px] font-semibold text-blue-600 hover:text-blue-700 disabled:opacity-50">
+                {loadingMore ? 'Loading…' : 'Load older announcements'}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

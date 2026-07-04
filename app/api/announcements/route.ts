@@ -10,14 +10,26 @@ function normalizeMedia(media_urls: unknown): { url: string; type: string }[] {
   return media_urls.map((m: any) => (typeof m === 'string' ? { url: m, type: '' } : m)).filter((m: any) => m?.url)
 }
 
-export async function GET() {
+// Cursor-paginated: ?before=<ISO timestamp> fetches the next 30 older than
+// that. Without it, returns the latest 30. The client merges pages instead
+// of replacing, so older announcements stay loaded once fetched.
+export async function GET(req: NextRequest) {
   try {
-    const rows = await sql`
-      SELECT id, author, body, media_urls, created_at
-      FROM announcements
-      ORDER BY created_at DESC
-      LIMIT 30
-    `
+    const before = req.nextUrl.searchParams.get('before')
+    const rows = before
+      ? await sql`
+          SELECT id, author, body, media_urls, created_at
+          FROM announcements
+          WHERE created_at < ${before}
+          ORDER BY created_at DESC
+          LIMIT 30
+        `
+      : await sql`
+          SELECT id, author, body, media_urls, created_at
+          FROM announcements
+          ORDER BY created_at DESC
+          LIMIT 30
+        `
     return NextResponse.json(rows.map((r: any) => ({ ...r, media_urls: normalizeMedia(r.media_urls) })))
   } catch (e) {
     console.error('announcements GET error:', e)
