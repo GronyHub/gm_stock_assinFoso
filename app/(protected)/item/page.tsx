@@ -97,6 +97,7 @@ const HAMBURGER_LINKS = [
   { href: '/analysis', label: 'Analysis' },
   { href: '/vendors',   label: 'Vendors'   },
   { href: '/customers', label: 'Customers' },
+  { href: '/receipts',  label: 'Receipts'  },
   { href: '/logs',      label: 'Logs'      },
   { href: '/users',    label: 'Users'    },
   { href: '/profile',  label: 'Profile'  },
