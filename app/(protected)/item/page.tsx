@@ -250,7 +250,11 @@ function ItemHubPageInner() {
   const role = (session?.user as any)?.role ?? 'staff'
   const username = (session?.user as any)?.username ?? session?.user?.name ?? ''
   const canSeePL = role === 'owner' || username === 'joe'
-  const hamburgerLinks = HAMBURGER_LINKS
+  const isOwnerOrJoe = role === 'owner' || username.toLowerCase() === 'joe'
+  const hamburgerLinks = [
+    ...HAMBURGER_LINKS,
+    ...(isOwnerOrJoe ? [{ href: '/personal', label: 'Personal' }] : []),
+  ]
 
   return (
     <div className="-mx-4 -mt-4 flex flex-col h-[100dvh] md:h-[calc(100dvh-56px)]">
