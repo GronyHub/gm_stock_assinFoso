@@ -32,6 +32,23 @@ function fmtAnnTime(iso: string) {
   } catch { return '' }
 }
 
+function dayKey(iso: string) {
+  return new Date(iso).toDateString()
+}
+
+function dayLabel(iso: string) {
+  const d = new Date(iso)
+  const now = new Date()
+  const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+  const diffDays = Math.round((startOfDay(now) - startOfDay(d)) / 86400000)
+  if (diffDays === 0) return 'Today'
+  if (diffDays === 1) return 'Yesterday'
+  return d.toLocaleDateString('en-GB', {
+    day: 'numeric', month: 'short',
+    year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+  })
+}
+
 function mediaKind(type: string): 'image' | 'video' | 'audio' {
   if (type.startsWith('video/')) return 'video'
   if (type.startsWith('audio/')) return 'audio'
@@ -299,21 +316,33 @@ function AnnouncementsPanel() {
         <p className="text-xs text-gray-400 text-center py-6">No announcements yet.</p>
       ) : (
         <div className="divide-y divide-gray-50">
-          {posts.map(p => (
-            <div key={p.id} className="px-4 py-3 space-y-1">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-semibold text-gray-700 capitalize">{p.author}</span>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-[11px] text-gray-400">{fmtAnnTime(p.created_at)}</span>
-                  {canManage && (
-                    <button onClick={() => removePost(p.id)} className="text-gray-300 hover:text-red-500 font-bold leading-none">×</button>
-                  )}
+          {posts.map((p, i) => {
+            const showDateHeader = i === 0 || dayKey(p.created_at) !== dayKey(posts[i - 1].created_at)
+            return (
+              <div key={p.id}>
+                {showDateHeader && (
+                  <div className="flex justify-center py-2 bg-gray-50/60">
+                    <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 rounded-full px-3 py-1">
+                      {dayLabel(p.created_at)}
+                    </span>
+                  </div>
+                )}
+                <div className="px-4 py-3 space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-gray-700 capitalize">{p.author}</span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[11px] text-gray-400">{fmtAnnTime(p.created_at)}</span>
+                      {canManage && (
+                        <button onClick={() => removePost(p.id)} className="text-gray-300 hover:text-red-500 font-bold leading-none">×</button>
+                      )}
+                    </div>
+                  </div>
+                  {p.body && <p className="text-sm text-gray-800 whitespace-pre-wrap">{p.body}</p>}
+                  <MediaGrid items={p.media_urls ?? []} />
                 </div>
               </div>
-              {p.body && <p className="text-sm text-gray-800 whitespace-pre-wrap">{p.body}</p>}
-              <MediaGrid items={p.media_urls ?? []} />
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>
