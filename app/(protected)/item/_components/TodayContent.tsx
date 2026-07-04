@@ -335,19 +335,35 @@ function AnnouncementsPanel() {
                     </span>
                   </div>
                 )}
-                <div className="px-3 py-1.5 space-y-0.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-semibold text-gray-700 capitalize">{p.author}</span>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="text-[10px] text-gray-400">{fmtAnnTime(p.created_at)}</span>
-                      {canManage && (
-                        <button onClick={() => removePost(p.id)} className="text-gray-300 hover:text-red-500 font-bold leading-none">×</button>
-                      )}
-                    </div>
+                {(p.media_urls ?? []).length === 0 && p.body && !p.body.includes('\n') && p.body.length <= 60 ? (
+                  // Compact single-line row -- for short posts (mostly auto-logged
+                  // activity like "clocked out — 7:13pm") that don't need their
+                  // own separate line for the message.
+                  <div className="flex items-center justify-between gap-2 px-3 py-1">
+                    <p className="min-w-0 truncate text-[11px]">
+                      <span className="font-semibold text-gray-700 capitalize">{p.author}</span>
+                      <span className="text-gray-400"> · {fmtAnnTime(p.created_at)} · </span>
+                      <span className="text-gray-800">{p.body}</span>
+                    </p>
+                    {canManage && (
+                      <button onClick={() => removePost(p.id)} className="shrink-0 text-gray-300 hover:text-red-500 font-bold leading-none">×</button>
+                    )}
                   </div>
-                  {p.body && <p className="text-xs text-gray-800 whitespace-pre-wrap leading-snug">{p.body}</p>}
-                  <MediaGrid items={p.media_urls ?? []} />
-                </div>
+                ) : (
+                  <div className="px-3 py-1.5 space-y-0.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-semibold text-gray-700 capitalize">{p.author}</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-[10px] text-gray-400">{fmtAnnTime(p.created_at)}</span>
+                        {canManage && (
+                          <button onClick={() => removePost(p.id)} className="text-gray-300 hover:text-red-500 font-bold leading-none">×</button>
+                        )}
+                      </div>
+                    </div>
+                    {p.body && <p className="text-xs text-gray-800 whitespace-pre-wrap leading-snug">{p.body}</p>}
+                    <MediaGrid items={p.media_urls ?? []} />
+                  </div>
+                )}
               </div>
             )
           })}
