@@ -14,3 +14,9 @@ self.addEventListener('notificationclick', event => {
   event.notification.close()
   event.waitUntil(clients.openWindow('/logs'))
 })
+
+// Pass-through fetch handler -- no offline caching, but its presence is part
+// of what makes the app installable (PWA / Trusted Web Activity criteria).
+self.addEventListener('fetch', event => {
+  event.respondWith(fetch(event.request))
+})
