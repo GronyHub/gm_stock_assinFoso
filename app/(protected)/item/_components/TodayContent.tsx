@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { fmtDate, fmtOrdinalDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
-import DayBookFeed from '@/components/DayBookFeed'
 
 // ─── Announcements ────────────────────────────────────────────────────────────
 type MediaItem = { url: string; type: string }
@@ -567,10 +566,6 @@ export default function TodayPage() {
       </div>
 
       <AnnouncementsPanel />
-
-      <div className="pt-2 border-t border-gray-200">
-        <DayBookFeed />
-      </div>
     </div>
   )
 }
