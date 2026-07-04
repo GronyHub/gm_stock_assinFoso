@@ -95,6 +95,7 @@ function AnnouncementsPanel() {
   const [recording, setRecording] = useState(false)
   const [recordSeconds, setRecordSeconds] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const recordedChunksRef = useRef<Blob[]>([])
   const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -216,65 +217,59 @@ function AnnouncementsPanel() {
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-      <div className="px-4 py-3 border-b border-gray-100">
-        <p className="text-sm font-semibold text-gray-700">📢 Announcements</p>
-        <p className="text-xs text-gray-400 mt-0.5">Share info with the team — replaces the WhatsApp group</p>
-      </div>
-
-      {/* Compose — owner/manager only, matches server-side posting permission */}
+      {/* Compose — owner/manager only, matches server-side posting permission.
+          Kept compact/embedded (WhatsApp-style single bar) so it doesn't
+          dominate the Today page. */}
       {canManage && (
-        <div className="px-4 py-3 border-b border-gray-100 space-y-2">
-          <textarea
-            value={body}
-            onChange={e => setBody(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handlePost() }}
-            rows={3}
-            placeholder="Write an announcement…"
-            className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-400 resize-none"
-          />
-
+        <div className="px-2 py-2 border-b border-gray-100 space-y-1.5">
           {/* Media previews */}
           {media.length > 0 && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5 px-1">
               {media.map(m => (
-                <div key={m.localUrl} className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-100">
+                <div key={m.localUrl} className="relative w-12 h-12 rounded-md overflow-hidden border border-gray-200 bg-gray-100">
                   {m.kind === 'video' ? (
                     <video src={m.localUrl} className="w-full h-full object-cover" />
                   ) : m.kind === 'audio' ? (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-800 text-white text-2xl">🎤</div>
+                    <div className="w-full h-full flex items-center justify-center bg-gray-800 text-white text-base">🎤</div>
                   ) : (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={m.localUrl} alt="" className="w-full h-full object-cover" />
                   )}
                   {m.uploading && (
                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                      <span className="text-white text-[10px] font-semibold">uploading…</span>
+                      <span className="text-white text-[8px] font-semibold">…</span>
                     </div>
                   )}
                   {m.error && (
                     <div className="absolute inset-0 bg-red-500/70 flex items-center justify-center">
-                      <span className="text-white text-[10px] font-semibold text-center px-1">{m.error}</span>
+                      <span className="text-white text-[8px] font-semibold text-center px-0.5">!</span>
                     </div>
                   )}
                   <button
                     onClick={() => removeMedia(m.localUrl)}
-                    className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/60 text-white text-xs flex items-center justify-center leading-none"
+                    className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-black/60 text-white text-[10px] flex items-center justify-center leading-none"
                   >×</button>
                 </div>
               ))}
             </div>
           )}
 
-          {error && <p className="text-xs text-red-500">{error}</p>}
+          {error && <p className="text-[10px] text-red-500 px-1">{error}</p>}
+          {recording && <p className="text-[10px] text-red-500 font-semibold px-1">● Recording {fmtRecTime(recordSeconds)}…</p>}
 
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => fileInputRef.current?.click()}
+          <div className="flex items-center gap-1.5">
+            <div className="flex-1 flex items-center gap-1.5 bg-gray-100 rounded-full pl-3 pr-1.5 py-1 min-w-0">
+              <input
+                value={body}
+                onChange={e => setBody(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handlePost() }}
+                placeholder="Message"
                 disabled={recording}
-                className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-blue-50 transition disabled:opacity-40"
-              >
-                📎 Photo / Video
+                className="flex-1 min-w-0 bg-transparent text-sm text-gray-900 placeholder-gray-400 outline-none disabled:opacity-50"
+              />
+              <button onClick={() => fileInputRef.current?.click()} disabled={recording}
+                className="shrink-0 text-gray-400 hover:text-blue-600 disabled:opacity-40 text-base leading-none w-6 h-6 flex items-center justify-center">
+                📎
               </button>
               <input
                 ref={fileInputRef}
@@ -284,29 +279,43 @@ function AnnouncementsPanel() {
                 className="hidden"
                 onChange={e => handleFiles(e.target.files)}
               />
-              {recording ? (
-                <button
-                  onClick={stopRecording}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-white bg-red-600 px-2 py-1.5 rounded-lg animate-pulse"
-                >
-                  ⏹ Stop {fmtRecTime(recordSeconds)}
-                </button>
-              ) : (
-                <button
-                  onClick={startRecording}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-blue-50 transition"
-                >
-                  🎤 Voice
-                </button>
-              )}
+              <button onClick={() => cameraInputRef.current?.click()} disabled={recording}
+                className="shrink-0 text-gray-400 hover:text-blue-600 disabled:opacity-40 text-base leading-none w-6 h-6 flex items-center justify-center">
+                📷
+              </button>
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={e => handleFiles(e.target.files)}
+              />
             </div>
-            <button
-              onClick={handlePost}
-              disabled={!canPost}
-              className="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-40 text-white text-xs font-semibold px-4 py-1.5 rounded-lg transition"
-            >
-              {posting ? 'Posting…' : 'Post'}
-            </button>
+
+            {canPost ? (
+              <button
+                onClick={handlePost}
+                disabled={posting}
+                className="shrink-0 w-9 h-9 rounded-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-40 text-white flex items-center justify-center text-sm transition"
+              >
+                {posting ? '…' : '➤'}
+              </button>
+            ) : recording ? (
+              <button
+                onClick={stopRecording}
+                className="shrink-0 w-9 h-9 rounded-full bg-red-600 text-white flex items-center justify-center text-xs font-bold animate-pulse"
+              >
+                ⏹
+              </button>
+            ) : (
+              <button
+                onClick={startRecording}
+                className="shrink-0 w-9 h-9 rounded-full bg-green-500 hover:bg-green-400 text-white flex items-center justify-center text-sm transition"
+              >
+                🎤
+              </button>
+            )}
           </div>
         </div>
       )}
