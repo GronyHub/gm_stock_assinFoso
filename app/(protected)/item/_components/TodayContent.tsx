@@ -89,7 +89,8 @@ function MediaGrid({ items }: { items: MediaItem[] }) {
 function AnnouncementsPanel() {
   const { data: session } = useSession()
   const role = (session?.user as any)?.role
-  const canManage = ['owner', 'manager'].includes(role)
+  const canCompose = !!session
+  const canDelete = ['owner', 'manager'].includes(role)
 
   const [posts, setPosts] = useState<Announcement[]>([])
   const [hasMore, setHasMore] = useState(true)
@@ -277,10 +278,10 @@ function AnnouncementsPanel() {
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-      {/* Compose — owner/manager only, matches server-side posting permission.
-          Kept compact/embedded (WhatsApp-style single bar) so it doesn't
-          dominate the Today page. */}
-      {canManage && (
+      {/* Compose — any logged-in staff member, matches server-side posting
+          permission. Kept compact/embedded (WhatsApp-style single bar) so it
+          doesn't dominate the Today page. */}
+      {canCompose && (
         <div className="px-2 py-2 border-b border-gray-100 space-y-1.5">
           {replyTo && (
             <div className="flex items-center justify-between gap-2 bg-blue-50 rounded-lg px-2 py-1">
@@ -422,7 +423,7 @@ function AnnouncementsPanel() {
                       <span className="text-gray-400"> · {fmtAnnTime(p.created_at)} · </span>
                       <span className="text-gray-800">{p.body}</span>
                     </p>
-                    {canManage && (
+                    {canDelete && (
                       <button onClick={() => removePost(p.id)} className="shrink-0 text-gray-300 hover:text-red-500 font-bold leading-none">×</button>
                     )}
                   </div>
@@ -438,7 +439,7 @@ function AnnouncementsPanel() {
                       <span className="text-[11px] font-semibold text-gray-700 capitalize">{p.author}</span>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <span className="text-[10px] text-gray-400">{fmtAnnTime(p.created_at)}</span>
-                        {canManage && (
+                        {canDelete && (
                           <button onClick={() => removePost(p.id)} className="text-gray-300 hover:text-red-500 font-bold leading-none">×</button>
                         )}
                       </div>

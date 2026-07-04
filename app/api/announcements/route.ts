@@ -46,10 +46,6 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const role = (session.user as any)?.role
-  if (!['owner', 'manager'].includes(role)) {
-    return NextResponse.json({ error: 'Only owner or manager can post announcements' }, { status: 403 })
-  }
 
   const { body, media_urls, reply_to_id } = await req.json()
   const text = typeof body === 'string' ? body.trim() : ''
