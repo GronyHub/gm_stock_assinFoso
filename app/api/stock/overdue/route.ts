@@ -24,6 +24,7 @@ export async function GET() {
       AND s.item_name NOT ILIKE 'old- stop%'
       AND s.item_name NOT ILIKE 'service%'
       AND s.item_name NOT ILIKE 'service-%'
+      AND s.cf_group IS DISTINCT FROM 'Large Format'
       AND (c.last_count_date IS NULL
        OR c.last_count_date::date < CURRENT_DATE - INTERVAL '15 days')
     ORDER BY

@@ -22,6 +22,7 @@ export async function GET() {
       GROUP BY item_id
     ) c ON c.item_id = s.item_id
     WHERE s.item_id = ANY(${DAILY_ITEM_IDS})
+      AND s.cf_group IS DISTINCT FROM 'Large Format'
       AND (c.last_count_date IS NULL OR c.last_count_date::date < CURRENT_DATE)
     ORDER BY s.item_name ASC
   `
