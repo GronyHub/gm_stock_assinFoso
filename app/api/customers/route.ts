@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
-import { NextResponse } from 'next/server'
+import { logActivity } from '@/lib/logger'
+import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET() {
   const session = await auth()
@@ -24,4 +25,46 @@ export async function GET() {
     ORDER BY receipt_total DESC
   `
   return NextResponse.json(customers)
+}
+
+export async function POST(req: NextRequest) {
+  const session = await auth()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const {
+    display_name, company_name, first_name, last_name,
+    email, phone, payment_terms_label, opening_balance, credit_limit, notes,
+  } = await req.json()
+
+  if (!display_name || !String(display_name).trim()) {
+    return NextResponse.json({ error: 'Customer name is required' }, { status: 400 })
+  }
+
+  const enteredBy = session.user?.name || (session.user as any)?.username || null
+
+  try {
+    const [customer] = await sql`
+      INSERT INTO customers
+        (display_name, company_name, first_name, last_name, email, phone,
+         status, payment_terms_label, opening_balance, credit_limit, notes, is_internal)
+      VALUES
+        (${String(display_name).trim()}, ${company_name || null}, ${first_name || null}, ${last_name || null},
+         ${email || null}, ${phone || null},
+         'Active', ${payment_terms_label || null}, ${opening_balance || 0}, ${credit_limit || null}, ${notes || null}, false)
+      RETURNING
+        id, display_name, company_name, first_name, last_name, email, phone,
+        status, payment_terms_label, opening_balance, credit_limit, notes, is_internal
+    `
+
+    await logActivity(enteredBy ?? 'Unknown', 'added customer', customer.display_name)
+    return NextResponse.json({
+      ...customer,
+      receipt_count: 0, receipt_total: '0', receipt_balance: '0',
+      invoice_count: 0, invoice_total: '0', invoice_outstanding: '0',
+    })
+  } catch (e) {
+    console.error('customer insert error:', e)
+    const detail = e instanceof Error ? e.message : String(e)
+    return NextResponse.json({ error: `Could not save customer: ${detail}` }, { status: 500 })
+  }
 }
