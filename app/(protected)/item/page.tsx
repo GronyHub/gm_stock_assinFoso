@@ -184,7 +184,7 @@ function ItemHubPageInner() {
   usePolling(loadBadgeData, 20000)
 
   const violationCounts: Record<string, number> = useMemo(() => {
-    const negSoh = items.filter(i => Number(i.calculated_soh) <= 0 && i.product_type !== 'service').length
+    const negSoh = items.filter(i => Number(i.calculated_soh) < 0 && i.product_type !== 'service').length
     const noSp = items.filter(i => !i.selling_rate || parseFloat(i.selling_rate) === 0).length
     const noCp = items.filter(i => !i.purchase_rate || parseFloat(i.purchase_rate) === 0).length
     const f = globalFlags
