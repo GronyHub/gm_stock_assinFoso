@@ -7,7 +7,12 @@ import { usePolling } from '@/lib/usePolling'
 
 // ─── Announcements ────────────────────────────────────────────────────────────
 type MediaItem = { url: string; type: string }
-type Announcement = { id: number; author: string; body: string; media_urls: MediaItem[]; created_at: string }
+type Announcement = {
+  id: number; author: string; body: string; media_urls: MediaItem[]; created_at: string
+  reply_to_id?: number | null
+  reply_to_author?: string | null
+  reply_to_body?: string | null
+}
 type MediaFile = { file: File | Blob; localUrl: string; uploading: boolean; url?: string; contentType?: string; error?: string; kind: 'image' | 'video' | 'audio' }
 
 function fmtRecTime(s: number) {
@@ -89,6 +94,7 @@ function AnnouncementsPanel() {
   const [posts, setPosts] = useState<Announcement[]>([])
   const [hasMore, setHasMore] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [replyTo, setReplyTo] = useState<{ id: number; author: string; body: string } | null>(null)
   const [body, setBody] = useState('')
   const [media, setMedia] = useState<MediaFile[]>([])
   const [posting, setPosting] = useState(false)
@@ -100,6 +106,17 @@ function AnnouncementsPanel() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const recordedChunksRef = useRef<Blob[]>([])
   const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function startLongPress(p: Announcement) {
+    longPressTimerRef.current = setTimeout(() => {
+      setReplyTo({ id: p.id, author: p.author, body: p.body })
+      if (navigator.vibrate) navigator.vibrate(15)
+    }, 500)
+  }
+  function cancelLongPress() {
+    if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null }
+  }
 
   const PAGE_SIZE = 30
 
@@ -237,11 +254,12 @@ function AnnouncementsPanel() {
       const res = await fetch('/api/announcements', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ body: body.trim(), media_urls }),
+        body: JSON.stringify({ body: body.trim(), media_urls, reply_to_id: replyTo?.id ?? null }),
       })
       if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? 'Failed') }
       setBody('')
       setMedia([])
+      setReplyTo(null)
       load()
     } catch (e: any) {
       setError(e.message ?? 'Something went wrong')
@@ -264,6 +282,16 @@ function AnnouncementsPanel() {
           dominate the Today page. */}
       {canManage && (
         <div className="px-2 py-2 border-b border-gray-100 space-y-1.5">
+          {replyTo && (
+            <div className="flex items-center justify-between gap-2 bg-blue-50 rounded-lg px-2 py-1">
+              <p className="min-w-0 truncate text-[10px] text-blue-700">
+                Replying to <span className="font-semibold capitalize">{replyTo.author}</span>
+                {replyTo.body && <span className="text-blue-500"> · {replyTo.body.slice(0, 40)}{replyTo.body.length > 40 ? '…' : ''}</span>}
+              </p>
+              <button onClick={() => setReplyTo(null)} className="shrink-0 text-blue-400 hover:text-blue-600 font-bold leading-none">×</button>
+            </div>
+          )}
+
           {/* Media previews */}
           {media.length > 0 && (
             <div className="flex flex-wrap gap-1.5 px-1">
@@ -378,11 +406,17 @@ function AnnouncementsPanel() {
                     </span>
                   </div>
                 )}
-                {(p.media_urls ?? []).length === 0 && p.body && !p.body.includes('\n') && p.body.length <= 60 ? (
+                {(p.media_urls ?? []).length === 0 && !p.reply_to_id && p.body && !p.body.includes('\n') && p.body.length <= 60 ? (
                   // Compact single-line row -- for short posts (mostly auto-logged
                   // activity like "clocked out — 7:13pm") that don't need their
-                  // own separate line for the message.
-                  <div className="flex items-center justify-between gap-2 px-3 py-1">
+                  // own separate line for the message. Long-press to reply.
+                  <div
+                    onPointerDown={() => startLongPress(p)}
+                    onPointerUp={cancelLongPress}
+                    onPointerLeave={cancelLongPress}
+                    onContextMenu={e => e.preventDefault()}
+                    className="flex items-center justify-between gap-2 px-3 py-1 select-none"
+                  >
                     <p className="min-w-0 truncate text-[11px]">
                       <span className="font-semibold text-gray-700 capitalize">{p.author}</span>
                       <span className="text-gray-400"> · {fmtAnnTime(p.created_at)} · </span>
@@ -393,7 +427,13 @@ function AnnouncementsPanel() {
                     )}
                   </div>
                 ) : (
-                  <div className="px-3 py-1.5 space-y-0.5">
+                  <div
+                    onPointerDown={() => startLongPress(p)}
+                    onPointerUp={cancelLongPress}
+                    onPointerLeave={cancelLongPress}
+                    onContextMenu={e => e.preventDefault()}
+                    className="px-3 py-1.5 space-y-0.5 select-none"
+                  >
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-[11px] font-semibold text-gray-700 capitalize">{p.author}</span>
                       <div className="flex items-center gap-1.5 shrink-0">
@@ -403,6 +443,12 @@ function AnnouncementsPanel() {
                         )}
                       </div>
                     </div>
+                    {p.reply_to_id && (
+                      <div className="text-[10px] text-gray-500 bg-gray-50 border-l-2 border-gray-300 rounded px-1.5 py-0.5">
+                        <span className="font-semibold capitalize">{p.reply_to_author ?? 'Unknown'}</span>
+                        {p.reply_to_body && <>: {p.reply_to_body.slice(0, 60)}{p.reply_to_body.length > 60 ? '…' : ''}</>}
+                      </div>
+                    )}
                     {p.body && <p className="text-xs text-gray-800 whitespace-pre-wrap leading-snug">{p.body}</p>}
                     <MediaGrid items={p.media_urls ?? []} />
                   </div>

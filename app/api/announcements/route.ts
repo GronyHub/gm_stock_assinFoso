@@ -18,16 +18,22 @@ export async function GET(req: NextRequest) {
     const before = req.nextUrl.searchParams.get('before')
     const rows = before
       ? await sql`
-          SELECT id, author, body, media_urls, created_at
-          FROM announcements
-          WHERE created_at < ${before}
-          ORDER BY created_at DESC
+          SELECT
+            a.id, a.author, a.body, a.media_urls, a.created_at, a.reply_to_id,
+            r.author AS reply_to_author, r.body AS reply_to_body
+          FROM announcements a
+          LEFT JOIN announcements r ON r.id = a.reply_to_id
+          WHERE a.created_at < ${before}
+          ORDER BY a.created_at DESC
           LIMIT 30
         `
       : await sql`
-          SELECT id, author, body, media_urls, created_at
-          FROM announcements
-          ORDER BY created_at DESC
+          SELECT
+            a.id, a.author, a.body, a.media_urls, a.created_at, a.reply_to_id,
+            r.author AS reply_to_author, r.body AS reply_to_body
+          FROM announcements a
+          LEFT JOIN announcements r ON r.id = a.reply_to_id
+          ORDER BY a.created_at DESC
           LIMIT 30
         `
     return NextResponse.json(rows.map((r: any) => ({ ...r, media_urls: normalizeMedia(r.media_urls) })))
@@ -45,18 +51,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Only owner or manager can post announcements' }, { status: 403 })
   }
 
-  const { body, media_urls } = await req.json()
+  const { body, media_urls, reply_to_id } = await req.json()
   const text = typeof body === 'string' ? body.trim() : ''
   const media = normalizeMedia(media_urls)
   if (!text && media.length === 0) return NextResponse.json({ error: 'Message or media is required' }, { status: 400 })
+  const replyToId = Number.isInteger(reply_to_id) ? reply_to_id : null
 
   const actor = session.user?.name || (session.user as any)?.username || 'Unknown'
 
   try {
     const [row] = await sql`
-      INSERT INTO announcements (body, author, media_urls)
-      VALUES (${text}, ${actor}, ${JSON.stringify(media)}::jsonb)
-      RETURNING id, author, body, media_urls, created_at
+      INSERT INTO announcements (body, author, media_urls, reply_to_id)
+      VALUES (${text}, ${actor}, ${JSON.stringify(media)}::jsonb, ${replyToId})
+      RETURNING id, author, body, media_urls, created_at, reply_to_id
     `
     await logActivity(actor, 'posted announcement', text || `${media.length} attachment(s)`)
     return NextResponse.json({ ...row, media_urls: normalizeMedia(row.media_urls) })
