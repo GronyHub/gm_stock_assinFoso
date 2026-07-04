@@ -349,24 +349,6 @@ function AnnouncementsPanel() {
   )
 }
 
-const fmt = (v: any) => `₵${Number(v ?? 0).toLocaleString('en-GH', { maximumFractionDigits: 0 })}`
-
-function Section({ title, href, linkLabel, children }: { title: string; children: React.ReactNode; href?: string; linkLabel?: string }) {
-  return (
-    <div className="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5">
-      <div className="flex items-center justify-between mb-0.5">
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{title}</p>
-        {href && (
-          <Link href={href} className="text-[10px] text-blue-600 font-semibold">
-            {linkLabel ?? 'View →'}
-          </Link>
-        )}
-      </div>
-      {children}
-    </div>
-  )
-}
-
 function daysSince(dateStr: string): number {
   const d = new Date(dateStr + 'T00:00:00')
   const today = new Date(); today.setHours(0, 0, 0, 0)
@@ -501,77 +483,12 @@ export default function TodayPage() {
   if (loading) return <div className="py-10 text-center text-gray-400">Loading…</div>
   if (!data) return <div className="py-10 text-center text-gray-400">Could not load today's summary.</div>
 
-  const sales = data.sales ?? {}
-  const bills = data.bills ?? {}
-  const expenses = data.expenses ?? {}
-
   return (
     <div className="py-2 space-y-1.5">
       <div className="flex items-center justify-between">
         <h1 className="text-base font-bold text-gray-900">Today</h1>
         <p className="text-[10px] text-gray-400">{fmtDate(data.date)}</p>
       </div>
-
-      <Section title="Sales" href="/sales">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-[11px] text-gray-600 min-w-0">
-            {sales.count > 0
-              ? <>{sales.count} receipt{sales.count !== 1 ? 's' : ''} · <span className="font-semibold text-blue-700">{fmt(sales.total)}</span> (WIC {fmt(sales.wic)} · GMC {fmt(sales.gmc)})</>
-              : 'No sales recorded for today.'}
-          </p>
-          <Link href="/sales/new" className="shrink-0 text-[10px] font-semibold text-blue-600">+ New</Link>
-        </div>
-      </Section>
-
-      <Section title="Bills" href="/bills">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-[11px] text-gray-600 min-w-0">
-            {bills.count > 0
-              ? <>{bills.count} bill{bills.count !== 1 ? 's' : ''} · <span className="font-semibold text-orange-600">{fmt(bills.total)}</span></>
-              : 'No bills recorded for today.'}
-          </p>
-          <Link href="/bills/new" className="shrink-0 text-[10px] font-semibold text-blue-600">+ New</Link>
-        </div>
-      </Section>
-
-      <Section title="Expenses" href="/expenses">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-[11px] text-gray-600 min-w-0">
-            {expenses.count > 0
-              ? <>{expenses.count} entr{expenses.count !== 1 ? 'ies' : 'y'} · <span className="font-semibold text-red-500">{fmt(expenses.total)}</span></>
-              : 'No expenses recorded for today.'}
-          </p>
-          <Link href="/expenses/new" className="shrink-0 text-[10px] font-semibold text-blue-600">+ New</Link>
-        </div>
-      </Section>
-
-      <Section title="Stock Counting" href="/stock/counts?tab=Daily" linkLabel="Count Now →">
-        <p className="text-[11px] text-gray-600">
-          {data.pendingDailyCount > 0
-            ? <><span className="font-semibold text-orange-600">{data.pendingDailyCount}</span> item{data.pendingDailyCount !== 1 ? 's' : ''} pending count today.</>
-            : <span className="font-semibold text-green-600">All items counted today ✓</span>}
-        </p>
-      </Section>
-
-      <Section title="Staff Today" href="/staff">
-        <p className="text-[11px] text-gray-600 capitalize">
-          {(!data.staffToday || data.staffToday.length === 0)
-            ? <span className="normal-case text-gray-400">No one clocked in yet.</span>
-            : `${data.staffToday.length} clocked in — ${data.staffToday.map((s: any) => s.staff_name).join(', ')}`}
-        </p>
-      </Section>
-
-      <Section title="Cash at Bank" href="/cash-at-bank">
-        <p className="text-[11px] text-gray-600">
-          {data.latestCab
-            ? <>Confirmed {fmtDate(String(data.latestCab.entry_date).slice(0,10))} · deficit{' '}
-                <span className={`font-semibold ${Number(data.latestCab.deficit) < 0 ? 'text-red-500' : 'text-green-600'}`}>
-                  {data.latestCab.deficit != null ? fmt(data.latestCab.deficit) : '—'}
-                </span>
-              </>
-            : <span className="text-gray-400">No confirmed entry yet.</span>}
-        </p>
-      </Section>
 
       <div className="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5">
         <div className="flex items-center justify-between mb-0.5">
