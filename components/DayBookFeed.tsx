@@ -10,12 +10,13 @@ type Tab = 'All' | 'Sales' | 'Bills' | 'Counts' | 'Expenses'
 type Tx = {
   type: TxType
   id: number
-  date: string
+  date: string | null
   description: string | null
   total: string | null
   ref: string | null
   by: string | null
   item_count: number
+  hidden?: boolean
 }
 
 type Presence = { staff_name: string; actual_in: string | null; actual_out: string | null }
@@ -55,8 +56,9 @@ function fmtMoney(n: number) {
 function fmtDate(iso: string) {
   try {
     const d = new Date(iso + 'T00:00:00')
+    if (isNaN(d.getTime())) return 'Unknown Date'
     return `${DAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`
-  } catch { return iso }
+  } catch { return 'Unknown Date' }
 }
 function fmtTime(iso: string | null) {
   if (!iso) return '—'
@@ -73,8 +75,9 @@ function fmtTime(iso: string | null) {
 function groupByDate(txs: Tx[]) {
   const map = new Map<string, Tx[]>()
   txs.forEach(tx => {
-    if (!map.has(tx.date)) map.set(tx.date, [])
-    map.get(tx.date)!.push(tx)
+    const key = tx.date ?? 'Unknown'
+    if (!map.has(key)) map.set(key, [])
+    map.get(key)!.push(tx)
   })
   return map
 }
@@ -288,7 +291,9 @@ function TxRow({ tx, onItemTap }: { tx: Tx; onItemTap: (id: number, name: string
           </p>
         </div>
         <div className="text-right shrink-0">
-          {total != null && (
+          {tx.hidden ? (
+            <p className="text-sm font-semibold text-gray-400">🔒 Hidden</p>
+          ) : total != null && (
             <p className={`text-sm font-bold ${tx.type === 'expense' ? 'text-red-600' : 'text-gray-900'}`}>
               {fmtMoney(total)}
             </p>
@@ -355,7 +360,7 @@ function DayGroup({ date, txs, presence, onItemTap }: {
   onItemTap: (id: number, name: string) => void
 }) {
   const salesTotal = txs.filter(t => t.type === 'sale').reduce((s, t) => s + Number(t.total ?? 0), 0)
-  const expenseTotal = txs.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.total ?? 0), 0)
+  const expenseTotal = txs.filter(t => t.type === 'expense' && !t.hidden).reduce((s, t) => s + Number(t.total ?? 0), 0)
 
   return (
     <div>
@@ -421,8 +426,8 @@ export default function DayBookFeed() {
     if (tab === 'Bills'    && tx.type !== 'bill')    return false
     if (tab === 'Counts'   && tx.type !== 'count')   return false
     if (tab === 'Expenses' && tx.type !== 'expense') return false
-    if (dateFrom && tx.date < dateFrom) return false
-    if (dateTo   && tx.date > dateTo)   return false
+    if (dateFrom && (tx.date ?? '') < dateFrom) return false
+    if (dateTo   && (tx.date ?? '') > dateTo)   return false
     if (search) {
       const q = search.toLowerCase()
       return (tx.description ?? '').toLowerCase().includes(q) ||
@@ -433,7 +438,7 @@ export default function DayBookFeed() {
   })
 
   const grouped = groupByDate(filtered)
-  const dates = Array.from(grouped.keys()).sort((a, b) => b.localeCompare(a))
+  const dates = Array.from(grouped.keys()).sort((a, b) => (b ?? '').localeCompare(a ?? ''))
 
   const openLedger = useCallback((id: number, name: string) => setLedger({ id, name }), [])
 

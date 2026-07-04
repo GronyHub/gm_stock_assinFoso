@@ -1,21 +1,39 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
+import { isOwnerLevel } from '@/lib/roles'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET() {
-  const rows = await sql`
-    SELECT id, staff_name, full_name, start_date::text, date_of_birth::text,
-           ghana_card, ssnit_number, phone, address,
-           bank_name, bank_account, momo_number
-    FROM staff_profiles ORDER BY staff_name
-  `
+  const session = await auth()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const sessionUser = session.user as any
+  const username: string = sessionUser?.username ?? sessionUser?.name ?? ''
+
+  // owner and joe see all; others see only their own profile
+  const canSeeAll = isOwnerLevel(sessionUser)
+
+  const rows = canSeeAll
+    ? await sql`
+        SELECT id, staff_name, full_name, start_date::text, date_of_birth::text,
+               ghana_card, ssnit_number, phone, address,
+               bank_name, bank_account, momo_number
+        FROM staff_profiles ORDER BY staff_name
+      `
+    : await sql`
+        SELECT id, staff_name, full_name, start_date::text, date_of_birth::text,
+               ghana_card, ssnit_number, phone, address,
+               bank_name, bank_account, momo_number
+        FROM staff_profiles WHERE LOWER(staff_name) = LOWER(${username})
+      `
+
   return NextResponse.json(rows)
 }
 
 export async function PUT(req: NextRequest) {
   const session = await auth()
   const sessionUser = session?.user as any
-  const isAdmin = sessionUser?.role === 'owner' || sessionUser?.role === 'admin'
+  const isAdmin = isOwnerLevel(sessionUser)
   const sessionUsername: string = sessionUser?.username ?? sessionUser?.name ?? ''
 
   const body = await req.json()

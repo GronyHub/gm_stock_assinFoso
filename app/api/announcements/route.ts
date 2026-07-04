@@ -3,15 +3,22 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 
+// Older rows (or a pre-migration read) may have media_urls as plain URL strings
+// rather than { url, type } objects -- normalize so the client can rely on the shape.
+function normalizeMedia(media_urls: unknown): { url: string; type: string }[] {
+  if (!Array.isArray(media_urls)) return []
+  return media_urls.map((m: any) => (typeof m === 'string' ? { url: m, type: '' } : m)).filter((m: any) => m?.url)
+}
+
 export async function GET() {
   try {
     const rows = await sql`
-      SELECT id, message, posted_by, created_at
+      SELECT id, author, body, media_urls, created_at
       FROM announcements
       ORDER BY created_at DESC
-      LIMIT 5
+      LIMIT 30
     `
-    return NextResponse.json(rows)
+    return NextResponse.json(rows.map((r: any) => ({ ...r, media_urls: normalizeMedia(r.media_urls) })))
   } catch (e) {
     console.error('announcements GET error:', e)
     return NextResponse.json([])
@@ -26,19 +33,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Only owner or manager can post announcements' }, { status: 403 })
   }
 
-  const { message } = await req.json()
-  if (!message || !message.trim()) return NextResponse.json({ error: 'Message is required' }, { status: 400 })
+  const { body, media_urls } = await req.json()
+  const text = typeof body === 'string' ? body.trim() : ''
+  const media = normalizeMedia(media_urls)
+  if (!text && media.length === 0) return NextResponse.json({ error: 'Message or media is required' }, { status: 400 })
 
   const actor = session.user?.name || (session.user as any)?.username || 'Unknown'
 
   try {
     const [row] = await sql`
-      INSERT INTO announcements (message, posted_by)
-      VALUES (${message.trim()}, ${actor})
-      RETURNING id, message, posted_by, created_at
+      INSERT INTO announcements (body, author, media_urls)
+      VALUES (${text}, ${actor}, ${JSON.stringify(media)}::jsonb)
+      RETURNING id, author, body, media_urls, created_at
     `
-    await logActivity(actor, 'posted announcement', message.trim())
-    return NextResponse.json(row)
+    await logActivity(actor, 'posted announcement', text || `${media.length} attachment(s)`)
+    return NextResponse.json({ ...row, media_urls: normalizeMedia(row.media_urls) })
   } catch (e) {
     console.error('announcements POST error:', e)
     const detail = e instanceof Error ? e.message : String(e)

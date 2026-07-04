@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useMemo } from 'react'
+import { Fragment, useState, useEffect, useMemo } from 'react'
 import { fmtDate } from '@/lib/fmtDate'
 
 /* ── types ── */
@@ -11,12 +11,15 @@ type SummaryRow = {
   soh: string | null
   sp: string | null
   cp: string | null
+  units_per_pack: string | null
+  converts_to_item_id: number | null
   lgAmt: number
   lgQty: number
   cnt: number
   wic: number
   gmc: number
   bl: number
+  cnv: number
 }
 
 type DayRow = {
@@ -27,13 +30,15 @@ type DayRow = {
   bills_qty: string | null
   sell_price: string | null
   aliases: string | null
+  converted_in_qty: string | null
+  wic_breakdown: { name: string; qty: number }[] | null
 }
-type ComputedRow = DayRow & { expected_soh: number | null; loss: number | null }
+type ComputedRow = DayRow & { available: number | null; used: number; expected_soh: number | null; loss: number | null }
 
 type SortCol = 'item_name' | 'cf_group' | 'product_type' | 'lgAmt' | 'lgQty' | 'cnt' | 'wic' | 'gmc' | 'bl' | 'soh' | 'sp' | 'cp'
 type SortDir = 'asc' | 'desc'
 
-const EMPTY_FORM = { item_name: '', cf_group: '', selling_rate: '', purchase_rate: '', units_per_pack: '', unit_name: '' }
+const EMPTY_FORM = { item_name: '', cf_group: '', selling_rate: '', purchase_rate: '', units_per_pack: '', unit_name: '', converts_to_item_id: '' }
 
 /* ── helpers ── */
 function numVal(v: string | null) { return v ? parseFloat(v) || 0 : 0 }
@@ -65,22 +70,28 @@ function fmtLg(v: number) {
   const s = Math.abs(v) % 1 === 0 ? String(Math.abs(v)) : Math.abs(v).toFixed(2)
   return (v > 0 ? '+' : '-') + s
 }
+function shortSourceName(name: string) {
+  return name.replace(/^service\s*-\s*/i, '').slice(0, 10)
+}
 
 function computeRows(rows: DayRow[]): ComputedRow[] {
   const result: ComputedRow[] = []
   let prev: number | null = null
   for (const row of rows) {
     const bills = numVal(row.bills_qty), wic = numVal(row.wic_qty), gmc = numVal(row.gmc_qty)
+    const convertedIn = numVal(row.converted_in_qty)
+    const used = parseFloat((wic + gmc).toFixed(4))
     const counted = row.qty_counted !== null ? parseFloat(row.qty_counted) : null
-    let expected: number | null = null, loss: number | null = null
+    let available: number | null = null, expected: number | null = null, loss: number | null = null
     if (prev === null) {
       if (counted !== null) { prev = counted; expected = counted }
     } else {
-      expected = parseFloat((prev + bills - wic - gmc).toFixed(4))
+      available = parseFloat((prev + bills + convertedIn).toFixed(4))
+      expected = parseFloat((available - used).toFixed(4))
       if (counted !== null) { loss = parseFloat((expected - counted).toFixed(4)); prev = counted }
       else prev = expected
     }
-    result.push({ ...row, expected_soh: expected, loss })
+    result.push({ ...row, available, used, expected_soh: expected, loss })
   }
   return result.reverse()
 }
@@ -123,7 +134,10 @@ function SortTh({ label, col, sort, onSort, cls = '' }: {
 /* ── edit form ── */
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-1.5 py-0.5 text-[9px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
 
-function ItemEditForm({ form, onChange, groups }: { form: typeof EMPTY_FORM; onChange: (f: typeof EMPTY_FORM) => void; groups: string[] }) {
+function ItemEditForm({ form, onChange, groups, itemId, isService, allItems }: {
+  form: typeof EMPTY_FORM; onChange: (f: typeof EMPTY_FORM) => void; groups: string[]
+  itemId: number; isService: boolean; allItems: { item_id: number; item_name: string }[]
+}) {
   const set = (k: keyof typeof EMPTY_FORM) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     onChange({ ...form, [k]: e.target.value })
   return (
@@ -140,6 +154,19 @@ function ItemEditForm({ form, onChange, groups }: { form: typeof EMPTY_FORM; onC
       <div className="grid grid-cols-2 gap-1">
         <input placeholder="Units/pack" type="number" value={form.units_per_pack} onChange={set('units_per_pack')} className={inputCls} />
         <input placeholder="Unit" value={form.unit_name} onChange={set('unit_name')} className={inputCls} />
+      </div>
+      <div>
+        <label className="text-[8px] font-bold text-gray-500 block mb-0.5">
+          {isService
+            ? 'On sale (WIC), deduct "Units/pack" of this service from:'
+            : 'On GMC, credit "Units/pack" of this item into:'}
+        </label>
+        <select value={form.converts_to_item_id} onChange={set('converts_to_item_id')} className={inputCls}>
+          <option value="">— No conversion —</option>
+          {allItems.filter(i => i.item_id !== itemId).map(i => (
+            <option key={i.item_id} value={i.item_id}>{i.item_name}</option>
+          ))}
+        </select>
       </div>
     </div>
   )
@@ -300,8 +327,8 @@ function MatchPicker({ itemId, itemName, isService, current, candidatePool, onCh
 }
 
 
-function ItemDetail({ item, groups, currentAliases, currentMatches, candidatePool, autoEdit, onSaved, onRelationsSaved }: {
-  item: SummaryRow; groups: string[]
+function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, autoEdit, onSaved, onRelationsSaved }: {
+  item: SummaryRow; groups: string[]; allItems: { item_id: number; item_name: string }[]
   currentAliases: AliasRecord[]; currentMatches: MatchRecord[]
   candidatePool: CandidateItem[]
   autoEdit: boolean
@@ -322,7 +349,11 @@ function ItemDetail({ item, groups, currentAliases, currentMatches, candidatePoo
   }, [item.item_id])
 
   function startEdit() {
-    setForm({ item_name: item.item_name, cf_group: item.cf_group ?? '', selling_rate: item.sp ?? '', purchase_rate: item.cp ?? '', units_per_pack: '', unit_name: '' })
+    setForm({
+      item_name: item.item_name, cf_group: item.cf_group ?? '', selling_rate: item.sp ?? '', purchase_rate: item.cp ?? '',
+      units_per_pack: item.units_per_pack ?? '', unit_name: '',
+      converts_to_item_id: item.converts_to_item_id ? String(item.converts_to_item_id) : '',
+    })
     setAliases(currentAliases)
     setMatches(currentMatches)
     setEditing(true)
@@ -344,10 +375,15 @@ function ItemDetail({ item, groups, currentAliases, currentMatches, candidatePoo
         purchase_rate: form.purchase_rate ? parseFloat(form.purchase_rate) : null,
         units_per_pack: form.units_per_pack ? parseFloat(form.units_per_pack) : null,
         unit_name: form.unit_name || null,
+        converts_to_item_id: form.converts_to_item_id ? Number(form.converts_to_item_id) : null,
       }),
     })
     setSaving(false); setEditing(false)
-    onSaved({ item_name: form.item_name || item.item_name, cf_group: form.cf_group || null, sp: form.selling_rate || item.sp, cp: form.purchase_rate || item.cp })
+    onSaved({
+      item_name: form.item_name || item.item_name, cf_group: form.cf_group || null, sp: form.selling_rate || item.sp, cp: form.purchase_rate || item.cp,
+      units_per_pack: form.units_per_pack || null,
+      converts_to_item_id: form.converts_to_item_id ? Number(form.converts_to_item_id) : null,
+    })
     onRelationsSaved(aliases, matches)
   }
 
@@ -357,30 +393,24 @@ function ItemDetail({ item, groups, currentAliases, currentMatches, candidatePoo
   const totalCost = parseFloat((totalLoss * sp).toFixed(2))
   const lgCls = `text-center font-bold border-l border-gray-300 py-0.5 ${totalLoss > 0 ? 'text-red-600' : totalLoss < 0 ? 'text-green-600' : 'text-gray-400'}`
 
+  // When 2+ services independently draw on this item's stock, show each one as its own
+  // column (instead of one combined "Used" number) so they can be told apart.
+  const breakdownNames = computed
+    ? Array.from(new Set(computed.flatMap(r => (r.wic_breakdown ?? []).map(b => b.name)))).sort()
+    : []
+  const showBreakdown = breakdownNames.length >= 2
+  const breakdownColW = showBreakdown ? Math.max(4, Math.min(6, Math.floor(14 / breakdownNames.length))) : 0
+  const aliasW = 100 - 71 - breakdownColW * breakdownNames.length
+
   return (
     <div className="bg-white border border-gray-200 rounded-lg overflow-hidden mt-0.5">
-      {/* blue header */}
-      <div className="flex items-center justify-between px-2 py-1 bg-blue-600">
-        <div className="min-w-0 flex-1">
-          <p className="text-[9px] font-bold text-white truncate">{item.item_name}</p>
-          <p className="text-[8px] text-blue-200 truncate">{item.cf_group ?? 'No group'} · SOH {parseFloat(item.soh ?? '0') || 0} · SP {item.sp ? parseFloat(item.sp).toFixed(0) : '—'}</p>
-        </div>
-        <div className="flex items-center gap-1 shrink-0 ml-1">
-          <a href={`/stock/${item.item_id}`} className="text-[8px] font-bold text-blue-600 bg-white px-1.5 py-0.5 rounded">360°</a>
-          {editing ? (
-            <>
-              <button onClick={saveEdit} disabled={saving} className="text-[8px] font-bold text-green-700 bg-white px-1.5 py-0.5 rounded disabled:opacity-50">{saving ? '…' : 'Save'}</button>
-              <button onClick={() => setEditing(false)} className="text-[8px] font-bold text-gray-600 bg-white px-1.5 py-0.5 rounded">✕</button>
-            </>
-          ) : (
-            <button onClick={startEdit} className="text-[8px] font-bold text-blue-600 bg-white px-1.5 py-0.5 rounded">Edit</button>
-          )}
-        </div>
-      </div>
-
       {editing && (
-        <div className="px-2 pb-2 space-y-2">
-          <ItemEditForm form={form} onChange={setForm} groups={groups} />
+        <div className="px-2 pt-1.5 pb-2 space-y-2">
+          <div className="flex items-center justify-end gap-1">
+            <button onClick={saveEdit} disabled={saving} className="text-[8px] font-bold text-white bg-green-600 px-1.5 py-0.5 rounded disabled:opacity-50">{saving ? '…' : 'Save'}</button>
+            <button onClick={() => setEditing(false)} className="text-[8px] font-bold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded">✕</button>
+          </div>
+          <ItemEditForm form={form} onChange={setForm} groups={groups} itemId={item.item_id} isService={item.product_type === 'service'} allItems={allItems} />
           <div>
             <label className="text-[8px] font-bold text-gray-500 block mb-0.5">Aliases</label>
             <AliasPicker itemId={item.item_id} current={aliases} onChange={setAliases} />
@@ -395,30 +425,51 @@ function ItemDetail({ item, groups, currentAliases, currentMatches, candidatePoo
         </div>
       )}
 
-      {/* detail table */}
+      {/* detail table -- the Available/Used narrative format is only for items
+          where 2+ services share stock (e.g. 4x6 singles); every other item
+          keeps the original DATE/₵/L-G/WIC/GMC/SP/BL/CNV/EXP layout. */}
       {!dayRows ? (
         <p className="text-[9px] text-gray-400 text-center py-3">Loading…</p>
       ) : computed!.length === 0 ? (
         <p className="text-[9px] text-gray-400 text-center py-3">No activity.</p>
-      ) : (
+      ) : showBreakdown ? (
         <table className="w-full table-fixed border-collapse text-[8px]">
           <colgroup>
-            <col style={{width:'17%'}} />
-            <col style={{width:'22%'}} />
-            <col style={{width:'10%'}} />
-            <col style={{width:'8%'}} />
-            <col style={{width:'8%'}} />
+            <col style={{width:'11%'}} />
+            <col style={{width:'6%'}} />
+            <col style={{width:'6%'}} />
             <col style={{width:'7%'}} />
+            {breakdownNames.map(n => <col key={n} style={{width:`${breakdownColW}%`}} />)}
             <col style={{width:'7%'}} />
+            <col style={{width:'6%'}} />
+            <col style={{width:'6%'}} />
             <col style={{width:'7%'}} />
-            <col style={{width:'7%'}} />
-            <col style={{width:'7%'}} />
+            <col style={{width:'5%'}} />
+            <col style={{width:'5%'}} />
+            <col style={{width:'5%'}} />
+            <col style={{width:`${aliasW}%`}} />
           </colgroup>
           <thead>
             <tr className="bg-amber-400 text-gray-800 font-bold">
-              {['DATE','ALIAS','₵','L/G','CNT','WIC','GMC','SP','BL','EXP'].map((h,i) => (
-                <th key={h} className={`py-0.5 border-b-2 border-gray-400 ${i > 0 ? 'text-center border-l border-gray-400' : 'text-left pl-1'}`}>{h}</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-left pl-1">DATE</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Physical count taken that day">CNT</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Converted in from another item's GMC take">CNV</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400 bg-black text-white"
+                title="Available = previous stock + bills received + converted in">AVAIL</th>
+              {breakdownNames.map(n => (
+                <th key={n} title={n} className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">
+                  {shortSourceName(n)}
+                </th>
               ))}
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400 bg-black text-white"
+                title="Used = sold/consumed that day">USED</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Expected = Available − Used">EXP</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Count Loss = Expected − actual count (only on count days)">LOSS</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Loss valued at selling price">₵</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Direct GMC (internal use) on this item itself">GMC</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Average direct sale price that day">SP</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Direct bills/purchases received">BL</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">ALIAS</th>
             </tr>
           </thead>
           <tbody>
@@ -427,9 +478,84 @@ function ItemDetail({ item, groups, currentAliases, currentMatches, candidatePoo
               return (
                 <tr key={i} className={`border-b border-gray-200 ${row.loss !== null && row.loss > 0.001 ? 'bg-red-50' : ''}`}>
                   <td className="pl-1 py-0.5 font-bold text-gray-500 whitespace-nowrap overflow-hidden">{fmtDate(row.date)}</td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-900">{fmtQs(row.qty_counted)}</td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-teal-600">{fmtQs(row.converted_in_qty)}</td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-400 bg-black text-white">{fmtN(row.available)}</td>
+                  {breakdownNames.map(n => (
+                    <td key={n} className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">
+                      {fmtQ(row.wic_breakdown?.find(b => b.name === n)?.qty ?? 0)}
+                    </td>
+                  ))}
+                  <td className="text-center py-0.5 font-bold border-l border-gray-400 bg-black text-white">{fmtQ(row.used)}</td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-400">{fmtN(row.expected_soh)}</td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300">
+                    {row.loss === null ? <span className="text-gray-300">—</span>
+                      : row.loss > 0.001 ? <span className="text-red-600">-{fmtN(row.loss)}</span>
+                      : row.loss < -0.001 ? <span className="text-green-600">+{fmtN(Math.abs(row.loss))}</span>
+                      : <span className="text-gray-400">0</span>}
+                  </td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300">
+                    {lossVal === null ? <span className="text-gray-300">—</span>
+                      : lossVal > 0.01 ? <span className="text-red-600">-{fmtN(lossVal)}</span>
+                      : lossVal < -0.01 ? <span className="text-green-600">+{fmtN(Math.abs(lossVal))}</span>
+                      : <span className="text-gray-400">0</span>}
+                  </td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.gmc_qty)}</td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-blue-500">{fmtQs(row.sell_price)}</td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-blue-600">{fmtQs(row.bills_qty)}</td>
                   <td className="pl-1 py-0.5 border-l border-gray-300 text-purple-700 font-semibold overflow-hidden">
                     <span className="block truncate" title={row.aliases ?? ''}>{row.aliases ?? <span className="text-gray-300">—</span>}</span>
                   </td>
+                </tr>
+              )
+            })}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold text-[8px]">
+              <td className="pl-1 py-0.5 text-gray-500">Total</td>
+              <td colSpan={5 + breakdownNames.length} />
+              <td className={lgCls}>{totalLoss > 0.001 ? `-${fmtN(totalLoss)}` : totalLoss < -0.001 ? `+${fmtN(Math.abs(totalLoss))}` : '0'}</td>
+              <td className={lgCls}>{totalCost > 0.01 ? `-₵${fmtN(totalCost)}` : totalCost < -0.01 ? `+₵${fmtN(Math.abs(totalCost))}` : '0'}</td>
+              <td colSpan={4} />
+            </tr>
+          </tfoot>
+        </table>
+      ) : (
+        <table className="w-full table-fixed border-collapse text-[8px]">
+          <colgroup>
+            <col style={{width:'15%'}} />
+            <col style={{width:'10%'}} />
+            <col style={{width:'8%'}} />
+            <col style={{width:'8%'}} />
+            <col style={{width:'7%'}} />
+            <col style={{width:'7%'}} />
+            <col style={{width:'7%'}} />
+            <col style={{width:'7%'}} />
+            <col style={{width:'7%'}} />
+            <col style={{width:'7%'}} />
+            <col style={{width:'17%'}} />
+          </colgroup>
+          <thead>
+            <tr className="bg-amber-400 text-gray-800 font-bold">
+              <th className="py-0.5 border-b-2 border-gray-400 text-left pl-1">DATE</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">₵</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">L/G</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">CNT</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">WIC</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">GMC</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">SP</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">BL</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Converted in from another item's GMC take">CNV</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">EXP</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">ALIAS</th>
+            </tr>
+          </thead>
+          <tbody>
+            {computed!.map((row, i) => {
+              const lossVal = row.loss !== null ? row.loss * sp : null
+              return (
+                <tr key={i} className={`border-b border-gray-200 ${row.loss !== null && row.loss > 0.001 ? 'bg-red-50' : ''}`}>
+                  <td className="pl-1 py-0.5 font-bold text-gray-500 whitespace-nowrap overflow-hidden">{fmtDate(row.date)}</td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300">
                     {lossVal === null ? <span className="text-gray-300">—</span>
                       : lossVal > 0.01 ? <span className="text-red-600">-{fmtN(lossVal)}</span>
@@ -447,7 +573,11 @@ function ItemDetail({ item, groups, currentAliases, currentMatches, candidatePoo
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.gmc_qty)}</td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-blue-500">{fmtQs(row.sell_price)}</td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-blue-600">{fmtQs(row.bills_qty)}</td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-teal-600">{fmtQs(row.converted_in_qty)}</td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-400">{fmtN(row.expected_soh)}</td>
+                  <td className="pl-1 py-0.5 border-l border-gray-300 text-purple-700 font-semibold overflow-hidden">
+                    <span className="block truncate" title={row.aliases ?? ''}>{row.aliases ?? <span className="text-gray-300">—</span>}</span>
+                  </td>
                 </tr>
               )
             })}
@@ -457,7 +587,7 @@ function ItemDetail({ item, groups, currentAliases, currentMatches, candidatePoo
               <td className="pl-1 py-0.5 text-gray-500">Total</td>
               <td className={lgCls}>{totalCost > 0.01 ? `-₵${fmtN(totalCost)}` : totalCost < -0.01 ? `+₵${fmtN(Math.abs(totalCost))}` : '0'}</td>
               <td className={lgCls}>{totalLoss > 0.001 ? `-${fmtN(totalLoss)}` : totalLoss < -0.001 ? `+${fmtN(Math.abs(totalLoss))}` : '0'}</td>
-              <td colSpan={7} />
+              <td colSpan={8} />
             </tr>
           </tfoot>
         </table>
@@ -543,6 +673,9 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   const servicesPool = useMemo<CandidateItem[]>(() =>
     rows.filter(r => r.product_type === 'service').map(r => ({ item_id: r.item_id, item_name: r.item_name, product_type: r.product_type }))
   , [rows])
+  const allItemsList = useMemo(() =>
+    rows.map(r => ({ item_id: r.item_id, item_name: r.item_name })).sort((a, b) => a.item_name.localeCompare(b.item_name))
+  , [rows])
 
   const filtered = useMemo(() => {
     const q = (search ?? '').toLowerCase()
@@ -566,29 +699,113 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
 
   const thProps = { sort, onSort: handleSort }
 
+  const colgroup = (
+    <colgroup>
+      <col style={{width:'104px'}} />
+      <col style={{width:'30px'}} />
+      <col style={{width:'26px'}} />
+      <col style={{width:'26px'}} />
+      <col style={{width:'26px'}} />
+      <col style={{width:'26px'}} />
+      <col style={{width:'22px'}} />
+      <col style={{width:'26px'}} />
+      <col style={{width:'30px'}} />
+      <col style={{width:'26px'}} />
+      <col style={{width:'56px'}} />
+      <col style={{width:'50px'}} />
+      <col style={{width:'18px'}} />
+      <col style={{width:'220px'}} />
+      <col style={{width:'220px'}} />
+      <col style={{width:'50px'}} />
+    </colgroup>
+  )
+
+  function renderRow(row: SummaryRow) {
+    const lossAmt = row.lgAmt > 0, gainAmt = row.lgAmt < 0
+    const lossQty = row.lgQty > 0, gainQty = row.lgQty < 0
+    const soh = parseFloat(row.soh ?? '0') || 0
+    const isOpen = expandedId === row.item_id
+    return (
+      <Fragment key={row.item_id}>
+      <tr
+        onClick={() => { setExpandedId(isOpen ? null : row.item_id); setEditTriggerId(null) }}
+        className={`cursor-pointer transition
+          ${isOpen ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
+        <td className={`pl-1 pr-0 py-0.5 font-bold text-gray-900 whitespace-nowrap overflow-hidden sticky left-0 z-10 border border-black ${isOpen ? 'bg-blue-50' : 'bg-white'}`}
+          title={row.item_name}>{row.item_name.slice(0, 20)}</td>
+        <td className={`text-center py-0.5 font-bold tabular-nums border border-black ${lossAmt ? 'text-red-600' : gainAmt ? 'text-green-600' : 'text-gray-300'}`}>
+          {fmtAmt(row.lgAmt)}
+        </td>
+        <td className={`text-center py-0.5 font-bold tabular-nums border border-black ${lossQty ? 'text-red-500' : gainQty ? 'text-green-600' : 'text-gray-300'}`}>
+          {fmtLg(row.lgQty)}
+        </td>
+        <td className="text-center py-0.5 font-bold text-gray-700 tabular-nums border border-black">{fmtQ(row.cnt)}</td>
+        <td className="text-center py-0.5 font-bold text-gray-700 tabular-nums border border-black">{fmtQ(row.wic)}</td>
+        <td className="text-center py-0.5 font-bold text-gray-700 tabular-nums border border-black">{fmtQ(row.gmc)}</td>
+        <td className="text-center py-0.5 font-bold text-blue-600 tabular-nums border border-black">{fmtQ(row.bl)}</td>
+        <td className={`text-center py-0.5 font-bold tabular-nums border border-black ${soh <= 0 ? 'text-red-500' : 'text-gray-700'}`}>
+          {soh % 1 === 0 ? soh : soh.toFixed(1)}
+        </td>
+        <td className="text-center py-0.5 font-bold text-blue-600 tabular-nums border border-black">{fmtCcy(row.sp)}</td>
+        <td className="text-center py-0.5 font-bold text-green-600 tabular-nums border border-black">{fmtCcy(row.cp)}</td>
+        <td className="text-center py-0.5 font-bold text-gray-500 truncate border border-black" title={row.cf_group ?? undefined}>{row.cf_group ?? '—'}</td>
+        <td className={`text-center py-0.5 font-bold border border-black ${row.product_type === 'service' ? 'text-purple-500' : 'text-teal-600'}`}
+          title={row.product_type === 'service' ? 'Service' : 'Good'}>
+          {row.product_type === 'service' ? 'Service' : 'Good'}
+        </td>
+        <td className="text-center py-0.5 font-bold text-gray-400 border border-black">{isOpen ? '▾' : '▸'}</td>
+        <td className="pl-1.5 py-0.5 font-bold text-gray-500 truncate overflow-hidden border border-black"
+          title={(aliasRecords[row.item_id] ?? []).map(a => a.name).join(', ')}>
+          {(aliasRecords[row.item_id] ?? []).map(a => a.name).join(', ') || '—'}
+        </td>
+        <td className="pl-1.5 py-0.5 font-bold text-gray-500 truncate overflow-hidden border border-black"
+          title={(matchRecords[row.item_name.trim().toLowerCase()] ?? []).map(m => m.name).join(', ')}>
+          {(matchRecords[row.item_name.trim().toLowerCase()] ?? []).map(m => m.name).join(', ') || '—'}
+        </td>
+        <td className="text-center py-0.5 border border-black">
+          <button
+            onClick={e => { e.stopPropagation(); setExpandedId(row.item_id); setEditTriggerId(row.item_id) }}
+            className="text-[8px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+            Edit
+          </button>
+        </td>
+      </tr>
+      {isOpen && (
+        <tr>
+          {/* colSpan makes this cell as wide as the scrollable table, but the inner
+              wrapper is sticky-pinned to the left edge and capped to the visible
+              viewport width (like the frozen Item column above), so the detail
+              table renders at phone width directly under the row that opened it.
+              The cell itself has no background of its own, so whatever part of it
+              sits past the sticky content just blends into the page instead of
+              showing as a visible bar. */}
+          <td colSpan={16} className="p-0 border border-black">
+            <div className="sticky left-0 w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] max-h-[50vh] overflow-y-auto bg-blue-50 px-0.5 pb-2 pt-0.5">
+              <ItemDetail item={row} groups={groupNames} allItems={allItemsList}
+                currentAliases={aliasRecords[row.item_id] ?? []}
+                currentMatches={matchRecords[row.item_name.trim().toLowerCase()] ?? []}
+                candidatePool={row.product_type === 'service' ? goodsPool : servicesPool}
+                autoEdit={editTriggerId === row.item_id}
+                onSaved={u => patchRow(row.item_id, u)}
+                onRelationsSaved={(newAliases, newMatches) => {
+                  setAliasRecords(prev => ({ ...prev, [row.item_id]: newAliases }))
+                  setMatchRecords(prev => ({ ...prev, [row.item_name.trim().toLowerCase()]: newMatches }))
+                  setEditTriggerId(null)
+                }} />
+            </div>
+          </td>
+        </tr>
+      )}
+      </Fragment>
+    )
+  }
+
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Table — all columns fit on screen; Item column compact */}
       <div className="flex-1 min-h-0 overflow-auto rounded-xl border border-black bg-white">
         <table className="table-fixed border-collapse text-[8px]">
-          <colgroup>
-            <col style={{width:'104px'}} />
-            <col style={{width:'30px'}} />
-            <col style={{width:'26px'}} />
-            <col style={{width:'26px'}} />
-            <col style={{width:'26px'}} />
-            <col style={{width:'26px'}} />
-            <col style={{width:'22px'}} />
-            <col style={{width:'26px'}} />
-            <col style={{width:'30px'}} />
-            <col style={{width:'26px'}} />
-            <col style={{width:'22px'}} />
-            <col style={{width:'22px'}} />
-            <col style={{width:'18px'}} />
-            <col style={{width:'220px'}} />
-            <col style={{width:'220px'}} />
-            <col style={{width:'50px'}} />
-          </colgroup>
+          {colgroup}
           <thead className="sticky top-0 z-20">
             <tr className="bg-gray-50">
               <SortTh label="Item" col="item_name" sort={sort} onSort={handleSort} cls="text-left pl-1 pr-0 sticky left-0 z-30 bg-gray-50 border-black" />
@@ -601,8 +818,8 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
               <SortTh label="SOH" col="soh" {...thProps} cls="text-center" />
               <SortTh label="SP" col="sp" {...thProps} cls="text-center" />
               <SortTh label="CP" col="cp" {...thProps} cls="text-center" />
-              <SortTh label="Grp" col="cf_group" {...thProps} cls="text-center" />
-              <SortTh label="Typ" col="product_type" {...thProps} cls="text-center" />
+              <SortTh label="Group" col="cf_group" {...thProps} cls="text-center" />
+              <SortTh label="Type" col="product_type" {...thProps} cls="text-center" />
               <th className={`${thBase} text-center text-gray-400`}>▸</th>
               <th className={`${thBase} text-left pl-1.5`}>Aliases</th>
               <th className={`${thBase} text-left pl-1.5`}>Matches</th>
@@ -613,74 +830,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
             {filtered.length === 0 && (
               <tr><td colSpan={16} className="py-10 text-center text-gray-400 text-[9px]">No items</td></tr>
             )}
-            {filtered.map(row => {
-              const lossAmt = row.lgAmt > 0, gainAmt = row.lgAmt < 0
-              const lossQty = row.lgQty > 0, gainQty = row.lgQty < 0
-              const soh = parseFloat(row.soh ?? '0') || 0
-              const isOpen = expandedId === row.item_id
-              return <>
-                <tr key={row.item_id}
-                  onClick={() => { setExpandedId(isOpen ? null : row.item_id); setEditTriggerId(null) }}
-                  className={`cursor-pointer transition
-                    ${isOpen ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-                  <td className={`pl-1 pr-0 py-0.5 font-bold text-gray-900 whitespace-nowrap overflow-hidden sticky left-0 z-10 border border-black ${isOpen ? 'bg-blue-50' : 'bg-white'}`}
-                    title={row.item_name}>{row.item_name.slice(0, 20)}</td>
-                  <td className={`text-center py-0.5 font-bold tabular-nums border border-black ${lossAmt ? 'text-red-600' : gainAmt ? 'text-green-600' : 'text-gray-300'}`}>
-                    {fmtAmt(row.lgAmt)}
-                  </td>
-                  <td className={`text-center py-0.5 font-bold tabular-nums border border-black ${lossQty ? 'text-red-500' : gainQty ? 'text-green-600' : 'text-gray-300'}`}>
-                    {fmtLg(row.lgQty)}
-                  </td>
-                  <td className="text-center py-0.5 font-bold text-gray-700 tabular-nums border border-black">{fmtQ(row.cnt)}</td>
-                  <td className="text-center py-0.5 font-bold text-gray-700 tabular-nums border border-black">{fmtQ(row.wic)}</td>
-                  <td className="text-center py-0.5 font-bold text-gray-700 tabular-nums border border-black">{fmtQ(row.gmc)}</td>
-                  <td className="text-center py-0.5 font-bold text-blue-600 tabular-nums border border-black">{fmtQ(row.bl)}</td>
-                  <td className={`text-center py-0.5 font-bold tabular-nums border border-black ${soh <= 0 ? 'text-red-500' : 'text-gray-700'}`}>
-                    {soh % 1 === 0 ? soh : soh.toFixed(1)}
-                  </td>
-                  <td className="text-center py-0.5 font-bold text-blue-600 tabular-nums border border-black">{fmtCcy(row.sp)}</td>
-                  <td className="text-center py-0.5 font-bold text-green-600 tabular-nums border border-black">{fmtCcy(row.cp)}</td>
-                  <td className="text-center py-0.5 font-bold text-gray-500 border border-black" title={row.cf_group ?? undefined}>{(row.cf_group ?? '—').slice(0, 3)}</td>
-                  <td className={`text-center py-0.5 font-bold border border-black ${row.product_type === 'service' ? 'text-purple-500' : 'text-teal-600'}`}
-                    title={row.product_type === 'service' ? 'Service' : 'Good'}>
-                    {row.product_type === 'service' ? 'Svc' : 'Goo'}
-                  </td>
-                  <td className="text-center py-0.5 font-bold text-gray-400 border border-black">{isOpen ? '▾' : '▸'}</td>
-                  <td className="pl-1.5 py-0.5 font-bold text-gray-500 truncate overflow-hidden border border-black"
-                    title={(aliasRecords[row.item_id] ?? []).map(a => a.name).join(', ')}>
-                    {(aliasRecords[row.item_id] ?? []).map(a => a.name).join(', ') || '—'}
-                  </td>
-                  <td className="pl-1.5 py-0.5 font-bold text-gray-500 truncate overflow-hidden border border-black"
-                    title={(matchRecords[row.item_name.trim().toLowerCase()] ?? []).map(m => m.name).join(', ')}>
-                    {(matchRecords[row.item_name.trim().toLowerCase()] ?? []).map(m => m.name).join(', ') || '—'}
-                  </td>
-                  <td className="text-center py-0.5 border border-black">
-                    <button
-                      onClick={e => { e.stopPropagation(); setExpandedId(row.item_id); setEditTriggerId(row.item_id) }}
-                      className="text-[8px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
-                      Edit
-                    </button>
-                  </td>
-                </tr>
-                {isOpen && (
-                  <tr key={`${row.item_id}-d`}>
-                    <td colSpan={16} className="px-1 pb-2 pt-0.5 bg-blue-50">
-                      <ItemDetail item={row} groups={groupNames}
-                        currentAliases={aliasRecords[row.item_id] ?? []}
-                        currentMatches={matchRecords[row.item_name.trim().toLowerCase()] ?? []}
-                        candidatePool={row.product_type === 'service' ? goodsPool : servicesPool}
-                        autoEdit={editTriggerId === row.item_id}
-                        onSaved={u => patchRow(row.item_id, u)}
-                        onRelationsSaved={(newAliases, newMatches) => {
-                          setAliasRecords(prev => ({ ...prev, [row.item_id]: newAliases }))
-                          setMatchRecords(prev => ({ ...prev, [row.item_name.trim().toLowerCase()]: newMatches }))
-                          setEditTriggerId(null)
-                        }} />
-                    </td>
-                  </tr>
-                )}
-              </>
-            })}
+            {filtered.map(renderRow)}
           </tbody>
         </table>
       </div>

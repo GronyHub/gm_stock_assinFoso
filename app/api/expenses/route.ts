@@ -1,9 +1,19 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
+import { isOwnerLevel, isConfidentialExpense } from '@/lib/roles'
 import { logActivity } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 
+function redact(rows: any[], canSeeAmounts: boolean) {
+  if (canSeeAmounts) return rows
+  return rows.map(r => isConfidentialExpense(r.expense_account) ? { ...r, amount: null, amount_hidden: true } : r)
+}
+
 export async function GET() {
+  const session = await auth()
+  if (!session) return NextResponse.json([], { status: 401 })
+  const canSeeAmounts = isOwnerLevel(session.user as any)
+
   try {
     const rows = await sql`
       SELECT
@@ -14,7 +24,7 @@ export async function GET() {
       LEFT JOIN expense_properties ep ON ep.expense_id = e.id
       ORDER BY e.expense_date DESC, e.id DESC
     `
-    return NextResponse.json(rows)
+    return NextResponse.json(redact(rows, canSeeAmounts))
   } catch {
     const rows = await sql`
       SELECT
@@ -25,7 +35,7 @@ export async function GET() {
       LEFT JOIN expense_properties ep ON ep.expense_id = e.id
       ORDER BY e.expense_date DESC, e.id DESC
     `
-    return NextResponse.json(rows)
+    return NextResponse.json(redact(rows, canSeeAmounts))
   }
 }
 
@@ -36,6 +46,9 @@ export async function POST(req: NextRequest) {
   const { expense_date, expense_account, cf_justify, vendor_name, amount, cf_expense_type, is_property } = await req.json()
   if (!expense_date || !expense_account || !amount) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+  }
+  if (isConfidentialExpense(expense_account) && !isOwnerLevel(session.user as any)) {
+    return NextResponse.json({ error: 'Only the owner or Joe can record a Salaries expense' }, { status: 403 })
   }
 
   const entry = await sql`
@@ -84,7 +97,9 @@ export async function POST(req: NextRequest) {
       console.error('cash_at_bank ensure-row error (non-fatal):', e)
     }
 
-    await logActivity(enteredBy ?? 'Unknown', 'added expense', `${expense_account} · ₵${Number(amount).toFixed(2)} on ${expense_date}`)
+    const confidential = isConfidentialExpense(expense_account)
+    await logActivity(enteredBy ?? 'Unknown', 'added expense',
+      confidential ? `${expense_account} on ${expense_date}` : `${expense_account} · ₵${Number(amount).toFixed(2)} on ${expense_date}`)
     return NextResponse.json({ ...row, property_status: isProp ? 'at_shop' : null })
   } catch (e) {
     console.error('expenses POST error:', e)

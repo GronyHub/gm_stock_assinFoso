@@ -358,7 +358,7 @@ export default function ItemsTab({ items, group, productType, search, violation,
         : i.product_type !== 'service'
       return matchGroup && matchType && i.item_name.toLowerCase().includes(q)
     })
-    if (violation === 'neg_soh') list = list.filter(i => Number(i.calculated_soh) <= 0)
+    if (violation === 'neg_soh') list = list.filter(i => Number(i.calculated_soh) < 0 && i.product_type !== 'service')
     if (violation === 'no_sp') list = list.filter(i => !i.selling_rate || parseFloat(i.selling_rate) === 0)
     if (violation === 'no_cp') list = list.filter(i => !i.purchase_rate || parseFloat(i.purchase_rate) === 0)
     return list

@@ -8,7 +8,8 @@ type Expense = {
   expense_account: string
   cf_justify: string | null
   vendor_name: string | null
-  amount: string
+  amount: string | null
+  amount_hidden?: boolean
   cf_expense_type: string | null
   is_property: boolean
   property_status: string | null
@@ -25,7 +26,8 @@ function fmtShort(dateStr: string) {
   return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(-2)}-${DAYS[d.getUTCDay()]}`
 }
 
-function fmt(val: string) {
+function fmt(val: string | null) {
+  if (val == null) return '—'
   const n = parseFloat(val)
   return isNaN(n) ? '—' : n.toLocaleString('en-GH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
@@ -51,6 +53,7 @@ export default function ExpensesPage() {
   const [editId, setEditId] = useState<number | null>(null)
   const [form, setForm] = useState({ ...EMPTY_FORM })
   const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState('')
 
   function loadExpenses() {
     fetch('/api/expenses')
@@ -77,16 +80,17 @@ export default function ExpensesPage() {
   }, [expenses, tab, search])
 
   function openAdd() {
-    setForm({ ...EMPTY_FORM }); setEditId(null); setShowForm(true); setSelected(null)
+    setForm({ ...EMPTY_FORM }); setEditId(null); setShowForm(true); setSelected(null); setFormError('')
   }
 
   function openEdit(e: Expense) {
+    if (e.amount_hidden) return
     setForm({
       expense_date: e.expense_date?.slice(0, 10) ?? '',
       expense_account: e.expense_account,
       cf_justify: e.cf_justify ?? '',
       vendor_name: e.vendor_name ?? '',
-      amount: parseFloat(e.amount).toString(),
+      amount: e.amount != null ? parseFloat(e.amount).toString() : '',
       cf_expense_type: e.cf_expense_type ?? '',
       is_property: e.is_property,
     })
@@ -94,7 +98,7 @@ export default function ExpensesPage() {
   }
 
   async function saveForm() {
-    setSaving(true)
+    setSaving(true); setFormError('')
     const body = {
       expense_date: form.expense_date || undefined,
       expense_account: form.expense_account,
@@ -113,6 +117,9 @@ export default function ExpensesPage() {
       setExpenses(prev => editId ? prev.map(e => e.id === editId ? { ...e, ...updated } : e) : [updated, ...prev])
       if (editId && selected?.id === editId) setSelected(s => s ? { ...s, ...updated } : s)
       setShowForm(false)
+    } else {
+      const d = await res.json().catch(() => ({}))
+      setFormError(d.error || 'Could not save expense.')
     }
   }
 
@@ -175,7 +182,7 @@ export default function ExpensesPage() {
                   className={`cursor-pointer border-b border-gray-100 transition ${selected?.id === e.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
                   <td className="px-0.5 py-0.5 text-gray-700 whitespace-nowrap">{fmtShort(e.expense_date)}</td>
                   <td className="px-0.5 py-0.5 text-gray-900 truncate max-w-[80px]">{e.expense_account}</td>
-                  <td className="px-0.5 py-0.5 text-right font-semibold text-gray-900">{fmt(e.amount)}</td>
+                  <td className="px-0.5 py-0.5 text-right font-semibold text-gray-900">{e.amount_hidden ? '🔒' : fmt(e.amount)}</td>
                 </tr>
               ))}
             </tbody>
@@ -187,6 +194,7 @@ export default function ExpensesPage() {
           {showForm ? (
             <div className="p-2 space-y-2">
               <p className="text-[10px] font-bold text-gray-600">{editId ? 'Edit' : 'New'} Expense</p>
+              {formError && <p className="text-[10px] text-red-500 font-medium">{formError}</p>}
               <div className="grid grid-cols-2 gap-1">
                 <div>
                   <p className="text-[9px] text-gray-400 mb-0.5">Date</p>
@@ -247,16 +255,18 @@ export default function ExpensesPage() {
                   <p className="text-[10px] font-bold text-gray-900 leading-snug">{selected.expense_account}</p>
                   <p className="text-[9px] text-gray-400">{fmtShort(selected.expense_date)}</p>
                 </div>
-                <button onClick={() => openEdit(selected)}
-                  className="shrink-0 text-[9px] text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100">
-                  Edit
-                </button>
+                {!selected.amount_hidden && (
+                  <button onClick={() => openEdit(selected)}
+                    className="shrink-0 text-[9px] text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100">
+                    Edit
+                  </button>
+                )}
               </div>
               <table className="w-full border-collapse text-[10px]">
                 <tbody>
                   <tr className="border-b border-gray-100">
                     <td className="py-0.5 text-gray-400">Amount</td>
-                    <td className="py-0.5 text-right font-bold text-gray-900">₵{fmt(selected.amount)}</td>
+                    <td className="py-0.5 text-right font-bold text-gray-900">{selected.amount_hidden ? '🔒 Hidden' : `₵${fmt(selected.amount)}`}</td>
                   </tr>
                   {selected.cf_justify && (
                     <tr className="border-b border-gray-100">

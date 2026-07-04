@@ -5,6 +5,7 @@ import { put } from '@vercel/blob'
 const ALLOWED_TYPES = [
   'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic',
   'video/mp4', 'video/quicktime', 'video/webm', 'video/3gpp',
+  'audio/webm', 'audio/mp4', 'audio/mpeg', 'audio/mp3', 'audio/ogg', 'audio/wav', 'audio/x-m4a', 'audio/aac',
 ]
 const MAX_SIZE = 50 * 1024 * 1024 // 50 MB
 
@@ -26,6 +27,16 @@ export async function POST(req: NextRequest) {
   const ext = file.name.split('.').pop() ?? 'bin'
   const filename = `announcements/${author}-${Date.now()}.${ext}`
 
-  const blob = await put(filename, file, { access: 'public' })
-  return NextResponse.json({ url: blob.url, contentType: file.type })
+  try {
+    // The store is provisioned as private-only, so blobs must be written with
+    // access: 'private' and read back through our own authenticated proxy route
+    // (app/api/announcements/media) rather than a direct public CDN URL.
+    const blob = await put(filename, file, { access: 'private' })
+    const url = `/api/announcements/media?p=${encodeURIComponent(blob.pathname)}`
+    return NextResponse.json({ url, contentType: file.type })
+  } catch (e) {
+    console.error('announcements upload error:', e)
+    const detail = e instanceof Error ? e.message : String(e)
+    return NextResponse.json({ error: `Upload failed: ${detail}` }, { status: 500 })
+  }
 }

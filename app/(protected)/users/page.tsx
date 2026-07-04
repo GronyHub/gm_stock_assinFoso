@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 
 type User = {
   id: number
@@ -18,6 +19,8 @@ const labelCls = 'text-xs text-gray-500 font-medium mb-1 block'
 const EMPTY_NEW = { username: '', display_name: '', email: '', role: 'staff', password: '', confirm: '' }
 
 export default function UsersPage() {
+  const { data: session } = useSession()
+  const myRole = (session?.user as any)?.role
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [editId, setEditId] = useState<number | null>(null)
@@ -167,7 +170,10 @@ export default function UsersPage() {
 
       {/* User list */}
       <div className="space-y-2">
-        {users.map(u => (
+        {users.map(u => {
+        // Joe's owner-level access does not extend to editing the owner's own account
+        const protectedFromMe = myRole !== 'owner' && (u.role === 'owner' || u.username?.toLowerCase() === 'grony')
+        return (
           <div key={u.id} className="bg-white border border-gray-200 rounded-xl p-4">
             {editId === u.id ? (
               <div className="space-y-3">
@@ -225,14 +231,19 @@ export default function UsersPage() {
                       : <span className="text-orange-400">No email set</span>}
                   </p>
                 </div>
-                <button onClick={() => startEdit(u)}
-                  className="shrink-0 text-xs text-blue-600 font-semibold px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 transition">
-                  Edit
-                </button>
+                {protectedFromMe ? (
+                  <span className="shrink-0 text-xs text-gray-400 font-semibold px-3 py-1.5">Owner only</span>
+                ) : (
+                  <button onClick={() => startEdit(u)}
+                    className="shrink-0 text-xs text-blue-600 font-semibold px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 transition">
+                    Edit
+                  </button>
+                )}
               </div>
             )}
           </div>
-        ))}
+        )
+        })}
       </div>
     </div>
   )

@@ -29,10 +29,12 @@ async function getInstances(violationType: string): Promise<{ label: string; ins
       return { label: 'Sales Receipt not entered', instances: rows.map((r: any) => ({ key: r.missing_date, date: r.missing_date, details: `Date: ${r.missing_date}` })) }
     }
     case 'no_cash': {
+      // Walk-in receipts created through the app store customer_name as NULL --
+      // older/imported rows may still have the literal string.
       const rows = await sql`
         SELECT id, receipt_number, receipt_date::text AS receipt_date
         FROM sales_receipts
-        WHERE LOWER(TRIM(customer_name)) = 'walk in customer'
+        WHERE (customer_name IS NULL OR LOWER(TRIM(customer_name)) = 'walk in customer')
           AND (cash_counted IS NULL OR cash_counted = 0)
       `
       return { label: 'Walk-in receipt missing cash counted', instances: rows.map((r: any) => ({ key: String(r.id), date: r.receipt_date, details: `Receipt ${r.receipt_number}` })) }
@@ -82,12 +84,25 @@ async function getInstances(violationType: string): Promise<{ label: string; ins
       `
       return { label: 'No Cash at Bank confirmation', instances: rows.map((r: any) => ({ key: r.week_start, date: r.week_start, details: `Week of ${r.week_start} \u2013 ${r.week_end}` })) }
     }
+    case 'dup_receipts': {
+      const rows = await sql`
+        SELECT
+          receipt_date::text AS receipt_date,
+          CASE WHEN customer_name = 'Grony Multimedia as Customer' THEN 'GMC' ELSE 'WIC' END AS customer_type,
+          COUNT(*) AS receipt_count,
+          STRING_AGG(receipt_number, ', ' ORDER BY receipt_number) AS receipt_numbers
+        FROM sales_receipts
+        GROUP BY receipt_date::date, CASE WHEN customer_name = 'Grony Multimedia as Customer' THEN 'GMC' ELSE 'WIC' END
+        HAVING COUNT(*) > 1
+      `
+      return { label: 'Duplicate WIC/GMC receipts', instances: rows.map((r: any) => ({ key: `${r.receipt_date}-${r.customer_type}`, date: r.receipt_date, details: `${r.customer_type} on ${r.receipt_date}: ${r.receipt_count} receipts (${r.receipt_numbers})` })) }
+    }
     default:
       return { label: violationType, instances: [] }
   }
 }
 
-const AUTO_TYPES = ['missing_days', 'no_cash', 'cost_gte_sell', 'no_staff_times', 'unchecked_cab']
+const AUTO_TYPES = ['missing_days', 'no_cash', 'cost_gte_sell', 'no_staff_times', 'unchecked_cab', 'dup_receipts']
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
@@ -98,12 +113,16 @@ export async function GET(req: NextRequest) {
   try {
     const [settingsRows, assignmentRows] = await Promise.all([
       sql`SELECT key, value FROM violation_settings`,
-      sql`SELECT violation_type, staff_name FROM violation_assignments`,
+      sql`SELECT violation_type, staff_name, deadline FROM violation_assignments`,
     ])
     const settings: Record<string, string> = {}
     for (const r of settingsRows) settings[r.key] = r.value
     const assignments: Record<string, string> = {}
-    for (const r of assignmentRows) assignments[r.violation_type] = r.staff_name
+    const deadlines: Record<string, string> = {}
+    for (const r of assignmentRows) {
+      assignments[r.violation_type] = r.staff_name
+      if (r.deadline) deadlines[r.violation_type] = String(r.deadline).slice(0, 10)
+    }
 
     const thresholdDays = parseInt(settings.threshold_days ?? '3', 10)
     const points = parseInt(settings.points_per_violation ?? '5', 10)
@@ -115,9 +134,14 @@ export async function GET(req: NextRequest) {
       const assignedStaff = assignments[type]
       if (!assignedStaff) continue
 
+      // A per-assignment deadline (once set) replaces the rolling threshold_days
+      // check: the assignment is only overdue the day after that fixed date passes.
+      const deadline = deadlines[type]
+
       const { label, instances } = await getInstances(type)
       for (const inst of instances) {
-        if (daysSince(inst.date) < thresholdDays) continue
+        const overdue = deadline ? daysSince(deadline) >= 1 : daysSince(inst.date) >= thresholdDays
+        if (!overdue) continue
 
         const [already] = await sql`
           SELECT 1 FROM auto_penalty_log WHERE violation_type = ${type} AND instance_key = ${inst.key}

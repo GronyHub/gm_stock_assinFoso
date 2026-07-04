@@ -2,13 +2,20 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
-import { fmtDate } from '@/lib/fmtDate'
+import { fmtDate, fmtOrdinalDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
 import DayBookFeed from '@/components/DayBookFeed'
 
 // ─── Announcements ────────────────────────────────────────────────────────────
-type Announcement = { id: number; author: string; body: string; media_urls: string[]; created_at: string }
-type MediaFile = { file: File; localUrl: string; uploading: boolean; url?: string; error?: string }
+type MediaItem = { url: string; type: string }
+type Announcement = { id: number; author: string; body: string; media_urls: MediaItem[]; created_at: string }
+type MediaFile = { file: File | Blob; localUrl: string; uploading: boolean; url?: string; contentType?: string; error?: string; kind: 'image' | 'video' | 'audio' }
+
+function fmtRecTime(s: number) {
+  const m = Math.floor(s / 60)
+  const sec = s % 60
+  return `${m}:${sec.toString().padStart(2, '0')}`
+}
 
 function fmtAnnTime(iso: string) {
   try {
@@ -25,35 +32,55 @@ function fmtAnnTime(iso: string) {
   } catch { return '' }
 }
 
-function isVideo(url: string) {
-  return /\.(mp4|mov|webm|3gp)$/i.test(url) || url.includes('video')
+function mediaKind(type: string): 'image' | 'video' | 'audio' {
+  if (type.startsWith('video/')) return 'video'
+  if (type.startsWith('audio/')) return 'audio'
+  return 'image'
 }
 
-function MediaGrid({ urls }: { urls: string[] }) {
-  if (!urls.length) return null
+function MediaGrid({ items }: { items: MediaItem[] }) {
+  if (!items.length) return null
+  const audio = items.filter(m => mediaKind(m.type) === 'audio')
+  const visual = items.filter(m => mediaKind(m.type) !== 'audio')
   return (
-    <div className={`grid gap-1 mt-2 ${urls.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-      {urls.map((url, i) => (
-        isVideo(url) ? (
-          <video key={i} src={url} controls className="w-full rounded-lg max-h-64 object-cover bg-black" />
-        ) : (
-          <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt="" className="w-full rounded-lg max-h-64 object-cover" />
-          </a>
-        )
+    <div className="mt-2 space-y-1">
+      {visual.length > 0 && (
+        <div className={`grid gap-1 ${visual.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+          {visual.map((m, i) => (
+            mediaKind(m.type) === 'video' ? (
+              <video key={i} src={m.url} controls className="w-full rounded-lg max-h-64 object-cover bg-black" />
+            ) : (
+              <a key={i} href={m.url} target="_blank" rel="noopener noreferrer">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={m.url} alt="" className="w-full rounded-lg max-h-64 object-cover" />
+              </a>
+            )
+          ))}
+        </div>
+      )}
+      {audio.map((m, i) => (
+        <audio key={i} src={m.url} controls className="w-full h-9" />
       ))}
     </div>
   )
 }
 
 function AnnouncementsPanel() {
+  const { data: session } = useSession()
+  const role = (session?.user as any)?.role
+  const canManage = ['owner', 'manager'].includes(role)
+
   const [posts, setPosts] = useState<Announcement[]>([])
   const [body, setBody] = useState('')
   const [media, setMedia] = useState<MediaFile[]>([])
   const [posting, setPosting] = useState(false)
   const [error, setError] = useState('')
+  const [recording, setRecording] = useState(false)
+  const [recordSeconds, setRecordSeconds] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const recordedChunksRef = useRef<Blob[]>([])
+  const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   function load() {
     fetch('/api/announcements')
@@ -65,29 +92,69 @@ function AnnouncementsPanel() {
   useEffect(() => { load() }, [])
   usePolling(load, 15000)
 
+  // Stop any in-progress recording if the panel unmounts mid-recording
+  useEffect(() => () => {
+    if (recordTimerRef.current) clearInterval(recordTimerRef.current)
+    mediaRecorderRef.current?.stream.getTracks().forEach(t => t.stop())
+  }, [])
+
+  async function uploadItem(item: MediaFile) {
+    const fd = new FormData()
+    fd.append('file', item.file)
+    try {
+      const res = await fetch('/api/announcements/upload', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Upload failed')
+      setMedia(prev => prev.map(m =>
+        m.localUrl === item.localUrl ? { ...m, uploading: false, url: data.url, contentType: data.contentType } : m
+      ))
+    } catch (e: any) {
+      setMedia(prev => prev.map(m =>
+        m.localUrl === item.localUrl ? { ...m, uploading: false, error: e.message } : m
+      ))
+    }
+  }
+
   async function handleFiles(files: FileList | null) {
     if (!files) return
     const newItems: MediaFile[] = Array.from(files).map(file => ({
-      file, localUrl: URL.createObjectURL(file), uploading: true,
+      file, localUrl: URL.createObjectURL(file), uploading: true, kind: mediaKind(file.type),
     }))
     setMedia(prev => [...prev, ...newItems])
+    for (const item of newItems) uploadItem(item)
+  }
 
-    for (const item of newItems) {
-      const fd = new FormData()
-      fd.append('file', item.file)
-      try {
-        const res = await fetch('/api/announcements/upload', { method: 'POST', body: fd })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.error ?? 'Upload failed')
-        setMedia(prev => prev.map(m =>
-          m.localUrl === item.localUrl ? { ...m, uploading: false, url: data.url } : m
-        ))
-      } catch (e: any) {
-        setMedia(prev => prev.map(m =>
-          m.localUrl === item.localUrl ? { ...m, uploading: false, error: e.message } : m
-        ))
+  async function startRecording() {
+    setError('')
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'
+      const recorder = new MediaRecorder(stream, { mimeType })
+      recordedChunksRef.current = []
+      recorder.ondataavailable = e => { if (e.data.size > 0) recordedChunksRef.current.push(e.data) }
+      recorder.onstop = () => {
+        stream.getTracks().forEach(t => t.stop())
+        const blob = new Blob(recordedChunksRef.current, { type: mimeType })
+        const ext = mimeType.includes('mp4') ? 'm4a' : 'webm'
+        const file = new File([blob], `voice-note.${ext}`, { type: mimeType })
+        const item: MediaFile = { file, localUrl: URL.createObjectURL(blob), uploading: true, kind: 'audio' }
+        setMedia(prev => [...prev, item])
+        uploadItem(item)
       }
+      recorder.start()
+      mediaRecorderRef.current = recorder
+      setRecording(true)
+      setRecordSeconds(0)
+      recordTimerRef.current = setInterval(() => setRecordSeconds(s => s + 1), 1000)
+    } catch {
+      setError('Could not access the microphone. Check your browser permissions.')
     }
+  }
+
+  function stopRecording() {
+    mediaRecorderRef.current?.stop()
+    setRecording(false)
+    if (recordTimerRef.current) { clearInterval(recordTimerRef.current); recordTimerRef.current = null }
   }
 
   function removeMedia(localUrl: string) {
@@ -99,16 +166,18 @@ function AnnouncementsPanel() {
     if (stillUploading) { setError('Still uploading, please wait…'); return }
     const failedUploads = media.filter(m => m.error)
     if (failedUploads.length) { setError('Some files failed to upload. Remove them and try again.'); return }
-    if (!body.trim() && media.length === 0) { setError('Add a message or media.'); return }
+    if (!body.trim() && media.length === 0) { setError('Add a message, voice note, or media.'); return }
 
     setPosting(true)
     setError('')
     try {
-      const urls = media.map(m => m.url!).filter(Boolean)
+      const media_urls: MediaItem[] = media
+        .filter(m => m.url)
+        .map(m => ({ url: m.url!, type: m.contentType ?? m.file.type }))
       const res = await fetch('/api/announcements', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ body: body.trim(), media_urls: urls }),
+        body: JSON.stringify({ body: body.trim(), media_urls }),
       })
       if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? 'Failed') }
       setBody('')
@@ -121,7 +190,12 @@ function AnnouncementsPanel() {
     }
   }
 
-  const canPost = !posting && (body.trim().length > 0 || media.length > 0) && !media.some(m => m.uploading)
+  async function removePost(id: number) {
+    await fetch('/api/announcements', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    load()
+  }
+
+  const canPost = !posting && !recording && (body.trim().length > 0 || media.length > 0) && !media.some(m => m.uploading)
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
@@ -130,73 +204,95 @@ function AnnouncementsPanel() {
         <p className="text-xs text-gray-400 mt-0.5">Share info with the team — replaces the WhatsApp group</p>
       </div>
 
-      {/* Compose */}
-      <div className="px-4 py-3 border-b border-gray-100 space-y-2">
-        <textarea
-          value={body}
-          onChange={e => setBody(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handlePost() }}
-          rows={3}
-          placeholder="Write an announcement…"
-          className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-400 resize-none"
-        />
-
-        {/* Media previews */}
-        {media.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {media.map(m => (
-              <div key={m.localUrl} className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-100">
-                {isVideo(m.file.type) ? (
-                  <video src={m.localUrl} className="w-full h-full object-cover" />
-                ) : (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={m.localUrl} alt="" className="w-full h-full object-cover" />
-                )}
-                {m.uploading && (
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                    <span className="text-white text-[10px] font-semibold">uploading…</span>
-                  </div>
-                )}
-                {m.error && (
-                  <div className="absolute inset-0 bg-red-500/70 flex items-center justify-center">
-                    <span className="text-white text-[10px] font-semibold text-center px-1">{m.error}</span>
-                  </div>
-                )}
-                <button
-                  onClick={() => removeMedia(m.localUrl)}
-                  className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/60 text-white text-xs flex items-center justify-center leading-none"
-                >×</button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {error && <p className="text-xs text-red-500">{error}</p>}
-
-        <div className="flex items-center justify-between gap-2">
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-blue-50 transition"
-          >
-            📎 Photo / Video
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*,video/*"
-            multiple
-            className="hidden"
-            onChange={e => handleFiles(e.target.files)}
+      {/* Compose — owner/manager only, matches server-side posting permission */}
+      {canManage && (
+        <div className="px-4 py-3 border-b border-gray-100 space-y-2">
+          <textarea
+            value={body}
+            onChange={e => setBody(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handlePost() }}
+            rows={3}
+            placeholder="Write an announcement…"
+            className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-400 resize-none"
           />
-          <button
-            onClick={handlePost}
-            disabled={!canPost}
-            className="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-40 text-white text-xs font-semibold px-4 py-1.5 rounded-lg transition"
-          >
-            {posting ? 'Posting…' : 'Post'}
-          </button>
+
+          {/* Media previews */}
+          {media.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {media.map(m => (
+                <div key={m.localUrl} className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-100">
+                  {m.kind === 'video' ? (
+                    <video src={m.localUrl} className="w-full h-full object-cover" />
+                  ) : m.kind === 'audio' ? (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-800 text-white text-2xl">🎤</div>
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={m.localUrl} alt="" className="w-full h-full object-cover" />
+                  )}
+                  {m.uploading && (
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                      <span className="text-white text-[10px] font-semibold">uploading…</span>
+                    </div>
+                  )}
+                  {m.error && (
+                    <div className="absolute inset-0 bg-red-500/70 flex items-center justify-center">
+                      <span className="text-white text-[10px] font-semibold text-center px-1">{m.error}</span>
+                    </div>
+                  )}
+                  <button
+                    onClick={() => removeMedia(m.localUrl)}
+                    className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/60 text-white text-xs flex items-center justify-center leading-none"
+                  >×</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {error && <p className="text-xs text-red-500">{error}</p>}
+
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={recording}
+                className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-blue-50 transition disabled:opacity-40"
+              >
+                📎 Photo / Video
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,video/*"
+                multiple
+                className="hidden"
+                onChange={e => handleFiles(e.target.files)}
+              />
+              {recording ? (
+                <button
+                  onClick={stopRecording}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-white bg-red-600 px-2 py-1.5 rounded-lg animate-pulse"
+                >
+                  ⏹ Stop {fmtRecTime(recordSeconds)}
+                </button>
+              ) : (
+                <button
+                  onClick={startRecording}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-blue-50 transition"
+                >
+                  🎤 Voice
+                </button>
+              )}
+            </div>
+            <button
+              onClick={handlePost}
+              disabled={!canPost}
+              className="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-40 text-white text-xs font-semibold px-4 py-1.5 rounded-lg transition"
+            >
+              {posting ? 'Posting…' : 'Post'}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Feed */}
       {posts.length === 0 ? (
@@ -207,10 +303,15 @@ function AnnouncementsPanel() {
             <div key={p.id} className="px-4 py-3 space-y-1">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-semibold text-gray-700 capitalize">{p.author}</span>
-                <span className="text-[11px] text-gray-400 shrink-0">{fmtAnnTime(p.created_at)}</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[11px] text-gray-400">{fmtAnnTime(p.created_at)}</span>
+                  {canManage && (
+                    <button onClick={() => removePost(p.id)} className="text-gray-300 hover:text-red-500 font-bold leading-none">×</button>
+                  )}
+                </div>
               </div>
               {p.body && <p className="text-sm text-gray-800 whitespace-pre-wrap">{p.body}</p>}
-              <MediaGrid urls={p.media_urls ?? []} />
+              <MediaGrid items={p.media_urls ?? []} />
             </div>
           ))}
         </div>
@@ -237,15 +338,6 @@ function Section({ title, href, linkLabel, children }: { title: string; children
   )
 }
 
-function Row({ label, value, valueClass }: { label: string; value: React.ReactNode; valueClass?: string }) {
-  return (
-    <div className="flex items-center justify-between py-[1px] text-[11px] leading-tight">
-      <span className="text-gray-500">{label}</span>
-      <span className={`font-semibold ${valueClass ?? 'text-gray-800'}`}>{value}</span>
-    </div>
-  )
-}
-
 function daysSince(dateStr: string): number {
   const d = new Date(dateStr + 'T00:00:00')
   const today = new Date(); today.setHours(0, 0, 0, 0)
@@ -263,48 +355,30 @@ function oldestDays(rows: any[], field: string): number | null {
   return Math.max(...rows.map(r => daysSince(r[field])))
 }
 
-function timeOfDay(ts: string): string {
-  const d = new Date(ts)
-  return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+const AUTO_PENALIZABLE = new Set(['missing_days', 'no_cash', 'cost_gte_sell', 'no_staff_times', 'unchecked_cab', 'dup_receipts'])
+
+const SHORT_LABEL: Record<string, string> = {
+  missing_days: 'Sales Receipts',
+  no_cash: 'Cash Counts',
+  cost_gte_sell: 'Cost Prices',
+  no_staff_times: 'Staff Times',
+  unchecked_cab: 'Cash at Bank',
+  no_group: 'Item Groups',
+  duplicates: 'Duplicate Items',
+  not_in_inventory: 'Inventory Names',
+  dup_receipts: 'Duplicate Receipts',
 }
 
-const AUTO_PENALIZABLE = new Set(['missing_days', 'no_cash', 'cost_gte_sell', 'no_staff_times', 'unchecked_cab'])
-
 export default function TodayPage() {
-  const { data: session } = useSession()
-  const role = (session?.user as any)?.role
-  const canPost = ['owner', 'manager'].includes(role)
-
   const [data, setData] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
   const [flags, setFlags] = useState<any | null>(null)
   const [assignments, setAssignments] = useState<Record<string, string>>({})
+  const [deadlines, setDeadlines] = useState<Record<string, string>>({})
+  const [assignedBy, setAssignedBy] = useState<Record<string, string>>({})
+  const [assignedOn, setAssignedOn] = useState<Record<string, string>>({})
   const [vSettings, setVSettings] = useState<Record<string, string>>({})
-  const [announcements, setAnnouncements] = useState<any[]>([])
-  const [showPost, setShowPost] = useState(false)
-  const [postText, setPostText] = useState('')
-  const [posting, setPosting] = useState(false)
   const [logs, setLogs] = useState<any[]>([])
-
-  function loadAnnouncements() {
-    fetch('/api/announcements').then(r => r.ok ? r.json() : []).then(d => setAnnouncements(Array.isArray(d) ? d : [])).catch(() => {})
-  }
-
-  async function postAnnouncement() {
-    if (!postText.trim()) return
-    setPosting(true)
-    const res = await fetch('/api/announcements', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: postText.trim() }),
-    })
-    setPosting(false)
-    if (res.ok) { setPostText(''); setShowPost(false); loadAnnouncements() }
-  }
-
-  async function removeAnnouncement(id: number) {
-    await fetch('/api/announcements', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
-    loadAnnouncements()
-  }
 
   function loadLogs() {
     fetch('/api/logs').then(r => r.ok ? r.json() : []).then(d => {
@@ -329,14 +403,17 @@ export default function TodayPage() {
   function loadAssignments() {
     fetch('/api/violations/assignments')
       .then(r => r.json())
-      .then(d => { setAssignments(d.assignments ?? {}); setVSettings(d.settings ?? {}) })
+      .then(d => {
+        setAssignments(d.assignments ?? {}); setDeadlines(d.deadlines ?? {})
+        setAssignedBy(d.assignedBy ?? {}); setAssignedOn(d.assignedOn ?? {})
+        setVSettings(d.settings ?? {})
+      })
       .catch(() => {})
   }
 
-  useEffect(() => { load(); loadFlags(); loadAssignments(); loadAnnouncements(); loadLogs() }, [])
+  useEffect(() => { load(); loadFlags(); loadAssignments(); loadLogs() }, [])
   usePolling(load, 10000)
   usePolling(loadFlags, 30000)
-  usePolling(loadAnnouncements, 30000)
   usePolling(loadLogs, 15000)
 
   const violations = useMemo(() => {
@@ -382,6 +459,11 @@ export default function TodayPage() {
       label: 'item name' + (flags.notInInventory.length !== 1 ? 's' : '') + ' not found in inventory',
       count: flags.notInInventory.length, days: null, href: '/item?tab=Not in Inv.',
     })
+    if (flags.dupReceipts?.length) list.push({
+      type: 'dup_receipts',
+      label: 'day' + (flags.dupReceipts.length !== 1 ? 's' : '') + ' with duplicate WIC/GMC receipts',
+      count: flags.dupReceipts.length, days: oldestDays(flags.dupReceipts, 'receipt_date'), href: '/sales?tab=Dup Receipts',
+    })
     return list.sort((a, b) => b.count - a.count)
   }, [flags])
 
@@ -401,87 +483,65 @@ export default function TodayPage() {
         <p className="text-[10px] text-gray-400">{fmtDate(data.date)}</p>
       </div>
 
-      <div className="bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
-        <div className="flex items-center justify-between mb-0.5">
-          <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wide">📢 Announcements</p>
-          {canPost && (
-            <button onClick={() => setShowPost(s => !s)} className="text-[10px] text-amber-700 font-semibold">
-              {showPost ? 'Cancel' : '+ Post'}
-            </button>
-          )}
-        </div>
-        {showPost && (
-          <div className="flex gap-1 mb-1">
-            <input value={postText} onChange={e => setPostText(e.target.value)}
-              placeholder="Write an announcement…"
-              className="flex-1 bg-white border border-amber-300 rounded px-2 py-1 text-[11px] text-gray-900 outline-none focus:ring-1 focus:ring-amber-400" />
-            <button onClick={postAnnouncement} disabled={posting || !postText.trim()}
-              className="text-[10px] font-semibold bg-amber-600 text-white px-2 py-1 rounded disabled:opacity-40">
-              {posting ? '…' : 'Post'}
-            </button>
-          </div>
-        )}
-        {announcements.length === 0 ? (
-          <p className="text-[11px] text-gray-400 py-[1px]">No announcements.</p>
-        ) : (
-          announcements.map(a => (
-            <div key={a.id} className="flex items-start justify-between gap-2 py-[2px] text-[11px] leading-tight">
-              <span className="text-gray-700 min-w-0">{a.message}
-                <span className="text-gray-400"> — <span className="capitalize">{a.posted_by}</span>, {timeOfDay(a.created_at)}</span>
-              </span>
-              {canPost && (
-                <button onClick={() => removeAnnouncement(a.id)} className="text-amber-400 hover:text-red-500 font-bold shrink-0">×</button>
-              )}
-            </div>
-          ))
-        )}
-      </div>
-
       <Section title="Sales" href="/sales">
-        <Row label="Total" value={fmt(sales.total)} valueClass="text-blue-700" />
-        <Row label="WIC" value={fmt(sales.wic)} />
-        <Row label="GMC" value={fmt(sales.gmc)} />
-        <Row label="Receipts" value={sales.count ?? 0} />
-        <Link href="/sales/new" className="inline-block text-[10px] font-semibold text-blue-600 mt-0.5">+ New Sale</Link>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[11px] text-gray-600 min-w-0">
+            {sales.count > 0
+              ? <>{sales.count} receipt{sales.count !== 1 ? 's' : ''} · <span className="font-semibold text-blue-700">{fmt(sales.total)}</span> (WIC {fmt(sales.wic)} · GMC {fmt(sales.gmc)})</>
+              : 'No sales recorded for today.'}
+          </p>
+          <Link href="/sales/new" className="shrink-0 text-[10px] font-semibold text-blue-600">+ New</Link>
+        </div>
       </Section>
 
       <Section title="Bills" href="/bills">
-        <Row label="Total" value={fmt(bills.total)} valueClass="text-orange-600" />
-        <Row label="Bills" value={bills.count ?? 0} />
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[11px] text-gray-600 min-w-0">
+            {bills.count > 0
+              ? <>{bills.count} bill{bills.count !== 1 ? 's' : ''} · <span className="font-semibold text-orange-600">{fmt(bills.total)}</span></>
+              : 'No bills recorded for today.'}
+          </p>
+          <Link href="/bills/new" className="shrink-0 text-[10px] font-semibold text-blue-600">+ New</Link>
+        </div>
       </Section>
 
       <Section title="Expenses" href="/expenses">
-        <Row label="Total" value={fmt(expenses.total)} valueClass="text-red-500" />
-        <Row label="Entries" value={expenses.count ?? 0} />
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[11px] text-gray-600 min-w-0">
+            {expenses.count > 0
+              ? <>{expenses.count} entr{expenses.count !== 1 ? 'ies' : 'y'} · <span className="font-semibold text-red-500">{fmt(expenses.total)}</span></>
+              : 'No expenses recorded for today.'}
+          </p>
+          <Link href="/expenses/new" className="shrink-0 text-[10px] font-semibold text-blue-600">+ New</Link>
+        </div>
       </Section>
 
       <Section title="Stock Counting" href="/stock/counts?tab=Daily" linkLabel="Count Now →">
-        {data.pendingDailyCount > 0 ? (
-          <Row label="Pending" value={`${data.pendingDailyCount} item${data.pendingDailyCount !== 1 ? 's' : ''}`} valueClass="text-orange-600" />
-        ) : (
-          <Row label="Status" value="All counted ✓" valueClass="text-green-600" />
-        )}
+        <p className="text-[11px] text-gray-600">
+          {data.pendingDailyCount > 0
+            ? <><span className="font-semibold text-orange-600">{data.pendingDailyCount}</span> item{data.pendingDailyCount !== 1 ? 's' : ''} pending count today.</>
+            : <span className="font-semibold text-green-600">All items counted today ✓</span>}
+        </p>
       </Section>
 
       <Section title="Staff Today" href="/staff">
-        {(!data.staffToday || data.staffToday.length === 0) ? (
-          <p className="text-[11px] text-gray-400 py-[1px]">No one clocked in yet.</p>
-        ) : (
-          data.staffToday.map((s: any) => (
-            <Row key={s.staff_name} label={s.staff_name} valueClass="capitalize"
-              value={<><span className="text-green-700">{s.actual_in ?? '—'}</span> → <span className="text-orange-600">{s.actual_out ?? '—'}</span></>} />
-          ))
-        )}
+        <p className="text-[11px] text-gray-600 capitalize">
+          {(!data.staffToday || data.staffToday.length === 0)
+            ? <span className="normal-case text-gray-400">No one clocked in yet.</span>
+            : `${data.staffToday.length} clocked in — ${data.staffToday.map((s: any) => s.staff_name).join(', ')}`}
+        </p>
       </Section>
 
       <Section title="Cash at Bank" href="/cash-at-bank">
-        {data.latestCab ? (
-          <Row label={`Confirmed ${fmtDate(String(data.latestCab.entry_date).slice(0,10))}`}
-            value={data.latestCab.deficit != null ? fmt(data.latestCab.deficit) : '—'}
-            valueClass={Number(data.latestCab.deficit) < 0 ? 'text-red-500' : 'text-green-600'} />
-        ) : (
-          <p className="text-[11px] text-gray-400 py-[1px]">No confirmed entry yet.</p>
-        )}
+        <p className="text-[11px] text-gray-600">
+          {data.latestCab
+            ? <>Confirmed {fmtDate(String(data.latestCab.entry_date).slice(0,10))} · deficit{' '}
+                <span className={`font-semibold ${Number(data.latestCab.deficit) < 0 ? 'text-red-500' : 'text-green-600'}`}>
+                  {data.latestCab.deficit != null ? fmt(data.latestCab.deficit) : '—'}
+                </span>
+              </>
+            : <span className="text-gray-400">No confirmed entry yet.</span>}
+        </p>
       </Section>
 
       <div className="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5">
@@ -502,23 +562,49 @@ export default function TodayPage() {
             {violations.map(v => {
               const assignedTo = assignments[v.type]
               const canAutoPenalize = AUTO_PENALIZABLE.has(v.type)
+              const deadline = deadlines[v.type]
               const threshold = parseInt(vSettings.threshold_days ?? '3', 10)
-              const atRisk = canAutoPenalize && assignedTo && v.days != null && v.days >= threshold
+              const overdue = deadline ? daysSince(deadline) >= 1 : v.days != null && v.days >= threshold
+              const atRisk = canAutoPenalize && assignedTo && overdue
+
+              if (!assignedTo) {
+                return (
+                  <Link key={v.href} href={v.href}
+                    className="flex items-center justify-between py-[2px] text-[11px] leading-tight hover:bg-gray-50 -mx-1 px-1 rounded transition gap-2">
+                    <span className="min-w-0 truncate">
+                      <span className="font-bold text-red-500">{v.count}</span>{' '}
+                      <span className="text-gray-700">{v.label}</span>
+                      {v.days != null && <span className="text-gray-400"> — {agePhrase(v.days)}</span>}
+                    </span>
+                    <span className="text-[10px] text-blue-600 font-semibold shrink-0">Fix →</span>
+                  </Link>
+                )
+              }
+
+              const remaining = deadline ? -daysSince(deadline) : (canAutoPenalize && v.days != null ? threshold - v.days : null)
+              const remainingPhrase = remaining == null
+                ? 'please complete'
+                : remaining > 0
+                  ? `you have ${remaining} day${remaining !== 1 ? 's' : ''} more to complete`
+                  : remaining === 0
+                    ? 'due today to complete'
+                    : `overdue by ${Math.abs(remaining)} day${Math.abs(remaining) !== 1 ? 's' : ''} to complete`
+              const on = assignedOn[v.type]
+              const by = assignedBy[v.type]
+
               return (
-                <Link key={v.href} href={v.href}
-                  className="flex items-center justify-between py-[2px] text-[11px] leading-tight hover:bg-gray-50 -mx-1 px-1 rounded transition gap-2">
-                  <span className="min-w-0 truncate">
-                    <span className="font-bold text-red-500">{v.count}</span>{' '}
-                    <span className="text-gray-700">{v.label}</span>
-                    {v.days != null && <span className="text-gray-400"> — {agePhrase(v.days)}</span>}
-                    {assignedTo && (
-                      <span className={`ml-1 ${atRisk ? 'text-red-500 font-semibold' : 'text-gray-300'}`}>
-                        · <span className="capitalize">{assignedTo}</span>{atRisk && ' ⚠'}
-                      </span>
-                    )}
-                  </span>
-                  <span className="text-[10px] text-blue-600 font-semibold shrink-0">Fix →</span>
-                </Link>
+                <div key={v.href} className={`py-[3px] text-[11px] leading-snug ${atRisk ? 'text-red-500' : 'text-gray-700'}`}>
+                  <span className="capitalize font-semibold">{assignedTo}</span>, {remainingPhrase}{' '}
+                  <span className="font-bold text-red-500">{v.count}</span>{' '}
+                  {SHORT_LABEL[v.type] ?? v.label}{' '}
+                  <Link href={v.href} className="text-blue-600 font-semibold">View</Link>
+                  {atRisk && ' ⚠'}
+                  {on && (
+                    <span className="text-gray-400">
+                      {' '}(TAO {fmtOrdinalDate(on)}{by && <> by <span className="capitalize">{by}</span></>})
+                    </span>
+                  )}
+                </div>
               )
             })}
           </div>

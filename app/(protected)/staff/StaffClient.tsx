@@ -1,7 +1,7 @@
 'use client'
-import { useState, useEffect, useMemo, Fragment, Suspense, useCallback } from 'react'
+import { useState, useEffect, useMemo, useRef, Fragment, Suspense, useCallback } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
-import { fmtDate } from '@/lib/fmtDate'
+import { fmtDate, fmtOrdinalDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell,
@@ -166,6 +166,8 @@ type Payslip = {
   duty_allowance: string | null; data_allowance: string | null; ssnit: string | null
   childcare_allowance: string | null; total_salary: string | null
 }
+
+type PaymentConfirmation = { pay_month: string; confirmed_by: string; confirmed_at: string; total_amount: string }
 
 type Violation = {
   id: number; staff_name: string; violation: string; details: string | null
@@ -728,7 +730,7 @@ const PAY_COLS = [
 
 const ALL_STAFF_NAMES = ['Joe', 'Bino', 'James', 'Rawlings', 'Grony']
 
-type PayView = 'monthly' | 'staff' | 'profiles'
+type PayView = 'monthly' | 'staff' | 'profiles' | 'build'
 
 type PayFlag = { staff: string; month: string; issue: string; severity: 'warn' | 'error' }
 
@@ -778,7 +780,8 @@ function detectPayFlags(payslips: Payslip[]): PayFlag[] {
   return flags
 }
 
-function PayslipsTab() {
+function PayslipsTab({ role, username }: { role: string; username: string }) {
+  const canBuild = role === 'owner' || username === 'joe'
   const [payslips, setPayslips] = useState<Payslip[]>([])
   const [profiles, setProfiles] = useState<StaffProfile[]>([])
   const [loading, setLoading] = useState(true)
@@ -789,6 +792,10 @@ function PayslipsTab() {
   const [editForm, setEditForm] = useState<Partial<StaffProfile>>({})
   const [savingProfile, setSavingProfile] = useState(false)
   const [expandedId, setExpandedId] = useState<number | null>(null)
+
+  const [confirmations, setConfirmations] = useState<PaymentConfirmation[]>([])
+  const [confirming, setConfirming] = useState(false)
+  const [confirmError, setConfirmError] = useState('')
 
   useEffect(() => {
     Promise.all([
@@ -803,7 +810,40 @@ function PayslipsTab() {
       if (months.length) setSelectedMonth(months[months.length - 1])
       setLoading(false)
     })
+    loadConfirmations()
   }, [])
+
+  function refreshPayslips() {
+    return fetch('/api/payslips').then(r => r.json())
+      .then(p => { const ps = Array.isArray(p) ? p : []; setPayslips(ps); return ps })
+      .catch(() => [])
+  }
+
+  function loadConfirmations() {
+    return fetch('/api/payslips/confirm').then(r => r.ok ? r.json() : []).then(d => {
+      const list = Array.isArray(d) ? d : []
+      setConfirmations(list)
+      return list
+    }).catch(() => [])
+  }
+
+  const currentConfirmation = confirmations.find(c => c.pay_month === selectedMonth)
+
+  async function confirmPayment() {
+    if (!selectedMonth) return
+    setConfirming(true); setConfirmError('')
+    const res = await fetch('/api/payslips/confirm', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pay_month: selectedMonth }),
+    })
+    setConfirming(false)
+    if (res.ok) {
+      await loadConfirmations()
+    } else {
+      const d = await res.json().catch(() => ({}))
+      setConfirmError(d.error || 'Could not confirm payment. Please try again.')
+    }
+  }
 
   const months = useMemo(() =>
     [...new Set(payslips.map(p => p.pay_month))].sort(), [payslips])
@@ -851,6 +891,7 @@ function PayslipsTab() {
       <div className="flex gap-2 overflow-x-auto pb-1">
         {viewBtn('monthly',  '📅 By Month')}
         {viewBtn('staff',    '👤 By Staff')}
+        {canBuild && viewBtn('build', '🧮 Build')}
         {viewBtn('profiles', '🪪 Profiles')}
         {payFlags.length > 0 && viewBtn('flags' as any, `⚠️ Flags (${payFlags.length})`)}
       </div>
@@ -892,6 +933,28 @@ function PayslipsTab() {
           {selectedMonth && (
             <>
               <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">{monthLabelFull(selectedMonth)}</p>
+
+              {canBuild && (
+                currentConfirmation ? (
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-3">
+                    <p className="text-xs text-green-800">
+                      ✓ Confirmed by <span className="font-semibold capitalize">{currentConfirmation.confirmed_by}</span>{' '}
+                      on {fmtOrdinalDate(String(currentConfirmation.confirmed_at).slice(0, 10))} — {fmtC(currentConfirmation.total_amount)} recorded in Expenses.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-white border border-gray-200 rounded-xl p-3 space-y-2">
+                    {confirmError && <p className="text-xs text-red-500 font-medium">{confirmError}</p>}
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <p className="text-[11px] text-gray-500">Once every staff member has been paid for {monthLabelFull(selectedMonth)}, confirm payment to record the total as a Salaries expense.</p>
+                      <button onClick={confirmPayment} disabled={confirming}
+                        className="shrink-0 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-xs font-bold rounded-lg px-4 py-2 transition">
+                        {confirming ? 'Confirming…' : '✓ Confirm Payment'}
+                      </button>
+                    </div>
+                  </div>
+                )
+              )}
 
               {/* Summary cards */}
               <div className="grid grid-cols-2 gap-2">
@@ -1063,6 +1126,11 @@ function PayslipsTab() {
         </div>
       )}
 
+      {/* ── BUILD VIEW ───────────────────────────────────────────────────────── */}
+      {view === 'build' && canBuild && (
+        <PayslipBuilder payslips={payslips} onSaved={refreshPayslips} />
+      )}
+
       {/* ── PROFILES VIEW ─────────────────────────────────────────────────────── */}
       {view === 'profiles' && (
         <div className="space-y-3">
@@ -1136,6 +1204,315 @@ function PayslipsTab() {
   )
 }
 
+// ── PAYSLIP BUILDER ───────────────────────────────────────────────────────────
+
+type BuildRow = {
+  hours_worked: string; hourly_rate: string
+  overtime_hours: string; overtime_rate: string
+  longevity_days: string; longevity_rate: string
+  duty_allowance: string; data_allowance: string; childcare_allowance: string
+  ssnit: string; flat_total: string
+}
+
+function n(v: string): number { const x = parseFloat(v); return isNaN(x) ? 0 : x }
+
+function daysInMonth(ym: string): number {
+  const [y, m] = ym.split('-').map(Number)
+  return new Date(y, m, 0).getDate()
+}
+function lastDayOfMonth(ym: string): string {
+  return `${ym}-${String(daysInMonth(ym)).padStart(2, '0')}`
+}
+function monthNameOf(ym: string): string {
+  const [y, m] = ym.split('-').map(Number)
+  return new Date(y, m - 1, 1).toLocaleString('default', { month: 'long' })
+}
+function ordinalSuffix(d: number): string {
+  if (d === 1 || d === 21 || d === 31) return 'st'
+  if (d === 2 || d === 22) return 'nd'
+  if (d === 3 || d === 23) return 'rd'
+  return 'th'
+}
+function paymentPeriodLabel(ym: string): string {
+  const [y] = ym.split('-')
+  const days = daysInMonth(ym)
+  const name = monthNameOf(ym)
+  return `1st ${name}, ${y} to ${days}${ordinalSuffix(days)} ${name}, ${y}`
+}
+function nextMonthAfter(ym: string): string {
+  const [y, m] = ym.split('-').map(Number)
+  const d = new Date(y, m, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+function lastPayslipFor(payslips: Payslip[], staffName: string, buildMonth: string): Payslip | null {
+  const beforeDate = lastDayOfMonth(buildMonth)
+  const candidates = payslips.filter(p => p.staff_name === staffName && p.pay_month < beforeDate)
+  if (!candidates.length) return null
+  return candidates.reduce((a, b) => (a.pay_month > b.pay_month ? a : b))
+}
+
+function prefillRow(payslips: Payslip[], staffName: string, buildMonth: string, hours: number): BuildRow {
+  const last = lastPayslipFor(payslips, staffName, buildMonth)
+  if (!last) {
+    return {
+      hours_worked: String(hours), hourly_rate: '5.50', overtime_hours: '0', overtime_rate: '5.50',
+      longevity_days: '0', longevity_rate: '0.05', duty_allowance: '0', data_allowance: '0',
+      childcare_allowance: '0', ssnit: '0', flat_total: staffName === 'Grony' ? '4000' : '',
+    }
+  }
+  const lastHours = last.hours_worked != null ? parseFloat(last.hours_worked) : 0
+  const lastPayHrs = last.pay_for_hours != null ? parseFloat(last.pay_for_hours) : 0
+  const hourlyRate = lastHours > 0 ? lastPayHrs / lastHours : 5.50
+  const lastOtHrs = last.overtime_hours != null ? parseFloat(last.overtime_hours) : 0
+  const lastPayOt = last.pay_for_overtime != null ? parseFloat(last.pay_for_overtime) : 0
+  const otRate = lastOtHrs > 0 ? lastPayOt / lastOtHrs : hourlyRate
+  const lastLongDays = last.longevity_days != null ? parseFloat(last.longevity_days) : 0
+  const lastPayLong = last.pay_for_longevity != null ? parseFloat(last.pay_for_longevity) : 0
+  const longRate = lastLongDays > 0 ? lastPayLong / lastLongDays : 0.05
+  const newLongDays = lastLongDays > 0 ? lastLongDays + daysInMonth(buildMonth) : 0
+  const isFlatLast = last.total_salary != null && lastHours === 0 && lastLongDays === 0 &&
+    (last.duty_allowance == null || parseFloat(last.duty_allowance) === 0)
+
+  return {
+    hours_worked: String(hours),
+    hourly_rate: hourlyRate.toFixed(2),
+    overtime_hours: '0',
+    overtime_rate: otRate.toFixed(2),
+    longevity_days: String(Math.round(newLongDays)),
+    longevity_rate: longRate.toFixed(2),
+    duty_allowance: last.duty_allowance ?? '0',
+    data_allowance: last.data_allowance ?? '0',
+    childcare_allowance: last.childcare_allowance ?? '0',
+    ssnit: last.ssnit ?? '0',
+    flat_total: isFlatLast ? String(last.total_salary) : '',
+  }
+}
+
+function NumField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <label className="block">
+      <span className="block text-[10px] text-gray-400 mb-0.5">{label}</span>
+      <input type="number" step="0.01" value={value} onChange={e => onChange(e.target.value)}
+        className="w-full bg-gray-100 border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-400" />
+    </label>
+  )
+}
+
+function PayslipBuilder({ payslips, onSaved }: { payslips: Payslip[]; onSaved: () => Promise<Payslip[]> }) {
+  const existingMonths = useMemo(() => [...new Set(payslips.map(p => p.pay_month))].sort(), [payslips])
+  const defaultBuildMonth = useMemo(() => {
+    const latest = existingMonths[existingMonths.length - 1]
+    return latest ? nextMonthAfter(latest.slice(0, 7)) : new Date().toISOString().slice(0, 7)
+  }, [existingMonths])
+
+  const [buildMonth, setBuildMonth] = useState(defaultBuildMonth)
+  const [hoursByStaff, setHoursByStaff] = useState<Record<string, number>>({})
+  const [rows, setRows] = useState<Record<string, BuildRow>>({})
+  const [loadingHours, setLoadingHours] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [saved, setSaved] = useState(false)
+  const prefilledMonth = useRef<string | null>(null)
+
+  const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set(ALL_STAFF_NAMES))
+  const [bulkValues, setBulkValues] = useState<Partial<BuildRow>>({})
+
+  function toggleBulkStaff(name: string) {
+    setBulkSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(name)) next.delete(name); else next.add(name)
+      return next
+    })
+  }
+
+  function applyBulk() {
+    setRows(prev => {
+      const next = { ...prev }
+      for (const name of bulkSelected) {
+        if (!next[name]) continue
+        const updated = { ...next[name] }
+        for (const key of Object.keys(bulkValues) as (keyof BuildRow)[]) {
+          const v = bulkValues[key]
+          if (v !== undefined && v !== '') updated[key] = v
+        }
+        next[name] = updated
+      }
+      return next
+    })
+    setSaved(false)
+  }
+
+  function loadHoursAndPrefill(month: string, force = false) {
+    if (prefilledMonth.current === month && !force) return
+    setLoadingHours(true)
+    fetch(`/api/staff-times/monthly?month=${month}`)
+      .then(r => r.json())
+      .then(d => {
+        const hours = d.hours ?? {}
+        setHoursByStaff(hours)
+        const next: Record<string, BuildRow> = {}
+        for (const name of ALL_STAFF_NAMES) {
+          next[name] = prefillRow(payslips, name, month, hours[name] ?? 0)
+        }
+        setRows(next)
+        prefilledMonth.current = month
+      })
+      .catch(() => setError('Could not load staff hours for that month.'))
+      .finally(() => setLoadingHours(false))
+  }
+
+  useEffect(() => { loadHoursAndPrefill(buildMonth) }, [buildMonth]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function updateRow(name: string, field: keyof BuildRow, value: string) {
+    setRows(prev => ({ ...prev, [name]: { ...prev[name], [field]: value } }))
+    setSaved(false)
+  }
+
+  function computeTotals(row: BuildRow) {
+    const payForHours = n(row.hours_worked) * n(row.hourly_rate)
+    const payForOt = n(row.overtime_hours) * n(row.overtime_rate)
+    const payForLongevity = n(row.longevity_days) * n(row.longevity_rate)
+    const computedTotal = payForHours + payForOt + payForLongevity + n(row.duty_allowance) + n(row.data_allowance) + n(row.childcare_allowance) - n(row.ssnit)
+    const finalTotal = row.flat_total.trim() !== '' ? n(row.flat_total) : computedTotal
+    return { payForHours, payForOt, payForLongevity, computedTotal, finalTotal }
+  }
+
+  async function saveAll() {
+    setSaving(true); setError(''); setSaved(false)
+    const pay_month = lastDayOfMonth(buildMonth)
+    const payment_period = paymentPeriodLabel(buildMonth)
+    const entries = ALL_STAFF_NAMES.map(name => {
+      const row = rows[name]
+      const { payForHours, payForOt, payForLongevity, finalTotal } = computeTotals(row)
+      return {
+        staff_name: name, payment_period,
+        hours_worked: n(row.hours_worked), pay_for_hours: payForHours,
+        overtime_hours: n(row.overtime_hours), pay_for_overtime: payForOt,
+        longevity_days: n(row.longevity_days), pay_for_longevity: payForLongevity,
+        duty_allowance: n(row.duty_allowance), data_allowance: n(row.data_allowance),
+        childcare_allowance: n(row.childcare_allowance), ssnit: n(row.ssnit),
+        total_salary: finalTotal,
+      }
+    })
+    const res = await fetch('/api/payslips', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pay_month, entries }),
+    })
+    setSaving(false)
+    if (res.ok) {
+      const updated = await onSaved()
+      prefilledMonth.current = null
+      const monthsAfter = [...new Set(updated.map(p => p.pay_month))].sort()
+      const latest = monthsAfter[monthsAfter.length - 1]
+      if (latest) setBuildMonth(nextMonthAfter(latest.slice(0, 7)))
+      setSaved(true)
+    } else {
+      const d = await res.json().catch(() => ({}))
+      setError(d.error || 'Could not save payslips. Please try again.')
+    }
+  }
+
+  const grandTotal = useMemo(() => {
+    return ALL_STAFF_NAMES.reduce((sum, name) => {
+      const row = rows[name]
+      return row ? sum + computeTotals(row).finalTotal : sum
+    }, 0)
+  }, [rows])
+
+  return (
+    <div className="space-y-3">
+      <div className="sticky top-0 z-20 bg-blue-600 text-white rounded-xl px-4 py-2.5 flex items-center justify-between shadow">
+        <span className="text-xs font-semibold uppercase tracking-wide opacity-90">Total Payroll — {monthNameOf(buildMonth)}</span>
+        <span className="text-lg font-bold">{fmtC(String(grandTotal))}</span>
+      </div>
+
+      <div className="bg-white border border-gray-200 rounded-xl p-3 flex items-center justify-between gap-2 flex-wrap">
+        <div>
+          <label className="block text-[10px] text-gray-400 mb-0.5">Pay Month</label>
+          <input type="month" value={buildMonth} onChange={e => setBuildMonth(e.target.value)}
+            className="bg-gray-100 border border-gray-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-blue-400" />
+        </div>
+        <button onClick={() => loadHoursAndPrefill(buildMonth, true)} disabled={loadingHours}
+          className="text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 disabled:opacity-40">
+          {loadingHours ? 'Loading…' : '🔄 Refresh Hours'}
+        </button>
+      </div>
+
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 space-y-2">
+        <p className="text-xs font-bold text-blue-800">Bulk Apply</p>
+        <p className="text-[10px] text-blue-600">Fill in only the fields you want to set for everyone checked below — leave the rest blank to keep each staff's own value.</p>
+        <div className="flex flex-wrap gap-1.5">
+          <button onClick={() => setBulkSelected(new Set(ALL_STAFF_NAMES))}
+            className="shrink-0 text-[10px] font-semibold px-2 py-1 rounded-lg bg-white border border-blue-200 text-blue-700">All</button>
+          <button onClick={() => setBulkSelected(new Set())}
+            className="shrink-0 text-[10px] font-semibold px-2 py-1 rounded-lg bg-white border border-blue-200 text-blue-700">None</button>
+          {ALL_STAFF_NAMES.map(name => (
+            <label key={name} className="flex items-center gap-1 text-xs bg-white border border-blue-200 rounded-lg px-2 py-1 cursor-pointer">
+              <input type="checkbox" checked={bulkSelected.has(name)} onChange={() => toggleBulkStaff(name)} />
+              {name}
+            </label>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <NumField label="Hourly Rate" value={bulkValues.hourly_rate ?? ''} onChange={v => setBulkValues(b => ({ ...b, hourly_rate: v }))} />
+          <NumField label="OT Rate" value={bulkValues.overtime_rate ?? ''} onChange={v => setBulkValues(b => ({ ...b, overtime_rate: v }))} />
+          <NumField label="Longevity Rate" value={bulkValues.longevity_rate ?? ''} onChange={v => setBulkValues(b => ({ ...b, longevity_rate: v }))} />
+          <NumField label="Duty Allowance" value={bulkValues.duty_allowance ?? ''} onChange={v => setBulkValues(b => ({ ...b, duty_allowance: v }))} />
+          <NumField label="Data Allowance" value={bulkValues.data_allowance ?? ''} onChange={v => setBulkValues(b => ({ ...b, data_allowance: v }))} />
+          <NumField label="Childcare Allowance" value={bulkValues.childcare_allowance ?? ''} onChange={v => setBulkValues(b => ({ ...b, childcare_allowance: v }))} />
+          <NumField label="SSNIT" value={bulkValues.ssnit ?? ''} onChange={v => setBulkValues(b => ({ ...b, ssnit: v }))} />
+          <NumField label="Flat Total Override" value={bulkValues.flat_total ?? ''} onChange={v => setBulkValues(b => ({ ...b, flat_total: v }))} />
+        </div>
+        <button onClick={applyBulk} disabled={bulkSelected.size === 0}
+          className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-bold rounded-lg py-2 transition">
+          Apply to {bulkSelected.size} staff
+        </button>
+      </div>
+
+      {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
+      {saved && <p className="text-xs text-green-600 font-medium">Saved — payslips for {monthNameOf(buildMonth)} are live.</p>}
+
+      {ALL_STAFF_NAMES.map(name => {
+        const row = rows[name]
+        if (!row) return null
+        const { payForHours, payForOt, payForLongevity, computedTotal, finalTotal } = computeTotals(row)
+        return (
+          <div key={name} className="bg-white border border-gray-200 rounded-xl p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${STAFF_COLORS[name] ?? 'bg-gray-100 text-gray-600'}`}>{name}</span>
+              <span className="text-base font-bold text-blue-700">{fmtC(String(finalTotal))}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <NumField label={`Hours Worked (${hoursByStaff[name] ?? 0}h logged)`} value={row.hours_worked} onChange={v => updateRow(name, 'hours_worked', v)} />
+              <NumField label={`Hourly Rate → ₵${payForHours.toFixed(2)}`} value={row.hourly_rate} onChange={v => updateRow(name, 'hourly_rate', v)} />
+              <NumField label="Overtime Hours" value={row.overtime_hours} onChange={v => updateRow(name, 'overtime_hours', v)} />
+              <NumField label={`OT Rate → ₵${payForOt.toFixed(2)}`} value={row.overtime_rate} onChange={v => updateRow(name, 'overtime_rate', v)} />
+              <NumField label="Longevity Days" value={row.longevity_days} onChange={v => updateRow(name, 'longevity_days', v)} />
+              <NumField label={`Longevity Rate → ₵${payForLongevity.toFixed(2)}`} value={row.longevity_rate} onChange={v => updateRow(name, 'longevity_rate', v)} />
+              <NumField label="Duty Allowance" value={row.duty_allowance} onChange={v => updateRow(name, 'duty_allowance', v)} />
+              <NumField label="Data Allowance" value={row.data_allowance} onChange={v => updateRow(name, 'data_allowance', v)} />
+              <NumField label="Childcare Allowance" value={row.childcare_allowance} onChange={v => updateRow(name, 'childcare_allowance', v)} />
+              <NumField label="SSNIT (deducted)" value={row.ssnit} onChange={v => updateRow(name, 'ssnit', v)} />
+            </div>
+            <div className="flex items-center justify-between gap-2 pt-1 border-t border-gray-100">
+              <span className="text-[11px] text-gray-400">Computed: {fmtC(String(computedTotal))}</span>
+              <div className="w-40">
+                <NumField label="Flat Total Override" value={row.flat_total} onChange={v => updateRow(name, 'flat_total', v)} />
+              </div>
+            </div>
+          </div>
+        )
+      })}
+
+      <button onClick={saveAll} disabled={saving || loadingHours}
+        className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-bold rounded-xl py-3 transition">
+        {saving ? 'Saving…' : `Save Payslips for ${monthNameOf(buildMonth)}`}
+      </button>
+    </div>
+  )
+}
+
 // ── VIOLATIONS TAB ────────────────────────────────────────────────────────────
 
 const VIOLATION_VIEWS = ['Disciplinary', 'Payslips', 'Times'] as const
@@ -1160,7 +1537,6 @@ const VIOLATION_ICONS: Record<ViolationView, React.ReactNode> = {
 }
 
 function ViolationsTab({ role, username, vtab, setVtab }: { role: string; username: string; vtab: ViolationView; setVtab: (v: ViolationView) => void }) {
-  const isAdmin = role === 'owner' || role === 'admin' || username === 'rawlings' || username === 'grony' || username === 'joe'
   const PAYSLIP_MONTHS = ['2026-04', '2026-05']
   const PAYSLIP_MONTH_LABELS: Record<string, string> = { '2026-04': 'April 2026', '2026-05': 'May 2026' }
 
@@ -1359,7 +1735,7 @@ function ViolationsTab({ role, username, vtab, setVtab }: { role: string; userna
                       </span>
                     )}
                   </div>
-                  {role === 'owner' && (
+                  {(role === 'owner' || username === 'joe') && (
                     <button onClick={() => remove(v.id)} className="text-xs text-red-400 hover:text-red-600 font-semibold shrink-0">Delete</button>
                   )}
                 </div>
@@ -1418,22 +1794,8 @@ function ViolationsTab({ role, username, vtab, setVtab }: { role: string; userna
       {vview === 'Times' && (
         <div className="space-y-3">
           <p className="text-[11px] text-gray-400">Days that have a sales receipt but no staff time was entered.</p>
-          {noTimesDays.length === 0
-            ? <p className="py-10 text-center text-gray-400 text-sm">All sales days have staff times recorded.</p>
-            : (
-              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
-                {noTimesDays.map(date => (
-                  <FixRow key={date} label={fmtDate(date)} sub="No staff times recorded">
-                    {isAdmin ? (
-                      <NoTimesFix date={date} onFixed={d => setNoTimesDays(prev => prev.filter(x => x !== d))} />
-                    ) : (
-                      <p className="text-xs text-gray-400 py-1">Only Rawlings or the owner can add times.</p>
-                    )}
-                  </FixRow>
-                ))}
-              </div>
-            )
-          }
+          <NoStaffTimesList dates={noTimesDays} role={role} username={username}
+            onFixed={d => setNoTimesDays(prev => prev.filter(x => x !== d))} />
         </div>
       )}
     </div>
@@ -1457,6 +1819,26 @@ function FixRow({ label, sub, children }: { label: string; sub?: string; childre
         </button>
       </div>
       {open && <div className="px-3 pb-2 border-t border-gray-50 space-y-1.5 pt-1.5">{children}</div>}
+    </div>
+  )
+}
+
+// Shared between the Staff → Violations → Times view and the Errors tab's
+// "No Staff Times" violation, so both stay in sync with one implementation.
+export function NoStaffTimesList({ dates, role, username, onFixed }: { dates: string[]; role: string; username: string; onFixed: (d: string) => void }) {
+  const isAdmin = role === 'owner' || role === 'admin' || username === 'rawlings' || username === 'grony' || username === 'joe'
+  if (dates.length === 0) return <p className="py-10 text-center text-gray-400 text-sm">All sales days have staff times recorded.</p>
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
+      {dates.map(date => (
+        <FixRow key={date} label={fmtDate(date)} sub="No staff times recorded">
+          {isAdmin ? (
+            <NoTimesFix date={date} onFixed={onFixed} />
+          ) : (
+            <p className="text-xs text-gray-400 py-1">Only Rawlings or the owner can add times.</p>
+          )}
+        </FixRow>
+      ))}
     </div>
   )
 }
@@ -1557,10 +1939,11 @@ function NoTimesFix({ date, onFixed }: { date: string; onFixed: (d: string) => v
 
 
 
-function RoleTab({ role }: { role: string }) {
+function RoleTab({ role, username }: { role: string; username: string }) {
   const [users, setUsers] = useState<AppUser[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<number | null>(null)
+  const canManageRoles = role === 'owner' || username === 'joe'
 
   useEffect(() => {
     fetch('/api/users').then(r => r.json())
@@ -1581,7 +1964,7 @@ function RoleTab({ role }: { role: string }) {
     }
   }
 
-  if (role !== 'owner') {
+  if (!canManageRoles) {
     return <p className="py-10 text-center text-gray-400 text-sm">Only the owner can manage roles.</p>
   }
 
@@ -1595,26 +1978,30 @@ function RoleTab({ role }: { role: string }) {
 
   return (
     <div className="space-y-2">
-      {users.map(u => (
-        <div key={u.id} className="bg-white border border-gray-200 rounded-xl p-3 flex items-center gap-3">
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-900">{u.display_name}</p>
-            <p className="text-xs text-gray-400">@{u.username}{u.email ? ` · ${u.email}` : ''}</p>
+      {users.map(u => {
+        // Joe's owner-level access does not extend to editing the owner's own account
+        const protectedFromMe = role !== 'owner' && (u.role === 'owner' || u.username?.toLowerCase() === 'grony')
+        return (
+          <div key={u.id} className="bg-white border border-gray-200 rounded-xl p-3 flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900">{u.display_name}</p>
+              <p className="text-xs text-gray-400">@{u.username}{u.email ? ` · ${u.email}` : ''}</p>
+            </div>
+            <select
+              value={u.role}
+              onChange={e => changeRole(u, e.target.value)}
+              disabled={saving === u.id || protectedFromMe}
+              className="shrink-0 text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700 outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-50">
+              <option value="staff">Staff</option>
+              <option value="manager">Manager</option>
+              <option value="owner">Owner</option>
+            </select>
+            <span className={`shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${ROLE_COLORS[u.role] ?? 'bg-gray-100 text-gray-500'}`}>
+              {saving === u.id ? '…' : u.role}
+            </span>
           </div>
-          <select
-            value={u.role}
-            onChange={e => changeRole(u, e.target.value)}
-            disabled={saving === u.id}
-            className="shrink-0 text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700 outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-50">
-            <option value="staff">Staff</option>
-            <option value="manager">Manager</option>
-            <option value="owner">Owner</option>
-          </select>
-          <span className={`shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${ROLE_COLORS[u.role] ?? 'bg-gray-100 text-gray-500'}`}>
-            {saving === u.id ? '…' : u.role}
-          </span>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
@@ -2208,10 +2595,12 @@ const VIOLATION_TYPES: { type: string; label: string; auto: boolean }[] = [
   { type: 'no_group', label: 'Items with no group assigned', auto: false },
   { type: 'duplicates', label: 'Possible duplicate item pairs', auto: false },
   { type: 'not_in_inventory', label: 'Item names not found in inventory', auto: false },
+  { type: 'dup_receipts', label: 'Days with duplicate WIC/GMC receipts', auto: true },
 ]
 
 function AssignmentsTab({ role, username }: { role: string; username: string }) {
   const [assignments, setAssignments] = useState<Record<string, string>>({})
+  const [deadlines, setDeadlines] = useState<Record<string, string>>({})
   const [settings, setSettings] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
@@ -2221,7 +2610,7 @@ function AssignmentsTab({ role, username }: { role: string; username: string }) 
   function load() {
     fetch('/api/violations/assignments')
       .then(r => r.json())
-      .then(d => { setAssignments(d.assignments ?? {}); setSettings(d.settings ?? {}); setLoading(false) })
+      .then(d => { setAssignments(d.assignments ?? {}); setDeadlines(d.deadlines ?? {}); setSettings(d.settings ?? {}); setLoading(false) })
       .catch(() => setLoading(false))
   }
 
@@ -2232,7 +2621,7 @@ function AssignmentsTab({ role, username }: { role: string; username: string }) 
     const label = VIOLATION_TYPES.find(v => v.type === type)?.label ?? type
     const res = await fetch('/api/violations/assignments', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ violation_type: type, staff_name: staff || null, violation_label: label }),
+      body: JSON.stringify({ violation_type: type, staff_name: staff || null, violation_label: label, deadline: deadlines[type] || null }),
     })
     setSaving(null)
     if (res.ok) {
@@ -2240,6 +2629,24 @@ function AssignmentsTab({ role, username }: { role: string; username: string }) 
     } else {
       const d = await res.json().catch(() => ({}))
       setError(d.error || 'Could not save assignment. Please try again.')
+    }
+  }
+
+  async function setDeadline(type: string, deadline: string) {
+    const staff = assignments[type]
+    if (!staff) { setError('Assign a staff member before setting a deadline.'); return }
+    setSaving(type); setError('')
+    const label = VIOLATION_TYPES.find(v => v.type === type)?.label ?? type
+    const res = await fetch('/api/violations/assignments', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ violation_type: type, staff_name: staff, violation_label: label, deadline: deadline || null }),
+    })
+    setSaving(null)
+    if (res.ok) {
+      setDeadlines(prev => ({ ...prev, [type]: deadline }))
+    } else {
+      const d = await res.json().catch(() => ({}))
+      setError(d.error || 'Could not save deadline. Please try again.')
     }
   }
 
@@ -2265,7 +2672,8 @@ function AssignmentsTab({ role, username }: { role: string; username: string }) 
         <p className="text-sm font-semibold text-gray-700">Auto-Penalty Settings</p>
         <p className="text-[11px] text-gray-400">
           Once an assigned violation has been outstanding this many days, the assigned staff member is
-          automatically penalized the points below. Checked daily.
+          automatically penalized the points below. Checked daily. If an assignment has its own deadline
+          set, that fixed date is used instead of this rolling threshold.
         </p>
         <div className="grid grid-cols-2 gap-2">
           <div>
@@ -2292,20 +2700,30 @@ function AssignmentsTab({ role, username }: { role: string; username: string }) 
       </div>
 
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
-        {VIOLATION_TYPES.map(v => (
-          <div key={v.type} className="flex items-center justify-between gap-3 px-4 py-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm text-gray-800">{v.label}</p>
-              {!v.auto && <p className="text-[10px] text-gray-400">No auto-penalty — no fixed date to measure against.</p>}
+        {VIOLATION_TYPES.map(v => {
+          const assignedStaff = assignments[v.type] ?? ''
+          return (
+            <div key={v.type} className="flex items-center justify-between gap-3 px-4 py-3 flex-wrap">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-gray-800">{v.label}</p>
+                {!v.auto && <p className="text-[10px] text-gray-400">No auto-penalty — no fixed date to measure against.</p>}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <input type="date" value={deadlines[v.type] ?? ''}
+                  disabled={!canManage || !assignedStaff || saving === v.type}
+                  onChange={e => setDeadline(v.type, e.target.value)}
+                  title="Deadline — overdue triggers auto-penalty"
+                  className="bg-gray-100 border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-60" />
+                <select value={assignedStaff} disabled={!canManage || saving === v.type}
+                  onChange={e => assign(v.type, e.target.value)}
+                  className="bg-gray-100 border border-gray-200 rounded-lg px-2 py-1.5 text-sm capitalize outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-60">
+                  <option value="">Unassigned</option>
+                  {STAFF.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                </select>
+              </div>
             </div>
-            <select value={assignments[v.type] ?? ''} disabled={!canManage || saving === v.type}
-              onChange={e => assign(v.type, e.target.value)}
-              className="shrink-0 bg-gray-100 border border-gray-200 rounded-lg px-2 py-1.5 text-sm capitalize outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-60">
-              <option value="">Unassigned</option>
-              {STAFF.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-            </select>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {!canManage && <p className="text-[11px] text-gray-400 text-center">Only the owner or manager can change assignments.</p>}
@@ -2359,9 +2777,9 @@ function StaffClientInner({ role, username, embedded }: { role: string; username
       </div>
 
       {tab === 'Times' && <TimesTab username={username} role={role} />}
-      {tab === 'Payslips' && <PayslipsTab />}
+      {tab === 'Payslips' && <PayslipsTab role={role} username={username} />}
       {tab === 'Violations' && <ViolationsTab role={role} username={username} vtab={vtab} setVtab={setVtab} />}
-      {tab === 'Role' && <RoleTab role={role} />}
+      {tab === 'Role' && <RoleTab role={role} username={username} />}
       {tab === 'Rota' && <RotaTab />}
       {tab === 'Analytics' && <AnalyticsTab />}
       {tab === 'Assignments' && <AssignmentsTab role={role} username={username} />}

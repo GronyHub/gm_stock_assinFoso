@@ -37,17 +37,14 @@ const NewBillForm    = dynamic(() => import('../bills/new/page'),             { 
 const NewExpenseForm = dynamic(() => import('../expenses/new/page'),          { ssr: false, loading: () => loading('Loading…') })
 const AnalyticsPanel = dynamic(() => import('./_components/AnalyticsPanel'),  { ssr: false, loading: () => loading('Loading analytics…') })
 const StaffClient    = dynamic(() => import('../staff/StaffClient'),          { ssr: false, loading: () => loading('Loading…') })
+const NoStaffTimesList = dynamic(() => import('../staff/StaffClient').then(m => ({ default: m.NoStaffTimesList })), { ssr: false, loading: () => loading('Loading…') })
 const LossTab        = dynamic(() => import('./_components/LossTab'),         { ssr: false, loading: () => loading('Loading…') })
+const ProfitLossTab  = dynamic(() => import('./_components/ProfitLossTab'),   { ssr: false, loading: () => loading('Loading…') })
 
-// Defined locally (not imported from AnalyticsPanel.tsx) -- a cross-file type
-// import here previously caused the analytics/recharts bundle to get pulled
-// into the server bundle and crash the page on Vercel with a black screen.
-type AnaSection = 'Items' | 'Sales' | 'Bills' | 'Counts' | 'Expenses'
-const ANA_SECTION: Partial<Record<OuterTab, AnaSection>> = {
-  loss: 'Items', sales: 'Sales', bills: 'Bills', counts: 'Counts', expenses: 'Expenses',
-}
+type OuterTab = 'today' | 'loss' | 'errors' | 'data' | 'pl' | 'expenses' | 'cab' | 'staff'
 
-type OuterTab = 'today' | 'sales' | 'bills' | 'counts' | 'expenses' | 'cab' | 'staff' | 'loss'
+// Sales, Bills, and Counts live as submenus inside the Loss tab.
+type LossView = 'items' | 'sales' | 'bills' | 'counts'
 
 type Item = {
   id: number
@@ -61,32 +58,40 @@ type Item = {
   calculated_soh: number
 }
 
-const VIOLATIONS: Record<OuterTab, { key: string; label: string }[]> = {
+type ErrorCategory = 'loss' | 'sales' | 'cab' | 'staff'
+
+// Every violation type in the app, in one place -- the Errors tab is the
+// single home for all of them, regardless of which tab/data they come from.
+const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCategory }[] = [
+  { key: 'neg_soh',    label: 'Neg SOH',    category: 'loss' },
+  { key: 'no_sp',      label: 'No SP',      category: 'loss' },
+  { key: 'no_cp',      label: 'No CP',      category: 'loss' },
+  { key: 'no_group',   label: 'No Group',   category: 'loss' },
+  { key: 'duplicates', label: 'Duplicates', category: 'loss' },
+  { key: 'aliases',    label: 'Aliases',    category: 'loss' },
+  { key: 'service_violation', label: 'Service', category: 'loss' },
+  { key: 'daily',      label: 'Daily Count',   category: 'loss' },
+  { key: '15day',      label: '15-Day Count',  category: 'loss' },
+  { key: 'no_cash',      label: 'No Cash',      category: 'sales' },
+  { key: 'missing_days', label: 'Missing Days', category: 'sales' },
+  { key: 'cost_price',   label: 'Cost Price',   category: 'sales' },
+  { key: 'dup_receipt',  label: 'Dup Receipts', category: 'sales' },
+  { key: 'unchecked_cab',  label: 'Unchecked CAB',  category: 'cab' },
+  { key: 'no_staff_times', label: 'No Staff Times', category: 'staff' },
+]
+
+const VIOLATIONS: Record<OuterTab, { key: string; label: string; category?: ErrorCategory }[]> = {
   today: [],
-  loss: [
-    { key: 'neg_soh',    label: 'Neg SOH' },
-    { key: 'no_sp',      label: 'No SP' },
-    { key: 'no_cp',      label: 'No CP' },
-    { key: 'no_group',   label: 'No Group' },
-    { key: 'duplicates', label: 'Duplicates' },
-    { key: 'aliases',    label: 'Aliases' },
-    { key: 'service_violation', label: 'Service' },
-  ],
-  sales: [
-    { key: 'no_cash',      label: 'No Cash' },
-    { key: 'missing_days', label: 'Missing Days' },
-    { key: 'cost_price',   label: 'Cost Price' },
-    { key: 'dup_receipt',  label: 'Dup Receipts' },
-  ],
-  bills: [],
-  counts: [
-    { key: 'daily', label: 'Daily' },
-    { key: '15day', label: '15-Day' },
-  ],
+  loss: [],
+  errors: ERROR_VIOLATIONS,
+  data: [],
+  pl: [],
   expenses: [],
   cab: [],
   staff: [],
 }
+
+const COUNTS_VIOLATIONS = new Set(['daily', '15day'])
 
 const HAMBURGER_LINKS = [
   { href: '/analysis', label: 'Analysis' },
@@ -117,7 +122,7 @@ function TabIcon({ icon, label, active, onClick, count }: { icon: string; label:
   )
 }
 
-const VALID_TABS: OuterTab[] = ['today', 'sales', 'bills', 'counts', 'expenses', 'cab', 'staff', 'loss']
+const VALID_TABS: OuterTab[] = ['today', 'loss', 'errors', 'data', 'pl', 'expenses', 'cab', 'staff']
 
 function ItemHubPageInner() {
   const router = useRouter()
@@ -128,11 +133,11 @@ function ItemHubPageInner() {
   )
   const [group, setGroup]               = useState<string | null>(null)
   const [productType, setProductType]   = useState<'all' | 'goods' | 'services'>('all')
+  const [lossView, setLossView]         = useState<LossView>('items')
   const [search, setSearch]             = useState('')
   const [violation, setViolation]       = useState<string | null>(searchParams.get('violation'))
   const [violationOpen, setViolationOpen] = useState(!!searchParams.get('violation'))
   const [groupOpen, setGroupOpen]       = useState(false)
-  const [anaOpen, setAnaOpen]           = useState(false)
   const [hamburgerOpen, setHamburgerOpen] = useState(false)
   const [addForm, setAddForm]             = useState<'item' | 'sale' | 'bill' | 'expense' | null>(null)
   const [jumpToItemId, setJumpToItemId]   = useState<number | null>(null)
@@ -179,7 +184,7 @@ function ItemHubPageInner() {
   usePolling(loadBadgeData, 20000)
 
   const violationCounts: Record<string, number> = useMemo(() => {
-    const negSoh = items.filter(i => Number(i.calculated_soh) <= 0).length
+    const negSoh = items.filter(i => Number(i.calculated_soh) < 0 && i.product_type !== 'service').length
     const noSp = items.filter(i => !i.selling_rate || parseFloat(i.selling_rate) === 0).length
     const noCp = items.filter(i => !i.purchase_rate || parseFloat(i.purchase_rate) === 0).length
     const f = globalFlags
@@ -196,19 +201,18 @@ function ItemHubPageInner() {
       daily: pendingCounts.daily,
       '15day': pendingCounts.overdue,
       service_violation: serviceViolationCount,
+      unchecked_cab: f?.uncheckedCab?.length ?? 0,
+      no_staff_times: f?.noStaffTimes?.length ?? 0,
     }
   }, [items, globalFlags, pendingCounts, serviceViolationCount])
 
   const badgeCounts: Partial<Record<OuterTab, number>> = useMemo(() => {
     const v = violationCounts
     return {
-      loss: v.neg_soh + v.no_sp + v.no_cp + v.no_group + v.duplicates + v.service_violation,
-      sales: v.no_cash + v.missing_days + v.cost_price + v.dup_receipt,
-      counts: v.daily + v['15day'],
-      cab: globalFlags?.uncheckedCab?.length ?? 0,
-      staff: globalFlags?.noStaffTimes?.length ?? 0,
+      errors: v.neg_soh + v.no_sp + v.no_cp + v.no_group + v.duplicates + v.service_violation + v.daily + v['15day']
+        + v.no_cash + v.missing_days + v.cost_price + v.dup_receipt + v.unchecked_cab + v.no_staff_times,
     }
-  }, [violationCounts, globalFlags])
+  }, [violationCounts])
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -221,11 +225,11 @@ function ItemHubPageInner() {
 
   function changeTab(t: OuterTab) {
     setOuterTab(t)
-    setViolation(null)
-    setViolationOpen(false)
-    setAnaOpen(false)
+    setViolation(t === 'errors' ? ERROR_VIOLATIONS[0].key : null)
+    setViolationOpen(t === 'errors')
     setAddForm(null)
     if (t !== 'loss') setProductType('all')
+    if (t === 'loss') setLossView('items')
     router.replace(t === 'today' ? '/item' : `/item?tab=${t}`, { scroll: false })
   }
 
@@ -238,10 +242,11 @@ function ItemHubPageInner() {
     productType !== 'all' ? (productType === 'goods' ? 'Goods' : 'Services') : null,
   ].filter(Boolean).join(' · ')
 
-  const showControls = outerTab !== 'today' && outerTab !== 'staff'
+  const showControls = outerTab !== 'today' && outerTab !== 'staff' && outerTab !== 'data' && outerTab !== 'pl'
   const { data: session } = useSession()
   const role = (session?.user as any)?.role ?? 'staff'
   const username = (session?.user as any)?.username ?? session?.user?.name ?? ''
+  const canSeePL = role === 'owner' || username === 'joe'
   const hamburgerLinks = HAMBURGER_LINKS
 
   return (
@@ -259,13 +264,15 @@ function ItemHubPageInner() {
             <span className="text-lg leading-none">🏠</span>
           </button>
           <div className="flex items-center gap-0.5 px-1 pt-1.5 pb-1 flex-1 min-w-0">
-            <TabIcon icon="📉" label="Loss"     active={outerTab === 'loss'}     onClick={() => changeTab('loss')}     count={badgeCounts.loss} />
-            <TabIcon icon="💰" label="Sales"    active={outerTab === 'sales'}    onClick={() => changeTab('sales')}    count={badgeCounts.sales} />
-            <TabIcon icon="🧾" label="Bills"    active={outerTab === 'bills'}    onClick={() => changeTab('bills')} />
-            <TabIcon icon="🔢" label="CNT"      active={outerTab === 'counts'}   onClick={() => changeTab('counts')}   count={badgeCounts.counts} />
+            <TabIcon icon="📉" label="Loss"     active={outerTab === 'loss'}     onClick={() => changeTab('loss')} />
+            <TabIcon icon="⚠️" label="Errors"   active={outerTab === 'errors'}   onClick={() => changeTab('errors')}   count={badgeCounts.errors} />
+            <TabIcon icon="🔢" label="Data"     active={outerTab === 'data'}     onClick={() => changeTab('data')} />
+            {canSeePL && (
+              <TabIcon icon="📈" label="P&L"     active={outerTab === 'pl'}       onClick={() => changeTab('pl')} />
+            )}
             <TabIcon icon="💸" label="Exp."     active={outerTab === 'expenses'} onClick={() => changeTab('expenses')} />
-            <TabIcon icon="🏦" label="CAB"      active={outerTab === 'cab'}      onClick={() => changeTab('cab')}      count={badgeCounts.cab} />
-            <TabIcon icon="👤" label="Staff"    active={outerTab === 'staff'}    onClick={() => changeTab('staff')}    count={badgeCounts.staff} />
+            <TabIcon icon="🏦" label="CAB"      active={outerTab === 'cab'}      onClick={() => changeTab('cab')} />
+            <TabIcon icon="👤" label="Staff"    active={outerTab === 'staff'}    onClick={() => changeTab('staff')} />
           </div>
 
           {/* Hamburger — outside the flex tabs row so dropdown isn't clipped */}
@@ -292,6 +299,23 @@ function ItemHubPageInner() {
             )}
           </div>
         </div>
+
+        {/* Loss sub-view row: Sales / Bills / Counts — Items is the Loss tab's own default view */}
+        {outerTab === 'loss' && (
+          <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 border-t border-blue-100 overflow-x-auto">
+            {([
+              { key: 'sales',  label: '💰 Sales' },
+              { key: 'bills',  label: '🧾 Bills' },
+              { key: 'counts', label: '📋 Counts' },
+            ] as { key: LossView; label: string }[]).map(v => (
+              <button key={v.key} onClick={() => { setLossView(v.key); setAddForm(null) }}
+                className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap transition
+                  ${lossView === v.key ? 'bg-blue-600 text-white' : 'bg-white border border-blue-200 text-blue-700 hover:bg-blue-100'}`}>
+                {v.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Row 2: groups + violations + search — hidden on Today tab */}
         {showControls && (
@@ -327,14 +351,14 @@ function ItemHubPageInner() {
               )}
             </div>
 
-            {/* Violations toggle */}
-            {currentViolations.length > 0 && (
+            {/* Violations toggle — Errors tab always shows the row below, no toggle needed */}
+            {currentViolations.length > 0 && outerTab !== 'errors' && (
               <>
                 <div className="w-px h-4 bg-gray-200 shrink-0" />
                 <button onClick={() => {
                     const opening = !violationOpen
                     setViolationOpen(opening)
-                    if (opening) { setViolation(currentViolations[0].key); setAnaOpen(false) }
+                    if (opening) setViolation(currentViolations[0].key)
                     else setViolation(null)
                   }}
                   className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap flex items-center gap-1 transition
@@ -344,30 +368,14 @@ function ItemHubPageInner() {
               </>
             )}
 
-            {/* Analytics toggle */}
-            {ANA_SECTION[outerTab] && (
-              <>
-                <div className="w-px h-4 bg-gray-200 shrink-0" />
-                <button onClick={() => setAnaOpen(o => {
-                    const opening = !o
-                    if (opening) { setViolationOpen(false); setViolation(null) }
-                    return opening
-                  })}
-                  className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap flex items-center gap-1 transition
-                    ${anaOpen ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
-                  Ana
-                </button>
-              </>
-            )}
-
             {/* Search */}
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Search…"
               className="min-w-0 w-24 flex-1 text-xs bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
 
-            {/* New button — Loss/Items, Sales, Bills, Expenses only */}
-            {(['loss', 'sales', 'bills', 'expenses'] as OuterTab[]).includes(outerTab) && (() => {
-              const formKey = outerTab === 'loss' ? 'item' : outerTab === 'sales' ? 'sale' : outerTab === 'bills' ? 'bill' : 'expense'
+            {/* New button — Loss (Items/Sales/Bills submenu) and Expenses only; Counts has no add-form */}
+            {(outerTab === 'expenses' || (outerTab === 'loss' && lossView !== 'counts')) && (() => {
+              const formKey = outerTab === 'expenses' ? 'expense' : lossView === 'items' ? 'item' : lossView === 'sales' ? 'sale' : 'bill'
               return (
                 <button onClick={() => setAddForm(addForm === formKey ? null : formKey)}
                   className={`shrink-0 text-xs font-semibold px-3 py-1 rounded-lg transition
@@ -380,7 +388,7 @@ function ItemHubPageInner() {
         )}
 
         {/* Violations sub-tab row */}
-        {violationOpen && currentViolations.length > 0 && (
+        {(violationOpen || outerTab === 'errors') && currentViolations.length > 0 && (
           <div className="flex items-center gap-1 px-2 py-1 bg-red-50 border-t border-red-100 overflow-x-auto">
             {currentViolations.map(v => {
               const c = violationCounts[v.key] ?? 0
@@ -404,52 +412,89 @@ function ItemHubPageInner() {
 
       {/* ── Content ── */}
       <div className="flex-1 min-h-0 overflow-y-auto">
-        {addForm === 'sale'    && outerTab === 'sales'    && <div className="px-4"><NewSaleForm    onSuccess={() => { setAddForm(null); changeTab('sales') }} /></div>}
-        {addForm === 'bill'    && outerTab === 'bills'    && <div className="px-4"><NewBillForm    onSuccess={() => { setAddForm(null); changeTab('bills') }} /></div>}
+        {addForm === 'sale'    && outerTab === 'loss'     && lossView === 'sales' && <div className="px-4"><NewSaleForm    onSuccess={() => setAddForm(null)} /></div>}
+        {addForm === 'bill'    && outerTab === 'loss'     && lossView === 'bills' && <div className="px-4"><NewBillForm    onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'expense' && outerTab === 'expenses' && <div className="px-4"><NewExpenseForm onSuccess={() => { setAddForm(null); changeTab('expenses') }} /></div>}
-        {anaOpen && ANA_SECTION[outerTab] && !addForm && (
+        {outerTab === 'data' && (
           <TabErrorBoundary>
-            <AnalyticsPanel section={ANA_SECTION[outerTab]!} />
+            <AnalyticsPanel />
           </TabErrorBoundary>
         )}
-        {!anaOpen && outerTab === 'today' && !(addForm === 'sale' || addForm === 'bill' || addForm === 'expense') && (
+        {outerTab === 'pl' && (
+          <TabErrorBoundary>
+            <ProfitLossTab />
+          </TabErrorBoundary>
+        )}
+        {outerTab === 'today' && !(addForm === 'sale' || addForm === 'bill' || addForm === 'expense') && (
           <TabErrorBoundary>
             <div className="h-full overflow-y-auto px-4">
               <TodayContent />
             </div>
           </TabErrorBoundary>
         )}
-        {!anaOpen && addForm !== 'sale'    && outerTab === 'sales'    && <SalesTab items={items} groupFilter={group} search={search} violation={violation} />}
-        {!anaOpen && addForm !== 'bill'    && outerTab === 'bills'    && <BillsTab items={items} groupFilter={group} search={search} />}
-        {!anaOpen && outerTab === 'counts'   && <CountsTab items={items} groupFilter={group} search={search} violation={violation} />}
-        {!anaOpen && addForm !== 'expense' && outerTab === 'expenses' && <ExpensesTab search={search} />}
-        {!anaOpen && outerTab === 'cab'      && <CABTab />}
-        {!anaOpen && outerTab === 'staff'    && (
+        {addForm !== 'expense' && outerTab === 'expenses' && <ExpensesTab search={search} />}
+        {outerTab === 'cab'      && <CABTab />}
+        {outerTab === 'staff'    && (
           <TabErrorBoundary>
             <StaffClient role={role} username={username} embedded />
           </TabErrorBoundary>
         )}
-        {!anaOpen && outerTab === 'loss' && violation && (
-          itemsLoading
-            ? <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
-            : <ItemsTab
-                items={items}
-                group={group}
-                productType={productType}
-                search={search}
-                violation={violation}
-                onItemsChanged={setItems}
-                showAdd={addForm === 'item'}
-                onCloseAdd={() => setAddForm(null)}
-                jumpToItemId={jumpToItemId}
-                onJumpDone={() => setJumpToItemId(null)}
-              />
-        )}
-        {!anaOpen && outerTab === 'loss' && !violation && (
+        {outerTab === 'loss' && lossView === 'items' && (
           <TabErrorBoundary>
             <LossTab onOpenItem={() => {}} search={search} group={group} productType={productType} />
           </TabErrorBoundary>
         )}
+        {addForm !== 'sale' && outerTab === 'loss' && lossView === 'sales' && (
+          <SalesTab items={items} groupFilter={group} search={search} violation={null} />
+        )}
+        {addForm !== 'bill' && outerTab === 'loss' && lossView === 'bills' && (
+          <BillsTab items={items} groupFilter={group} search={search} />
+        )}
+        {outerTab === 'loss' && lossView === 'counts' && (
+          <CountsTab items={items} groupFilter={group} search={search} violation={null} />
+        )}
+        {outerTab === 'errors' && violation && (() => {
+          const category = ERROR_VIOLATIONS.find(v => v.key === violation)?.category
+          if (category === 'loss') {
+            if (COUNTS_VIOLATIONS.has(violation)) {
+              return <CountsTab items={items} groupFilter={group} search={search} violation={violation} />
+            }
+            return itemsLoading
+              ? <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
+              : <ItemsTab
+                  items={items}
+                  group={group}
+                  productType={productType}
+                  search={search}
+                  violation={violation}
+                  onItemsChanged={setItems}
+                  showAdd={false}
+                  onCloseAdd={() => {}}
+                  jumpToItemId={jumpToItemId}
+                  onJumpDone={() => setJumpToItemId(null)}
+                />
+          }
+          if (category === 'sales') {
+            return <SalesTab items={items} groupFilter={group} search={search} violation={violation} />
+          }
+          if (category === 'cab') {
+            return <CABTab />
+          }
+          if (category === 'staff') {
+            return (
+              <TabErrorBoundary>
+                <div className="px-4 py-3">
+                  <NoStaffTimesList
+                    dates={(globalFlags?.noStaffTimes ?? []).map((r: any) => r.missing_date)}
+                    role={role} username={username}
+                    onFixed={() => loadBadgeData()}
+                  />
+                </div>
+              </TabErrorBoundary>
+            )
+          }
+          return null
+        })()}
       </div>
     </div>
   )
