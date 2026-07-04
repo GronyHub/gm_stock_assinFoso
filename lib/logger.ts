@@ -1,9 +1,17 @@
 import sql from '@/lib/db'
 
 // Actions that shouldn't also become a public Announcements post: login/logout
-// fire twice a day per staff member with no real info, and 'posted announcement'
-// is already an announcement itself (posting it again would duplicate the feed).
-const ANNOUNCEMENT_EXCLUDED_ACTIONS = new Set(['logged in', 'logged out', 'posted announcement'])
+// fire twice a day per staff member with no real info, 'posted announcement'
+// is already an announcement itself (posting it again would duplicate the
+// feed), and view-as is an owner/Joe-only concern (see OWNER_ONLY_ACTIONS)
+// that other staff -- including whoever is being viewed as -- shouldn't see.
+const ANNOUNCEMENT_EXCLUDED_ACTIONS = new Set([
+  'logged in', 'logged out', 'posted announcement',
+  'started viewing portal as', 'stopped viewing portal as',
+])
+
+// Notified to owner-level (Grony/Joe) only, never broadcast to all staff.
+const OWNER_ONLY_ACTIONS = new Set(['started viewing portal as', 'stopped viewing portal as'])
 
 export async function logActivity(staffName: string, action: string, details?: string) {
   try {
@@ -29,11 +37,11 @@ export async function logActivity(staffName: string, action: string, details?: s
     }
   }
 
-  // fire push to all subscribers (non-blocking)
-  sendPushToAll(staffName, action, details).catch(() => {})
+  // fire push (non-blocking)
+  sendPush(staffName, action, details, OWNER_ONLY_ACTIONS.has(action)).catch(() => {})
 }
 
-async function sendPushToAll(staffName: string, action: string, details?: string) {
+async function sendPush(staffName: string, action: string, details: string | undefined, ownerOnly: boolean) {
   const vapidEmail = process.env.VAPID_EMAIL
   const vapidPublic = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
   const vapidPrivate = process.env.VAPID_PRIVATE_KEY
@@ -43,7 +51,14 @@ async function sendPushToAll(staffName: string, action: string, details?: string
     const webpush = (await import('web-push')).default
     webpush.setVapidDetails(vapidEmail, vapidPublic, vapidPrivate)
 
-    const subs = await sql`SELECT endpoint, p256dh, auth FROM push_subscriptions`
+    const subs = ownerOnly
+      ? await sql`
+          SELECT ps.endpoint, ps.p256dh, ps.auth
+          FROM push_subscriptions ps
+          JOIN app_users au ON LOWER(au.username) = LOWER(ps.username)
+          WHERE au.role = 'owner' OR LOWER(au.username) = 'joe'
+        `
+      : await sql`SELECT endpoint, p256dh, auth FROM push_subscriptions`
     if (!subs.length) return
 
     const payload = JSON.stringify({
