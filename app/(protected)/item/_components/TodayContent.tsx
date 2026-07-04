@@ -59,7 +59,7 @@ function MediaGrid({ items }: { items: MediaItem[] }) {
   const audio = items.filter(m => mediaKind(m.type) === 'audio')
   const visual = items.filter(m => mediaKind(m.type) !== 'audio')
   return (
-    <div className="mt-2 space-y-1">
+    <div className="mt-1 space-y-0.5">
       {visual.length > 0 && (
         <div className={`grid gap-1 ${visual.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
           {visual.map((m, i) => (
@@ -321,7 +321,7 @@ function AnnouncementsPanel() {
 
       {/* Feed */}
       {posts.length === 0 ? (
-        <p className="text-xs text-gray-400 text-center py-6">No announcements yet.</p>
+        <p className="text-[11px] text-gray-400 text-center py-3">No announcements yet.</p>
       ) : (
         <div className="divide-y divide-gray-50">
           {posts.map((p, i) => {
@@ -329,23 +329,23 @@ function AnnouncementsPanel() {
             return (
               <div key={p.id}>
                 {showDateHeader && (
-                  <div className="flex justify-center py-2 bg-gray-50/60">
-                    <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 rounded-full px-3 py-1">
+                  <div className="flex justify-center py-1 bg-gray-50/60">
+                    <span className="text-[9px] font-semibold text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">
                       {dayLabel(p.created_at)}
                     </span>
                   </div>
                 )}
-                <div className="px-4 py-3 space-y-1">
+                <div className="px-3 py-1.5 space-y-0.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-semibold text-gray-700 capitalize">{p.author}</span>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[11px] text-gray-400">{fmtAnnTime(p.created_at)}</span>
+                    <span className="text-[11px] font-semibold text-gray-700 capitalize">{p.author}</span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="text-[10px] text-gray-400">{fmtAnnTime(p.created_at)}</span>
                       {canManage && (
                         <button onClick={() => removePost(p.id)} className="text-gray-300 hover:text-red-500 font-bold leading-none">×</button>
                       )}
                     </div>
                   </div>
-                  {p.body && <p className="text-sm text-gray-800 whitespace-pre-wrap">{p.body}</p>}
+                  {p.body && <p className="text-xs text-gray-800 whitespace-pre-wrap leading-snug">{p.body}</p>}
                   <MediaGrid items={p.media_urls ?? []} />
                 </div>
               </div>
