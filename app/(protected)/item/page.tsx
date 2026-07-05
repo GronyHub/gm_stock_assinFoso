@@ -274,11 +274,7 @@ function ItemHubPageInner() {
             <TabIcon icon="📉" label="Loss"     active={outerTab === 'loss'}     onClick={() => changeTab('loss')} />
             <TabIcon icon="⚠️" label="Errors"   active={outerTab === 'errors'}   onClick={() => changeTab('errors')}   count={badgeCounts.errors} />
             <TabIcon icon="🔢" label="Data"     active={outerTab === 'data'}     onClick={() => changeTab('data')} />
-            {canSeePL && (
-              <TabIcon icon="📈" label="P&L"     active={outerTab === 'pl'}       onClick={() => changeTab('pl')} />
-            )}
             <TabIcon icon="💸" label="Exp."     active={outerTab === 'expenses'} onClick={() => changeTab('expenses')} />
-            <TabIcon icon="🏦" label="CAB"      active={outerTab === 'cab'}      onClick={() => changeTab('cab')} />
             <TabIcon icon="👤" label="Staff"    active={outerTab === 'staff'}    onClick={() => changeTab('staff')} />
           </div>
 
@@ -290,6 +286,16 @@ function ItemHubPageInner() {
             </button>
             {hamburgerOpen && (
               <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-[100] min-w-[150px]">
+                <button onClick={() => { changeTab('cab'); setHamburgerOpen(false) }}
+                  className="w-full text-left block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 first:rounded-t-xl transition">
+                  CAB
+                </button>
+                {canSeePL && (
+                  <button onClick={() => { changeTab('pl'); setHamburgerOpen(false) }}
+                    className="w-full text-left block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
+                    P&amp;L
+                  </button>
+                )}
                 {hamburgerLinks.map(l => (
                   <Link key={l.href} href={l.href}
                     onClick={() => setHamburgerOpen(false)}
