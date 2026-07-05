@@ -62,22 +62,67 @@ type ErrorCategory = 'loss' | 'sales' | 'cab' | 'staff'
 
 // Every violation type in the app, in one place -- the Errors tab is the
 // single home for all of them, regardless of which tab/data they come from.
-const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCategory }[] = [
-  { key: 'neg_soh',    label: 'Neg SOH',    category: 'loss' },
-  { key: 'no_sp',      label: 'No SP',      category: 'loss' },
-  { key: 'no_cp',      label: 'No CP',      category: 'loss' },
-  { key: 'no_group',   label: 'No Group',   category: 'loss' },
-  { key: 'duplicates', label: 'Duplicates', category: 'loss' },
-  { key: 'aliases',    label: 'Aliases',    category: 'loss' },
-  { key: 'service_violation', label: 'Service', category: 'loss' },
-  { key: 'daily',      label: 'Daily Count',   category: 'loss' },
-  { key: '15day',      label: '15-Day Count',  category: 'loss' },
-  { key: 'no_cash',      label: 'No Cash',      category: 'sales' },
-  { key: 'missing_days', label: 'Missing Days', category: 'sales' },
-  { key: 'cost_price',   label: 'Cost Price',   category: 'sales' },
-  { key: 'dup_receipt',  label: 'Dup Receipts', category: 'sales' },
-  { key: 'unchecked_cab',  label: 'Unchecked CAB',  category: 'cab' },
-  { key: 'no_staff_times', label: 'No Staff Times', category: 'staff' },
+const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCategory; description: string }[] = [
+  {
+    key: 'neg_soh', label: 'Neg SOH', category: 'loss',
+    description: "This item's stock on hand has gone below zero -- more was sold or removed than was ever recorded as received. That usually means a bill or restock was never entered, an item was miscounted, or a sale was logged against the wrong item. Check the item's recent counts, bills, and sales to find and correct the mismatch.",
+  },
+  {
+    key: 'no_sp', label: 'No SP', category: 'loss',
+    description: 'This item has no selling price set (or it is ₵0), so sales of it cannot be priced or tracked correctly. Open the item and enter its correct selling price.',
+  },
+  {
+    key: 'no_cp', label: 'No CP', category: 'loss',
+    description: 'This item has no cost/purchase price set (or it is ₵0), so profit and loss on it cannot be calculated. Open the item and enter what it actually costs to buy or produce.',
+  },
+  {
+    key: 'no_group', label: 'No Group', category: 'loss',
+    description: 'This item is not assigned to a group/category, so it will be missing or miscounted in group-based reports like Stock Value by Group. Open the item and assign it a group.',
+  },
+  {
+    key: 'duplicates', label: 'Duplicates', category: 'loss',
+    description: 'These look like the same product entered twice under slightly different names, which splits one item into two separate sales and stock records. Review each pair and merge or rename them into a single canonical item.',
+  },
+  {
+    key: 'aliases', label: 'Aliases', category: 'loss',
+    description: "A sale or bill used an item name that did not exactly match anything in the item list, so the system flagged it as unresolved instead of guessing. Confirm the correct match so it counts toward the right item's reports going forward.",
+  },
+  {
+    key: 'service_violation', label: 'Service', category: 'loss',
+    description: 'A service item shows GMC use, bill activity, or a stock count -- but services are not physical stock, so none of that should ever apply to them. Find where the entry was logged and correct it, since it was likely recorded against the wrong item.',
+  },
+  {
+    key: 'daily', label: 'Daily Count', category: 'loss',
+    description: "These items must be counted every single day (Large Format items are excluded since they cannot be counted this way) and have not been counted yet today. Count them now so today's stock figures are accurate.",
+  },
+  {
+    key: '15day', label: '15-Day Count', category: 'loss',
+    description: 'These items have not been counted in over 15 days, so their recorded stock may no longer reflect what is actually on the shelf. Count them soon before a real shortage or loss goes unnoticed.',
+  },
+  {
+    key: 'no_cash', label: 'No Cash', category: 'sales',
+    description: 'A walk-in customer sale was recorded for this day, but no cash was ever counted against it, so there is no way to confirm the money actually came in. Count the cash for that day and enter it against the receipt.',
+  },
+  {
+    key: 'missing_days', label: 'Missing Days', category: 'sales',
+    description: 'No sales receipt exists at all for this date. Confirm whether the shop genuinely had no sales that day, or whether a receipt was simply never entered -- and add it if so.',
+  },
+  {
+    key: 'cost_price', label: 'Cost Price', category: 'sales',
+    description: 'This sale has a cost price equal to or higher than its selling price, so it shows as a loss or break-even on paper. Check whether the selling price, cost price, or quantity was entered incorrectly for this line.',
+  },
+  {
+    key: 'dup_receipt', label: 'Dup Receipts', category: 'sales',
+    description: 'More than one sales receipt exists for the same day and the same customer type (WIC or GMC). This usually means one was created by mistake -- review both and merge or delete the extra one.',
+  },
+  {
+    key: 'unchecked_cab', label: 'Unchecked CAB', category: 'cab',
+    description: 'A week has passed without anyone confirming the Cash at Bank entry, so nobody has verified that the bank balance matches what the shop expects. Review that week and confirm it.',
+  },
+  {
+    key: 'no_staff_times', label: 'No Staff Times', category: 'staff',
+    description: 'This day has sales recorded but no staff clock-in/out times were entered, so there is no record of who was actually working. Add the missing staff times for that day.',
+  },
 ]
 
 const VIOLATIONS: Record<OuterTab, { key: string; label: string; category?: ErrorCategory }[]> = {
@@ -468,6 +513,14 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'loss' && lossView === 'counts' && (
           <CountsTab items={items} groupFilter={group} search={search} violation={null} />
+        )}
+        {outerTab === 'errors' && violation && (
+          <div className="mx-3 mt-2 mb-1 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 flex gap-2">
+            <span className="text-sm shrink-0">ℹ️</span>
+            <p className="text-[11px] text-blue-800 leading-snug">
+              {ERROR_VIOLATIONS.find(v => v.key === violation)?.description}
+            </p>
+          </div>
         )}
         {outerTab === 'errors' && violation && (() => {
           const category = ERROR_VIOLATIONS.find(v => v.key === violation)?.category
