@@ -103,14 +103,17 @@ const HAMBURGER_LINKS = [
   { href: '/profile',  label: 'Profile'  },
 ]
 
-function tabCls(active: boolean) {
-  return `relative flex-1 min-w-0 flex flex-col items-center justify-center gap-1 px-1 py-2.5 rounded-xl transition
-    ${active ? 'bg-blue-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`
+// Each tab gets its own solid, saturated color so the whole bar reads as a
+// deliberate, colorful control surface that pops against the plain white/gray
+// content beneath it, rather than blending into it.
+function tabCls(active: boolean, color: string) {
+  return `relative flex-1 min-w-0 flex flex-col items-center justify-center gap-1 px-1 py-2.5 rounded-xl transition text-white
+    ${color} ${active ? 'shadow-md ring-2 ring-white scale-[1.03]' : 'opacity-85 hover:opacity-100'}`
 }
 
-function TabIcon({ icon, label, active, onClick, count }: { icon: string; label: string; active: boolean; onClick: () => void; count?: number }) {
+function TabIcon({ icon, label, active, onClick, count, color }: { icon: string; label: string; active: boolean; onClick: () => void; count?: number; color: string }) {
   return (
-    <button onClick={onClick} className={tabCls(active)}
+    <button onClick={onClick} className={tabCls(active, color)}
       title={count ? `${count} violation${count !== 1 ? 's' : ''} need attention` : undefined}>
       <span className="relative text-2xl leading-none">
         {icon}
@@ -266,16 +269,16 @@ function ItemHubPageInner() {
         <div className="flex items-center pr-1.5">
           {/* Home — fixed, outside the scrollable flex area */}
           <button onClick={() => changeTab('today')}
-            className={`shrink-0 flex flex-col items-center justify-center gap-1 px-2.5 pt-2 pb-1.5 rounded-xl transition
-              ${outerTab === 'today' ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}>
+            className={`shrink-0 flex flex-col items-center justify-center gap-1 px-2.5 pt-2 pb-1.5 rounded-xl transition text-white
+              bg-blue-600 ${outerTab === 'today' ? 'shadow-md ring-2 ring-white scale-[1.03]' : 'opacity-85 hover:opacity-100'}`}>
             <span className="text-2xl leading-none">🏠</span>
           </button>
           <div className="flex items-center gap-1 px-1 pt-1.5 pb-1 flex-1 min-w-0">
-            <TabIcon icon="⚠️" label="Errors"   active={outerTab === 'errors'}   onClick={() => changeTab('errors')}   count={badgeCounts.errors} />
-            <TabIcon icon="🔢" label="Data"     active={outerTab === 'data'}     onClick={() => changeTab('data')} />
-            <TabIcon icon="📉" label="Item"     active={outerTab === 'loss'}     onClick={() => changeTab('loss')} />
-            <TabIcon icon="💸" label="Exp."     active={outerTab === 'expenses'} onClick={() => changeTab('expenses')} />
-            <TabIcon icon="👤" label="Staff"    active={outerTab === 'staff'}    onClick={() => changeTab('staff')} />
+            <TabIcon icon="⚠️" label="Errors"   color="bg-red-600"     active={outerTab === 'errors'}   onClick={() => changeTab('errors')}   count={badgeCounts.errors} />
+            <TabIcon icon="🔢" label="Data"     color="bg-indigo-600"  active={outerTab === 'data'}     onClick={() => changeTab('data')} />
+            <TabIcon icon="📉" label="Item"     color="bg-emerald-600" active={outerTab === 'loss'}     onClick={() => changeTab('loss')} />
+            <TabIcon icon="💸" label="Exp."     color="bg-amber-600"   active={outerTab === 'expenses'} onClick={() => changeTab('expenses')} />
+            <TabIcon icon="👤" label="Staff"    color="bg-purple-600"  active={outerTab === 'staff'}    onClick={() => changeTab('staff')} />
           </div>
 
           {/* Hamburger — outside the flex tabs row so dropdown isn't clipped */}
