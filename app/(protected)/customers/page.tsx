@@ -131,9 +131,10 @@ export default function CustomersPage() {
     if (search.trim()) {
       const q = search.toLowerCase()
       v = v.filter(x =>
-        x.display_name.toLowerCase().includes(q) ||
+        (x.display_name ?? '').toLowerCase().includes(q) ||
         (x.company_name ?? '').toLowerCase().includes(q) ||
-        (x.email ?? '').toLowerCase().includes(q)
+        (x.email ?? '').toLowerCase().includes(q) ||
+        (x.phone ?? '').toLowerCase().includes(q)
       )
     }
     return v

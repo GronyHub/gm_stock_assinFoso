@@ -44,7 +44,11 @@ export default function VendorsPage() {
     if (filter === 'outstanding') v = v.filter(x => parseFloat(x.outstanding) > 0)
     if (search.trim()) {
       const q = search.toLowerCase()
-      v = v.filter(x => x.display_name.toLowerCase().includes(q) || (x.company_name ?? '').toLowerCase().includes(q))
+      v = v.filter(x =>
+        (x.display_name ?? '').toLowerCase().includes(q) ||
+        (x.company_name ?? '').toLowerCase().includes(q) ||
+        (x.phone ?? '').toLowerCase().includes(q)
+      )
     }
     return v
   }, [vendors, filter, search])
