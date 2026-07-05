@@ -104,23 +104,23 @@ const HAMBURGER_LINKS = [
 ]
 
 function tabCls(active: boolean) {
-  return `relative flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 px-0.5 py-2 rounded-lg transition
-    ${active ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`
+  return `relative flex-1 min-w-0 flex flex-col items-center justify-center gap-1 px-1 py-2.5 rounded-xl transition
+    ${active ? 'bg-blue-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`
 }
 
 function TabIcon({ icon, label, active, onClick, count }: { icon: string; label: string; active: boolean; onClick: () => void; count?: number }) {
   return (
     <button onClick={onClick} className={tabCls(active)}
       title={count ? `${count} violation${count !== 1 ? 's' : ''} need attention` : undefined}>
-      <span className="relative text-sm leading-none">
+      <span className="relative text-2xl leading-none">
         {icon}
         {!!count && (
-          <span className="absolute -top-1.5 -right-2.5 min-w-[14px] h-[14px] px-[3px] rounded-full bg-red-600 text-white text-[8px] font-bold flex items-center justify-center leading-none">
+          <span className="absolute -top-2 -right-3 min-w-[17px] h-[17px] px-[3px] rounded-full bg-red-600 text-white text-[9px] font-bold flex items-center justify-center leading-none ring-2 ring-white">
             {count > 99 ? '99+' : count}
           </span>
         )}
       </span>
-      <span className="text-[9px] font-semibold leading-none truncate max-w-full">{label}</span>
+      <span className="text-[10px] font-semibold leading-none truncate max-w-full">{label}</span>
     </button>
   )
 }
@@ -266,14 +266,14 @@ function ItemHubPageInner() {
         <div className="flex items-center pr-1.5">
           {/* Home — fixed, outside the scrollable flex area */}
           <button onClick={() => changeTab('today')}
-            className={`shrink-0 flex flex-col items-center justify-center gap-0.5 px-2 pt-1.5 pb-1 rounded-lg transition
+            className={`shrink-0 flex flex-col items-center justify-center gap-1 px-2.5 pt-2 pb-1.5 rounded-xl transition
               ${outerTab === 'today' ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}>
-            <span className="text-lg leading-none">🏠</span>
+            <span className="text-2xl leading-none">🏠</span>
           </button>
-          <div className="flex items-center gap-0.5 px-1 pt-1.5 pb-1 flex-1 min-w-0">
-            <TabIcon icon="📉" label="Loss"     active={outerTab === 'loss'}     onClick={() => changeTab('loss')} />
+          <div className="flex items-center gap-1 px-1 pt-1.5 pb-1 flex-1 min-w-0">
             <TabIcon icon="⚠️" label="Errors"   active={outerTab === 'errors'}   onClick={() => changeTab('errors')}   count={badgeCounts.errors} />
             <TabIcon icon="🔢" label="Data"     active={outerTab === 'data'}     onClick={() => changeTab('data')} />
+            <TabIcon icon="📉" label="Item"     active={outerTab === 'loss'}     onClick={() => changeTab('loss')} />
             <TabIcon icon="💸" label="Exp."     active={outerTab === 'expenses'} onClick={() => changeTab('expenses')} />
             <TabIcon icon="👤" label="Staff"    active={outerTab === 'staff'}    onClick={() => changeTab('staff')} />
           </div>
