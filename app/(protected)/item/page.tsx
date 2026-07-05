@@ -151,9 +151,12 @@ const HAMBURGER_LINKS = [
 // Each tab gets its own solid, saturated color so the whole bar reads as a
 // deliberate, colorful control surface that pops against the plain white/gray
 // content beneath it, rather than blending into it.
+// Every tab stays fully colorful whether active or not -- the active one is
+// marked with a bold dark ring + shadow instead, so it's unmistakable at a
+// glance without dimming the rest of the bar.
 function tabCls(active: boolean, color: string) {
   return `relative flex-1 min-w-0 flex flex-col items-center justify-center gap-1 px-1 py-2.5 rounded-xl transition text-white
-    ${color} ${active ? 'shadow-md ring-2 ring-white scale-[1.03]' : 'opacity-85 hover:opacity-100'}`
+    ${color} ${active ? 'ring-4 ring-gray-900 shadow-lg' : 'hover:brightness-110'}`
 }
 
 function TabIcon({ icon, label, active, onClick, count, color }: { icon: string; label: string; active: boolean; onClick: () => void; count?: number; color: string }) {
@@ -315,7 +318,7 @@ function ItemHubPageInner() {
           {/* Home — fixed, outside the scrollable flex area */}
           <button onClick={() => changeTab('today')}
             className={`shrink-0 flex flex-col items-center justify-center gap-1 px-2.5 pt-2 pb-1.5 rounded-xl transition text-white
-              bg-blue-600 ${outerTab === 'today' ? 'shadow-md ring-2 ring-white scale-[1.03]' : 'opacity-85 hover:opacity-100'}`}>
+              bg-blue-600 ${outerTab === 'today' ? 'ring-4 ring-gray-900 shadow-lg' : 'hover:brightness-110'}`}>
             <span className="text-2xl leading-none">🏠</span>
           </button>
           <div className="flex items-center gap-1 px-1 pt-1.5 pb-1 flex-1 min-w-0">
