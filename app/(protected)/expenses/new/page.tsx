@@ -70,10 +70,12 @@ export default function NewExpensePage({ onSuccess }: { onSuccess?: () => void }
         </div>
         <div>
           <label className="text-sm text-gray-600 block mb-1.5">Category</label>
-          <select value={account} onChange={e => setAccount(e.target.value)}
-            className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-base text-gray-900 outline-none focus:ring-2 focus:ring-blue-400">
-            {ACCOUNTS.map(a => <option key={a}>{a}</option>)}
-          </select>
+          <input list="expense-accounts-new" value={account} onChange={e => setAccount(e.target.value)}
+            placeholder="e.g. Rent, or type your own"
+            className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-base text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-400" />
+          <datalist id="expense-accounts-new">
+            {ACCOUNTS.map(a => <option key={a} value={a} />)}
+          </datalist>
         </div>
         <div>
           <label className="text-sm text-gray-600 block mb-1.5">Amount (₵)</label>
