@@ -148,20 +148,16 @@ const HAMBURGER_LINKS = [
   { href: '/profile',  label: 'Profile'  },
 ]
 
-// Each tab gets its own solid, saturated color so the whole bar reads as a
-// deliberate, colorful control surface that pops against the plain white/gray
-// content beneath it, rather than blending into it.
-// Every tab stays fully colorful whether active or not -- the active one is
-// marked with a bold dark ring + shadow instead, so it's unmistakable at a
-// glance without dimming the rest of the bar.
-function tabCls(active: boolean, color: string) {
+// All tabs share the same solid color; the active one is marked with a bold
+// dark ring + shadow instead, so it's unmistakable at a glance.
+function tabCls(active: boolean) {
   return `relative flex-1 min-w-0 flex flex-col items-center justify-center gap-1 px-1 py-2.5 rounded-xl transition text-white
-    ${color} ${active ? 'ring-4 ring-gray-900 shadow-lg' : 'hover:brightness-110'}`
+    bg-blue-600 ${active ? 'ring-4 ring-gray-900 shadow-lg' : 'hover:brightness-110'}`
 }
 
-function TabIcon({ icon, label, active, onClick, count, color }: { icon: string; label: string; active: boolean; onClick: () => void; count?: number; color: string }) {
+function TabIcon({ icon, label, active, onClick, count }: { icon: string; label: string; active: boolean; onClick: () => void; count?: number }) {
   return (
-    <button onClick={onClick} className={tabCls(active, color)}
+    <button onClick={onClick} className={tabCls(active)}
       title={count ? `${count} violation${count !== 1 ? 's' : ''} need attention` : undefined}>
       <span className="relative text-2xl leading-none">
         {icon}
@@ -322,11 +318,11 @@ function ItemHubPageInner() {
             <span className="text-2xl leading-none">🏠</span>
           </button>
           <div className="flex items-center gap-1 px-1 pt-1.5 pb-1 flex-1 min-w-0">
-            <TabIcon icon="⚠️" label="Errors"   color="bg-red-600"     active={outerTab === 'errors'}   onClick={() => changeTab('errors')}   count={badgeCounts.errors} />
-            <TabIcon icon="🔢" label="Data"     color="bg-indigo-600"  active={outerTab === 'data'}     onClick={() => changeTab('data')} />
-            <TabIcon icon="📉" label="Item"     color="bg-emerald-600" active={outerTab === 'loss'}     onClick={() => changeTab('loss')} />
-            <TabIcon icon="💸" label="Exp."     color="bg-amber-600"   active={outerTab === 'expenses'} onClick={() => changeTab('expenses')} />
-            <TabIcon icon="👤" label="Staff"    color="bg-purple-600"  active={outerTab === 'staff'}    onClick={() => changeTab('staff')} />
+            <TabIcon icon="⚠️" label="Errors"   active={outerTab === 'errors'}   onClick={() => changeTab('errors')}   count={badgeCounts.errors} />
+            <TabIcon icon="🔢" label="Data"     active={outerTab === 'data'}     onClick={() => changeTab('data')} />
+            <TabIcon icon="📉" label="Item"     active={outerTab === 'loss'}     onClick={() => changeTab('loss')} />
+            <TabIcon icon="💸" label="Exp."     active={outerTab === 'expenses'} onClick={() => changeTab('expenses')} />
+            <TabIcon icon="👤" label="Staff"    active={outerTab === 'staff'}    onClick={() => changeTab('staff')} />
           </div>
 
           {/* Hamburger — outside the flex tabs row so dropdown isn't clipped */}
