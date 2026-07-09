@@ -32,7 +32,13 @@ function fmtAnnTime(iso: string) {
     const diffHrs = Math.floor(diffMins / 60)
     if (diffHrs < 24) return `${diffHrs}h ago`
     const diffDays = Math.floor(diffHrs / 24)
-    return `${diffDays}d ago`
+    if (diffDays < 2) return `${diffDays}d ago`
+    // Older than 2 days: show the day and date it was posted instead of a
+    // relative count, e.g. "Mon, 7 Jul" (year added if it wasn't this year).
+    return d.toLocaleDateString('en-GB', {
+      weekday: 'short', day: 'numeric', month: 'short',
+      year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+    })
   } catch { return '' }
 }
 
