@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET() {
   try {
     const [assignments, settings] = await Promise.all([
-      sql`SELECT violation_type, staff_name, deadline, assigned_by, assigned_on FROM violation_assignments`,
+      sql`SELECT violation_type, staff_name, deadline::text, assigned_by, assigned_on::text FROM violation_assignments`,
       sql`SELECT key, value FROM violation_settings`,
     ])
     const assignmentMap: Record<string, string> = {}
