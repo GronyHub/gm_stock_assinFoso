@@ -31,7 +31,7 @@ export default function LoginPage() {
           <div>
             <label className="text-sm text-gray-600 block mb-1">Username or Email</label>
             <input
-              className="w-full bg-gray-100 text-gray-900 rounded-lg px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full bg-gray-100 text-gray-900 rounded-lg px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand/40"
               value={username} onChange={e => setUsername(e.target.value)}
               autoComplete="username" autoFocus
             />
@@ -40,7 +40,7 @@ export default function LoginPage() {
             <label className="text-sm text-gray-600 block mb-1">Password</label>
             <input
               type="password"
-              className="w-full bg-gray-100 text-gray-900 rounded-lg px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full bg-gray-100 text-gray-900 rounded-lg px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand/40"
               value={password} onChange={e => setPassword(e.target.value)}
               autoComplete="current-password"
             />
@@ -48,11 +48,11 @@ export default function LoginPage() {
           {error && <p className="text-red-400 text-sm">{error}</p>}
           <button
             type="submit" disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-semibold rounded-lg py-3 text-sm transition">
+            className="w-full bg-brand hover:bg-brand-dark disabled:opacity-50 text-white font-semibold rounded-lg py-3 text-sm transition">
             {loading ? 'Signing in...' : 'Sign in'}
           </button>
           <p className="text-center text-sm text-gray-400">
-            <Link href="/forgot-password" className="text-blue-600 hover:underline">Forgot password?</Link>
+            <Link href="/forgot-password" className="text-brand hover:underline">Forgot password?</Link>
           </p>
         </form>
       </div>

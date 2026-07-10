@@ -1,5 +1,31 @@
 @import "tailwindcss";
 
+/*
+ * Shared design tokens. `brand` is the app's single primary color (matches
+ * the PWA theme_color in public/manifest.json) -- use it instead of picking
+ * a new Tailwind color per component. The semantic tokens below give
+ * consistent meaning to color across the app: success = money/positive
+ * actions, warning = purchases/attention, danger = errors/destructive,
+ * info = neutral supplementary info.
+ */
+@theme {
+  --color-brand: #2563eb;      /* blue-600 */
+  --color-brand-dark: #1d4ed8; /* blue-700, for hover/active */
+  --color-brand-light: #eff6ff; /* blue-50, for tints/backgrounds */
+
+  --color-success: #059669;       /* emerald-600 */
+  --color-success-light: #ecfdf5; /* emerald-50 */
+
+  --color-warning: #d97706;       /* amber-600 */
+  --color-warning-light: #fffbeb; /* amber-50 */
+
+  --color-danger: #dc2626;       /* red-600 */
+  --color-danger-light: #fef2f2; /* red-50 */
+
+  --color-info: #7c3aed;       /* violet-600 */
+  --color-info-light: #f5f3ff; /* violet-50 */
+}
+
 body {
   font-family: Arial, Helvetica, sans-serif;
 }

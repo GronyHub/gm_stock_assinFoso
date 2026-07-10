@@ -49,29 +49,29 @@ export default async function DashboardPage() {
 
       {role !== 'staff' && cashRow.length > 0 && (
         <Link href="/cash-at-bank">
-          <div className="bg-blue-950 border border-blue-800 rounded-2xl p-5 hover:border-blue-600 transition">
-            <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">Running Cash at Bank</p>
+          <div className="bg-brand-light border border-blue-100 rounded-2xl p-5 hover:border-brand/40 transition">
+            <p className="text-xs text-brand uppercase tracking-wider mb-1">Running Cash at Bank</p>
             <p className="text-3xl font-bold text-gray-900">{fmt(cashRow[0].running_cash_at_bank)}</p>
-            <p className="text-xs text-blue-600 mt-1">Tap to see full breakdown</p>
+            <p className="text-xs text-brand mt-1">Tap to see full breakdown</p>
           </div>
         </Link>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <Link href="/sales/new" className="bg-green-900 hover:bg-green-800 border border-green-700 rounded-2xl p-5 text-center transition">
+        <Link href="/sales/new" className="bg-success-light hover:border-success/40 border border-emerald-100 rounded-2xl p-5 text-center transition">
           <p className="text-2xl mb-1">🧾</p>
           <p className="font-semibold text-gray-900">New Receipt</p>
-          <p className="text-xs text-green-400 mt-1">Record a sale</p>
+          <p className="text-xs text-success mt-1">Record a sale</p>
         </Link>
-        <Link href="/bills/new" className="bg-orange-950 hover:bg-orange-900 border border-orange-800 rounded-2xl p-5 text-center transition">
+        <Link href="/bills/new" className="bg-warning-light hover:border-warning/40 border border-amber-100 rounded-2xl p-5 text-center transition">
           <p className="text-2xl mb-1">📦</p>
           <p className="font-semibold text-gray-900">New Bill</p>
-          <p className="text-xs text-orange-400 mt-1">Record a purchase</p>
+          <p className="text-xs text-warning mt-1">Record a purchase</p>
         </Link>
-        <Link href="/expenses/new" className="bg-purple-950 hover:bg-purple-900 border border-purple-800 rounded-2xl p-5 text-center transition">
+        <Link href="/expenses/new" className="bg-info-light hover:border-info/40 border border-violet-100 rounded-2xl p-5 text-center transition">
           <p className="text-2xl mb-1">💸</p>
           <p className="font-semibold text-gray-900">New Expense</p>
-          <p className="text-xs text-purple-400 mt-1">Record a cost</p>
+          <p className="text-xs text-info mt-1">Record a cost</p>
         </Link>
       </div>
     </div>

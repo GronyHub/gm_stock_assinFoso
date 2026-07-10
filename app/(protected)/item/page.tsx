@@ -152,7 +152,7 @@ const HAMBURGER_LINKS = [
 // dark ring + shadow instead, so it's unmistakable at a glance.
 function tabCls(active: boolean) {
   return `relative flex-1 min-w-0 flex flex-col items-center justify-center gap-1 px-1 py-2.5 rounded-xl transition text-white
-    bg-blue-600 ${active ? 'ring-4 ring-gray-900 shadow-lg' : 'hover:brightness-110'}`
+    bg-brand ${active ? 'ring-4 ring-gray-900 shadow-lg' : 'hover:brightness-110'}`
 }
 
 function TabIcon({ icon, label, active, onClick, count }: { icon: string; label: string; active: boolean; onClick: () => void; count?: number }) {
@@ -314,7 +314,7 @@ function ItemHubPageInner() {
           {/* Home — fixed, outside the scrollable flex area */}
           <button onClick={() => changeTab('today')}
             className={`shrink-0 flex flex-col items-center justify-center gap-1 px-2.5 pt-2 pb-1.5 rounded-xl transition text-white
-              bg-blue-600 ${outerTab === 'today' ? 'ring-4 ring-gray-900 shadow-lg' : 'hover:brightness-110'}`}>
+              bg-brand ${outerTab === 'today' ? 'ring-4 ring-gray-900 shadow-lg' : 'hover:brightness-110'}`}>
             <span className="text-2xl leading-none">🏠</span>
           </button>
           <div className="flex items-center gap-1 px-1 pt-1.5 pb-1 flex-1 min-w-0">
