@@ -329,10 +329,11 @@ function MatchPicker({ itemId, itemName, isService, current, candidatePool, onCh
 }
 
 
-/* ── Merge picker: fold one service's history into another under a chosen name ── */
-function MergeServicePicker({ itemId, itemName, servicePool, onMerged }: {
+/* ── Merge picker: fold one item's history into another (same type) under a chosen name ── */
+function MergeItemPicker({ itemId, itemName, typeLabel, mergePool, onMerged }: {
   itemId: number; itemName: string
-  servicePool: { item_id: number; item_name: string }[]
+  typeLabel: 'service' | 'good'
+  mergePool: { item_id: number; item_name: string }[]
   onMerged: () => void
 }) {
   const [search, setSearch] = useState('')
@@ -344,7 +345,7 @@ function MergeServicePicker({ itemId, itemName, servicePool, onMerged }: {
   const ref = useRef<HTMLDivElement>(null)
 
   const filtered = search.length >= 1 && !target
-    ? servicePool.filter(s => s.item_name.toLowerCase().includes(search.toLowerCase())).slice(0, 25)
+    ? mergePool.filter(s => s.item_name.toLowerCase().includes(search.toLowerCase())).slice(0, 25)
     : []
 
   useEffect(() => {
@@ -375,7 +376,7 @@ function MergeServicePicker({ itemId, itemName, servicePool, onMerged }: {
         <input value={target ? target.item_name : search}
           onChange={e => { setSearch(e.target.value); setTarget(null); setOpen(true) }}
           onFocus={() => setOpen(true)}
-          placeholder="Search services to merge with…"
+          placeholder={`Search ${typeLabel === 'service' ? 'services' : 'goods'} to merge with…`}
           className="w-full bg-gray-100 border border-gray-300 rounded px-1.5 py-1 text-[9px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
         {open && filtered.length > 0 && (
           <div className="absolute z-10 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden max-h-32 overflow-y-auto">
@@ -391,7 +392,7 @@ function MergeServicePicker({ itemId, itemName, servicePool, onMerged }: {
       </div>
       {target && (
         <div className="space-y-1 bg-white border border-gray-200 rounded p-1.5">
-          <p className="text-[8px] font-bold text-gray-500">Final name for the merged service:</p>
+          <p className="text-[8px] font-bold text-gray-500">Final name for the merged {typeLabel}:</p>
           <label className="flex items-center gap-1 text-[9px] text-gray-700">
             <input type="radio" checked={finalChoice === 'this'} onChange={() => setFinalChoice('this')} />
             <span className="truncate">{itemName}</span>
@@ -406,7 +407,7 @@ function MergeServicePicker({ itemId, itemName, servicePool, onMerged }: {
           </label>
           {finalChoice === 'custom' && (
             <input value={customName} onChange={e => setCustomName(e.target.value)}
-              placeholder="Type the final service name"
+              placeholder={`Type the final ${typeLabel} name`}
               className="w-full bg-gray-100 border border-gray-300 rounded px-1.5 py-1 text-[9px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
           )}
           <button onClick={merge} disabled={merging || !finalName}
@@ -419,12 +420,12 @@ function MergeServicePicker({ itemId, itemName, servicePool, onMerged }: {
   )
 }
 
-function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, mergePool, canMergeServices, autoEdit, onSaved, onRelationsSaved, onMerged }: {
+function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, mergePool, canMerge, autoEdit, onSaved, onRelationsSaved, onMerged }: {
   item: SummaryRow; groups: string[]; allItems: { item_id: number; item_name: string }[]
   currentAliases: AliasRecord[]; currentMatches: MatchRecord[]
   candidatePool: CandidateItem[]
   mergePool: { item_id: number; item_name: string }[]
-  canMergeServices: boolean
+  canMerge: boolean
   autoEdit: boolean
   onSaved: (u: Partial<SummaryRow>) => void
   onRelationsSaved: (aliases: AliasRecord[], matches: MatchRecord[]) => void
@@ -517,10 +518,13 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
             <MatchPicker itemId={item.item_id} itemName={item.item_name} isService={item.product_type === 'service'}
               current={matches} candidatePool={candidatePool} onChange={setMatches} />
           </div>
-          {item.product_type === 'service' && canMergeServices && (
+          {canMerge && (
             <div>
-              <label className="text-[8px] font-bold text-gray-500 block mb-0.5">Merge with another service</label>
-              <MergeServicePicker itemId={item.item_id} itemName={item.item_name} servicePool={mergePool}
+              <label className="text-[8px] font-bold text-gray-500 block mb-0.5">
+                Merge with another {item.product_type === 'service' ? 'service' : 'good'}
+              </label>
+              <MergeItemPicker itemId={item.item_id} itemName={item.item_name}
+                typeLabel={item.product_type === 'service' ? 'service' : 'good'} mergePool={mergePool}
                 onMerged={() => { setEditing(false); onMerged() }} />
             </div>
           )}
@@ -714,7 +718,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   const [matchRecords, setMatchRecords] = useState<Record<string, MatchRecord[]>>({})
 
   const { data: session } = useSession()
-  const canMergeServices = isOwnerLevel(session?.user as any)
+  const canMerge = isOwnerLevel(session?.user as any)
 
   function loadSummary() {
     return fetch('/api/losses/summary').then(r => r.json())
@@ -898,8 +902,8 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
                 currentAliases={aliasRecords[row.item_id] ?? []}
                 currentMatches={matchRecords[row.item_name.trim().toLowerCase()] ?? []}
                 candidatePool={row.product_type === 'service' ? goodsPool : servicesPool}
-                mergePool={servicesPool.filter(s => s.item_id !== row.item_id)}
-                canMergeServices={canMergeServices}
+                mergePool={(row.product_type === 'service' ? servicesPool : goodsPool).filter(i => i.item_id !== row.item_id)}
+                canMerge={canMerge}
                 autoEdit={editTriggerId === row.item_id}
                 onSaved={u => patchRow(row.item_id, u)}
                 onRelationsSaved={(newAliases, newMatches) => {
