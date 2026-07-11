@@ -106,6 +106,9 @@ function FixRow({ label, sub, children }: { label: string; sub?: string; childre
 
 function DuplicateFix({ r, onFixed }: { r: any; onFixed: (id1: number, id2: number) => void }) {
   const [saving, setSaving] = useState(false)
+  const [merging, setMerging] = useState<number | null>(null)
+  const busy = saving || merging !== null
+
   async function markDifferent() {
     setSaving(true)
     await fetch('/api/flags/dismiss-duplicate', {
@@ -115,10 +118,32 @@ function DuplicateFix({ r, onFixed }: { r: any; onFixed: (id1: number, id2: numb
     setSaving(false)
     onFixed(r.id1, r.id2)
   }
+
+  async function mergeSame(winnerId: number, loserId: number) {
+    setMerging(winnerId)
+    await fetch('/api/items/merge', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ loser_id: loserId, winner_id: winnerId }),
+    })
+    setMerging(null)
+    onFixed(r.id1, r.id2)
+  }
+
   return (
     <FixRow label={r.name1} sub={`vs. ${r.name2}`}>
+      <p className="text-[10px] text-gray-500">Same item? Pick the name to keep — the other merges into it.</p>
+      <div className="grid grid-cols-2 gap-1.5">
+        <button onClick={() => mergeSame(r.id1, r.id2)} disabled={busy}
+          className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 px-1 transition truncate">
+          {merging === r.id1 ? 'Saving…' : `Keep "${r.name1}"`}
+        </button>
+        <button onClick={() => mergeSame(r.id2, r.id1)} disabled={busy}
+          className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 px-1 transition truncate">
+          {merging === r.id2 ? 'Saving…' : `Keep "${r.name2}"`}
+        </button>
+      </div>
       <p className="text-[10px] text-gray-500">Tap <strong>Different</strong> if these are genuinely separate items.</p>
-      <button onClick={markDifferent} disabled={saving}
+      <button onClick={markDifferent} disabled={busy}
         className="w-full bg-gray-600 hover:bg-gray-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
         {saving ? 'Saving…' : 'Different — Not a Duplicate'}
       </button>
