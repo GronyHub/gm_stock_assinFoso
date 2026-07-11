@@ -35,6 +35,7 @@ const TodayContent   = dynamic(() => import('./_components/TodayContent'),    { 
 const NewSaleForm    = dynamic(() => import('../sales/new/page'),             { ssr: false, loading: () => loading('Loading…') })
 const NewBillForm    = dynamic(() => import('../bills/new/page'),             { ssr: false, loading: () => loading('Loading…') })
 const NewExpenseForm = dynamic(() => import('../expenses/new/page'),          { ssr: false, loading: () => loading('Loading…') })
+const NewItemForm    = dynamic(() => import('./_components/NewItemForm'),     { ssr: false, loading: () => loading('Loading…') })
 const AnalyticsPanel = dynamic(() => import('./_components/AnalyticsPanel'),  { ssr: false, loading: () => loading('Loading analytics…') })
 const StaffClient    = dynamic(() => import('../staff/StaffClient'),          { ssr: false, loading: () => loading('Loading…') })
 const NoStaffTimesList = dynamic(() => import('../staff/StaffClient').then(m => ({ default: m.NoStaffTimesList })), { ssr: false, loading: () => loading('Loading…') })
@@ -475,6 +476,7 @@ function ItemHubPageInner() {
         {addForm === 'sale'    && outerTab === 'loss'     && lossView === 'sales' && <div className="px-4"><NewSaleForm    onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'bill'    && outerTab === 'loss'     && lossView === 'bills' && <div className="px-4"><NewBillForm    onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'expense' && outerTab === 'expenses' && <div className="px-4"><NewExpenseForm onSuccess={() => { setAddForm(null); changeTab('expenses') }} /></div>}
+        {addForm === 'item'    && outerTab === 'loss'     && lossView === 'items' && <div className="px-4"><NewItemForm    onSuccess={() => { setAddForm(null); loadItems() }} /></div>}
         {outerTab === 'data' && (
           <TabErrorBoundary>
             <AnalyticsPanel />
@@ -499,7 +501,7 @@ function ItemHubPageInner() {
             <StaffClient role={role} username={username} embedded />
           </TabErrorBoundary>
         )}
-        {outerTab === 'loss' && lossView === 'items' && (
+        {addForm !== 'item' && outerTab === 'loss' && lossView === 'items' && (
           <TabErrorBoundary>
             <LossTab onOpenItem={() => {}} search={search} group={group} productType={productType} />
           </TabErrorBoundary>

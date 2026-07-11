@@ -44,11 +44,13 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const body = await req.json()
-  const { item_name, cf_group, selling_rate, purchase_rate, units_per_pack, unit_name } = body
+  const { item_name, cf_group, selling_rate, purchase_rate, units_per_pack, unit_name, product_type } = body
 
   if (!item_name?.trim()) {
     return NextResponse.json({ error: 'item_name required' }, { status: 400 })
   }
+
+  const type = product_type === 'service' ? 'service' : 'goods'
 
   const [row] = await sql`
     INSERT INTO items (zoho_item_id, zoho_item_name, canonical_name, cf_group, selling_rate, purchase_rate, units_per_pack, unit_name, product_type, source)
@@ -61,10 +63,10 @@ export async function POST(req: Request) {
       ${purchase_rate || null},
       ${units_per_pack || null},
       ${unit_name || null},
-      'goods',
+      ${type},
       'internal'
     )
-    RETURNING id, canonical_name AS item_name, cf_group, selling_rate, purchase_rate, units_per_pack, unit_name
+    RETURNING id, canonical_name AS item_name, cf_group, selling_rate, purchase_rate, units_per_pack, unit_name, product_type
   `
   return NextResponse.json(row, { status: 201 })
 }
