@@ -1,6 +1,8 @@
 'use client'
-import { Fragment, useState, useEffect, useMemo } from 'react'
+import { Fragment, useState, useEffect, useMemo, useRef } from 'react'
+import { useSession } from 'next-auth/react'
 import { fmtDate } from '@/lib/fmtDate'
+import { isOwnerLevel } from '@/lib/roles'
 
 /* ── types ── */
 type SummaryRow = {
@@ -327,13 +329,106 @@ function MatchPicker({ itemId, itemName, isService, current, candidatePool, onCh
 }
 
 
-function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, autoEdit, onSaved, onRelationsSaved }: {
+/* ── Merge picker: fold one service's history into another under a chosen name ── */
+function MergeServicePicker({ itemId, itemName, servicePool, onMerged }: {
+  itemId: number; itemName: string
+  servicePool: { item_id: number; item_name: string }[]
+  onMerged: () => void
+}) {
+  const [search, setSearch] = useState('')
+  const [target, setTarget] = useState<{ item_id: number; item_name: string } | null>(null)
+  const [open, setOpen] = useState(false)
+  const [finalChoice, setFinalChoice] = useState<'this' | 'other' | 'custom'>('this')
+  const [customName, setCustomName] = useState('')
+  const [merging, setMerging] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  const filtered = search.length >= 1 && !target
+    ? servicePool.filter(s => s.item_name.toLowerCase().includes(search.toLowerCase())).slice(0, 25)
+    : []
+
+  useEffect(() => {
+    function onOut(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onOut)
+    return () => document.removeEventListener('mousedown', onOut)
+  }, [])
+
+  const finalName = finalChoice === 'this' ? itemName : finalChoice === 'other' ? (target?.item_name ?? '') : customName.trim()
+
+  async function merge() {
+    if (!target || !finalName) return
+    setMerging(true)
+    await fetch('/api/items/merge', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ loser_id: target.item_id, winner_id: itemId, final_name: finalName }),
+    })
+    setMerging(false)
+    setTarget(null); setSearch(''); setCustomName(''); setFinalChoice('this')
+    onMerged()
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <div ref={ref} className="relative">
+        <input value={target ? target.item_name : search}
+          onChange={e => { setSearch(e.target.value); setTarget(null); setOpen(true) }}
+          onFocus={() => setOpen(true)}
+          placeholder="Search services to merge with…"
+          className="w-full bg-gray-100 border border-gray-300 rounded px-1.5 py-1 text-[9px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
+        {open && filtered.length > 0 && (
+          <div className="absolute z-10 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden max-h-32 overflow-y-auto">
+            {filtered.map(s => (
+              <button key={s.item_id} onMouseDown={e => e.preventDefault()}
+                onClick={() => { setTarget(s); setSearch(s.item_name); setOpen(false) }}
+                className="w-full text-left px-1.5 py-1 text-[9px] text-gray-800 hover:bg-blue-50 border-b border-gray-100 last:border-0 truncate">
+                {s.item_name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      {target && (
+        <div className="space-y-1 bg-white border border-gray-200 rounded p-1.5">
+          <p className="text-[8px] font-bold text-gray-500">Final name for the merged service:</p>
+          <label className="flex items-center gap-1 text-[9px] text-gray-700">
+            <input type="radio" checked={finalChoice === 'this'} onChange={() => setFinalChoice('this')} />
+            <span className="truncate">{itemName}</span>
+          </label>
+          <label className="flex items-center gap-1 text-[9px] text-gray-700">
+            <input type="radio" checked={finalChoice === 'other'} onChange={() => setFinalChoice('other')} />
+            <span className="truncate">{target.item_name}</span>
+          </label>
+          <label className="flex items-center gap-1 text-[9px] text-gray-700">
+            <input type="radio" checked={finalChoice === 'custom'} onChange={() => setFinalChoice('custom')} />
+            <span>A different name…</span>
+          </label>
+          {finalChoice === 'custom' && (
+            <input value={customName} onChange={e => setCustomName(e.target.value)}
+              placeholder="Type the final service name"
+              className="w-full bg-gray-100 border border-gray-300 rounded px-1.5 py-1 text-[9px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
+          )}
+          <button onClick={merge} disabled={merging || !finalName}
+            className="w-full bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-[9px] font-bold rounded py-1 transition">
+            {merging ? 'Merging…' : `Merge — combined history becomes "${finalName || '…'}"`}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, mergePool, canMergeServices, autoEdit, onSaved, onRelationsSaved, onMerged }: {
   item: SummaryRow; groups: string[]; allItems: { item_id: number; item_name: string }[]
   currentAliases: AliasRecord[]; currentMatches: MatchRecord[]
   candidatePool: CandidateItem[]
+  mergePool: { item_id: number; item_name: string }[]
+  canMergeServices: boolean
   autoEdit: boolean
   onSaved: (u: Partial<SummaryRow>) => void
   onRelationsSaved: (aliases: AliasRecord[], matches: MatchRecord[]) => void
+  onMerged: () => void
 }) {
   const [dayRows, setDayRows] = useState<DayRow[] | null>(null)
   const [editing, setEditing] = useState(false)
@@ -422,6 +517,13 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
             <MatchPicker itemId={item.item_id} itemName={item.item_name} isService={item.product_type === 'service'}
               current={matches} candidatePool={candidatePool} onChange={setMatches} />
           </div>
+          {item.product_type === 'service' && canMergeServices && (
+            <div>
+              <label className="text-[8px] font-bold text-gray-500 block mb-0.5">Merge with another service</label>
+              <MergeServicePicker itemId={item.item_id} itemName={item.item_name} servicePool={mergePool}
+                onMerged={() => { setEditing(false); onMerged() }} />
+            </div>
+          )}
         </div>
       )}
 
@@ -611,11 +713,22 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   const [aliasRecords, setAliasRecords] = useState<Record<number, AliasRecord[]>>({})
   const [matchRecords, setMatchRecords] = useState<Record<string, MatchRecord[]>>({})
 
-  useEffect(() => {
-    fetch('/api/losses/summary').then(r => r.json())
+  const { data: session } = useSession()
+  const canMergeServices = isOwnerLevel(session?.user as any)
+
+  function loadSummary() {
+    return fetch('/api/losses/summary').then(r => r.json())
       .then(d => { setRows(Array.isArray(d) ? d : []); setLoading(false) })
       .catch(() => setLoading(false))
-  }, [])
+  }
+  useEffect(() => { loadSummary() }, [])
+
+  function reloadAfterMerge() {
+    setExpandedId(null)
+    loadSummary()
+    loadAliases()
+    loadMatches()
+  }
 
   function loadMatches() {
     fetch('/api/good-service-matches').then(r => r.json())
@@ -785,13 +898,16 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
                 currentAliases={aliasRecords[row.item_id] ?? []}
                 currentMatches={matchRecords[row.item_name.trim().toLowerCase()] ?? []}
                 candidatePool={row.product_type === 'service' ? goodsPool : servicesPool}
+                mergePool={servicesPool.filter(s => s.item_id !== row.item_id)}
+                canMergeServices={canMergeServices}
                 autoEdit={editTriggerId === row.item_id}
                 onSaved={u => patchRow(row.item_id, u)}
                 onRelationsSaved={(newAliases, newMatches) => {
                   setAliasRecords(prev => ({ ...prev, [row.item_id]: newAliases }))
                   setMatchRecords(prev => ({ ...prev, [row.item_name.trim().toLowerCase()]: newMatches }))
                   setEditTriggerId(null)
-                }} />
+                }}
+                onMerged={reloadAfterMerge} />
             </div>
           </td>
         </tr>
