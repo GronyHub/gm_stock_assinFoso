@@ -42,12 +42,18 @@ function inkColor(n: string) {
 }
 function isInk(n: string) { return /\bink\b/i.test(n) && /\d\s*ml/i.test(n) && !/toner/i.test(n) }
 
-// Binding slides — same alphanumeric code = duplicate; different code = different item
-function isBindingSlide(n: string) { return /binding\s*slide|slide.*binding/i.test(n) }
-function bindingSlideCode(n: string): string | null {
+// Slides (binding slides and their binding services) — same alphanumeric code = duplicate; different code = different item
+function isSlideItem(n: string) { return /\bslides?\b/i.test(n) }
+function slideCode(n: string): string | null {
   // Extract alphanumeric codes like A4, A3, 10mm, 16mm, etc.
   const m = [...n.matchAll(/\b([A-Z]\d+|\d+[A-Z]+|\d{1,3}\s*mm)\b/gi)].map(x => x[1].toUpperCase().replace(/\s+/g, ''))
   return m.length ? m.join('-') : null
+}
+
+// Chargers — same voltage = duplicate; different voltage = different item
+function isCharger(n: string) { return /\bcharger\b/i.test(n) }
+function chargerVoltage(n: string): string | null {
+  return n.match(/\b(\d+(?:\.\d+)?)\s*v\b/i)?.[1] ?? null
 }
 
 function shouldKeepPair(n1: string, n2: string): boolean {
@@ -61,9 +67,13 @@ function shouldKeepPair(n1: string, n2: string): boolean {
   if (isInk(n1) && isInk(n2)) {
     return inkVolume(n1) === inkVolume(n2) && inkColor(n1) === inkColor(n2)
   }
-  if (isBindingSlide(n1) && isBindingSlide(n2)) {
-    const c1 = bindingSlideCode(n1), c2 = bindingSlideCode(n2)
+  if (isSlideItem(n1) && isSlideItem(n2)) {
+    const c1 = slideCode(n1), c2 = slideCode(n2)
     return c1 !== null && c1 === c2
+  }
+  if (isCharger(n1) && isCharger(n2)) {
+    const v1 = chargerVoltage(n1), v2 = chargerVoltage(n2)
+    return v1 !== null && v1 === v2
   }
   return true
 }
