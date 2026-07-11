@@ -6,8 +6,10 @@ export default function NewItemForm({ onSuccess }: { onSuccess?: () => void } = 
   usePresenceReporter('adding an item')
   const [itemName, setItemName] = useState('')
   const [productType, setProductType] = useState<'goods' | 'service'>('goods')
-  const [group, setGroup] = useState('')
+  const [groupSelect, setGroupSelect] = useState('')
+  const [groupCustom, setGroupCustom] = useState('')
   const [groups, setGroups] = useState<string[]>([])
+  const group = groupSelect === '__custom__' ? groupCustom.trim() : groupSelect
   const [sellingRate, setSellingRate] = useState('')
   const [purchaseRate, setPurchaseRate] = useState('')
   const [unitsPerPack, setUnitsPerPack] = useState('')
@@ -92,12 +94,17 @@ export default function NewItemForm({ onSuccess }: { onSuccess?: () => void } = 
         </div>
         <div>
           <label className="text-sm text-gray-600 block mb-1.5">Group</label>
-          <input list="new-item-groups" value={group} onChange={e => setGroup(e.target.value)}
-            placeholder="e.g. Paper, or type your own"
-            className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-base text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-400" />
-          <datalist id="new-item-groups">
-            {groups.map(g => <option key={g} value={g} />)}
-          </datalist>
+          <select value={groupSelect} onChange={e => setGroupSelect(e.target.value)}
+            className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-base text-gray-900 outline-none focus:ring-2 focus:ring-blue-400">
+            <option value="">— No group —</option>
+            {groups.map(g => <option key={g} value={g}>{g}</option>)}
+            <option value="__custom__">+ New group name…</option>
+          </select>
+          {groupSelect === '__custom__' && (
+            <input value={groupCustom} onChange={e => setGroupCustom(e.target.value)}
+              placeholder="Type new group name"
+              className="mt-2 w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-base text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-400" />
+          )}
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
