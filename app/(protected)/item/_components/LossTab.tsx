@@ -613,7 +613,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                 <col style={{width:'7%'}} />
                 <col style={{width:'7%'}} />
               </colgroup>
-              <thead>
+              <thead className="sticky top-0 z-10">
                 <tr className="bg-amber-500 text-gray-800 font-bold">
                   <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-left pl-1 align-bottom">DATE</th>
                   <th colSpan={5} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">
