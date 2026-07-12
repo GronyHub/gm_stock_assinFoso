@@ -43,11 +43,15 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ count: rows.length, rows })
 }
 
+// If correctItemName is given, matching lines are moved straight to that item
+// (item_id + resolved_name set directly) instead of just being unlinked --
+// skipping the generic Unlinked-flag text-match entirely, so there's no
+// chance of the same kind of mismatch happening again on relink.
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { wrongItemName, nameContains, from, to } = await req.json()
+  const { wrongItemName, nameContains, from, to, correctItemName } = await req.json()
   if (!wrongItemName || !nameContains) {
     return NextResponse.json({ error: 'wrongItemName and nameContains required' }, { status: 400 })
   }
@@ -57,15 +61,30 @@ export async function POST(req: NextRequest) {
   const lineIds = rows.map((r: any) => r.line_id)
 
   if (lineIds.length > 0) {
-    await sql`
-      UPDATE sales_receipt_lines
-      SET item_id = NULL, resolved_name = NULL, unresolved = true
-      WHERE id = ANY(${lineIds})
-    `
+    if (correctItemName) {
+      const [correctItem] = await sql`
+        SELECT id, canonical_name FROM items
+        WHERE LOWER(canonical_name) = LOWER(${correctItemName}) AND LOWER(status) = 'active'
+      `
+      if (!correctItem) return NextResponse.json({ error: `No active item named "${correctItemName}"` }, { status: 404 })
+
+      await sql`
+        UPDATE sales_receipt_lines
+        SET item_id = ${correctItem.id}, resolved_name = ${correctItem.canonical_name}, unresolved = false
+        WHERE id = ANY(${lineIds})
+      `
+    } else {
+      await sql`
+        UPDATE sales_receipt_lines
+        SET item_id = NULL, resolved_name = NULL, unresolved = true
+        WHERE id = ANY(${lineIds})
+      `
+    }
   }
 
-  await logActivity(actor, 'unlinked mismatched sales lines',
-    `${lineIds.length} line${lineIds.length !== 1 ? 's' : ''} removed from "${wrongItemName}" (matched "${nameContains}")`)
+  const action = correctItemName ? `moved to "${correctItemName}"` : 'unlinked'
+  await logActivity(actor, correctItemName ? 'relinked mismatched sales lines' : 'unlinked mismatched sales lines',
+    `${lineIds.length} line${lineIds.length !== 1 ? 's' : ''} ${action} from "${wrongItemName}" (matched "${nameContains}")`)
 
-  return NextResponse.json({ ok: true, unlinked: lineIds.length })
+  return NextResponse.json({ ok: true, updated: lineIds.length })
 }

@@ -6,11 +6,12 @@ const inputCls = 'w-full bg-white border border-gray-300 rounded-xl px-4 py-3 te
 export default function UnlinkMismatchPage() {
   const [wrongItemName, setWrongItemName] = useState('4x6 packs')
   const [nameContains, setNameContains] = useState('passport')
+  const [correctItemName, setCorrectItemName] = useState('Service - Passport Printing (4x6)')
   const [from, setFrom] = useState('2025-10-18')
   const [to, setTo] = useState('2026-03-17')
   const [rows, setRows] = useState<any[] | null>(null)
   const [loading, setLoading] = useState(false)
-  const [applying, setApplying] = useState(false)
+  const [applying, setApplying] = useState<'unlink' | 'relink' | null>(null)
   const [result, setResult] = useState<string | null>(null)
   const [error, setError] = useState('')
 
@@ -28,17 +29,19 @@ export default function UnlinkMismatchPage() {
     setLoading(false)
   }
 
-  async function apply() {
+  async function apply(toCorrectItem: boolean) {
     if (!rows || rows.length === 0) return
-    setApplying(true); setError('')
+    setApplying(toCorrectItem ? 'relink' : 'unlink'); setError('')
     try {
       const res = await fetch('/api/debug/unlink-mismatch', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ wrongItemName, nameContains, from, to }),
+        body: JSON.stringify({ wrongItemName, nameContains, from, to, correctItemName: toCorrectItem ? correctItemName : undefined }),
       })
       const d = await res.json().catch(() => ({}))
       if (res.ok) {
-        setResult(`Unlinked ${d.unlinked} line${d.unlinked !== 1 ? 's' : ''}. They'll show up in Item hub → Errors → Unlinked, now under their real name, ready to link.`)
+        setResult(toCorrectItem
+          ? `Linked ${d.updated} line${d.updated !== 1 ? 's' : ''} to "${correctItemName}".`
+          : `Unlinked ${d.updated} line${d.updated !== 1 ? 's' : ''}. They'll show up in Item hub → Errors → Unlinked, now under their real name, ready to link.`)
         setRows(null)
       } else {
         setError(d.error || 'Could not apply.')
@@ -46,7 +49,7 @@ export default function UnlinkMismatchPage() {
     } catch {
       setError('Network error — could not reach the server.')
     }
-    setApplying(false)
+    setApplying(null)
   }
 
   return (
@@ -67,6 +70,10 @@ export default function UnlinkMismatchPage() {
         <div>
           <label className="text-sm text-gray-600 block mb-1.5">Original text contains</label>
           <input value={nameContains} onChange={e => setNameContains(e.target.value)} className={inputCls} />
+        </div>
+        <div>
+          <label className="text-sm text-gray-600 block mb-1.5">Correct item to link to (optional)</label>
+          <input value={correctItemName} onChange={e => setCorrectItemName(e.target.value)} className={inputCls} />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -106,10 +113,16 @@ export default function UnlinkMismatchPage() {
                   </div>
                 ))}
               </div>
-              <button onClick={apply} disabled={applying}
-                className="w-full bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white font-semibold rounded-xl py-3 transition">
-                {applying ? 'Unlinking…' : `Unlink These ${rows.length} Lines`}
-              </button>
+              <div className="space-y-2">
+                <button onClick={() => apply(true)} disabled={applying !== null || !correctItemName}
+                  className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white font-semibold rounded-xl py-3 transition">
+                  {applying === 'relink' ? 'Linking…' : `Link All ${rows.length} to "${correctItemName}"`}
+                </button>
+                <button onClick={() => apply(false)} disabled={applying !== null}
+                  className="w-full bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white font-semibold rounded-xl py-3 transition">
+                  {applying === 'unlink' ? 'Unlinking…' : `Unlink These ${rows.length} Lines Instead`}
+                </button>
+              </div>
             </>
           )}
         </div>
