@@ -455,12 +455,12 @@ function MergeItemPicker({ itemId, itemName, typeLabel, mergePool, onMerged }: {
   )
 }
 
-function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, mergePool, canMerge, autoEdit, onSaved, onRelationsSaved, onMerged, onDateClick }: {
+function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, mergePool, isOwnerLevelUser, autoEdit, onSaved, onRelationsSaved, onMerged, onDateClick }: {
   item: SummaryRow; groups: string[]; allItems: { item_id: number; item_name: string }[]
   currentAliases: AliasRecord[]; currentMatches: MatchRecord[]
   candidatePool: CandidateItem[]
   mergePool: { item_id: number; item_name: string }[]
-  canMerge: boolean
+  isOwnerLevelUser: boolean
   autoEdit: boolean
   onSaved: (u: Partial<SummaryRow>) => void
   onRelationsSaved: (aliases: AliasRecord[], matches: MatchRecord[]) => void
@@ -473,6 +473,18 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
   const [aliases, setAliases] = useState<AliasRecord[]>(currentAliases)
   const [matches, setMatches] = useState<MatchRecord[]>(currentMatches)
   const [saving, setSaving] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
+
+  async function deleteItem() {
+    setDeleting(true); setDeleteError('')
+    const res = await fetch(`/api/items/${item.item_id}`, { method: 'DELETE' })
+    const d = await res.json().catch(() => ({}))
+    setDeleting(false)
+    if (res.ok) { setEditing(false); onMerged() }
+    else setDeleteError(d.error || 'Could not delete item.')
+  }
 
   useEffect(() => {
     fetch(`/api/losses/${item.item_id}`).then(r => r.json())
@@ -577,7 +589,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
             <MatchPicker itemId={item.item_id} itemName={item.item_name} isService={item.product_type === 'service'}
               current={matches} candidatePool={candidatePool} onChange={setMatches} />
           </div>
-          {canMerge && (
+          {isOwnerLevelUser && (
             <div>
               <label className="text-[8px] font-bold text-gray-500 block mb-0.5">
                 Merge with another {item.product_type === 'service' ? 'service' : 'good'}
@@ -585,6 +597,35 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
               <MergeItemPicker itemId={item.item_id} itemName={item.item_name}
                 typeLabel={item.product_type === 'service' ? 'service' : 'good'} mergePool={mergePool}
                 onMerged={() => { setEditing(false); onMerged() }} />
+            </div>
+          )}
+          {isOwnerLevelUser && (
+            <div>
+              <label className="text-[8px] font-bold text-gray-500 block mb-0.5">Delete this item</label>
+              {!confirmDelete ? (
+                <button onClick={() => setConfirmDelete(true)}
+                  className="w-full bg-gray-100 hover:bg-red-50 text-red-600 text-[10px] font-semibold rounded py-1.5 transition">
+                  Delete Item
+                </button>
+              ) : (
+                <div className="space-y-1">
+                  <p className="text-[10px] text-red-600">
+                    Only possible if it has no sales, bills, or stock counts. This can't be undone
+                    -- merge it into another item instead if it has history.
+                  </p>
+                  <div className="flex gap-1">
+                    <button onClick={deleteItem} disabled={deleting}
+                      className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
+                      {deleting ? 'Deleting…' : 'Yes, Delete Permanently'}
+                    </button>
+                    <button onClick={() => { setConfirmDelete(false); setDeleteError('') }}
+                      className="px-3 py-1.5 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">
+                      Cancel
+                    </button>
+                  </div>
+                  {deleteError && <p className="text-[10px] text-red-600 font-medium">{deleteError}</p>}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -891,7 +932,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   const [matchRecords, setMatchRecords] = useState<Record<string, MatchRecord[]>>({})
 
   const { data: session } = useSession()
-  const canMerge = isOwnerLevel(session?.user as any)
+  const isOwnerLevelUser = isOwnerLevel(session?.user as any)
 
   function loadSummary() {
     return fetch('/api/losses/summary').then(r => r.json())
@@ -1090,7 +1131,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
                 currentMatches={matchRecords[row.item_name.trim().toLowerCase()] ?? []}
                 candidatePool={row.product_type === 'service' ? goodsPool : servicesPool}
                 mergePool={(row.product_type === 'service' ? servicesPool : goodsPool).filter(i => i.item_id !== row.item_id)}
-                canMerge={canMerge}
+                isOwnerLevelUser={isOwnerLevelUser}
                 autoEdit={editTriggerId === row.item_id}
                 onSaved={u => patchRow(row.item_id, u)}
                 onRelationsSaved={(newAliases, newMatches) => {
