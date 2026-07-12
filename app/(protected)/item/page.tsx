@@ -323,7 +323,10 @@ function ItemHubPageInner() {
   const isOwnerOrJoe = role === 'owner' || username.toLowerCase() === 'joe'
   const hamburgerLinks = [
     ...HAMBURGER_LINKS,
-    ...(isOwnerOrJoe ? [{ href: '/personal', label: 'Personal' }] : []),
+    ...(isOwnerOrJoe ? [
+      { href: '/personal', label: 'Personal' },
+      { href: '/debug/unlink-mismatch', label: 'Fix Mislinked Sales' },
+    ] : []),
   ]
 
   return (
