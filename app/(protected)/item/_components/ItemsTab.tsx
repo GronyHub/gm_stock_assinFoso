@@ -185,6 +185,28 @@ function NoGroupFix({ r, groupNames, onFixed }: { r: any; groupNames: string[]; 
   )
 }
 
+function UnlinkedFix({ r, onFixed }: { r: any; onFixed: (item_name: string) => void }) {
+  const [saving, setSaving] = useState(false)
+  async function linkNow() {
+    setSaving(true)
+    await fetch('/api/flags/link-unresolved', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ item_name: r.item_name, item_id: r.item_id }),
+    })
+    setSaving(false)
+    onFixed(r.item_name)
+  }
+  return (
+    <FixRow label={r.item_name} sub={`${r.line_count} sale${r.line_count !== 1 ? 's' : ''} not linked`}>
+      <p className="text-[10px] text-gray-500">These sales match this item by name but were never linked to it — their quantity and revenue are missing from its activity.</p>
+      <button onClick={linkNow} disabled={saving}
+        className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
+        {saving ? 'Linking…' : `Link ${r.line_count} sale${r.line_count !== 1 ? 's' : ''} to this item`}
+      </button>
+    </FixRow>
+  )
+}
+
 function NameResolveRow({ name, count, items, onResolved }: {
   name: string; count: number; items: { id: number; canonical_name: string }[]
   onResolved: (name: string, canonical: string, itemId: number) => void
@@ -316,7 +338,7 @@ export default function ItemsTab({ items, group, productType, search, violation,
   const [lossSummary, setLossSummary] = useState<any[] | null>(null)
   const [lossSummaryLoading, setLossSummaryLoading] = useState(false)
 
-  const needsFlags = violation === 'no_group' || violation === 'duplicates'
+  const needsFlags = violation === 'no_group' || violation === 'duplicates' || violation === 'unlinked_named'
   const needsNameRes = violation === 'inv_done' || violation === 'inv_todo'
   const needsLossSummary = violation === 'service_violation'
 
@@ -349,7 +371,7 @@ export default function ItemsTab({ items, group, productType, search, violation,
       fetch('/api/flags')
         .then(r => r.ok ? r.json() : Promise.reject())
         .then(d => { setFlags(d); setFlagsLoading(false) })
-        .catch(() => { setFlags({ noGroup: [], duplicates: [], notInInventory: [], groupNames: [] }); setFlagsLoading(false) })
+        .catch(() => { setFlags({ noGroup: [], duplicates: [], notInInventory: [], unlinkedNamed: [], groupNames: [] }); setFlagsLoading(false) })
     }
   }, [needsFlags, flags, flagsLoading])
 
@@ -653,6 +675,26 @@ export default function ItemsTab({ items, group, productType, search, violation,
                 <DuplicateFix key={`${r.id1}-${r.id2}`} r={r} onFixed={(id1, id2) => {
                   const lo = Math.min(id1, id2), hi = Math.max(id1, id2)
                   setDismissed(prev => new Set(prev).add(`${lo}-${hi}`))
+                }} />
+              ))}
+            </div>
+        )}
+      </div>
+    )
+  }
+
+  if (violation === 'unlinked_named') {
+    return (
+      <div className="flex-1 overflow-y-auto min-h-0 py-2 h-full">
+        <p className="text-[10px] text-gray-400 px-2 mb-1">
+          {flagsLoading || !flags ? 'Loading…' : `${flags.unlinkedNamed.length} unlinked item name${flags.unlinkedNamed.length !== 1 ? 's' : ''}`}
+        </p>
+        {!flagsLoading && flags && (flags.unlinkedNamed.length === 0
+          ? <p className="py-4 text-center text-gray-400 text-[10px]">No unlinked sales found.</p>
+          : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
+              {flags.unlinkedNamed.map((r: any) => (
+                <UnlinkedFix key={r.item_name} r={r} onFixed={(item_name: string) => {
+                  setFlags((f: any) => f ? { ...f, unlinkedNamed: f.unlinkedNamed.filter((x: any) => x.item_name !== item_name) } : f)
                 }} />
               ))}
             </div>
