@@ -1,9 +1,53 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const inputCls = 'w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-base text-gray-900 outline-none focus:ring-2 focus:ring-blue-400'
 
+function ItemPicker({ label, value, onChange, items }: {
+  label: string; value: string; onChange: (v: string) => void
+  items: { id: number; item_name: string }[]
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function onOut(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onOut)
+    return () => document.removeEventListener('mousedown', onOut)
+  }, [])
+
+  const q = value.trim().toLowerCase()
+  const filtered = (q ? items.filter(i => i.item_name.toLowerCase().includes(q)) : items).slice(0, 25)
+
+  return (
+    <div ref={ref} className="relative">
+      <label className="text-sm text-gray-600 block mb-1.5">{label}</label>
+      <input value={value} onChange={e => { onChange(e.target.value); setOpen(true) }} onFocus={() => setOpen(true)}
+        className={inputCls} />
+      {open && filtered.length > 0 && (
+        <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-52 overflow-y-auto">
+          {filtered.map(i => (
+            <button key={i.id} onMouseDown={e => e.preventDefault()}
+              onClick={() => { onChange(i.item_name); setOpen(false) }}
+              className="w-full text-left px-3 py-2 text-sm text-gray-800 hover:bg-blue-50 border-b border-gray-100 last:border-0">
+              {i.item_name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function UnlinkMismatchPage() {
+  const [items, setItems] = useState<{ id: number; item_name: string }[]>([])
+  useEffect(() => {
+    fetch('/api/items').then(r => r.json())
+      .then(d => setItems(Array.isArray(d) ? d : []))
+      .catch(() => {})
+  }, [])
   const [wrongItemName, setWrongItemName] = useState('4x6 packs')
   const [nameContains, setNameContains] = useState('passport')
   const [correctItemName, setCorrectItemName] = useState('Service - Passport Printing (4x6)')
@@ -63,18 +107,12 @@ export default function UnlinkMismatchPage() {
       </p>
 
       <div className="space-y-3">
-        <div>
-          <label className="text-sm text-gray-600 block mb-1.5">Currently (wrongly) linked to item named</label>
-          <input value={wrongItemName} onChange={e => setWrongItemName(e.target.value)} className={inputCls} />
-        </div>
+        <ItemPicker label="Currently (wrongly) linked to item named" value={wrongItemName} onChange={setWrongItemName} items={items} />
         <div>
           <label className="text-sm text-gray-600 block mb-1.5">Original text contains</label>
           <input value={nameContains} onChange={e => setNameContains(e.target.value)} className={inputCls} />
         </div>
-        <div>
-          <label className="text-sm text-gray-600 block mb-1.5">Correct item to link to (optional)</label>
-          <input value={correctItemName} onChange={e => setCorrectItemName(e.target.value)} className={inputCls} />
-        </div>
+        <ItemPicker label="Correct item to link to (optional)" value={correctItemName} onChange={setCorrectItemName} items={items} />
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-sm text-gray-600 block mb-1.5">From date</label>
