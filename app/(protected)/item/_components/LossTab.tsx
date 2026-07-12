@@ -98,6 +98,38 @@ function computeRows(rows: DayRow[]): ComputedRow[] {
   return result.reverse()
 }
 
+/* ── Pack-chain merge: pack-level rows joined with the target (singles) rows they
+   convert into, by date, so packs/singles/services can be read as one table. ── */
+type PackChainRow = {
+  date: string
+  packCnt: string | null; packBl: string | null; packGmc: string | null; packWic: string | null; packLoss: number | null
+  singlesCnt: string | null; singlesConvIn: string | null
+  singlesBreakdown: { name: string; qty: number }[]
+  singlesUsed: number; singlesLoss: number | null
+}
+function buildPackChainRows(packRows: ComputedRow[], singlesRows: ComputedRow[]): PackChainRow[] {
+  const map = new Map<string, PackChainRow>()
+  for (const r of packRows) {
+    map.set(r.date, {
+      date: r.date, packCnt: r.qty_counted, packBl: r.bills_qty, packGmc: r.gmc_qty, packWic: r.wic_qty, packLoss: r.loss,
+      singlesCnt: null, singlesConvIn: null, singlesBreakdown: [], singlesUsed: 0, singlesLoss: null,
+    })
+  }
+  for (const r of singlesRows) {
+    const existing = map.get(r.date) ?? {
+      date: r.date, packCnt: null, packBl: null, packGmc: null, packWic: null, packLoss: null,
+      singlesCnt: null, singlesConvIn: null, singlesBreakdown: [], singlesUsed: 0, singlesLoss: null,
+    }
+    existing.singlesCnt = r.qty_counted
+    existing.singlesConvIn = r.converted_in_qty
+    existing.singlesBreakdown = r.wic_breakdown ?? []
+    existing.singlesUsed = r.used
+    existing.singlesLoss = r.loss
+    map.set(r.date, existing)
+  }
+  return Array.from(map.values()).sort((a, b) => b.date.localeCompare(a.date))
+}
+
 function rowSortVal(row: SummaryRow, col: SortCol): number | string {
   switch (col) {
     case 'item_name': return row.item_name.toLowerCase()
@@ -444,6 +476,21 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
       .catch(() => setDayRows([]))
   }, [item.item_id])
 
+  // Special-cased combined view for the 4x6 Packs item: its own row expands into a
+  // single table spanning packs -> singles -> the services that draw on those singles,
+  // instead of just its own pack-level activity, so lapses anywhere in that chain are
+  // visible in one place. Not a general mechanism -- scoped to this one item on purpose.
+  const isPackChain = item.converts_to_item_id != null && /4x6/i.test(item.item_name) && /pack/i.test(item.item_name)
+  const [targetDayRows, setTargetDayRows] = useState<DayRow[] | null>(null)
+
+  useEffect(() => {
+    if (!isPackChain || item.converts_to_item_id == null) { setTargetDayRows(null); return }
+    fetch(`/api/losses/${item.converts_to_item_id}`).then(r => r.json())
+      .then(d => setTargetDayRows(Array.isArray(d) ? d : []))
+      .catch(() => setTargetDayRows([]))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPackChain, item.converts_to_item_id])
+
   function startEdit() {
     setForm({
       item_name: item.item_name, cf_group: item.cf_group ?? '', selling_rate: item.sp ?? '', purchase_rate: item.cp ?? '',
@@ -498,6 +545,14 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
   const breakdownColW = showBreakdown ? Math.max(4, Math.min(6, Math.floor(14 / breakdownNames.length))) : 0
   const aliasW = 100 - 71 - breakdownColW * breakdownNames.length
 
+  const targetComputed = targetDayRows ? computeRows(targetDayRows) : null
+  const targetName = allItems.find(a => a.item_id === item.converts_to_item_id)?.item_name ?? 'target item'
+  const packChainRows = isPackChain && computed && targetComputed ? buildPackChainRows(computed, targetComputed) : []
+  const packChainBreakdownNames = targetComputed
+    ? Array.from(new Set(targetComputed.flatMap(r => (r.wic_breakdown ?? []).map(b => b.name)))).sort()
+    : []
+  const packChainColW = Math.max(4, Math.min(8, Math.floor(30 / Math.max(1, packChainBreakdownNames.length))))
+
   return (
     <div className="bg-white border border-gray-200 rounded-lg overflow-hidden mt-0.5">
       {editing && (
@@ -534,8 +589,91 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
       {/* detail table -- the Available/Used narrative format is only for items
           where 2+ services share stock (e.g. 4x6 singles); every other item
           keeps the original DATE/₵/L-G/WIC/GMC/SP/BL/CNV/EXP layout. */}
-      {!dayRows ? (
+      {!dayRows || (isPackChain && !targetDayRows) ? (
         <p className="text-[9px] text-gray-400 text-center py-3">Loading…</p>
+      ) : isPackChain ? (
+        packChainRows.length === 0 ? (
+          <p className="text-[9px] text-gray-400 text-center py-3">No activity.</p>
+        ) : (
+          <>
+            <p className="text-[8px] font-bold text-gray-500 px-1.5 py-1 bg-gray-50 border-b border-gray-200">
+              Combined view: {item.item_name} → {targetName} → services
+            </p>
+            <table className="w-full table-fixed border-collapse text-[8px]">
+              <colgroup>
+                <col style={{width:'12%'}} />
+                <col style={{width:'6%'}} />
+                <col style={{width:'6%'}} />
+                <col style={{width:'6%'}} />
+                <col style={{width:'6%'}} />
+                <col style={{width:'6%'}} />
+                <col style={{width:'6%'}} />
+                <col style={{width:'6%'}} />
+                {packChainBreakdownNames.map(n => <col key={n} style={{width:`${packChainColW}%`}} />)}
+                <col style={{width:'7%'}} />
+                <col style={{width:'7%'}} />
+              </colgroup>
+              <thead>
+                <tr className="bg-amber-500 text-gray-800 font-bold">
+                  <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-left pl-1 align-bottom">DATE</th>
+                  <th colSpan={5} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">
+                    {item.item_name}
+                  </th>
+                  <th colSpan={4 + packChainBreakdownNames.length} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">
+                    {targetName}
+                  </th>
+                </tr>
+                <tr className="bg-amber-400 text-gray-800 font-bold">
+                  <th className="py-0.5 border-b-2 border-gray-400 text-center border-l-2 border-l-gray-600" title="Physical count">CNT</th>
+                  <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Bought/received">BL</th>
+                  <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Taken for internal use (credits singles below)">GMC</th>
+                  <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Sold as whole packs to a real customer">WIC</th>
+                  <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Count loss/gain on packs">L/G</th>
+                  <th className="py-0.5 border-b-2 border-gray-400 text-center border-l-2 border-l-gray-600" title="Physical count">CNT</th>
+                  <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Credited in from pack GMC take">CONV</th>
+                  {packChainBreakdownNames.map(n => (
+                    <th key={n} title={n} className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">
+                      {shortSourceName(n)}
+                    </th>
+                  ))}
+                  <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Total used across all services">USED</th>
+                  <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Count loss/gain on singles">L/G</th>
+                </tr>
+              </thead>
+              <tbody>
+                {packChainRows.map((row, i) => (
+                  <tr key={i} className={`border-b border-gray-200 ${(row.singlesLoss ?? 0) > 0.001 || (row.packLoss ?? 0) > 0.001 ? 'bg-red-50' : ''}`}>
+                    <td className="pl-1 py-0.5 font-bold text-gray-500 whitespace-nowrap overflow-hidden">{fmtDate(row.date)}</td>
+                    <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-gray-900">{fmtQs(row.packCnt)}</td>
+                    <td className="text-center py-0.5 font-bold border-l border-gray-300 text-blue-600">{fmtQs(row.packBl)}</td>
+                    <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.packGmc)}</td>
+                    <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.packWic)}</td>
+                    <td className="text-center py-0.5 font-bold border-l border-gray-300">
+                      {row.packLoss === null ? <span className="text-gray-300">—</span>
+                        : row.packLoss > 0.001 ? <span className="text-red-600">-{fmtN(row.packLoss)}</span>
+                        : row.packLoss < -0.001 ? <span className="text-green-600">+{fmtN(Math.abs(row.packLoss))}</span>
+                        : <span className="text-gray-400">0</span>}
+                    </td>
+                    <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-gray-900">{fmtQs(row.singlesCnt)}</td>
+                    <td className="text-center py-0.5 font-bold border-l border-gray-300 text-teal-600">{fmtQs(row.singlesConvIn)}</td>
+                    {packChainBreakdownNames.map(n => (
+                      <td key={n} className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">
+                        {fmtQ(row.singlesBreakdown.find(b => b.name === n)?.qty ?? 0)}
+                      </td>
+                    ))}
+                    <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQ(row.singlesUsed)}</td>
+                    <td className="text-center py-0.5 font-bold border-l border-gray-300">
+                      {row.singlesLoss === null ? <span className="text-gray-300">—</span>
+                        : row.singlesLoss > 0.001 ? <span className="text-red-600">-{fmtN(row.singlesLoss)}</span>
+                        : row.singlesLoss < -0.001 ? <span className="text-green-600">+{fmtN(Math.abs(row.singlesLoss))}</span>
+                        : <span className="text-gray-400">0</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )
       ) : computed!.length === 0 ? (
         <p className="text-[9px] text-gray-400 text-center py-3">No activity.</p>
       ) : showBreakdown ? (
