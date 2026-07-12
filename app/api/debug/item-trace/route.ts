@@ -16,6 +16,8 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const name = searchParams.get('name')
   const date = searchParams.get('date')
+  const from = searchParams.get('from')
+  const to = searchParams.get('to')
   if (!name) return NextResponse.json({ error: 'name query param required' }, { status: 400 })
 
   const matchingItems = await sql`
@@ -35,8 +37,10 @@ export async function GET(req: NextRequest) {
     LEFT JOIN items i ON i.id = srl.item_id
     WHERE (srl.raw_item_name ILIKE ${'%' + name + '%'} OR srl.resolved_name ILIKE ${'%' + name + '%'})
       AND (${date ?? null}::date IS NULL OR sr.receipt_date::date = ${date ?? null}::date)
+      AND (${from ?? null}::date IS NULL OR sr.receipt_date::date >= ${from ?? null}::date)
+      AND (${to ?? null}::date IS NULL OR sr.receipt_date::date <= ${to ?? null}::date)
     ORDER BY sr.receipt_date DESC
-    LIMIT 100
+    LIMIT 500
   `
 
   return NextResponse.json({ matchingItems, receiptLines })
