@@ -24,7 +24,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ itemId:
       -- Kept per-source (grouped by service too) so callers can show a breakdown, not
       -- just a combined total, when more than one service draws on the same stock.
       SELECT sr.receipt_date::date AS d, src.id AS source_id, src.canonical_name AS source_name,
-             SUM(srl.quantity * COALESCE(src.units_per_pack, 1)) AS qty
+             SUM(srl.quantity * COALESCE(src.units_per_pack, 1)) AS qty,
+             SUM(srl.quantity * COALESCE(srl.item_price, 0)) AS amount
       FROM sales_receipt_lines srl
       JOIN sales_receipts sr ON sr.id = srl.receipt_id
       JOIN items src ON src.id = srl.item_id
@@ -35,7 +36,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ itemId:
     ),
     daily_consumed_via_service AS (
       SELECT d, SUM(qty) AS qty,
-             json_agg(json_build_object('name', source_name, 'qty', qty) ORDER BY source_name) AS breakdown
+             json_agg(json_build_object('name', source_name, 'qty', qty, 'amount', amount) ORDER BY source_name) AS breakdown
       FROM daily_consumed_by_service
       GROUP BY d
     ),

@@ -33,7 +33,7 @@ type DayRow = {
   sell_price: string | null
   aliases: string | null
   converted_in_qty: string | null
-  wic_breakdown: { name: string; qty: number }[] | null
+  wic_breakdown: { name: string; qty: number; amount: number }[] | null
 }
 type ComputedRow = DayRow & { available: number | null; used: number; expected_soh: number | null; loss: number | null }
 
@@ -105,7 +105,7 @@ type PackChainRow = {
   packCnt: string | null; packBl: string | null; packGmc: string | null; packWic: string | null
   packExp: number | null; packLoss: number | null
   singlesCnt: string | null; singlesConvIn: string | null
-  singlesBreakdown: { name: string; qty: number }[]
+  singlesBreakdown: { name: string; qty: number; amount: number }[]
   singlesUsed: number; singlesExp: number | null; singlesLoss: number | null
 }
 function buildPackChainRows(packRows: ComputedRow[], singlesRows: ComputedRow[]): PackChainRow[] {
@@ -554,7 +554,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
   const packChainBreakdownNames = targetComputed
     ? Array.from(new Set(targetComputed.flatMap(r => (r.wic_breakdown ?? []).map(b => b.name)))).sort()
     : []
-  const packChainColW = Math.max(4, Math.min(8, Math.floor(30 / Math.max(1, packChainBreakdownNames.length))))
+  const packChainColW = Math.max(6, Math.min(12, Math.floor(40 / Math.max(1, packChainBreakdownNames.length))))
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg overflow-hidden mt-0.5">
@@ -664,11 +664,15 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                     </td>
                     <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-gray-900">{fmtQs(row.singlesCnt)}</td>
                     <td className="text-center py-0.5 font-bold border-l border-gray-300 text-teal-600">{fmtQs(row.singlesConvIn)}</td>
-                    {packChainBreakdownNames.map(n => (
-                      <td key={n} className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">
-                        {fmtQ(row.singlesBreakdown.find(b => b.name === n)?.qty ?? 0)}
-                      </td>
-                    ))}
+                    {packChainBreakdownNames.map(n => {
+                      const b = row.singlesBreakdown.find(x => x.name === n)
+                      const qty = b?.qty ?? 0, amount = b?.amount ?? 0
+                      return (
+                        <td key={n} className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600 whitespace-nowrap overflow-hidden">
+                          {qty === 0 ? '—' : <>{fmtQ(qty)}<span className="text-blue-500 text-[6px]"> (₵{fmtN(amount)})</span></>}
+                        </td>
+                      )
+                    })}
                     <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQ(row.singlesUsed)}</td>
                     <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-400">{fmtN(row.singlesExp)}</td>
                     <td className="text-center py-0.5 font-bold border-l border-gray-300">
