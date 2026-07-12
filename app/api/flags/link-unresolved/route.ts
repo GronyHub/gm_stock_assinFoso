@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
   if (!items.length) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
 
   let totalLinked = 0
+  const breakdown: string[] = []
   for (const { item_name, item_id } of items) {
     const linked = await sql`
       UPDATE sales_receipt_lines
@@ -29,8 +30,9 @@ export async function POST(req: NextRequest) {
       RETURNING id
     `
     totalLinked += linked.length
+    if (linked.length > 0) breakdown.push(`${item_name} (${linked.length})`)
   }
 
-  await logActivity(actor, 'linked unresolved sales lines to item', `${totalLinked} line${totalLinked !== 1 ? 's' : ''} across ${items.length} item name${items.length !== 1 ? 's' : ''}`)
-  return NextResponse.json({ ok: true, linked: totalLinked })
+  await logActivity(actor, 'linked unresolved sales lines to item', `${totalLinked} line${totalLinked !== 1 ? 's' : ''}: ${breakdown.join(', ')}`)
+  return NextResponse.json({ ok: true, linked: totalLinked, breakdown })
 }
