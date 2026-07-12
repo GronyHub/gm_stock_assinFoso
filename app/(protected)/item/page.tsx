@@ -218,6 +218,7 @@ function ItemHubPageInner() {
   const [globalFlags, setGlobalFlags] = useState<any | null>(null)
   const [pendingCounts, setPendingCounts] = useState<{ daily: number; overdue: number }>({ daily: 0, overdue: 0 })
   const [serviceViolationCount, setServiceViolationCount] = useState(0)
+  const [aliasesPendingCount, setAliasesPendingCount] = useState(0)
 
   function loadBadgeData() {
     fetch('/api/flags').then(r => r.ok ? r.json() : null).then(d => { if (d) setGlobalFlags(d) }).catch(() => {})
@@ -236,6 +237,13 @@ function ItemHubPageInner() {
         r.product_type === 'service' && (Number(r.cnt) !== 0 || Number(r.gmc) !== 0 || Number(r.bl) !== 0)
       ).length)
     }).catch(() => {})
+    Promise.all([
+      fetch('/api/aliases/unresolved').then(r => r.json()).catch(() => []),
+      fetch('/api/aliases/unresolved-bills').then(r => r.json()).catch(() => []),
+    ]).then(([salesRows, billRows]) => {
+      const pending = (arr: any) => Array.isArray(arr) ? arr.filter((r: any) => !r.confirmed).length : 0
+      setAliasesPendingCount(pending(salesRows) + pending(billRows))
+    }).catch(() => {})
   }
 
   useEffect(() => { loadBadgeData() }, [])
@@ -253,6 +261,7 @@ function ItemHubPageInner() {
       no_group: f?.noGroup?.length ?? 0,
       duplicates: f?.duplicates?.length ?? 0,
       unlinked_named: f?.unlinkedNamed?.length ?? 0,
+      aliases: aliasesPendingCount,
       no_cash: f?.noCash?.length ?? 0,
       missing_days: f?.missingDays?.length ?? 0,
       cost_price: f?.costGteSell?.length ?? 0,
@@ -263,12 +272,12 @@ function ItemHubPageInner() {
       unchecked_cab: f?.uncheckedCab?.length ?? 0,
       no_staff_times: f?.noStaffTimes?.length ?? 0,
     }
-  }, [items, globalFlags, pendingCounts, serviceViolationCount])
+  }, [items, globalFlags, pendingCounts, serviceViolationCount, aliasesPendingCount])
 
   const badgeCounts: Partial<Record<OuterTab, number>> = useMemo(() => {
     const v = violationCounts
     return {
-      errors: v.neg_soh + v.no_sp + v.no_cp + v.no_group + v.duplicates + v.unlinked_named + v.service_violation + v.daily + v['15day']
+      errors: v.neg_soh + v.no_sp + v.no_cp + v.no_group + v.duplicates + v.unlinked_named + v.aliases + v.service_violation + v.daily + v['15day']
         + v.no_cash + v.missing_days + v.cost_price + v.dup_receipt + v.unchecked_cab + v.no_staff_times,
     }
   }, [violationCounts])
