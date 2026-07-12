@@ -22,13 +22,23 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       const total = qty * price
 
       if (line.id) {
+        // item_id resolution order: an explicit id from the client (the user
+        // re-picked the item), else an exact case-insensitive name match
+        // against an active item (the user retyped the name to something
+        // real), else leave whatever item_id the line already had -- never
+        // silently null out a working link just because of a text edit.
         await sql`
           UPDATE sales_receipt_lines
           SET raw_item_name = ${line.item_name},
               resolved_name = ${line.item_name},
               quantity      = ${qty},
               item_price    = ${price},
-              item_total    = ${total}
+              item_total    = ${total},
+              item_id       = COALESCE(
+                ${line.itemId ?? null},
+                (SELECT id FROM items WHERE LOWER(canonical_name) = LOWER(${line.item_name}) AND LOWER(status) = 'active' LIMIT 1),
+                item_id
+              )
           WHERE id = ${line.id} AND receipt_id = ${receiptId}
         `
         keepIds.push(Number(line.id))

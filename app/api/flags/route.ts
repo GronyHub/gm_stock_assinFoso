@@ -89,6 +89,7 @@ export async function GET() {
     noStaffTimes,
     uncheckedCab,
     dupReceipts,
+    unlinkedNamed,
   ] = await Promise.all([
 
     // 1. Walk-in customers with no cash counted
@@ -258,6 +259,22 @@ export async function GET() {
       HAVING COUNT(*) > 1
       ORDER BY receipt_date DESC
     `),
+
+    // 10. Sales lines whose name matches an active item by text but were never
+    // actually linked to it (item_id is null) -- usually from hand-editing a
+    // line's name to the right text without re-picking the item. These pass
+    // the #5 "not in inventory" check since that only compares names, so this
+    // is the only place they surface; the quantity/revenue on these lines is
+    // silently missing from that item's own activity until linked.
+    safeQuery(() => sql`
+      SELECT COALESCE(srl.resolved_name, srl.raw_item_name) AS item_name, i.id AS item_id,
+             COUNT(*)::int AS line_count
+      FROM sales_receipt_lines srl
+      JOIN items i ON LOWER(i.canonical_name) = LOWER(COALESCE(srl.resolved_name, srl.raw_item_name))
+      WHERE srl.item_id IS NULL AND LOWER(i.status) = 'active'
+      GROUP BY COALESCE(srl.resolved_name, srl.raw_item_name), i.id
+      ORDER BY item_name
+    `),
   ])
 
   const filteredDups = duplicates.filter((r: any) => shouldKeepPair(r.name1, r.name2))
@@ -269,5 +286,5 @@ export async function GET() {
     ORDER BY group_name
   `)
 
-  return NextResponse.json({ noCash, missingDays, duplicates: filteredDups, costGteSell, notInInventory, noGroup, noStaffTimes, uncheckedCab, dupReceipts, groupNames: groupNames.map((r: any) => r.group_name) })
+  return NextResponse.json({ noCash, missingDays, duplicates: filteredDups, costGteSell, notInInventory, noGroup, noStaffTimes, uncheckedCab, dupReceipts, unlinkedNamed, groupNames: groupNames.map((r: any) => r.group_name) })
 }

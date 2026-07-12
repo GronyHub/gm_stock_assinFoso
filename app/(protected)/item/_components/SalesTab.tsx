@@ -21,6 +21,7 @@ type Receipt = {
 type Line = {
   id: number
   receipt_id: number
+  item_id: number | null
   item_name: string
   quantity: string | null
   item_price: string | null
@@ -326,7 +327,7 @@ export default function SalesTab({ items, groupFilter, search, violation }: Prop
     const rLines = linesMap[r.id] ?? []
     setEditLines(rLines.map(l => ({
       id: l.id,
-      itemId: null,
+      itemId: l.item_id,
       item_name: l.item_name,
       quantity: l.quantity ? parseFloat(l.quantity).toString() : '1',
       item_price: l.item_price ? parseFloat(l.item_price).toString() : '0',
@@ -370,7 +371,10 @@ export default function SalesTab({ items, groupFilter, search, violation }: Prop
   }
 
   function updateEditLine(idx: number, field: keyof EditLine, val: string) {
-    setEditLines(prev => prev.map((l, i) => i === idx ? { ...l, [field]: val } : l))
+    // Hand-editing the name text means it may no longer match the linked item,
+    // so clear itemId and let the server re-resolve it by the new name (or
+    // keep the old link if the new text doesn't match anything real).
+    setEditLines(prev => prev.map((l, i) => i === idx ? { ...l, [field]: val, ...(field === 'item_name' ? { itemId: null } : {}) } : l))
   }
 
   const editTotal = editLines.reduce((s, l) => s + (parseFloat(l.quantity) || 0) * (parseFloat(l.item_price) || 0), 0)

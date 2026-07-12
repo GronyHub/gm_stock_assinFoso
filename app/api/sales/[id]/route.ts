@@ -9,6 +9,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     SELECT
       id,
       receipt_id,
+      item_id,
       COALESCE(resolved_name, raw_item_name) AS item_name,
       quantity,
       item_price,

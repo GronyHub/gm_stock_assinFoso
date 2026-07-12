@@ -89,6 +89,10 @@ const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCategory; d
     description: "A sale or bill used an item name that did not exactly match anything in the item list, so the system flagged it as unresolved instead of guessing. Confirm the correct match so it counts toward the right item's reports going forward.",
   },
   {
+    key: 'unlinked_named', label: 'Unlinked', category: 'loss',
+    description: "A sale's item name matches an item in inventory by text, but the sale line was never actually linked to it -- usually from hand-editing the name on an existing receipt line without re-picking the item. It looks resolved, but its quantity and revenue are silently missing from that item's activity. Tap Link to connect it.",
+  },
+  {
     key: 'service_violation', label: 'Service', category: 'loss',
     description: 'A service item shows GMC use, bill activity, or a stock count -- but services are not physical stock, so none of that should ever apply to them. Find where the entry was logged and correct it, since it was likely recorded against the wrong item.',
   },
@@ -245,6 +249,7 @@ function ItemHubPageInner() {
       no_cp: noCp,
       no_group: f?.noGroup?.length ?? 0,
       duplicates: f?.duplicates?.length ?? 0,
+      unlinked_named: f?.unlinkedNamed?.length ?? 0,
       no_cash: f?.noCash?.length ?? 0,
       missing_days: f?.missingDays?.length ?? 0,
       cost_price: f?.costGteSell?.length ?? 0,
@@ -260,7 +265,7 @@ function ItemHubPageInner() {
   const badgeCounts: Partial<Record<OuterTab, number>> = useMemo(() => {
     const v = violationCounts
     return {
-      errors: v.neg_soh + v.no_sp + v.no_cp + v.no_group + v.duplicates + v.service_violation + v.daily + v['15day']
+      errors: v.neg_soh + v.no_sp + v.no_cp + v.no_group + v.duplicates + v.unlinked_named + v.service_violation + v.daily + v['15day']
         + v.no_cash + v.missing_days + v.cost_price + v.dup_receipt + v.unchecked_cab + v.no_staff_times,
     }
   }, [violationCounts])
