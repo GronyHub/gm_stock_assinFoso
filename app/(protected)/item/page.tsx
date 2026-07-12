@@ -196,6 +196,9 @@ function ItemHubPageInner() {
   const [hamburgerOpen, setHamburgerOpen] = useState(false)
   const [addForm, setAddForm]             = useState<'item' | 'sale' | 'bill' | 'expense' | null>(null)
   const [jumpToItemId, setJumpToItemId]   = useState<number | null>(null)
+  const [jumpToLossItemId, setJumpToLossItemId] = useState<number | null>(null)
+  const [jumpToReceiptDate, setJumpToReceiptDate] = useState<string | null>(null)
+  const [jumpToReceiptItemName, setJumpToReceiptItemName] = useState<string | null>(null)
   const groupRef     = useRef<HTMLDivElement>(null)
   const hamburgerRef = useRef<HTMLDivElement>(null)
 
@@ -287,6 +290,20 @@ function ItemHubPageInner() {
     if (t !== 'loss') setProductType('all')
     if (t === 'loss') setLossView('items')
     router.replace(t === 'today' ? '/item' : `/item?tab=${t}`, { scroll: false })
+  }
+
+  // Cross-navigation between an item's activity table and its sales receipts.
+  // Reset the filters that could otherwise hide the jump target.
+  function openItemFromSales(itemId: number) {
+    setGroup(null); setProductType('all'); setSearch('')
+    setLossView('items')
+    setJumpToLossItemId(itemId)
+  }
+  function openReceiptFromItem(date: string, itemName: string) {
+    setSearch('')
+    setLossView('sales')
+    setJumpToReceiptDate(date)
+    setJumpToReceiptItemName(itemName)
   }
 
   const groups = ['All', ...Array.from(new Set(items.map(i => i.cf_group ?? 'Ungrouped'))).sort()]
@@ -508,11 +525,16 @@ function ItemHubPageInner() {
         )}
         {addForm !== 'item' && outerTab === 'loss' && lossView === 'items' && (
           <TabErrorBoundary>
-            <LossTab onOpenItem={() => {}} search={search} group={group} productType={productType} />
+            <LossTab onOpenItem={() => {}} search={search} group={group} productType={productType}
+              jumpToItemId={jumpToLossItemId} onJumpDone={() => setJumpToLossItemId(null)}
+              onDateClick={openReceiptFromItem} />
           </TabErrorBoundary>
         )}
         {addForm !== 'sale' && outerTab === 'loss' && lossView === 'sales' && (
-          <SalesTab items={items} groupFilter={group} search={search} violation={null} />
+          <SalesTab items={items} groupFilter={group} search={search} violation={null}
+            jumpToDate={jumpToReceiptDate} jumpToItemName={jumpToReceiptItemName}
+            onJumpDone={() => { setJumpToReceiptDate(null); setJumpToReceiptItemName(null) }}
+            onItemClick={openItemFromSales} />
         )}
         {addForm !== 'bill' && outerTab === 'loss' && lossView === 'bills' && (
           <BillsTab items={items} groupFilter={group} search={search} />

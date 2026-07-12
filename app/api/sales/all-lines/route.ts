@@ -5,6 +5,7 @@ export async function GET() {
   const rows = await sql`
     SELECT
       receipt_id,
+      item_id,
       COALESCE(resolved_name, raw_item_name) AS item_name,
       quantity,
       item_price,

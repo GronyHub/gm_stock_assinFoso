@@ -455,7 +455,7 @@ function MergeItemPicker({ itemId, itemName, typeLabel, mergePool, onMerged }: {
   )
 }
 
-function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, mergePool, canMerge, autoEdit, onSaved, onRelationsSaved, onMerged }: {
+function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, mergePool, canMerge, autoEdit, onSaved, onRelationsSaved, onMerged, onDateClick }: {
   item: SummaryRow; groups: string[]; allItems: { item_id: number; item_name: string }[]
   currentAliases: AliasRecord[]; currentMatches: MatchRecord[]
   candidatePool: CandidateItem[]
@@ -465,6 +465,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
   onSaved: (u: Partial<SummaryRow>) => void
   onRelationsSaved: (aliases: AliasRecord[], matches: MatchRecord[]) => void
   onMerged: () => void
+  onDateClick?: (date: string, itemName: string) => void
 }) {
   const [dayRows, setDayRows] = useState<DayRow[] | null>(null)
   const [editing, setEditing] = useState(false)
@@ -650,7 +651,13 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
               <tbody>
                 {packChainRows.map((row, i) => (
                   <tr key={i} className={`border-b border-gray-200 ${(row.singlesLoss ?? 0) > 0.001 || (row.packLoss ?? 0) > 0.001 ? 'bg-red-50' : ''}`}>
-                    <td className="pl-1 py-0.5 font-bold text-gray-500 whitespace-nowrap overflow-hidden">{fmtDate(row.date)}</td>
+                    <td className="pl-1 py-0.5 font-bold text-gray-500 whitespace-nowrap overflow-hidden">
+                      {onDateClick ? (
+                        <button onClick={() => onDateClick(row.date, item.item_name)} className="text-blue-600 hover:underline">
+                          {fmtDate(row.date)}
+                        </button>
+                      ) : fmtDate(row.date)}
+                    </td>
                     <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-gray-900">{fmtQs(row.packCnt)}</td>
                     <td className="text-center py-0.5 font-bold border-l border-gray-300 text-blue-600">{fmtQs(row.packBl)}</td>
                     <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.packGmc)}</td>
@@ -734,7 +741,13 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
               const lossVal = row.loss !== null ? row.loss * sp : null
               return (
                 <tr key={i} className={`border-b border-gray-200 ${row.loss !== null && row.loss > 0.001 ? 'bg-red-50' : ''}`}>
-                  <td className="pl-1 py-0.5 font-bold text-gray-500 whitespace-nowrap overflow-hidden">{fmtDate(row.date)}</td>
+                  <td className="pl-1 py-0.5 font-bold text-gray-500 whitespace-nowrap overflow-hidden">
+                    {onDateClick ? (
+                      <button onClick={() => onDateClick(row.date, item.item_name)} className="text-blue-600 hover:underline">
+                        {fmtDate(row.date)}
+                      </button>
+                    ) : fmtDate(row.date)}
+                  </td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-900">{fmtQs(row.qty_counted)}</td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-teal-600">{fmtQs(row.converted_in_qty)}</td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-400 bg-black text-white">{fmtN(row.available)}</td>
@@ -812,7 +825,13 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
               const lossVal = row.loss !== null ? row.loss * sp : null
               return (
                 <tr key={i} className={`border-b border-gray-200 ${row.loss !== null && row.loss > 0.001 ? 'bg-red-50' : ''}`}>
-                  <td className="pl-1 py-0.5 font-bold text-gray-500 whitespace-nowrap overflow-hidden">{fmtDate(row.date)}</td>
+                  <td className="pl-1 py-0.5 font-bold text-gray-500 whitespace-nowrap overflow-hidden">
+                    {onDateClick ? (
+                      <button onClick={() => onDateClick(row.date, item.item_name)} className="text-blue-600 hover:underline">
+                        {fmtDate(row.date)}
+                      </button>
+                    ) : fmtDate(row.date)}
+                  </td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300">
                     {lossVal === null ? <span className="text-gray-300">—</span>
                       : lossVal > 0.01 ? <span className="text-red-600">-{fmtN(lossVal)}</span>
@@ -854,11 +873,14 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
 }
 
 /* ── main LossTab ── */
-export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 'All', productType = 'all' }: {
+export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 'All', productType = 'all', jumpToItemId, onJumpDone, onDateClick }: {
   onOpenItem: (itemId: number) => void
   search?: string
   group?: string | null
   productType?: 'all' | 'goods' | 'services'
+  jumpToItemId?: number | null
+  onJumpDone?: () => void
+  onDateClick?: (date: string, itemName: string) => void
 }) {
   const [rows, setRows] = useState<SummaryRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -877,6 +899,19 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
       .catch(() => setLoading(false))
   }
   useEffect(() => { loadSummary() }, [])
+
+  // Incoming jump from a sales receipt line: expand that item's row and
+  // scroll it into view.
+  useEffect(() => {
+    if (!jumpToItemId || loading) return
+    const row = rows.find(r => r.item_id === jumpToItemId)
+    if (row) {
+      setExpandedId(row.item_id)
+      setTimeout(() => document.getElementById(`item-row-${row.item_id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+    }
+    onJumpDone?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jumpToItemId, loading])
 
   function reloadAfterMerge() {
     setExpandedId(null)
@@ -996,6 +1031,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
     return (
       <Fragment key={row.item_id}>
       <tr
+        id={`item-row-${row.item_id}`}
         onClick={() => { setExpandedId(isOpen ? null : row.item_id); setEditTriggerId(null) }}
         className={`cursor-pointer transition
           ${isOpen ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
@@ -1062,7 +1098,8 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
                   setMatchRecords(prev => ({ ...prev, [row.item_name.trim().toLowerCase()]: newMatches }))
                   setEditTriggerId(null)
                 }}
-                onMerged={reloadAfterMerge} />
+                onMerged={reloadAfterMerge}
+                onDateClick={onDateClick} />
             </div>
           </td>
         </tr>
