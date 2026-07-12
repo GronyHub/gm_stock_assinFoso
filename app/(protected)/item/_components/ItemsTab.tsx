@@ -335,6 +335,7 @@ export default function ItemsTab({ items, group, productType, search, violation,
   const [nameResLoading, setNameResLoading] = useState(false)
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
   const [markingAllDups, setMarkingAllDups] = useState(false)
+  const [linkingAllUnlinked, setLinkingAllUnlinked] = useState(false)
   const [lossSummary, setLossSummary] = useState<any[] | null>(null)
   const [lossSummaryLoading, setLossSummaryLoading] = useState(false)
 
@@ -686,9 +687,27 @@ export default function ItemsTab({ items, group, productType, search, violation,
   if (violation === 'unlinked_named') {
     return (
       <div className="flex-1 overflow-y-auto min-h-0 py-2 h-full">
-        <p className="text-[10px] text-gray-400 px-2 mb-1">
-          {flagsLoading || !flags ? 'Loading…' : `${flags.unlinkedNamed.length} unlinked item name${flags.unlinkedNamed.length !== 1 ? 's' : ''}`}
-        </p>
+        <div className="flex items-center justify-between px-2 mb-1 gap-2">
+          <p className="text-[10px] text-gray-400">
+            {flagsLoading || !flags ? 'Loading…' : `${flags.unlinkedNamed.length} unlinked item name${flags.unlinkedNamed.length !== 1 ? 's' : ''}`}
+          </p>
+          {!flagsLoading && flags && flags.unlinkedNamed.length > 0 && (
+            <button
+              onClick={async () => {
+                setLinkingAllUnlinked(true)
+                await fetch('/api/flags/link-unresolved', {
+                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ items: flags.unlinkedNamed.map((r: any) => ({ item_name: r.item_name, item_id: r.item_id })) }),
+                })
+                setFlags((f: any) => f ? { ...f, unlinkedNamed: [] } : f)
+                setLinkingAllUnlinked(false)
+              }}
+              disabled={linkingAllUnlinked}
+              className="shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 disabled:opacity-40 transition">
+              {linkingAllUnlinked ? 'Linking…' : 'Link All'}
+            </button>
+          )}
+        </div>
         {!flagsLoading && flags && (flags.unlinkedNamed.length === 0
           ? <p className="py-4 text-center text-gray-400 text-[10px]">No unlinked sales found.</p>
           : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
