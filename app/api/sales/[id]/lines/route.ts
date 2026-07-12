@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
+import { createItemFromTypedName } from '@/lib/createItem'
 import { NextResponse } from 'next/server'
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -9,7 +10,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const { id } = await params
   const receiptId = Number(id)
   const { lines } = await req.json()
-  // lines: [{ id: number|null, itemId: number|null, item_name, quantity, item_price }]
+  // lines: [{ id: number|null, itemId: number|null, item_name, quantity, item_price, nameTouched?: boolean }]
   // id == null means a newly added line (insert). Any existing line whose id
   // is not present in this array has been removed by the user (delete).
 
@@ -21,12 +22,18 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       const price = parseFloat(line.item_price) || 0
       const total = qty * price
 
+      // A typed name (no explicit pick) is never matched against the existing
+      // catalogue by text -- it always becomes its own new item. Untouched
+      // lines that already had no item link (item_id null before this edit,
+      // name never retyped) are left alone rather than auto-creating an item
+      // for them, so the dedicated "Unlinked" flag/Link Now flow still owns
+      // fixing historical gaps.
+      let itemId: number | null = line.itemId ?? null
+      if (itemId == null && (line.id ? line.nameTouched : true)) {
+        itemId = await createItemFromTypedName(line.item_name)
+      }
+
       if (line.id) {
-        // item_id resolution order: an explicit id from the client (the user
-        // re-picked the item), else an exact case-insensitive name match
-        // against an active item (the user retyped the name to something
-        // real), else leave whatever item_id the line already had -- never
-        // silently null out a working link just because of a text edit.
         await sql`
           UPDATE sales_receipt_lines
           SET raw_item_name = ${line.item_name},
@@ -34,11 +41,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
               quantity      = ${qty},
               item_price    = ${price},
               item_total    = ${total},
-              item_id       = COALESCE(
-                ${line.itemId ?? null},
-                (SELECT id FROM items WHERE LOWER(canonical_name) = LOWER(${line.item_name}) AND LOWER(status) = 'active' LIMIT 1),
-                item_id
-              )
+              item_id       = COALESCE(${itemId}, item_id)
           WHERE id = ${line.id} AND receipt_id = ${receiptId}
         `
         keepIds.push(Number(line.id))
@@ -46,7 +49,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         const [inserted] = await sql`
           INSERT INTO sales_receipt_lines
             (receipt_id, item_id, raw_item_name, resolved_name, quantity, item_price, item_total, unresolved, source)
-          VALUES (${receiptId}, ${line.itemId ?? null}, ${line.item_name}, ${line.item_name}, ${qty}, ${price}, ${total}, false, 'app')
+          VALUES (${receiptId}, ${itemId}, ${line.item_name}, ${line.item_name}, ${qty}, ${price}, ${total}, false, 'app')
           RETURNING id
         `
         keepIds.push(inserted.id)
