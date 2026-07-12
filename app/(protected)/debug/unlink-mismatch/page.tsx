@@ -54,6 +54,7 @@ export default function UnlinkMismatchPage() {
   const [from, setFrom] = useState('2025-10-18')
   const [to, setTo] = useState('2026-03-17')
   const [rows, setRows] = useState<any[] | null>(null)
+  const [selected, setSelected] = useState<Set<number>>(new Set())
   const [loading, setLoading] = useState(false)
   const [applying, setApplying] = useState<'unlink' | 'relink' | null>(null)
   const [result, setResult] = useState<string | null>(null)
@@ -65,28 +66,43 @@ export default function UnlinkMismatchPage() {
       const params = new URLSearchParams({ wrongItemName, nameContains, from, to })
       const res = await fetch(`/api/debug/unlink-mismatch?${params}`)
       const d = await res.json().catch(() => ({}))
-      if (res.ok) setRows(Array.isArray(d.rows) ? d.rows : [])
-      else setError(d.error || 'Could not load preview.')
+      if (res.ok) {
+        const found = Array.isArray(d.rows) ? d.rows : []
+        setRows(found)
+        setSelected(new Set(found.map((r: any) => r.line_id)))
+      } else {
+        setError(d.error || 'Could not load preview.')
+      }
     } catch {
       setError('Network error — could not reach the server.')
     }
     setLoading(false)
   }
 
+  function toggleRow(lineId: number) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(lineId)) next.delete(lineId)
+      else next.add(lineId)
+      return next
+    })
+  }
+
   async function apply(toCorrectItem: boolean) {
-    if (!rows || rows.length === 0) return
+    if (selected.size === 0) return
     setApplying(toCorrectItem ? 'relink' : 'unlink'); setError('')
     try {
       const res = await fetch('/api/debug/unlink-mismatch', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ wrongItemName, nameContains, from, to, correctItemName: toCorrectItem ? correctItemName : undefined }),
+        body: JSON.stringify({ lineIds: Array.from(selected), correctItemName: toCorrectItem ? correctItemName : undefined }),
       })
       const d = await res.json().catch(() => ({}))
       if (res.ok) {
         setResult(toCorrectItem
           ? `Linked ${d.updated} line${d.updated !== 1 ? 's' : ''} to "${correctItemName}".`
           : `Unlinked ${d.updated} line${d.updated !== 1 ? 's' : ''}. They'll show up in Item hub → Errors → Unlinked, now under their real name, ready to link.`)
-        setRows(null)
+        setRows(prev => (prev ?? []).filter(r => !selected.has(r.line_id)))
+        setSelected(new Set())
       } else {
         setError(d.error || 'Could not apply.')
       }
@@ -134,31 +150,44 @@ export default function UnlinkMismatchPage() {
 
       {rows && (
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-gray-700">
-            {rows.length} matching line{rows.length !== 1 ? 's' : ''}
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-gray-700">
+              {rows.length} matching line{rows.length !== 1 ? 's' : ''} · {selected.size} selected
+            </p>
+            {rows.length > 0 && (
+              <button
+                onClick={() => setSelected(selected.size === rows.length ? new Set() : new Set(rows.map(r => r.line_id)))}
+                className="text-sm text-blue-600 font-semibold">
+                {selected.size === rows.length ? 'Deselect all' : 'Select all'}
+              </button>
+            )}
+          </div>
           {rows.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-4">Nothing matches — nothing to unlink.</p>
           ) : (
             <>
               <div className="border border-gray-200 rounded-xl divide-y divide-gray-100 max-h-96 overflow-y-auto">
                 {rows.map((r: any) => (
-                  <div key={r.line_id} className="px-3 py-2 text-xs">
-                    <p className="font-semibold text-gray-900">{r.raw_item_name}</p>
-                    <p className="text-gray-500">
-                      {r.receipt_date} · {r.receipt_number} · {r.customer_name ?? 'Walk-in'} · qty {r.quantity} @ ₵{r.item_price}
-                    </p>
-                  </div>
+                  <label key={r.line_id} className="flex items-start gap-2 px-3 py-2 text-xs cursor-pointer hover:bg-gray-50">
+                    <input type="checkbox" checked={selected.has(r.line_id)} onChange={() => toggleRow(r.line_id)}
+                      className="mt-0.5 shrink-0" />
+                    <span>
+                      <p className="font-semibold text-gray-900">{r.raw_item_name}</p>
+                      <p className="text-gray-500">
+                        {r.receipt_date} · {r.receipt_number} · {r.customer_name ?? 'Walk-in'} · qty {r.quantity} @ ₵{r.item_price}
+                      </p>
+                    </span>
+                  </label>
                 ))}
               </div>
               <div className="space-y-2">
-                <button onClick={() => apply(true)} disabled={applying !== null || !correctItemName}
+                <button onClick={() => apply(true)} disabled={applying !== null || !correctItemName || selected.size === 0}
                   className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white font-semibold rounded-xl py-3 transition">
-                  {applying === 'relink' ? 'Linking…' : `Link All ${rows.length} to "${correctItemName}"`}
+                  {applying === 'relink' ? 'Linking…' : `Link ${selected.size} Selected to "${correctItemName}"`}
                 </button>
-                <button onClick={() => apply(false)} disabled={applying !== null}
+                <button onClick={() => apply(false)} disabled={applying !== null || selected.size === 0}
                   className="w-full bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white font-semibold rounded-xl py-3 transition">
-                  {applying === 'unlink' ? 'Unlinking…' : `Unlink These ${rows.length} Lines Instead`}
+                  {applying === 'unlink' ? 'Unlinking…' : `Unlink ${selected.size} Selected Instead`}
                 </button>
               </div>
             </>
