@@ -1,4 +1,7 @@
+import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
+import { logActivity } from '@/lib/logger'
+import { isOwnerLevel } from '@/lib/roles'
 import { NextResponse } from 'next/server'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -44,4 +47,49 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   `
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json(row)
+}
+
+// Hard delete -- only Grony/Joe, and only when the item has no real history.
+// Everything else (a used-once item, a slightly-wrong duplicate) should be
+// merged into another item instead, which preserves the history.
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!isOwnerLevel(session.user as any)) {
+    return NextResponse.json({ error: 'Only Grony or Joe can delete an item' }, { status: 403 })
+  }
+
+  const { id } = await params
+  const itemId = Number(id)
+
+  const [item] = await sql`SELECT id, canonical_name FROM items WHERE id = ${itemId}`
+  if (!item) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  const [[sales], [bills], [counts], [dependents]] = await Promise.all([
+    sql`SELECT COUNT(*)::int AS n FROM sales_receipt_lines WHERE item_id = ${itemId}`,
+    sql`SELECT COUNT(*)::int AS n FROM bill_lines WHERE item_id = ${itemId}`,
+    sql`SELECT COUNT(*)::int AS n FROM stock_counts WHERE item_id = ${itemId}`,
+    sql`SELECT COUNT(*)::int AS n FROM items WHERE converts_to_item_id = ${itemId}`,
+  ])
+
+  const blockers: string[] = []
+  if (sales.n > 0) blockers.push(`${sales.n} sale line${sales.n !== 1 ? 's' : ''}`)
+  if (bills.n > 0) blockers.push(`${bills.n} bill line${bills.n !== 1 ? 's' : ''}`)
+  if (counts.n > 0) blockers.push(`${counts.n} stock count${counts.n !== 1 ? 's' : ''}`)
+  if (dependents.n > 0) blockers.push(`${dependents.n} other item${dependents.n !== 1 ? 's' : ''} converting into it`)
+
+  if (blockers.length > 0) {
+    return NextResponse.json({
+      error: `Can't delete "${item.canonical_name}" -- it still has ${blockers.join(', ')}. Merge it into another item instead.`,
+    }, { status: 409 })
+  }
+
+  await sql`DELETE FROM item_aliases WHERE item_id = ${itemId}`
+  await sql`DELETE FROM dismissed_duplicates WHERE item_id1 = ${itemId} OR item_id2 = ${itemId}`
+  await sql`DELETE FROM items WHERE id = ${itemId}`
+
+  const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
+  await logActivity(actor, 'deleted item', item.canonical_name)
+
+  return NextResponse.json({ ok: true })
 }
