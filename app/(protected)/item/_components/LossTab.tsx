@@ -102,28 +102,31 @@ function computeRows(rows: DayRow[]): ComputedRow[] {
    convert into, by date, so packs/singles/services can be read as one table. ── */
 type PackChainRow = {
   date: string
-  packCnt: string | null; packBl: string | null; packGmc: string | null; packWic: string | null; packLoss: number | null
+  packCnt: string | null; packBl: string | null; packGmc: string | null; packWic: string | null
+  packExp: number | null; packLoss: number | null
   singlesCnt: string | null; singlesConvIn: string | null
   singlesBreakdown: { name: string; qty: number }[]
-  singlesUsed: number; singlesLoss: number | null
+  singlesUsed: number; singlesExp: number | null; singlesLoss: number | null
 }
 function buildPackChainRows(packRows: ComputedRow[], singlesRows: ComputedRow[]): PackChainRow[] {
   const map = new Map<string, PackChainRow>()
   for (const r of packRows) {
     map.set(r.date, {
-      date: r.date, packCnt: r.qty_counted, packBl: r.bills_qty, packGmc: r.gmc_qty, packWic: r.wic_qty, packLoss: r.loss,
-      singlesCnt: null, singlesConvIn: null, singlesBreakdown: [], singlesUsed: 0, singlesLoss: null,
+      date: r.date, packCnt: r.qty_counted, packBl: r.bills_qty, packGmc: r.gmc_qty, packWic: r.wic_qty,
+      packExp: r.expected_soh, packLoss: r.loss,
+      singlesCnt: null, singlesConvIn: null, singlesBreakdown: [], singlesUsed: 0, singlesExp: null, singlesLoss: null,
     })
   }
   for (const r of singlesRows) {
     const existing = map.get(r.date) ?? {
-      date: r.date, packCnt: null, packBl: null, packGmc: null, packWic: null, packLoss: null,
-      singlesCnt: null, singlesConvIn: null, singlesBreakdown: [], singlesUsed: 0, singlesLoss: null,
+      date: r.date, packCnt: null, packBl: null, packGmc: null, packWic: null, packExp: null, packLoss: null,
+      singlesCnt: null, singlesConvIn: null, singlesBreakdown: [], singlesUsed: 0, singlesExp: null, singlesLoss: null,
     }
     existing.singlesCnt = r.qty_counted
     existing.singlesConvIn = r.converted_in_qty
     existing.singlesBreakdown = r.wic_breakdown ?? []
     existing.singlesUsed = r.used
+    existing.singlesExp = r.expected_soh
     existing.singlesLoss = r.loss
     map.set(r.date, existing)
   }
@@ -601,25 +604,27 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
             </p>
             <table className="w-full table-fixed border-collapse text-[8px]">
               <colgroup>
-                <col style={{width:'12%'}} />
-                <col style={{width:'6%'}} />
-                <col style={{width:'6%'}} />
-                <col style={{width:'6%'}} />
-                <col style={{width:'6%'}} />
-                <col style={{width:'6%'}} />
-                <col style={{width:'6%'}} />
-                <col style={{width:'6%'}} />
+                <col style={{width:'10%'}} />
+                <col style={{width:'5%'}} />
+                <col style={{width:'5%'}} />
+                <col style={{width:'5%'}} />
+                <col style={{width:'5%'}} />
+                <col style={{width:'5%'}} />
+                <col style={{width:'5%'}} />
+                <col style={{width:'5%'}} />
+                <col style={{width:'5%'}} />
                 {packChainBreakdownNames.map(n => <col key={n} style={{width:`${packChainColW}%`}} />)}
-                <col style={{width:'7%'}} />
-                <col style={{width:'7%'}} />
+                <col style={{width:'6%'}} />
+                <col style={{width:'6%'}} />
+                <col style={{width:'6%'}} />
               </colgroup>
               <thead className="sticky top-0 z-10">
                 <tr className="bg-amber-500 text-gray-800 font-bold">
                   <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-left pl-1 align-bottom">DATE</th>
-                  <th colSpan={5} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">
+                  <th colSpan={6} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">
                     {item.item_name}
                   </th>
-                  <th colSpan={4 + packChainBreakdownNames.length} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">
+                  <th colSpan={5 + packChainBreakdownNames.length} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">
                     {targetName}
                   </th>
                 </tr>
@@ -628,6 +633,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                   <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Bought/received">BL</th>
                   <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Taken for internal use (credits singles below)">GMC</th>
                   <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Sold as whole packs to a real customer">WIC</th>
+                  <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Running expected stock">EXP</th>
                   <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Count loss/gain on packs">L/G</th>
                   <th className="py-0.5 border-b-2 border-gray-400 text-center border-l-2 border-l-gray-600" title="Physical count">CNT</th>
                   <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Credited in from pack GMC take">CONV</th>
@@ -637,6 +643,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                     </th>
                   ))}
                   <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Total used across all services">USED</th>
+                  <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Running expected stock">EXP</th>
                   <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Count loss/gain on singles">L/G</th>
                 </tr>
               </thead>
@@ -648,6 +655,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                     <td className="text-center py-0.5 font-bold border-l border-gray-300 text-blue-600">{fmtQs(row.packBl)}</td>
                     <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.packGmc)}</td>
                     <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.packWic)}</td>
+                    <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-400">{fmtN(row.packExp)}</td>
                     <td className="text-center py-0.5 font-bold border-l border-gray-300">
                       {row.packLoss === null ? <span className="text-gray-300">—</span>
                         : row.packLoss > 0.001 ? <span className="text-red-600">-{fmtN(row.packLoss)}</span>
@@ -662,6 +670,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                       </td>
                     ))}
                     <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQ(row.singlesUsed)}</td>
+                    <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-400">{fmtN(row.singlesExp)}</td>
                     <td className="text-center py-0.5 font-bold border-l border-gray-300">
                       {row.singlesLoss === null ? <span className="text-gray-300">—</span>
                         : row.singlesLoss > 0.001 ? <span className="text-red-600">-{fmtN(row.singlesLoss)}</span>
