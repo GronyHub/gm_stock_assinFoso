@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
+import { createItemFromTypedName } from '@/lib/createItem'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
@@ -48,10 +49,15 @@ export async function POST(req: NextRequest) {
     }
 
     for (const l of (lines ?? [])) {
+      // The New Sale cart only ever adds picked catalogue items, so l.itemId
+      // should always be set -- this is just a safety net matching the same
+      // rule everywhere else: a line with no picked item becomes a new item,
+      // never a text match against the existing catalogue.
+      const itemId = l.itemId ?? await createItemFromTypedName(l.itemName)
       await sql`
         INSERT INTO sales_receipt_lines
           (receipt_id, item_id, raw_item_name, resolved_name, quantity, item_price, item_total, unresolved, source)
-        VALUES (${receipt.id}, ${l.itemId}, ${l.itemName}, ${l.itemName}, ${l.qty}, ${l.price}, ${l.total}, false, 'app')
+        VALUES (${receipt.id}, ${itemId}, ${l.itemName}, ${l.itemName}, ${l.qty}, ${l.price}, ${l.total}, false, 'app')
       `
     }
 

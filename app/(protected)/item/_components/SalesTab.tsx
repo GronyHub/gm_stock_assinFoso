@@ -29,7 +29,7 @@ type Line = {
   usage_unit: string | null
 }
 
-type EditLine = { id: number | null; itemId: number | null; item_name: string; quantity: string; item_price: string }
+type EditLine = { id: number | null; itemId: number | null; item_name: string; quantity: string; item_price: string; nameTouched: boolean }
 
 const MONTHS = ['Ja','Fe','Mr','Ap','My','Ju','Jl','Au','Se','Oc','No','De']
 const DAYS   = ['Su','Mo','Tu','We','Th','Fr','Sa']
@@ -331,6 +331,7 @@ export default function SalesTab({ items, groupFilter, search, violation }: Prop
       item_name: l.item_name,
       quantity: l.quantity ? parseFloat(l.quantity).toString() : '1',
       item_price: l.item_price ? parseFloat(l.item_price).toString() : '0',
+      nameTouched: false,
     })))
     setNewItemQuery('')
     setEditingId(r.id)
@@ -343,6 +344,22 @@ export default function SalesTab({ items, groupFilter, search, violation }: Prop
       item_name: item.item_name,
       quantity: '1',
       item_price: item.selling_rate != null ? String(item.selling_rate) : '0',
+      nameTouched: false,
+    }])
+    setNewItemQuery('')
+  }
+
+  // Typed names are never matched against the existing catalogue by text --
+  // this always creates a brand-new item, same rule as editing an existing
+  // line's name. Any accidental duplicates get caught by the Duplicates flag.
+  function addFreeTextLine(name: string) {
+    setEditLines(prev => [...prev, {
+      id: null,
+      itemId: null,
+      item_name: name,
+      quantity: '1',
+      item_price: '0',
+      nameTouched: true,
     }])
     setNewItemQuery('')
   }
@@ -371,10 +388,12 @@ export default function SalesTab({ items, groupFilter, search, violation }: Prop
   }
 
   function updateEditLine(idx: number, field: keyof EditLine, val: string) {
-    // Hand-editing the name text means it may no longer match the linked item,
-    // so clear itemId and let the server re-resolve it by the new name (or
-    // keep the old link if the new text doesn't match anything real).
-    setEditLines(prev => prev.map((l, i) => i === idx ? { ...l, [field]: val, ...(field === 'item_name' ? { itemId: null } : {}) } : l))
+    // Hand-editing the name text means it's no longer the picked item -- clear
+    // itemId and mark it touched so the server creates a brand-new item for
+    // it on save, rather than matching the typed text against the catalogue.
+    setEditLines(prev => prev.map((l, i) => i === idx
+      ? { ...l, [field]: val, ...(field === 'item_name' ? { itemId: null, nameTouched: true } : {}) }
+      : l))
   }
 
   const editTotal = editLines.reduce((s, l) => s + (parseFloat(l.quantity) || 0) * (parseFloat(l.item_price) || 0), 0)
@@ -645,7 +664,10 @@ export default function SalesTab({ items, groupFilter, search, violation }: Prop
                           </button>
                         ))}
                         {items.filter(it => it.item_name.toLowerCase().includes(newItemQuery.trim().toLowerCase())).length === 0 && (
-                          <p className="px-2 py-1.5 text-[10px] text-gray-400">No matching item</p>
+                          <button onClick={() => addFreeTextLine(newItemQuery.trim())}
+                            className="w-full text-left px-2 py-1.5 text-[10px] text-blue-600 font-semibold hover:bg-blue-50">
+                            + Add &quot;{newItemQuery.trim()}&quot; as a new item
+                          </button>
                         )}
                       </div>
                     )}
