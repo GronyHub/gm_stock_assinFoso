@@ -355,7 +355,8 @@ function ItemHubPageInner() {
           <button onClick={() => changeTab('today')}
             className={`shrink-0 flex flex-col items-center justify-center gap-1 px-2.5 pt-2 pb-1.5 rounded-xl transition text-white
               bg-brand ${outerTab === 'today' ? 'ring-4 ring-gray-900 shadow-lg' : 'hover:brightness-110'}`}>
-            <span className="text-2xl leading-none">🏠</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-mark.png" alt="Home" className="w-7 h-7" />
           </button>
           <div className="flex items-center gap-1 px-1 pt-1.5 pb-1 flex-1 min-w-0">
             <TabIcon icon="⚠️" label="Errors"   active={outerTab === 'errors'}   onClick={() => changeTab('errors')}   count={badgeCounts.errors} />
