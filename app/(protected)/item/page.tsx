@@ -301,6 +301,11 @@ function ItemHubPageInner() {
     router.replace(t === 'today' ? '/item' : `/item?tab=${t}`, { scroll: false })
   }
 
+  function goToDailyCount() {
+    changeTab('errors')
+    setViolation('daily')
+  }
+
   // Cross-navigation between an item's activity table and its sales receipts.
   // Reset the filters that could otherwise hide the jump target.
   function openItemFromSales(itemId: number) {
@@ -524,7 +529,7 @@ function ItemHubPageInner() {
         {outerTab === 'today' && !(addForm === 'sale' || addForm === 'bill' || addForm === 'expense') && (
           <TabErrorBoundary>
             <div className="h-full overflow-y-auto px-4">
-              <TodayContent />
+              <TodayContent onGoToDailyCount={goToDailyCount} />
             </div>
           </TabErrorBoundary>
         )}
