@@ -14,9 +14,11 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   if (!session) redirect('/login')
   return (
     <div className="min-h-screen flex flex-col">
-      <ImpersonationBar />
-      <Nav user={session.user as any} />
-      <main className="flex-1 px-4 pt-4 pb-6 max-w-5xl mx-auto w-full">
+      <div className="print:hidden">
+        <ImpersonationBar />
+        <Nav user={session.user as any} />
+      </div>
+      <main className="flex-1 px-4 pt-4 pb-6 max-w-5xl mx-auto w-full print:p-0 print:max-w-none">
         {children}
       </main>
       <PushSubscriber />

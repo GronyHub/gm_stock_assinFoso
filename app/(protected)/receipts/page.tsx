@@ -17,8 +17,13 @@ type Receipt = {
   invoice_date: string
   due_date: string | null
   status: string | null
+  document_type: string | null
   customer_name: string
   customer_display: string | null
+  customer_phone: string | null
+  customer_organisation: string | null
+  customer_town_district: string | null
+  customer_region: string | null
   currency_code: string
   subtotal: string
   total: string
@@ -44,6 +49,7 @@ type DraftLine = { item: string; qty: string; price: string; unit: string; dimen
 const emptyLine = (): DraftLine => ({ item: '', qty: '1', price: '', unit: '', dimensions: '' })
 
 function NewReceiptForm({ onCreated, onCancel }: { onCreated: (r: Receipt) => void; onCancel: () => void }) {
+  const [documentType, setDocumentType] = useState<'Receipt' | 'Invoice'>('Receipt')
   const [invoiceNumber, setInvoiceNumber] = useState(() => `RCT-${Date.now().toString().slice(-8)}`)
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [customerName, setCustomerName] = useState('')
@@ -51,6 +57,23 @@ function NewReceiptForm({ onCreated, onCancel }: { onCreated: (r: Receipt) => vo
   const [lines, setLines] = useState<DraftLine[]>([emptyLine()])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const [showMoreDetails, setShowMoreDetails] = useState(false)
+  const [customerPhone, setCustomerPhone] = useState('')
+  const [customerOrganisation, setCustomerOrganisation] = useState('')
+  const [customerTownDistrict, setCustomerTownDistrict] = useState('')
+  const [customerRegion, setCustomerRegion] = useState('')
+
+  function setDocType(t: 'Receipt' | 'Invoice') {
+    setDocumentType(t)
+    // Swap the auto-generated prefix so the number still makes sense; leave
+    // a manually-edited number alone.
+    setInvoiceNumber(prev => {
+      const m = prev.match(/^(RCT|INV)-(.+)$/)
+      if (!m) return prev
+      return `${t === 'Invoice' ? 'INV' : 'RCT'}-${m[2]}`
+    })
+  }
 
   const total = lines.reduce((s, l) => s + (Number(l.qty) || 0) * (Number(l.price) || 0), 0)
 
@@ -76,9 +99,14 @@ function NewReceiptForm({ onCreated, onCancel }: { onCreated: (r: Receipt) => vo
     const res = await fetch('/api/receipts', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        document_type: documentType,
         invoice_number: invoiceNumber.trim(),
         invoice_date: date,
         customer_name: customerName.trim(),
+        customer_phone: customerPhone.trim() || null,
+        customer_organisation: customerOrganisation.trim() || null,
+        customer_town_district: customerTownDistrict.trim() || null,
+        customer_region: customerRegion.trim() || null,
         notes: notes.trim() || null,
         lines: validLines.map(l => ({
           item: l.item.trim(),
@@ -101,13 +129,29 @@ function NewReceiptForm({ onCreated, onCancel }: { onCreated: (r: Receipt) => vo
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <p className="font-bold text-gray-900">New Receipt</p>
+        <p className="font-bold text-gray-900">New {documentType}</p>
         <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 text-xl font-bold leading-none">×</button>
+      </div>
+
+      <div>
+        <label className={labelCls}>Document Type</label>
+        <div className="flex gap-1.5">
+          <button type="button" onClick={() => setDocType('Receipt')}
+            className={`flex-1 text-sm font-semibold rounded-lg py-2 transition
+              ${documentType === 'Receipt' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
+            Receipt
+          </button>
+          <button type="button" onClick={() => setDocType('Invoice')}
+            className={`flex-1 text-sm font-semibold rounded-lg py-2 transition
+              ${documentType === 'Invoice' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
+            Invoice
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className={labelCls}>Receipt Number</label>
+          <label className={labelCls}>{documentType} Number</label>
           <input value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} className={inputCls} />
         </div>
         <div>
@@ -120,6 +164,37 @@ function NewReceiptForm({ onCreated, onCancel }: { onCreated: (r: Receipt) => vo
         <label className={labelCls}>Customer Name</label>
         <input value={customerName} onChange={e => setCustomerName(e.target.value)}
           placeholder="Who is this receipt for?" className={inputCls} />
+      </div>
+
+      <div>
+        <button type="button" onClick={() => setShowMoreDetails(v => !v)}
+          className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+          {showMoreDetails ? '− Hide' : '+ Add'} more customer details (optional)
+        </button>
+        {showMoreDetails && (
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <div>
+              <label className={labelCls}>Phone Contact</label>
+              <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)}
+                placeholder="e.g. 024 000 0000" className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Organisation</label>
+              <input value={customerOrganisation} onChange={e => setCustomerOrganisation(e.target.value)}
+                className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Town / District</label>
+              <input value={customerTownDistrict} onChange={e => setCustomerTownDistrict(e.target.value)}
+                className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Region</label>
+              <input value={customerRegion} onChange={e => setCustomerRegion(e.target.value)}
+                className={inputCls} />
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="space-y-2">
@@ -246,12 +321,30 @@ export default function ReceiptsPage() {
         <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
           <div className="flex items-start justify-between">
             <div>
+              <span className="inline-block text-[10px] font-bold uppercase tracking-wide text-blue-700 bg-blue-50 rounded px-1.5 py-0.5 mb-1">
+                {selected.document_type ?? 'Receipt'}
+              </span>
               <p className="font-bold text-gray-900">{selected.invoice_number}</p>
               <p className="text-sm text-gray-600">{selected.customer_display ?? selected.customer_name}</p>
               <p className="text-[10px] text-gray-400 mt-1">{fmtDate(selected.invoice_date)}</p>
             </div>
             <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 text-xl font-bold leading-none">×</button>
           </div>
+
+          {(selected.customer_phone || selected.customer_organisation || selected.customer_town_district || selected.customer_region) && (
+            <div className="border-t border-gray-100 pt-2 text-xs text-gray-500 space-y-0.5">
+              {selected.customer_organisation && <p>{selected.customer_organisation}</p>}
+              {selected.customer_phone && <p>☎ {selected.customer_phone}</p>}
+              {(selected.customer_town_district || selected.customer_region) && (
+                <p>{[selected.customer_town_district, selected.customer_region].filter(Boolean).join(', ')}</p>
+              )}
+            </div>
+          )}
+
+          <a href={`/receipts/${selected.id}/print`} target="_blank" rel="noopener noreferrer"
+            className="block text-center bg-gray-900 hover:bg-black text-white text-sm font-semibold rounded-xl py-2.5 transition">
+            🖨️ Print / Save as PDF
+          </a>
 
           <div className="grid grid-cols-2 gap-2 border-t border-gray-100 pt-3">
             <div className="bg-gray-50 rounded-lg px-3 py-2">
@@ -304,7 +397,12 @@ export default function ReceiptsPage() {
               ${selected?.id === r.id ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-gray-900">{r.invoice_number}</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {r.invoice_number}
+                  {r.document_type === 'Invoice' && (
+                    <span className="ml-1.5 align-middle text-[9px] font-bold uppercase tracking-wide text-blue-700 bg-blue-50 rounded px-1 py-0.5">Invoice</span>
+                  )}
+                </p>
                 <p className="text-xs text-gray-500 truncate">{r.customer_display ?? r.customer_name}</p>
               </div>
               <p className="shrink-0 text-sm font-bold text-gray-900">{c(r.total)}</p>
