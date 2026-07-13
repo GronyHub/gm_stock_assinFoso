@@ -64,11 +64,15 @@ export async function POST(req: NextRequest) {
   const enteredBy = session.user?.name || (session.user as any)?.username || null
 
   try {
+    // zoho_invoice_id is NOT NULL (the column was built for Zoho-imported
+    // invoices) but receipts created here have no Zoho id, so synthesize a
+    // unique placeholder the same way internal items do.
+    const zohoInvoiceId = `INTERNAL_${invoice_number}_${Date.now()}`
     const [invoice] = await sql`
       INSERT INTO invoices
-        (invoice_number, invoice_date, due_date, status, customer_name, customer_id, currency_code, subtotal, total, balance, adjustment, notes)
+        (zoho_invoice_id, invoice_number, invoice_date, due_date, status, customer_name, customer_id, currency_code, subtotal, total, balance, adjustment, notes)
       VALUES
-        (${invoice_number}, ${invoice_date}, NULL, 'Closed', ${customer_name}, NULL, 'GHS', ${subtotal}, ${subtotal}, 0, 0, ${notes ?? null})
+        (${zohoInvoiceId}, ${invoice_number}, ${invoice_date}, NULL, 'Closed', ${customer_name}, NULL, 'GHS', ${subtotal}, ${subtotal}, 0, 0, ${notes ?? null})
       RETURNING id
     `
 
