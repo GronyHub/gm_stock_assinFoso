@@ -24,8 +24,9 @@ export default function LoginPage() {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Grony</h1>
-          <p className="text-gray-600 mt-1 text-sm">Multimedia &middot; Assin Fosu</p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="Grony Multimedia" className="h-16 w-auto mx-auto" />
+          <p className="text-gray-600 mt-2 text-sm">Assin Fosu</p>
         </div>
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-6 space-y-4 shadow-xl">
           <div>

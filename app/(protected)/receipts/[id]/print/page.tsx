@@ -73,7 +73,8 @@ export default function ReceiptPrintPage() {
       <div className="max-w-2xl mx-auto bg-white print:max-w-none px-6 py-8 print:p-0">
         <div className="flex items-start justify-between border-b-2 border-gray-900 pb-4 mb-6">
           <div>
-            <p className="text-xl font-bold text-gray-900">Grony Multimedia</p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="Grony Multimedia" className="h-12 w-auto mb-1" />
             <p className="text-xs text-gray-500">Assin Foso</p>
           </div>
           <div className="text-right">
