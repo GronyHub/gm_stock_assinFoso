@@ -508,7 +508,7 @@ const SHORT_LABEL: Record<string, string> = {
   dup_receipts: 'Duplicate Receipts',
 }
 
-export default function TodayPage() {
+export default function TodayPage({ onGoToDailyCount }: { onGoToDailyCount?: () => void }) {
   const [data, setData] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
   const [flags, setFlags] = useState<any | null>(null)
@@ -613,6 +613,13 @@ export default function TodayPage() {
 
   return (
     <div className="py-2 space-y-1.5">
+      {onGoToDailyCount && (
+        <button onClick={onGoToDailyCount}
+          className="w-full bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-bold text-sm rounded-lg py-2.5 shadow-sm transition">
+          📋 Do Today's Daily Count
+        </button>
+      )}
+
       <div className="flex items-center justify-between">
         <h1 className="text-base font-bold text-gray-900">Today</h1>
         <p className="text-[10px] text-gray-400">{fmtDate(data.date)}</p>
