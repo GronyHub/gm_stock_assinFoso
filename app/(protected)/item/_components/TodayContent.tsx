@@ -508,7 +508,23 @@ const SHORT_LABEL: Record<string, string> = {
   dup_receipts: 'Duplicate Receipts',
 }
 
-export default function TodayPage({ onGoToDailyCount }: { onGoToDailyCount?: () => void }) {
+// This widget's violation "type" strings are the historical keys used by the
+// staff-assignment/penalty system (violation_assignments etc.) and must stay
+// as-is; they don't all match the Errors tab's own violation keys, so map
+// between them here rather than renaming either side.
+const ERRORS_TAB_VIOLATION: Record<string, string> = {
+  missing_days: 'missing_days',
+  no_cash: 'no_cash',
+  cost_gte_sell: 'cost_price',
+  no_staff_times: 'no_staff_times',
+  unchecked_cab: 'unchecked_cab',
+  no_group: 'no_group',
+  duplicates: 'duplicates',
+  not_in_inventory: 'aliases',
+  dup_receipts: 'dup_receipt',
+}
+
+export default function TodayPage({ onGoToViolation }: { onGoToViolation?: (key: string) => void }) {
   const [data, setData] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
   const [flags, setFlags] = useState<any | null>(null)
@@ -557,51 +573,51 @@ export default function TodayPage({ onGoToDailyCount }: { onGoToDailyCount?: () 
 
   const violations = useMemo(() => {
     if (!flags) return []
-    const list: { type: string; label: string; count: number; days: number | null; href: string }[] = []
+    const list: { type: string; label: string; count: number; days: number | null }[] = []
     if (flags.missingDays?.length) list.push({
       type: 'missing_days',
       label: 'Sales Receipt' + (flags.missingDays.length !== 1 ? 's' : '') + ' still not entered',
-      count: flags.missingDays.length, days: oldestDays(flags.missingDays, 'missing_date'), href: '/sales?tab=Missing Days',
+      count: flags.missingDays.length, days: oldestDays(flags.missingDays, 'missing_date'),
     })
     if (flags.noCash?.length) list.push({
       type: 'no_cash',
       label: 'walk-in receipt' + (flags.noCash.length !== 1 ? 's' : '') + ' missing cash counted',
-      count: flags.noCash.length, days: oldestDays(flags.noCash, 'receipt_date'), href: '/sales?tab=No Cash',
+      count: flags.noCash.length, days: oldestDays(flags.noCash, 'receipt_date'),
     })
     if (flags.costGteSell?.length) list.push({
       type: 'cost_gte_sell',
       label: 'Cost Price' + (flags.costGteSell.length !== 1 ? 's' : '') + ' ≥ Selling Price still unresolved',
-      count: flags.costGteSell.length, days: oldestDays(flags.costGteSell, 'receipt_date'), href: '/sales?tab=Cost Price',
+      count: flags.costGteSell.length, days: oldestDays(flags.costGteSell, 'receipt_date'),
     })
     if (flags.noStaffTimes?.length) list.push({
       type: 'no_staff_times',
       label: 'day' + (flags.noStaffTimes.length !== 1 ? 's' : '') + ' with no staff times recorded',
-      count: flags.noStaffTimes.length, days: oldestDays(flags.noStaffTimes, 'missing_date'), href: '/staff?tab=No Times',
+      count: flags.noStaffTimes.length, days: oldestDays(flags.noStaffTimes, 'missing_date'),
     })
     if (flags.uncheckedCab?.length) list.push({
       type: 'unchecked_cab',
       label: 'week' + (flags.uncheckedCab.length !== 1 ? 's' : '') + ' with no Cash at Bank confirmation',
-      count: flags.uncheckedCab.length, days: oldestDays(flags.uncheckedCab, 'week_start'), href: '/cash-at-bank?tab=CAB Weekly',
+      count: flags.uncheckedCab.length, days: oldestDays(flags.uncheckedCab, 'week_start'),
     })
     if (flags.noGroup?.length) list.push({
       type: 'no_group',
       label: 'item' + (flags.noGroup.length !== 1 ? 's' : '') + ' with no group assigned',
-      count: flags.noGroup.length, days: null, href: '/item?tab=No Group',
+      count: flags.noGroup.length, days: null,
     })
     if (flags.duplicates?.length) list.push({
       type: 'duplicates',
       label: 'possible duplicate item pair' + (flags.duplicates.length !== 1 ? 's' : ''),
-      count: flags.duplicates.length, days: null, href: '/item?tab=Duplicates',
+      count: flags.duplicates.length, days: null,
     })
     if (flags.notInInventory?.length) list.push({
       type: 'not_in_inventory',
       label: 'item name' + (flags.notInInventory.length !== 1 ? 's' : '') + ' not found in inventory',
-      count: flags.notInInventory.length, days: null, href: '/item?tab=Not in Inv.',
+      count: flags.notInInventory.length, days: null,
     })
     if (flags.dupReceipts?.length) list.push({
       type: 'dup_receipts',
       label: 'day' + (flags.dupReceipts.length !== 1 ? 's' : '') + ' with duplicate WIC/GMC receipts',
-      count: flags.dupReceipts.length, days: oldestDays(flags.dupReceipts, 'receipt_date'), href: '/sales?tab=Dup Receipts',
+      count: flags.dupReceipts.length, days: oldestDays(flags.dupReceipts, 'receipt_date'),
     })
     return list.sort((a, b) => b.count - a.count)
   }, [flags])
@@ -613,8 +629,8 @@ export default function TodayPage({ onGoToDailyCount }: { onGoToDailyCount?: () 
 
   return (
     <div className="py-2 space-y-1.5">
-      {onGoToDailyCount && (
-        <button onClick={onGoToDailyCount}
+      {onGoToViolation && (
+        <button onClick={() => onGoToViolation('daily')}
           className="w-full bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-bold text-sm rounded-lg py-2.5 shadow-sm transition">
           📋 Do Today's Daily Count
         </button>
@@ -647,18 +663,19 @@ export default function TodayPage({ onGoToDailyCount }: { onGoToDailyCount?: () 
               const threshold = parseInt(vSettings.threshold_days ?? '3', 10)
               const overdue = deadline ? daysSince(deadline) >= 1 : v.days != null && v.days >= threshold
               const atRisk = canAutoPenalize && assignedTo && overdue
+              const violationKey = ERRORS_TAB_VIOLATION[v.type] ?? v.type
 
               if (!assignedTo) {
                 return (
-                  <Link key={v.href} href={v.href}
-                    className="flex items-center justify-between py-[2px] text-[11px] leading-tight hover:bg-gray-50 -mx-1 px-1 rounded transition gap-2">
+                  <button key={v.type} onClick={() => onGoToViolation?.(violationKey)}
+                    className="w-full flex items-center justify-between py-[2px] text-[11px] leading-tight hover:bg-gray-50 -mx-1 px-1 rounded transition gap-2">
                     <span className="min-w-0 truncate">
                       <span className="font-bold text-red-500">{v.count}</span>{' '}
                       <span className="text-gray-700">{v.label}</span>
                       {v.days != null && <span className="text-gray-400"> — {agePhrase(v.days)}</span>}
                     </span>
                     <span className="text-[10px] text-blue-600 font-semibold shrink-0">Fix →</span>
-                  </Link>
+                  </button>
                 )
               }
 
@@ -674,11 +691,11 @@ export default function TodayPage({ onGoToDailyCount }: { onGoToDailyCount?: () 
               const by = assignedBy[v.type]
 
               return (
-                <div key={v.href} className={`py-[3px] text-[11px] leading-snug ${atRisk ? 'text-red-500' : 'text-gray-700'}`}>
+                <div key={v.type} className={`py-[3px] text-[11px] leading-snug ${atRisk ? 'text-red-500' : 'text-gray-700'}`}>
                   <span className="capitalize font-semibold">{assignedTo}</span>, {remainingPhrase}{' '}
                   <span className="font-bold text-red-500">{v.count}</span>{' '}
                   {SHORT_LABEL[v.type] ?? v.label}{' '}
-                  <Link href={v.href} className="text-blue-600 font-semibold">View</Link>
+                  <button onClick={() => onGoToViolation?.(violationKey)} className="text-blue-600 font-semibold">View</button>
                   {atRisk && ' ⚠'}
                   {on && (
                     <span className="text-gray-400">

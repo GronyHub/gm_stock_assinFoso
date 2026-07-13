@@ -301,9 +301,9 @@ function ItemHubPageInner() {
     router.replace(t === 'today' ? '/item' : `/item?tab=${t}`, { scroll: false })
   }
 
-  function goToDailyCount() {
+  function goToViolation(key: string) {
     changeTab('errors')
-    setViolation('daily')
+    setViolation(key)
   }
 
   // Cross-navigation between an item's activity table and its sales receipts.
@@ -529,7 +529,7 @@ function ItemHubPageInner() {
         {outerTab === 'today' && !(addForm === 'sale' || addForm === 'bill' || addForm === 'expense') && (
           <TabErrorBoundary>
             <div className="h-full overflow-y-auto px-4">
-              <TodayContent onGoToDailyCount={goToDailyCount} />
+              <TodayContent onGoToViolation={goToViolation} />
             </div>
           </TabErrorBoundary>
         )}
