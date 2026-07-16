@@ -101,8 +101,12 @@ const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCategory; d
     description: "These items must be counted every single day (Large Format items are excluded since they cannot be counted this way) and have not been counted yet today. Count them now so today's stock figures are accurate.",
   },
   {
+    key: '7day', label: '7-Day Count', category: 'loss',
+    description: 'GMC items — goods the shop takes for its own use, like 4x6 packs, A4 sheets, and Brown Envelope packs — move fast and are easy to forget to record, so they must be counted every week. These have not been counted in over 7 days.',
+  },
+  {
     key: '15day', label: '15-Day Count', category: 'loss',
-    description: 'These items have not been counted in over 15 days, so their recorded stock may no longer reflect what is actually on the shelf. Count them soon before a real shortage or loss goes unnoticed.',
+    description: 'These items have not been counted in over 15 days, so their recorded stock may no longer reflect what is actually on the shelf. Count them soon before a real shortage or loss goes unnoticed. Items counted at the same number three times in a row with no purchases relax to a 30-day cycle, and items counted at zero twice with no purchases drop off until a bill brings them back.',
   },
   {
     key: 'no_cash', label: 'No Cash', category: 'sales',
@@ -141,7 +145,7 @@ const VIOLATIONS: Record<OuterTab, { key: string; label: string; category?: Erro
   staff: [],
 }
 
-const COUNTS_VIOLATIONS = new Set(['daily', '15day'])
+const COUNTS_VIOLATIONS = new Set(['daily', '7day', '15day'])
 
 const HAMBURGER_LINKS = [
   { href: '/analysis', label: 'Analysis' },
@@ -216,7 +220,7 @@ function ItemHubPageInner() {
   usePolling(loadItems, 5000)
 
   const [globalFlags, setGlobalFlags] = useState<any | null>(null)
-  const [pendingCounts, setPendingCounts] = useState<{ daily: number; overdue: number }>({ daily: 0, overdue: 0 })
+  const [pendingCounts, setPendingCounts] = useState<{ daily: number; gmcWeekly: number; overdue: number }>({ daily: 0, gmcWeekly: 0, overdue: 0 })
   const [serviceViolationCount, setServiceViolationCount] = useState(0)
   const [aliasesPendingCount, setAliasesPendingCount] = useState(0)
 
@@ -224,10 +228,12 @@ function ItemHubPageInner() {
     fetch('/api/flags').then(r => r.ok ? r.json() : null).then(d => { if (d) setGlobalFlags(d) }).catch(() => {})
     Promise.all([
       fetch('/api/stock/daily').then(r => r.json()).catch(() => []),
+      fetch('/api/stock/gmc-weekly').then(r => r.json()).catch(() => []),
       fetch('/api/stock/overdue').then(r => r.json()).catch(() => []),
-    ]).then(([daily, overdue]) => {
+    ]).then(([daily, gmcWeekly, overdue]) => {
       setPendingCounts({
         daily: Array.isArray(daily) ? daily.length : 0,
+        gmcWeekly: Array.isArray(gmcWeekly) ? gmcWeekly.length : 0,
         overdue: Array.isArray(overdue) ? overdue.length : 0,
       })
     }).catch(() => {})
@@ -267,6 +273,7 @@ function ItemHubPageInner() {
       cost_price: f?.costGteSell?.length ?? 0,
       dup_receipt: f?.dupReceipts?.length ?? 0,
       daily: pendingCounts.daily,
+      '7day': pendingCounts.gmcWeekly,
       '15day': pendingCounts.overdue,
       service_violation: serviceViolationCount,
       unchecked_cab: f?.uncheckedCab?.length ?? 0,
@@ -277,7 +284,7 @@ function ItemHubPageInner() {
   const badgeCounts: Partial<Record<OuterTab, number>> = useMemo(() => {
     const v = violationCounts
     return {
-      errors: v.neg_soh + v.no_sp + v.no_cp + v.no_group + v.duplicates + v.unlinked_named + v.aliases + v.service_violation + v.daily + v['15day']
+      errors: v.neg_soh + v.no_sp + v.no_cp + v.no_group + v.duplicates + v.unlinked_named + v.aliases + v.service_violation + v.daily + v['7day'] + v['15day']
         + v.no_cash + v.missing_days + v.cost_price + v.dup_receipt + v.unchecked_cab + v.no_staff_times,
     }
   }, [violationCounts])

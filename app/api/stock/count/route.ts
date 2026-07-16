@@ -10,8 +10,13 @@ export async function POST(req: NextRequest) {
   if (!itemId || qty == null) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
 
   const today = new Date().toISOString().slice(0, 10)
-  const item = await sql`SELECT zoho_item_id, canonical_name FROM items WHERE id = ${itemId}`
+  const item = await sql`SELECT zoho_item_id, canonical_name, product_type, cf_group FROM items WHERE id = ${itemId}`
   if (!item.length) return NextResponse.json({ error: 'Item not found' }, { status: 404 })
+
+  // Services are not physical stock -- there is nothing on a shelf to count.
+  if (item[0].product_type === 'service' || /^service/i.test(item[0].cf_group ?? '')) {
+    return NextResponse.json({ error: `"${item[0].canonical_name}" is a service — services cannot be counted.` }, { status: 400 })
+  }
 
   // session.user.name = display_name (set in auth authorize callback)
   // session.user.username = raw login name (set in jwt/session callbacks)
