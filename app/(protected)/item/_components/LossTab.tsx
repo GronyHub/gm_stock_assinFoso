@@ -92,20 +92,71 @@ function initialOf(name: string | null | undefined): string | null {
 }
 
 /* Staff accountability for a loss row: the loss surfaced at this row's count,
-   so it happened somewhere between the PREVIOUS count and this one. The staff
-   to question are exactly those who clocked in during that window -- presence
-   is accountability for the shift, not proof of fault. */
-function staffToAsk(rows: PackChainRow[], idx: number, presence: Record<string, string[]>): { names: string[]; from: string | null } {
+   so it happened somewhere between the PREVIOUS count and this one. Instead of
+   blaming everyone who appeared, blame is apportioned by TIME SPENT at the
+   shop inside that window -- hours present are opportunity, so each staff
+   member's share of the total staffed hours is their share of exposure.
+   Clock-in/out times (from staff_times) drive it; a missing clock-out is
+   assumed to run to the latest clock-out that day (or 6pm if nobody's is
+   recorded). */
+type StaffPresence = { name: string; in: string | null; out: string | null }
+type Exposure = { name: string; mins: number; pct: number; range: string | null }
+
+function parseTimeMins12(t: string | null): number | null {
+  if (!t) return null
+  const m = t.match(/^(\d+):(\d+)(am|pm)$/i)
+  if (!m) return null
+  let h = parseInt(m[1])
+  const min = parseInt(m[2])
+  const ap = m[3].toLowerCase()
+  if (ap === 'pm' && h !== 12) h += 12
+  if (ap === 'am' && h === 12) h = 0
+  return h * 60 + min
+}
+
+function hrsLabel(mins: number) {
+  const h = Math.floor(mins / 60), m = Math.round(mins % 60)
+  return m ? `${h}h${String(m).padStart(2, '0')}` : `${h}h`
+}
+
+function staffExposure(rows: PackChainRow[], idx: number, presence: Record<string, StaffPresence[]>): {
+  from: string | null; fromBy: string | null; endBy: string | null; shares: Exposure[]; days: number
+} {
   const row = rows[idx]
-  let from: string | null = null
+  let from: string | null = null, fromBy: string | null = null
   for (let j = idx + 1; j < rows.length; j++) {
-    if (rows[j].packCnt !== null || rows[j].singlesCnt !== null) { from = rows[j].date; break }
+    if (rows[j].packCnt !== null || rows[j].singlesCnt !== null) {
+      from = rows[j].date
+      fromBy = rows[j].singlesCntBy ?? rows[j].packCntBy
+      break
+    }
   }
-  const names = new Set<string>()
+  const minsBy = new Map<string, number>()
+  const rangeBy = new Map<string, string>()
+  let days = 0
   for (const [d, staff] of Object.entries(presence)) {
-    if ((from === null || d > from) && d <= row.date) staff.forEach(s => names.add(s))
+    if (!((from === null || d > from) && d <= row.date)) continue
+    days++
+    const outs = staff.map(s => parseTimeMins12(s.out)).filter((v): v is number => v !== null)
+    const dayMaxOut = outs.length ? Math.max(...outs) : 18 * 60
+    for (const s of staff) {
+      const inM = parseTimeMins12(s.in)
+      if (inM === null) continue
+      const outM = parseTimeMins12(s.out) ?? dayMaxOut
+      const dur = outM >= inM ? outM - inM : outM + 1440 - inM
+      minsBy.set(s.name, (minsBy.get(s.name) ?? 0) + dur)
+      if (!rangeBy.has(s.name)) rangeBy.set(s.name, `${s.in}–${s.out ?? '?'}`)
+    }
   }
-  return { names: Array.from(names).sort(), from }
+  const total = Array.from(minsBy.values()).reduce((a, b) => a + b, 0)
+  const shares: Exposure[] = Array.from(minsBy.entries())
+    .map(([name, mins]) => ({
+      name, mins,
+      pct: total > 0 ? Math.round((mins / total) * 100) : 0,
+      range: days === 1 ? (rangeBy.get(name) ?? null) : null,
+    }))
+    .sort((a, b) => b.mins - a.mins)
+  return { from, fromBy, endBy: row.singlesCntBy ?? row.packCntBy, shares, days }
 }
 
 function capName(s: string) { return s.charAt(0).toUpperCase() + s.slice(1) }
@@ -746,18 +797,18 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
   const isPackChain = item.converts_to_item_id != null && /4x6/i.test(item.item_name) && /pack/i.test(item.item_name)
   const [targetDayRows, setTargetDayRows] = useState<DayRow[] | null>(null)
 
-  // Who clocked in on each date -- used to suggest which staff to question
-  // about a loss (those on duty between the previous count and the loss).
-  const [presence, setPresence] = useState<Record<string, string[]> | null>(null)
+  // Who was at the shop on each date, with their clock-in/out times -- used
+  // to apportion loss exposure by hours actually spent, not mere presence.
+  const [presence, setPresence] = useState<Record<string, StaffPresence[]> | null>(null)
 
   useEffect(() => {
     if (!isPackChain) return
     fetch('/api/staff-times/all').then(r => r.json())
       .then(d => {
-        const map: Record<string, string[]> = {}
+        const map: Record<string, StaffPresence[]> = {}
         for (const r of (Array.isArray(d) ? d : [])) {
           if (!r.actual_in || !r.work_date) continue
-          ;(map[r.work_date] ??= []).push(r.staff_name)
+          ;(map[r.work_date] ??= []).push({ name: r.staff_name, in: r.actual_in, out: r.actual_out })
         }
         setPresence(map)
       })
@@ -950,7 +1001,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
               Combined view: {item.item_name} → {targetName} → services
             </p>
             <table className="table-fixed border-collapse text-[8px]"
-              style={{ width: `${62 + 2 * 48 + 9 * 36 + packChainBreakdownNames.length * 60 + 56 + 140 + 480 + 220}px` }}>
+              style={{ width: `${62 + 2 * 48 + 9 * 36 + packChainBreakdownNames.length * 60 + 56 + 200 + 480 + 220}px` }}>
               {/* Pixel-widths: date frozen at its text width, numeric columns as
                   thin as their numbers, OMISSIONS wide (480px) so its text stays
                   on 1-2 lines instead of growing the row height, TRADE-OFF at the
@@ -971,7 +1022,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                 <col style={{width:'36px'}} />
                 <col style={{width:'36px'}} />
                 <col style={{width:'56px'}} />
-                <col style={{width:'140px'}} />
+                <col style={{width:'200px'}} />
                 <col style={{width:'480px'}} />
                 <col style={{width:'220px'}} />
               </colgroup>
@@ -989,7 +1040,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                     LOSS ₵
                   </th>
                   <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600"
-                    title="Staff who clocked in between the previous count and this one — the loss happened on their watch, so start by asking them. Being on duty is accountability for the shift, not proof of fault.">
+                    title="Exposure to this loss, apportioned by hours each staff member actually spent at the shop between the previous count and this one (from clock-in/out times) — not a general blame for merely being present. Also shows who counted at each end and, for one-day windows, each person's arrival–departure times.">
                     ASK STAFF
                   </th>
                   <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600"
@@ -1024,7 +1075,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                 {packChainRows.map((row, i) => {
                   const omissions = packChainOmissionsByDate.get(row.date) ?? []
                   const hasLoss = (row.packLoss ?? 0) > 0.001 || (row.singlesLoss ?? 0) > 0.001
-                  const ask = hasLoss && presence ? staffToAsk(packChainRows, i, presence) : null
+                  const ask = hasLoss && presence ? staffExposure(packChainRows, i, presence) : null
                   return (
                   <tr key={i} className={`border-b border-gray-200 ${(row.singlesLoss ?? 0) > 0.001 || (row.packLoss ?? 0) > 0.001 ? 'bg-red-50' : omissions.length > 0 ? 'bg-orange-50' : 'bg-white'}`}>
                     <td className="pl-0.5 py-0.5 font-bold text-gray-500 whitespace-nowrap sticky left-0 bg-inherit">
@@ -1080,12 +1131,27 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                     <td className="text-left py-0.5 pl-1 pr-0.5 border-l-2 border-l-gray-600 whitespace-normal break-words leading-tight align-top">
                       {!hasLoss ? <span className="text-gray-300">—</span>
                         : !presence ? <span className="text-gray-300">…</span>
-                        : ask && ask.names.length > 0 ? (
+                        : ask && ask.shares.length > 0 ? (
                           <>
-                            <span className="text-red-700 font-semibold">{ask.names.map(capName).join(', ')}</span>
-                            {ask.from && ask.from !== row.date && (
-                              <span className="block text-gray-400">on duty {fmtDate(ask.from)} → {fmtDate(row.date)}</span>
-                            )}
+                            {ask.shares.map((s, si) => {
+                              // Blame is proportional to time at the shop; only a
+                              // share clearly above an equal split gets flagged red.
+                              const topShare = si === 0 && ask.shares.length > 1 && s.pct > Math.round(100 / ask.shares.length) + 5
+                              return (
+                                <span key={s.name} className="block whitespace-nowrap">
+                                  <span className={topShare ? 'text-red-700 font-bold' : 'text-gray-800 font-semibold'}>
+                                    {capName(s.name)}
+                                  </span>
+                                  <span className="text-gray-500"> {hrsLabel(s.mins)} · {s.pct}%</span>
+                                  {s.range && <span className="text-gray-400 text-[6px]"> ({s.range})</span>}
+                                </span>
+                              )
+                            })}
+                            <span className="block text-gray-400">
+                              {ask.from
+                                ? `count${initialOf(ask.fromBy) ? ` by ${initialOf(ask.fromBy)}` : ''} ${fmtDate(ask.from)} → count${initialOf(ask.endBy) ? ` by ${initialOf(ask.endBy)}` : ''} ${fmtDate(row.date)}`
+                                : `up to count${initialOf(ask.endBy) ? ` by ${initialOf(ask.endBy)}` : ''} ${fmtDate(row.date)}`}
+                            </span>
                           </>
                         ) : (
                           <span className="text-orange-600">no clock-ins recorded for this period — attendance gap is itself a red flag</span>
