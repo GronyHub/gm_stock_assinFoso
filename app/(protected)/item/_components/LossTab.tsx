@@ -133,25 +133,53 @@ function buildPackChainRows(packRows: ComputedRow[], singlesRows: ComputedRow[])
   return Array.from(map.values()).sort((a, b) => b.date.localeCompare(a.date))
 }
 
-/* Omissions: records that should exist but don't. A gain on singles (counted
-   more than expected, e.g. 3 → 46 overnight) with no pack conversion recorded
-   that day means a pack was physically opened without a GMC record; usage
-   pushing expected stock below zero means the same. These distort every
-   gain/loss in the table, so they're called out per row. */
-function packChainOmissions(row: PackChainRow, unitsPerPack: number): string | null {
+/* Omissions: records that should exist but don't, found by cross-checking the
+   singles side against the packs side of the same row. A gain on singles
+   (counted more than expected, e.g. 3 → 46 overnight) means a pack was
+   physically opened — so the packs section should show a matching GMC take or
+   a count loss that day. When it shows neither, the pack take was never
+   recorded anywhere. These distort every gain/loss, so they're called out. */
+function packChainOmissions(row: PackChainRow, unitsPerPack: number, packName: string): string | null {
   const notes: string[] = []
   const conv = numVal(row.singlesConvIn)
+  const packGmc = numVal(row.packGmc)
+  const packLoss = row.packLoss ?? 0 // >0 = packs missing at count, <0 = packs gained
+
   const singlesGain = row.singlesLoss !== null && row.singlesLoss < -0.001 ? -row.singlesLoss : 0
   if (singlesGain > 0) {
-    const packs = unitsPerPack > 0 ? ` (≈${(singlesGain / unitsPerPack).toFixed(1)} pack)` : ''
-    notes.push(conv === 0
-      ? `+${fmtN(singlesGain)} singles appeared with no GMC pack recorded${packs} — a pack was opened without recording it`
-      : `+${fmtN(singlesGain)} singles beyond what the records explain${packs}`)
+    const packsEst = unitsPerPack > 0 ? singlesGain / unitsPerPack : null
+    const est = packsEst !== null
+      ? `≈${packsEst % 1 === 0 ? packsEst : packsEst.toFixed(1)} pack${packsEst > 1.05 ? 's' : ''}`
+      : 'a pack'
+    if (conv === 0 && packGmc === 0) {
+      if (packLoss > 0.001) {
+        // Pack count already shows the packs went missing — the two sides agree
+        // a pack was opened; only the GMC record is missing.
+        notes.push(
+          `+${fmtN(singlesGain)} singles suggest ${est} was used by GMC, and the packs side lost ${fmtN(packLoss)} at count — `
+          + `the pack was opened but never recorded on GMC; recording it would explain both sides`
+        )
+      } else {
+        // Packs side shows NO loss and NO GMC deduction — the take isn't
+        // reflected anywhere on the pack section.
+        notes.push(
+          `+${fmtN(singlesGain)} singles suggest ${est} was used by GMC, but the ${packName} section shows no GMC and no loss/deduction that day — `
+          + `the pack take was not recorded anywhere`
+        )
+      }
+    } else {
+      notes.push(`+${fmtN(singlesGain)} singles beyond what the recorded pack conversions explain`)
+    }
   }
+
   if (row.singlesExp !== null && row.singlesExp < -0.001) {
-    notes.push('more singles used than were available — a GMC pack record is missing')
+    notes.push(
+      `more singles used than were available${(packGmc === 0 && conv === 0) ? ' while the packs section shows no GMC deduction' : ''} — `
+      + `a GMC pack record is missing`
+    )
   }
-  const packGain = row.packLoss !== null && row.packLoss < -0.001 ? -row.packLoss : 0
+
+  const packGain = packLoss < -0.001 ? -packLoss : 0
   if (packGain > 0) {
     notes.push(`+${fmtN(packGain)} pack${packGain === 1 ? '' : 's'} appeared without a bill record`)
   }
@@ -721,7 +749,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
               </thead>
               <tbody>
                 {packChainRows.map((row, i) => {
-                  const omission = packChainOmissions(row, numVal(item.units_per_pack))
+                  const omission = packChainOmissions(row, numVal(item.units_per_pack), item.item_name)
                   return (
                   <tr key={i} className={`border-b border-gray-200 ${(row.singlesLoss ?? 0) > 0.001 || (row.packLoss ?? 0) > 0.001 ? 'bg-red-50' : omission ? 'bg-orange-50' : ''}`}>
                     <td className="pl-1 py-0.5 font-bold text-gray-500 whitespace-nowrap overflow-hidden">
