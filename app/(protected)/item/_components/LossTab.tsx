@@ -76,11 +76,16 @@ function fmtLg(v: number) {
 function shortSourceName(name: string) {
   return name.replace(/^service\s*-\s*/i, '').slice(0, 10)
 }
-// First letter of the staff member who took the count, shown in brackets
-// beside the CNT value (same style as the ₵ amounts on the service cells).
+// Initial of the staff member who took the count, shown in brackets beside
+// the CNT value (same style as the ₵ amounts on the service cells). James and
+// Joe both start with J, so they get two letters: JM and JO.
 function initialOf(name: string | null | undefined): string | null {
   const t = (name ?? '').trim()
-  return t ? t.charAt(0).toUpperCase() : null
+  if (!t) return null
+  const lower = t.toLowerCase()
+  if (lower.startsWith('james')) return 'JM'
+  if (lower.startsWith('joe')) return 'JO'
+  return t.charAt(0).toUpperCase()
 }
 
 function computeRows(rows: DayRow[]): ComputedRow[] {
