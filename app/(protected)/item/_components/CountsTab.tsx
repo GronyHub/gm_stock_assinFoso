@@ -5,7 +5,7 @@ import { usePolling } from '@/lib/usePolling'
 import { isOwnerLevel } from '@/lib/roles'
 import HistoryPanel from './HistoryPanel'
 
-type Item = { id: number; item_name: string; cf_group: string | null }
+type Item = { id: number; item_name: string; cf_group: string | null; product_type?: string | null }
 
 type CountRecord = {
   id: number
@@ -97,6 +97,8 @@ function ManualCountForm({ items, onSaved, onClose }: { items: Item[]; onSaved: 
     const t = q.trim().toLowerCase()
     if (!t) return []
     return items
+      // Services are not physical stock and can never be counted.
+      .filter(i => i.product_type !== 'service' && !/^service/i.test(i.cf_group ?? '') && !/^service/i.test(i.item_name))
       .filter(i => i.item_name.toLowerCase().includes(t) || (i.cf_group ?? '').toLowerCase().includes(t))
       .slice(0, 25)
   }, [q, items])
@@ -178,6 +180,7 @@ export default function CountsTab({ items, groupFilter, search, violation }: Pro
   const [saving, setSaving] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [dailyItems, setDailyItems] = useState<DailyItem[]>([])
+  const [gmcWeeklyItems, setGmcWeeklyItems] = useState<DailyItem[]>([])
   const [overdueItems, setOverdueItems] = useState<DailyItem[]>([])
   const [dailyLoading, setDailyLoading] = useState(true)
   const [showManual, setShowManual] = useState(false)
@@ -188,9 +191,10 @@ export default function CountsTab({ items, groupFilter, search, violation }: Pro
   function loadDaily() {
     Promise.all([
       fetch('/api/stock/daily').then(r => r.json()),
+      fetch('/api/stock/gmc-weekly').then(r => r.json()),
       fetch('/api/stock/overdue').then(r => r.json()),
-    ]).then(([daily, overdue]) => {
-      setDailyItems(daily); setOverdueItems(overdue); setDailyLoading(false)
+    ]).then(([daily, gmcWeekly, overdue]) => {
+      setDailyItems(daily); setGmcWeeklyItems(gmcWeekly); setOverdueItems(overdue); setDailyLoading(false)
     })
   }
 
@@ -232,6 +236,13 @@ export default function CountsTab({ items, groupFilter, search, violation }: Pro
     return list
   }, [overdueItems, groupItemNames, search])
 
+  const filteredGmcWeekly = useMemo(() => {
+    let list = gmcWeeklyItems
+    if (groupItemNames) list = list.filter(i => groupItemNames.has(i.item_name))
+    if (search) list = list.filter(i => i.item_name.toLowerCase().includes(search.toLowerCase()))
+    return list
+  }, [gmcWeeklyItems, groupItemNames, search])
+
   function startEdit(r: CountRecord) {
     setEditQty(String(r.quantity_counted))
     setEditNotes(r.notes ?? '')
@@ -267,9 +278,9 @@ export default function CountsTab({ items, groupFilter, search, violation }: Pro
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
 
   // Daily/15-Day violation views
-  if (violation === 'daily' || violation === '15day') {
-    const countItems = violation === 'daily' ? filteredDaily : filteredOverdue
-    const label = violation === 'daily' ? 'daily' : '15-day overdue'
+  if (violation === 'daily' || violation === '7day' || violation === '15day') {
+    const countItems = violation === 'daily' ? filteredDaily : violation === '7day' ? filteredGmcWeekly : filteredOverdue
+    const label = violation === 'daily' ? 'daily' : violation === '7day' ? '7-day GMC' : '15-day overdue'
     return (
       <div className="overflow-y-auto h-full py-2">
         <div className="flex justify-end px-2 pb-1">
@@ -286,7 +297,9 @@ export default function CountsTab({ items, groupFilter, search, violation }: Pro
           <p className="py-10 text-center text-gray-400 text-[10px]">Loading…</p>
         ) : countItems.length === 0 ? (
           <p className="py-4 text-center text-gray-400 text-[10px]">
-            {violation === 'daily' ? 'All daily items counted!' : 'All items up to date!'}
+            {violation === 'daily' ? 'All daily items counted!'
+              : violation === '7day' ? 'All GMC items counted within 7 days!'
+              : 'All items up to date!'}
           </p>
         ) : (
           <table className="w-full border-collapse text-[10px]">
@@ -303,6 +316,7 @@ export default function CountsTab({ items, groupFilter, search, violation }: Pro
                 <CountRow key={item.item_id} item={item}
                   onSaved={id => {
                     if (violation === 'daily') setDailyItems(prev => prev.filter(i => i.item_id !== id))
+                    else if (violation === '7day') setGmcWeeklyItems(prev => prev.filter(i => i.item_id !== id))
                     else setOverdueItems(prev => prev.filter(i => i.item_id !== id))
                   }} />
               ))}
