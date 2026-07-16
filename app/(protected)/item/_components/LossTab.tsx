@@ -671,13 +671,46 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
   const isPackChain = item.converts_to_item_id != null && /4x6/i.test(item.item_name) && /pack/i.test(item.item_name)
   const [targetDayRows, setTargetDayRows] = useState<DayRow[] | null>(null)
 
+  // Trade-off notes recorded by users against specific rows (keyed by date).
+  const [tradeoffs, setTradeoffs] = useState<Record<string, { note: string; done_by: string | null }>>({})
+  const [toEditDate, setToEditDate] = useState<string | null>(null)
+  const [toText, setToText] = useState('')
+  const [toSaving, setToSaving] = useState(false)
+
   useEffect(() => {
     if (!isPackChain || item.converts_to_item_id == null) { setTargetDayRows(null); return }
     fetch(`/api/losses/${item.converts_to_item_id}`).then(r => r.json())
       .then(d => setTargetDayRows(Array.isArray(d) ? d : []))
       .catch(() => setTargetDayRows([]))
+    fetch(`/api/stock/tradeoff?itemId=${item.item_id}`).then(r => r.json())
+      .then(d => {
+        const map: Record<string, { note: string; done_by: string | null }> = {}
+        for (const r of (Array.isArray(d) ? d : [])) map[r.date] = { note: r.note, done_by: r.done_by }
+        setTradeoffs(map)
+      })
+      .catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPackChain, item.converts_to_item_id])
+
+  async function saveTradeoff(date: string) {
+    setToSaving(true)
+    const res = await fetch('/api/stock/tradeoff', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId: item.item_id, date, note: toText }),
+    })
+    setToSaving(false)
+    if (res.ok) {
+      const d = await res.json()
+      setTradeoffs(prev => {
+        const next = { ...prev }
+        if (d.note) next[date] = { note: d.note, done_by: d.done_by }
+        else delete next[date]
+        return next
+      })
+      setToEditDate(null)
+      setToText('')
+    }
+  }
 
   function startEdit() {
     setForm({
@@ -819,26 +852,30 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
             <p className="text-[8px] font-bold text-gray-500 px-1.5 py-1 bg-gray-50 border-b border-gray-200">
               Combined view: {item.item_name} → {targetName} → services
             </p>
-            <table className="w-full table-fixed border-collapse text-[8px]">
-              {/* Date is a fixed pixel width sized to its text and frozen
-                  (sticky left); numeric columns are as thin as their numbers;
-                  OMISSIONS has no width so it absorbs all remaining space. */}
+            <table className="table-fixed border-collapse text-[8px]"
+              style={{ width: `${62 + 11 * 36 + packChainBreakdownNames.length * 60 + 56 + 480 + 220}px`, minWidth: '100%' }}>
+              {/* Pixel-widths: date frozen at its text width, numeric columns as
+                  thin as their numbers, OMISSIONS wide (480px) so its text stays
+                  on 1-2 lines instead of growing the row height, TRADE-OFF at the
+                  end. The table scrolls sideways inside the detail panel; the
+                  date column stays frozen. */}
               <colgroup>
                 <col style={{width:'62px'}} />
-                <col style={{width:'3.5%'}} />
-                <col style={{width:'3.5%'}} />
-                <col style={{width:'3.5%'}} />
-                <col style={{width:'3.5%'}} />
-                <col style={{width:'3.5%'}} />
-                <col style={{width:'3.5%'}} />
-                <col style={{width:'3.5%'}} />
-                <col style={{width:'3.5%'}} />
-                {packChainBreakdownNames.map(n => <col key={n} style={{width:`${packChainColW}%`}} />)}
-                <col style={{width:'3.5%'}} />
-                <col style={{width:'3.5%'}} />
-                <col style={{width:'3.5%'}} />
-                <col style={{width:'5%'}} />
-                <col />
+                <col style={{width:'36px'}} />
+                <col style={{width:'36px'}} />
+                <col style={{width:'36px'}} />
+                <col style={{width:'36px'}} />
+                <col style={{width:'36px'}} />
+                <col style={{width:'36px'}} />
+                <col style={{width:'36px'}} />
+                <col style={{width:'36px'}} />
+                {packChainBreakdownNames.map(n => <col key={n} style={{width:'60px'}} />)}
+                <col style={{width:'36px'}} />
+                <col style={{width:'36px'}} />
+                <col style={{width:'36px'}} />
+                <col style={{width:'56px'}} />
+                <col style={{width:'480px'}} />
+                <col style={{width:'220px'}} />
               </colgroup>
               <thead className="sticky top-0 z-10">
                 <tr className="bg-amber-500 text-gray-800 font-bold">
@@ -856,6 +893,10 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                   <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600"
                     title="Records that should exist but are missing — e.g. singles jumped up with no GMC pack recorded. These distort the gains/losses.">
                     OMISSIONS
+                  </th>
+                  <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600"
+                    title="Trade-off actions users have taken on this row (e.g. netting a gain against an earlier loss), recorded with the name of who did it.">
+                    TRADE-OFF
                   </th>
                 </tr>
                 <tr className="bg-amber-400 text-gray-800 font-bold">
@@ -936,6 +977,36 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                         </div>
                       ))}
                     </td>
+                    <td className="text-left py-0.5 pl-1 pr-1 border-l-2 border-l-gray-600 whitespace-normal break-words leading-tight align-top">
+                      {toEditDate === row.date ? (
+                        <div className="space-y-0.5">
+                          <textarea value={toText} onChange={e => setToText(e.target.value)} rows={2} autoFocus
+                            placeholder="What was traded off?"
+                            className="w-full bg-white border border-gray-300 rounded px-1 py-0.5 text-[8px] outline-none focus:ring-1 focus:ring-blue-400" />
+                          <div className="flex gap-0.5">
+                            <button onClick={() => saveTradeoff(row.date)} disabled={toSaving}
+                              className="flex-1 bg-green-600 text-white text-[8px] font-bold rounded py-0.5 disabled:opacity-40">
+                              {toSaving ? '…' : 'Save'}
+                            </button>
+                            <button onClick={() => { setToEditDate(null); setToText('') }}
+                              className="px-2 bg-gray-100 text-gray-600 text-[8px] font-semibold rounded">✕</button>
+                          </div>
+                        </div>
+                      ) : tradeoffs[row.date] ? (
+                        <button onClick={() => { setToEditDate(row.date); setToText(tradeoffs[row.date].note) }}
+                          className="text-left w-full hover:bg-teal-50 rounded transition" title="Tap to edit">
+                          <span className="text-teal-700 font-semibold">{tradeoffs[row.date].note}</span>
+                          {tradeoffs[row.date].done_by && (
+                            <span className="text-gray-400"> — by {tradeoffs[row.date].done_by}</span>
+                          )}
+                        </button>
+                      ) : (
+                        <button onClick={() => { setToEditDate(row.date); setToText('') }}
+                          className="text-[8px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded hover:bg-blue-100">
+                          + Add
+                        </button>
+                      )}
+                    </td>
                   </tr>
                   )
                 })}
@@ -951,6 +1022,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                           : totalCedis < -0.001 ? <span className="text-green-600">+₵{fmtN(Math.abs(parseFloat(totalCedis.toFixed(2))))}</span>
                           : <span className="text-gray-400">0</span>}
                       </td>
+                      <td className="border-l-2 border-l-gray-600" />
                       <td className="border-l-2 border-l-gray-600" />
                     </tr>
                   )
@@ -1349,7 +1421,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
               sits past the sticky content just blends into the page instead of
               showing as a visible bar. */}
           <td colSpan={16} className="p-0 border border-black">
-            <div className="sticky left-0 w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] max-h-[50vh] overflow-y-auto bg-blue-50 px-0.5 pb-2 pt-0.5">
+            <div className="sticky left-0 w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] max-h-[50vh] overflow-auto bg-blue-50 px-0.5 pb-2 pt-0.5">
               <ItemDetail item={row} groups={groupNames} allItems={allItemsList}
                 currentAliases={aliasRecords[row.item_id] ?? []}
                 currentMatches={matchRecords[row.item_name.trim().toLowerCase()] ?? []}
