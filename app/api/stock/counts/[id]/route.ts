@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { isOwnerLevel } from '@/lib/roles'
+import { recordCountRevision } from '@/lib/countRevisions'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -12,13 +13,30 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const { quantity_counted, notes } = await req.json()
   if (quantity_counted == null) return NextResponse.json({ error: 'Missing qty' }, { status: 400 })
 
+  const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
+
+  // Keep the previous value so the count cell can show its edit history.
+  const [before] = await sql`
+    SELECT item_id, count_date::date::text AS count_date, quantity_counted, counted_by
+    FROM stock_counts WHERE id = ${id}
+  `
+  if (before && Number(before.quantity_counted) !== Number(quantity_counted)) {
+    await recordCountRevision({
+      stockCountId: Number(id),
+      itemId: before.item_id,
+      countDate: before.count_date,
+      oldQty: before.quantity_counted,
+      oldCountedBy: before.counted_by,
+      changedBy: actor,
+    })
+  }
+
   const rows = await sql`
     UPDATE stock_counts
     SET quantity_counted = ${quantity_counted}, notes = ${notes || null}
     WHERE id = ${id}
     RETURNING id, item_name, count_date::text AS count_date, quantity_counted, notes, counted_by, source
   `
-  const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
   await logActivity(actor, 'edited stock count', `${rows[0].item_name} · qty ${quantity_counted} on ${rows[0].count_date}`)
   return NextResponse.json(rows[0])
 }
