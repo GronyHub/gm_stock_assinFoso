@@ -27,6 +27,7 @@ type SummaryRow = {
 type DayRow = {
   date: string
   qty_counted: string | null
+  counted_by: string | null
   wic_qty: string | null
   gmc_qty: string | null
   bills_qty: string | null
@@ -75,6 +76,12 @@ function fmtLg(v: number) {
 function shortSourceName(name: string) {
   return name.replace(/^service\s*-\s*/i, '').slice(0, 10)
 }
+// First letter of the staff member who took the count, shown in brackets
+// beside the CNT value (same style as the ₵ amounts on the service cells).
+function initialOf(name: string | null | undefined): string | null {
+  const t = (name ?? '').trim()
+  return t ? t.charAt(0).toUpperCase() : null
+}
 
 function computeRows(rows: DayRow[]): ComputedRow[] {
   const result: ComputedRow[] = []
@@ -102,9 +109,10 @@ function computeRows(rows: DayRow[]): ComputedRow[] {
    convert into, by date, so packs/singles/services can be read as one table. ── */
 type PackChainRow = {
   date: string
-  packCnt: string | null; packBl: string | null; packGmc: string | null; packWic: string | null
+  packCnt: string | null; packCntBy: string | null
+  packBl: string | null; packGmc: string | null; packWic: string | null
   packExp: number | null; packLoss: number | null
-  singlesCnt: string | null; singlesConvIn: string | null
+  singlesCnt: string | null; singlesCntBy: string | null; singlesConvIn: string | null
   singlesBreakdown: { name: string; qty: number; amount: number }[]
   singlesUsed: number; singlesExp: number | null; singlesLoss: number | null
 }
@@ -112,17 +120,18 @@ function buildPackChainRows(packRows: ComputedRow[], singlesRows: ComputedRow[])
   const map = new Map<string, PackChainRow>()
   for (const r of packRows) {
     map.set(r.date, {
-      date: r.date, packCnt: r.qty_counted, packBl: r.bills_qty, packGmc: r.gmc_qty, packWic: r.wic_qty,
+      date: r.date, packCnt: r.qty_counted, packCntBy: r.counted_by, packBl: r.bills_qty, packGmc: r.gmc_qty, packWic: r.wic_qty,
       packExp: r.expected_soh, packLoss: r.loss,
-      singlesCnt: null, singlesConvIn: null, singlesBreakdown: [], singlesUsed: 0, singlesExp: null, singlesLoss: null,
+      singlesCnt: null, singlesCntBy: null, singlesConvIn: null, singlesBreakdown: [], singlesUsed: 0, singlesExp: null, singlesLoss: null,
     })
   }
   for (const r of singlesRows) {
     const existing = map.get(r.date) ?? {
-      date: r.date, packCnt: null, packBl: null, packGmc: null, packWic: null, packExp: null, packLoss: null,
-      singlesCnt: null, singlesConvIn: null, singlesBreakdown: [], singlesUsed: 0, singlesExp: null, singlesLoss: null,
+      date: r.date, packCnt: null, packCntBy: null, packBl: null, packGmc: null, packWic: null, packExp: null, packLoss: null,
+      singlesCnt: null, singlesCntBy: null, singlesConvIn: null, singlesBreakdown: [], singlesUsed: 0, singlesExp: null, singlesLoss: null,
     }
     existing.singlesCnt = r.qty_counted
+    existing.singlesCntBy = r.counted_by
     existing.singlesConvIn = r.converted_in_qty
     existing.singlesBreakdown = r.wic_breakdown ?? []
     existing.singlesUsed = r.used
@@ -778,7 +787,10 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
   const packChainColW = Math.max(4, Math.min(6, Math.floor(12 / Math.max(1, packChainBreakdownNames.length))))
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden mt-0.5">
+    // For the pack-chain view the wrapper grows to the table's full width
+    // (w-max) instead of clipping it (overflow-hidden), so the detail panel
+    // can scroll sideways while the frozen DATE column stays put.
+    <div className={`bg-white border border-gray-200 rounded-lg mt-0.5 ${isPackChain ? 'w-max min-w-full' : 'overflow-hidden'}`}>
       {editing && (
         <div className="px-2 pt-1.5 pb-2 space-y-2">
           <div className="flex items-center justify-end gap-1">
@@ -853,7 +865,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
               Combined view: {item.item_name} → {targetName} → services
             </p>
             <table className="table-fixed border-collapse text-[8px]"
-              style={{ width: `${62 + 11 * 36 + packChainBreakdownNames.length * 60 + 56 + 480 + 220}px`, minWidth: '100%' }}>
+              style={{ width: `${62 + 11 * 36 + packChainBreakdownNames.length * 60 + 56 + 480 + 220}px` }}>
               {/* Pixel-widths: date frozen at its text width, numeric columns as
                   thin as their numbers, OMISSIONS wide (480px) so its text stays
                   on 1-2 lines instead of growing the row height, TRADE-OFF at the
@@ -930,7 +942,12 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                         </button>
                       ) : fmtDate(row.date)}
                     </td>
-                    <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-gray-900">{fmtQs(row.packCnt)}</td>
+                    <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-gray-900 whitespace-nowrap">
+                      {fmtQs(row.packCnt)}
+                      {fmtQs(row.packCnt) !== '—' && initialOf(row.packCntBy) && (
+                        <span className="text-blue-500 text-[6px]"> ({initialOf(row.packCntBy)})</span>
+                      )}
+                    </td>
                     <td className="text-center py-0.5 font-bold border-l border-gray-300 text-blue-600">{fmtQs(row.packBl)}</td>
                     <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.packGmc)}</td>
                     <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.packWic)}</td>
@@ -941,7 +958,12 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                         : row.packLoss < -0.001 ? <span className="text-green-600">+{fmtN(Math.abs(row.packLoss))}</span>
                         : <span className="text-gray-400">0</span>}
                     </td>
-                    <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-gray-900">{fmtQs(row.singlesCnt)}</td>
+                    <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-gray-900 whitespace-nowrap">
+                      {fmtQs(row.singlesCnt)}
+                      {fmtQs(row.singlesCnt) !== '—' && initialOf(row.singlesCntBy) && (
+                        <span className="text-blue-500 text-[6px]"> ({initialOf(row.singlesCntBy)})</span>
+                      )}
+                    </td>
                     <td className="text-center py-0.5 font-bold border-l border-gray-300 text-teal-600">{fmtQs(row.singlesConvIn)}</td>
                     {packChainBreakdownNames.map(n => {
                       const b = row.singlesBreakdown.find(x => x.name === n)
@@ -1085,7 +1107,12 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                       </button>
                     ) : fmtDate(row.date)}
                   </td>
-                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-900">{fmtQs(row.qty_counted)}</td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-900 whitespace-nowrap">
+                    {fmtQs(row.qty_counted)}
+                    {fmtQs(row.qty_counted) !== '—' && initialOf(row.counted_by) && (
+                      <span className="text-blue-500 text-[6px]"> ({initialOf(row.counted_by)})</span>
+                    )}
+                  </td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-teal-600">{fmtQs(row.converted_in_qty)}</td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-400 bg-black text-white">{fmtN(row.available)}</td>
                   {breakdownNames.map(n => (
@@ -1181,7 +1208,12 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                       : row.loss < -0.001 ? <span className="text-green-600">+{fmtN(Math.abs(row.loss))}</span>
                       : <span className="text-gray-400">0</span>}
                   </td>
-                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-900">{fmtQs(row.qty_counted)}</td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-900 whitespace-nowrap">
+                    {fmtQs(row.qty_counted)}
+                    {fmtQs(row.qty_counted) !== '—' && initialOf(row.counted_by) && (
+                      <span className="text-blue-500 text-[6px]"> ({initialOf(row.counted_by)})</span>
+                    )}
+                  </td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.wic_qty)}</td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.gmc_qty)}</td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-blue-500">{fmtQs(row.sell_price)}</td>

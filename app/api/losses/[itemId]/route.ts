@@ -58,7 +58,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ itemId:
       SELECT d FROM daily_consumed_via_service
     ),
     daily_counts AS (
-      SELECT count_date::date AS d, SUM(quantity_counted) AS qty_counted
+      SELECT count_date::date AS d, SUM(quantity_counted) AS qty_counted,
+             MAX(counted_by) AS counted_by
       FROM stock_counts
       WHERE item_id = ${id}
       GROUP BY count_date::date
@@ -114,6 +115,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ itemId:
     SELECT
       ad.d::text AS date,
       dc.qty_counted,
+      dc.counted_by,
       COALESCE(dw.qty, 0) + COALESCE(dcs.qty, 0) AS wic_qty,
       dg.qty  AS gmc_qty,
       db.qty  AS bills_qty,
