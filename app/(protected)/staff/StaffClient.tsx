@@ -3,6 +3,8 @@ import { useState, useEffect, useMemo, useRef, Fragment, Suspense, useCallback }
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { fmtDate, fmtOrdinalDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
+import CloserQuestionnaire, { ClosingAnswers } from '@/components/CloserQuestionnaire'
+import ClosingReportsList from '@/components/ClosingReportsList'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell,
 } from 'recharts'
@@ -199,6 +201,11 @@ function TimesTab({ username, role }: { username: string; role: string }) {
   const [customTime, setCustomTime] = useState(nowAsHHMM())
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
+  const [roleBanner, setRoleBanner] = useState<string | null>(null)
+  const [closerPrompt, setCloserPrompt] = useState<{ time: string; present: string[] } | null>(null)
+  const [opener, setOpener] = useState<string | null>(null)
+  const [closer, setCloser] = useState<string | null>(null)
+  const [showReports, setShowReports] = useState(false)
 
   const [editDate, setEditDate] = useState<string | null>(null)
   const [editIn, setEditIn] = useState('')
@@ -225,6 +232,8 @@ function TimesTab({ username, role }: { username: string; role: string }) {
       setToday(Array.isArray(d.today) ? d.today : [])
       setMine(d.mine ?? null)
       setRecent(Array.isArray(d.recent) ? d.recent : [])
+      setOpener(d.opener ?? null)
+      setCloser(d.closer ?? null)
       if (isAdmin) setAllRecords(Array.isArray(all) ? all : [])
       setLoading(false)
     }).catch(() => setLoading(false))
@@ -278,9 +287,10 @@ function TimesTab({ username, role }: { username: string; role: string }) {
     })
   }
 
-  async function clock(action: 'in' | 'out') {
-    const time = pickingTime ? hhmmTo12h(customTime) : nowAs12h()
+  async function clock(action: 'in' | 'out', opts?: { time?: string; closingReport?: ClosingAnswers }) {
+    const time = opts?.time ?? (pickingTime ? hhmmTo12h(customTime) : nowAs12h())
     setErr('')
+    setRoleBanner(null)
     setSaving(true)
 
     let latitude: number | null = null, longitude: number | null = null
@@ -297,7 +307,7 @@ function TimesTab({ username, role }: { username: string; role: string }) {
 
     const res = await fetch('/api/staff-times/today', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, time, latitude, longitude }),
+      body: JSON.stringify({ action, time, latitude, longitude, closing_report: opts?.closingReport }),
     })
     setSaving(false)
     if (res.ok) {
@@ -305,10 +315,18 @@ function TimesTab({ username, role }: { username: string; role: string }) {
       setMine(updated)
       setPickingTime(false)
       setCustomTime(nowAsHHMM())
+      setCloserPrompt(null)
+      if (updated.is_opener) setRoleBanner('🌅 You are the Opener for today!')
+      else if (updated.is_closer) setRoleBanner('🌙 You are the Closer for today — closing report received. Thank you, and good night!')
       load()
     } else {
       const d = await res.json().catch(() => ({}))
-      setErr(d.error || 'Failed to save')
+      if (res.status === 409 && d.requires_closing_report) {
+        // Last one out — show the closing questionnaire, then retry with answers.
+        setCloserPrompt({ time, present: Array.isArray(d.present_staff) ? d.present_staff : [] })
+      } else {
+        setErr(d.error || 'Failed to save')
+      }
     }
   }
 
@@ -388,6 +406,23 @@ function TimesTab({ username, role }: { username: string; role: string }) {
           </button>
         </div>
       )}
+      {/* Closer questionnaire — shown when this user is the last to clock out */}
+      {closerPrompt && (
+        <CloserQuestionnaire
+          presentStaff={closerPrompt.present}
+          saving={saving}
+          onSubmit={answers => clock('out', { time: closerPrompt.time, closingReport: answers })}
+          onCancel={() => setCloserPrompt(null)}
+        />
+      )}
+
+      {roleBanner && (
+        <div className="flex items-start justify-between gap-2 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+          <p className="text-sm font-semibold text-blue-800">{roleBanner}</p>
+          <button onClick={() => setRoleBanner(null)} className="text-blue-300 hover:text-blue-500 font-bold leading-none">×</button>
+        </div>
+      )}
+
       {/* Clock In/Out panel */}
       <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
         <p className="text-sm font-semibold text-gray-700">My Time Today</p>
@@ -444,7 +479,11 @@ function TimesTab({ username, role }: { username: string; role: string }) {
           <div className="divide-y divide-gray-100">
             {today.map(r => (
               <div key={r.staff_name} className="flex items-center justify-between px-4 py-2 text-sm">
-                <span className="font-medium text-gray-800 capitalize">{r.staff_name}</span>
+                <span className="font-medium text-gray-800 capitalize">
+                  {r.staff_name}
+                  {opener === r.staff_name && <span title="Opener" className="ml-1">🌅</span>}
+                  {closer === r.staff_name && <span title="Closer" className="ml-1">🌙</span>}
+                </span>
                 <span className="text-green-700">{r.actual_in ?? '—'}</span>
                 <span className="text-orange-600">{r.actual_out ?? '—'}</span>
               </div>
@@ -652,6 +691,16 @@ function TimesTab({ username, role }: { username: string; role: string }) {
           </div>
         </div>
       )}
+
+      {/* Closing reports — end-of-day answers from the Closer */}
+      <div>
+        <button onClick={() => setShowReports(v => !v)}
+          className="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-3">
+          <span className="text-sm font-semibold text-gray-700">🌙 Closing Reports</span>
+          <span className="text-gray-400 text-xs">{showReports ? '▲ Hide' : '▼ Show'}</span>
+        </button>
+        {showReports && <div className="mt-2"><ClosingReportsList /></div>}
+      </div>
 
       {/* Analytics */}
       <p className="text-sm font-semibold text-gray-700">Analytics</p>

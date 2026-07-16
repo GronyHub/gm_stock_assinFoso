@@ -4,6 +4,50 @@ import { logActivity } from '@/lib/logger'
 import { distanceMeters, SHOP_LAT, SHOP_LNG, ALLOWED_RADIUS_METERS } from '@/lib/geo'
 import { NextRequest, NextResponse } from 'next/server'
 
+// The Closer (last staff member to clock out) must answer end-of-day questions
+// before their clock-out is accepted; answers land here, one row per day.
+async function ensureClosingReports() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS closing_reports (
+      id SERIAL PRIMARY KEY,
+      work_date DATE NOT NULL UNIQUE,
+      closer_name TEXT NOT NULL,
+      no_tshirt_staff TEXT NOT NULL DEFAULT '',
+      advert_played BOOLEAN NOT NULL,
+      property_issue BOOLEAN NOT NULL,
+      speaker_brought_in BOOLEAN NOT NULL,
+      new_customer BOOLEAN NOT NULL,
+      new_customer_details TEXT,
+      unfortunate_event BOOLEAN NOT NULL,
+      unfortunate_event_details TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `.catch(() => {})
+}
+
+function parseTimeMins(t: string | null): number | null {
+  if (!t) return null
+  const m = t.match(/^(\d+):(\d+)(am|pm)$/i)
+  if (!m) return null
+  let h = parseInt(m[1])
+  const min = parseInt(m[2])
+  const ap = m[3].toLowerCase()
+  if (ap === 'pm' && h !== 12) h += 12
+  if (ap === 'am' && h === 12) h = 0
+  return h * 60 + min
+}
+
+// The Opener is the staff member with the earliest clock-in time today.
+function openerOf(rows: { staff_name?: string; actual_in?: string | null }[]): string | null {
+  let best: string | null = null
+  let bestMins = Infinity
+  for (const r of rows) {
+    const mins = parseTimeMins(r.actual_in ?? null)
+    if (mins !== null && mins < bestMins) { bestMins = mins; best = r.staff_name ?? null }
+  }
+  return best
+}
+
 export async function GET() {
   const session = await auth()
   const sessionUser = session?.user as any
@@ -40,10 +84,23 @@ export async function GET() {
       `
     }
 
-    return NextResponse.json({ today: todayRows, mine: mine ?? null, recent })
+    let closerName: string | null = null
+    try {
+      await ensureClosingReports()
+      const [report] = await sql`SELECT closer_name FROM closing_reports WHERE work_date = ${today}`
+      closerName = report?.closer_name ?? null
+    } catch { /* table may not exist yet */ }
+
+    return NextResponse.json({
+      today: todayRows,
+      mine: mine ?? null,
+      recent,
+      opener: openerOf(todayRows),
+      closer: closerName,
+    })
   } catch (e) {
     console.error('staff-times GET error:', e)
-    return NextResponse.json({ today: [], mine: null, recent: [] })
+    return NextResponse.json({ today: [], mine: null, recent: [], opener: null, closer: null })
   }
 }
 
@@ -52,7 +109,7 @@ export async function POST(req: NextRequest) {
   const sessionUser = session?.user as any
   if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { action, time, latitude, longitude } = await req.json()
+  const { action, time, latitude, longitude, closing_report } = await req.json()
   if (!action || !time) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
   if (!['in', 'out'].includes(action)) return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
 
@@ -83,12 +140,68 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    let isCloser = false
+    let closerReportJustSaved = false
+
     if (action === 'out') {
       const [existing] = await sql`
         SELECT actual_in FROM staff_times WHERE staff_name = ${username} AND work_date = ${today}
       `
       if (!existing?.actual_in) {
         return NextResponse.json({ error: 'You must record Time In first' }, { status: 400 })
+      }
+
+      // Closer = the last staff member to clock out: everyone else who clocked
+      // in today has already clocked out. The Closer must submit the closing
+      // questionnaire before their clock-out is accepted.
+      const presentToday = await sql`
+        SELECT staff_name, actual_in, actual_out FROM staff_times
+        WHERE work_date = ${today} AND actual_in IS NOT NULL
+        ORDER BY staff_name
+      `
+      const others = presentToday.filter((r: any) => r.staff_name !== username)
+      isCloser = others.every((r: any) => r.actual_out)
+
+      if (isCloser) {
+        await ensureClosingReports()
+        const [existingReport] = await sql`SELECT id FROM closing_reports WHERE work_date = ${today}`
+        if (!existingReport) {
+          const cr = closing_report
+          const yesNoKeys = ['advert_played', 'property_issue', 'speaker_brought_in', 'new_customer', 'unfortunate_event'] as const
+          const valid = cr && typeof cr === 'object' && yesNoKeys.every(k => typeof cr[k] === 'boolean')
+          if (!valid) {
+            return NextResponse.json({
+              requires_closing_report: true,
+              present_staff: presentToday.map((r: any) => r.staff_name),
+              error: 'You are the Closer for today — please answer the closing questions before clocking out.',
+            }, { status: 409 })
+          }
+
+          const noTshirt = (Array.isArray(cr.no_tshirt_staff) ? cr.no_tshirt_staff : [])
+            .map((s: any) => String(s).trim()).filter(Boolean)
+          await sql`
+            INSERT INTO closing_reports
+              (work_date, closer_name, no_tshirt_staff, advert_played, property_issue,
+               speaker_brought_in, new_customer, new_customer_details,
+               unfortunate_event, unfortunate_event_details)
+            VALUES
+              (${today}, ${username}, ${noTshirt.join(', ')}, ${cr.advert_played}, ${cr.property_issue},
+               ${cr.speaker_brought_in}, ${cr.new_customer}, ${cr.new_customer ? (cr.new_customer_details || null) : null},
+               ${cr.unfortunate_event}, ${cr.unfortunate_event ? (cr.unfortunate_event_details || null) : null})
+            ON CONFLICT (work_date) DO NOTHING
+          `
+          closerReportJustSaved = true
+
+          const summary = [
+            `No company T-shirt: ${noTshirt.length ? noTshirt.join(', ') : 'none'}`,
+            `Roadside advert played: ${cr.advert_played ? 'Yes' : 'No'}`,
+            `Spoilt/lost property: ${cr.property_issue ? 'Yes' : 'No'}`,
+            `Speaker & wires brought in: ${cr.speaker_brought_in ? 'Yes' : 'No'}`,
+            `New customer of interest: ${cr.new_customer ? `Yes — ${cr.new_customer_details || 'no details'}` : 'No'}`,
+            `Unfortunate event: ${cr.unfortunate_event ? `Yes — ${cr.unfortunate_event_details || 'no details'}` : 'No'}`,
+          ].join(' · ')
+          await logActivity(username, 'submitted closing report', summary)
+        }
       }
     }
 
@@ -145,13 +258,29 @@ export async function POST(req: NextRequest) {
       WHERE staff_name = ${username} AND work_date = ${today}
     `
 
+    // Opener = earliest clock-in of the day; recompute after saving so the
+    // response can tell the user they earned the role.
+    let isOpener = false
+    if (action === 'in') {
+      const todayRows = await sql`
+        SELECT staff_name, actual_in FROM staff_times
+        WHERE work_date = ${today} AND actual_in IS NOT NULL
+      `
+      isOpener = openerOf(todayRows) === username
+    }
+
     await logActivity(
       enteredBy ?? username,
       action === 'in' ? 'clocked in' : 'clocked out',
-      time
+      isOpener ? `${time} — Opener for today` : (action === 'out' && isCloser ? `${time} — Closer for today` : time)
     )
 
-    return NextResponse.json(updated)
+    return NextResponse.json({
+      ...updated,
+      is_opener: isOpener,
+      is_closer: action === 'out' && isCloser,
+      closing_report_saved: closerReportJustSaved,
+    })
   } catch (e) {
     console.error('staff-times POST error:', e)
     const detail = e instanceof Error ? e.message : String(e)
