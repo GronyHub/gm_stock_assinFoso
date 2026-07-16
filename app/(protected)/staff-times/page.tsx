@@ -3,9 +3,11 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { fmtDate } from '@/lib/fmtDate'
 import HistoryPanel from '../item/_components/HistoryPanel'
+import CloserQuestionnaire, { ClosingAnswers } from '@/components/CloserQuestionnaire'
+import ClosingReportsList from '@/components/ClosingReportsList'
 
 const STAFF = ['joe', 'bino', 'james', 'rawlings']
-const TABS = ['Time In', 'Time Out', 'Analytics', 'History'] as const
+const TABS = ['Time In', 'Time Out', 'Analytics', 'Reports', 'History'] as const
 type Tab = typeof TABS[number]
 
 type Mine = { actual_in: string | null; actual_out: string | null }
@@ -213,6 +215,10 @@ export default function StaffTimesPage() {
   const [saving, setSaving] = useState(false)
   const [picking, setPicking] = useState(false)
   const [error, setError] = useState('')
+  const [roleBanner, setRoleBanner] = useState<string | null>(null)
+  const [closerPrompt, setCloserPrompt] = useState<{ time: string; present: string[] } | null>(null)
+  const [opener, setOpener] = useState<string | null>(null)
+  const [closer, setCloser] = useState<string | null>(null)
 
   // Admin state
   const [editRow, setEditRow] = useState<RecentRow | null>(null)
@@ -235,6 +241,8 @@ export default function StaffTimesPage() {
       setMine(d.mine ?? null)
       setToday(Array.isArray(d.today) ? d.today : [])
       setAll(Array.isArray(allRows) ? allRows : [])
+      setOpener(d.opener ?? null)
+      setCloser(d.closer ?? null)
       setLoading(false)
     }).catch(() => setLoading(false))
   }
@@ -278,15 +286,48 @@ export default function StaffTimesPage() {
     }
   }
 
-  async function record(action: 'in' | 'out', time: string) {
-    setSaving(true); setError('')
+  function getLocation(): Promise<GeolocationPosition> {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) { reject(new Error('Your browser does not support location services.')); return }
+      navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 })
+    })
+  }
+
+  async function record(action: 'in' | 'out', time: string, closingReport?: ClosingAnswers) {
+    setSaving(true); setError(''); setRoleBanner(null)
+
+    let latitude: number | null = null, longitude: number | null = null
+    try {
+      const pos = await getLocation()
+      latitude = pos.coords.latitude
+      longitude = pos.coords.longitude
+    } catch (e: any) {
+      setSaving(false)
+      if (e?.code === 1) setError('Location access was denied. Please enable location services for this site and try again.')
+      else setError(e?.message || 'Could not get your location. Make sure GPS is turned on and try again.')
+      return
+    }
+
     const res = await fetch('/api/staff-times/today', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, time }),
+      body: JSON.stringify({ action, time, latitude, longitude, closing_report: closingReport }),
     })
     setSaving(false); setPicking(false)
-    if (res.ok) { const u = await res.json(); setMine(u); fetchData() }
-    else { const d = await res.json(); setError(d.error ?? 'Failed to save') }
+    if (res.ok) {
+      const u = await res.json()
+      setMine(u)
+      setCloserPrompt(null)
+      if (u.is_opener) setRoleBanner('🌅 You are the Opener for today!')
+      else if (u.is_closer) setRoleBanner('🌙 You are the Closer for today — closing report received. Thank you, and good night!')
+      fetchData()
+    } else {
+      const d = await res.json()
+      if (res.status === 409 && d.requires_closing_report) {
+        setCloserPrompt({ time, present: Array.isArray(d.present_staff) ? d.present_staff : [] })
+      } else {
+        setError(d.error ?? 'Failed to save')
+      }
+    }
   }
 
   const todayStr = new Date().toLocaleDateString('en-GB', { timeZone: 'Africa/Accra', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
@@ -315,10 +356,31 @@ export default function StaffTimesPage() {
 
       {tab === 'Analytics' ? (
         <AnalyticsTab all={all} />
+      ) : tab === 'Reports' ? (
+        <div className="space-y-2">
+          <p className="text-xs text-gray-400">End-of-day reports submitted by the Closer (the last staff member to clock out).</p>
+          <ClosingReportsList />
+        </div>
       ) : tab === 'History' ? (
         <AttendanceHistory />
       ) : (
         <div className="space-y-5">
+          {closerPrompt && (
+            <CloserQuestionnaire
+              presentStaff={closerPrompt.present}
+              saving={saving}
+              onSubmit={answers => record('out', closerPrompt.time, answers)}
+              onCancel={() => setCloserPrompt(null)}
+            />
+          )}
+
+          {roleBanner && (
+            <div className="flex items-start justify-between gap-2 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+              <p className="text-sm font-semibold text-blue-800">{roleBanner}</p>
+              <button onClick={() => setRoleBanner(null)} className="text-blue-300 hover:text-blue-500 font-bold leading-none">×</button>
+            </div>
+          )}
+
           <ActionSection
             action={action}
             mine={mine}
@@ -348,7 +410,11 @@ export default function StaffTimesPage() {
                     const row = today.find(r => r.staff_name === name)
                     return (
                       <tr key={name}>
-                        <td className="px-3 py-2.5 font-medium capitalize text-gray-900">{name}</td>
+                        <td className="px-3 py-2.5 font-medium capitalize text-gray-900">
+                          {name}
+                          {opener === name && <span title="Opener" className="ml-1">🌅</span>}
+                          {closer === name && <span title="Closer" className="ml-1">🌙</span>}
+                        </td>
                         <td className="px-3 py-2.5 text-center text-green-700">{row?.actual_in ?? <span className="text-gray-300">—</span>}</td>
                         <td className="px-3 py-2.5 text-center text-orange-600">{row?.actual_out ?? <span className="text-gray-300">—</span>}</td>
                       </tr>
