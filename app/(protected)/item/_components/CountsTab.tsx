@@ -1,6 +1,8 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
+import { useSession } from 'next-auth/react'
 import { usePolling } from '@/lib/usePolling'
+import { isOwnerLevel } from '@/lib/roles'
 import HistoryPanel from './HistoryPanel'
 
 type Item = { id: number; item_name: string; cf_group: string | null }
@@ -165,6 +167,8 @@ type Props = {
 }
 
 export default function CountsTab({ items, groupFilter, search, violation }: Props) {
+  const { data: session } = useSession()
+  const canDelete = isOwnerLevel(session?.user as any)
   const [records, setRecords] = useState<CountRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [showHistory, setShowHistory] = useState(false)
@@ -246,6 +250,17 @@ export default function CountsTab({ items, groupFilter, search, violation }: Pro
       const updated: CountRecord = await res.json()
       setRecords(prev => prev.map(r => r.id === editingId ? { ...r, ...updated } : r))
       setEditingId(null)
+    }
+  }
+
+  async function deleteCount(r: CountRecord) {
+    if (!confirm(`Delete the count of ${Number(r.quantity_counted)} for "${r.item_name}" on ${fmtShort(r.count_date)}? This changes the loss/gain math from that day onward.`)) return
+    const res = await fetch(`/api/stock/counts/${r.id}`, { method: 'DELETE' })
+    if (res.ok) {
+      setRecords(prev => prev.filter(x => x.id !== r.id))
+      if (editingId === r.id) setEditingId(null)
+    } else {
+      alert((await res.json().catch(() => null))?.error ?? 'Could not delete count.')
     }
   }
 
@@ -372,10 +387,18 @@ export default function CountsTab({ items, groupFilter, search, violation }: Pro
                   <td className="px-1 py-1 text-gray-500 border border-black">{r.source ?? '—'}</td>
                   <td className="px-1 py-1 text-gray-500 italic border border-black">{r.notes ?? '—'}</td>
                   <td className="px-1 py-1 border border-black">
-                    <button onClick={() => editingId === r.id ? setEditingId(null) : startEdit(r)}
-                      className="text-[9px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded hover:bg-blue-100 whitespace-nowrap">
-                      {editingId === r.id ? 'Close' : 'Edit'}
-                    </button>
+                    <div className="flex gap-0.5 justify-end whitespace-nowrap">
+                      <button onClick={() => editingId === r.id ? setEditingId(null) : startEdit(r)}
+                        className="text-[9px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded hover:bg-blue-100">
+                        {editingId === r.id ? 'Close' : 'Edit'}
+                      </button>
+                      {canDelete && (
+                        <button onClick={() => deleteCount(r)}
+                          className="text-[9px] text-red-500 font-semibold bg-red-50 px-1.5 py-0.5 rounded hover:bg-red-100">
+                          Del
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
                 {editingId === r.id && (
