@@ -138,9 +138,11 @@ function buildPackChainRows(packRows: ComputedRow[], singlesRows: ComputedRow[])
    (counted more than expected, e.g. 3 → 46 overnight) means a pack was
    physically opened — so the packs section should show a matching GMC take or
    a count loss that day. When it shows neither, the pack take was never
-   recorded anywhere. These distort every gain/loss, so they're called out. */
-function packChainOmissions(row: PackChainRow, unitsPerPack: number, packName: string): string | null {
-  const notes: string[] = []
+   recorded anywhere. Each finding carries a fix: the record to add (or
+   remove) that trades off against the gain and cancels it. */
+type Omission = { issue: string; fix: string }
+function packChainOmissions(row: PackChainRow, unitsPerPack: number, packName: string): Omission[] {
+  const notes: Omission[] = []
   const conv = numVal(row.singlesConvIn)
   const packGmc = numVal(row.packGmc)
   const packLoss = row.packLoss ?? 0 // >0 = packs missing at count, <0 = packs gained
@@ -148,6 +150,7 @@ function packChainOmissions(row: PackChainRow, unitsPerPack: number, packName: s
   const singlesGain = row.singlesLoss !== null && row.singlesLoss < -0.001 ? -row.singlesLoss : 0
   if (singlesGain > 0) {
     const packsEst = unitsPerPack > 0 ? singlesGain / unitsPerPack : null
+    const estN = packsEst !== null ? Math.max(1, Math.round(packsEst)) : 1
     const est = packsEst !== null
       ? `≈${packsEst % 1 === 0 ? packsEst : packsEst.toFixed(1)} pack${packsEst > 1.05 ? 's' : ''}`
       : 'a pack'
@@ -155,28 +158,34 @@ function packChainOmissions(row: PackChainRow, unitsPerPack: number, packName: s
       if (packLoss > 0.001) {
         // Pack count already shows the packs went missing — the two sides agree
         // a pack was opened; only the GMC record is missing.
-        notes.push(
-          `+${fmtN(singlesGain)} singles suggest ${est} was used by GMC, and the packs side lost ${fmtN(packLoss)} at count — `
-          + `the pack was opened but never recorded on GMC; recording it would explain both sides`
-        )
+        notes.push({
+          issue: `+${fmtN(singlesGain)} singles suggest ${est} was used by GMC, and the packs side lost ${fmtN(packLoss)} at count — `
+            + `the pack was opened but never recorded on GMC`,
+          fix: `record a GMC sale of ${estN} ${packName} on this date — one record cancels both the +${fmtN(singlesGain)} singles gain and the -${fmtN(packLoss)} pack loss`,
+        })
       } else {
         // Packs side shows NO loss and NO GMC deduction — the take isn't
         // reflected anywhere on the pack section.
-        notes.push(
-          `+${fmtN(singlesGain)} singles suggest ${est} was used by GMC, but the ${packName} section shows no GMC and no loss/deduction that day — `
-          + `the pack take was not recorded anywhere`
-        )
+        notes.push({
+          issue: `+${fmtN(singlesGain)} singles suggest ${est} was used by GMC, but the ${packName} section shows no GMC and no loss/deduction that day — `
+            + `the pack take was not recorded anywhere`,
+          fix: `record a GMC sale of ${estN} ${packName} on this date to cancel the +${fmtN(singlesGain)} singles gain; if the packs then show a gain, that day's pack count still included the opened pack — correct the pack count too`,
+        })
       }
     } else {
-      notes.push(`+${fmtN(singlesGain)} singles beyond what the recorded pack conversions explain`)
+      notes.push({
+        issue: `+${fmtN(singlesGain)} singles beyond what the recorded pack conversions explain`,
+        fix: `recount the singles, or record an extra GMC pack if another one was opened`,
+      })
     }
   }
 
   if (row.singlesExp !== null && row.singlesExp < -0.001) {
-    notes.push(
-      `more singles used than were available${(packGmc === 0 && conv === 0) ? ' while the packs section shows no GMC deduction' : ''} — `
-      + `a GMC pack record is missing`
-    )
+    notes.push({
+      issue: `more singles used than were available${(packGmc === 0 && conv === 0) ? ' while the packs section shows no GMC deduction' : ''} — `
+        + `a GMC pack record is missing`,
+      fix: `record the GMC pack that supplied these singles — it cancels the shortfall`,
+    })
   }
 
   // Pack-side gains, cross-checked against GMC and the singles side. A pack
@@ -192,22 +201,30 @@ function packChainOmissions(row: PackChainRow, unitsPerPack: number, packName: s
     const singlesLostTheConv = unitsPerPack > 0 && singlesLost > 0
       && Math.abs(singlesLost - packGain * unitsPerPack) <= unitsPerPack * 0.25
     if (gmcMatchesGain && singlesLostTheConv) {
-      notes.push(
-        `+${fmtN(packGain)} pack${plural} gained while GMC shows ${fmtN(packGmc)} taken and the singles side lost ${fmtN(singlesLost)} — `
-        + `the GMC was recorded but the pack was never actually opened; that GMC record may be wrong or duplicated`
-      )
+      notes.push({
+        issue: `+${fmtN(packGain)} pack${plural} gained while GMC shows ${fmtN(packGmc)} taken and the singles side lost ${fmtN(singlesLost)} — `
+          + `the GMC was recorded but the pack was never actually opened`,
+        fix: `remove (or reduce) that GMC record — it cancels both the +${fmtN(packGain)} pack gain and the -${fmtN(singlesLost)} singles loss`,
+      })
     } else if (gmcMatchesGain) {
-      notes.push(
-        `+${fmtN(packGain)} pack${plural} gained, matching the ${fmtN(packGmc)} taken on GMC — `
-        + `the pack may not have actually been opened; check that GMC record`
-      )
+      notes.push({
+        issue: `+${fmtN(packGain)} pack${plural} gained, matching the ${fmtN(packGmc)} taken on GMC — `
+          + `the pack may not have actually been opened`,
+        fix: `verify that GMC record; removing it cancels the +${fmtN(packGain)} pack gain`,
+      })
     } else if (packBl === 0) {
-      notes.push(`+${fmtN(packGain)} pack${plural} appeared with no bill recorded — a purchase/bill record is missing`)
+      notes.push({
+        issue: `+${fmtN(packGain)} pack${plural} appeared with no bill recorded`,
+        fix: `record the missing purchase bill of ${fmtN(packGain)} ${packName} — it cancels this gain`,
+      })
     } else {
-      notes.push(`+${fmtN(packGain)} pack${plural} beyond what the records explain`)
+      notes.push({
+        issue: `+${fmtN(packGain)} pack${plural} beyond what the records explain`,
+        fix: `recount the packs or check the bill quantity for this date`,
+      })
     }
   }
-  return notes.length ? notes.join('; ') : null
+  return notes
 }
 
 function rowSortVal(row: SummaryRow, col: SortCol): number | string {
@@ -773,9 +790,9 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
               </thead>
               <tbody>
                 {packChainRows.map((row, i) => {
-                  const omission = packChainOmissions(row, numVal(item.units_per_pack), item.item_name)
+                  const omissions = packChainOmissions(row, numVal(item.units_per_pack), item.item_name)
                   return (
-                  <tr key={i} className={`border-b border-gray-200 ${(row.singlesLoss ?? 0) > 0.001 || (row.packLoss ?? 0) > 0.001 ? 'bg-red-50' : omission ? 'bg-orange-50' : ''}`}>
+                  <tr key={i} className={`border-b border-gray-200 ${(row.singlesLoss ?? 0) > 0.001 || (row.packLoss ?? 0) > 0.001 ? 'bg-red-50' : omissions.length > 0 ? 'bg-orange-50' : ''}`}>
                     <td className="pl-1 py-0.5 font-bold text-gray-500 whitespace-nowrap overflow-hidden">
                       {onDateClick ? (
                         <button onClick={() => onDateClick(row.date, item.item_name)} className="text-blue-600 hover:underline">
@@ -814,7 +831,12 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                         : <span className="text-gray-400">0</span>}
                     </td>
                     <td className="text-left py-0.5 pl-1 pr-0.5 border-l-2 border-l-gray-600 whitespace-normal break-words leading-tight">
-                      {omission ? <span className="text-orange-700 font-semibold">{omission}</span> : <span className="text-gray-300">—</span>}
+                      {omissions.length === 0 ? <span className="text-gray-300">—</span> : omissions.map((o, oi) => (
+                        <div key={oi} className={oi > 0 ? 'mt-1 pt-1 border-t border-orange-200' : ''}>
+                          <span className="text-orange-700 font-semibold">{o.issue}</span>
+                          <span className="text-blue-700"> 💡 Fix: {o.fix}</span>
+                        </div>
+                      ))}
                     </td>
                   </tr>
                   )
