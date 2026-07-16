@@ -742,7 +742,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
   const packChainBreakdownNames = targetComputed
     ? Array.from(new Set(targetComputed.flatMap(r => (r.wic_breakdown ?? []).map(b => b.name)))).sort()
     : []
-  const packChainColW = Math.max(6, Math.min(12, Math.floor(40 / Math.max(1, packChainBreakdownNames.length))))
+  const packChainColW = Math.max(4, Math.min(6, Math.floor(12 / Math.max(1, packChainBreakdownNames.length))))
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg overflow-hidden mt-0.5">
@@ -820,26 +820,29 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
               Combined view: {item.item_name} → {targetName} → services
             </p>
             <table className="w-full table-fixed border-collapse text-[8px]">
+              {/* Date is a fixed pixel width sized to its text and frozen
+                  (sticky left); numeric columns are as thin as their numbers;
+                  OMISSIONS has no width so it absorbs all remaining space. */}
               <colgroup>
-                <col style={{width:'10%'}} />
-                <col style={{width:'5%'}} />
-                <col style={{width:'5%'}} />
-                <col style={{width:'5%'}} />
-                <col style={{width:'5%'}} />
-                <col style={{width:'5%'}} />
-                <col style={{width:'5%'}} />
-                <col style={{width:'5%'}} />
-                <col style={{width:'5%'}} />
+                <col style={{width:'62px'}} />
+                <col style={{width:'3.5%'}} />
+                <col style={{width:'3.5%'}} />
+                <col style={{width:'3.5%'}} />
+                <col style={{width:'3.5%'}} />
+                <col style={{width:'3.5%'}} />
+                <col style={{width:'3.5%'}} />
+                <col style={{width:'3.5%'}} />
+                <col style={{width:'3.5%'}} />
                 {packChainBreakdownNames.map(n => <col key={n} style={{width:`${packChainColW}%`}} />)}
-                <col style={{width:'6%'}} />
-                <col style={{width:'6%'}} />
-                <col style={{width:'6%'}} />
-                <col style={{width:'7%'}} />
-                <col style={{width:'14%'}} />
+                <col style={{width:'3.5%'}} />
+                <col style={{width:'3.5%'}} />
+                <col style={{width:'3.5%'}} />
+                <col style={{width:'5%'}} />
+                <col />
               </colgroup>
               <thead className="sticky top-0 z-10">
                 <tr className="bg-amber-500 text-gray-800 font-bold">
-                  <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-left pl-1 align-bottom">DATE</th>
+                  <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-left pl-0.5 align-bottom sticky left-0 z-20 bg-amber-500">DATE</th>
                   <th colSpan={6} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">
                     {item.item_name}
                   </th>
@@ -878,8 +881,8 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                 {packChainRows.map((row, i) => {
                   const omissions = packChainOmissionsByDate.get(row.date) ?? []
                   return (
-                  <tr key={i} className={`border-b border-gray-200 ${(row.singlesLoss ?? 0) > 0.001 || (row.packLoss ?? 0) > 0.001 ? 'bg-red-50' : omissions.length > 0 ? 'bg-orange-50' : ''}`}>
-                    <td className="pl-1 py-0.5 font-bold text-gray-500 whitespace-nowrap overflow-hidden">
+                  <tr key={i} className={`border-b border-gray-200 ${(row.singlesLoss ?? 0) > 0.001 || (row.packLoss ?? 0) > 0.001 ? 'bg-red-50' : omissions.length > 0 ? 'bg-orange-50' : 'bg-white'}`}>
+                    <td className="pl-0.5 py-0.5 font-bold text-gray-500 whitespace-nowrap sticky left-0 bg-inherit">
                       {onDateClick ? (
                         <button onClick={() => onDateClick(row.date, item.item_name)} className="text-blue-600 hover:underline">
                           {fmtDate(row.date)}
