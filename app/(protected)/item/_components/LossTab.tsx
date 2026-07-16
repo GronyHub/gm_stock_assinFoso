@@ -179,9 +179,33 @@ function packChainOmissions(row: PackChainRow, unitsPerPack: number, packName: s
     )
   }
 
+  // Pack-side gains, cross-checked against GMC and the singles side. A pack
+  // gain matching the day's GMC take means the GMC was recorded but the pack
+  // was never physically opened; a gain with no bill means a purchase record
+  // is missing.
   const packGain = packLoss < -0.001 ? -packLoss : 0
   if (packGain > 0) {
-    notes.push(`+${fmtN(packGain)} pack${packGain === 1 ? '' : 's'} appeared without a bill record`)
+    const packBl = numVal(row.packBl)
+    const singlesLost = row.singlesLoss !== null && row.singlesLoss > 0.001 ? row.singlesLoss : 0
+    const plural = packGain === 1 ? '' : 's'
+    const gmcMatchesGain = packGmc > 0 && Math.abs(packGain - packGmc) < 0.5
+    const singlesLostTheConv = unitsPerPack > 0 && singlesLost > 0
+      && Math.abs(singlesLost - packGain * unitsPerPack) <= unitsPerPack * 0.25
+    if (gmcMatchesGain && singlesLostTheConv) {
+      notes.push(
+        `+${fmtN(packGain)} pack${plural} gained while GMC shows ${fmtN(packGmc)} taken and the singles side lost ${fmtN(singlesLost)} — `
+        + `the GMC was recorded but the pack was never actually opened; that GMC record may be wrong or duplicated`
+      )
+    } else if (gmcMatchesGain) {
+      notes.push(
+        `+${fmtN(packGain)} pack${plural} gained, matching the ${fmtN(packGmc)} taken on GMC — `
+        + `the pack may not have actually been opened; check that GMC record`
+      )
+    } else if (packBl === 0) {
+      notes.push(`+${fmtN(packGain)} pack${plural} appeared with no bill recorded — a purchase/bill record is missing`)
+    } else {
+      notes.push(`+${fmtN(packGain)} pack${plural} beyond what the records explain`)
+    }
   }
   return notes.length ? notes.join('; ') : null
 }
