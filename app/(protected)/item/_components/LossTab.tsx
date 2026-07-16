@@ -145,6 +145,20 @@ function buildPackChainRows(packRows: ComputedRow[], singlesRows: ComputedRow[])
 type Omission = { issue: string; fix: string }
 type LossLedgerEntry = { date: string; original: number; remaining: number }
 
+// Every lost 4x6 paper is valued as a missed passport print: ₵20 per single.
+// Lost packs are converted to papers first (packs × papers-per-pack × ₵20) --
+// never valued at the pack's own selling price, because a missing pack is
+// treated as papers that were used for passport work but never recorded.
+const PAPER_SELL_PRICE = 20
+
+// Net ₵ value of a row's losses/gains: packs are worth their papers.
+// Positive = money lost, negative = gain. Null when the row has no L/G at all.
+function rowLossCedis(row: PackChainRow, unitsPerPack: number): number | null {
+  if (row.packLoss === null && row.singlesLoss === null) return null
+  const packPapers = (row.packLoss ?? 0) * (unitsPerPack > 0 ? unitsPerPack : 0)
+  return parseFloat((((row.singlesLoss ?? 0) + packPapers) * PAPER_SELL_PRICE).toFixed(2))
+}
+
 // Consume a gain from earlier unsettled losses, most recent first. Returns
 // which losses it cancels against and how much of the gain found no match.
 function settleAgainstLedger(ledger: LossLedgerEntry[], gain: number) {
@@ -820,6 +834,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                 <col style={{width:'6%'}} />
                 <col style={{width:'6%'}} />
                 <col style={{width:'6%'}} />
+                <col style={{width:'7%'}} />
                 <col style={{width:'14%'}} />
               </colgroup>
               <thead className="sticky top-0 z-10">
@@ -830,6 +845,10 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                   </th>
                   <th colSpan={5 + packChainBreakdownNames.length} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">
                     {targetName}
+                  </th>
+                  <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600"
+                    title={`Losses valued in cedis at ₵${PAPER_SELL_PRICE} per single paper. Pack losses count as packs × papers-per-pack × ₵${PAPER_SELL_PRICE} — treated as papers used for passport work but never recorded, NOT at the pack's own selling price.`}>
+                    LOSS ₵
                   </th>
                   <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600"
                     title="Records that should exist but are missing — e.g. singles jumped up with no GMC pack recorded. These distort the gains/losses.">
@@ -897,6 +916,15 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                         : row.singlesLoss < -0.001 ? <span className="text-green-600">+{fmtN(Math.abs(row.singlesLoss))}</span>
                         : <span className="text-gray-400">0</span>}
                     </td>
+                    <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 whitespace-nowrap">
+                      {(() => {
+                        const cedis = rowLossCedis(row, numVal(item.units_per_pack))
+                        if (cedis === null) return <span className="text-gray-300">—</span>
+                        if (cedis > 0.001) return <span className="text-red-600">-₵{fmtN(cedis)}</span>
+                        if (cedis < -0.001) return <span className="text-green-600">+₵{fmtN(Math.abs(cedis))}</span>
+                        return <span className="text-gray-400">0</span>
+                      })()}
+                    </td>
                     <td className="text-left py-0.5 pl-1 pr-0.5 border-l-2 border-l-gray-600 whitespace-normal break-words leading-tight">
                       {omissions.length === 0 ? <span className="text-gray-300">—</span> : omissions.map((o, oi) => (
                         <div key={oi} className={oi > 0 ? 'mt-1 pt-1 border-t border-orange-200' : ''}>
@@ -908,6 +936,22 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                   </tr>
                   )
                 })}
+                {(() => {
+                  const totalCedis = packChainRows.reduce((s, r) => s + (rowLossCedis(r, numVal(item.units_per_pack)) ?? 0), 0)
+                  return (
+                    <tr className="bg-gray-100 border-t-2 border-gray-400 font-bold">
+                      <td colSpan={12 + packChainBreakdownNames.length} className="text-right pr-1 py-1 text-gray-600">
+                        TOTAL (net of gains)
+                      </td>
+                      <td className="text-center py-1 border-l-2 border-l-gray-600 whitespace-nowrap">
+                        {totalCedis > 0.001 ? <span className="text-red-600">-₵{fmtN(parseFloat(totalCedis.toFixed(2)))}</span>
+                          : totalCedis < -0.001 ? <span className="text-green-600">+₵{fmtN(Math.abs(parseFloat(totalCedis.toFixed(2))))}</span>
+                          : <span className="text-gray-400">0</span>}
+                      </td>
+                      <td className="border-l-2 border-l-gray-600" />
+                    </tr>
+                  )
+                })()}
               </tbody>
             </table>
           </>
