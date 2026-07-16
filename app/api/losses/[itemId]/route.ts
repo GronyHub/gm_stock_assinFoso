@@ -1,9 +1,13 @@
 import sql from '@/lib/db'
+import { ensureCountRevisions } from '@/lib/countRevisions'
 import { NextResponse } from 'next/server'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ itemId: string }> }) {
   const { itemId } = await params
   const id = Number(itemId)
+
+  // The main query joins stock_count_revisions, which is created lazily.
+  await ensureCountRevisions()
 
   const rows = await sql`
     WITH daily_converted_in AS (
@@ -64,6 +68,20 @@ export async function GET(_req: Request, { params }: { params: Promise<{ itemId:
       WHERE item_id = ${id}
       GROUP BY count_date::date
     ),
+    daily_count_history AS (
+      -- Previous values of edited counts, oldest change first, so the cell
+      -- can show what the count was before and who took/changed it.
+      SELECT count_date::date AS d,
+             json_agg(json_build_object(
+               'old_qty', old_qty,
+               'old_by', old_counted_by,
+               'changed_by', changed_by,
+               'changed_at', changed_at::date::text
+             ) ORDER BY changed_at) AS history
+      FROM stock_count_revisions
+      WHERE item_id = ${id}
+      GROUP BY count_date::date
+    ),
     daily_wic AS (
       SELECT sr.receipt_date::date AS d, SUM(srl.quantity) AS qty
       FROM sales_receipt_lines srl
@@ -116,6 +134,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ itemId:
       ad.d::text AS date,
       dc.qty_counted,
       dc.counted_by,
+      dch.history AS count_history,
       COALESCE(dw.qty, 0) + COALESCE(dcs.qty, 0) AS wic_qty,
       dg.qty  AS gmc_qty,
       db.qty  AS bills_qty,
@@ -132,6 +151,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ itemId:
     LEFT JOIN daily_aliases da ON da.d = ad.d
     LEFT JOIN daily_converted_in dci ON dci.d = ad.d
     LEFT JOIN daily_consumed_via_service dcs ON dcs.d = ad.d
+    LEFT JOIN daily_count_history dch ON dch.d = ad.d
     ORDER BY ad.d ASC
   `
 

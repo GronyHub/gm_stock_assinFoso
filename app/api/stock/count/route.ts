@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
+import { recordCountRevision } from '@/lib/countRevisions'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
@@ -26,11 +27,21 @@ export async function POST(req: NextRequest) {
   // second same-day count (e.g. a manual recount after the daily count)
   // would double the counted quantity. Replace today's count instead.
   const [existing] = await sql`
-    SELECT id FROM stock_counts
+    SELECT id, quantity_counted, counted_by FROM stock_counts
     WHERE item_id = ${itemId} AND count_date::date = ${today}
     ORDER BY id DESC LIMIT 1
   `
   if (existing) {
+    if (Number(existing.quantity_counted) !== Number(qty)) {
+      await recordCountRevision({
+        stockCountId: existing.id,
+        itemId: Number(itemId),
+        countDate: today,
+        oldQty: existing.quantity_counted,
+        oldCountedBy: existing.counted_by,
+        changedBy: countedBy,
+      })
+    }
     await sql`
       UPDATE stock_counts
       SET quantity_counted = ${qty}, notes = ${notes || null}, source = 'app', counted_by = ${countedBy}

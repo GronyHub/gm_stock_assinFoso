@@ -24,10 +24,13 @@ type SummaryRow = {
   cnv: number
 }
 
+type CountRevision = { old_qty: string | number | null; old_by: string | null; changed_by: string | null; changed_at: string }
+
 type DayRow = {
   date: string
   qty_counted: string | null
   counted_by: string | null
+  count_history: CountRevision[] | null
   wic_qty: string | null
   gmc_qty: string | null
   bills_qty: string | null
@@ -88,6 +91,33 @@ function initialOf(name: string | null | undefined): string | null {
   return t.charAt(0).toUpperCase()
 }
 
+// Edit history of a count, one line per change, for the CNT cell tooltip.
+// Native tooltips don't exist on phones, so the same text is also shown via
+// tap (alert) when a count has history.
+function countHistoryText(history: CountRevision[] | null | undefined): string | null {
+  if (!history || history.length === 0) return null
+  return history.map(h =>
+    `Was ${h.old_qty ?? '?'}${h.old_by ? ` (counted by ${h.old_by})` : ''} — changed by ${h.changed_by ?? 'unknown'} on ${fmtDate(h.changed_at)}`
+  ).join('\n')
+}
+
+// CNT cell content: value, counter's initial, and an amber * that carries the
+// edit history as a tooltip (hover) and shows it on tap (phones).
+function CntValue({ qty, countedBy, history }: { qty: string | null; countedBy: string | null; history: CountRevision[] | null | undefined }) {
+  const text = fmtQs(qty)
+  const hist = text !== '—' ? countHistoryText(history) : null
+  return (
+    <span title={hist ?? undefined} onClick={hist ? () => alert(hist) : undefined}
+      className={hist ? 'cursor-help' : undefined}>
+      {text}
+      {text !== '—' && initialOf(countedBy) && (
+        <span className="text-blue-500 text-[6px]"> ({initialOf(countedBy)})</span>
+      )}
+      {hist && <span className="text-amber-600 font-bold" title={hist}>*</span>}
+    </span>
+  )
+}
+
 function computeRows(rows: DayRow[]): ComputedRow[] {
   const result: ComputedRow[] = []
   let prev: number | null = null
@@ -114,10 +144,10 @@ function computeRows(rows: DayRow[]): ComputedRow[] {
    convert into, by date, so packs/singles/services can be read as one table. ── */
 type PackChainRow = {
   date: string
-  packCnt: string | null; packCntBy: string | null
+  packCnt: string | null; packCntBy: string | null; packCntHistory: CountRevision[] | null
   packBl: string | null; packGmc: string | null; packWic: string | null
   packExp: number | null; packLoss: number | null
-  singlesCnt: string | null; singlesCntBy: string | null; singlesConvIn: string | null
+  singlesCnt: string | null; singlesCntBy: string | null; singlesCntHistory: CountRevision[] | null; singlesConvIn: string | null
   singlesBreakdown: { name: string; qty: number; amount: number }[]
   singlesUsed: number; singlesExp: number | null; singlesLoss: number | null
 }
@@ -125,18 +155,19 @@ function buildPackChainRows(packRows: ComputedRow[], singlesRows: ComputedRow[])
   const map = new Map<string, PackChainRow>()
   for (const r of packRows) {
     map.set(r.date, {
-      date: r.date, packCnt: r.qty_counted, packCntBy: r.counted_by, packBl: r.bills_qty, packGmc: r.gmc_qty, packWic: r.wic_qty,
+      date: r.date, packCnt: r.qty_counted, packCntBy: r.counted_by, packCntHistory: r.count_history, packBl: r.bills_qty, packGmc: r.gmc_qty, packWic: r.wic_qty,
       packExp: r.expected_soh, packLoss: r.loss,
-      singlesCnt: null, singlesCntBy: null, singlesConvIn: null, singlesBreakdown: [], singlesUsed: 0, singlesExp: null, singlesLoss: null,
+      singlesCnt: null, singlesCntBy: null, singlesCntHistory: null, singlesConvIn: null, singlesBreakdown: [], singlesUsed: 0, singlesExp: null, singlesLoss: null,
     })
   }
   for (const r of singlesRows) {
     const existing = map.get(r.date) ?? {
-      date: r.date, packCnt: null, packCntBy: null, packBl: null, packGmc: null, packWic: null, packExp: null, packLoss: null,
-      singlesCnt: null, singlesCntBy: null, singlesConvIn: null, singlesBreakdown: [], singlesUsed: 0, singlesExp: null, singlesLoss: null,
+      date: r.date, packCnt: null, packCntBy: null, packCntHistory: null, packBl: null, packGmc: null, packWic: null, packExp: null, packLoss: null,
+      singlesCnt: null, singlesCntBy: null, singlesCntHistory: null, singlesConvIn: null, singlesBreakdown: [], singlesUsed: 0, singlesExp: null, singlesLoss: null,
     }
     existing.singlesCnt = r.qty_counted
     existing.singlesCntBy = r.counted_by
+    existing.singlesCntHistory = r.count_history
     existing.singlesConvIn = r.converted_in_qty
     existing.singlesBreakdown = r.wic_breakdown ?? []
     existing.singlesUsed = r.used
@@ -948,10 +979,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                       ) : fmtDate(row.date)}
                     </td>
                     <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-gray-900 whitespace-nowrap">
-                      {fmtQs(row.packCnt)}
-                      {fmtQs(row.packCnt) !== '—' && initialOf(row.packCntBy) && (
-                        <span className="text-blue-500 text-[6px]"> ({initialOf(row.packCntBy)})</span>
-                      )}
+                      <CntValue qty={row.packCnt} countedBy={row.packCntBy} history={row.packCntHistory} />
                     </td>
                     <td className="text-center py-0.5 font-bold border-l border-gray-300 text-blue-600">{fmtQs(row.packBl)}</td>
                     <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.packGmc)}</td>
@@ -964,10 +992,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                         : <span className="text-gray-400">0</span>}
                     </td>
                     <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-gray-900 whitespace-nowrap">
-                      {fmtQs(row.singlesCnt)}
-                      {fmtQs(row.singlesCnt) !== '—' && initialOf(row.singlesCntBy) && (
-                        <span className="text-blue-500 text-[6px]"> ({initialOf(row.singlesCntBy)})</span>
-                      )}
+                      <CntValue qty={row.singlesCnt} countedBy={row.singlesCntBy} history={row.singlesCntHistory} />
                     </td>
                     <td className="text-center py-0.5 font-bold border-l border-gray-300 text-teal-600">{fmtQs(row.singlesConvIn)}</td>
                     {packChainBreakdownNames.map(n => {
@@ -1113,10 +1138,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                     ) : fmtDate(row.date)}
                   </td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-900 whitespace-nowrap">
-                    {fmtQs(row.qty_counted)}
-                    {fmtQs(row.qty_counted) !== '—' && initialOf(row.counted_by) && (
-                      <span className="text-blue-500 text-[6px]"> ({initialOf(row.counted_by)})</span>
-                    )}
+                    <CntValue qty={row.qty_counted} countedBy={row.counted_by} history={row.count_history} />
                   </td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-teal-600">{fmtQs(row.converted_in_qty)}</td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-400 bg-black text-white">{fmtN(row.available)}</td>
@@ -1214,10 +1236,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                       : <span className="text-gray-400">0</span>}
                   </td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-900 whitespace-nowrap">
-                    {fmtQs(row.qty_counted)}
-                    {fmtQs(row.qty_counted) !== '—' && initialOf(row.counted_by) && (
-                      <span className="text-blue-500 text-[6px]"> ({initialOf(row.counted_by)})</span>
-                    )}
+                    <CntValue qty={row.qty_counted} countedBy={row.counted_by} history={row.count_history} />
                   </td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.wic_qty)}</td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.gmc_qty)}</td>
