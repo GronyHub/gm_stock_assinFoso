@@ -91,6 +91,25 @@ function initialOf(name: string | null | undefined): string | null {
   return t.charAt(0).toUpperCase()
 }
 
+/* Staff accountability for a loss row: the loss surfaced at this row's count,
+   so it happened somewhere between the PREVIOUS count and this one. The staff
+   to question are exactly those who clocked in during that window -- presence
+   is accountability for the shift, not proof of fault. */
+function staffToAsk(rows: PackChainRow[], idx: number, presence: Record<string, string[]>): { names: string[]; from: string | null } {
+  const row = rows[idx]
+  let from: string | null = null
+  for (let j = idx + 1; j < rows.length; j++) {
+    if (rows[j].packCnt !== null || rows[j].singlesCnt !== null) { from = rows[j].date; break }
+  }
+  const names = new Set<string>()
+  for (const [d, staff] of Object.entries(presence)) {
+    if ((from === null || d > from) && d <= row.date) staff.forEach(s => names.add(s))
+  }
+  return { names: Array.from(names).sort(), from }
+}
+
+function capName(s: string) { return s.charAt(0).toUpperCase() + s.slice(1) }
+
 // Edit history of a count, one line per change, for the CNT cell tooltip.
 // Native tooltips don't exist on phones, so the same text is also shown via
 // tap (alert) when a count has history.
@@ -716,6 +735,25 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
   const isPackChain = item.converts_to_item_id != null && /4x6/i.test(item.item_name) && /pack/i.test(item.item_name)
   const [targetDayRows, setTargetDayRows] = useState<DayRow[] | null>(null)
 
+  // Who clocked in on each date -- used to suggest which staff to question
+  // about a loss (those on duty between the previous count and the loss).
+  const [presence, setPresence] = useState<Record<string, string[]> | null>(null)
+
+  useEffect(() => {
+    if (!isPackChain) return
+    fetch('/api/staff-times/all').then(r => r.json())
+      .then(d => {
+        const map: Record<string, string[]> = {}
+        for (const r of (Array.isArray(d) ? d : [])) {
+          if (!r.actual_in || !r.work_date) continue
+          ;(map[r.work_date] ??= []).push(r.staff_name)
+        }
+        setPresence(map)
+      })
+      .catch(() => setPresence({}))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPackChain])
+
   // Trade-off notes recorded by users against specific rows (keyed by date).
   const [tradeoffs, setTradeoffs] = useState<Record<string, { note: string; done_by: string | null }>>({})
   const [toEditDate, setToEditDate] = useState<string | null>(null)
@@ -901,7 +939,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
               Combined view: {item.item_name} → {targetName} → services
             </p>
             <table className="table-fixed border-collapse text-[8px]"
-              style={{ width: `${62 + 11 * 36 + packChainBreakdownNames.length * 60 + 56 + 480 + 220}px` }}>
+              style={{ width: `${62 + 11 * 36 + packChainBreakdownNames.length * 60 + 56 + 140 + 480 + 220}px` }}>
               {/* Pixel-widths: date frozen at its text width, numeric columns as
                   thin as their numbers, OMISSIONS wide (480px) so its text stays
                   on 1-2 lines instead of growing the row height, TRADE-OFF at the
@@ -922,6 +960,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                 <col style={{width:'36px'}} />
                 <col style={{width:'36px'}} />
                 <col style={{width:'56px'}} />
+                <col style={{width:'140px'}} />
                 <col style={{width:'480px'}} />
                 <col style={{width:'220px'}} />
               </colgroup>
@@ -937,6 +976,10 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                   <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600"
                     title={`Losses valued in cedis at ₵${PAPER_SELL_PRICE} per single paper. Pack losses count as packs × papers-per-pack × ₵${PAPER_SELL_PRICE} — treated as papers used for passport work but never recorded, NOT at the pack's own selling price.`}>
                     LOSS ₵
+                  </th>
+                  <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600"
+                    title="Staff who clocked in between the previous count and this one — the loss happened on their watch, so start by asking them. Being on duty is accountability for the shift, not proof of fault.">
+                    ASK STAFF
                   </th>
                   <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600"
                     title="Records that should exist but are missing — e.g. singles jumped up with no GMC pack recorded. These distort the gains/losses.">
@@ -969,6 +1012,8 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
               <tbody>
                 {packChainRows.map((row, i) => {
                   const omissions = packChainOmissionsByDate.get(row.date) ?? []
+                  const hasLoss = (row.packLoss ?? 0) > 0.001 || (row.singlesLoss ?? 0) > 0.001
+                  const ask = hasLoss && presence ? staffToAsk(packChainRows, i, presence) : null
                   return (
                   <tr key={i} className={`border-b border-gray-200 ${(row.singlesLoss ?? 0) > 0.001 || (row.packLoss ?? 0) > 0.001 ? 'bg-red-50' : omissions.length > 0 ? 'bg-orange-50' : 'bg-white'}`}>
                     <td className="pl-0.5 py-0.5 font-bold text-gray-500 whitespace-nowrap sticky left-0 bg-inherit">
@@ -1020,6 +1065,20 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                         if (cedis < -0.001) return <span className="text-green-600">+₵{fmtN(Math.abs(cedis))}</span>
                         return <span className="text-gray-400">0</span>
                       })()}
+                    </td>
+                    <td className="text-left py-0.5 pl-1 pr-0.5 border-l-2 border-l-gray-600 whitespace-normal break-words leading-tight align-top">
+                      {!hasLoss ? <span className="text-gray-300">—</span>
+                        : !presence ? <span className="text-gray-300">…</span>
+                        : ask && ask.names.length > 0 ? (
+                          <>
+                            <span className="text-red-700 font-semibold">{ask.names.map(capName).join(', ')}</span>
+                            {ask.from && ask.from !== row.date && (
+                              <span className="block text-gray-400">on duty {fmtDate(ask.from)} → {fmtDate(row.date)}</span>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-orange-600">no clock-ins recorded for this period — attendance gap is itself a red flag</span>
+                        )}
                     </td>
                     <td className="text-left py-0.5 pl-1 pr-0.5 border-l-2 border-l-gray-600 whitespace-normal break-words leading-tight">
                       {omissions.length === 0 ? <span className="text-gray-300">—</span> : omissions.map((o, oi) => (
@@ -1074,6 +1133,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                           : totalCedis < -0.001 ? <span className="text-green-600">+₵{fmtN(Math.abs(parseFloat(totalCedis.toFixed(2))))}</span>
                           : <span className="text-gray-400">0</span>}
                       </td>
+                      <td className="border-l-2 border-l-gray-600" />
                       <td className="border-l-2 border-l-gray-600" />
                       <td className="border-l-2 border-l-gray-600" />
                     </tr>
