@@ -53,13 +53,26 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   const { id } = await params
   const [row] = await sql`
-    SELECT id, item_name, count_date::text AS count_date, quantity_counted FROM stock_counts WHERE id = ${Number(id)}
+    SELECT id, item_id, item_name, count_date::date::text AS count_date, quantity_counted, counted_by
+    FROM stock_counts WHERE id = ${Number(id)}
   `
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+  const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
+
+  // Keep the deleted value visible in the count cell (shown with a ✗).
+  await recordCountRevision({
+    stockCountId: Number(id),
+    itemId: row.item_id,
+    countDate: row.count_date,
+    oldQty: row.quantity_counted,
+    oldCountedBy: row.counted_by,
+    changedBy: actor,
+    action: 'deleted',
+  })
+
   await sql`DELETE FROM stock_counts WHERE id = ${Number(id)}`
 
-  const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
   await logActivity(actor, 'deleted stock count', `${row.item_name} · qty ${Number(row.quantity_counted)} on ${row.count_date}`)
   return NextResponse.json({ ok: true })
 }
