@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { createItemFromTypedName } from '@/lib/createItem'
+import { impossibleUsageWarnings } from '@/lib/usageCheck'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
@@ -74,7 +75,12 @@ export async function POST(req: NextRequest) {
     }
 
     await logActivity(enteredBy ?? 'Unknown', 'added sale receipt', `${receiptNumber} · ₵${total.toFixed(2)} on ${date}`)
-    return NextResponse.json({ ok: true, receiptNumber })
+
+    // Non-blocking sanity check: flag usage that exceeds what could have
+    // existed (e.g. papers used with no GMC pack recorded). The save still
+    // succeeds -- the warning tells the user what record is missing.
+    const warnings = await impossibleUsageWarnings(date)
+    return NextResponse.json({ ok: true, receiptNumber, warnings })
   } catch (e) {
     console.error('sales receipt POST error:', e)
     const detail = e instanceof Error ? e.message : String(e)

@@ -133,6 +133,31 @@ function buildPackChainRows(packRows: ComputedRow[], singlesRows: ComputedRow[])
   return Array.from(map.values()).sort((a, b) => b.date.localeCompare(a.date))
 }
 
+/* Omissions: records that should exist but don't. A gain on singles (counted
+   more than expected, e.g. 3 → 46 overnight) with no pack conversion recorded
+   that day means a pack was physically opened without a GMC record; usage
+   pushing expected stock below zero means the same. These distort every
+   gain/loss in the table, so they're called out per row. */
+function packChainOmissions(row: PackChainRow, unitsPerPack: number): string | null {
+  const notes: string[] = []
+  const conv = numVal(row.singlesConvIn)
+  const singlesGain = row.singlesLoss !== null && row.singlesLoss < -0.001 ? -row.singlesLoss : 0
+  if (singlesGain > 0) {
+    const packs = unitsPerPack > 0 ? ` (≈${(singlesGain / unitsPerPack).toFixed(1)} pack)` : ''
+    notes.push(conv === 0
+      ? `+${fmtN(singlesGain)} singles appeared with no GMC pack recorded${packs} — a pack was opened without recording it`
+      : `+${fmtN(singlesGain)} singles beyond what the records explain${packs}`)
+  }
+  if (row.singlesExp !== null && row.singlesExp < -0.001) {
+    notes.push('more singles used than were available — a GMC pack record is missing')
+  }
+  const packGain = row.packLoss !== null && row.packLoss < -0.001 ? -row.packLoss : 0
+  if (packGain > 0) {
+    notes.push(`+${fmtN(packGain)} pack${packGain === 1 ? '' : 's'} appeared without a bill record`)
+  }
+  return notes.length ? notes.join('; ') : null
+}
+
 function rowSortVal(row: SummaryRow, col: SortCol): number | string {
   switch (col) {
     case 'item_name': return row.item_name.toLowerCase()
@@ -659,6 +684,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                 <col style={{width:'6%'}} />
                 <col style={{width:'6%'}} />
                 <col style={{width:'6%'}} />
+                <col style={{width:'14%'}} />
               </colgroup>
               <thead className="sticky top-0 z-10">
                 <tr className="bg-amber-500 text-gray-800 font-bold">
@@ -668,6 +694,10 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                   </th>
                   <th colSpan={5 + packChainBreakdownNames.length} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">
                     {targetName}
+                  </th>
+                  <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600"
+                    title="Records that should exist but are missing — e.g. singles jumped up with no GMC pack recorded. These distort the gains/losses.">
+                    OMISSIONS
                   </th>
                 </tr>
                 <tr className="bg-amber-400 text-gray-800 font-bold">
@@ -690,8 +720,10 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                 </tr>
               </thead>
               <tbody>
-                {packChainRows.map((row, i) => (
-                  <tr key={i} className={`border-b border-gray-200 ${(row.singlesLoss ?? 0) > 0.001 || (row.packLoss ?? 0) > 0.001 ? 'bg-red-50' : ''}`}>
+                {packChainRows.map((row, i) => {
+                  const omission = packChainOmissions(row, numVal(item.units_per_pack))
+                  return (
+                  <tr key={i} className={`border-b border-gray-200 ${(row.singlesLoss ?? 0) > 0.001 || (row.packLoss ?? 0) > 0.001 ? 'bg-red-50' : omission ? 'bg-orange-50' : ''}`}>
                     <td className="pl-1 py-0.5 font-bold text-gray-500 whitespace-nowrap overflow-hidden">
                       {onDateClick ? (
                         <button onClick={() => onDateClick(row.date, item.item_name)} className="text-blue-600 hover:underline">
@@ -729,8 +761,12 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                         : row.singlesLoss < -0.001 ? <span className="text-green-600">+{fmtN(Math.abs(row.singlesLoss))}</span>
                         : <span className="text-gray-400">0</span>}
                     </td>
+                    <td className="text-left py-0.5 pl-1 pr-0.5 border-l-2 border-l-gray-600 whitespace-normal break-words leading-tight">
+                      {omission ? <span className="text-orange-700 font-semibold">{omission}</span> : <span className="text-gray-300">—</span>}
+                    </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </>

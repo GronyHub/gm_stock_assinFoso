@@ -20,6 +20,7 @@ export default function NewReceiptPage({ onSuccess }: { onSuccess?: () => void }
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState('')
   const [error, setError] = useState('')
+  const [warnings, setWarnings] = useState<string[]>([])
   const router = useRouter()
 
   useEffect(() => { setDate(new Date().toISOString().slice(0, 10)) }, [])
@@ -95,8 +96,12 @@ export default function NewReceiptPage({ onSuccess }: { onSuccess?: () => void }
       const d = await res.json().catch(() => ({}))
       setSaving(false)
       if (res.ok) {
+        const w: string[] = Array.isArray(d.warnings) ? d.warnings : []
+        setWarnings(w)
         setDone(d.receiptNumber)
-        setTimeout(() => onSuccess ? onSuccess() : router.push('/sales'), 1500)
+        // With warnings, stay on the confirmation so the user actually reads
+        // them (e.g. papers used with no GMC pack recorded) before moving on.
+        if (w.length === 0) setTimeout(() => onSuccess ? onSuccess() : router.push('/sales'), 1500)
       } else {
         setError(d.error || 'Could not save receipt. Please try again.')
       }
@@ -107,9 +112,20 @@ export default function NewReceiptPage({ onSuccess }: { onSuccess?: () => void }
   }
 
   if (done) return (
-    <div className="py-20 text-center">
+    <div className="py-20 text-center max-w-md mx-auto px-4">
       <p className="text-green-600 font-bold text-lg">✓ Saved</p>
       <p className="text-gray-500 text-sm mt-1">{done}</p>
+      {warnings.length > 0 && (
+        <div className="mt-5 space-y-2 text-left">
+          {warnings.map((w, i) => (
+            <p key={i} className="text-sm text-orange-900 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2.5">{w}</p>
+          ))}
+          <button onClick={() => onSuccess ? onSuccess() : router.push('/sales')}
+            className="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-xl py-2.5 transition">
+            OK, Continue
+          </button>
+        </div>
+      )}
     </div>
   )
 
