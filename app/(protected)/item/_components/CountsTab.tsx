@@ -81,6 +81,82 @@ function CountRow({ item, onSaved }: { item: DailyItem; onSaved: (id: number) =>
   )
 }
 
+// Ad-hoc count of ANY item, any time -- not just the ones due today. Same-day
+// counts replace rather than duplicate (see /api/stock/count).
+function ManualCountForm({ items, onSaved, onClose }: { items: Item[]; onSaved: () => void; onClose: () => void }) {
+  const [q, setQ] = useState('')
+  const [sel, setSel] = useState<Item | null>(null)
+  const [qty, setQty] = useState('')
+  const [notes, setNotes] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const matches = useMemo(() => {
+    const t = q.trim().toLowerCase()
+    if (!t) return []
+    return items
+      .filter(i => i.item_name.toLowerCase().includes(t) || (i.cf_group ?? '').toLowerCase().includes(t))
+      .slice(0, 25)
+  }, [q, items])
+
+  async function save() {
+    if (!sel || qty === '') return
+    setSaving(true); setError('')
+    const res = await fetch('/api/stock/count', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId: sel.id, qty: Number(qty), notes: notes.trim() || 'Manual count' }),
+    })
+    setSaving(false)
+    if (res.ok) { onSaved(); onClose() }
+    else setError((await res.json().catch(() => null))?.error ?? 'Could not save count.')
+  }
+
+  return (
+    <div className="bg-blue-50 border-b border-blue-200 px-2 py-2 space-y-1.5 shrink-0">
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] font-bold text-blue-700">Manual Count — any item, today&apos;s date</p>
+        <button onClick={onClose} className="text-blue-300 hover:text-blue-500 font-bold leading-none">×</button>
+      </div>
+      {!sel ? (
+        <>
+          <input value={q} onChange={e => setQ(e.target.value)} autoFocus
+            placeholder="Search item to count…" className={inputCls} />
+          {matches.length > 0 && (
+            <div className="bg-white border border-gray-200 rounded max-h-40 overflow-y-auto divide-y divide-gray-100">
+              {matches.map(i => (
+                <button key={i.id} onClick={() => setSel(i)}
+                  className="w-full text-left px-2 py-1.5 hover:bg-blue-50 transition">
+                  <span className="text-[10px] font-semibold text-gray-900">{i.item_name}</span>
+                  {i.cf_group && <span className="text-[9px] text-gray-400"> · {i.cf_group}</span>}
+                </button>
+              ))}
+            </div>
+          )}
+          {q.trim() && matches.length === 0 && <p className="text-[9px] text-gray-400">No items match.</p>}
+        </>
+      ) : (
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between bg-white border border-gray-200 rounded px-2 py-1.5">
+            <span className="text-[10px] font-semibold text-gray-900">{sel.item_name}</span>
+            <button onClick={() => { setSel(null); setQty('') }} className="text-[9px] text-blue-600 font-semibold">change</button>
+          </div>
+          <div className="flex gap-1.5">
+            <input type="number" min="0" step="any" value={qty} onChange={e => setQty(e.target.value)}
+              placeholder="Qty counted" inputMode="decimal" autoFocus className={inputCls + ' w-24'} />
+            <input value={notes} onChange={e => setNotes(e.target.value)}
+              placeholder="Notes (optional)" className={inputCls + ' flex-1'} />
+            <button onClick={save} disabled={qty === '' || saving}
+              className="shrink-0 bg-blue-600 hover:bg-blue-500 disabled:opacity-30 text-white text-[10px] font-semibold rounded px-3 py-1 transition">
+              {saving ? '…' : 'Save'}
+            </button>
+          </div>
+          {error && <p className="text-[9px] text-red-500">{error}</p>}
+        </div>
+      )}
+    </div>
+  )
+}
+
 type Props = {
   items: Item[]
   groupFilter: string | null
@@ -100,6 +176,7 @@ export default function CountsTab({ items, groupFilter, search, violation }: Pro
   const [dailyItems, setDailyItems] = useState<DailyItem[]>([])
   const [overdueItems, setOverdueItems] = useState<DailyItem[]>([])
   const [dailyLoading, setDailyLoading] = useState(true)
+  const [showManual, setShowManual] = useState(false)
 
   function loadRecords() {
     fetch('/api/stock/counts').then(r => r.json()).then(d => { setRecords(d); setLoading(false) })
@@ -180,6 +257,16 @@ export default function CountsTab({ items, groupFilter, search, violation }: Pro
     const label = violation === 'daily' ? 'daily' : '15-day overdue'
     return (
       <div className="overflow-y-auto h-full py-2">
+        <div className="flex justify-end px-2 pb-1">
+          <button onClick={() => setShowManual(v => !v)}
+            className="text-[9px] font-semibold px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-500 transition">
+            {showManual ? '× Close' : '+ Manual Count'}
+          </button>
+        </div>
+        {showManual && (
+          <ManualCountForm items={items} onClose={() => setShowManual(false)}
+            onSaved={() => { loadRecords(); loadDaily() }} />
+        )}
         {dailyLoading ? (
           <p className="py-10 text-center text-gray-400 text-[10px]">Loading…</p>
         ) : countItems.length === 0 ? (
@@ -244,12 +331,20 @@ export default function CountsTab({ items, groupFilter, search, violation }: Pro
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="flex items-center justify-end px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
+      <div className="flex items-center justify-end gap-1.5 px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
+        <button onClick={() => setShowManual(v => !v)}
+          className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-600 text-white hover:bg-blue-500 transition">
+          {showManual ? '× Close' : '+ Manual Count'}
+        </button>
         <button onClick={() => setShowHistory(true)}
           className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700 transition">
           History
         </button>
       </div>
+      {showManual && (
+        <ManualCountForm items={items} onClose={() => setShowManual(false)}
+          onSaved={() => { loadRecords(); loadDaily() }} />
+      )}
       <div className="flex-1 overflow-y-auto min-h-0">
         <table className="w-full border-collapse text-[10px] border border-black">
           <thead className="sticky top-0 bg-gray-100 z-10">

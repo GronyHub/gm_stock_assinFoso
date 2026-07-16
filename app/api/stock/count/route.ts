@@ -16,10 +16,28 @@ export async function POST(req: NextRequest) {
   // session.user.name = display_name (set in auth authorize callback)
   // session.user.username = raw login name (set in jwt/session callbacks)
   const countedBy = session.user?.name || (session.user as any)?.username || null
-  await sql`
-    INSERT INTO stock_counts (item_id, zoho_item_id, item_name, count_date, quantity_counted, notes, source, counted_by)
-    VALUES (${itemId}, ${item[0].zoho_item_id}, ${item[0].canonical_name}, ${today}, ${qty}, ${notes || null}, 'app', ${countedBy})
+
+  // One count per item per day: the loss math SUMS counts per date, so a
+  // second same-day count (e.g. a manual recount after the daily count)
+  // would double the counted quantity. Replace today's count instead.
+  const [existing] = await sql`
+    SELECT id FROM stock_counts
+    WHERE item_id = ${itemId} AND count_date::date = ${today}
+    ORDER BY id DESC LIMIT 1
   `
-  await logActivity(countedBy ?? 'Unknown', 'counted stock', `${item[0].canonical_name} · qty ${qty}`)
+  if (existing) {
+    await sql`
+      UPDATE stock_counts
+      SET quantity_counted = ${qty}, notes = ${notes || null}, source = 'app', counted_by = ${countedBy}
+      WHERE id = ${existing.id}
+    `
+    await logActivity(countedBy ?? 'Unknown', 'counted stock', `${item[0].canonical_name} · qty ${qty} (replaced today's earlier count)`)
+  } else {
+    await sql`
+      INSERT INTO stock_counts (item_id, zoho_item_id, item_name, count_date, quantity_counted, notes, source, counted_by)
+      VALUES (${itemId}, ${item[0].zoho_item_id}, ${item[0].canonical_name}, ${today}, ${qty}, ${notes || null}, 'app', ${countedBy})
+    `
+    await logActivity(countedBy ?? 'Unknown', 'counted stock', `${item[0].canonical_name} · qty ${qty}`)
+  }
   return NextResponse.json({ ok: true })
 }

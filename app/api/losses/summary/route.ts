@@ -133,8 +133,24 @@ export async function GET() {
     byItem.get(r.item_id)!.push(r)
   }
 
+  // ₵ valuation override for the 4x6 paper chain: a lost pack is worth its
+  // papers as missed passport prints (units_per_pack × ₵20/sheet) and a lost
+  // single sheet is worth ₵20 -- never the items' own selling prices. Matches
+  // the LOSS ₵ column in the pack-chain detail table.
+  const PAPER_SELL_PRICE = 20
+  const paperPacks = (itemRows as any[]).filter(it =>
+    it.converts_to_item_id != null
+    && (it.product_type ?? 'goods') !== 'service'
+    && /4x6/i.test(it.item_name) && /pack/i.test(it.item_name))
+  const paperPackIds = new Set(paperPacks.map(p => p.item_id))
+  const paperSinglesIds = new Set(paperPacks.map(p => p.converts_to_item_id))
+
   const result = (itemRows as any[]).map(item => {
-    const sp = parseFloat(item.selling_rate ?? '0') || 0
+    const sp = paperPackIds.has(item.item_id)
+      ? (parseFloat(item.units_per_pack ?? '0') || 1) * PAPER_SELL_PRICE
+      : paperSinglesIds.has(item.item_id)
+        ? PAPER_SELL_PRICE
+        : parseFloat(item.selling_rate ?? '0') || 0
     const rows = byItem.get(item.item_id) ?? []
     const agg = aggregateItem(rows, sp)
     return {
