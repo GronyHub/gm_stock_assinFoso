@@ -134,97 +134,161 @@ function buildPackChainRows(packRows: ComputedRow[], singlesRows: ComputedRow[])
 }
 
 /* Omissions: records that should exist but don't, found by cross-checking the
-   singles side against the packs side of the same row. A gain on singles
-   (counted more than expected, e.g. 3 → 46 overnight) means a pack was
-   physically opened — so the packs section should show a matching GMC take or
-   a count loss that day. When it shows neither, the pack take was never
-   recorded anywhere. Each finding carries a fix: the record to add (or
-   remove) that trades off against the gain and cancels it. */
+   singles side against the packs side of the same row AND against earlier
+   rows. A gain on singles (counted more than expected, e.g. 3 → 46 overnight)
+   means a pack was physically opened — so the packs section should show a
+   matching GMC take or a count loss that day. A gain with no explanation on
+   its own row usually corrects an EARLIER count error, so it is traded off
+   against the most recent unsettled losses (e.g. a +1 pack gain in July
+   cancels 1 of a -15 pack loss from April, making it -14). Each finding
+   carries a fix: the record to add/remove, or the trade-off to note. */
 type Omission = { issue: string; fix: string }
-function packChainOmissions(row: PackChainRow, unitsPerPack: number, packName: string): Omission[] {
-  const notes: Omission[] = []
-  const conv = numVal(row.singlesConvIn)
-  const packGmc = numVal(row.packGmc)
-  const packLoss = row.packLoss ?? 0 // >0 = packs missing at count, <0 = packs gained
+type LossLedgerEntry = { date: string; original: number; remaining: number }
 
-  const singlesGain = row.singlesLoss !== null && row.singlesLoss < -0.001 ? -row.singlesLoss : 0
-  if (singlesGain > 0) {
-    const packsEst = unitsPerPack > 0 ? singlesGain / unitsPerPack : null
-    const estN = packsEst !== null ? Math.max(1, Math.round(packsEst)) : 1
-    const est = packsEst !== null
-      ? `≈${packsEst % 1 === 0 ? packsEst : packsEst.toFixed(1)} pack${packsEst > 1.05 ? 's' : ''}`
-      : 'a pack'
-    if (conv === 0 && packGmc === 0) {
-      if (packLoss > 0.001) {
-        // Pack count already shows the packs went missing — the two sides agree
-        // a pack was opened; only the GMC record is missing.
+// Consume a gain from earlier unsettled losses, most recent first. Returns
+// which losses it cancels against and how much of the gain found no match.
+function settleAgainstLedger(ledger: LossLedgerEntry[], gain: number) {
+  const matches: { date: string; original: number; taken: number; remainingAfter: number }[] = []
+  let left = gain
+  for (let i = ledger.length - 1; i >= 0 && left > 0.001; i--) {
+    const e = ledger[i]
+    if (e.remaining <= 0.001) continue
+    const taken = Math.min(e.remaining, left)
+    e.remaining = parseFloat((e.remaining - taken).toFixed(4))
+    left = parseFloat((left - taken).toFixed(4))
+    matches.push({ date: e.date, original: e.original, taken, remainingAfter: e.remaining })
+  }
+  return { matches, unmatched: left }
+}
+
+function tradeOffText(matches: { date: string; original: number; taken: number; remainingAfter: number }[], unit: string) {
+  return matches.map(m =>
+    `${fmtN(m.taken)} of the -${fmtN(m.original)} ${unit} loss on ${fmtDate(m.date)}`
+    + (m.remainingAfter > 0.001 ? ` (leaving -${fmtN(m.remainingAfter)} there)` : ' (clearing it fully)')
+  ).join(' and ')
+}
+
+function computePackChainOmissions(rowsDesc: PackChainRow[], unitsPerPack: number, packName: string): Map<string, Omission[]> {
+  const out = new Map<string, Omission[]>()
+  const chron = [...rowsDesc].reverse() // walk oldest → newest so ledgers only ever look backwards
+  const packLossLedger: LossLedgerEntry[] = []
+  const singlesLossLedger: LossLedgerEntry[] = []
+  let lastPackCountDate: string | null = null
+
+  for (const row of chron) {
+    const notes: Omission[] = []
+    const conv = numVal(row.singlesConvIn)
+    const packGmc = numVal(row.packGmc)
+    const packLoss = row.packLoss ?? 0 // >0 = packs missing at count, <0 = packs gained
+
+    const singlesGain = row.singlesLoss !== null && row.singlesLoss < -0.001 ? -row.singlesLoss : 0
+    if (singlesGain > 0) {
+      const packsEst = unitsPerPack > 0 ? singlesGain / unitsPerPack : null
+      const estN = packsEst !== null ? Math.max(1, Math.round(packsEst)) : 1
+      const est = packsEst !== null
+        ? `≈${packsEst % 1 === 0 ? packsEst : packsEst.toFixed(1)} pack${packsEst > 1.05 ? 's' : ''}`
+        : 'a pack'
+      // A singles gain close to a full pack points at an unrecorded pack
+      // opening; a small stray gain more likely corrects an earlier count.
+      const looksLikeAPack = packsEst !== null && packsEst >= 0.5
+      if (looksLikeAPack && conv === 0 && packGmc === 0) {
+        if (packLoss > 0.001) {
+          notes.push({
+            issue: `+${fmtN(singlesGain)} singles suggest ${est} was used by GMC, and the packs side lost ${fmtN(packLoss)} at count — `
+              + `the pack was opened but never recorded on GMC`,
+            fix: `record a GMC sale of ${estN} ${packName} on this date — one record cancels both the +${fmtN(singlesGain)} singles gain and the -${fmtN(packLoss)} pack loss`,
+          })
+        } else {
+          notes.push({
+            issue: `+${fmtN(singlesGain)} singles suggest ${est} was used by GMC, but the ${packName} section shows no GMC and no loss/deduction that day — `
+              + `the pack take was not recorded anywhere`,
+            fix: `record a GMC sale of ${estN} ${packName} on this date to cancel the +${fmtN(singlesGain)} singles gain; if the packs then show a gain, that day's pack count still included the opened pack — correct the pack count too`,
+          })
+        }
+      } else {
+        // Not pack-shaped (or conversions already recorded) — try cancelling
+        // against earlier unsettled singles losses first: a later gain paired
+        // with an earlier loss is one counting error, not two events.
+        const { matches, unmatched } = settleAgainstLedger(singlesLossLedger, singlesGain)
+        if (matches.length > 0) {
+          notes.push({
+            issue: `+${fmtN(singlesGain)} singles gained beyond what the records explain — likely an earlier count error resurfacing`,
+            fix: `trade it off against ${tradeOffText(matches, 'singles')}`
+              + (unmatched > 0.001 ? `; the remaining +${fmtN(unmatched)} still needs a recount or a GMC record` : ' — no new record needed, both entries were one count error'),
+          })
+        } else {
+          notes.push({
+            issue: `+${fmtN(singlesGain)} singles beyond what the recorded pack conversions explain`,
+            fix: `recount the singles, or record an extra GMC pack if another one was opened`,
+          })
+        }
+      }
+    }
+
+    if (row.singlesExp !== null && row.singlesExp < -0.001) {
+      notes.push({
+        issue: `more singles used than were available${(packGmc === 0 && conv === 0) ? ' while the packs section shows no GMC deduction' : ''} — `
+          + `a GMC pack record is missing`,
+        fix: `record the GMC pack that supplied these singles — it cancels the shortfall`,
+      })
+    }
+
+    // Pack-side gains: first check the same row (a gain matching the day's
+    // GMC take means the pack was never physically opened), then trade off
+    // against earlier unsettled pack losses (a stray gain after a long gap
+    // corrects an earlier count error), and only then suspect a missing bill.
+    const packGain = packLoss < -0.001 ? -packLoss : 0
+    if (packGain > 0) {
+      const packBl = numVal(row.packBl)
+      const singlesLost = row.singlesLoss !== null && row.singlesLoss > 0.001 ? row.singlesLoss : 0
+      const plural = packGain === 1 ? '' : 's'
+      const gmcMatchesGain = packGmc > 0 && Math.abs(packGain - packGmc) < 0.5
+      const singlesLostTheConv = unitsPerPack > 0 && singlesLost > 0
+        && Math.abs(singlesLost - packGain * unitsPerPack) <= unitsPerPack * 0.25
+      const gapNote = lastPackCountDate ? ` (first pack count since ${fmtDate(lastPackCountDate)})` : ''
+      if (gmcMatchesGain && singlesLostTheConv) {
         notes.push({
-          issue: `+${fmtN(singlesGain)} singles suggest ${est} was used by GMC, and the packs side lost ${fmtN(packLoss)} at count — `
-            + `the pack was opened but never recorded on GMC`,
-          fix: `record a GMC sale of ${estN} ${packName} on this date — one record cancels both the +${fmtN(singlesGain)} singles gain and the -${fmtN(packLoss)} pack loss`,
+          issue: `+${fmtN(packGain)} pack${plural} gained while GMC shows ${fmtN(packGmc)} taken and the singles side lost ${fmtN(singlesLost)} — `
+            + `the GMC was recorded but the pack was never actually opened`,
+          fix: `remove (or reduce) that GMC record — it cancels both the +${fmtN(packGain)} pack gain and the -${fmtN(singlesLost)} singles loss`,
+        })
+      } else if (gmcMatchesGain) {
+        notes.push({
+          issue: `+${fmtN(packGain)} pack${plural} gained, matching the ${fmtN(packGmc)} taken on GMC — `
+            + `the pack may not have actually been opened`,
+          fix: `verify that GMC record; removing it cancels the +${fmtN(packGain)} pack gain`,
         })
       } else {
-        // Packs side shows NO loss and NO GMC deduction — the take isn't
-        // reflected anywhere on the pack section.
-        notes.push({
-          issue: `+${fmtN(singlesGain)} singles suggest ${est} was used by GMC, but the ${packName} section shows no GMC and no loss/deduction that day — `
-            + `the pack take was not recorded anywhere`,
-          fix: `record a GMC sale of ${estN} ${packName} on this date to cancel the +${fmtN(singlesGain)} singles gain; if the packs then show a gain, that day's pack count still included the opened pack — correct the pack count too`,
-        })
+        const { matches, unmatched } = settleAgainstLedger(packLossLedger, packGain)
+        if (matches.length > 0) {
+          notes.push({
+            issue: `+${fmtN(packGain)} pack${plural} gained${gapNote} — packs don't appear from nowhere; this likely corrects an earlier count error`,
+            fix: `trade it off against ${tradeOffText(matches, 'pack')}`
+              + (unmatched > 0.001 ? `; the remaining +${fmtN(unmatched)} still needs a bill record or recount` : ' — no new record needed, the earlier count was simply off'),
+          })
+        } else if (packBl === 0) {
+          notes.push({
+            issue: `+${fmtN(packGain)} pack${plural} appeared with no bill recorded${gapNote}`,
+            fix: `record the missing purchase bill of ${fmtN(packGain)} ${packName} — it cancels this gain`,
+          })
+        } else {
+          notes.push({
+            issue: `+${fmtN(packGain)} pack${plural} beyond what the records explain`,
+            fix: `recount the packs or check the bill quantity for this date`,
+          })
+        }
       }
-    } else {
-      notes.push({
-        issue: `+${fmtN(singlesGain)} singles beyond what the recorded pack conversions explain`,
-        fix: `recount the singles, or record an extra GMC pack if another one was opened`,
-      })
     }
-  }
 
-  if (row.singlesExp !== null && row.singlesExp < -0.001) {
-    notes.push({
-      issue: `more singles used than were available${(packGmc === 0 && conv === 0) ? ' while the packs section shows no GMC deduction' : ''} — `
-        + `a GMC pack record is missing`,
-      fix: `record the GMC pack that supplied these singles — it cancels the shortfall`,
-    })
-  }
+    // Record this row's losses so later gains can settle against them.
+    if (packLoss > 0.001) packLossLedger.push({ date: row.date, original: packLoss, remaining: packLoss })
+    const singlesLoss = row.singlesLoss !== null && row.singlesLoss > 0.001 ? row.singlesLoss : 0
+    if (singlesLoss > 0) singlesLossLedger.push({ date: row.date, original: singlesLoss, remaining: singlesLoss })
+    if (row.packCnt !== null) lastPackCountDate = row.date
 
-  // Pack-side gains, cross-checked against GMC and the singles side. A pack
-  // gain matching the day's GMC take means the GMC was recorded but the pack
-  // was never physically opened; a gain with no bill means a purchase record
-  // is missing.
-  const packGain = packLoss < -0.001 ? -packLoss : 0
-  if (packGain > 0) {
-    const packBl = numVal(row.packBl)
-    const singlesLost = row.singlesLoss !== null && row.singlesLoss > 0.001 ? row.singlesLoss : 0
-    const plural = packGain === 1 ? '' : 's'
-    const gmcMatchesGain = packGmc > 0 && Math.abs(packGain - packGmc) < 0.5
-    const singlesLostTheConv = unitsPerPack > 0 && singlesLost > 0
-      && Math.abs(singlesLost - packGain * unitsPerPack) <= unitsPerPack * 0.25
-    if (gmcMatchesGain && singlesLostTheConv) {
-      notes.push({
-        issue: `+${fmtN(packGain)} pack${plural} gained while GMC shows ${fmtN(packGmc)} taken and the singles side lost ${fmtN(singlesLost)} — `
-          + `the GMC was recorded but the pack was never actually opened`,
-        fix: `remove (or reduce) that GMC record — it cancels both the +${fmtN(packGain)} pack gain and the -${fmtN(singlesLost)} singles loss`,
-      })
-    } else if (gmcMatchesGain) {
-      notes.push({
-        issue: `+${fmtN(packGain)} pack${plural} gained, matching the ${fmtN(packGmc)} taken on GMC — `
-          + `the pack may not have actually been opened`,
-        fix: `verify that GMC record; removing it cancels the +${fmtN(packGain)} pack gain`,
-      })
-    } else if (packBl === 0) {
-      notes.push({
-        issue: `+${fmtN(packGain)} pack${plural} appeared with no bill recorded`,
-        fix: `record the missing purchase bill of ${fmtN(packGain)} ${packName} — it cancels this gain`,
-      })
-    } else {
-      notes.push({
-        issue: `+${fmtN(packGain)} pack${plural} beyond what the records explain`,
-        fix: `recount the packs or check the bill quantity for this date`,
-      })
-    }
+    if (notes.length) out.set(row.date, notes)
   }
-  return notes
+  return out
 }
 
 function rowSortVal(row: SummaryRow, col: SortCol): number | string {
@@ -658,6 +722,9 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
   const targetComputed = targetDayRows ? computeRows(targetDayRows) : null
   const targetName = allItems.find(a => a.item_id === item.converts_to_item_id)?.item_name ?? 'target item'
   const packChainRows = isPackChain && computed && targetComputed ? buildPackChainRows(computed, targetComputed) : []
+  const packChainOmissionsByDate = packChainRows.length > 0
+    ? computePackChainOmissions(packChainRows, numVal(item.units_per_pack), item.item_name)
+    : new Map<string, Omission[]>()
   const packChainBreakdownNames = targetComputed
     ? Array.from(new Set(targetComputed.flatMap(r => (r.wic_breakdown ?? []).map(b => b.name)))).sort()
     : []
@@ -790,7 +857,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
               </thead>
               <tbody>
                 {packChainRows.map((row, i) => {
-                  const omissions = packChainOmissions(row, numVal(item.units_per_pack), item.item_name)
+                  const omissions = packChainOmissionsByDate.get(row.date) ?? []
                   return (
                   <tr key={i} className={`border-b border-gray-200 ${(row.singlesLoss ?? 0) > 0.001 || (row.packLoss ?? 0) > 0.001 ? 'bg-red-50' : omissions.length > 0 ? 'bg-orange-50' : ''}`}>
                     <td className="pl-1 py-0.5 font-bold text-gray-500 whitespace-nowrap overflow-hidden">
