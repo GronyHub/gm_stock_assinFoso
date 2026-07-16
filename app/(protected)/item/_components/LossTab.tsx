@@ -24,7 +24,7 @@ type SummaryRow = {
   cnv: number
 }
 
-type CountRevision = { old_qty: string | number | null; old_by: string | null; changed_by: string | null; changed_at: string }
+type CountRevision = { old_qty: string | number | null; old_by: string | null; changed_by: string | null; action?: string | null; changed_at: string }
 
 type DayRow = {
   date: string
@@ -110,29 +110,40 @@ function staffToAsk(rows: PackChainRow[], idx: number, presence: Record<string, 
 
 function capName(s: string) { return s.charAt(0).toUpperCase() + s.slice(1) }
 
-// Edit history of a count, one line per change, for the CNT cell tooltip.
-// Native tooltips don't exist on phones, so the same text is also shown via
-// tap (alert) when a count has history.
-function countHistoryText(history: CountRevision[] | null | undefined): string | null {
-  if (!history || history.length === 0) return null
-  return history.map(h =>
-    `Was ${h.old_qty ?? '?'}${h.old_by ? ` (counted by ${h.old_by})` : ''} — changed by ${h.changed_by ?? 'unknown'} on ${fmtDate(h.changed_at)}`
-  ).join('\n')
-}
-
-// CNT cell content: value, counter's initial, and an amber * that carries the
-// edit history as a tooltip (hover) and shows it on tap (phones).
+// CNT cell content with its full history shown INLINE, stacked oldest first:
+// a changed count keeps its old value struck through (value and counter's
+// initial both crossed out); a deleted count keeps its value marked with a
+// red ✗. In both cases the amber initial after it is the staff member who
+// made the change/deletion. The current count (if any) sits below, untouched.
 function CntValue({ qty, countedBy, history }: { qty: string | null; countedBy: string | null; history: CountRevision[] | null | undefined }) {
   const text = fmtQs(qty)
-  const hist = text !== '—' ? countHistoryText(history) : null
+  const hist = history ?? []
+  if (text === '—' && hist.length === 0) return <span className="text-gray-300">—</span>
   return (
-    <span title={hist ?? undefined} onClick={hist ? () => alert(hist) : undefined}
-      className={hist ? 'cursor-help' : undefined}>
-      {text}
-      {text !== '—' && initialOf(countedBy) && (
-        <span className="text-blue-500 text-[6px]"> ({initialOf(countedBy)})</span>
+    <span className="inline-flex flex-col items-center leading-tight">
+      {hist.map((h, i) => {
+        const deleted = h.action === 'deleted'
+        const oldText = fmtQs(h.old_qty == null ? null : String(h.old_qty))
+        return (
+          <span key={i} className="whitespace-nowrap"
+            title={`${deleted ? 'Deleted' : 'Changed'} by ${h.changed_by ?? 'unknown'} on ${fmtDate(h.changed_at)}`}>
+            {deleted && <span className="text-red-600">✗</span>}
+            <span className={deleted ? 'text-red-600' : 'line-through text-gray-400'}>
+              {oldText}
+              {initialOf(h.old_by) && <span className="text-[6px]"> ({initialOf(h.old_by)})</span>}
+            </span>
+            {initialOf(h.changed_by) && (
+              <span className="text-amber-600 text-[6px] font-bold"> {initialOf(h.changed_by)}</span>
+            )}
+          </span>
+        )
+      })}
+      {text !== '—' && (
+        <span className="whitespace-nowrap">
+          {text}
+          {initialOf(countedBy) && <span className="text-blue-500 text-[6px]"> ({initialOf(countedBy)})</span>}
+        </span>
       )}
-      {hist && <span className="text-amber-600 font-bold" title={hist}>*</span>}
     </span>
   )
 }
@@ -939,7 +950,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
               Combined view: {item.item_name} → {targetName} → services
             </p>
             <table className="table-fixed border-collapse text-[8px]"
-              style={{ width: `${62 + 11 * 36 + packChainBreakdownNames.length * 60 + 56 + 140 + 480 + 220}px` }}>
+              style={{ width: `${62 + 2 * 48 + 9 * 36 + packChainBreakdownNames.length * 60 + 56 + 140 + 480 + 220}px` }}>
               {/* Pixel-widths: date frozen at its text width, numeric columns as
                   thin as their numbers, OMISSIONS wide (480px) so its text stays
                   on 1-2 lines instead of growing the row height, TRADE-OFF at the
@@ -947,13 +958,13 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                   date column stays frozen. */}
               <colgroup>
                 <col style={{width:'62px'}} />
+                <col style={{width:'48px'}} />
                 <col style={{width:'36px'}} />
                 <col style={{width:'36px'}} />
                 <col style={{width:'36px'}} />
                 <col style={{width:'36px'}} />
                 <col style={{width:'36px'}} />
-                <col style={{width:'36px'}} />
-                <col style={{width:'36px'}} />
+                <col style={{width:'48px'}} />
                 <col style={{width:'36px'}} />
                 {packChainBreakdownNames.map(n => <col key={n} style={{width:'60px'}} />)}
                 <col style={{width:'36px'}} />

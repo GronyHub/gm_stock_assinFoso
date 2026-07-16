@@ -60,6 +60,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ itemId:
       SELECT d FROM daily_converted_in
       UNION
       SELECT d FROM daily_consumed_via_service
+      UNION
+      -- Dates whose count was deleted still show their row (with the ✗ value).
+      SELECT count_date::date FROM stock_count_revisions WHERE item_id = ${id}
     ),
     daily_counts AS (
       SELECT count_date::date AS d, SUM(quantity_counted) AS qty_counted,
@@ -69,13 +72,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ itemId:
       GROUP BY count_date::date
     ),
     daily_count_history AS (
-      -- Previous values of edited counts, oldest change first, so the cell
-      -- can show what the count was before and who took/changed it.
+      -- Previous values of edited/deleted counts, oldest change first, so the
+      -- cell can show them inline (struck through when changed, ✗ when
+      -- deleted) with who took/changed them.
       SELECT count_date::date AS d,
              json_agg(json_build_object(
                'old_qty', old_qty,
                'old_by', old_counted_by,
                'changed_by', changed_by,
+               'action', action,
                'changed_at', changed_at::date::text
              ) ORDER BY changed_at) AS history
       FROM stock_count_revisions
