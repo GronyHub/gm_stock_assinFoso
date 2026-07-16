@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { createItemFromTypedName } from '@/lib/createItem'
+import { impossibleUsageWarnings } from '@/lib/usageCheck'
 import { NextResponse } from 'next/server'
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -73,11 +74,18 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       WHERE id = ${receiptId}
     `
     const updated = await sql`
-      SELECT id, receipt_date::date AS receipt_date, customer_name, total AS invoice_amount, cash_counted,
+      SELECT id, receipt_date::date AS receipt_date, receipt_date::date::text AS receipt_date_str,
+             customer_name, total AS invoice_amount, cash_counted,
              (cash_counted - total) AS wnw
       FROM sales_receipts WHERE id = ${receiptId}
     `
-    return NextResponse.json(updated[0])
+
+    // Non-blocking sanity check: flag usage that exceeds what could have
+    // existed on this receipt's date (e.g. papers used with no GMC pack
+    // recorded). The save still succeeds -- the warning says what's missing.
+    const { receipt_date_str, ...row } = updated[0] ?? {}
+    const warnings = receipt_date_str ? await impossibleUsageWarnings(receipt_date_str) : []
+    return NextResponse.json({ ...row, warnings })
   } catch (e) {
     console.error('sales lines PUT error:', e)
     const detail = e instanceof Error ? e.message : String(e)

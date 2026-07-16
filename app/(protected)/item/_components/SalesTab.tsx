@@ -439,11 +439,17 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
     setSaving(false)
     if (headerRes.ok && linesRes.ok) {
       const updated = await headerRes.json()
+      const linesResult = await linesRes.json().catch(() => ({}))
       setReceipts(prev => prev.map(r => r.id === editingId ? { ...r, ...updated } : r))
       const lRes = await fetch(`/api/sales/${editingId}`)
       const freshLines = await lRes.json()
       setLinesMap(prev => ({ ...prev, [editingId]: freshLines }))
       setEditingId(null)
+      // Impossible-usage warnings (e.g. papers used with no GMC pack recorded)
+      // -- the save went through; make sure the user sees what record is missing.
+      if (Array.isArray(linesResult.warnings) && linesResult.warnings.length > 0) {
+        alert(linesResult.warnings.join('\n\n'))
+      }
     } else {
       const d = await (linesRes.ok ? headerRes : linesRes).json().catch(() => ({}))
       setEditError(d.error || 'Could not save changes. Please try again.')
