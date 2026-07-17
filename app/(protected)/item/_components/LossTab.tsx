@@ -1048,15 +1048,15 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                 <col style={{width:'36px'}} />
                 <col style={{width:'36px'}} />
                 <col style={{width:'36px'}} />
-                <col style={{width:'48px'}} />
                 <col style={{width:'36px'}} />
+                <col style={{width:'64px'}} />
+                <col style={{width:'72px'}} />
                 {packChainBreakdownNames.map(n => <col key={n} style={{width:'60px'}} />)}
+                <col style={{width:'48px'}} />
                 <col style={{width:'36px'}} />
                 <col style={{width:'36px'}} />
                 <col style={{width:'36px'}} />
                 <col style={{width:'56px'}} />
-                <col style={{width:'64px'}} />
-                <col style={{width:'72px'}} />
                 <col style={{width:'200px'}} />
                 <col style={{width:'480px'}} />
                 <col style={{width:'220px'}} />
@@ -1067,20 +1067,12 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                   <th colSpan={6} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">
                     {item.item_name}
                   </th>
-                  <th colSpan={5 + packChainBreakdownNames.length} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">
+                  <th colSpan={7 + packChainBreakdownNames.length} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">
                     {targetName}
                   </th>
                   <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600"
                     title={`Losses valued in cedis at ₵${PAPER_SELL_PRICE} per single paper. Pack losses count as packs × papers-per-pack × ₵${PAPER_SELL_PRICE} — treated as papers used for passport work but never recorded, NOT at the pack's own selling price.`}>
                     LOSS ₵
-                  </th>
-                  <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600"
-                    title="On rows where a GMC pack was taken: total sheets recorded as used (services + direct sales) from this pack until the NEXT pack was taken — the pack's full cycle, measured purely from records, independent of counts.">
-                    USED/PACK
-                  </th>
-                  <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l border-gray-400"
-                    title={`Sheets given by the pack minus sheets used in its cycle, valued at ₵${PAPER_SELL_PRICE}/sheet. Lost = given but never recorded as used; over = more used than given (leftover from the previous pack, or a GMC take not recorded).`}>
-                    PACK LOSS ₵
                   </th>
                   <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600"
                     title="Exposure to this loss, apportioned by hours each staff member actually spent at the shop between the previous count and this one (from clock-in/out times) — not a general blame for merely being present. Also shows who counted at each end and, for one-day windows, each person's arrival–departure times.">
@@ -1102,13 +1094,21 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                   <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Sold as whole packs to a real customer">WIC</th>
                   <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Running expected stock">EXP</th>
                   <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Count loss/gain on packs">L/G</th>
-                  <th className="py-0.5 border-b-2 border-gray-400 text-center border-l-2 border-l-gray-600" title="Physical count">CNT</th>
-                  <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Credited in from pack GMC take">CONV</th>
+                  <th className="py-0.5 border-b-2 border-gray-400 text-center border-l-2 border-l-gray-600" title="Credited in from pack GMC take">CONV</th>
+                  <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400"
+                    title="On rows where a GMC pack was taken: total sheets recorded as used (services + direct sales) from this pack until the NEXT pack was taken — the pack's full cycle, measured purely from records, independent of counts.">
+                    USED/PACK
+                  </th>
+                  <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400"
+                    title={`Sheets given by the pack minus sheets used in its cycle, valued at ₵${PAPER_SELL_PRICE}/sheet. Lost = given but never recorded as used; over = more used than given (leftover from the previous pack, or a GMC take not recorded).`}>
+                    PACK L/₵
+                  </th>
                   {packChainBreakdownNames.map(n => (
                     <th key={n} title={n} className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">
                       {shortSourceName(n)}
                     </th>
                   ))}
+                  <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Physical count">CNT</th>
                   <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Total used across all services">USED</th>
                   <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Running expected stock">EXP</th>
                   <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Count loss/gain on singles">L/G</th>
@@ -1141,43 +1141,14 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                         : row.packLoss < -0.001 ? <span className="text-green-600">+{fmtN(Math.abs(row.packLoss))}</span>
                         : <span className="text-gray-400">0</span>}
                     </td>
-                    <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-gray-900 whitespace-nowrap">
-                      <CntValue qty={row.singlesCnt} countedBy={row.singlesCntBy} history={row.singlesCntHistory} />
-                    </td>
-                    <td className="text-center py-0.5 font-bold border-l border-gray-300 text-teal-600">{fmtQs(row.singlesConvIn)}</td>
-                    {packChainBreakdownNames.map(n => {
-                      const b = row.singlesBreakdown.find(x => x.name === n)
-                      const qty = b?.qty ?? 0, amount = b?.amount ?? 0
-                      return (
-                        <td key={n} className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600 whitespace-nowrap overflow-hidden">
-                          {qty === 0 ? '—' : <>{fmtQ(qty)}<span className="text-blue-500 text-[6px]"> (₵{fmtN(amount)})</span></>}
-                        </td>
-                      )
-                    })}
-                    <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQ(row.singlesUsed)}</td>
-                    <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-400">{fmtN(row.singlesExp)}</td>
-                    <td className="text-center py-0.5 font-bold border-l border-gray-300">
-                      {row.singlesLoss === null ? <span className="text-gray-300">—</span>
-                        : row.singlesLoss > 0.001 ? <span className="text-red-600">-{fmtN(row.singlesLoss)}</span>
-                        : row.singlesLoss < -0.001 ? <span className="text-green-600">+{fmtN(Math.abs(row.singlesLoss))}</span>
-                        : <span className="text-gray-400">0</span>}
-                    </td>
-                    <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 whitespace-nowrap">
-                      {(() => {
-                        const cedis = rowLossCedis(row, numVal(item.units_per_pack))
-                        if (cedis === null) return <span className="text-gray-300">—</span>
-                        if (cedis > 0.001) return <span className="text-red-600">-₵{fmtN(cedis)}</span>
-                        if (cedis < -0.001) return <span className="text-green-600">+₵{fmtN(Math.abs(cedis))}</span>
-                        return <span className="text-gray-400">0</span>
-                      })()}
-                    </td>
+                    <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-teal-600">{fmtQs(row.singlesConvIn)}</td>
                     {(() => {
                       // Pack-cycle accounting on the day the pack was taken:
                       // sheets used from this GMC take until the next one.
                       const cyc = packCyclesByStart.get(row.date)
                       if (!cyc) return (
                         <>
-                          <td className="text-center py-0.5 border-l-2 border-l-gray-600"><span className="text-gray-300">—</span></td>
+                          <td className="text-center py-0.5 border-l border-gray-300"><span className="text-gray-300">—</span></td>
                           <td className="text-center py-0.5 border-l border-gray-300"><span className="text-gray-300">—</span></td>
                         </>
                       )
@@ -1185,7 +1156,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                       const open = cyc.end === null
                       return (
                         <>
-                          <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 whitespace-nowrap"
+                          <td className="text-center py-0.5 font-bold border-l border-gray-300 whitespace-nowrap"
                             title={open ? 'This pack is still in use — no next GMC take yet' : `Sheets used from this take until the next pack on ${fmtDate(cyc.end!)}`}>
                             <span className="text-purple-700">{fmtQ(cyc.used)}</span>
                             <span className="text-gray-400"> / {fmtQ(cyc.sheetsGiven)}</span>
@@ -1204,6 +1175,35 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                         </>
                       )
                     })()}
+                    {packChainBreakdownNames.map(n => {
+                      const b = row.singlesBreakdown.find(x => x.name === n)
+                      const qty = b?.qty ?? 0, amount = b?.amount ?? 0
+                      return (
+                        <td key={n} className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600 whitespace-nowrap overflow-hidden">
+                          {qty === 0 ? '—' : <>{fmtQ(qty)}<span className="text-blue-500 text-[6px]"> (₵{fmtN(amount)})</span></>}
+                        </td>
+                      )
+                    })}
+                    <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-900 whitespace-nowrap">
+                      <CntValue qty={row.singlesCnt} countedBy={row.singlesCntBy} history={row.singlesCntHistory} />
+                    </td>
+                    <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQ(row.singlesUsed)}</td>
+                    <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-400">{fmtN(row.singlesExp)}</td>
+                    <td className="text-center py-0.5 font-bold border-l border-gray-300">
+                      {row.singlesLoss === null ? <span className="text-gray-300">—</span>
+                        : row.singlesLoss > 0.001 ? <span className="text-red-600">-{fmtN(row.singlesLoss)}</span>
+                        : row.singlesLoss < -0.001 ? <span className="text-green-600">+{fmtN(Math.abs(row.singlesLoss))}</span>
+                        : <span className="text-gray-400">0</span>}
+                    </td>
+                    <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 whitespace-nowrap">
+                      {(() => {
+                        const cedis = rowLossCedis(row, numVal(item.units_per_pack))
+                        if (cedis === null) return <span className="text-gray-300">—</span>
+                        if (cedis > 0.001) return <span className="text-red-600">-₵{fmtN(cedis)}</span>
+                        if (cedis < -0.001) return <span className="text-green-600">+₵{fmtN(Math.abs(cedis))}</span>
+                        return <span className="text-gray-400">0</span>
+                      })()}
+                    </td>
                     <td className="text-left py-0.5 pl-1 pr-0.5 border-l-2 border-l-gray-600 whitespace-normal break-words leading-tight align-top">
                       {!hasLoss ? <span className="text-gray-300">—</span>
                         : !presence ? <span className="text-gray-300">…</span>
@@ -1278,7 +1278,33 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                   const totalCedis = packChainRows.reduce((s, r) => s + (rowLossCedis(r, numVal(item.units_per_pack)) ?? 0), 0)
                   return (
                     <tr className="bg-gray-100 border-t-2 border-gray-400 font-bold">
-                      <td colSpan={12 + packChainBreakdownNames.length} className="text-right pr-1 py-1 text-gray-600">
+                      <td colSpan={8} className="text-right pr-1 py-1 text-gray-600 text-[7px]">
+                        {(() => {
+                          const closed = packCycles.filter(c => c.end !== null)
+                          return `net of ${closed.length} pack${closed.length === 1 ? '' : 's'} →`
+                        })()}
+                      </td>
+                      {(() => {
+                        const closed = packCycles.filter(c => c.end !== null)
+                        const netLost = parseFloat(closed.reduce((s, c) => s + (c.sheetsGiven - c.used), 0).toFixed(2))
+                        return (
+                          <>
+                            <td className="text-center py-1 border-l border-gray-300 whitespace-nowrap"
+                              title="Net unaccounted sheets over all closed pack cycles — overs cancel losses">
+                              {netLost > 0.001 ? <span className="text-red-600">-{fmtQ(netLost)} sheets</span>
+                                : netLost < -0.001 ? <span className="text-amber-600">+{fmtQ(Math.abs(netLost))} over</span>
+                                : <span className="text-gray-400">0</span>}
+                            </td>
+                            <td className="text-center py-1 border-l border-gray-300 whitespace-nowrap"
+                              title="Net over all closed pack cycles — overs cancel losses">
+                              {netLost > 0.001 ? <span className="text-red-600">-₵{fmtN(netLost * PAPER_SELL_PRICE)}</span>
+                                : netLost < -0.001 ? <span className="text-amber-600">+₵{fmtN(Math.abs(netLost) * PAPER_SELL_PRICE)}</span>
+                                : <span className="text-gray-400">0</span>}
+                            </td>
+                          </>
+                        )
+                      })()}
+                      <td colSpan={4 + packChainBreakdownNames.length} className="text-right pr-1 py-1 text-gray-600">
                         TOTAL (net of gains)
                       </td>
                       <td className="text-center py-1 border-l-2 border-l-gray-600 whitespace-nowrap">
@@ -1286,23 +1312,6 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                           : totalCedis < -0.001 ? <span className="text-green-600">+₵{fmtN(Math.abs(parseFloat(totalCedis.toFixed(2))))}</span>
                           : <span className="text-gray-400">0</span>}
                       </td>
-                      {(() => {
-                        const closed = packCycles.filter(c => c.end !== null)
-                        const netLost = parseFloat(closed.reduce((s, c) => s + (c.sheetsGiven - c.used), 0).toFixed(2))
-                        return (
-                          <>
-                            <td className="text-center py-1 border-l-2 border-l-gray-600 text-gray-500 whitespace-nowrap text-[7px]">
-                              net of {closed.length} pack{closed.length === 1 ? '' : 's'}
-                            </td>
-                            <td className="text-center py-1 border-l border-gray-300 whitespace-nowrap"
-                              title="Net over all closed pack cycles — overs cancel losses">
-                              {netLost > 0.001 ? <span className="text-red-600">-₵{fmtN(netLost * PAPER_SELL_PRICE)}</span>
-                                : netLost < -0.001 ? <span className="text-amber-600">+{fmtQ(Math.abs(netLost))} over</span>
-                                : <span className="text-gray-400">0</span>}
-                            </td>
-                          </>
-                        )
-                      })()}
                       <td className="border-l-2 border-l-gray-600" />
                       <td className="border-l-2 border-l-gray-600" />
                       <td className="border-l-2 border-l-gray-600" />
