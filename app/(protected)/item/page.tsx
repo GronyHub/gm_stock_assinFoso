@@ -40,9 +40,10 @@ const AnalyticsPanel = dynamic(() => import('./_components/AnalyticsPanel'),  { 
 const StaffClient    = dynamic(() => import('../staff/StaffClient'),          { ssr: false, loading: () => loading('Loading…') })
 const NoStaffTimesList = dynamic(() => import('../staff/StaffClient').then(m => ({ default: m.NoStaffTimesList })), { ssr: false, loading: () => loading('Loading…') })
 const LossTab        = dynamic(() => import('./_components/LossTab'),         { ssr: false, loading: () => loading('Loading…') })
+const LossFeedTab    = dynamic(() => import('./_components/LossFeedTab'),     { ssr: false, loading: () => loading('Loading…') })
 const ProfitLossTab  = dynamic(() => import('./_components/ProfitLossTab'),   { ssr: false, loading: () => loading('Loading…') })
 
-type OuterTab = 'today' | 'loss' | 'errors' | 'data' | 'pl' | 'expenses' | 'cab' | 'staff'
+type OuterTab = 'today' | 'loss' | 'losses' | 'errors' | 'data' | 'pl' | 'expenses' | 'cab' | 'staff'
 
 // Sales, Bills, and Counts live as submenus inside the Loss tab.
 type LossView = 'items' | 'sales' | 'bills' | 'counts'
@@ -137,6 +138,7 @@ const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCategory; d
 const VIOLATIONS: Record<OuterTab, { key: string; label: string; category?: ErrorCategory }[]> = {
   today: [],
   loss: [],
+  losses: [],
   errors: ERROR_VIOLATIONS,
   data: [],
   pl: [],
@@ -369,6 +371,7 @@ function ItemHubPageInner() {
             <TabIcon icon="⚠️" label="Errors"   active={outerTab === 'errors'}   onClick={() => changeTab('errors')}   count={badgeCounts.errors} />
             <TabIcon icon="🔢" label="Data"     active={outerTab === 'data'}     onClick={() => changeTab('data')} />
             <TabIcon icon="📉" label="Item"     active={outerTab === 'loss'}     onClick={() => changeTab('loss')} />
+            <TabIcon icon="🔻" label="Loss"     active={outerTab === 'losses'}   onClick={() => changeTab('losses')} />
             <TabIcon icon="💸" label="Exp."     active={outerTab === 'expenses'} onClick={() => changeTab('expenses')} />
             <TabIcon icon="👤" label="Staff"    active={outerTab === 'staff'}    onClick={() => changeTab('staff')} />
           </div>
@@ -543,6 +546,11 @@ function ItemHubPageInner() {
         )}
         {addForm !== 'expense' && outerTab === 'expenses' && <ExpensesTab search={search} />}
         {outerTab === 'cab'      && <CABTab />}
+        {outerTab === 'losses' && (
+          <TabErrorBoundary>
+            <LossFeedTab search={search} />
+          </TabErrorBoundary>
+        )}
         {outerTab === 'staff'    && (
           <TabErrorBoundary>
             <StaffClient role={role} username={username} embedded />
