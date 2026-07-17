@@ -652,6 +652,12 @@ export default function TodayPage({ onGoToViolation, counts }: {
     if (c['no_cp'] > 0) list.push({ type: 'no_cp', label: `item${s(c['no_cp'])} with no cost price`, count: c['no_cp'], days: null })
     if (c['unlinked_named'] > 0) list.push({ type: 'unlinked_named', label: `sale line${s(c['unlinked_named'])} not linked to their item`, count: c['unlinked_named'], days: null })
     if (c['service_violation'] > 0) list.push({ type: 'service_violation', label: `service${s(c['service_violation'])} with stock activity recorded`, count: c['service_violation'], days: null })
+    // Every remaining type gets its own line too (count 0), so all 17 error
+    // types always appear as full sentence rows -- none summarised away.
+    const active = new Set(list.map(v => v.type))
+    for (const t of ALL_ERROR_TYPES) {
+      if (!active.has(t)) list.push({ type: t, label: SHORT_LABEL[t] ?? t, count: 0, days: null })
+    }
     return list.sort((a, b) => b.count - a.count)
   }, [flags, counts])
 
@@ -713,6 +719,21 @@ export default function TodayPage({ onGoToViolation, counts }: {
               const on = assignedOn[v.type]
               const by = assignedBy[v.type]
 
+              // Clear types keep the same sentence shape, just with nothing
+              // left to fix -- so all 17 lines always read the same way.
+              if (v.count === 0) {
+                return (
+                  <div key={v.type} className="py-[3px] text-[11px] leading-snug text-gray-400">
+                    <span className="capitalize font-semibold">{assignedTo}</span>, nothing left to fix{' '}
+                    <span className="font-bold text-green-600">0</span>{' '}
+                    {SHORT_LABEL[v.type] ?? v.label} <span className="text-green-600">✓</span>{' '}
+                    <button onClick={() => onGoToViolation?.(violationKey)} className="text-blue-400 font-semibold whitespace-nowrap">
+                      View →
+                    </button>
+                  </div>
+                )
+              }
+
               return (
                 <div key={v.type} className={`py-[3px] text-[11px] leading-snug ${atRisk ? 'text-red-500' : 'text-gray-700'}`}>
                   <span className="capitalize font-semibold">{assignedTo}</span>, {remainingPhrase}{' '}
@@ -730,18 +751,6 @@ export default function TodayPage({ onGoToViolation, counts }: {
                 </div>
               )
             })}
-            {(() => {
-              // Name the error types with nothing outstanding too, so the list
-              // always accounts for every type the app tracks.
-              const active = new Set(violations.map(v => v.type))
-              const clear = ALL_ERROR_TYPES.filter(t => !active.has(t))
-              if (clear.length === 0) return null
-              return (
-                <p className="pt-1 mt-1 border-t border-gray-100 text-[10px] text-green-700 leading-snug">
-                  ✓ Clear: <span className="text-gray-400">{clear.map(t => SHORT_LABEL[t] ?? t).join(' · ')}</span>
-                </p>
-              )
-            })()}
           </div>
         )}
       </div>
