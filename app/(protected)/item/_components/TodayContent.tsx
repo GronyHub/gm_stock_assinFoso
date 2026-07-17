@@ -559,7 +559,7 @@ export default function TodayPage({ onGoToViolation, counts }: {
   const [assignedOn, setAssignedOn] = useState<Record<string, string>>({})
   const [vSettings, setVSettings] = useState<Record<string, string>>({})
   const [logs, setLogs] = useState<any[]>([])
-  const [showData, setShowData] = useState(false)
+  const [homeView, setHomeView] = useState<'flags' | 'announcements' | 'data'>('flags')
   const [lossEvents, setLossEvents] = useState<{ date: string; loss_amt: number }[] | null>(null)
 
   function loadLossEvents() {
@@ -717,6 +717,22 @@ export default function TodayPage({ onGoToViolation, counts }: {
         <p className="text-[10px] text-gray-400">{fmtDate(data.date)}</p>
       </div>
 
+      {/* Submenus — one view at a time, like the Loss tab's submenus */}
+      <div className="flex gap-1">
+        {([
+          ['flags', `🚩 Flags${totalViolations > 0 ? ` (${totalViolations})` : ''}`],
+          ['announcements', '📢 Announcements'],
+          ['data', '🔢 Data'],
+        ] as const).map(([k, label]) => (
+          <button key={k} onClick={() => setHomeView(k)}
+            className={`text-[11px] font-semibold px-3 py-1 rounded-full transition
+              ${homeView === k ? 'bg-blue-600 text-white' : 'bg-white border border-blue-200 text-blue-700 hover:bg-blue-100'}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {homeView === 'flags' && (
       <div className="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5">
         <div className="flex items-center justify-between mb-0.5">
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">
@@ -845,21 +861,14 @@ export default function TodayPage({ onGoToViolation, counts }: {
           </div>
         )}
       </div>
+      )}
 
-      {/* Data — a Home-page section like Announcements, collapsed until opened */}
-      <div className="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5">
-        <button onClick={() => setShowData(v => !v)} className="w-full flex items-center justify-between">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">🔢 Data</p>
-          <span className="text-[10px] text-blue-600 font-semibold">{showData ? '▲ Hide' : '▼ Show'}</span>
-        </button>
-        {showData && (
-          <div className="mt-1.5 -mx-2.5 border-t border-gray-100">
-            <AnalyticsPanel />
-          </div>
-        )}
-      </div>
-
-      <AnnouncementsPanel />
+      {homeView === 'announcements' && <AnnouncementsPanel />}
+      {homeView === 'data' && (
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <AnalyticsPanel />
+        </div>
+      )}
     </div>
   )
 }
