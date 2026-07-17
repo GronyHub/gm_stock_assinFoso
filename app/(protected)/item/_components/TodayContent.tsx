@@ -567,7 +567,7 @@ export default function TodayPage({ onGoToViolation, counts }: {
   const [assignedOn, setAssignedOn] = useState<Record<string, string>>({})
   const [vSettings, setVSettings] = useState<Record<string, string>>({})
   const [logs, setLogs] = useState<any[]>([])
-  const [homeView, setHomeView] = useState<'flags' | 'announcements' | 'data'>('flags')
+  const [homeView, setHomeView] = useState<'cash' | 'manage' | 'announcements' | 'data'>('cash')
   const [lossEvents, setLossEvents] = useState<{ date: string; loss_amt: number }[] | null>(null)
 
   function loadLossEvents() {
@@ -784,8 +784,9 @@ export default function TodayPage({ onGoToViolation, counts }: {
       {/* Submenus — one view at a time, like the Loss tab's submenus */}
       <div className="flex items-center gap-1">
         {([
-          ['flags', `🚩 Flags${totalViolations > 0 ? ` (${totalViolations})` : ''}`],
-          ['announcements', '📢 Announcements'],
+          ['cash', `💰 Cash${cashCount > 0 ? ` (${cashCount})` : ''}`],
+          ['manage', `🗂️ Manage${manageCount > 0 ? ` (${manageCount})` : ''}`],
+          ['announcements', '📢 News'],
           ['data', '🔢 Data'],
         ] as const).map(([k, label]) => (
           <button key={k} onClick={() => setHomeView(k)}
@@ -797,8 +798,7 @@ export default function TodayPage({ onGoToViolation, counts }: {
         <p className="ml-auto text-[10px] text-gray-400 shrink-0">{fmtDate(data.date)}</p>
       </div>
 
-      {homeView === 'flags' && (
-      <>
+      {homeView === 'cash' && (
       <div className="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5">
         <div className="flex items-center justify-between mb-0.5">
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">
@@ -870,8 +870,10 @@ export default function TodayPage({ onGoToViolation, counts }: {
           </div>
         )}
       </div>
+      )}
 
       {/* GRONY MANAGE — operational tasks with no direct money in them */}
+      {homeView === 'manage' && (
       <div className="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5">
         <div className="flex items-center justify-between mb-0.5">
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">
@@ -886,7 +888,6 @@ export default function TodayPage({ onGoToViolation, counts }: {
           </div>
         )}
       </div>
-      </>
       )}
 
       {homeView === 'announcements' && <AnnouncementsPanel />}
