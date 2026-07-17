@@ -3,6 +3,7 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { isOwnerLevel } from '@/lib/roles'
 import { recordCountRevision } from '@/lib/countRevisions'
+import { gainViolation } from '@/lib/stockGuard'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -23,6 +24,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     SELECT item_id, count_date::date::text AS count_date, quantity_counted, counted_by
     FROM stock_counts WHERE id = ${id}
   `
+
+  // Gains are not allowed on edits either: the corrected value must still be
+  // explainable by the records as of that date.
+  if (before?.item_id && before.count_date) {
+    const gainErr = await gainViolation(before.item_id, Number(quantity_counted), before.count_date)
+    if (gainErr) return NextResponse.json({ error: gainErr }, { status: 400 })
+  }
+
   if (before && Number(before.quantity_counted) !== Number(quantity_counted)) {
     await recordCountRevision({
       stockCountId: Number(id),

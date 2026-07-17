@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { recordCountRevision } from '@/lib/countRevisions'
+import { gainViolation } from '@/lib/stockGuard'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
@@ -21,6 +22,11 @@ export async function POST(req: NextRequest) {
   if (item[0].product_type === 'service' || /^service/i.test(item[0].cf_group ?? '')) {
     return NextResponse.json({ error: `"${item[0].canonical_name}" is a service — services cannot be counted.` }, { status: 400 })
   }
+
+  // Gains are not allowed: a count above what the records support means a
+  // bill or GMC record is missing and must be entered first.
+  const gainErr = await gainViolation(Number(itemId), Number(qty), today)
+  if (gainErr) return NextResponse.json({ error: gainErr }, { status: 400 })
 
   // session.user.name = display_name (set in auth authorize callback)
   // session.user.username = raw login name (set in jwt/session callbacks)
