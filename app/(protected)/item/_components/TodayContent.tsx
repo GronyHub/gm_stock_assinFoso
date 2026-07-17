@@ -496,7 +496,7 @@ const SHORT_LABEL: Record<string, string> = {
   unchecked_cab: 'Cash at Bank',
   no_group: 'Item Groups',
   duplicates: 'Duplicate Items',
-  not_in_inventory: 'Inventory Names',
+  not_in_inventory: 'Alias Confirmations',
   dup_receipts: 'Duplicate Receipts',
   daily: 'Daily Counts',
   '7day': '7-Day Counts',
@@ -510,6 +510,16 @@ const SHORT_LABEL: Record<string, string> = {
 
 // All tasks default to Joe until someone explicitly assigns them elsewhere.
 const DEFAULT_ASSIGNEE = 'Joe'
+
+// Every error type the app tracks, in Errors-tab order -- the Needs
+// Attention list must account for ALL of them: active ones as task rows,
+// clear ones named in the ✓ line so nothing is silently missing.
+const ALL_ERROR_TYPES = [
+  'neg_soh', 'no_sp', 'no_cp', 'no_group', 'duplicates', 'not_in_inventory',
+  'unlinked_named', 'service_violation', 'daily', '7day', '15day',
+  'no_cash', 'missing_days', 'cost_gte_sell', 'dup_receipts',
+  'unchecked_cab', 'no_staff_times',
+]
 
 // This widget's violation "type" strings are the historical keys used by the
 // staff-assignment/penalty system (violation_assignments etc.) and must stay
@@ -615,11 +625,16 @@ export default function TodayPage({ onGoToViolation, counts }: {
       label: 'possible duplicate item pair' + (flags.duplicates.length !== 1 ? 's' : ''),
       count: flags.duplicates.length, days: null,
     })
-    if (flags.notInInventory?.length) list.push({
-      type: 'not_in_inventory',
-      label: 'item name' + (flags.notInInventory.length !== 1 ? 's' : '') + ' not found in inventory',
-      count: flags.notInInventory.length, days: null,
-    })
+    {
+      // Same source as the Aliases fix screen (pending sales + bill aliases),
+      // falling back to the flags list if the page counts aren't in yet.
+      const aliasCount = counts?.['aliases'] ?? flags.notInInventory?.length ?? 0
+      if (aliasCount > 0) list.push({
+        type: 'not_in_inventory',
+        label: 'item name' + (aliasCount !== 1 ? 's' : '') + ' awaiting alias confirmation',
+        count: aliasCount, days: null,
+      })
+    }
     if (flags.dupReceipts?.length) list.push({
       type: 'dup_receipts',
       label: 'day' + (flags.dupReceipts.length !== 1 ? 's' : '') + ' with duplicate WIC/GMC receipts',
@@ -671,7 +686,7 @@ export default function TodayPage({ onGoToViolation, counts }: {
         {!flags ? (
           <p className="text-[11px] text-gray-400 py-[1px]">Loading…</p>
         ) : violations.length === 0 ? (
-          <p className="text-[11px] text-green-600 font-medium py-[1px]">All clear ✓</p>
+          <p className="text-[11px] text-green-600 font-medium py-[1px]">All clear ✓ — every error type checked</p>
         ) : (
           <div>
             {violations.map(v => {
@@ -715,6 +730,18 @@ export default function TodayPage({ onGoToViolation, counts }: {
                 </div>
               )
             })}
+            {(() => {
+              // Name the error types with nothing outstanding too, so the list
+              // always accounts for every type the app tracks.
+              const active = new Set(violations.map(v => v.type))
+              const clear = ALL_ERROR_TYPES.filter(t => !active.has(t))
+              if (clear.length === 0) return null
+              return (
+                <p className="pt-1 mt-1 border-t border-gray-100 text-[10px] text-green-700 leading-snug">
+                  ✓ Clear: <span className="text-gray-400">{clear.map(t => SHORT_LABEL[t] ?? t).join(' · ')}</span>
+                </p>
+              )
+            })()}
           </div>
         )}
       </div>
