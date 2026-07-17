@@ -950,6 +950,13 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
     : new Map<string, Omission[]>()
   const packCycles = isPackChain && targetComputed ? buildPackCycles(targetComputed) : []
   const packCyclesByStart = new Map(packCycles.map(c => [c.start, c]))
+  // Column totals shown in the (sticky) header row. Gains should always be 0
+  // -- any gain means a record is missing -- so they're flagged loudly.
+  const packLossTotal = parseFloat(packChainRows.reduce((s, r) => s + ((r.packLoss ?? 0) > 0.001 ? (r.packLoss as number) : 0), 0).toFixed(2))
+  const packGainTotal = parseFloat(packChainRows.reduce((s, r) => s + ((r.packLoss ?? 0) < -0.001 ? -(r.packLoss as number) : 0), 0).toFixed(2))
+  const closedCycles = packCycles.filter(c => c.end !== null)
+  const cycleLossTotal = parseFloat(closedCycles.reduce((s, c) => s + Math.max(0, c.sheetsGiven - c.used), 0).toFixed(2))
+  const cycleGainTotal = parseFloat(closedCycles.reduce((s, c) => s + Math.max(0, c.used - c.sheetsGiven), 0).toFixed(2))
   const packChainBreakdownNames = targetComputed
     ? Array.from(new Set(targetComputed.flatMap(r => (r.wic_breakdown ?? []).map(b => b.name)))).sort()
     : []
@@ -1034,7 +1041,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
               Combined view: {item.item_name} → {targetName} → services
             </p>
             <table className="table-fixed border-collapse text-[8px]"
-              style={{ width: `${62 + 2 * 48 + 9 * 36 + packChainBreakdownNames.length * 60 + 56 + 64 + 72 + 200 + 480 + 220}px` }}>
+              style={{ width: `${62 + 2 * 48 + 10 * 36 + packChainBreakdownNames.length * 60 + 56 + 64 + 72 + 64 + 200 + 480 + 220}px` }}>
               {/* Pixel-widths: date frozen at its text width, numeric columns as
                   thin as their numbers, OMISSIONS wide (480px) so its text stays
                   on 1-2 lines instead of growing the row height, TRADE-OFF at the
@@ -1049,8 +1056,10 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                 <col style={{width:'36px'}} />
                 <col style={{width:'36px'}} />
                 <col style={{width:'36px'}} />
+                <col style={{width:'36px'}} />
                 <col style={{width:'64px'}} />
                 <col style={{width:'72px'}} />
+                <col style={{width:'64px'}} />
                 {packChainBreakdownNames.map(n => <col key={n} style={{width:'60px'}} />)}
                 <col style={{width:'48px'}} />
                 <col style={{width:'36px'}} />
@@ -1064,10 +1073,10 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
               <thead className="sticky top-0 z-10">
                 <tr className="bg-amber-500 text-gray-800 font-bold">
                   <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-left pl-0.5 align-bottom sticky left-0 z-20 bg-amber-500">DATE</th>
-                  <th colSpan={6} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">
+                  <th colSpan={7} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">
                     {item.item_name}
                   </th>
-                  <th colSpan={7 + packChainBreakdownNames.length} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">
+                  <th colSpan={8 + packChainBreakdownNames.length} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">
                     {targetName}
                   </th>
                   <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600"
@@ -1093,15 +1102,34 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                   <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Taken for internal use (credits singles below)">GMC</th>
                   <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Sold as whole packs to a real customer">WIC</th>
                   <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Running expected stock">EXP</th>
-                  <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Count loss/gain on packs">L/G</th>
+                  <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400"
+                    title="Packs missing at count. Column total shown below the label.">
+                    LOSS
+                    <span className="block text-red-700">{packLossTotal > 0 ? `-${fmtQ(packLossTotal)}` : '0'}</span>
+                  </th>
+                  <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400"
+                    title="Packs gained at count. Gains should ALWAYS be 0 — any gain means a record is missing (unrecorded bill, wrong GMC, or an earlier count error). Column total shown below the label.">
+                    GAIN
+                    <span className={`block ${packGainTotal > 0 ? 'bg-red-600 text-white rounded px-0.5' : 'text-green-800'}`}>
+                      {packGainTotal > 0 ? `⚠+${fmtQ(packGainTotal)}` : '0'}
+                    </span>
+                  </th>
                   <th className="py-0.5 border-b-2 border-gray-400 text-center border-l-2 border-l-gray-600" title="Credited in from pack GMC take">CONV</th>
                   <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400"
                     title="On rows where a GMC pack was taken: total sheets recorded as used (services + direct sales) from this pack until the NEXT pack was taken — the pack's full cycle, measured purely from records, independent of counts.">
                     USED/PACK
                   </th>
                   <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400"
-                    title={`Sheets given by the pack minus sheets used in its cycle, valued at ₵${PAPER_SELL_PRICE}/sheet. Lost = given but never recorded as used; over = more used than given (leftover from the previous pack, or a GMC take not recorded).`}>
-                    PACK L/₵
+                    title={`Sheets a pack gave but never recorded as used before the next pack, valued at ₵${PAPER_SELL_PRICE}/sheet. Column total (closed packs) shown below the label.`}>
+                    PACK LOSS
+                    <span className="block text-red-700">{cycleLossTotal > 0 ? `-₵${fmtN(cycleLossTotal * PAPER_SELL_PRICE)}` : '0'}</span>
+                  </th>
+                  <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400"
+                    title="Sheets used BEYOND what the pack gave — should ALWAYS be 0; any value means leftover from a previous pack or an unrecorded GMC take. Column total shown below the label.">
+                    PACK GAIN
+                    <span className={`block ${cycleGainTotal > 0 ? 'bg-red-600 text-white rounded px-0.5' : 'text-green-800'}`}>
+                      {cycleGainTotal > 0 ? `⚠+${fmtQ(cycleGainTotal)}` : '0'}
+                    </span>
                   </th>
                   {packChainBreakdownNames.map(n => (
                     <th key={n} title={n} className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">
@@ -1138,7 +1166,12 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                     <td className="text-center py-0.5 font-bold border-l border-gray-300">
                       {row.packLoss === null ? <span className="text-gray-300">—</span>
                         : row.packLoss > 0.001 ? <span className="text-red-600">-{fmtN(row.packLoss)}</span>
-                        : row.packLoss < -0.001 ? <span className="text-green-600">+{fmtN(Math.abs(row.packLoss))}</span>
+                        : <span className="text-gray-400">0</span>}
+                    </td>
+                    <td className="text-center py-0.5 font-bold border-l border-gray-300">
+                      {row.packLoss !== null && row.packLoss < -0.001
+                        ? <span className="bg-red-600 text-white rounded px-0.5" title="A gain should never happen — a record is missing (unrecorded bill, wrong GMC, or an earlier count error). See OMISSIONS.">⚠+{fmtN(Math.abs(row.packLoss))}</span>
+                        : row.packLoss === null ? <span className="text-gray-300">—</span>
                         : <span className="text-gray-400">0</span>}
                     </td>
                     <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-teal-600">{fmtQs(row.singlesConvIn)}</td>
@@ -1148,6 +1181,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                       const cyc = packCyclesByStart.get(row.date)
                       if (!cyc) return (
                         <>
+                          <td className="text-center py-0.5 border-l border-gray-300"><span className="text-gray-300">—</span></td>
                           <td className="text-center py-0.5 border-l border-gray-300"><span className="text-gray-300">—</span></td>
                           <td className="text-center py-0.5 border-l border-gray-300"><span className="text-gray-300">—</span></td>
                         </>
@@ -1166,11 +1200,16 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                             {open ? <span className="text-gray-300">—</span>
                               : diff > 0.001 ? (
                                 <span className="text-red-600">-₵{fmtN(diff * PAPER_SELL_PRICE)}<span className="block text-[6px]">-{fmtQ(diff)} sheets</span></span>
-                              ) : diff < -0.001 ? (
-                                <span className="text-amber-600" title="More sheets used than this pack gave — leftover from the previous pack, or a GMC take was not recorded">
-                                  +{fmtQ(Math.abs(diff))} over
-                                </span>
                               ) : <span className="text-green-600">✓</span>}
+                          </td>
+                          <td className="text-center py-0.5 font-bold border-l border-gray-300 whitespace-nowrap">
+                            {open ? <span className="text-gray-300">—</span>
+                              : diff < -0.001 ? (
+                                <span className="bg-red-600 text-white rounded px-0.5"
+                                  title="Sheets used beyond what this pack gave — should be 0. Either leftover from the previous pack, or a GMC take was not recorded.">
+                                  ⚠+{fmtQ(Math.abs(diff))}
+                                </span>
+                              ) : <span className="text-gray-400">0</span>}
                           </td>
                         </>
                       )
@@ -1278,32 +1317,20 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                   const totalCedis = packChainRows.reduce((s, r) => s + (rowLossCedis(r, numVal(item.units_per_pack)) ?? 0), 0)
                   return (
                     <tr className="bg-gray-100 border-t-2 border-gray-400 font-bold">
-                      <td colSpan={8} className="text-right pr-1 py-1 text-gray-600 text-[7px]">
-                        {(() => {
-                          const closed = packCycles.filter(c => c.end !== null)
-                          return `net of ${closed.length} pack${closed.length === 1 ? '' : 's'} →`
-                        })()}
+                      <td colSpan={9} className="text-right pr-1 py-1 text-gray-600 text-[7px]">
+                        {`over ${closedCycles.length} closed pack${closedCycles.length === 1 ? '' : 's'} →`}
                       </td>
-                      {(() => {
-                        const closed = packCycles.filter(c => c.end !== null)
-                        const netLost = parseFloat(closed.reduce((s, c) => s + (c.sheetsGiven - c.used), 0).toFixed(2))
-                        return (
-                          <>
-                            <td className="text-center py-1 border-l border-gray-300 whitespace-nowrap"
-                              title="Net unaccounted sheets over all closed pack cycles — overs cancel losses">
-                              {netLost > 0.001 ? <span className="text-red-600">-{fmtQ(netLost)} sheets</span>
-                                : netLost < -0.001 ? <span className="text-amber-600">+{fmtQ(Math.abs(netLost))} over</span>
-                                : <span className="text-gray-400">0</span>}
-                            </td>
-                            <td className="text-center py-1 border-l border-gray-300 whitespace-nowrap"
-                              title="Net over all closed pack cycles — overs cancel losses">
-                              {netLost > 0.001 ? <span className="text-red-600">-₵{fmtN(netLost * PAPER_SELL_PRICE)}</span>
-                                : netLost < -0.001 ? <span className="text-amber-600">+₵{fmtN(Math.abs(netLost) * PAPER_SELL_PRICE)}</span>
-                                : <span className="text-gray-400">0</span>}
-                            </td>
-                          </>
-                        )
-                      })()}
+                      <td className="border-l border-gray-300" />
+                      <td className="text-center py-1 border-l border-gray-300 whitespace-nowrap"
+                        title="Total sheets given but never recorded as used, over all closed pack cycles">
+                        {cycleLossTotal > 0.001 ? <span className="text-red-600">-₵{fmtN(cycleLossTotal * PAPER_SELL_PRICE)}</span>
+                          : <span className="text-gray-400">0</span>}
+                      </td>
+                      <td className="text-center py-1 border-l border-gray-300 whitespace-nowrap"
+                        title="Total sheets used beyond what packs gave — should be 0">
+                        {cycleGainTotal > 0.001 ? <span className="bg-red-600 text-white rounded px-0.5">⚠+{fmtQ(cycleGainTotal)}</span>
+                          : <span className="text-gray-400">0</span>}
+                      </td>
                       <td colSpan={4 + packChainBreakdownNames.length} className="text-right pr-1 py-1 text-gray-600">
                         TOTAL (net of gains)
                       </td>
