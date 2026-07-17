@@ -376,7 +376,6 @@ function ItemHubPageInner() {
             <img src="/logo-mark.png" alt="Home" className="w-7 h-7" />
           </button>
           <div className="flex items-center gap-1 px-1 pt-1.5 pb-1 flex-1 min-w-0">
-            <TabIcon icon="🔢" label="Data"     active={outerTab === 'data'}     onClick={() => changeTab('data')} />
             <TabIcon icon="📉" label="Item"     active={outerTab === 'loss'}     onClick={() => changeTab('loss')} />
             <TabIcon icon="🔻" label="Loss"     active={outerTab === 'losses'}   onClick={() => changeTab('losses')} />
             <TabIcon icon="💸" label="Exp."     active={outerTab === 'expenses'} onClick={() => changeTab('expenses')} />

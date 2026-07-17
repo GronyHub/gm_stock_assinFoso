@@ -1,9 +1,17 @@
 'use client'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { useSession } from 'next-auth/react'
 import { fmtDate, fmtOrdinalDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
+
+// Data lives as a collapsible section of the Home page (like Announcements),
+// loaded only when opened since it's chart-heavy.
+const AnalyticsPanel = dynamic(() => import('./AnalyticsPanel'), {
+  ssr: false,
+  loading: () => <div className="py-6 text-center text-gray-400 text-xs">Loading data…</div>,
+})
 
 // ─── Announcements ────────────────────────────────────────────────────────────
 type MediaItem = { url: string; type: string }
@@ -550,6 +558,7 @@ export default function TodayPage({ onGoToViolation, counts }: {
   const [assignedOn, setAssignedOn] = useState<Record<string, string>>({})
   const [vSettings, setVSettings] = useState<Record<string, string>>({})
   const [logs, setLogs] = useState<any[]>([])
+  const [showData, setShowData] = useState(false)
 
   function loadLogs() {
     fetch('/api/logs').then(r => r.ok ? r.json() : []).then(d => {
@@ -751,6 +760,19 @@ export default function TodayPage({ onGoToViolation, counts }: {
                 </div>
               )
             })}
+          </div>
+        )}
+      </div>
+
+      {/* Data — a Home-page section like Announcements, collapsed until opened */}
+      <div className="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5">
+        <button onClick={() => setShowData(v => !v)} className="w-full flex items-center justify-between">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">🔢 Data</p>
+          <span className="text-[10px] text-blue-600 font-semibold">{showData ? '▲ Hide' : '▼ Show'}</span>
+        </button>
+        {showData && (
+          <div className="mt-1.5 -mx-2.5 border-t border-gray-100">
+            <AnalyticsPanel />
           </div>
         )}
       </div>
