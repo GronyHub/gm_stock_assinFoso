@@ -110,6 +110,10 @@ const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCategory; d
     description: 'These items have not been counted in over 15 days, so their recorded stock may no longer reflect what is actually on the shelf. Count them soon before a real shortage or loss goes unnoticed. Items counted at the same number three times in a row with no purchases relax to a 30-day cycle, and items counted at zero twice with no purchases drop off until a bill brings them back.',
   },
   {
+    key: 'gains', label: 'Gains', category: 'loss',
+    description: 'Counts that came in ABOVE what the records support. A gain should always be 0 — every one means a bill or GMC take was never recorded, or an earlier count was wrong. Fix the missing record (or correct the count) until this list is empty.',
+  },
+  {
     key: 'no_cash', label: 'No Cash', category: 'sales',
     description: 'A walk-in customer sale was recorded for this day, but no cash was ever counted against it, so there is no way to confirm the money actually came in. Count the cash for that day and enter it against the receipt.',
   },
@@ -225,6 +229,7 @@ function ItemHubPageInner() {
   const [pendingCounts, setPendingCounts] = useState<{ daily: number; gmcWeekly: number; overdue: number }>({ daily: 0, gmcWeekly: 0, overdue: 0 })
   const [serviceViolationCount, setServiceViolationCount] = useState(0)
   const [aliasesPendingCount, setAliasesPendingCount] = useState(0)
+  const [gainsCount, setGainsCount] = useState(0)
 
   function loadBadgeData() {
     fetch('/api/flags').then(r => r.ok ? r.json() : null).then(d => { if (d) setGlobalFlags(d) }).catch(() => {})
@@ -238,6 +243,9 @@ function ItemHubPageInner() {
         gmcWeekly: Array.isArray(gmcWeekly) ? gmcWeekly.length : 0,
         overdue: Array.isArray(overdue) ? overdue.length : 0,
       })
+    }).catch(() => {})
+    fetch('/api/losses/events?kind=gain').then(r => r.ok ? r.json() : []).then(d => {
+      setGainsCount(Array.isArray(d) ? d.length : 0)
     }).catch(() => {})
     fetch('/api/losses/summary').then(r => r.ok ? r.json() : []).then(d => {
       const list = Array.isArray(d) ? d : []
@@ -277,16 +285,17 @@ function ItemHubPageInner() {
       daily: pendingCounts.daily,
       '7day': pendingCounts.gmcWeekly,
       '15day': pendingCounts.overdue,
+      gains: gainsCount,
       service_violation: serviceViolationCount,
       unchecked_cab: f?.uncheckedCab?.length ?? 0,
       no_staff_times: f?.noStaffTimes?.length ?? 0,
     }
-  }, [items, globalFlags, pendingCounts, serviceViolationCount, aliasesPendingCount])
+  }, [items, globalFlags, pendingCounts, serviceViolationCount, aliasesPendingCount, gainsCount])
 
   const badgeCounts: Partial<Record<OuterTab, number>> = useMemo(() => {
     const v = violationCounts
     return {
-      errors: v.neg_soh + v.no_sp + v.no_cp + v.no_group + v.duplicates + v.unlinked_named + v.aliases + v.service_violation + v.daily + v['7day'] + v['15day']
+      errors: v.neg_soh + v.no_sp + v.no_cp + v.no_group + v.duplicates + v.unlinked_named + v.aliases + v.service_violation + v.daily + v['7day'] + v['15day'] + v.gains
         + v.no_cash + v.missing_days + v.cost_price + v.dup_receipt + v.unchecked_cab + v.no_staff_times,
     }
   }, [violationCounts])
@@ -592,6 +601,9 @@ function ItemHubPageInner() {
         {outerTab === 'errors' && violation && (() => {
           const category = ERROR_VIOLATIONS.find(v => v.key === violation)?.category
           if (category === 'loss') {
+            if (violation === 'gains') {
+              return <LossFeedTab kind="gain" search={search} />
+            }
             if (COUNTS_VIOLATIONS.has(violation)) {
               return <CountsTab items={items} groupFilter={group} search={search} violation={violation} onFixRecords={goFixRecords} />
             }

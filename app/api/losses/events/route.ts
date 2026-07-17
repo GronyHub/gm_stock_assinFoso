@@ -1,5 +1,5 @@
 import sql from '@/lib/db'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,7 +25,11 @@ type DayRow = {
 
 function n(v: string | null) { return parseFloat(v ?? '0') || 0 }
 
-export async function GET() {
+// ?kind=gain lists GAIN events instead (counted above expected) -- every one
+// of those is a record error (missing bill/GMC or count mistake) that should
+// be fixed until the list is empty.
+export async function GET(req: NextRequest) {
+  const kind = req.nextUrl.searchParams.get('kind') === 'gain' ? 'gain' : 'loss'
   const [itemRows, dayRows] = await Promise.all([
     sql`
       SELECT s.item_id, s.item_name, i.selling_rate, i.product_type,
@@ -134,15 +138,17 @@ export async function GET() {
         const expected = parseFloat((prev + bills + c - w - g).toFixed(4))
         if (counted !== null) {
           const loss = parseFloat((expected - counted).toFixed(4))
-          if (loss > 0.001) {
+          const hit = kind === 'loss' ? loss > 0.001 : loss < -0.001
+          if (hit) {
+            const qty = Math.abs(loss)
             events.push({
               date: row.date,
               item_id: item.item_id,
               item_name: item.item_name,
               expected,
               counted,
-              loss_qty: loss,
-              loss_amt: parseFloat((loss * sp).toFixed(2)),
+              loss_qty: qty,
+              loss_amt: parseFloat((qty * sp).toFixed(2)),
             })
           }
           prev = counted

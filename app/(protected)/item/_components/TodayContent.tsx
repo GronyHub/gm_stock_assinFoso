@@ -514,6 +514,7 @@ const SHORT_LABEL: Record<string, string> = {
   no_cp: 'Missing Cost Prices',
   unlinked_named: 'Unlinked Sales',
   service_violation: 'Service Violations',
+  gains: 'Gains (record errors)',
 }
 
 // All tasks default to Joe until someone explicitly assigns them elsewhere.
@@ -524,7 +525,7 @@ const DEFAULT_ASSIGNEE = 'Joe'
 // clear ones named in the ✓ line so nothing is silently missing.
 const ALL_ERROR_TYPES = [
   'neg_soh', 'no_sp', 'no_cp', 'no_group', 'duplicates', 'not_in_inventory',
-  'unlinked_named', 'service_violation', 'daily', '7day', '15day',
+  'unlinked_named', 'service_violation', 'gains', 'daily', '7day', '15day',
   'no_cash', 'missing_days', 'cost_gte_sell', 'dup_receipts',
   'unchecked_cab', 'no_staff_times',
 ]
@@ -661,6 +662,7 @@ export default function TodayPage({ onGoToViolation, counts }: {
     if (c['no_cp'] > 0) list.push({ type: 'no_cp', label: `item${s(c['no_cp'])} with no cost price`, count: c['no_cp'], days: null })
     if (c['unlinked_named'] > 0) list.push({ type: 'unlinked_named', label: `sale line${s(c['unlinked_named'])} not linked to their item`, count: c['unlinked_named'], days: null })
     if (c['service_violation'] > 0) list.push({ type: 'service_violation', label: `service${s(c['service_violation'])} with stock activity recorded`, count: c['service_violation'], days: null })
+    if (c['gains'] > 0) list.push({ type: 'gains', label: `gain${s(c['gains'])} on record — every gain is a missing bill/GMC or count error`, count: c['gains'], days: null })
     // Every remaining type gets its own line too (count 0), so all 17 error
     // types always appear as full sentence rows -- none summarised away.
     const active = new Set(list.map(v => v.type))
@@ -677,13 +679,6 @@ export default function TodayPage({ onGoToViolation, counts }: {
 
   return (
     <div className="py-2 space-y-1.5">
-      {onGoToViolation && (
-        <button onClick={() => onGoToViolation('daily')}
-          className="w-full bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-bold text-sm rounded-lg py-2.5 shadow-sm transition">
-          📋 Do Today's Daily Count
-        </button>
-      )}
-
       <div className="flex items-center justify-between">
         <h1 className="text-base font-bold text-gray-900">Today</h1>
         <p className="text-[10px] text-gray-400">{fmtDate(data.date)}</p>
