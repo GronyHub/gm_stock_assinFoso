@@ -6,7 +6,7 @@ export async function GET() {
   const rows = await sql`
     SELECT
       s.item_id,
-      s.item_name,
+      COALESCE(i.canonical_name, s.item_name) AS item_name,
       s.cf_group,
       s.calculated_soh,
       c.last_count_date,
@@ -25,7 +25,7 @@ export async function GET() {
       AND s.cf_group IS DISTINCT FROM 'Large Format'
       AND COALESCE(i.product_type, 'goods') <> 'service'
       AND (c.last_count_date IS NULL OR c.last_count_date::date < CURRENT_DATE)
-    ORDER BY s.item_name ASC
+    ORDER BY COALESCE(i.canonical_name, s.item_name) ASC
   `
   return NextResponse.json(rows)
 }

@@ -22,7 +22,7 @@ export async function GET() {
     )
     SELECT
       s.item_id,
-      s.item_name,
+      COALESCE(i.canonical_name, s.item_name) AS item_name,
       s.cf_group,
       s.calculated_soh,
       c.last_count_date,
@@ -46,7 +46,7 @@ export async function GET() {
       CASE WHEN c.last_count_date IS NULL THEN 999999
            ELSE (CURRENT_DATE - c.last_count_date::date)
       END DESC,
-      s.item_name ASC
+      COALESCE(i.canonical_name, s.item_name) ASC
   `
   return NextResponse.json(rows)
 }
