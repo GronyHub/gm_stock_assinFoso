@@ -560,6 +560,14 @@ export default function TodayPage({ onGoToViolation, counts }: {
   const [vSettings, setVSettings] = useState<Record<string, string>>({})
   const [logs, setLogs] = useState<any[]>([])
   const [showData, setShowData] = useState(false)
+  const [lossEvents, setLossEvents] = useState<{ date: string; loss_amt: number }[] | null>(null)
+
+  function loadLossEvents() {
+    fetch('/api/losses/events')
+      .then(r => r.ok ? r.json() : [])
+      .then(d => setLossEvents(Array.isArray(d) ? d : []))
+      .catch(() => {})
+  }
 
   function loadLogs() {
     fetch('/api/logs').then(r => r.ok ? r.json() : []).then(d => {
@@ -592,7 +600,8 @@ export default function TodayPage({ onGoToViolation, counts }: {
       .catch(() => {})
   }
 
-  useEffect(() => { load(); loadFlags(); loadAssignments(); loadLogs() }, [])
+  useEffect(() => { load(); loadFlags(); loadAssignments(); loadLogs(); loadLossEvents() }, [])
+  usePolling(loadLossEvents, 60000)
   usePolling(load, 10000)
   usePolling(loadFlags, 30000)
   usePolling(loadLogs, 15000)
@@ -674,6 +683,30 @@ export default function TodayPage({ onGoToViolation, counts }: {
 
   const totalViolations = violations.reduce((s, v) => s + v.count, 0)
 
+  // Loss-feed summaries for Joe: all-time, yesterday, this week (Mon-start),
+  // this month, this year. Amounts use the Loss menu's valuation.
+  const lossSummary = useMemo(() => {
+    if (!lossEvents) return null
+    const fmtLocal = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    const y = new Date(today); y.setDate(y.getDate() - 1)
+    const weekStart = new Date(today); weekStart.setDate(weekStart.getDate() - ((today.getDay() + 6) % 7))
+    const monthStart = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`
+    const yearStart = `${today.getFullYear()}-01-01`
+    const yesterday = fmtLocal(y), ws = fmtLocal(weekStart)
+    const agg = (pred: (d: string) => boolean) => {
+      const list = lossEvents.filter(e => pred(e.date))
+      return { n: list.length, amt: parseFloat(list.reduce((s, e) => s + (Number(e.loss_amt) || 0), 0).toFixed(2)) }
+    }
+    return {
+      total: agg(() => true),
+      yesterday: agg(d => d === yesterday),
+      week: agg(d => d >= ws),
+      month: agg(d => d >= monthStart),
+      year: agg(d => d >= yearStart),
+    }
+  }, [lossEvents])
+
   if (loading) return <div className="py-10 text-center text-gray-400">Loading…</div>
   if (!data) return <div className="py-10 text-center text-gray-400">Could not load today's summary.</div>
 
@@ -693,6 +726,60 @@ export default function TodayPage({ onGoToViolation, counts }: {
             Assign →
           </Link>
         </div>
+        {/* Loss-feed summaries for Joe — all figures from the 🔻 Loss menu */}
+        {lossSummary && (() => {
+          const cedis = (v: number) => `₵${v.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+          const who = <span className="capitalize font-semibold">{DEFAULT_ASSIGNEE}</span>
+          const fixNow = (
+            <button onClick={() => onGoToViolation?.('__loss_feed')} className="text-blue-600 font-semibold whitespace-nowrap">
+              Fix now →
+            </button>
+          )
+          const R = ({ children, active }: { children: React.ReactNode; active: boolean }) => (
+            <div className={`py-[3px] text-[11px] leading-snug ${active ? 'text-gray-700' : 'text-gray-400'}`}>{children}</div>
+          )
+          const B = ({ v }: { v: string | number }) => <span className="font-bold text-red-500">{v}</span>
+          const t = lossSummary
+          return (
+            <div className="border-b border-gray-100 pb-1 mb-1">
+              <R active={t.total.n > 0}>
+                {t.total.n > 0 ? (
+                  <>{who}, there are <B v={t.total.n} /> losses detected amounting to a loss of <B v={cedis(t.total.amt)} /> — fix them now or you will pay it (it will be deducted from your salary). {fixNow}</>
+                ) : (
+                  <>{who}, no losses on record <span className="text-green-600">✓</span></>
+                )}
+              </R>
+              <R active={t.yesterday.n > 0}>
+                {t.yesterday.n > 0 ? (
+                  <>{who}, there was a loss of <B v={cedis(t.yesterday.amt)} /> ({t.yesterday.n} item{t.yesterday.n !== 1 ? 's' : ''}) from yesterday. {fixNow}</>
+                ) : (
+                  <>{who}, no loss from yesterday <span className="text-green-600">✓</span></>
+                )}
+              </R>
+              <R active={t.week.n > 0}>
+                {t.week.n > 0 ? (
+                  <>{who}, there have been <B v={t.week.n} /> losses this week (<B v={cedis(t.week.amt)} />) — investigate and fix now. {fixNow}</>
+                ) : (
+                  <>{who}, no losses this week <span className="text-green-600">✓</span></>
+                )}
+              </R>
+              <R active={t.month.n > 0}>
+                {t.month.n > 0 ? (
+                  <>{who}, <B v={t.month.n} /> losses this month (<B v={cedis(t.month.amt)} />) — investigate and fix now. {fixNow}</>
+                ) : (
+                  <>{who}, no losses this month <span className="text-green-600">✓</span></>
+                )}
+              </R>
+              <R active={t.year.n > 0}>
+                {t.year.n > 0 ? (
+                  <>{who}, <B v={t.year.n} /> losses this year (<B v={cedis(t.year.amt)} />) — investigate and fix now. {fixNow}</>
+                ) : (
+                  <>{who}, no losses this year <span className="text-green-600">✓</span></>
+                )}
+              </R>
+            </div>
+          )
+        })()}
         {!flags ? (
           <p className="text-[11px] text-gray-400 py-[1px]">Loading…</p>
         ) : violations.length === 0 ? (

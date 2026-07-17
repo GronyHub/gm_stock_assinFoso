@@ -328,6 +328,9 @@ function ItemHubPageInner() {
   }
 
   function goToViolation(key: string) {
+    // The loss-summary rows on Home point at the Loss feed tab, not an
+    // errors fix screen.
+    if (key === '__loss_feed') { changeTab('losses'); return }
     changeTab('errors')
     setViolation(key)
   }
