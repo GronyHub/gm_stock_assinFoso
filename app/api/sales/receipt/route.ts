@@ -3,6 +3,7 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { createItemFromTypedName } from '@/lib/createItem'
 import { impossibleUsageWarnings } from '@/lib/usageCheck'
+import { negativeStockViolations } from '@/lib/stockGuard'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
@@ -22,6 +23,18 @@ export async function POST(req: NextRequest) {
   const customerType = customer === 'Grony Multimedia as Customer' ? 'GMC' : 'WIC'
 
   try {
+    // Block any entry that would drive an item's stock below zero.
+    if (hasLines) {
+      const deltas = new Map<number, number>()
+      for (const l of lines) {
+        if (l.itemId) deltas.set(Number(l.itemId), (deltas.get(Number(l.itemId)) ?? 0) + (Number(l.qty) || 0))
+      }
+      const violations = await negativeStockViolations(deltas)
+      if (violations.length > 0) {
+        return NextResponse.json({ error: `Not allowed — this would create negative stock. ${violations.join(' ')}` }, { status: 400 })
+      }
+    }
+
     const [existingReceipt] = await sql`
       SELECT id, receipt_number FROM sales_receipts
       WHERE receipt_date::date = ${date}

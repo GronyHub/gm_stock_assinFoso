@@ -9,6 +9,9 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { itemId, qty, notes } = await req.json()
   if (!itemId || qty == null) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+  if (Number(qty) < 0 || isNaN(Number(qty))) {
+    return NextResponse.json({ error: 'Not allowed — a count can never be negative. Stock on hand must be 0 or more.' }, { status: 400 })
+  }
 
   const today = new Date().toISOString().slice(0, 10)
   const item = await sql`SELECT zoho_item_id, canonical_name, product_type, cf_group FROM items WHERE id = ${itemId}`

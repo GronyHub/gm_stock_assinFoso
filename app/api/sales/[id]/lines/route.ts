@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { createItemFromTypedName } from '@/lib/createItem'
 import { impossibleUsageWarnings } from '@/lib/usageCheck'
+import { negativeStockViolations } from '@/lib/stockGuard'
 import { NextResponse } from 'next/server'
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -16,6 +17,30 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   // is not present in this array has been removed by the user (delete).
 
   try {
+    // Block edits that would drive an item's stock below zero. Existing
+    // recorded quantities are already reflected in SOH, so the check is on
+    // the NET change per item (new totals minus what this receipt already
+    // had recorded).
+    {
+      const deltas = new Map<number, number>()
+      for (const line of lines) {
+        const id = line.itemId ?? null
+        if (id) deltas.set(Number(id), (deltas.get(Number(id)) ?? 0) + (parseFloat(line.quantity) || 0))
+      }
+      const existing = await sql`
+        SELECT item_id, SUM(quantity) AS qty FROM sales_receipt_lines
+        WHERE receipt_id = ${receiptId} AND item_id IS NOT NULL
+        GROUP BY item_id
+      `
+      for (const r of existing) {
+        deltas.set(r.item_id, (deltas.get(r.item_id) ?? 0) - (parseFloat(r.qty) || 0))
+      }
+      const violations = await negativeStockViolations(deltas)
+      if (violations.length > 0) {
+        return NextResponse.json({ error: `Not allowed — this would create negative stock. ${violations.join(' ')}` }, { status: 400 })
+      }
+    }
+
     const keepIds: number[] = []
 
     for (const line of lines) {

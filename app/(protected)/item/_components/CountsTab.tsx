@@ -46,6 +46,7 @@ function CountRow({ item, onSaved }: { item: DailyItem; onSaved: (id: number) =>
     })
     setSaving(false)
     if (res.ok) onSaved(item.item_id)
+    else alert((await res.json().catch(() => null))?.error ?? 'Could not save count.')
   }
 
   const overdue = item.days_overdue
@@ -261,6 +262,8 @@ export default function CountsTab({ items, groupFilter, search, violation }: Pro
       const updated: CountRecord = await res.json()
       setRecords(prev => prev.map(r => r.id === editingId ? { ...r, ...updated } : r))
       setEditingId(null)
+    } else {
+      alert((await res.json().catch(() => null))?.error ?? 'Could not save count.')
     }
   }
 
