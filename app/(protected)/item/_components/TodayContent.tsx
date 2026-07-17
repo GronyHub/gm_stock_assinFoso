@@ -781,28 +781,36 @@ export default function TodayPage({ onGoToViolation, counts }: {
 
   return (
     <div className="py-2 space-y-1.5">
-      {/* Submenus — one view at a time, like the Loss tab's submenus */}
-      <div className="flex items-center gap-1">
+      {/* Submenus — one view at a time, all four on ONE line. The 🚩 flag
+          carries each section's live count, so urgency travels with the pill. */}
+      <div className="flex flex-nowrap items-center gap-1 overflow-x-auto">
         {([
-          ['cash', `💰 Cash${cashCount > 0 ? ` (${cashCount})` : ''}`],
-          ['manage', `🗂️ Manage${manageCount > 0 ? ` (${manageCount})` : ''}`],
+          ['cash', '💰 Grony Cash'],
+          ['manage', '🗂️ Grony Manage'],
           ['announcements', '📢 News'],
           ['data', '🔢 Data'],
-        ] as const).map(([k, label]) => (
-          <button key={k} onClick={() => setHomeView(k)}
-            className={`text-[11px] font-semibold px-3 py-1 rounded-full transition
-              ${homeView === k ? 'bg-blue-600 text-white' : 'bg-white border border-blue-200 text-blue-700 hover:bg-blue-100'}`}>
-            {label}
-          </button>
-        ))}
-        <p className="ml-auto text-[10px] text-gray-400 shrink-0">{fmtDate(data.date)}</p>
+        ] as const).map(([k, label]) => {
+          const n = k === 'cash' ? cashCount : k === 'manage' ? manageCount : null
+          const active = homeView === k
+          return (
+            <button key={k} onClick={() => setHomeView(k)}
+              className={`text-[9px] font-semibold px-1.5 py-1 rounded-full whitespace-nowrap shrink-0 transition
+                ${active ? 'bg-blue-600 text-white' : 'bg-white border border-blue-200 text-blue-700 hover:bg-blue-100'}`}>
+              {label}
+              {n !== null && (n > 0
+                ? <span className={`font-bold ${active ? 'text-amber-300' : 'text-red-600'}`}> 🚩{n}</span>
+                : <span className={active ? 'text-green-200' : 'text-green-600'}> ✓</span>)}
+            </button>
+          )
+        })}
+        <p className="ml-auto text-[9px] text-gray-400 shrink-0 hidden sm:block">{fmtDate(data.date)}</p>
       </div>
 
       {homeView === 'cash' && (
       <div className="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5">
         <div className="flex items-center justify-between mb-0.5">
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">
-            💰 Grony Cash {cashCount > 0 && <span className="text-red-500">({cashCount})</span>}
+            💰 Grony Cash Flags {cashCount > 0 && <span className="text-red-500">🚩{cashCount}</span>}
           </p>
           <Link href="/staff?tab=Assignments" className="text-[10px] text-blue-600 font-semibold">
             Assign →
@@ -877,7 +885,7 @@ export default function TodayPage({ onGoToViolation, counts }: {
       <div className="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5">
         <div className="flex items-center justify-between mb-0.5">
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">
-            🗂️ Grony Manage {manageCount > 0 && <span className="text-red-500">({manageCount})</span>}
+            🗂️ Grony Manage Flags {manageCount > 0 && <span className="text-red-500">🚩{manageCount}</span>}
           </p>
         </div>
         {!flags ? (
