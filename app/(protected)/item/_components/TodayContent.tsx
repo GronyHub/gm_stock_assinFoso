@@ -528,8 +528,7 @@ const DEFAULT_ASSIGNEE = 'Joe'
 // (staff times, count duties, item hygiene). Move a type between sections by
 // moving its key in this set.
 const MANAGE_TYPES = new Set([
-  'no_staff_times', 'daily', '7day', '15day', 'no_group',
-  'duplicates', 'not_in_inventory', 'unlinked_named', 'service_violation',
+  'no_staff_times',
 ])
 
 const ALL_ERROR_TYPES = [
@@ -782,13 +781,8 @@ export default function TodayPage({ onGoToViolation, counts }: {
 
   return (
     <div className="py-2 space-y-1.5">
-      <div className="flex items-center justify-between">
-        <h1 className="text-base font-bold text-gray-900">Today</h1>
-        <p className="text-[10px] text-gray-400">{fmtDate(data.date)}</p>
-      </div>
-
       {/* Submenus — one view at a time, like the Loss tab's submenus */}
-      <div className="flex gap-1">
+      <div className="flex items-center gap-1">
         {([
           ['flags', `🚩 Flags${totalViolations > 0 ? ` (${totalViolations})` : ''}`],
           ['announcements', '📢 Announcements'],
@@ -800,6 +794,7 @@ export default function TodayPage({ onGoToViolation, counts }: {
             {label}
           </button>
         ))}
+        <p className="ml-auto text-[10px] text-gray-400 shrink-0">{fmtDate(data.date)}</p>
       </div>
 
       {homeView === 'flags' && (
