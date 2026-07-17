@@ -12,6 +12,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params
   const { quantity_counted, notes } = await req.json()
   if (quantity_counted == null) return NextResponse.json({ error: 'Missing qty' }, { status: 400 })
+  if (Number(quantity_counted) < 0 || isNaN(Number(quantity_counted))) {
+    return NextResponse.json({ error: 'Not allowed — a count can never be negative. Stock on hand must be 0 or more.' }, { status: 400 })
+  }
 
   const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
 
