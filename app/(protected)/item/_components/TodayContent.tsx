@@ -483,18 +483,10 @@ function daysSince(dateStr: string): number {
   return Math.round((today.getTime() - d.getTime()) / 86400000)
 }
 
-function agePhrase(days: number): string {
-  if (days <= 0) return 'today'
-  if (days === 1) return 'for 1 day now'
-  return `for ${days} days now`
-}
-
 function oldestDays(rows: any[], field: string): number | null {
   if (!rows.length) return null
   return Math.max(...rows.map(r => daysSince(r[field])))
 }
-
-const AUTO_PENALIZABLE = new Set(['missing_days', 'no_cash', 'cost_gte_sell', 'no_staff_times', 'unchecked_cab', 'dup_receipts'])
 
 const SHORT_LABEL: Record<string, string> = {
   missing_days: 'Sales Receipts',
@@ -506,7 +498,18 @@ const SHORT_LABEL: Record<string, string> = {
   duplicates: 'Duplicate Items',
   not_in_inventory: 'Inventory Names',
   dup_receipts: 'Duplicate Receipts',
+  daily: 'Daily Counts',
+  '7day': '7-Day Counts',
+  '15day': '15-Day Counts',
+  neg_soh: 'Negative Stock Items',
+  no_sp: 'Missing Selling Prices',
+  no_cp: 'Missing Cost Prices',
+  unlinked_named: 'Unlinked Sales',
+  service_violation: 'Service Violations',
 }
+
+// All tasks default to Joe until someone explicitly assigns them elsewhere.
+const DEFAULT_ASSIGNEE = 'Joe'
 
 // This widget's violation "type" strings are the historical keys used by the
 // staff-assignment/penalty system (violation_assignments etc.) and must stay
@@ -524,7 +527,10 @@ const ERRORS_TAB_VIOLATION: Record<string, string> = {
   dup_receipts: 'dup_receipt',
 }
 
-export default function TodayPage({ onGoToViolation }: { onGoToViolation?: (key: string) => void }) {
+export default function TodayPage({ onGoToViolation, counts }: {
+  onGoToViolation?: (key: string) => void
+  counts?: Record<string, number>
+}) {
   const [data, setData] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
   const [flags, setFlags] = useState<any | null>(null)
@@ -619,8 +625,20 @@ export default function TodayPage({ onGoToViolation }: { onGoToViolation?: (key:
       label: 'day' + (flags.dupReceipts.length !== 1 ? 's' : '') + ' with duplicate WIC/GMC receipts',
       count: flags.dupReceipts.length, days: oldestDays(flags.dupReceipts, 'receipt_date'),
     })
+    // Error types that used to live only in the Errors tab -- counts come
+    // from the page-level violationCounts, passed in as a prop.
+    const c = counts ?? {}
+    const s = (n: number) => n !== 1 ? 's' : ''
+    if (c['daily'] > 0) list.push({ type: 'daily', label: `item${s(c['daily'])} not yet counted today`, count: c['daily'], days: 0 })
+    if (c['7day'] > 0) list.push({ type: '7day', label: `GMC item${s(c['7day'])} overdue for the 7-day count`, count: c['7day'], days: null })
+    if (c['15day'] > 0) list.push({ type: '15day', label: `item${s(c['15day'])} overdue for the 15-day count`, count: c['15day'], days: null })
+    if (c['neg_soh'] > 0) list.push({ type: 'neg_soh', label: `item${s(c['neg_soh'])} with negative stock on hand`, count: c['neg_soh'], days: null })
+    if (c['no_sp'] > 0) list.push({ type: 'no_sp', label: `item${s(c['no_sp'])} with no selling price`, count: c['no_sp'], days: null })
+    if (c['no_cp'] > 0) list.push({ type: 'no_cp', label: `item${s(c['no_cp'])} with no cost price`, count: c['no_cp'], days: null })
+    if (c['unlinked_named'] > 0) list.push({ type: 'unlinked_named', label: `sale line${s(c['unlinked_named'])} not linked to their item`, count: c['unlinked_named'], days: null })
+    if (c['service_violation'] > 0) list.push({ type: 'service_violation', label: `service${s(c['service_violation'])} with stock activity recorded`, count: c['service_violation'], days: null })
     return list.sort((a, b) => b.count - a.count)
-  }, [flags])
+  }, [flags, counts])
 
   const totalViolations = violations.reduce((s, v) => s + v.count, 0)
 
@@ -657,36 +675,26 @@ export default function TodayPage({ onGoToViolation }: { onGoToViolation?: (key:
         ) : (
           <div>
             {violations.map(v => {
-              const assignedTo = assignments[v.type]
-              const canAutoPenalize = AUTO_PENALIZABLE.has(v.type)
+              // Every task has an owner: explicitly assigned staff, or Joe by
+              // default, and every row reads the same way --
+              // "Joe, 2 days left to fix 5 Cash Counts — Do it now →"
+              const assignedTo = assignments[v.type] ?? DEFAULT_ASSIGNEE
+              const explicitlyAssigned = Boolean(assignments[v.type])
               const deadline = deadlines[v.type]
               const threshold = parseInt(vSettings.threshold_days ?? '3', 10)
-              const overdue = deadline ? daysSince(deadline) >= 1 : v.days != null && v.days >= threshold
-              const atRisk = canAutoPenalize && assignedTo && overdue
               const violationKey = ERRORS_TAB_VIOLATION[v.type] ?? v.type
 
-              if (!assignedTo) {
-                return (
-                  <button key={v.type} onClick={() => onGoToViolation?.(violationKey)}
-                    className="w-full flex items-center justify-between py-[2px] text-[11px] leading-tight hover:bg-gray-50 -mx-1 px-1 rounded transition gap-2">
-                    <span className="min-w-0 truncate">
-                      <span className="font-bold text-red-500">{v.count}</span>{' '}
-                      <span className="text-gray-700">{v.label}</span>
-                      {v.days != null && <span className="text-gray-400"> — {agePhrase(v.days)}</span>}
-                    </span>
-                    <span className="text-[10px] text-blue-600 font-semibold shrink-0">Fix →</span>
-                  </button>
-                )
-              }
-
-              const remaining = deadline ? -daysSince(deadline) : (canAutoPenalize && v.days != null ? threshold - v.days : null)
-              const remainingPhrase = remaining == null
-                ? 'please complete'
-                : remaining > 0
-                  ? `you have ${remaining} day${remaining !== 1 ? 's' : ''} more to complete`
-                  : remaining === 0
-                    ? 'due today to complete'
-                    : `overdue by ${Math.abs(remaining)} day${Math.abs(remaining) !== 1 ? 's' : ''} to complete`
+              const remaining = deadline
+                ? -daysSince(deadline)
+                : v.type === 'daily'
+                  ? 0 // the daily count is always due today
+                  : threshold - (v.days ?? 0)
+              const remainingPhrase = remaining > 0
+                ? `${remaining} day${remaining !== 1 ? 's' : ''} left to fix`
+                : remaining === 0
+                  ? 'due today to fix'
+                  : `overdue by ${Math.abs(remaining)} day${Math.abs(remaining) !== 1 ? 's' : ''} to fix`
+              const atRisk = remaining < 0
               const on = assignedOn[v.type]
               const by = assignedBy[v.type]
 
@@ -694,10 +702,12 @@ export default function TodayPage({ onGoToViolation }: { onGoToViolation?: (key:
                 <div key={v.type} className={`py-[3px] text-[11px] leading-snug ${atRisk ? 'text-red-500' : 'text-gray-700'}`}>
                   <span className="capitalize font-semibold">{assignedTo}</span>, {remainingPhrase}{' '}
                   <span className="font-bold text-red-500">{v.count}</span>{' '}
-                  {SHORT_LABEL[v.type] ?? v.label}{' '}
-                  <button onClick={() => onGoToViolation?.(violationKey)} className="text-blue-600 font-semibold">View</button>
-                  {atRisk && ' ⚠'}
-                  {on && (
+                  {SHORT_LABEL[v.type] ?? v.label}
+                  {atRisk && ' ⚠'}{' '}
+                  <button onClick={() => onGoToViolation?.(violationKey)} className="text-blue-600 font-semibold whitespace-nowrap">
+                    Do it now →
+                  </button>
+                  {explicitlyAssigned && on && (
                     <span className="text-gray-400">
                       {' '}(TAO {fmtOrdinalDate(on)}{by && <> by <span className="capitalize">{by}</span></>})
                     </span>
