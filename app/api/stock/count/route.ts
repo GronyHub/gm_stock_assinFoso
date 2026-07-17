@@ -2,13 +2,14 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { recordCountRevision } from '@/lib/countRevisions'
-import { gainViolation } from '@/lib/stockGuard'
+import { gainViolation, expectedStockAt } from '@/lib/stockGuard'
+import { isOwnerLevel } from '@/lib/roles'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const { itemId, qty, notes } = await req.json()
+  const { itemId, qty, notes, loss_reason, manager_response } = await req.json()
   if (!itemId || qty == null) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
   if (Number(qty) < 0 || isNaN(Number(qty))) {
     return NextResponse.json({ error: 'Not allowed — a count can never be negative. Stock on hand must be 0 or more.' }, { status: 400 })
@@ -28,9 +29,36 @@ export async function POST(req: NextRequest) {
   const gainErr = await gainViolation(Number(itemId), Number(qty), today)
   if (gainErr) return NextResponse.json({ error: gainErr }, { status: 400 })
 
+  // Losses must be acknowledged, not silently recorded: the counter gives a
+  // reason, informs the manager and enters the manager's response (the
+  // manager gives their own explanation when they are the one counting).
+  const isManager = isOwnerLevel(session.user as any)
+  const expected = await expectedStockAt(Number(itemId), today)
+  const lossQty = expected !== null ? parseFloat((expected - Number(qty)).toFixed(4)) : 0
+  let lossNote: string | null = null
+  if (expected !== null && lossQty > 0.001) {
+    if (!loss_reason || !String(loss_reason).trim()) {
+      return NextResponse.json({
+        requires_loss_reason: true,
+        expected, counted: Number(qty), loss: lossQty, is_manager: isManager,
+        error: `Loss detected: expected ${expected}, counted ${qty} (-${lossQty}). A reason is required before this count can be saved.`,
+      }, { status: 409 })
+    }
+    if (!isManager && (!manager_response || !String(manager_response).trim())) {
+      return NextResponse.json({
+        requires_loss_reason: true,
+        expected, counted: Number(qty), loss: lossQty, is_manager: isManager,
+        error: `Inform the manager of this loss and enter what the manager said before saving.`,
+      }, { status: 409 })
+    }
+    lossNote = `[LOSS -${lossQty}] Reason: ${String(loss_reason).trim()}`
+      + (isManager ? ' (manager counted)' : ` | Manager said: ${String(manager_response).trim()}`)
+  }
+
   // session.user.name = display_name (set in auth authorize callback)
   // session.user.username = raw login name (set in jwt/session callbacks)
   const countedBy = session.user?.name || (session.user as any)?.username || null
+  const finalNotes = [lossNote, (notes && String(notes).trim()) || null].filter(Boolean).join(' · ') || null
 
   // One count per item per day: the loss math SUMS counts per date, so a
   // second same-day count (e.g. a manual recount after the daily count)
@@ -53,16 +81,18 @@ export async function POST(req: NextRequest) {
     }
     await sql`
       UPDATE stock_counts
-      SET quantity_counted = ${qty}, notes = ${notes || null}, source = 'app', counted_by = ${countedBy}
+      SET quantity_counted = ${qty}, notes = ${finalNotes}, source = 'app', counted_by = ${countedBy}
       WHERE id = ${existing.id}
     `
     await logActivity(countedBy ?? 'Unknown', 'counted stock', `${item[0].canonical_name} · qty ${qty} (replaced today's earlier count)`)
+    if (lossNote) await logActivity(countedBy ?? 'Unknown', 'reported count loss', `${item[0].canonical_name} · counted ${qty} vs expected ${expected} — ${lossNote}`)
   } else {
     await sql`
       INSERT INTO stock_counts (item_id, zoho_item_id, item_name, count_date, quantity_counted, notes, source, counted_by)
-      VALUES (${itemId}, ${item[0].zoho_item_id}, ${item[0].canonical_name}, ${today}, ${qty}, ${notes || null}, 'app', ${countedBy})
+      VALUES (${itemId}, ${item[0].zoho_item_id}, ${item[0].canonical_name}, ${today}, ${qty}, ${finalNotes}, 'app', ${countedBy})
     `
     await logActivity(countedBy ?? 'Unknown', 'counted stock', `${item[0].canonical_name} · qty ${qty}`)
+    if (lossNote) await logActivity(countedBy ?? 'Unknown', 'reported count loss', `${item[0].canonical_name} · counted ${qty} vs expected ${expected} — ${lossNote}`)
   }
   return NextResponse.json({ ok: true })
 }

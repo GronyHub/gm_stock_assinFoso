@@ -33,20 +33,40 @@ function fmtShort(dateStr: string) {
 
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
 
+// A count that reveals a loss is not saved silently: the counter must give a
+// reason, and (unless they are the manager) inform the manager and enter what
+// the manager said. Returns the fields to retry the save with, or null if
+// the staff member backed out (count stays unsaved).
+function resolveLossFlow(d: any): { loss_reason: string; manager_response: string | null } | null {
+  alert(`⚠ LOSS DETECTED\n\nExpected: ${d.expected}\nCounted: ${d.counted}\nLoss: -${d.loss}\n\nThis count cannot be saved without an explanation.`)
+  const reason = prompt('Why did this loss happen? (required to save the count)')
+  if (!reason || !reason.trim()) { alert('Count NOT saved — a reason for the loss is required.'); return null }
+  if (d.is_manager) return { loss_reason: reason.trim(), manager_response: null }
+  const mgr = prompt('Now inform the manager of this loss, then enter what the manager said (required):')
+  if (!mgr || !mgr.trim()) { alert("Count NOT saved — the manager's response is required."); return null }
+  return { loss_reason: reason.trim(), manager_response: mgr.trim() }
+}
+
 function CountRow({ item, onSaved }: { item: DailyItem; onSaved: (id: number) => void }) {
   const [customQty, setCustomQty] = useState('')
   const [saving, setSaving] = useState(false)
   const soh = Number(item.calculated_soh)
 
-  async function submit(qty: number) {
+  async function submit(qty: number, lossExtra?: { loss_reason: string; manager_response: string | null }) {
     setSaving(true)
     const res = await fetch('/api/stock/count', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ itemId: item.item_id, qty, notes: '' }),
+      body: JSON.stringify({ itemId: item.item_id, qty, notes: '', ...(lossExtra ?? {}) }),
     })
     setSaving(false)
-    if (res.ok) onSaved(item.item_id)
-    else alert((await res.json().catch(() => null))?.error ?? 'Could not save count.')
+    if (res.ok) { onSaved(item.item_id); return }
+    const d = await res.json().catch(() => null)
+    if (res.status === 409 && d?.requires_loss_reason) {
+      const ans = resolveLossFlow(d)
+      if (ans) await submit(qty, ans)
+      return
+    }
+    alert(d?.error ?? 'Could not save count.')
   }
 
   const overdue = item.days_overdue
@@ -104,16 +124,22 @@ function ManualCountForm({ items, onSaved, onClose }: { items: Item[]; onSaved: 
       .slice(0, 25)
   }, [q, items])
 
-  async function save() {
+  async function save(lossExtra?: { loss_reason: string; manager_response: string | null }) {
     if (!sel || qty === '') return
     setSaving(true); setError('')
     const res = await fetch('/api/stock/count', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ itemId: sel.id, qty: Number(qty), notes: notes.trim() || 'Manual count' }),
+      body: JSON.stringify({ itemId: sel.id, qty: Number(qty), notes: notes.trim() || 'Manual count', ...(lossExtra ?? {}) }),
     })
     setSaving(false)
-    if (res.ok) { onSaved(); onClose() }
-    else setError((await res.json().catch(() => null))?.error ?? 'Could not save count.')
+    if (res.ok) { onSaved(); onClose(); return }
+    const d = await res.json().catch(() => null)
+    if (res.status === 409 && d?.requires_loss_reason) {
+      const ans = resolveLossFlow(d)
+      if (ans) await save(ans)
+      return
+    }
+    setError(d?.error ?? 'Could not save count.')
   }
 
   return (
@@ -150,7 +176,7 @@ function ManualCountForm({ items, onSaved, onClose }: { items: Item[]; onSaved: 
               placeholder="Qty counted" inputMode="decimal" autoFocus className={inputCls + ' w-24'} />
             <input value={notes} onChange={e => setNotes(e.target.value)}
               placeholder="Notes (optional)" className={inputCls + ' flex-1'} />
-            <button onClick={save} disabled={qty === '' || saving}
+            <button onClick={() => save()} disabled={qty === '' || saving}
               className="shrink-0 bg-blue-600 hover:bg-blue-500 disabled:opacity-30 text-white text-[10px] font-semibold rounded px-3 py-1 transition">
               {saving ? '…' : 'Save'}
             </button>
@@ -250,12 +276,12 @@ export default function CountsTab({ items, groupFilter, search, violation }: Pro
     setEditingId(r.id)
   }
 
-  async function saveEdit() {
+  async function saveEdit(lossExtra?: { loss_reason: string; manager_response: string | null }) {
     if (editingId == null) return
     setSaving(true)
     const res = await fetch(`/api/stock/counts/${editingId}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ quantity_counted: Number(editQty), notes: editNotes }),
+      body: JSON.stringify({ quantity_counted: Number(editQty), notes: editNotes, ...(lossExtra ?? {}) }),
     })
     setSaving(false)
     if (res.ok) {
@@ -263,7 +289,13 @@ export default function CountsTab({ items, groupFilter, search, violation }: Pro
       setRecords(prev => prev.map(r => r.id === editingId ? { ...r, ...updated } : r))
       setEditingId(null)
     } else {
-      alert((await res.json().catch(() => null))?.error ?? 'Could not save count.')
+      const d = await res.json().catch(() => null)
+      if (res.status === 409 && d?.requires_loss_reason) {
+        const ans = resolveLossFlow(d)
+        if (ans) await saveEdit(ans)
+        return
+      }
+      alert(d?.error ?? 'Could not save count.')
     }
   }
 
@@ -433,7 +465,7 @@ export default function CountsTab({ items, groupFilter, search, violation }: Pro
                             placeholder="Optional" className={inputCls + ' w-40'} />
                         </div>
                         <div className="flex gap-1">
-                          <button onClick={saveEdit} disabled={saving}
+                          <button onClick={() => saveEdit()} disabled={saving}
                             className="bg-green-600 text-white text-[10px] font-bold rounded px-3 py-1 disabled:opacity-40">
                             {saving ? 'Saving…' : 'Save'}
                           </button>
