@@ -300,6 +300,14 @@ function ItemHubPageInner() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  // From the loss dialog: jump to the records that usually explain a "loss"
+  // (Sales / Bills / Counts live as sub-views of the Item tab). Must set the
+  // sub-view AFTER changeTab, which resets it to 'items'.
+  function goFixRecords(view: 'sales' | 'bills' | 'counts') {
+    changeTab('loss')
+    setLossView(view)
+  }
+
   function changeTab(t: OuterTab) {
     setOuterTab(t)
     setViolation(t === 'errors' ? ERROR_VIOLATIONS[0].key : null)
@@ -572,7 +580,7 @@ function ItemHubPageInner() {
           <BillsTab items={items} groupFilter={group} search={search} />
         )}
         {outerTab === 'loss' && lossView === 'counts' && (
-          <CountsTab items={items} groupFilter={group} search={search} violation={null} />
+          <CountsTab items={items} groupFilter={group} search={search} violation={null} onFixRecords={goFixRecords} />
         )}
         {outerTab === 'errors' && violation && (
           <div className="mx-3 mt-2 mb-1 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 flex gap-2">
@@ -586,7 +594,7 @@ function ItemHubPageInner() {
           const category = ERROR_VIOLATIONS.find(v => v.key === violation)?.category
           if (category === 'loss') {
             if (COUNTS_VIOLATIONS.has(violation)) {
-              return <CountsTab items={items} groupFilter={group} search={search} violation={violation} />
+              return <CountsTab items={items} groupFilter={group} search={search} violation={violation} onFixRecords={goFixRecords} />
             }
             return itemsLoading
               ? <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>

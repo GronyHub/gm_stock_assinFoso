@@ -33,26 +33,103 @@ function fmtShort(dateStr: string) {
 
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
 
-// A count that reveals a loss is not saved silently: the counter must give a
-// reason, and (unless they are the manager) inform the manager and enter what
-// the manager said. Returns the fields to retry the save with, or null if
-// the staff member backed out (count stays unsaved).
-function resolveLossFlow(d: any): { loss_reason: string; manager_response: string | null } | null {
-  alert(`⚠ LOSS DETECTED\n\nExpected: ${d.expected}\nCounted: ${d.counted}\nLoss: -${d.loss}\n\nThis count cannot be saved without an explanation.`)
-  const reason = prompt('Why did this loss happen? (required to save the count)')
-  if (!reason || !reason.trim()) { alert('Count NOT saved — a reason for the loss is required.'); return null }
-  if (d.is_manager) return { loss_reason: reason.trim(), manager_response: null }
-  const mgr = prompt('Now inform the manager of this loss, then enter what the manager said (required):')
-  if (!mgr || !mgr.trim()) { alert("Count NOT saved — the manager's response is required."); return null }
-  return { loss_reason: reason.trim(), manager_response: mgr.trim() }
+type LossExtra = { loss_reason: string; manager_response: string | null }
+type LossPrompt = { d: any; retry: (extra: LossExtra) => void }
+
+// A count that reveals a loss is not saved silently. This dialog first offers
+// the tools that usually explain a "loss" -- a mistyped sale, a missing bill,
+// an earlier miscount -- so records can be fixed and the item recounted.
+// Only if it's a real loss does the counter give a reason and (unless they
+// are the manager) enter what the manager said.
+function LossDialog({ prompt: lp, onClose, onFixRecords }: {
+  prompt: LossPrompt
+  onClose: () => void
+  onFixRecords?: (view: 'sales' | 'bills' | 'counts') => void
+}) {
+  const [reason, setReason] = useState('')
+  const [mgr, setMgr] = useState('')
+  const [err, setErr] = useState('')
+  const d = lp.d
+
+  function confirmLoss() {
+    if (!reason.trim()) { setErr('A reason for the loss is required.'); return }
+    if (!d.is_manager && !mgr.trim()) { setErr("Inform the manager and enter what the manager said."); return }
+    lp.retry({ loss_reason: reason.trim(), manager_response: d.is_manager ? null : mgr.trim() })
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-[200] bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl max-h-[92dvh] overflow-y-auto p-4 space-y-3">
+        <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+          <p className="text-sm font-bold text-red-700">⚠ Loss detected — count not saved yet</p>
+          <p className="text-xs text-red-800 mt-0.5">
+            Expected <b>{d.expected}</b>, counted <b>{d.counted}</b> → loss of <b>-{d.loss}</b>.
+          </p>
+        </div>
+
+        {onFixRecords && (
+          <div className="space-y-1.5">
+            <p className="text-xs font-semibold text-gray-700">
+              First check whether a record mistake caused this — fix it, then count again:
+            </p>
+            <div className="grid grid-cols-3 gap-1.5">
+              <button onClick={() => { onClose(); onFixRecords('sales') }}
+                className="bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-lg py-2 transition">
+                📄 Sales
+              </button>
+              <button onClick={() => { onClose(); onFixRecords('bills') }}
+                className="bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-lg py-2 transition">
+                🧾 Bills
+              </button>
+              <button onClick={() => { onClose(); onFixRecords('counts') }}
+                className="bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-lg py-2 transition">
+                🔢 Counts
+              </button>
+            </div>
+            <p className="text-[10px] text-gray-400">
+              A sale entered with the wrong quantity, a bill never recorded, or an earlier miscount all show up as a "loss".
+            </p>
+          </div>
+        )}
+
+        <div className="border-t border-gray-100 pt-2 space-y-1.5">
+          <p className="text-xs font-semibold text-gray-700">Or confirm it is a real loss:</p>
+          <textarea value={reason} onChange={e => setReason(e.target.value)} rows={2}
+            placeholder="Why did this loss happen? (required)"
+            className="w-full bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-red-300" />
+          {!d.is_manager && (
+            <textarea value={mgr} onChange={e => setMgr(e.target.value)} rows={2}
+              placeholder="Inform the manager now — what did the manager say? (required)"
+              className="w-full bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-red-300" />
+          )}
+          {err && <p className="text-xs text-red-600">{err}</p>}
+          <div className="flex gap-2">
+            <button onClick={confirmLoss}
+              className="flex-1 bg-red-600 hover:bg-red-500 text-white text-sm font-semibold rounded-xl py-2.5 transition">
+              Save as Loss
+            </button>
+            <button onClick={onClose}
+              className="px-4 py-2.5 bg-gray-100 text-gray-600 text-sm font-semibold rounded-xl">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
-function CountRow({ item, onSaved }: { item: DailyItem; onSaved: (id: number) => void }) {
+function CountRow({ item, onSaved, onLoss }: {
+  item: DailyItem
+  onSaved: (id: number) => void
+  onLoss: (d: any, retry: (extra: LossExtra) => void) => void
+}) {
   const [customQty, setCustomQty] = useState('')
   const [saving, setSaving] = useState(false)
   const soh = Number(item.calculated_soh)
 
-  async function submit(qty: number, lossExtra?: { loss_reason: string; manager_response: string | null }) {
+  async function submit(qty: number, lossExtra?: LossExtra) {
     setSaving(true)
     const res = await fetch('/api/stock/count', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -62,8 +139,7 @@ function CountRow({ item, onSaved }: { item: DailyItem; onSaved: (id: number) =>
     if (res.ok) { onSaved(item.item_id); return }
     const d = await res.json().catch(() => null)
     if (res.status === 409 && d?.requires_loss_reason) {
-      const ans = resolveLossFlow(d)
-      if (ans) await submit(qty, ans)
+      onLoss(d, extra => { submit(qty, extra) })
       return
     }
     alert(d?.error ?? 'Could not save count.')
@@ -106,7 +182,12 @@ function CountRow({ item, onSaved }: { item: DailyItem; onSaved: (id: number) =>
 
 // Ad-hoc count of ANY item, any time -- not just the ones due today. Same-day
 // counts replace rather than duplicate (see /api/stock/count).
-function ManualCountForm({ items, onSaved, onClose }: { items: Item[]; onSaved: () => void; onClose: () => void }) {
+function ManualCountForm({ items, onSaved, onClose, onLoss }: {
+  items: Item[]
+  onSaved: () => void
+  onClose: () => void
+  onLoss: (d: any, retry: (extra: LossExtra) => void) => void
+}) {
   const [q, setQ] = useState('')
   const [sel, setSel] = useState<Item | null>(null)
   const [qty, setQty] = useState('')
@@ -124,7 +205,7 @@ function ManualCountForm({ items, onSaved, onClose }: { items: Item[]; onSaved: 
       .slice(0, 25)
   }, [q, items])
 
-  async function save(lossExtra?: { loss_reason: string; manager_response: string | null }) {
+  async function save(lossExtra?: LossExtra) {
     if (!sel || qty === '') return
     setSaving(true); setError('')
     const res = await fetch('/api/stock/count', {
@@ -135,8 +216,7 @@ function ManualCountForm({ items, onSaved, onClose }: { items: Item[]; onSaved: 
     if (res.ok) { onSaved(); onClose(); return }
     const d = await res.json().catch(() => null)
     if (res.status === 409 && d?.requires_loss_reason) {
-      const ans = resolveLossFlow(d)
-      if (ans) await save(ans)
+      onLoss(d, extra => { save(extra) })
       return
     }
     setError(d?.error ?? 'Could not save count.')
@@ -193,9 +273,10 @@ type Props = {
   groupFilter: string | null
   search: string
   violation: string | null
+  onFixRecords?: (view: 'sales' | 'bills' | 'counts') => void
 }
 
-export default function CountsTab({ items, groupFilter, search, violation }: Props) {
+export default function CountsTab({ items, groupFilter, search, violation, onFixRecords }: Props) {
   const { data: session } = useSession()
   const canDelete = isOwnerLevel(session?.user as any)
   const [records, setRecords] = useState<CountRecord[]>([])
@@ -211,6 +292,8 @@ export default function CountsTab({ items, groupFilter, search, violation }: Pro
   const [overdueItems, setOverdueItems] = useState<DailyItem[]>([])
   const [dailyLoading, setDailyLoading] = useState(true)
   const [showManual, setShowManual] = useState(false)
+  const [lossPrompt, setLossPrompt] = useState<LossPrompt | null>(null)
+  const promptLoss = (d: any, retry: (extra: LossExtra) => void) => setLossPrompt({ d, retry })
 
   function loadRecords() {
     fetch('/api/stock/counts').then(r => r.json()).then(d => { setRecords(d); setLoading(false) })
@@ -291,8 +374,7 @@ export default function CountsTab({ items, groupFilter, search, violation }: Pro
     } else {
       const d = await res.json().catch(() => null)
       if (res.status === 409 && d?.requires_loss_reason) {
-        const ans = resolveLossFlow(d)
-        if (ans) await saveEdit(ans)
+        promptLoss(d, extra => { saveEdit(extra) })
         return
       }
       alert(d?.error ?? 'Could not save count.')
@@ -318,6 +400,7 @@ export default function CountsTab({ items, groupFilter, search, violation }: Pro
     const label = violation === 'daily' ? 'daily' : violation === '7day' ? '7-day GMC' : '15-day overdue'
     return (
       <div className="overflow-y-auto h-full py-2">
+        {lossPrompt && <LossDialog prompt={lossPrompt} onClose={() => setLossPrompt(null)} onFixRecords={onFixRecords} />}
         <div className="flex justify-end px-2 pb-1">
           <button onClick={() => setShowManual(v => !v)}
             className="text-[9px] font-semibold px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-500 transition">
@@ -325,7 +408,7 @@ export default function CountsTab({ items, groupFilter, search, violation }: Pro
           </button>
         </div>
         {showManual && (
-          <ManualCountForm items={items} onClose={() => setShowManual(false)}
+          <ManualCountForm items={items} onClose={() => setShowManual(false)} onLoss={promptLoss}
             onSaved={() => { loadRecords(); loadDaily() }} />
         )}
         {dailyLoading ? (
@@ -348,7 +431,7 @@ export default function CountsTab({ items, groupFilter, search, violation }: Pro
             </thead>
             <tbody>
               {countItems.map(item => (
-                <CountRow key={item.item_id} item={item}
+                <CountRow key={item.item_id} item={item} onLoss={promptLoss}
                   onSaved={id => {
                     if (violation === 'daily') setDailyItems(prev => prev.filter(i => i.item_id !== id))
                     else if (violation === '7day') setGmcWeeklyItems(prev => prev.filter(i => i.item_id !== id))
@@ -395,6 +478,7 @@ export default function CountsTab({ items, groupFilter, search, violation }: Pro
 
   return (
     <div className="flex flex-col h-full min-h-0">
+      {lossPrompt && <LossDialog prompt={lossPrompt} onClose={() => setLossPrompt(null)} onFixRecords={onFixRecords} />}
       <div className="flex items-center justify-end gap-1.5 px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
         <button onClick={() => setShowManual(v => !v)}
           className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-600 text-white hover:bg-blue-500 transition">
@@ -406,7 +490,7 @@ export default function CountsTab({ items, groupFilter, search, violation }: Pro
         </button>
       </div>
       {showManual && (
-        <ManualCountForm items={items} onClose={() => setShowManual(false)}
+        <ManualCountForm items={items} onClose={() => setShowManual(false)} onLoss={promptLoss}
           onSaved={() => { loadRecords(); loadDaily() }} />
       )}
       <div className="flex-1 overflow-y-auto min-h-0">
