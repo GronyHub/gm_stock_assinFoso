@@ -1,5 +1,85 @@
 import sql from '@/lib/db'
 
+// Expected stock of an item on a given date, from records alone: the last
+// count strictly before that date, plus purchases (bills) and pack
+// conversions credited in since, minus everything recorded as used/sold
+// (its own sales lines and any services that consume it). Returns null when
+// there's no earlier count to anchor on (nothing to judge against).
+export async function expectedStockAt(itemId: number, date: string): Promise<number | null> {
+  const [c0] = await sql`
+    SELECT count_date::date::text AS d, SUM(quantity_counted) AS qty
+    FROM stock_counts
+    WHERE item_id = ${itemId} AND count_date::date < ${date}
+    GROUP BY count_date::date
+    ORDER BY count_date::date DESC
+    LIMIT 1
+  `
+  if (!c0) return null
+
+  const [flows] = await sql`
+    SELECT
+      COALESCE((
+        SELECT SUM(bl.quantity) FROM bill_lines bl
+        JOIN bills b ON b.id = bl.bill_id
+        WHERE bl.item_id = ${itemId}
+          AND b.bill_date::date > ${c0.d} AND b.bill_date::date <= ${date}
+      ), 0) AS bills,
+      COALESCE((
+        SELECT SUM(srl.quantity * COALESCE(src.units_per_pack, 1))
+        FROM sales_receipt_lines srl
+        JOIN sales_receipts sr ON sr.id = srl.receipt_id
+        JOIN items src ON src.id = srl.item_id
+        WHERE src.converts_to_item_id = ${itemId}
+          AND COALESCE(src.product_type, 'goods') <> 'service'
+          AND sr.customer_name = 'Grony Multimedia as Customer'
+          AND sr.receipt_date::date > ${c0.d} AND sr.receipt_date::date <= ${date}
+      ), 0) AS conv_in,
+      COALESCE((
+        SELECT SUM(srl.quantity)
+        FROM sales_receipt_lines srl
+        JOIN sales_receipts sr ON sr.id = srl.receipt_id
+        WHERE srl.item_id = ${itemId}
+          AND sr.receipt_date::date > ${c0.d} AND sr.receipt_date::date <= ${date}
+      ), 0) AS direct_used,
+      COALESCE((
+        SELECT SUM(srl.quantity * COALESCE(src.units_per_pack, 1))
+        FROM sales_receipt_lines srl
+        JOIN sales_receipts sr ON sr.id = srl.receipt_id
+        JOIN items src ON src.id = srl.item_id
+        WHERE src.converts_to_item_id = ${itemId}
+          AND src.product_type = 'service'
+          AND (sr.customer_name IS NULL OR sr.customer_name <> 'Grony Multimedia as Customer')
+          AND sr.receipt_date::date > ${c0.d} AND sr.receipt_date::date <= ${date}
+      ), 0) AS service_used
+  `
+
+  const expected = (parseFloat(c0.qty) || 0)
+    + (parseFloat(flows.bills) || 0)
+    + (parseFloat(flows.conv_in) || 0)
+    - (parseFloat(flows.direct_used) || 0)
+    - (parseFloat(flows.service_used) || 0)
+  return parseFloat(expected.toFixed(4))
+}
+
+// Hard guard on GAINS: counting more than the records can explain is not
+// allowed -- a gain always means a missing record (bill or GMC not entered).
+// Returns an error message, or null when the count is acceptable.
+export async function gainViolation(itemId: number, qty: number, date: string): Promise<string | null> {
+  try {
+    const expected = await expectedStockAt(itemId, date)
+    if (expected === null) return null // no earlier count -- nothing to judge against
+    const gain = parseFloat((qty - expected).toFixed(4))
+    if (gain > 0.001) {
+      return `Not allowed — counting ${qty} would create a gain of +${gain}: the records only support ${Math.max(0, expected)} `
+        + `(last count + purchases + GMC conversions − sales). Extra stock on the shelf means a bill or GMC record is missing: enter that first, then count.`
+    }
+    return null
+  } catch (e) {
+    console.error('gainViolation check failed (allowing entry):', e)
+    return null
+  }
+}
+
 // Hard guard: no entry may drive an item's stock on hand below zero. You
 // cannot sell or take what the records say the shop doesn't have -- if the
 // shelf really has it, a bill or GMC record is missing and must be entered
