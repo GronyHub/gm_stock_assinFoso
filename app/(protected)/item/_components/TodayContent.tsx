@@ -523,6 +523,15 @@ const DEFAULT_ASSIGNEE = 'Joe'
 // Every error type the app tracks, in Errors-tab order -- the Needs
 // Attention list must account for ALL of them: active ones as task rows,
 // clear ones named in the ✓ line so nothing is silently missing.
+// Needs Attention is split in two: GRONY CASH holds everything that touches
+// money directly; GRONY MANAGE holds the operational/housekeeping tasks
+// (staff times, count duties, item hygiene). Move a type between sections by
+// moving its key in this set.
+const MANAGE_TYPES = new Set([
+  'no_staff_times', 'daily', '7day', '15day', 'no_group',
+  'duplicates', 'not_in_inventory', 'unlinked_named', 'service_violation',
+])
+
 const ALL_ERROR_TYPES = [
   'neg_soh', 'no_sp', 'no_cp', 'no_group', 'duplicates', 'not_in_inventory',
   'unlinked_named', 'service_violation', 'gains', 'daily', '7day', '15day',
@@ -682,6 +691,10 @@ export default function TodayPage({ onGoToViolation, counts }: {
   }, [flags, counts])
 
   const totalViolations = violations.reduce((s, v) => s + v.count, 0)
+  const cashViolations = violations.filter(v => !MANAGE_TYPES.has(v.type))
+  const manageViolations = violations.filter(v => MANAGE_TYPES.has(v.type))
+  const cashCount = cashViolations.reduce((s, v) => s + v.count, 0)
+  const manageCount = manageViolations.reduce((s, v) => s + v.count, 0)
 
   // Loss-feed summaries for Joe: all-time, yesterday, this week (Mon-start),
   // this month, this year. Amounts use the Loss menu's valuation.
@@ -706,6 +719,63 @@ export default function TodayPage({ onGoToViolation, counts }: {
       year: agg(d => d >= yearStart),
     }
   }, [lossEvents])
+
+  const renderViolationRow = (v: { type: string; label: string; count: number; days: number | null }) => {
+              // Every task has an owner: explicitly assigned staff, or Joe by
+              // default, and every row reads the same way --
+              // "Joe, 2 days left to fix 5 Cash Counts — Do it now →"
+              const assignedTo = assignments[v.type] ?? DEFAULT_ASSIGNEE
+              const explicitlyAssigned = Boolean(assignments[v.type])
+              const deadline = deadlines[v.type]
+              const threshold = parseInt(vSettings.threshold_days ?? '3', 10)
+              const violationKey = ERRORS_TAB_VIOLATION[v.type] ?? v.type
+
+              const remaining = deadline
+                ? -daysSince(deadline)
+                : v.type === 'daily'
+                  ? 0 // the daily count is always due today
+                  : threshold - (v.days ?? 0)
+              const remainingPhrase = remaining > 0
+                ? `${remaining} day${remaining !== 1 ? 's' : ''} left to fix`
+                : remaining === 0
+                  ? 'due today to fix'
+                  : `overdue by ${Math.abs(remaining)} day${Math.abs(remaining) !== 1 ? 's' : ''} to fix`
+              const atRisk = remaining < 0
+              const on = assignedOn[v.type]
+              const by = assignedBy[v.type]
+
+              // Clear types keep the same sentence shape, just with nothing
+              // left to fix -- so all 17 lines always read the same way.
+              if (v.count === 0) {
+                return (
+                  <div key={v.type} className="py-[3px] text-[11px] leading-snug text-gray-400">
+                    <span className="capitalize font-semibold">{assignedTo}</span>, nothing left to fix{' '}
+                    <span className="font-bold text-green-600">0</span>{' '}
+                    {SHORT_LABEL[v.type] ?? v.label} <span className="text-green-600">✓</span>{' '}
+                    <button onClick={() => onGoToViolation?.(violationKey)} className="text-blue-400 font-semibold whitespace-nowrap">
+                      View →
+                    </button>
+                  </div>
+                )
+              }
+
+              return (
+                <div key={v.type} className={`py-[3px] text-[11px] leading-snug ${atRisk ? 'text-red-500' : 'text-gray-700'}`}>
+                  <span className="capitalize font-semibold">{assignedTo}</span>, {remainingPhrase}{' '}
+                  <span className="font-bold text-red-500">{v.count}</span>{' '}
+                  {SHORT_LABEL[v.type] ?? v.label}
+                  {atRisk && ' ⚠'}{' '}
+                  <button onClick={() => onGoToViolation?.(violationKey)} className="text-blue-600 font-semibold whitespace-nowrap">
+                    Do it now →
+                  </button>
+                  {explicitlyAssigned && on && (
+                    <span className="text-gray-400">
+                      {' '}(TAO {fmtOrdinalDate(on)}{by && <> by <span className="capitalize">{by}</span></>})
+                    </span>
+                  )}
+                </div>
+              )
+  }
 
   if (loading) return <div className="py-10 text-center text-gray-400">Loading…</div>
   if (!data) return <div className="py-10 text-center text-gray-400">Could not load today's summary.</div>
@@ -733,10 +803,11 @@ export default function TodayPage({ onGoToViolation, counts }: {
       </div>
 
       {homeView === 'flags' && (
+      <>
       <div className="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5">
         <div className="flex items-center justify-between mb-0.5">
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">
-            Needs Attention {totalViolations > 0 && <span className="text-red-500">({totalViolations})</span>}
+            💰 Grony Cash {cashCount > 0 && <span className="text-red-500">({cashCount})</span>}
           </p>
           <Link href="/staff?tab=Assignments" className="text-[10px] text-blue-600 font-semibold">
             Assign →
@@ -798,69 +869,29 @@ export default function TodayPage({ onGoToViolation, counts }: {
         })()}
         {!flags ? (
           <p className="text-[11px] text-gray-400 py-[1px]">Loading…</p>
-        ) : violations.length === 0 ? (
-          <p className="text-[11px] text-green-600 font-medium py-[1px]">All clear ✓ — every error type checked</p>
         ) : (
           <div>
-            {violations.map(v => {
-              // Every task has an owner: explicitly assigned staff, or Joe by
-              // default, and every row reads the same way --
-              // "Joe, 2 days left to fix 5 Cash Counts — Do it now →"
-              const assignedTo = assignments[v.type] ?? DEFAULT_ASSIGNEE
-              const explicitlyAssigned = Boolean(assignments[v.type])
-              const deadline = deadlines[v.type]
-              const threshold = parseInt(vSettings.threshold_days ?? '3', 10)
-              const violationKey = ERRORS_TAB_VIOLATION[v.type] ?? v.type
-
-              const remaining = deadline
-                ? -daysSince(deadline)
-                : v.type === 'daily'
-                  ? 0 // the daily count is always due today
-                  : threshold - (v.days ?? 0)
-              const remainingPhrase = remaining > 0
-                ? `${remaining} day${remaining !== 1 ? 's' : ''} left to fix`
-                : remaining === 0
-                  ? 'due today to fix'
-                  : `overdue by ${Math.abs(remaining)} day${Math.abs(remaining) !== 1 ? 's' : ''} to fix`
-              const atRisk = remaining < 0
-              const on = assignedOn[v.type]
-              const by = assignedBy[v.type]
-
-              // Clear types keep the same sentence shape, just with nothing
-              // left to fix -- so all 17 lines always read the same way.
-              if (v.count === 0) {
-                return (
-                  <div key={v.type} className="py-[3px] text-[11px] leading-snug text-gray-400">
-                    <span className="capitalize font-semibold">{assignedTo}</span>, nothing left to fix{' '}
-                    <span className="font-bold text-green-600">0</span>{' '}
-                    {SHORT_LABEL[v.type] ?? v.label} <span className="text-green-600">✓</span>{' '}
-                    <button onClick={() => onGoToViolation?.(violationKey)} className="text-blue-400 font-semibold whitespace-nowrap">
-                      View →
-                    </button>
-                  </div>
-                )
-              }
-
-              return (
-                <div key={v.type} className={`py-[3px] text-[11px] leading-snug ${atRisk ? 'text-red-500' : 'text-gray-700'}`}>
-                  <span className="capitalize font-semibold">{assignedTo}</span>, {remainingPhrase}{' '}
-                  <span className="font-bold text-red-500">{v.count}</span>{' '}
-                  {SHORT_LABEL[v.type] ?? v.label}
-                  {atRisk && ' ⚠'}{' '}
-                  <button onClick={() => onGoToViolation?.(violationKey)} className="text-blue-600 font-semibold whitespace-nowrap">
-                    Do it now →
-                  </button>
-                  {explicitlyAssigned && on && (
-                    <span className="text-gray-400">
-                      {' '}(TAO {fmtOrdinalDate(on)}{by && <> by <span className="capitalize">{by}</span></>})
-                    </span>
-                  )}
-                </div>
-              )
-            })}
+            {cashViolations.map(renderViolationRow)}
           </div>
         )}
       </div>
+
+      {/* GRONY MANAGE — operational tasks with no direct money in them */}
+      <div className="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5">
+        <div className="flex items-center justify-between mb-0.5">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">
+            🗂️ Grony Manage {manageCount > 0 && <span className="text-red-500">({manageCount})</span>}
+          </p>
+        </div>
+        {!flags ? (
+          <p className="text-[11px] text-gray-400 py-[1px]">Loading…</p>
+        ) : (
+          <div>
+            {manageViolations.map(renderViolationRow)}
+          </div>
+        )}
+      </div>
+      </>
       )}
 
       {homeView === 'announcements' && <AnnouncementsPanel />}
