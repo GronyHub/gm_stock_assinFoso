@@ -45,7 +45,7 @@ function aggregateItem(rows: DayRow[], sp: number) {
 export async function GET() {
   const [itemRows, dayRows] = await Promise.all([
     sql`
-      SELECT s.item_id, s.item_name, s.cf_group, s.calculated_soh,
+      SELECT s.item_id, COALESCE(i.canonical_name, s.item_name) AS item_name, s.cf_group, s.calculated_soh,
              i.selling_rate, i.purchase_rate, i.product_type,
              i.units_per_pack, i.converts_to_item_id
       FROM item_stock_summary s
