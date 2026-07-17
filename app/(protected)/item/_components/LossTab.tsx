@@ -310,10 +310,12 @@ const PAPER_SELL_PRICE = 20
 
 // Net ₵ value of a row's losses/gains: packs are worth their papers.
 // Positive = money lost, negative = gain. Null when the row has no L/G at all.
-function rowLossCedis(row: PackChainRow, unitsPerPack: number): number | null {
+// sheetPrice is the chain's per-single price (₵20 for 4x6 photo paper, the
+// singles item's own selling price for other chains, e.g. ₵2 envelopes).
+function rowLossCedis(row: PackChainRow, unitsPerPack: number, sheetPrice: number): number | null {
   if (row.packLoss === null && row.singlesLoss === null) return null
   const packPapers = (row.packLoss ?? 0) * (unitsPerPack > 0 ? unitsPerPack : 0)
-  return parseFloat((((row.singlesLoss ?? 0) + packPapers) * PAPER_SELL_PRICE).toFixed(2))
+  return parseFloat((((row.singlesLoss ?? 0) + packPapers) * sheetPrice).toFixed(2))
 }
 
 // Consume a gain from earlier unsettled losses, most recent first. Returns
@@ -821,11 +823,11 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
       .catch(() => setDayRows([]))
   }, [item.item_id])
 
-  // Special-cased combined view for the 4x6 Packs item: its own row expands into a
-  // single table spanning packs -> singles -> the services that draw on those singles,
-  // instead of just its own pack-level activity, so lapses anywhere in that chain are
-  // visible in one place. Not a general mechanism -- scoped to this one item on purpose.
-  const isPackChain = item.converts_to_item_id != null && /4x6/i.test(item.item_name) && /pack/i.test(item.item_name)
+  // Combined view for any pack-style GOOD that converts into a singles item
+  // (4x6 packs, envelope packs, ...): its row expands into a single table
+  // spanning packs -> singles -> whatever draws on those singles, so lapses
+  // anywhere in the chain are visible in one place.
+  const isPackChain = item.product_type !== 'service' && item.converts_to_item_id != null
   const [targetDayRows, setTargetDayRows] = useState<DayRow[] | null>(null)
 
   // Who was at the shop on each date, with their clock-in/out times -- used
@@ -846,6 +848,22 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
       .catch(() => setPresence({}))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPackChain])
+
+  // Per-single ₵ value for this chain: the singles item's own selling price
+  // (e.g. ₵2 per envelope), falling back to the ₵20 photo-paper rule when the
+  // target has no price set.
+  const [sheetPrice, setSheetPrice] = useState<number>(PAPER_SELL_PRICE)
+
+  useEffect(() => {
+    if (!isPackChain || item.converts_to_item_id == null) return
+    fetch(`/api/items/${item.converts_to_item_id}`).then(r => r.json())
+      .then(d => {
+        const sp = parseFloat(d?.selling_price ?? '0') || 0
+        setSheetPrice(sp > 0 ? sp : PAPER_SELL_PRICE)
+      })
+      .catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPackChain, item.converts_to_item_id])
 
   // Trade-off notes recorded by users against specific rows (keyed by date).
   const [tradeoffs, setTradeoffs] = useState<Record<string, { note: string; done_by: string | null }>>({})
@@ -1080,7 +1098,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                     {targetName}
                   </th>
                   <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600"
-                    title={`Losses valued in cedis at ₵${PAPER_SELL_PRICE} per single paper. Pack losses count as packs × papers-per-pack × ₵${PAPER_SELL_PRICE} — treated as papers used for passport work but never recorded, NOT at the pack's own selling price.`}>
+                    title={`Losses valued in cedis at ₵${sheetPrice} per single. Pack losses count as packs × singles-per-pack × ₵${sheetPrice} — treated as singles that were used but never recorded, NOT at the pack's own selling price.`}>
                     LOSS ₵
                   </th>
                   <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600"
@@ -1120,9 +1138,9 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                     USED/PACK
                   </th>
                   <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400"
-                    title={`Sheets a pack gave but never recorded as used before the next pack, valued at ₵${PAPER_SELL_PRICE}/sheet. Column total (closed packs) shown below the label.`}>
+                    title={`Singles a pack gave but never recorded as used before the next pack, valued at ₵${sheetPrice} each. Column total (closed packs) shown below the label.`}>
                     PACK LOSS
-                    <span className="block text-red-700">{cycleLossTotal > 0 ? `-₵${fmtN(cycleLossTotal * PAPER_SELL_PRICE)}` : '0'}</span>
+                    <span className="block text-red-700">{cycleLossTotal > 0 ? `-₵${fmtN(cycleLossTotal * sheetPrice)}` : '0'}</span>
                   </th>
                   <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400"
                     title="Sheets used BEYOND what the pack gave — should ALWAYS be 0; any value means leftover from a previous pack or an unrecorded GMC take. Column total shown below the label.">
@@ -1199,7 +1217,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                           <td className="text-center py-0.5 font-bold border-l border-gray-300 whitespace-nowrap">
                             {open ? <span className="text-gray-300">—</span>
                               : diff > 0.001 ? (
-                                <span className="text-red-600">-₵{fmtN(diff * PAPER_SELL_PRICE)}<span className="block text-[6px]">-{fmtQ(diff)} sheets</span></span>
+                                <span className="text-red-600">-₵{fmtN(diff * sheetPrice)}<span className="block text-[6px]">-{fmtQ(diff)} sheets</span></span>
                               ) : <span className="text-green-600">✓</span>}
                           </td>
                           <td className="text-center py-0.5 font-bold border-l border-gray-300 whitespace-nowrap">
@@ -1236,7 +1254,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                     </td>
                     <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 whitespace-nowrap">
                       {(() => {
-                        const cedis = rowLossCedis(row, numVal(item.units_per_pack))
+                        const cedis = rowLossCedis(row, numVal(item.units_per_pack), sheetPrice)
                         if (cedis === null) return <span className="text-gray-300">—</span>
                         if (cedis > 0.001) return <span className="text-red-600">-₵{fmtN(cedis)}</span>
                         if (cedis < -0.001) return <span className="text-green-600">+₵{fmtN(Math.abs(cedis))}</span>
@@ -1314,7 +1332,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                   )
                 })}
                 {(() => {
-                  const totalCedis = packChainRows.reduce((s, r) => s + (rowLossCedis(r, numVal(item.units_per_pack)) ?? 0), 0)
+                  const totalCedis = packChainRows.reduce((s, r) => s + (rowLossCedis(r, numVal(item.units_per_pack), sheetPrice) ?? 0), 0)
                   return (
                     <tr className="bg-gray-100 border-t-2 border-gray-400 font-bold">
                       <td colSpan={9} className="text-right pr-1 py-1 text-gray-600 text-[7px]">
@@ -1323,7 +1341,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                       <td className="border-l border-gray-300" />
                       <td className="text-center py-1 border-l border-gray-300 whitespace-nowrap"
                         title="Total sheets given but never recorded as used, over all closed pack cycles">
-                        {cycleLossTotal > 0.001 ? <span className="text-red-600">-₵{fmtN(cycleLossTotal * PAPER_SELL_PRICE)}</span>
+                        {cycleLossTotal > 0.001 ? <span className="text-red-600">-₵{fmtN(cycleLossTotal * sheetPrice)}</span>
                           : <span className="text-gray-400">0</span>}
                       </td>
                       <td className="text-center py-1 border-l border-gray-300 whitespace-nowrap"
