@@ -130,16 +130,19 @@ export function cycleCedisValue(cyc: PackCycle, sheetPrice: number): number {
 // The chain's TOTAL ₵ column, summed: pack-side loss/gain (packs × singles-
 // per-pack × sheetPrice) plus each closed cycle's USED/PACK ledger ₵, per
 // date. Loss Amount = net of all of it (gains offset losses, same
-// convention as a plain item's own lgAmt); Num. of Losses / Num. of Gains =
-// how many of those dates came out as a real loss / real gain.
-export function computeChainLossSummary(packDayRows: ItemDayRow[], singlesDayRows: ItemDayRow[], unitsPerPack: number, sheetPrice: number): { lossAmt: number; lossCount: number; gainCount: number } {
+// convention as a plain item's own lgAmt); Num. of Losses = how many of
+// those dates came out as a real loss; Gain Amount = the ₵ sum of the
+// dates that came out as a real gain instead (pack-side + cycle-side
+// combined, same unit as Loss Amount -- the two are opposite halves of one
+// ledger).
+export function computeChainLossSummary(packDayRows: ItemDayRow[], singlesDayRows: ItemDayRow[], unitsPerPack: number, sheetPrice: number): { lossAmt: number; lossCount: number; gainAmt: number } {
   const packRows = computeRows(packDayRows)
   const singlesRows = computeRows(singlesDayRows)
   const chainRows = buildPackChainRows(packRows, singlesRows)
   const cycles = buildPackCycles(singlesRows)
   const cyclesByStart = new Map(cycles.map(c => [c.start, c]))
 
-  let lossAmt = 0, lossCount = 0, gainCount = 0
+  let lossAmt = 0, lossCount = 0, gainAmt = 0
   for (const row of chainRows) {
     const cyc = cyclesByStart.get(row.date)
     const cycOpen = cyc ? cyc.end === null : false
@@ -149,7 +152,7 @@ export function computeChainLossSummary(packDayRows: ItemDayRow[], singlesDayRow
     const total = (pCedis ?? 0) + (cCedis ?? 0)
     lossAmt += total
     if (total > 0.001) lossCount++
-    else if (total < -0.001) gainCount++
+    else if (total < -0.001) gainAmt += -total
   }
-  return { lossAmt: parseFloat(lossAmt.toFixed(2)), lossCount, gainCount }
+  return { lossAmt: parseFloat(lossAmt.toFixed(2)), lossCount, gainAmt: parseFloat(gainAmt.toFixed(2)) }
 }
