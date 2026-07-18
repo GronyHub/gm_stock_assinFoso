@@ -662,71 +662,71 @@ function SingleServicePackChainTable({
           <col style={{width:'36px'}} /><col style={{width:'48px'}} />
         </colgroup>
         <thead className="sticky top-0 z-10">
-          <tr className="bg-amber-500 text-gray-800 font-bold">
-            <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-left pl-0.5 align-bottom sticky left-0 z-20 bg-amber-500">DATE</th>
-            <th colSpan={packColSpan} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">{item.item_name}</th>
-            <th colSpan={singlesColSpan} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">{targetName}</th>
-            <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600 leading-tight"
+          <tr className="text-gray-800 font-bold">
+            <th rowSpan={2} className="py-0.5 border-b-2 border-gray-500 text-left pl-0.5 align-bottom sticky left-0 z-20 bg-slate-600 text-white">DATE</th>
+            <th colSpan={packColSpan} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-amber-600 bg-amber-500">{item.item_name}</th>
+            <th colSpan={singlesColSpan} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-indigo-600 bg-indigo-500 text-white">{targetName}</th>
+            <th rowSpan={2} className="py-0.5 border-b-2 border-gray-500 text-center align-bottom border-l-2 border-l-gray-600 leading-tight bg-slate-600 text-white"
               title={`TOTAL LOSS/GAIN AMOUNT — combined ₵ for the row: pack side (packs × singles-per-pack × ₵${sheetPrice}) plus the singles side's own USED/PACK cycle ₵.`}>
               TOTAL<span className="block">₵</span>
             </th>
-            <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600">
+            <th rowSpan={2} className="py-0.5 border-b-2 border-gray-500 text-center align-bottom border-l-2 border-l-gray-600 bg-slate-600 text-white">
               MANAGER GUIDELINES<span className="block font-normal text-[6px]">(omissions)</span>
             </th>
-            <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600 text-gray-500"
+            <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600 bg-gray-200 text-gray-500"
               title="Secondary cross-check only, from the daily count ledger -- not the primary loss measure.">
               EXP COUNT
             </th>
-            <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l border-gray-400 text-gray-500"
+            <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l border-gray-400 bg-gray-200 text-gray-500"
               title="Secondary cross-check only -- physical count">
               ACTUAL COUNT
             </th>
           </tr>
-          <tr className="bg-amber-400 text-gray-800 font-bold">
-            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l-2 border-l-gray-600" title="Bought/received">BL</th>
-            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Whole packs sold directly to a walk-in customer">WIC</th>
+          <tr className="text-gray-800 font-bold">
+            <th className="py-0.5 border-b-2 border-gray-500 text-center border-l-2 border-l-amber-600 bg-amber-400" title="Bought/received">BL</th>
+            <th className="py-0.5 border-b-2 border-gray-500 text-center border-l border-amber-300 bg-amber-400" title="Whole packs sold directly to a walk-in customer">WIC</th>
             {showPrices && <>
-              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Average direct sale price that day">SP</th>
-              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Revenue from direct pack sales that day">AMOUNT</th>
-              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Purchase cost per pack">CP</th>
-              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Per-unit margin: SP − CP">PROFIT</th>
+              <th className="py-0.5 border-b-2 border-gray-500 text-center border-l border-amber-300 bg-amber-400" title="Average direct sale price that day">SP</th>
+              <th className="py-0.5 border-b-2 border-gray-500 text-center border-l border-amber-300 bg-amber-400" title="Revenue from direct pack sales that day">AMOUNT</th>
+              <th className="py-0.5 border-b-2 border-gray-500 text-center border-l border-amber-300 bg-amber-400" title="Purchase cost per pack">CP</th>
+              <th className="py-0.5 border-b-2 border-gray-500 text-center border-l border-amber-300 bg-amber-400" title="Per-unit margin: SP − CP">PROFIT</th>
             </>}
-            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Taken for internal use (credits singles below)">GMC</th>
-            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Running expected stock">EXP</th>
-            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Physical count">CNT</th>
-            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Packs missing at count. Column total shown below the label.">
+            <th className="py-0.5 border-b-2 border-gray-500 text-center border-l border-amber-300 bg-amber-400" title="Taken for internal use (credits singles below)">GMC</th>
+            <th className="py-0.5 border-b-2 border-gray-500 text-center border-l border-amber-300 bg-amber-400" title="Running expected stock">EXP</th>
+            <th className="py-0.5 border-b-2 border-gray-500 text-center border-l border-amber-300 bg-amber-400" title="Physical count">CNT</th>
+            <th className="py-0.5 border-b-2 border-gray-500 text-center border-l border-amber-300 bg-amber-400" title="Packs missing at count. Column total shown below the label.">
               LOSS<span className="block text-red-700">{packLossTotal > 0 ? `-${fmtQ(packLossTotal)}` : '0'}</span>
             </th>
             {showPackGain && (
-              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Packs gained at count. Gains should ALWAYS be 0 -- any gain means a record is missing.">
+              <th className="py-0.5 border-b-2 border-gray-500 text-center border-l border-amber-300 bg-amber-400" title="Packs gained at count. Gains should ALWAYS be 0 -- any gain means a record is missing.">
                 GAIN
                 <span className="block bg-red-600 text-white rounded px-0.5">⚠+{fmtQ(packGainTotal)}</span>
               </th>
             )}
-            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l-2 border-l-gray-600"
+            <th className="py-0.5 border-b-2 border-gray-500 text-center border-l-2 border-l-gray-600 bg-amber-400"
               title={`LOSS/GAIN AMT — pack side only: packs lost/gained × singles-per-pack × ₵${sheetPrice}`}>L/G ₵</th>
-            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l-2 border-l-gray-600" title="Singles sold via the service">QTY</th>
+            <th className="py-0.5 border-b-2 border-gray-500 text-center border-l-2 border-l-indigo-600 bg-indigo-400 text-white" title="Singles sold via the service">QTY</th>
             {showPrices && <>
-              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Average sale price that day">SP</th>
-              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Revenue from the service that day">AMOUNT</th>
-              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Purchase cost per single">CP</th>
-              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Per-unit margin: SP − CP">PROFIT</th>
+              <th className="py-0.5 border-b-2 border-gray-500 text-center border-l border-indigo-300 bg-indigo-400 text-white" title="Average sale price that day">SP</th>
+              <th className="py-0.5 border-b-2 border-gray-500 text-center border-l border-indigo-300 bg-indigo-400 text-white" title="Revenue from the service that day">AMOUNT</th>
+              <th className="py-0.5 border-b-2 border-gray-500 text-center border-l border-indigo-300 bg-indigo-400 text-white" title="Purchase cost per single">CP</th>
+              <th className="py-0.5 border-b-2 border-gray-500 text-center border-l border-indigo-300 bg-indigo-400 text-white" title="Per-unit margin: SP − CP">PROFIT</th>
             </>}
-            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l-2 border-l-gray-600 leading-tight"
+            <th className="py-0.5 border-b-2 border-gray-500 text-center border-l border-indigo-300 bg-indigo-400 text-white leading-tight"
               title="USED/PACK — on rows where a GMC pack was taken: total sheets recorded as used (service + direct sales) from this pack until the NEXT pack was taken -- the pack's full cycle, measured purely from records, independent of counts.">
               USED<span className="block">/PACK</span>
             </th>
-            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Sheets a pack gave but were never recorded as used, by count. Column total (closed packs) shown below.">
-              LOSS<span className="block text-red-700">{cycleLossTotal > 0 ? `-${fmtQ(cycleLossTotal)}` : '0'}</span>
+            <th className="py-0.5 border-b-2 border-gray-500 text-center border-l border-indigo-300 bg-indigo-400 text-white" title="Sheets a pack gave but were never recorded as used, by count. Column total (closed packs) shown below.">
+              LOSS<span className="block text-red-200">{cycleLossTotal > 0 ? `-${fmtQ(cycleLossTotal)}` : '0'}</span>
             </th>
-            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Sheets used beyond what the pack gave -- should ALWAYS be 0; either leftover from a previous pack or an unrecorded GMC take.">
+            <th className="py-0.5 border-b-2 border-gray-500 text-center border-l border-indigo-300 bg-indigo-400 text-white" title="Sheets used beyond what the pack gave -- should ALWAYS be 0; either leftover from a previous pack or an unrecorded GMC take.">
               GAIN
-              <span className={`block ${cycleGainTotal > 0 ? 'bg-red-600 text-white rounded px-0.5' : 'text-green-800'}`}>
+              <span className={`block ${cycleGainTotal > 0 ? 'bg-red-600 text-white rounded px-0.5' : 'text-green-200'}`}>
                 {cycleGainTotal > 0 ? `⚠+${fmtQ(cycleGainTotal)}` : '0'}
               </span>
             </th>
-            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title={`LOSS/GAIN AMT — USED/PACK ledger valued at ₵${sheetPrice} per single. Column total (closed packs) shown below.`}>
-              L/G ₵<span className="block text-red-700">{cycleLossTotal > 0 ? `-₵${fmtN(cycleLossTotal * sheetPrice)}` : '0'}</span>
+            <th className="py-0.5 border-b-2 border-gray-500 text-center border-l border-indigo-300 bg-indigo-400 text-white" title={`LOSS/GAIN AMT — USED/PACK ledger valued at ₵${sheetPrice} per single. Column total (closed packs) shown below.`}>
+              L/G ₵<span className="block text-red-200">{cycleLossTotal > 0 ? `-₵${fmtN(cycleLossTotal * sheetPrice)}` : '0'}</span>
             </th>
           </tr>
         </thead>
@@ -757,7 +757,7 @@ function SingleServicePackChainTable({
                     <button onClick={() => onDateClick(row.date, item.item_name)} className="text-blue-600 hover:underline">{fmtDate(row.date)}</button>
                   ) : fmtDate(row.date)}
                 </td>
-                <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-blue-600">{blankDash(fmtQs(row.packBl))}</td>
+                <td className="text-center py-0.5 font-bold border-l-2 border-l-amber-600 text-blue-600">{blankDash(fmtQs(row.packBl))}</td>
                 <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{blankDash(fmtQs(row.packWic))}</td>
                 {showPrices && <>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{packWicQty > 0 ? `₵${fmtN(packSpVal)}` : null}</td>
@@ -789,7 +789,7 @@ function SingleServicePackChainTable({
                     : pCedis < -0.001 ? <span className="text-green-600">+₵{fmtN(Math.abs(pCedis))}</span>
                     : <span className="text-gray-400">0</span>}
                 </td>
-                <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-gray-600">{singlesQty === 0 ? null : fmtQ(singlesQty)}</td>
+                <td className="text-center py-0.5 font-bold border-l-2 border-l-indigo-600 text-gray-600">{singlesQty === 0 ? null : fmtQ(singlesQty)}</td>
                 {showPrices && <>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{singlesQty > 0 ? `₵${fmtN(singlesSpVal)}` : null}</td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{singlesQty > 0 ? `₵${fmtN(singlesAmount)}` : null}</td>
@@ -853,10 +853,10 @@ function SingleServicePackChainTable({
             )
           })}
           <tr className="bg-gray-100 border-t-2 border-gray-400 font-bold">
-            <td colSpan={packColSpan} className="text-right pr-1 py-1 text-gray-600 text-[7px] border-l-2 border-l-gray-600">
+            <td colSpan={packColSpan} className="text-right pr-1 py-1 text-gray-600 text-[7px] border-l-2 border-l-amber-600">
               {`Pack side, net of gains: ${packLossCedisTotal > 0.001 ? `-₵${fmtN(packLossCedisTotal)}` : '0'}${packGainCedisTotal > 0.001 ? ` (⚠+₵${fmtN(packGainCedisTotal)} gained)` : ''}`}
             </td>
-            <td colSpan={singlesColSpan} className="text-right pr-1 py-1 text-gray-600 text-[7px] border-l-2 border-l-gray-600">
+            <td colSpan={singlesColSpan} className="text-right pr-1 py-1 text-gray-600 text-[7px] border-l-2 border-l-indigo-600">
               {`over ${closedCycles.length} closed pack${closedCycles.length === 1 ? '' : 's'} → USED/PACK, net of gains: ${cycleLossTotal > 0.001 ? `-₵${fmtN(cycleLossTotal * sheetPrice)}` : '0'}${cycleGainTotal > 0.001 ? ` (⚠+₵${fmtN(cycleGainTotal * sheetPrice)} gained)` : ''}`}
             </td>
             <td className="text-center py-1 border-l-2 border-l-gray-600 whitespace-nowrap">
