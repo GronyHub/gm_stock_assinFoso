@@ -76,6 +76,9 @@ function fmtLg(v: number) {
   const s = Math.abs(v) % 1 === 0 ? String(Math.abs(v)) : Math.abs(v).toFixed(2)
   return (v > 0 ? '+' : '-') + s
 }
+// Strips the "—" placeholder these fmt* helpers return for empty/zero
+// values, for cells that should render fully blank instead.
+function blankDash(s: string) { return s === '—' ? '' : s }
 function shortSourceName(name: string) {
   return name.replace(/^service\s*-\s*/i, '').slice(0, 10)
 }
@@ -197,10 +200,10 @@ function buildPackCycles(singlesNewestFirst: ComputedRow[]): PackCycle[] {
 // initial both crossed out); a deleted count keeps its value marked with a
 // red ✗. In both cases the amber initial after it is the staff member who
 // made the change/deletion. The current count (if any) sits below, untouched.
-function CntValue({ qty, countedBy, history }: { qty: string | null; countedBy: string | null; history: CountRevision[] | null | undefined }) {
+function CntValue({ qty, countedBy, history, blank }: { qty: string | null; countedBy: string | null; history: CountRevision[] | null | undefined; blank?: boolean }) {
   const text = fmtQs(qty)
   const hist = history ?? []
-  if (text === '—' && hist.length === 0) return <span className="text-gray-300">—</span>
+  if (text === '—' && hist.length === 0) return blank ? null : <span className="text-gray-300">—</span>
   return (
     <span className="inline-flex flex-col items-center leading-tight">
       {hist.map((h, i) => {
@@ -647,50 +650,50 @@ function SingleServicePackChainTable({
                     <button onClick={() => onDateClick(row.date, item.item_name)} className="text-blue-600 hover:underline">{fmtDate(row.date)}</button>
                   ) : fmtDate(row.date)}
                 </td>
-                <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-blue-600">{fmtQs(row.packBl)}</td>
-                <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.packWic)}</td>
+                <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-blue-600">{blankDash(fmtQs(row.packBl))}</td>
+                <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{blankDash(fmtQs(row.packWic))}</td>
                 {showPrices && <>
-                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{packWicQty > 0 ? `₵${fmtN(packSpVal)}` : <span className="text-gray-300">—</span>}</td>
-                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{packWicQty > 0 ? `₵${fmtN(packAmount)}` : <span className="text-gray-300">—</span>}</td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{packWicQty > 0 ? `₵${fmtN(packSpVal)}` : null}</td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{packWicQty > 0 ? `₵${fmtN(packAmount)}` : null}</td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-500">₵{fmtN(packCpVal)}</td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-500">₵{fmtN(packProfit)}</td>
                 </>}
-                <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.packGmc)}</td>
-                <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-400">{fmtN(row.packExp)}</td>
+                <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{blankDash(fmtQs(row.packGmc))}</td>
+                <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-400">{blankDash(fmtN(row.packExp))}</td>
                 <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-900 whitespace-nowrap">
-                  <CntValue qty={row.packCnt} countedBy={row.packCntBy} history={row.packCntHistory} />
+                  <CntValue qty={row.packCnt} countedBy={row.packCntBy} history={row.packCntHistory} blank />
                 </td>
                 <td className="text-center py-0.5 font-bold border-l border-gray-300">
-                  {row.packLoss === null ? <span className="text-gray-300">—</span>
+                  {row.packLoss === null ? null
                     : row.packLoss > 0.001 ? <span className="text-red-600">-{fmtN(row.packLoss)}</span>
                     : <span className="text-gray-400">0</span>}
                 </td>
                 <td className="text-center py-0.5 font-bold border-l border-gray-300">
                   {row.packLoss !== null && row.packLoss < -0.001
                     ? <span className="bg-red-600 text-white rounded px-0.5" title="A gain should never happen -- a record is missing. See MANAGER GUIDELINES.">⚠+{fmtN(Math.abs(row.packLoss))}</span>
-                    : row.packLoss === null ? <span className="text-gray-300">—</span>
+                    : row.packLoss === null ? null
                     : <span className="text-gray-400">0</span>}
                 </td>
                 <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 whitespace-nowrap">
-                  {pCedis === null ? <span className="text-gray-300">—</span>
+                  {pCedis === null ? null
                     : pCedis > 0.001 ? <span className="text-red-600">-₵{fmtN(pCedis)}</span>
                     : pCedis < -0.001 ? <span className="text-green-600">+₵{fmtN(Math.abs(pCedis))}</span>
                     : <span className="text-gray-400">0</span>}
                 </td>
-                <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-teal-600">{fmtQs(row.singlesConvIn)}</td>
-                <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{singlesQty === 0 ? <span className="text-gray-300">—</span> : fmtQ(singlesQty)}</td>
+                <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-teal-600">{blankDash(fmtQs(row.singlesConvIn))}</td>
+                <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{singlesQty === 0 ? null : fmtQ(singlesQty)}</td>
                 {showPrices && <>
-                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{singlesQty > 0 ? `₵${fmtN(singlesSpVal)}` : <span className="text-gray-300">—</span>}</td>
-                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{singlesQty > 0 ? `₵${fmtN(singlesAmount)}` : <span className="text-gray-300">—</span>}</td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{singlesQty > 0 ? `₵${fmtN(singlesSpVal)}` : null}</td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{singlesQty > 0 ? `₵${fmtN(singlesAmount)}` : null}</td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-500">₵{fmtN(sheetCP)}</td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-500">₵{fmtN(singlesProfit)}</td>
                 </>}
                 {!cyc ? (
                   <>
-                    <td className="text-center py-0.5 border-l-2 border-l-gray-600"><span className="text-gray-300">—</span></td>
-                    <td className="text-center py-0.5 border-l border-gray-300"><span className="text-gray-300">—</span></td>
-                    <td className="text-center py-0.5 border-l border-gray-300"><span className="text-gray-300">—</span></td>
-                    <td className="text-center py-0.5 border-l border-gray-300"><span className="text-gray-300">—</span></td>
+                    <td className="text-center py-0.5 border-l-2 border-l-gray-600" />
+                    <td className="text-center py-0.5 border-l border-gray-300" />
+                    <td className="text-center py-0.5 border-l border-gray-300" />
+                    <td className="text-center py-0.5 border-l border-gray-300" />
                   </>
                 ) : (
                   <>
@@ -701,37 +704,37 @@ function SingleServicePackChainTable({
                       {cycOpen && <span className="block text-blue-600 text-[6px] font-semibold">in progress</span>}
                     </td>
                     <td className="text-center py-0.5 font-bold border-l border-gray-300 whitespace-nowrap">
-                      {cycOpen ? <span className="text-gray-300">—</span>
+                      {cycOpen ? null
                         : (cycDiff as number) > 0.001 ? <span className="text-red-600">-{fmtQ(cycDiff as number)}</span>
                         : <span className="text-gray-400">0</span>}
                     </td>
                     <td className="text-center py-0.5 font-bold border-l border-gray-300 whitespace-nowrap">
-                      {cycOpen ? <span className="text-gray-300">—</span>
+                      {cycOpen ? null
                         : (cycDiff as number) < -0.001 ? (
                           <span className="bg-red-600 text-white rounded px-0.5" title="Sheets used beyond what this pack gave -- should be 0.">⚠+{fmtQ(Math.abs(cycDiff as number))}</span>
                         ) : <span className="text-gray-400">0</span>}
                     </td>
                     <td className="text-center py-0.5 font-bold border-l border-gray-300 whitespace-nowrap">
-                      {cycOpen ? <span className="text-gray-300">—</span>
+                      {cycOpen ? null
                         : (cycDiff as number) > 0.001 ? <span className="text-red-600">-₵{fmtN((cycDiff as number) * sheetPrice)}</span>
                         : (cycDiff as number) < -0.001 ? <span className="text-green-600">+₵{fmtN(Math.abs(cycDiff as number) * sheetPrice)}</span>
                         : <span className="text-gray-400">0</span>}
                     </td>
                   </>
                 )}
-                <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-gray-400">{fmtN(row.singlesExp)}</td>
+                <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-gray-400">{blankDash(fmtN(row.singlesExp))}</td>
                 <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-400 whitespace-nowrap">
-                  <CntValue qty={row.singlesCnt} countedBy={row.singlesCntBy} history={row.singlesCntHistory} />
+                  <CntValue qty={row.singlesCnt} countedBy={row.singlesCntBy} history={row.singlesCntHistory} blank />
                 </td>
                 <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 whitespace-nowrap">
-                  {totalCedisRow === null ? <span className="text-gray-300">—</span>
+                  {totalCedisRow === null ? null
                     : totalCedisRow > 0.001 ? <span className="text-red-600">-₵{fmtN(totalCedisRow)}</span>
                     : totalCedisRow < -0.001 ? <span className="text-green-600">+₵{fmtN(Math.abs(totalCedisRow))}</span>
                     : <span className="text-gray-400">0</span>}
                 </td>
                 {guidelineRowSpan[i] > 0 && (
                   <td rowSpan={guidelineRowSpan[i]} className="text-left py-0.5 pl-1 pr-1 border-l-2 border-l-gray-600 border-b border-gray-200 whitespace-nowrap overflow-hidden text-ellipsis align-top">
-                    {omissionLines.length === 0 ? <span className="text-gray-300">—</span> : (
+                    {omissionLines.length === 0 ? null : (
                       <div className="whitespace-nowrap overflow-hidden text-ellipsis" title={omissionLines.join(' · ')}>
                         <span className="text-orange-700 font-semibold">{omissionLines.join(' · ')}</span>
                       </div>
