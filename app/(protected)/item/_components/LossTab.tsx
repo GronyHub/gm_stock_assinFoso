@@ -1,5 +1,5 @@
 'use client'
-import { Fragment, useState, useEffect, useMemo, useRef } from 'react'
+import { Fragment, useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { useSession } from 'next-auth/react'
 import { fmtDate } from '@/lib/fmtDate'
 import { isOwnerLevel } from '@/lib/roles'
@@ -921,7 +921,7 @@ function rowSortVal(row: SummaryRow, col: SortCol): number | string {
 /* ── compact th with sort indicator ── */
 const thBase = 'py-1 font-bold cursor-pointer select-none whitespace-nowrap border border-black'
 function SortTh({ label, col, sort, onSort, cls = '' }: {
-  label: string; col: SortCol
+  label: ReactNode; col: SortCol
   sort: { col: SortCol; dir: SortDir }
   onSort: (col: SortCol) => void
   cls?: string
@@ -2124,7 +2124,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   const colgroup = (
     <colgroup>
       <col style={{width:'104px'}} />
-      <col style={{width:'30px'}} />
+      <col style={{width:'40px'}} />
       <col style={{width:'26px'}} />
       <col style={{width:'26px'}} />
       <col style={{width:'26px'}} />
@@ -2245,7 +2245,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
           <thead className="sticky top-0 z-20">
             <tr className="bg-gray-50">
               <SortTh label="Item" col="item_name" sort={sort} onSort={handleSort} cls="text-left pl-1 pr-0 sticky left-0 z-30 bg-gray-50 border-black" />
-              <SortTh label="₵L/G" col="lgAmt" {...thProps} cls="text-center" />
+              <SortTh label={<>Loss<span className="block">Amount</span></>} col="lgAmt" {...thProps} cls="text-center" />
               <SortTh label="L/G" col="lgQty" {...thProps} cls="text-center" />
               <SortTh label="CNT" col="cnt" {...thProps} cls="text-center" />
               <SortTh label="WIC" col="wic" {...thProps} cls="text-center" />
