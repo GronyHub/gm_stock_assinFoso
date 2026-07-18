@@ -865,46 +865,13 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPackChain, item.converts_to_item_id])
 
-  // Trade-off notes recorded by users against specific rows (keyed by date).
-  const [tradeoffs, setTradeoffs] = useState<Record<string, { note: string; done_by: string | null }>>({})
-  const [toEditDate, setToEditDate] = useState<string | null>(null)
-  const [toText, setToText] = useState('')
-  const [toSaving, setToSaving] = useState(false)
-
   useEffect(() => {
     if (!isPackChain || item.converts_to_item_id == null) { setTargetDayRows(null); return }
     fetch(`/api/losses/${item.converts_to_item_id}`).then(r => r.json())
       .then(d => setTargetDayRows(Array.isArray(d) ? d : []))
       .catch(() => setTargetDayRows([]))
-    fetch(`/api/stock/tradeoff?itemId=${item.item_id}`).then(r => r.json())
-      .then(d => {
-        const map: Record<string, { note: string; done_by: string | null }> = {}
-        for (const r of (Array.isArray(d) ? d : [])) map[r.date] = { note: r.note, done_by: r.done_by }
-        setTradeoffs(map)
-      })
-      .catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPackChain, item.converts_to_item_id])
-
-  async function saveTradeoff(date: string) {
-    setToSaving(true)
-    const res = await fetch('/api/stock/tradeoff', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ itemId: item.item_id, date, note: toText }),
-    })
-    setToSaving(false)
-    if (res.ok) {
-      const d = await res.json()
-      setTradeoffs(prev => {
-        const next = { ...prev }
-        if (d.note) next[date] = { note: d.note, done_by: d.done_by }
-        else delete next[date]
-        return next
-      })
-      setToEditDate(null)
-      setToText('')
-    }
-  }
 
   function startEdit() {
     setForm({
@@ -1059,12 +1026,12 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
               Combined view: {item.item_name} → {targetName} → services
             </p>
             <table className="table-fixed border-collapse text-[8px]"
-              style={{ width: `${62 + 2 * 48 + 10 * 36 + packChainBreakdownNames.length * 60 + 56 + 64 + 72 + 64 + 200 + 480 + 220}px` }}>
+              style={{ width: `${62 + 2 * 48 + 10 * 36 + packChainBreakdownNames.length * 60 + 56 + 64 + 72 + 64 + 480 + 320}px` }}>
               {/* Pixel-widths: date frozen at its text width, numeric columns as
                   thin as their numbers, OMISSIONS wide (480px) so its text stays
-                  on 1-2 lines instead of growing the row height, TRADE-OFF at the
-                  end. The table scrolls sideways inside the detail panel; the
-                  date column stays frozen. */}
+                  on 1-2 lines, and ASK STAFF last & wide (320px) so its content
+                  fits ~2 lines instead of stacking tall. The table scrolls
+                  sideways inside the detail panel; the date column stays frozen. */}
               <colgroup>
                 <col style={{width:'62px'}} />
                 <col style={{width:'48px'}} />
@@ -1084,9 +1051,8 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                 <col style={{width:'36px'}} />
                 <col style={{width:'36px'}} />
                 <col style={{width:'56px'}} />
-                <col style={{width:'200px'}} />
                 <col style={{width:'480px'}} />
-                <col style={{width:'220px'}} />
+                <col style={{width:'320px'}} />
               </colgroup>
               <thead className="sticky top-0 z-10">
                 <tr className="bg-amber-500 text-gray-800 font-bold">
@@ -1102,16 +1068,12 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                     LOSS ₵
                   </th>
                   <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600"
-                    title="Exposure to this loss, apportioned by hours each staff member actually spent at the shop between the previous count and this one (from clock-in/out times) — not a general blame for merely being present. Also shows who counted at each end and, for one-day windows, each person's arrival–departure times.">
-                    ASK STAFF
-                  </th>
-                  <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600"
                     title="Records that should exist but are missing — e.g. singles jumped up with no GMC pack recorded. These distort the gains/losses.">
                     OMISSIONS
                   </th>
                   <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600"
-                    title="Trade-off actions users have taken on this row (e.g. netting a gain against an earlier loss), recorded with the name of who did it.">
-                    TRADE-OFF
+                    title="Exposure to this loss, apportioned by hours each staff member actually spent at the shop between the previous count and this one (from clock-in/out times) — not a general blame for merely being present. Also shows who counted at each end and, for one-day windows, each person's arrival–departure times.">
+                    ASK STAFF
                   </th>
                 </tr>
                 <tr className="bg-amber-400 text-gray-800 font-bold">
@@ -1261,35 +1223,6 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                         return <span className="text-gray-400">0</span>
                       })()}
                     </td>
-                    <td className="text-left py-0.5 pl-1 pr-0.5 border-l-2 border-l-gray-600 whitespace-normal break-words leading-tight align-top">
-                      {!hasLoss ? <span className="text-gray-300">—</span>
-                        : !presence ? <span className="text-gray-300">…</span>
-                        : ask && ask.shares.length > 0 ? (
-                          <>
-                            {ask.shares.map((s, si) => {
-                              // Blame is proportional to time at the shop; only a
-                              // share clearly above an equal split gets flagged red.
-                              const topShare = si === 0 && ask.shares.length > 1 && s.pct > Math.round(100 / ask.shares.length) + 5
-                              return (
-                                <span key={s.name} className="block whitespace-nowrap">
-                                  <span className={topShare ? 'text-red-700 font-bold' : 'text-gray-800 font-semibold'}>
-                                    {capName(s.name)}
-                                  </span>
-                                  <span className="text-gray-500"> {hrsLabel(s.mins)} · {s.pct}%</span>
-                                  {s.range && <span className="text-gray-400 text-[6px]"> ({s.range})</span>}
-                                </span>
-                              )
-                            })}
-                            <span className="block text-gray-400">
-                              {ask.from
-                                ? `count${initialOf(ask.fromBy) ? ` by ${initialOf(ask.fromBy)}` : ''} ${fmtDate(ask.from)} → count${initialOf(ask.endBy) ? ` by ${initialOf(ask.endBy)}` : ''} ${fmtDate(row.date)}`
-                                : `up to count${initialOf(ask.endBy) ? ` by ${initialOf(ask.endBy)}` : ''} ${fmtDate(row.date)}`}
-                            </span>
-                          </>
-                        ) : (
-                          <span className="text-orange-600">no clock-ins recorded for this period — attendance gap is itself a red flag</span>
-                        )}
-                    </td>
                     <td className="text-left py-0.5 pl-1 pr-0.5 border-l-2 border-l-gray-600 whitespace-normal break-words leading-tight">
                       {omissions.length === 0 ? <span className="text-gray-300">—</span> : omissions.map((o, oi) => (
                         <div key={oi} className={oi > 0 ? 'mt-1 pt-1 border-t border-orange-200' : ''}>
@@ -1299,34 +1232,36 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                       ))}
                     </td>
                     <td className="text-left py-0.5 pl-1 pr-1 border-l-2 border-l-gray-600 whitespace-normal break-words leading-tight align-top">
-                      {toEditDate === row.date ? (
-                        <div className="space-y-0.5">
-                          <textarea value={toText} onChange={e => setToText(e.target.value)} rows={2} autoFocus
-                            placeholder="What was traded off?"
-                            className="w-full bg-white border border-gray-300 rounded px-1 py-0.5 text-[8px] outline-none focus:ring-1 focus:ring-blue-400" />
-                          <div className="flex gap-0.5">
-                            <button onClick={() => saveTradeoff(row.date)} disabled={toSaving}
-                              className="flex-1 bg-green-600 text-white text-[8px] font-bold rounded py-0.5 disabled:opacity-40">
-                              {toSaving ? '…' : 'Save'}
-                            </button>
-                            <button onClick={() => { setToEditDate(null); setToText('') }}
-                              className="px-2 bg-gray-100 text-gray-600 text-[8px] font-semibold rounded">✕</button>
-                          </div>
-                        </div>
-                      ) : tradeoffs[row.date] ? (
-                        <button onClick={() => { setToEditDate(row.date); setToText(tradeoffs[row.date].note) }}
-                          className="text-left w-full hover:bg-teal-50 rounded transition" title="Tap to edit">
-                          <span className="text-teal-700 font-semibold">{tradeoffs[row.date].note}</span>
-                          {tradeoffs[row.date].done_by && (
-                            <span className="text-gray-400"> — by {tradeoffs[row.date].done_by}</span>
-                          )}
-                        </button>
-                      ) : (
-                        <button onClick={() => { setToEditDate(row.date); setToText('') }}
-                          className="text-[8px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded hover:bg-blue-100">
-                          + Add
-                        </button>
-                      )}
+                      {!hasLoss ? <span className="text-gray-300">—</span>
+                        : !presence ? <span className="text-gray-300">…</span>
+                        : ask && ask.shares.length > 0 ? (
+                          <>
+                            {/* Shares inline (comma-separated) so the wide column
+                                keeps them to ~1 line; the count window is line 2. */}
+                            <span>
+                              {ask.shares.map((s, si) => {
+                                const topShare = si === 0 && ask.shares.length > 1 && s.pct > Math.round(100 / ask.shares.length) + 5
+                                return (
+                                  <span key={s.name} className="whitespace-nowrap">
+                                    {si > 0 && <span className="text-gray-300">, </span>}
+                                    <span className={topShare ? 'text-red-700 font-bold' : 'text-gray-800 font-semibold'}>
+                                      {capName(s.name)}
+                                    </span>
+                                    <span className="text-gray-500"> {hrsLabel(s.mins)}·{s.pct}%</span>
+                                    {s.range && <span className="text-gray-400 text-[6px]"> ({s.range})</span>}
+                                  </span>
+                                )
+                              })}
+                            </span>
+                            <span className="block text-gray-400">
+                              {ask.from
+                                ? `count${initialOf(ask.fromBy) ? ` by ${initialOf(ask.fromBy)}` : ''} ${fmtDate(ask.from)} → count${initialOf(ask.endBy) ? ` by ${initialOf(ask.endBy)}` : ''} ${fmtDate(row.date)}`
+                                : `up to count${initialOf(ask.endBy) ? ` by ${initialOf(ask.endBy)}` : ''} ${fmtDate(row.date)}`}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-orange-600">no clock-ins recorded for this period — attendance gap is itself a red flag</span>
+                        )}
                     </td>
                   </tr>
                   )
@@ -1357,7 +1292,6 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                           : totalCedis < -0.001 ? <span className="text-green-600">+₵{fmtN(Math.abs(parseFloat(totalCedis.toFixed(2))))}</span>
                           : <span className="text-gray-400">0</span>}
                       </td>
-                      <td className="border-l-2 border-l-gray-600" />
                       <td className="border-l-2 border-l-gray-600" />
                       <td className="border-l-2 border-l-gray-600" />
                     </tr>
