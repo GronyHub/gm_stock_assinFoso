@@ -202,8 +202,10 @@ function ItemHubPageInner() {
   // SP/AMOUNT/CP/PROFIT columns on the pack-chain detail table are collapsed
   // by default (they're only needed occasionally) -- toggled from the submenu.
   const [showPrices, setShowPrices]     = useState(false)
-  // Filters the pack-chain detail table down to rows with an actual loss.
+  // Filters the pack-chain detail table down to rows with an actual loss/gain.
+  // Mutually exclusive -- turning one on turns the other off.
   const [lossOnly, setLossOnly]         = useState(false)
+  const [gainOnly, setGainOnly]         = useState(false)
   const [search, setSearch]             = useState('')
   const [violation, setViolation]       = useState<string | null>(searchParams.get('violation'))
   const [violationOpen, setViolationOpen] = useState(!!searchParams.get('violation'))
@@ -457,11 +459,19 @@ function ItemHubPageInner() {
               </button>
             )}
             {lossView === 'items' && (
-              <button onClick={() => setLossOnly(o => !o)}
+              <button onClick={() => setLossOnly(o => { const v = !o; if (v) setGainOnly(false); return v })}
                 title="Show only rows with an actual loss on the pack-chain detail table"
                 className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap transition
                   ${lossOnly ? 'bg-red-600 text-white' : 'bg-white border border-red-200 text-red-700 hover:bg-red-100'}`}>
                 🔻 Loss Only
+              </button>
+            )}
+            {lossView === 'items' && (
+              <button onClick={() => setGainOnly(o => { const v = !o; if (v) setLossOnly(false); return v })}
+                title="Show only rows with an actual gain on the pack-chain detail table"
+                className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap transition
+                  ${gainOnly ? 'bg-orange-500 text-white' : 'bg-white border border-orange-200 text-orange-700 hover:bg-orange-100'}`}>
+                🔺 Gain Only
               </button>
             )}
           </div>
@@ -599,7 +609,7 @@ function ItemHubPageInner() {
           <TabErrorBoundary>
             <LossTab onOpenItem={() => {}} search={search} group={group} productType={productType}
               jumpToItemId={jumpToLossItemId} onJumpDone={() => setJumpToLossItemId(null)}
-              onDateClick={openReceiptFromItem} showPrices={showPrices} lossOnly={lossOnly} />
+              onDateClick={openReceiptFromItem} showPrices={showPrices} lossOnly={lossOnly} gainOnly={gainOnly} />
           </TabErrorBoundary>
         )}
         {addForm !== 'sale' && outerTab === 'loss' && lossView === 'sales' && (
