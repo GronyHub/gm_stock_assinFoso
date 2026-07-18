@@ -17,7 +17,7 @@ function n(v: string | null) { return parseFloat(v ?? '0') || 0 }
 
 function aggregateItem(rows: DayRow[], sp: number) {
   let prev: number | null = null
-  let lgQty = 0, cnt = 0, wic = 0, gmc = 0, bl = 0, cnv = 0
+  let lgQty = 0, cnt = 0, wic = 0, gmc = 0, bl = 0, cnv = 0, lossCount = 0
   for (const row of rows) {
     const counted = row.qty_counted !== null ? parseFloat(row.qty_counted) : null
     const bills = n(row.bills_qty), w = n(row.wic_qty), g = n(row.gmc_qty), c = n(row.converted_in_qty)
@@ -25,7 +25,12 @@ function aggregateItem(rows: DayRow[], sp: number) {
       if (counted !== null) prev = counted
     } else {
       const expected: number = prev + bills + c - w - g
-      if (counted !== null) { lgQty += expected - counted; prev = counted }
+      if (counted !== null) {
+        const diff = expected - counted
+        lgQty += diff
+        if (diff > 0.0001) lossCount++
+        prev = counted
+      }
       else prev = expected
     }
     if (counted !== null) cnt += counted
@@ -34,6 +39,7 @@ function aggregateItem(rows: DayRow[], sp: number) {
   return {
     lgQty: parseFloat(lgQty.toFixed(4)),
     lgAmt: parseFloat((lgQty * sp).toFixed(2)),
+    lossCount,
     cnt: parseFloat(cnt.toFixed(4)),
     wic: parseFloat(wic.toFixed(4)),
     gmc: parseFloat(gmc.toFixed(4)),

@@ -17,6 +17,7 @@ type SummaryRow = {
   converts_to_item_id: number | null
   lgAmt: number
   lgQty: number
+  lossCount: number
   cnt: number
   wic: number
   gmc: number
@@ -41,7 +42,7 @@ type DayRow = {
 }
 type ComputedRow = DayRow & { available: number | null; used: number; expected_soh: number | null; loss: number | null }
 
-type SortCol = 'item_name' | 'cf_group' | 'product_type' | 'lgAmt' | 'lgQty' | 'cnt' | 'wic' | 'gmc' | 'bl' | 'soh' | 'sp' | 'cp'
+type SortCol = 'item_name' | 'cf_group' | 'product_type' | 'lgAmt' | 'lgQty' | 'lossCount' | 'cnt' | 'wic' | 'gmc' | 'bl' | 'soh' | 'sp' | 'cp'
 type SortDir = 'asc' | 'desc'
 
 const EMPTY_FORM = { item_name: '', cf_group: '', selling_rate: '', purchase_rate: '', units_per_pack: '', unit_name: '', converts_to_item_id: '' }
@@ -69,11 +70,6 @@ function fmtCcy(v: string | null) {
 function fmtAmt(v: number) {
   if (v === 0) return '—'
   const s = Math.abs(v) >= 100 ? Math.abs(v).toFixed(0) : Math.abs(v).toFixed(1)
-  return (v > 0 ? '+' : '-') + s
-}
-function fmtLg(v: number) {
-  if (v === 0) return '—'
-  const s = Math.abs(v) % 1 === 0 ? String(Math.abs(v)) : Math.abs(v).toFixed(2)
   return (v > 0 ? '+' : '-') + s
 }
 // Strips the "—" placeholder these fmt* helpers return for empty/zero
@@ -908,6 +904,7 @@ function rowSortVal(row: SummaryRow, col: SortCol): number | string {
     case 'product_type': return (row.product_type ?? '').toLowerCase()
     case 'lgAmt': return row.lgAmt
     case 'lgQty': return row.lgQty
+    case 'lossCount': return row.lossCount
     case 'cnt': return row.cnt
     case 'wic': return row.wic
     case 'gmc': return row.gmc
@@ -2125,7 +2122,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
     <colgroup>
       <col style={{width:'104px'}} />
       <col style={{width:'40px'}} />
-      <col style={{width:'26px'}} />
+      <col style={{width:'40px'}} />
       <col style={{width:'26px'}} />
       <col style={{width:'26px'}} />
       <col style={{width:'26px'}} />
@@ -2144,7 +2141,6 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
 
   function renderRow(row: SummaryRow) {
     const lossAmt = row.lgAmt > 0, gainAmt = row.lgAmt < 0
-    const lossQty = row.lgQty > 0, gainQty = row.lgQty < 0
     const soh = parseFloat(row.soh ?? '0') || 0
     const isOpen = expandedId === row.item_id
     return (
@@ -2159,8 +2155,8 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
         <td className={`text-center py-0.5 font-bold tabular-nums border border-black ${lossAmt ? 'text-red-600' : gainAmt ? 'text-green-600' : 'text-gray-300'}`}>
           {fmtAmt(row.lgAmt)}
         </td>
-        <td className={`text-center py-0.5 font-bold tabular-nums border border-black ${lossQty ? 'text-red-500' : gainQty ? 'text-green-600' : 'text-gray-300'}`}>
-          {fmtLg(row.lgQty)}
+        <td className={`text-center py-0.5 font-bold tabular-nums border border-black ${row.lossCount > 0 ? 'text-red-500' : 'text-gray-300'}`}>
+          {row.lossCount}
         </td>
         <td className="text-center py-0.5 font-bold text-gray-700 tabular-nums border border-black">{fmtQ(row.cnt)}</td>
         <td className="text-center py-0.5 font-bold text-gray-700 tabular-nums border border-black">{fmtQ(row.wic)}</td>
@@ -2246,7 +2242,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
             <tr className="bg-gray-50">
               <SortTh label="Item" col="item_name" sort={sort} onSort={handleSort} cls="text-left pl-1 pr-0 sticky left-0 z-30 bg-gray-50 border-black" />
               <SortTh label={<>Loss<span className="block">Amount</span></>} col="lgAmt" {...thProps} cls="text-center" />
-              <SortTh label="L/G" col="lgQty" {...thProps} cls="text-center" />
+              <SortTh label={<>Num. of<span className="block">Losses</span></>} col="lossCount" {...thProps} cls="text-center" />
               <SortTh label="CNT" col="cnt" {...thProps} cls="text-center" />
               <SortTh label="WIC" col="wic" {...thProps} cls="text-center" />
               <SortTh label="GMC" col="gmc" {...thProps} cls="text-center" />
