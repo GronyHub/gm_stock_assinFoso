@@ -1997,7 +1997,11 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   const [rows, setRows] = useState<SummaryRow[]>([])
   const [loading, setLoading] = useState(true)
   const [sort, setSort] = useState<{ col: SortCol; dir: SortDir }>({ col: 'lgAmt', dir: 'desc' })
-  const [expandedId, setExpandedId] = useState<number | null>(null)
+  // Seeded from jumpToItemId (not null) so a restored ?item= from the URL
+  // is already correct on the very first render -- otherwise this would
+  // start closed, report that closed state up, and briefly strip ?item=
+  // from the URL before the jump effect below has a chance to reopen it.
+  const [expandedId, setExpandedId] = useState<number | null>(() => jumpToItemId ?? null)
   const [editTriggerId, setEditTriggerId] = useState<number | null>(null)
   const [aliasRecords, setAliasRecords] = useState<Record<number, AliasRecord[]>>({})
   const [matchRecords, setMatchRecords] = useState<Record<string, MatchRecord[]>>({})
