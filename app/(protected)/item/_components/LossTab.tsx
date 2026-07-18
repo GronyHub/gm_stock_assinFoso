@@ -264,6 +264,7 @@ type PackChainRow = {
   packExp: number | null; packLoss: number | null
   singlesCnt: string | null; singlesCntBy: string | null; singlesCntHistory: CountRevision[] | null; singlesConvIn: string | null
   singlesBreakdown: { name: string; qty: number; amount: number }[]
+  singlesWicQty: string | null; singlesSellPrice: string | null
   singlesUsed: number; singlesExp: number | null; singlesLoss: number | null
 }
 function buildPackChainRows(packRows: ComputedRow[], singlesRows: ComputedRow[]): PackChainRow[] {
@@ -272,19 +273,25 @@ function buildPackChainRows(packRows: ComputedRow[], singlesRows: ComputedRow[])
     map.set(r.date, {
       date: r.date, packCnt: r.qty_counted, packCntBy: r.counted_by, packCntHistory: r.count_history, packBl: r.bills_qty, packGmc: r.gmc_qty, packWic: r.wic_qty, packSellPrice: r.sell_price,
       packExp: r.expected_soh, packLoss: r.loss,
-      singlesCnt: null, singlesCntBy: null, singlesCntHistory: null, singlesConvIn: null, singlesBreakdown: [], singlesUsed: 0, singlesExp: null, singlesLoss: null,
+      singlesCnt: null, singlesCntBy: null, singlesCntHistory: null, singlesConvIn: null, singlesBreakdown: [],
+      singlesWicQty: null, singlesSellPrice: null,
+      singlesUsed: 0, singlesExp: null, singlesLoss: null,
     })
   }
   for (const r of singlesRows) {
     const existing = map.get(r.date) ?? {
       date: r.date, packCnt: null, packCntBy: null, packCntHistory: null, packBl: null, packGmc: null, packWic: null, packSellPrice: null, packExp: null, packLoss: null,
-      singlesCnt: null, singlesCntBy: null, singlesCntHistory: null, singlesConvIn: null, singlesBreakdown: [], singlesUsed: 0, singlesExp: null, singlesLoss: null,
+      singlesCnt: null, singlesCntBy: null, singlesCntHistory: null, singlesConvIn: null, singlesBreakdown: [],
+      singlesWicQty: null, singlesSellPrice: null,
+      singlesUsed: 0, singlesExp: null, singlesLoss: null,
     }
     existing.singlesCnt = r.qty_counted
     existing.singlesCntBy = r.counted_by
     existing.singlesCntHistory = r.count_history
     existing.singlesConvIn = r.converted_in_qty
     existing.singlesBreakdown = r.wic_breakdown ?? []
+    existing.singlesWicQty = r.wic_qty
+    existing.singlesSellPrice = r.sell_price
     existing.singlesUsed = r.used
     existing.singlesExp = r.expected_soh
     existing.singlesLoss = r.loss
@@ -706,7 +713,7 @@ function SingleServicePackChainTable({
             )}
             <th className="py-0.5 border-b-2 border-gray-500 text-center border-l-2 border-l-gray-600 bg-amber-400"
               title={`LOSS/GAIN AMT — pack side only: packs lost/gained × singles-per-pack × ₵${sheetPrice}`}>L/G ₵</th>
-            <th className="py-0.5 border-b-2 border-gray-500 text-center border-l-2 border-l-indigo-600 bg-indigo-400 text-white" title="Singles sold via the service">QTY</th>
+            <th className="py-0.5 border-b-2 border-gray-500 text-center border-l-2 border-l-indigo-600 bg-indigo-400 text-white" title="Singles sold that day -- via the service if this chain still has one, otherwise direct sales of the singles item itself">QTY</th>
             {showPrices && <>
               <th className="py-0.5 border-b-2 border-gray-500 text-center border-l border-indigo-300 bg-indigo-400 text-white" title="Average sale price that day">SP</th>
               <th className="py-0.5 border-b-2 border-gray-500 text-center border-l border-indigo-300 bg-indigo-400 text-white" title="Revenue from the service that day">AMOUNT</th>
@@ -740,10 +747,16 @@ function SingleServicePackChainTable({
             const packSpVal = numVal(row.packSellPrice) || sp
             const packAmount = packWicQty > 0 ? packWicQty * packSpVal : 0
             const packProfit = packSpVal - packCpVal
+            // Prefer the named service's own breakdown (exact revenue from real
+            // sale lines) when one exists; once there's no service left drawing
+            // on this item (e.g. it was merged directly into the singles item),
+            // fall back to the singles item's own direct WIC sales for that day.
             const svcB = svcName ? row.singlesBreakdown.find(b => b.name === svcName) : undefined
-            const singlesQty = svcB?.qty ?? 0
-            const singlesAmount = svcB?.amount ?? 0
-            const singlesSpVal = singlesQty > 0 ? singlesAmount / singlesQty : sheetPrice
+            const directQty = numVal(row.singlesWicQty)
+            const directSpVal = numVal(row.singlesSellPrice) || sheetPrice
+            const singlesQty = svcB ? (svcB.qty ?? 0) : directQty
+            const singlesAmount = svcB ? (svcB.amount ?? 0) : (directQty > 0 ? directQty * directSpVal : 0)
+            const singlesSpVal = svcB ? (singlesQty > 0 ? singlesAmount / singlesQty : sheetPrice) : directSpVal
             const singlesProfit = singlesSpVal - sheetCP
             const cyc = packCyclesByStart.get(row.date)
             const cycOpen = cyc ? cyc.end === null : false
