@@ -609,10 +609,15 @@ function SingleServicePackChainTable({
     + closedCycles.reduce((s, c) => s + cycleCedisValue(c, sheetPrice), 0)
   // EXP COUNT / ACTUAL COUNT sit as trailing standalone columns (after
   // MANAGER GUIDELINES), so they're no longer part of the singles group span.
-  const packColSpan = showPrices ? 12 : 8
+  // Gains should never happen on the pack side (any gain means a record is
+  // missing) -- once there's genuinely nothing to show, the column is just
+  // dead space, so it drops out entirely and reappears the moment a real
+  // gain needs flagging.
+  const showPackGain = packGainTotal > 0.001
+  const packColSpan = (showPrices ? 12 : 8) - (showPackGain ? 0 : 1)
   const singlesColSpan = showPrices ? 10 : 6
-  const packSideW = showPrices ? 484 : 320
-  const singlesSideW = (showPrices ? 516 : 352) - 84 // minus EXP COUNT(36) + ACTUAL COUNT(48)
+  const packSideW = 224 + (showPackGain ? 28 : 0) + (showPrices ? 164 : 0)
+  const singlesSideW = 200 + (showPrices ? 164 : 0)
   const totalColSpan = 1 + packColSpan + singlesColSpan + 4 // date + pack + singles + total + guidance + 2 count cols
 
   const visibleRows = lossOnly ? packChainRows.filter(r => rowHasLoss(r, packCyclesByStart)) : packChainRows
@@ -639,18 +644,20 @@ function SingleServicePackChainTable({
       <p className="text-[8px] font-bold text-gray-500 px-1.5 py-1 bg-gray-50 border-b border-gray-200">
         Combined view: {item.item_name} → {targetName} → service
       </p>
-      <table className="table-fixed border-collapse text-[8px]" style={{ width: `${62 + packSideW + singlesSideW + 64 + 480}px` }}>
+      <table className="table-fixed border-collapse text-[8px]" style={{ width: `${62 + packSideW + singlesSideW + 40 + 480 + 36 + 48}px` }}>
         <colgroup>
           <col style={{width:'62px'}} />
-          <col style={{width:'36px'}} /><col style={{width:'36px'}} />
+          <col style={{width:'28px'}} /><col style={{width:'28px'}} />
           {showPrices && <><col style={{width:'40px'}} /><col style={{width:'48px'}} /><col style={{width:'36px'}} /><col style={{width:'40px'}} /></>}
-          <col style={{width:'36px'}} /><col style={{width:'36px'}} /><col style={{width:'48px'}} />
-          <col style={{width:'36px'}} /><col style={{width:'36px'}} /><col style={{width:'56px'}} />
-          <col style={{width:'40px'}} /><col style={{width:'36px'}} />
+          <col style={{width:'28px'}} /><col style={{width:'32px'}} /><col style={{width:'40px'}} />
+          <col style={{width:'28px'}} />
+          {showPackGain && <col style={{width:'28px'}} />}
+          <col style={{width:'40px'}} />
+          <col style={{width:'28px'}} /><col style={{width:'26px'}} />
           {showPrices && <><col style={{width:'40px'}} /><col style={{width:'48px'}} /><col style={{width:'36px'}} /><col style={{width:'40px'}} /></>}
-          <col style={{width:'64px'}} /><col style={{width:'36px'}} /><col style={{width:'36px'}} />
-          <col style={{width:'56px'}} />
-          <col style={{width:'64px'}} />
+          <col style={{width:'54px'}} /><col style={{width:'26px'}} /><col style={{width:'26px'}} />
+          <col style={{width:'40px'}} />
+          <col style={{width:'40px'}} />
           <col style={{width:'480px'}} />
           <col style={{width:'36px'}} /><col style={{width:'48px'}} />
         </colgroup>
@@ -660,8 +667,8 @@ function SingleServicePackChainTable({
             <th colSpan={packColSpan} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">{item.item_name}</th>
             <th colSpan={singlesColSpan} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">{targetName}</th>
             <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600"
-              title={`Combined ₵ for the row: pack side (packs × singles-per-pack × ₵${sheetPrice}) plus the singles side's own USED/PACK cycle ₵.`}>
-              TOTAL LOSS/GAIN AMOUNT
+              title={`TOTAL LOSS/GAIN AMOUNT — combined ₵ for the row: pack side (packs × singles-per-pack × ₵${sheetPrice}) plus the singles side's own USED/PACK cycle ₵.`}>
+              TOTAL ₵
             </th>
             <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600">
               MANAGER GUIDELINES<span className="block font-normal text-[6px]">(omissions)</span>
@@ -690,15 +697,15 @@ function SingleServicePackChainTable({
             <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Packs missing at count. Column total shown below the label.">
               LOSS<span className="block text-red-700">{packLossTotal > 0 ? `-${fmtQ(packLossTotal)}` : '0'}</span>
             </th>
-            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Packs gained at count. Gains should ALWAYS be 0 -- any gain means a record is missing.">
-              GAIN
-              <span className={`block ${packGainTotal > 0 ? 'bg-red-600 text-white rounded px-0.5' : 'text-green-800'}`}>
-                {packGainTotal > 0 ? `⚠+${fmtQ(packGainTotal)}` : '0'}
-              </span>
-            </th>
+            {showPackGain && (
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Packs gained at count. Gains should ALWAYS be 0 -- any gain means a record is missing.">
+                GAIN
+                <span className="block bg-red-600 text-white rounded px-0.5">⚠+{fmtQ(packGainTotal)}</span>
+              </th>
+            )}
             <th className="py-0.5 border-b-2 border-gray-400 text-center border-l-2 border-l-gray-600"
-              title={`Pack side only: packs lost/gained × singles-per-pack × ₵${sheetPrice}`}>LOSS/GAIN AMT</th>
-            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l-2 border-l-gray-600" title="Credited in from pack GMC take">FROM GMC</th>
+              title={`LOSS/GAIN AMT — pack side only: packs lost/gained × singles-per-pack × ₵${sheetPrice}`}>L/G ₵</th>
+            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l-2 border-l-gray-600" title="Credited in from pack GMC take">CONV</th>
             <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Singles sold via the service">QTY</th>
             {showPrices && <>
               <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Average sale price that day">SP</th>
@@ -719,8 +726,8 @@ function SingleServicePackChainTable({
                 {cycleGainTotal > 0 ? `⚠+${fmtQ(cycleGainTotal)}` : '0'}
               </span>
             </th>
-            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title={`USED/PACK ledger valued at ₵${sheetPrice} per single. Column total (closed packs) shown below.`}>
-              LOSS/GAIN AMT<span className="block text-red-700">{cycleLossTotal > 0 ? `-₵${fmtN(cycleLossTotal * sheetPrice)}` : '0'}</span>
+            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title={`LOSS/GAIN AMT — USED/PACK ledger valued at ₵${sheetPrice} per single. Column total (closed packs) shown below.`}>
+              L/G ₵<span className="block text-red-700">{cycleLossTotal > 0 ? `-₵${fmtN(cycleLossTotal * sheetPrice)}` : '0'}</span>
             </th>
           </tr>
         </thead>
@@ -769,12 +776,14 @@ function SingleServicePackChainTable({
                     : row.packLoss > 0.001 ? <span className="text-red-600">-{fmtN(row.packLoss)}</span>
                     : <span className="text-gray-400">0</span>}
                 </td>
-                <td className="text-center py-0.5 font-bold border-l border-gray-300">
-                  {row.packLoss !== null && row.packLoss < -0.001
-                    ? <span className="bg-red-600 text-white rounded px-0.5" title="A gain should never happen -- a record is missing. See MANAGER GUIDELINES.">⚠+{fmtN(Math.abs(row.packLoss))}</span>
-                    : row.packLoss === null ? null
-                    : <span className="text-gray-400">0</span>}
-                </td>
+                {showPackGain && (
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300">
+                    {row.packLoss !== null && row.packLoss < -0.001
+                      ? <span className="bg-red-600 text-white rounded px-0.5" title="A gain should never happen -- a record is missing. See MANAGER GUIDELINES.">⚠+{fmtN(Math.abs(row.packLoss))}</span>
+                      : row.packLoss === null ? null
+                      : <span className="text-gray-400">0</span>}
+                  </td>
+                )}
                 <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 whitespace-nowrap">
                   {pCedis === null ? null
                     : pCedis > 0.001 ? <span className="text-red-600">-₵{fmtN(pCedis)}</span>
