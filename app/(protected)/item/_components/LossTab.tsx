@@ -645,11 +645,14 @@ function SingleServicePackChainTable({
       <p className="text-[8px] font-bold text-gray-500 px-1.5 py-1 bg-gray-50 border-b border-gray-200">
         Combined view: {item.item_name} → {targetName} → service
       </p>
-      {/* No explicit table width: table-fixed + an explicit width on every
-          <col> already determines it exactly (sum of the column widths) --
-          a manually-summed style={{width}} here can only drift out of sync
-          with the colgroup the next time a column changes. */}
-      <table className="table-fixed border-collapse text-[8px]">
+      {/* width: max-content (not a manually-summed pixel value, and not left
+          unset) -- table-layout: fixed with width:auto doesn't reliably
+          expand to the full colgroup sum when the table sits inside a
+          w-max-sized ancestor on mobile Chrome, which left a gap of blank
+          space rather than showing the next column. max-content forces the
+          table to size itself from its columns, and can't drift out of sync
+          the way a hand-maintained pixel sum can. */}
+      <table className="table-fixed border-collapse text-[8px]" style={{ width: 'max-content' }}>
         <colgroup>
           <col style={{width:'62px'}} />
           <col style={{width:'22px'}} /><col style={{width:'22px'}} />
