@@ -43,10 +43,10 @@ const LossTab        = dynamic(() => import('./_components/LossTab'),         { 
 const LossFeedTab    = dynamic(() => import('./_components/LossFeedTab'),     { ssr: false, loading: () => loading('Loading…') })
 const ProfitLossTab  = dynamic(() => import('./_components/ProfitLossTab'),   { ssr: false, loading: () => loading('Loading…') })
 
-type OuterTab = 'today' | 'loss' | 'losses' | 'errors' | 'data' | 'pl' | 'expenses' | 'cab' | 'staff'
+type OuterTab = 'today' | 'loss' | 'errors' | 'data' | 'pl' | 'expenses' | 'cab' | 'staff'
 
-// Sales, Bills, and Counts live as submenus inside the Loss tab.
-type LossView = 'items' | 'sales' | 'bills' | 'counts'
+// Sales, Bills, Counts, and Feed live as submenus inside the Loss tab.
+type LossView = 'items' | 'sales' | 'bills' | 'counts' | 'feed'
 
 type Item = {
   id: number
@@ -142,7 +142,6 @@ const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCategory; d
 const VIOLATIONS: Record<OuterTab, { key: string; label: string; category?: ErrorCategory }[]> = {
   today: [],
   loss: [],
-  losses: [],
   errors: ERROR_VIOLATIONS,
   data: [],
   pl: [],
@@ -192,13 +191,17 @@ const VALID_TABS: OuterTab[] = ['today', 'loss', 'errors', 'data', 'pl', 'expens
 function ItemHubPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const initialTab = searchParams.get('tab') as OuterTab | null
+  const rawInitialTab = searchParams.get('tab')
+  // 'losses' (the old standalone Loss Feed tab) was folded into the Item
+  // tab's Feed submenu -- old bookmarks/links using it still land somewhere
+  // sensible instead of silently falling back to Today.
+  const initialTab = (rawInitialTab === 'losses' ? 'loss' : rawInitialTab) as OuterTab | null
   const [outerTab, setOuterTab] = useState<OuterTab>(
     initialTab && VALID_TABS.includes(initialTab) ? initialTab : 'today'
   )
   const [group, setGroup]               = useState<string | null>(null)
   const [productType, setProductType]   = useState<'all' | 'goods' | 'services'>('all')
-  const [lossView, setLossView]         = useState<LossView>('items')
+  const [lossView, setLossView]         = useState<LossView>(rawInitialTab === 'losses' ? 'feed' : 'items')
   // SP/AMOUNT/CP/PROFIT columns on the pack-chain detail table are collapsed
   // by default (they're only needed occasionally) -- toggled from the submenu.
   const [showPrices, setShowPrices]     = useState(false)
@@ -335,9 +338,9 @@ function ItemHubPageInner() {
   }
 
   function goToViolation(key: string) {
-    // The loss-summary rows on Home point at the Loss feed tab, not an
-    // errors fix screen.
-    if (key === '__loss_feed') { changeTab('losses'); return }
+    // The loss-summary rows on Home point at the Loss feed (now a submenu of
+    // the Item tab), not an errors fix screen.
+    if (key === '__loss_feed') { changeTab('loss'); setLossView('feed'); return }
     changeTab('errors')
     setViolation(key)
   }
@@ -396,7 +399,6 @@ function ItemHubPageInner() {
           </button>
           <div className="flex items-center gap-1 px-1 pt-1.5 pb-1 flex-1 min-w-0">
             <TabIcon icon="📉" label="Item"     active={outerTab === 'loss'}     onClick={() => changeTab('loss')} />
-            <TabIcon icon="🔻" label="Loss"     active={outerTab === 'losses'}   onClick={() => changeTab('losses')} />
             <TabIcon icon="💸" label="Exp."     active={outerTab === 'expenses'} onClick={() => changeTab('expenses')} />
             <TabIcon icon="👤" label="Staff"    active={outerTab === 'staff'}    onClick={() => changeTab('staff')} />
           </div>
@@ -443,6 +445,7 @@ function ItemHubPageInner() {
               { key: 'sales',  label: '💰 Sales' },
               { key: 'bills',  label: '🧾 Bills' },
               { key: 'counts', label: '📋 Counts' },
+              { key: 'feed',   label: '🔻 Feed' },
             ] as { key: LossView; label: string }[]).map(v => (
               <button key={v.key} onClick={() => { setLossView(v.key); setAddForm(null) }}
                 className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap transition
@@ -595,11 +598,6 @@ function ItemHubPageInner() {
         )}
         {addForm !== 'expense' && outerTab === 'expenses' && <ExpensesTab search={search} />}
         {outerTab === 'cab'      && <CABTab />}
-        {outerTab === 'losses' && (
-          <TabErrorBoundary>
-            <LossFeedTab search={search} />
-          </TabErrorBoundary>
-        )}
         {outerTab === 'staff'    && (
           <TabErrorBoundary>
             <StaffClient role={role} username={username} embedded />
@@ -623,6 +621,11 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'loss' && lossView === 'counts' && (
           <CountsTab items={items} groupFilter={group} search={search} violation={null} onFixRecords={goFixRecords} />
+        )}
+        {outerTab === 'loss' && lossView === 'feed' && (
+          <TabErrorBoundary>
+            <LossFeedTab search={search} />
+          </TabErrorBoundary>
         )}
         {outerTab === 'errors' && violation && (
           <div className="mx-3 mt-2 mb-1 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 flex gap-2">
