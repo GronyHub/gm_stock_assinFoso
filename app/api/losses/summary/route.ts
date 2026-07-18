@@ -1,5 +1,8 @@
 import sql from '@/lib/db'
 import { NextResponse } from 'next/server'
+import { ensureCountRevisions } from '@/lib/countRevisions'
+import { getItemDayRows } from '@/lib/itemDayRows'
+import { computeChainLossSummary } from '@/lib/packChain'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,6 +14,18 @@ type DayRow = {
   gmc_qty: string | null
   bills_qty: string | null
   converted_in_qty: string | null
+}
+
+type ItemMeta = {
+  item_id: number
+  item_name: string
+  cf_group: string | null
+  calculated_soh: string | null
+  selling_rate: string | null
+  purchase_rate: string | null
+  product_type: string | null
+  units_per_pack: string | null
+  converts_to_item_id: number | null
 }
 
 function n(v: string | null) { return parseFloat(v ?? '0') || 0 }
@@ -132,6 +147,8 @@ export async function GET() {
     `,
   ])
 
+  const items = itemRows as unknown as ItemMeta[]
+
   // group daily rows by item_id
   const byItem = new Map<number, DayRow[]>()
   for (const r of dayRows as DayRow[]) {
@@ -144,14 +161,43 @@ export async function GET() {
   // single sheet is worth ₵20 -- never the items' own selling prices. Matches
   // the LOSS ₵ column in the pack-chain detail table.
   const PAPER_SELL_PRICE = 20
-  const paperPacks = (itemRows as any[]).filter(it =>
+  const paperPacks = items.filter(it =>
     it.converts_to_item_id != null
     && (it.product_type ?? 'goods') !== 'service'
     && /4x6/i.test(it.item_name) && /pack/i.test(it.item_name))
   const paperPackIds = new Set(paperPacks.map(p => p.item_id))
   const paperSinglesIds = new Set(paperPacks.map(p => p.converts_to_item_id))
 
-  const result = (itemRows as any[]).map(item => {
+  const itemsById = new Map<number, ItemMeta>(items.map(it => [it.item_id, it]))
+
+  // Pack items (a Good with converts_to_item_id set) get their Loss Amount
+  // and Num. of Losses from the same chain-aware ledger the pack-chain
+  // dropdown already shows -- the TOTAL ₵ column there, summed -- instead
+  // of the naive per-item count-vs-expected diff, because that diff ignores
+  // the USED/PACK cycle overrun/underrun on the singles side entirely.
+  const packItems = items.filter(it =>
+    (it.product_type ?? 'goods') !== 'service' && it.converts_to_item_id != null)
+
+  if (packItems.length > 0) await ensureCountRevisions()
+
+  const dayRowsById = new Map<number, ReturnType<typeof getItemDayRows>>()
+  function loadDayRows(id: number) {
+    if (!dayRowsById.has(id)) dayRowsById.set(id, getItemDayRows(id))
+    return dayRowsById.get(id)!
+  }
+
+  const chainSummaries = new Map<number, { lossAmt: number; lossCount: number }>()
+  await Promise.all(packItems.map(async pack => {
+    const singles = itemsById.get(pack.converts_to_item_id!)
+    if (!singles) return
+    const [packDayRows, singlesDayRows] = await Promise.all([loadDayRows(pack.item_id), loadDayRows(singles.item_id)])
+    const singlesSp = parseFloat(singles.selling_rate ?? '0') || 0
+    const sheetPrice = singlesSp > 0 ? singlesSp : PAPER_SELL_PRICE
+    const unitsPerPack = parseFloat(pack.units_per_pack ?? '0') || 0
+    chainSummaries.set(pack.item_id, computeChainLossSummary(packDayRows, singlesDayRows, unitsPerPack, sheetPrice))
+  }))
+
+  const result = items.map(item => {
     const sp = paperPackIds.has(item.item_id)
       ? (parseFloat(item.units_per_pack ?? '0') || 1) * PAPER_SELL_PRICE
       : paperSinglesIds.has(item.item_id)
@@ -159,6 +205,8 @@ export async function GET() {
         : parseFloat(item.selling_rate ?? '0') || 0
     const rows = byItem.get(item.item_id) ?? []
     const agg = aggregateItem(rows, sp)
+    const chain = chainSummaries.get(item.item_id)
+    if (chain) { agg.lgAmt = chain.lossAmt; agg.lossCount = chain.lossCount }
     return {
       item_id: item.item_id,
       item_name: item.item_name,
