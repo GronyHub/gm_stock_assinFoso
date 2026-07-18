@@ -615,9 +615,9 @@ function SingleServicePackChainTable({
   // gain needs flagging.
   const showPackGain = packGainTotal > 0.001
   const packColSpan = (showPrices ? 12 : 8) - (showPackGain ? 0 : 1)
-  const singlesColSpan = showPrices ? 10 : 6
+  const singlesColSpan = showPrices ? 9 : 5
   const packSideW = 224 + (showPackGain ? 28 : 0) + (showPrices ? 164 : 0)
-  const singlesSideW = 200 + (showPrices ? 164 : 0)
+  const singlesSideW = 172 + (showPrices ? 164 : 0) // minus CONV (28) -- USED/PACK's "given" side already shows this
   const totalColSpan = 1 + packColSpan + singlesColSpan + 4 // date + pack + singles + total + guidance + 2 count cols
 
   const visibleRows = lossOnly ? packChainRows.filter(r => rowHasLoss(r, packCyclesByStart)) : packChainRows
@@ -653,7 +653,7 @@ function SingleServicePackChainTable({
           <col style={{width:'28px'}} />
           {showPackGain && <col style={{width:'28px'}} />}
           <col style={{width:'40px'}} />
-          <col style={{width:'28px'}} /><col style={{width:'26px'}} />
+          <col style={{width:'26px'}} />
           {showPrices && <><col style={{width:'40px'}} /><col style={{width:'48px'}} /><col style={{width:'36px'}} /><col style={{width:'40px'}} /></>}
           <col style={{width:'54px'}} /><col style={{width:'26px'}} /><col style={{width:'26px'}} />
           <col style={{width:'40px'}} />
@@ -705,8 +705,7 @@ function SingleServicePackChainTable({
             )}
             <th className="py-0.5 border-b-2 border-gray-400 text-center border-l-2 border-l-gray-600"
               title={`LOSS/GAIN AMT — pack side only: packs lost/gained × singles-per-pack × ₵${sheetPrice}`}>L/G ₵</th>
-            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l-2 border-l-gray-600" title="Credited in from pack GMC take">CONV</th>
-            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Singles sold via the service">QTY</th>
+            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l-2 border-l-gray-600" title="Singles sold via the service">QTY</th>
             {showPrices && <>
               <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Average sale price that day">SP</th>
               <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Revenue from the service that day">AMOUNT</th>
@@ -790,8 +789,7 @@ function SingleServicePackChainTable({
                     : pCedis < -0.001 ? <span className="text-green-600">+₵{fmtN(Math.abs(pCedis))}</span>
                     : <span className="text-gray-400">0</span>}
                 </td>
-                <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-teal-600">{blankDash(fmtQs(row.singlesConvIn))}</td>
-                <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{singlesQty === 0 ? null : fmtQ(singlesQty)}</td>
+                <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-gray-600">{singlesQty === 0 ? null : fmtQ(singlesQty)}</td>
                 {showPrices && <>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{singlesQty > 0 ? `₵${fmtN(singlesSpVal)}` : null}</td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{singlesQty > 0 ? `₵${fmtN(singlesAmount)}` : null}</td>
