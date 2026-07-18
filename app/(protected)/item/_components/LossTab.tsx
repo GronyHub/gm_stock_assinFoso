@@ -1114,11 +1114,16 @@ function MatchPicker({ itemId, itemName, isService, current, candidatePool, onCh
 }
 
 
-/* ── Merge picker: fold one item's history into another (same type) under a chosen name ── */
+/* ── Merge picker: fold one item's history into another under a chosen name.
+   The pool spans BOTH goods and services -- a good/service pairing that's
+   really the same real-world thing under two names (e.g. a service that's
+   just an alias for a singles item) is a legitimate merge, not a mistake, so
+   it isn't restricted to same-type candidates. Each result is tagged with
+   its type so a mixed list stays unambiguous. ── */
 function MergeItemPicker({ itemId, itemName, typeLabel, mergePool, onMerged }: {
   itemId: number; itemName: string
   typeLabel: 'service' | 'good'
-  mergePool: { item_id: number; item_name: string }[]
+  mergePool: CandidateItem[]
   onMerged: () => void
 }) {
   const [search, setSearch] = useState('')
@@ -1161,7 +1166,7 @@ function MergeItemPicker({ itemId, itemName, typeLabel, mergePool, onMerged }: {
         <input value={target ? target.item_name : search}
           onChange={e => { setSearch(e.target.value); setTarget(null); setOpen(true) }}
           onFocus={() => setOpen(true)}
-          placeholder={`Search ${typeLabel === 'service' ? 'services' : 'goods'} to merge with…`}
+          placeholder="Search items to merge with…"
           className="w-full bg-gray-100 border border-gray-300 rounded px-1.5 py-1 text-[9px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
         {open && filtered.length > 0 && (
           <div className="absolute z-10 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden max-h-32 overflow-y-auto">
@@ -1170,6 +1175,9 @@ function MergeItemPicker({ itemId, itemName, typeLabel, mergePool, onMerged }: {
                 onClick={() => { setTarget(s); setSearch(s.item_name); setOpen(false) }}
                 className="w-full text-left px-1.5 py-1 text-[9px] text-gray-800 hover:bg-blue-50 border-b border-gray-100 last:border-0 truncate">
                 {s.item_name}
+                <span className={`ml-1 text-[7px] font-semibold ${s.product_type === 'service' ? 'text-purple-500' : 'text-teal-600'}`}>
+                  ({s.product_type === 'service' ? 'service' : 'good'})
+                </span>
               </button>
             ))}
           </div>
@@ -1209,7 +1217,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
   item: SummaryRow; groups: string[]; allItems: { item_id: number; item_name: string }[]
   currentAliases: AliasRecord[]; currentMatches: MatchRecord[]
   candidatePool: CandidateItem[]
-  mergePool: { item_id: number; item_name: string }[]
+  mergePool: CandidateItem[]
   isOwnerLevelUser: boolean
   autoEdit: boolean
   onSaved: (u: Partial<SummaryRow>) => void
@@ -2174,7 +2182,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
                 currentAliases={aliasRecords[row.item_id] ?? []}
                 currentMatches={matchRecords[row.item_name.trim().toLowerCase()] ?? []}
                 candidatePool={row.product_type === 'service' ? goodsPool : servicesPool}
-                mergePool={(row.product_type === 'service' ? servicesPool : goodsPool).filter(i => i.item_id !== row.item_id)}
+                mergePool={[...goodsPool, ...servicesPool].filter(i => i.item_id !== row.item_id)}
                 isOwnerLevelUser={isOwnerLevelUser}
                 autoEdit={editTriggerId === row.item_id}
                 onSaved={u => patchRow(row.item_id, u)}
