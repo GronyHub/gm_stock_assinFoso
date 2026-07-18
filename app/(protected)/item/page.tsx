@@ -201,7 +201,10 @@ function ItemHubPageInner() {
   )
   const [group, setGroup]               = useState<string | null>(null)
   const [productType, setProductType]   = useState<'all' | 'goods' | 'services'>('all')
-  const [lossView, setLossView]         = useState<LossView>(rawInitialTab === 'losses' ? 'feed' : 'items')
+  const initialView = searchParams.get('view') as LossView | null
+  const [lossView, setLossView]         = useState<LossView>(
+    rawInitialTab === 'losses' ? 'feed' : (initialView ?? 'items')
+  )
   // SP/AMOUNT/CP/PROFIT columns on the pack-chain detail table are collapsed
   // by default (they're only needed occasionally) -- toggled from the submenu.
   const [showPrices, setShowPrices]     = useState(false)
@@ -209,14 +212,25 @@ function ItemHubPageInner() {
   // Mutually exclusive -- turning one on turns the other off.
   const [lossOnly, setLossOnly]         = useState(false)
   const [gainOnly, setGainOnly]         = useState(false)
-  const [search, setSearch]             = useState('')
+  const [search, setSearch]             = useState(searchParams.get('q') ?? '')
+  // Which item row is expanded on the Item tab's Items view, if any -- only
+  // used to keep the URL (and thus a refresh) pointed at the same row;
+  // LossTab owns the actual expand/collapse state and reports changes here.
+  const initialItemParam = searchParams.get('item')
+  const [expandedItemId, setExpandedItemId] = useState<number | null>(
+    initialItemParam ? Number(initialItemParam) || null : null
+  )
   const [violation, setViolation]       = useState<string | null>(searchParams.get('violation'))
   const [violationOpen, setViolationOpen] = useState(!!searchParams.get('violation'))
   const [groupOpen, setGroupOpen]       = useState(false)
   const [hamburgerOpen, setHamburgerOpen] = useState(false)
   const [addForm, setAddForm]             = useState<'item' | 'sale' | 'bill' | 'expense' | null>(null)
   const [jumpToItemId, setJumpToItemId]   = useState<number | null>(null)
-  const [jumpToLossItemId, setJumpToLossItemId] = useState<number | null>(null)
+  // Seeded from ?item= on first load so a refreshed page re-expands (and
+  // scrolls to) the same row via LossTab's existing jump-to-item effect.
+  const [jumpToLossItemId, setJumpToLossItemId] = useState<number | null>(
+    initialItemParam ? Number(initialItemParam) || null : null
+  )
   const [jumpToReceiptDate, setJumpToReceiptDate] = useState<string | null>(null)
   const [jumpToReceiptItemName, setJumpToReceiptItemName] = useState<string | null>(null)
   const groupRef     = useRef<HTMLDivElement>(null)
@@ -334,8 +348,28 @@ function ItemHubPageInner() {
     setAddForm(null)
     if (t !== 'loss') setProductType('all')
     if (t === 'loss') setLossView('items')
-    router.replace(t === 'today' ? '/item' : `/item?tab=${t}`, { scroll: false })
   }
+
+  // A refresh should land back on the same tab/sub-view/search/expanded row
+  // instead of resetting to Today -- single writer for the URL so nothing
+  // fights over it. expandedItemId is only ever non-null while actually on
+  // the Items view (cleared below), so ?item= only appears there.
+  useEffect(() => {
+    if (!(outerTab === 'loss' && lossView === 'items') && expandedItemId !== null) {
+      setExpandedItemId(null)
+      return
+    }
+    const params = new URLSearchParams()
+    if (outerTab !== 'today') params.set('tab', outerTab)
+    if (outerTab === 'loss' && lossView !== 'items') params.set('view', lossView)
+    if (search.trim()) params.set('q', search)
+    if (outerTab === 'loss' && lossView === 'items' && expandedItemId !== null) {
+      params.set('item', String(expandedItemId))
+    }
+    const qs = params.toString()
+    router.replace(qs ? `/item?${qs}` : '/item', { scroll: false })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [outerTab, lossView, search, expandedItemId])
 
   function goToViolation(key: string) {
     // The loss-summary rows on Home point at the Loss feed (now a submenu of
@@ -607,7 +641,8 @@ function ItemHubPageInner() {
           <TabErrorBoundary>
             <LossTab onOpenItem={() => {}} search={search} group={group} productType={productType}
               jumpToItemId={jumpToLossItemId} onJumpDone={() => setJumpToLossItemId(null)}
-              onDateClick={openReceiptFromItem} showPrices={showPrices} lossOnly={lossOnly} gainOnly={gainOnly} />
+              onDateClick={openReceiptFromItem} showPrices={showPrices} lossOnly={lossOnly} gainOnly={gainOnly}
+              onExpandedIdChange={setExpandedItemId} />
           </TabErrorBoundary>
         )}
         {addForm !== 'sale' && outerTab === 'loss' && lossView === 'sales' && (
