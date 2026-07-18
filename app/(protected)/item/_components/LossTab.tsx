@@ -23,14 +23,14 @@ type SummaryRow = {
   lgAmt: number
   lgQty: number
   lossCount: number
-  cnt: number
+  gainCount: number
   wic: number
   gmc: number
   bl: number
   cnv: number
 }
 
-type SortCol = 'item_name' | 'cf_group' | 'product_type' | 'lgAmt' | 'lgQty' | 'lossCount' | 'cnt' | 'wic' | 'gmc' | 'bl' | 'soh' | 'sp' | 'cp'
+type SortCol = 'item_name' | 'cf_group' | 'product_type' | 'lgAmt' | 'lgQty' | 'lossCount' | 'gainCount' | 'wic' | 'gmc' | 'bl' | 'soh' | 'sp' | 'cp'
 type SortDir = 'asc' | 'desc'
 
 const EMPTY_FORM = { item_name: '', cf_group: '', selling_rate: '', purchase_rate: '', units_per_pack: '', unit_name: '', converts_to_item_id: '' }
@@ -778,7 +778,7 @@ function rowSortVal(row: SummaryRow, col: SortCol): number | string {
     case 'lgAmt': return row.lgAmt
     case 'lgQty': return row.lgQty
     case 'lossCount': return row.lossCount
-    case 'cnt': return row.cnt
+    case 'gainCount': return row.gainCount
     case 'wic': return row.wic
     case 'gmc': return row.gmc
     case 'bl': return row.bl
@@ -2031,7 +2031,9 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
         <td className={`text-center py-0.5 font-bold tabular-nums border border-black ${row.lossCount > 0 ? 'text-red-500' : 'text-gray-300'}`}>
           {row.lossCount}
         </td>
-        <td className="text-center py-0.5 font-bold text-gray-700 tabular-nums border border-black">{fmtQ(row.cnt)}</td>
+        <td className={`text-center py-0.5 font-bold tabular-nums border border-black ${row.gainCount > 0 ? 'text-green-600' : 'text-gray-300'}`}>
+          {row.gainCount}
+        </td>
         <td className="text-center py-0.5 font-bold text-gray-700 tabular-nums border border-black">{fmtQ(row.wic)}</td>
         <td className="text-center py-0.5 font-bold text-gray-700 tabular-nums border border-black">{fmtQ(row.gmc)}</td>
         <td className="text-center py-0.5 font-bold text-blue-600 tabular-nums border border-black">{fmtQ(row.bl)}</td>
@@ -2116,7 +2118,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
               <SortTh label="Item" col="item_name" sort={sort} onSort={handleSort} cls="text-left pl-1 pr-0 sticky left-0 z-30 bg-gray-50 border-black" />
               <SortTh label={<>Loss<span className="block">Amount</span></>} col="lgAmt" {...thProps} cls="text-center" />
               <SortTh label={<>Num. of<span className="block">Losses</span></>} col="lossCount" {...thProps} cls="text-center" />
-              <SortTh label="CNT" col="cnt" {...thProps} cls="text-center" />
+              <SortTh label="Gain" col="gainCount" {...thProps} cls="text-center" />
               <SortTh label="WIC" col="wic" {...thProps} cls="text-center" />
               <SortTh label="GMC" col="gmc" {...thProps} cls="text-center" />
               <SortTh label="BL" col="bl" {...thProps} cls="text-center" />
