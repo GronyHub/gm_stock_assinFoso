@@ -506,11 +506,20 @@ function rowHasLoss(row: PackChainRow, packCyclesByStart: Map<string, PackCycle>
   if (cyc && cyc.end !== null && (cyc.sheetsGiven - cyc.used) > 0.001) return true
   return false
 }
+// Mirror of rowHasLoss for the Gain Only filter -- a pack count came in
+// above expected, or (on the row where a pack cycle closes) USED/PACK shows
+// more used than the pack gave.
+function rowHasGain(row: PackChainRow, packCyclesByStart: Map<string, PackCycle>): boolean {
+  if (row.packLoss !== null && row.packLoss < -0.001) return true
+  const cyc = packCyclesByStart.get(row.date)
+  if (cyc && cyc.end !== null && (cyc.sheetsGiven - cyc.used) < -0.001) return true
+  return false
+}
 
 function SingleServicePackChainTable({
   item, targetName, packChainRows, packCyclesByStart, closedCycles,
   packLossTotal, packGainTotal, cycleLossTotal, cycleGainTotal,
-  unitsPerPack, sheetPrice, sheetCP, sp, onDateClick, packChainBreakdownNames, showPrices, wnwByDate, lossOnly,
+  unitsPerPack, sheetPrice, sheetCP, sp, onDateClick, packChainBreakdownNames, showPrices, wnwByDate, lossOnly, gainOnly,
 }: {
   item: SummaryRow; targetName: string; packChainRows: PackChainRow[]
   packCyclesByStart: Map<string, PackCycle>; closedCycles: PackCycle[]
@@ -521,6 +530,7 @@ function SingleServicePackChainTable({
   showPrices: boolean
   wnwByDate: Map<string, number>
   lossOnly: boolean
+  gainOnly: boolean
 }) {
   const packCpVal = parseFloat(item.cp ?? '0') || 0
   const svcName = packChainBreakdownNames[0]
@@ -541,7 +551,9 @@ function SingleServicePackChainTable({
   const singlesSideW = 124 + (showPrices ? 164 : 0) // minus CONV (28) -- USED/PACK's "given" side already shows this
   const totalColSpan = 1 + packColSpan + singlesColSpan + 4 // date + pack + singles + total + WNW + 2 count cols
 
-  const visibleRows = lossOnly ? packChainRows.filter(r => rowHasLoss(r, packCyclesByStart)) : packChainRows
+  const visibleRows = lossOnly ? packChainRows.filter(r => rowHasLoss(r, packCyclesByStart))
+    : gainOnly ? packChainRows.filter(r => rowHasGain(r, packCyclesByStart))
+    : packChainRows
 
   return (
     <>
@@ -605,7 +617,7 @@ function SingleServicePackChainTable({
             {showPackGain && (
               <th className="py-0.5 border-b-2 border-gray-500 text-center border-l border-amber-300 bg-amber-400" title="Packs gained at count. Gains should ALWAYS be 0 -- any gain means a record is missing.">
                 GAIN
-                <span className="block bg-red-600 text-white rounded px-0.5">⚠+{fmtQ(packGainTotal)}</span>
+                <span className="block">+{fmtQ(packGainTotal)}</span>
               </th>
             )}
             <th className="py-0.5 border-b-2 border-gray-500 text-center border-l-2 border-l-gray-600 bg-amber-400"
@@ -626,8 +638,8 @@ function SingleServicePackChainTable({
             </th>
             <th className="py-0.5 border-b-2 border-gray-500 text-center border-l border-indigo-300 bg-indigo-400 text-white" title="Sheets used beyond what the pack gave -- should ALWAYS be 0; either leftover from a previous pack or an unrecorded GMC take.">
               GAIN
-              <span className={`block ${cycleGainTotal > 0 ? 'bg-red-600 text-white rounded px-0.5' : 'text-green-200'}`}>
-                {cycleGainTotal > 0 ? `⚠+${fmtQ(cycleGainTotal)}` : '0'}
+              <span className="block">
+                {cycleGainTotal > 0 ? `+${fmtQ(cycleGainTotal)}` : '0'}
               </span>
             </th>
             <th className="py-0.5 border-b-2 border-gray-500 text-center border-l border-indigo-300 bg-indigo-400 text-white" title={`LOSS/GAIN AMT — USED/PACK ledger valued at ₵${sheetPrice} per single. Column total (closed packs) shown below.`}>
@@ -637,7 +649,7 @@ function SingleServicePackChainTable({
         </thead>
         <tbody>
           {visibleRows.length === 0 ? (
-            <tr><td colSpan={totalColSpan} className="text-center py-3 text-gray-400 text-[9px]">No loss rows.</td></tr>
+            <tr><td colSpan={totalColSpan} className="text-center py-3 text-gray-400 text-[9px]">{lossOnly ? 'No loss rows.' : gainOnly ? 'No gain rows.' : 'No rows.'}</td></tr>
           ) : visibleRows.map((row, i) => {
             const packWicQty = numVal(row.packWic)
             const packSpVal = numVal(row.packSellPrice) || sp
@@ -655,7 +667,7 @@ function SingleServicePackChainTable({
             const cCedis = cyc && !cycOpen ? cycleCedisValue(cyc, sheetPrice) : null
             const totalCedisRow = pCedis === null && cCedis === null ? null : (pCedis ?? 0) + (cCedis ?? 0)
             return (
-              <tr key={i} className={`border-b border-gray-200 ${rowHasLoss(row, packCyclesByStart) ? 'bg-red-50' : 'bg-white'}`}>
+              <tr key={i} className={`border-b border-gray-200 ${rowHasLoss(row, packCyclesByStart) ? 'bg-red-50' : rowHasGain(row, packCyclesByStart) ? 'bg-orange-50' : 'bg-white'}`}>
                 <td className="pl-0.5 py-0.5 font-bold text-gray-500 whitespace-nowrap sticky left-0 bg-inherit">
                   {onDateClick ? (
                     <button onClick={() => onDateClick(row.date, item.item_name)} className="text-blue-600 hover:underline">{fmtDate(row.date)}</button>
@@ -682,7 +694,7 @@ function SingleServicePackChainTable({
                 {showPackGain && (
                   <td className="text-center py-0.5 font-bold border-l border-gray-300">
                     {row.packLoss !== null && row.packLoss < -0.001
-                      ? <span className="bg-red-600 text-white rounded px-0.5" title="A gain should never happen -- a record is missing. See MANAGER GUIDELINES.">⚠+{fmtN(Math.abs(row.packLoss))}</span>
+                      ? <span title="A gain should never happen -- a record is missing.">+{fmtN(Math.abs(row.packLoss))}</span>
                       : row.packLoss === null ? null
                       : <span className="text-gray-400">0</span>}
                   </td>
@@ -723,7 +735,7 @@ function SingleServicePackChainTable({
                     <td className="text-center py-0.5 font-bold border-l border-gray-300 whitespace-nowrap">
                       {cycOpen ? null
                         : (cycDiff as number) < -0.001 ? (
-                          <span className="bg-red-600 text-white rounded px-0.5" title="Sheets used beyond what this pack gave -- should be 0.">⚠+{fmtQ(Math.abs(cycDiff as number))}</span>
+                          <span title="Sheets used beyond what this pack gave -- should be 0.">+{fmtQ(Math.abs(cycDiff as number))}</span>
                         ) : <span className="text-gray-400">0</span>}
                     </td>
                     <td className="text-center py-0.5 font-bold border-l border-gray-300 whitespace-nowrap">
@@ -1098,7 +1110,7 @@ function MergeItemPicker({ itemId, itemName, typeLabel, mergePool, onMerged }: {
   )
 }
 
-function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, mergePool, isOwnerLevelUser, autoEdit, onSaved, onRelationsSaved, onMerged, onDateClick, showPrices, lossOnly }: {
+function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, mergePool, isOwnerLevelUser, autoEdit, onSaved, onRelationsSaved, onMerged, onDateClick, showPrices, lossOnly, gainOnly }: {
   item: SummaryRow; groups: string[]; allItems: { item_id: number; item_name: string }[]
   currentAliases: AliasRecord[]; currentMatches: MatchRecord[]
   candidatePool: CandidateItem[]
@@ -1110,6 +1122,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
   onMerged: () => void
   onDateClick?: (date: string, itemName: string) => void
   showPrices?: boolean
+  gainOnly?: boolean
   lossOnly?: boolean
 }) {
   const [dayRows, setDayRows] = useState<DayRow[] | null>(null)
@@ -1380,6 +1393,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
             showPrices={showPrices ?? false}
             wnwByDate={wnwByDate ?? new Map()}
             lossOnly={lossOnly ?? false}
+            gainOnly={gainOnly ?? false}
           />
         ) : (
           <>
@@ -1845,7 +1859,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
 }
 
 /* ── main LossTab ── */
-export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 'All', productType = 'all', jumpToItemId, onJumpDone, onDateClick, showPrices, lossOnly }: {
+export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 'All', productType = 'all', jumpToItemId, onJumpDone, onDateClick, showPrices, lossOnly, gainOnly }: {
   onOpenItem: (itemId: number) => void
   search?: string
   group?: string | null
@@ -1855,6 +1869,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   onDateClick?: (date: string, itemName: string) => void
   showPrices?: boolean
   lossOnly?: boolean
+  gainOnly?: boolean
 }) {
   const [rows, setRows] = useState<SummaryRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -2075,7 +2090,8 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
                 onMerged={reloadAfterMerge}
                 onDateClick={onDateClick}
                 showPrices={showPrices}
-                lossOnly={lossOnly} />
+                lossOnly={lossOnly}
+                gainOnly={gainOnly} />
             </div>
           </td>
         </tr>
