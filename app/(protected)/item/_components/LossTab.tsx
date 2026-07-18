@@ -616,8 +616,8 @@ function SingleServicePackChainTable({
   const showPackGain = packGainTotal > 0.001
   const packColSpan = (showPrices ? 12 : 8) - (showPackGain ? 0 : 1)
   const singlesColSpan = showPrices ? 9 : 5
-  const packSideW = 224 + (showPackGain ? 28 : 0) + (showPrices ? 164 : 0)
-  const singlesSideW = 172 + (showPrices ? 164 : 0) // minus CONV (28) -- USED/PACK's "given" side already shows this
+  const packSideW = 184 + (showPackGain ? 24 : 0) + (showPrices ? 164 : 0)
+  const singlesSideW = 124 + (showPrices ? 164 : 0) // minus CONV (28) -- USED/PACK's "given" side already shows this
   const totalColSpan = 1 + packColSpan + singlesColSpan + 4 // date + pack + singles + total + guidance + 2 count cols
 
   const visibleRows = lossOnly ? packChainRows.filter(r => rowHasLoss(r, packCyclesByStart)) : packChainRows
@@ -644,20 +644,20 @@ function SingleServicePackChainTable({
       <p className="text-[8px] font-bold text-gray-500 px-1.5 py-1 bg-gray-50 border-b border-gray-200">
         Combined view: {item.item_name} → {targetName} → service
       </p>
-      <table className="table-fixed border-collapse text-[8px]" style={{ width: `${62 + packSideW + singlesSideW + 40 + 480 + 36 + 48}px` }}>
+      <table className="table-fixed border-collapse text-[8px]" style={{ width: `${62 + packSideW + singlesSideW + 34 + 480 + 36 + 48}px` }}>
         <colgroup>
           <col style={{width:'62px'}} />
-          <col style={{width:'28px'}} /><col style={{width:'28px'}} />
+          <col style={{width:'22px'}} /><col style={{width:'22px'}} />
           {showPrices && <><col style={{width:'40px'}} /><col style={{width:'48px'}} /><col style={{width:'36px'}} /><col style={{width:'40px'}} /></>}
-          <col style={{width:'28px'}} /><col style={{width:'32px'}} /><col style={{width:'40px'}} />
-          <col style={{width:'28px'}} />
-          {showPackGain && <col style={{width:'28px'}} />}
-          <col style={{width:'40px'}} />
-          <col style={{width:'26px'}} />
+          <col style={{width:'22px'}} /><col style={{width:'28px'}} /><col style={{width:'34px'}} />
+          <col style={{width:'22px'}} />
+          {showPackGain && <col style={{width:'24px'}} />}
+          <col style={{width:'34px'}} />
+          <col style={{width:'20px'}} />
           {showPrices && <><col style={{width:'40px'}} /><col style={{width:'48px'}} /><col style={{width:'36px'}} /><col style={{width:'40px'}} /></>}
-          <col style={{width:'54px'}} /><col style={{width:'26px'}} /><col style={{width:'26px'}} />
-          <col style={{width:'40px'}} />
-          <col style={{width:'40px'}} />
+          <col style={{width:'30px'}} /><col style={{width:'20px'}} /><col style={{width:'20px'}} />
+          <col style={{width:'34px'}} />
+          <col style={{width:'34px'}} />
           <col style={{width:'480px'}} />
           <col style={{width:'36px'}} /><col style={{width:'48px'}} />
         </colgroup>
@@ -666,9 +666,9 @@ function SingleServicePackChainTable({
             <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-left pl-0.5 align-bottom sticky left-0 z-20 bg-amber-500">DATE</th>
             <th colSpan={packColSpan} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">{item.item_name}</th>
             <th colSpan={singlesColSpan} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">{targetName}</th>
-            <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600"
+            <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600 leading-tight"
               title={`TOTAL LOSS/GAIN AMOUNT — combined ₵ for the row: pack side (packs × singles-per-pack × ₵${sheetPrice}) plus the singles side's own USED/PACK cycle ₵.`}>
-              TOTAL ₵
+              TOTAL<span className="block">₵</span>
             </th>
             <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600">
               MANAGER GUIDELINES<span className="block font-normal text-[6px]">(omissions)</span>
@@ -712,9 +712,9 @@ function SingleServicePackChainTable({
               <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Purchase cost per single">CP</th>
               <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Per-unit margin: SP − CP">PROFIT</th>
             </>}
-            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l-2 border-l-gray-600"
-              title="On rows where a GMC pack was taken: total sheets recorded as used (service + direct sales) from this pack until the NEXT pack was taken -- the pack's full cycle, measured purely from records, independent of counts.">
-              USED/PACK
+            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l-2 border-l-gray-600 leading-tight"
+              title="USED/PACK — on rows where a GMC pack was taken: total sheets recorded as used (service + direct sales) from this pack until the NEXT pack was taken -- the pack's full cycle, measured purely from records, independent of counts.">
+              USED<span className="block">/PACK</span>
             </th>
             <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Sheets a pack gave but were never recorded as used, by count. Column total (closed packs) shown below.">
               LOSS<span className="block text-red-700">{cycleLossTotal > 0 ? `-${fmtQ(cycleLossTotal)}` : '0'}</span>
@@ -805,11 +805,11 @@ function SingleServicePackChainTable({
                   </>
                 ) : (
                   <>
-                    <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 whitespace-nowrap"
+                    <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 whitespace-nowrap leading-tight"
                       title={cycOpen ? 'This pack is still in use -- no next GMC take yet' : `Sheets used from this take until the next pack on ${fmtDate(cyc.end!)}`}>
-                      <span className="text-purple-700">{fmtQ(cyc.used)}</span>
-                      <span className="text-gray-400"> / {fmtQ(cyc.sheetsGiven)}</span>
-                      {cycOpen && <span className="block text-blue-600 text-[6px] font-semibold">in progress</span>}
+                      <span className="block text-purple-700">{fmtQ(cyc.used)}</span>
+                      <span className="block text-gray-400">/{fmtQ(cyc.sheetsGiven)}</span>
+                      {cycOpen && <span className="block text-blue-600 text-[6px] font-semibold">open</span>}
                     </td>
                     <td className="text-center py-0.5 font-bold border-l border-gray-300 whitespace-nowrap">
                       {cycOpen ? null
