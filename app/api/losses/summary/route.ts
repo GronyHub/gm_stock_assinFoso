@@ -32,7 +32,7 @@ function n(v: string | null) { return parseFloat(v ?? '0') || 0 }
 
 function aggregateItem(rows: DayRow[], sp: number) {
   let prev: number | null = null
-  let lgQty = 0, cnt = 0, wic = 0, gmc = 0, bl = 0, cnv = 0, lossCount = 0
+  let lgQty = 0, cnt = 0, wic = 0, gmc = 0, bl = 0, cnv = 0, lossCount = 0, gainCount = 0
   for (const row of rows) {
     const counted = row.qty_counted !== null ? parseFloat(row.qty_counted) : null
     const bills = n(row.bills_qty), w = n(row.wic_qty), g = n(row.gmc_qty), c = n(row.converted_in_qty)
@@ -44,10 +44,14 @@ function aggregateItem(rows: DayRow[], sp: number) {
         const diff = expected - counted
         lgQty += diff
         if (diff > 0.0001) lossCount++
+        else if (diff < -0.0001) gainCount++
         prev = counted
       }
       else prev = expected
     }
+    // cnt (total physical counts) is kept even though the items table no
+    // longer displays it -- the service-violation check elsewhere (a
+    // service should never have a physical count) still reads it.
     if (counted !== null) cnt += counted
     wic += w; gmc += g; bl += bills; cnv += c
   }
@@ -55,6 +59,7 @@ function aggregateItem(rows: DayRow[], sp: number) {
     lgQty: parseFloat(lgQty.toFixed(4)),
     lgAmt: parseFloat((lgQty * sp).toFixed(2)),
     lossCount,
+    gainCount,
     cnt: parseFloat(cnt.toFixed(4)),
     wic: parseFloat(wic.toFixed(4)),
     gmc: parseFloat(gmc.toFixed(4)),
@@ -186,7 +191,7 @@ export async function GET() {
     return dayRowsById.get(id)!
   }
 
-  const chainSummaries = new Map<number, { lossAmt: number; lossCount: number }>()
+  const chainSummaries = new Map<number, { lossAmt: number; lossCount: number; gainCount: number }>()
   await Promise.all(packItems.map(async pack => {
     const singles = itemsById.get(pack.converts_to_item_id!)
     if (!singles) return
@@ -206,7 +211,7 @@ export async function GET() {
     const rows = byItem.get(item.item_id) ?? []
     const agg = aggregateItem(rows, sp)
     const chain = chainSummaries.get(item.item_id)
-    if (chain) { agg.lgAmt = chain.lossAmt; agg.lossCount = chain.lossCount }
+    if (chain) { agg.lgAmt = chain.lossAmt; agg.lossCount = chain.lossCount; agg.gainCount = chain.gainCount }
     return {
       item_id: item.item_id,
       item_name: item.item_name,
