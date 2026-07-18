@@ -485,37 +485,30 @@ function computePackChainOmissions(rowsDesc: PackChainRow[], unitsPerPack: numbe
    single-service chain gets full SP/AMOUNT/CP/PROFIT economics on both the
    pack side (whole packs sold directly, WIC) and the singles side (singles
    sold via the one service, WIC BOUGHT), plus a combined TOTAL LOSS/GAIN
-   AMOUNT and one merged MANAGER GUIDELINES column (omissions + ask staff
-   stacked, since both now key off the same trigger row). Loss/gain here is
-   driven by two independent ledgers, shown side by side rather than merged:
-   the pack side's own count-based LOSS/GAIN, and the singles side's
-   cycle-based USED/PACK ledger (sheets a pack gave vs. sheets recorded used
-   before the next pack) -- the trusted, count-independent measure. */
-// Condensed to a single line each for the merged MANAGER GUIDELINES cell:
-// keeps the headline of an omission and the primary instruction of its fix,
-// dropping the longer reasoning clause. Staff names are shortened to their
-// initials (same abbreviation used beside CNT values) and the per-person
-// clock-in/out detail is dropped -- just name, hours and share.
+   AMOUNT and one MANAGER GUIDELINES column (omissions only -- no ask-staff
+   breakdown here). Loss/gain here is driven by two independent ledgers,
+   shown side by side rather than merged: the pack side's own count-based
+   LOSS/GAIN, and the singles side's cycle-based USED/PACK ledger (sheets a
+   pack gave vs. sheets recorded used before the next pack) -- the trusted,
+   count-independent measure. */
+// Condensed to a single line for the merged MANAGER GUIDELINES cell: keeps
+// the headline of an omission and the primary instruction of its fix,
+// dropping the longer reasoning clause.
 function shortOmissionLine(o: Omission): string {
   const issue = o.issue.split(' — ')[0].trim()
   const fix = o.fix.split(/ — |; /)[0].trim()
   return `${issue} → ${fix}`
 }
-function shortAskLine(ask: { shares: Exposure[] } | null): string {
-  if (!ask || ask.shares.length === 0) return 'no clock-ins recorded'
-  return ask.shares.map(s => `${initialOf(s.name) ?? capName(s.name)} ${s.pct}%`).join(', ')
-}
 
 function SingleServicePackChainTable({
   item, targetName, packChainRows, packChainOmissionsByDate, packCyclesByStart, closedCycles,
   packLossTotal, packGainTotal, cycleLossTotal, cycleGainTotal,
-  unitsPerPack, sheetPrice, sheetCP, sp, presence, onDateClick, packChainBreakdownNames, showPrices,
+  unitsPerPack, sheetPrice, sheetCP, sp, onDateClick, packChainBreakdownNames, showPrices,
 }: {
   item: SummaryRow; targetName: string; packChainRows: PackChainRow[]
   packChainOmissionsByDate: Map<string, Omission[]>; packCyclesByStart: Map<string, PackCycle>; closedCycles: PackCycle[]
   packLossTotal: number; packGainTotal: number; cycleLossTotal: number; cycleGainTotal: number
   unitsPerPack: number; sheetPrice: number; sheetCP: number; sp: number
-  presence: Record<string, StaffPresence[]> | null
   onDateClick?: (date: string, itemName: string) => void
   packChainBreakdownNames: string[]
   showPrices: boolean
@@ -530,16 +523,13 @@ function SingleServicePackChainTable({
   const packSideW = showPrices ? 484 : 320
   const singlesSideW = showPrices ? 516 : 352
 
-  // Per-row guideline content, condensed to one line per block. Consecutive
-  // rows with identical content (almost always the common "—, no loss" rows)
-  // are merged into a single spanning cell instead of repeating it.
-  const rowMetas = packChainRows.map((row, i) => {
+  // Per-row guideline content, condensed to one line. Consecutive rows with
+  // identical content (almost always the common "—, no omission" rows) are
+  // merged into a single spanning cell instead of repeating it.
+  const rowMetas = packChainRows.map((row) => {
     const omissions = packChainOmissionsByDate.get(row.date) ?? []
-    const hasLoss = (row.packLoss ?? 0) > 0.001 || (row.singlesLoss ?? 0) > 0.001
-    const ask = hasLoss && presence ? staffExposure(packChainRows, i, presence) : null
     const omissionLines = omissions.map(shortOmissionLine)
-    const askLine = hasLoss ? (presence ? shortAskLine(ask) : '…') : null
-    return { omissions, hasLoss, omissionLines, askLine, key: JSON.stringify([omissionLines, askLine]) }
+    return { omissions, omissionLines, key: JSON.stringify(omissionLines) }
   })
   const guidelineRowSpan: number[] = new Array(rowMetas.length).fill(1)
   for (let i = 0; i < rowMetas.length; i++) {
@@ -578,7 +568,7 @@ function SingleServicePackChainTable({
               TOTAL LOSS/GAIN AMOUNT
             </th>
             <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600">
-              MANAGER GUIDELINES<span className="block font-normal text-[6px]">(omissions, ask staff)</span>
+              MANAGER GUIDELINES<span className="block font-normal text-[6px]">(omissions)</span>
             </th>
           </tr>
           <tr className="bg-amber-400 text-gray-800 font-bold">
@@ -634,7 +624,7 @@ function SingleServicePackChainTable({
         </thead>
         <tbody>
           {packChainRows.map((row, i) => {
-            const { omissions, hasLoss, omissionLines, askLine } = rowMetas[i]
+            const { omissions, omissionLines } = rowMetas[i]
             const packWicQty = numVal(row.packWic)
             const packSpVal = numVal(row.packSellPrice) || sp
             const packAmount = packWicQty > 0 ? packWicQty * packSpVal : 0
@@ -744,12 +734,6 @@ function SingleServicePackChainTable({
                     {omissionLines.length === 0 ? <span className="text-gray-300">—</span> : (
                       <div className="whitespace-nowrap overflow-hidden text-ellipsis" title={omissionLines.join(' · ')}>
                         <span className="text-orange-700 font-semibold">{omissionLines.join(' · ')}</span>
-                      </div>
-                    )}
-                    {hasLoss && askLine && (
-                      <div className="whitespace-nowrap overflow-hidden text-ellipsis border-t border-gray-200" title={askLine}>
-                        <span className="text-gray-500 font-semibold">Ask: </span>
-                        <span className={askLine === 'no clock-ins recorded' ? 'text-orange-600' : 'text-gray-800'}>{askLine}</span>
                       </div>
                     )}
                   </td>
@@ -1351,7 +1335,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
             packLossTotal={packLossTotal} packGainTotal={packGainTotal}
             cycleLossTotal={cycleLossTotal} cycleGainTotal={cycleGainTotal}
             unitsPerPack={unitsPerPack} sheetPrice={sheetPrice} sheetCP={sheetCP} sp={sp}
-            presence={presence} onDateClick={onDateClick}
+            onDateClick={onDateClick}
             packChainBreakdownNames={packChainBreakdownNames}
             showPrices={showPrices ?? false}
           />
