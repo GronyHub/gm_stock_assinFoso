@@ -488,97 +488,18 @@ function computePackChainOmissions(rowsDesc: PackChainRow[], unitsPerPack: numbe
    single-service chain gets full SP/AMOUNT/CP/PROFIT economics on both the
    pack side (whole packs sold directly, WIC) and the singles side (singles
    sold via the one service, WIC BOUGHT), plus a combined TOTAL LOSS/GAIN
-   AMOUNT and one MANAGER GUIDELINES column (omissions only -- no ask-staff
-   breakdown here). Loss/gain here is driven by two independent ledgers,
-   shown side by side rather than merged: the pack side's own count-based
-   LOSS/GAIN, and the singles side's cycle-based USED/PACK ledger (sheets a
-   pack gave vs. sheets recorded used before the next pack) -- the trusted,
-   count-independent measure. */
-// Condensed to a single line for the merged MANAGER GUIDELINES cell: keeps
-// the headline of an omission and the primary instruction of its fix,
-// dropping the longer reasoning clause.
-function shortOmissionLine(o: Omission): string {
-  const issue = o.issue.split(' — ')[0].trim()
-  const fix = o.fix.split(/ — |; /)[0].trim()
-  return `${issue} → ${fix}`
-}
+   AMOUNT and a WORK NOT WRITTEN column (raw cash-reconciliation data --
+   cash counted beyond what was invoiced that day, across all receipts --
+   shown as-is rather than as an inferred suggestion, so a possible loss and
+   a same-day pile of unassigned cash can be compared directly). Loss/gain
+   here is driven by two independent ledgers, shown side by side rather than
+   merged: the pack side's own count-based LOSS/GAIN, and the singles side's
+   cycle-based USED/PACK ledger (sheets a pack gave vs. sheets recorded used
+   before the next pack) -- the trusted, count-independent measure. */
 
-// Cross-checks the USED/PACK cycle ledger (count-independent, the trusted
-// measure -- pure GMC + sales records) against the singles-side physical
-// counts taken DURING that same cycle, so a discrepancy tells you what kind
-// of problem it is:
-//  - both agree on a shortfall -> two independent signals confirm a real loss
-//  - the cycle flags a shortfall but the count never caught it -> sheets are
-//    leaving without a sale/service record (e.g. given away), not a count
-//    problem
-//  - the count lost sheets but the cycle's records are clean -> probably a
-//    counting error, not real stock loss
-//  - the cycle shows MORE used than the pack gave -> should never happen;
-//    points at an unrecorded GMC take or leftover from the previous pack
-// Anchored to the day the cycle closes (the next pack was taken), alongside
-// the existing count-based reasoning above.
-//
-// Where a shortfall shows up with nothing written to explain it, same-day
-// Work Not Written (cash counted beyond what was invoiced) is checked too:
-// it's a candidate explanation, since a job worked but never itemized would
-// both consume the missing stock AND leave exactly this kind of unassigned
-// cash behind.
-function sumWnw(wnwByDate: Map<string, number>, fromExclusive: string, toInclusive: string): number {
-  let total = 0
-  for (const [date, amt] of wnwByDate) {
-    if (date > fromExclusive && date <= toInclusive) total += amt
-  }
-  return parseFloat(total.toFixed(2))
-}
-function computeCycleOmissions(rowsDesc: PackChainRow[], closedCycles: PackCycle[], sheetPrice: number, wnwByDate: Map<string, number>): Map<string, Omission[]> {
-  const out = new Map<string, Omission[]>()
-  for (const cyc of closedCycles) {
-    if (cyc.end === null) continue
-    const diff = parseFloat((cyc.sheetsGiven - cyc.used).toFixed(2))
-    const countTotal = parseFloat(rowsDesc
-      .filter(r => r.date > cyc.start && r.date <= cyc.end! && r.singlesLoss !== null)
-      .reduce((s, r) => s + (r.singlesLoss as number), 0)
-      .toFixed(2))
-    if (Math.abs(diff) < 0.001 && Math.abs(countTotal) < 0.001) continue
-
-    let note: Omission | null = null
-    if (diff > 0.001 && countTotal > 0.001) {
-      note = {
-        issue: `USED/PACK shows ${fmtQ(diff)} sheets unaccounted for from this pack, and the count over the same period also lost ${fmtN(countTotal)} — two independent signals agree`,
-        fix: `treat as a confirmed loss worth ₵${fmtN(diff * sheetPrice)}`,
-      }
-    } else if (diff > 0.001 && countTotal <= 0.001) {
-      note = {
-        issue: `USED/PACK shows ${fmtQ(diff)} sheets this pack gave but were never recorded as used, yet the count over the same period shows no matching loss`,
-        fix: `sheets may be leaving without a sale/service record (e.g. given away) — check usage, not the count`,
-      }
-    } else if (diff <= 0.001 && countTotal > 0.001) {
-      note = {
-        issue: `the count lost ${fmtN(countTotal)} over this pack's cycle, but USED/PACK shows every sheet this pack gave is accounted for in records`,
-        fix: `likely a count error, not real stock loss — recount before treating it as a loss`,
-      }
-    } else if (diff < -0.001) {
-      const gainNote = countTotal < -0.001 ? `, and the count also gained ${fmtN(Math.abs(countTotal))}` : ''
-      note = {
-        issue: `USED/PACK shows ${fmtQ(Math.abs(diff))} more sheets used than this pack gave${gainNote}`,
-        fix: `check for an unrecorded GMC pack take, or leftover sheets carried from the previous pack`,
-      }
-    }
-    if (note && diff > 0.001) {
-      const wnw = sumWnw(wnwByDate, cyc.start, cyc.end)
-      if (wnw > 0.001) {
-        note = { ...note, fix: `${note.fix} — ₵${fmtN(wnw)} of work-not-written was recorded in this period; some of it may be an unwritten job that used these envelopes, so check that before writing off the full amount` }
-      }
-    }
-    if (note) out.set(cyc.end, [...(out.get(cyc.end) ?? []), note])
-  }
-  return out
-}
-
-// A row "has a loss" for the Loss Only filter if either its own pack count
-// came up short, or (for the row where a pack cycle closes) USED/PACK shows
-// a shortfall -- the same two signals the row highlighting and MANAGER
-// GUIDELINES reasoning already treat as real losses.
+// A row "has a loss" for the Loss Only filter (and the row highlighting) if
+// either its own pack count came up short, or (for the row where a pack
+// cycle closes) USED/PACK shows a shortfall.
 function rowHasLoss(row: PackChainRow, packCyclesByStart: Map<string, PackCycle>): boolean {
   if ((row.packLoss ?? 0) > 0.001) return true
   const cyc = packCyclesByStart.get(row.date)
@@ -587,12 +508,12 @@ function rowHasLoss(row: PackChainRow, packCyclesByStart: Map<string, PackCycle>
 }
 
 function SingleServicePackChainTable({
-  item, targetName, packChainRows, packChainOmissionsByDate, packCyclesByStart, closedCycles,
+  item, targetName, packChainRows, packCyclesByStart, closedCycles,
   packLossTotal, packGainTotal, cycleLossTotal, cycleGainTotal,
   unitsPerPack, sheetPrice, sheetCP, sp, onDateClick, packChainBreakdownNames, showPrices, wnwByDate, lossOnly,
 }: {
   item: SummaryRow; targetName: string; packChainRows: PackChainRow[]
-  packChainOmissionsByDate: Map<string, Omission[]>; packCyclesByStart: Map<string, PackCycle>; closedCycles: PackCycle[]
+  packCyclesByStart: Map<string, PackCycle>; closedCycles: PackCycle[]
   packLossTotal: number; packGainTotal: number; cycleLossTotal: number; cycleGainTotal: number
   unitsPerPack: number; sheetPrice: number; sheetCP: number; sp: number
   onDateClick?: (date: string, itemName: string) => void
@@ -607,8 +528,8 @@ function SingleServicePackChainTable({
   const packGainCedisTotal = packGainTotal * unitsPerPack * sheetPrice
   const grandTotalCedis = packChainRows.reduce((s, r) => s + (packSideCedis(r, unitsPerPack, sheetPrice) ?? 0), 0)
     + closedCycles.reduce((s, c) => s + cycleCedisValue(c, sheetPrice), 0)
-  // EXP COUNT / ACTUAL COUNT sit as trailing standalone columns (after
-  // MANAGER GUIDELINES), so they're no longer part of the singles group span.
+  // EXP COUNT / ACTUAL COUNT sit as trailing standalone columns (after WNW),
+  // so they're no longer part of the singles group span.
   // Gains should never happen on the pack side (any gain means a record is
   // missing) -- once there's genuinely nothing to show, the column is just
   // dead space, so it drops out entirely and reappears the moment a real
@@ -618,33 +539,16 @@ function SingleServicePackChainTable({
   const singlesColSpan = showPrices ? 9 : 5
   const packSideW = 184 + (showPackGain ? 24 : 0) + (showPrices ? 164 : 0)
   const singlesSideW = 124 + (showPrices ? 164 : 0) // minus CONV (28) -- USED/PACK's "given" side already shows this
-  const totalColSpan = 1 + packColSpan + singlesColSpan + 4 // date + pack + singles + total + guidance + 2 count cols
+  const totalColSpan = 1 + packColSpan + singlesColSpan + 4 // date + pack + singles + total + WNW + 2 count cols
 
   const visibleRows = lossOnly ? packChainRows.filter(r => rowHasLoss(r, packCyclesByStart)) : packChainRows
-
-  // Per-row guideline content, condensed to one line. Consecutive rows with
-  // identical content (almost always the common "—, no omission" rows) are
-  // merged into a single spanning cell instead of repeating it.
-  const cycleOmissionsByDate = computeCycleOmissions(packChainRows, closedCycles, sheetPrice, wnwByDate)
-  const rowMetas = visibleRows.map((row) => {
-    const omissions = [...(packChainOmissionsByDate.get(row.date) ?? []), ...(cycleOmissionsByDate.get(row.date) ?? [])]
-    const omissionLines = omissions.map(shortOmissionLine)
-    return { omissions, omissionLines, key: JSON.stringify(omissionLines) }
-  })
-  const guidelineRowSpan: number[] = new Array(rowMetas.length).fill(1)
-  for (let i = 0; i < rowMetas.length; i++) {
-    if (i > 0 && rowMetas[i].key === rowMetas[i - 1].key) { guidelineRowSpan[i] = 0; continue }
-    let span = 1
-    while (i + span < rowMetas.length && rowMetas[i + span].key === rowMetas[i].key) span++
-    guidelineRowSpan[i] = span
-  }
 
   return (
     <>
       <p className="text-[8px] font-bold text-gray-500 px-1.5 py-1 bg-gray-50 border-b border-gray-200">
         Combined view: {item.item_name} → {targetName} → service
       </p>
-      <table className="table-fixed border-collapse text-[8px]" style={{ width: `${62 + packSideW + singlesSideW + 34 + 480 + 36 + 48}px` }}>
+      <table className="table-fixed border-collapse text-[8px]" style={{ width: `${62 + packSideW + singlesSideW + 34 + 40 + 36 + 48}px` }}>
         <colgroup>
           <col style={{width:'62px'}} />
           <col style={{width:'22px'}} /><col style={{width:'22px'}} />
@@ -658,7 +562,7 @@ function SingleServicePackChainTable({
           <col style={{width:'30px'}} /><col style={{width:'20px'}} /><col style={{width:'20px'}} />
           <col style={{width:'34px'}} />
           <col style={{width:'34px'}} />
-          <col style={{width:'480px'}} />
+          <col style={{width:'40px'}} />
           <col style={{width:'36px'}} /><col style={{width:'48px'}} />
         </colgroup>
         <thead className="sticky top-0 z-10">
@@ -670,8 +574,9 @@ function SingleServicePackChainTable({
               title={`TOTAL LOSS/GAIN AMOUNT — combined ₵ for the row: pack side (packs × singles-per-pack × ₵${sheetPrice}) plus the singles side's own USED/PACK cycle ₵.`}>
               TOTAL<span className="block">₵</span>
             </th>
-            <th rowSpan={2} className="py-0.5 border-b-2 border-gray-500 text-center align-bottom border-l-2 border-l-gray-600 bg-slate-600 text-white">
-              MANAGER GUIDELINES<span className="block font-normal text-[6px]">(omissions)</span>
+            <th rowSpan={2} className="py-0.5 border-b-2 border-gray-500 text-center align-bottom border-l-2 border-l-gray-600 bg-slate-600 text-white"
+              title="Work Not Written — cash counted beyond what was invoiced that day, across ALL receipts (not just this item's chain). A large amount is a candidate explanation for an otherwise-unrecorded loss.">
+              WNW<span className="block">₵</span>
             </th>
             <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600 bg-gray-200 text-gray-500"
               title="Secondary cross-check only, from the daily count ledger -- not the primary loss measure.">
@@ -734,7 +639,6 @@ function SingleServicePackChainTable({
           {visibleRows.length === 0 ? (
             <tr><td colSpan={totalColSpan} className="text-center py-3 text-gray-400 text-[9px]">No loss rows.</td></tr>
           ) : visibleRows.map((row, i) => {
-            const { omissions, omissionLines } = rowMetas[i]
             const packWicQty = numVal(row.packWic)
             const packSpVal = numVal(row.packSellPrice) || sp
             const packAmount = packWicQty > 0 ? packWicQty * packSpVal : 0
@@ -751,7 +655,7 @@ function SingleServicePackChainTable({
             const cCedis = cyc && !cycOpen ? cycleCedisValue(cyc, sheetPrice) : null
             const totalCedisRow = pCedis === null && cCedis === null ? null : (pCedis ?? 0) + (cCedis ?? 0)
             return (
-              <tr key={i} className={`border-b border-gray-200 ${(row.singlesLoss ?? 0) > 0.001 || (row.packLoss ?? 0) > 0.001 ? 'bg-red-50' : omissions.length > 0 ? 'bg-orange-50' : 'bg-white'}`}>
+              <tr key={i} className={`border-b border-gray-200 ${rowHasLoss(row, packCyclesByStart) ? 'bg-red-50' : 'bg-white'}`}>
                 <td className="pl-0.5 py-0.5 font-bold text-gray-500 whitespace-nowrap sticky left-0 bg-inherit">
                   {onDateClick ? (
                     <button onClick={() => onDateClick(row.date, item.item_name)} className="text-blue-600 hover:underline">{fmtDate(row.date)}</button>
@@ -836,15 +740,13 @@ function SingleServicePackChainTable({
                     : totalCedisRow < -0.001 ? <span className="text-green-600">+₵{fmtN(Math.abs(totalCedisRow))}</span>
                     : <span className="text-gray-400">0</span>}
                 </td>
-                {guidelineRowSpan[i] > 0 && (
-                  <td rowSpan={guidelineRowSpan[i]} className="text-left py-0.5 pl-1 pr-1 border-l-2 border-l-gray-600 border-b border-gray-200 whitespace-nowrap overflow-hidden text-ellipsis align-top">
-                    {omissionLines.length === 0 ? null : (
-                      <div className="whitespace-nowrap overflow-hidden text-ellipsis" title={omissionLines.join(' · ')}>
-                        <span className="text-orange-700 font-semibold">{omissionLines.join(' · ')}</span>
-                      </div>
-                    )}
-                  </td>
-                )}
+                <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-amber-700 whitespace-nowrap"
+                  title="Work Not Written -- cash counted beyond what was invoiced that day, across all receipts (not just this item's chain).">
+                  {(() => {
+                    const wnw = wnwByDate.get(row.date) ?? 0
+                    return wnw > 0.001 ? `₵${fmtN(wnw)}` : null
+                  })()}
+                </td>
                 <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-gray-400">{blankDash(fmtN(row.singlesExp))}</td>
                 <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-400 whitespace-nowrap">
                   <CntValue qty={row.singlesCnt} countedBy={row.singlesCntBy} history={row.singlesCntHistory} blank />
@@ -1469,7 +1371,6 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
         ) : singleServiceChain ? (
           <SingleServicePackChainTable
             item={item} targetName={targetName} packChainRows={packChainRows}
-            packChainOmissionsByDate={packChainOmissionsByDate}
             packCyclesByStart={packCyclesByStart} closedCycles={closedCycles}
             packLossTotal={packLossTotal} packGainTotal={packGainTotal}
             cycleLossTotal={cycleLossTotal} cycleGainTotal={cycleGainTotal}
