@@ -575,10 +575,21 @@ function computeCycleOmissions(rowsDesc: PackChainRow[], closedCycles: PackCycle
   return out
 }
 
+// A row "has a loss" for the Loss Only filter if either its own pack count
+// came up short, or (for the row where a pack cycle closes) USED/PACK shows
+// a shortfall -- the same two signals the row highlighting and MANAGER
+// GUIDELINES reasoning already treat as real losses.
+function rowHasLoss(row: PackChainRow, packCyclesByStart: Map<string, PackCycle>): boolean {
+  if ((row.packLoss ?? 0) > 0.001) return true
+  const cyc = packCyclesByStart.get(row.date)
+  if (cyc && cyc.end !== null && (cyc.sheetsGiven - cyc.used) > 0.001) return true
+  return false
+}
+
 function SingleServicePackChainTable({
   item, targetName, packChainRows, packChainOmissionsByDate, packCyclesByStart, closedCycles,
   packLossTotal, packGainTotal, cycleLossTotal, cycleGainTotal,
-  unitsPerPack, sheetPrice, sheetCP, sp, onDateClick, packChainBreakdownNames, showPrices, wnwByDate,
+  unitsPerPack, sheetPrice, sheetCP, sp, onDateClick, packChainBreakdownNames, showPrices, wnwByDate, lossOnly,
 }: {
   item: SummaryRow; targetName: string; packChainRows: PackChainRow[]
   packChainOmissionsByDate: Map<string, Omission[]>; packCyclesByStart: Map<string, PackCycle>; closedCycles: PackCycle[]
@@ -588,6 +599,7 @@ function SingleServicePackChainTable({
   packChainBreakdownNames: string[]
   showPrices: boolean
   wnwByDate: Map<string, number>
+  lossOnly: boolean
 }) {
   const packCpVal = parseFloat(item.cp ?? '0') || 0
   const svcName = packChainBreakdownNames[0]
@@ -595,15 +607,21 @@ function SingleServicePackChainTable({
   const packGainCedisTotal = packGainTotal * unitsPerPack * sheetPrice
   const grandTotalCedis = packChainRows.reduce((s, r) => s + (packSideCedis(r, unitsPerPack, sheetPrice) ?? 0), 0)
     + closedCycles.reduce((s, c) => s + cycleCedisValue(c, sheetPrice), 0)
-  const sideColSpan = showPrices ? 12 : 8
+  // EXP COUNT / ACTUAL COUNT sit as trailing standalone columns (after
+  // MANAGER GUIDELINES), so they're no longer part of the singles group span.
+  const packColSpan = showPrices ? 12 : 8
+  const singlesColSpan = showPrices ? 10 : 6
   const packSideW = showPrices ? 484 : 320
-  const singlesSideW = showPrices ? 516 : 352
+  const singlesSideW = (showPrices ? 516 : 352) - 84 // minus EXP COUNT(36) + ACTUAL COUNT(48)
+  const totalColSpan = 1 + packColSpan + singlesColSpan + 4 // date + pack + singles + total + guidance + 2 count cols
+
+  const visibleRows = lossOnly ? packChainRows.filter(r => rowHasLoss(r, packCyclesByStart)) : packChainRows
 
   // Per-row guideline content, condensed to one line. Consecutive rows with
   // identical content (almost always the common "—, no omission" rows) are
   // merged into a single spanning cell instead of repeating it.
   const cycleOmissionsByDate = computeCycleOmissions(packChainRows, closedCycles, sheetPrice, wnwByDate)
-  const rowMetas = packChainRows.map((row) => {
+  const rowMetas = visibleRows.map((row) => {
     const omissions = [...(packChainOmissionsByDate.get(row.date) ?? []), ...(cycleOmissionsByDate.get(row.date) ?? [])]
     const omissionLines = omissions.map(shortOmissionLine)
     return { omissions, omissionLines, key: JSON.stringify(omissionLines) }
@@ -631,21 +649,30 @@ function SingleServicePackChainTable({
           <col style={{width:'40px'}} /><col style={{width:'36px'}} />
           {showPrices && <><col style={{width:'40px'}} /><col style={{width:'48px'}} /><col style={{width:'36px'}} /><col style={{width:'40px'}} /></>}
           <col style={{width:'64px'}} /><col style={{width:'36px'}} /><col style={{width:'36px'}} />
-          <col style={{width:'56px'}} /><col style={{width:'36px'}} /><col style={{width:'48px'}} />
+          <col style={{width:'56px'}} />
           <col style={{width:'64px'}} />
           <col style={{width:'480px'}} />
+          <col style={{width:'36px'}} /><col style={{width:'48px'}} />
         </colgroup>
         <thead className="sticky top-0 z-10">
           <tr className="bg-amber-500 text-gray-800 font-bold">
             <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-left pl-0.5 align-bottom sticky left-0 z-20 bg-amber-500">DATE</th>
-            <th colSpan={sideColSpan} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">{item.item_name}</th>
-            <th colSpan={sideColSpan} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">{targetName}</th>
+            <th colSpan={packColSpan} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">{item.item_name}</th>
+            <th colSpan={singlesColSpan} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">{targetName}</th>
             <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600"
               title={`Combined ₵ for the row: pack side (packs × singles-per-pack × ₵${sheetPrice}) plus the singles side's own USED/PACK cycle ₵.`}>
               TOTAL LOSS/GAIN AMOUNT
             </th>
             <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600">
               MANAGER GUIDELINES<span className="block font-normal text-[6px]">(omissions)</span>
+            </th>
+            <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600 text-gray-500"
+              title="Secondary cross-check only, from the daily count ledger -- not the primary loss measure.">
+              EXP COUNT
+            </th>
+            <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l border-gray-400 text-gray-500"
+              title="Secondary cross-check only -- physical count">
+              ACTUAL COUNT
             </th>
           </tr>
           <tr className="bg-amber-400 text-gray-800 font-bold">
@@ -695,12 +722,12 @@ function SingleServicePackChainTable({
             <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title={`USED/PACK ledger valued at ₵${sheetPrice} per single. Column total (closed packs) shown below.`}>
               LOSS/GAIN AMT<span className="block text-red-700">{cycleLossTotal > 0 ? `-₵${fmtN(cycleLossTotal * sheetPrice)}` : '0'}</span>
             </th>
-            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l-2 border-l-gray-600 text-gray-500" title="Secondary cross-check only, from the daily count ledger -- not the primary loss measure.">EXP COUNT</th>
-            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400 text-gray-500" title="Secondary cross-check only -- physical count">ACTUAL COUNT</th>
           </tr>
         </thead>
         <tbody>
-          {packChainRows.map((row, i) => {
+          {visibleRows.length === 0 ? (
+            <tr><td colSpan={totalColSpan} className="text-center py-3 text-gray-400 text-[9px]">No loss rows.</td></tr>
+          ) : visibleRows.map((row, i) => {
             const { omissions, omissionLines } = rowMetas[i]
             const packWicQty = numVal(row.packWic)
             const packSpVal = numVal(row.packSellPrice) || sp
@@ -796,10 +823,6 @@ function SingleServicePackChainTable({
                     </td>
                   </>
                 )}
-                <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-gray-400">{blankDash(fmtN(row.singlesExp))}</td>
-                <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-400 whitespace-nowrap">
-                  <CntValue qty={row.singlesCnt} countedBy={row.singlesCntBy} history={row.singlesCntHistory} blank />
-                </td>
                 <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 whitespace-nowrap">
                   {totalCedisRow === null ? null
                     : totalCedisRow > 0.001 ? <span className="text-red-600">-₵{fmtN(totalCedisRow)}</span>
@@ -815,14 +838,18 @@ function SingleServicePackChainTable({
                     )}
                   </td>
                 )}
+                <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-gray-400">{blankDash(fmtN(row.singlesExp))}</td>
+                <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-400 whitespace-nowrap">
+                  <CntValue qty={row.singlesCnt} countedBy={row.singlesCntBy} history={row.singlesCntHistory} blank />
+                </td>
               </tr>
             )
           })}
           <tr className="bg-gray-100 border-t-2 border-gray-400 font-bold">
-            <td colSpan={sideColSpan} className="text-right pr-1 py-1 text-gray-600 text-[7px] border-l-2 border-l-gray-600">
+            <td colSpan={packColSpan} className="text-right pr-1 py-1 text-gray-600 text-[7px] border-l-2 border-l-gray-600">
               {`Pack side, net of gains: ${packLossCedisTotal > 0.001 ? `-₵${fmtN(packLossCedisTotal)}` : '0'}${packGainCedisTotal > 0.001 ? ` (⚠+₵${fmtN(packGainCedisTotal)} gained)` : ''}`}
             </td>
-            <td colSpan={sideColSpan} className="text-right pr-1 py-1 text-gray-600 text-[7px] border-l-2 border-l-gray-600">
+            <td colSpan={singlesColSpan} className="text-right pr-1 py-1 text-gray-600 text-[7px] border-l-2 border-l-gray-600">
               {`over ${closedCycles.length} closed pack${closedCycles.length === 1 ? '' : 's'} → USED/PACK, net of gains: ${cycleLossTotal > 0.001 ? `-₵${fmtN(cycleLossTotal * sheetPrice)}` : '0'}${cycleGainTotal > 0.001 ? ` (⚠+₵${fmtN(cycleGainTotal * sheetPrice)} gained)` : ''}`}
             </td>
             <td className="text-center py-1 border-l-2 border-l-gray-600 whitespace-nowrap">
@@ -831,6 +858,8 @@ function SingleServicePackChainTable({
                 : <span className="text-gray-400">0</span>}
             </td>
             <td className="border-l-2 border-l-gray-600" />
+            <td className="border-l-2 border-l-gray-600" />
+            <td className="border-l border-gray-400" />
           </tr>
         </tbody>
       </table>
@@ -1160,7 +1189,7 @@ function MergeItemPicker({ itemId, itemName, typeLabel, mergePool, onMerged }: {
   )
 }
 
-function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, mergePool, isOwnerLevelUser, autoEdit, onSaved, onRelationsSaved, onMerged, onDateClick, showPrices }: {
+function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, mergePool, isOwnerLevelUser, autoEdit, onSaved, onRelationsSaved, onMerged, onDateClick, showPrices, lossOnly }: {
   item: SummaryRow; groups: string[]; allItems: { item_id: number; item_name: string }[]
   currentAliases: AliasRecord[]; currentMatches: MatchRecord[]
   candidatePool: CandidateItem[]
@@ -1172,6 +1201,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
   onMerged: () => void
   onDateClick?: (date: string, itemName: string) => void
   showPrices?: boolean
+  lossOnly?: boolean
 }) {
   const [dayRows, setDayRows] = useState<DayRow[] | null>(null)
   const [editing, setEditing] = useState(false)
@@ -1441,6 +1471,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
             packChainBreakdownNames={packChainBreakdownNames}
             showPrices={showPrices ?? false}
             wnwByDate={wnwByDate ?? new Map()}
+            lossOnly={lossOnly ?? false}
           />
         ) : (
           <>
@@ -1906,7 +1937,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
 }
 
 /* ── main LossTab ── */
-export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 'All', productType = 'all', jumpToItemId, onJumpDone, onDateClick, showPrices }: {
+export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 'All', productType = 'all', jumpToItemId, onJumpDone, onDateClick, showPrices, lossOnly }: {
   onOpenItem: (itemId: number) => void
   search?: string
   group?: string | null
@@ -1915,6 +1946,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   onJumpDone?: () => void
   onDateClick?: (date: string, itemName: string) => void
   showPrices?: boolean
+  lossOnly?: boolean
 }) {
   const [rows, setRows] = useState<SummaryRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -2134,7 +2166,8 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
                 }}
                 onMerged={reloadAfterMerge}
                 onDateClick={onDateClick}
-                showPrices={showPrices} />
+                showPrices={showPrices}
+                lossOnly={lossOnly} />
             </div>
           </td>
         </tr>
