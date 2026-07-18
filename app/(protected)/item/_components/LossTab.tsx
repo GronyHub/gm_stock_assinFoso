@@ -517,7 +517,20 @@ function shortOmissionLine(o: Omission): string {
 //    points at an unrecorded GMC take or leftover from the previous pack
 // Anchored to the day the cycle closes (the next pack was taken), alongside
 // the existing count-based reasoning above.
-function computeCycleOmissions(rowsDesc: PackChainRow[], closedCycles: PackCycle[], sheetPrice: number): Map<string, Omission[]> {
+//
+// Where a shortfall shows up with nothing written to explain it, same-day
+// Work Not Written (cash counted beyond what was invoiced) is checked too:
+// it's a candidate explanation, since a job worked but never itemized would
+// both consume the missing stock AND leave exactly this kind of unassigned
+// cash behind.
+function sumWnw(wnwByDate: Map<string, number>, fromExclusive: string, toInclusive: string): number {
+  let total = 0
+  for (const [date, amt] of wnwByDate) {
+    if (date > fromExclusive && date <= toInclusive) total += amt
+  }
+  return parseFloat(total.toFixed(2))
+}
+function computeCycleOmissions(rowsDesc: PackChainRow[], closedCycles: PackCycle[], sheetPrice: number, wnwByDate: Map<string, number>): Map<string, Omission[]> {
   const out = new Map<string, Omission[]>()
   for (const cyc of closedCycles) {
     if (cyc.end === null) continue
@@ -551,6 +564,12 @@ function computeCycleOmissions(rowsDesc: PackChainRow[], closedCycles: PackCycle
         fix: `check for an unrecorded GMC pack take, or leftover sheets carried from the previous pack`,
       }
     }
+    if (note && diff > 0.001) {
+      const wnw = sumWnw(wnwByDate, cyc.start, cyc.end)
+      if (wnw > 0.001) {
+        note = { ...note, fix: `${note.fix} — ₵${fmtN(wnw)} of work-not-written was recorded in this period; some of it may be an unwritten job that used these envelopes, so check that before writing off the full amount` }
+      }
+    }
     if (note) out.set(cyc.end, [...(out.get(cyc.end) ?? []), note])
   }
   return out
@@ -559,7 +578,7 @@ function computeCycleOmissions(rowsDesc: PackChainRow[], closedCycles: PackCycle
 function SingleServicePackChainTable({
   item, targetName, packChainRows, packChainOmissionsByDate, packCyclesByStart, closedCycles,
   packLossTotal, packGainTotal, cycleLossTotal, cycleGainTotal,
-  unitsPerPack, sheetPrice, sheetCP, sp, onDateClick, packChainBreakdownNames, showPrices,
+  unitsPerPack, sheetPrice, sheetCP, sp, onDateClick, packChainBreakdownNames, showPrices, wnwByDate,
 }: {
   item: SummaryRow; targetName: string; packChainRows: PackChainRow[]
   packChainOmissionsByDate: Map<string, Omission[]>; packCyclesByStart: Map<string, PackCycle>; closedCycles: PackCycle[]
@@ -568,6 +587,7 @@ function SingleServicePackChainTable({
   onDateClick?: (date: string, itemName: string) => void
   packChainBreakdownNames: string[]
   showPrices: boolean
+  wnwByDate: Map<string, number>
 }) {
   const packCpVal = parseFloat(item.cp ?? '0') || 0
   const svcName = packChainBreakdownNames[0]
@@ -582,7 +602,7 @@ function SingleServicePackChainTable({
   // Per-row guideline content, condensed to one line. Consecutive rows with
   // identical content (almost always the common "—, no omission" rows) are
   // merged into a single spanning cell instead of repeating it.
-  const cycleOmissionsByDate = computeCycleOmissions(packChainRows, closedCycles, sheetPrice)
+  const cycleOmissionsByDate = computeCycleOmissions(packChainRows, closedCycles, sheetPrice, wnwByDate)
   const rowMetas = packChainRows.map((row) => {
     const omissions = [...(packChainOmissionsByDate.get(row.date) ?? []), ...(cycleOmissionsByDate.get(row.date) ?? [])]
     const omissionLines = omissions.map(shortOmissionLine)
@@ -1232,6 +1252,31 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPackChain, item.converts_to_item_id])
 
+  // Work Not Written (cash counted beyond what was invoiced, per receipt) --
+  // a shop-wide daily reconciliation figure, unrelated to any one item. When
+  // this chain shows a possible stock loss with no record explaining it, a
+  // same-day WNW amount is a candidate explanation: the missing stock may
+  // have gone into an unwritten job whose cash still turned up. Summed per
+  // day from positive-WNW receipts only (a same-day cash shortfall on some
+  // other receipt is a separate problem).
+  const [wnwByDate, setWnwByDate] = useState<Map<string, number> | null>(null)
+  useEffect(() => {
+    if (!isPackChain) return
+    fetch('/api/sales').then(r => r.json())
+      .then(d => {
+        const map = new Map<string, number>()
+        for (const r of (Array.isArray(d) ? d : [])) {
+          const w = parseFloat(r?.wnw ?? '0') || 0
+          if (w <= 0.001 || !r?.receipt_date) continue
+          const date = String(r.receipt_date).slice(0, 10)
+          map.set(date, parseFloat(((map.get(date) ?? 0) + w).toFixed(2)))
+        }
+        setWnwByDate(map)
+      })
+      .catch(() => setWnwByDate(new Map()))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPackChain])
+
   function startEdit() {
     setForm({
       item_name: item.item_name, cf_group: item.cf_group ?? '', selling_rate: item.sp ?? '', purchase_rate: item.cp ?? '',
@@ -1395,6 +1440,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
             onDateClick={onDateClick}
             packChainBreakdownNames={packChainBreakdownNames}
             showPrices={showPrices ?? false}
+            wnwByDate={wnwByDate ?? new Map()}
           />
         ) : (
           <>
