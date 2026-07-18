@@ -617,8 +617,6 @@ function SingleServicePackChainTable({
   const showPackGain = packGainTotal > 0.001
   const packColSpan = (showPrices ? 12 : 8) - (showPackGain ? 0 : 1)
   const singlesColSpan = showPrices ? 9 : 5
-  const packSideW = 184 + (showPackGain ? 24 : 0) + (showPrices ? 164 : 0)
-  const singlesSideW = 124 + (showPrices ? 164 : 0) // minus CONV (28) -- USED/PACK's "given" side already shows this
   const totalColSpan = 1 + packColSpan + singlesColSpan + 5 // date + pack + singles + total + WNW + 2 count cols + guidance
 
   const visibleRows = lossOnly ? packChainRows.filter(r => rowHasLoss(r, packCyclesByStart))
@@ -647,7 +645,11 @@ function SingleServicePackChainTable({
       <p className="text-[8px] font-bold text-gray-500 px-1.5 py-1 bg-gray-50 border-b border-gray-200">
         Combined view: {item.item_name} → {targetName} → service
       </p>
-      <table className="table-fixed border-collapse text-[8px]" style={{ width: `${62 + packSideW + singlesSideW + 34 + 40 + 36 + 48 + 480}px` }}>
+      {/* No explicit table width: table-fixed + an explicit width on every
+          <col> already determines it exactly (sum of the column widths) --
+          a manually-summed style={{width}} here can only drift out of sync
+          with the colgroup the next time a column changes. */}
+      <table className="table-fixed border-collapse text-[8px]">
         <colgroup>
           <col style={{width:'62px'}} />
           <col style={{width:'22px'}} /><col style={{width:'22px'}} />
