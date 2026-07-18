@@ -3,6 +3,11 @@ import { Fragment, useState, useEffect, useMemo, useRef, type ReactNode } from '
 import { useSession } from 'next-auth/react'
 import { fmtDate } from '@/lib/fmtDate'
 import { isOwnerLevel } from '@/lib/roles'
+import type { ItemDayRow as DayRow, CountRevision } from '@/lib/itemDayRows'
+import {
+  numVal, computeRows, buildPackCycles, buildPackChainRows, packSideCedis, cycleCedisValue,
+  type PackCycle, type PackChainRow,
+} from '@/lib/packChain'
 
 /* ── types ── */
 type SummaryRow = {
@@ -25,30 +30,12 @@ type SummaryRow = {
   cnv: number
 }
 
-type CountRevision = { old_qty: string | number | null; old_by: string | null; changed_by: string | null; action?: string | null; changed_at: string }
-
-type DayRow = {
-  date: string
-  qty_counted: string | null
-  counted_by: string | null
-  count_history: CountRevision[] | null
-  wic_qty: string | null
-  gmc_qty: string | null
-  bills_qty: string | null
-  sell_price: string | null
-  aliases: string | null
-  converted_in_qty: string | null
-  wic_breakdown: { name: string; qty: number; amount: number }[] | null
-}
-type ComputedRow = DayRow & { available: number | null; used: number; expected_soh: number | null; loss: number | null }
-
 type SortCol = 'item_name' | 'cf_group' | 'product_type' | 'lgAmt' | 'lgQty' | 'lossCount' | 'cnt' | 'wic' | 'gmc' | 'bl' | 'soh' | 'sp' | 'cp'
 type SortDir = 'asc' | 'desc'
 
 const EMPTY_FORM = { item_name: '', cf_group: '', selling_rate: '', purchase_rate: '', units_per_pack: '', unit_name: '', converts_to_item_id: '' }
 
 /* ── helpers ── */
-function numVal(v: string | null) { return v ? parseFloat(v) || 0 : 0 }
 function fmtN(n: number | null) {
   if (n === null) return '—'
   return n % 1 === 0 ? String(n) : n.toFixed(2)
@@ -160,37 +147,6 @@ function staffExposure(rows: PackChainRow[], idx: number, presence: Record<strin
 
 function capName(s: string) { return s.charAt(0).toUpperCase() + s.slice(1) }
 
-/* Per-pack (GMC → GMC) cycles: every GMC take starts a cycle with a known
-   sheet budget (packs × sheets-per-pack). All recorded sheet usage until the
-   NEXT GMC take belongs to that cycle. Assuming a new pack is only opened
-   when the previous one is finished, budget − used = sheets unaccounted for
-   in that cycle. This measures loss purely from GMC and sales records --
-   completely independent of physical counts and their errors. */
-type PackCycle = {
-  start: string
-  end: string | null      // date the next pack was taken; null = still running
-  sheetsGiven: number
-  used: number
-}
-function buildPackCycles(singlesNewestFirst: ComputedRow[]): PackCycle[] {
-  const chrono = [...singlesNewestFirst].reverse()
-  const cycles: PackCycle[] = []
-  let current: PackCycle | null = null
-  for (const r of chrono) {
-    const conv = numVal(r.converted_in_qty)
-    if (conv > 0) {
-      if (current) { current.end = r.date; cycles.push(current) }
-      // Usage on the opening day belongs to the fresh pack.
-      current = { start: r.date, end: null, sheetsGiven: conv, used: r.used }
-    } else if (current) {
-      current.used = parseFloat((current.used + r.used).toFixed(4))
-    }
-    // Usage before the first recorded GMC has no budget to count against.
-  }
-  if (current) cycles.push(current)
-  return cycles.reverse()
-}
-
 // CNT cell content with its full history shown INLINE, stacked oldest first:
 // a changed count keeps its old value struck through (value and counter's
 // initial both crossed out); a deleted count keeps its value marked with a
@@ -229,73 +185,6 @@ function CntValue({ qty, countedBy, history, blank }: { qty: string | null; coun
   )
 }
 
-function computeRows(rows: DayRow[]): ComputedRow[] {
-  const result: ComputedRow[] = []
-  let prev: number | null = null
-  for (const row of rows) {
-    const bills = numVal(row.bills_qty), wic = numVal(row.wic_qty), gmc = numVal(row.gmc_qty)
-    const convertedIn = numVal(row.converted_in_qty)
-    const used = parseFloat((wic + gmc).toFixed(4))
-    const counted = row.qty_counted !== null ? parseFloat(row.qty_counted) : null
-    let available: number | null = null, expected: number | null = null, loss: number | null = null
-    if (prev === null) {
-      if (counted !== null) { prev = counted; expected = counted }
-    } else {
-      available = parseFloat((prev + bills + convertedIn).toFixed(4))
-      expected = parseFloat((available - used).toFixed(4))
-      if (counted !== null) { loss = parseFloat((expected - counted).toFixed(4)); prev = counted }
-      else prev = expected
-    }
-    result.push({ ...row, available, used, expected_soh: expected, loss })
-  }
-  return result.reverse()
-}
-
-/* ── Pack-chain merge: pack-level rows joined with the target (singles) rows they
-   convert into, by date, so packs/singles/services can be read as one table. ── */
-type PackChainRow = {
-  date: string
-  packCnt: string | null; packCntBy: string | null; packCntHistory: CountRevision[] | null
-  packBl: string | null; packGmc: string | null; packWic: string | null; packSellPrice: string | null
-  packExp: number | null; packLoss: number | null
-  singlesCnt: string | null; singlesCntBy: string | null; singlesCntHistory: CountRevision[] | null; singlesConvIn: string | null
-  singlesBreakdown: { name: string; qty: number; amount: number }[]
-  singlesWicQty: string | null; singlesSellPrice: string | null
-  singlesUsed: number; singlesExp: number | null; singlesLoss: number | null
-}
-function buildPackChainRows(packRows: ComputedRow[], singlesRows: ComputedRow[]): PackChainRow[] {
-  const map = new Map<string, PackChainRow>()
-  for (const r of packRows) {
-    map.set(r.date, {
-      date: r.date, packCnt: r.qty_counted, packCntBy: r.counted_by, packCntHistory: r.count_history, packBl: r.bills_qty, packGmc: r.gmc_qty, packWic: r.wic_qty, packSellPrice: r.sell_price,
-      packExp: r.expected_soh, packLoss: r.loss,
-      singlesCnt: null, singlesCntBy: null, singlesCntHistory: null, singlesConvIn: null, singlesBreakdown: [],
-      singlesWicQty: null, singlesSellPrice: null,
-      singlesUsed: 0, singlesExp: null, singlesLoss: null,
-    })
-  }
-  for (const r of singlesRows) {
-    const existing = map.get(r.date) ?? {
-      date: r.date, packCnt: null, packCntBy: null, packCntHistory: null, packBl: null, packGmc: null, packWic: null, packSellPrice: null, packExp: null, packLoss: null,
-      singlesCnt: null, singlesCntBy: null, singlesCntHistory: null, singlesConvIn: null, singlesBreakdown: [],
-      singlesWicQty: null, singlesSellPrice: null,
-      singlesUsed: 0, singlesExp: null, singlesLoss: null,
-    }
-    existing.singlesCnt = r.qty_counted
-    existing.singlesCntBy = r.counted_by
-    existing.singlesCntHistory = r.count_history
-    existing.singlesConvIn = r.converted_in_qty
-    existing.singlesBreakdown = r.wic_breakdown ?? []
-    existing.singlesWicQty = r.wic_qty
-    existing.singlesSellPrice = r.sell_price
-    existing.singlesUsed = r.used
-    existing.singlesExp = r.expected_soh
-    existing.singlesLoss = r.loss
-    map.set(r.date, existing)
-  }
-  return Array.from(map.values()).sort((a, b) => b.date.localeCompare(a.date))
-}
-
 /* Omissions: records that should exist but don't, found by cross-checking the
    singles side against the packs side of the same row AND against earlier
    rows. A gain on singles (counted more than expected, e.g. 3 → 46 overnight)
@@ -322,22 +211,6 @@ function rowLossCedis(row: PackChainRow, unitsPerPack: number, sheetPrice: numbe
   if (row.packLoss === null && row.singlesLoss === null) return null
   const packPapers = (row.packLoss ?? 0) * (unitsPerPack > 0 ? unitsPerPack : 0)
   return parseFloat((((row.singlesLoss ?? 0) + packPapers) * sheetPrice).toFixed(2))
-}
-
-// Pack side only, valued the same way (packs lost × singles-per-pack ×
-// sheetPrice) -- used by the single-service layout so the pack side's own
-// ₵ figure can be shown apart from the singles-side cycle ₵ figure, then
-// combined into one TOTAL LOSS/GAIN AMOUNT per row.
-function packSideCedis(row: PackChainRow, unitsPerPack: number, sheetPrice: number): number | null {
-  if (row.packLoss === null) return null
-  return parseFloat((row.packLoss * (unitsPerPack > 0 ? unitsPerPack : 0) * sheetPrice).toFixed(2))
-}
-
-// ₵ value of one closed pack cycle's USED/PACK ledger -- positive = loss
-// (sheets given but never recorded used), negative = gain (used beyond what
-// the pack gave).
-function cycleCedisValue(cyc: PackCycle, sheetPrice: number): number {
-  return parseFloat(((cyc.sheetsGiven - cyc.used) * sheetPrice).toFixed(2))
 }
 
 // Consume a gain from earlier unsettled losses, most recent first. Returns
