@@ -1981,7 +1981,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
 }
 
 /* ── main LossTab ── */
-export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 'All', productType = 'all', jumpToItemId, onJumpDone, onDateClick, showPrices, lossOnly, gainOnly }: {
+export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 'All', productType = 'all', jumpToItemId, onJumpDone, onDateClick, showPrices, lossOnly, gainOnly, onExpandedIdChange }: {
   onOpenItem: (itemId: number) => void
   search?: string
   group?: string | null
@@ -1992,6 +1992,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   showPrices?: boolean
   lossOnly?: boolean
   gainOnly?: boolean
+  onExpandedIdChange?: (id: number | null) => void
 }) {
   const [rows, setRows] = useState<SummaryRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -2010,6 +2011,9 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
       .catch(() => setLoading(false))
   }
   useEffect(() => { loadSummary() }, [])
+
+  // Report the expanded row up so a refresh can restore it via the URL.
+  useEffect(() => { onExpandedIdChange?.(expandedId) }, [expandedId, onExpandedIdChange])
 
   // Incoming jump from a sales receipt line: expand that item's row and
   // scroll it into view.
