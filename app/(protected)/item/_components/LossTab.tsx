@@ -503,6 +503,59 @@ function shortOmissionLine(o: Omission): string {
   return `${issue} → ${fix}`
 }
 
+// Cross-checks the USED/PACK cycle ledger (count-independent, the trusted
+// measure -- pure GMC + sales records) against the singles-side physical
+// counts taken DURING that same cycle, so a discrepancy tells you what kind
+// of problem it is:
+//  - both agree on a shortfall -> two independent signals confirm a real loss
+//  - the cycle flags a shortfall but the count never caught it -> sheets are
+//    leaving without a sale/service record (e.g. given away), not a count
+//    problem
+//  - the count lost sheets but the cycle's records are clean -> probably a
+//    counting error, not real stock loss
+//  - the cycle shows MORE used than the pack gave -> should never happen;
+//    points at an unrecorded GMC take or leftover from the previous pack
+// Anchored to the day the cycle closes (the next pack was taken), alongside
+// the existing count-based reasoning above.
+function computeCycleOmissions(rowsDesc: PackChainRow[], closedCycles: PackCycle[], sheetPrice: number): Map<string, Omission[]> {
+  const out = new Map<string, Omission[]>()
+  for (const cyc of closedCycles) {
+    if (cyc.end === null) continue
+    const diff = parseFloat((cyc.sheetsGiven - cyc.used).toFixed(2))
+    const countTotal = parseFloat(rowsDesc
+      .filter(r => r.date > cyc.start && r.date <= cyc.end! && r.singlesLoss !== null)
+      .reduce((s, r) => s + (r.singlesLoss as number), 0)
+      .toFixed(2))
+    if (Math.abs(diff) < 0.001 && Math.abs(countTotal) < 0.001) continue
+
+    let note: Omission | null = null
+    if (diff > 0.001 && countTotal > 0.001) {
+      note = {
+        issue: `USED/PACK shows ${fmtQ(diff)} sheets unaccounted for from this pack, and the count over the same period also lost ${fmtN(countTotal)} — two independent signals agree`,
+        fix: `treat as a confirmed loss worth ₵${fmtN(diff * sheetPrice)}`,
+      }
+    } else if (diff > 0.001 && countTotal <= 0.001) {
+      note = {
+        issue: `USED/PACK shows ${fmtQ(diff)} sheets this pack gave but were never recorded as used, yet the count over the same period shows no matching loss`,
+        fix: `sheets may be leaving without a sale/service record (e.g. given away) — check usage, not the count`,
+      }
+    } else if (diff <= 0.001 && countTotal > 0.001) {
+      note = {
+        issue: `the count lost ${fmtN(countTotal)} over this pack's cycle, but USED/PACK shows every sheet this pack gave is accounted for in records`,
+        fix: `likely a count error, not real stock loss — recount before treating it as a loss`,
+      }
+    } else if (diff < -0.001) {
+      const gainNote = countTotal < -0.001 ? `, and the count also gained ${fmtN(Math.abs(countTotal))}` : ''
+      note = {
+        issue: `USED/PACK shows ${fmtQ(Math.abs(diff))} more sheets used than this pack gave${gainNote}`,
+        fix: `check for an unrecorded GMC pack take, or leftover sheets carried from the previous pack`,
+      }
+    }
+    if (note) out.set(cyc.end, [...(out.get(cyc.end) ?? []), note])
+  }
+  return out
+}
+
 function SingleServicePackChainTable({
   item, targetName, packChainRows, packChainOmissionsByDate, packCyclesByStart, closedCycles,
   packLossTotal, packGainTotal, cycleLossTotal, cycleGainTotal,
@@ -529,8 +582,9 @@ function SingleServicePackChainTable({
   // Per-row guideline content, condensed to one line. Consecutive rows with
   // identical content (almost always the common "—, no omission" rows) are
   // merged into a single spanning cell instead of repeating it.
+  const cycleOmissionsByDate = computeCycleOmissions(packChainRows, closedCycles, sheetPrice)
   const rowMetas = packChainRows.map((row) => {
-    const omissions = packChainOmissionsByDate.get(row.date) ?? []
+    const omissions = [...(packChainOmissionsByDate.get(row.date) ?? []), ...(cycleOmissionsByDate.get(row.date) ?? [])]
     const omissionLines = omissions.map(shortOmissionLine)
     return { omissions, omissionLines, key: JSON.stringify(omissionLines) }
   })
