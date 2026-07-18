@@ -491,10 +491,25 @@ function computePackChainOmissions(rowsDesc: PackChainRow[], unitsPerPack: numbe
    the pack side's own count-based LOSS/GAIN, and the singles side's
    cycle-based USED/PACK ledger (sheets a pack gave vs. sheets recorded used
    before the next pack) -- the trusted, count-independent measure. */
+// Condensed to a single line each for the merged MANAGER GUIDELINES cell:
+// keeps the headline of an omission and the primary instruction of its fix,
+// dropping the longer reasoning clause. Staff names are shortened to their
+// initials (same abbreviation used beside CNT values) and the per-person
+// clock-in/out detail is dropped -- just name, hours and share.
+function shortOmissionLine(o: Omission): string {
+  const issue = o.issue.split(' — ')[0].trim()
+  const fix = o.fix.split(/ — |; /)[0].trim()
+  return `${issue} → ${fix}`
+}
+function shortAskLine(ask: { shares: Exposure[] } | null): string {
+  if (!ask || ask.shares.length === 0) return 'no clock-ins recorded'
+  return ask.shares.map(s => `${initialOf(s.name) ?? capName(s.name)} ${s.pct}%`).join(', ')
+}
+
 function SingleServicePackChainTable({
   item, targetName, packChainRows, packChainOmissionsByDate, packCyclesByStart, closedCycles,
   packLossTotal, packGainTotal, cycleLossTotal, cycleGainTotal,
-  unitsPerPack, sheetPrice, sheetCP, sp, presence, onDateClick, packChainBreakdownNames,
+  unitsPerPack, sheetPrice, sheetCP, sp, presence, onDateClick, packChainBreakdownNames, showPrices,
 }: {
   item: SummaryRow; targetName: string; packChainRows: PackChainRow[]
   packChainOmissionsByDate: Map<string, Omission[]>; packCyclesByStart: Map<string, PackCycle>; closedCycles: PackCycle[]
@@ -503,6 +518,7 @@ function SingleServicePackChainTable({
   presence: Record<string, StaffPresence[]> | null
   onDateClick?: (date: string, itemName: string) => void
   packChainBreakdownNames: string[]
+  showPrices: boolean
 }) {
   const packCpVal = parseFloat(item.cp ?? '0') || 0
   const svcName = packChainBreakdownNames[0]
@@ -510,21 +526,43 @@ function SingleServicePackChainTable({
   const packGainCedisTotal = packGainTotal * unitsPerPack * sheetPrice
   const grandTotalCedis = packChainRows.reduce((s, r) => s + (packSideCedis(r, unitsPerPack, sheetPrice) ?? 0), 0)
     + closedCycles.reduce((s, c) => s + cycleCedisValue(c, sheetPrice), 0)
+  const sideColSpan = showPrices ? 12 : 8
+  const packSideW = showPrices ? 484 : 320
+  const singlesSideW = showPrices ? 516 : 352
+
+  // Per-row guideline content, condensed to one line per block. Consecutive
+  // rows with identical content (almost always the common "—, no loss" rows)
+  // are merged into a single spanning cell instead of repeating it.
+  const rowMetas = packChainRows.map((row, i) => {
+    const omissions = packChainOmissionsByDate.get(row.date) ?? []
+    const hasLoss = (row.packLoss ?? 0) > 0.001 || (row.singlesLoss ?? 0) > 0.001
+    const ask = hasLoss && presence ? staffExposure(packChainRows, i, presence) : null
+    const omissionLines = omissions.map(shortOmissionLine)
+    const askLine = hasLoss ? (presence ? shortAskLine(ask) : '…') : null
+    return { omissions, hasLoss, omissionLines, askLine, key: JSON.stringify([omissionLines, askLine]) }
+  })
+  const guidelineRowSpan: number[] = new Array(rowMetas.length).fill(1)
+  for (let i = 0; i < rowMetas.length; i++) {
+    if (i > 0 && rowMetas[i].key === rowMetas[i - 1].key) { guidelineRowSpan[i] = 0; continue }
+    let span = 1
+    while (i + span < rowMetas.length && rowMetas[i + span].key === rowMetas[i].key) span++
+    guidelineRowSpan[i] = span
+  }
 
   return (
     <>
       <p className="text-[8px] font-bold text-gray-500 px-1.5 py-1 bg-gray-50 border-b border-gray-200">
         Combined view: {item.item_name} → {targetName} → service
       </p>
-      <table className="table-fixed border-collapse text-[8px]" style={{ width: `${62 + 484 + 516 + 64 + 480}px` }}>
+      <table className="table-fixed border-collapse text-[8px]" style={{ width: `${62 + packSideW + singlesSideW + 64 + 480}px` }}>
         <colgroup>
           <col style={{width:'62px'}} />
-          <col style={{width:'36px'}} /><col style={{width:'36px'}} /><col style={{width:'40px'}} />
-          <col style={{width:'48px'}} /><col style={{width:'36px'}} /><col style={{width:'40px'}} />
+          <col style={{width:'36px'}} /><col style={{width:'36px'}} />
+          {showPrices && <><col style={{width:'40px'}} /><col style={{width:'48px'}} /><col style={{width:'36px'}} /><col style={{width:'40px'}} /></>}
           <col style={{width:'36px'}} /><col style={{width:'36px'}} /><col style={{width:'48px'}} />
           <col style={{width:'36px'}} /><col style={{width:'36px'}} /><col style={{width:'56px'}} />
-          <col style={{width:'40px'}} /><col style={{width:'36px'}} /><col style={{width:'40px'}} />
-          <col style={{width:'48px'}} /><col style={{width:'36px'}} /><col style={{width:'40px'}} />
+          <col style={{width:'40px'}} /><col style={{width:'36px'}} />
+          {showPrices && <><col style={{width:'40px'}} /><col style={{width:'48px'}} /><col style={{width:'36px'}} /><col style={{width:'40px'}} /></>}
           <col style={{width:'64px'}} /><col style={{width:'36px'}} /><col style={{width:'36px'}} />
           <col style={{width:'56px'}} /><col style={{width:'36px'}} /><col style={{width:'48px'}} />
           <col style={{width:'64px'}} />
@@ -533,8 +571,8 @@ function SingleServicePackChainTable({
         <thead className="sticky top-0 z-10">
           <tr className="bg-amber-500 text-gray-800 font-bold">
             <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-left pl-0.5 align-bottom sticky left-0 z-20 bg-amber-500">DATE</th>
-            <th colSpan={12} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">{item.item_name}</th>
-            <th colSpan={12} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">{targetName}</th>
+            <th colSpan={sideColSpan} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">{item.item_name}</th>
+            <th colSpan={sideColSpan} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-gray-600">{targetName}</th>
             <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600"
               title={`Combined ₵ for the row: pack side (packs × singles-per-pack × ₵${sheetPrice}) plus the singles side's own USED/PACK cycle ₵.`}>
               TOTAL LOSS/GAIN AMOUNT
@@ -546,10 +584,12 @@ function SingleServicePackChainTable({
           <tr className="bg-amber-400 text-gray-800 font-bold">
             <th className="py-0.5 border-b-2 border-gray-400 text-center border-l-2 border-l-gray-600" title="Bought/received">BL</th>
             <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Whole packs sold directly to a walk-in customer">WIC</th>
-            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Average direct sale price that day">SP</th>
-            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Revenue from direct pack sales that day">AMOUNT</th>
-            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Purchase cost per pack">CP</th>
-            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Per-unit margin: SP − CP">PROFIT</th>
+            {showPrices && <>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Average direct sale price that day">SP</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Revenue from direct pack sales that day">AMOUNT</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Purchase cost per pack">CP</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Per-unit margin: SP − CP">PROFIT</th>
+            </>}
             <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Taken for internal use (credits singles below)">GMC</th>
             <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Running expected stock">EXP</th>
             <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Physical count">CNT</th>
@@ -566,10 +606,12 @@ function SingleServicePackChainTable({
               title={`Pack side only: packs lost/gained × singles-per-pack × ₵${sheetPrice}`}>LOSS/GAIN AMT</th>
             <th className="py-0.5 border-b-2 border-gray-400 text-center border-l-2 border-l-gray-600" title="Credited in from pack GMC take">FROM GMC</th>
             <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Singles sold via the service">QTY</th>
-            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Average sale price that day">SP</th>
-            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Revenue from the service that day">AMOUNT</th>
-            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Purchase cost per single">CP</th>
-            <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Per-unit margin: SP − CP">PROFIT</th>
+            {showPrices && <>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Average sale price that day">SP</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Revenue from the service that day">AMOUNT</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Purchase cost per single">CP</th>
+              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Per-unit margin: SP − CP">PROFIT</th>
+            </>}
             <th className="py-0.5 border-b-2 border-gray-400 text-center border-l-2 border-l-gray-600"
               title="On rows where a GMC pack was taken: total sheets recorded as used (service + direct sales) from this pack until the NEXT pack was taken -- the pack's full cycle, measured purely from records, independent of counts.">
               USED/PACK
@@ -592,9 +634,7 @@ function SingleServicePackChainTable({
         </thead>
         <tbody>
           {packChainRows.map((row, i) => {
-            const omissions = packChainOmissionsByDate.get(row.date) ?? []
-            const hasLoss = (row.packLoss ?? 0) > 0.001 || (row.singlesLoss ?? 0) > 0.001
-            const ask = hasLoss && presence ? staffExposure(packChainRows, i, presence) : null
+            const { omissions, hasLoss, omissionLines, askLine } = rowMetas[i]
             const packWicQty = numVal(row.packWic)
             const packSpVal = numVal(row.packSellPrice) || sp
             const packAmount = packWicQty > 0 ? packWicQty * packSpVal : 0
@@ -619,10 +659,12 @@ function SingleServicePackChainTable({
                 </td>
                 <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-blue-600">{fmtQs(row.packBl)}</td>
                 <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.packWic)}</td>
-                <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{packWicQty > 0 ? `₵${fmtN(packSpVal)}` : <span className="text-gray-300">—</span>}</td>
-                <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{packWicQty > 0 ? `₵${fmtN(packAmount)}` : <span className="text-gray-300">—</span>}</td>
-                <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-500">₵{fmtN(packCpVal)}</td>
-                <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-500">₵{fmtN(packProfit)}</td>
+                {showPrices && <>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{packWicQty > 0 ? `₵${fmtN(packSpVal)}` : <span className="text-gray-300">—</span>}</td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{packWicQty > 0 ? `₵${fmtN(packAmount)}` : <span className="text-gray-300">—</span>}</td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-500">₵{fmtN(packCpVal)}</td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-500">₵{fmtN(packProfit)}</td>
+                </>}
                 <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.packGmc)}</td>
                 <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-400">{fmtN(row.packExp)}</td>
                 <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-900 whitespace-nowrap">
@@ -647,10 +689,12 @@ function SingleServicePackChainTable({
                 </td>
                 <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-teal-600">{fmtQs(row.singlesConvIn)}</td>
                 <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{singlesQty === 0 ? <span className="text-gray-300">—</span> : fmtQ(singlesQty)}</td>
-                <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{singlesQty > 0 ? `₵${fmtN(singlesSpVal)}` : <span className="text-gray-300">—</span>}</td>
-                <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{singlesQty > 0 ? `₵${fmtN(singlesAmount)}` : <span className="text-gray-300">—</span>}</td>
-                <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-500">₵{fmtN(sheetCP)}</td>
-                <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-500">₵{fmtN(singlesProfit)}</td>
+                {showPrices && <>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{singlesQty > 0 ? `₵${fmtN(singlesSpVal)}` : <span className="text-gray-300">—</span>}</td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{singlesQty > 0 ? `₵${fmtN(singlesAmount)}` : <span className="text-gray-300">—</span>}</td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-500">₵{fmtN(sheetCP)}</td>
+                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-500">₵{fmtN(singlesProfit)}</td>
+                </>}
                 {!cyc ? (
                   <>
                     <td className="text-center py-0.5 border-l-2 border-l-gray-600"><span className="text-gray-300">—</span></td>
@@ -695,52 +739,29 @@ function SingleServicePackChainTable({
                     : totalCedisRow < -0.001 ? <span className="text-green-600">+₵{fmtN(Math.abs(totalCedisRow))}</span>
                     : <span className="text-gray-400">0</span>}
                 </td>
-                <td className="text-left py-0.5 pl-1 pr-1 border-l-2 border-l-gray-600 whitespace-normal break-words leading-tight align-top">
-                  {omissions.length === 0 ? <span className="text-gray-300">—</span> : omissions.map((o, oi) => (
-                    <div key={oi} className={oi > 0 ? 'mt-1 pt-1 border-t border-orange-200' : ''}>
-                      <span className="text-orange-700 font-semibold">{o.issue}</span>
-                      <span className="text-blue-700"> 💡 Fix: {o.fix}</span>
-                    </div>
-                  ))}
-                  {hasLoss && (
-                    <div className="mt-1 pt-1 border-t border-gray-300">
-                      {!presence ? <span className="text-gray-300">…</span>
-                        : ask && ask.shares.length > 0 ? (
-                          <>
-                            <span className="text-gray-500 font-semibold">Ask staff: </span>
-                            <span>
-                              {ask.shares.map((s, si) => {
-                                const topShare = si === 0 && ask.shares.length > 1 && s.pct > Math.round(100 / ask.shares.length) + 5
-                                return (
-                                  <span key={s.name} className="whitespace-nowrap">
-                                    {si > 0 && <span className="text-gray-300">, </span>}
-                                    <span className={topShare ? 'text-red-700 font-bold' : 'text-gray-800 font-semibold'}>{capName(s.name)}</span>
-                                    <span className="text-gray-500"> {hrsLabel(s.mins)}·{s.pct}%</span>
-                                    {s.range && <span className="text-gray-400 text-[6px]"> ({s.range})</span>}
-                                  </span>
-                                )
-                              })}
-                            </span>
-                            <span className="block text-gray-400">
-                              {ask.from
-                                ? `count${initialOf(ask.fromBy) ? ` by ${initialOf(ask.fromBy)}` : ''} ${fmtDate(ask.from)} → count${initialOf(ask.endBy) ? ` by ${initialOf(ask.endBy)}` : ''} ${fmtDate(row.date)}`
-                                : `up to count${initialOf(ask.endBy) ? ` by ${initialOf(ask.endBy)}` : ''} ${fmtDate(row.date)}`}
-                            </span>
-                          </>
-                        ) : (
-                          <span className="text-orange-600">no clock-ins recorded for this period -- attendance gap is itself a red flag</span>
-                        )}
-                    </div>
-                  )}
-                </td>
+                {guidelineRowSpan[i] > 0 && (
+                  <td rowSpan={guidelineRowSpan[i]} className="text-left py-0.5 pl-1 pr-1 border-l-2 border-l-gray-600 border-b border-gray-200 whitespace-nowrap overflow-hidden text-ellipsis align-top">
+                    {omissionLines.length === 0 ? <span className="text-gray-300">—</span> : (
+                      <div className="whitespace-nowrap overflow-hidden text-ellipsis" title={omissionLines.join(' · ')}>
+                        <span className="text-orange-700 font-semibold">{omissionLines.join(' · ')}</span>
+                      </div>
+                    )}
+                    {hasLoss && askLine && (
+                      <div className="whitespace-nowrap overflow-hidden text-ellipsis border-t border-gray-200" title={askLine}>
+                        <span className="text-gray-500 font-semibold">Ask: </span>
+                        <span className={askLine === 'no clock-ins recorded' ? 'text-orange-600' : 'text-gray-800'}>{askLine}</span>
+                      </div>
+                    )}
+                  </td>
+                )}
               </tr>
             )
           })}
           <tr className="bg-gray-100 border-t-2 border-gray-400 font-bold">
-            <td colSpan={12} className="text-right pr-1 py-1 text-gray-600 text-[7px] border-l-2 border-l-gray-600">
+            <td colSpan={sideColSpan} className="text-right pr-1 py-1 text-gray-600 text-[7px] border-l-2 border-l-gray-600">
               {`Pack side, net of gains: ${packLossCedisTotal > 0.001 ? `-₵${fmtN(packLossCedisTotal)}` : '0'}${packGainCedisTotal > 0.001 ? ` (⚠+₵${fmtN(packGainCedisTotal)} gained)` : ''}`}
             </td>
-            <td colSpan={12} className="text-right pr-1 py-1 text-gray-600 text-[7px] border-l-2 border-l-gray-600">
+            <td colSpan={sideColSpan} className="text-right pr-1 py-1 text-gray-600 text-[7px] border-l-2 border-l-gray-600">
               {`over ${closedCycles.length} closed pack${closedCycles.length === 1 ? '' : 's'} → USED/PACK, net of gains: ${cycleLossTotal > 0.001 ? `-₵${fmtN(cycleLossTotal * sheetPrice)}` : '0'}${cycleGainTotal > 0.001 ? ` (⚠+₵${fmtN(cycleGainTotal * sheetPrice)} gained)` : ''}`}
             </td>
             <td className="text-center py-1 border-l-2 border-l-gray-600 whitespace-nowrap">
@@ -1078,7 +1099,7 @@ function MergeItemPicker({ itemId, itemName, typeLabel, mergePool, onMerged }: {
   )
 }
 
-function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, mergePool, isOwnerLevelUser, autoEdit, onSaved, onRelationsSaved, onMerged, onDateClick }: {
+function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, mergePool, isOwnerLevelUser, autoEdit, onSaved, onRelationsSaved, onMerged, onDateClick, showPrices }: {
   item: SummaryRow; groups: string[]; allItems: { item_id: number; item_name: string }[]
   currentAliases: AliasRecord[]; currentMatches: MatchRecord[]
   candidatePool: CandidateItem[]
@@ -1089,6 +1110,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
   onRelationsSaved: (aliases: AliasRecord[], matches: MatchRecord[]) => void
   onMerged: () => void
   onDateClick?: (date: string, itemName: string) => void
+  showPrices?: boolean
 }) {
   const [dayRows, setDayRows] = useState<DayRow[] | null>(null)
   const [editing, setEditing] = useState(false)
@@ -1331,6 +1353,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
             unitsPerPack={unitsPerPack} sheetPrice={sheetPrice} sheetCP={sheetCP} sp={sp}
             presence={presence} onDateClick={onDateClick}
             packChainBreakdownNames={packChainBreakdownNames}
+            showPrices={showPrices ?? false}
           />
         ) : (
           <>
@@ -1796,7 +1819,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
 }
 
 /* ── main LossTab ── */
-export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 'All', productType = 'all', jumpToItemId, onJumpDone, onDateClick }: {
+export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 'All', productType = 'all', jumpToItemId, onJumpDone, onDateClick, showPrices }: {
   onOpenItem: (itemId: number) => void
   search?: string
   group?: string | null
@@ -1804,6 +1827,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   jumpToItemId?: number | null
   onJumpDone?: () => void
   onDateClick?: (date: string, itemName: string) => void
+  showPrices?: boolean
 }) {
   const [rows, setRows] = useState<SummaryRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -2022,7 +2046,8 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
                   setEditTriggerId(null)
                 }}
                 onMerged={reloadAfterMerge}
-                onDateClick={onDateClick} />
+                onDateClick={onDateClick}
+                showPrices={showPrices} />
             </div>
           </td>
         </tr>

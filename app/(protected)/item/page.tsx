@@ -199,6 +199,9 @@ function ItemHubPageInner() {
   const [group, setGroup]               = useState<string | null>(null)
   const [productType, setProductType]   = useState<'all' | 'goods' | 'services'>('all')
   const [lossView, setLossView]         = useState<LossView>('items')
+  // SP/AMOUNT/CP/PROFIT columns on the pack-chain detail table are collapsed
+  // by default (they're only needed occasionally) -- toggled from the submenu.
+  const [showPrices, setShowPrices]     = useState(false)
   const [search, setSearch]             = useState('')
   const [violation, setViolation]       = useState<string | null>(searchParams.get('violation'))
   const [violationOpen, setViolationOpen] = useState(!!searchParams.get('violation'))
@@ -443,6 +446,14 @@ function ItemHubPageInner() {
                 {v.label}
               </button>
             ))}
+            {lossView === 'items' && (
+              <button onClick={() => setShowPrices(p => !p)}
+                title="Show/hide the SP, AMOUNT, CP and PROFIT columns on the pack-chain detail table"
+                className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap transition
+                  ${showPrices ? 'bg-blue-600 text-white' : 'bg-white border border-blue-200 text-blue-700 hover:bg-blue-100'}`}>
+                💲 Prices {showPrices ? '▾' : '▸'}
+              </button>
+            )}
           </div>
         )}
 
@@ -578,7 +589,7 @@ function ItemHubPageInner() {
           <TabErrorBoundary>
             <LossTab onOpenItem={() => {}} search={search} group={group} productType={productType}
               jumpToItemId={jumpToLossItemId} onJumpDone={() => setJumpToLossItemId(null)}
-              onDateClick={openReceiptFromItem} />
+              onDateClick={openReceiptFromItem} showPrices={showPrices} />
           </TabErrorBoundary>
         )}
         {addForm !== 'sale' && outerTab === 'loss' && lossView === 'sales' && (
