@@ -2195,7 +2195,13 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
               sits past the sticky content just blends into the page instead of
               showing as a visible bar. */}
           <td colSpan={16} className="p-0 border border-black">
-            <div className="sticky left-0 w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] max-h-[50vh] overflow-auto bg-blue-50 px-0.5 pb-2 pt-0.5">
+            {/* Was calc(100vw - 2rem) -- a leftover assumption of 2rem of
+                horizontal page padding that doesn't actually exist anywhere
+                in this layout (the scroll container above and the page
+                wrapper in page.tsx both have zero horizontal padding), so it
+                just reserved 32px of permanently blank space on every
+                screen. Plain 100vw matches the real available width. */}
+            <div className="sticky left-0 w-[100vw] max-w-[100vw] max-h-[50vh] overflow-auto bg-blue-50 px-0.5 pb-2 pt-0.5">
               <ItemDetail item={row} groups={groupNames} allItems={allItemsList}
                 currentAliases={aliasRecords[row.item_id] ?? []}
                 currentMatches={matchRecords[row.item_name.trim().toLowerCase()] ?? []}
