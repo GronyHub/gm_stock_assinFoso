@@ -17,6 +17,17 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   // is not present in this array has been removed by the user (delete).
 
   try {
+    // A line with no real quantity isn't a transaction -- it's a phantom
+    // row that pollutes per-date aliases and other displays while
+    // contributing nothing to any actual stock math. Reject it outright
+    // instead of silently coercing it to 0.
+    for (const line of lines) {
+      const qty = parseFloat(line.quantity)
+      if (!Number.isFinite(qty) || qty <= 0) {
+        return NextResponse.json({ error: `"${line.item_name || 'a line'}" needs a valid quantity greater than 0.` }, { status: 400 })
+      }
+    }
+
     // Block edits that would drive an item's stock below zero. Existing
     // recorded quantities are already reflected in SOH, so the check is on
     // the NET change per item (new totals minus what this receipt already
