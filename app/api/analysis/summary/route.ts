@@ -149,14 +149,14 @@ export async function GET() {
           SUM(COALESCE(s.calculated_soh, 0) * COALESCE(i.purchase_rate, 0)) AS value
         FROM items i
         LEFT JOIN item_stock_summary s ON s.item_id = i.id
-        WHERE LOWER(i.status) NOT IN ('inactive', 'service')
+        WHERE i.status IS NULL OR LOWER(i.status) NOT IN ('inactive', 'service')
         GROUP BY 1 ORDER BY value DESC
       `,
       sql`
         SELECT i.canonical_name AS item_name, COALESCE(s.calculated_soh, 0) AS soh
         FROM items i
         LEFT JOIN item_stock_summary s ON s.item_id = i.id
-        WHERE LOWER(i.status) NOT IN ('inactive', 'service')
+        WHERE (i.status IS NULL OR LOWER(i.status) NOT IN ('inactive', 'service'))
           AND COALESCE(s.calculated_soh, 0) <= 0
         ORDER BY i.canonical_name LIMIT 30
       `,
