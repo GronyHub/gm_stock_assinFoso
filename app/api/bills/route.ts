@@ -28,6 +28,16 @@ export async function POST(req: NextRequest) {
   const { date, vendorId, vendorName, lines } = await req.json()
   if (!date || !lines?.length) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
 
+  // A line with no real quantity isn't a transaction -- it's a phantom row
+  // that pollutes per-date aliases and other displays while contributing
+  // nothing to any actual stock math. Reject it outright.
+  for (const l of lines) {
+    const qty = Number(l.qty)
+    if (!Number.isFinite(qty) || qty <= 0) {
+      return NextResponse.json({ error: `"${l.itemName || 'a line'}" needs a valid quantity greater than 0.` }, { status: 400 })
+    }
+  }
+
   const total = lines.reduce((s: number, l: any) => s + Number(l.total), 0)
   const billNumber = `APP-BILL-${date.replace(/-/g,'')}-${Date.now().toString().slice(-4)}`
 
