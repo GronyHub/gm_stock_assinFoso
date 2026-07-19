@@ -487,7 +487,7 @@ function SingleServicePackChainTable({
   const showPackGain = packGainTotal > 0.001
   const packColSpan = (showPrices ? 12 : 8) - (showPackGain ? 0 : 1)
   const singlesColSpan = showPrices ? 9 : 5
-  const totalColSpan = 1 + packColSpan + singlesColSpan + 5 // date + pack + singles + total + WNW + 2 count cols + guidance
+  const totalColSpan = 1 + packColSpan + singlesColSpan + 7 // date + pack + singles + total + WNW + 2 count cols + guidance + 2 alias cols
 
   const visibleRows = lossOnly ? packChainRows.filter(r => rowHasLoss(r, packCyclesByStart))
     : gainOnly ? packChainRows.filter(r => rowHasGain(r, packCyclesByStart))
@@ -539,6 +539,7 @@ function SingleServicePackChainTable({
           <col style={{width:'40px'}} />
           <col style={{width:'36px'}} /><col style={{width:'48px'}} />
           <col style={{width:'480px'}} />
+          <col style={{width:'70px'}} /><col style={{width:'70px'}} />
         </colgroup>
         <thead className="sticky top-0 z-10">
           <tr className="text-gray-800 font-bold">
@@ -563,6 +564,14 @@ function SingleServicePackChainTable({
             </th>
             <th rowSpan={2} className="py-0.5 border-b-2 border-gray-500 text-center align-bottom border-l-2 border-l-gray-600 bg-slate-600 text-white">
               MANAGER GUIDELINES<span className="block font-normal text-[6px]">(omissions)</span>
+            </th>
+            <th rowSpan={2} className="py-0.5 border-b-2 border-gray-500 text-center align-bottom border-l-2 border-l-gray-600 bg-slate-600 text-white"
+              title="Raw item name as recorded on the pack's own transaction that day, before canonicalization.">
+              PACK ALIAS
+            </th>
+            <th rowSpan={2} className="py-0.5 border-b-2 border-gray-500 text-center align-bottom border-l border-gray-400 bg-slate-600 text-white"
+              title="Raw item name as recorded on the singles/service transaction that day, before canonicalization.">
+              SINGLES ALIAS
             </th>
           </tr>
           <tr className="text-gray-800 font-bold">
@@ -750,6 +759,12 @@ function SingleServicePackChainTable({
                     )}
                   </td>
                 )}
+                <td className="pl-1 py-0.5 border-l-2 border-l-gray-600 text-purple-700 font-semibold overflow-hidden whitespace-nowrap">
+                  <span className="block truncate" title={row.packAliases ?? ''}>{row.packAliases ?? <span className="text-gray-300">—</span>}</span>
+                </td>
+                <td className="pl-1 py-0.5 border-l border-gray-300 text-purple-700 font-semibold overflow-hidden whitespace-nowrap">
+                  <span className="block truncate" title={row.singlesAliases ?? ''}>{row.singlesAliases ?? <span className="text-gray-300">—</span>}</span>
+                </td>
               </tr>
             )
           })}
@@ -769,6 +784,8 @@ function SingleServicePackChainTable({
             <td className="border-l-2 border-l-gray-600" />
             <td className="border-l border-gray-400" />
             <td className="border-l-2 border-l-gray-600" />
+            <td className="border-l-2 border-l-gray-600" />
+            <td className="border-l border-gray-400" />
           </tr>
         </tbody>
       </table>
@@ -1401,7 +1418,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
               Combined view: {item.item_name} → {targetName} → services
             </p>
             <table className="table-fixed border-collapse text-[8px]"
-              style={{ width: `${62 + 2 * 48 + 10 * 36 + packChainBreakdownNames.length * 60 + 56 + 64 + 72 + 64 + 480 + 320}px` }}>
+              style={{ width: `${62 + 2 * 48 + 10 * 36 + packChainBreakdownNames.length * 60 + 56 + 64 + 72 + 64 + 480 + 320 + 2 * 70}px` }}>
               {/* Pixel-widths: date frozen at its text width, numeric columns as
                   thin as their numbers, OMISSIONS wide (480px) so its text stays
                   on 1-2 lines, and ASK STAFF last & wide (320px) so its content
@@ -1428,6 +1445,7 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                 <col style={{width:'56px'}} />
                 <col style={{width:'480px'}} />
                 <col style={{width:'320px'}} />
+                <col style={{width:'70px'}} /><col style={{width:'70px'}} />
               </colgroup>
               <thead className="sticky top-0 z-10">
                 <tr className="bg-amber-500 text-gray-800 font-bold">
@@ -1449,6 +1467,14 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                   <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600"
                     title="Exposure to this loss, apportioned by hours each staff member actually spent at the shop between the previous count and this one (from clock-in/out times) — not a general blame for merely being present. Also shows who counted at each end and, for one-day windows, each person's arrival–departure times.">
                     ASK STAFF
+                  </th>
+                  <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600"
+                    title="Raw item name as recorded on the pack's own transaction that day, before canonicalization.">
+                    PACK ALIAS
+                  </th>
+                  <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l border-gray-400"
+                    title="Raw item name as recorded on the singles/service transaction that day, before canonicalization.">
+                    SINGLES ALIAS
                   </th>
                 </tr>
                 <tr className="bg-amber-400 text-gray-800 font-bold">
@@ -1641,6 +1667,12 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                           <span className="text-orange-600">no clock-ins recorded for this period — attendance gap is itself a red flag</span>
                         )}
                     </td>
+                    <td className="pl-1 py-0.5 border-l-2 border-l-gray-600 text-purple-700 font-semibold overflow-hidden whitespace-nowrap">
+                      <span className="block truncate" title={row.packAliases ?? ''}>{row.packAliases ?? <span className="text-gray-300">—</span>}</span>
+                    </td>
+                    <td className="pl-1 py-0.5 border-l border-gray-300 text-purple-700 font-semibold overflow-hidden whitespace-nowrap">
+                      <span className="block truncate" title={row.singlesAliases ?? ''}>{row.singlesAliases ?? <span className="text-gray-300">—</span>}</span>
+                    </td>
                   </tr>
                   )
                 })}
@@ -1672,6 +1704,8 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                       </td>
                       <td className="border-l-2 border-l-gray-600" />
                       <td className="border-l-2 border-l-gray-600" />
+                      <td className="border-l-2 border-l-gray-600" />
+                      <td className="border-l border-gray-300" />
                     </tr>
                   )
                 })()}
