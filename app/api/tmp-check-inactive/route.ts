@@ -1,32 +1,22 @@
 import sql from '@/lib/db'
 import { NextResponse } from 'next/server'
 
-const NAMES = [
-  'A4 230 grams',
-  'A4 Brown Envelope Sing',
-  'Advance Ink 250ml - Light Magenta',
-  'Advance Ink 250ml - Magenta',
-]
+const IDS = [200, 177, 262, 82, 295, 81, 260]
 
 export async function GET() {
-  const items = await sql`
-    SELECT id, canonical_name, status, product_type, converts_to_item_id
-    FROM items
-    WHERE canonical_name = ANY(${NAMES})
-    ORDER BY canonical_name
+  const rows = await sql`
+    SELECT
+      i.id, i.canonical_name, i.status,
+      (SELECT COUNT(*) FROM sales_receipt_lines srl WHERE srl.item_id = i.id) AS sales_lines,
+      (SELECT MAX(sr.receipt_date)::date::text FROM sales_receipt_lines srl JOIN sales_receipts sr ON sr.id = srl.receipt_id WHERE srl.item_id = i.id) AS last_sale,
+      (SELECT COUNT(*) FROM bill_lines bl WHERE bl.item_id = i.id) AS bill_lines,
+      (SELECT MAX(b.bill_date)::date::text FROM bill_lines bl JOIN bills b ON b.id = bl.bill_id WHERE bl.item_id = i.id) AS last_bill,
+      (SELECT COUNT(*) FROM stock_counts sc WHERE sc.item_id = i.id) AS counts,
+      (SELECT MAX(sc.count_date)::date::text FROM stock_counts sc WHERE sc.item_id = i.id) AS last_count,
+      (SELECT COUNT(*) FROM item_aliases ia WHERE ia.item_id = i.id) AS aliases
+    FROM items i
+    WHERE i.id = ANY(${IDS})
+    ORDER BY i.canonical_name, i.id
   `
-
-  // For anything Inactive, trace one more merge hop (a winner that was
-  // itself later merged away).
-  const inactiveNames = (items as any[]).filter(r => r.status === 'Inactive').map(r => r.canonical_name)
-  const nextHop = inactiveNames.length
-    ? await sql`
-        SELECT ia.alias_name AS was_named, ia.item_id AS now_winner_id, i.canonical_name AS now_winner_name, i.status AS now_winner_status
-        FROM item_aliases ia
-        JOIN items i ON i.id = ia.item_id
-        WHERE ia.alias_name = ANY(${inactiveNames}) AND ia.alias_type = 'canonical' AND ia.source = 'merge'
-      `
-    : []
-
-  return NextResponse.json({ items, nextHop })
+  return NextResponse.json(rows)
 }
