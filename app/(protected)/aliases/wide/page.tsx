@@ -83,17 +83,22 @@ export default function AliasEditorPage() {
     setMergeMode(false); setMergeSearch(''); setMergeResult(null)
   }
 
-  async function addAlias() {
+  async function addAlias(force = false) {
     if (!selected || !newAlias.trim()) return
     setAdding(true); setAddError('')
     const res = await fetch('/api/aliases/confirm', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ alias_name: newAlias.trim(), item_id: selected.item_id, alias_type: newType }),
+      body: JSON.stringify({ alias_name: newAlias.trim(), item_id: selected.item_id, alias_type: newType, force }),
     })
     setAdding(false)
-    if (res.ok) { setNewAlias(''); await load() }
-    else setAddError('Failed — alias may already exist for this item')
+    if (res.ok) { setNewAlias(''); await load(); return }
+    const d = await res.json().catch(() => null)
+    if (res.status === 409 && d?.requires_confirmation) {
+      if (window.confirm(`${d.warning}\n\nMatch anyway?`)) addAlias(true)
+      return
+    }
+    setAddError('Failed — alias may already exist for this item')
   }
 
   async function deleteAlias(aliasId: number) {
@@ -103,15 +108,22 @@ export default function AliasEditorPage() {
     await load()
   }
 
-  async function moveAlias(targetItemId: number) {
+  async function moveAlias(targetItemId: number, force = false) {
     if (!movingAlias) return
     setMoving(true)
-    await fetch(`/api/aliases/${movingAlias.id}`, {
+    const res = await fetch(`/api/aliases/${movingAlias.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ item_id: targetItemId }),
+      body: JSON.stringify({ item_id: targetItemId, force }),
     })
     setMoving(false)
+    if (!res.ok) {
+      const d = await res.json().catch(() => null)
+      if (res.status === 409 && d?.requires_confirmation) {
+        if (window.confirm(`${d.warning}\n\nMove anyway?`)) moveAlias(targetItemId, true)
+      }
+      return
+    }
     setMovingAlias(null); setMoveSearch('')
     await load()
   }
@@ -292,7 +304,7 @@ export default function AliasEditorPage() {
                     <option value="gmc_service">gmc_service</option>
                     <option value="old_stop">old_stop</option>
                   </select>
-                  <button onClick={addAlias} disabled={!newAlias.trim() || adding}
+                  <button onClick={() => addAlias()} disabled={!newAlias.trim() || adding}
                     className="flex-1 bg-blue-600 text-white text-[10px] font-bold rounded py-0.5 disabled:opacity-40 hover:bg-blue-500 transition">
                     {adding ? 'Adding…' : '+ Add'}
                   </button>

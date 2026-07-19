@@ -903,14 +903,18 @@ function AliasPicker({ itemId, current, onChange }: {
       .slice(0, 25)
   }, [salesNames, billNames, current, query])
 
-  async function add(name: string, source: 'sales' | 'bills') {
+  async function add(name: string, source: 'sales' | 'bills', force = false) {
     setBusy(true)
     const res = await fetch('/api/aliases/confirm', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ alias_name: name, item_id: itemId, source }),
+      body: JSON.stringify({ alias_name: name, item_id: itemId, source, force }),
     })
     setBusy(false)
-    if (res.ok) onChange([...current, { id: -Date.now(), name }]) // optimistic id placeholder, refreshed on next load
+    if (res.ok) { onChange([...current, { id: -Date.now(), name }]); return } // optimistic id placeholder, refreshed on next load
+    const d = await res.json().catch(() => null)
+    if (res.status === 409 && d?.requires_confirmation) {
+      if (confirm(`${d.warning}\n\nMatch anyway?`)) add(name, source, true)
+    }
   }
 
   async function remove(alias: AliasRecord) {
