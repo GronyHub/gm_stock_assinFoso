@@ -5,7 +5,7 @@ import { fmtDate } from '@/lib/fmtDate'
 import { isOwnerLevel } from '@/lib/roles'
 import type { ItemDayRow as DayRow, CountRevision } from '@/lib/itemDayRows'
 import {
-  numVal, computeRows, buildPackCycles, buildPackChainRows, packSideCedis, cycleCedisValue,
+  numVal, computeRows, buildPackCycles, buildPackChainRows, packSideCedis, realizedCycleCedis,
   type PackCycle, type PackChainRow,
 } from '@/lib/packChain'
 
@@ -446,12 +446,13 @@ function rowHasLoss(row: PackChainRow, packCyclesByStart: Map<string, PackCycle>
   return false
 }
 // Mirror of rowHasLoss for the Gain Only filter -- a pack count came in
-// above expected, or (on the row where a pack cycle closes) USED/PACK shows
-// more used than the pack gave.
+// above expected, or USED/PACK shows more used than the pack gave. Unlike
+// rowHasLoss, this doesn't wait for the cycle to close: using more than the
+// pack gave is already true the moment it happens, open or not.
 function rowHasGain(row: PackChainRow, packCyclesByStart: Map<string, PackCycle>): boolean {
   if (row.packLoss !== null && row.packLoss < -0.001) return true
   const cyc = packCyclesByStart.get(row.date)
-  if (cyc && cyc.end !== null && (cyc.sheetsGiven - cyc.used) < -0.001) return true
+  if (cyc && (cyc.sheetsGiven - cyc.used) < -0.001) return true
   return false
 }
 
@@ -476,7 +477,7 @@ function SingleServicePackChainTable({
   const packLossCedisTotal = packLossTotal * unitsPerPack * sheetPrice
   const packGainCedisTotal = packGainTotal * unitsPerPack * sheetPrice
   const grandTotalCedis = packChainRows.reduce((s, r) => s + (packSideCedis(r, unitsPerPack, sheetPrice) ?? 0), 0)
-    + closedCycles.reduce((s, c) => s + cycleCedisValue(c, sheetPrice), 0)
+    + Array.from(packCyclesByStart.values()).reduce((s, c) => s + (realizedCycleCedis(c, sheetPrice) ?? 0), 0)
   // EXP COUNT / ACTUAL COUNT sit as trailing standalone columns (after WNW),
   // so they're no longer part of the singles group span.
   // Gains should never happen on the pack side (any gain means a record is
@@ -636,7 +637,7 @@ function SingleServicePackChainTable({
             const cycOpen = cyc ? cyc.end === null : false
             const cycDiff = cyc ? parseFloat((cyc.sheetsGiven - cyc.used).toFixed(2)) : null
             const pCedis = packSideCedis(row, unitsPerPack, sheetPrice)
-            const cCedis = cyc && !cycOpen ? cycleCedisValue(cyc, sheetPrice) : null
+            const cCedis = cyc ? realizedCycleCedis(cyc, sheetPrice) : null
             const totalCedisRow = pCedis === null && cCedis === null ? null : (pCedis ?? 0) + (cCedis ?? 0)
             return (
               <tr key={i} className={`border-b border-gray-200 ${rowHasLoss(row, packCyclesByStart) ? 'bg-red-50' : rowHasGain(row, packCyclesByStart) ? 'bg-orange-50' : 'bg-white'}`}>
@@ -697,7 +698,11 @@ function SingleServicePackChainTable({
                       title={cycOpen ? 'This pack is still in use -- no next GMC take yet' : `Sheets used from this take until the next pack on ${fmtDate(cyc.end!)}`}>
                       <span className="block text-purple-700">{fmtQ(cyc.used)}</span>
                       <span className="block text-gray-400">/{fmtQ(cyc.sheetsGiven)}</span>
-                      {cycOpen && <span className="block text-blue-600 text-[6px] font-semibold">open</span>}
+                      {cycOpen && (
+                        (cycDiff as number) < -0.001
+                          ? <span className="block text-red-600 text-[6px] font-bold">open ⚠</span>
+                          : <span className="block text-blue-600 text-[6px] font-semibold">open</span>
+                      )}
                     </td>
                     <td className="text-center py-0.5 font-bold border-l border-gray-300 whitespace-nowrap">
                       {cycOpen ? null
@@ -705,15 +710,16 @@ function SingleServicePackChainTable({
                         : <span className="text-gray-400">0</span>}
                     </td>
                     <td className="text-center py-0.5 font-bold border-l border-gray-300 whitespace-nowrap">
-                      {cycOpen ? null
-                        : (cycDiff as number) < -0.001 ? (
-                          <span title="Sheets used beyond what this pack gave -- should be 0.">+{fmtQ(Math.abs(cycDiff as number))}</span>
-                        ) : <span className="text-gray-400">0</span>}
+                      {(cycDiff as number) < -0.001 ? (
+                        <span title={cycOpen ? 'Already using more than this pack gave, before the pack closes -- flagged now, not once it closes.' : 'Sheets used beyond what this pack gave -- should be 0.'}>
+                          +{fmtQ(Math.abs(cycDiff as number))}
+                        </span>
+                      ) : cycOpen ? null : <span className="text-gray-400">0</span>}
                     </td>
                     <td className="text-center py-0.5 font-bold border-l border-gray-300 whitespace-nowrap">
-                      {cycOpen ? null
+                      {(cycDiff as number) < -0.001 ? <span className="text-green-600">+₵{fmtN(Math.abs(cycDiff as number) * sheetPrice)}</span>
+                        : cycOpen ? null
                         : (cycDiff as number) > 0.001 ? <span className="text-red-600">-₵{fmtN((cycDiff as number) * sheetPrice)}</span>
-                        : (cycDiff as number) < -0.001 ? <span className="text-green-600">+₵{fmtN(Math.abs(cycDiff as number) * sheetPrice)}</span>
                         : <span className="text-gray-400">0</span>}
                     </td>
                   </>
@@ -1288,7 +1294,9 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
   const packGainTotal = parseFloat(packChainRows.reduce((s, r) => s + ((r.packLoss ?? 0) < -0.001 ? -(r.packLoss as number) : 0), 0).toFixed(2))
   const closedCycles = packCycles.filter(c => c.end !== null)
   const cycleLossTotal = parseFloat(closedCycles.reduce((s, c) => s + Math.max(0, c.sheetsGiven - c.used), 0).toFixed(2))
-  const cycleGainTotal = parseFloat(closedCycles.reduce((s, c) => s + Math.max(0, c.used - c.sheetsGiven), 0).toFixed(2))
+  // Gains, unlike losses, don't wait for the cycle to close -- an open pack
+  // already using more than it gave counts toward this total right away.
+  const cycleGainTotal = parseFloat(packCycles.reduce((s, c) => s + Math.max(0, c.used - c.sheetsGiven), 0).toFixed(2))
   const packChainBreakdownNames = targetComputed
     ? Array.from(new Set(targetComputed.flatMap(r => (r.wic_breakdown ?? []).map(b => b.name)))).sort()
     : []
@@ -1541,7 +1549,11 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                             title={open ? 'This pack is still in use — no next GMC take yet' : `Sheets used from this take until the next pack on ${fmtDate(cyc.end!)}`}>
                             <span className="text-purple-700">{fmtQ(cyc.used)}</span>
                             <span className="text-gray-400"> / {fmtQ(cyc.sheetsGiven)}</span>
-                            {open && <span className="block text-blue-600 text-[6px] font-semibold">in progress</span>}
+                            {open && (
+                              diff < -0.001
+                                ? <span className="block text-red-600 text-[6px] font-bold">in progress ⚠</span>
+                                : <span className="block text-blue-600 text-[6px] font-semibold">in progress</span>
+                            )}
                           </td>
                           <td className="text-center py-0.5 font-bold border-l border-gray-300 whitespace-nowrap">
                             {open ? <span className="text-gray-300">—</span>
@@ -1550,13 +1562,12 @@ function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, ca
                               ) : <span className="text-green-600">✓</span>}
                           </td>
                           <td className="text-center py-0.5 font-bold border-l border-gray-300 whitespace-nowrap">
-                            {open ? <span className="text-gray-300">—</span>
-                              : diff < -0.001 ? (
-                                <span className="bg-red-600 text-white rounded px-0.5"
-                                  title="Sheets used beyond what this pack gave — should be 0. Either leftover from the previous pack, or a GMC take was not recorded.">
-                                  ⚠+{fmtQ(Math.abs(diff))}
-                                </span>
-                              ) : <span className="text-gray-400">0</span>}
+                            {diff < -0.001 ? (
+                              <span className="bg-red-600 text-white rounded px-0.5"
+                                title={open ? 'Already using more than this pack gave, before the pack closes — flagged now, not once it closes.' : 'Sheets used beyond what this pack gave — should be 0. Either leftover from the previous pack, or a GMC take was not recorded.'}>
+                                ⚠+{fmtQ(Math.abs(diff))}
+                              </span>
+                            ) : open ? <span className="text-gray-300">—</span> : <span className="text-gray-400">0</span>}
                           </td>
                         </>
                       )
