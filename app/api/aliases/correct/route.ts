@@ -1,19 +1,26 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
+import { aliasMismatchWarning } from '@/lib/aliasSanity'
 import { NextResponse } from 'next/server'
 
-// POST { raw_name, item_id, source: 'zoho_sales' | 'zoho_bills' }
+// POST { raw_name, item_id, source: 'zoho_sales' | 'zoho_bills', force? }
 // Corrects a wrong match: updates all matching lines + upserts alias
+// force: bypass the singles/pack sanity warning after the caller has seen it
 export async function POST(req: Request) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { raw_name, item_id, source } = await req.json()
+  const { raw_name, item_id, source, force = false } = await req.json()
   if (!raw_name || !item_id || !source)
     return NextResponse.json({ error: 'raw_name, item_id and source required' }, { status: 400 })
 
   const [item] = await sql`SELECT canonical_name FROM items WHERE id = ${item_id}`
   if (!item) return NextResponse.json({ error: 'Item not found' }, { status: 404 })
+
+  if (!force) {
+    const warning = aliasMismatchWarning(raw_name, item.canonical_name)
+    if (warning) return NextResponse.json({ requires_confirmation: true, warning }, { status: 409 })
+  }
 
   if (source === 'zoho_bills') {
     await sql`

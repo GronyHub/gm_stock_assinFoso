@@ -2,17 +2,19 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 
-type Tab = 'prezoho-sales' | 'prezoho-bills' | 'zoho-sales' | 'zoho-bills'
+type Tab = 'prezoho-sales' | 'prezoho-bills' | 'zoho-sales' | 'zoho-bills' | 'flagged'
 type UnresolvedRow = { name: string; cnt: number; confirmed: boolean }
 type ZohoRawName = { name: string; cnt: number }
 type ZohoGroup = { item_id: number; canonical_name: string; cf_group: string | null; raw_names: ZohoRawName[] }
 type Item = { id: number; canonical_name: string; cf_group: string | null }
+type AuditRow = { raw_name: string; item_id: number; canonical_name: string; source: string; cnt: number; warning: string }
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'prezoho-sales', label: 'Pre-Zoho Sales' },
   { id: 'prezoho-bills', label: 'Pre-Zoho Bills' },
   { id: 'zoho-sales',    label: 'Zoho Sales' },
   { id: 'zoho-bills',    label: 'Zoho Bills' },
+  { id: 'flagged',       label: '⚠ Flagged' },
 ]
 
 const CATEGORY_HINTS: Record<string, string> = {
@@ -90,14 +92,21 @@ function PreZohoPanel({ tab, items }: { tab: Tab; items: Item[] }) {
 
   function selectRow(r: UnresolvedRow) { setSelected(r); setItemSearch(''); setChosenItem(null) }
 
-  async function confirm() {
+  async function confirmMatch(force = false) {
     if (!selected || !chosenItem) return
     setSaving(true)
-    await fetch('/api/aliases/confirm', {
+    const res = await fetch('/api/aliases/confirm', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ alias_name: selected.name, item_id: chosenItem.id, source }),
+      body: JSON.stringify({ alias_name: selected.name, item_id: chosenItem.id, source, force }),
     })
     setSaving(false)
+    if (!res.ok) {
+      const d = await res.json().catch(() => null)
+      if (res.status === 409 && d?.requires_confirmation) {
+        if (window.confirm(`${d.warning}\n\nMatch anyway?`)) confirmMatch(true)
+      }
+      return
+    }
     setStatusMap(m => ({ ...m, [selected.name]: 'done' }))
     const next = display.find(r => r.name !== selected.name && !statusMap[r.name])
     setSelected(next ?? null); setChosenItem(null); setItemSearch('')
@@ -190,7 +199,7 @@ function PreZohoPanel({ tab, items }: { tab: Tab; items: Item[] }) {
                 </div>
               )}
               <div className="px-2 py-1.5 border-b border-gray-100 flex gap-1 shrink-0">
-                <button onClick={confirm} disabled={!chosenItem || saving}
+                <button onClick={() => confirmMatch()} disabled={!chosenItem || saving}
                   className="flex-1 bg-green-600 text-white text-[10px] font-bold rounded py-1.5 disabled:opacity-40 hover:bg-green-500 transition">
                   {saving ? 'Saving…' : '✓ Confirm'}
                 </button>
@@ -262,14 +271,21 @@ function ZohoPanel({ tab, items }: { tab: Tab; items: Item[] }) {
   function markOk(rawName: string) { setStatusMap(m => ({ ...m, [rawName]: 'ok' })) }
   function markSkip(rawName: string) { setStatusMap(m => ({ ...m, [rawName]: 'skipped' })) }
 
-  async function doReassign(targetItem: Item) {
+  async function doReassign(targetItem: Item, force = false) {
     if (!reassigning) return
     setSaving(true)
-    await fetch('/api/aliases/correct', {
+    const res = await fetch('/api/aliases/correct', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ raw_name: reassigning.name, item_id: targetItem.id, source: srcKey }),
+      body: JSON.stringify({ raw_name: reassigning.name, item_id: targetItem.id, source: srcKey, force }),
     })
     setSaving(false)
+    if (!res.ok) {
+      const d = await res.json().catch(() => null)
+      if (res.status === 409 && d?.requires_confirmation) {
+        if (window.confirm(`${d.warning}\n\nMatch anyway?`)) doReassign(targetItem, true)
+      }
+      return
+    }
     setGroups(prev => prev.map(g => {
       if (g.item_id !== selected?.item_id) return g
       return { ...g, raw_names: g.raw_names.filter(r => r.name !== reassigning.name) }
@@ -383,12 +399,134 @@ function ZohoPanel({ tab, items }: { tab: Tab; items: Item[] }) {
   )
 }
 
+// Every already-matched raw name that contradicts the item it's matched to
+// (raw text says "singles", matched item is a "pack", or vice versa) --
+// see /api/aliases/audit. Existing bad matches made before the sanity check
+// existed don't get caught by it going forward, so this is the way to find
+// and fix them retroactively.
+function FlaggedPanel({ items }: { items: Item[] }) {
+  const [rows, setRows] = useState<AuditRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set())
+  const [reassigning, setReassigning] = useState<AuditRow | null>(null)
+  const [reassignSearch, setReassignSearch] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    setLoading(true)
+    fetch('/api/aliases/audit').then(r => r.json()).then(d => { setRows(Array.isArray(d) ? d : []); setLoading(false) })
+  }, [])
+
+  const key = (r: AuditRow) => `${r.source}::${r.raw_name}::${r.item_id}`
+  const display = rows.filter(r => !dismissed.has(key(r)))
+
+  const reassignTargets = useMemo(() => {
+    const q = reassignSearch.toLowerCase()
+    if (!q) return items.filter(i => i.id !== reassigning?.item_id).slice(0, 40)
+    return items.filter(i => i.id !== reassigning?.item_id &&
+      (i.canonical_name.toLowerCase().includes(q) || (i.cf_group ?? '').toLowerCase().includes(q))
+    ).slice(0, 40)
+  }, [items, reassignSearch, reassigning])
+
+  async function doFix(target: Item, force = false) {
+    if (!reassigning) return
+    setSaving(true)
+    const srcKey = reassigning.source === 'bills' ? 'zoho_bills' : 'zoho_sales'
+    const res = await fetch('/api/aliases/correct', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ raw_name: reassigning.raw_name, item_id: target.id, source: srcKey, force }),
+    })
+    setSaving(false)
+    if (!res.ok) {
+      const d = await res.json().catch(() => null)
+      if (res.status === 409 && d?.requires_confirmation) {
+        if (window.confirm(`${d.warning}\n\nMatch anyway?`)) doFix(target, true)
+      }
+      return
+    }
+    setDismissed(s => new Set(s).add(key(reassigning)))
+    setReassigning(null); setReassignSearch('')
+  }
+
+  if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
+
+  return (
+    <div className="flex flex-col flex-1 min-h-0">
+      <div className="shrink-0 px-2 py-1 border-b border-gray-200 bg-white">
+        <span className="text-[9px] text-red-600 font-bold">{display.length} flagged mismatch{display.length === 1 ? '' : 'es'}</span>
+        <span className="text-[9px] text-gray-400 ml-2">raw name contradicts the item it&apos;s matched to (singles vs. pack)</span>
+      </div>
+      <div className="flex flex-1 min-h-0">
+        <div className="w-1/2 border-r border-gray-200 overflow-y-auto min-h-0">
+          {display.length === 0 ? (
+            <p className="text-[10px] text-gray-400 text-center py-10">No flagged mismatches found. 🎉</p>
+          ) : (
+            <table className="w-full border-collapse text-[10px]">
+              <thead className="sticky top-0 bg-gray-100 z-10">
+                <tr>
+                  <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">RAW NAME</th>
+                  <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">MATCHED TO</th>
+                  <th className="text-right px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">CNT</th>
+                </tr>
+              </thead>
+              <tbody>
+                {display.map(r => (
+                  <tr key={key(r)} onClick={() => { setReassigning(r); setReassignSearch('') }}
+                    className={`cursor-pointer border-b border-gray-100 transition ${reassigning && key(reassigning) === key(r) ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
+                    <td className="px-1 py-0.5"><p className="text-gray-900 truncate max-w-[100px]">{r.raw_name}</p></td>
+                    <td className="px-1 py-0.5"><p className="text-red-600 truncate max-w-[100px]">{r.canonical_name}</p></td>
+                    <td className="px-1 py-0.5 text-right text-gray-500">{r.cnt}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+        <div className="w-1/2 overflow-y-auto min-h-0 flex flex-col">
+          {!reassigning ? (
+            <p className="text-[10px] text-gray-400 text-center py-10">Select a flagged row to fix or dismiss</p>
+          ) : (
+            <div className="flex flex-col h-full">
+              <div className="px-2 py-1.5 bg-red-50 border-b border-red-200 shrink-0">
+                <p className="text-[9px] text-red-500 font-semibold uppercase">Flagged</p>
+                <p className="text-[10px] font-bold text-gray-900 break-words">{reassigning.raw_name}</p>
+                <p className="text-[9px] text-red-700 mt-0.5">{reassigning.warning}</p>
+                <p className="text-[9px] text-gray-400 mt-0.5">Currently matched to: {reassigning.canonical_name} ({reassigning.cnt} lines)</p>
+              </div>
+              <div className="px-2 py-1.5 border-b border-gray-100 shrink-0">
+                <button onClick={() => setDismissed(s => new Set(s).add(key(reassigning)))}
+                  className="w-full text-[10px] font-semibold text-gray-600 bg-gray-100 rounded py-1.5 hover:bg-gray-200 transition">
+                  Keep as-is (dismiss)
+                </button>
+              </div>
+              <div className="px-2 py-1.5 border-b border-gray-100 shrink-0">
+                <input value={reassignSearch} onChange={e => setReassignSearch(e.target.value)}
+                  placeholder="Search the correct item…" autoFocus
+                  className="w-full text-[10px] bg-gray-50 border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-red-400 text-gray-900" />
+              </div>
+              <div className="flex-1 overflow-y-auto min-h-0">
+                {reassignTargets.map(item => (
+                  <div key={item.id} onClick={() => !saving && doFix(item)}
+                    className="px-2 py-1.5 border-b border-gray-100 cursor-pointer hover:bg-red-50 transition">
+                    <p className="text-[10px] font-semibold text-gray-900">{item.canonical_name}</p>
+                    {item.cf_group && <p className="text-[9px] text-gray-400">{item.cf_group}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 type Props = { defaultTab?: string | null }
 
 export default function AliasesTab({ defaultTab }: Props) {
   const validTab = (defaultTab as Tab | undefined)
   const [tab, setTab] = useState<Tab>(
-    validTab && ['prezoho-sales','prezoho-bills','zoho-sales','zoho-bills'].includes(validTab)
+    validTab && ['prezoho-sales','prezoho-bills','zoho-sales','zoho-bills','flagged'].includes(validTab)
       ? validTab
       : 'prezoho-sales'
   )
@@ -401,7 +539,7 @@ export default function AliasesTab({ defaultTab }: Props) {
   }, [])
 
   useEffect(() => {
-    if (defaultTab && ['prezoho-sales','prezoho-bills','zoho-sales','zoho-bills'].includes(defaultTab)) {
+    if (defaultTab && ['prezoho-sales','prezoho-bills','zoho-sales','zoho-bills','flagged'].includes(defaultTab)) {
       setTab(defaultTab as Tab)
     }
   }, [defaultTab])
@@ -422,14 +560,16 @@ export default function AliasesTab({ defaultTab }: Props) {
             <button key={t.id} onClick={() => setTab(t.id)}
               className={`shrink-0 text-[9px] font-bold px-2 py-0.5 rounded-full transition
                 ${tab === t.id
-                  ? (t.id.startsWith('zoho') ? 'bg-indigo-600 text-white' : 'bg-blue-600 text-white')
+                  ? (t.id === 'flagged' ? 'bg-red-600 text-white' : t.id.startsWith('zoho') ? 'bg-indigo-600 text-white' : 'bg-blue-600 text-white')
                   : 'bg-gray-100 text-gray-500'}`}>
               {t.label}
             </button>
           ))}
         </div>
       </div>
-      {isZoho
+      {tab === 'flagged'
+        ? <FlaggedPanel items={items} />
+        : isZoho
         ? <ZohoPanel tab={tab} items={items} />
         : <PreZohoPanel tab={tab} items={items} />
       }
