@@ -132,6 +132,10 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
       GROUP BY sr.receipt_date::date
     ),
     daily_aliases AS (
+      -- Only from lines with a real, non-zero quantity -- an empty-shell
+      -- line (raw name recorded but no quantity/customer, i.e. not an
+      -- actual transaction) shouldn't be shown as "the alias recorded that
+      -- day" when nothing else about the day reflects it.
       SELECT d, STRING_AGG(DISTINCT alias, ' / ' ORDER BY alias) AS aliases
       FROM (
         SELECT sr.receipt_date::date AS d, srl.raw_item_name AS alias
@@ -139,12 +143,14 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
         JOIN sales_receipts sr ON sr.id = srl.receipt_id
         WHERE srl.item_id = ${id}
           AND srl.raw_item_name IS NOT NULL AND TRIM(srl.raw_item_name) <> ''
+          AND srl.quantity IS NOT NULL AND srl.quantity <> 0
         UNION ALL
         SELECT b.bill_date::date AS d, bl.raw_item_name AS alias
         FROM bill_lines bl
         JOIN bills b ON b.id = bl.bill_id
         WHERE bl.item_id = ${id}
           AND bl.raw_item_name IS NOT NULL AND TRIM(bl.raw_item_name) <> ''
+          AND bl.quantity IS NOT NULL AND bl.quantity <> 0
       ) sub
       GROUP BY d
     )
