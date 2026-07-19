@@ -20,7 +20,7 @@ export async function GET() {
       ) AS aliases
     FROM items i
     LEFT JOIN item_aliases a ON a.item_id = i.id
-    WHERE LOWER(i.status) NOT IN ('inactive')
+    WHERE i.status IS NULL OR LOWER(i.status) NOT IN ('inactive')
     GROUP BY i.id, i.canonical_name, i.cf_group
     ORDER BY i.cf_group NULLS LAST, i.canonical_name
   `
