@@ -120,11 +120,23 @@ export function packSideCedis(row: PackChainRow, unitsPerPack: number, sheetPric
   return parseFloat((row.packLoss * (unitsPerPack > 0 ? unitsPerPack : 0) * sheetPrice).toFixed(2))
 }
 
-// ₵ value of one closed pack cycle's USED/PACK ledger -- positive = loss
-// (sheets given but never recorded used), negative = gain (used beyond what
-// the pack gave).
+// ₵ value of one pack cycle's USED/PACK ledger -- positive = loss (sheets
+// given but never recorded used), negative = gain (used beyond what the
+// pack gave).
 export function cycleCedisValue(cyc: PackCycle, sheetPrice: number): number {
   return parseFloat(((cyc.sheetsGiven - cyc.used) * sheetPrice).toFixed(2))
+}
+
+// A cycle's LOSS side isn't certain until it closes -- more usage might
+// still come in before the next pack, so "sheets left over" could still get
+// used up. Its GAIN side (already using more than the pack gave) is
+// different: that's already true today and can only grow from here, so it's
+// surfaced the moment it happens instead of waiting for the pack to close.
+// Returns null when there's nothing to report yet.
+export function realizedCycleCedis(cyc: PackCycle, sheetPrice: number): number | null {
+  const value = cycleCedisValue(cyc, sheetPrice)
+  if (cyc.end !== null) return value
+  return value < -0.001 ? value : null
 }
 
 // The chain's TOTAL ₵ column, summed: pack-side loss/gain (packs × singles-
@@ -145,9 +157,8 @@ export function computeChainLossSummary(packDayRows: ItemDayRow[], singlesDayRow
   let lossAmt = 0, lossCount = 0, gainAmt = 0
   for (const row of chainRows) {
     const cyc = cyclesByStart.get(row.date)
-    const cycOpen = cyc ? cyc.end === null : false
     const pCedis = packSideCedis(row, unitsPerPack, sheetPrice)
-    const cCedis = cyc && !cycOpen ? cycleCedisValue(cyc, sheetPrice) : null
+    const cCedis = cyc ? realizedCycleCedis(cyc, sheetPrice) : null
     if (pCedis === null && cCedis === null) continue
     const total = (pCedis ?? 0) + (cCedis ?? 0)
     lossAmt += total
