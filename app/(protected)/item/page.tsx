@@ -42,8 +42,9 @@ const NoStaffTimesList = dynamic(() => import('../staff/StaffClient').then(m => 
 const LossTab        = dynamic(() => import('./_components/LossTab'),         { ssr: false, loading: () => loading('Loading…') })
 const LossFeedTab    = dynamic(() => import('./_components/LossFeedTab'),     { ssr: false, loading: () => loading('Loading…') })
 const ProfitLossTab  = dynamic(() => import('./_components/ProfitLossTab'),   { ssr: false, loading: () => loading('Loading…') })
+const DailySummaryTab = dynamic(() => import('./_components/DailySummaryTab'), { ssr: false, loading: () => loading('Loading…') })
 
-type OuterTab = 'today' | 'loss' | 'errors' | 'data' | 'pl' | 'expenses' | 'cab' | 'staff'
+type OuterTab = 'today' | 'loss' | 'errors' | 'data' | 'pl' | 'expenses' | 'cab' | 'staff' | 'dailySummary'
 
 // Sales, Bills, Counts, and Feed live as submenus inside the Loss tab.
 type LossView = 'items' | 'sales' | 'bills' | 'counts' | 'feed'
@@ -148,6 +149,7 @@ const VIOLATIONS: Record<OuterTab, { key: string; label: string; category?: Erro
   expenses: [],
   cab: [],
   staff: [],
+  dailySummary: [],
 }
 
 const COUNTS_VIOLATIONS = new Set(['daily', '7day', '15day'])
@@ -186,7 +188,7 @@ function TabIcon({ icon, label, active, onClick, count }: { icon: string; label:
   )
 }
 
-const VALID_TABS: OuterTab[] = ['today', 'loss', 'errors', 'data', 'pl', 'expenses', 'cab', 'staff']
+const VALID_TABS: OuterTab[] = ['today', 'loss', 'errors', 'data', 'pl', 'expenses', 'cab', 'staff', 'dailySummary']
 
 function ItemHubPageInner() {
   const router = useRouter()
@@ -402,7 +404,7 @@ function ItemHubPageInner() {
     productType !== 'all' ? (productType === 'goods' ? 'Goods' : 'Services') : null,
   ].filter(Boolean).join(' · ')
 
-  const showControls = outerTab !== 'today' && outerTab !== 'staff' && outerTab !== 'data' && outerTab !== 'pl'
+  const showControls = outerTab !== 'today' && outerTab !== 'staff' && outerTab !== 'data' && outerTab !== 'pl' && outerTab !== 'dailySummary'
   const { data: session } = useSession()
   const role = (session?.user as any)?.role ?? 'staff'
   const username = (session?.user as any)?.username ?? session?.user?.name ?? ''
@@ -435,6 +437,7 @@ function ItemHubPageInner() {
             <TabIcon icon="📉" label="Item"     active={outerTab === 'loss'}     onClick={() => changeTab('loss')} />
             <TabIcon icon="💸" label="Exp."     active={outerTab === 'expenses'} onClick={() => changeTab('expenses')} />
             <TabIcon icon="👤" label="Staff"    active={outerTab === 'staff'}    onClick={() => changeTab('staff')} />
+            <TabIcon icon="🗓️" label="Daily"    active={outerTab === 'dailySummary'} onClick={() => changeTab('dailySummary')} />
           </div>
 
           {/* Hamburger — outside the flex tabs row so dropdown isn't clipped */}
@@ -621,6 +624,11 @@ function ItemHubPageInner() {
         {outerTab === 'pl' && (
           <TabErrorBoundary>
             <ProfitLossTab />
+          </TabErrorBoundary>
+        )}
+        {outerTab === 'dailySummary' && (
+          <TabErrorBoundary>
+            <DailySummaryTab />
           </TabErrorBoundary>
         )}
         {outerTab === 'today' && !(addForm === 'sale' || addForm === 'bill' || addForm === 'expense') && (
