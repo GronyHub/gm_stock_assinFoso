@@ -1,5 +1,49 @@
 import sql from '@/lib/db'
 
+// Named pack-chains where counting the singles side should also prompt (or,
+// for A4 Brown Envelope/A4 Lamination/4x6, require) a same-day count of the
+// pack side too -- a pack can otherwise sit open through an entire
+// USED/PACK cycle overrun with nobody noticing (see the 17th June A4 Brown
+// Envelope case). Matched by name since this is a small, named set of
+// chains, not a rule for every pack item. Matching a PACK item's own name
+// is harmless: the "does anything convert into this item" check below
+// naturally excludes it, since nothing converts into a pack.
+const PACK_PAIRING_CHAINS: { match: RegExp; blocking: boolean }[] = [
+  { match: /a4\s*brown\s*envelope/i, blocking: true },
+  { match: /a4\s*lamination/i, blocking: true },
+  { match: /4x6/i, blocking: true },
+  { match: /a4\s*sheet/i, blocking: false },
+]
+
+export type PackPairingResult = { blocking: boolean; packs: { id: number; name: string }[] }
+
+// Null when this item isn't the singles side of a named chain, the chain
+// isn't actually wired up (converts_to_item_id) yet, or one of its packs
+// already has a count for this date.
+export async function packPairingCheck(itemId: number, itemName: string, date: string): Promise<PackPairingResult | null> {
+  const chain = PACK_PAIRING_CHAINS.find(c => c.match.test(itemName))
+  if (!chain) return null
+  try {
+    const packs = await sql`
+      SELECT id, canonical_name FROM items WHERE converts_to_item_id = ${itemId}
+    ` as { id: number; canonical_name: string }[]
+    if (!packs.length) return null
+
+    const packIds = packs.map(p => p.id)
+    const counted = await sql`
+      SELECT 1 FROM stock_counts
+      WHERE item_id = ANY(${packIds}) AND count_date::date = ${date}
+      LIMIT 1
+    `
+    if (counted.length > 0) return null
+
+    return { blocking: chain.blocking, packs: packs.map(p => ({ id: p.id, name: p.canonical_name })) }
+  } catch (e) {
+    console.error('packPairingCheck failed (allowing entry):', e)
+    return null
+  }
+}
+
 // Expected stock of an item on a given date, from records alone: the last
 // count strictly before that date, plus purchases (bills) and pack
 // conversions credited in since, minus everything recorded as used/sold

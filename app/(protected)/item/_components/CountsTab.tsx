@@ -120,10 +120,82 @@ function LossDialog({ prompt: lp, onClose, onFixRecords }: {
   )
 }
 
-function CountRow({ item, onSaved, onLoss }: {
+type PackRef = { id: number; name: string }
+type PairingPrompt = { itemName: string; packs: PackRef[]; retry: () => void }
+
+// A blocking pack-chain (A4 Brown Envelope, A4 Lamination, 4x6): the singles
+// count can't be saved until one of its packs is also counted today -- a
+// pack can otherwise sit open through an entire USED/PACK overrun with
+// nobody noticing. Lets the counter enter the pack's qty right here instead
+// of navigating away and coming back.
+function PairingDialog({ prompt: pp, onClose }: { prompt: PairingPrompt; onClose: () => void }) {
+  const [packId, setPackId] = useState<number>(pp.packs[0].id)
+  const [qty, setQty] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState('')
+
+  async function saveBoth() {
+    if (qty === '') { setErr('Enter the pack count.'); return }
+    setSaving(true); setErr('')
+    const res = await fetch('/api/stock/count', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId: packId, qty: Number(qty), notes: '' }),
+    })
+    setSaving(false)
+    if (!res.ok) {
+      const d = await res.json().catch(() => null)
+      setErr(d?.error ?? 'Could not save the pack count.')
+      return
+    }
+    onClose()
+    pp.retry()
+  }
+
+  return (
+    <div className="fixed inset-0 z-[200] bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl max-h-[92dvh] overflow-y-auto p-4 space-y-3">
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+          <p className="text-sm font-bold text-amber-800">Count the pack too</p>
+          <p className="text-xs text-amber-900 mt-0.5">
+            &quot;{pp.itemName}&quot; is paired with {pp.packs.map(p => p.name).join(' / ')} — count it too before this can be saved.
+          </p>
+        </div>
+        {pp.packs.length > 1 && (
+          <div>
+            <p className="text-xs text-gray-500 mb-1">Which pack?</p>
+            <select value={packId} onChange={e => setPackId(Number(e.target.value))}
+              className="w-full bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-2 text-sm outline-none">
+              {pp.packs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
+        )}
+        <div>
+          <p className="text-xs text-gray-500 mb-1">Pack qty counted</p>
+          <input type="number" min="0" step="any" value={qty} onChange={e => setQty(e.target.value)}
+            inputMode="decimal" autoFocus
+            className="w-full bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-300" />
+        </div>
+        {err && <p className="text-xs text-red-600">{err}</p>}
+        <div className="flex gap-2">
+          <button onClick={saveBoth} disabled={saving}
+            className="flex-1 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2.5 transition">
+            {saving ? 'Saving…' : 'Save Both'}
+          </button>
+          <button onClick={onClose}
+            className="px-4 py-2.5 bg-gray-100 text-gray-600 text-sm font-semibold rounded-xl">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CountRow({ item, onSaved, onLoss, onPairing }: {
   item: DailyItem
   onSaved: (id: number) => void
   onLoss: (d: any, retry: (extra: LossExtra) => void) => void
+  onPairing: (itemName: string, packs: PackRef[], retry: () => void) => void
 }) {
   const [customQty, setCustomQty] = useState('')
   const [saving, setSaving] = useState(false)
@@ -138,6 +210,10 @@ function CountRow({ item, onSaved, onLoss }: {
     setSaving(false)
     if (res.ok) { onSaved(item.item_id); return }
     const d = await res.json().catch(() => null)
+    if (res.status === 409 && d?.requires_pack_count) {
+      onPairing(item.item_name, d.packs, () => submit(qty, lossExtra))
+      return
+    }
     if (res.status === 409 && d?.requires_loss_reason) {
       onLoss(d, extra => { submit(qty, extra) })
       return
@@ -182,11 +258,12 @@ function CountRow({ item, onSaved, onLoss }: {
 
 // Ad-hoc count of ANY item, any time -- not just the ones due today. Same-day
 // counts replace rather than duplicate (see /api/stock/count).
-function ManualCountForm({ items, onSaved, onClose, onLoss }: {
+function ManualCountForm({ items, onSaved, onClose, onLoss, onPairing }: {
   items: Item[]
   onSaved: () => void
   onClose: () => void
   onLoss: (d: any, retry: (extra: LossExtra) => void) => void
+  onPairing: (itemName: string, packs: PackRef[], retry: () => void) => void
 }) {
   const [q, setQ] = useState('')
   const [sel, setSel] = useState<Item | null>(null)
@@ -215,6 +292,10 @@ function ManualCountForm({ items, onSaved, onClose, onLoss }: {
     setSaving(false)
     if (res.ok) { onSaved(); onClose(); return }
     const d = await res.json().catch(() => null)
+    if (res.status === 409 && d?.requires_pack_count) {
+      onPairing(sel.item_name, d.packs, () => save(lossExtra))
+      return
+    }
     if (res.status === 409 && d?.requires_loss_reason) {
       onLoss(d, extra => { save(extra) })
       return
@@ -294,6 +375,8 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
   const [showManual, setShowManual] = useState(false)
   const [lossPrompt, setLossPrompt] = useState<LossPrompt | null>(null)
   const promptLoss = (d: any, retry: (extra: LossExtra) => void) => setLossPrompt({ d, retry })
+  const [pairingPrompt, setPairingPrompt] = useState<PairingPrompt | null>(null)
+  const promptPairing = (itemName: string, packs: PackRef[], retry: () => void) => setPairingPrompt({ itemName, packs, retry })
 
   function loadRecords() {
     fetch('/api/stock/counts').then(r => r.json()).then(d => { setRecords(d); setLoading(false) })
@@ -401,6 +484,7 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
     return (
       <div className="overflow-y-auto h-full py-2">
         {lossPrompt && <LossDialog prompt={lossPrompt} onClose={() => setLossPrompt(null)} onFixRecords={onFixRecords} />}
+        {pairingPrompt && <PairingDialog prompt={pairingPrompt} onClose={() => setPairingPrompt(null)} />}
         <div className="flex justify-end px-2 pb-1">
           <button onClick={() => setShowManual(v => !v)}
             className="text-[9px] font-semibold px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-500 transition">
@@ -408,7 +492,7 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
           </button>
         </div>
         {showManual && (
-          <ManualCountForm items={items} onClose={() => setShowManual(false)} onLoss={promptLoss}
+          <ManualCountForm items={items} onClose={() => setShowManual(false)} onLoss={promptLoss} onPairing={promptPairing}
             onSaved={() => { loadRecords(); loadDaily() }} />
         )}
         {dailyLoading ? (
@@ -431,7 +515,7 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
             </thead>
             <tbody>
               {countItems.map(item => (
-                <CountRow key={item.item_id} item={item} onLoss={promptLoss}
+                <CountRow key={item.item_id} item={item} onLoss={promptLoss} onPairing={promptPairing}
                   onSaved={id => {
                     if (violation === 'daily') setDailyItems(prev => prev.filter(i => i.item_id !== id))
                     else if (violation === '7day') setGmcWeeklyItems(prev => prev.filter(i => i.item_id !== id))
@@ -479,6 +563,7 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
   return (
     <div className="flex flex-col h-full min-h-0">
       {lossPrompt && <LossDialog prompt={lossPrompt} onClose={() => setLossPrompt(null)} onFixRecords={onFixRecords} />}
+      {pairingPrompt && <PairingDialog prompt={pairingPrompt} onClose={() => setPairingPrompt(null)} />}
       <div className="flex items-center justify-end gap-1.5 px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
         <button onClick={() => setShowManual(v => !v)}
           className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-600 text-white hover:bg-blue-500 transition">
@@ -490,7 +575,7 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
         </button>
       </div>
       {showManual && (
-        <ManualCountForm items={items} onClose={() => setShowManual(false)} onLoss={promptLoss}
+        <ManualCountForm items={items} onClose={() => setShowManual(false)} onLoss={promptLoss} onPairing={promptPairing}
           onSaved={() => { loadRecords(); loadDaily() }} />
       )}
       <div className="flex-1 overflow-y-auto min-h-0">

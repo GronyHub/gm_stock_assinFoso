@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { recordCountRevision } from '@/lib/countRevisions'
-import { gainViolation, expectedStockAt } from '@/lib/stockGuard'
+import { gainViolation, expectedStockAt, packPairingCheck } from '@/lib/stockGuard'
 import { isOwnerLevel } from '@/lib/roles'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -28,6 +28,19 @@ export async function POST(req: NextRequest) {
   // bill or GMC record is missing and must be entered first.
   const gainErr = await gainViolation(Number(itemId), Number(qty), today)
   if (gainErr) return NextResponse.json({ error: gainErr }, { status: 400 })
+
+  // For named pack-chains (A4 Brown Envelope, A4 Lamination, 4x6), the pack
+  // side must also be counted today before the singles count can be saved --
+  // a pack can otherwise sit open through an entire USED/PACK overrun with
+  // nobody noticing. A4 Sheets gets the same nudge but isn't blocking.
+  const pairing = await packPairingCheck(Number(itemId), item[0].canonical_name, today)
+  if (pairing?.blocking) {
+    return NextResponse.json({
+      requires_pack_count: true,
+      packs: pairing.packs,
+      error: `"${item[0].canonical_name}" is paired with ${pairing.packs.map(p => p.name).join(' / ')} — count the pack too before this can be saved.`,
+    }, { status: 409 })
+  }
 
   // Losses must be acknowledged, not silently recorded: the counter gives a
   // reason, informs the manager and enters the manager's response (the
@@ -94,5 +107,8 @@ export async function POST(req: NextRequest) {
     await logActivity(countedBy ?? 'Unknown', 'counted stock', `${item[0].canonical_name} · qty ${qty}`)
     if (lossNote) await logActivity(countedBy ?? 'Unknown', 'reported count loss', `${item[0].canonical_name} · counted ${qty} vs expected ${expected} — ${lossNote}`)
   }
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({
+    ok: true,
+    ...(pairing && !pairing.blocking ? { pack_count_suggested: pairing.packs } : {}),
+  })
 }
