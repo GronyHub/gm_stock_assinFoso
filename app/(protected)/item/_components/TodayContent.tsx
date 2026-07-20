@@ -1,10 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
-import { fmtDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
-import { useViolations } from './useViolations'
-import { ViolationRow } from './ViolationRow'
 
 // ─── Announcements ────────────────────────────────────────────────────────────
 type MediaItem = { url: string; type: string }
@@ -478,86 +475,12 @@ function AnnouncementsPanel() {
   )
 }
 
-export default function TodayPage({ onGoToViolation, counts }: {
-  onGoToViolation?: (key: string) => void
-  counts?: Record<string, number>
-}) {
-  const [data, setData] = useState<any | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [logs, setLogs] = useState<any[]>([])
-  const [homeView, setHomeView] = useState<'manage' | 'announcements'>('manage')
-
-  const { flags, assignments, deadlines, assignedBy, assignedOn, vSettings, manageViolations, manageCount } = useViolations(counts)
-
-  function loadLogs() {
-    fetch('/api/logs').then(r => r.ok ? r.json() : []).then(d => {
-      const todayStr = new Date().toISOString().slice(0, 10)
-      const todays = (Array.isArray(d) ? d : []).filter((l: any) => String(l.created_at).slice(0, 10) === todayStr)
-      setLogs(todays.slice(0, 12))
-    }).catch(() => {})
-  }
-
-  function load() {
-    fetch('/api/today/summary')
-      .then(r => r.ok ? r.json() : Promise.reject(r.status))
-      .then(d => { setData(d); setLoading(false) })
-      .catch(() => setLoading(false))
-  }
-
-  useEffect(() => { load(); loadLogs() }, [])
-  usePolling(load, 10000)
-  usePolling(loadLogs, 15000)
-
-  if (loading) return <div className="py-10 text-center text-gray-400">Loading…</div>
-  if (!data) return <div className="py-10 text-center text-gray-400">Could not load today's summary.</div>
-
+// Grony Cash and Grony Manage are now their own top-level tabs -- Home is
+// just the News feed.
+export default function TodayPage() {
   return (
-    <div className="py-2 space-y-1.5">
-      {/* Submenus — Grony Cash and Data moved to the Grony Cash tab. */}
-      <div className="flex flex-nowrap items-center gap-1 overflow-x-auto">
-        {([
-          ['manage', '🗂️ Grony Manage'],
-          ['announcements', '📢 News'],
-        ] as const).map(([k, label]) => {
-          const n = k === 'manage' ? manageCount : null
-          const active = homeView === k
-          return (
-            <button key={k} onClick={() => setHomeView(k)}
-              className={`text-[9px] font-semibold px-1.5 py-1 rounded-full whitespace-nowrap shrink-0 transition
-                ${active ? 'bg-blue-600 text-white' : 'bg-white border border-blue-200 text-blue-700 hover:bg-blue-100'}`}>
-              {label}
-              {n !== null && (n > 0
-                ? <span className={`font-bold ${active ? 'text-amber-300' : 'text-red-600'}`}> 🚩{n}</span>
-                : <span className={active ? 'text-green-200' : 'text-green-600'}> ✓</span>)}
-            </button>
-          )
-        })}
-        <p className="ml-auto text-[9px] text-gray-400 shrink-0 hidden sm:block">{fmtDate(data.date)}</p>
-      </div>
-
-      {/* GRONY MANAGE — operational tasks with no direct money in them */}
-      {homeView === 'manage' && (
-      <div className="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5">
-        <div className="flex items-center justify-between mb-0.5">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">
-            🗂️ Grony Manage Flags {manageCount > 0 && <span className="text-red-500">🚩{manageCount}</span>}
-          </p>
-        </div>
-        {!flags ? (
-          <p className="text-[11px] text-gray-400 py-[1px]">Loading…</p>
-        ) : (
-          <div>
-            {manageViolations.map(v => (
-              <ViolationRow key={v.type} v={v} assignments={assignments} deadlines={deadlines}
-                assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
-                onGoToViolation={onGoToViolation} />
-            ))}
-          </div>
-        )}
-      </div>
-      )}
-
-      {homeView === 'announcements' && <AnnouncementsPanel />}
+    <div className="py-2">
+      <AnnouncementsPanel />
     </div>
   )
 }
