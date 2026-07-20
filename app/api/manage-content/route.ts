@@ -27,45 +27,56 @@ This app is how Grony Multimedia tracks sales, stock, money, and daily operation
 
 # The Main Tabs
 
-Everything lives under a few tabs at the top of the screen, plus a Home button.
+A Home button plus three tabs across the top: Grony Cash, Grony Manage, Daily.
 
 ## Home
-The News feed -- announcements and updates from the team. Post a message, photo, or voice note here to keep everyone informed.
+- Flags -- one combined list of everything needing attention, cash and non-cash together. Each flag has a "Fix now →" link that jumps straight to it.
+- News feed -- announcements, photos, and voice notes, below the flags. Post a message here to keep everyone informed.
 
 ## Grony Cash
-Everything to do with money:
-- Items -- the shop's stock list, with pack-chain loss/gain tracking
-- Sales -- every sales receipt (WIC = Walk-In Customer, GMC = Grony Multimedia as Customer, i.e. internal use, not a real sale)
-- Bills -- what the shop has bought from vendors
-- Counts -- physical stock counts
-- Feed -- the day-by-day loss/gain history
-- Data -- analytics and charts
-- Expenses -- money spent, including tracked shop Properties (equipment etc.)
-- P&L -- Profit & Loss (owner and Joe only)
-- CAB -- Cash at Bank reconciliation
+Everything to do with money. Top row: Items, Sales, Bills, Expenses, Data, P&L (owner and Joe only), CAB.
+- Items -- the shop's stock list, with pack-chain loss/gain tracking. Has its own sub-row: Counts, Feed, and 💲 Prices / 🔻 Loss Only / 🔺 Gain Only toggles for the pack-chain detail table.
+- Sales -- every sales receipt (WIC = Walk-In Customer, GMC = Grony Multimedia as Customer, i.e. internal use, not a real sale). Has its own sub-row: Customers, Receipts.
+- Bills -- what the shop has bought from vendors. Has its own sub-row: Vendors.
+- Counts -- physical stock counts (also reachable as a child of Items).
+- Data -- analytics and charts.
+- Expenses -- money spent.
+- P&L -- Profit & Loss.
+- CAB -- Cash at Bank reconciliation.
 
 ## Grony Manage
 Everything that isn't directly about money:
-- Flags -- non-cash tasks that need attention
-- Staff -- clock in and out here, and see the staff rota
-- Advert / Dress Code -- pulled from the Closer's end-of-day questionnaire
-- Properties -- the shop's tracked physical assets
-- Arrangement, Cleanliness, Future, Customer Display, Staff Display, Repair Works, Quality Assurance -- simple day-to-day logs; add a note (and a photo if useful) whenever something in that category happens
-- Training -- this page, plus Company Laws and Assessments
+- Staff -- clock in and out here, and see the staff rota (see "Clocking In/Out" below).
+- Advert / Dress Code -- pulled from the Closer's end-of-day questionnaire.
+- Properties -- the shop's tracked physical assets.
+- Arrangement, Cleanliness, Future, Customer Display, Staff Display, Repair Works, Quality Assurance -- simple day-to-day logs; add a note (and a photo if useful) whenever something in that category happens.
+- Training -- this page, plus Company Laws and Assessment.
+- Logs -- the activity log.
 
 ## Daily Summary
 A single end-of-day report: who worked, what was counted, what WIC and GMC bought that day, whether each sale was recorded correctly, Work Not Written, and the day's Profit/Loss. Downloadable as a PDF.
+
+# Clocking In/Out, the Opener and Closer
+
+- Clock in/out under Grony Manage > Staff. Location must be enabled -- you must be at the shop.
+- The Opener is whoever clocks in earliest each day, marked 🌅. The Closer is the last to clock out, marked 🌙, and must answer a short closing questionnaire before their clock-out is accepted.
+- The Opener's clock-in time is saved the moment they tap Clock In -- that part never changes. But the clock-in isn't fully complete until the Opener confirms that day's opening counts are done: a card stays on screen reminding them, with "Go to Counts →" and "I've Completed the Counts" buttons, until they confirm.
+- The opening counts are the shop's fixed daily-count item list. For A4 Brown Envelope, A4 Lamination and 4x6, counting the singles also requires counting their paired pack the same day (you're prompted for it right there) -- so completing the daily list covers those packs too. A4 Sheet's pack pairing stays optional and isn't required.
+
+# The Hamburger Menu
+
+The ☰ button, fixed to the bottom-left corner of the screen, holds account-level actions: View Portal As (owner and Joe only -- lets you see the app as a specific staff member), Users, Profile, and Sign out (plus Personal and Fix Mislinked Sales for owner-level users).
 
 # Roles
 
 - Staff -- the default role. Can clock in/out, enter sales/bills/expenses, do counts, and use most of the app.
 - Manager -- can additionally delete posts and see certain confidential entries.
-- Owner (and Joe, who holds the same rights as the owner) -- the only ones who can see P&L, confidential expenses like Salaries, and edit this Tutorial and the Company Laws page.
+- Owner (and Joe, who holds the same rights as the owner) -- the only ones who can see P&L, confidential expenses like Salaries, use View Portal As, and edit this Tutorial and the Company Laws page.
 
 # A Few Things Worth Knowing
 
 - WIC vs GMC: WIC is a real paying customer walking in. GMC means the shop itself is the "customer" -- stock taken for internal use, not a sale.
-- The Errors list tracks every kind of data problem the app knows about -- missing prices, duplicate items, unlinked sales, and more. Clearing these keeps the shop's numbers accurate.
+- Flags cover every kind of thing that needs attention -- missing prices, duplicate items, unlinked sales, outstanding daily counts, and more. Clearing them keeps the shop's numbers accurate. Tapping "Fix now →" on a flag jumps straight to it.
 - Every item a WIC customer buys should be counted the next day, to confirm the stock actually dropped as expected.`,
   training_laws: `# Company Laws
 
