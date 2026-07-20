@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { expectedStockAt } from '@/lib/stockGuard'
+import { verifySaleLine, type VerifyStatus } from '@/lib/saleVerify'
 import { NextRequest, NextResponse } from 'next/server'
 
 function shiftDate(date: string, days: number) {
@@ -11,70 +12,58 @@ function shiftDate(date: string, days: number) {
 }
 
 type ItemLineRow = { item_id: number | null; item_name: string; qty: string | number; total: string | number }
-type StockCheck = {
-  previousStock: number | null
-  currentStock: number | null
-  currentStockSource: 'counted' | 'expected' | null
-  expectedStock?: number | null
-  verifyStatus: 'verified' | 'mismatch' | 'pending' | 'unknown' | 'service' | 'unlinked'
-}
+type StockInfo = { previousStock: number | null; currentStock: number | null }
 
-// Per item sold that day: stock on record just before the sale, stock on
-// record just after (both purely from stock_counts/bills/sales history --
-// see lib/stockGuard.expectedStockAt, the same formula the gain-guard uses),
-// and whether the sale is actually verified yet. A sale is only truly
-// verified once a real count lands on or after this date and matches the
-// records-based projection -- until then it's "pending" (this is exactly
-// why WIC purchases need to be counted the next day). If the item was also
-// physically counted on this same date, that count is used immediately.
-async function computeStockChecks(
-  items: ItemLineRow[],
-  date: string,
-  dailyCount: { item_id: number; quantity_counted: string | number }[],
-) {
+// Before/After stock for each item sold that day -- purely from
+// stock_counts/bills/sales history (lib/stockGuard.expectedStockAt, the same
+// formula the gain-guard uses). Informational only: it does NOT gate the
+// verify status below, since an item can be sold correctly long before
+// anyone physically counts it again.
+async function computeStockInfo(items: ItemLineRow[], date: string) {
   const ids = Array.from(new Set(items.map(r => r.item_id).filter((id): id is number => id != null)))
-  if (ids.length === 0) return new Map<number, StockCheck>()
+  if (ids.length === 0) return new Map<number, StockInfo>()
 
   const products = await sql`SELECT id, product_type FROM items WHERE id = ANY(${ids})`
   const productType = new Map(products.map((p: any) => [p.id, p.product_type]))
-  const countedToday = new Map(dailyCount.map(c => [c.item_id, parseFloat(String(c.quantity_counted)) || 0]))
   const prevDate = shiftDate(date, -1)
 
-  const entries: [number, StockCheck][] = await Promise.all(ids.map(async (id): Promise<[number, StockCheck]> => {
-    if (productType.get(id) === 'service') {
-      return [id, { previousStock: null, currentStock: null, currentStockSource: null, verifyStatus: 'service' }]
-    }
-    const [previousStock, expectedStock] = await Promise.all([
+  const entries: [number, StockInfo][] = await Promise.all(ids.map(async (id): Promise<[number, StockInfo]> => {
+    if (productType.get(id) === 'service') return [id, { previousStock: null, currentStock: null }]
+    const [previousStock, currentStock] = await Promise.all([
       expectedStockAt(id, prevDate),
       expectedStockAt(id, date),
     ])
-    if (previousStock === null) {
-      return [id, { previousStock: null, currentStock: null, currentStockSource: null, verifyStatus: 'unknown' }]
-    }
-    const actual = countedToday.get(id)
-    if (actual !== undefined) {
-      const verified = Math.abs(actual - (expectedStock ?? 0)) <= 0.01
-      return [id, {
-        previousStock, currentStock: actual, currentStockSource: 'counted',
-        expectedStock, verifyStatus: verified ? 'verified' : 'mismatch',
-      }]
-    }
-    return [id, {
-      previousStock, currentStock: expectedStock, currentStockSource: 'expected',
-      expectedStock, verifyStatus: 'pending',
-    }]
+    return [id, { previousStock, currentStock }]
   }))
 
   return new Map(entries)
 }
 
-function attachStockChecks(items: ItemLineRow[], checks: Map<number, StockCheck>) {
-  return items.map(r => ({
-    ...r,
-    ...(r.item_id != null && checks.has(r.item_id)
-      ? checks.get(r.item_id)
-      : { previousStock: null, currentStock: null, currentStockSource: null, verifyStatus: 'unlinked' }),
-  }))
+async function fetchItemStatuses(items: ItemLineRow[]) {
+  const ids = Array.from(new Set(items.map(r => r.item_id).filter((id): id is number => id != null)))
+  const statuses = ids.length ? await sql`SELECT id, status FROM items WHERE id = ANY(${ids})` : []
+  return new Map<number, string | null>(statuses.map((s: any) => [s.id, s.status]))
+}
+
+// Confirms each sale line was recorded correctly (linked to a real, active
+// item, positive quantity, amount present) -- see lib/saleVerify for the
+// exact rule, shared with /api/sales/verified-dates.
+function attachChecks(items: ItemLineRow[], stockInfo: Map<number, StockInfo>, statusById: Map<number, string | null>) {
+  return items.map(r => {
+    const verifyStatus: VerifyStatus = verifySaleLine({
+      itemId: r.item_id,
+      itemStatus: r.item_id != null ? (statusById.get(r.item_id) ?? null) : null,
+      quantity: parseFloat(String(r.qty)),
+      total: r.total == null ? null : parseFloat(String(r.total)),
+    })
+    const info = r.item_id != null ? stockInfo.get(r.item_id) : undefined
+    return {
+      ...r,
+      previousStock: info?.previousStock ?? null,
+      currentStock: info?.currentStock ?? null,
+      verifyStatus,
+    }
+  })
 }
 
 // End-of-day report for a single date: who worked, what was counted, what
@@ -147,7 +136,15 @@ export async function GET(req: NextRequest) {
     const expenses = expensesAgg[0] ?? { count: 0, total: 0 }
     const profitLoss = cashCounted - Number(expenses.total) - Number(bills.total)
 
-    const stockChecks = await computeStockChecks([...itemsWIC, ...itemsGMC] as ItemLineRow[], date, dailyCount as any)
+    const allLines = [...itemsWIC, ...itemsGMC] as ItemLineRow[]
+    const [stockInfo, statusById] = await Promise.all([
+      computeStockInfo(allLines, date),
+      fetchItemStatuses(allLines),
+    ])
+    const itemsWICChecked = attachChecks(itemsWIC as ItemLineRow[], stockInfo, statusById)
+    const itemsGMCChecked = attachChecks(itemsGMC as ItemLineRow[], stockInfo, statusById)
+    const allVerified = allLines.length > 0
+      && [...itemsWICChecked, ...itemsGMCChecked].every(r => r.verifyStatus === 'verified')
 
     return NextResponse.json({
       date,
@@ -155,8 +152,9 @@ export async function GET(req: NextRequest) {
       dailyCount,
       receipts,
       hasReceipt: receipts.length > 0,
-      itemsWIC: attachStockChecks(itemsWIC as ItemLineRow[], stockChecks),
-      itemsGMC: attachStockChecks(itemsGMC as ItemLineRow[], stockChecks),
+      itemsWIC: itemsWICChecked,
+      itemsGMC: itemsGMCChecked,
+      allVerified,
       cashCounted,
       wnwTotal,
       bills: { count: Number(bills.count), total: Number(bills.total) },

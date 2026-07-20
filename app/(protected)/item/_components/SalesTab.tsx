@@ -296,6 +296,16 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
   useEffect(() => { loadReceipts() }, [])
   usePolling(loadReceipts, 5000, editingId === null)
 
+  const [verifiedDates, setVerifiedDates] = useState<Set<string>>(new Set())
+  function loadVerifiedDates() {
+    fetch('/api/sales/verified-dates')
+      .then(r => r.ok ? r.json() : [])
+      .then(d => setVerifiedDates(new Set(Array.isArray(d) ? d : [])))
+      .catch(() => {})
+  }
+  useEffect(() => { loadVerifiedDates() }, [])
+  usePolling(loadVerifiedDates, 20000)
+
   const groupItemNames = useMemo(() => {
     if (!groupFilter || groupFilter === 'All') return null
     return new Set(items.filter(i => (i.cf_group ?? 'Ungrouped') === groupFilter).map(i => i.item_name))
@@ -593,7 +603,12 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
             {filtered.map(r => (
               <tr key={r.id} onClick={() => jumpTo(r)}
                 className={`cursor-pointer border-b border-gray-100 transition ${selectedId === r.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-                <td className="px-0.5 py-0.5 text-gray-700 whitespace-nowrap">{fmtShort(r.receipt_date)}</td>
+                <td className="px-0.5 py-0.5 text-gray-700 whitespace-nowrap">
+                  {fmtShort(r.receipt_date)}
+                  {verifiedDates.has(r.receipt_date?.slice(0, 10)) && (
+                    <span title="Every item sold this day is verified" className="ml-0.5">✅</span>
+                  )}
+                </td>
                 <td className="px-0.5 py-0.5 text-gray-700">{fmtCust(r.customer_name)}</td>
                 <td className="px-0.5 py-0.5 text-right text-gray-700">{fmt(r.cash_counted)}</td>
                 <td className="px-0.5 py-0.5 text-right text-gray-900 font-semibold">{fmt(r.invoice_amount)}</td>
@@ -732,7 +747,12 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
                 <>
                   <div className="flex items-center justify-between px-2 py-1 bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                     <div>
-                      <p className="text-[10px] font-bold text-gray-900">{r.customer_name ?? 'Walk-in Customer'}</p>
+                      <p className="text-[10px] font-bold text-gray-900">
+                        {r.customer_name ?? 'Walk-in Customer'}
+                        {verifiedDates.has(r.receipt_date?.slice(0, 10)) && (
+                          <span title="Every item sold this day is verified" className="ml-1">✅</span>
+                        )}
+                      </p>
                       <p className="text-[9px] text-gray-400">{fmtDate(r.receipt_date)} · {r.receipt_number}</p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
