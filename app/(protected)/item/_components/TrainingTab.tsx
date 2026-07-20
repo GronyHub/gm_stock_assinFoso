@@ -6,9 +6,9 @@ import AssessmentPanel from './AssessmentPanel'
 type TrainingView = 'tutorial' | 'laws' | 'assessment'
 
 const SUBMENU: { key: TrainingView; label: string }[] = [
-  { key: 'tutorial', label: '📖 Tutorial' },
-  { key: 'laws', label: '⚖️ Company Laws' },
-  { key: 'assessment', label: '🧪 Assessment' },
+  { key: 'tutorial', label: 'Tutorial' },
+  { key: 'laws', label: 'Company Laws' },
+  { key: 'assessment', label: 'Assessment' },
 ]
 
 // Grony Manage > Training: how the app works (kept up to date as it
@@ -19,11 +19,11 @@ export default function TrainingTab() {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="flex items-center gap-1 px-2 py-1 bg-gray-50 border-b border-gray-100 overflow-x-auto shrink-0">
+      <div className="flex items-center gap-1 px-2 py-0.5 bg-white border-b border-gray-100 overflow-x-auto shrink-0">
         {SUBMENU.map(v => (
           <button key={v.key} onClick={() => setView(v.key)}
-            className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap transition
-              ${view === v.key ? 'bg-blue-600 text-white' : 'bg-white border border-blue-200 text-blue-700 hover:bg-blue-100'}`}>
+            className={`shrink-0 text-xs font-semibold px-2 py-0.5 rounded-lg whitespace-nowrap transition
+              ${view === v.key ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>
             {v.label}
           </button>
         ))}

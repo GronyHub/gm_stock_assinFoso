@@ -184,11 +184,11 @@ const HAMBURGER_LINKS = [
   { href: '/profile',  label: 'Profile'  },
 ]
 
-// All tabs share the same solid color; the active one is marked with a bold
-// dark ring + shadow instead, so it's unmistakable at a glance.
+// Plain/no background until active -- only the selected tab gets the brand
+// color, so the bar isn't a wall of blue when most of it is just sitting idle.
 function tabCls(active: boolean) {
-  return `relative flex-1 min-w-0 flex flex-col items-center justify-center gap-1 px-1 py-2.5 rounded-xl transition text-white
-    bg-brand ${active ? 'ring-4 ring-gray-900 shadow-lg' : 'hover:brightness-110'}`
+  return `relative flex-1 min-w-0 flex flex-col items-center justify-center gap-1 px-1 py-2.5 rounded-xl transition
+    ${active ? 'bg-brand text-white ring-4 ring-gray-900 shadow-lg' : 'text-gray-500 hover:bg-gray-100'}`
 }
 
 function TabIcon({ icon, label, active, onClick, count }: { icon: string; label: string; active: boolean; onClick: () => void; count?: number }) {
@@ -452,8 +452,8 @@ function ItemHubPageInner() {
         <div className="flex items-center pr-1.5">
           {/* Home — fixed, outside the scrollable flex area */}
           <button onClick={() => changeTab('today')}
-            className={`shrink-0 flex flex-col items-center justify-center gap-1 px-2.5 pt-2 pb-1.5 rounded-xl transition text-white
-              bg-brand ${outerTab === 'today' ? 'ring-4 ring-gray-900 shadow-lg' : 'hover:brightness-110'}`}>
+            className={`shrink-0 flex flex-col items-center justify-center gap-1 px-2.5 pt-2 pb-1.5 rounded-xl transition
+              ${outerTab === 'today' ? 'bg-brand ring-4 ring-gray-900 shadow-lg' : 'hover:bg-gray-100'}`}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo-mark.png" alt="Home" className="w-7 h-7" />
           </button>
@@ -466,24 +466,24 @@ function ItemHubPageInner() {
 
         {/* Grony Cash sub-view row: Items is the tab's own default view */}
         {outerTab === 'loss' && (
-          <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 border-t border-blue-100 overflow-x-auto">
+          <div className="flex items-center gap-1 px-2 py-0.5 bg-white border-t border-gray-100 overflow-x-auto">
             {([
-              { key: 'cash',     label: '🚩 Flag' },
-              { key: 'sales',    label: '💵 Sales' },
-              { key: 'bills',    label: '🧾 Bills' },
-              { key: 'counts',   label: '📋 Counts' },
-              { key: 'feed',     label: '🔻 Feed' },
-              { key: 'data',     label: '🔢 Data' },
-              { key: 'expenses', label: '💸 Expenses' },
-              ...(canSeePL ? [{ key: 'pl' as LossView, label: '📈 P&L' }] : []),
-              { key: 'cab',      label: '🏦 CAB' },
-              { key: 'vendors',  label: '🏭 Vendors' },
-              { key: 'customers', label: '👥 Customers' },
-              { key: 'receipts', label: '📃 Receipts' },
+              { key: 'cash',     label: 'Flag' },
+              { key: 'sales',    label: 'Sales' },
+              { key: 'bills',    label: 'Bills' },
+              { key: 'counts',   label: 'Counts' },
+              { key: 'feed',     label: 'Feed' },
+              { key: 'data',     label: 'Data' },
+              { key: 'expenses', label: 'Expenses' },
+              ...(canSeePL ? [{ key: 'pl' as LossView, label: 'P&L' }] : []),
+              { key: 'cab',      label: 'CAB' },
+              { key: 'vendors',  label: 'Vendors' },
+              { key: 'customers', label: 'Customers' },
+              { key: 'receipts', label: 'Receipts' },
             ] as { key: LossView; label: string }[]).map(v => (
               <button key={v.key} onClick={() => { setLossView(v.key); setAddForm(null) }}
-                className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap transition
-                  ${lossView === v.key ? 'bg-blue-600 text-white' : 'bg-white border border-blue-200 text-blue-700 hover:bg-blue-100'}`}>
+                className={`shrink-0 text-xs font-semibold px-2 py-0.5 rounded-lg whitespace-nowrap transition
+                  ${lossView === v.key ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>
                 {v.label}
               </button>
             ))}
