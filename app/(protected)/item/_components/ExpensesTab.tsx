@@ -201,12 +201,12 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
   )
 }
 
-type Props = { search: string }
+type Props = { search: string; initialTab?: ExpTab }
 
-export default function ExpensesTab({ search }: Props) {
+export default function ExpensesTab({ search, initialTab }: Props) {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<ExpTab>('all')
+  const [tab, setTab] = useState<ExpTab>(initialTab ?? 'all')
   const [groupBy, setGroupBy] = useState<'none' | 'account' | 'vendor'>('none')
   const [showHistory, setShowHistory] = useState(false)
   const [highlightId, setHighlightId] = useState<number | null>(null)
