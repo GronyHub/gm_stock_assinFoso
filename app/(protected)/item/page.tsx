@@ -198,28 +198,11 @@ const HAMBURGER_LINKS = [
   { href: '/profile',  label: 'Profile'  },
 ]
 
-// Plain/no background until active -- only the selected tab gets the brand
-// color, so the bar isn't a wall of blue when most of it is just sitting idle.
-function tabCls(active: boolean) {
-  return `relative flex-1 min-w-0 flex flex-col items-center justify-center gap-1 px-1 py-2.5 rounded-xl transition
-    ${active ? 'bg-brand text-white ring-4 ring-gray-900 shadow-lg' : 'text-gray-500 hover:bg-gray-100'}`
-}
-
-function TabIcon({ icon, label, active, onClick, count }: { icon: string; label: string; active: boolean; onClick: () => void; count?: number }) {
-  return (
-    <button onClick={onClick} className={tabCls(active)}
-      title={count ? `${count} violation${count !== 1 ? 's' : ''} need attention` : undefined}>
-      <span className="relative text-2xl leading-none">
-        {icon}
-        {!!count && (
-          <span className="absolute -top-2 -right-3 min-w-[17px] h-[17px] px-[3px] rounded-full bg-red-600 text-white text-[9px] font-bold flex items-center justify-center leading-none ring-2 ring-white">
-            {count > 99 ? '99+' : count}
-          </span>
-        )}
-      </span>
-      <span className="text-[10px] font-semibold leading-none truncate max-w-full">{label}</span>
-    </button>
-  )
+// Plain text, no icons -- keeps the top nav to a single line so it doesn't
+// eat vertical space. Only the selected tab gets the brand color.
+function topTabCls(active: boolean) {
+  return `shrink-0 text-sm font-bold px-3 py-2 rounded-xl whitespace-nowrap transition
+    ${active ? 'bg-brand text-white shadow-md' : 'text-gray-500 hover:bg-gray-100'}`
 }
 
 const VALID_TABS: OuterTab[] = ['today', 'loss', 'errors', 'manage', 'dailySummary']
@@ -464,20 +447,13 @@ function ItemHubPageInner() {
       {/* ── Header ── */}
       <div className="shrink-0 bg-white border-b border-gray-200">
 
-        {/* Row 1: Home + scrollable tabs (hamburger moved to a fixed bottom-left button) */}
-        <div className="flex items-center pr-1.5">
-          {/* Home — fixed, outside the scrollable flex area */}
-          <button onClick={() => changeTab('today')}
-            className={`shrink-0 flex flex-col items-center justify-center gap-1 px-2.5 pt-2 pb-1.5 rounded-xl transition
-              ${outerTab === 'today' ? 'bg-brand ring-4 ring-gray-900 shadow-lg' : 'hover:bg-gray-100'}`}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-mark.png" alt="Home" className="w-7 h-7" />
-          </button>
-          <div className="flex items-center gap-1 px-1 pt-1.5 pb-1 flex-1 min-w-0">
-            <TabIcon icon="📉" label="Grony Cash" active={outerTab === 'loss'}     onClick={() => changeTab('loss')} />
-            <TabIcon icon="🗂️" label="Grony Manage" active={outerTab === 'manage'} onClick={() => changeTab('manage')} />
-            <TabIcon icon="🗓️" label="Daily"    active={outerTab === 'dailySummary'} onClick={() => changeTab('dailySummary')} />
-          </div>
+        {/* Row 1: raw-text tabs, no icons -- single line to conserve height
+            (hamburger moved to a fixed bottom-left button) */}
+        <div className="flex items-center gap-1 px-2 py-2 overflow-x-auto">
+          <button onClick={() => changeTab('today')} className={topTabCls(outerTab === 'today')}>Home</button>
+          <button onClick={() => changeTab('loss')} className={topTabCls(outerTab === 'loss')}>Grony Cash</button>
+          <button onClick={() => changeTab('manage')} className={topTabCls(outerTab === 'manage')}>Grony Manage</button>
+          <button onClick={() => changeTab('dailySummary')} className={topTabCls(outerTab === 'dailySummary')}>Daily</button>
         </div>
 
         {/* Grony Cash top-level row: Items is the tab's own default view.
