@@ -19,6 +19,12 @@ function minsToHrs(mins: number) {
 function fc(v: number) {
   return `₵${v.toLocaleString('en-GH', { maximumFractionDigits: 2 })}`
 }
+// jsPDF's built-in fonts (Helvetica) have no ₵ glyph -- it silently renders
+// as "μ" instead. Use a plain "GHS " prefix in PDF output only; the on-screen
+// tab uses fc() above since normal browser text handles ₵ fine.
+function fcPdf(v: number) {
+  return `GHS ${v.toLocaleString('en-GH', { maximumFractionDigits: 2 })}`
+}
 function todayStr() {
   return new Date().toISOString().slice(0, 10)
 }
@@ -207,12 +213,12 @@ export default function DailySummaryTab() {
         startY: y,
         head: [['Summary', 'Amount']],
         body: [
-          ['Cash Counted', fc(data.cashCounted)],
-          ['Work Not Written', fc(data.wnwTotal)],
-          [data.canSeeAmounts ? 'Expenses' : 'Expenses (excl. Salaries)', fc(data.expenses.total)],
-          ['Bills', fc(data.bills.total)],
-          [isProfit ? 'Net Profit (cash-basis)' : 'Net Loss (cash-basis)', fc(Math.abs(data.profitLoss))],
-          [`Gross Margin — WIC Sales (SP − CP)${data.grossMarginIncomplete ? ', partial' : ''}`, fc(data.grossMarginWIC)],
+          ['Cash Counted', fcPdf(data.cashCounted)],
+          ['Work Not Written', fcPdf(data.wnwTotal)],
+          [data.canSeeAmounts ? 'Expenses' : 'Expenses (excl. Salaries)', fcPdf(data.expenses.total)],
+          ['Bills', fcPdf(data.bills.total)],
+          [isProfit ? 'Net Profit (cash-basis)' : 'Net Loss (cash-basis)', fcPdf(Math.abs(data.profitLoss))],
+          [`Gross Margin — WIC Sales (SP - CP)${data.grossMarginIncomplete ? ', partial' : ''}`, fcPdf(data.grossMarginWIC)],
         ],
         styles: { fontSize: 9 },
       })
