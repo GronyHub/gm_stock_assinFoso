@@ -39,28 +39,43 @@ async function computeStockInfo(items: ItemLineRow[], date: string) {
   return new Map(entries)
 }
 
-async function fetchItemStatuses(items: ItemLineRow[]) {
+type ItemMeta = { status: string | null; costPrice: number | null }
+
+async function fetchItemMeta(items: ItemLineRow[]) {
   const ids = Array.from(new Set(items.map(r => r.item_id).filter((id): id is number => id != null)))
-  const statuses = ids.length ? await sql`SELECT id, status FROM items WHERE id = ANY(${ids})` : []
-  return new Map<number, string | null>(statuses.map((s: any) => [s.id, s.status]))
+  const rows = ids.length ? await sql`SELECT id, status, purchase_rate FROM items WHERE id = ANY(${ids})` : []
+  return new Map<number, ItemMeta>(rows.map((r: any) => [
+    r.id,
+    { status: r.status, costPrice: r.purchase_rate == null ? null : parseFloat(r.purchase_rate) },
+  ]))
 }
 
 // Confirms each sale line was recorded correctly (linked to a real, active
 // item, positive quantity, amount present) -- see lib/saleVerify for the
-// exact rule, shared with /api/sales/verified-dates.
-function attachChecks(items: ItemLineRow[], stockInfo: Map<number, StockInfo>, statusById: Map<number, string | null>) {
+// exact rule, shared with /api/sales/verified-dates. Also attaches the
+// item's cost price and this line's gross margin (revenue minus qty * cost)
+// -- a distinct, accrual-style figure from the day's cash-basis Profit/Loss
+// below; see the caption in the UI for why they don't have to match.
+function attachChecks(items: ItemLineRow[], stockInfo: Map<number, StockInfo>, metaById: Map<number, ItemMeta>) {
   return items.map(r => {
+    const meta = r.item_id != null ? metaById.get(r.item_id) : undefined
     const verifyStatus: VerifyStatus = verifySaleLine({
       itemId: r.item_id,
-      itemStatus: r.item_id != null ? (statusById.get(r.item_id) ?? null) : null,
+      itemStatus: meta?.status ?? null,
       quantity: parseFloat(String(r.qty)),
       total: r.total == null ? null : parseFloat(String(r.total)),
     })
     const info = r.item_id != null ? stockInfo.get(r.item_id) : undefined
+    const qty = parseFloat(String(r.qty)) || 0
+    const total = r.total == null ? null : parseFloat(String(r.total))
+    const costPrice = meta?.costPrice ?? null
+    const margin = (total != null && costPrice != null) ? total - qty * costPrice : null
     return {
       ...r,
       previousStock: info?.previousStock ?? null,
       currentStock: info?.currentStock ?? null,
+      costPrice,
+      margin,
       verifyStatus,
     }
   })
@@ -137,14 +152,22 @@ export async function GET(req: NextRequest) {
     const profitLoss = cashCounted - Number(expenses.total) - Number(bills.total)
 
     const allLines = [...itemsWIC, ...itemsGMC] as ItemLineRow[]
-    const [stockInfo, statusById] = await Promise.all([
+    const [stockInfo, metaById] = await Promise.all([
       computeStockInfo(allLines, date),
-      fetchItemStatuses(allLines),
+      fetchItemMeta(allLines),
     ])
-    const itemsWICChecked = attachChecks(itemsWIC as ItemLineRow[], stockInfo, statusById)
-    const itemsGMCChecked = attachChecks(itemsGMC as ItemLineRow[], stockInfo, statusById)
+    const itemsWICChecked = attachChecks(itemsWIC as ItemLineRow[], stockInfo, metaById)
+    const itemsGMCChecked = attachChecks(itemsGMC as ItemLineRow[], stockInfo, metaById)
     const allVerified = allLines.length > 0
       && [...itemsWICChecked, ...itemsGMCChecked].every(r => r.verifyStatus === 'verified')
+
+    // Gross margin (SP - CP) on today's actual WIC sales -- an accrual-style
+    // figure, separate from the cash-basis profitLoss above. GMC lines are
+    // internal use, not revenue, so they're excluded here. Items with no
+    // cost price on record can't contribute a margin -- flagged via
+    // grossMarginIncomplete so the UI can say the figure is a partial one.
+    const grossMarginWIC = itemsWICChecked.reduce((s, r) => s + (r.margin ?? 0), 0)
+    const grossMarginIncomplete = itemsWICChecked.some(r => r.margin == null)
 
     return NextResponse.json({
       date,
@@ -160,6 +183,8 @@ export async function GET(req: NextRequest) {
       bills: { count: Number(bills.count), total: Number(bills.total) },
       expenses: { count: Number(expenses.count), total: Number(expenses.total) },
       profitLoss,
+      grossMarginWIC,
+      grossMarginIncomplete,
       canSeeAmounts,
     })
   } catch (e) {

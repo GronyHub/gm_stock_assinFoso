@@ -35,6 +35,8 @@ type ItemLine = {
   item_id: number | null; item_name: string; qty: string | number; total: string | number
   previousStock: number | null
   currentStock: number | null
+  costPrice: number | null
+  margin: number | null
   verifyStatus: VerifyStatus
 }
 type Receipt = { id: number; customer_name: string | null; total: string | number; cash_counted: string | number | null; wnw: string | number | null }
@@ -52,6 +54,8 @@ type Data = {
   bills: { count: number; total: number }
   expenses: { count: number; total: number }
   profitLoss: number
+  grossMarginWIC: number
+  grossMarginIncomplete: boolean
   canSeeAmounts: boolean
 }
 
@@ -112,6 +116,7 @@ function ItemLineTable({ rows, emptyText }: { rows: ItemLine[]; emptyText: strin
         <tr className="text-gray-400 border-b border-gray-100">
           <th className="text-left font-semibold py-1">Item</th>
           <th className="text-right font-semibold py-1">Qty</th>
+          <th className="text-right font-semibold py-1">CP</th>
           <th className="text-right font-semibold py-1">Total</th>
           <th className="text-right font-semibold py-1">Before</th>
           <th className="text-right font-semibold py-1">After</th>
@@ -125,6 +130,9 @@ function ItemLineTable({ rows, emptyText }: { rows: ItemLine[]; emptyText: strin
             <tr key={i} className="border-b border-gray-50 last:border-0">
               <td className="py-1 text-gray-700">{r.item_name}</td>
               <td className="py-1 text-right text-gray-600">{r.qty}</td>
+              <td className="py-1 text-right text-gray-500" title={r.costPrice == null ? 'No cost price on record for this item' : undefined}>
+                {r.costPrice == null ? '—' : fc(r.costPrice)}
+              </td>
               <td className="py-1 text-right text-gray-600">{fc(Number(r.total) || 0)}</td>
               <td className="py-1 text-right text-gray-500">{fmtQty(r.previousStock)}</td>
               <td className="py-1 text-right text-gray-700 font-medium">{fmtQty(r.currentStock)}</td>
@@ -203,7 +211,8 @@ export default function DailySummaryTab() {
           ['Work Not Written', fc(data.wnwTotal)],
           [data.canSeeAmounts ? 'Expenses' : 'Expenses (excl. Salaries)', fc(data.expenses.total)],
           ['Bills', fc(data.bills.total)],
-          [isProfit ? 'Net Profit' : 'Net Loss', fc(Math.abs(data.profitLoss))],
+          [isProfit ? 'Net Profit (cash-basis)' : 'Net Loss (cash-basis)', fc(Math.abs(data.profitLoss))],
+          [`Gross Margin — WIC Sales (SP − CP)${data.grossMarginIncomplete ? ', partial' : ''}`, fc(data.grossMarginWIC)],
         ],
         styles: { fontSize: 9 },
       })
@@ -236,16 +245,16 @@ export default function DailySummaryTab() {
       afterTable()
 
       const itemBody = (rows: ItemLine[]) => rows.map(r => [
-        r.item_name, String(r.qty), fc(Number(r.total) || 0),
+        r.item_name, String(r.qty), r.costPrice == null ? '—' : fc(r.costPrice), fc(Number(r.total) || 0),
         fmtQty(r.previousStock), fmtQty(r.currentStock), VERIFY_BADGE[r.verifyStatus].label,
       ])
-      const itemHead = [['Item', 'Qty', 'Total', 'Before', 'After', 'Verify']]
+      const itemHead = [['Item', 'Qty', 'CP', 'Total', 'Before', 'After', 'Verify']]
 
       heading('Items Bought — WIC')
       autoTable(doc, {
         startY: y,
         head: itemHead,
-        body: data.itemsWIC.length ? itemBody(data.itemsWIC) : [['No walk-in customer purchases.', '', '', '', '', '']],
+        body: data.itemsWIC.length ? itemBody(data.itemsWIC) : [['No walk-in customer purchases.', '', '', '', '', '', '']],
         styles: { fontSize: 8 },
       })
       afterTable()
@@ -254,7 +263,7 @@ export default function DailySummaryTab() {
       autoTable(doc, {
         startY: y,
         head: itemHead,
-        body: data.itemsGMC.length ? itemBody(data.itemsGMC) : [['No internal-use purchases.', '', '', '', '', '']],
+        body: data.itemsGMC.length ? itemBody(data.itemsGMC) : [['No internal-use purchases.', '', '', '', '', '', '']],
         styles: { fontSize: 8 },
       })
 
@@ -318,6 +327,15 @@ export default function DailySummaryTab() {
           {!data.canSeeAmounts && (
             <p className="text-[10px] text-gray-400 -mt-1">Salaries are excluded from Expenses and Profit/Loss for your account.</p>
           )}
+          <StatCard
+            label={`Gross Margin — WIC Sales (SP − CP)${data.grossMarginIncomplete ? ', partial' : ''}`}
+            value={fc(data.grossMarginWIC)}
+            tone={data.grossMarginWIC >= 0 ? 'green' : 'red'}
+          />
+          <p className="text-[10px] text-gray-400 -mt-1 leading-snug">
+            This is a different number from Net Profit above, and they&apos;re not supposed to match: Net Profit is cash-basis (cash counted minus expenses and bills, including stock bought but not yet sold today), while Gross Margin is what today&apos;s actual WIC sales earned over their cost price, regardless of when they were paid for or restocked.
+            {data.grossMarginIncomplete && ' Some items sold today have no cost price on record, so this figure is understated.'}
+          </p>
 
           {/* Staff */}
           <Section title="Staff Present & Times">
