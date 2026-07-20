@@ -47,7 +47,8 @@ Everything to do with money. Top row: Items, Sales, Bills, Expenses, Data, P&L (
 ## Grony Manage
 Everything that isn't directly about money:
 - Staff -- clock in and out here, and see the staff rota (see "Clocking In/Out" below).
-- Advert / Dress Code -- pulled from the Closer's end-of-day questionnaire.
+- Advert -- five sub-tabs (Audio, Photoshop, WhatsApp, Cuttings, Video) matching the shop's Google Drive advert folders, each holding the rules for that category, plus a Daily Log tab pulled from the Closer's end-of-day questionnaire (was the roadside advert played today).
+- Dress Code -- pulled from the Closer's end-of-day questionnaire.
 - Properties -- the shop's tracked physical assets.
 - Arrangement, Cleanliness, Future, Customer Display, Staff Display, Repair Works, Quality Assurance -- simple day-to-day logs; add a note (and a photo if useful) whenever something in that category happens.
 - Training -- this page, plus Company Laws and Assessment.
@@ -81,6 +82,24 @@ The ☰ button, fixed to the bottom-left corner of the screen, holds account-lev
   training_laws: `# Company Laws
 
 No company policies have been added here yet -- the owner will add them.`,
+  // Grony Manage > Advert sub-tabs -- one per category in the shop's Google
+  // Drive advert folder structure (1) ADVO - Advert 1..5). Each holds the
+  // rules for that advert category once the owner adds them.
+  advert_audio_roadside: `# Advert 1 — Audio (for Roadside)
+
+No rules have been added here yet -- the owner will add them.`,
+  advert_photo_photoshop: `# Advert 2 — Photo (Photoshop Files)
+
+No rules have been added here yet -- the owner will add them.`,
+  advert_photo_whatsapp: `# Advert 3 — Photo (WhatsApp Advert)
+
+No rules have been added here yet -- the owner will add them.`,
+  advert_photo_cuttings: `# Advert 4 — Photo (Cuttings)
+
+No rules have been added here yet -- the owner will add them.`,
+  advert_video: `# Advert 5 — Video Advert
+
+No rules have been added here yet -- the owner will add them.`,
 }
 
 export async function GET(req: NextRequest) {
