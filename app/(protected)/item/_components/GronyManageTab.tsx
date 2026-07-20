@@ -6,6 +6,7 @@ import { useViolations } from './useViolations'
 import { ViolationRow } from './ViolationRow'
 import ClosingReportLogView from './ClosingReportLogView'
 import ManageLogPanel from './ManageLogPanel'
+import TrainingTab from './TrainingTab'
 
 const ExpensesTab = dynamic(() => import('./ExpensesTab'), {
   ssr: false,
@@ -23,13 +24,13 @@ export type ManageView =
 
 // Simple dated log/checklist categories -- no existing data behind them, so
 // each gets a ManageLogPanel (notes + optional photo, viewable as history).
+// Training gets its own richer sub-tabs (Tutorial/Laws/Assessment) instead.
 const LOG_CATEGORIES: { key: ManageView; label: string; icon: string }[] = [
   { key: 'arrangement',      label: 'Arrangement',       icon: '🪑' },
   { key: 'cleanliness',      label: 'Cleanliness',       icon: '🧹' },
   { key: 'future',           label: 'Future',            icon: '🔭' },
   { key: 'customer_display', label: 'Customer Display',  icon: '🖼️' },
   { key: 'staff_display',    label: 'Staff Display',     icon: '📌' },
-  { key: 'training',         label: 'Training',          icon: '🎓' },
   { key: 'repair_works',     label: 'Repair Works',      icon: '🔧' },
   { key: 'quality_assurance', label: 'Quality Assurance', icon: '✅' },
 ]
@@ -41,6 +42,7 @@ const SUBMENU: { key: ManageView; label: string }[] = [
   { key: 'staff_dress', label: '👕 Dress Code' },
   { key: 'properties', label: '🏷️ Properties' },
   ...LOG_CATEGORIES.map(c => ({ key: c.key, label: `${c.icon} ${c.label}` })),
+  { key: 'training', label: '🎓 Training' },
 ]
 
 // Promoted from Home's "🗂️ Grony Manage" submenu to its own top-level tab,
@@ -104,6 +106,7 @@ export default function GronyManageTab({ onGoToViolation, counts }: {
         {view === 'advert' && <ClosingReportLogView field="advert_played" label="Advert" icon="📢" />}
         {view === 'staff_dress' && <ClosingReportLogView field="no_tshirt_staff" label="Dress Code" icon="👕" />}
         {view === 'properties' && <ExpensesTab search="" initialTab="properties" />}
+        {view === 'training' && <TrainingTab />}
         {logCategory && <ManageLogPanel category={logCategory.key} label={logCategory.label} icon={logCategory.icon} />}
       </div>
     </div>
