@@ -397,6 +397,9 @@ function ItemHubPageInner() {
     // The loss-summary rows point at the Loss feed (a submenu of the Grony
     // Cash tab), not an errors fix screen.
     if (key === '__loss_feed') { changeTab('loss'); setLossView('feed'); return }
+    // The Advert sub-tab's own checks (audio adverts, jingle, equipment)
+    // are fixed inside Grony Manage > Advert, not the generic Errors screen.
+    if (['no_advert', 'jingle_overdue', 'equipment_check_overdue'].includes(key)) { changeTab('manage'); return }
     changeTab('errors')
     setViolation(key)
   }

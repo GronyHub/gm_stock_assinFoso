@@ -11,7 +11,7 @@ function daysSince(dateStr: string): number {
 // One line of the Grony Cash / Grony Manage violation lists -- shared so the
 // two panels (moved apart in the Grony Cash restructure) render identically.
 // "Joe, 2 days left to fix 5 Cash Counts — Do it now →"
-export function ViolationRow({ v, assignments, deadlines, assignedBy, assignedOn, vSettings, onGoToViolation }: {
+export function ViolationRow({ v, assignments, deadlines, assignedBy, assignedOn, vSettings, onGoToViolation, defaultAssignee }: {
   v: Violation
   assignments: Record<string, string>
   deadlines: Record<string, string>
@@ -19,8 +19,9 @@ export function ViolationRow({ v, assignments, deadlines, assignedBy, assignedOn
   assignedOn: Record<string, string>
   vSettings: Record<string, string>
   onGoToViolation?: (key: string) => void
+  defaultAssignee?: string
 }) {
-  const assignedTo = assignments[v.type] ?? DEFAULT_ASSIGNEE
+  const assignedTo = assignments[v.type] ?? defaultAssignee ?? DEFAULT_ASSIGNEE
   const explicitlyAssigned = Boolean(assignments[v.type])
   const deadline = deadlines[v.type]
   const threshold = parseInt(vSettings.threshold_days ?? '3', 10)

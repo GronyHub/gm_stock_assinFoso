@@ -47,7 +47,7 @@ Everything to do with money. Top row: Items, Sales, Bills, Expenses, Data, P&L (
 ## Grony Manage
 Everything that isn't directly about money:
 - Staff -- clock in and out here, and see the staff rota (see "Clocking In/Out" below).
-- Advert -- five sub-tabs (Audio, Photoshop, WhatsApp, Cuttings, Video) matching the shop's Google Drive advert folders, each holding the rules for that category, plus a Daily Log tab pulled from the Closer's end-of-day questionnaire (was the roadside advert played today).
+- Advert -- Bino is in charge, the same way Joe is in charge of Grony Manage overall, so Bino is the default assignee shown on Advert (and other Grony Manage) flags. Nine sub-tabs: Audio (the rules), Advert Status (mark each item/service as having an audio advert or not -- missing ones become a flag), Jingle Log (at least one new jingle a month, or it flags), Equipment Check (Amplifier/Speaker/wires confirmed every Monday & Thursday, or it flags), Photoshop/WhatsApp/Cuttings/Video (their own rules, matching the shop's Google Drive advert folders), and Daily Log (pulled from the Closer's end-of-day questionnaire -- was the roadside advert played today).
 - Dress Code -- pulled from the Closer's end-of-day questionnaire.
 - Properties -- the shop's tracked physical assets.
 - Arrangement, Cleanliness, Future, Customer Display, Staff Display, Repair Works, Quality Assurance -- simple day-to-day logs; add a note (and a photo if useful) whenever something in that category happens.
@@ -78,7 +78,8 @@ The ☰ button, fixed to the bottom-left corner of the screen, holds account-lev
 
 - WIC vs GMC: WIC is a real paying customer walking in. GMC means the shop itself is the "customer" -- stock taken for internal use, not a sale.
 - Flags cover every kind of thing that needs attention -- missing prices, duplicate items, unlinked sales, outstanding daily counts, and more. Clearing them keeps the shop's numbers accurate. Tapping "Fix now →" on a flag jumps straight to it.
-- Every item a WIC customer buys should be counted the next day, to confirm the stock actually dropped as expected.`,
+- Every item a WIC customer buys should be counted the next day, to confirm the stock actually dropped as expected.
+- Bino gets a reminder of his outstanding Grony Manage tasks each time he logs in, with a link straight to the Flags panel, and is asked to tick off his Advert checklist each time he clocks out.`,
   training_laws: `# Company Laws
 
 No company policies have been added here yet -- the owner will add them.`,
@@ -87,7 +88,22 @@ No company policies have been added here yet -- the owner will add them.`,
   // rules for that advert category once the owner adds them.
   advert_audio_roadside: `# Advert 1 — Audio (for Roadside)
 
-No rules have been added here yet -- the owner will add them.`,
+Bino is in charge of Advert, the same way Joe is in charge of Grony Manage overall.
+
+## Rules
+
+- Every service or item at the shop must have its advert recorded. Anything missing one shows up on the Advert Status tab and as a flag until it's recorded.
+- Any trending service must have its advert recorded.
+- Low-performing services or goods must have adverts recorded for them -- an advert is part of how a slow seller gets a push.
+- Every Monday and Thursday, confirm the Amplifier, Speaker, and wires are in good condition and playing fine, using the Equipment Check tab. A missed check becomes a flag.
+- At least one new jingle must be recorded every month, logged on the Jingle Log tab. A month with none recorded becomes a flag.
+- Files in the audio folder must be named properly, by the actual service name -- not a generic or placeholder name.
+
+## Where to work
+
+- Advert Status -- mark each item/service as advert-recorded or missing.
+- Jingle Log -- log each new jingle as it's recorded.
+- Equipment Check -- log the Monday/Thursday amplifier/speaker/wires confirmation.`,
   advert_photo_photoshop: `# Advert 2 — Photo (Photoshop Files)
 
 No rules have been added here yet -- the owner will add them.`,

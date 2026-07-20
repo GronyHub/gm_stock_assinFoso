@@ -2,11 +2,18 @@
 import { useState } from 'react'
 import ContentPage from './ContentPage'
 import ClosingReportLogView from './ClosingReportLogView'
+import ManageLogPanel from './ManageLogPanel'
+import AdvertStatusPanel from './AdvertStatusPanel'
 
-type AdvertView = 'audio' | 'photoshop' | 'whatsapp' | 'cuttings' | 'video' | 'log'
+type AdvertView =
+  | 'audio' | 'audio_status' | 'jingle' | 'equipment'
+  | 'photoshop' | 'whatsapp' | 'cuttings' | 'video' | 'log'
 
 const SUBMENU: { key: AdvertView; label: string }[] = [
   { key: 'audio', label: 'Audio' },
+  { key: 'audio_status', label: 'Advert Status' },
+  { key: 'jingle', label: 'Jingle Log' },
+  { key: 'equipment', label: 'Equipment Check' },
   { key: 'photoshop', label: 'Photoshop' },
   { key: 'whatsapp', label: 'WhatsApp' },
   { key: 'cuttings', label: 'Cuttings' },
@@ -16,8 +23,9 @@ const SUBMENU: { key: AdvertView; label: string }[] = [
 
 // Grony Manage > Advert -- mirrors the shop's Google Drive advert folder
 // structure (1) ADVO - Advert 1..5), so each sub-tab holds the rules for
-// that advert category. "Daily Log" is the existing feature that tracks
-// whether the roadside advert was actually played each day.
+// that advert category. Audio Status/Jingle Log/Equipment Check are the
+// tools behind Audio's own rules. "Daily Log" is the existing feature that
+// tracks whether the roadside advert was actually played each day.
 export default function AdvertTab() {
   const [view, setView] = useState<AdvertView>('audio')
 
@@ -34,6 +42,9 @@ export default function AdvertTab() {
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto">
         {view === 'audio' && <ContentPage contentKey="advert_audio_roadside" title="Advert 1 — Audio (for Roadside)" />}
+        {view === 'audio_status' && <AdvertStatusPanel />}
+        {view === 'jingle' && <ManageLogPanel category="audio_jingle" label="Jingle Log" icon="🎵" />}
+        {view === 'equipment' && <ManageLogPanel category="audio_equipment_check" label="Equipment Check" icon="🔊" />}
         {view === 'photoshop' && <ContentPage contentKey="advert_photo_photoshop" title="Advert 2 — Photo (Photoshop Files)" />}
         {view === 'whatsapp' && <ContentPage contentKey="advert_photo_whatsapp" title="Advert 3 — Photo (WhatsApp Advert)" />}
         {view === 'cuttings' && <ContentPage contentKey="advert_photo_cuttings" title="Advert 4 — Photo (Cuttings)" />}

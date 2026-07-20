@@ -1,10 +1,25 @@
 import sql from '@/lib/db'
+import { ensureAdvertStatusTable } from '@/lib/advertStatus'
+import { ensureManageLogs } from '@/lib/manageLogs'
 import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
 async function safeQuery(query: () => Promise<any[]>, fallback: any[] = []): Promise<any[]> {
   try { return await query() } catch (e) { console.error('[flags]', e); return fallback }
+}
+
+// Most recent required equipment-check day (every Monday and Thursday) on
+// or before today, as YYYY-MM-DD.
+function lastRequiredEquipmentCheckDate(): string {
+  const today = new Date()
+  const day = today.getDay() // Sunday = 0 .. Saturday = 6
+  const sinceMonday = (day + 6) % 7
+  const sinceThursday = (day + 3) % 7
+  const daysSince = Math.min(sinceMonday, sinceThursday)
+  const due = new Date(today)
+  due.setDate(due.getDate() - daysSince)
+  return due.toISOString().slice(0, 10)
 }
 
 // ── Duplicate filtering rules ────────────────────────────────────────────────
@@ -286,5 +301,39 @@ export async function GET() {
     ORDER BY group_name
   `)
 
-  return NextResponse.json({ noCash, missingDays, duplicates: filteredDups, costGteSell, notInInventory, noGroup, noStaffTimes, uncheckedCab, dupReceipts, unlinkedNamed, groupNames: groupNames.map((r: any) => r.group_name) })
+  // 11. Items/services with no audio advert recorded (Grony Manage > Advert > Audio's own rule)
+  await ensureAdvertStatusTable()
+  const noAdvert = await safeQuery(() => sql`
+    SELECT i.id AS item_id, i.canonical_name AS item_name, COALESCE(i.product_type, 'goods') AS product_type
+    FROM items i
+    LEFT JOIN item_audio_advert_status s ON s.item_id = i.id AND s.has_advert = true
+    WHERE LOWER(i.status) != 'inactive' AND s.item_id IS NULL
+    ORDER BY i.canonical_name
+  `)
+
+  // 12/13. Audio jingle (monthly) and equipment check (Mon/Thu) -- both
+  // logged through the generic manage_logs table under their own category.
+  await ensureManageLogs()
+  const jingleThisMonth = await safeQuery(() => sql`
+    SELECT 1 FROM manage_logs
+    WHERE category = 'audio_jingle' AND log_date >= DATE_TRUNC('month', CURRENT_DATE)
+    LIMIT 1
+  `)
+  const jingleOverdue = jingleThisMonth.length === 0
+    ? [{ month: new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) }]
+    : []
+
+  const dueDate = lastRequiredEquipmentCheckDate()
+  const [lastEquipmentCheck] = await safeQuery(() => sql`
+    SELECT MAX(log_date)::text AS d FROM manage_logs WHERE category = 'audio_equipment_check'
+  `, [{ d: null }])
+  const equipmentCheckOverdue = (!lastEquipmentCheck?.d || lastEquipmentCheck.d < dueDate)
+    ? [{ due_date: dueDate }]
+    : []
+
+  return NextResponse.json({
+    noCash, missingDays, duplicates: filteredDups, costGteSell, notInInventory, noGroup, noStaffTimes,
+    uncheckedCab, dupReceipts, unlinkedNamed, groupNames: groupNames.map((r: any) => r.group_name),
+    noAdvert, jingleOverdue, equipmentCheckOverdue,
+  })
 }

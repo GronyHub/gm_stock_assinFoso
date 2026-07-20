@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { usePolling } from '@/lib/usePolling'
-import { useViolations, DEFAULT_ASSIGNEE } from './useViolations'
+import { useViolations, DEFAULT_ASSIGNEE, MANAGE_DEFAULT_ASSIGNEE } from './useViolations'
 import { ViolationRow } from './ViolationRow'
 
 // ─── Announcements ────────────────────────────────────────────────────────────
@@ -599,7 +599,7 @@ function FlagsPanel({ onGoToViolation, counts }: {
           {cashViolations.map(v => (
             <ViolationRow key={v.type} v={v} assignments={assignments} deadlines={deadlines}
               assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
-              onGoToViolation={onGoToViolation} />
+              onGoToViolation={onGoToViolation} defaultAssignee={DEFAULT_ASSIGNEE} />
           ))}
           {manageViolations.length > 0 && (
             <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide pt-0.5">🗂️ Manage</p>
@@ -607,7 +607,7 @@ function FlagsPanel({ onGoToViolation, counts }: {
           {manageViolations.map(v => (
             <ViolationRow key={v.type} v={v} assignments={assignments} deadlines={deadlines}
               assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
-              onGoToViolation={onGoToViolation} />
+              onGoToViolation={onGoToViolation} defaultAssignee={MANAGE_DEFAULT_ASSIGNEE} />
           ))}
           {cashViolations.length === 0 && manageViolations.length === 0 && (
             <p className="text-[11px] text-gray-400 py-[1px]">No flags right now <span className="text-green-600">✓</span></p>

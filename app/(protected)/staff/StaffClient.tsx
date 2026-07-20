@@ -5,6 +5,7 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { fmtDate, fmtOrdinalDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
 import CloserQuestionnaire, { ClosingAnswers } from '@/components/CloserQuestionnaire'
+import BinoChecklist, { BinoChecklistAnswers } from '@/components/BinoChecklist'
 import ClosingReportsList from '@/components/ClosingReportsList'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell,
@@ -209,6 +210,9 @@ function TimesTab({ username, role }: { username: string; role: string }) {
   const [showReports, setShowReports] = useState(false)
   const [confirmingCount, setConfirmingCount] = useState(false)
   const [confirmCountErr, setConfirmCountErr] = useState('')
+  const [binoChecklistOpen, setBinoChecklistOpen] = useState(false)
+  const [binoChecklistSaving, setBinoChecklistSaving] = useState(false)
+  const isBino = username.toLowerCase() === 'bino'
 
   const [editDate, setEditDate] = useState<string | null>(null)
   const [editIn, setEditIn] = useState('')
@@ -353,6 +357,18 @@ function TimesTab({ username, role }: { username: string; role: string }) {
     }
   }
 
+  // Bino's Advert checklist is shown every time he clocks out -- saved
+  // first, then the actual clock-out proceeds as normal.
+  async function submitBinoChecklist(answers: BinoChecklistAnswers) {
+    setBinoChecklistSaving(true)
+    await fetch('/api/staff-times/bino-checklist', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(answers),
+    }).catch(() => {})
+    setBinoChecklistSaving(false)
+    setBinoChecklistOpen(false)
+    clock('out')
+  }
+
   const grouped = groupByDate(recent)
 
   function monthMinutesFor(staffName: string, monthKey: string): number {
@@ -438,6 +454,14 @@ function TimesTab({ username, role }: { username: string; role: string }) {
           onCancel={() => setCloserPrompt(null)}
         />
       )}
+      {/* Bino's Advert checklist — shown every time he clocks out */}
+      {binoChecklistOpen && (
+        <BinoChecklist
+          saving={binoChecklistSaving}
+          onSubmit={submitBinoChecklist}
+          onCancel={() => setBinoChecklistOpen(false)}
+        />
+      )}
 
       {roleBanner && (
         <div className="flex items-start justify-between gap-2 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
@@ -510,7 +534,7 @@ function TimesTab({ username, role }: { username: string; role: string }) {
             className="flex-1 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2.5 transition">
             {saving ? '…' : `Clock In${pickingTime ? '' : ' (Now)'}`}
           </button>
-          <button onClick={() => clock('out')} disabled={saving}
+          <button onClick={() => isBino ? setBinoChecklistOpen(true) : clock('out')} disabled={saving}
             className="flex-1 bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2.5 transition">
             {saving ? '…' : `Clock Out${pickingTime ? '' : ' (Now)'}`}
           </button>

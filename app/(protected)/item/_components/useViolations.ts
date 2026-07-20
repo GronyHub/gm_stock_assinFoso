@@ -32,25 +32,32 @@ export const SHORT_LABEL: Record<string, string> = {
   unlinked_named: 'Unlinked Sales',
   service_violation: 'Service Violations',
   gains: 'Gains (record errors)',
+  no_advert: 'Items Missing Audio Adverts',
+  jingle_overdue: 'Monthly Jingle',
+  equipment_check_overdue: 'Equipment Check (Mon/Thu)',
 }
 
-// All tasks default to Joe until someone explicitly assigns them elsewhere.
+// Cash tasks default to Joe. Manage tasks default to Bino -- he's taking
+// charge of Grony Manage the same way Joe takes charge overall -- until
+// someone explicitly assigns them elsewhere.
 export const DEFAULT_ASSIGNEE = 'Joe'
+export const MANAGE_DEFAULT_ASSIGNEE = 'Bino'
 
 // Every error type the app tracks -- active ones become task rows, clear
 // ones are named in the ✓ line so nothing is silently missing. Split in two:
 // CASH holds everything that touches money directly; MANAGE holds the
-// operational/housekeeping tasks (staff times, count duties, item hygiene).
+// operational/housekeeping tasks (staff times, count duties, item hygiene,
+// and the Advert sub-tab's own audio-advert/jingle/equipment checks).
 // Move a type between sections by moving its key in this set.
 const MANAGE_TYPES = new Set([
-  'no_staff_times',
+  'no_staff_times', 'no_advert', 'jingle_overdue', 'equipment_check_overdue',
 ])
 
 const ALL_ERROR_TYPES = [
   'neg_soh', 'no_sp', 'no_cp', 'no_group', 'duplicates', 'not_in_inventory',
   'unlinked_named', 'service_violation', 'gains', 'daily', '7day', '15day',
   'no_cash', 'missing_days', 'cost_gte_sell', 'dup_receipts',
-  'unchecked_cab', 'no_staff_times',
+  'unchecked_cab', 'no_staff_times', 'no_advert', 'jingle_overdue', 'equipment_check_overdue',
 ]
 
 // This widget's violation "type" strings are the historical keys used by the
@@ -152,6 +159,21 @@ export function useViolations(counts?: Record<string, number>) {
       type: 'dup_receipts',
       label: 'day' + (flags.dupReceipts.length !== 1 ? 's' : '') + ' with duplicate WIC/GMC receipts',
       count: flags.dupReceipts.length, days: oldestDays(flags.dupReceipts, 'receipt_date'),
+    })
+    if (flags.noAdvert?.length) list.push({
+      type: 'no_advert',
+      label: 'item' + (flags.noAdvert.length !== 1 ? 's' : '') + ' with no audio advert recorded',
+      count: flags.noAdvert.length, days: null,
+    })
+    if (flags.jingleOverdue?.length) list.push({
+      type: 'jingle_overdue',
+      label: 'month with no new jingle recorded yet',
+      count: flags.jingleOverdue.length, days: null,
+    })
+    if (flags.equipmentCheckOverdue?.length) list.push({
+      type: 'equipment_check_overdue',
+      label: 'Monday/Thursday equipment check not confirmed',
+      count: flags.equipmentCheckOverdue.length, days: null,
     })
     const c = counts ?? {}
     const s = (n: number) => n !== 1 ? 's' : ''
