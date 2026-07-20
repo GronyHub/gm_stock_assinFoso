@@ -36,7 +36,7 @@ const LOG_CATEGORIES: { key: ManageView; label: string; icon: string }[] = [
 ]
 
 const SUBMENU: { key: ManageView; label: string }[] = [
-  { key: 'flags', label: '🚩 Flags' },
+  { key: 'flags', label: '🚩 Flag' },
   { key: 'staff_times', label: '👤 Staff' },
   { key: 'advert', label: '📢 Advert' },
   { key: 'staff_dress', label: '👕 Dress Code' },

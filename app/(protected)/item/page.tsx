@@ -488,7 +488,7 @@ function ItemHubPageInner() {
         {outerTab === 'loss' && (
           <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 border-t border-blue-100 overflow-x-auto">
             {([
-              { key: 'cash',     label: '💰 Cash' },
+              { key: 'cash',     label: '🚩 Flag' },
               { key: 'sales',    label: '💵 Sales' },
               { key: 'bills',    label: '🧾 Bills' },
               { key: 'counts',   label: '📋 Counts' },
