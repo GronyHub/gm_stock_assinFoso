@@ -16,11 +16,15 @@ const StaffClient = dynamic(() => import('../../staff/StaffClient'), {
   ssr: false,
   loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div>,
 })
+const LogsPage = dynamic(() => import('../../logs/page'), {
+  ssr: false,
+  loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div>,
+})
 
 export type ManageView =
   | 'flags' | 'staff_times' | 'advert' | 'staff_dress' | 'properties'
   | 'arrangement' | 'cleanliness' | 'future' | 'customer_display'
-  | 'staff_display' | 'training' | 'repair_works' | 'quality_assurance'
+  | 'staff_display' | 'training' | 'repair_works' | 'quality_assurance' | 'logs'
 
 // Simple dated log/checklist categories -- no existing data behind them, so
 // each gets a ManageLogPanel (notes + optional photo, viewable as history).
@@ -43,6 +47,7 @@ const SUBMENU: { key: ManageView; label: string }[] = [
   { key: 'properties', label: '🏷️ Properties' },
   ...LOG_CATEGORIES.map(c => ({ key: c.key, label: `${c.icon} ${c.label}` })),
   { key: 'training', label: '🎓 Training' },
+  { key: 'logs', label: '🗒️ Logs' },
 ]
 
 // Promoted from Home's "🗂️ Grony Manage" submenu to its own top-level tab,
@@ -107,6 +112,7 @@ export default function GronyManageTab({ onGoToViolation, counts }: {
         {view === 'staff_dress' && <ClosingReportLogView field="no_tshirt_staff" label="Dress Code" icon="👕" />}
         {view === 'properties' && <ExpensesTab search="" initialTab="properties" />}
         {view === 'training' && <TrainingTab />}
+        {view === 'logs' && <div className="px-2"><LogsPage /></div>}
         {logCategory && <ManageLogPanel category={logCategory.key} label={logCategory.label} icon={logCategory.icon} />}
       </div>
     </div>
