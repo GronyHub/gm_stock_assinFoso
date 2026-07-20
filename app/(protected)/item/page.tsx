@@ -42,7 +42,6 @@ const LossTab        = dynamic(() => import('./_components/LossTab'),         { 
 const LossFeedTab    = dynamic(() => import('./_components/LossFeedTab'),     { ssr: false, loading: () => loading('Loading…') })
 const ProfitLossTab  = dynamic(() => import('./_components/ProfitLossTab'),   { ssr: false, loading: () => loading('Loading…') })
 const DailySummaryTab = dynamic(() => import('./_components/DailySummaryTab'), { ssr: false, loading: () => loading('Loading…') })
-const GronyCashTab   = dynamic(() => import('./_components/GronyCashTab'),    { ssr: false, loading: () => loading('Loading…') })
 const GronyManageTab = dynamic(() => import('./_components/GronyManageTab'),  { ssr: false, loading: () => loading('Loading…') })
 const VendorsPage    = dynamic(() => import('../vendors/page'),               { ssr: false, loading: () => loading('Loading…') })
 const CustomersPage  = dynamic(() => import('../customers/page'),             { ssr: false, loading: () => loading('Loading…') })
@@ -51,11 +50,11 @@ const ViewPortalAsButton = dynamic(() => import('@/components/ViewPortalAsButton
 
 type OuterTab = 'today' | 'loss' | 'errors' | 'manage' | 'dailySummary'
 
-// Sales, Bills, Counts, Feed, Cash, Data, Expenses, P&L, CAB, Vendors,
+// Sales, Bills, Counts, Feed, Data, Expenses, P&L, CAB, Vendors,
 // Customers, and Receipts all live as submenus inside the Grony Cash tab
 // (outerTab 'loss' -- kept as the internal key since it's referenced
 // throughout; only the label changed).
-type LossView = 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'cash' | 'data' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts'
+type LossView = 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'data' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts'
 
 // Old top-level tabs that got folded into Grony Cash submenus -- old
 // bookmarks/links using ?tab=pl etc. still land on the right submenu instead
@@ -73,7 +72,7 @@ const OLD_TAB_TO_OUTER: Partial<Record<string, OuterTab>> = {
 // Self-contained submenus -- either their own dashboard, or a standalone
 // page with its own internal search/filter/add UI -- so the shared
 // groups/search/New controls row doesn't apply to them.
-const REPORT_VIEWS = new Set<LossView>(['cash', 'data', 'pl', 'cab', 'vendors', 'customers', 'receipts'])
+const REPORT_VIEWS = new Set<LossView>(['data', 'pl', 'cab', 'vendors', 'customers', 'receipts'])
 
 // Vendors/Customers/Receipts and Counts/Feed aren't top-level sections of
 // their own -- they're views about (or derived from) Bills/Sales/Items, so
@@ -491,7 +490,6 @@ function ItemHubPageInner() {
               { key: 'sales',    label: 'Sales' },
               { key: 'bills',    label: 'Bills' },
               { key: 'expenses', label: 'Expenses' },
-              { key: 'cash',     label: 'Flag' },
               { key: 'data',     label: 'Data' },
               ...(canSeePL ? [{ key: 'pl' as LossView, label: 'P&L' }] : []),
               { key: 'cab',      label: 'CAB' },
@@ -641,11 +639,6 @@ function ItemHubPageInner() {
         {addForm === 'bill'    && outerTab === 'loss' && lossView === 'bills'    && <div className="px-4"><NewBillForm    onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'expense' && outerTab === 'loss' && lossView === 'expenses' && <div className="px-4"><NewExpenseForm onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'item'    && outerTab === 'loss' && lossView === 'items'    && <div className="px-4"><NewItemForm    onSuccess={() => { setAddForm(null); loadItems() }} /></div>}
-        {outerTab === 'loss' && lossView === 'cash' && (
-          <TabErrorBoundary>
-            <GronyCashTab onGoToViolation={goToViolation} counts={violationCounts} />
-          </TabErrorBoundary>
-        )}
         {outerTab === 'loss' && lossView === 'data' && (
           <TabErrorBoundary>
             <AnalyticsPanel />
@@ -678,13 +671,13 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'manage' && (
           <TabErrorBoundary>
-            <GronyManageTab onGoToViolation={goToViolation} counts={violationCounts} />
+            <GronyManageTab />
           </TabErrorBoundary>
         )}
         {outerTab === 'today' && !(addForm === 'sale' || addForm === 'bill' || addForm === 'expense') && (
           <TabErrorBoundary>
             <div className="h-full overflow-y-auto px-4">
-              <TodayContent />
+              <TodayContent onGoToViolation={goToViolation} counts={violationCounts} />
             </div>
           </TabErrorBoundary>
         )}
