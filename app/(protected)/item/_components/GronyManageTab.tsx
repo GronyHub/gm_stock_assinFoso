@@ -40,14 +40,14 @@ const LOG_CATEGORIES: { key: ManageView; label: string; icon: string }[] = [
 ]
 
 const SUBMENU: { key: ManageView; label: string }[] = [
-  { key: 'flags', label: '🚩 Flag' },
-  { key: 'staff_times', label: '👤 Staff' },
-  { key: 'advert', label: '📢 Advert' },
-  { key: 'staff_dress', label: '👕 Dress Code' },
-  { key: 'properties', label: '🏷️ Properties' },
-  ...LOG_CATEGORIES.map(c => ({ key: c.key, label: `${c.icon} ${c.label}` })),
-  { key: 'training', label: '🎓 Training' },
-  { key: 'logs', label: '🗒️ Logs' },
+  { key: 'flags', label: 'Flag' },
+  { key: 'staff_times', label: 'Staff' },
+  { key: 'advert', label: 'Advert' },
+  { key: 'staff_dress', label: 'Dress Code' },
+  { key: 'properties', label: 'Properties' },
+  ...LOG_CATEGORIES.map(c => ({ key: c.key, label: c.label })),
+  { key: 'training', label: 'Training' },
+  { key: 'logs', label: 'Logs' },
 ]
 
 // Promoted from Home's "🗂️ Grony Manage" submenu to its own top-level tab,
@@ -68,11 +68,11 @@ export default function GronyManageTab({ onGoToViolation, counts }: {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 border-b border-blue-100 overflow-x-auto shrink-0">
+      <div className="flex items-center gap-1 px-2 py-0.5 bg-white border-b border-gray-100 overflow-x-auto shrink-0">
         {SUBMENU.map(v => (
           <button key={v.key} onClick={() => setView(v.key)}
-            className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap transition
-              ${view === v.key ? 'bg-blue-600 text-white' : 'bg-white border border-blue-200 text-blue-700 hover:bg-blue-100'}`}>
+            className={`shrink-0 text-xs font-semibold px-2 py-0.5 rounded-lg whitespace-nowrap transition
+              ${view === v.key ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>
             {v.label}
             {v.key === 'flags' && manageCount > 0 && (
               <span className={`ml-1 text-[10px] font-bold rounded-full px-1.5 leading-tight ${view === 'flags' ? 'bg-white/25 text-white' : 'bg-red-600 text-white'}`}>
