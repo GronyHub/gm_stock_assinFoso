@@ -30,13 +30,11 @@ function shiftDate(date: string, days: number) {
 
 type StaffRow = { staff_name: string; actual_in: string | null; actual_out: string | null }
 type CountRow = { item_id: number; item_name: string; quantity_counted: string | number; counted_by: string | null }
-type VerifyStatus = 'verified' | 'mismatch' | 'pending' | 'unknown' | 'service' | 'unlinked'
+type VerifyStatus = 'verified' | 'unlinked' | 'inactive_item' | 'invalid'
 type ItemLine = {
   item_id: number | null; item_name: string; qty: string | number; total: string | number
   previousStock: number | null
   currentStock: number | null
-  currentStockSource: 'counted' | 'expected' | null
-  expectedStock?: number | null
   verifyStatus: VerifyStatus
 }
 type Receipt = { id: number; customer_name: string | null; total: string | number; cash_counted: string | number | null; wnw: string | number | null }
@@ -48,6 +46,7 @@ type Data = {
   hasReceipt: boolean
   itemsWIC: ItemLine[]
   itemsGMC: ItemLine[]
+  allVerified: boolean
   cashCounted: number
   wnwTotal: number
   bills: { count: number; total: number }
@@ -82,13 +81,23 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-const VERIFY_BADGE: Record<VerifyStatus, { icon: string; label: string; cls: string }> = {
-  verified: { icon: '✅', label: 'Verified',  cls: 'text-green-700' },
-  mismatch: { icon: '⚠️', label: 'Mismatch',  cls: 'text-red-600 font-semibold' },
-  pending:  { icon: '⏳', label: 'Pending',   cls: 'text-amber-600' },
-  unknown:  { icon: '—',  label: 'No count history', cls: 'text-gray-400' },
-  service:  { icon: '—',  label: 'Service',  cls: 'text-gray-400' },
-  unlinked: { icon: '❗', label: 'Not linked to an item', cls: 'text-red-600 font-semibold' },
+const VERIFY_BADGE: Record<VerifyStatus, { icon: string; label: string; cls: string; title: string }> = {
+  verified: {
+    icon: '✅', label: 'Verified', cls: 'text-green-700',
+    title: 'This sale is linked to an active item with a valid quantity and amount.',
+  },
+  unlinked: {
+    icon: '❗', label: 'Not linked', cls: 'text-red-600 font-semibold',
+    title: "This sale line isn't linked to an inventory item, so it wasn't recorded against any item's stock -- fix it in the Aliases screen.",
+  },
+  inactive_item: {
+    icon: '⚠️', label: 'Inactive item', cls: 'text-red-600 font-semibold',
+    title: 'This sale is linked to an item marked Inactive -- check whether it was merged/deactivated after this sale, or the wrong item was picked.',
+  },
+  invalid: {
+    icon: '⚠️', label: 'Invalid entry', cls: 'text-red-600 font-semibold',
+    title: 'This sale line is missing a valid quantity or amount -- check how it was entered.',
+  },
 }
 
 function fmtQty(v: number | null) {
@@ -112,24 +121,14 @@ function ItemLineTable({ rows, emptyText }: { rows: ItemLine[]; emptyText: strin
       <tbody>
         {rows.map((r, i) => {
           const badge = VERIFY_BADGE[r.verifyStatus]
-          const title = r.verifyStatus === 'mismatch'
-            ? `Expected ${fmtQty(r.expectedStock ?? null)} after this sale, but the count on this day says ${fmtQty(r.currentStock)} -- check this item's item link, quantity, and recent bills/counts.`
-            : r.verifyStatus === 'pending'
-              ? `Not yet confirmed by a physical count -- count this item to verify stock dropped by ${r.qty} as expected.`
-              : r.verifyStatus === 'unlinked'
-                ? "This sale line isn't linked to an inventory item, so stock impact can't be checked -- fix it in the Aliases screen."
-                : badge.label
           return (
             <tr key={i} className="border-b border-gray-50 last:border-0">
               <td className="py-1 text-gray-700">{r.item_name}</td>
               <td className="py-1 text-right text-gray-600">{r.qty}</td>
               <td className="py-1 text-right text-gray-600">{fc(Number(r.total) || 0)}</td>
               <td className="py-1 text-right text-gray-500">{fmtQty(r.previousStock)}</td>
-              <td className="py-1 text-right text-gray-700 font-medium">
-                {fmtQty(r.currentStock)}
-                {r.currentStockSource === 'expected' && <span className="text-gray-400 font-normal"> (exp.)</span>}
-              </td>
-              <td className="py-1 text-center" title={title}>
+              <td className="py-1 text-right text-gray-700 font-medium">{fmtQty(r.currentStock)}</td>
+              <td className="py-1 text-center" title={badge.title}>
                 <span className={badge.cls}>{badge.icon}</span>
               </td>
             </tr>
@@ -158,6 +157,113 @@ export default function DailySummaryTab() {
   const isProfit = (data?.profitLoss ?? 0) >= 0
   const isToday = date === todayStr()
 
+  const [downloading, setDownloading] = useState(false)
+  async function downloadPdf() {
+    if (!data) return
+    setDownloading(true)
+    try {
+      const [{ jsPDF }, autoTableModule] = await Promise.all([
+        import('jspdf'),
+        import('jspdf-autotable'),
+      ])
+      const autoTable = autoTableModule.default
+      const doc = new jsPDF()
+      const pageHeight = doc.internal.pageSize.getHeight()
+      let y = 15
+
+      function ensureSpace(needed: number) {
+        if (y + needed > pageHeight - 15) { doc.addPage(); y = 15 }
+      }
+      function heading(text: string) {
+        ensureSpace(16)
+        doc.setFontSize(11)
+        doc.text(text, 14, y)
+        y += 5
+      }
+      function afterTable() {
+        y = ((doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? y) + 8
+      }
+
+      doc.setFontSize(14)
+      doc.text(`Daily Summary — ${fmtOrdinalDate(data.date)}`, 14, y)
+      y += 8
+      if (!data.hasReceipt) {
+        doc.setFontSize(9)
+        doc.setTextColor(180, 100, 0)
+        doc.text('No sales receipt entered for this day -- figures below are incomplete.', 14, y)
+        doc.setTextColor(0, 0, 0)
+        y += 6
+      }
+
+      autoTable(doc, {
+        startY: y,
+        head: [['Summary', 'Amount']],
+        body: [
+          ['Cash Counted', fc(data.cashCounted)],
+          ['Work Not Written', fc(data.wnwTotal)],
+          [data.canSeeAmounts ? 'Expenses' : 'Expenses (excl. Salaries)', fc(data.expenses.total)],
+          ['Bills', fc(data.bills.total)],
+          [isProfit ? 'Net Profit' : 'Net Loss', fc(Math.abs(data.profitLoss))],
+        ],
+        styles: { fontSize: 9 },
+      })
+      afterTable()
+
+      heading('Staff Present & Times')
+      autoTable(doc, {
+        startY: y,
+        head: [['Staff', 'In', 'Out', 'Hours']],
+        body: data.staff.length ? data.staff.map(s => {
+          const inM = parseTimeMins(s.actual_in), outM = parseTimeMins(s.actual_out)
+          const hours = inM != null && outM != null
+            ? minsToHrs(outM >= inM ? outM - inM : (outM + 1440) - inM)
+            : '—'
+          return [s.staff_name, s.actual_in ?? '—', s.actual_out ?? '—', hours]
+        }) : [['No staff times recorded for this day.', '', '', '']],
+        styles: { fontSize: 8 },
+      })
+      afterTable()
+
+      heading('Daily Count')
+      autoTable(doc, {
+        startY: y,
+        head: [['Item', 'Qty', 'Counted By']],
+        body: data.dailyCount.length
+          ? data.dailyCount.map(r => [r.item_name, String(r.quantity_counted), r.counted_by ?? '—'])
+          : [['No stock counts recorded for this day.', '', '']],
+        styles: { fontSize: 8 },
+      })
+      afterTable()
+
+      const itemBody = (rows: ItemLine[]) => rows.map(r => [
+        r.item_name, String(r.qty), fc(Number(r.total) || 0),
+        fmtQty(r.previousStock), fmtQty(r.currentStock), VERIFY_BADGE[r.verifyStatus].label,
+      ])
+      const itemHead = [['Item', 'Qty', 'Total', 'Before', 'After', 'Verify']]
+
+      heading('Items Bought — WIC')
+      autoTable(doc, {
+        startY: y,
+        head: itemHead,
+        body: data.itemsWIC.length ? itemBody(data.itemsWIC) : [['No walk-in customer purchases.', '', '', '', '', '']],
+        styles: { fontSize: 8 },
+      })
+      afterTable()
+
+      heading('Items Bought — GMC')
+      autoTable(doc, {
+        startY: y,
+        head: itemHead,
+        body: data.itemsGMC.length ? itemBody(data.itemsGMC) : [['No internal-use purchases.', '', '', '', '', '']],
+        styles: { fontSize: 8 },
+      })
+
+      doc.save(`daily-summary-${data.date}.pdf`)
+    } finally {
+      setDownloading(false)
+    }
+  }
+
   return (
     <div className="px-4 py-3 space-y-3">
       {/* Date navigation */}
@@ -173,7 +279,18 @@ export default function DailySummaryTab() {
             className="shrink-0 text-[10px] font-semibold text-blue-600">Today</button>
         )}
       </div>
-      <p className="text-xs text-gray-400 -mt-1">{fmtOrdinalDate(date)}</p>
+      <div className="flex items-center justify-between -mt-1">
+        <p className="text-xs text-gray-400">{fmtOrdinalDate(date)}</p>
+        <div className="flex items-center gap-2">
+          {data && data.allVerified && (
+            <span className="text-[10px] font-semibold text-green-700">✅ All Verified</span>
+          )}
+          <button onClick={downloadPdf} disabled={!data || downloading}
+            className="shrink-0 text-[10px] font-semibold px-2 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-40 transition">
+            {downloading ? 'Preparing…' : '⬇ Download PDF'}
+          </button>
+        </div>
+      </div>
 
       {loading ? (
         <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
@@ -265,7 +382,7 @@ export default function DailySummaryTab() {
           {/* Items bought WIC */}
           <Section title="Items Bought — WIC">
             <p className="text-[10px] text-gray-400 mb-1.5">
-              Before/After = stock on record just before and after this sale. Verify: ✅ a count confirmed it, ⏳ waiting on a count, ⚠️ a count doesn&apos;t match, ❗ sale not linked to an item.
+              Before/After = stock on record just before and after this sale (informational -- not required for Verify). Verify confirms the sale itself was recorded correctly: ✅ linked to an active item with a valid quantity and amount, ⚠️ inactive item or invalid entry, ❗ not linked to an item at all.
             </p>
             <ItemLineTable rows={data.itemsWIC} emptyText="No walk-in customer purchases recorded for this day." />
             {data.itemsWIC.length > 0 && (
