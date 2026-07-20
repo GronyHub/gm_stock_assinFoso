@@ -1,27 +1,17 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
+import { ensureManageLogs } from '@/lib/manageLogs'
 import { NextRequest, NextResponse } from 'next/server'
 
 // Daily checklist/log entries for the Grony Manage categories that have no
 // existing data behind them (Arrangement, Cleanliness, Future, Customer
-// Display, Staff Display, Training, Repair Works, Quality Assurance).
-// Advert, Staff (dress code), and Properties instead read from the existing
-// closing_reports / expenses data -- see ClosingReportLogView and
-// ExpensesTab(initialTab="properties") in GronyManageTab.
-async function ensureManageLogs() {
-  await sql`
-    CREATE TABLE IF NOT EXISTS manage_logs (
-      id SERIAL PRIMARY KEY,
-      category TEXT NOT NULL,
-      log_date DATE NOT NULL DEFAULT CURRENT_DATE,
-      notes TEXT,
-      photo_url TEXT,
-      logged_by TEXT NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-    )
-  `.catch(() => {})
-}
+// Display, Staff Display, Training, Repair Works, Quality Assurance), plus
+// the Advert sub-tab's Jingle Log and Equipment Check categories. Advert's
+// own daily "was it played" tracking, Staff (dress code), and Properties
+// instead read from the existing closing_reports / expenses data -- see
+// ClosingReportLogView and ExpensesTab(initialTab="properties") in
+// GronyManageTab.
 
 export async function GET(req: NextRequest) {
   const session = await auth()

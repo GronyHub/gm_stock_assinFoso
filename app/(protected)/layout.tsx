@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Nav from '@/components/Nav'
 import PushSubscriber from '@/components/PushSubscriber'
 import ImpersonationBar from '@/components/ImpersonationBar'
+import BinoTaskBanner from '@/components/BinoTaskBanner'
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
   let session
@@ -16,6 +17,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
     <div className="min-h-screen flex flex-col">
       <div className="print:hidden">
         <ImpersonationBar />
+        <BinoTaskBanner />
         <Nav user={session.user as any} />
       </div>
       <main className="flex-1 px-4 pt-4 pb-6 max-w-5xl mx-auto w-full print:p-0 print:max-w-none">
