@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import ClosingReportLogView from './ClosingReportLogView'
 import ManageLogPanel from './ManageLogPanel'
 import TrainingTab from './TrainingTab'
+import AdvertTab from './AdvertTab'
 
 const ExpensesTab = dynamic(() => import('./ExpensesTab'), {
   ssr: false,
@@ -73,7 +74,7 @@ export default function GronyManageTab() {
 
       <div className="flex-1 min-h-0 overflow-y-auto">
         {view === 'staff_times' && <StaffClient role={role} username={username} embedded />}
-        {view === 'advert' && <ClosingReportLogView field="advert_played" label="Advert" icon="📢" />}
+        {view === 'advert' && <AdvertTab />}
         {view === 'staff_dress' && <ClosingReportLogView field="no_tshirt_staff" label="Dress Code" icon="👕" />}
         {view === 'properties' && <ExpensesTab search="" initialTab="properties" />}
         {view === 'training' && <TrainingTab />}
