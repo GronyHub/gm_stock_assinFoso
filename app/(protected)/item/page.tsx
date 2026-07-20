@@ -43,11 +43,25 @@ const LossTab        = dynamic(() => import('./_components/LossTab'),         { 
 const LossFeedTab    = dynamic(() => import('./_components/LossFeedTab'),     { ssr: false, loading: () => loading('Loading…') })
 const ProfitLossTab  = dynamic(() => import('./_components/ProfitLossTab'),   { ssr: false, loading: () => loading('Loading…') })
 const DailySummaryTab = dynamic(() => import('./_components/DailySummaryTab'), { ssr: false, loading: () => loading('Loading…') })
+const GronyCashTab   = dynamic(() => import('./_components/GronyCashTab'),    { ssr: false, loading: () => loading('Loading…') })
 
-type OuterTab = 'today' | 'loss' | 'errors' | 'data' | 'pl' | 'expenses' | 'cab' | 'staff' | 'dailySummary'
+type OuterTab = 'today' | 'loss' | 'errors' | 'staff' | 'dailySummary'
 
-// Sales, Bills, Counts, and Feed live as submenus inside the Loss tab.
-type LossView = 'items' | 'sales' | 'bills' | 'counts' | 'feed'
+// Sales, Bills, Counts, Feed, Cash, Data, Expenses, P&L, and CAB all live as
+// submenus inside the Grony Cash tab (outerTab 'loss' -- kept as the
+// internal key since it's referenced throughout; only the label changed).
+type LossView = 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'cash' | 'data' | 'expenses' | 'pl' | 'cab'
+
+// Old top-level tabs that got folded into Grony Cash submenus -- old
+// bookmarks/links using ?tab=pl etc. still land on the right submenu instead
+// of silently falling back to Today.
+const OLD_TAB_TO_VIEW: Partial<Record<string, LossView>> = {
+  pl: 'pl', expenses: 'expenses', cab: 'cab', data: 'data',
+}
+
+// Report-style submenus (their own dashboards, not filterable lists) -- the
+// groups/search/New controls row doesn't apply to them.
+const REPORT_VIEWS = new Set<LossView>(['cash', 'data', 'pl', 'cab'])
 
 type Item = {
   id: number
@@ -144,10 +158,6 @@ const VIOLATIONS: Record<OuterTab, { key: string; label: string; category?: Erro
   today: [],
   loss: [],
   errors: ERROR_VIOLATIONS,
-  data: [],
-  pl: [],
-  expenses: [],
-  cab: [],
   staff: [],
   dailySummary: [],
 }
@@ -188,16 +198,18 @@ function TabIcon({ icon, label, active, onClick, count }: { icon: string; label:
   )
 }
 
-const VALID_TABS: OuterTab[] = ['today', 'loss', 'errors', 'data', 'pl', 'expenses', 'cab', 'staff', 'dailySummary']
+const VALID_TABS: OuterTab[] = ['today', 'loss', 'errors', 'staff', 'dailySummary']
 
 function ItemHubPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const rawInitialTab = searchParams.get('tab')
-  // 'losses' (the old standalone Loss Feed tab) was folded into the Item
-  // tab's Feed submenu -- old bookmarks/links using it still land somewhere
-  // sensible instead of silently falling back to Today.
-  const initialTab = (rawInitialTab === 'losses' ? 'loss' : rawInitialTab) as OuterTab | null
+  const oldTabView = rawInitialTab ? OLD_TAB_TO_VIEW[rawInitialTab] : undefined
+  // 'losses' (the old standalone Loss Feed tab) and the old pl/expenses/cab/
+  // data top-level tabs all folded into Grony Cash submenus -- old
+  // bookmarks/links using any of them still land somewhere sensible instead
+  // of silently falling back to Today.
+  const initialTab = (rawInitialTab === 'losses' || oldTabView ? 'loss' : rawInitialTab) as OuterTab | null
   const [outerTab, setOuterTab] = useState<OuterTab>(
     initialTab && VALID_TABS.includes(initialTab) ? initialTab : 'today'
   )
@@ -205,7 +217,7 @@ function ItemHubPageInner() {
   const [productType, setProductType]   = useState<'all' | 'goods' | 'services'>('all')
   const initialView = searchParams.get('view') as LossView | null
   const [lossView, setLossView]         = useState<LossView>(
-    rawInitialTab === 'losses' ? 'feed' : (initialView ?? 'items')
+    rawInitialTab === 'losses' ? 'feed' : (oldTabView ?? initialView ?? 'items')
   )
   // SP/AMOUNT/CP/PROFIT columns on the pack-chain detail table are collapsed
   // by default (they're only needed occasionally) -- toggled from the submenu.
@@ -215,7 +227,7 @@ function ItemHubPageInner() {
   const [lossOnly, setLossOnly]         = useState(false)
   const [gainOnly, setGainOnly]         = useState(false)
   const [search, setSearch]             = useState(searchParams.get('q') ?? '')
-  // Which item row is expanded on the Item tab's Items view, if any -- only
+  // Which item row is expanded on the Grony Cash tab's Items view, if any -- only
   // used to keep the URL (and thus a refresh) pointed at the same row;
   // LossTab owns the actual expand/collapse state and reports changes here.
   const initialItemParam = searchParams.get('item')
@@ -336,7 +348,7 @@ function ItemHubPageInner() {
   }, [])
 
   // From the loss dialog: jump to the records that usually explain a "loss"
-  // (Sales / Bills / Counts live as sub-views of the Item tab). Must set the
+  // (Sales / Bills / Counts live as sub-views of the Grony Cash tab). Must set the
   // sub-view AFTER changeTab, which resets it to 'items'.
   function goFixRecords(view: 'sales' | 'bills' | 'counts') {
     changeTab('loss')
@@ -374,8 +386,8 @@ function ItemHubPageInner() {
   }, [outerTab, lossView, search, expandedItemId])
 
   function goToViolation(key: string) {
-    // The loss-summary rows on Home point at the Loss feed (now a submenu of
-    // the Item tab), not an errors fix screen.
+    // The loss-summary rows point at the Loss feed (a submenu of the Grony
+    // Cash tab), not an errors fix screen.
     if (key === '__loss_feed') { changeTab('loss'); setLossView('feed'); return }
     changeTab('errors')
     setViolation(key)
@@ -404,7 +416,8 @@ function ItemHubPageInner() {
     productType !== 'all' ? (productType === 'goods' ? 'Goods' : 'Services') : null,
   ].filter(Boolean).join(' · ')
 
-  const showControls = outerTab !== 'today' && outerTab !== 'staff' && outerTab !== 'data' && outerTab !== 'pl' && outerTab !== 'dailySummary'
+  const showControls = outerTab !== 'today' && outerTab !== 'staff' && outerTab !== 'dailySummary'
+    && !(outerTab === 'loss' && REPORT_VIEWS.has(lossView))
   const { data: session } = useSession()
   const role = (session?.user as any)?.role ?? 'staff'
   const username = (session?.user as any)?.username ?? session?.user?.name ?? ''
@@ -434,8 +447,7 @@ function ItemHubPageInner() {
             <img src="/logo-mark.png" alt="Home" className="w-7 h-7" />
           </button>
           <div className="flex items-center gap-1 px-1 pt-1.5 pb-1 flex-1 min-w-0">
-            <TabIcon icon="📉" label="Item"     active={outerTab === 'loss'}     onClick={() => changeTab('loss')} />
-            <TabIcon icon="💸" label="Exp."     active={outerTab === 'expenses'} onClick={() => changeTab('expenses')} />
+            <TabIcon icon="📉" label="Grony Cash" active={outerTab === 'loss'}     onClick={() => changeTab('loss')} />
             <TabIcon icon="👤" label="Staff"    active={outerTab === 'staff'}    onClick={() => changeTab('staff')} />
             <TabIcon icon="🗓️" label="Daily"    active={outerTab === 'dailySummary'} onClick={() => changeTab('dailySummary')} />
           </div>
@@ -448,16 +460,6 @@ function ItemHubPageInner() {
             </button>
             {hamburgerOpen && (
               <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-[100] min-w-[150px]">
-                <button onClick={() => { changeTab('cab'); setHamburgerOpen(false) }}
-                  className="w-full text-left block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 first:rounded-t-xl transition">
-                  CAB
-                </button>
-                {canSeePL && (
-                  <button onClick={() => { changeTab('pl'); setHamburgerOpen(false) }}
-                    className="w-full text-left block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
-                    P&amp;L
-                  </button>
-                )}
                 {hamburgerLinks.map(l => (
                   <Link key={l.href} href={l.href}
                     onClick={() => setHamburgerOpen(false)}
@@ -475,14 +477,19 @@ function ItemHubPageInner() {
           </div>
         </div>
 
-        {/* Loss sub-view row: Sales / Bills / Counts — Items is the Loss tab's own default view */}
+        {/* Grony Cash sub-view row: Items is the tab's own default view */}
         {outerTab === 'loss' && (
           <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 border-t border-blue-100 overflow-x-auto">
             {([
-              { key: 'sales',  label: '💰 Sales' },
-              { key: 'bills',  label: '🧾 Bills' },
-              { key: 'counts', label: '📋 Counts' },
-              { key: 'feed',   label: '🔻 Feed' },
+              { key: 'cash',     label: '💰 Cash' },
+              { key: 'sales',    label: '💵 Sales' },
+              { key: 'bills',    label: '🧾 Bills' },
+              { key: 'counts',   label: '📋 Counts' },
+              { key: 'feed',     label: '🔻 Feed' },
+              { key: 'data',     label: '🔢 Data' },
+              { key: 'expenses', label: '💸 Expenses' },
+              ...(canSeePL ? [{ key: 'pl' as LossView, label: '📈 P&L' }] : []),
+              { key: 'cab',      label: '🏦 CAB' },
             ] as { key: LossView; label: string }[]).map(v => (
               <button key={v.key} onClick={() => { setLossView(v.key); setAddForm(null) }}
                 className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap transition
@@ -573,9 +580,9 @@ function ItemHubPageInner() {
               placeholder="Search…"
               className="min-w-0 w-24 flex-1 text-xs bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
 
-            {/* New button — Loss (Items/Sales/Bills submenu) and Expenses only; Counts has no add-form */}
-            {(outerTab === 'expenses' || (outerTab === 'loss' && lossView !== 'counts')) && (() => {
-              const formKey = outerTab === 'expenses' ? 'expense' : lossView === 'items' ? 'item' : lossView === 'sales' ? 'sale' : 'bill'
+            {/* New button — Items/Sales/Bills/Expenses submenus only; report-style and Counts submenus have no add-form */}
+            {outerTab === 'loss' && ['items', 'sales', 'bills', 'expenses'].includes(lossView) && (() => {
+              const formKey = lossView === 'items' ? 'item' : lossView === 'sales' ? 'sale' : lossView === 'bills' ? 'bill' : 'expense'
               return (
                 <button onClick={() => setAddForm(addForm === formKey ? null : formKey)}
                   className={`shrink-0 text-xs font-semibold px-3 py-1 rounded-lg transition
@@ -612,16 +619,21 @@ function ItemHubPageInner() {
 
       {/* ── Content ── */}
       <div className="flex-1 min-h-0 overflow-y-auto">
-        {addForm === 'sale'    && outerTab === 'loss'     && lossView === 'sales' && <div className="px-4"><NewSaleForm    onSuccess={() => setAddForm(null)} /></div>}
-        {addForm === 'bill'    && outerTab === 'loss'     && lossView === 'bills' && <div className="px-4"><NewBillForm    onSuccess={() => setAddForm(null)} /></div>}
-        {addForm === 'expense' && outerTab === 'expenses' && <div className="px-4"><NewExpenseForm onSuccess={() => { setAddForm(null); changeTab('expenses') }} /></div>}
-        {addForm === 'item'    && outerTab === 'loss'     && lossView === 'items' && <div className="px-4"><NewItemForm    onSuccess={() => { setAddForm(null); loadItems() }} /></div>}
-        {outerTab === 'data' && (
+        {addForm === 'sale'    && outerTab === 'loss' && lossView === 'sales'    && <div className="px-4"><NewSaleForm    onSuccess={() => setAddForm(null)} /></div>}
+        {addForm === 'bill'    && outerTab === 'loss' && lossView === 'bills'    && <div className="px-4"><NewBillForm    onSuccess={() => setAddForm(null)} /></div>}
+        {addForm === 'expense' && outerTab === 'loss' && lossView === 'expenses' && <div className="px-4"><NewExpenseForm onSuccess={() => setAddForm(null)} /></div>}
+        {addForm === 'item'    && outerTab === 'loss' && lossView === 'items'    && <div className="px-4"><NewItemForm    onSuccess={() => { setAddForm(null); loadItems() }} /></div>}
+        {outerTab === 'loss' && lossView === 'cash' && (
+          <TabErrorBoundary>
+            <GronyCashTab onGoToViolation={goToViolation} counts={violationCounts} />
+          </TabErrorBoundary>
+        )}
+        {outerTab === 'loss' && lossView === 'data' && (
           <TabErrorBoundary>
             <AnalyticsPanel />
           </TabErrorBoundary>
         )}
-        {outerTab === 'pl' && (
+        {outerTab === 'loss' && lossView === 'pl' && (
           <TabErrorBoundary>
             <ProfitLossTab />
           </TabErrorBoundary>
@@ -638,8 +650,8 @@ function ItemHubPageInner() {
             </div>
           </TabErrorBoundary>
         )}
-        {addForm !== 'expense' && outerTab === 'expenses' && <ExpensesTab search={search} />}
-        {outerTab === 'cab'      && <CABTab />}
+        {addForm !== 'expense' && outerTab === 'loss' && lossView === 'expenses' && <ExpensesTab search={search} />}
+        {outerTab === 'loss' && lossView === 'cab' && <CABTab />}
         {outerTab === 'staff'    && (
           <TabErrorBoundary>
             <StaffClient role={role} username={username} embedded />
