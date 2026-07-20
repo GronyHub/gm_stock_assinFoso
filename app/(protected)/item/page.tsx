@@ -44,8 +44,9 @@ const LossFeedTab    = dynamic(() => import('./_components/LossFeedTab'),     { 
 const ProfitLossTab  = dynamic(() => import('./_components/ProfitLossTab'),   { ssr: false, loading: () => loading('Loading…') })
 const DailySummaryTab = dynamic(() => import('./_components/DailySummaryTab'), { ssr: false, loading: () => loading('Loading…') })
 const GronyCashTab   = dynamic(() => import('./_components/GronyCashTab'),    { ssr: false, loading: () => loading('Loading…') })
+const GronyManageTab = dynamic(() => import('./_components/GronyManageTab'),  { ssr: false, loading: () => loading('Loading…') })
 
-type OuterTab = 'today' | 'loss' | 'errors' | 'staff' | 'dailySummary'
+type OuterTab = 'today' | 'loss' | 'errors' | 'manage' | 'staff' | 'dailySummary'
 
 // Sales, Bills, Counts, Feed, Cash, Data, Expenses, P&L, and CAB all live as
 // submenus inside the Grony Cash tab (outerTab 'loss' -- kept as the
@@ -158,6 +159,7 @@ const VIOLATIONS: Record<OuterTab, { key: string; label: string; category?: Erro
   today: [],
   loss: [],
   errors: ERROR_VIOLATIONS,
+  manage: [],
   staff: [],
   dailySummary: [],
 }
@@ -198,7 +200,7 @@ function TabIcon({ icon, label, active, onClick, count }: { icon: string; label:
   )
 }
 
-const VALID_TABS: OuterTab[] = ['today', 'loss', 'errors', 'staff', 'dailySummary']
+const VALID_TABS: OuterTab[] = ['today', 'loss', 'errors', 'manage', 'staff', 'dailySummary']
 
 function ItemHubPageInner() {
   const router = useRouter()
@@ -416,7 +418,7 @@ function ItemHubPageInner() {
     productType !== 'all' ? (productType === 'goods' ? 'Goods' : 'Services') : null,
   ].filter(Boolean).join(' · ')
 
-  const showControls = outerTab !== 'today' && outerTab !== 'staff' && outerTab !== 'dailySummary'
+  const showControls = outerTab !== 'today' && outerTab !== 'manage' && outerTab !== 'staff' && outerTab !== 'dailySummary'
     && !(outerTab === 'loss' && REPORT_VIEWS.has(lossView))
   const { data: session } = useSession()
   const role = (session?.user as any)?.role ?? 'staff'
@@ -448,6 +450,7 @@ function ItemHubPageInner() {
           </button>
           <div className="flex items-center gap-1 px-1 pt-1.5 pb-1 flex-1 min-w-0">
             <TabIcon icon="📉" label="Grony Cash" active={outerTab === 'loss'}     onClick={() => changeTab('loss')} />
+            <TabIcon icon="🗂️" label="Grony Manage" active={outerTab === 'manage'} onClick={() => changeTab('manage')} />
             <TabIcon icon="👤" label="Staff"    active={outerTab === 'staff'}    onClick={() => changeTab('staff')} />
             <TabIcon icon="🗓️" label="Daily"    active={outerTab === 'dailySummary'} onClick={() => changeTab('dailySummary')} />
           </div>
@@ -643,10 +646,15 @@ function ItemHubPageInner() {
             <DailySummaryTab />
           </TabErrorBoundary>
         )}
+        {outerTab === 'manage' && (
+          <TabErrorBoundary>
+            <GronyManageTab onGoToViolation={goToViolation} counts={violationCounts} />
+          </TabErrorBoundary>
+        )}
         {outerTab === 'today' && !(addForm === 'sale' || addForm === 'bill' || addForm === 'expense') && (
           <TabErrorBoundary>
             <div className="h-full overflow-y-auto px-4">
-              <TodayContent onGoToViolation={goToViolation} counts={violationCounts} />
+              <TodayContent />
             </div>
           </TabErrorBoundary>
         )}
