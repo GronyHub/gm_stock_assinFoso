@@ -30,7 +30,15 @@ function shiftDate(date: string, days: number) {
 
 type StaffRow = { staff_name: string; actual_in: string | null; actual_out: string | null }
 type CountRow = { item_id: number; item_name: string; quantity_counted: string | number; counted_by: string | null }
-type ItemLine = { item_name: string; qty: string | number; total: string | number }
+type VerifyStatus = 'verified' | 'mismatch' | 'pending' | 'unknown' | 'service' | 'unlinked'
+type ItemLine = {
+  item_id: number | null; item_name: string; qty: string | number; total: string | number
+  previousStock: number | null
+  currentStock: number | null
+  currentStockSource: 'counted' | 'expected' | null
+  expectedStock?: number | null
+  verifyStatus: VerifyStatus
+}
 type Receipt = { id: number; customer_name: string | null; total: string | number; cash_counted: string | number | null; wnw: string | number | null }
 type Data = {
   date: string
@@ -74,6 +82,19 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
+const VERIFY_BADGE: Record<VerifyStatus, { icon: string; label: string; cls: string }> = {
+  verified: { icon: '✅', label: 'Verified',  cls: 'text-green-700' },
+  mismatch: { icon: '⚠️', label: 'Mismatch',  cls: 'text-red-600 font-semibold' },
+  pending:  { icon: '⏳', label: 'Pending',   cls: 'text-amber-600' },
+  unknown:  { icon: '—',  label: 'No count history', cls: 'text-gray-400' },
+  service:  { icon: '—',  label: 'Service',  cls: 'text-gray-400' },
+  unlinked: { icon: '❗', label: 'Not linked to an item', cls: 'text-red-600 font-semibold' },
+}
+
+function fmtQty(v: number | null) {
+  return v == null ? '—' : v.toLocaleString(undefined, { maximumFractionDigits: 2 })
+}
+
 function ItemLineTable({ rows, emptyText }: { rows: ItemLine[]; emptyText: string }) {
   if (!rows.length) return <p className="text-[11px] text-gray-400">{emptyText}</p>
   return (
@@ -83,16 +104,37 @@ function ItemLineTable({ rows, emptyText }: { rows: ItemLine[]; emptyText: strin
           <th className="text-left font-semibold py-1">Item</th>
           <th className="text-right font-semibold py-1">Qty</th>
           <th className="text-right font-semibold py-1">Total</th>
+          <th className="text-right font-semibold py-1">Before</th>
+          <th className="text-right font-semibold py-1">After</th>
+          <th className="text-center font-semibold py-1">Verify</th>
         </tr>
       </thead>
       <tbody>
-        {rows.map((r, i) => (
-          <tr key={i} className="border-b border-gray-50 last:border-0">
-            <td className="py-1 text-gray-700">{r.item_name}</td>
-            <td className="py-1 text-right text-gray-600">{r.qty}</td>
-            <td className="py-1 text-right text-gray-600">{fc(Number(r.total) || 0)}</td>
-          </tr>
-        ))}
+        {rows.map((r, i) => {
+          const badge = VERIFY_BADGE[r.verifyStatus]
+          const title = r.verifyStatus === 'mismatch'
+            ? `Expected ${fmtQty(r.expectedStock ?? null)} after this sale, but the count on this day says ${fmtQty(r.currentStock)} -- check this item's item link, quantity, and recent bills/counts.`
+            : r.verifyStatus === 'pending'
+              ? `Not yet confirmed by a physical count -- count this item to verify stock dropped by ${r.qty} as expected.`
+              : r.verifyStatus === 'unlinked'
+                ? "This sale line isn't linked to an inventory item, so stock impact can't be checked -- fix it in the Aliases screen."
+                : badge.label
+          return (
+            <tr key={i} className="border-b border-gray-50 last:border-0">
+              <td className="py-1 text-gray-700">{r.item_name}</td>
+              <td className="py-1 text-right text-gray-600">{r.qty}</td>
+              <td className="py-1 text-right text-gray-600">{fc(Number(r.total) || 0)}</td>
+              <td className="py-1 text-right text-gray-500">{fmtQty(r.previousStock)}</td>
+              <td className="py-1 text-right text-gray-700 font-medium">
+                {fmtQty(r.currentStock)}
+                {r.currentStockSource === 'expected' && <span className="text-gray-400 font-normal"> (exp.)</span>}
+              </td>
+              <td className="py-1 text-center" title={title}>
+                <span className={badge.cls}>{badge.icon}</span>
+              </td>
+            </tr>
+          )
+        })}
       </tbody>
     </table>
   )
@@ -222,6 +264,9 @@ export default function DailySummaryTab() {
 
           {/* Items bought WIC */}
           <Section title="Items Bought — WIC">
+            <p className="text-[10px] text-gray-400 mb-1.5">
+              Before/After = stock on record just before and after this sale. Verify: ✅ a count confirmed it, ⏳ waiting on a count, ⚠️ a count doesn&apos;t match, ❗ sale not linked to an item.
+            </p>
             <ItemLineTable rows={data.itemsWIC} emptyText="No walk-in customer purchases recorded for this day." />
             {data.itemsWIC.length > 0 && (
               <p className="text-[10px] text-amber-700 mt-2">
