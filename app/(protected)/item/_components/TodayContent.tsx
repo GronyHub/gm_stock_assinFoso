@@ -1,17 +1,10 @@
 'use client'
-import { useState, useEffect, useMemo, useRef } from 'react'
-import Link from 'next/link'
-import dynamic from 'next/dynamic'
+import { useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
-import { fmtDate, fmtOrdinalDate } from '@/lib/fmtDate'
+import { fmtDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
-
-// Data lives as a collapsible section of the Home page (like Announcements),
-// loaded only when opened since it's chart-heavy.
-const AnalyticsPanel = dynamic(() => import('./AnalyticsPanel'), {
-  ssr: false,
-  loading: () => <div className="py-6 text-center text-gray-400 text-xs">Loading data…</div>,
-})
+import { useViolations } from './useViolations'
+import { ViolationRow } from './ViolationRow'
 
 // ─── Announcements ────────────────────────────────────────────────────────────
 type MediaItem = { url: string; type: string }
@@ -485,97 +478,16 @@ function AnnouncementsPanel() {
   )
 }
 
-function daysSince(dateStr: string): number {
-  const d = new Date(dateStr + 'T00:00:00')
-  const today = new Date(); today.setHours(0, 0, 0, 0)
-  return Math.round((today.getTime() - d.getTime()) / 86400000)
-}
-
-function oldestDays(rows: any[], field: string): number | null {
-  if (!rows.length) return null
-  return Math.max(...rows.map(r => daysSince(r[field])))
-}
-
-const SHORT_LABEL: Record<string, string> = {
-  missing_days: 'Sales Receipts',
-  no_cash: 'Cash Counts',
-  cost_gte_sell: 'Cost Prices',
-  no_staff_times: 'Staff Times',
-  unchecked_cab: 'Cash at Bank',
-  no_group: 'Item Groups',
-  duplicates: 'Duplicate Items',
-  not_in_inventory: 'Alias Confirmations',
-  dup_receipts: 'Duplicate Receipts',
-  daily: 'Daily Counts',
-  '7day': '7-Day Counts',
-  '15day': '15-Day Counts',
-  neg_soh: 'Negative Stock Items',
-  no_sp: 'Missing Selling Prices',
-  no_cp: 'Missing Cost Prices',
-  unlinked_named: 'Unlinked Sales',
-  service_violation: 'Service Violations',
-  gains: 'Gains (record errors)',
-}
-
-// All tasks default to Joe until someone explicitly assigns them elsewhere.
-const DEFAULT_ASSIGNEE = 'Joe'
-
-// Every error type the app tracks, in Errors-tab order -- the Needs
-// Attention list must account for ALL of them: active ones as task rows,
-// clear ones named in the ✓ line so nothing is silently missing.
-// Needs Attention is split in two: GRONY CASH holds everything that touches
-// money directly; GRONY MANAGE holds the operational/housekeeping tasks
-// (staff times, count duties, item hygiene). Move a type between sections by
-// moving its key in this set.
-const MANAGE_TYPES = new Set([
-  'no_staff_times',
-])
-
-const ALL_ERROR_TYPES = [
-  'neg_soh', 'no_sp', 'no_cp', 'no_group', 'duplicates', 'not_in_inventory',
-  'unlinked_named', 'service_violation', 'gains', 'daily', '7day', '15day',
-  'no_cash', 'missing_days', 'cost_gte_sell', 'dup_receipts',
-  'unchecked_cab', 'no_staff_times',
-]
-
-// This widget's violation "type" strings are the historical keys used by the
-// staff-assignment/penalty system (violation_assignments etc.) and must stay
-// as-is; they don't all match the Errors tab's own violation keys, so map
-// between them here rather than renaming either side.
-const ERRORS_TAB_VIOLATION: Record<string, string> = {
-  missing_days: 'missing_days',
-  no_cash: 'no_cash',
-  cost_gte_sell: 'cost_price',
-  no_staff_times: 'no_staff_times',
-  unchecked_cab: 'unchecked_cab',
-  no_group: 'no_group',
-  duplicates: 'duplicates',
-  not_in_inventory: 'aliases',
-  dup_receipts: 'dup_receipt',
-}
-
 export default function TodayPage({ onGoToViolation, counts }: {
   onGoToViolation?: (key: string) => void
   counts?: Record<string, number>
 }) {
   const [data, setData] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
-  const [flags, setFlags] = useState<any | null>(null)
-  const [assignments, setAssignments] = useState<Record<string, string>>({})
-  const [deadlines, setDeadlines] = useState<Record<string, string>>({})
-  const [assignedBy, setAssignedBy] = useState<Record<string, string>>({})
-  const [assignedOn, setAssignedOn] = useState<Record<string, string>>({})
-  const [vSettings, setVSettings] = useState<Record<string, string>>({})
   const [logs, setLogs] = useState<any[]>([])
-  const [homeView, setHomeView] = useState<'cash' | 'manage' | 'announcements' | 'data'>('cash')
-  const [lossEvents, setLossEvents] = useState<{ date: string; loss_amt: number }[] | null>(null)
+  const [homeView, setHomeView] = useState<'manage' | 'announcements'>('manage')
 
-  function loadLossEvents() {
-    fetch('/api/losses/events')
-      .then(r => r.ok ? r.json() : [])
-      .then(d => setLossEvents(Array.isArray(d) ? d : []))
-      .catch(() => {})
-  }
+  const { flags, assignments, deadlines, assignedBy, assignedOn, vSettings, manageViolations, manageCount } = useViolations(counts)
 
   function loadLogs() {
     fetch('/api/logs').then(r => r.ok ? r.json() : []).then(d => {
@@ -591,206 +503,23 @@ export default function TodayPage({ onGoToViolation, counts }: {
       .then(d => { setData(d); setLoading(false) })
       .catch(() => setLoading(false))
   }
-  function loadFlags() {
-    fetch('/api/flags')
-      .then(r => r.ok ? r.json() : Promise.reject(r.status))
-      .then(setFlags)
-      .catch(() => {})
-  }
-  function loadAssignments() {
-    fetch('/api/violations/assignments')
-      .then(r => r.json())
-      .then(d => {
-        setAssignments(d.assignments ?? {}); setDeadlines(d.deadlines ?? {})
-        setAssignedBy(d.assignedBy ?? {}); setAssignedOn(d.assignedOn ?? {})
-        setVSettings(d.settings ?? {})
-      })
-      .catch(() => {})
-  }
 
-  useEffect(() => { load(); loadFlags(); loadAssignments(); loadLogs(); loadLossEvents() }, [])
-  usePolling(loadLossEvents, 60000)
+  useEffect(() => { load(); loadLogs() }, [])
   usePolling(load, 10000)
-  usePolling(loadFlags, 30000)
   usePolling(loadLogs, 15000)
-
-  const violations = useMemo(() => {
-    if (!flags) return []
-    const list: { type: string; label: string; count: number; days: number | null }[] = []
-    if (flags.missingDays?.length) list.push({
-      type: 'missing_days',
-      label: 'Sales Receipt' + (flags.missingDays.length !== 1 ? 's' : '') + ' still not entered',
-      count: flags.missingDays.length, days: oldestDays(flags.missingDays, 'missing_date'),
-    })
-    if (flags.noCash?.length) list.push({
-      type: 'no_cash',
-      label: 'walk-in receipt' + (flags.noCash.length !== 1 ? 's' : '') + ' missing cash counted',
-      count: flags.noCash.length, days: oldestDays(flags.noCash, 'receipt_date'),
-    })
-    if (flags.costGteSell?.length) list.push({
-      type: 'cost_gte_sell',
-      label: 'Cost Price' + (flags.costGteSell.length !== 1 ? 's' : '') + ' ≥ Selling Price still unresolved',
-      count: flags.costGteSell.length, days: oldestDays(flags.costGteSell, 'receipt_date'),
-    })
-    if (flags.noStaffTimes?.length) list.push({
-      type: 'no_staff_times',
-      label: 'day' + (flags.noStaffTimes.length !== 1 ? 's' : '') + ' with no staff times recorded',
-      count: flags.noStaffTimes.length, days: oldestDays(flags.noStaffTimes, 'missing_date'),
-    })
-    if (flags.uncheckedCab?.length) list.push({
-      type: 'unchecked_cab',
-      label: 'week' + (flags.uncheckedCab.length !== 1 ? 's' : '') + ' with no Cash at Bank confirmation',
-      count: flags.uncheckedCab.length, days: oldestDays(flags.uncheckedCab, 'week_start'),
-    })
-    if (flags.noGroup?.length) list.push({
-      type: 'no_group',
-      label: 'item' + (flags.noGroup.length !== 1 ? 's' : '') + ' with no group assigned',
-      count: flags.noGroup.length, days: null,
-    })
-    if (flags.duplicates?.length) list.push({
-      type: 'duplicates',
-      label: 'possible duplicate item pair' + (flags.duplicates.length !== 1 ? 's' : ''),
-      count: flags.duplicates.length, days: null,
-    })
-    {
-      // Same source as the Aliases fix screen (pending sales + bill aliases),
-      // falling back to the flags list if the page counts aren't in yet.
-      const aliasCount = counts?.['aliases'] ?? flags.notInInventory?.length ?? 0
-      if (aliasCount > 0) list.push({
-        type: 'not_in_inventory',
-        label: 'item name' + (aliasCount !== 1 ? 's' : '') + ' awaiting alias confirmation',
-        count: aliasCount, days: null,
-      })
-    }
-    if (flags.dupReceipts?.length) list.push({
-      type: 'dup_receipts',
-      label: 'day' + (flags.dupReceipts.length !== 1 ? 's' : '') + ' with duplicate WIC/GMC receipts',
-      count: flags.dupReceipts.length, days: oldestDays(flags.dupReceipts, 'receipt_date'),
-    })
-    // Error types that used to live only in the Errors tab -- counts come
-    // from the page-level violationCounts, passed in as a prop.
-    const c = counts ?? {}
-    const s = (n: number) => n !== 1 ? 's' : ''
-    if (c['daily'] > 0) list.push({ type: 'daily', label: `item${s(c['daily'])} not yet counted today`, count: c['daily'], days: 0 })
-    if (c['7day'] > 0) list.push({ type: '7day', label: `GMC item${s(c['7day'])} overdue for the 7-day count`, count: c['7day'], days: null })
-    if (c['15day'] > 0) list.push({ type: '15day', label: `item${s(c['15day'])} overdue for the 15-day count`, count: c['15day'], days: null })
-    if (c['neg_soh'] > 0) list.push({ type: 'neg_soh', label: `item${s(c['neg_soh'])} with negative stock on hand`, count: c['neg_soh'], days: null })
-    if (c['no_sp'] > 0) list.push({ type: 'no_sp', label: `item${s(c['no_sp'])} with no selling price`, count: c['no_sp'], days: null })
-    if (c['no_cp'] > 0) list.push({ type: 'no_cp', label: `item${s(c['no_cp'])} with no cost price`, count: c['no_cp'], days: null })
-    if (c['unlinked_named'] > 0) list.push({ type: 'unlinked_named', label: `sale line${s(c['unlinked_named'])} not linked to their item`, count: c['unlinked_named'], days: null })
-    if (c['service_violation'] > 0) list.push({ type: 'service_violation', label: `service${s(c['service_violation'])} with stock activity recorded`, count: c['service_violation'], days: null })
-    if (c['gains'] > 0) list.push({ type: 'gains', label: `gain${s(c['gains'])} on record — every gain is a missing bill/GMC or count error`, count: c['gains'], days: null })
-    // Every remaining type gets its own line too (count 0), so all 17 error
-    // types always appear as full sentence rows -- none summarised away.
-    const active = new Set(list.map(v => v.type))
-    for (const t of ALL_ERROR_TYPES) {
-      if (!active.has(t)) list.push({ type: t, label: SHORT_LABEL[t] ?? t, count: 0, days: null })
-    }
-    return list.sort((a, b) => b.count - a.count)
-  }, [flags, counts])
-
-  const totalViolations = violations.reduce((s, v) => s + v.count, 0)
-  const cashViolations = violations.filter(v => !MANAGE_TYPES.has(v.type))
-  const manageViolations = violations.filter(v => MANAGE_TYPES.has(v.type))
-  const cashCount = cashViolations.reduce((s, v) => s + v.count, 0)
-  const manageCount = manageViolations.reduce((s, v) => s + v.count, 0)
-
-  // Loss-feed summaries for Joe: all-time, yesterday, this week (Mon-start),
-  // this month, this year. Amounts use the Loss menu's valuation.
-  const lossSummary = useMemo(() => {
-    if (!lossEvents) return null
-    const fmtLocal = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    const today = new Date(); today.setHours(0, 0, 0, 0)
-    const y = new Date(today); y.setDate(y.getDate() - 1)
-    const weekStart = new Date(today); weekStart.setDate(weekStart.getDate() - ((today.getDay() + 6) % 7))
-    const monthStart = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`
-    const yearStart = `${today.getFullYear()}-01-01`
-    const yesterday = fmtLocal(y), ws = fmtLocal(weekStart)
-    const agg = (pred: (d: string) => boolean) => {
-      const list = lossEvents.filter(e => pred(e.date))
-      return { n: list.length, amt: parseFloat(list.reduce((s, e) => s + (Number(e.loss_amt) || 0), 0).toFixed(2)) }
-    }
-    return {
-      total: agg(() => true),
-      yesterday: agg(d => d === yesterday),
-      week: agg(d => d >= ws),
-      month: agg(d => d >= monthStart),
-      year: agg(d => d >= yearStart),
-    }
-  }, [lossEvents])
-
-  const renderViolationRow = (v: { type: string; label: string; count: number; days: number | null }) => {
-              // Every task has an owner: explicitly assigned staff, or Joe by
-              // default, and every row reads the same way --
-              // "Joe, 2 days left to fix 5 Cash Counts — Do it now →"
-              const assignedTo = assignments[v.type] ?? DEFAULT_ASSIGNEE
-              const explicitlyAssigned = Boolean(assignments[v.type])
-              const deadline = deadlines[v.type]
-              const threshold = parseInt(vSettings.threshold_days ?? '3', 10)
-              const violationKey = ERRORS_TAB_VIOLATION[v.type] ?? v.type
-
-              const remaining = deadline
-                ? -daysSince(deadline)
-                : v.type === 'daily'
-                  ? 0 // the daily count is always due today
-                  : threshold - (v.days ?? 0)
-              const remainingPhrase = remaining > 0
-                ? `${remaining} day${remaining !== 1 ? 's' : ''} left to fix`
-                : remaining === 0
-                  ? 'due today to fix'
-                  : `overdue by ${Math.abs(remaining)} day${Math.abs(remaining) !== 1 ? 's' : ''} to fix`
-              const atRisk = remaining < 0
-              const on = assignedOn[v.type]
-              const by = assignedBy[v.type]
-
-              // Clear types keep the same sentence shape, just with nothing
-              // left to fix -- so all 17 lines always read the same way.
-              if (v.count === 0) {
-                return (
-                  <div key={v.type} className="py-[3px] text-[11px] leading-snug text-gray-400">
-                    <span className="capitalize font-semibold">{assignedTo}</span>, nothing left to fix{' '}
-                    <span className="font-bold text-green-600">0</span>{' '}
-                    {SHORT_LABEL[v.type] ?? v.label} <span className="text-green-600">✓</span>{' '}
-                    <button onClick={() => onGoToViolation?.(violationKey)} className="text-blue-400 font-semibold whitespace-nowrap">
-                      View →
-                    </button>
-                  </div>
-                )
-              }
-
-              return (
-                <div key={v.type} className={`py-[3px] text-[11px] leading-snug ${atRisk ? 'text-red-500' : 'text-gray-700'}`}>
-                  <span className="capitalize font-semibold">{assignedTo}</span>, {remainingPhrase}{' '}
-                  <span className="font-bold text-red-500">{v.count}</span>{' '}
-                  {SHORT_LABEL[v.type] ?? v.label}
-                  {atRisk && ' ⚠'}{' '}
-                  <button onClick={() => onGoToViolation?.(violationKey)} className="text-blue-600 font-semibold whitespace-nowrap">
-                    Do it now →
-                  </button>
-                  {explicitlyAssigned && on && (
-                    <span className="text-gray-400">
-                      {' '}(TAO {fmtOrdinalDate(on)}{by && <> by <span className="capitalize">{by}</span></>})
-                    </span>
-                  )}
-                </div>
-              )
-  }
 
   if (loading) return <div className="py-10 text-center text-gray-400">Loading…</div>
   if (!data) return <div className="py-10 text-center text-gray-400">Could not load today's summary.</div>
 
   return (
     <div className="py-2 space-y-1.5">
-      {/* Submenus — one view at a time, all four on ONE line. The 🚩 flag
-          carries each section's live count, so urgency travels with the pill. */}
+      {/* Submenus — Grony Cash and Data moved to the Grony Cash tab. */}
       <div className="flex flex-nowrap items-center gap-1 overflow-x-auto">
         {([
-          ['cash', '💰 Grony Cash'],
           ['manage', '🗂️ Grony Manage'],
           ['announcements', '📢 News'],
-          ['data', '🔢 Data'],
         ] as const).map(([k, label]) => {
-          const n = k === 'cash' ? cashCount : k === 'manage' ? manageCount : null
+          const n = k === 'manage' ? manageCount : null
           const active = homeView === k
           return (
             <button key={k} onClick={() => setHomeView(k)}
@@ -806,80 +535,6 @@ export default function TodayPage({ onGoToViolation, counts }: {
         <p className="ml-auto text-[9px] text-gray-400 shrink-0 hidden sm:block">{fmtDate(data.date)}</p>
       </div>
 
-      {homeView === 'cash' && (
-      <div className="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5">
-        <div className="flex items-center justify-between mb-0.5">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">
-            💰 Grony Cash Flags {cashCount > 0 && <span className="text-red-500">🚩{cashCount}</span>}
-          </p>
-          <Link href="/staff?tab=Assignments" className="text-[10px] text-blue-600 font-semibold">
-            Assign →
-          </Link>
-        </div>
-        {/* Loss-feed summaries for Joe — all figures from the 🔻 Loss menu */}
-        {lossSummary && (() => {
-          const cedis = (v: number) => `₵${v.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
-          const who = <span className="capitalize font-semibold">{DEFAULT_ASSIGNEE}</span>
-          const fixNow = (
-            <button onClick={() => onGoToViolation?.('__loss_feed')} className="text-blue-600 font-semibold whitespace-nowrap">
-              Fix now →
-            </button>
-          )
-          const R = ({ children, active }: { children: React.ReactNode; active: boolean }) => (
-            <div className={`py-[3px] text-[11px] leading-snug ${active ? 'text-gray-700' : 'text-gray-400'}`}>{children}</div>
-          )
-          const B = ({ v }: { v: string | number }) => <span className="font-bold text-red-500">{v}</span>
-          const t = lossSummary
-          return (
-            <div className="border-b border-gray-100 pb-1 mb-1">
-              <R active={t.total.n > 0}>
-                {t.total.n > 0 ? (
-                  <>{who}, there are <B v={t.total.n} /> losses detected amounting to a loss of <B v={cedis(t.total.amt)} /> — fix them now or you will pay it (it will be deducted from your salary). {fixNow}</>
-                ) : (
-                  <>{who}, no losses on record <span className="text-green-600">✓</span></>
-                )}
-              </R>
-              <R active={t.yesterday.n > 0}>
-                {t.yesterday.n > 0 ? (
-                  <>{who}, there was a loss of <B v={cedis(t.yesterday.amt)} /> ({t.yesterday.n} item{t.yesterday.n !== 1 ? 's' : ''}) from yesterday. {fixNow}</>
-                ) : (
-                  <>{who}, no loss from yesterday <span className="text-green-600">✓</span></>
-                )}
-              </R>
-              <R active={t.week.n > 0}>
-                {t.week.n > 0 ? (
-                  <>{who}, there have been <B v={t.week.n} /> losses this week (<B v={cedis(t.week.amt)} />) — investigate and fix now. {fixNow}</>
-                ) : (
-                  <>{who}, no losses this week <span className="text-green-600">✓</span></>
-                )}
-              </R>
-              <R active={t.month.n > 0}>
-                {t.month.n > 0 ? (
-                  <>{who}, <B v={t.month.n} /> losses this month (<B v={cedis(t.month.amt)} />) — investigate and fix now. {fixNow}</>
-                ) : (
-                  <>{who}, no losses this month <span className="text-green-600">✓</span></>
-                )}
-              </R>
-              <R active={t.year.n > 0}>
-                {t.year.n > 0 ? (
-                  <>{who}, <B v={t.year.n} /> losses this year (<B v={cedis(t.year.amt)} />) — investigate and fix now. {fixNow}</>
-                ) : (
-                  <>{who}, no losses this year <span className="text-green-600">✓</span></>
-                )}
-              </R>
-            </div>
-          )
-        })()}
-        {!flags ? (
-          <p className="text-[11px] text-gray-400 py-[1px]">Loading…</p>
-        ) : (
-          <div>
-            {cashViolations.map(renderViolationRow)}
-          </div>
-        )}
-      </div>
-      )}
-
       {/* GRONY MANAGE — operational tasks with no direct money in them */}
       {homeView === 'manage' && (
       <div className="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5">
@@ -892,18 +547,17 @@ export default function TodayPage({ onGoToViolation, counts }: {
           <p className="text-[11px] text-gray-400 py-[1px]">Loading…</p>
         ) : (
           <div>
-            {manageViolations.map(renderViolationRow)}
+            {manageViolations.map(v => (
+              <ViolationRow key={v.type} v={v} assignments={assignments} deadlines={deadlines}
+                assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
+                onGoToViolation={onGoToViolation} />
+            ))}
           </div>
         )}
       </div>
       )}
 
       {homeView === 'announcements' && <AnnouncementsPanel />}
-      {homeView === 'data' && (
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <AnalyticsPanel />
-        </div>
-      )}
     </div>
   )
 }
