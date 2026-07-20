@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { distanceMeters, SHOP_LAT, SHOP_LNG, ALLOWED_RADIUS_METERS } from '@/lib/geo'
+import { openerOf } from '@/lib/staffTimes'
 import { NextRequest, NextResponse } from 'next/server'
 
 // The Closer (last staff member to clock out) must answer end-of-day questions
@@ -25,27 +26,12 @@ async function ensureClosingReports() {
   `.catch(() => {})
 }
 
-function parseTimeMins(t: string | null): number | null {
-  if (!t) return null
-  const m = t.match(/^(\d+):(\d+)(am|pm)$/i)
-  if (!m) return null
-  let h = parseInt(m[1])
-  const min = parseInt(m[2])
-  const ap = m[3].toLowerCase()
-  if (ap === 'pm' && h !== 12) h += 12
-  if (ap === 'am' && h === 12) h = 0
-  return h * 60 + min
-}
-
-// The Opener is the staff member with the earliest clock-in time today.
-function openerOf(rows: { staff_name?: string; actual_in?: string | null }[]): string | null {
-  let best: string | null = null
-  let bestMins = Infinity
-  for (const r of rows) {
-    const mins = parseTimeMins(r.actual_in ?? null)
-    if (mins !== null && mins < bestMins) { bestMins = mins; best = r.staff_name ?? null }
-  }
-  return best
+// The Opener (earliest clock-in of the day) must confirm today's daily
+// counts before their clock-in counts as fully complete -- see
+// /api/staff-times/opening-count. This never delays or overrides actual_in
+// itself, only this separate confirmation flag.
+async function ensureOpeningCountCol() {
+  await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS opening_count_confirmed BOOLEAN NOT NULL DEFAULT FALSE`.catch(() => {})
 }
 
 export async function GET() {
@@ -64,10 +50,19 @@ export async function GET() {
     `
 
     const username = sessionUser.username ?? sessionUser.name
-    const [mine] = await sql`
-      SELECT actual_in, actual_out FROM staff_times
-      WHERE staff_name = ${username} AND work_date = ${today}
-    `
+    await ensureOpeningCountCol()
+    let mine: any
+    try {
+      ;[mine] = await sql`
+        SELECT actual_in, actual_out, opening_count_confirmed FROM staff_times
+        WHERE staff_name = ${username} AND work_date = ${today}
+      `
+    } catch {
+      ;[mine] = await sql`
+        SELECT actual_in, actual_out FROM staff_times
+        WHERE staff_name = ${username} AND work_date = ${today}
+      `
+    }
 
     let recent: any[] = []
     try {
@@ -131,6 +126,8 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     console.error('clock_locations insert failed (non-fatal):', e)
   }
+
+  await ensureOpeningCountCol()
 
   if (!hasLocation) {
     return NextResponse.json({ error: 'Location is required to clock in/out. Please enable location services and try again.' }, { status: 400 })
@@ -254,7 +251,7 @@ export async function POST(req: NextRequest) {
     }
 
     const [updated] = await sql`
-      SELECT actual_in, actual_out FROM staff_times
+      SELECT actual_in, actual_out, opening_count_confirmed FROM staff_times
       WHERE staff_name = ${username} AND work_date = ${today}
     `
 
