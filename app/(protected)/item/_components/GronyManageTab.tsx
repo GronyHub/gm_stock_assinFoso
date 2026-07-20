@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
+import { useSession } from 'next-auth/react'
 import { useViolations } from './useViolations'
 import { ViolationRow } from './ViolationRow'
 import ClosingReportLogView from './ClosingReportLogView'
@@ -10,9 +11,13 @@ const ExpensesTab = dynamic(() => import('./ExpensesTab'), {
   ssr: false,
   loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div>,
 })
+const StaffClient = dynamic(() => import('../../staff/StaffClient'), {
+  ssr: false,
+  loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div>,
+})
 
-type ManageView =
-  | 'flags' | 'advert' | 'staff_dress' | 'properties'
+export type ManageView =
+  | 'flags' | 'staff_times' | 'advert' | 'staff_dress' | 'properties'
   | 'arrangement' | 'cleanliness' | 'future' | 'customer_display'
   | 'staff_display' | 'training' | 'repair_works' | 'quality_assurance'
 
@@ -31,8 +36,9 @@ const LOG_CATEGORIES: { key: ManageView; label: string; icon: string }[] = [
 
 const SUBMENU: { key: ManageView; label: string }[] = [
   { key: 'flags', label: '🚩 Flags' },
+  { key: 'staff_times', label: '👤 Staff' },
   { key: 'advert', label: '📢 Advert' },
-  { key: 'staff_dress', label: '👕 Staff' },
+  { key: 'staff_dress', label: '👕 Dress Code' },
   { key: 'properties', label: '🏷️ Properties' },
   ...LOG_CATEGORIES.map(c => ({ key: c.key, label: `${c.icon} ${c.label}` })),
 ]
@@ -47,6 +53,9 @@ export default function GronyManageTab({ onGoToViolation, counts }: {
 }) {
   const [view, setView] = useState<ManageView>('flags')
   const { flags, assignments, deadlines, assignedBy, assignedOn, vSettings, manageViolations, manageCount } = useViolations(counts)
+  const { data: session } = useSession()
+  const role = (session?.user as any)?.role ?? 'staff'
+  const username = (session?.user as any)?.username ?? session?.user?.name ?? ''
 
   const logCategory = LOG_CATEGORIES.find(c => c.key === view)
 
@@ -91,8 +100,9 @@ export default function GronyManageTab({ onGoToViolation, counts }: {
           </div>
         )}
 
+        {view === 'staff_times' && <StaffClient role={role} username={username} embedded />}
         {view === 'advert' && <ClosingReportLogView field="advert_played" label="Advert" icon="📢" />}
-        {view === 'staff_dress' && <ClosingReportLogView field="no_tshirt_staff" label="Staff" icon="👕" />}
+        {view === 'staff_dress' && <ClosingReportLogView field="no_tshirt_staff" label="Dress Code" icon="👕" />}
         {view === 'properties' && <ExpensesTab search="" initialTab="properties" />}
         {logCategory && <ManageLogPanel category={logCategory.key} label={logCategory.label} icon={logCategory.icon} />}
       </div>

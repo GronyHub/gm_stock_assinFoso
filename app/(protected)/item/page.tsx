@@ -37,7 +37,6 @@ const NewBillForm    = dynamic(() => import('../bills/new/page'),             { 
 const NewExpenseForm = dynamic(() => import('../expenses/new/page'),          { ssr: false, loading: () => loading('Loading…') })
 const NewItemForm    = dynamic(() => import('./_components/NewItemForm'),     { ssr: false, loading: () => loading('Loading…') })
 const AnalyticsPanel = dynamic(() => import('./_components/AnalyticsPanel'),  { ssr: false, loading: () => loading('Loading analytics…') })
-const StaffClient    = dynamic(() => import('../staff/StaffClient'),          { ssr: false, loading: () => loading('Loading…') })
 const NoStaffTimesList = dynamic(() => import('../staff/StaffClient').then(m => ({ default: m.NoStaffTimesList })), { ssr: false, loading: () => loading('Loading…') })
 const LossTab        = dynamic(() => import('./_components/LossTab'),         { ssr: false, loading: () => loading('Loading…') })
 const LossFeedTab    = dynamic(() => import('./_components/LossFeedTab'),     { ssr: false, loading: () => loading('Loading…') })
@@ -46,7 +45,7 @@ const DailySummaryTab = dynamic(() => import('./_components/DailySummaryTab'), {
 const GronyCashTab   = dynamic(() => import('./_components/GronyCashTab'),    { ssr: false, loading: () => loading('Loading…') })
 const GronyManageTab = dynamic(() => import('./_components/GronyManageTab'),  { ssr: false, loading: () => loading('Loading…') })
 
-type OuterTab = 'today' | 'loss' | 'errors' | 'manage' | 'staff' | 'dailySummary'
+type OuterTab = 'today' | 'loss' | 'errors' | 'manage' | 'dailySummary'
 
 // Sales, Bills, Counts, Feed, Cash, Data, Expenses, P&L, and CAB all live as
 // submenus inside the Grony Cash tab (outerTab 'loss' -- kept as the
@@ -58,6 +57,12 @@ type LossView = 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'cash' | 'data
 // of silently falling back to Today.
 const OLD_TAB_TO_VIEW: Partial<Record<string, LossView>> = {
   pl: 'pl', expenses: 'expenses', cab: 'cab', data: 'data',
+}
+// Old top-level tabs that moved to a DIFFERENT tab's submenus (not Grony
+// Cash's) -- ?tab=staff now lands on Grony Manage instead of falling back to
+// Today. Its exact submenu isn't deep-linked, just the right parent tab.
+const OLD_TAB_TO_OUTER: Partial<Record<string, OuterTab>> = {
+  staff: 'manage',
 }
 
 // Report-style submenus (their own dashboards, not filterable lists) -- the
@@ -160,7 +165,6 @@ const VIOLATIONS: Record<OuterTab, { key: string; label: string; category?: Erro
   loss: [],
   errors: ERROR_VIOLATIONS,
   manage: [],
-  staff: [],
   dailySummary: [],
 }
 
@@ -200,18 +204,19 @@ function TabIcon({ icon, label, active, onClick, count }: { icon: string; label:
   )
 }
 
-const VALID_TABS: OuterTab[] = ['today', 'loss', 'errors', 'manage', 'staff', 'dailySummary']
+const VALID_TABS: OuterTab[] = ['today', 'loss', 'errors', 'manage', 'dailySummary']
 
 function ItemHubPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const rawInitialTab = searchParams.get('tab')
   const oldTabView = rawInitialTab ? OLD_TAB_TO_VIEW[rawInitialTab] : undefined
-  // 'losses' (the old standalone Loss Feed tab) and the old pl/expenses/cab/
-  // data top-level tabs all folded into Grony Cash submenus -- old
-  // bookmarks/links using any of them still land somewhere sensible instead
-  // of silently falling back to Today.
-  const initialTab = (rawInitialTab === 'losses' || oldTabView ? 'loss' : rawInitialTab) as OuterTab | null
+  const oldTabOuter = rawInitialTab ? OLD_TAB_TO_OUTER[rawInitialTab] : undefined
+  // 'losses' (the old standalone Loss Feed tab), the old pl/expenses/cab/data
+  // top-level tabs (folded into Grony Cash), and the old standalone staff tab
+  // (folded into Grony Manage) all still land somewhere sensible instead of
+  // silently falling back to Today.
+  const initialTab = (rawInitialTab === 'losses' || oldTabView ? 'loss' : oldTabOuter ?? rawInitialTab) as OuterTab | null
   const [outerTab, setOuterTab] = useState<OuterTab>(
     initialTab && VALID_TABS.includes(initialTab) ? initialTab : 'today'
   )
@@ -418,7 +423,7 @@ function ItemHubPageInner() {
     productType !== 'all' ? (productType === 'goods' ? 'Goods' : 'Services') : null,
   ].filter(Boolean).join(' · ')
 
-  const showControls = outerTab !== 'today' && outerTab !== 'manage' && outerTab !== 'staff' && outerTab !== 'dailySummary'
+  const showControls = outerTab !== 'today' && outerTab !== 'manage' && outerTab !== 'dailySummary'
     && !(outerTab === 'loss' && REPORT_VIEWS.has(lossView))
   const { data: session } = useSession()
   const role = (session?.user as any)?.role ?? 'staff'
@@ -451,7 +456,6 @@ function ItemHubPageInner() {
           <div className="flex items-center gap-1 px-1 pt-1.5 pb-1 flex-1 min-w-0">
             <TabIcon icon="📉" label="Grony Cash" active={outerTab === 'loss'}     onClick={() => changeTab('loss')} />
             <TabIcon icon="🗂️" label="Grony Manage" active={outerTab === 'manage'} onClick={() => changeTab('manage')} />
-            <TabIcon icon="👤" label="Staff"    active={outerTab === 'staff'}    onClick={() => changeTab('staff')} />
             <TabIcon icon="🗓️" label="Daily"    active={outerTab === 'dailySummary'} onClick={() => changeTab('dailySummary')} />
           </div>
 
@@ -660,11 +664,6 @@ function ItemHubPageInner() {
         )}
         {addForm !== 'expense' && outerTab === 'loss' && lossView === 'expenses' && <ExpensesTab search={search} />}
         {outerTab === 'loss' && lossView === 'cab' && <CABTab />}
-        {outerTab === 'staff'    && (
-          <TabErrorBoundary>
-            <StaffClient role={role} username={username} embedded />
-          </TabErrorBoundary>
-        )}
         {addForm !== 'item' && outerTab === 'loss' && lossView === 'items' && (
           <TabErrorBoundary>
             <LossTab onOpenItem={() => {}} search={search} group={group} productType={productType}
