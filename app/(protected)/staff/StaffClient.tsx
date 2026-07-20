@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo, useRef, Fragment, Suspense, useCallback } from 'react'
+import Link from 'next/link'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { fmtDate, fmtOrdinalDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
@@ -159,7 +160,7 @@ function minsToHrs(mins: number) {
 
 type RecentRow = { id?: number; staff_name: string; work_date: string; actual_in: string | null; actual_out: string | null; entered_by: string | null }
 type TodayRow = { staff_name: string; actual_in: string | null; actual_out: string | null }
-type Mine = { actual_in: string | null; actual_out: string | null } | null
+type Mine = { actual_in: string | null; actual_out: string | null; opening_count_confirmed?: boolean } | null
 
 type Payslip = {
   id: number; staff_name: string; pay_month: string; payment_period: string | null
@@ -206,6 +207,8 @@ function TimesTab({ username, role }: { username: string; role: string }) {
   const [opener, setOpener] = useState<string | null>(null)
   const [closer, setCloser] = useState<string | null>(null)
   const [showReports, setShowReports] = useState(false)
+  const [confirmingCount, setConfirmingCount] = useState(false)
+  const [confirmCountErr, setConfirmCountErr] = useState('')
 
   const [editDate, setEditDate] = useState<string | null>(null)
   const [editIn, setEditIn] = useState('')
@@ -316,7 +319,7 @@ function TimesTab({ username, role }: { username: string; role: string }) {
       setPickingTime(false)
       setCustomTime(nowAsHHMM())
       setCloserPrompt(null)
-      if (updated.is_opener) setRoleBanner('🌅 You are the Opener for today!')
+      if (updated.is_opener) setRoleBanner('🌅 You are the Opener for today! Confirm the opening counts below to finish clocking in.')
       else if (updated.is_closer) setRoleBanner('🌙 You are the Closer for today — closing report received. Thank you, and good night!')
       load()
     } else {
@@ -327,6 +330,26 @@ function TimesTab({ username, role }: { username: string; role: string }) {
       } else {
         setErr(d.error || 'Failed to save')
       }
+    }
+  }
+
+  // The Opener's clock-in time is recorded immediately (never delayed), but
+  // it doesn't count as fully complete until they confirm today's daily
+  // counts -- gated here, not at clock-in time itself.
+  const amOpenerToday = !!opener && opener === username
+  const needsOpeningCount = amOpenerToday && !!mine?.actual_in && !mine?.opening_count_confirmed
+
+  async function confirmOpeningCount() {
+    setConfirmingCount(true)
+    setConfirmCountErr('')
+    const res = await fetch('/api/staff-times/opening-count', { method: 'POST' })
+    setConfirmingCount(false)
+    if (res.ok) {
+      setMine(prev => prev ? { ...prev, opening_count_confirmed: true } : prev)
+      setRoleBanner('✅ Opening counts confirmed — your clock-in is complete!')
+    } else {
+      const d = await res.json().catch(() => ({}))
+      setConfirmCountErr(d.error || 'Could not confirm — try again.')
     }
   }
 
@@ -423,6 +446,30 @@ function TimesTab({ username, role }: { username: string; role: string }) {
         </div>
       )}
 
+      {/* Opener's clock-in is compulsory-gated on the daily counts -- the
+          time is already saved (see clock()/roleBanner above), but it isn't
+          fully complete until this is confirmed. Stays up on every visit
+          until confirmed, not just right after clocking in. */}
+      {needsOpeningCount && (
+        <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 space-y-2">
+          <p className="text-sm font-semibold text-amber-800">🌅 You&apos;re the Opener today</p>
+          <p className="text-xs text-amber-700">
+            Your clock-in time is saved, but it isn&apos;t complete until you confirm today&apos;s opening counts.
+          </p>
+          {confirmCountErr && <p className="text-xs text-red-600">{confirmCountErr}</p>}
+          <div className="flex gap-2">
+            <Link href="/item?tab=errors&violation=daily"
+              className="flex-1 text-center bg-white border border-amber-300 text-amber-800 text-xs font-semibold rounded-lg py-2 hover:bg-amber-100 transition">
+              Go to Counts →
+            </Link>
+            <button onClick={confirmOpeningCount} disabled={confirmingCount}
+              className="flex-1 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white text-xs font-semibold rounded-lg py-2 transition">
+              {confirmingCount ? 'Checking…' : "I've Completed the Counts"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Clock In/Out panel */}
       <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
         <p className="text-sm font-semibold text-gray-700">My Time Today</p>
@@ -430,6 +477,7 @@ function TimesTab({ username, role }: { username: string; role: string }) {
           <div className="bg-green-50 rounded-lg px-3 py-2">
             <span className="text-xs text-gray-400 block">Time In</span>
             <span className="font-semibold text-green-700">{mine?.actual_in ?? '—'}</span>
+            {needsOpeningCount && <span className="text-[9px] text-amber-600 font-semibold block mt-0.5">Pending opening count</span>}
           </div>
           <div className="bg-orange-50 rounded-lg px-3 py-2">
             <span className="text-xs text-gray-400 block">Time Out</span>
