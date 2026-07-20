@@ -251,7 +251,7 @@ export default function DailySummaryTab() {
       afterTable()
 
       const itemBody = (rows: ItemLine[]) => rows.map(r => [
-        r.item_name, String(r.qty), r.costPrice == null ? '—' : fc(r.costPrice), fc(Number(r.total) || 0),
+        r.item_name, String(r.qty), r.costPrice == null ? '—' : fcPdf(r.costPrice), fcPdf(Number(r.total) || 0),
         fmtQty(r.previousStock), fmtQty(r.currentStock), VERIFY_BADGE[r.verifyStatus].label,
       ])
       const itemHead = [['Item', 'Qty', 'CP', 'Total', 'Before', 'After', 'Verify']]
