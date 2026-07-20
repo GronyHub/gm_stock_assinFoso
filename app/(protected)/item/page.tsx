@@ -75,6 +75,21 @@ const OLD_TAB_TO_OUTER: Partial<Record<string, OuterTab>> = {
 // groups/search/New controls row doesn't apply to them.
 const REPORT_VIEWS = new Set<LossView>(['cash', 'data', 'pl', 'cab', 'vendors', 'customers', 'receipts'])
 
+// Vendors/Customers/Receipts and Counts/Feed aren't top-level sections of
+// their own -- they're views about (or derived from) Bills/Sales/Items, so
+// they nest as a second row under their parent instead of sitting in the
+// main row. Sub-views not listed here have no parent and no children.
+const PARENT_OF: Partial<Record<LossView, LossView>> = {
+  items: 'items', counts: 'items', feed: 'items',
+  sales: 'sales', customers: 'sales', receipts: 'sales',
+  bills: 'bills', vendors: 'bills',
+}
+const CHILDREN_OF: Partial<Record<LossView, { key: LossView; label: string }[]>> = {
+  items: [{ key: 'counts', label: 'Counts' }, { key: 'feed', label: 'Feed' }],
+  sales: [{ key: 'customers', label: 'Customers' }, { key: 'receipts', label: 'Receipts' }],
+  bills: [{ key: 'vendors', label: 'Vendors' }],
+}
+
 type Item = {
   id: number
   item_name: string
@@ -419,6 +434,8 @@ function ItemHubPageInner() {
   }
 
   const groups = ['All', ...Array.from(new Set(items.map(i => i.cf_group ?? 'Ungrouped'))).sort()]
+  const activeLossParent = PARENT_OF[lossView]
+  const lossChildren = activeLossParent ? CHILDREN_OF[activeLossParent] : undefined
   const currentViolations = VIOLATIONS[outerTab]
   const activeViolationLabel = currentViolations.find(v => v.key === violation)?.label ?? null
 
@@ -464,52 +481,63 @@ function ItemHubPageInner() {
           </div>
         </div>
 
-        {/* Grony Cash sub-view row: Items is the tab's own default view */}
+        {/* Grony Cash top-level row: Items is the tab's own default view.
+            Highlighted by PARENT_OF so it stays lit up while looking at a
+            child sub-view (e.g. Sales stays active while on Customers). */}
         {outerTab === 'loss' && (
           <div className="flex items-center gap-1 px-2 py-0.5 bg-white border-t border-gray-100 overflow-x-auto">
             {([
-              { key: 'cash',     label: 'Flag' },
+              { key: 'items',    label: 'Items' },
               { key: 'sales',    label: 'Sales' },
               { key: 'bills',    label: 'Bills' },
-              { key: 'counts',   label: 'Counts' },
-              { key: 'feed',     label: 'Feed' },
-              { key: 'data',     label: 'Data' },
               { key: 'expenses', label: 'Expenses' },
+              { key: 'cash',     label: 'Flag' },
+              { key: 'data',     label: 'Data' },
               ...(canSeePL ? [{ key: 'pl' as LossView, label: 'P&L' }] : []),
               { key: 'cab',      label: 'CAB' },
-              { key: 'vendors',  label: 'Vendors' },
-              { key: 'customers', label: 'Customers' },
-              { key: 'receipts', label: 'Receipts' },
             ] as { key: LossView; label: string }[]).map(v => (
               <button key={v.key} onClick={() => { setLossView(v.key); setAddForm(null) }}
                 className={`shrink-0 text-xs font-semibold px-2 py-0.5 rounded-lg whitespace-nowrap transition
-                  ${lossView === v.key ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>
+                  ${(activeLossParent ?? lossView) === v.key ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>
                 {v.label}
               </button>
             ))}
-            {lossView === 'items' && (
-              <button onClick={() => setShowPrices(p => !p)}
-                title="Show/hide the SP, AMOUNT, CP and PROFIT columns on the pack-chain detail table"
-                className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap transition
-                  ${showPrices ? 'bg-blue-600 text-white' : 'bg-white border border-blue-200 text-blue-700 hover:bg-blue-100'}`}>
-                💲 Prices {showPrices ? '▾' : '▸'}
+          </div>
+        )}
+
+        {/* Children row -- only for sections that have any, and only while
+            that section (or one of its children) is the active view. */}
+        {outerTab === 'loss' && lossChildren && (
+          <div className="flex items-center gap-1 px-2 py-0.5 bg-gray-50 border-t border-gray-100 overflow-x-auto">
+            {lossChildren.map(c => (
+              <button key={c.key} onClick={() => { setLossView(c.key); setAddForm(null) }}
+                className={`shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-lg whitespace-nowrap transition
+                  ${lossView === c.key ? 'bg-blue-500 text-white' : 'text-gray-400 hover:bg-gray-100'}`}>
+                {c.label}
               </button>
-            )}
+            ))}
             {lossView === 'items' && (
-              <button onClick={() => setLossOnly(o => { const v = !o; if (v) setGainOnly(false); return v })}
-                title="Show only rows with an actual loss on the pack-chain detail table"
-                className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap transition
-                  ${lossOnly ? 'bg-red-600 text-white' : 'bg-white border border-red-200 text-red-700 hover:bg-red-100'}`}>
-                🔻 Loss Only
-              </button>
-            )}
-            {lossView === 'items' && (
-              <button onClick={() => setGainOnly(o => { const v = !o; if (v) setLossOnly(false); return v })}
-                title="Show only rows with an actual gain on the pack-chain detail table"
-                className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap transition
-                  ${gainOnly ? 'bg-orange-500 text-white' : 'bg-white border border-orange-200 text-orange-700 hover:bg-orange-100'}`}>
-                🔺 Gain Only
-              </button>
+              <>
+                <div className="w-px h-3 bg-gray-200 shrink-0 mx-0.5" />
+                <button onClick={() => setShowPrices(p => !p)}
+                  title="Show/hide the SP, AMOUNT, CP and PROFIT columns on the pack-chain detail table"
+                  className={`shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-lg whitespace-nowrap transition
+                    ${showPrices ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gray-100'}`}>
+                  💲 Prices {showPrices ? '▾' : '▸'}
+                </button>
+                <button onClick={() => setLossOnly(o => { const v = !o; if (v) setGainOnly(false); return v })}
+                  title="Show only rows with an actual loss on the pack-chain detail table"
+                  className={`shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-lg whitespace-nowrap transition
+                    ${lossOnly ? 'bg-red-600 text-white' : 'text-gray-400 hover:bg-gray-100'}`}>
+                  🔻 Loss Only
+                </button>
+                <button onClick={() => setGainOnly(o => { const v = !o; if (v) setLossOnly(false); return v })}
+                  title="Show only rows with an actual gain on the pack-chain detail table"
+                  className={`shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-lg whitespace-nowrap transition
+                    ${gainOnly ? 'bg-orange-500 text-white' : 'text-gray-400 hover:bg-gray-100'}`}>
+                  🔺 Gain Only
+                </button>
+              </>
             )}
           </div>
         )}
