@@ -44,13 +44,18 @@ const ProfitLossTab  = dynamic(() => import('./_components/ProfitLossTab'),   { 
 const DailySummaryTab = dynamic(() => import('./_components/DailySummaryTab'), { ssr: false, loading: () => loading('Loading…') })
 const GronyCashTab   = dynamic(() => import('./_components/GronyCashTab'),    { ssr: false, loading: () => loading('Loading…') })
 const GronyManageTab = dynamic(() => import('./_components/GronyManageTab'),  { ssr: false, loading: () => loading('Loading…') })
+const VendorsPage    = dynamic(() => import('../vendors/page'),               { ssr: false, loading: () => loading('Loading…') })
+const CustomersPage  = dynamic(() => import('../customers/page'),             { ssr: false, loading: () => loading('Loading…') })
+const ReceiptsPage   = dynamic(() => import('../receipts/page'),              { ssr: false, loading: () => loading('Loading…') })
+const ViewPortalAsButton = dynamic(() => import('@/components/ViewPortalAsButton'), { ssr: false })
 
 type OuterTab = 'today' | 'loss' | 'errors' | 'manage' | 'dailySummary'
 
-// Sales, Bills, Counts, Feed, Cash, Data, Expenses, P&L, and CAB all live as
-// submenus inside the Grony Cash tab (outerTab 'loss' -- kept as the
-// internal key since it's referenced throughout; only the label changed).
-type LossView = 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'cash' | 'data' | 'expenses' | 'pl' | 'cab'
+// Sales, Bills, Counts, Feed, Cash, Data, Expenses, P&L, CAB, Vendors,
+// Customers, and Receipts all live as submenus inside the Grony Cash tab
+// (outerTab 'loss' -- kept as the internal key since it's referenced
+// throughout; only the label changed).
+type LossView = 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'cash' | 'data' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts'
 
 // Old top-level tabs that got folded into Grony Cash submenus -- old
 // bookmarks/links using ?tab=pl etc. still land on the right submenu instead
@@ -65,9 +70,10 @@ const OLD_TAB_TO_OUTER: Partial<Record<string, OuterTab>> = {
   staff: 'manage',
 }
 
-// Report-style submenus (their own dashboards, not filterable lists) -- the
+// Self-contained submenus -- either their own dashboard, or a standalone
+// page with its own internal search/filter/add UI -- so the shared
 // groups/search/New controls row doesn't apply to them.
-const REPORT_VIEWS = new Set<LossView>(['cash', 'data', 'pl', 'cab'])
+const REPORT_VIEWS = new Set<LossView>(['cash', 'data', 'pl', 'cab', 'vendors', 'customers', 'receipts'])
 
 type Item = {
   id: number
@@ -170,12 +176,10 @@ const VIOLATIONS: Record<OuterTab, { key: string; label: string; category?: Erro
 
 const COUNTS_VIOLATIONS = new Set(['daily', '7day', '15day'])
 
+// Analysis dropped -- it's a strict subset of Grony Cash's Data submenu.
+// Vendors/Customers/Receipts moved into Grony Cash, Logs into Grony Manage.
+// What's left is account & admin, not business navigation.
 const HAMBURGER_LINKS = [
-  { href: '/analysis', label: 'Analysis' },
-  { href: '/vendors',   label: 'Vendors'   },
-  { href: '/customers', label: 'Customers' },
-  { href: '/receipts',  label: 'Receipts'  },
-  { href: '/logs',      label: 'Logs'      },
   { href: '/users',    label: 'Users'    },
   { href: '/profile',  label: 'Profile'  },
 ]
@@ -444,7 +448,7 @@ function ItemHubPageInner() {
       {/* ── Header ── */}
       <div className="shrink-0 bg-white border-b border-gray-200">
 
-        {/* Row 1: scrollable tabs + hamburger (hamburger outside scroll area to avoid clip) */}
+        {/* Row 1: Home + scrollable tabs (hamburger moved to a fixed bottom-left button) */}
         <div className="flex items-center pr-1.5">
           {/* Home — fixed, outside the scrollable flex area */}
           <button onClick={() => changeTab('today')}
@@ -457,30 +461,6 @@ function ItemHubPageInner() {
             <TabIcon icon="📉" label="Grony Cash" active={outerTab === 'loss'}     onClick={() => changeTab('loss')} />
             <TabIcon icon="🗂️" label="Grony Manage" active={outerTab === 'manage'} onClick={() => changeTab('manage')} />
             <TabIcon icon="🗓️" label="Daily"    active={outerTab === 'dailySummary'} onClick={() => changeTab('dailySummary')} />
-          </div>
-
-          {/* Hamburger — outside the flex tabs row so dropdown isn't clipped */}
-          <div className="relative shrink-0 pt-1.5 pb-1" ref={hamburgerRef}>
-            <button onClick={() => setHamburgerOpen(o => !o)}
-              className="w-6 h-6 flex items-center justify-center rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 transition font-bold text-sm leading-none">
-              &#9776;
-            </button>
-            {hamburgerOpen && (
-              <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-[100] min-w-[150px]">
-                {hamburgerLinks.map(l => (
-                  <Link key={l.href} href={l.href}
-                    onClick={() => setHamburgerOpen(false)}
-                    className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 first:rounded-t-xl transition">
-                    {l.label}
-                  </Link>
-                ))}
-                <div className="border-t border-gray-100" />
-                <button onClick={() => signOut({ callbackUrl: '/login' })}
-                  className="w-full text-left px-4 py-3 text-sm font-medium text-red-500 hover:bg-red-50 rounded-b-xl transition">
-                  Sign out
-                </button>
-              </div>
-            )}
           </div>
         </div>
 
@@ -497,6 +477,9 @@ function ItemHubPageInner() {
               { key: 'expenses', label: '💸 Expenses' },
               ...(canSeePL ? [{ key: 'pl' as LossView, label: '📈 P&L' }] : []),
               { key: 'cab',      label: '🏦 CAB' },
+              { key: 'vendors',  label: '🏭 Vendors' },
+              { key: 'customers', label: '👥 Customers' },
+              { key: 'receipts', label: '📃 Receipts' },
             ] as { key: LossView; label: string }[]).map(v => (
               <button key={v.key} onClick={() => { setLossView(v.key); setAddForm(null) }}
                 className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap transition
@@ -645,6 +628,21 @@ function ItemHubPageInner() {
             <ProfitLossTab />
           </TabErrorBoundary>
         )}
+        {outerTab === 'loss' && lossView === 'vendors' && (
+          <TabErrorBoundary>
+            <div className="px-4"><VendorsPage /></div>
+          </TabErrorBoundary>
+        )}
+        {outerTab === 'loss' && lossView === 'customers' && (
+          <TabErrorBoundary>
+            <div className="px-4"><CustomersPage /></div>
+          </TabErrorBoundary>
+        )}
+        {outerTab === 'loss' && lossView === 'receipts' && (
+          <TabErrorBoundary>
+            <div className="px-4"><ReceiptsPage /></div>
+          </TabErrorBoundary>
+        )}
         {outerTab === 'dailySummary' && (
           <TabErrorBoundary>
             <DailySummaryTab />
@@ -742,6 +740,31 @@ function ItemHubPageInner() {
           }
           return null
         })()}
+      </div>
+
+      {/* Hamburger — fixed to the bottom-left corner of the screen, dropdown
+          opens upward so it isn't clipped by the viewport bottom edge. */}
+      <div className="fixed bottom-4 left-4 z-[100]" ref={hamburgerRef}>
+        {hamburgerOpen && (
+          <div className="absolute bottom-full left-0 mb-1 bg-white border border-gray-200 rounded-xl shadow-xl min-w-[180px] overflow-hidden">
+            <ViewPortalAsButton onDone={() => setHamburgerOpen(false)} />
+            {hamburgerLinks.map(l => (
+              <Link key={l.href} href={l.href}
+                onClick={() => setHamburgerOpen(false)}
+                className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-t border-gray-100 transition">
+                {l.label}
+              </Link>
+            ))}
+            <button onClick={() => signOut({ callbackUrl: '/login' })}
+              className="w-full text-left px-4 py-3 text-sm font-medium text-red-500 hover:bg-red-50 border-t border-gray-100 transition">
+              Sign out
+            </button>
+          </div>
+        )}
+        <button onClick={() => setHamburgerOpen(o => !o)}
+          className="w-11 h-11 flex items-center justify-center rounded-full bg-white border border-gray-200 shadow-lg text-gray-600 hover:bg-gray-50 transition font-bold text-lg leading-none">
+          &#9776;
+        </button>
       </div>
     </div>
   )
