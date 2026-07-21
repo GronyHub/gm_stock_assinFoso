@@ -86,7 +86,7 @@ The ☰ button, fixed to the bottom-left corner of the screen, holds account-lev
 - WIC vs GMC: WIC is a real paying customer walking in. GMC means the shop itself is the "customer" -- stock taken for internal use, not a sale.
 - Flags cover every kind of thing that needs attention -- missing prices, duplicate items, unlinked sales, outstanding daily counts, and more. Clearing them keeps the shop's numbers accurate. Tapping "Fix now →" on a flag jumps straight to it.
 - Every item a WIC customer buys should be counted the next day, to confirm the stock actually dropped as expected.
-- Bino gets a reminder of his outstanding Grony Manage tasks each time he logs in, with a link straight to the Flags panel, and is asked to tick off his Advert checklist each time he clocks out.`,
+- Anyone can check Bino's outstanding Grony Manage tasks from the Bino tab on the Role Bar -- same as everyone else's. He's also asked to tick off his Advert checklist each time he clocks out.`,
   training_laws: `# Company Laws
 
 No company policies have been added here yet -- the owner will add them.`,
