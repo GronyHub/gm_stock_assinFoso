@@ -465,15 +465,20 @@ function ItemHubPageInner() {
             (hamburger moved to a fixed bottom-left button). Divider lines
             between each tab so they read as distinct menus, not one blob. */}
         <div className="flex items-center gap-1 px-2 py-2 overflow-x-auto">
-          <button onClick={() => changeTab('today')} className={topTabCls(outerTab === 'today')}>Home</button>
+          <button onClick={() => changeTab('today')} className={topTabCls(outerTab === 'today' && !openRole)}>Home</button>
           <div className="w-px h-7 bg-gray-200 shrink-0" />
-          <button onClick={() => changeTab('loss')} className={topTabCls(outerTab === 'loss')}>Grony Cash</button>
+          <button onClick={() => changeTab('loss')} className={topTabCls(outerTab === 'loss' && !openRole)}>Grony Cash</button>
           <div className="w-px h-7 bg-gray-200 shrink-0" />
-          <button onClick={() => changeTab('manage')} className={topTabCls(outerTab === 'manage')}>Grony Manage</button>
+          <button onClick={() => changeTab('manage')} className={topTabCls(outerTab === 'manage' && !openRole)}>Grony Manage</button>
           <div className="w-px h-7 bg-gray-200 shrink-0" />
-          <button onClick={() => changeTab('dailySummary')} className={topTabCls(outerTab === 'dailySummary')}>Daily</button>
+          <button onClick={() => changeTab('dailySummary')} className={topTabCls(outerTab === 'dailySummary' && !openRole)}>Daily</button>
         </div>
 
+        {/* Everything below this point (submenus, search/New, violations)
+            has nothing to do with the Role Bar's own panel, so none of it
+            renders while one is open -- avoids two things reading as
+            "selected" at once and keeps the panel free of unrelated chrome. */}
+        {!openRole && (<>
         {/* Grony Cash top-level row: Items is the tab's own default view.
             Highlighted by PARENT_OF so it stays lit up while looking at a
             child sub-view (e.g. Sales stays active while on Customers). */}
@@ -625,26 +630,29 @@ function ItemHubPageInner() {
             })}
           </div>
         )}
+        </>)}
       </div>
 
       {/* ── Content ── */}
       <div className="relative flex-1 min-h-0 overflow-y-auto">
         {/* Role Bar panel — replaces the tab content area (below the header,
             above the Role Bar) the same way switching a top-level tab does,
-            instead of a modal that hides everything behind it. */}
-        {openRole && (
-          <div className="absolute inset-0 z-20">
-            <RolePanel
-              role={openRole}
-              cashViolations={cashViolations} manageViolations={manageViolations}
-              assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
-              onGoToViolation={goToViolation}
-              missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
-              onOpenManage={() => changeTab('manage')}
-              onClose={() => setOpenRole(null)}
-            />
-          </div>
-        )}
+            instead of a modal that hides everything behind it. Mutually
+            exclusive with the normal tab content below (not just visually
+            stacked on top of it), so nothing from the underlying tab can
+            bleed through and there's no wasted rendering/fetching while a
+            Role Bar panel is open. */}
+        {openRole ? (
+          <RolePanel
+            role={openRole}
+            cashViolations={cashViolations} manageViolations={manageViolations}
+            assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
+            onGoToViolation={goToViolation}
+            missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
+            onOpenManage={() => changeTab('manage')}
+            onClose={() => setOpenRole(null)}
+          />
+        ) : (<>
         {addForm === 'sale'    && outerTab === 'loss' && lossView === 'sales'    && <div className="px-4"><NewSaleForm    onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'bill'    && outerTab === 'loss' && lossView === 'bills'    && <div className="px-4"><NewBillForm    onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'expense' && outerTab === 'loss' && lossView === 'expenses' && <div className="px-4"><NewExpenseForm onSuccess={() => setAddForm(null)} /></div>}
@@ -771,6 +779,7 @@ function ItemHubPageInner() {
           }
           return null
         })()}
+        </>)}
       </div>
 
       {/* Role bar — Joe/Bino/Opener/Closer, always visible (never hidden by
