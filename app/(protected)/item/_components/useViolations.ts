@@ -37,11 +37,8 @@ export const SHORT_LABEL: Record<string, string> = {
   equipment_check_overdue: 'Equipment Check (Mon/Thu)',
 }
 
-// Cash tasks default to Joe. Manage tasks default to Bino -- he's taking
-// charge of Grony Manage the same way Joe takes charge overall -- until
-// someone explicitly assigns them elsewhere.
+// Cash tasks default to Joe, shown in the Joe panel's loss summaries.
 export const DEFAULT_ASSIGNEE = 'Joe'
-export const MANAGE_DEFAULT_ASSIGNEE = 'Bino'
 
 // Every error type the app tracks -- active ones become task rows, clear
 // ones are named in the ✓ line so nothing is silently missing. Split in two:
