@@ -41,7 +41,7 @@ export default function RoleBar({ openRole, onSelectRole, cashCount, manageCount
   ]
 
   return (
-    <div className="shrink-0 flex items-stretch bg-white border-t border-gray-200">
+    <div className="shrink-0 sticky bottom-0 z-30 flex items-stretch bg-white border-t border-gray-200">
       {TABS.map(t => {
         const active = openRole === t.key
         return (
