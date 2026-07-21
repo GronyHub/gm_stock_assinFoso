@@ -9,6 +9,7 @@ type Props = {
   role: RoleKey
   cashViolations: Violation[]
   manageViolations: Violation[]
+  openerViolations: Violation[]
   assignments: Record<string, string>
   deadlines: Record<string, string>
   assignedBy: Record<string, string>
@@ -25,7 +26,7 @@ type Props = {
 // top-level tab does -- not a modal, so the bar stays visible/clickable and
 // there's a plain Close button instead of a small ×.
 export default function RolePanel({
-  role, cashViolations, manageViolations, assignments, deadlines, assignedBy, assignedOn, vSettings,
+  role, cashViolations, manageViolations, openerViolations, assignments, deadlines, assignedBy, assignedOn, vSettings,
   onGoToViolation, missingClosingReportsCount, onOpenManage, onClose,
 }: Props) {
   const [today, setToday] = useState<{ opener: string | null; openerConfirmed: boolean | null }>({ opener: null, openerConfirmed: null })
@@ -105,23 +106,31 @@ export default function RolePanel({
             onGoToViolation={key => { onClose(); onGoToViolation(key) }} />
         )}
         {role === 'opener' && (
-          openerCount > 0 ? (
-            <div className="space-y-2">
-              <p className="text-sm text-gray-700">
-                🌅 <span className="capitalize font-semibold">{today.opener}</span>, take today&apos;s opening count now to finish your clock-in.
+          <>
+            {/* The morning stock count is the opener's own job -- its row
+                (and click-through to the real count screen) lives here now
+                instead of on Joe's panel. */}
+            <RoleFlagsTable violations={openerViolations} assignments={assignments} deadlines={deadlines}
+              assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
+              onGoToViolation={key => { onClose(); onGoToViolation(key) }} />
+            {openerCount > 0 ? (
+              <div className="space-y-2">
+                <p className="text-sm text-gray-700">
+                  🌅 <span className="capitalize font-semibold">{today.opener}</span>, take today&apos;s opening count now to finish your clock-in.
+                </p>
+                <button onClick={goManage}
+                  className="w-full text-sm font-semibold px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition">
+                  Go to Staff →
+                </button>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400 py-4">
+                {today.opener
+                  ? <>✓ <span className="capitalize">{today.opener}</span> has confirmed today&apos;s opening count.</>
+                  : 'Nobody has clocked in yet today.'}
               </p>
-              <button onClick={goManage}
-                className="w-full text-sm font-semibold px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition">
-                Go to Staff →
-              </button>
-            </div>
-          ) : (
-            <p className="text-sm text-gray-400 py-4">
-              {today.opener
-                ? <>✓ <span className="capitalize">{today.opener}</span> has confirmed today&apos;s opening count.</>
-                : 'Nobody has clocked in yet today.'}
-            </p>
-          )
+            )}
+          </>
         )}
         {role === 'closer' && (
           closerCount > 0 ? (
