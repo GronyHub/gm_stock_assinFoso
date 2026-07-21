@@ -378,6 +378,10 @@ function ItemHubPageInner() {
   }
 
   function changeTab(t: OuterTab) {
+    // Switching to a top-level tab always wins over a Role Bar panel, so
+    // either bar can hand off to the other with one tap -- not just
+    // bottom-overrides-top.
+    setOpenRole(null)
     setOuterTab(t)
     setViolation(t === 'errors' ? ERROR_VIOLATIONS[0].key : null)
     setViolationOpen(t === 'errors')
