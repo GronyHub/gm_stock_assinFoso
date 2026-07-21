@@ -113,17 +113,7 @@ export default function RolePanel({
             <RoleFlagsTable violations={openerViolations} assignments={assignments} deadlines={deadlines}
               assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
               onGoToViolation={key => { onClose(); onGoToViolation(key) }} />
-            {openerCount > 0 ? (
-              <div className="space-y-2">
-                <p className="text-sm text-gray-700">
-                  🌅 <span className="capitalize font-semibold">{today.opener}</span>, take today&apos;s opening count now to finish your clock-in.
-                </p>
-                <button onClick={goManage}
-                  className="w-full text-sm font-semibold px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition">
-                  Go to Staff →
-                </button>
-              </div>
-            ) : (
+            {openerCount === 0 && (
               <p className="text-sm text-gray-400 py-4">
                 {today.opener
                   ? <>✓ <span className="capitalize">{today.opener}</span> has confirmed today&apos;s opening count.</>
