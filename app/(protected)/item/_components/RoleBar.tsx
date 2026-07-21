@@ -19,6 +19,7 @@ type Props = {
   onGoToViolation: (key: string) => void
   missingClosingReportsCount: number
   onOpenManage: () => void
+  trailing?: React.ReactNode
 }
 
 type RoleKey = 'joe' | 'bino' | 'opener' | 'closer'
@@ -31,7 +32,7 @@ type RoleKey = 'joe' | 'bino' | 'opener' | 'closer'
 export default function RoleBar({
   cashViolations, manageViolations, cashCount, manageCount,
   assignments, deadlines, assignedBy, assignedOn, vSettings,
-  onGoToViolation, missingClosingReportsCount, onOpenManage,
+  onGoToViolation, missingClosingReportsCount, onOpenManage, trailing,
 }: Props) {
   const [openRole, setOpenRole] = useState<RoleKey | null>(null)
   const [today, setToday] = useState<TodayInfo>({ opener: null, openerConfirmed: null })
@@ -108,6 +109,7 @@ export default function RoleBar({
             )}
           </button>
         ))}
+        {trailing}
       </div>
 
       {openRole && (
