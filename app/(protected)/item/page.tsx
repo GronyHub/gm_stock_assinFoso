@@ -754,7 +754,8 @@ function ItemHubPageInner() {
       {/* Role bar — Joe/Bino/Opener/Closer, always visible so a skipped
           mandatory task (Opener's count confirmation, Closer's closing
           report) is always one tap away. In-flow (not fixed) so it never
-          covers content; the hamburger below is shifted up to clear it. */}
+          covers content. The account menu (⋮) rides along on the right
+          edge of the same bar, rather than floating as its own button. */}
       <RoleBar
         cashViolations={cashViolations} manageViolations={manageViolations}
         cashCount={cashCount} manageCount={manageCount}
@@ -762,33 +763,31 @@ function ItemHubPageInner() {
         onGoToViolation={goToViolation}
         missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
         onOpenManage={() => changeTab('manage')}
-      />
-
-      {/* Hamburger — fixed to the bottom-left corner of the screen, shifted
-          up to clear the role bar; dropdown opens upward so it isn't
-          clipped by the viewport bottom edge. */}
-      <div className="fixed bottom-14 left-4 z-[100]" ref={hamburgerRef}>
-        {hamburgerOpen && (
-          <div className="absolute bottom-full left-0 mb-1 bg-white border border-gray-200 rounded-xl shadow-xl min-w-[180px] overflow-hidden">
-            <ViewPortalAsButton onDone={() => setHamburgerOpen(false)} />
-            {hamburgerLinks.map(l => (
-              <Link key={l.href} href={l.href}
-                onClick={() => setHamburgerOpen(false)}
-                className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-t border-gray-100 transition">
-                {l.label}
-              </Link>
-            ))}
-            <button onClick={() => signOut({ callbackUrl: '/login' })}
-              className="w-full text-left px-4 py-3 text-sm font-medium text-red-500 hover:bg-red-50 border-t border-gray-100 transition">
-              Sign out
+        trailing={
+          <div className="relative shrink-0" ref={hamburgerRef}>
+            {hamburgerOpen && (
+              <div className="absolute bottom-full right-0 mb-1 bg-white border border-gray-200 rounded-xl shadow-xl min-w-[180px] overflow-hidden">
+                <ViewPortalAsButton onDone={() => setHamburgerOpen(false)} />
+                {hamburgerLinks.map(l => (
+                  <Link key={l.href} href={l.href}
+                    onClick={() => setHamburgerOpen(false)}
+                    className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-t border-gray-100 transition">
+                    {l.label}
+                  </Link>
+                ))}
+                <button onClick={() => signOut({ callbackUrl: '/login' })}
+                  className="w-full text-left px-4 py-3 text-sm font-medium text-red-500 hover:bg-red-50 border-t border-gray-100 transition">
+                  Sign out
+                </button>
+              </div>
+            )}
+            <button onClick={() => setHamburgerOpen(o => !o)}
+              className="flex items-center justify-center px-3 py-2.5 text-gray-500 hover:bg-gray-50 transition text-lg leading-none">
+              ⋮
             </button>
           </div>
-        )}
-        <button onClick={() => setHamburgerOpen(o => !o)}
-          className="w-11 h-11 flex items-center justify-center rounded-full bg-white border border-gray-200 shadow-lg text-gray-600 hover:bg-gray-50 transition font-bold text-lg leading-none">
-          &#9776;
-        </button>
-      </div>
+        }
+      />
     </div>
   )
 }
