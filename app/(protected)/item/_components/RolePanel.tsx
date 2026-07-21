@@ -1,7 +1,8 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
 import { RoleFlagsTable } from './RoleFlagsTable'
-import { DEFAULT_ASSIGNEE, type Violation } from './useViolations'
+import { LossSummaryTable } from './LossSummaryTable'
+import type { Violation } from './useViolations'
 import type { RoleKey } from './RoleBar'
 
 type Props = {
@@ -89,60 +90,10 @@ export default function RolePanel({
       <div className="flex-1 min-h-0 overflow-y-auto px-4 py-2 space-y-2">
         {role === 'joe' && (
           <>
-            {/* Loss-feed summaries — all figures from the 🔻 Loss menu */}
-            {lossSummary && (() => {
-              const cedis = (v: number) => `₵${v.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
-              const who = <span className="capitalize font-semibold">{DEFAULT_ASSIGNEE}</span>
-              const fixNow = (
-                <button onClick={() => { onClose(); onGoToViolation('__loss_feed') }} className="text-blue-600 font-semibold whitespace-nowrap">
-                  Fix now →
-                </button>
-              )
-              const R = ({ children, active }: { children: React.ReactNode; active: boolean }) => (
-                <div className={`py-[3px] text-[11px] leading-snug ${active ? 'text-gray-700' : 'text-gray-400'}`}>{children}</div>
-              )
-              const B = ({ v }: { v: string | number }) => <span className="font-bold text-red-500">{v}</span>
-              const t = lossSummary
-              return (
-                <div className="border-b border-gray-100 pb-1 mb-1">
-                  <R active={t.total.n > 0}>
-                    {t.total.n > 0 ? (
-                      <>{who}, there are <B v={t.total.n} /> losses detected amounting to a loss of <B v={cedis(t.total.amt)} /> — fix them now or you will pay it (it will be deducted from your salary). {fixNow}</>
-                    ) : (
-                      <>{who}, no losses on record <span className="text-green-600">✓</span></>
-                    )}
-                  </R>
-                  <R active={t.yesterday.n > 0}>
-                    {t.yesterday.n > 0 ? (
-                      <>{who}, there was a loss of <B v={cedis(t.yesterday.amt)} /> ({t.yesterday.n} item{t.yesterday.n !== 1 ? 's' : ''}) from yesterday. {fixNow}</>
-                    ) : (
-                      <>{who}, no loss from yesterday <span className="text-green-600">✓</span></>
-                    )}
-                  </R>
-                  <R active={t.week.n > 0}>
-                    {t.week.n > 0 ? (
-                      <>{who}, there have been <B v={t.week.n} /> losses this week (<B v={cedis(t.week.amt)} />) — investigate and fix now. {fixNow}</>
-                    ) : (
-                      <>{who}, no losses this week <span className="text-green-600">✓</span></>
-                    )}
-                  </R>
-                  <R active={t.month.n > 0}>
-                    {t.month.n > 0 ? (
-                      <>{who}, <B v={t.month.n} /> losses this month (<B v={cedis(t.month.amt)} />) — investigate and fix now. {fixNow}</>
-                    ) : (
-                      <>{who}, no losses this month <span className="text-green-600">✓</span></>
-                    )}
-                  </R>
-                  <R active={t.year.n > 0}>
-                    {t.year.n > 0 ? (
-                      <>{who}, <B v={t.year.n} /> losses this year (<B v={cedis(t.year.amt)} />) — investigate and fix now. {fixNow}</>
-                    ) : (
-                      <>{who}, no losses this year <span className="text-green-600">✓</span></>
-                    )}
-                  </R>
-                </div>
-              )
-            })()}
+            {/* Loss Feed period totals — same table treatment as the flags below */}
+            {lossSummary && (
+              <LossSummaryTable summary={lossSummary} onFixNow={() => { onClose(); onGoToViolation('__loss_feed') }} />
+            )}
             <RoleFlagsTable violations={cashViolations} assignments={assignments} deadlines={deadlines}
               assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
               onGoToViolation={key => { onClose(); onGoToViolation(key) }} />
