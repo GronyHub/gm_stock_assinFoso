@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
-import { ViolationRow } from './ViolationRow'
-import { DEFAULT_ASSIGNEE, MANAGE_DEFAULT_ASSIGNEE, type Violation } from './useViolations'
+import { RoleFlagsTable } from './RoleFlagsTable'
+import { DEFAULT_ASSIGNEE, type Violation } from './useViolations'
 import type { RoleKey } from './RoleBar'
 
 type Props = {
@@ -143,27 +143,15 @@ export default function RolePanel({
                 </div>
               )
             })()}
-            {cashViolations.filter(v => v.count > 0).length === 0 ? (
-              <p className="text-sm text-gray-400 py-4">Nothing outstanding for Joe ✓</p>
-            ) : (
-              cashViolations.map(v => (
-                <ViolationRow key={v.type} v={v} assignments={assignments} deadlines={deadlines}
-                  assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
-                  onGoToViolation={key => { onClose(); onGoToViolation(key) }} defaultAssignee={DEFAULT_ASSIGNEE} />
-              ))
-            )}
+            <RoleFlagsTable violations={cashViolations} assignments={assignments} deadlines={deadlines}
+              assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
+              onGoToViolation={key => { onClose(); onGoToViolation(key) }} />
           </>
         )}
         {role === 'bino' && (
-          manageViolations.filter(v => v.count > 0).length === 0 ? (
-            <p className="text-sm text-gray-400 py-4">Nothing outstanding for Bino ✓</p>
-          ) : (
-            manageViolations.map(v => (
-              <ViolationRow key={v.type} v={v} assignments={assignments} deadlines={deadlines}
-                assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
-                onGoToViolation={key => { onClose(); onGoToViolation(key) }} defaultAssignee={MANAGE_DEFAULT_ASSIGNEE} />
-            ))
-          )
+          <RoleFlagsTable violations={manageViolations} assignments={assignments} deadlines={deadlines}
+            assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
+            onGoToViolation={key => { onClose(); onGoToViolation(key) }} />
         )}
         {role === 'opener' && (
           openerCount > 0 ? (
