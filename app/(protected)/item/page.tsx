@@ -204,7 +204,7 @@ const HAMBURGER_LINKS = [
 // Plain text, no icons -- keeps the top nav to a single line so it doesn't
 // eat vertical space. Only the selected tab gets the brand color.
 function topTabCls(active: boolean) {
-  return `shrink-0 text-sm font-bold px-3 py-2 rounded-xl whitespace-nowrap transition
+  return `shrink-0 text-base font-bold px-4 py-3.5 rounded-xl whitespace-nowrap transition
     ${active ? 'bg-brand text-white shadow-md' : 'text-gray-500 hover:bg-gray-100'}`
 }
 
@@ -462,11 +462,15 @@ function ItemHubPageInner() {
       <div className="shrink-0 sticky top-0 z-30 bg-white border-b border-gray-200">
 
         {/* Row 1: raw-text tabs, no icons -- single line to conserve height
-            (hamburger moved to a fixed bottom-left button) */}
+            (hamburger moved to a fixed bottom-left button). Divider lines
+            between each tab so they read as distinct menus, not one blob. */}
         <div className="flex items-center gap-1 px-2 py-2 overflow-x-auto">
           <button onClick={() => changeTab('today')} className={topTabCls(outerTab === 'today')}>Home</button>
+          <div className="w-px h-7 bg-gray-200 shrink-0" />
           <button onClick={() => changeTab('loss')} className={topTabCls(outerTab === 'loss')}>Grony Cash</button>
+          <div className="w-px h-7 bg-gray-200 shrink-0" />
           <button onClick={() => changeTab('manage')} className={topTabCls(outerTab === 'manage')}>Grony Manage</button>
+          <div className="w-px h-7 bg-gray-200 shrink-0" />
           <button onClick={() => changeTab('dailySummary')} className={topTabCls(outerTab === 'dailySummary')}>Daily</button>
         </div>
 
@@ -798,7 +802,7 @@ function ItemHubPageInner() {
               </div>
             )}
             <button onClick={() => setHamburgerOpen(o => !o)}
-              className="flex items-center justify-center px-3 py-2.5 text-gray-500 hover:bg-gray-50 transition text-lg leading-none">
+              className="flex items-center justify-center px-4 py-4 text-gray-500 hover:bg-gray-50 transition text-xl leading-none">
               ⋮
             </button>
           </div>

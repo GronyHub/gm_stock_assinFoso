@@ -41,16 +41,16 @@ export default function RoleBar({ openRole, onSelectRole, cashCount, manageCount
   ]
 
   return (
-    <div className="shrink-0 sticky bottom-0 z-30 flex items-stretch bg-white border-t border-gray-200">
+    <div className="shrink-0 sticky bottom-0 z-30 flex items-stretch divide-x divide-gray-200 bg-white border-t border-gray-200">
       {TABS.map(t => {
         const active = openRole === t.key
         return (
           <button key={t.key} onClick={() => onSelectRole(t.key)}
-            className={`flex-1 flex items-center justify-center gap-1 py-2.5 text-xs font-bold transition
+            className={`flex-1 flex items-center justify-center gap-1.5 py-4 text-sm font-bold transition
               ${active ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-50'}`}>
             {t.label}
             {t.count > 0 && (
-              <span className={`text-[10px] font-bold rounded-full px-1.5 leading-tight ${active ? 'bg-white/25 text-white' : 'bg-red-600 text-white'}`}>
+              <span className={`text-[11px] font-bold rounded-full px-1.5 leading-tight ${active ? 'bg-white/25 text-white' : 'bg-red-600 text-white'}`}>
                 {t.count > 99 ? '99+' : t.count}
               </span>
             )}
