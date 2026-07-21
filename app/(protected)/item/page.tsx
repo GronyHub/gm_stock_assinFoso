@@ -202,9 +202,12 @@ const HAMBURGER_LINKS = [
 ]
 
 // Plain text, no icons -- keeps the top nav to a single line so it doesn't
-// eat vertical space. Only the selected tab gets the brand color.
+// eat vertical space. Only the selected tab gets the brand color. flex-1 +
+// wrapping (no shrink-0/whitespace-nowrap) so all 4 always fit on screen --
+// "Grony Manage" wraps to two lines on narrow phones rather than forcing
+// the row to scroll.
 function topTabCls(active: boolean) {
-  return `shrink-0 text-base font-bold px-4 py-3.5 rounded-xl whitespace-nowrap transition
+  return `flex-1 min-w-0 text-center text-sm font-bold px-2 py-3 rounded-xl leading-tight transition
     ${active ? 'bg-brand text-white shadow-md' : 'text-gray-500 hover:bg-gray-100'}`
 }
 
@@ -461,16 +464,18 @@ function ItemHubPageInner() {
       {/* ── Header ── */}
       <div className="shrink-0 sticky top-0 z-30 bg-white border-b border-gray-200">
 
-        {/* Row 1: raw-text tabs, no icons -- single line to conserve height
-            (hamburger moved to a fixed bottom-left button). Divider lines
-            between each tab so they read as distinct menus, not one blob. */}
-        <div className="flex items-center gap-1 px-2 py-2 overflow-x-auto">
+        {/* Row 1: raw-text tabs, no icons. All 4 always fit on one screen --
+            no horizontal scroll -- via flex-1 + wrapping instead of a fixed
+            width per tab (hamburger moved to a fixed bottom-left button).
+            Divider lines between each tab so they read as distinct menus,
+            not one blob. */}
+        <div className="flex items-stretch gap-1 px-2 py-2">
           <button onClick={() => changeTab('today')} className={topTabCls(outerTab === 'today' && !openRole)}>Home</button>
-          <div className="w-px h-7 bg-gray-200 shrink-0" />
+          <div className="w-px bg-gray-200 shrink-0" />
           <button onClick={() => changeTab('loss')} className={topTabCls(outerTab === 'loss' && !openRole)}>Grony Cash</button>
-          <div className="w-px h-7 bg-gray-200 shrink-0" />
+          <div className="w-px bg-gray-200 shrink-0" />
           <button onClick={() => changeTab('manage')} className={topTabCls(outerTab === 'manage' && !openRole)}>Grony Manage</button>
-          <div className="w-px h-7 bg-gray-200 shrink-0" />
+          <div className="w-px bg-gray-200 shrink-0" />
           <button onClick={() => changeTab('dailySummary')} className={topTabCls(outerTab === 'dailySummary' && !openRole)}>Daily</button>
         </div>
 
