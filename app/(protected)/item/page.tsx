@@ -435,14 +435,8 @@ function ItemHubPageInner() {
     setViolation(key)
   }
 
-  // Cross-navigation between an item's activity table and its sales receipts.
+  // Cross-navigation from an item's activity table to its sales receipts.
   // Reset the filters that could otherwise hide the jump target.
-  function openItemFromSales(itemId: number) {
-    setGroup(null); setProductType('all'); setSearch('')
-    setLossView('items')
-    setViolation(null)
-    setJumpToLossItemId(itemId)
-  }
   function openReceiptFromItem(date: string, itemName: string) {
     setSearch('')
     setLossView('sales')
@@ -769,8 +763,7 @@ function ItemHubPageInner() {
           <SalesTab items={items} groupFilter={group} search={search}
             violation={pillKeys?.includes(violation ?? '') ? violation : null}
             jumpToDate={jumpToReceiptDate} jumpToItemName={jumpToReceiptItemName}
-            onJumpDone={() => { setJumpToReceiptDate(null); setJumpToReceiptItemName(null) }}
-            onItemClick={openItemFromSales} />
+            onJumpDone={() => { setJumpToReceiptDate(null); setJumpToReceiptItemName(null) }} />
         )}
         {addForm !== 'bill' && outerTab === 'loss' && lossView === 'bills' && (
           <BillsTab items={items} groupFilter={group} search={search} />

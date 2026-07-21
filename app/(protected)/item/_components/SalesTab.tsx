@@ -1,9 +1,10 @@
 'use client'
-import { useState, useEffect, useMemo } from 'react'
+import { Fragment, useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { fmtDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
+import ItemDetailDropdown from './ItemDetailDropdown'
 
 type Item = { id: number; item_name: string; cf_group: string | null }
 
@@ -243,10 +244,9 @@ type Props = {
   jumpToDate?: string | null
   jumpToItemName?: string | null
   onJumpDone?: () => void
-  onItemClick?: (itemId: number) => void
 }
 
-export default function SalesTab({ items, groupFilter, search, violation, jumpToDate, jumpToItemName, onJumpDone, onItemClick }: Props) {
+export default function SalesTab({ items, groupFilter, search, violation, jumpToDate, jumpToItemName, onJumpDone }: Props) {
   const [receipts, setReceipts] = useState<Receipt[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -262,6 +262,10 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
   const [newItemQuery, setNewItemQuery] = useState('')
   const [flags, setFlags] = useState<any | null>(null)
   const [flagsLoading, setFlagsLoading] = useState(false)
+  // Which receipt line's item drop-down (ItemDetailDropdown) is open, if
+  // any -- keyed by the line's own id so tapping one occurrence of an item
+  // doesn't also expand every other receipt row selling the same item.
+  const [expandedLineId, setExpandedLineId] = useState<number | null>(null)
 
   const needsFlags = violation === 'no_cash' || violation === 'missing_days' || violation === 'cost_price' || violation === 'dup_receipt'
 
@@ -794,21 +798,35 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
                         </tr>
                       </thead>
                       <tbody>
-                        {rLines.map((line, i) => (
-                          <tr key={i} className="border-b border-gray-100">
-                            <td className="px-1.5 py-1 text-gray-900">
-                              {line.item_id && onItemClick ? (
-                                <button onClick={() => onItemClick(line.item_id!)}
-                                  className="text-left text-blue-600 hover:underline">
-                                  {line.item_name}
-                                </button>
-                              ) : line.item_name}
-                            </td>
-                            <td className="px-1.5 py-1 text-right text-gray-700">{line.quantity ? parseFloat(line.quantity) : '—'}</td>
-                            <td className="px-1.5 py-1 text-right text-gray-700">{fmt(line.item_price)}</td>
-                            <td className="px-1.5 py-1 text-right font-semibold text-gray-900">{fmt(line.item_total)}</td>
-                          </tr>
-                        ))}
+                        {rLines.map((line, i) => {
+                          const isOpen = expandedLineId === line.id
+                          return (
+                          <Fragment key={i}>
+                            <tr className="border-b border-gray-100">
+                              <td className="px-1.5 py-1 text-gray-900">
+                                {line.item_id ? (
+                                  <button onClick={() => setExpandedLineId(isOpen ? null : line.id)}
+                                    className="text-left text-blue-600 hover:underline">
+                                    {line.item_name}
+                                  </button>
+                                ) : line.item_name}
+                              </td>
+                              <td className="px-1.5 py-1 text-right text-gray-700">{line.quantity ? parseFloat(line.quantity) : '—'}</td>
+                              <td className="px-1.5 py-1 text-right text-gray-700">{fmt(line.item_price)}</td>
+                              <td className="px-1.5 py-1 text-right font-semibold text-gray-900">{fmt(line.item_total)}</td>
+                            </tr>
+                            {isOpen && line.item_id && (
+                              <tr>
+                                <td colSpan={4} className="p-0 border-b border-gray-100">
+                                  <div className="sticky left-0 w-[100vw] max-w-[100vw] max-h-[50vh] overflow-auto bg-blue-50 px-0.5 pb-2 pt-0.5">
+                                    <ItemDetailDropdown itemId={line.item_id} />
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </Fragment>
+                          )
+                        })}
                       </tbody>
                       <tfoot>
                         <tr className="border-t border-gray-200 bg-gray-50">
