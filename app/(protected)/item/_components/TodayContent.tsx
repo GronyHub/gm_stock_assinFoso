@@ -57,6 +57,10 @@ function dayLabel(iso: string) {
   })
 }
 
+function categoryLabel(c: string) {
+  return c.replace(/\b\w/g, ch => ch.toUpperCase())
+}
+
 function mediaKind(type: string): 'image' | 'video' | 'audio' {
   if (type.startsWith('video/')) return 'video'
   if (type.startsWith('audio/')) return 'audio'
@@ -86,6 +90,76 @@ function MediaGrid({ items }: { items: MediaItem[] }) {
       {audio.map((m, i) => (
         <audio key={i} src={m.url} controls className="w-full h-9" />
       ))}
+    </div>
+  )
+}
+
+// One feed row -- shared between the normal live feed and search results so
+// they render identically.
+function PostRow({ p, showDateHeader, canDelete, onLongPressStart, onLongPressEnd, onDelete }: {
+  p: Announcement
+  showDateHeader: boolean
+  canDelete: boolean
+  onLongPressStart: (p: Announcement) => void
+  onLongPressEnd: () => void
+  onDelete: (id: number) => void
+}) {
+  return (
+    <div>
+      {showDateHeader && (
+        <div className="flex justify-center py-1 bg-gray-50/60">
+          <span className="text-[9px] font-semibold text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">
+            {dayLabel(p.created_at)}
+          </span>
+        </div>
+      )}
+      {(p.media_urls ?? []).length === 0 && !p.reply_to_id && p.body && !p.body.includes('\n') && p.body.length <= 60 ? (
+        // Compact single-line row -- for short posts (mostly auto-logged
+        // activity like "clocked out — 7:13pm") that don't need their
+        // own separate line for the message. Long-press to reply.
+        <div
+          onPointerDown={() => onLongPressStart(p)}
+          onPointerUp={onLongPressEnd}
+          onPointerLeave={onLongPressEnd}
+          onContextMenu={e => e.preventDefault()}
+          className="flex items-center justify-between gap-2 px-3 py-1 select-none"
+        >
+          <p className="min-w-0 truncate text-[11px]">
+            <span className="font-semibold text-gray-700 capitalize">{p.author}</span>
+            <span className="text-gray-400"> · {fmtAnnTime(p.created_at)} · </span>
+            <span className="text-gray-800">{p.body}</span>
+          </p>
+          {canDelete && (
+            <button onClick={() => onDelete(p.id)} className="shrink-0 text-gray-300 hover:text-red-500 font-bold leading-none">×</button>
+          )}
+        </div>
+      ) : (
+        <div
+          onPointerDown={() => onLongPressStart(p)}
+          onPointerUp={onLongPressEnd}
+          onPointerLeave={onLongPressEnd}
+          onContextMenu={e => e.preventDefault()}
+          className="px-3 py-1.5 space-y-0.5 select-none"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-semibold text-gray-700 capitalize">{p.author}</span>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-[10px] text-gray-400">{fmtAnnTime(p.created_at)}</span>
+              {canDelete && (
+                <button onClick={() => onDelete(p.id)} className="text-gray-300 hover:text-red-500 font-bold leading-none">×</button>
+              )}
+            </div>
+          </div>
+          {p.reply_to_id && (
+            <div className="text-[10px] text-gray-500 bg-gray-50 border-l-2 border-gray-300 rounded px-1.5 py-0.5">
+              <span className="font-semibold capitalize">{p.reply_to_author ?? 'Unknown'}</span>
+              {p.reply_to_body && <>: {p.reply_to_body.slice(0, 60)}{p.reply_to_body.length > 60 ? '…' : ''}</>}
+            </div>
+          )}
+          {p.body && <p className="text-xs text-gray-800 whitespace-pre-wrap leading-snug">{p.body}</p>}
+          <MediaGrid items={p.media_urls ?? []} />
+        </div>
+      )}
     </div>
   )
 }
@@ -165,14 +239,106 @@ function AnnouncementsPanel() {
         setHasMore(false)
       }
     } catch {
-      // leave hasMore as-is -- user can just tap the button again
+      // leave hasMore as-is -- the scroll-into-view sentinel just retries next time
     } finally {
       setLoadingMore(false)
     }
   }
 
+  // ─── Search ──────────────────────────────────────────────────────────────
+  // Free text + type + date range, all combinable, searching the full
+  // history server-side (not just whatever's currently loaded).
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchText, setSearchText] = useState('')
+  const [searchCategory, setSearchCategory] = useState('')
+  const [searchFrom, setSearchFrom] = useState('')
+  const [searchTo, setSearchTo] = useState('')
+  const [categories, setCategories] = useState<string[]>([])
+  const [searchResults, setSearchResults] = useState<Announcement[]>([])
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [searchLoadingMore, setSearchLoadingMore] = useState(false)
+  const [searchHasMore, setSearchHasMore] = useState(true)
+
+  const hasActiveSearch = !!(searchText.trim() || searchCategory || searchFrom || searchTo)
+
+  useEffect(() => {
+    if (!searchOpen || categories.length > 0) return
+    fetch('/api/announcements/categories')
+      .then(r => r.ok ? r.json() : [])
+      .then(d => setCategories(Array.isArray(d) ? d : []))
+      .catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchOpen])
+
+  function searchQuery(before?: string) {
+    const params = new URLSearchParams()
+    if (searchText.trim()) params.set('q', searchText.trim())
+    if (searchCategory) params.set('category', searchCategory)
+    if (searchFrom) params.set('from', searchFrom)
+    if (searchTo) params.set('to', searchTo)
+    if (before) params.set('before', before)
+    return params.toString()
+  }
+
+  useEffect(() => {
+    if (!hasActiveSearch) { setSearchResults([]); setSearchHasMore(true); return }
+    setSearchLoading(true)
+    const t = setTimeout(() => {
+      fetch(`/api/announcements?${searchQuery()}`)
+        .then(r => r.ok ? r.json() : [])
+        .then((d: Announcement[]) => {
+          setSearchResults(Array.isArray(d) ? d : [])
+          setSearchHasMore(Array.isArray(d) && d.length >= PAGE_SIZE)
+        })
+        .catch(() => {})
+        .finally(() => setSearchLoading(false))
+    }, 300)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchText, searchCategory, searchFrom, searchTo])
+
+  async function loadMoreSearch() {
+    if (searchLoadingMore || !searchHasMore || searchResults.length === 0) return
+    setSearchLoadingMore(true)
+    try {
+      const oldest = searchResults[searchResults.length - 1]
+      const res = await fetch(`/api/announcements?${searchQuery(oldest.created_at)}`)
+      const d: Announcement[] = await res.json()
+      if (Array.isArray(d) && d.length > 0) {
+        setSearchResults(prev => [...prev, ...d])
+        if (d.length < PAGE_SIZE) setSearchHasMore(false)
+      } else {
+        setSearchHasMore(false)
+      }
+    } catch {
+      // the sentinel just retries next time it's back in view
+    } finally {
+      setSearchLoadingMore(false)
+    }
+  }
+
+  function clearSearch() {
+    setSearchText(''); setSearchCategory(''); setSearchFrom(''); setSearchTo('')
+  }
+
+  // Auto-loads older announcements (either feed) as the bottom sentinel
+  // scrolls into view -- replaces the old "Load older" tap-to-load button.
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(entries => {
+      if (!entries[0].isIntersecting) return
+      if (hasActiveSearch) loadMoreSearch()
+      else loadMore()
+    }, { rootMargin: '200px' })
+    observer.observe(el)
+    return () => observer.disconnect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasActiveSearch, posts.length, searchResults.length, hasMore, searchHasMore])
+
   useEffect(() => { load() }, [])
-  usePolling(load, 15000)
+  usePolling(load, 15000, !hasActiveSearch)
 
   // Stop any in-progress recording if the panel unmounts mid-recording
   useEffect(() => () => {
@@ -282,6 +448,39 @@ function AnnouncementsPanel() {
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      {/* Search — text + type + date range, all combinable, searching the
+          full history (not just what's loaded). Tucked behind an icon so it
+          doesn't take up space until someone actually wants it. */}
+      <div className="flex items-center justify-between px-2 py-1.5 border-b border-gray-100">
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Announcements</p>
+        <button onClick={() => setSearchOpen(o => !o)}
+          className={`text-base leading-none transition ${searchOpen || hasActiveSearch ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}>
+          🔍
+        </button>
+      </div>
+      {searchOpen && (
+        <div className="px-2 py-2 border-b border-gray-100 space-y-1.5 bg-gray-50/60">
+          <input value={searchText} onChange={e => setSearchText(e.target.value)}
+            placeholder="Search text or name…"
+            className="w-full text-xs bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-1 focus:ring-blue-400" />
+          <select value={searchCategory} onChange={e => setSearchCategory(e.target.value)}
+            className="w-full text-xs bg-white border border-gray-200 rounded-lg px-2 py-1.5 outline-none">
+            <option value="">All types</option>
+            {categories.map(c => <option key={c} value={c}>{categoryLabel(c)}</option>)}
+          </select>
+          <div className="flex items-center gap-1.5">
+            <input type="date" value={searchFrom} onChange={e => setSearchFrom(e.target.value)}
+              className="flex-1 min-w-0 text-xs bg-white border border-gray-200 rounded-lg px-2 py-1.5 outline-none" />
+            <span className="text-[10px] text-gray-400 shrink-0">to</span>
+            <input type="date" value={searchTo} onChange={e => setSearchTo(e.target.value)}
+              className="flex-1 min-w-0 text-xs bg-white border border-gray-200 rounded-lg px-2 py-1.5 outline-none" />
+          </div>
+          {hasActiveSearch && (
+            <button onClick={clearSearch} className="text-[10px] font-semibold text-blue-600">Clear filters</button>
+          )}
+        </div>
+      )}
+
       {/* Compose — any logged-in staff member, matches server-side posting
           permission. Kept compact/embedded (WhatsApp-style single bar) so it
           doesn't dominate the Today page. */}
@@ -395,80 +594,36 @@ function AnnouncementsPanel() {
         </div>
       )}
 
-      {/* Feed */}
-      {posts.length === 0 ? (
+      {/* Feed — search results (full history) when a search/filter is
+          active, otherwise the normal live feed. Older items load
+          automatically as the sentinel at the bottom scrolls into view. */}
+      {hasActiveSearch ? (
+        searchLoading && searchResults.length === 0 ? (
+          <p className="text-[11px] text-gray-400 text-center py-3">Searching…</p>
+        ) : searchResults.length === 0 ? (
+          <p className="text-[11px] text-gray-400 text-center py-3">No announcements match.</p>
+        ) : (
+          <div className="divide-y divide-gray-50">
+            {searchResults.map((p, i) => (
+              <PostRow key={p.id} p={p}
+                showDateHeader={i === 0 || dayKey(p.created_at) !== dayKey(searchResults[i - 1].created_at)}
+                canDelete={canDelete} onLongPressStart={startLongPress} onLongPressEnd={cancelLongPress} onDelete={removePost} />
+            ))}
+            {searchHasMore && <div ref={sentinelRef} className="h-1" />}
+            {searchLoadingMore && <p className="text-[10px] text-gray-400 text-center py-2">Loading…</p>}
+          </div>
+        )
+      ) : posts.length === 0 ? (
         <p className="text-[11px] text-gray-400 text-center py-3">No announcements yet.</p>
       ) : (
         <div className="divide-y divide-gray-50">
-          {posts.map((p, i) => {
-            const showDateHeader = i === 0 || dayKey(p.created_at) !== dayKey(posts[i - 1].created_at)
-            return (
-              <div key={p.id}>
-                {showDateHeader && (
-                  <div className="flex justify-center py-1 bg-gray-50/60">
-                    <span className="text-[9px] font-semibold text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">
-                      {dayLabel(p.created_at)}
-                    </span>
-                  </div>
-                )}
-                {(p.media_urls ?? []).length === 0 && !p.reply_to_id && p.body && !p.body.includes('\n') && p.body.length <= 60 ? (
-                  // Compact single-line row -- for short posts (mostly auto-logged
-                  // activity like "clocked out — 7:13pm") that don't need their
-                  // own separate line for the message. Long-press to reply.
-                  <div
-                    onPointerDown={() => startLongPress(p)}
-                    onPointerUp={cancelLongPress}
-                    onPointerLeave={cancelLongPress}
-                    onContextMenu={e => e.preventDefault()}
-                    className="flex items-center justify-between gap-2 px-3 py-1 select-none"
-                  >
-                    <p className="min-w-0 truncate text-[11px]">
-                      <span className="font-semibold text-gray-700 capitalize">{p.author}</span>
-                      <span className="text-gray-400"> · {fmtAnnTime(p.created_at)} · </span>
-                      <span className="text-gray-800">{p.body}</span>
-                    </p>
-                    {canDelete && (
-                      <button onClick={() => removePost(p.id)} className="shrink-0 text-gray-300 hover:text-red-500 font-bold leading-none">×</button>
-                    )}
-                  </div>
-                ) : (
-                  <div
-                    onPointerDown={() => startLongPress(p)}
-                    onPointerUp={cancelLongPress}
-                    onPointerLeave={cancelLongPress}
-                    onContextMenu={e => e.preventDefault()}
-                    className="px-3 py-1.5 space-y-0.5 select-none"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[11px] font-semibold text-gray-700 capitalize">{p.author}</span>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="text-[10px] text-gray-400">{fmtAnnTime(p.created_at)}</span>
-                        {canDelete && (
-                          <button onClick={() => removePost(p.id)} className="text-gray-300 hover:text-red-500 font-bold leading-none">×</button>
-                        )}
-                      </div>
-                    </div>
-                    {p.reply_to_id && (
-                      <div className="text-[10px] text-gray-500 bg-gray-50 border-l-2 border-gray-300 rounded px-1.5 py-0.5">
-                        <span className="font-semibold capitalize">{p.reply_to_author ?? 'Unknown'}</span>
-                        {p.reply_to_body && <>: {p.reply_to_body.slice(0, 60)}{p.reply_to_body.length > 60 ? '…' : ''}</>}
-                      </div>
-                    )}
-                    {p.body && <p className="text-xs text-gray-800 whitespace-pre-wrap leading-snug">{p.body}</p>}
-                    <MediaGrid items={p.media_urls ?? []} />
-                  </div>
-                )}
-              </div>
-            )
-          })}
-          {hasMore && (
-            <div className="flex justify-center py-2">
-              <button onClick={loadMore} disabled={loadingMore}
-                className="text-[10px] font-semibold text-blue-600 hover:text-blue-700 disabled:opacity-50">
-                {loadingMore ? 'Loading…' : 'Load older announcements'}
-              </button>
-            </div>
-          )}
+          {posts.map((p, i) => (
+            <PostRow key={p.id} p={p}
+              showDateHeader={i === 0 || dayKey(p.created_at) !== dayKey(posts[i - 1].created_at)}
+              canDelete={canDelete} onLongPressStart={startLongPress} onLongPressEnd={cancelLongPress} onDelete={removePost} />
+          ))}
+          {hasMore && <div ref={sentinelRef} className="h-1" />}
+          {loadingMore && <p className="text-[10px] text-gray-400 text-center py-2">Loading…</p>}
         </div>
       )}
     </div>

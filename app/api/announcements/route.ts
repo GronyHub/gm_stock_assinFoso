@@ -10,32 +10,42 @@ function normalizeMedia(media_urls: unknown): { url: string; type: string }[] {
   return media_urls.map((m: any) => (typeof m === 'string' ? { url: m, type: '' } : m)).filter((m: any) => m?.url)
 }
 
+async function ensureCategoryColumn() {
+  await sql`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS category TEXT`.catch(() => {})
+}
+
 // Cursor-paginated: ?before=<ISO timestamp> fetches the next 30 older than
 // that. Without it, returns the latest 30. The client merges pages instead
 // of replacing, so older announcements stay loaded once fetched.
+//
+// Search/filter (all optional, combinable): ?q=<text> matches body or
+// author; ?category=<type> matches the exact auto-logged activity type
+// (see /api/announcements/categories for the list); ?from=/&to=<YYYY-MM-DD>
+// restrict to a date range. Each filter is skipped (via the "param IS NULL
+// OR ..." pattern) when not provided, so one query serves every combination.
 export async function GET(req: NextRequest) {
   try {
+    await ensureCategoryColumn()
     const before = req.nextUrl.searchParams.get('before')
-    const rows = before
-      ? await sql`
-          SELECT
-            a.id, a.author, a.body, a.media_urls, a.created_at, a.reply_to_id,
-            r.author AS reply_to_author, r.body AS reply_to_body
-          FROM announcements a
-          LEFT JOIN announcements r ON r.id = a.reply_to_id
-          WHERE a.created_at < ${before}
-          ORDER BY a.created_at DESC
-          LIMIT 30
-        `
-      : await sql`
-          SELECT
-            a.id, a.author, a.body, a.media_urls, a.created_at, a.reply_to_id,
-            r.author AS reply_to_author, r.body AS reply_to_body
-          FROM announcements a
-          LEFT JOIN announcements r ON r.id = a.reply_to_id
-          ORDER BY a.created_at DESC
-          LIMIT 30
-        `
+    const q = req.nextUrl.searchParams.get('q')
+    const category = req.nextUrl.searchParams.get('category')
+    const from = req.nextUrl.searchParams.get('from')
+    const to = req.nextUrl.searchParams.get('to')
+
+    const rows = await sql`
+      SELECT
+        a.id, a.author, a.body, a.media_urls, a.created_at, a.reply_to_id,
+        r.author AS reply_to_author, r.body AS reply_to_body
+      FROM announcements a
+      LEFT JOIN announcements r ON r.id = a.reply_to_id
+      WHERE (${before}::timestamptz IS NULL OR a.created_at < ${before}::timestamptz)
+        AND (${q}::text IS NULL OR a.body ILIKE '%' || ${q} || '%' OR a.author ILIKE '%' || ${q} || '%')
+        AND (${category}::text IS NULL OR a.category = ${category})
+        AND (${from}::date IS NULL OR a.created_at::date >= ${from}::date)
+        AND (${to}::date IS NULL OR a.created_at::date <= ${to}::date)
+      ORDER BY a.created_at DESC
+      LIMIT 30
+    `
     return NextResponse.json(rows.map((r: any) => ({ ...r, media_urls: normalizeMedia(r.media_urls) })))
   } catch (e) {
     console.error('announcements GET error:', e)

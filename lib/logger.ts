@@ -27,9 +27,13 @@ export async function logActivity(staffName: string, action: string, details?: s
   if (!ANNOUNCEMENT_EXCLUDED_ACTIONS.has(action)) {
     try {
       const body = details ? `${action} — ${details}` : action
+      // category = the raw action string, so the Home feed's type filter can
+      // match on it exactly instead of parsing it back out of body text.
+      // Manually-typed posts (see /api/announcements POST) leave this null.
+      await sql`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS category TEXT`.catch(() => {})
       await sql`
-        INSERT INTO announcements (body, author, media_urls)
-        VALUES (${body}, ${staffName}, '[]'::jsonb)
+        INSERT INTO announcements (body, author, media_urls, category)
+        VALUES (${body}, ${staffName}, '[]'::jsonb, ${action})
       `
     } catch (e) {
       // don't let this break the main action either
