@@ -476,7 +476,7 @@ function ItemHubPageInner() {
         <div className="flex items-stretch gap-1 px-2 py-2">
           <button onClick={() => changeTab('today')} className={topTabCls(outerTab === 'today' && !openRole)}>Home</button>
           <div className="w-px bg-gray-200 shrink-0" />
-          <button onClick={() => changeTab('loss')} className={topTabCls(outerTab === 'loss' && !openRole)}>Grony Cash</button>
+          <button onClick={() => changeTab('loss')} className={topTabCls((outerTab === 'loss' || outerTab === 'errors') && !openRole)}>Grony Cash</button>
           <div className="w-px bg-gray-200 shrink-0" />
           <button onClick={() => changeTab('manage')} className={topTabCls(outerTab === 'manage' && !openRole)}>Grony Manage</button>
           <div className="w-px bg-gray-200 shrink-0" />
@@ -490,8 +490,13 @@ function ItemHubPageInner() {
         {!openRole && (<>
         {/* Grony Cash top-level row: Items is the tab's own default view.
             Highlighted by PARENT_OF so it stays lit up while looking at a
-            child sub-view (e.g. Sales stays active while on Customers). */}
-        {outerTab === 'loss' && (
+            child sub-view (e.g. Sales stays active while on Customers).
+            Errors is a sibling OuterTab, not a LossView, but it belongs
+            conceptually under Grony Cash (it's the only way to browse every
+            flag type, not just the ones surfaced on Joe/Bino/Opener's role
+            panels) -- so it rides in this same row and this row stays
+            visible while on it, rather than needing its own top-level tab. */}
+        {(outerTab === 'loss' || outerTab === 'errors') && (
           <div className="flex items-center gap-1 px-2 py-0.5 bg-white border-t border-gray-100 overflow-x-auto">
             {([
               { key: 'items',    label: 'Items' },
@@ -502,12 +507,17 @@ function ItemHubPageInner() {
               ...(canSeePL ? [{ key: 'pl' as LossView, label: 'P&L' }] : []),
               { key: 'cab',      label: 'CAB' },
             ] as { key: LossView; label: string }[]).map(v => (
-              <button key={v.key} onClick={() => { setLossView(v.key); setAddForm(null) }}
+              <button key={v.key} onClick={() => { changeTab('loss'); setLossView(v.key) }}
                 className={`shrink-0 text-xs font-semibold px-2 py-0.5 rounded-lg whitespace-nowrap transition
-                  ${(activeLossParent ?? lossView) === v.key ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>
+                  ${outerTab === 'loss' && (activeLossParent ?? lossView) === v.key ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>
                 {v.label}
               </button>
             ))}
+            <button onClick={() => changeTab('errors')}
+              className={`shrink-0 text-xs font-semibold px-2 py-0.5 rounded-lg whitespace-nowrap transition
+                ${outerTab === 'errors' ? 'bg-red-600 text-white' : 'text-red-500 hover:bg-red-50'}`}>
+              Errors
+            </button>
           </div>
         )}
 
