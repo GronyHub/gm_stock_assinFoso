@@ -40,7 +40,6 @@ const NewBillForm    = dynamic(() => import('../bills/new/page'),             { 
 const NewExpenseForm = dynamic(() => import('../expenses/new/page'),          { ssr: false, loading: () => loading('Loading…') })
 const NewItemForm    = dynamic(() => import('./_components/NewItemForm'),     { ssr: false, loading: () => loading('Loading…') })
 const AnalyticsPanel = dynamic(() => import('./_components/AnalyticsPanel'),  { ssr: false, loading: () => loading('Loading analytics…') })
-const NoStaffTimesList = dynamic(() => import('../staff/StaffClient').then(m => ({ default: m.NoStaffTimesList })), { ssr: false, loading: () => loading('Loading…') })
 const LossTab        = dynamic(() => import('./_components/LossTab'),         { ssr: false, loading: () => loading('Loading…') })
 const LossFeedTab    = dynamic(() => import('./_components/LossFeedTab'),     { ssr: false, loading: () => loading('Loading…') })
 const ProfitLossTab  = dynamic(() => import('./_components/ProfitLossTab'),   { ssr: false, loading: () => loading('Loading…') })
@@ -51,7 +50,7 @@ const CustomersPage  = dynamic(() => import('../customers/page'),             { 
 const ReceiptsPage   = dynamic(() => import('../receipts/page'),              { ssr: false, loading: () => loading('Loading…') })
 const ViewPortalAsButton = dynamic(() => import('@/components/ViewPortalAsButton'), { ssr: false })
 
-type OuterTab = 'today' | 'loss' | 'errors' | 'manage' | 'dailySummary'
+type OuterTab = 'today' | 'loss' | 'manage' | 'dailySummary'
 
 // Sales, Bills, Counts, Feed, Data, Expenses, P&L, CAB, Vendors,
 // Customers, and Receipts all live as submenus inside the Grony Cash tab
@@ -106,8 +105,10 @@ type Item = {
 
 type ErrorCategory = 'loss' | 'sales' | 'cab' | 'staff'
 
-// Every violation type in the app, in one place -- the Errors tab is the
-// single home for all of them, regardless of which tab/data they come from.
+// Every violation type in the app, in one place -- each one now surfaces as
+// a pill directly on the Grony Cash submenu it actually belongs to (see
+// LOSSVIEW_PILL_KEYS/VIOLATION_HOME below) rather than on a separate Errors
+// screen, so this list is just shared label/description data now.
 const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCategory; description: string }[] = [
   {
     key: 'neg_soh', label: 'Neg SOH', category: 'loss',
@@ -183,15 +184,32 @@ const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCategory; d
   },
 ]
 
-const VIOLATIONS: Record<OuterTab, { key: string; label: string; category?: ErrorCategory }[]> = {
-  today: [],
-  loss: [],
-  errors: ERROR_VIOLATIONS,
-  manage: [],
-  dailySummary: [],
+// Where each violation type actually lives now that there's no separate
+// Errors screen -- drives both goToViolation (routing a flag-table click
+// from Joe/Bino's Role Bar panel to the right place) and which submenu
+// shows which pills. no_advert/jingle_overdue/equipment_check_overdue and
+// no_staff_times aren't listed: they're handled as a plain changeTab('manage')
+// in goToViolation, same as before -- Grony Manage's Staff submenu already
+// has its own "Times" view for no_staff_times, and Advert for the others.
+const VIOLATION_HOME: Partial<Record<string, LossView>> = {
+  neg_soh: 'items', no_sp: 'items', no_cp: 'items', no_group: 'items',
+  duplicates: 'items', aliases: 'items', unlinked_named: 'items', service_violation: 'items',
+  daily: 'counts', '7day': 'counts', '15day': 'counts',
+  gains: 'feed',
+  no_cash: 'sales', missing_days: 'sales', cost_price: 'sales', dup_receipt: 'sales',
+  unchecked_cab: 'cab',
 }
 
-const COUNTS_VIOLATIONS = new Set(['daily', '7day', '15day'])
+// Only these lossViews get a filterable pill row -- CAB has just the one
+// flag type and CABTab has no violation-filtered view to switch to (its
+// normal view already covers it), so it gets a plain badge on the CAB
+// button instead of a pill (see the submenu row below).
+const LOSSVIEW_PILL_KEYS: Partial<Record<LossView, string[]>> = {
+  items: ['neg_soh', 'no_sp', 'no_cp', 'no_group', 'duplicates', 'aliases', 'unlinked_named', 'service_violation'],
+  counts: ['daily', '7day', '15day'],
+  feed: ['gains'],
+  sales: ['no_cash', 'missing_days', 'cost_price', 'dup_receipt'],
+}
 
 // Analysis dropped -- it's a strict subset of Grony Cash's Data submenu.
 // Vendors/Customers/Receipts moved into Grony Cash, Logs into Grony Manage.
@@ -211,7 +229,7 @@ function topTabCls(active: boolean) {
     ${active ? 'bg-brand text-white shadow-md' : 'text-gray-500 hover:bg-gray-100'}`
 }
 
-const VALID_TABS: OuterTab[] = ['today', 'loss', 'errors', 'manage', 'dailySummary']
+const VALID_TABS: OuterTab[] = ['today', 'loss', 'manage', 'dailySummary']
 
 function ItemHubPageInner() {
   const router = useRouter()
@@ -249,7 +267,6 @@ function ItemHubPageInner() {
     initialItemParam ? Number(initialItemParam) || null : null
   )
   const [violation, setViolation]       = useState<string | null>(searchParams.get('violation'))
-  const [violationOpen, setViolationOpen] = useState(!!searchParams.get('violation'))
   const [groupOpen, setGroupOpen]       = useState(false)
   const [hamburgerOpen, setHamburgerOpen] = useState(false)
   const [addForm, setAddForm]             = useState<'item' | 'sale' | 'bill' | 'expense' | null>(null)
@@ -344,14 +361,6 @@ function ItemHubPageInner() {
     }
   }, [items, globalFlags, pendingCounts, serviceViolationCount, aliasesPendingCount, gainsCount])
 
-  const badgeCounts: Partial<Record<OuterTab, number>> = useMemo(() => {
-    const v = violationCounts
-    return {
-      errors: v.neg_soh + v.no_sp + v.no_cp + v.no_group + v.duplicates + v.unlinked_named + v.aliases + v.service_violation + v.daily + v['7day'] + v['15day'] + v.gains
-        + v.no_cash + v.missing_days + v.cost_price + v.dup_receipt + v.unchecked_cab + v.no_staff_times,
-    }
-  }, [violationCounts])
-
   // Backs the bottom RoleBar (Joe/Bino/Opener/Closer tabs) -- shared here so
   // it's computed once regardless of which outer tab is showing.
   const {
@@ -383,8 +392,7 @@ function ItemHubPageInner() {
     // bottom-overrides-top.
     setOpenRole(null)
     setOuterTab(t)
-    setViolation(t === 'errors' ? ERROR_VIOLATIONS[0].key : null)
-    setViolationOpen(t === 'errors')
+    setViolation(null)
     setAddForm(null)
     if (t !== 'loss') setProductType('all')
     if (t === 'loss') setLossView('items')
@@ -413,12 +421,17 @@ function ItemHubPageInner() {
 
   function goToViolation(key: string) {
     // The loss-summary rows point at the Loss feed (a submenu of the Grony
-    // Cash tab), not an errors fix screen.
+    // Cash tab), not a violation pill.
     if (key === '__loss_feed') { changeTab('loss'); setLossView('feed'); return }
-    // The Advert sub-tab's own checks (audio adverts, jingle, equipment)
-    // are fixed inside Grony Manage > Advert, not the generic Errors screen.
-    if (['no_advert', 'jingle_overdue', 'equipment_check_overdue'].includes(key)) { changeTab('manage'); return }
-    changeTab('errors')
+    // The Advert sub-tab's own checks (audio adverts, jingle, equipment),
+    // and No Staff Times (which has its own "Times" view on the Staff
+    // submenu already) just land on Grony Manage -- same shallow landing
+    // as before, one more tap to the exact sub-view.
+    if (['no_advert', 'jingle_overdue', 'equipment_check_overdue', 'no_staff_times'].includes(key)) { changeTab('manage'); return }
+    const targetView = VIOLATION_HOME[key]
+    if (!targetView) return
+    changeTab('loss')
+    setLossView(targetView)
     setViolation(key)
   }
 
@@ -427,11 +440,13 @@ function ItemHubPageInner() {
   function openItemFromSales(itemId: number) {
     setGroup(null); setProductType('all'); setSearch('')
     setLossView('items')
+    setViolation(null)
     setJumpToLossItemId(itemId)
   }
   function openReceiptFromItem(date: string, itemName: string) {
     setSearch('')
     setLossView('sales')
+    setViolation(null)
     setJumpToReceiptDate(date)
     setJumpToReceiptItemName(itemName)
   }
@@ -439,8 +454,7 @@ function ItemHubPageInner() {
   const groups = ['All', ...Array.from(new Set(items.map(i => i.cf_group ?? 'Ungrouped'))).sort()]
   const activeLossParent = PARENT_OF[lossView]
   const lossChildren = activeLossParent ? CHILDREN_OF[activeLossParent] : undefined
-  const currentViolations = VIOLATIONS[outerTab]
-  const activeViolationLabel = currentViolations.find(v => v.key === violation)?.label ?? null
+  const pillKeys = LOSSVIEW_PILL_KEYS[lossView]
 
   const groupLabel = [
     group ?? 'All',
@@ -476,7 +490,7 @@ function ItemHubPageInner() {
         <div className="flex items-stretch gap-1 px-2 py-2">
           <button onClick={() => changeTab('today')} className={topTabCls(outerTab === 'today' && !openRole)}>Home</button>
           <div className="w-px bg-gray-200 shrink-0" />
-          <button onClick={() => changeTab('loss')} className={topTabCls((outerTab === 'loss' || outerTab === 'errors') && !openRole)}>Grony Cash</button>
+          <button onClick={() => changeTab('loss')} className={topTabCls(outerTab === 'loss' && !openRole)}>Grony Cash</button>
           <div className="w-px bg-gray-200 shrink-0" />
           <button onClick={() => changeTab('manage')} className={topTabCls(outerTab === 'manage' && !openRole)}>Grony Manage</button>
           <div className="w-px bg-gray-200 shrink-0" />
@@ -491,12 +505,10 @@ function ItemHubPageInner() {
         {/* Grony Cash top-level row: Items is the tab's own default view.
             Highlighted by PARENT_OF so it stays lit up while looking at a
             child sub-view (e.g. Sales stays active while on Customers).
-            Errors is a sibling OuterTab, not a LossView, but it belongs
-            conceptually under Grony Cash (it's the only way to browse every
-            flag type, not just the ones surfaced on Joe/Bino/Opener's role
-            panels) -- so it rides in this same row and this row stays
-            visible while on it, rather than needing its own top-level tab. */}
-        {(outerTab === 'loss' || outerTab === 'errors') && (
+            CAB has just one flag type (Unchecked CAB) and no filtered view
+            to switch to, so it gets a plain count badge here instead of a
+            pill row like Items/Sales/Counts/Feed get below. */}
+        {outerTab === 'loss' && (
           <div className="flex items-center gap-1 px-2 py-0.5 bg-white border-t border-gray-100 overflow-x-auto">
             {([
               { key: 'items',    label: 'Items' },
@@ -507,17 +519,18 @@ function ItemHubPageInner() {
               ...(canSeePL ? [{ key: 'pl' as LossView, label: 'P&L' }] : []),
               { key: 'cab',      label: 'CAB' },
             ] as { key: LossView; label: string }[]).map(v => (
-              <button key={v.key} onClick={() => { changeTab('loss'); setLossView(v.key) }}
-                className={`shrink-0 text-xs font-semibold px-2 py-0.5 rounded-lg whitespace-nowrap transition
-                  ${outerTab === 'loss' && (activeLossParent ?? lossView) === v.key ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>
+              <button key={v.key} onClick={() => { setLossView(v.key); setAddForm(null); setViolation(null) }}
+                className={`shrink-0 flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-lg whitespace-nowrap transition
+                  ${(activeLossParent ?? lossView) === v.key ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>
                 {v.label}
+                {v.key === 'cab' && violationCounts.unchecked_cab > 0 && (
+                  <span className={`text-[10px] font-bold rounded-full px-1.5 leading-tight
+                    ${(activeLossParent ?? lossView) === v.key ? 'bg-white/25 text-white' : 'bg-red-600 text-white'}`}>
+                    {violationCounts.unchecked_cab > 99 ? '99+' : violationCounts.unchecked_cab}
+                  </span>
+                )}
               </button>
             ))}
-            <button onClick={() => changeTab('errors')}
-              className={`shrink-0 text-xs font-semibold px-2 py-0.5 rounded-lg whitespace-nowrap transition
-                ${outerTab === 'errors' ? 'bg-red-600 text-white' : 'text-red-500 hover:bg-red-50'}`}>
-              Errors
-            </button>
           </div>
         )}
 
@@ -526,7 +539,7 @@ function ItemHubPageInner() {
         {outerTab === 'loss' && lossChildren && (
           <div className="flex items-center gap-1 px-2 py-0.5 bg-gray-50 border-t border-gray-100 overflow-x-auto">
             {lossChildren.map(c => (
-              <button key={c.key} onClick={() => { setLossView(c.key); setAddForm(null) }}
+              <button key={c.key} onClick={() => { setLossView(c.key); setAddForm(null); setViolation(null) }}
                 className={`shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-lg whitespace-nowrap transition
                   ${lossView === c.key ? 'bg-blue-500 text-white' : 'text-gray-400 hover:bg-gray-100'}`}>
                 {c.label}
@@ -592,23 +605,6 @@ function ItemHubPageInner() {
               )}
             </div>
 
-            {/* Violations toggle — Errors tab always shows the row below, no toggle needed */}
-            {currentViolations.length > 0 && outerTab !== 'errors' && (
-              <>
-                <div className="w-px h-4 bg-gray-200 shrink-0" />
-                <button onClick={() => {
-                    const opening = !violationOpen
-                    setViolationOpen(opening)
-                    if (opening) setViolation(currentViolations[0].key)
-                    else setViolation(null)
-                  }}
-                  className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap flex items-center gap-1 transition
-                    ${violationOpen ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
-                  Violations <span className="text-[10px]">{violationOpen ? '▴' : '▾'}</span>
-                </button>
-              </>
-            )}
-
             {/* Search */}
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Search…"
@@ -628,13 +624,16 @@ function ItemHubPageInner() {
           </div>
         )}
 
-        {/* Violations sub-tab row */}
-        {(violationOpen || outerTab === 'errors') && currentViolations.length > 0 && (
+        {/* Violation pills for whichever Grony Cash submenu is active --
+            Items/Sales/Counts/Feed only (see LOSSVIEW_PILL_KEYS); tapping
+            one swaps the submenu's normal content for its filtered fix view
+            below. Tapping the active pill again clears it. */}
+        {outerTab === 'loss' && pillKeys && (
           <div className="flex items-center gap-1 px-2 py-1 bg-red-50 border-t border-red-100 overflow-x-auto">
-            {currentViolations.map(v => {
+            {ERROR_VIOLATIONS.filter(v => pillKeys.includes(v.key)).map(v => {
               const c = violationCounts[v.key] ?? 0
               return (
-                <button key={v.key} onClick={() => setViolation(v.key)}
+                <button key={v.key} onClick={() => setViolation(prev => prev === v.key ? null : v.key)}
                   className={`shrink-0 flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg transition whitespace-nowrap
                     ${violation === v.key ? 'bg-red-600 text-white' : 'bg-white border border-red-200 text-red-700 hover:bg-red-100'}`}>
                   {v.label}
@@ -720,16 +719,51 @@ function ItemHubPageInner() {
         )}
         {addForm !== 'expense' && outerTab === 'loss' && lossView === 'expenses' && <ExpensesTab search={search} />}
         {outerTab === 'loss' && lossView === 'cab' && <CABTab />}
+        {/* Items pill selected -> ItemsTab's filtered fix view; otherwise the
+            submenu's normal content (LossTab). Same swap pattern for
+            Sales/Counts/Feed below -- each of those already knows how to
+            render its own filtered view when handed a matching violation
+            key (SalesTab/CountsTab), or via the kind prop (LossFeedTab). */}
+        {outerTab === 'loss' && violation && pillKeys?.includes(violation) && (
+          <div className="mx-3 mt-2 mb-1 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 flex gap-2">
+            <span className="text-sm shrink-0">ℹ️</span>
+            <p className="text-[11px] text-blue-800 leading-snug">
+              {ERROR_VIOLATIONS.find(v => v.key === violation)?.description}
+            </p>
+          </div>
+        )}
         {addForm !== 'item' && outerTab === 'loss' && lossView === 'items' && (
-          <TabErrorBoundary>
-            <LossTab onOpenItem={() => {}} search={search} group={group} productType={productType}
-              jumpToItemId={jumpToLossItemId} onJumpDone={() => setJumpToLossItemId(null)}
-              onDateClick={openReceiptFromItem} showPrices={showPrices} lossOnly={lossOnly} gainOnly={gainOnly}
-              onExpandedIdChange={setExpandedItemId} />
-          </TabErrorBoundary>
+          violation && pillKeys?.includes(violation) ? (
+            itemsLoading
+              ? <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
+              : (
+                <TabErrorBoundary>
+                  <ItemsTab
+                    items={items}
+                    group={group}
+                    productType={productType}
+                    search={search}
+                    violation={violation}
+                    onItemsChanged={setItems}
+                    showAdd={false}
+                    onCloseAdd={() => {}}
+                    jumpToItemId={jumpToItemId}
+                    onJumpDone={() => setJumpToItemId(null)}
+                  />
+                </TabErrorBoundary>
+              )
+          ) : (
+            <TabErrorBoundary>
+              <LossTab onOpenItem={() => {}} search={search} group={group} productType={productType}
+                jumpToItemId={jumpToLossItemId} onJumpDone={() => setJumpToLossItemId(null)}
+                onDateClick={openReceiptFromItem} showPrices={showPrices} lossOnly={lossOnly} gainOnly={gainOnly}
+                onExpandedIdChange={setExpandedItemId} />
+            </TabErrorBoundary>
+          )
         )}
         {addForm !== 'sale' && outerTab === 'loss' && lossView === 'sales' && (
-          <SalesTab items={items} groupFilter={group} search={search} violation={null}
+          <SalesTab items={items} groupFilter={group} search={search}
+            violation={pillKeys?.includes(violation ?? '') ? violation : null}
             jumpToDate={jumpToReceiptDate} jumpToItemName={jumpToReceiptItemName}
             onJumpDone={() => { setJumpToReceiptDate(null); setJumpToReceiptItemName(null) }}
             onItemClick={openItemFromSales} />
@@ -738,66 +772,14 @@ function ItemHubPageInner() {
           <BillsTab items={items} groupFilter={group} search={search} />
         )}
         {outerTab === 'loss' && lossView === 'counts' && (
-          <CountsTab items={items} groupFilter={group} search={search} violation={null} onFixRecords={goFixRecords} />
+          <CountsTab items={items} groupFilter={group} search={search}
+            violation={pillKeys?.includes(violation ?? '') ? violation : null} onFixRecords={goFixRecords} />
         )}
         {outerTab === 'loss' && lossView === 'feed' && (
           <TabErrorBoundary>
-            <LossFeedTab search={search} />
+            <LossFeedTab search={search} kind={violation === 'gains' ? 'gain' : 'loss'} />
           </TabErrorBoundary>
         )}
-        {outerTab === 'errors' && violation && (
-          <div className="mx-3 mt-2 mb-1 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 flex gap-2">
-            <span className="text-sm shrink-0">ℹ️</span>
-            <p className="text-[11px] text-blue-800 leading-snug">
-              {ERROR_VIOLATIONS.find(v => v.key === violation)?.description}
-            </p>
-          </div>
-        )}
-        {outerTab === 'errors' && violation && (() => {
-          const category = ERROR_VIOLATIONS.find(v => v.key === violation)?.category
-          if (category === 'loss') {
-            if (violation === 'gains') {
-              return <LossFeedTab kind="gain" search={search} />
-            }
-            if (COUNTS_VIOLATIONS.has(violation)) {
-              return <CountsTab items={items} groupFilter={group} search={search} violation={violation} onFixRecords={goFixRecords} />
-            }
-            return itemsLoading
-              ? <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
-              : <ItemsTab
-                  items={items}
-                  group={group}
-                  productType={productType}
-                  search={search}
-                  violation={violation}
-                  onItemsChanged={setItems}
-                  showAdd={false}
-                  onCloseAdd={() => {}}
-                  jumpToItemId={jumpToItemId}
-                  onJumpDone={() => setJumpToItemId(null)}
-                />
-          }
-          if (category === 'sales') {
-            return <SalesTab items={items} groupFilter={group} search={search} violation={violation} />
-          }
-          if (category === 'cab') {
-            return <CABTab />
-          }
-          if (category === 'staff') {
-            return (
-              <TabErrorBoundary>
-                <div className="px-4 py-3">
-                  <NoStaffTimesList
-                    dates={(globalFlags?.noStaffTimes ?? []).map((r: any) => r.missing_date)}
-                    role={role} username={username}
-                    onFixed={() => loadBadgeData()}
-                  />
-                </div>
-              </TabErrorBoundary>
-            )
-          }
-          return null
-        })()}
         </>)}
       </div>
 
