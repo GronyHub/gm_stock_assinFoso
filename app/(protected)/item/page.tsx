@@ -456,10 +456,10 @@ function ItemHubPageInner() {
   ]
 
   return (
-    <div className="-mx-4 -mt-4 flex flex-col h-[100dvh] md:h-[calc(100dvh-56px)]">
+    <div className="-mx-4 -mt-4 -mb-6 flex flex-col h-[100dvh] md:h-[calc(100dvh-56px)]">
 
       {/* ── Header ── */}
-      <div className="shrink-0 bg-white border-b border-gray-200">
+      <div className="shrink-0 sticky top-0 z-30 bg-white border-b border-gray-200">
 
         {/* Row 1: raw-text tabs, no icons -- single line to conserve height
             (hamburger moved to a fixed bottom-left button) */}
