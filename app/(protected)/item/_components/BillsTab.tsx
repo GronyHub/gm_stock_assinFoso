@@ -1,8 +1,9 @@
 'use client'
-import { useState, useEffect, useMemo } from 'react'
+import { Fragment, useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
+import ItemDetailDropdown from './ItemDetailDropdown'
 
 type Item = { id: number; item_name: string; cf_group: string | null }
 
@@ -18,6 +19,7 @@ type Bill = {
 
 type BillLine = {
   bill_id: number
+  item_id: number | null
   item_name: string
   quantity: string
   unit_price: string
@@ -56,6 +58,10 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState({ bill_date: '', vendor_name: '', status: 'paid' })
   const [saving, setSaving] = useState(false)
+  // Which bill line's item drop-down (ItemDetailDropdown) is open, if any --
+  // bill lines have no id of their own, so keyed by "bill id:row index"
+  // instead, same purpose as SalesTab's expandedLineId.
+  const [expandedLineKey, setExpandedLineKey] = useState<string | null>(null)
 
   function loadBills() {
     Promise.all([
@@ -251,14 +257,36 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
                         </tr>
                       </thead>
                       <tbody>
-                        {billLines.map((l, i) => (
-                          <tr key={i} className="border-b border-gray-100">
-                            <td className="px-1.5 py-0.5 text-gray-900">{l.item_name}</td>
-                            <td className="px-1.5 py-0.5 text-right text-gray-700">{parseFloat(l.quantity)}</td>
-                            <td className="px-1.5 py-0.5 text-right text-gray-700">{fmt(l.unit_price)}</td>
-                            <td className="px-1.5 py-0.5 text-right font-semibold text-gray-900">{fmt(l.item_total)}</td>
-                          </tr>
-                        ))}
+                        {billLines.map((l, i) => {
+                          const key = `${b.id}:${i}`
+                          const isOpen = expandedLineKey === key
+                          return (
+                          <Fragment key={i}>
+                            <tr className="border-b border-gray-100">
+                              <td className="px-1.5 py-0.5 text-gray-900">
+                                {l.item_id ? (
+                                  <button onClick={() => setExpandedLineKey(isOpen ? null : key)}
+                                    className="text-left text-blue-600 hover:underline">
+                                    {l.item_name}
+                                  </button>
+                                ) : l.item_name}
+                              </td>
+                              <td className="px-1.5 py-0.5 text-right text-gray-700">{parseFloat(l.quantity)}</td>
+                              <td className="px-1.5 py-0.5 text-right text-gray-700">{fmt(l.unit_price)}</td>
+                              <td className="px-1.5 py-0.5 text-right font-semibold text-gray-900">{fmt(l.item_total)}</td>
+                            </tr>
+                            {isOpen && l.item_id && (
+                              <tr>
+                                <td colSpan={4} className="p-0 border-b border-gray-100">
+                                  <div className="sticky left-0 w-[100vw] max-w-[100vw] max-h-[50vh] overflow-auto bg-blue-50 px-0.5 pb-2 pt-0.5">
+                                    <ItemDetailDropdown itemId={l.item_id} />
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </Fragment>
+                          )
+                        })}
                       </tbody>
                       <tfoot>
                         <tr className="border-t border-gray-200 bg-gray-50">
