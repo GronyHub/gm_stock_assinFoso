@@ -355,7 +355,7 @@ function ItemHubPageInner() {
   // Backs the bottom RoleBar (Joe/Bino/Opener/Closer tabs) -- shared here so
   // it's computed once regardless of which outer tab is showing.
   const {
-    cashViolations, manageViolations, cashCount, manageCount,
+    cashViolations, manageViolations, openerViolations, cashCount, manageCount, openerViolationCount,
     assignments, deadlines, assignedBy, assignedOn, vSettings,
   } = useViolations(violationCounts)
   const [openRole, setOpenRole] = useState<RoleKey | null>(null)
@@ -654,7 +654,7 @@ function ItemHubPageInner() {
         {openRole ? (
           <RolePanel
             role={openRole}
-            cashViolations={cashViolations} manageViolations={manageViolations}
+            cashViolations={cashViolations} manageViolations={manageViolations} openerViolations={openerViolations}
             assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
             onGoToViolation={goToViolation}
             missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
@@ -799,7 +799,7 @@ function ItemHubPageInner() {
       <RoleBar
         openRole={openRole}
         onSelectRole={key => setOpenRole(prev => prev === key ? null : key)}
-        cashCount={cashCount} manageCount={manageCount}
+        cashCount={cashCount} manageCount={manageCount} dailyCount={openerViolationCount}
         missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
         trailing={
           <div className="relative shrink-0" ref={hamburgerRef}>

@@ -9,6 +9,7 @@ type Props = {
   onSelectRole: (key: RoleKey) => void
   cashCount: number
   manageCount: number
+  dailyCount: number
   missingClosingReportsCount: number
   trailing?: React.ReactNode
 }
@@ -18,7 +19,7 @@ type Props = {
 // Behaves like the top-level tabs: the active one gets the same blue
 // highlight, and the bar itself never gets hidden -- its panel (RolePanel)
 // replaces the content area above it instead of covering the bar in a modal.
-export default function RoleBar({ openRole, onSelectRole, cashCount, manageCount, missingClosingReportsCount, trailing }: Props) {
+export default function RoleBar({ openRole, onSelectRole, cashCount, manageCount, dailyCount, missingClosingReportsCount, trailing }: Props) {
   const [today, setToday] = useState<{ opener: string | null; openerConfirmed: boolean | null }>({ opener: null, openerConfirmed: null })
 
   function load() {
@@ -30,7 +31,11 @@ export default function RoleBar({ openRole, onSelectRole, cashCount, manageCount
   useEffect(() => { load() }, [])
   usePolling(load, 30000)
 
-  const openerCount = today.opener && !today.openerConfirmed ? 1 : 0
+  // The morning stock count is the opener's job -- its outstanding count
+  // rides on this badge alongside the separate "hasn't confirmed clock-in
+  // yet" flag, same as Joe/Bino/Closer's badges sum up everything on their
+  // own panel.
+  const openerCount = (today.opener && !today.openerConfirmed ? 1 : 0) + dailyCount
   const closerCount = missingClosingReportsCount
 
   const TABS: { key: RoleKey; label: string; count: number }[] = [
