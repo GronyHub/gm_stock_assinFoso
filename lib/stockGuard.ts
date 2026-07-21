@@ -8,7 +8,10 @@ import sql from '@/lib/db'
 // chains, not a rule for every pack item. Matching a PACK item's own name
 // is harmless: the "does anything convert into this item" check below
 // naturally excludes it, since nothing converts into a pack.
-const PACK_PAIRING_CHAINS: { match: RegExp; blocking: boolean }[] = [
+// Exported so lib/countRules.ts can pull the blocking chains' packs into
+// the daily count list itself, not just prompt for them reactively when
+// the singles side is saved.
+export const PACK_PAIRING_CHAINS: { match: RegExp; blocking: boolean }[] = [
   { match: /a4\s*brown\s*envelope/i, blocking: true },
   { match: /a4\s*lamination/i, blocking: true },
   { match: /4x6/i, blocking: true },
