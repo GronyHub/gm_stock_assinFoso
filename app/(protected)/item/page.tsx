@@ -24,7 +24,8 @@ class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boole
 }
 import { usePolling } from '@/lib/usePolling'
 import { useViolations } from './_components/useViolations'
-import RoleBar from './_components/RoleBar'
+import RoleBar, { type RoleKey } from './_components/RoleBar'
+import RolePanel from './_components/RolePanel'
 import dynamic from 'next/dynamic'
 const loading = (h: string) => <div className={`py-10 text-center text-gray-400 text-sm`}>{h}</div>
 const ItemsTab       = dynamic(() => import('./_components/ItemsTab'),        { ssr: false, loading: () => loading('Loading…') })
@@ -354,6 +355,7 @@ function ItemHubPageInner() {
     cashViolations, manageViolations, cashCount, manageCount,
     assignments, deadlines, assignedBy, assignedOn, vSettings,
   } = useViolations(violationCounts)
+  const [openRole, setOpenRole] = useState<RoleKey | null>(null)
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -622,7 +624,23 @@ function ItemHubPageInner() {
       </div>
 
       {/* ── Content ── */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="relative flex-1 min-h-0 overflow-y-auto">
+        {/* Role Bar panel — replaces the tab content area (below the header,
+            above the Role Bar) the same way switching a top-level tab does,
+            instead of a modal that hides everything behind it. */}
+        {openRole && (
+          <div className="absolute inset-0 z-20">
+            <RolePanel
+              role={openRole}
+              cashViolations={cashViolations} manageViolations={manageViolations}
+              assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
+              onGoToViolation={goToViolation}
+              missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
+              onOpenManage={() => changeTab('manage')}
+              onClose={() => setOpenRole(null)}
+            />
+          </div>
+        )}
         {addForm === 'sale'    && outerTab === 'loss' && lossView === 'sales'    && <div className="px-4"><NewSaleForm    onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'bill'    && outerTab === 'loss' && lossView === 'bills'    && <div className="px-4"><NewBillForm    onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'expense' && outerTab === 'loss' && lossView === 'expenses' && <div className="px-4"><NewExpenseForm onSuccess={() => setAddForm(null)} /></div>}
@@ -751,18 +769,16 @@ function ItemHubPageInner() {
         })()}
       </div>
 
-      {/* Role bar — Joe/Bino/Opener/Closer, always visible so a skipped
-          mandatory task (Opener's count confirmation, Closer's closing
-          report) is always one tap away. In-flow (not fixed) so it never
-          covers content. The account menu (⋮) rides along on the right
-          edge of the same bar, rather than floating as its own button. */}
+      {/* Role bar — Joe/Bino/Opener/Closer, always visible (never hidden by
+          its own panel) so a skipped mandatory task (Opener's count
+          confirmation, Closer's closing report) is always one tap away. The
+          active tab gets the same blue highlight the top menu uses. The
+          account menu (⋮) rides along on the right edge of the same bar. */}
       <RoleBar
-        cashViolations={cashViolations} manageViolations={manageViolations}
+        openRole={openRole}
+        onSelectRole={key => setOpenRole(prev => prev === key ? null : key)}
         cashCount={cashCount} manageCount={manageCount}
-        assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
-        onGoToViolation={goToViolation}
         missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
-        onOpenManage={() => changeTab('manage')}
         trailing={
           <div className="relative shrink-0" ref={hamburgerRef}>
             {hamburgerOpen && (
