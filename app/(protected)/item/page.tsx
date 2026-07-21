@@ -23,6 +23,8 @@ class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boole
   }
 }
 import { usePolling } from '@/lib/usePolling'
+import { useViolations } from './_components/useViolations'
+import RoleBar from './_components/RoleBar'
 import dynamic from 'next/dynamic'
 const loading = (h: string) => <div className={`py-10 text-center text-gray-400 text-sm`}>{h}</div>
 const ItemsTab       = dynamic(() => import('./_components/ItemsTab'),        { ssr: false, loading: () => loading('Loading…') })
@@ -346,6 +348,13 @@ function ItemHubPageInner() {
     }
   }, [violationCounts])
 
+  // Backs the bottom RoleBar (Joe/Bino/Opener/Closer tabs) -- shared here so
+  // it's computed once regardless of which outer tab is showing.
+  const {
+    cashViolations, manageViolations, cashCount, manageCount,
+    assignments, deadlines, assignedBy, assignedOn, vSettings,
+  } = useViolations(violationCounts)
+
   useEffect(() => {
     function handler(e: MouseEvent) {
       if (groupRef.current && !groupRef.current.contains(e.target as Node)) setGroupOpen(false)
@@ -656,7 +665,7 @@ function ItemHubPageInner() {
         {outerTab === 'today' && !(addForm === 'sale' || addForm === 'bill' || addForm === 'expense') && (
           <TabErrorBoundary>
             <div className="h-full overflow-y-auto px-4">
-              <TodayContent onGoToViolation={goToViolation} counts={violationCounts} />
+              <TodayContent />
             </div>
           </TabErrorBoundary>
         )}
@@ -742,9 +751,23 @@ function ItemHubPageInner() {
         })()}
       </div>
 
-      {/* Hamburger — fixed to the bottom-left corner of the screen, dropdown
-          opens upward so it isn't clipped by the viewport bottom edge. */}
-      <div className="fixed bottom-4 left-4 z-[100]" ref={hamburgerRef}>
+      {/* Role bar — Joe/Bino/Opener/Closer, always visible so a skipped
+          mandatory task (Opener's count confirmation, Closer's closing
+          report) is always one tap away. In-flow (not fixed) so it never
+          covers content; the hamburger below is shifted up to clear it. */}
+      <RoleBar
+        cashViolations={cashViolations} manageViolations={manageViolations}
+        cashCount={cashCount} manageCount={manageCount}
+        assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
+        onGoToViolation={goToViolation}
+        missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
+        onOpenManage={() => changeTab('manage')}
+      />
+
+      {/* Hamburger — fixed to the bottom-left corner of the screen, shifted
+          up to clear the role bar; dropdown opens upward so it isn't
+          clipped by the viewport bottom edge. */}
+      <div className="fixed bottom-14 left-4 z-[100]" ref={hamburgerRef}>
         {hamburgerOpen && (
           <div className="absolute bottom-full left-0 mb-1 bg-white border border-gray-200 rounded-xl shadow-xl min-w-[180px] overflow-hidden">
             <ViewPortalAsButton onDone={() => setHamburgerOpen(false)} />

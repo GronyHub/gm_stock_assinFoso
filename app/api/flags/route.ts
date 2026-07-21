@@ -1,6 +1,7 @@
 import sql from '@/lib/db'
 import { ensureAdvertStatusTable } from '@/lib/advertStatus'
 import { ensureManageLogs } from '@/lib/manageLogs'
+import { ensureClosingReports } from '@/lib/closingReports'
 import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -331,9 +332,22 @@ export async function GET() {
     ? [{ due_date: dueDate }]
     : []
 
+  // 14. Days with staff actually present (and sales) but no closing report --
+  // the Closer's mandatory task got skipped that day. Only past days count;
+  // today's closer hasn't necessarily clocked out yet.
+  await ensureClosingReports()
+  const missingClosingReports = await safeQuery(() => sql`
+    SELECT DISTINCT sr.receipt_date::date::text AS missing_date
+    FROM sales_receipts sr
+    WHERE sr.receipt_date::date < CURRENT_DATE
+      AND EXISTS (SELECT 1 FROM staff_times st WHERE st.work_date = sr.receipt_date::date)
+      AND NOT EXISTS (SELECT 1 FROM closing_reports cr WHERE cr.work_date = sr.receipt_date::date)
+    ORDER BY missing_date DESC
+  `)
+
   return NextResponse.json({
     noCash, missingDays, duplicates: filteredDups, costGteSell, notInInventory, noGroup, noStaffTimes,
     uncheckedCab, dupReceipts, unlinkedNamed, groupNames: groupNames.map((r: any) => r.group_name),
-    noAdvert, jingleOverdue, equipmentCheckOverdue,
+    noAdvert, jingleOverdue, equipmentCheckOverdue, missingClosingReports,
   })
 }

@@ -3,28 +3,8 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { distanceMeters, SHOP_LAT, SHOP_LNG, ALLOWED_RADIUS_METERS } from '@/lib/geo'
 import { openerOf } from '@/lib/staffTimes'
+import { ensureClosingReports } from '@/lib/closingReports'
 import { NextRequest, NextResponse } from 'next/server'
-
-// The Closer (last staff member to clock out) must answer end-of-day questions
-// before their clock-out is accepted; answers land here, one row per day.
-async function ensureClosingReports() {
-  await sql`
-    CREATE TABLE IF NOT EXISTS closing_reports (
-      id SERIAL PRIMARY KEY,
-      work_date DATE NOT NULL UNIQUE,
-      closer_name TEXT NOT NULL,
-      no_tshirt_staff TEXT NOT NULL DEFAULT '',
-      advert_played BOOLEAN NOT NULL,
-      property_issue BOOLEAN NOT NULL,
-      speaker_brought_in BOOLEAN NOT NULL,
-      new_customer BOOLEAN NOT NULL,
-      new_customer_details TEXT,
-      unfortunate_event BOOLEAN NOT NULL,
-      unfortunate_event_details TEXT,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-    )
-  `.catch(() => {})
-}
 
 // The Opener (earliest clock-in of the day) must confirm today's daily
 // counts before their clock-in counts as fully complete -- see
@@ -86,16 +66,31 @@ export async function GET() {
       closerName = report?.closer_name ?? null
     } catch { /* table may not exist yet */ }
 
+    // Today's opener's own confirmation status -- not just "mine" -- so
+    // anyone (e.g. the RoleBar's Opener tab) can see whether today's opener
+    // has confirmed their opening count, regardless of who's asking.
+    const openerName = openerOf(todayRows)
+    let openerConfirmed: boolean | null = null
+    if (openerName) {
+      try {
+        const [openerRow] = await sql`
+          SELECT opening_count_confirmed FROM staff_times WHERE staff_name = ${openerName} AND work_date = ${today}
+        `
+        openerConfirmed = !!openerRow?.opening_count_confirmed
+      } catch { openerConfirmed = null }
+    }
+
     return NextResponse.json({
       today: todayRows,
       mine: mine ?? null,
       recent,
-      opener: openerOf(todayRows),
+      opener: openerName,
+      openerConfirmed,
       closer: closerName,
     })
   } catch (e) {
     console.error('staff-times GET error:', e)
-    return NextResponse.json({ today: [], mine: null, recent: [], opener: null, closer: null })
+    return NextResponse.json({ today: [], mine: null, recent: [], opener: null, openerConfirmed: null, closer: null })
   }
 }
 

@@ -30,8 +30,7 @@ This app is how Grony Multimedia tracks sales, stock, money, and daily operation
 A Home button plus three tabs across the top: Grony Cash, Grony Manage, Daily.
 
 ## Home
-- Flags -- one combined list of everything needing attention, cash and non-cash together. Each flag has a "Fix now →" link that jumps straight to it.
-- News feed -- announcements, photos, and voice notes, below the flags. Post a message here to keep everyone informed.
+Just the news feed -- announcements, photos, and voice notes. Post a message here to keep everyone informed. Flags live in the role bar at the very bottom of the screen instead (see below), so the feed is always the first thing you see.
 
 ## Grony Cash
 Everything to do with money. Top row: Items, Sales, Bills, Expenses, Data, P&L (owner and Joe only), CAB.
@@ -56,6 +55,14 @@ Everything that isn't directly about money:
 
 ## Daily Summary
 A single end-of-day report: who worked, what was counted, what WIC and GMC bought that day, whether each sale was recorded correctly, Work Not Written, and the day's Profit/Loss. Downloadable as a PDF.
+
+# The Role Bar
+
+A row of four buttons fixed to the bottom of the screen, always visible: Joe, Bino, Opener, Closer. A red number next to a name means outstanding issues -- tap it to see the list and jump straight to fixing them.
+- Joe -- Grony Cash flags, plus the loss summaries (all-time, yesterday, week, month, year).
+- Bino -- Grony Manage flags.
+- Opener -- shows if today's Opener still hasn't confirmed the opening counts, so it can be finished from anywhere, not just at clock-in.
+- Closer -- shows any past day that ended without a closing report being submitted.
 
 # Clocking In/Out, the Opener and Closer
 
