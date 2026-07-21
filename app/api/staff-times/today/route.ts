@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { distanceMeters, SHOP_LAT, SHOP_LNG, ALLOWED_RADIUS_METERS } from '@/lib/geo'
-import { openerOf } from '@/lib/staffTimes'
+import { openerOf, parseTimeMins } from '@/lib/staffTimes'
 import { ensureClosingReports } from '@/lib/closingReports'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -134,6 +134,30 @@ export async function POST(req: NextRequest) {
   try {
     let isCloser = false
     let closerReportJustSaved = false
+
+    // Opener = earliest actual_in of the day, and there can only be one --
+    // without this, a later clock-in (real or backdated via the "pick a
+    // time" option) could enter a time earlier than the already-established
+    // opener's and silently take over the role after the fact, which is
+    // confusing (both show up as "Opener for today" in the activity log,
+    // see the 21st July case) and shouldn't be possible.
+    if (action === 'in') {
+      const others = await sql`
+        SELECT staff_name, actual_in FROM staff_times
+        WHERE work_date = ${today} AND actual_in IS NOT NULL AND staff_name <> ${username}
+      ` as { staff_name: string; actual_in: string | null }[]
+      const currentOpener = openerOf(others)
+      if (currentOpener) {
+        const openerTime = others.find(r => r.staff_name === currentOpener)?.actual_in ?? null
+        const openerMins = parseTimeMins(openerTime)
+        const thisMins = parseTimeMins(time)
+        if (openerMins !== null && thisMins !== null && thisMins < openerMins) {
+          return NextResponse.json({
+            error: `${currentOpener} is already today's Opener (clocked in at ${openerTime}) — you can't clock in with an earlier time than that.`,
+          }, { status: 400 })
+        }
+      }
+    }
 
     if (action === 'out') {
       const [existing] = await sql`
