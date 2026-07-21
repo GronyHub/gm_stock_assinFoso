@@ -4,6 +4,12 @@ import { PACK_PAIRING_CHAINS } from '@/lib/stockGuard'
 // Items counted every single day (hardcoded set chosen by the shop).
 export const DAILY_ITEM_IDS = [367, 368, 369, 370, 371, 372, 373, 374, 375, 376]
 
+// Cardboard and A4 Sheet dropped out of the daily singles count -- A4 Sheet
+// is tracked through its pack instead (see PACK_PAIRING_CHAINS below), and
+// Cardboard isn't tracked daily at all anymore. Filtered out by name rather
+// than trimmed from DAILY_ITEM_IDS so the id list doesn't need editing.
+const EXCLUDED_DAILY_SINGLE_NAMES = [/cardboard/i, /a4\s*sheet/i]
+
 async function itemRows(itemIds: number[]) {
   if (itemIds.length === 0) return []
   return await sql`
@@ -32,11 +38,11 @@ async function itemRows(itemIds: number[]) {
   `
 }
 
-// The daily-count item IDs whose name matches a *blocking* pack chain (A4
-// Brown Envelope, A4 Lamination, 4x6 -- not A4 Sheet, which is optional).
-// Their pack needs a same-day count too, same as packPairingCheck already
-// requires at save time -- this just surfaces it as its own line in the
-// list up front instead of only reactively when the singles side is saved.
+// The daily-count item IDs whose name matches a *blocking* pack chain (see
+// PACK_PAIRING_CHAINS). Their pack needs a same-day count too, same as
+// packPairingCheck already requires at save time -- this just surfaces it
+// as its own line in the list up front instead of only reactively when the
+// singles side is saved.
 async function blockingPackDailyIds(): Promise<number[]> {
   const rows = await sql`
     SELECT id, canonical_name FROM items WHERE id = ANY(${DAILY_ITEM_IDS})
@@ -48,12 +54,13 @@ async function blockingPackDailyIds(): Promise<number[]> {
 }
 
 // Items from today's fixed daily-count list that haven't been counted
-// today, plus the packs of any blocking-chain item in that list (also not
-// yet counted today) -- so the daily list itself shows the pack lines, not
-// just a prompt after saving the singles side. A4 Sheet's pack stays out of
-// this list since its pairing is optional.
+// today (minus Cardboard/A4 Sheet, see EXCLUDED_DAILY_SINGLE_NAMES), plus
+// the packs of any blocking-chain item in that list (also not yet counted
+// today) -- so the daily list itself shows the pack lines, not just a
+// prompt after saving the singles side.
 export async function outstandingDailyItems() {
-  const dailyRows = await itemRows(DAILY_ITEM_IDS)
+  const dailyRows = (await itemRows(DAILY_ITEM_IDS))
+    .filter(r => !EXCLUDED_DAILY_SINGLE_NAMES.some(p => p.test(String(r.item_name))))
 
   const blockingIds = await blockingPackDailyIds()
   let packRows: Awaited<ReturnType<typeof itemRows>> = []
