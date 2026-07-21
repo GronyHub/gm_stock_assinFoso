@@ -1,21 +1,26 @@
 import sql from '@/lib/db'
 
-// Named pack-chains where counting the singles side should also prompt (or,
-// for A4 Brown Envelope/A4 Lamination/4x6, require) a same-day count of the
-// pack side too -- a pack can otherwise sit open through an entire
-// USED/PACK cycle overrun with nobody noticing (see the 17th June A4 Brown
-// Envelope case). Matched by name since this is a small, named set of
-// chains, not a rule for every pack item. Matching a PACK item's own name
-// is harmless: the "does anything convert into this item" check below
-// naturally excludes it, since nothing converts into a pack.
-// Exported so lib/countRules.ts can pull the blocking chains' packs into
-// the daily count list itself, not just prompt for them reactively when
-// the singles side is saved.
+// Named pack-chains where counting the singles side should also require a
+// same-day count of the pack side too -- a pack can otherwise sit open
+// through an entire USED/PACK cycle overrun with nobody noticing (see the
+// 17th June A4 Brown Envelope case). Matched loosely by name -- e.g. "env"
+// covers both "Envelope" and the "Env." abbreviation some items actually
+// use -- since this is a small, named set of chains, not a rule for every
+// pack item. Matching a PACK item's own name is harmless: the "does
+// anything convert into this item" check below naturally excludes it,
+// since nothing converts into a pack.
+// Exported so lib/countRules.ts can pull these chains' packs into the
+// daily count list itself, not just prompt for them reactively when the
+// singles side is saved.
 export const PACK_PAIRING_CHAINS: { match: RegExp; blocking: boolean }[] = [
-  { match: /a4\s*brown\s*envelope/i, blocking: true },
+  { match: /a4\s*brown\s*env/i, blocking: true },
+  { match: /a3\s*brown\s*env/i, blocking: true },
   { match: /a4\s*lamination/i, blocking: true },
+  { match: /a3\s*lamination/i, blocking: true },
   { match: /4x6/i, blocking: true },
-  { match: /a4\s*sheet/i, blocking: false },
+  { match: /5x7/i, blocking: true },
+  { match: /a3\s*sheet/i, blocking: true },
+  { match: /a4\s*sheet/i, blocking: true },
 ]
 
 export type PackPairingResult = { blocking: boolean; packs: { id: number; name: string }[] }
