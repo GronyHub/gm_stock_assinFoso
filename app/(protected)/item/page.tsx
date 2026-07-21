@@ -507,9 +507,13 @@ function ItemHubPageInner() {
             child sub-view (e.g. Sales stays active while on Customers).
             CAB has just one flag type (Unchecked CAB) and no filtered view
             to switch to, so it gets a plain count badge here instead of a
-            pill row like Items/Sales/Counts/Feed get below. */}
+            pill row like Items/Sales/Counts/Feed get below. flex-1 + wrap
+            (no shrink-0/whitespace-nowrap/overflow-x-auto) so all of them
+            always fit on one screen without scrolling -- same fix as the
+            top-level Home/Grony Cash/Grony Manage/Daily row, needed here
+            too now that "Goods & Services" is long enough to not fit. */}
         {outerTab === 'loss' && (
-          <div className="flex items-center gap-1 px-2 py-0.5 bg-white border-t border-gray-100 overflow-x-auto">
+          <div className="flex items-stretch gap-1 px-2 py-0.5 bg-white border-t border-gray-100">
             {([
               { key: 'items',    label: 'Goods & Services' },
               { key: 'sales',    label: 'Goods Out' },
@@ -520,11 +524,11 @@ function ItemHubPageInner() {
               { key: 'cab',      label: 'CAB' },
             ] as { key: LossView; label: string }[]).map(v => (
               <button key={v.key} onClick={() => { setLossView(v.key); setAddForm(null); setViolation(null) }}
-                className={`shrink-0 flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-lg whitespace-nowrap transition
+                className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 text-center text-[10px] font-semibold px-1 py-1 rounded-lg leading-tight transition
                   ${(activeLossParent ?? lossView) === v.key ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>
-                {v.label}
+                <span>{v.label}</span>
                 {v.key === 'cab' && violationCounts.unchecked_cab > 0 && (
-                  <span className={`text-[10px] font-bold rounded-full px-1.5 leading-tight
+                  <span className={`text-[9px] font-bold rounded-full px-1.5 leading-tight
                     ${(activeLossParent ?? lossView) === v.key ? 'bg-white/25 text-white' : 'bg-red-600 text-white'}`}>
                     {violationCounts.unchecked_cab > 99 ? '99+' : violationCounts.unchecked_cab}
                   </span>
