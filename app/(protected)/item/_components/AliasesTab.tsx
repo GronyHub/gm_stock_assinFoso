@@ -527,15 +527,17 @@ function FlaggedPanel({ items }: { items: Item[] }) {
 }
 
 // Alias names that map to more than one item -- exactly what
-// /api/aliases/resweep skips rather than guess at. Resolving one here
-// deletes the item_aliases rows for every candidate except the one kept,
-// so the name maps to a single item again for future confirms/sweeps.
+// /api/aliases/resweep skips rather than guess at. Resolving one here both
+// moves any lines already mis-resolved to a losing candidate over to the
+// one kept, and deletes the losing item_aliases rows, so the name maps to
+// a single (correctly-resolved) item again for future confirms/sweeps.
 function AmbiguousPanel() {
   const [groups, setGroups] = useState<AmbiguousGroup[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<AmbiguousGroup | null>(null)
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
   const [resolving, setResolving] = useState<number | null>(null)
+  const [lastResult, setLastResult] = useState<string | null>(null)
 
   useEffect(() => {
     setLoading(true)
@@ -549,12 +551,19 @@ function AmbiguousPanel() {
 
   async function keep(group: AmbiguousGroup, keepItemId: number | null) {
     setResolving(keepItemId ?? -1)
+    setLastResult(null)
     const res = await fetch('/api/aliases/ambiguous/resolve', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ norm_name: group.norm_name, keep_item_id: keepItemId }),
     })
     setResolving(null)
     if (!res.ok) return
+    const d = await res.json()
+    setLastResult(
+      keepItemId
+        ? `Moved ${d.salesLinesMoved} sales line${d.salesLinesMoved === 1 ? '' : 's'} and ${d.billLinesMoved} bill line${d.billLinesMoved === 1 ? '' : 's'} to the kept item; removed ${d.deletedCount} alias row${d.deletedCount === 1 ? '' : 's'}`
+        : `Deleted ${d.deletedCount} unused alias row${d.deletedCount === 1 ? '' : 's'}`
+    )
     setGroups(prev => prev.filter(g => g.norm_name !== group.norm_name))
     setSelected(null)
   }
@@ -567,6 +576,9 @@ function AmbiguousPanel() {
         <span className="text-[9px] text-red-600 font-bold">{display.length} ambiguous name{display.length === 1 ? '' : 's'}</span>
         <span className="text-[9px] text-gray-400 ml-2">same raw text maps to more than one item -- resweep skips these</span>
       </div>
+      {lastResult && (
+        <p className="shrink-0 text-[9px] text-gray-500 bg-gray-50 border-b border-gray-200 px-2 py-1">{lastResult}</p>
+      )}
       <div className="flex flex-1 min-h-0">
         <div className="w-1/2 border-r border-gray-200 overflow-y-auto min-h-0">
           {display.length === 0 ? (
@@ -599,7 +611,7 @@ function AmbiguousPanel() {
               <div className="px-2 py-1.5 bg-red-50 border-b border-red-200 shrink-0">
                 <p className="text-[9px] text-red-500 font-semibold uppercase">Ambiguous</p>
                 <p className="text-[10px] font-bold text-gray-900 break-words">{selected.candidates[0]?.alias_name}</p>
-                <p className="text-[9px] text-gray-400 mt-0.5">Pick which item this name really means -- the others are removed as aliases for it</p>
+                <p className="text-[9px] text-gray-400 mt-0.5">Pick which item this name really means -- lines currently resolved to the other candidate(s) move here too, and the losing aliases are removed</p>
               </div>
               {selected.candidates.every(c => c.line_count === 0) && (
                 <div className="px-2 py-1.5 bg-orange-50 border-b border-orange-200 shrink-0">
