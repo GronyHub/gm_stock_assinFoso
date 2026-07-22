@@ -226,12 +226,16 @@ const LOSSVIEW_PILL_KEYS: Partial<Record<LossView, string[]>> = {
 }
 
 // Analysis dropped -- it duplicated what the Grony Cash submenus' own
-// analytics sections cover now (see e.g. ItemsAnalyticsSection).
-// Vendors/Customers/Receipts moved into Grony Cash, Logs into Grony Manage.
-// What's left is account & admin, not business navigation.
+// analytics sections cover now (see e.g. ItemsAnalyticsSection). Logs moved
+// into Grony Manage. Customers/Receipts/Vendors live nested three deep under
+// Items in Grony Cash (Items -> children row), so they're repeated here as
+// one-tap shortcuts to their own standalone page.
 const HAMBURGER_LINKS = [
-  { href: '/users',    label: 'Users'    },
-  { href: '/profile',  label: 'Profile'  },
+  { href: '/users',     label: 'Users'     },
+  { href: '/profile',   label: 'Profile'   },
+  { href: '/customers', label: 'Customers' },
+  { href: '/receipts',  label: 'Receipts'  },
+  { href: '/vendors',   label: 'Vendors'   },
 ]
 
 // Plain text, no icons -- keeps the top nav to a single line so it doesn't
