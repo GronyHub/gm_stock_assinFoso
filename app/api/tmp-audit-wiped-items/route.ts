@@ -1,6 +1,15 @@
 import sql from '@/lib/db'
 import { NextResponse } from 'next/server'
 
+// One-off: apply the two confirmed recoveries from the audit below --
+// id 9 "A4 210 grams" purchase_rate (3 bills consistently show 28.928),
+// id 374 "5x7 Photo Paper Singles" selling_rate (37 sales consistently show 7.00).
+export async function POST() {
+  const a = await sql`UPDATE items SET purchase_rate = 28.928 WHERE id = 9 RETURNING id, canonical_name, purchase_rate`
+  const b = await sql`UPDATE items SET selling_rate = 7.00 WHERE id = 374 RETURNING id, canonical_name, selling_rate`
+  return NextResponse.json({ a, b })
+}
+
 // Finds items where selling_rate, purchase_rate, or cf_group is missing
 // despite the item having real sales/bill transaction history -- a
 // suspicious pattern (an actively-traded item that was never priced is
