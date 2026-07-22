@@ -531,12 +531,28 @@ export default function AliasesTab({ defaultTab }: Props) {
       : 'prezoho-sales'
   )
   const [items, setItems] = useState<Item[]>([])
+  const [resweeping, setResweeping] = useState(false)
+  const [resweepResult, setResweepResult] = useState<string | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     fetch('/api/items/all').then(r => r.json()).then(d => {
       setItems(Array.isArray(d) ? d.map((i: any) => ({ id: i.id, canonical_name: i.name, cf_group: i.group })) : [])
     })
   }, [])
+
+  async function resweep() {
+    setResweeping(true); setResweepResult(null)
+    const res = await fetch('/api/aliases/resweep', { method: 'POST' })
+    setResweeping(false)
+    if (!res.ok) { setResweepResult('Failed — try again'); return }
+    const d = await res.json()
+    const parts = [`${d.salesLinesUpdated} sales line${d.salesLinesUpdated === 1 ? '' : 's'}`, `${d.billLinesUpdated} bill line${d.billLinesUpdated === 1 ? '' : 's'}`]
+    let msg = `Re-swept: ${parts.join(', ')} updated`
+    if (d.ambiguousNamesSkipped?.length) msg += ` · ${d.ambiguousNamesSkipped.length} ambiguous name${d.ambiguousNamesSkipped.length === 1 ? '' : 's'} skipped`
+    setResweepResult(msg)
+    setRefreshKey(k => k + 1)
+  }
 
   useEffect(() => {
     if (defaultTab && ['prezoho-sales','prezoho-bills','zoho-sales','zoho-bills','flagged'].includes(defaultTab)) {
@@ -549,12 +565,22 @@ export default function AliasesTab({ defaultTab }: Props) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="shrink-0 border-b border-gray-200 bg-white px-2 py-1.5 space-y-1">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-1">
           <p className="text-[10px] font-bold text-gray-700">Alias Review</p>
-          <Link href="/aliases/wide" className="text-[9px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded hover:bg-blue-100">
-            Wide Table →
-          </Link>
+          <div className="flex items-center gap-1">
+            <button onClick={resweep} disabled={resweeping}
+              title="Re-apply every existing alias against current sales/bill lines"
+              className="text-[9px] text-green-700 font-semibold bg-green-50 px-1.5 py-0.5 rounded hover:bg-green-100 disabled:opacity-50">
+              {resweeping ? 'Re-sweeping…' : '⟳ Re-sweep aliases'}
+            </button>
+            <Link href="/aliases/wide" className="text-[9px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded hover:bg-blue-100">
+              Wide Table →
+            </Link>
+          </div>
         </div>
+        {resweepResult && (
+          <p className="text-[9px] text-gray-500 bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5">{resweepResult}</p>
+        )}
         <div className="flex gap-1 overflow-x-auto">
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
@@ -568,10 +594,10 @@ export default function AliasesTab({ defaultTab }: Props) {
         </div>
       </div>
       {tab === 'flagged'
-        ? <FlaggedPanel items={items} />
+        ? <FlaggedPanel key={refreshKey} items={items} />
         : isZoho
-        ? <ZohoPanel tab={tab} items={items} />
-        : <PreZohoPanel tab={tab} items={items} />
+        ? <ZohoPanel key={`${tab}-${refreshKey}`} tab={tab} items={items} />
+        : <PreZohoPanel key={`${tab}-${refreshKey}`} tab={tab} items={items} />
       }
     </div>
   )
