@@ -16,6 +16,8 @@ type Expense = {
   is_property: boolean
   property_status: string | null
   entered_by: string | null
+  source: string | null
+  source_sheet: string | null
 }
 
 type ExpTab = 'all' | 'properties' | 'at_shop' | 'away'
@@ -86,6 +88,7 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
           <th className={TH}>DESCRIPTION</th>
           <th className={TH}>JUSTIFY</th>
           {!hideVendor && <th className={TH}>VENDOR</th>}
+          <th className={TH}>SOURCE</th>
           <th className={`${TH} text-right`}>AMT</th>
           <th className={TH}>BY</th>
           <th className="px-1 py-1 border border-black" />
@@ -101,6 +104,7 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
               <td className={`${TD} text-gray-700`}>{e.description ?? '—'}</td>
               <td className={`${TD} text-gray-700`}>{e.cf_justify ?? '—'}</td>
               {!hideVendor && <td className={`${TD} text-gray-500`}>{e.vendor_name ?? '—'}</td>}
+              <td className={`${TD} text-gray-400`}>{e.source_sheet ?? e.source ?? '—'}</td>
               <td className={`${TD} text-right font-bold text-gray-900`}>{e.amount_hidden ? '🔒 Hidden' : `₵${fmt(e.amount)}`}</td>
               <td className={`${TD} text-blue-500`}>{e.entered_by ?? '—'}</td>
               <td className={TD}>
@@ -135,7 +139,7 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
             </tr>
             {editId === e.id && (
               <tr key={`edit-${e.id}`} className="bg-blue-50/40 border-b border-blue-200">
-                <td colSpan={8 - (hideAccount ? 1 : 0) - (hideVendor ? 1 : 0)} className="px-2 py-2">
+                <td colSpan={9 - (hideAccount ? 1 : 0) - (hideVendor ? 1 : 0)} className="px-2 py-2">
                   <div className="grid grid-cols-2 gap-1 max-w-lg">
                     <div>
                       <p className="text-[9px] text-gray-400 mb-0.5">Date</p>
@@ -238,7 +242,9 @@ export default function ExpensesTab({ search, initialTab }: Props) {
       e.expense_account.toLowerCase().includes(q) ||
       (e.description ?? '').toLowerCase().includes(q) ||
       (e.cf_justify ?? '').toLowerCase().includes(q) ||
-      (e.vendor_name ?? '').toLowerCase().includes(q)
+      (e.vendor_name ?? '').toLowerCase().includes(q) ||
+      (e.source_sheet ?? '').toLowerCase().includes(q) ||
+      (e.source ?? '').toLowerCase().includes(q)
     )
   }, [expenses, tab, search])
 
