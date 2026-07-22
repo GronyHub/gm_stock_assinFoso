@@ -376,69 +376,6 @@ function computePackChainOmissions(rowsDesc: PackChainRow[], unitsPerPack: numbe
    cycle-based USED/PACK ledger (sheets a pack gave vs. sheets recorded used
    before the next pack) -- the trusted, count-independent measure. */
 
-// Condensed to a single line for the merged MANAGER GUIDELINES cell: keeps
-// the headline of an omission and the primary instruction of its fix,
-// dropping the longer reasoning clause.
-function shortOmissionLine(o: Omission): string {
-  const issue = o.issue.split(' — ')[0].trim()
-  const fix = o.fix.split(/ — |; /)[0].trim()
-  return `${issue} → ${fix}`
-}
-
-// Cross-checks the USED/PACK cycle ledger (count-independent, the trusted
-// measure -- pure GMC + sales records) against the singles-side physical
-// counts taken DURING that same cycle, so a discrepancy tells you what kind
-// of problem it is:
-//  - both agree on a shortfall -> two independent signals confirm a real loss
-//  - the cycle flags a shortfall but the count never caught it -> sheets are
-//    leaving without a sale/service record (e.g. given away), not a count
-//    problem
-//  - the count lost sheets but the cycle's records are clean -> probably a
-//    counting error, not real stock loss
-//  - the cycle shows MORE used than the pack gave -> should never happen;
-//    points at an unrecorded GMC take or leftover from the previous pack
-// Anchored to the day the cycle closes (the next pack was taken), alongside
-// the existing count-based reasoning above. (Work Not Written is its own
-// visible column now, so it's no longer folded into this text.)
-function computeCycleOmissions(rowsDesc: PackChainRow[], closedCycles: PackCycle[], sheetPrice: number): Map<string, Omission[]> {
-  const out = new Map<string, Omission[]>()
-  for (const cyc of closedCycles) {
-    if (cyc.end === null) continue
-    const diff = parseFloat((cyc.sheetsGiven - cyc.used).toFixed(2))
-    const countTotal = parseFloat(rowsDesc
-      .filter(r => r.date > cyc.start && r.date <= cyc.end! && r.singlesLoss !== null)
-      .reduce((s, r) => s + (r.singlesLoss as number), 0)
-      .toFixed(2))
-    if (Math.abs(diff) < 0.001 && Math.abs(countTotal) < 0.001) continue
-
-    let note: Omission | null = null
-    if (diff > 0.001 && countTotal > 0.001) {
-      note = {
-        issue: `USED/PACK shows ${fmtQ(diff)} sheets unaccounted for from this pack, and the count over the same period also lost ${fmtN(countTotal)} — two independent signals agree`,
-        fix: `treat as a confirmed loss worth ₵${fmtN(diff * sheetPrice)}`,
-      }
-    } else if (diff > 0.001 && countTotal <= 0.001) {
-      note = {
-        issue: `USED/PACK shows ${fmtQ(diff)} sheets this pack gave but were never recorded as used, yet the count over the same period shows no matching loss`,
-        fix: `sheets may be leaving without a sale/service record (e.g. given away) — check usage, not the count`,
-      }
-    } else if (diff <= 0.001 && countTotal > 0.001) {
-      note = {
-        issue: `the count lost ${fmtN(countTotal)} over this pack's cycle, but USED/PACK shows every sheet this pack gave is accounted for in records`,
-        fix: `likely a count error, not real stock loss — recount before treating it as a loss`,
-      }
-    } else if (diff < -0.001) {
-      const gainNote = countTotal < -0.001 ? `, and the count also gained ${fmtN(Math.abs(countTotal))}` : ''
-      note = {
-        issue: `USED/PACK shows ${fmtQ(Math.abs(diff))} more sheets used than this pack gave${gainNote}`,
-        fix: `check for an unrecorded GMC pack take, or leftover sheets carried from the previous pack`,
-      }
-    }
-    if (note) out.set(cyc.end, [...(out.get(cyc.end) ?? []), note])
-  }
-  return out
-}
-
 // A row "has a loss" for the Loss Only filter (and the row highlighting) if
 // either its own pack count came up short, or (for the row where a pack
 // cycle closes) USED/PACK shows a shortfall.
@@ -460,12 +397,12 @@ function rowHasGain(row: PackChainRow, packCyclesByStart: Map<string, PackCycle>
 }
 
 function SingleServicePackChainTable({
-  item, targetName, packChainRows, packChainOmissionsByDate, packCyclesByStart, closedCycles,
+  item, targetName, packChainRows, packCyclesByStart, closedCycles,
   packLossTotal, packGainTotal, cycleLossTotal, cycleGainTotal,
   unitsPerPack, sheetPrice, sheetCP, sp, onDateClick, packChainBreakdownNames, showPrices, wnwByDate, lossOnly, gainOnly,
 }: {
   item: SummaryRow; targetName: string; packChainRows: PackChainRow[]
-  packChainOmissionsByDate: Map<string, Omission[]>; packCyclesByStart: Map<string, PackCycle>; closedCycles: PackCycle[]
+  packCyclesByStart: Map<string, PackCycle>; closedCycles: PackCycle[]
   packLossTotal: number; packGainTotal: number; cycleLossTotal: number; cycleGainTotal: number
   unitsPerPack: number; sheetPrice: number; sheetCP: number; sp: number
   onDateClick?: (date: string, itemName: string) => void
@@ -490,28 +427,11 @@ function SingleServicePackChainTable({
   const showPackGain = packGainTotal > 0.001
   const packColSpan = (showPrices ? 12 : 8) - (showPackGain ? 0 : 1)
   const singlesColSpan = showPrices ? 9 : 5
-  const totalColSpan = 1 + packColSpan + singlesColSpan + 7 // date + pack + singles + total + WNW + 2 count cols + guidance + 2 alias cols
+  const totalColSpan = 1 + packColSpan + singlesColSpan + 6 // date + pack + singles + total + WNW + 2 count cols + 2 alias cols
 
   const visibleRows = lossOnly ? packChainRows.filter(r => rowHasLoss(r, packCyclesByStart))
     : gainOnly ? packChainRows.filter(r => rowHasGain(r, packCyclesByStart))
     : packChainRows
-
-  // Per-row guideline content, condensed to one line. Consecutive rows with
-  // identical content (almost always the common "—, no omission" rows) are
-  // merged into a single spanning cell instead of repeating it.
-  const cycleOmissionsByDate = computeCycleOmissions(packChainRows, closedCycles, sheetPrice)
-  const rowMetas = visibleRows.map((row) => {
-    const omissions = [...(packChainOmissionsByDate.get(row.date) ?? []), ...(cycleOmissionsByDate.get(row.date) ?? [])]
-    const omissionLines = omissions.map(shortOmissionLine)
-    return { omissions, omissionLines, key: JSON.stringify(omissionLines) }
-  })
-  const guidelineRowSpan: number[] = new Array(rowMetas.length).fill(1)
-  for (let i = 0; i < rowMetas.length; i++) {
-    if (i > 0 && rowMetas[i].key === rowMetas[i - 1].key) { guidelineRowSpan[i] = 0; continue }
-    let span = 1
-    while (i + span < rowMetas.length && rowMetas[i + span].key === rowMetas[i].key) span++
-    guidelineRowSpan[i] = span
-  }
 
   return (
     <>
@@ -541,7 +461,6 @@ function SingleServicePackChainTable({
           <col style={{width:'34px'}} />
           <col style={{width:'40px'}} />
           <col style={{width:'36px'}} /><col style={{width:'48px'}} />
-          <col style={{width:'480px'}} />
           <col style={{width:'70px'}} /><col style={{width:'70px'}} />
         </colgroup>
         <thead className="sticky top-0 z-10">
@@ -564,9 +483,6 @@ function SingleServicePackChainTable({
             <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l border-gray-400 bg-gray-200 text-gray-500"
               title="Secondary cross-check only -- physical count">
               ACTUAL COUNT
-            </th>
-            <th rowSpan={2} className="py-0.5 border-b-2 border-gray-500 text-center align-bottom border-l-2 border-l-gray-600 bg-slate-600 text-white">
-              MANAGER GUIDELINES<span className="block font-normal text-[6px]">(omissions)</span>
             </th>
             <th rowSpan={2} className="py-0.5 border-b-2 border-gray-500 text-center align-bottom border-l-2 border-l-gray-600 bg-slate-600 text-white"
               title="Raw item name as recorded on the pack's own transaction that day, before canonicalization.">
@@ -629,7 +545,6 @@ function SingleServicePackChainTable({
           {visibleRows.length === 0 ? (
             <tr><td colSpan={totalColSpan} className="text-center py-3 text-gray-400 text-[9px]">{lossOnly ? 'No loss rows.' : gainOnly ? 'No gain rows.' : 'No rows.'}</td></tr>
           ) : visibleRows.map((row, i) => {
-            const { omissionLines } = rowMetas[i]
             const packWicQty = numVal(row.packWic)
             const packSpVal = numVal(row.packSellPrice) || sp
             const packAmount = packWicQty > 0 ? packWicQty * packSpVal : 0
@@ -753,15 +668,6 @@ function SingleServicePackChainTable({
                 <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-400 whitespace-nowrap">
                   <CntValue qty={row.singlesCnt} countedBy={row.singlesCntBy} history={row.singlesCntHistory} blank />
                 </td>
-                {guidelineRowSpan[i] > 0 && (
-                  <td rowSpan={guidelineRowSpan[i]} className="text-left py-0.5 pl-1 pr-1 border-l-2 border-l-gray-600 border-b border-gray-200 whitespace-nowrap overflow-hidden text-ellipsis align-top">
-                    {omissionLines.length === 0 ? null : (
-                      <div className="whitespace-nowrap overflow-hidden text-ellipsis" title={omissionLines.join(' · ')}>
-                        <span className="text-orange-700 font-semibold">{omissionLines.join(' · ')}</span>
-                      </div>
-                    )}
-                  </td>
-                )}
                 <td className="pl-1 py-0.5 border-l-2 border-l-gray-600 text-purple-700 font-semibold overflow-hidden whitespace-nowrap">
                   <span className="block truncate" title={row.packAliases ?? ''}>{row.packAliases ?? <span className="text-gray-300">—</span>}</span>
                 </td>
@@ -786,7 +692,6 @@ function SingleServicePackChainTable({
             <td className="border-l-2 border-l-gray-600" />
             <td className="border-l-2 border-l-gray-600" />
             <td className="border-l border-gray-400" />
-            <td className="border-l-2 border-l-gray-600" />
             <td className="border-l-2 border-l-gray-600" />
             <td className="border-l border-gray-400" />
           </tr>
@@ -1412,7 +1317,6 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
         ) : singleServiceChain ? (
           <SingleServicePackChainTable
             item={item} targetName={targetName} packChainRows={packChainRows}
-            packChainOmissionsByDate={packChainOmissionsByDate}
             packCyclesByStart={packCyclesByStart} closedCycles={closedCycles}
             packLossTotal={packLossTotal} packGainTotal={packGainTotal}
             cycleLossTotal={cycleLossTotal} cycleGainTotal={cycleGainTotal}
@@ -1430,12 +1334,12 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
               Combined view: {item.item_name} → {targetName} → services
             </p>
             <table className="table-fixed border-collapse text-[8px]"
-              style={{ width: `${62 + 2 * 48 + 10 * 36 + packChainBreakdownNames.length * 60 + 56 + 64 + 72 + 64 + 480 + 320 + 2 * 70}px` }}>
+              style={{ width: `${62 + 2 * 48 + 10 * 36 + packChainBreakdownNames.length * 60 + 56 + 64 + 72 + 64 + 320 + 2 * 70}px` }}>
               {/* Pixel-widths: date frozen at its text width, numeric columns as
-                  thin as their numbers, OMISSIONS wide (480px) so its text stays
-                  on 1-2 lines, and ASK STAFF last & wide (320px) so its content
-                  fits ~2 lines instead of stacking tall. The table scrolls
-                  sideways inside the detail panel; the date column stays frozen. */}
+                  thin as their numbers, and ASK STAFF last & wide (320px) so its
+                  content fits ~2 lines instead of stacking tall. The table
+                  scrolls sideways inside the detail panel; the date column
+                  stays frozen. */}
               <colgroup>
                 <col style={{width:'62px'}} />
                 <col style={{width:'48px'}} />
@@ -1455,7 +1359,6 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                 <col style={{width:'36px'}} />
                 <col style={{width:'36px'}} />
                 <col style={{width:'56px'}} />
-                <col style={{width:'480px'}} />
                 <col style={{width:'320px'}} />
                 <col style={{width:'70px'}} /><col style={{width:'70px'}} />
               </colgroup>
@@ -1471,10 +1374,6 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                   <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600"
                     title={`Losses valued in cedis at ₵${sheetPrice} per single. Pack losses count as packs × singles-per-pack × ₵${sheetPrice} — treated as singles that were used but never recorded, NOT at the pack's own selling price.`}>
                     LOSS ₵
-                  </th>
-                  <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600"
-                    title="Records that should exist but are missing — e.g. singles jumped up with no GMC pack recorded. These distort the gains/losses.">
-                    OMISSIONS
                   </th>
                   <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600"
                     title="Exposure to this loss, apportioned by hours each staff member actually spent at the shop between the previous count and this one (from clock-in/out times) — not a general blame for merely being present. Also shows who counted at each end and, for one-day windows, each person's arrival–departure times.">
@@ -1639,14 +1538,6 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                         return <span className="text-gray-400">0</span>
                       })()}
                     </td>
-                    <td className="text-left py-0.5 pl-1 pr-0.5 border-l-2 border-l-gray-600 whitespace-normal break-words leading-tight">
-                      {omissions.length === 0 ? <span className="text-gray-300">—</span> : omissions.map((o, oi) => (
-                        <div key={oi} className={oi > 0 ? 'mt-1 pt-1 border-t border-orange-200' : ''}>
-                          <span className="text-orange-700 font-semibold">{o.issue}</span>
-                          <span className="text-blue-700"> 💡 Fix: {o.fix}</span>
-                        </div>
-                      ))}
-                    </td>
                     <td className="text-left py-0.5 pl-1 pr-1 border-l-2 border-l-gray-600 whitespace-normal break-words leading-tight align-top">
                       {!hasLoss ? <span className="text-gray-300">—</span>
                         : !presence ? <span className="text-gray-300">…</span>
@@ -1714,7 +1605,6 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                           : totalCedis < -0.001 ? <span className="text-green-600">+₵{fmtN(Math.abs(parseFloat(totalCedis.toFixed(2))))}</span>
                           : <span className="text-gray-400">0</span>}
                       </td>
-                      <td className="border-l-2 border-l-gray-600" />
                       <td className="border-l-2 border-l-gray-600" />
                       <td className="border-l-2 border-l-gray-600" />
                       <td className="border-l border-gray-300" />
