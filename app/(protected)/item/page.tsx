@@ -724,12 +724,12 @@ function ItemHubPageInner() {
           </TabErrorBoundary>
         )}
         {addForm !== 'expense' && outerTab === 'loss' && lossView === 'expenses' && (<>
-          <ExpensesAnalyticsSection />
           <ExpensesTab search={search} />
+          <ExpensesAnalyticsSection />
         </>)}
         {outerTab === 'loss' && lossView === 'cab' && (<>
-          <CashAnalyticsSection />
           <CABTab />
+          <CashAnalyticsSection />
         </>)}
         {/* Items pill selected -> ItemsTab's filtered fix view; otherwise the
             submenu's normal content (LossTab). Same swap pattern for
@@ -766,34 +766,34 @@ function ItemHubPageInner() {
               )
           ) : (
             <TabErrorBoundary>
-              <ItemsAnalyticsSection />
               <LossTab onOpenItem={() => {}} search={search} group={group} productType={productType}
                 jumpToItemId={jumpToLossItemId} onJumpDone={() => setJumpToLossItemId(null)}
                 onDateClick={openReceiptFromItem} showPrices={showPrices} lossOnly={lossOnly} gainOnly={gainOnly}
                 onExpandedIdChange={setExpandedItemId} />
+              <ItemsAnalyticsSection />
             </TabErrorBoundary>
           )
         )}
         {addForm !== 'sale' && outerTab === 'loss' && lossView === 'sales' && (<>
-          {!violation && <SalesAnalyticsSection />}
           <SalesTab items={items} groupFilter={group} search={search}
             violation={pillKeys?.includes(violation ?? '') ? violation : null}
             jumpToDate={jumpToReceiptDate} jumpToItemName={jumpToReceiptItemName}
             onJumpDone={() => { setJumpToReceiptDate(null); setJumpToReceiptItemName(null) }} />
+          {!violation && <SalesAnalyticsSection />}
         </>)}
         {addForm !== 'bill' && outerTab === 'loss' && lossView === 'bills' && (<>
-          <BillsAnalyticsSection />
           <BillsTab items={items} groupFilter={group} search={search} />
+          <BillsAnalyticsSection />
         </>)}
         {outerTab === 'loss' && lossView === 'counts' && (<>
-          {!violation && <CountsAnalyticsSection />}
           <CountsTab items={items} groupFilter={group} search={search}
             violation={pillKeys?.includes(violation ?? '') ? violation : null} onFixRecords={goFixRecords} />
+          {!violation && <CountsAnalyticsSection />}
         </>)}
         {outerTab === 'loss' && lossView === 'feed' && (
           <TabErrorBoundary>
-            <LossAnalyticsSection />
             <LossFeedTab search={search} kind={violation === 'gains' ? 'gain' : 'loss'} />
+            <LossAnalyticsSection />
           </TabErrorBoundary>
         )}
         </>)}
