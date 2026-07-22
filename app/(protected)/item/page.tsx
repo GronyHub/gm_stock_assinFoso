@@ -76,22 +76,19 @@ const OLD_TAB_TO_OUTER: Partial<Record<string, OuterTab>> = {
 // groups/search/New controls row doesn't apply to them.
 const REPORT_VIEWS = new Set<LossView>(['data', 'pl', 'cab', 'vendors', 'customers', 'receipts'])
 
-// Sales (Gd/Srv. Sld) and Bills (Gd In), along with their own
-// Customers/Receipts/Vendors views, aren't top-level sections of their own
-// any more -- they all nest as a second row under Items (Gd/Srv.)
-// instead of sitting in the main row. Sub-views not listed here have no
-// parent and no children.
+// Sales (Gd/Srv. Sld) and Bills (Gd In) aren't top-level sections of their
+// own any more -- they nest as a second row under Items (Gd/Srv.) instead
+// of sitting in the main row. Customers/Receipts/Vendors aren't in that row
+// either -- they're reachable from the account menu (person icon, bottom
+// right) instead. Sub-views not listed here have no parent and no children.
 const PARENT_OF: Partial<Record<LossView, LossView>> = {
   items: 'items', counts: 'items', feed: 'items',
-  sales: 'items', customers: 'items', receipts: 'items',
-  bills: 'items', vendors: 'items',
+  sales: 'items', bills: 'items',
 }
 const CHILDREN_OF: Partial<Record<LossView, { key: LossView; label: string }[]>> = {
   items: [
     { key: 'counts', label: 'Counts' }, { key: 'feed', label: 'Feed' },
     { key: 'sales', label: 'Gd/Srv. Sld' }, { key: 'bills', label: 'Gd In' },
-    { key: 'customers', label: 'Customers' }, { key: 'receipts', label: 'Receipts' },
-    { key: 'vendors', label: 'Vendors' },
   ],
 }
 
