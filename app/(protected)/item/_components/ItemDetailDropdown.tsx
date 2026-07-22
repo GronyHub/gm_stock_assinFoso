@@ -4,8 +4,8 @@ import { ItemDetail, type SummaryRow } from './LossTab'
 
 type SingleItemSummary = SummaryRow & { converts_to_item_name: string | null }
 
-// The same item drop-down Goods & Services shows (ItemDetail, reused as-is),
-// dropped inline anywhere an item name appears on Goods Out/Goods In --
+// The same item drop-down Gd/Srv. shows (ItemDetail, reused as-is),
+// dropped inline anywhere an item name appears on Gd/Srv. Sld/Gd In --
 // self-fetches its own summary row instead of relying on a parent's bulk
 // list, and always passes autoEdit={false} with empty edit/merge/alias
 // props, which ItemDetail treats as fully read-only (nothing inside it can
