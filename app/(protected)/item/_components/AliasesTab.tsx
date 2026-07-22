@@ -547,8 +547,8 @@ function AmbiguousPanel() {
 
   const display = groups.filter(g => !dismissed.has(g.norm_name))
 
-  async function keep(group: AmbiguousGroup, keepItemId: number) {
-    setResolving(keepItemId)
+  async function keep(group: AmbiguousGroup, keepItemId: number | null) {
+    setResolving(keepItemId ?? -1)
     const res = await fetch('/api/aliases/ambiguous/resolve', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ norm_name: group.norm_name, keep_item_id: keepItemId }),
@@ -601,6 +601,15 @@ function AmbiguousPanel() {
                 <p className="text-[10px] font-bold text-gray-900 break-words">{selected.candidates[0]?.alias_name}</p>
                 <p className="text-[9px] text-gray-400 mt-0.5">Pick which item this name really means -- the others are removed as aliases for it</p>
               </div>
+              {selected.candidates.every(c => c.line_count === 0) && (
+                <div className="px-2 py-1.5 bg-orange-50 border-b border-orange-200 shrink-0">
+                  <p className="text-[9px] text-orange-600 mb-1">No candidate has any lines resolved to it — likely just orphaned old data.</p>
+                  <button onClick={() => keep(selected, null)} disabled={resolving !== null}
+                    className="w-full text-[10px] font-bold text-white bg-orange-500 hover:bg-orange-600 rounded py-1.5 transition disabled:opacity-40">
+                    {resolving === -1 ? 'Deleting…' : 'Delete entirely — not used anywhere'}
+                  </button>
+                </div>
+              )}
               <div className="px-2 py-1.5 border-b border-gray-100 shrink-0">
                 <button onClick={() => { setDismissed(s => new Set(s).add(selected.norm_name)); setSelected(null) }}
                   className="w-full text-[10px] font-semibold text-gray-600 bg-gray-100 rounded py-1.5 hover:bg-gray-200 transition">
