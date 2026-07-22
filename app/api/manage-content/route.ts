@@ -27,23 +27,24 @@ This app is how Grony Multimedia tracks sales, stock, money, and daily operation
 
 # The Main Tabs
 
-A Home button plus three tabs across the top: Grony Cash, Grony Manage, Daily.
+A Home button plus four tabs across the top: Grony Cash, Grony Manage, Daily, Data.
 
 ## Home
 Just the news feed -- announcements, photos, and voice notes. Post a message here to keep everyone informed. Flags live in the role bar at the very bottom of the screen instead (see below), so the feed is always the first thing you see.
 
 ## Grony Cash
-Everything to do with money. Top row: Gd/Srv., Expenses, Data, P&L (owner and Joe only), CAB.
-- Gd/Srv. (Goods & Services) -- the shop's stock list, with pack-chain loss/gain tracking. Has its own sub-row: Counts, Feed, Gd/Srv. Sld, Gd In, Customers, Receipts, Vendors, and 💲 Prices / 🔻 Loss Only / 🔺 Gain Only toggles for the pack-chain detail table.
+Everything to do with money. Top row: Gd/Srv., Expenses, P&L (owner and Joe only), CAB.
+- Gd/Srv. (Goods & Services) -- the shop's stock list, with pack-chain loss/gain tracking. Has its own sub-row: Counts, Feed, Gd/Srv. Sld, Gd In, and 💲 Prices / 🔻 Loss Only / 🔺 Gain Only toggles for the pack-chain detail table.
 - Gd/Srv. Sld (Sales) -- every sales receipt (WIC = Walk-In Customer, GMC = Grony Multimedia as Customer, i.e. internal use, not a real sale).
 - Gd In (Bills) -- what the shop has bought from vendors.
 - Counts -- physical stock counts.
-- Customers / Receipts -- reachable from Gd/Srv. Sld.
-- Vendors -- reachable from Gd In.
-- Data -- analytics and charts.
 - Expenses -- money spent.
 - P&L -- Profit & Loss.
 - CAB -- Cash at Bank reconciliation.
+- Customers, Receipts, and Vendors aren't in this tab any more -- they're one tap away from the account menu (person icon, bottom right) instead.
+
+## Data
+Its own top-level tab, after Daily -- analytics and charts across Items, Violations, Loss, Sales, Bills, Counts, Expenses, and Cash.
 
 ## Grony Manage
 Everything that isn't directly about money:
@@ -73,9 +74,9 @@ A row of four buttons fixed to the bottom of the screen, always visible: Joe, Bi
 - The Opener's clock-in time is saved the moment they tap Clock In -- that part never changes. But the clock-in isn't fully complete until the Opener confirms that day's opening counts are done: a card stays on screen reminding them, with "Go to Counts →" and "I've Completed the Counts" buttons, until they confirm.
 - The opening counts are the shop's fixed daily-count item list. For A4 Brown Envelope, A4 Lamination and 4x6, counting the singles also requires counting their paired pack the same day (you're prompted for it right there) -- so completing the daily list covers those packs too. A4 Sheet's pack pairing stays optional and isn't required.
 
-# The Hamburger Menu
+# The Account Menu
 
-The ☰ button, fixed to the bottom-left corner of the screen, holds account-level actions: View Portal As (owner and Joe only -- lets you see the app as a specific staff member), Users, Profile, and Sign out (plus Personal and Fix Mislinked Sales for owner-level users).
+The 👤 button, at the bottom right of the Role Bar (shows who's logged in), holds account-level actions and a few shortcuts: View Portal As (owner and Joe only -- lets you see the app as a specific staff member), Users, Profile, Customers, Receipts, Vendors, and Sign out (plus Personal and Fix Mislinked Sales for owner-level users).
 
 # Roles
 
