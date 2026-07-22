@@ -814,9 +814,8 @@ function ItemHubPageInner() {
                 Joe/Bino misattribution case), and this sits right where the
                 eye lands before tapping into any form. */}
             <button onClick={() => setHamburgerOpen(o => !o)} title="Logged in as"
-              className="flex items-center justify-center gap-1 px-3 py-4 text-gray-500 hover:bg-gray-50 transition whitespace-nowrap">
-              <span className="text-[9px] font-semibold capitalize">👤 {username || '—'}</span>
-              <span className="text-xl leading-none">⋮</span>
+              className="flex items-center justify-center px-4 py-4 text-gray-500 hover:bg-gray-50 transition text-[9px] font-semibold capitalize whitespace-nowrap">
+              👤 {username || '—'}
             </button>
           </div>
         }
