@@ -19,7 +19,7 @@ export async function GET() {
   `
 
   const recentBills = await sql`
-    SELECT bl.item_price, bl.quantity, b.bill_date, bl.raw_item_name, bl.resolved_name
+    SELECT bl.unit_price, bl.quantity, bl.item_total, b.bill_date, bl.raw_item_name, bl.resolved_name
     FROM bill_lines bl
     JOIN bills b ON b.id = bl.bill_id
     WHERE bl.item_id = 1
