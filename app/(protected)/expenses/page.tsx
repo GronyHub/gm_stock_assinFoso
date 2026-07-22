@@ -6,6 +6,7 @@ type Expense = {
   id: number
   expense_date: string
   expense_account: string
+  description: string | null
   cf_justify: string | null
   vendor_name: string | null
   amount: string | null
@@ -14,6 +15,8 @@ type Expense = {
   is_property: boolean
   property_status: string | null
   entered_by: string | null
+  source: string | null
+  source_sheet: string | null
 }
 
 type Tab = 'all' | 'properties' | 'at_shop' | 'away'
@@ -173,6 +176,7 @@ export default function ExpensesPage() {
               <tr>
                 <th className="text-left px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">DATE</th>
                 <th className="text-left px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">ACCOUNT</th>
+                <th className="text-left px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">SOURCE</th>
                 <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">AMT</th>
               </tr>
             </thead>
@@ -182,6 +186,7 @@ export default function ExpensesPage() {
                   className={`cursor-pointer border-b border-gray-100 transition ${selected?.id === e.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
                   <td className="px-0.5 py-0.5 text-gray-700 whitespace-nowrap">{fmtShort(e.expense_date)}</td>
                   <td className="px-0.5 py-0.5 text-gray-900 truncate max-w-[80px]">{e.expense_account}</td>
+                  <td className="px-0.5 py-0.5 text-gray-400 truncate max-w-[60px]">{e.source_sheet ?? e.source ?? '—'}</td>
                   <td className="px-0.5 py-0.5 text-right font-semibold text-gray-900">{e.amount_hidden ? '🔒' : fmt(e.amount)}</td>
                 </tr>
               ))}
@@ -284,6 +289,24 @@ export default function ExpensesPage() {
                     <tr className="border-b border-gray-100">
                       <td className="py-0.5 text-gray-400">Type</td>
                       <td className="py-0.5 text-right text-gray-700">{selected.cf_expense_type}</td>
+                    </tr>
+                  )}
+                  {selected.source && (
+                    <tr className="border-b border-gray-100">
+                      <td className="py-0.5 text-gray-400">Source</td>
+                      <td className="py-0.5 text-right text-gray-700">{selected.source}</td>
+                    </tr>
+                  )}
+                  {selected.source_sheet && (
+                    <tr className="border-b border-gray-100">
+                      <td className="py-0.5 text-gray-400">From Sheet</td>
+                      <td className="py-0.5 text-right text-gray-700">{selected.source_sheet}</td>
+                    </tr>
+                  )}
+                  {selected.description && (
+                    <tr className="border-b border-gray-100">
+                      <td className="py-0.5 text-gray-400 align-top">Description</td>
+                      <td className="py-0.5 text-right text-gray-700 break-words">{selected.description}</td>
                     </tr>
                   )}
                   {selected.entered_by && (
