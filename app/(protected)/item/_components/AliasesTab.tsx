@@ -2,22 +2,18 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 
-type Tab = 'prezoho-sales' | 'prezoho-bills' | 'zoho-sales' | 'zoho-bills' | 'flagged' | 'ambiguous'
+type Tab = 'prezoho-sales' | 'prezoho-bills' | 'flagged' | 'ambiguous'
 type UnresolvedRow = { name: string; cnt: number; confirmed: boolean }
-type ZohoRawName = { name: string; cnt: number }
-type ZohoGroup = { item_id: number; canonical_name: string; cf_group: string | null; raw_names: ZohoRawName[] }
 type Item = { id: number; canonical_name: string; cf_group: string | null }
 type AuditRow = { raw_name: string; item_id: number; canonical_name: string; source: string; cnt: number; warning: string }
 type AmbiguousCandidate = { alias_id: number; alias_name: string; item_id: number; canonical_name: string; alias_type: string; source: string; line_count: number }
 type AmbiguousGroup = { norm_name: string; candidates: AmbiguousCandidate[] }
 
-const ALL_TAB_IDS: Tab[] = ['prezoho-sales', 'prezoho-bills', 'zoho-sales', 'zoho-bills', 'flagged', 'ambiguous']
+const ALL_TAB_IDS: Tab[] = ['prezoho-sales', 'prezoho-bills', 'flagged', 'ambiguous']
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'prezoho-sales', label: 'Pre-Zoho Sales' },
   { id: 'prezoho-bills', label: 'Pre-Zoho Bills' },
-  { id: 'zoho-sales',    label: 'Zoho Sales' },
-  { id: 'zoho-bills',    label: 'Zoho Bills' },
   { id: 'flagged',       label: '⚠ Flagged' },
   { id: 'ambiguous',     label: '⚠ Ambiguous' },
 ]
@@ -50,7 +46,7 @@ const CAT_COLOR: Record<string, string> = {
 }
 
 function getHint(name: string, tab: Tab) {
-  if ((tab === 'prezoho-bills' || tab === 'zoho-bills') && DELIVERY_RE.test(name.trim())) return 'Delivery/Charge'
+  if (tab === 'prezoho-bills' && DELIVERY_RE.test(name.trim())) return 'Delivery/Charge'
   return CATEGORY_HINTS[name] ?? ''
 }
 
@@ -223,176 +219,6 @@ function PreZohoPanel({ tab, items }: { tab: Tab; items: Item[] }) {
                     className={`px-2 py-1 border-b border-gray-50 cursor-pointer transition ${chosenItem?.id === item.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
                     <p className="text-[10px] font-semibold text-gray-900">{item.canonical_name}</p>
                     {item.cf_group && <p className="text-[9px] text-gray-400">{item.cf_group}</p>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function ZohoPanel({ tab, items }: { tab: Tab; items: Item[] }) {
-  const endpoint = tab === 'zoho-bills' ? '/api/aliases/zoho-bills' : '/api/aliases/zoho-sales'
-  const srcKey   = tab === 'zoho-bills' ? 'zoho_bills' : 'zoho_sales'
-
-  const [groups, setGroups]     = useState<ZohoGroup[]>([])
-  const [loading, setLoading]   = useState(true)
-  const [selected, setSelected] = useState<ZohoGroup | null>(null)
-  const [search, setSearch]     = useState('')
-  const [statusMap, setStatusMap]   = useState<Record<string, 'ok' | 'wrong' | 'skipped'>>({})
-  const [reassigning, setReassigning] = useState<ZohoRawName | null>(null)
-  const [reassignSearch, setReassignSearch] = useState('')
-  const [saving, setSaving] = useState(false)
-
-  useEffect(() => {
-    setLoading(true)
-    fetch(endpoint).then(r => r.json()).then(d => {
-      setGroups(Array.isArray(d) ? d : [])
-      setLoading(false)
-    })
-  }, [tab])
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase()
-    if (!q) return groups
-    return groups.filter(g =>
-      g.canonical_name.toLowerCase().includes(q) ||
-      g.raw_names.some(r => r.name.toLowerCase().includes(q))
-    )
-  }, [groups, search])
-
-  const reassignTargets = useMemo(() => {
-    const q = reassignSearch.toLowerCase()
-    if (!q) return items.filter(i => i.id !== selected?.item_id).slice(0, 40)
-    return items.filter(i => i.id !== selected?.item_id &&
-      (i.canonical_name.toLowerCase().includes(q) || (i.cf_group ?? '').toLowerCase().includes(q))
-    ).slice(0, 40)
-  }, [items, reassignSearch, selected])
-
-  function selectGroup(g: ZohoGroup) { setSelected(g); setStatusMap({}); setReassigning(null); setReassignSearch('') }
-  function markOk(rawName: string) { setStatusMap(m => ({ ...m, [rawName]: 'ok' })) }
-  function markSkip(rawName: string) { setStatusMap(m => ({ ...m, [rawName]: 'skipped' })) }
-
-  async function doReassign(targetItem: Item, force = false) {
-    if (!reassigning) return
-    setSaving(true)
-    const res = await fetch('/api/aliases/correct', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ raw_name: reassigning.name, item_id: targetItem.id, source: srcKey, force }),
-    })
-    setSaving(false)
-    if (!res.ok) {
-      const d = await res.json().catch(() => null)
-      if (res.status === 409 && d?.requires_confirmation) {
-        if (window.confirm(`${d.warning}\n\nMatch anyway?`)) doReassign(targetItem, true)
-      }
-      return
-    }
-    setGroups(prev => prev.map(g => {
-      if (g.item_id !== selected?.item_id) return g
-      return { ...g, raw_names: g.raw_names.filter(r => r.name !== reassigning.name) }
-    }))
-    setStatusMap(m => ({ ...m, [reassigning.name]: 'ok' }))
-    setReassigning(null); setReassignSearch('')
-    setSelected(prev => prev ? { ...prev, raw_names: prev.raw_names.filter(r => r.name !== reassigning.name) } : null)
-  }
-
-  const totalRaw  = groups.reduce((s, g) => s + g.raw_names.length, 0)
-  const doneCount = Object.values(statusMap).filter(s => s === 'ok').length
-
-  if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
-
-  return (
-    <div className="flex flex-col flex-1 min-h-0">
-      <div className="shrink-0 px-2 py-1 border-b border-gray-200 bg-white">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-[9px] text-blue-600 font-bold">{groups.length} canonical items</span>
-          <span className="text-[9px] text-gray-400">{totalRaw} raw name variants</span>
-          {selected && <span className="text-[9px] text-green-600 font-bold ml-auto">{doneCount}/{selected.raw_names.length} reviewed</span>}
-        </div>
-        <input value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Search canonical items or raw names…"
-          className="w-full text-[10px] bg-gray-50 border border-gray-200 rounded px-2 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
-      </div>
-      <div className="flex flex-1 min-h-0">
-        <div className="w-1/2 border-r border-gray-200 overflow-y-auto min-h-0">
-          <table className="w-full border-collapse text-[10px]">
-            <thead className="sticky top-0 bg-gray-100 z-10">
-              <tr>
-                <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">CANONICAL ITEM</th>
-                <th className="text-right px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">#</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(g => (
-                <tr key={g.item_id} onClick={() => selectGroup(g)}
-                  className={`cursor-pointer border-b border-gray-100 transition ${selected?.item_id === g.item_id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-                  <td className="px-1 py-0.5">
-                    <p className="text-gray-900 font-semibold truncate max-w-[150px]">{g.canonical_name}</p>
-                    {g.cf_group && <p className="text-[9px] text-gray-400">{g.cf_group}</p>}
-                  </td>
-                  <td className="px-1 py-0.5 text-right text-gray-400">{g.raw_names.length}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="w-1/2 overflow-y-auto min-h-0 flex flex-col">
-          {!selected ? (
-            <p className="text-[10px] text-gray-400 text-center py-10">Select a canonical item to review</p>
-          ) : reassigning ? (
-            <div className="flex flex-col h-full">
-              <div className="px-2 py-1.5 bg-orange-50 border-b border-orange-200 shrink-0">
-                <p className="text-[9px] text-orange-500 font-semibold uppercase">Reassigning</p>
-                <p className="text-[10px] font-bold text-gray-900 break-words">{reassigning.name}</p>
-              </div>
-              <div className="px-2 py-1.5 border-b border-gray-100 shrink-0">
-                <input value={reassignSearch} onChange={e => setReassignSearch(e.target.value)}
-                  placeholder="Search canonical items…" autoFocus
-                  className="w-full text-[10px] bg-gray-50 border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-orange-400" />
-              </div>
-              <div className="flex-1 overflow-y-auto min-h-0">
-                {reassignTargets.map(item => (
-                  <div key={item.id} onClick={() => !saving && doReassign(item)}
-                    className="px-2 py-1.5 border-b border-gray-100 cursor-pointer hover:bg-orange-50 transition">
-                    <p className="text-[10px] font-semibold text-gray-900">{item.canonical_name}</p>
-                    {item.cf_group && <p className="text-[9px] text-gray-400">{item.cf_group}</p>}
-                  </div>
-                ))}
-              </div>
-              <div className="px-2 py-1.5 border-t border-gray-200 shrink-0">
-                <button onClick={() => { setReassigning(null); setReassignSearch('') }}
-                  className="w-full text-[10px] font-semibold text-gray-600 bg-gray-100 rounded py-1 hover:bg-gray-200 transition">
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col h-full">
-              <div className="px-2 py-1.5 bg-gray-50 border-b border-gray-200 shrink-0">
-                <p className="text-[11px] font-bold text-gray-900">{selected.canonical_name}</p>
-                <p className="text-[9px] text-gray-400">{selected.raw_names.length} raw name variant{selected.raw_names.length !== 1 ? 's' : ''}</p>
-              </div>
-              <div className="flex-1 overflow-y-auto min-h-0">
-                {selected.raw_names.filter(r => !statusMap[r.name]).map(r => (
-                  <div key={r.name} className="px-2 py-1.5 border-b border-gray-100">
-                    <div className="flex items-start gap-1 justify-between">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[10px] text-gray-900 break-words leading-tight">{r.name}</p>
-                        <p className="text-[9px] text-gray-400">{r.cnt} lines</p>
-                      </div>
-                      <div className="flex gap-1 shrink-0">
-                        <button onClick={() => markOk(r.name)}
-                          className="text-[9px] font-bold text-white bg-green-500 hover:bg-green-600 px-1.5 py-0.5 rounded transition">✓</button>
-                        <button onClick={() => { setReassigning(r); setReassignSearch('') }}
-                          className="text-[9px] font-semibold text-orange-500 bg-orange-50 hover:bg-orange-100 px-1.5 py-0.5 rounded transition">Move</button>
-                        <button onClick={() => markSkip(r.name)}
-                          className="text-[9px] text-gray-400 hover:text-gray-600 px-1 py-0.5 rounded transition">—</button>
-                      </div>
-                    </div>
                   </div>
                 ))}
               </div>
@@ -687,8 +513,6 @@ export default function AliasesTab({ defaultTab }: Props) {
     }
   }, [defaultTab])
 
-  const isZoho = tab === 'zoho-sales' || tab === 'zoho-bills'
-
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="shrink-0 border-b border-gray-200 bg-white px-2 py-1.5 space-y-1">
@@ -713,7 +537,7 @@ export default function AliasesTab({ defaultTab }: Props) {
             <button key={t.id} onClick={() => setTab(t.id)}
               className={`shrink-0 text-[9px] font-bold px-2 py-0.5 rounded-full transition
                 ${tab === t.id
-                  ? ((t.id === 'flagged' || t.id === 'ambiguous') ? 'bg-red-600 text-white' : t.id.startsWith('zoho') ? 'bg-indigo-600 text-white' : 'bg-blue-600 text-white')
+                  ? ((t.id === 'flagged' || t.id === 'ambiguous') ? 'bg-red-600 text-white' : 'bg-blue-600 text-white')
                   : 'bg-gray-100 text-gray-500'}`}>
               {t.label}
             </button>
@@ -724,8 +548,6 @@ export default function AliasesTab({ defaultTab }: Props) {
         ? <FlaggedPanel key={refreshKey} items={items} />
         : tab === 'ambiguous'
         ? <AmbiguousPanel key={refreshKey} />
-        : isZoho
-        ? <ZohoPanel key={`${tab}-${refreshKey}`} tab={tab} items={items} />
         : <PreZohoPanel key={`${tab}-${refreshKey}`} tab={tab} items={items} />
       }
     </div>
