@@ -50,31 +50,33 @@ const CustomersPage  = dynamic(() => import('../customers/page'),             { 
 const ReceiptsPage   = dynamic(() => import('../receipts/page'),              { ssr: false, loading: () => loading('Loading…') })
 const ViewPortalAsButton = dynamic(() => import('@/components/ViewPortalAsButton'), { ssr: false })
 
-type OuterTab = 'today' | 'loss' | 'manage' | 'dailySummary'
+type OuterTab = 'today' | 'loss' | 'manage' | 'dailySummary' | 'data'
 
-// Sales, Bills, Counts, Feed, Data, Expenses, P&L, CAB, Vendors,
-// Customers, and Receipts all live as submenus inside the Grony Cash tab
-// (outerTab 'loss' -- kept as the internal key since it's referenced
-// throughout; only the label changed).
-type LossView = 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'data' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts'
+// Sales, Bills, Counts, Feed, Expenses, P&L, CAB, Vendors, Customers, and
+// Receipts all live as submenus inside the Grony Cash tab (outerTab 'loss'
+// -- kept as the internal key since it's referenced throughout; only the
+// label changed). Data is its own top-level tab (outerTab 'data'), not a
+// Grony Cash submenu.
+type LossView = 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts'
 
 // Old top-level tabs that got folded into Grony Cash submenus -- old
 // bookmarks/links using ?tab=pl etc. still land on the right submenu instead
 // of silently falling back to Today.
 const OLD_TAB_TO_VIEW: Partial<Record<string, LossView>> = {
-  pl: 'pl', expenses: 'expenses', cab: 'cab', data: 'data',
+  pl: 'pl', expenses: 'expenses', cab: 'cab',
 }
 // Old top-level tabs that moved to a DIFFERENT tab's submenus (not Grony
 // Cash's) -- ?tab=staff now lands on Grony Manage instead of falling back to
 // Today. Its exact submenu isn't deep-linked, just the right parent tab.
+// ?tab=data now lands on the standalone Data tab the same way.
 const OLD_TAB_TO_OUTER: Partial<Record<string, OuterTab>> = {
-  staff: 'manage',
+  staff: 'manage', data: 'data',
 }
 
 // Self-contained submenus -- either their own dashboard, or a standalone
 // page with its own internal search/filter/add UI -- so the shared
 // groups/search/New controls row doesn't apply to them.
-const REPORT_VIEWS = new Set<LossView>(['data', 'pl', 'cab', 'vendors', 'customers', 'receipts'])
+const REPORT_VIEWS = new Set<LossView>(['pl', 'cab', 'vendors', 'customers', 'receipts'])
 
 // Sales (Gd/Srv. Sld) and Bills (Gd In) aren't top-level sections of their
 // own any more -- they nest as a second row under Items (Gd/Srv.) instead
@@ -234,7 +236,7 @@ function topTabCls(active: boolean) {
     ${active ? 'bg-brand text-white shadow-md' : 'text-gray-500 hover:bg-gray-100'}`
 }
 
-const VALID_TABS: OuterTab[] = ['today', 'loss', 'manage', 'dailySummary']
+const VALID_TABS: OuterTab[] = ['today', 'loss', 'manage', 'dailySummary', 'data']
 
 function ItemHubPageInner() {
   const router = useRouter()
@@ -460,7 +462,7 @@ function ItemHubPageInner() {
     productType !== 'all' ? (productType === 'goods' ? 'Goods' : 'Services') : null,
   ].filter(Boolean).join(' · ')
 
-  const showControls = outerTab !== 'today' && outerTab !== 'manage' && outerTab !== 'dailySummary'
+  const showControls = outerTab !== 'today' && outerTab !== 'manage' && outerTab !== 'dailySummary' && outerTab !== 'data'
     && !(outerTab === 'loss' && REPORT_VIEWS.has(lossView))
   const { data: session } = useSession()
   const role = (session?.user as any)?.role ?? 'staff'
@@ -481,11 +483,12 @@ function ItemHubPageInner() {
       {/* ── Header ── */}
       <div className="shrink-0 sticky top-0 z-30 bg-white border-b border-gray-200">
 
-        {/* Row 1: raw-text tabs, no icons. All 4 always fit on one screen --
+        {/* Row 1: raw-text tabs, no icons. All 5 always fit on one screen --
             no horizontal scroll -- via flex-1 + wrapping instead of a fixed
             width per tab (hamburger moved to a fixed bottom-left button).
             Divider lines between each tab so they read as distinct menus,
-            not one blob. */}
+            not one blob. Data sits last, after Daily -- it used to be a
+            Grony Cash submenu, now it's its own top-level tab. */}
         <div className="flex items-stretch gap-1 px-2 py-2">
           <button onClick={() => changeTab('today')} className={topTabCls(outerTab === 'today' && !openRole)}>Home</button>
           <div className="w-px bg-gray-200 shrink-0" />
@@ -494,6 +497,8 @@ function ItemHubPageInner() {
           <button onClick={() => changeTab('manage')} className={topTabCls(outerTab === 'manage' && !openRole)}>Grony Manage</button>
           <div className="w-px bg-gray-200 shrink-0" />
           <button onClick={() => changeTab('dailySummary')} className={topTabCls(outerTab === 'dailySummary' && !openRole)}>Daily</button>
+          <div className="w-px bg-gray-200 shrink-0" />
+          <button onClick={() => changeTab('data')} className={topTabCls(outerTab === 'data' && !openRole)}>Data</button>
         </div>
 
         {/* Everything below this point (submenus, search/New, violations)
@@ -517,7 +522,6 @@ function ItemHubPageInner() {
             {([
               { key: 'items',    label: 'Gd/Srv.' },
               { key: 'expenses', label: 'Expenses' },
-              { key: 'data',     label: 'Data' },
               ...(canSeePL ? [{ key: 'pl' as LossView, label: 'P&L' }] : []),
               { key: 'cab',      label: 'CAB' },
             ] as { key: LossView; label: string }[]).map(v => (
@@ -677,11 +681,6 @@ function ItemHubPageInner() {
         {addForm === 'bill'    && outerTab === 'loss' && lossView === 'bills'    && <div className="px-4"><NewBillForm    onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'expense' && outerTab === 'loss' && lossView === 'expenses' && <div className="px-4"><NewExpenseForm onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'item'    && outerTab === 'loss' && lossView === 'items'    && <div className="px-4"><NewItemForm    onSuccess={() => { setAddForm(null); loadItems() }} /></div>}
-        {outerTab === 'loss' && lossView === 'data' && (
-          <TabErrorBoundary>
-            <AnalyticsPanel />
-          </TabErrorBoundary>
-        )}
         {outerTab === 'loss' && lossView === 'pl' && (
           <TabErrorBoundary>
             <ProfitLossTab />
@@ -705,6 +704,11 @@ function ItemHubPageInner() {
         {outerTab === 'dailySummary' && (
           <TabErrorBoundary>
             <DailySummaryTab />
+          </TabErrorBoundary>
+        )}
+        {outerTab === 'data' && (
+          <TabErrorBoundary>
+            <AnalyticsPanel />
           </TabErrorBoundary>
         )}
         {outerTab === 'manage' && (
