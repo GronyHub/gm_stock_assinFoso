@@ -10,7 +10,6 @@ import ClosingReportsList from '@/components/ClosingReportsList'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell,
 } from 'recharts'
-import ViolationsMiniChart from '../item/_components/ViolationsMiniChart'
 
 const STAFF = ['joe', 'bino', 'james', 'rawlings']
 
@@ -2612,11 +2611,6 @@ function AnalyticsTab() {
           </button>
         ))}
       </div>
-
-      {/* Staff-category violations (No Staff Times) -- distributed here off
-          the old standalone Data tab, since this is the Staff-scoped
-          analytics view. */}
-      <ViolationsMiniChart category="Staff" />
 
       {recent.length === 0 ? (
         <p className="py-10 text-center text-gray-400 text-sm">No staff time data yet.</p>
