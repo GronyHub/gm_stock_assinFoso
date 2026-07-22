@@ -44,6 +44,22 @@ export async function GET() {
   return NextResponse.json({ total: rows.length, rows, duplicates: dupCheck })
 }
 
+// Cleanup: the initial run got executed twice by accident, doubling every
+// row. Keeps the lowest id per description (the original insert), deletes
+// the rest.
+export async function DELETE() {
+  const deleted = await sql`
+    DELETE FROM expenses e
+    USING (
+      SELECT id, ROW_NUMBER() OVER (PARTITION BY description ORDER BY id) AS rn
+      FROM expenses WHERE source = 'bill_migration'
+    ) ranked
+    WHERE e.id = ranked.id AND ranked.rn > 1
+    RETURNING e.id, e.description
+  `
+  return NextResponse.json({ deletedCount: deleted.length, deleted })
+}
+
 export async function POST() {
   const [maxRow] = await sql`
     SELECT COALESCE(MAX(entry_number::int), 0) AS max FROM expenses WHERE entry_number ~ '^[0-9]+$'
