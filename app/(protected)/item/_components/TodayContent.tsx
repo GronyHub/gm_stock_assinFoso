@@ -576,7 +576,7 @@ function AnnouncementsPanel() {
                   by type never needs opening search first. */}
               <div className="relative shrink-0" ref={typeFilterRef}>
                 {typeFilterOpen && (
-                  <div className="absolute bottom-full right-0 mb-1 bg-white border border-gray-200 rounded-xl shadow-xl min-w-[160px] max-h-56 overflow-y-auto z-20">
+                  <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl min-w-[160px] max-h-56 overflow-y-auto z-20">
                     <button onClick={() => { setSearchCategory(''); setTypeFilterOpen(false) }}
                       className={`w-full text-left px-3 py-2 text-xs hover:bg-blue-50 transition ${!searchCategory ? 'text-blue-600 font-semibold' : 'text-gray-700'}`}>
                       All types
