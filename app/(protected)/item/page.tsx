@@ -39,6 +39,7 @@ const NewSaleForm    = dynamic(() => import('../sales/new/page'),             { 
 const NewBillForm    = dynamic(() => import('../bills/new/page'),             { ssr: false, loading: () => loading('Loading…') })
 const NewExpenseForm = dynamic(() => import('../expenses/new/page'),          { ssr: false, loading: () => loading('Loading…') })
 const NewItemForm    = dynamic(() => import('./_components/NewItemForm'),     { ssr: false, loading: () => loading('Loading…') })
+const AnalyticsPanel = dynamic(() => import('./_components/AnalyticsPanel'),  { ssr: false, loading: () => loading('Loading analytics…') })
 const LossTab        = dynamic(() => import('./_components/LossTab'),         { ssr: false, loading: () => loading('Loading…') })
 const LossFeedTab    = dynamic(() => import('./_components/LossFeedTab'),     { ssr: false, loading: () => loading('Loading…') })
 const ProfitLossTab  = dynamic(() => import('./_components/ProfitLossTab'),   { ssr: false, loading: () => loading('Loading…') })
@@ -47,32 +48,21 @@ const GronyManageTab = dynamic(() => import('./_components/GronyManageTab'),  { 
 const VendorsPage    = dynamic(() => import('../vendors/page'),               { ssr: false, loading: () => loading('Loading…') })
 const CustomersPage  = dynamic(() => import('../customers/page'),             { ssr: false, loading: () => loading('Loading…') })
 const ReceiptsPage   = dynamic(() => import('../receipts/page'),              { ssr: false, loading: () => loading('Loading…') })
-const ItemsAnalyticsSection    = dynamic(() => import('./_components/ItemsAnalyticsSection'),    { ssr: false })
-const SalesAnalyticsSection    = dynamic(() => import('./_components/SalesAnalyticsSection'),    { ssr: false })
-const BillsAnalyticsSection    = dynamic(() => import('./_components/BillsAnalyticsSection'),    { ssr: false })
-const CountsAnalyticsSection   = dynamic(() => import('./_components/CountsAnalyticsSection'),   { ssr: false })
-const ExpensesAnalyticsSection = dynamic(() => import('./_components/ExpensesAnalyticsSection'), { ssr: false })
-const CashAnalyticsSection     = dynamic(() => import('./_components/CashAnalyticsSection'),     { ssr: false })
-const LossAnalyticsSection     = dynamic(() => import('./_components/LossAnalyticsSection'),     { ssr: false })
 const ViewPortalAsButton = dynamic(() => import('@/components/ViewPortalAsButton'), { ssr: false })
 
 type OuterTab = 'today' | 'loss' | 'manage' | 'dailySummary'
 
-// Sales, Bills, Counts, Feed, Expenses, P&L, CAB, Vendors,
+// Sales, Bills, Counts, Feed, Data, Expenses, P&L, CAB, Vendors,
 // Customers, and Receipts all live as submenus inside the Grony Cash tab
 // (outerTab 'loss' -- kept as the internal key since it's referenced
-// throughout; only the label changed). The old standalone Data tab was
-// removed -- its charts now live inline on the submenu each one is actually
-// about (see e.g. ItemsAnalyticsSection, SalesAnalyticsSection).
-type LossView = 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts'
+// throughout; only the label changed).
+type LossView = 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'data' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts'
 
 // Old top-level tabs that got folded into Grony Cash submenus -- old
 // bookmarks/links using ?tab=pl etc. still land on the right submenu instead
-// of silently falling back to Today. ?tab=data (the old Data tab) isn't
-// listed -- it has no single replacement submenu now, so it falls back to
-// Today like any other unrecognized tab.
+// of silently falling back to Today.
 const OLD_TAB_TO_VIEW: Partial<Record<string, LossView>> = {
-  pl: 'pl', expenses: 'expenses', cab: 'cab',
+  pl: 'pl', expenses: 'expenses', cab: 'cab', data: 'data',
 }
 // Old top-level tabs that moved to a DIFFERENT tab's submenus (not Grony
 // Cash's) -- ?tab=staff now lands on Grony Manage instead of falling back to
@@ -84,7 +74,7 @@ const OLD_TAB_TO_OUTER: Partial<Record<string, OuterTab>> = {
 // Self-contained submenus -- either their own dashboard, or a standalone
 // page with its own internal search/filter/add UI -- so the shared
 // groups/search/New controls row doesn't apply to them.
-const REPORT_VIEWS = new Set<LossView>(['pl', 'cab', 'vendors', 'customers', 'receipts'])
+const REPORT_VIEWS = new Set<LossView>(['data', 'pl', 'cab', 'vendors', 'customers', 'receipts'])
 
 // Sales (Gd/Srv. Sld) and Bills (Gd In), along with their own
 // Customers/Receipts/Vendors views, aren't top-level sections of their own
@@ -225,11 +215,10 @@ const LOSSVIEW_PILL_KEYS: Partial<Record<LossView, string[]>> = {
   sales: ['no_cash', 'missing_days', 'cost_price', 'dup_receipt'],
 }
 
-// Analysis dropped -- it duplicated what the Grony Cash submenus' own
-// analytics sections cover now (see e.g. ItemsAnalyticsSection). Logs moved
-// into Grony Manage. Customers/Receipts/Vendors live nested three deep under
-// Items in Grony Cash (Items -> children row), so they're repeated here as
-// one-tap shortcuts to their own standalone page.
+// Analysis dropped -- it's a strict subset of Grony Cash's Data submenu.
+// Vendors/Customers/Receipts also live nested three deep under Items in
+// Grony Cash (Items -> children row), so they're repeated here as one-tap
+// shortcuts to their own standalone page. Logs moved into Grony Manage.
 const HAMBURGER_LINKS = [
   { href: '/users',     label: 'Users'     },
   { href: '/profile',   label: 'Profile'   },
@@ -531,6 +520,7 @@ function ItemHubPageInner() {
             {([
               { key: 'items',    label: 'Gd/Srv.' },
               { key: 'expenses', label: 'Expenses' },
+              { key: 'data',     label: 'Data' },
               ...(canSeePL ? [{ key: 'pl' as LossView, label: 'P&L' }] : []),
               { key: 'cab',      label: 'CAB' },
             ] as { key: LossView; label: string }[]).map(v => (
@@ -690,6 +680,11 @@ function ItemHubPageInner() {
         {addForm === 'bill'    && outerTab === 'loss' && lossView === 'bills'    && <div className="px-4"><NewBillForm    onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'expense' && outerTab === 'loss' && lossView === 'expenses' && <div className="px-4"><NewExpenseForm onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'item'    && outerTab === 'loss' && lossView === 'items'    && <div className="px-4"><NewItemForm    onSuccess={() => { setAddForm(null); loadItems() }} /></div>}
+        {outerTab === 'loss' && lossView === 'data' && (
+          <TabErrorBoundary>
+            <AnalyticsPanel />
+          </TabErrorBoundary>
+        )}
         {outerTab === 'loss' && lossView === 'pl' && (
           <TabErrorBoundary>
             <ProfitLossTab />
@@ -727,14 +722,8 @@ function ItemHubPageInner() {
             </div>
           </TabErrorBoundary>
         )}
-        {addForm !== 'expense' && outerTab === 'loss' && lossView === 'expenses' && (<>
-          <ExpensesTab search={search} />
-          <ExpensesAnalyticsSection />
-        </>)}
-        {outerTab === 'loss' && lossView === 'cab' && (<>
-          <CABTab />
-          <CashAnalyticsSection />
-        </>)}
+        {addForm !== 'expense' && outerTab === 'loss' && lossView === 'expenses' && <ExpensesTab search={search} />}
+        {outerTab === 'loss' && lossView === 'cab' && <CABTab />}
         {/* Items pill selected -> ItemsTab's filtered fix view; otherwise the
             submenu's normal content (LossTab). Same swap pattern for
             Sales/Counts/Feed below -- each of those already knows how to
@@ -774,30 +763,25 @@ function ItemHubPageInner() {
                 jumpToItemId={jumpToLossItemId} onJumpDone={() => setJumpToLossItemId(null)}
                 onDateClick={openReceiptFromItem} showPrices={showPrices} lossOnly={lossOnly} gainOnly={gainOnly}
                 onExpandedIdChange={setExpandedItemId} />
-              <ItemsAnalyticsSection />
             </TabErrorBoundary>
           )
         )}
-        {addForm !== 'sale' && outerTab === 'loss' && lossView === 'sales' && (<>
+        {addForm !== 'sale' && outerTab === 'loss' && lossView === 'sales' && (
           <SalesTab items={items} groupFilter={group} search={search}
             violation={pillKeys?.includes(violation ?? '') ? violation : null}
             jumpToDate={jumpToReceiptDate} jumpToItemName={jumpToReceiptItemName}
             onJumpDone={() => { setJumpToReceiptDate(null); setJumpToReceiptItemName(null) }} />
-          {!violation && <SalesAnalyticsSection />}
-        </>)}
-        {addForm !== 'bill' && outerTab === 'loss' && lossView === 'bills' && (<>
+        )}
+        {addForm !== 'bill' && outerTab === 'loss' && lossView === 'bills' && (
           <BillsTab items={items} groupFilter={group} search={search} />
-          <BillsAnalyticsSection />
-        </>)}
-        {outerTab === 'loss' && lossView === 'counts' && (<>
+        )}
+        {outerTab === 'loss' && lossView === 'counts' && (
           <CountsTab items={items} groupFilter={group} search={search}
             violation={pillKeys?.includes(violation ?? '') ? violation : null} onFixRecords={goFixRecords} />
-          {!violation && <CountsAnalyticsSection />}
-        </>)}
+        )}
         {outerTab === 'loss' && lossView === 'feed' && (
           <TabErrorBoundary>
             <LossFeedTab search={search} kind={violation === 'gains' ? 'gain' : 'loss'} />
-            <LossAnalyticsSection />
           </TabErrorBoundary>
         )}
         </>)}
