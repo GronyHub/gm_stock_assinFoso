@@ -1,6 +1,11 @@
 import sql from '@/lib/db'
 import { NextResponse } from 'next/server'
 
+export async function GET() {
+  const [row] = await sql`SELECT COUNT(*)::int AS n FROM item_aliases WHERE source = 'zoho_backfill'`
+  return NextResponse.json(row)
+}
+
 // One-off: the Zoho Sales/Bills review tabs grouped directly from
 // sales_receipt_lines/bill_lines (source = 'zoho_historical') instead of
 // item_aliases, so most of those raw-name-to-item matches never got their
