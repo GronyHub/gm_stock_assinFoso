@@ -791,27 +791,36 @@ function ItemHubPageInner() {
         cashCount={cashCount} manageCount={manageCount} dailyCount={openerViolationCount}
         missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
         trailing={
-          <div className="relative shrink-0" ref={hamburgerRef}>
-            {hamburgerOpen && (
-              <div className="absolute bottom-full right-0 mb-1 bg-white border border-gray-200 rounded-xl shadow-xl min-w-[180px] overflow-hidden">
-                <ViewPortalAsButton onDone={() => setHamburgerOpen(false)} />
-                {hamburgerLinks.map(l => (
-                  <Link key={l.href} href={l.href}
-                    onClick={() => setHamburgerOpen(false)}
-                    className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-t border-gray-100 transition">
-                    {l.label}
-                  </Link>
-                ))}
-                <button onClick={() => signOut({ callbackUrl: '/login' })}
-                  className="w-full text-left px-4 py-3 text-sm font-medium text-red-500 hover:bg-red-50 border-t border-gray-100 transition">
-                  Sign out
-                </button>
-              </div>
-            )}
-            <button onClick={() => setHamburgerOpen(o => !o)}
-              className="flex items-center justify-center px-4 py-4 text-gray-500 hover:bg-gray-50 transition text-xl leading-none">
-              ⋮
-            </button>
+          <div className="flex items-center gap-1 shrink-0 pr-1">
+            {/* Always-visible reminder of who's actually logged in -- a
+                device left signed in as one person for hours/days is easy
+                to miss (see the Joe/Bino misattribution case), and this sits
+                right where the eye lands before tapping into any form. */}
+            <span className="text-[9px] font-semibold text-gray-400 capitalize whitespace-nowrap" title="Logged in as">
+              👤 {username || '—'}
+            </span>
+            <div className="relative shrink-0" ref={hamburgerRef}>
+              {hamburgerOpen && (
+                <div className="absolute bottom-full right-0 mb-1 bg-white border border-gray-200 rounded-xl shadow-xl min-w-[180px] overflow-hidden">
+                  <ViewPortalAsButton onDone={() => setHamburgerOpen(false)} />
+                  {hamburgerLinks.map(l => (
+                    <Link key={l.href} href={l.href}
+                      onClick={() => setHamburgerOpen(false)}
+                      className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-t border-gray-100 transition">
+                      {l.label}
+                    </Link>
+                  ))}
+                  <button onClick={() => signOut({ callbackUrl: '/login' })}
+                    className="w-full text-left px-4 py-3 text-sm font-medium text-red-500 hover:bg-red-50 border-t border-gray-100 transition">
+                    Sign out
+                  </button>
+                </div>
+              )}
+              <button onClick={() => setHamburgerOpen(o => !o)}
+                className="flex items-center justify-center px-4 py-4 text-gray-500 hover:bg-gray-50 transition text-xl leading-none">
+                ⋮
+              </button>
+            </div>
           </div>
         }
       />
