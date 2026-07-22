@@ -1,6 +1,15 @@
 import sql from '@/lib/db'
 import { NextResponse } from 'next/server'
 
+export async function POST() {
+  const [row] = await sql`
+    UPDATE items SET cf_group = 'Stationery', selling_rate = 22.00, purchase_rate = 16.70
+    WHERE id = 1
+    RETURNING id, canonical_name, cf_group, selling_rate, purchase_rate, units_per_pack, unit_name, converts_to_item_id
+  `
+  return NextResponse.json(row)
+}
+
 export async function GET() {
   const schemaInfo = await sql`
     SELECT table_name, table_type FROM information_schema.tables
