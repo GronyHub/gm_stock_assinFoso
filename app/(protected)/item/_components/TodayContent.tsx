@@ -182,6 +182,8 @@ function AnnouncementsPanel() {
   const [recordSeconds, setRecordSeconds] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
+  const typeFilterRef = useRef<HTMLDivElement>(null)
+  const [typeFilterOpen, setTypeFilterOpen] = useState(false)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const recordedChunksRef = useRef<Blob[]>([])
   const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -261,14 +263,23 @@ function AnnouncementsPanel() {
 
   const hasActiveSearch = !!(searchText.trim() || searchCategory || searchFrom || searchTo)
 
+  // Loaded once on mount rather than lazily on searchOpen -- the type
+  // filter now lives outside the search panel (next to the mic button), so
+  // it needs the category list available right away too.
   useEffect(() => {
-    if (!searchOpen || categories.length > 0) return
     fetch('/api/announcements/categories')
       .then(r => r.ok ? r.json() : [])
       .then(d => setCategories(Array.isArray(d) ? d : []))
       .catch(() => {})
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchOpen])
+  }, [])
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (typeFilterRef.current && !typeFilterRef.current.contains(e.target as Node)) setTypeFilterOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
   function searchQuery(before?: string) {
     const params = new URLSearchParams()
@@ -463,11 +474,6 @@ function AnnouncementsPanel() {
           <input value={searchText} onChange={e => setSearchText(e.target.value)}
             placeholder="Search text or name…"
             className="w-full text-xs bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-1 focus:ring-blue-400" />
-          <select value={searchCategory} onChange={e => setSearchCategory(e.target.value)}
-            className="w-full text-xs bg-white border border-gray-200 rounded-lg px-2 py-1.5 outline-none">
-            <option value="">All types</option>
-            {categories.map(c => <option key={c} value={c}>{categoryLabel(c)}</option>)}
-          </select>
           <div className="flex items-center gap-1.5">
             <input type="date" value={searchFrom} onChange={e => setSearchFrom(e.target.value)}
               className="flex-1 min-w-0 text-xs bg-white border border-gray-200 rounded-lg px-2 py-1.5 outline-none" />
@@ -565,6 +571,31 @@ function AnnouncementsPanel() {
                 className="hidden"
                 onChange={e => handleFiles(e.target.files)}
               />
+            </div>
+
+            {/* Type filter -- outside the message box and the collapsible
+                search panel, right next to the mic/send button, so filtering
+                the feed by type never needs opening search first. */}
+            <div className="relative shrink-0" ref={typeFilterRef}>
+              {typeFilterOpen && (
+                <div className="absolute bottom-full right-0 mb-1 bg-white border border-gray-200 rounded-xl shadow-xl min-w-[160px] max-h-56 overflow-y-auto z-20">
+                  <button onClick={() => { setSearchCategory(''); setTypeFilterOpen(false) }}
+                    className={`w-full text-left px-3 py-2 text-xs hover:bg-blue-50 transition ${!searchCategory ? 'text-blue-600 font-semibold' : 'text-gray-700'}`}>
+                    All types
+                  </button>
+                  {categories.map(c => (
+                    <button key={c} onClick={() => { setSearchCategory(c); setTypeFilterOpen(false) }}
+                      className={`w-full text-left px-3 py-2 text-xs hover:bg-blue-50 transition border-t border-gray-100 ${searchCategory === c ? 'text-blue-600 font-semibold' : 'text-gray-700'}`}>
+                      {categoryLabel(c)}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <button onClick={() => setTypeFilterOpen(o => !o)} disabled={recording} title="Filter by type"
+                className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-sm transition disabled:opacity-40
+                  ${searchCategory ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                🗂️
+              </button>
             </div>
 
             {canPost ? (
