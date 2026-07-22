@@ -33,9 +33,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   // Update the alias to point to the new item
   await sql`UPDATE item_aliases SET item_id = ${item_id} WHERE id = ${Number(id)}`
 
-  // Backfill sales lines that used this alias name
+  // Backfill sales and bill lines that used this alias name
   await sql`
     UPDATE sales_receipt_lines
+    SET item_id = ${item_id}, resolved_name = ${item.canonical_name}, unresolved = false
+    WHERE LOWER(TRIM(raw_item_name)) = LOWER(TRIM(${alias.alias_name}))
+  `
+  await sql`
+    UPDATE bill_lines
     SET item_id = ${item_id}, resolved_name = ${item.canonical_name}, unresolved = false
     WHERE LOWER(TRIM(raw_item_name)) = LOWER(TRIM(${alias.alias_name}))
   `
