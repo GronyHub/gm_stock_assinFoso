@@ -2,12 +2,16 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 
-type Tab = 'prezoho-sales' | 'prezoho-bills' | 'zoho-sales' | 'zoho-bills' | 'flagged'
+type Tab = 'prezoho-sales' | 'prezoho-bills' | 'zoho-sales' | 'zoho-bills' | 'flagged' | 'ambiguous'
 type UnresolvedRow = { name: string; cnt: number; confirmed: boolean }
 type ZohoRawName = { name: string; cnt: number }
 type ZohoGroup = { item_id: number; canonical_name: string; cf_group: string | null; raw_names: ZohoRawName[] }
 type Item = { id: number; canonical_name: string; cf_group: string | null }
 type AuditRow = { raw_name: string; item_id: number; canonical_name: string; source: string; cnt: number; warning: string }
+type AmbiguousCandidate = { alias_id: number; alias_name: string; item_id: number; canonical_name: string; alias_type: string; source: string; line_count: number }
+type AmbiguousGroup = { norm_name: string; candidates: AmbiguousCandidate[] }
+
+const ALL_TAB_IDS: Tab[] = ['prezoho-sales', 'prezoho-bills', 'zoho-sales', 'zoho-bills', 'flagged', 'ambiguous']
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'prezoho-sales', label: 'Pre-Zoho Sales' },
@@ -15,6 +19,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'zoho-sales',    label: 'Zoho Sales' },
   { id: 'zoho-bills',    label: 'Zoho Bills' },
   { id: 'flagged',       label: '⚠ Flagged' },
+  { id: 'ambiguous',     label: '⚠ Ambiguous' },
 ]
 
 const CATEGORY_HINTS: Record<string, string> = {
@@ -521,12 +526,113 @@ function FlaggedPanel({ items }: { items: Item[] }) {
   )
 }
 
+// Alias names that map to more than one item -- exactly what
+// /api/aliases/resweep skips rather than guess at. Resolving one here
+// deletes the item_aliases rows for every candidate except the one kept,
+// so the name maps to a single item again for future confirms/sweeps.
+function AmbiguousPanel() {
+  const [groups, setGroups] = useState<AmbiguousGroup[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selected, setSelected] = useState<AmbiguousGroup | null>(null)
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set())
+  const [resolving, setResolving] = useState<number | null>(null)
+
+  useEffect(() => {
+    setLoading(true)
+    fetch('/api/aliases/ambiguous').then(r => r.json()).then(d => {
+      setGroups(Array.isArray(d) ? d : [])
+      setLoading(false)
+    })
+  }, [])
+
+  const display = groups.filter(g => !dismissed.has(g.norm_name))
+
+  async function keep(group: AmbiguousGroup, keepItemId: number) {
+    setResolving(keepItemId)
+    const res = await fetch('/api/aliases/ambiguous/resolve', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ norm_name: group.norm_name, keep_item_id: keepItemId }),
+    })
+    setResolving(null)
+    if (!res.ok) return
+    setGroups(prev => prev.filter(g => g.norm_name !== group.norm_name))
+    setSelected(null)
+  }
+
+  if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
+
+  return (
+    <div className="flex flex-col flex-1 min-h-0">
+      <div className="shrink-0 px-2 py-1 border-b border-gray-200 bg-white">
+        <span className="text-[9px] text-red-600 font-bold">{display.length} ambiguous name{display.length === 1 ? '' : 's'}</span>
+        <span className="text-[9px] text-gray-400 ml-2">same raw text maps to more than one item -- resweep skips these</span>
+      </div>
+      <div className="flex flex-1 min-h-0">
+        <div className="w-1/2 border-r border-gray-200 overflow-y-auto min-h-0">
+          {display.length === 0 ? (
+            <p className="text-[10px] text-gray-400 text-center py-10">No ambiguous aliases found. 🎉</p>
+          ) : (
+            <table className="w-full border-collapse text-[10px]">
+              <thead className="sticky top-0 bg-gray-100 z-10">
+                <tr>
+                  <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">ALIAS NAME</th>
+                  <th className="text-right px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">ITEMS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {display.map(g => (
+                  <tr key={g.norm_name} onClick={() => setSelected(g)}
+                    className={`cursor-pointer border-b border-gray-100 transition ${selected?.norm_name === g.norm_name ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
+                    <td className="px-1 py-0.5"><p className="text-gray-900 truncate max-w-[150px]">{g.candidates[0]?.alias_name}</p></td>
+                    <td className="px-1 py-0.5 text-right text-gray-400">{g.candidates.length}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+        <div className="w-1/2 overflow-y-auto min-h-0 flex flex-col">
+          {!selected ? (
+            <p className="text-[10px] text-gray-400 text-center py-10">Select a name to resolve</p>
+          ) : (
+            <div className="flex flex-col h-full">
+              <div className="px-2 py-1.5 bg-red-50 border-b border-red-200 shrink-0">
+                <p className="text-[9px] text-red-500 font-semibold uppercase">Ambiguous</p>
+                <p className="text-[10px] font-bold text-gray-900 break-words">{selected.candidates[0]?.alias_name}</p>
+                <p className="text-[9px] text-gray-400 mt-0.5">Pick which item this name really means -- the others are removed as aliases for it</p>
+              </div>
+              <div className="px-2 py-1.5 border-b border-gray-100 shrink-0">
+                <button onClick={() => { setDismissed(s => new Set(s).add(selected.norm_name)); setSelected(null) }}
+                  className="w-full text-[10px] font-semibold text-gray-600 bg-gray-100 rounded py-1.5 hover:bg-gray-200 transition">
+                  Skip for now
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto min-h-0">
+                {selected.candidates.map(c => (
+                  <div key={c.alias_id} className="px-2 py-1.5 border-b border-gray-100">
+                    <p className="text-[10px] font-semibold text-gray-900">{c.canonical_name}</p>
+                    <p className="text-[9px] text-gray-400">{c.line_count} line{c.line_count === 1 ? '' : 's'} currently resolved here · {c.alias_type} · {c.source}</p>
+                    <button onClick={() => keep(selected, c.item_id)} disabled={resolving !== null}
+                      className="mt-1 text-[9px] font-bold text-white bg-green-600 hover:bg-green-500 px-2 py-0.5 rounded transition disabled:opacity-40">
+                      {resolving === c.item_id ? 'Keeping…' : `Keep this one →`}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 type Props = { defaultTab?: string | null }
 
 export default function AliasesTab({ defaultTab }: Props) {
   const validTab = (defaultTab as Tab | undefined)
   const [tab, setTab] = useState<Tab>(
-    validTab && ['prezoho-sales','prezoho-bills','zoho-sales','zoho-bills','flagged'].includes(validTab)
+    validTab && ALL_TAB_IDS.includes(validTab)
       ? validTab
       : 'prezoho-sales'
   )
@@ -555,7 +661,7 @@ export default function AliasesTab({ defaultTab }: Props) {
   }
 
   useEffect(() => {
-    if (defaultTab && ['prezoho-sales','prezoho-bills','zoho-sales','zoho-bills','flagged'].includes(defaultTab)) {
+    if (defaultTab && ALL_TAB_IDS.includes(defaultTab as Tab)) {
       setTab(defaultTab as Tab)
     }
   }, [defaultTab])
@@ -586,7 +692,7 @@ export default function AliasesTab({ defaultTab }: Props) {
             <button key={t.id} onClick={() => setTab(t.id)}
               className={`shrink-0 text-[9px] font-bold px-2 py-0.5 rounded-full transition
                 ${tab === t.id
-                  ? (t.id === 'flagged' ? 'bg-red-600 text-white' : t.id.startsWith('zoho') ? 'bg-indigo-600 text-white' : 'bg-blue-600 text-white')
+                  ? ((t.id === 'flagged' || t.id === 'ambiguous') ? 'bg-red-600 text-white' : t.id.startsWith('zoho') ? 'bg-indigo-600 text-white' : 'bg-blue-600 text-white')
                   : 'bg-gray-100 text-gray-500'}`}>
               {t.label}
             </button>
@@ -595,6 +701,8 @@ export default function AliasesTab({ defaultTab }: Props) {
       </div>
       {tab === 'flagged'
         ? <FlaggedPanel key={refreshKey} items={items} />
+        : tab === 'ambiguous'
+        ? <AmbiguousPanel key={refreshKey} />
         : isZoho
         ? <ZohoPanel key={`${tab}-${refreshKey}`} tab={tab} items={items} />
         : <PreZohoPanel key={`${tab}-${refreshKey}`} tab={tab} items={items} />
