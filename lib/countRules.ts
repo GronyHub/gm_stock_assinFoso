@@ -43,7 +43,7 @@ async function itemRows(itemIds: number[]) {
 // packPairingCheck already requires at save time -- this just surfaces it
 // as its own line in the list up front instead of only reactively when the
 // singles side is saved.
-async function blockingPackDailyIds(): Promise<number[]> {
+export async function blockingPackDailyIds(): Promise<number[]> {
   const rows = await sql`
     SELECT id, canonical_name FROM items WHERE id = ANY(${DAILY_ITEM_IDS})
   ` as { id: number; canonical_name: string }[]
@@ -51,6 +51,38 @@ async function blockingPackDailyIds(): Promise<number[]> {
   return rows
     .filter(r => blockingChains.some(c => c.match.test(r.canonical_name)))
     .map(r => r.id)
+}
+
+async function itemNamesOnly(ids: number[]): Promise<{ id: number; name: string }[]> {
+  if (ids.length === 0) return []
+  const rows = await sql`
+    SELECT s.item_id AS id, COALESCE(i.canonical_name, s.item_name) AS name
+    FROM item_stock_summary s
+    LEFT JOIN items i ON i.id = s.item_id
+    WHERE s.item_id = ANY(${ids})
+      AND s.cf_group IS DISTINCT FROM 'Large Format'
+      AND COALESCE(i.product_type, 'goods') <> 'service'
+  `
+  return rows as unknown as { id: number; name: string }[]
+}
+
+// The full set of items that must be counted every single day (id + name
+// only, no count-status) -- the 10 singles minus Cardboard/A4 Sheet, plus
+// the pack of any blocking-chain item among them. Shared by
+// outstandingDailyItems() (today's still-outstanding subset) and the
+// Opener penalty audit (per-day count completion history, see
+// /api/violations/auto-check), so both agree on what "the daily list" is.
+export async function requiredDailyItemIds(): Promise<{ id: number; name: string }[]> {
+  const singles = (await itemNamesOnly(DAILY_ITEM_IDS))
+    .filter(r => !EXCLUDED_DAILY_SINGLE_NAMES.some(p => p.test(r.name)))
+
+  const blockingIds = await blockingPackDailyIds()
+  let packs: { id: number; name: string }[] = []
+  if (blockingIds.length > 0) {
+    const packItems = await sql`SELECT id FROM items WHERE converts_to_item_id = ANY(${blockingIds})` as { id: number }[]
+    if (packItems.length > 0) packs = await itemNamesOnly(packItems.map(p => p.id))
+  }
+  return [...singles, ...packs]
 }
 
 // Items from today's fixed daily-count list that haven't been counted

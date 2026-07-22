@@ -1,6 +1,13 @@
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
+import { requiredDailyItemIds } from '@/lib/countRules'
+import { openerOf } from '@/lib/staffTimes'
 import { NextRequest, NextResponse } from 'next/server'
+
+// Shown as-is in the Opener Role Bar panel's Penalty Points section (see
+// RolePanel.tsx) -- must match the literal string used there.
+const OPENER_VIOLATION_TYPE = 'opener_daily_count'
+const OPENER_VIOLATION_LABEL = 'Missed daily opener counts'
 
 function daysSince(dateStr: string): number {
   const d = new Date(dateStr + 'T00:00:00')
@@ -160,6 +167,84 @@ export async function GET(req: NextRequest) {
         created++
         summary.push(`${assignedStaff}: ${label} (${inst.details})`)
       }
+    }
+
+    // Opener accountability: for each of the last 30 shop-open days, whoever
+    // was Opener (earliest clock-in) should have completed every required
+    // daily count. Unlike AUTO_TYPES above, the "assignee" here is whoever
+    // that day's actual Opener was, not a fixed configured staff member, so
+    // it can't reuse that loop's shape -- handled as its own pass instead.
+    try {
+      const requiredItems = await requiredDailyItemIds()
+      const requiredIds = requiredItems.map(r => r.id)
+
+      if (requiredIds.length > 0) {
+        const [staffRows, countRows, noWorkRows] = await Promise.all([
+          sql`
+            SELECT staff_name, work_date::text AS work_date, actual_in
+            FROM staff_times
+            WHERE work_date >= CURRENT_DATE - INTERVAL '30 days' AND work_date < CURRENT_DATE
+              AND actual_in IS NOT NULL
+            ORDER BY work_date, staff_name
+          `,
+          sql`
+            SELECT DISTINCT item_id, count_date::date::text AS date
+            FROM stock_counts
+            WHERE item_id = ANY(${requiredIds})
+              AND count_date >= CURRENT_DATE - INTERVAL '30 days' AND count_date < CURRENT_DATE
+          `,
+          sql`
+            SELECT work_date::text AS work_date FROM no_work_days
+            WHERE work_date >= CURRENT_DATE - INTERVAL '30 days' AND work_date < CURRENT_DATE
+          `,
+        ])
+
+        const staffByDate = new Map<string, { staff_name: string; actual_in: string }[]>()
+        for (const r of staffRows as { staff_name: string; work_date: string; actual_in: string }[]) {
+          if (!staffByDate.has(r.work_date)) staffByDate.set(r.work_date, [])
+          staffByDate.get(r.work_date)!.push(r)
+        }
+        const countedByDate = new Map<string, Set<number>>()
+        for (const r of countRows as { item_id: number; date: string }[]) {
+          if (!countedByDate.has(r.date)) countedByDate.set(r.date, new Set())
+          countedByDate.get(r.date)!.add(r.item_id)
+        }
+        const noWorkDates = new Set((noWorkRows as { work_date: string }[]).map(r => r.work_date))
+
+        for (const [date, staffToday] of staffByDate) {
+          if (noWorkDates.has(date)) continue
+          if (new Date(date + 'T00:00:00').getDay() === 0) continue // Sunday -- shop closed
+
+          const opener = openerOf(staffToday)
+          if (!opener) continue
+
+          const countedN = countedByDate.get(date)?.size ?? 0
+          if (countedN >= requiredIds.length) continue
+
+          const [already] = await sql`
+            SELECT 1 FROM auto_penalty_log WHERE violation_type = ${OPENER_VIOLATION_TYPE} AND instance_key = ${date}
+          `
+          if (already) continue
+
+          const details = countedN === 0
+            ? `${date}: did not perform any count at all`
+            : `${date}: counted only ${countedN}/${requiredIds.length} counts`
+
+          await sql`
+            INSERT INTO staff_violations (staff_name, violation, details, severity, points, recorded_by)
+            VALUES (${opener}, ${OPENER_VIOLATION_LABEL}, ${details}, 'major', ${points}, 'system-auto')
+          `
+          await sql`
+            INSERT INTO auto_penalty_log (violation_type, instance_key, staff_name)
+            VALUES (${OPENER_VIOLATION_TYPE}, ${date}, ${opener})
+          `
+          await logActivity('system-auto', 'auto-penalized', `${opener} — ${OPENER_VIOLATION_LABEL} (${details})`)
+          created++
+          summary.push(`${opener}: ${OPENER_VIOLATION_LABEL} (${details})`)
+        }
+      }
+    } catch (e) {
+      console.error('opener penalty check failed:', e)
     }
 
     return NextResponse.json({ ok: true, created, summary })

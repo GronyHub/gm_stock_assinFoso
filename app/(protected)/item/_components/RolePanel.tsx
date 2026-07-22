@@ -70,6 +70,22 @@ export default function RolePanel({
     }
   }, [lossEvents])
 
+  // Opener accountability -- real disciplinary records (see
+  // /api/violations/auto-check) for days the opener didn't finish the
+  // required daily counts. Filtered client-side from the same list the
+  // Staff > Disciplinary tab reads, rather than a dedicated endpoint.
+  // The label must match OPENER_VIOLATION_LABEL in that route exactly.
+  const [openerPenalties, setOpenerPenalties] = useState<{ id: number; staff_name: string; details: string; points: number }[] | null>(null)
+  useEffect(() => {
+    if (role !== 'opener') return
+    fetch('/api/staff/violations')
+      .then(r => r.ok ? r.json() : [])
+      .then(d => setOpenerPenalties(Array.isArray(d)
+        ? d.filter((v: { violation: string }) => v.violation === 'Missed daily opener counts').slice(0, 10)
+        : []))
+      .catch(() => setOpenerPenalties([]))
+  }, [role])
+
   const openerCount = today.opener && !today.openerConfirmed ? 1 : 0
   const closerCount = missingClosingReportsCount
 
@@ -119,6 +135,28 @@ export default function RolePanel({
                   ? <>✓ <span className="capitalize">{today.opener}</span> has confirmed today&apos;s opening count.</>
                   : 'Nobody has clocked in yet today.'}
               </p>
+            )}
+            {/* Penalty Points -- real disciplinary records for past days an
+                opener didn't finish the required daily counts, e.g. "James
+                did not perform any count at all" or "counted only 2/15
+                counts". Only shown when there's something to flag. */}
+            {openerPenalties && openerPenalties.length > 0 && (
+              <div className="border border-red-200 rounded-lg overflow-hidden">
+                <p className="text-xs font-bold text-red-700 bg-red-50 px-3 py-2 border-b border-red-200">
+                  Penalty Points — Opener
+                </p>
+                <div className="divide-y divide-gray-100">
+                  {openerPenalties.map(v => (
+                    <div key={v.id} className="px-3 py-2 text-xs flex items-start justify-between gap-2">
+                      <p className="text-gray-700">
+                        <span className="font-semibold capitalize text-gray-900">{v.staff_name}</span>
+                        <span> — {v.details}</span>
+                      </p>
+                      {v.points > 0 && <span className="shrink-0 text-red-600 font-semibold whitespace-nowrap">-{v.points} pts</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </>
         )}
