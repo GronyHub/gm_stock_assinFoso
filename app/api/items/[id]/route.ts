@@ -34,11 +34,40 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 // happened to touch those specific rows, which is why a rename looked
 // "half applied" across the app. Backfilling all three here whenever the
 // name actually changes closes that gap.
+//
+// Several real callers intentionally send a partial body -- e.g. the Sales
+// tab's cost-price editor sends only { purchase_rate }, ItemsTab's quick
+// group reassignment sends only { cf_group } -- relying on every other
+// field staying untouched. Previously every field but item_name used
+// `${field ?? null}` directly, which nulled out anything the caller didn't
+// include (indistinguishable from an explicit null), silently wiping the
+// rest of that item's data on every partial save. Reading the current row
+// first and only overriding keys actually present in the body -- via
+// hasOwnProperty, so an explicit null still clears a field the caller does
+// include -- fixes that while keeping the "clear this field" behavior the
+// full edit forms (ItemsTab/LossTab) rely on when a field is left blank.
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { id } = await params
   const itemId = Number(id)
   const body = await req.json()
-  const { item_name, cf_group, selling_rate, purchase_rate, units_per_pack, unit_name, converts_to_item_id } = body
+  const has = (k: string) => Object.prototype.hasOwnProperty.call(body, k)
+
+  const [current] = await sql`
+    SELECT cf_group, selling_rate, purchase_rate, units_per_pack, unit_name, converts_to_item_id
+    FROM items WHERE id = ${itemId}
+  `
+  if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  const item_name           = has('item_name') ? body.item_name : undefined
+  const cf_group            = has('cf_group') ? body.cf_group : current.cf_group
+  const selling_rate        = has('selling_rate') ? body.selling_rate : current.selling_rate
+  const purchase_rate       = has('purchase_rate') ? body.purchase_rate : current.purchase_rate
+  const units_per_pack      = has('units_per_pack') ? body.units_per_pack : current.units_per_pack
+  const unit_name           = has('unit_name') ? body.unit_name : current.unit_name
+  const converts_to_item_id = has('converts_to_item_id') ? body.converts_to_item_id : current.converts_to_item_id
 
   const [row] = await sql`
     UPDATE items SET
