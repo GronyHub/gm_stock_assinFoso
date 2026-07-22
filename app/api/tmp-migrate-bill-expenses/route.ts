@@ -32,6 +32,18 @@ const ROWS: {
   { raw: 'fine glue big size      1       = 25', date: '2025-04-17', amount: 25, account: 'Properties / Office Supplies', vendor: null },
 ]
 
+export async function GET() {
+  const rows = await sql`
+    SELECT id, expense_date, description, amount FROM expenses
+    WHERE source = 'bill_migration' ORDER BY description, id
+  `
+  const dupCheck = await sql`
+    SELECT description, COUNT(*)::int AS n FROM expenses
+    WHERE source = 'bill_migration' GROUP BY description HAVING COUNT(*) > 1
+  `
+  return NextResponse.json({ total: rows.length, rows, duplicates: dupCheck })
+}
+
 export async function POST() {
   const [maxRow] = await sql`
     SELECT COALESCE(MAX(entry_number::int), 0) AS max FROM expenses WHERE entry_number ~ '^[0-9]+$'
