@@ -33,17 +33,17 @@ A Home button plus three tabs across the top: Grony Cash, Grony Manage, Daily.
 Just the news feed -- announcements, photos, and voice notes. Post a message here to keep everyone informed. Flags live in the role bar at the very bottom of the screen instead (see below), so the feed is always the first thing you see.
 
 ## Grony Cash
-Everything to do with money. Top row: Gd/Srv., Expenses, Data, P&L (owner and Joe only), CAB.
-- Gd/Srv. (Goods & Services) -- the shop's stock list, with pack-chain loss/gain tracking. Has its own sub-row: Counts, Feed, Gd/Srv. Sld, Gd In, Customers, Receipts, Vendors, and 💲 Prices / 🔻 Loss Only / 🔺 Gain Only toggles for the pack-chain detail table.
-- Gd/Srv. Sld (Sales) -- every sales receipt (WIC = Walk-In Customer, GMC = Grony Multimedia as Customer, i.e. internal use, not a real sale).
-- Gd In (Bills) -- what the shop has bought from vendors.
-- Counts -- physical stock counts.
+Everything to do with money. Top row: Gd/Srv., Expenses, P&L (owner and Joe only), CAB. There's no separate Data/analytics tab any more -- each submenu below has its own charts built right in, above its own list.
+- Gd/Srv. (Goods & Services) -- the shop's stock list, with pack-chain loss/gain tracking. Has its own sub-row: Counts, Feed, Gd/Srv. Sld, Gd In, Customers, Receipts, Vendors, and 💲 Prices / 🔻 Loss Only / 🔺 Gain Only toggles for the pack-chain detail table. Its own charts (item sales trends, top losses, stock value, out-of-stock, slow-moving stock) and Items-category violations sit above the table.
+- Gd/Srv. Sld (Sales) -- every sales receipt (WIC = Walk-In Customer, GMC = Grony Multimedia as Customer, i.e. internal use, not a real sale). Revenue and top-seller charts, plus Sales-category violations, sit above the list.
+- Gd In (Bills) -- what the shop has bought from vendors. Spend and top-vendor charts sit above the list.
+- Counts -- physical stock counts. Counting-frequency charts and Counts-category violations sit above the list.
+- Feed -- loss/gain records. Loss trend charts sit above the list.
 - Customers / Receipts -- reachable from Gd/Srv. Sld.
 - Vendors -- reachable from Gd In.
-- Data -- analytics and charts.
-- Expenses -- money spent.
+- Expenses -- money spent, with its own monthly/category charts above the list.
 - P&L -- Profit & Loss.
-- CAB -- Cash at Bank reconciliation.
+- CAB -- Cash at Bank reconciliation, with cash-counted trend charts and Cash-category violations above the list.
 
 ## Grony Manage
 Everything that isn't directly about money:
