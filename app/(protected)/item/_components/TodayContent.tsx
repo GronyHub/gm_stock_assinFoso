@@ -571,31 +571,30 @@ function AnnouncementsPanel() {
                 className="hidden"
                 onChange={e => handleFiles(e.target.files)}
               />
-            </div>
-
-            {/* Type filter -- outside the message box and the collapsible
-                search panel, right next to the mic/send button, so filtering
-                the feed by type never needs opening search first. */}
-            <div className="relative shrink-0" ref={typeFilterRef}>
-              {typeFilterOpen && (
-                <div className="absolute bottom-full right-0 mb-1 bg-white border border-gray-200 rounded-xl shadow-xl min-w-[160px] max-h-56 overflow-y-auto z-20">
-                  <button onClick={() => { setSearchCategory(''); setTypeFilterOpen(false) }}
-                    className={`w-full text-left px-3 py-2 text-xs hover:bg-blue-50 transition ${!searchCategory ? 'text-blue-600 font-semibold' : 'text-gray-700'}`}>
-                    All types
-                  </button>
-                  {categories.map(c => (
-                    <button key={c} onClick={() => { setSearchCategory(c); setTypeFilterOpen(false) }}
-                      className={`w-full text-left px-3 py-2 text-xs hover:bg-blue-50 transition border-t border-gray-100 ${searchCategory === c ? 'text-blue-600 font-semibold' : 'text-gray-700'}`}>
-                      {categoryLabel(c)}
+              {/* Type filter -- inside the message box alongside 📎/📷,
+                  outside the collapsible search panel, so filtering the feed
+                  by type never needs opening search first. */}
+              <div className="relative shrink-0" ref={typeFilterRef}>
+                {typeFilterOpen && (
+                  <div className="absolute bottom-full right-0 mb-1 bg-white border border-gray-200 rounded-xl shadow-xl min-w-[160px] max-h-56 overflow-y-auto z-20">
+                    <button onClick={() => { setSearchCategory(''); setTypeFilterOpen(false) }}
+                      className={`w-full text-left px-3 py-2 text-xs hover:bg-blue-50 transition ${!searchCategory ? 'text-blue-600 font-semibold' : 'text-gray-700'}`}>
+                      All types
                     </button>
-                  ))}
-                </div>
-              )}
-              <button onClick={() => setTypeFilterOpen(o => !o)} disabled={recording} title="Filter by type"
-                className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-sm transition disabled:opacity-40
-                  ${searchCategory ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
-                🗂️
-              </button>
+                    {categories.map(c => (
+                      <button key={c} onClick={() => { setSearchCategory(c); setTypeFilterOpen(false) }}
+                        className={`w-full text-left px-3 py-2 text-xs hover:bg-blue-50 transition border-t border-gray-100 ${searchCategory === c ? 'text-blue-600 font-semibold' : 'text-gray-700'}`}>
+                        {categoryLabel(c)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <button onClick={() => setTypeFilterOpen(o => !o)} disabled={recording} title="Filter by type"
+                  className={`shrink-0 text-base leading-none w-6 h-6 flex items-center justify-center transition disabled:opacity-40
+                    ${searchCategory ? 'text-blue-600' : 'text-gray-400 hover:text-blue-600'}`}>
+                  🗂️
+                </button>
+              </div>
             </div>
 
             {canPost ? (
