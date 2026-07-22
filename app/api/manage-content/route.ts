@@ -33,13 +33,13 @@ A Home button plus three tabs across the top: Grony Cash, Grony Manage, Daily.
 Just the news feed -- announcements, photos, and voice notes. Post a message here to keep everyone informed. Flags live in the role bar at the very bottom of the screen instead (see below), so the feed is always the first thing you see.
 
 ## Grony Cash
-Everything to do with money. Top row: Items, Expenses, Data, P&L (owner and Joe only), CAB.
-- Items -- the shop's stock list, with pack-chain loss/gain tracking. Has its own sub-row: Counts, Feed, Goods Out, Goods In, Customers, Receipts, Vendors, and 💲 Prices / 🔻 Loss Only / 🔺 Gain Only toggles for the pack-chain detail table.
-- Goods Out (Sales) -- every sales receipt (WIC = Walk-In Customer, GMC = Grony Multimedia as Customer, i.e. internal use, not a real sale).
-- Goods In (Bills) -- what the shop has bought from vendors.
+Everything to do with money. Top row: Gd/Srv., Expenses, Data, P&L (owner and Joe only), CAB.
+- Gd/Srv. (Goods & Services) -- the shop's stock list, with pack-chain loss/gain tracking. Has its own sub-row: Counts, Feed, Gd/Srv. Sld, Gd In, Customers, Receipts, Vendors, and 💲 Prices / 🔻 Loss Only / 🔺 Gain Only toggles for the pack-chain detail table.
+- Gd/Srv. Sld (Sales) -- every sales receipt (WIC = Walk-In Customer, GMC = Grony Multimedia as Customer, i.e. internal use, not a real sale).
+- Gd In (Bills) -- what the shop has bought from vendors.
 - Counts -- physical stock counts.
-- Customers / Receipts -- reachable from Goods Out.
-- Vendors -- reachable from Goods In.
+- Customers / Receipts -- reachable from Gd/Srv. Sld.
+- Vendors -- reachable from Gd In.
 - Data -- analytics and charts.
 - Expenses -- money spent.
 - P&L -- Profit & Loss.
