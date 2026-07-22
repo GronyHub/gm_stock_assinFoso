@@ -27,8 +27,16 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   }
 }
 
+// Renaming an item only ever touched the items row itself -- every place
+// that stores its own copy of the name at write time instead of joining
+// live (sales_receipt_lines.resolved_name, bill_lines.resolved_name,
+// stock_counts.item_name) kept showing the old name until something else
+// happened to touch those specific rows, which is why a rename looked
+// "half applied" across the app. Backfilling all three here whenever the
+// name actually changes closes that gap.
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+  const itemId = Number(id)
   const body = await req.json()
   const { item_name, cf_group, selling_rate, purchase_rate, units_per_pack, unit_name, converts_to_item_id } = body
 
@@ -42,10 +50,17 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       units_per_pack      = ${units_per_pack ?? null},
       unit_name           = ${unit_name      ?? null},
       converts_to_item_id = ${converts_to_item_id ?? null}
-    WHERE id = ${Number(id)}
+    WHERE id = ${itemId}
     RETURNING id, canonical_name AS item_name, cf_group, selling_rate, purchase_rate, units_per_pack, unit_name, converts_to_item_id
   `
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  if (item_name) {
+    await sql`UPDATE sales_receipt_lines SET resolved_name = ${item_name} WHERE item_id = ${itemId}`
+    await sql`UPDATE bill_lines SET resolved_name = ${item_name} WHERE item_id = ${itemId}`
+    await sql`UPDATE stock_counts SET item_name = ${item_name} WHERE item_id = ${itemId}`
+  }
+
   return NextResponse.json(row)
 }
 
