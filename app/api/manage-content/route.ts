@@ -33,11 +33,13 @@ A Home button plus three tabs across the top: Grony Cash, Grony Manage, Daily.
 Just the news feed -- announcements, photos, and voice notes. Post a message here to keep everyone informed. Flags live in the role bar at the very bottom of the screen instead (see below), so the feed is always the first thing you see.
 
 ## Grony Cash
-Everything to do with money. Top row: Items, Sales, Bills, Expenses, Data, P&L (owner and Joe only), CAB.
-- Items -- the shop's stock list, with pack-chain loss/gain tracking. Has its own sub-row: Counts, Feed, and 💲 Prices / 🔻 Loss Only / 🔺 Gain Only toggles for the pack-chain detail table.
-- Sales -- every sales receipt (WIC = Walk-In Customer, GMC = Grony Multimedia as Customer, i.e. internal use, not a real sale). Has its own sub-row: Customers, Receipts.
-- Bills -- what the shop has bought from vendors. Has its own sub-row: Vendors.
-- Counts -- physical stock counts (also reachable as a child of Items).
+Everything to do with money. Top row: Items, Expenses, Data, P&L (owner and Joe only), CAB.
+- Items -- the shop's stock list, with pack-chain loss/gain tracking. Has its own sub-row: Counts, Feed, Goods Out, Goods In, Customers, Receipts, Vendors, and 💲 Prices / 🔻 Loss Only / 🔺 Gain Only toggles for the pack-chain detail table.
+- Goods Out (Sales) -- every sales receipt (WIC = Walk-In Customer, GMC = Grony Multimedia as Customer, i.e. internal use, not a real sale).
+- Goods In (Bills) -- what the shop has bought from vendors.
+- Counts -- physical stock counts.
+- Customers / Receipts -- reachable from Goods Out.
+- Vendors -- reachable from Goods In.
 - Data -- analytics and charts.
 - Expenses -- money spent.
 - P&L -- Profit & Loss.

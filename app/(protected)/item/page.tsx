@@ -76,19 +76,23 @@ const OLD_TAB_TO_OUTER: Partial<Record<string, OuterTab>> = {
 // groups/search/New controls row doesn't apply to them.
 const REPORT_VIEWS = new Set<LossView>(['data', 'pl', 'cab', 'vendors', 'customers', 'receipts'])
 
-// Vendors/Customers/Receipts and Counts/Feed aren't top-level sections of
-// their own -- they're views about (or derived from) Bills/Sales/Items, so
-// they nest as a second row under their parent instead of sitting in the
-// main row. Sub-views not listed here have no parent and no children.
+// Sales (Goods Out) and Bills (Goods In), along with their own
+// Customers/Receipts/Vendors views, aren't top-level sections of their own
+// any more -- they all nest as a second row under Items (Goods & Services)
+// instead of sitting in the main row. Sub-views not listed here have no
+// parent and no children.
 const PARENT_OF: Partial<Record<LossView, LossView>> = {
   items: 'items', counts: 'items', feed: 'items',
-  sales: 'sales', customers: 'sales', receipts: 'sales',
-  bills: 'bills', vendors: 'bills',
+  sales: 'items', customers: 'items', receipts: 'items',
+  bills: 'items', vendors: 'items',
 }
 const CHILDREN_OF: Partial<Record<LossView, { key: LossView; label: string }[]>> = {
-  items: [{ key: 'counts', label: 'Counts' }, { key: 'feed', label: 'Feed' }],
-  sales: [{ key: 'customers', label: 'Customers' }, { key: 'receipts', label: 'Receipts' }],
-  bills: [{ key: 'vendors', label: 'Vendors' }],
+  items: [
+    { key: 'counts', label: 'Counts' }, { key: 'feed', label: 'Feed' },
+    { key: 'sales', label: 'Goods Out' }, { key: 'bills', label: 'Goods In' },
+    { key: 'customers', label: 'Customers' }, { key: 'receipts', label: 'Receipts' },
+    { key: 'vendors', label: 'Vendors' },
+  ],
 }
 
 type Item = {
@@ -496,22 +500,22 @@ function ItemHubPageInner() {
             renders while one is open -- avoids two things reading as
             "selected" at once and keeps the panel free of unrelated chrome. */}
         {!openRole && (<>
-        {/* Grony Cash top-level row: Items is the tab's own default view.
-            Highlighted by PARENT_OF so it stays lit up while looking at a
-            child sub-view (e.g. Sales stays active while on Customers).
-            CAB has just one flag type (Unchecked CAB) and no filtered view
-            to switch to, so it gets a plain count badge here instead of a
-            pill row like Items/Sales/Counts/Feed get below. flex-1 + wrap
-            (no shrink-0/whitespace-nowrap/overflow-x-auto) so all of them
-            always fit on one screen without scrolling -- same fix as the
-            top-level Home/Grony Cash/Grony Manage/Daily row, needed here
-            too now that "Goods & Services" is long enough to not fit. */}
+        {/* Grony Cash top-level row: Items is the tab's own default view,
+            and now also the home for Goods Out/Goods In (Sales/Bills) --
+            see CHILDREN_OF. Highlighted by PARENT_OF so it stays lit up
+            while looking at a child sub-view (e.g. Items stays active while
+            on Goods Out or Customers). CAB has just one flag type
+            (Unchecked CAB) and no filtered view to switch to, so it gets a
+            plain count badge here instead of a pill row like Items/Counts/
+            Feed get below. flex-1 + wrap (no shrink-0/whitespace-nowrap/
+            overflow-x-auto) so all of them always fit on one screen without
+            scrolling -- same fix as the top-level Home/Grony Cash/Grony
+            Manage/Daily row, needed here too now that "Goods & Services" is
+            long enough to not fit. */}
         {outerTab === 'loss' && (
           <div className="flex items-stretch gap-1 px-2 py-0.5 bg-white border-t border-gray-100">
             {([
               { key: 'items',    label: 'Goods & Services' },
-              { key: 'sales',    label: 'Goods Out' },
-              { key: 'bills',    label: 'Goods In' },
               { key: 'expenses', label: 'Expenses' },
               { key: 'data',     label: 'Data' },
               ...(canSeePL ? [{ key: 'pl' as LossView, label: 'P&L' }] : []),
