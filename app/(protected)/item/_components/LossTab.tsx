@@ -355,7 +355,14 @@ function SingleServicePackChainTable({
   // dead space, so it drops out entirely and reappears the moment a real
   // gain needs flagging.
   const showPackGain = packGainTotal > 0.001
-  const packColSpan = (showPrices ? 12 : 8) - (showPackGain ? 0 : 1)
+  // The pack itself (e.g. an A4 Brown Env pack) is usually GMC'd internally
+  // rather than sold directly, so its own SP is often genuinely unset --
+  // showing SP/AMOUNT/CP/PROFIT as ₵0.00 in that case is just noise. That
+  // price group only earns its columns once the pack actually has a real
+  // selling price; the singles/service side isn't affected (sheetPrice
+  // always has a non-zero fallback, so it never hits this case).
+  const showPackPrices = showPrices && sp > 0
+  const packColSpan = (showPackPrices ? 12 : 8) - (showPackGain ? 0 : 1)
   const singlesColSpan = showPrices ? 9 : 5
   const totalColSpan = 1 + packColSpan + singlesColSpan + 6 // date + pack + singles + total + WNW + 2 count cols + 2 alias cols
 
@@ -379,7 +386,7 @@ function SingleServicePackChainTable({
         <colgroup>
           <col style={{width:'62px'}} />
           <col style={{width:'22px'}} /><col style={{width:'22px'}} />
-          {showPrices && <><col style={{width:'40px'}} /><col style={{width:'48px'}} /><col style={{width:'36px'}} /><col style={{width:'40px'}} /></>}
+          {showPackPrices && <><col style={{width:'40px'}} /><col style={{width:'48px'}} /><col style={{width:'36px'}} /><col style={{width:'40px'}} /></>}
           <col style={{width:'22px'}} /><col style={{width:'28px'}} /><col style={{width:'34px'}} />
           <col style={{width:'22px'}} />
           {showPackGain && <col style={{width:'24px'}} />}
@@ -426,7 +433,7 @@ function SingleServicePackChainTable({
           <tr className="text-gray-800 font-bold">
             <th className="py-0.5 border-b-2 border-gray-500 text-center border-l-2 border-l-amber-600 bg-amber-400" title="Bought/received">BL</th>
             <th className="py-0.5 border-b-2 border-gray-500 text-center border-l border-amber-300 bg-amber-400" title="Whole packs sold directly to a walk-in customer">WIC</th>
-            {showPrices && <>
+            {showPackPrices && <>
               <th className="py-0.5 border-b-2 border-gray-500 text-center border-l border-amber-300 bg-amber-400" title="Average direct sale price that day">SP</th>
               <th className="py-0.5 border-b-2 border-gray-500 text-center border-l border-amber-300 bg-amber-400" title="Revenue from direct pack sales that day">AMOUNT</th>
               <th className="py-0.5 border-b-2 border-gray-500 text-center border-l border-amber-300 bg-amber-400" title="Purchase cost per pack">CP</th>
@@ -505,7 +512,7 @@ function SingleServicePackChainTable({
                 </td>
                 <td className="text-center py-0.5 font-bold border-l-2 border-l-amber-600 text-blue-600">{blankDash(fmtQs(row.packBl))}</td>
                 <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{blankDash(fmtQs(row.packWic))}</td>
-                {showPrices && <>
+                {showPackPrices && <>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{packWicQty > 0 ? `₵${fmtN(packSpVal)}` : null}</td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{packWicQty > 0 ? `₵${fmtN(packAmount)}` : null}</td>
                   <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-500">₵{fmtN(packCpVal)}</td>
