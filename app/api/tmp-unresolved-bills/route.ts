@@ -20,5 +20,6 @@ export async function GET() {
     SELECT id, canonical_name, product_type, status FROM items
     WHERE canonical_name ILIKE '%unspecified%' OR canonical_name ILIKE '%placeholder%' OR canonical_name ILIKE '%misc%'
   `
-  return NextResponse.json({ count: rows.length, rows, itemsColumns: cols, existingPlaceholders: existing })
+  const sources = await sql`SELECT DISTINCT source, is_legacy, track_inventory, sellable, purchasable FROM items WHERE source != 'zoho_historical' LIMIT 20`
+  return NextResponse.json({ count: rows.length, rows, itemsColumns: cols, existingPlaceholders: existing, nonZohoSources: sources })
 }
