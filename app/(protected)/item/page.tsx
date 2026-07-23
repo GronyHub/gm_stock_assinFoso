@@ -79,17 +79,22 @@ const OLD_TAB_TO_OUTER: Partial<Record<string, OuterTab>> = {
 const REPORT_VIEWS = new Set<LossView>(['pl', 'cab', 'vendors', 'customers', 'receipts'])
 
 // Sales, Bills, and Daily Loss (Feed) are top-level sections of their own,
-// sitting in the main Grony Cash row. Only Counts nests as a second row
-// under Items (Gd/Srv.). Customers/Receipts/Vendors aren't in the main row
-// either -- they're reachable from the account menu (person icon, bottom
-// right) instead. Sub-views not listed here have no parent and no children.
+// sitting in the main Grony Cash row. Counts, Customers/Receipts/Vendors
+// aren't in the main row either -- they're reachable from the account menu
+// (person icon, bottom right) instead, as their own standalone pages.
+// Counts still keeps its 'counts' lossView wired up internally (PARENT_OF
+// entry + the CountsTab render further down) purely for cross-navigation --
+// Joe's "Fix now" flags and the item Loss dialog's "Go to Counts" both land
+// here, and that flow still needs somewhere to land even with no visible nav
+// button pointing at it any more. CHILDREN_OF.items stays present (as an
+// empty array, not removed) so the 💲 Prices/🔻 Loss Only/🔺 Gain Only
+// toggle row -- gated on the same lossChildren check -- keeps rendering.
+// Sub-views not listed here have no parent and no children.
 const PARENT_OF: Partial<Record<LossView, LossView>> = {
   items: 'items', counts: 'items',
 }
 const CHILDREN_OF: Partial<Record<LossView, { key: LossView; label: string }[]>> = {
-  items: [
-    { key: 'counts', label: 'Counts' },
-  ],
+  items: [],
 }
 
 type Item = {
@@ -238,6 +243,7 @@ const HAMBURGER_LINKS = [
   { href: '/customers',    label: 'Customers'        },
   { href: '/receipts',     label: 'Receipts'         },
   { href: '/vendors',      label: 'Vendors'          },
+  { href: '/counts',       label: 'Counts'           },
   { href: '/aliases/wide', label: 'Alias Wide Table' },
   { href: '/matches/wide', label: 'Service Matches'  },
 ]
@@ -570,8 +576,15 @@ function ItemHubPageInner() {
         )}
 
         {/* Children row -- only for sections that have any, and only while
-            that section (or one of its children) is the active view. */}
-        {outerTab === 'loss' && lossChildren && (
+            that section (or one of its children) is the active view.
+            lossChildren can be an empty array (see CHILDREN_OF.items) purely
+            to keep the 💲 Prices/🔻 Loss Only/🔺 Gain Only toggles below
+            alive -- those only render when lossView === 'items', so also
+            require that here, otherwise landing on 'counts' via a Fix Now
+            deep link would show this row as an empty strip with nothing in
+            it (no children left, and the toggles hidden since lossView
+            isn't 'items'). */}
+        {outerTab === 'loss' && lossChildren && (lossChildren.length > 0 || lossView === 'items') && (
           <div className="flex items-center gap-1 px-2 py-0.5 bg-gray-50 border-t border-gray-100 overflow-x-auto">
             {lossChildren.map(c => (
               <button key={c.key} onClick={() => { setLossView(c.key); setAddForm(null); setViolation(null) }}

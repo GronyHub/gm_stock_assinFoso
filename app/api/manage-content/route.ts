@@ -37,12 +37,11 @@ Everything to do with money. Top row: Sales, Bills, Daily Loss, Gd/Srv., Expense
 - Sales -- every sales receipt (WIC = Walk-In Customer, GMC = Grony Multimedia as Customer, i.e. internal use, not a real sale).
 - Bills -- what the shop has bought from vendors.
 - Daily Loss -- loss/gain records feed, with its own trend charts.
-- Gd/Srv. (Goods & Services) -- the shop's stock list, with pack-chain loss/gain tracking. Has its own sub-row: Counts, and 💲 Prices / 🔻 Loss Only / 🔺 Gain Only toggles for the pack-chain detail table.
-- Counts -- physical stock counts.
+- Gd/Srv. (Goods & Services) -- the shop's stock list, with pack-chain loss/gain tracking. Has its own sub-row: 💲 Prices / 🔻 Loss Only / 🔺 Gain Only toggles for the pack-chain detail table.
 - Expenses -- money spent.
 - P&L -- Profit & Loss.
 - CAB -- Cash at Bank reconciliation.
-- Customers, Receipts, and Vendors aren't in this tab any more -- they're one tap away from the account menu (person icon, bottom right) instead.
+- Customers, Receipts, Vendors, and Counts aren't in this tab any more -- they're one tap away from the account menu (person icon, bottom right) instead. Counts isn't a daily-glance destination any more anyway -- the actual daily-count flow is already surfaced via Joe's flags and the Opener's own clock-in step.
 
 ## Data
 Its own top-level tab, after Daily -- analytics and charts across Items, Violations, Loss, Sales, Bills, Counts, Expenses, and Cash.
@@ -77,7 +76,7 @@ A row of four buttons fixed to the bottom of the screen, always visible: Joe, Bi
 
 # The Account Menu
 
-The 👤 button, at the bottom right of the Role Bar (shows who's logged in), holds account-level actions and a few shortcuts: View Portal As (owner and Joe only -- lets you see the app as a specific staff member), Users, Profile, Customers, Receipts, Vendors, and Sign out (plus Personal and Fix Mislinked Sales for owner-level users).
+The 👤 button, at the bottom right of the Role Bar (shows who's logged in), holds account-level actions and a few shortcuts: View Portal As (owner and Joe only -- lets you see the app as a specific staff member), Users, Profile, Customers, Receipts, Vendors, Counts, Alias Wide Table, Service Matches, and Sign out (plus Personal and Fix Mislinked Sales for owner-level users).
 
 # Roles
 
