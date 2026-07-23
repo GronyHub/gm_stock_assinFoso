@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
+import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { usePolling } from '@/lib/usePolling'
 import { isOwnerLevel } from '@/lib/roles'
@@ -9,6 +10,7 @@ type Item = { id: number; item_name: string; cf_group: string | null; product_ty
 
 type CountRecord = {
   id: number
+  item_id: number | null
   item_name: string
   count_date: string
   quantity_counted: string
@@ -598,7 +600,11 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
                 <tr key={r.id} id={`count-${r.id}`}
                   className={`hover:bg-gray-50 transition-colors ${highlightId === r.id ? 'bg-yellow-100' : ''}`}>
                   <td className="px-1 py-1 text-gray-600 whitespace-nowrap border border-black">{fmtShort(r.count_date)}</td>
-                  <td className="px-1 py-1 text-gray-900 font-semibold border border-black">{r.item_name}</td>
+                  <td className="px-1 py-1 text-gray-900 font-semibold border border-black">
+                    {r.item_id ? (
+                      <Link href={`/stock/${r.item_id}`} className="text-blue-600 hover:underline">{r.item_name}</Link>
+                    ) : r.item_name}
+                  </td>
                   <td className="px-1 py-1 text-gray-500 border border-black">{r.cf_group ?? '—'}</td>
                   <td className="px-1 py-1 text-center font-bold text-gray-900 border border-black">{Number(r.quantity_counted)}</td>
                   <td className="px-1 py-1 text-blue-500 border border-black">{r.counted_by ?? '—'}</td>
