@@ -617,7 +617,15 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
       <table className="w-full border-collapse text-[10px]">
         <thead className="sticky top-0 bg-gray-100 z-10">
           <tr>
-            <th className="text-left px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">ITEM</th>
+            <th className="text-left px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">
+              <div className="flex items-center justify-between gap-2">
+                <span>ITEM</span>
+                {/* Standing legend for the two unlabeled figures next to the
+                    customer letter on every receipt bar below (CC, then WNW) --
+                    not a real column, just docked in the wide ITEM header cell. */}
+                <span className="font-semibold text-gray-400">CC · WNW</span>
+              </div>
+            </th>
             <th className="text-right px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">QTY</th>
             <th className="text-right px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">SP</th>
             <th className="text-right px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">TOTAL</th>
@@ -791,16 +799,25 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
                       <span title="Every item sold this day is verified" className="ml-0.5">✅</span>
                     )}
                   </span>
-                  <span className={`flex-1 text-center font-extrabold ${isDayHead ? 'text-white text-base' : 'text-gray-700 text-sm'}`}>
-                    {fmtCust(r.customer_name)}
+                  {/* Middle: customer letter + the unlabeled CC/WNW figures
+                      (see the "CC · WNW" legend docked in the ITEM header
+                      above). Right: the invoice figure, unlabeled -- it's
+                      the same number as the TOTAL column's sum, so it sits
+                      at that side instead of repeating a label for it. */}
+                  <span className="flex-1 flex items-center justify-center gap-2">
+                    <span className={`font-extrabold ${isDayHead ? 'text-white text-base' : 'text-gray-700 text-sm'}`}>
+                      {fmtCust(r.customer_name)}
+                    </span>
+                    {!itemNameMatch && (
+                      <>
+                        <span className={isDayHead ? 'text-blue-100' : 'text-gray-500'}>{fmt(r.cash_counted)}</span>
+                        <span className={`font-semibold ${wnwColor(r.wnw, isDayHead)}`}>{fmt(r.wnw)}</span>
+                      </>
+                    )}
                   </span>
                   <div className="flex items-center gap-2 shrink-0">
                     {!itemNameMatch && (
-                      <>
-                        <span className={isDayHead ? 'text-blue-100' : 'text-gray-500'}>CC {fmt(r.cash_counted)}</span>
-                        <span className={`font-semibold ${isDayHead ? 'text-white' : 'text-gray-900'}`}>Inv {fmt(r.invoice_amount)}</span>
-                        <span className={`font-semibold ${wnwColor(r.wnw, isDayHead)}`}>WNW {fmt(r.wnw)}</span>
-                      </>
+                      <span className={`font-semibold ${isDayHead ? 'text-white' : 'text-gray-900'}`}>{fmt(r.invoice_amount)}</span>
                     )}
                     <button onClick={() => { setMenuOpenId(menuOpenId === r.id ? null : r.id); setConfirmDeleteId(null) }}
                       title="Edit or delete this receipt"
