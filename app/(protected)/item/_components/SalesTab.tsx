@@ -622,6 +622,15 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
         {filtered.map((r, rIdx) => {
           const rLines = linesMap[r.id] ?? []
 
+          // When the search box matches an item name on this receipt, only
+          // show the matching line(s) -- not the whole receipt's items --
+          // and hide the receipt-level CC/INV/WNW totals on those rows,
+          // since they describe the full receipt, not just the searched
+          // item. A search that only matched via customer name or receipt
+          // number (not any item name) still shows the receipt in full.
+          const q = search.trim().toLowerCase()
+          const itemNameMatch = q.length > 0 && rLines.some(l => l.item_name.toLowerCase().includes(q))
+
           // A thicker blue top border marks where one day's receipts end
           // and the next day's begin, so a long list still reads as
           // day-by-day at a glance. No divider above the very first
@@ -761,7 +770,9 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
             )
           }
 
-          const rows: (Line | null)[] = rLines.length === 0 ? [null] : rLines
+          const rows: (Line | null)[] = itemNameMatch
+            ? rLines.filter(l => l.item_name.toLowerCase().includes(q))
+            : (rLines.length === 0 ? [null] : rLines)
           return (
             <Fragment key={r.id}>
             {rows.map((line, i) => (
@@ -788,17 +799,17 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
                 <td className="px-1 py-1 text-right font-semibold text-gray-900 align-top">{line ? fmt(line.item_total) : ''}</td>
                 {i === 0 && (
                   <td rowSpan={rows.length} className="px-1 py-1 text-right text-gray-700 align-top border-l border-gray-100">
-                    {fmt(r.cash_counted)}
+                    {itemNameMatch ? '' : fmt(r.cash_counted)}
                   </td>
                 )}
                 {i === 0 && (
                   <td rowSpan={rows.length} className="px-1 py-1 text-right text-gray-900 font-semibold align-top">
-                    {fmt(r.invoice_amount)}
+                    {itemNameMatch ? '' : fmt(r.invoice_amount)}
                   </td>
                 )}
                 {i === 0 && (
-                  <td rowSpan={rows.length} className={`px-1 py-1 text-right font-semibold align-top ${wnwColor(r.wnw)}`}>
-                    {fmt(r.wnw)}
+                  <td rowSpan={rows.length} className={`px-1 py-1 text-right font-semibold align-top ${itemNameMatch ? '' : wnwColor(r.wnw)}`}>
+                    {itemNameMatch ? '' : fmt(r.wnw)}
                   </td>
                 )}
                 {i === 0 && (
