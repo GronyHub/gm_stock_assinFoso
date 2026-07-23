@@ -591,45 +591,40 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
             + New Receipt
           </Link>
     </div>
-    <div className="flex flex-1 min-h-0">
-      <div className="w-1/2 border-r border-gray-200 overflow-y-auto min-h-0">
-        <table className="w-full border-collapse text-[10px]">
-          <thead className="sticky top-0 bg-gray-100 z-10">
-            <tr>
-              <th className="text-left px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200 whitespace-nowrap">DATE</th>
-              <th className="text-left px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">CST</th>
-              <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">CC</th>
-              <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">INV</th>
-              <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">WNW</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map(r => (
-              <tr key={r.id} onClick={() => jumpTo(r)}
-                className={`cursor-pointer border-b border-gray-100 transition ${selectedId === r.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-                <td className="px-0.5 py-0.5 text-gray-700 whitespace-nowrap">
-                  {fmtShort(r.receipt_date)}
-                  {verifiedDates.has(r.receipt_date?.slice(0, 10)) && (
-                    <span title="Every item sold this day is verified" className="ml-0.5">✅</span>
-                  )}
-                </td>
-                <td className="px-0.5 py-0.5 text-gray-700">{fmtCust(r.customer_name)}</td>
-                <td className="px-0.5 py-0.5 text-right text-gray-700">{fmt(r.cash_counted)}</td>
-                <td className="px-0.5 py-0.5 text-right text-gray-900 font-semibold">{fmt(r.invoice_amount)}</td>
-                <td className={`px-0.5 py-0.5 text-right font-semibold ${wnwColor(r.wnw)}`}>{fmt(r.wnw)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {filtered.length === 0 && <p className="text-[10px] text-gray-400 text-center py-10">No receipts</p>}
-      </div>
-
-      <div className="w-1/2 overflow-y-auto min-h-0 bg-white">
+    <div className="flex-1 overflow-y-auto min-h-0">
+      <table className="w-full border-collapse text-[10px]">
+        <thead className="sticky top-0 bg-gray-100 z-10">
+          <tr>
+            <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200 whitespace-nowrap">DATE</th>
+            <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">CST</th>
+            <th className="text-right px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">CC</th>
+            <th className="text-right px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">INV</th>
+            <th className="text-right px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">WNW</th>
+          </tr>
+        </thead>
+        <tbody>
         {filtered.map(r => {
           const rLines = linesMap[r.id] ?? []
+          const rowOpen = selectedId === r.id
           return (
-            <div key={r.id} id={`receipt-${r.id}`}
-              className={`border-b border-gray-200 transition ${selectedId === r.id ? 'bg-blue-50/40' : ''}`}>
+            <Fragment key={r.id}>
+            <tr id={`receipt-${r.id}`}
+              onClick={() => { if (editingId === r.id) return; setSelectedId(rowOpen ? null : r.id) }}
+              className={`cursor-pointer border-b border-gray-100 transition ${rowOpen ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
+              <td className="px-1 py-1 text-gray-700 whitespace-nowrap">
+                {fmtShort(r.receipt_date)}
+                {verifiedDates.has(r.receipt_date?.slice(0, 10)) && (
+                  <span title="Every item sold this day is verified" className="ml-0.5">✅</span>
+                )}
+              </td>
+              <td className="px-1 py-1 text-gray-700">{fmtCust(r.customer_name)}</td>
+              <td className="px-1 py-1 text-right text-gray-700">{fmt(r.cash_counted)}</td>
+              <td className="px-1 py-1 text-right text-gray-900 font-semibold">{fmt(r.invoice_amount)}</td>
+              <td className={`px-1 py-1 text-right font-semibold ${wnwColor(r.wnw)}`}>{fmt(r.wnw)}</td>
+            </tr>
+            {rowOpen && (
+              <tr className="bg-blue-50/40">
+                <td colSpan={5} className="p-0 border-b border-gray-200 bg-white">
               {editingId === r.id ? (
                 <div className="p-2 space-y-2">
                   <p className="text-[10px] font-bold text-gray-600">Edit Receipt</p>
@@ -838,11 +833,15 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
                   )}
                 </>
               )}
-            </div>
+                </td>
+              </tr>
+            )}
+            </Fragment>
           )
         })}
-        {filtered.length === 0 && <p className="text-[10px] text-gray-400 text-center py-10">No receipts</p>}
-      </div>
+        </tbody>
+      </table>
+      {filtered.length === 0 && <p className="text-[10px] text-gray-400 text-center py-10">No receipts</p>}
     </div>
     </div>
   )
