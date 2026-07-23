@@ -128,9 +128,28 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
         })
       })
     }
-    rows.sort((a, b) => b.billDate.localeCompare(a.billDate) || b.billId - a.billId)
+    // Grouped by date, then vendor, so every line a vendor supplied on a
+    // given day sits together as one contiguous block (needed for the
+    // vendor/day total column, which only labels the first row of a block).
+    rows.sort((a, b) =>
+      b.billDate.localeCompare(a.billDate) ||
+      (a.vendorName ?? '').localeCompare(b.vendorName ?? '') ||
+      b.billId - a.billId
+    )
     return rows
   }, [bills, linesMap])
+
+  // Vendor/day totals are computed from the full, unfiltered set so the sum
+  // always reflects every item bought from that vendor that day -- filtering
+  // (search/group) only changes which rows are visible, not what they add up to.
+  const vendorDayTotals = useMemo(() => {
+    const totals: Record<string, number> = {}
+    for (const r of flatRows) {
+      const key = `${r.billDate}|${r.vendorName ?? ''}`
+      totals[key] = (totals[key] ?? 0) + Number(r.itemTotal)
+    }
+    return totals
+  }, [flatRows])
 
   const groupItemNames = useMemo(() => {
     if (!groupFilter || groupFilter === 'All') return null
@@ -152,6 +171,18 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
     }
     return list
   }, [flatRows, groupItemNames, search])
+
+  // First visible row of each date+vendor block shows the block's total;
+  // the rest show nothing, so the sum reads as "for this whole group" once.
+  const firstInGroupKeys = useMemo(() => {
+    const first = new Set<string>()
+    const seenGroups = new Set<string>()
+    for (const r of filtered) {
+      const groupKey = `${r.billDate}|${r.vendorName ?? ''}`
+      if (!seenGroups.has(groupKey)) { seenGroups.add(groupKey); first.add(r.key) }
+    }
+    return first
+  }, [filtered])
 
   function toggleEdit(row: FlatRow) {
     if (editingKey === row.key) { setEditingKey(null); return }
@@ -228,12 +259,14 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
               <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">COST PRICE</th>
               <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">TOTAL</th>
               <th className="text-left px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">VENDOR</th>
+              <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">VENDOR/DAY TOTAL</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map(row => {
               const isEditing = editingKey === row.key
               const isItemOpen = expandedItemKey === row.key
+              const showGroupTotal = firstInGroupKeys.has(row.key)
               return (
                 <Fragment key={row.key}>
                   <tr id={`billrow-${row.billId}`} onClick={() => toggleEdit(row)}
@@ -253,10 +286,13 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
                     <td className="px-0.5 py-0.5 text-right text-gray-700">{fmt(row.unitPrice)}</td>
                     <td className="px-0.5 py-0.5 text-right font-semibold text-gray-900">{fmt(row.itemTotal)}</td>
                     <td className="px-0.5 py-0.5 text-gray-700 truncate max-w-[100px]">{row.vendorName ?? '—'}</td>
+                    <td className="px-0.5 py-0.5 text-right font-semibold text-gray-900">
+                      {showGroupTotal ? fmt(vendorDayTotals[`${row.billDate}|${row.vendorName ?? ''}`].toFixed(2)) : ''}
+                    </td>
                   </tr>
                   {isEditing && (
                     <tr className="border-b border-gray-200">
-                      <td colSpan={6} className="p-2 bg-white space-y-2">
+                      <td colSpan={7} className="p-2 bg-white space-y-2">
                         <p className="text-[10px] font-bold text-gray-600">Edit Bill · {row.billNumber}</p>
                         <div>
                           <p className="text-[9px] text-gray-400 mb-0.5">Date</p>
@@ -290,7 +326,7 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
                   )}
                   {isItemOpen && row.itemId && (
                     <tr className="border-b border-gray-200">
-                      <td colSpan={6} className="p-0">
+                      <td colSpan={7} className="p-0">
                         <div className="sticky left-0 w-[100vw] max-w-[100vw] max-h-[50vh] overflow-auto bg-blue-50 px-0.5 pb-2 pt-0.5">
                           <ItemDetailDropdown itemId={row.itemId} />
                         </div>
