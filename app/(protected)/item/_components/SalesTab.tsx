@@ -618,7 +618,6 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
         <thead className="sticky top-0 bg-gray-100 z-10">
           <tr>
             <th className="text-left px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">ITEM</th>
-            <th className="text-left px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">C</th>
             <th className="text-right px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">QTY</th>
             <th className="text-right px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">SP</th>
             <th className="text-right px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">TOTAL</th>
@@ -655,7 +654,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
           if (editingId === r.id) {
             return (
               <tr key={r.id} id={`receipt-${r.id}`}>
-                <td colSpan={5} className={`p-0 bg-blue-50/40 border-b border-gray-200 ${isDayHead ? 'border-t-4 border-t-blue-600' : ''}`}>
+                <td colSpan={4} className={`p-0 bg-blue-50/40 border-b border-gray-200 ${isDayHead ? 'border-t-4 border-t-blue-600' : ''}`}>
                 <div className="p-2 space-y-2">
                   <p className="text-[10px] font-bold text-gray-600">Edit Receipt</p>
                   <div className="grid grid-cols-2 gap-1">
@@ -783,14 +782,17 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
           return (
             <Fragment key={r.id}>
             <tr className={isDayHead ? 'bg-blue-600' : 'bg-gray-50'}>
-              <td colSpan={5} id={`receipt-${r.id}`} className={`relative ${isDayHead ? 'px-1.5 py-2' : 'px-1 py-1'}`}
+              <td colSpan={4} id={`receipt-${r.id}`} className={`relative ${isDayHead ? 'px-1.5 py-2' : 'px-1 py-1'}`}
                 ref={menuOpenId === r.id ? menuRef : undefined}>
-                <div className="flex items-center justify-between gap-2">
-                  <span className={isDayHead ? 'text-white font-semibold' : 'text-gray-600 font-medium whitespace-nowrap'}>
+                <div className="flex items-center gap-2">
+                  <span className={`whitespace-nowrap ${isDayHead ? 'text-white font-semibold' : 'text-gray-600 font-medium'}`}>
                     {fmtShort(r.receipt_date)}
                     {verifiedDates.has(r.receipt_date?.slice(0, 10)) && (
                       <span title="Every item sold this day is verified" className="ml-0.5">✅</span>
                     )}
+                  </span>
+                  <span className={`flex-1 text-center font-extrabold ${isDayHead ? 'text-white text-base' : 'text-gray-700 text-sm'}`}>
+                    {fmtCust(r.customer_name)}
                   </span>
                   <div className="flex items-center gap-2 shrink-0">
                     {!itemNameMatch && (
@@ -851,7 +853,6 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
                     ) : line.item_name
                   ) : <span className="text-gray-400 italic">No items</span>}
                 </td>
-                <td className="px-1 py-1 text-gray-700 align-top">{fmtCust(r.customer_name)}</td>
                 <td className="px-1 py-1 text-right text-gray-700 align-top">{line ? (line.quantity ? parseFloat(line.quantity) : '—') : ''}</td>
                 <td className="px-1 py-1 text-right text-gray-700 align-top">{line ? fmt(line.item_price) : ''}</td>
                 <td className="px-1 py-1 text-right font-semibold text-gray-900 align-top">{line ? fmt(line.item_total) : ''}</td>
