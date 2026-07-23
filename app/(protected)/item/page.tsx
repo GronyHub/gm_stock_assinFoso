@@ -136,8 +136,20 @@ const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCategory; d
     description: 'These look like the same product entered twice under slightly different names, which splits one item into two separate sales and stock records. Review each pair and merge or rename them into a single canonical item.',
   },
   {
-    key: 'aliases', label: 'Aliases', category: 'loss',
-    description: "A sale or bill used an item name that did not exactly match anything in the item list, so the system flagged it as unresolved instead of guessing. Confirm the correct match so it counts toward the right item's reports going forward.",
+    key: 'alias_prezoho_sales', label: 'Pre-Zoho Sales', category: 'loss',
+    description: "A pre-Zoho sales receipt used an item name that did not exactly match anything in the item list, so the system flagged it as unresolved instead of guessing. Confirm the correct match so it counts toward the right item's reports going forward.",
+  },
+  {
+    key: 'alias_prezoho_bills', label: 'Pre-Zoho Bills', category: 'loss',
+    description: "A pre-Zoho bill used an item name that did not exactly match anything in the item list, so the system flagged it as unresolved instead of guessing. Confirm the correct match so it counts toward the right item's reports going forward.",
+  },
+  {
+    key: 'alias_flagged', label: 'Flagged', category: 'loss',
+    description: 'An alias is currently resolving lines to an item whose name contradicts it (e.g. a singles name matched to a pack item). Review each one and reassign it to the correct item, or dismiss it if the match is actually fine.',
+  },
+  {
+    key: 'alias_ambiguous', label: 'Ambiguous', category: 'loss',
+    description: 'The same raw item name maps to more than one item in the alias table, so the automatic alias sweep skips it rather than guessing. Pick which item the name really means so future sales/bills resolve to it correctly.',
   },
   {
     key: 'unlinked_named', label: 'Unlinked', category: 'loss',
@@ -198,7 +210,8 @@ const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCategory; d
 // has its own "Times" view for no_staff_times, and Advert for the others.
 const VIOLATION_HOME: Partial<Record<string, LossView>> = {
   neg_soh: 'items', no_sp: 'items', no_cp: 'items', no_group: 'items',
-  duplicates: 'items', aliases: 'items', unlinked_named: 'items', service_violation: 'items',
+  duplicates: 'items', unlinked_named: 'items', service_violation: 'items',
+  alias_prezoho_sales: 'items', alias_prezoho_bills: 'items', alias_flagged: 'items', alias_ambiguous: 'items',
   daily: 'counts', '7day': 'counts', '15day': 'counts',
   gains: 'feed',
   no_cash: 'sales', missing_days: 'sales', cost_price: 'sales', dup_receipt: 'sales',
@@ -210,7 +223,10 @@ const VIOLATION_HOME: Partial<Record<string, LossView>> = {
 // normal view already covers it), so it gets a plain badge on the CAB
 // button instead of a pill (see the submenu row below).
 const LOSSVIEW_PILL_KEYS: Partial<Record<LossView, string[]>> = {
-  items: ['neg_soh', 'no_sp', 'no_cp', 'no_group', 'duplicates', 'aliases', 'unlinked_named', 'service_violation'],
+  items: [
+    'neg_soh', 'no_sp', 'no_cp', 'no_group', 'duplicates', 'unlinked_named', 'service_violation',
+    'alias_prezoho_sales', 'alias_prezoho_bills', 'alias_flagged', 'alias_ambiguous',
+  ],
   counts: ['daily', '7day', '15day'],
   feed: ['gains'],
   sales: ['no_cash', 'missing_days', 'cost_price', 'dup_receipt'],
@@ -221,11 +237,12 @@ const LOSSVIEW_PILL_KEYS: Partial<Record<LossView, string[]>> = {
 // Grony Cash (Items -> children row), so they're repeated here as one-tap
 // shortcuts to their own standalone page. Logs moved into Grony Manage.
 const HAMBURGER_LINKS = [
-  { href: '/users',     label: 'Users'     },
-  { href: '/profile',   label: 'Profile'   },
-  { href: '/customers', label: 'Customers' },
-  { href: '/receipts',  label: 'Receipts'  },
-  { href: '/vendors',   label: 'Vendors'   },
+  { href: '/users',       label: 'Users'            },
+  { href: '/profile',     label: 'Profile'          },
+  { href: '/customers',   label: 'Customers'        },
+  { href: '/receipts',    label: 'Receipts'         },
+  { href: '/vendors',     label: 'Vendors'          },
+  { href: '/aliases/wide', label: 'Alias Wide Table' },
 ]
 
 // Plain text, no icons -- keeps the top nav to a single line so it doesn't
@@ -306,7 +323,10 @@ function ItemHubPageInner() {
   const [globalFlags, setGlobalFlags] = useState<any | null>(null)
   const [pendingCounts, setPendingCounts] = useState<{ daily: number; gmcWeekly: number; overdue: number }>({ daily: 0, gmcWeekly: 0, overdue: 0 })
   const [serviceViolationCount, setServiceViolationCount] = useState(0)
-  const [aliasesPendingCount, setAliasesPendingCount] = useState(0)
+  const [prezohoSalesCount, setPrezohoSalesCount] = useState(0)
+  const [prezohoBillsCount, setPrezohoBillsCount] = useState(0)
+  const [aliasFlaggedCount, setAliasFlaggedCount] = useState(0)
+  const [aliasAmbiguousCount, setAliasAmbiguousCount] = useState(0)
   const [gainsCount, setGainsCount] = useState(0)
 
   function loadBadgeData() {
@@ -334,9 +354,14 @@ function ItemHubPageInner() {
     Promise.all([
       fetch('/api/aliases/unresolved').then(r => r.json()).catch(() => []),
       fetch('/api/aliases/unresolved-bills').then(r => r.json()).catch(() => []),
-    ]).then(([salesRows, billRows]) => {
+      fetch('/api/aliases/audit').then(r => r.json()).catch(() => []),
+      fetch('/api/aliases/ambiguous').then(r => r.json()).catch(() => []),
+    ]).then(([salesRows, billRows, auditRows, ambiguousRows]) => {
       const pending = (arr: any) => Array.isArray(arr) ? arr.filter((r: any) => !r.confirmed).length : 0
-      setAliasesPendingCount(pending(salesRows) + pending(billRows))
+      setPrezohoSalesCount(pending(salesRows))
+      setPrezohoBillsCount(pending(billRows))
+      setAliasFlaggedCount(Array.isArray(auditRows) ? auditRows.length : 0)
+      setAliasAmbiguousCount(Array.isArray(ambiguousRows) ? ambiguousRows.length : 0)
     }).catch(() => {})
   }
 
@@ -355,7 +380,10 @@ function ItemHubPageInner() {
       no_group: f?.noGroup?.length ?? 0,
       duplicates: f?.duplicates?.length ?? 0,
       unlinked_named: f?.unlinkedNamed?.length ?? 0,
-      aliases: aliasesPendingCount,
+      alias_prezoho_sales: prezohoSalesCount,
+      alias_prezoho_bills: prezohoBillsCount,
+      alias_flagged: aliasFlaggedCount,
+      alias_ambiguous: aliasAmbiguousCount,
       no_cash: f?.noCash?.length ?? 0,
       missing_days: f?.missingDays?.length ?? 0,
       cost_price: f?.costGteSell?.length ?? 0,
@@ -368,7 +396,7 @@ function ItemHubPageInner() {
       unchecked_cab: f?.uncheckedCab?.length ?? 0,
       no_staff_times: f?.noStaffTimes?.length ?? 0,
     }
-  }, [items, globalFlags, pendingCounts, serviceViolationCount, aliasesPendingCount, gainsCount])
+  }, [items, globalFlags, pendingCounts, serviceViolationCount, prezohoSalesCount, prezohoBillsCount, aliasFlaggedCount, aliasAmbiguousCount, gainsCount])
 
   // Backs the bottom RoleBar (Joe/Bino/Opener/Closer tabs) -- shared here so
   // it's computed once regardless of which outer tab is showing.
@@ -634,16 +662,18 @@ function ItemHubPageInner() {
         )}
 
         {/* Violation pills for whichever Grony Cash submenu is active --
-            Items/Counts/Feed only (see LOSSVIEW_PILL_KEYS); tapping one
-            swaps the submenu's normal content for its filtered fix view
-            below. Tapping the active pill again clears it. Sales' own pills
-            (no_cash/missing_days/cost_price/dup_receipt) are hidden here --
-            they already surface on Joe's Role Bar panel (see cashViolations
-            in useViolations.ts), so they'd just be a duplicate row on this
-            screen. pillKeys itself stays wired for 'sales' though (not
-            removed from LOSSVIEW_PILL_KEYS), since Joe's panel "Fix now"
-            still jumps here with a violation preselected and relies on it. */}
-        {outerTab === 'loss' && pillKeys && lossView !== 'sales' && (
+            Counts/Feed only now (see LOSSVIEW_PILL_KEYS); tapping one swaps
+            the submenu's normal content for its filtered fix view below.
+            Tapping the active pill again clears it. Items' and Sales' own
+            pills are hidden here -- every one of their violation types
+            already surfaces as its own row on Joe's Role Bar panel (see
+            cashViolations in useViolations.ts) and fixes inline there
+            (RoleFlagsTable + ViolationFixPanel), so a pill row here would
+            just be a duplicate, dead-end entry point. pillKeys itself stays
+            wired for both (not removed from LOSSVIEW_PILL_KEYS) since the
+            filtered-view logic below still keys off it if `violation` is
+            ever set some other way (e.g. a stored URL param). */}
+        {outerTab === 'loss' && pillKeys && lossView !== 'sales' && lossView !== 'items' && (
           <div className="flex items-center gap-1 px-2 py-1 bg-red-50 border-t border-red-100 overflow-x-auto">
             {ERROR_VIOLATIONS.filter(v => pillKeys.includes(v.key)).map(v => {
               const c = violationCounts[v.key] ?? 0
@@ -684,6 +714,8 @@ function ItemHubPageInner() {
             missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
             onOpenManage={() => changeTab('manage')}
             onClose={() => setOpenRole(null)}
+            items={items}
+            onItemsChanged={setItems}
           />
         ) : (<>
         {addForm === 'sale'    && outerTab === 'loss' && lossView === 'sales'    && <div className="px-4"><NewSaleForm    onSuccess={() => setAddForm(null)} /></div>}

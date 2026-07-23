@@ -5,6 +5,18 @@ import { LossSummaryTable } from './LossSummaryTable'
 import type { Violation } from './useViolations'
 import type { RoleKey } from './RoleBar'
 
+type Item = {
+  id: number
+  item_name: string
+  cf_group: string | null
+  selling_rate: string | null
+  purchase_rate: string | null
+  units_per_pack: string | null
+  unit_name: string | null
+  product_type: string
+  calculated_soh: number
+}
+
 type Props = {
   role: RoleKey
   cashViolations: Violation[]
@@ -19,6 +31,8 @@ type Props = {
   missingClosingReportsCount: number
   onOpenManage: () => void
   onClose: () => void
+  items: Item[]
+  onItemsChanged: (items: Item[]) => void
 }
 
 // Whichever Role Bar tab is open, its flagged items fill the content area
@@ -27,7 +41,7 @@ type Props = {
 // there's a plain Close button instead of a small ×.
 export default function RolePanel({
   role, cashViolations, manageViolations, openerViolations, assignments, deadlines, assignedBy, assignedOn, vSettings,
-  onGoToViolation, missingClosingReportsCount, onOpenManage, onClose,
+  onGoToViolation, missingClosingReportsCount, onOpenManage, onClose, items, onItemsChanged,
 }: Props) {
   const [today, setToday] = useState<{ opener: string | null; openerConfirmed: boolean | null }>({ opener: null, openerConfirmed: null })
   useEffect(() => {
@@ -111,9 +125,12 @@ export default function RolePanel({
             {lossSummary && (
               <LossSummaryTable summary={lossSummary} onFixNow={() => { onClose(); onGoToViolation('__loss_feed') }} />
             )}
+            {/* Joe fixes violations inline here -- each row drops down to its
+                own fix view (reused from whichever tab normally renders it)
+                instead of navigating away, so the panel stays open. */}
             <RoleFlagsTable violations={cashViolations} assignments={assignments} deadlines={deadlines}
               assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
-              onGoToViolation={key => { onClose(); onGoToViolation(key) }} />
+              items={items} onItemsChanged={onItemsChanged} />
           </>
         )}
         {role === 'bino' && (

@@ -21,7 +21,10 @@ export const SHORT_LABEL: Record<string, string> = {
   unchecked_cab: 'Cash at Bank',
   no_group: 'Item Groups',
   duplicates: 'Duplicate Items',
-  not_in_inventory: 'Alias Confirmations',
+  alias_prezoho_sales: 'Pre-Zoho Sales Aliases',
+  alias_prezoho_bills: 'Pre-Zoho Bills Aliases',
+  alias_flagged: 'Flagged Aliases',
+  alias_ambiguous: 'Ambiguous Aliases',
   dup_receipts: 'Duplicate Receipts',
   daily: 'Daily Counts',
   '7day': '7-Day Counts',
@@ -54,7 +57,8 @@ const MANAGE_TYPES = new Set([
 const OPENER_TYPES = new Set(['daily'])
 
 const ALL_ERROR_TYPES = [
-  'neg_soh', 'no_sp', 'no_cp', 'no_group', 'duplicates', 'not_in_inventory',
+  'neg_soh', 'no_sp', 'no_cp', 'no_group', 'duplicates',
+  'alias_prezoho_sales', 'alias_prezoho_bills', 'alias_flagged', 'alias_ambiguous',
   'unlinked_named', 'service_violation', 'gains', 'daily', '7day', '15day',
   'no_cash', 'missing_days', 'cost_gte_sell', 'dup_receipts',
   'unchecked_cab', 'no_staff_times', 'no_advert', 'jingle_overdue', 'equipment_check_overdue',
@@ -72,7 +76,6 @@ export const ERRORS_TAB_VIOLATION: Record<string, string> = {
   unchecked_cab: 'unchecked_cab',
   no_group: 'no_group',
   duplicates: 'duplicates',
-  not_in_inventory: 'aliases',
   dup_receipts: 'dup_receipt',
 }
 
@@ -148,11 +151,27 @@ export function useViolations(counts?: Record<string, number>) {
       count: flags.duplicates.length, days: null,
     })
     {
-      const aliasCount = counts?.['aliases'] ?? flags.notInInventory?.length ?? 0
-      if (aliasCount > 0) list.push({
-        type: 'not_in_inventory',
-        label: 'item name' + (aliasCount !== 1 ? 's' : '') + ' awaiting alias confirmation',
-        count: aliasCount, days: null,
+      const c = counts ?? {}
+      const s = (n: number) => n !== 1 ? 's' : ''
+      if (c['alias_prezoho_sales'] > 0) list.push({
+        type: 'alias_prezoho_sales',
+        label: `Pre-Zoho sales name${s(c['alias_prezoho_sales'])} awaiting alias confirmation`,
+        count: c['alias_prezoho_sales'], days: null,
+      })
+      if (c['alias_prezoho_bills'] > 0) list.push({
+        type: 'alias_prezoho_bills',
+        label: `Pre-Zoho bill name${s(c['alias_prezoho_bills'])} awaiting alias confirmation`,
+        count: c['alias_prezoho_bills'], days: null,
+      })
+      if (c['alias_flagged'] > 0) list.push({
+        type: 'alias_flagged',
+        label: `alias${s(c['alias_flagged'])} flagged as a likely mismatch`,
+        count: c['alias_flagged'], days: null,
+      })
+      if (c['alias_ambiguous'] > 0) list.push({
+        type: 'alias_ambiguous',
+        label: `alias name${s(c['alias_ambiguous'])} mapping to more than one item`,
+        count: c['alias_ambiguous'], days: null,
       })
     }
     if (flags.dupReceipts?.length) list.push({

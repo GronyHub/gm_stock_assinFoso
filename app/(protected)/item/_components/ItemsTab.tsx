@@ -5,6 +5,17 @@ import { usePolling } from '@/lib/usePolling'
 import { usePresenceReporter } from '@/lib/usePresenceReporter'
 import AliasesTab from './AliasesTab'
 
+// The Aliases pill was split into 4 individual violation types (each with
+// its own count on Joe's Role Bar panel) instead of one combined "Aliases"
+// row -- this maps a "Fix now" click on any of the four back to which
+// AliasesTab sub-tab it should open on.
+const ALIAS_VIOLATION_TAB: Record<string, string> = {
+  alias_prezoho_sales: 'prezoho-sales',
+  alias_prezoho_bills: 'prezoho-bills',
+  alias_flagged: 'flagged',
+  alias_ambiguous: 'ambiguous',
+}
+
 type Item = {
   id: number
   item_name: string
@@ -722,10 +733,11 @@ export default function ItemsTab({ items, group, productType, search, violation,
     )
   }
 
-  if (violation === 'aliases') {
+  const aliasDefaultTab = violation ? ALIAS_VIOLATION_TAB[violation] : undefined
+  if (aliasDefaultTab) {
     return (
       <div className="h-full min-h-0 flex flex-col">
-        <AliasesTab />
+        <AliasesTab defaultTab={aliasDefaultTab} />
       </div>
     )
   }
