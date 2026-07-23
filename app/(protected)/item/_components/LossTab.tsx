@@ -1829,7 +1829,6 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
       <col style={{width:'56px'}} />
       <col style={{width:'50px'}} />
       <col style={{width:'18px'}} />
-      <col style={{width:'220px'}} />
       <col style={{width:'50px'}} />
     </colgroup>
   )
@@ -1870,10 +1869,6 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
           {row.product_type === 'service' ? 'Service' : 'Good'}
         </td>
         <td className="text-center py-0.5 font-bold text-gray-400 border border-black">{isOpen ? '▾' : '▸'}</td>
-        <td className="pl-1.5 py-0.5 font-bold text-gray-500 truncate overflow-hidden border border-black"
-          title={(matchRecords[row.item_name.trim().toLowerCase()] ?? []).map(m => m.name).join(', ')}>
-          {(matchRecords[row.item_name.trim().toLowerCase()] ?? []).map(m => m.name).join(', ') || '—'}
-        </td>
         <td className="text-center py-0.5 border border-black">
           <button
             onClick={e => { e.stopPropagation(); setExpandedId(row.item_id); setEditTriggerId(row.item_id) }}
@@ -1891,7 +1886,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
               The cell itself has no background of its own, so whatever part of it
               sits past the sticky content just blends into the page instead of
               showing as a visible bar. */}
-          <td colSpan={15} className="p-0 border border-black">
+          <td colSpan={14} className="p-0 border border-black">
             {/* Was calc(100vw - 2rem) -- a leftover assumption of 2rem of
                 horizontal page padding that doesn't actually exist anywhere
                 in this layout (the scroll container above and the page
@@ -1946,13 +1941,12 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
               <SortTh label="Group" col="cf_group" {...thProps} cls="text-center" />
               <SortTh label="Type" col="product_type" {...thProps} cls="text-center" />
               <th className={`${thBase} text-center text-gray-400`}>▸</th>
-              <th className={`${thBase} text-left pl-1.5`}>Matches</th>
               <th className={`${thBase} text-center`}>Edit</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && (
-              <tr><td colSpan={15} className="py-10 text-center text-gray-400 text-[9px]">No items</td></tr>
+              <tr><td colSpan={14} className="py-10 text-center text-gray-400 text-[9px]">No items</td></tr>
             )}
             {filtered.map(renderRow)}
           </tbody>
