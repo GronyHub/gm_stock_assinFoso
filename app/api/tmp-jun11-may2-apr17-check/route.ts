@@ -20,5 +20,7 @@ export async function GET() {
     SELECT id, canonical_name, status FROM items
     WHERE canonical_name ILIKE '%paper cutter%' OR canonical_name ILIKE '%glue%'
   `
-  return NextResponse.json({ ...result, candidateItems })
+  const maxEntry = await sql`SELECT MAX(entry_number::int) AS max FROM expenses WHERE entry_number ~ '^[0-9]+$'`
+  const sampleExpense = await sql`SELECT * FROM expenses WHERE source = 'bill_migration' ORDER BY id DESC LIMIT 2`
+  return NextResponse.json({ ...result, candidateItems, maxEntry: maxEntry[0], sampleExpense })
 }
