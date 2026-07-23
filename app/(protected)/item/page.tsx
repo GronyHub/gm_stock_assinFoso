@@ -616,7 +616,7 @@ function ItemHubPageInner() {
 
             {/* Search */}
             <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search…"
+              placeholder="Search…" autoComplete="off"
               className="min-w-0 w-24 flex-1 text-xs bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
 
             {/* New button — Items/Sales/Bills/Expenses/PO submenus only; report-style and Counts submenus have no add-form */}

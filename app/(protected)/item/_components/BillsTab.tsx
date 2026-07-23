@@ -301,7 +301,7 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
                         </div>
                         <div>
                           <p className="text-[9px] text-gray-400 mb-0.5">Vendor</p>
-                          <input value={editForm.vendor_name}
+                          <input value={editForm.vendor_name} autoComplete="off"
                             onChange={e => setEditForm(f => ({ ...f, vendor_name: e.target.value }))} className={inputCls} />
                         </div>
                         <div>
