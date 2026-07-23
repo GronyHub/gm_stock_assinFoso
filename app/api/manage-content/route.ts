@@ -33,10 +33,11 @@ A Home button plus four tabs across the top: Grony Cash, Grony Manage, Daily, Da
 Just the news feed -- announcements, photos, and voice notes. Post a message here to keep everyone informed. Flags live in the role bar at the very bottom of the screen instead (see below), so the feed is always the first thing you see.
 
 ## Grony Cash
-Everything to do with money. Top row: Gd/Srv., Expenses, P&L (owner and Joe only), CAB.
+Everything to do with money. Top row: Gd/Srv., Expenses, PO, P&L (owner and Joe only), CAB.
 - Gd/Srv. (Goods & Services) -- the shop's stock list, with pack-chain loss/gain tracking. Has its own sub-row: Counts, Feed, Gd/Srv. Sld, Gd In, and 💲 Prices / 🔻 Loss Only / 🔺 Gain Only toggles for the pack-chain detail table.
 - Gd/Srv. Sld (Sales) -- every sales receipt (WIC = Walk-In Customer, GMC = Grony Multimedia as Customer, i.e. internal use, not a real sale).
 - Gd In (Bills) -- what the shop has bought from vendors.
+- PO (Purchase Orders) -- a request sent to a vendor for goods not yet received, separate from a Bill (which records a purchase already made). Draft it, Send it, then Receive Items against it as deliveries actually arrive -- partial deliveries are fine, each "Receive Items" batch creates a real Bill for exactly what showed up that time, so a PO can be received across several dates before every line is fully accounted for. Cancel a draft or sent PO any time before it's fully received; a draft with nothing received yet can also be deleted outright.
 - Counts -- physical stock counts.
 - Expenses -- money spent.
 - P&L -- Profit & Loss.
