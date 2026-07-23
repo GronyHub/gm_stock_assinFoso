@@ -25,6 +25,7 @@ type BillLine = {
   unit_price: string
   item_total: string
   usage_unit: string | null
+  unresolved: boolean
 }
 
 const MONTHS = ['Ja','Fe','Mr','Ap','My','Ju','Jl','Au','Se','Oc','No','De']
@@ -52,7 +53,7 @@ type Props = {
 export default function BillsTab({ items, groupFilter, search }: Props) {
   const [bills, setBills] = useState<Bill[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [expandedId, setExpandedId] = useState<number | null>(null)
   const [showHistory, setShowHistory] = useState(false)
   const [linesMap, setLinesMap] = useState<Record<number, BillLine[]>>({})
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -105,9 +106,13 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
     return list
   }, [bills, linesMap, groupItemNames, search])
 
-  function jumpTo(bill: Bill) {
-    setSelectedId(bill.id)
-    document.getElementById(`bill-${bill.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  function errorCount(billId: number) {
+    return (linesMap[billId] ?? []).filter(l => l.item_id == null || l.unresolved).length
+  }
+
+  function toggleExpand(bill: Bill) {
+    setExpandedId(id => id === bill.id ? null : bill.id)
+    setEditingId(null)
   }
 
   function startEdit(b: Bill) {
@@ -154,7 +159,10 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
           target = bills.find(b => b.bill_number === addMatch[1])
         }
         setShowHistory(false)
-        if (target) setTimeout(() => jumpTo(target!), 50)
+        if (target) {
+          setExpandedId(target.id)
+          setTimeout(() => document.getElementById(`bill-${target!.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+        }
       }} />
     </div>
   )
@@ -171,138 +179,146 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
           + New Bill
         </Link>
       </div>
-      <div className="flex flex-1 min-h-0">
-      <div className="w-1/2 border-r border-gray-200 overflow-y-auto min-h-0">
+      <div className="flex-1 overflow-y-auto min-h-0">
         <table className="w-full border-collapse text-[10px]">
-          <thead className="sticky top-8 bg-gray-100 z-10">
+          <thead className="sticky top-0 bg-gray-100 z-10">
             <tr>
               <th className="text-left px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">DATE</th>
               <th className="text-left px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">VENDOR</th>
               <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">AMT</th>
+              <th className="text-center px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">ERRORS</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map(b => (
-              <tr key={b.id} onClick={() => jumpTo(b)}
-                className={`cursor-pointer border-b border-gray-100 transition ${selectedId === b.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-                <td className="px-0.5 py-0.5 text-gray-700 whitespace-nowrap">{fmtShort(b.bill_date)}</td>
-                <td className="px-0.5 py-0.5 text-gray-700 truncate max-w-[70px]">{b.vendor_name ?? '—'}</td>
-                <td className="px-0.5 py-0.5 text-right text-gray-900 font-semibold">{fmt(b.total)}</td>
-              </tr>
-            ))}
+            {filtered.map(b => {
+              const errs = errorCount(b.id)
+              const isOpen = expandedId === b.id
+              const billLines = linesMap[b.id] ?? []
+              return (
+                <Fragment key={b.id}>
+                  <tr id={`bill-${b.id}`} onClick={() => toggleExpand(b)}
+                    className={`cursor-pointer border-b border-gray-100 transition ${isOpen ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
+                    <td className="px-0.5 py-0.5 text-gray-700 whitespace-nowrap">{fmtShort(b.bill_date)}</td>
+                    <td className="px-0.5 py-0.5 text-gray-700 truncate max-w-[70px]">{b.vendor_name ?? '—'}</td>
+                    <td className="px-0.5 py-0.5 text-right text-gray-900 font-semibold">{fmt(b.total)}</td>
+                    <td className="px-0.5 py-0.5 text-center">
+                      {errs > 0
+                        ? <span className="inline-block text-[9px] font-bold text-white bg-red-500 rounded-full px-1.5">{errs}</span>
+                        : <span className="text-gray-300">—</span>}
+                    </td>
+                  </tr>
+                  {isOpen && (
+                    <tr className="border-b border-gray-200">
+                      <td colSpan={4} className="p-0 bg-white">
+                        {editingId === b.id ? (
+                          <div className="p-2 space-y-2">
+                            <p className="text-[10px] font-bold text-gray-600">Edit Bill</p>
+                            <div>
+                              <p className="text-[9px] text-gray-400 mb-0.5">Date</p>
+                              <input type="date" value={editForm.bill_date}
+                                onChange={e => setEditForm(f => ({ ...f, bill_date: e.target.value }))} className={inputCls} />
+                            </div>
+                            <div>
+                              <p className="text-[9px] text-gray-400 mb-0.5">Vendor</p>
+                              <input value={editForm.vendor_name}
+                                onChange={e => setEditForm(f => ({ ...f, vendor_name: e.target.value }))} className={inputCls} />
+                            </div>
+                            <div>
+                              <p className="text-[9px] text-gray-400 mb-0.5">Status</p>
+                              <select value={editForm.status}
+                                onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))} className={inputCls}>
+                                <option value="paid">Paid</option>
+                                <option value="open">Open</option>
+                                <option value="overdue">Overdue</option>
+                              </select>
+                            </div>
+                            <div className="flex gap-1">
+                              <button onClick={saveEdit} disabled={saving}
+                                className="flex-1 bg-green-600 text-white text-[10px] font-bold rounded py-1 disabled:opacity-40">
+                                {saving ? 'Saving…' : 'Save'}
+                              </button>
+                              <button onClick={() => setEditingId(null)}
+                                className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-center justify-between px-2 py-1 bg-gray-50 border-b border-gray-200">
+                              <div>
+                                <p className="text-[10px] font-bold text-gray-900">{b.vendor_name ?? 'Unknown'}</p>
+                                <p className="text-[9px] text-gray-400">{fmtShort(b.bill_date)} · {b.bill_number}</p>
+                              </div>
+                              <button onClick={() => startEdit(b)}
+                                className="text-[9px] text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100">
+                                Edit
+                              </button>
+                            </div>
+                            {billLines.length === 0 ? (
+                              <p className="text-[10px] text-gray-400 text-center py-4">No items.</p>
+                            ) : (
+                              <table className="w-full border-collapse text-[10px]">
+                                <thead>
+                                  <tr>
+                                    <th className="text-left px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">item</th>
+                                    <th className="text-right px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">qty</th>
+                                    <th className="text-right px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">price</th>
+                                    <th className="text-right px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">total</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {billLines.map((l, i) => {
+                                    const key = `${b.id}:${i}`
+                                    const lineOpen = expandedLineKey === key
+                                    const lineError = l.item_id == null || l.unresolved
+                                    return (
+                                    <Fragment key={i}>
+                                      <tr className={`border-b border-gray-100 ${lineError ? 'bg-red-50' : ''}`}>
+                                        <td className="px-1.5 py-0.5 text-gray-900">
+                                          {l.item_id ? (
+                                            <button onClick={() => setExpandedLineKey(lineOpen ? null : key)}
+                                              className="text-left text-blue-600 hover:underline">
+                                              {l.item_name}
+                                            </button>
+                                          ) : (
+                                            <span className="text-red-600">{l.item_name}</span>
+                                          )}
+                                        </td>
+                                        <td className="px-1.5 py-0.5 text-right text-gray-700">{parseFloat(l.quantity)}</td>
+                                        <td className="px-1.5 py-0.5 text-right text-gray-700">{fmt(l.unit_price)}</td>
+                                        <td className="px-1.5 py-0.5 text-right font-semibold text-gray-900">{fmt(l.item_total)}</td>
+                                      </tr>
+                                      {lineOpen && l.item_id && (
+                                        <tr>
+                                          <td colSpan={4} className="p-0 border-b border-gray-100">
+                                            <div className="sticky left-0 w-[100vw] max-w-[100vw] max-h-[50vh] overflow-auto bg-blue-50 px-0.5 pb-2 pt-0.5">
+                                              <ItemDetailDropdown itemId={l.item_id} />
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      )}
+                                    </Fragment>
+                                    )
+                                  })}
+                                </tbody>
+                                <tfoot>
+                                  <tr className="border-t border-gray-200 bg-gray-50">
+                                    <td colSpan={3} className="px-1.5 py-1 text-right font-bold text-gray-600">Total</td>
+                                    <td className="px-1.5 py-1 text-right font-bold text-gray-900">{fmt(b.total)}</td>
+                                  </tr>
+                                </tfoot>
+                              </table>
+                            )}
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              )
+            })}
           </tbody>
         </table>
         {filtered.length === 0 && <p className="text-[10px] text-gray-400 text-center py-10">No bills</p>}
-      </div>
-
-      <div className="w-1/2 overflow-y-auto min-h-0 bg-white">
-        {filtered.map(b => {
-          const billLines = linesMap[b.id] ?? []
-          return (
-            <div key={b.id} id={`bill-${b.id}`}
-              className={`border-b border-gray-200 transition ${selectedId === b.id ? 'bg-blue-50/40' : ''}`}>
-              {editingId === b.id ? (
-                <div className="p-2 space-y-2">
-                  <p className="text-[10px] font-bold text-gray-600">Edit Bill</p>
-                  <div>
-                    <p className="text-[9px] text-gray-400 mb-0.5">Date</p>
-                    <input type="date" value={editForm.bill_date}
-                      onChange={e => setEditForm(f => ({ ...f, bill_date: e.target.value }))} className={inputCls} />
-                  </div>
-                  <div>
-                    <p className="text-[9px] text-gray-400 mb-0.5">Vendor</p>
-                    <input value={editForm.vendor_name}
-                      onChange={e => setEditForm(f => ({ ...f, vendor_name: e.target.value }))} className={inputCls} />
-                  </div>
-                  <div>
-                    <p className="text-[9px] text-gray-400 mb-0.5">Status</p>
-                    <select value={editForm.status}
-                      onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))} className={inputCls}>
-                      <option value="paid">Paid</option>
-                      <option value="open">Open</option>
-                      <option value="overdue">Overdue</option>
-                    </select>
-                  </div>
-                  <div className="flex gap-1">
-                    <button onClick={saveEdit} disabled={saving}
-                      className="flex-1 bg-green-600 text-white text-[10px] font-bold rounded py-1 disabled:opacity-40">
-                      {saving ? 'Saving…' : 'Save'}
-                    </button>
-                    <button onClick={() => setEditingId(null)}
-                      className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-center justify-between px-2 py-1 bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
-                    <div>
-                      <p className="text-[10px] font-bold text-gray-900">{b.vendor_name ?? 'Unknown'}</p>
-                      <p className="text-[9px] text-gray-400">{fmtShort(b.bill_date)} · {b.bill_number}</p>
-                    </div>
-                    <button onClick={() => startEdit(b)}
-                      className="text-[9px] text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100">
-                      Edit
-                    </button>
-                  </div>
-                  {billLines.length === 0 ? (
-                    <p className="text-[10px] text-gray-400 text-center py-4">No items.</p>
-                  ) : (
-                    <table className="w-full border-collapse text-[10px]">
-                      <thead>
-                        <tr>
-                          <th className="text-left px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">item</th>
-                          <th className="text-right px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">qty</th>
-                          <th className="text-right px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">price</th>
-                          <th className="text-right px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {billLines.map((l, i) => {
-                          const key = `${b.id}:${i}`
-                          const isOpen = expandedLineKey === key
-                          return (
-                          <Fragment key={i}>
-                            <tr className="border-b border-gray-100">
-                              <td className="px-1.5 py-0.5 text-gray-900">
-                                {l.item_id ? (
-                                  <button onClick={() => setExpandedLineKey(isOpen ? null : key)}
-                                    className="text-left text-blue-600 hover:underline">
-                                    {l.item_name}
-                                  </button>
-                                ) : l.item_name}
-                              </td>
-                              <td className="px-1.5 py-0.5 text-right text-gray-700">{parseFloat(l.quantity)}</td>
-                              <td className="px-1.5 py-0.5 text-right text-gray-700">{fmt(l.unit_price)}</td>
-                              <td className="px-1.5 py-0.5 text-right font-semibold text-gray-900">{fmt(l.item_total)}</td>
-                            </tr>
-                            {isOpen && l.item_id && (
-                              <tr>
-                                <td colSpan={4} className="p-0 border-b border-gray-100">
-                                  <div className="sticky left-0 w-[100vw] max-w-[100vw] max-h-[50vh] overflow-auto bg-blue-50 px-0.5 pb-2 pt-0.5">
-                                    <ItemDetailDropdown itemId={l.item_id} />
-                                  </div>
-                                </td>
-                              </tr>
-                            )}
-                          </Fragment>
-                          )
-                        })}
-                      </tbody>
-                      <tfoot>
-                        <tr className="border-t border-gray-200 bg-gray-50">
-                          <td colSpan={3} className="px-1.5 py-1 text-right font-bold text-gray-600">Total</td>
-                          <td className="px-1.5 py-1 text-right font-bold text-gray-900">{fmt(b.total)}</td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  )}
-                </>
-              )}
-            </div>
-          )
-        })}
-        {filtered.length === 0 && <p className="text-[10px] text-gray-400 text-center py-10">No bills</p>}
-      </div>
       </div>
     </div>
   )

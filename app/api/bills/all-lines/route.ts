@@ -10,7 +10,8 @@ export async function GET() {
       quantity,
       unit_price,
       item_total,
-      usage_unit
+      usage_unit,
+      COALESCE(unresolved, false) AS unresolved
     FROM bill_lines
     ORDER BY bill_id, id
   `
