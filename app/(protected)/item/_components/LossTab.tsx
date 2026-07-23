@@ -1111,7 +1111,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   const sp = parseFloat(item.sp ?? '0') || 0
   const totalLoss = computed ? parseFloat(computed.reduce((s, r) => s + (r.loss ?? 0), 0).toFixed(4)) : 0
   const totalCost = parseFloat((totalLoss * sp).toFixed(2))
-  const lgCls = `text-center font-bold border-l border-gray-300 py-0.5 ${totalLoss > 0 ? 'text-red-600' : totalLoss < 0 ? 'text-green-600' : 'text-gray-400'}`
+  const lgCls = `px-3 py-2 text-right ${totalLoss > 0 ? 'text-red-500' : totalLoss < 0 ? 'text-green-600' : 'text-gray-400'}`
 
   // When 2+ services independently draw on this item's stock, show each one as its own
   // column (instead of one combined "Used" number) so they can be told apart.
@@ -1119,8 +1119,6 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
     ? Array.from(new Set(computed.flatMap(r => (r.wic_breakdown ?? []).map(b => b.name)))).sort()
     : []
   const showBreakdown = breakdownNames.length >= 2
-  const breakdownColW = showBreakdown ? Math.max(4, Math.min(6, Math.floor(14 / breakdownNames.length))) : 0
-  const aliasW = 100 - 71 - breakdownColW * breakdownNames.length
 
   const targetComputed = targetDayRows ? computeRows(targetDayRows) : null
   const targetName = allItems.find(a => a.item_id === item.converts_to_item_id)?.item_name ?? 'target item'
@@ -1492,94 +1490,78 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
       ) : computed!.length === 0 ? (
         <p className="text-[9px] text-gray-400 text-center py-3">No activity.</p>
       ) : showBreakdown ? (
-        <table className="w-full table-fixed border-collapse text-[8px]">
-          <colgroup>
-            <col style={{width:'11%'}} />
-            <col style={{width:'6%'}} />
-            <col style={{width:'6%'}} />
-            <col style={{width:'7%'}} />
-            {breakdownNames.map(n => <col key={n} style={{width:`${breakdownColW}%`}} />)}
-            <col style={{width:'7%'}} />
-            <col style={{width:'6%'}} />
-            <col style={{width:'6%'}} />
-            <col style={{width:'7%'}} />
-            <col style={{width:'5%'}} />
-            <col style={{width:'5%'}} />
-            <col style={{width:'5%'}} />
-            <col style={{width:`${aliasW}%`}} />
-          </colgroup>
+        <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-xs">
           <thead>
-            <tr className="bg-amber-400 text-gray-800 font-bold">
-              <th className="py-0.5 border-b-2 border-gray-400 text-left pl-1">DATE</th>
-              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Physical count taken that day">CNT</th>
-              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Converted in from another item's GMC take">CNV</th>
-              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400 bg-black text-white"
-                title="Available = previous stock + bills received + converted in">AVAIL</th>
+            <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide border-b border-gray-200">
+              <th className="px-3 py-2 text-left whitespace-nowrap">Date</th>
+              <th className="px-3 py-2 text-right" title="Physical count taken that day">Cnt</th>
+              <th className="px-3 py-2 text-right" title="Converted in from another item's GMC take">CNV</th>
+              <th className="px-3 py-2 text-right text-blue-500" title="Available = previous stock + bills received + converted in">Avail</th>
               {breakdownNames.map(n => (
-                <th key={n} title={n} className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">
+                <th key={n} title={n} className="px-3 py-2 text-right">
                   {shortSourceName(n)}
                 </th>
               ))}
-              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400 bg-black text-white"
-                title="Used = sold/consumed that day">USED</th>
-              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Expected = Available − Used">EXP</th>
-              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Count Loss = Expected − actual count (only on count days)">LOSS</th>
-              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Loss valued at selling price">₵</th>
-              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Direct GMC (internal use) on this item itself">GMC</th>
-              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Average direct sale price that day">SP</th>
-              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Direct bills/purchases received">BL</th>
-              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">ALIAS</th>
+              <th className="px-3 py-2 text-right text-blue-500" title="Used = sold/consumed that day">Used</th>
+              <th className="px-3 py-2 text-right" title="Expected = Available − Used">Exp</th>
+              <th className="px-3 py-2 text-right" title="Count Loss = Expected − actual count (only on count days)">Loss</th>
+              <th className="px-3 py-2 text-right" title="Loss valued at selling price">₵</th>
+              <th className="px-3 py-2 text-right" title="Direct GMC (internal use) on this item itself">GMC</th>
+              <th className="px-3 py-2 text-right" title="Average direct sale price that day">SP</th>
+              <th className="px-3 py-2 text-right" title="Direct bills/purchases received">BL</th>
+              <th className="px-3 py-2 text-left">Alias</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-gray-100">
             {computed!.map((row, i) => {
               const lossVal = row.loss !== null ? row.loss * sp : null
               return (
-                <tr key={i} className={`border-b border-gray-200 ${row.loss !== null && row.loss > 0.001 ? 'bg-red-50' : ''}`}>
-                  <td className="pl-1 py-0.5 font-bold text-gray-500 whitespace-nowrap overflow-hidden">
+                <tr key={i} className={row.loss !== null && row.loss > 0.001 ? 'bg-red-50' : ''}>
+                  <td className="px-3 py-2 text-gray-600 whitespace-nowrap">
                     {onDateClick ? (
                       <button onClick={() => onDateClick(row.date, item.item_name)} className="text-blue-600 hover:underline">
                         {fmtDate(row.date)}
                       </button>
                     ) : fmtDate(row.date)}
                   </td>
-                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-900 whitespace-nowrap">
+                  <td className="px-3 py-2 text-right text-gray-900 whitespace-nowrap">
                     <CntValue qty={row.qty_counted} countedBy={row.counted_by} history={row.count_history} />
                   </td>
-                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-teal-600">{fmtQs(row.converted_in_qty)}</td>
-                  <td className="text-center py-0.5 font-bold border-l border-gray-400 bg-black text-white">{fmtN(row.available)}</td>
+                  <td className="px-3 py-2 text-right text-teal-600">{fmtQs(row.converted_in_qty)}</td>
+                  <td className="px-3 py-2 text-right font-semibold text-blue-700">{fmtN(row.available)}</td>
                   {breakdownNames.map(n => (
-                    <td key={n} className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">
+                    <td key={n} className="px-3 py-2 text-right text-gray-600">
                       {fmtQ(row.wic_breakdown?.find(b => b.name === n)?.qty ?? 0)}
                     </td>
                   ))}
-                  <td className="text-center py-0.5 font-bold border-l border-gray-400 bg-black text-white">{fmtQ(row.used)}</td>
-                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-400">{fmtN(row.expected_soh)}</td>
-                  <td className="text-center py-0.5 font-bold border-l border-gray-300">
+                  <td className="px-3 py-2 text-right font-semibold text-blue-700">{fmtQ(row.used)}</td>
+                  <td className="px-3 py-2 text-right text-gray-400">{fmtN(row.expected_soh)}</td>
+                  <td className="px-3 py-2 text-right font-medium">
                     {row.loss === null ? <span className="text-gray-300">—</span>
-                      : row.loss > 0.001 ? <span className="text-red-600">-{fmtN(row.loss)}</span>
+                      : row.loss > 0.001 ? <span className="text-red-500">-{fmtN(row.loss)}</span>
                       : row.loss < -0.001 ? <span className="text-green-600">+{fmtN(Math.abs(row.loss))}</span>
                       : <span className="text-gray-400">0</span>}
                   </td>
-                  <td className="text-center py-0.5 font-bold border-l border-gray-300">
+                  <td className="px-3 py-2 text-right font-medium">
                     {lossVal === null ? <span className="text-gray-300">—</span>
-                      : lossVal > 0.01 ? <span className="text-red-600">-{fmtN(lossVal)}</span>
+                      : lossVal > 0.01 ? <span className="text-red-500">-{fmtN(lossVal)}</span>
                       : lossVal < -0.01 ? <span className="text-green-600">+{fmtN(Math.abs(lossVal))}</span>
                       : <span className="text-gray-400">0</span>}
                   </td>
-                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.gmc_qty)}</td>
-                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-blue-500">{fmtQs(row.sell_price)}</td>
-                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-blue-600">{fmtQs(row.bills_qty)}</td>
-                  <td className="pl-1 py-0.5 border-l border-gray-300 text-purple-700 font-semibold overflow-hidden">
-                    <span className="block truncate" title={row.aliases ?? ''}>{row.aliases ?? <span className="text-gray-300">—</span>}</span>
+                  <td className="px-3 py-2 text-right text-gray-600">{fmtQs(row.gmc_qty)}</td>
+                  <td className="px-3 py-2 text-right text-blue-500">{fmtQs(row.sell_price)}</td>
+                  <td className="px-3 py-2 text-right text-blue-600">{fmtQs(row.bills_qty)}</td>
+                  <td className="px-3 py-2 text-purple-700 font-medium">
+                    <span className="block truncate max-w-[140px]" title={row.aliases ?? ''}>{row.aliases ?? <span className="text-gray-300">—</span>}</span>
                   </td>
                 </tr>
               )
             })}
           </tbody>
           <tfoot>
-            <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold text-[8px]">
-              <td className="pl-1 py-0.5 text-gray-500">Total</td>
+            <tr className="border-t border-gray-200 bg-gray-50 font-semibold">
+              <td className="px-3 py-2 text-gray-500">Total</td>
               <td colSpan={5 + breakdownNames.length} />
               <td className={lgCls}>{totalLoss > 0.001 ? `-${fmtN(totalLoss)}` : totalLoss < -0.001 ? `+${fmtN(Math.abs(totalLoss))}` : '0'}</td>
               <td className={lgCls}>{totalCost > 0.01 ? `-₵${fmtN(totalCost)}` : totalCost < -0.01 ? `+₵${fmtN(Math.abs(totalCost))}` : '0'}</td>
@@ -1587,85 +1569,75 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
             </tr>
           </tfoot>
         </table>
+        </div>
       ) : (
-        <table className="w-full table-fixed border-collapse text-[8px]">
-          <colgroup>
-            <col style={{width:'15%'}} />
-            <col style={{width:'10%'}} />
-            <col style={{width:'8%'}} />
-            <col style={{width:'8%'}} />
-            <col style={{width:'7%'}} />
-            <col style={{width:'7%'}} />
-            <col style={{width:'7%'}} />
-            <col style={{width:'7%'}} />
-            <col style={{width:'7%'}} />
-            <col style={{width:'7%'}} />
-            <col style={{width:'17%'}} />
-          </colgroup>
+        <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-xs">
           <thead>
-            <tr className="bg-amber-400 text-gray-800 font-bold">
-              <th className="py-0.5 border-b-2 border-gray-400 text-left pl-1">DATE</th>
-              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">₵</th>
-              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">L/G</th>
-              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">CNT</th>
-              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">WIC</th>
-              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">GMC</th>
-              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">SP</th>
-              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">BL</th>
-              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400" title="Converted in from another item's GMC take">CNV</th>
-              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">EXP</th>
-              <th className="py-0.5 border-b-2 border-gray-400 text-center border-l border-gray-400">ALIAS</th>
+            <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide border-b border-gray-200">
+              <th className="px-3 py-2 text-left whitespace-nowrap">Date</th>
+              <th className="px-3 py-2 text-right">₵</th>
+              <th className="px-3 py-2 text-right">L/G</th>
+              <th className="px-3 py-2 text-right">Cnt</th>
+              <th className="px-3 py-2 text-right">WIC</th>
+              <th className="px-3 py-2 text-right">GMC</th>
+              <th className="px-3 py-2 text-right">SP</th>
+              <th className="px-3 py-2 text-right">BL</th>
+              <th className="px-3 py-2 text-right" title="Converted in from another item's GMC take">CNV</th>
+              <th className="px-3 py-2 text-right">Exp</th>
+              <th className="px-3 py-2 text-left">Alias</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-gray-100">
             {computed!.map((row, i) => {
               const lossVal = row.loss !== null ? row.loss * sp : null
               return (
-                <tr key={i} className={`border-b border-gray-200 ${row.loss !== null && row.loss > 0.001 ? 'bg-red-50' : ''}`}>
-                  <td className="pl-1 py-0.5 font-bold text-gray-500 whitespace-nowrap overflow-hidden">
+                <tr key={i} className={row.loss !== null && row.loss > 0.001 ? 'bg-red-50' : ''}>
+                  <td className="px-3 py-2 text-gray-600 whitespace-nowrap">
                     {onDateClick ? (
                       <button onClick={() => onDateClick(row.date, item.item_name)} className="text-blue-600 hover:underline">
                         {fmtDate(row.date)}
                       </button>
                     ) : fmtDate(row.date)}
                   </td>
-                  <td className="text-center py-0.5 font-bold border-l border-gray-300">
+                  <td className="px-3 py-2 text-right font-medium">
                     {lossVal === null ? <span className="text-gray-300">—</span>
-                      : lossVal > 0.01 ? <span className="text-red-600">-{fmtN(lossVal)}</span>
+                      : lossVal > 0.01 ? <span className="text-red-500">-{fmtN(lossVal)}</span>
                       : lossVal < -0.01 ? <span className="text-green-600">+{fmtN(Math.abs(lossVal))}</span>
                       : <span className="text-gray-400">0</span>}
                   </td>
-                  <td className="text-center py-0.5 font-bold border-l border-gray-300">
+                  <td className="px-3 py-2 text-right font-medium">
                     {row.loss === null ? <span className="text-gray-300">—</span>
-                      : row.loss > 0.001 ? <span className="text-red-600">-{fmtN(row.loss)}</span>
+                      : row.loss > 0.001 ? <span className="text-red-500">-{fmtN(row.loss)}</span>
                       : row.loss < -0.001 ? <span className="text-green-600">+{fmtN(Math.abs(row.loss))}</span>
                       : <span className="text-gray-400">0</span>}
                   </td>
-                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-900 whitespace-nowrap">
+                  <td className="px-3 py-2 text-right text-gray-900 whitespace-nowrap">
                     <CntValue qty={row.qty_counted} countedBy={row.counted_by} history={row.count_history} />
                   </td>
-                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.wic_qty)}</td>
-                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.gmc_qty)}</td>
-                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-blue-500">{fmtQs(row.sell_price)}</td>
-                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-blue-600">{fmtQs(row.bills_qty)}</td>
-                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-teal-600">{fmtQs(row.converted_in_qty)}</td>
-                  <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-400">{fmtN(row.expected_soh)}</td>
-                  <td className="pl-1 py-0.5 border-l border-gray-300 text-purple-700 font-semibold overflow-hidden">
-                    <span className="block truncate" title={row.aliases ?? ''}>{row.aliases ?? <span className="text-gray-300">—</span>}</span>
+                  <td className="px-3 py-2 text-right text-gray-600">{fmtQs(row.wic_qty)}</td>
+                  <td className="px-3 py-2 text-right text-gray-600">{fmtQs(row.gmc_qty)}</td>
+                  <td className="px-3 py-2 text-right text-blue-500">{fmtQs(row.sell_price)}</td>
+                  <td className="px-3 py-2 text-right text-blue-600">{fmtQs(row.bills_qty)}</td>
+                  <td className="px-3 py-2 text-right text-teal-600">{fmtQs(row.converted_in_qty)}</td>
+                  <td className="px-3 py-2 text-right text-gray-400">{fmtN(row.expected_soh)}</td>
+                  <td className="px-3 py-2 text-purple-700 font-medium">
+                    <span className="block truncate max-w-[140px]" title={row.aliases ?? ''}>{row.aliases ?? <span className="text-gray-300">—</span>}</span>
                   </td>
                 </tr>
               )
             })}
           </tbody>
           <tfoot>
-            <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold text-[8px]">
-              <td className="pl-1 py-0.5 text-gray-500">Total</td>
+            <tr className="border-t border-gray-200 bg-gray-50 font-semibold">
+              <td className="px-3 py-2 text-gray-500">Total</td>
               <td className={lgCls}>{totalCost > 0.01 ? `-₵${fmtN(totalCost)}` : totalCost < -0.01 ? `+₵${fmtN(Math.abs(totalCost))}` : '0'}</td>
               <td className={lgCls}>{totalLoss > 0.001 ? `-${fmtN(totalLoss)}` : totalLoss < -0.001 ? `+${fmtN(Math.abs(totalLoss))}` : '0'}</td>
               <td colSpan={8} />
             </tr>
           </tfoot>
         </table>
+        </div>
       )}
     </div>
   )
