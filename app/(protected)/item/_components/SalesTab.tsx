@@ -766,7 +766,13 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
                   )}
                 </td>
                 <td className="px-1 py-1 text-gray-900 align-top">
-                  {line ? line.item_name : <span className="text-gray-400 italic">No items</span>}
+                  {line ? (
+                    line.item_id ? (
+                      <Link href={`/stock/${line.item_id}`} className="text-blue-600 hover:underline">
+                        {line.item_name}
+                      </Link>
+                    ) : line.item_name
+                  ) : <span className="text-gray-400 italic">No items</span>}
                 </td>
                 <td className="px-1 py-1 text-gray-700 align-top">{fmtCust(r.customer_name)}</td>
                 <td className="px-1 py-1 text-right text-gray-700 align-top">{line ? (line.quantity ? parseFloat(line.quantity) : '—') : ''}</td>

@@ -3,7 +3,6 @@ import { Fragment, useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
-import ItemDetailDropdown from './ItemDetailDropdown'
 
 type Item = { id: number; item_name: string; cf_group: string | null }
 
@@ -73,12 +72,11 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
   const [loading, setLoading] = useState(true)
   const [showHistory, setShowHistory] = useState(false)
   const [linesMap, setLinesMap] = useState<Record<number, BillLine[]>>({})
-  // Editing and item-detail toggles are keyed by FlatRow.key (bill id + line
-  // index) since each visible row is now one item line, not one bill.
+  // Editing is keyed by FlatRow.key (bill id + line index) since each
+  // visible row is now one item line, not one bill.
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({ bill_date: '', vendor_name: '' })
   const [saving, setSaving] = useState(false)
-  const [expandedItemKey, setExpandedItemKey] = useState<string | null>(null)
 
   function loadBills() {
     Promise.all([
@@ -189,7 +187,6 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
     const b = billsById[row.billId]
     setEditForm({ bill_date: b?.bill_date?.slice(0, 10) ?? '', vendor_name: b?.vendor_name ?? '' })
     setEditingKey(row.key)
-    setExpandedItemKey(null)
   }
 
   async function saveEdit(row: FlatRow) {
@@ -265,7 +262,6 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
           <tbody>
             {filtered.map(row => {
               const isEditing = editingKey === row.key
-              const isItemOpen = expandedItemKey === row.key
               const showGroupTotal = firstInGroupKeys.has(row.key)
               return (
                 <Fragment key={row.key}>
@@ -274,10 +270,10 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
                     <td className="px-0.5 py-0.5 text-gray-700 whitespace-nowrap">{fmtShort(row.billDate)}</td>
                     <td className="px-0.5 py-0.5">
                       {row.itemId ? (
-                        <button onClick={e => { e.stopPropagation(); setExpandedItemKey(isItemOpen ? null : row.key); setEditingKey(null) }}
+                        <Link href={`/stock/${row.itemId}`} onClick={e => e.stopPropagation()}
                           className="text-left text-blue-600 hover:underline">
                           {row.itemName}
-                        </button>
+                        </Link>
                       ) : (
                         <span className="text-red-600">{row.itemName}</span>
                       )}
@@ -311,15 +307,6 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
                           </button>
                           <button onClick={() => setEditingKey(null)}
                             className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                  {isItemOpen && row.itemId && (
-                    <tr className="border-b border-gray-200">
-                      <td colSpan={7} className="p-0">
-                        <div className="sticky left-0 w-[100vw] max-w-[100vw] max-h-[50vh] overflow-auto bg-blue-50 px-0.5 pb-2 pt-0.5">
-                          <ItemDetailDropdown itemId={row.itemId} />
                         </div>
                       </td>
                     </tr>

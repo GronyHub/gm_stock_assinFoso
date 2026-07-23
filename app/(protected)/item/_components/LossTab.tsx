@@ -10,10 +10,7 @@ import {
 } from '@/lib/packChain'
 
 /* ── types ── */
-// Exported so ItemDetailDropdown.tsx (the inline item drop-down used on
-// Sales/Bills) can type its own fetched summary row against the
-// exact same shape ItemDetail below expects.
-export type SummaryRow = {
+type SummaryRow = {
   item_id: number
   item_name: string
   cf_group: string | null
@@ -973,12 +970,9 @@ function MergeItemPicker({ itemId, itemName, typeLabel, mergePool, onMerged }: {
   )
 }
 
-// Exported for ItemDetailDropdown.tsx -- editing/merge/alias UI only ever
-// activates via the autoEdit prop (no button inside this component itself
-// triggers it), so a caller that always passes autoEdit={false} gets a
-// purely read-only drop-down for free, with empty/no-op values for the
-// props those hidden sections would otherwise need.
-export function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, mergePool, isOwnerLevelUser, autoEdit, onSaved, onRelationsSaved, onMerged, onDateClick, showPrices, lossOnly, gainOnly }: {
+// The Edit button in renderRow's row sets editTriggerId, which flows in here
+// as autoEdit -- the only thing that opens the editing/merge/alias UI below.
+function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, mergePool, isOwnerLevelUser, autoEdit, onSaved, onRelationsSaved, onMerged, onDateClick, showPrices, lossOnly, gainOnly }: {
   item: SummaryRow; groups: string[]; allItems: { item_id: number; item_name: string }[]
   currentAliases: AliasRecord[]; currentMatches: MatchRecord[]
   candidatePool: CandidateItem[]
