@@ -237,12 +237,13 @@ const LOSSVIEW_PILL_KEYS: Partial<Record<LossView, string[]>> = {
 // Grony Cash (Items -> children row), so they're repeated here as one-tap
 // shortcuts to their own standalone page. Logs moved into Grony Manage.
 const HAMBURGER_LINKS = [
-  { href: '/users',       label: 'Users'            },
-  { href: '/profile',     label: 'Profile'          },
-  { href: '/customers',   label: 'Customers'        },
-  { href: '/receipts',    label: 'Receipts'         },
-  { href: '/vendors',     label: 'Vendors'          },
+  { href: '/users',        label: 'Users'            },
+  { href: '/profile',      label: 'Profile'          },
+  { href: '/customers',    label: 'Customers'        },
+  { href: '/receipts',     label: 'Receipts'         },
+  { href: '/vendors',      label: 'Vendors'          },
   { href: '/aliases/wide', label: 'Alias Wide Table' },
+  { href: '/matches/wide', label: 'Service Matches'  },
 ]
 
 // Plain text, no icons -- keeps the top nav to a single line so it doesn't
