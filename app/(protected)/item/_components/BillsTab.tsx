@@ -282,7 +282,7 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
                         <span className="text-red-600">{row.itemName}</span>
                       )}
                     </td>
-                    <td className="px-0.5 py-0.5 text-right text-gray-700">{parseFloat(row.quantity)}</td>
+                    <td className="px-0.5 py-0.5 text-right text-gray-700">{row.quantity ? parseFloat(row.quantity) : '—'}</td>
                     <td className="px-0.5 py-0.5 text-right text-gray-700">{fmt(row.unitPrice)}</td>
                     <td className="px-0.5 py-0.5 text-right font-semibold text-gray-900">{fmt(row.itemTotal)}</td>
                     <td className="px-0.5 py-0.5 text-gray-700 truncate max-w-[100px]">{row.vendorName ?? '—'}</td>
