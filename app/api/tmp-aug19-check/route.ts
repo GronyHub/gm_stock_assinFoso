@@ -8,5 +8,6 @@ export async function GET() {
     WHERE b.bill_date::date = '2025-08-19'
     ORDER BY bl.id
   `
-  return NextResponse.json({ count: rows.length, rows })
+  const crestItems = await sql`SELECT id, canonical_name, status FROM items WHERE canonical_name ILIKE '%crest%' OR canonical_name ILIKE '%55A%'`
+  return NextResponse.json({ count: rows.length, rows, crestItems })
 }
