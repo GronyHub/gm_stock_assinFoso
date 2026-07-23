@@ -19,25 +19,31 @@ export async function GET() {
 
 export async function POST() {
   const createdBills = []
-  for (const g of MISSING_GOODS) {
-    const [bill] = await sql`
-      INSERT INTO bills (bill_number, bill_date, vendor_name, total, subtotal, status, source)
-      VALUES (${g.billNumber}, '2025-08-02', NULL, ${g.total}, ${g.total}, 'paid', 'bizims_historical')
-      RETURNING id, bill_number
+  try {
+    for (const g of MISSING_GOODS) {
+      const [bill] = await sql`
+        INSERT INTO bills (bill_number, bill_date, vendor_name, total, subtotal, status, source)
+        VALUES (${g.billNumber}, '2025-08-02', NULL, ${g.total}, ${g.total}, 'paid', 'bizims_historical')
+        RETURNING id, bill_number
+      `
+      await sql`
+        INSERT INTO bill_lines (bill_id, item_id, raw_item_name, resolved_name, item_total, unresolved, source)
+        VALUES (${bill.id}, ${g.itemId}, ${g.raw}, ${g.itemName}, ${g.total}, false, 'bizims_historical')
+      `
+      createdBills.push(bill)
+    }
+
+    const [maxRow] = await sql`SELECT COALESCE(MAX(entry_number::int), 0) AS max FROM expenses WHERE entry_number ~ '^[0-9]+$'`
+    const nextEntry = String((maxRow.max as number) + 1)
+    const [expense] = await sql`
+      INSERT INTO expenses (zoho_expense_id, expense_date, expense_account, description, amount, total, source, entry_number)
+      VALUES (${'BIZIMS-EXP-' + Date.now()}, '2025-08-02', 'Delivery / Goods T&T', 'Delivery of goods = 360', 360, 360, 'bizims_historical', ${nextEntry})
+      RETURNING id, expense_date, expense_account, amount
     `
-    await sql`
-      INSERT INTO bill_lines (bill_id, item_id, raw_item_name, resolved_name, item_total, unresolved, source)
-      VALUES (${bill.id}, ${g.itemId}, ${g.raw}, ${g.itemName}, ${g.total}, false, 'bizims_historical')
-    `
-    createdBills.push(bill)
+
+    return NextResponse.json({ createdBills, expense })
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e)
+    return NextResponse.json({ error: detail, createdSoFar: createdBills }, { status: 500 })
   }
-
-  const [expense] = await sql`
-    INSERT INTO expenses (zoho_expense_id, expense_date, expense_account, description, amount, total, source, entry_number)
-    VALUES (${'BIZIMS-EXP-' + Date.now()}, '2025-08-02', 'Delivery / Goods T&T', 'Delivery of goods = 360', 360, 360, 'bizims_historical',
-            (SELECT COALESCE(MAX(entry_number::int), 0) + 1 FROM expenses WHERE entry_number ~ '^[0-9]+$'))
-    RETURNING id, expense_date, expense_account, amount
-  `
-
-  return NextResponse.json({ createdBills, expense })
 }
