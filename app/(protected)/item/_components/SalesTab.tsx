@@ -1,5 +1,5 @@
 'use client'
-import { Fragment, useState, useEffect, useMemo, useRef } from 'react'
+import { Fragment, useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { fmtDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
@@ -259,26 +259,12 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
   const [saving, setSaving] = useState(false)
   const [editError, setEditError] = useState('')
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  // Delete confirmation lives only on the edit page now (the receipt bar's
+  // edit icon jumps straight into editingId === r.id below, no menu step).
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [newItemQuery, setNewItemQuery] = useState('')
   const [flags, setFlags] = useState<any | null>(null)
   const [flagsLoading, setFlagsLoading] = useState(false)
-  // Which receipt's Edit/Delete menu (the ⋮ icon) is open, if any -- kept
-  // behind a menu rather than always-visible buttons so a tap while
-  // scanning the flat item list can't accidentally delete a receipt.
-  const [menuOpenId, setMenuOpenId] = useState<number | null>(null)
-  const menuRef = useRef<HTMLTableCellElement>(null)
-
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpenId(null)
-        setConfirmDeleteId(null)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
 
   const needsFlags = violation === 'no_cash' || violation === 'missing_days' || violation === 'cost_price' || violation === 'dup_receipt'
 
@@ -790,19 +776,19 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
           return (
             <Fragment key={r.id}>
             <tr className={isDayHead ? 'bg-blue-600' : 'bg-gray-50'}>
-              <td colSpan={4} id={`receipt-${r.id}`} className={`relative ${isDayHead ? 'px-1.5 py-2' : 'px-1 py-1'}`}
-                ref={menuOpenId === r.id ? menuRef : undefined}>
+              <td colSpan={4} id={`receipt-${r.id}`} className={`relative ${isDayHead ? 'px-1.5 py-2' : 'px-1 py-1'}`}>
                 <div className="flex items-center gap-2">
-                  {/* Date doubles as the edit/delete trigger now -- no
-                      separate ⋮ button. The ✅ mark (when this day is fully
-                      verified) rides along inside the same clickable area. */}
-                  <button onClick={() => { setMenuOpenId(menuOpenId === r.id ? null : r.id); setConfirmDeleteId(null) }}
-                    title="Edit or delete this receipt"
-                    className={`whitespace-nowrap ${isDayHead ? 'text-white font-semibold' : 'text-gray-600 font-medium'}`}>
+                  <span className={`whitespace-nowrap ${isDayHead ? 'text-white font-semibold' : 'text-gray-600 font-medium'}`}>
                     {fmtShort(r.receipt_date)}
                     {verifiedDates.has(r.receipt_date?.slice(0, 10)) && (
-                      <span className="ml-0.5">✅</span>
+                      <span title="Every item sold this day is verified" className="ml-0.5">✅</span>
                     )}
+                  </span>
+                  {/* Jumps straight into editingId === r.id below -- no menu
+                      step. Delete lives on that edit screen now, not here. */}
+                  <button onClick={() => startEdit(r)} title="Edit this receipt"
+                    className={`leading-none ${isDayHead ? 'text-blue-100 hover:text-white' : 'text-gray-400 hover:text-gray-700'}`}>
+                    ✏️
                   </button>
                   {/* Middle: customer letter + the unlabeled CC/WNW figures
                       (see the "CC · WNW" legend docked in the ITEM header
@@ -825,36 +811,6 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
                       <span className={`font-semibold ${isDayHead ? 'text-white' : 'text-gray-900'}`}>{fmt(r.invoice_amount)}</span>
                     )}
                   </div>
-                  {menuOpenId === r.id && (
-                    <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-gray-200 rounded-lg shadow-xl min-w-[120px] overflow-hidden text-left">
-                      {confirmDeleteId === r.id ? (
-                        <div className="p-2 space-y-1">
-                          <p className="text-[9px] text-red-700 font-medium leading-tight">Delete this receipt permanently?</p>
-                          <div className="flex gap-1">
-                            <button onClick={() => deleteReceipt(r.id)} disabled={deletingId === r.id}
-                              className="flex-1 text-[9px] font-bold text-white bg-red-600 hover:bg-red-500 disabled:opacity-40 px-1.5 py-1 rounded">
-                              {deletingId === r.id ? '…' : 'Yes'}
-                            </button>
-                            <button onClick={() => setConfirmDeleteId(null)}
-                              className="flex-1 text-[9px] font-semibold text-gray-600 bg-gray-100 px-1.5 py-1 rounded">
-                              No
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <button onClick={() => { startEdit(r); setMenuOpenId(null) }}
-                            className="block w-full text-left px-3 py-2 text-[10px] font-semibold text-blue-600 hover:bg-blue-50 transition">
-                            Edit
-                          </button>
-                          <button onClick={() => setConfirmDeleteId(r.id)}
-                            className="block w-full text-left px-3 py-2 text-[10px] font-semibold text-red-600 hover:bg-red-50 border-t border-gray-100 transition">
-                            Delete
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  )}
                 </div>
               </td>
             </tr>
