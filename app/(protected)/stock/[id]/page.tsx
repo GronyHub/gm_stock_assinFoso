@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { fmtDate } from '@/lib/fmtDate'
 import ItemDetailPanel from '../../item/_components/ItemDetailPanel'
+import ItemSwitcher from '../../item/_components/ItemSwitcher'
 
 export default async function ItemHistoryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -35,6 +36,8 @@ export default async function ItemHistoryPage({ params }: { params: Promise<{ id
         <h1 className="text-xl font-bold text-gray-900 mt-1">{item.canonical_name ?? s.item_name}</h1>
         <p className="text-sm text-gray-400">{item.cf_group ?? s.cf_group}</p>
       </div>
+
+      <ItemSwitcher currentItemId={Number(id)} />
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {stats.map(c => (
