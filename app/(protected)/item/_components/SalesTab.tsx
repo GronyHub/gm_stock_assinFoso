@@ -617,11 +617,11 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
       <table className="w-full border-collapse text-[10px]">
         <thead className="sticky top-0 bg-gray-100 z-10">
           <tr>
-            <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">ITEM</th>
-            <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">C</th>
-            <th className="text-right px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">QTY</th>
-            <th className="text-right px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">SP</th>
-            <th className="text-right px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">TOTAL</th>
+            <th className="text-left px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">ITEM</th>
+            <th className="text-left px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">C</th>
+            <th className="text-right px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">QTY</th>
+            <th className="text-right px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">SP</th>
+            <th className="text-right px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">TOTAL</th>
           </tr>
         </thead>
         <tbody>
@@ -841,7 +841,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
             </tr>
             {rows.map(line => (
               <tr key={line ? line.id : `${r.id}-empty`}
-                className={`border-b border-gray-100 ${selectedId === r.id ? 'bg-blue-50/40' : 'hover:bg-gray-50'}`}>
+                className={`border-b border-gray-100 text-[13px] font-bold ${selectedId === r.id ? 'bg-blue-50/40' : 'hover:bg-gray-50'}`}>
                 <td className="px-1 py-1 text-gray-900 align-top">
                   {line ? (
                     line.item_id ? (
