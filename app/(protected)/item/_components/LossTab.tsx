@@ -10,7 +10,7 @@ import {
 } from '@/lib/packChain'
 
 /* ── types ── */
-type SummaryRow = {
+export type SummaryRow = {
   item_id: number
   item_name: string
   cf_group: string | null
@@ -714,7 +714,7 @@ function ItemEditForm({ form, onChange, groups, itemId, isService, allItems }: {
 
 /* ── expanded item detail ── */
 /* ── Alias picker: search unresolved raw names, attach/detach to this item ── */
-type AliasRecord = { id: number; name: string }
+export type AliasRecord = { id: number; name: string }
 type UnresolvedName = { name: string; cnt: number; confirmed: boolean }
 
 function AliasPicker({ itemId, current, onChange }: {
@@ -799,8 +799,8 @@ function AliasPicker({ itemId, current, onChange }: {
 }
 
 /* ── Match picker: search canonical items of the opposite product_type ── */
-type MatchRecord = { id: number; name: string }
-type CandidateItem = { item_id: number; item_name: string; product_type: string | null }
+export type MatchRecord = { id: number; name: string }
+export type CandidateItem = { item_id: number; item_name: string; product_type: string | null }
 
 function MatchPicker({ itemId, itemName, isService, current, candidatePool, onChange }: {
   itemId: number; itemName: string; isService: boolean
@@ -972,7 +972,10 @@ function MergeItemPicker({ itemId, itemName, typeLabel, mergePool, onMerged }: {
 
 // The Edit button in renderRow's row sets editTriggerId, which flows in here
 // as autoEdit -- the only thing that opens the editing/merge/alias UI below.
-function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, mergePool, isOwnerLevelUser, autoEdit, onSaved, onRelationsSaved, onMerged, onDateClick, showPrices, lossOnly, gainOnly }: {
+// Exported so ItemDetailPanel.tsx can also render it standalone on the Item
+// 360 page, with its own equivalents of the pools/records this file builds
+// from its own full-list fetch.
+export function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, mergePool, isOwnerLevelUser, autoEdit, onSaved, onRelationsSaved, onMerged, onDateClick, showPrices, lossOnly, gainOnly }: {
   item: SummaryRow; groups: string[]; allItems: { item_id: number; item_name: string }[]
   currentAliases: AliasRecord[]; currentMatches: MatchRecord[]
   candidatePool: CandidateItem[]

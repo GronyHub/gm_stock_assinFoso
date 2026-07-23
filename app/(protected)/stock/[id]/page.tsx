@@ -2,6 +2,7 @@ import sql from '@/lib/db'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { fmtDate } from '@/lib/fmtDate'
+import ItemDetailPanel from '../../item/_components/ItemDetailPanel'
 
 export default async function ItemHistoryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -60,6 +61,11 @@ export default async function ItemHistoryPage({ params }: { params: Promise<{ id
           <span className="text-gray-400 ml-2">— {Number(s.last_count_qty).toFixed(0)} units</span>
         </div>
       )}
+
+      <div>
+        <h2 className="text-sm font-semibold text-gray-600 mb-1.5">Detail</h2>
+        <ItemDetailPanel itemId={Number(id)} />
+      </div>
 
       <h2 className="text-sm font-semibold text-gray-600">Full Transaction History</h2>
 
