@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   const rows = await sql`
     SELECT i.id, i.canonical_name AS name, i.cf_group AS "group",
            COALESCE(s.calculated_soh, 0) AS soh,
-           COALESCE(i.selling_price, 0) AS selling_price
+           COALESCE(i.selling_rate, 0) AS selling_price
     FROM items i
     LEFT JOIN item_stock_summary s ON s.item_id = i.id
     WHERE i.canonical_name ILIKE ${'%' + q + '%'}
