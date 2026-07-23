@@ -793,12 +793,17 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
               <td colSpan={4} id={`receipt-${r.id}`} className={`relative ${isDayHead ? 'px-1.5 py-2' : 'px-1 py-1'}`}
                 ref={menuOpenId === r.id ? menuRef : undefined}>
                 <div className="flex items-center gap-2">
-                  <span className={`whitespace-nowrap ${isDayHead ? 'text-white font-semibold' : 'text-gray-600 font-medium'}`}>
+                  {/* Date doubles as the edit/delete trigger now -- no
+                      separate ⋮ button. The ✅ mark (when this day is fully
+                      verified) rides along inside the same clickable area. */}
+                  <button onClick={() => { setMenuOpenId(menuOpenId === r.id ? null : r.id); setConfirmDeleteId(null) }}
+                    title="Edit or delete this receipt"
+                    className={`whitespace-nowrap ${isDayHead ? 'text-white font-semibold' : 'text-gray-600 font-medium'}`}>
                     {fmtShort(r.receipt_date)}
                     {verifiedDates.has(r.receipt_date?.slice(0, 10)) && (
-                      <span title="Every item sold this day is verified" className="ml-0.5">✅</span>
+                      <span className="ml-0.5">✅</span>
                     )}
-                  </span>
+                  </button>
                   {/* Middle: customer letter + the unlabeled CC/WNW figures
                       (see the "CC · WNW" legend docked in the ITEM header
                       above). Right: the invoice figure, unlabeled -- it's
@@ -819,14 +824,9 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
                     {!itemNameMatch && (
                       <span className={`font-semibold ${isDayHead ? 'text-white' : 'text-gray-900'}`}>{fmt(r.invoice_amount)}</span>
                     )}
-                    <button onClick={() => { setMenuOpenId(menuOpenId === r.id ? null : r.id); setConfirmDeleteId(null) }}
-                      title="Edit or delete this receipt"
-                      className={`font-bold px-1 leading-none ${isDayHead ? 'text-blue-100 hover:text-white' : 'text-gray-400 hover:text-gray-700'}`}>
-                      ⋮
-                    </button>
                   </div>
                   {menuOpenId === r.id && (
-                    <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-gray-200 rounded-lg shadow-xl min-w-[120px] overflow-hidden text-left">
+                    <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-gray-200 rounded-lg shadow-xl min-w-[120px] overflow-hidden text-left">
                       {confirmDeleteId === r.id ? (
                         <div className="p-2 space-y-1">
                           <p className="text-[9px] text-red-700 font-medium leading-tight">Delete this receipt permanently?</p>
