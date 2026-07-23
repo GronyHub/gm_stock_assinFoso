@@ -72,7 +72,7 @@ async function loadMeta(id: number): Promise<ItemMeta | null> {
 }
 
 // Single-item version of /api/losses/summary's per-item aggregation -- used
-// by ItemDetailDropdown (the inline item drop-down on Gd/Srv. Sld/Gd In)
+// by ItemDetailDropdown (the inline item drop-down on Sales/Bills)
 // so tapping one item doesn't trigger that route's whole-shop computation.
 export async function GET(_req: Request, { params }: { params: Promise<{ itemId: string }> }) {
   const { itemId: itemIdStr } = await params

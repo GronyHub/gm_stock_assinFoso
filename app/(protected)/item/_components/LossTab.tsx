@@ -11,7 +11,7 @@ import {
 
 /* ── types ── */
 // Exported so ItemDetailDropdown.tsx (the inline item drop-down used on
-// Gd/Srv. Sld/Gd In) can type its own fetched summary row against the
+// Sales/Bills) can type its own fetched summary row against the
 // exact same shape ItemDetail below expects.
 export type SummaryRow = {
   item_id: number

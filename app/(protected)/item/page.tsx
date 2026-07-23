@@ -80,19 +80,17 @@ const OLD_TAB_TO_OUTER: Partial<Record<string, OuterTab>> = {
 // groups/search/New controls row doesn't apply to them.
 const REPORT_VIEWS = new Set<LossView>(['pl', 'cab', 'vendors', 'customers', 'receipts'])
 
-// Sales (Gd/Srv. Sld) and Bills (Gd In) aren't top-level sections of their
-// own any more -- they nest as a second row under Items (Gd/Srv.) instead
-// of sitting in the main row. Customers/Receipts/Vendors aren't in that row
+// Sales, Bills, and Daily Loss (Feed) are top-level sections of their own,
+// sitting in the main Grony Cash row. Only Counts nests as a second row
+// under Items (Gd/Srv.). Customers/Receipts/Vendors aren't in the main row
 // either -- they're reachable from the account menu (person icon, bottom
 // right) instead. Sub-views not listed here have no parent and no children.
 const PARENT_OF: Partial<Record<LossView, LossView>> = {
-  items: 'items', counts: 'items', feed: 'items',
-  sales: 'items', bills: 'items',
+  items: 'items', counts: 'items',
 }
 const CHILDREN_OF: Partial<Record<LossView, { key: LossView; label: string }[]>> = {
   items: [
-    { key: 'counts', label: 'Counts' }, { key: 'feed', label: 'Feed' },
-    { key: 'sales', label: 'Gd/Srv. Sld' }, { key: 'bills', label: 'Gd In' },
+    { key: 'counts', label: 'Counts' },
   ],
 }
 
@@ -537,20 +535,22 @@ function ItemHubPageInner() {
             renders while one is open -- avoids two things reading as
             "selected" at once and keeps the panel free of unrelated chrome. */}
         {!openRole && (<>
-        {/* Grony Cash top-level row: Items is the tab's own default view,
-            and now also the home for Gd/Srv. Sld/Gd In (Sales/Bills) --
-            see CHILDREN_OF. Highlighted by PARENT_OF so it stays lit up
-            while looking at a child sub-view (e.g. Items stays active while
-            on Gd/Srv. Sld or Customers). CAB has just one flag type
-            (Unchecked CAB) and no filtered view to switch to, so it gets a
-            plain count badge here instead of a pill row like Items/Counts/
-            Feed get below. flex-1 + wrap (no shrink-0/whitespace-nowrap/
-            overflow-x-auto) so all of them always fit on one screen without
-            scrolling -- same fix as the top-level Home/Grony Cash/Grony
-            Manage/Daily row. */}
+        {/* Grony Cash top-level row: Sales, Bills, and Daily Loss (Feed)
+            come first, then Items is the tab's own default view -- Items
+            is still the home for Counts (see CHILDREN_OF), highlighted by
+            PARENT_OF so it stays lit up while looking at that child
+            sub-view. CAB has just one flag type (Unchecked CAB) and no
+            filtered view to switch to, so it gets a plain count badge here
+            instead of a pill row like Items/Counts get below. flex-1 +
+            wrap (no shrink-0/whitespace-nowrap/overflow-x-auto) so all of
+            them always fit on one screen without scrolling -- same fix as
+            the top-level Home/Grony Cash/Grony Manage/Daily row. */}
         {outerTab === 'loss' && (
           <div className="flex items-stretch gap-1 px-2 py-0.5 bg-white border-t border-gray-100">
             {([
+              { key: 'sales',    label: 'Sales' },
+              { key: 'bills',    label: 'Bills' },
+              { key: 'feed',     label: 'Daily Loss' },
               { key: 'items',    label: 'Gd/Srv.' },
               { key: 'expenses', label: 'Expenses' },
               { key: 'po',       label: 'PO' },
