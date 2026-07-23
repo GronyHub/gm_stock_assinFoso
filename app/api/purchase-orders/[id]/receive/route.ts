@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 type ReceiveLine = { poLineId: number; qty: number; price: number }
 
 // Receiving items against a PO creates a real Bill for exactly what arrived
-// in this batch (so it shows up in Gd In/CAB/P&L like any other purchase),
+// in this batch (so it shows up in Bills/CAB/P&L like any other purchase),
 // links it back to the PO via purchase_order_receipts, and tops up each
 // line's qty_received. Called once per delivery -- a partially-delivered
 // order is simply received more than once, each time with only the lines
