@@ -606,16 +606,11 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
       <table className="w-full border-collapse text-[10px]">
         <thead className="sticky top-0 bg-gray-100 z-10">
           <tr>
-            <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200 whitespace-nowrap">DATE</th>
             <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">ITEM</th>
             <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">C</th>
             <th className="text-right px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">QTY</th>
             <th className="text-right px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">SP</th>
             <th className="text-right px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">TOTAL</th>
-            <th className="text-right px-1 py-1 font-semibold text-gray-500 border-b border-gray-200 border-l border-gray-200">CC</th>
-            <th className="text-right px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">INV</th>
-            <th className="text-right px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">WNW</th>
-            <th className="w-6 border-b border-gray-200" />
           </tr>
         </thead>
         <tbody>
@@ -638,17 +633,18 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
           const dayChanged = rIdx > 0 && r.receipt_date?.slice(0, 10) !== filtered[rIdx - 1].receipt_date?.slice(0, 10)
           const dayDividerCls = dayChanged ? 'border-t-2 border-t-blue-400' : ''
 
-          // Every line item shows as its own row, always -- no click needed
-          // to reveal them. DATE/C (customer: W = Walk-In, G = Grony
-          // Multimedia as Customer) repeat on every line (so a long list
-          // still reads correctly at a glance); CC/INV/WNW are receipt-level
-          // totals, not per-line, so they only appear once via rowSpan on
-          // the first line instead of repeating the same number down the
-          // whole block.
+          // Each receipt gets its own header bar (Date, CC, Inv, WNW, and the
+          // edit/delete menu) above its item lines, instead of repeating
+          // those as columns on every line -- that leaves the line rows
+          // below with just ITEM/C/QTY/SP/TOTAL, so ITEM has the width to
+          // fit on one line. The bar doubles as the divider between
+          // receipts/days (blue top border on a day change, see
+          // dayDividerCls above). CC/Inv/WNW are blanked out on the bar
+          // while itemNameMatch is true, same as before.
           if (editingId === r.id) {
             return (
               <tr key={r.id} id={`receipt-${r.id}`}>
-                <td colSpan={10} className={`p-0 bg-blue-50/40 border-b border-gray-200 ${dayDividerCls}`}>
+                <td colSpan={5} className={`p-0 bg-blue-50/40 border-b border-gray-200 ${dayDividerCls}`}>
                 <div className="p-2 space-y-2">
                   <p className="text-[10px] font-bold text-gray-600">Edit Receipt</p>
                   <div className="grid grid-cols-2 gap-1">
@@ -775,15 +771,66 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
             : (rLines.length === 0 ? [null] : rLines)
           return (
             <Fragment key={r.id}>
-            {rows.map((line, i) => (
-              <tr key={line ? line.id : `${r.id}-empty`} id={i === 0 ? `receipt-${r.id}` : undefined}
-                className={`border-b border-gray-100 ${selectedId === r.id ? 'bg-blue-50/40' : 'hover:bg-gray-50'} ${i === 0 ? dayDividerCls : ''}`}>
-                <td className="px-1 py-1 text-gray-700 whitespace-nowrap align-top">
-                  {fmtShort(r.receipt_date)}
-                  {verifiedDates.has(r.receipt_date?.slice(0, 10)) && (
-                    <span title="Every item sold this day is verified" className="ml-0.5">✅</span>
+            <tr className={`bg-gray-50 ${dayDividerCls}`}>
+              <td colSpan={5} id={`receipt-${r.id}`} className="px-1 py-1 relative"
+                ref={menuOpenId === r.id ? menuRef : undefined}>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-gray-600 font-medium whitespace-nowrap">
+                    {fmtShort(r.receipt_date)}
+                    {verifiedDates.has(r.receipt_date?.slice(0, 10)) && (
+                      <span title="Every item sold this day is verified" className="ml-0.5">✅</span>
+                    )}
+                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {!itemNameMatch && (
+                      <>
+                        <span className="text-gray-500">CC {fmt(r.cash_counted)}</span>
+                        <span className="text-gray-900 font-semibold">Inv {fmt(r.invoice_amount)}</span>
+                        <span className={`font-semibold ${wnwColor(r.wnw)}`}>WNW {fmt(r.wnw)}</span>
+                      </>
+                    )}
+                    <button onClick={() => { setMenuOpenId(menuOpenId === r.id ? null : r.id); setConfirmDeleteId(null) }}
+                      title="Edit or delete this receipt"
+                      className="text-gray-400 hover:text-gray-700 font-bold px-1 leading-none">
+                      ⋮
+                    </button>
+                  </div>
+                  {menuOpenId === r.id && (
+                    <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-gray-200 rounded-lg shadow-xl min-w-[120px] overflow-hidden text-left">
+                      {confirmDeleteId === r.id ? (
+                        <div className="p-2 space-y-1">
+                          <p className="text-[9px] text-red-700 font-medium leading-tight">Delete this receipt permanently?</p>
+                          <div className="flex gap-1">
+                            <button onClick={() => deleteReceipt(r.id)} disabled={deletingId === r.id}
+                              className="flex-1 text-[9px] font-bold text-white bg-red-600 hover:bg-red-500 disabled:opacity-40 px-1.5 py-1 rounded">
+                              {deletingId === r.id ? '…' : 'Yes'}
+                            </button>
+                            <button onClick={() => setConfirmDeleteId(null)}
+                              className="flex-1 text-[9px] font-semibold text-gray-600 bg-gray-100 px-1.5 py-1 rounded">
+                              No
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <button onClick={() => { startEdit(r); setMenuOpenId(null) }}
+                            className="block w-full text-left px-3 py-2 text-[10px] font-semibold text-blue-600 hover:bg-blue-50 transition">
+                            Edit
+                          </button>
+                          <button onClick={() => setConfirmDeleteId(r.id)}
+                            className="block w-full text-left px-3 py-2 text-[10px] font-semibold text-red-600 hover:bg-red-50 border-t border-gray-100 transition">
+                            Delete
+                          </button>
+                        </>
+                      )}
+                    </div>
                   )}
-                </td>
+                </div>
+              </td>
+            </tr>
+            {rows.map(line => (
+              <tr key={line ? line.id : `${r.id}-empty`}
+                className={`border-b border-gray-100 ${selectedId === r.id ? 'bg-blue-50/40' : 'hover:bg-gray-50'}`}>
                 <td className="px-1 py-1 text-gray-900 align-top">
                   {line ? (
                     line.item_id ? (
@@ -797,61 +844,6 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
                 <td className="px-1 py-1 text-right text-gray-700 align-top">{line ? (line.quantity ? parseFloat(line.quantity) : '—') : ''}</td>
                 <td className="px-1 py-1 text-right text-gray-700 align-top">{line ? fmt(line.item_price) : ''}</td>
                 <td className="px-1 py-1 text-right font-semibold text-gray-900 align-top">{line ? fmt(line.item_total) : ''}</td>
-                {i === 0 && (
-                  <td rowSpan={rows.length} className="px-1 py-1 text-right text-gray-700 align-top border-l border-gray-100">
-                    {itemNameMatch ? '' : fmt(r.cash_counted)}
-                  </td>
-                )}
-                {i === 0 && (
-                  <td rowSpan={rows.length} className="px-1 py-1 text-right text-gray-900 font-semibold align-top">
-                    {itemNameMatch ? '' : fmt(r.invoice_amount)}
-                  </td>
-                )}
-                {i === 0 && (
-                  <td rowSpan={rows.length} className={`px-1 py-1 text-right font-semibold align-top ${itemNameMatch ? '' : wnwColor(r.wnw)}`}>
-                    {itemNameMatch ? '' : fmt(r.wnw)}
-                  </td>
-                )}
-                {i === 0 && (
-                  <td rowSpan={rows.length} className="px-1 py-1 text-center align-top relative"
-                    ref={menuOpenId === r.id ? menuRef : undefined}>
-                    <button onClick={() => { setMenuOpenId(menuOpenId === r.id ? null : r.id); setConfirmDeleteId(null) }}
-                      title="Edit or delete this receipt"
-                      className="text-gray-400 hover:text-gray-700 font-bold px-1 leading-none">
-                      ⋮
-                    </button>
-                    {menuOpenId === r.id && (
-                      <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-gray-200 rounded-lg shadow-xl min-w-[120px] overflow-hidden text-left">
-                        {confirmDeleteId === r.id ? (
-                          <div className="p-2 space-y-1">
-                            <p className="text-[9px] text-red-700 font-medium leading-tight">Delete this receipt permanently?</p>
-                            <div className="flex gap-1">
-                              <button onClick={() => deleteReceipt(r.id)} disabled={deletingId === r.id}
-                                className="flex-1 text-[9px] font-bold text-white bg-red-600 hover:bg-red-500 disabled:opacity-40 px-1.5 py-1 rounded">
-                                {deletingId === r.id ? '…' : 'Yes'}
-                              </button>
-                              <button onClick={() => setConfirmDeleteId(null)}
-                                className="flex-1 text-[9px] font-semibold text-gray-600 bg-gray-100 px-1.5 py-1 rounded">
-                                No
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <button onClick={() => { startEdit(r); setMenuOpenId(null) }}
-                              className="block w-full text-left px-3 py-2 text-[10px] font-semibold text-blue-600 hover:bg-blue-50 transition">
-                              Edit
-                            </button>
-                            <button onClick={() => setConfirmDeleteId(r.id)}
-                              className="block w-full text-left px-3 py-2 text-[10px] font-semibold text-red-600 hover:bg-red-50 border-t border-gray-100 transition">
-                              Delete
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </td>
-                )}
               </tr>
             ))}
             </Fragment>
