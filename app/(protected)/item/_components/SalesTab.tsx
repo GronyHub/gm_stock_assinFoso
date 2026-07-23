@@ -619,8 +619,15 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
           </tr>
         </thead>
         <tbody>
-        {filtered.map(r => {
+        {filtered.map((r, rIdx) => {
           const rLines = linesMap[r.id] ?? []
+
+          // A thicker blue top border marks where one day's receipts end
+          // and the next day's begin, so a long list still reads as
+          // day-by-day at a glance. No divider above the very first
+          // receipt in the list.
+          const dayChanged = rIdx > 0 && r.receipt_date?.slice(0, 10) !== filtered[rIdx - 1].receipt_date?.slice(0, 10)
+          const dayDividerCls = dayChanged ? 'border-t-2 border-t-blue-400' : ''
 
           // Every line item shows as its own row, always -- no click needed
           // to reveal them. DATE/C (customer: W = Walk-In, G = Grony
@@ -632,7 +639,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
           if (editingId === r.id) {
             return (
               <tr key={r.id} id={`receipt-${r.id}`}>
-                <td colSpan={10} className="p-0 bg-blue-50/40 border-b border-gray-200">
+                <td colSpan={10} className={`p-0 bg-blue-50/40 border-b border-gray-200 ${dayDividerCls}`}>
                 <div className="p-2 space-y-2">
                   <p className="text-[10px] font-bold text-gray-600">Edit Receipt</p>
                   <div className="grid grid-cols-2 gap-1">
@@ -759,7 +766,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
             <Fragment key={r.id}>
             {rows.map((line, i) => (
               <tr key={line ? line.id : `${r.id}-empty`} id={i === 0 ? `receipt-${r.id}` : undefined}
-                className={`border-b border-gray-100 ${selectedId === r.id ? 'bg-blue-50/40' : 'hover:bg-gray-50'}`}>
+                className={`border-b border-gray-100 ${selectedId === r.id ? 'bg-blue-50/40' : 'hover:bg-gray-50'} ${i === 0 ? dayDividerCls : ''}`}>
                 <td className="px-1 py-1 text-gray-700 whitespace-nowrap align-top">
                   {fmtShort(r.receipt_date)}
                   {verifiedDates.has(r.receipt_date?.slice(0, 10)) && (
