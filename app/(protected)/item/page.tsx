@@ -508,10 +508,10 @@ function ItemHubPageInner() {
         {outerTab === 'loss' && (
           <div className="flex items-stretch gap-1 px-2 py-0.5 bg-white border-t border-gray-100">
             {([
+              { key: 'items',    label: 'Items' },
               { key: 'sales',    label: 'Sales' },
               { key: 'bills',    label: 'Bills' },
               { key: 'feed',     label: 'Daily Loss' },
-              { key: 'items',    label: 'Gd/Srv.' },
               { key: 'expenses', label: 'Expenses' },
               ...(canSeePL ? [{ key: 'pl' as LossView, label: 'P&L' }] : []),
               { key: 'cab',      label: 'CAB' },

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 type Item = { id: number; item_name: string; cf_group: string | null }
 
 // Search bar + dropdown for jumping from one item's 360 page straight to
-// another's, without going back through Gd/Srv/Sales/Bills to find it.
+// another's, without going back through Items/Sales/Bills to find it.
 // Typing filters the dropdown; an empty, focused box shows the first items
 // alphabetically so it also works as a plain browse-and-pick dropdown.
 export default function ItemSwitcher({ currentItemId }: { currentItemId: number }) {
