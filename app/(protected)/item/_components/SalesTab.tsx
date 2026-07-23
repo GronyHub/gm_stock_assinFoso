@@ -58,12 +58,14 @@ function fmt(val: string | null) {
   return v.toLocaleString('en-GH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
-function wnwColor(wnw: string | null) {
+// `light` picks lighter shades readable on the blue day-header bar,
+// instead of the default shades meant for a white/gray background.
+function wnwColor(wnw: string | null, light = false) {
   const v = n(wnw)
-  if (v === null) return 'text-gray-400'
-  if (v > 0) return 'text-orange-600'
-  if (v < 0) return 'text-red-600'
-  return 'text-green-600'
+  if (v === null) return light ? 'text-blue-200' : 'text-gray-400'
+  if (v > 0) return light ? 'text-orange-200' : 'text-orange-600'
+  if (v < 0) return light ? 'text-red-200' : 'text-red-600'
+  return light ? 'text-green-200' : 'text-green-600'
 }
 
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 placeholder-gray-400 outline-none focus:ring-1 focus:ring-blue-400'
@@ -339,6 +341,15 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
         (linesMap[r.id] ?? []).some(l => l.item_name.toLowerCase().includes(q))
       )
     }
+    // Within the same day, Walk-In (W) receipts come before Grony
+    // Multimedia (G) ones -- Array.prototype.sort is stable, and the list
+    // is already date-desc from the API, so this only reorders same-day
+    // ties and leaves the day-to-day order untouched.
+    list = [...list].sort((a, b) => {
+      if (a.receipt_date?.slice(0, 10) !== b.receipt_date?.slice(0, 10)) return 0
+      const rank = (r: Receipt) => fmtCust(r.customer_name) === 'W' ? 0 : 1
+      return rank(a) - rank(b)
+    })
     return list
   }, [receipts, linesMap, groupItemNames, search])
 
@@ -626,25 +637,25 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
           const q = search.trim().toLowerCase()
           const itemNameMatch = q.length > 0 && rLines.some(l => l.item_name.toLowerCase().includes(q))
 
-          // A thicker blue top border marks where one day's receipts end
-          // and the next day's begin, so a long list still reads as
-          // day-by-day at a glance. No divider above the very first
-          // receipt in the list.
-          const dayChanged = rIdx > 0 && r.receipt_date?.slice(0, 10) !== filtered[rIdx - 1].receipt_date?.slice(0, 10)
-          const dayDividerCls = dayChanged ? 'border-t-2 border-t-blue-400' : ''
+          // The first receipt of each day (W receipts are sorted ahead of G
+          // ones above, so this is normally the day's W receipt) gets the
+          // big blue/white day-header bar with Date/CC/Inv/WNW on it. Any
+          // other receipt landing on that same day (e.g. G following W)
+          // still gets its own small bar with its own totals, but not
+          // another blue day-header -- one blue bar per day, not per
+          // receipt.
+          const isDayHead = rIdx === 0 || r.receipt_date?.slice(0, 10) !== filtered[rIdx - 1].receipt_date?.slice(0, 10)
 
           // Each receipt gets its own header bar (Date, CC, Inv, WNW, and the
           // edit/delete menu) above its item lines, instead of repeating
           // those as columns on every line -- that leaves the line rows
           // below with just ITEM/C/QTY/SP/TOTAL, so ITEM has the width to
-          // fit on one line. The bar doubles as the divider between
-          // receipts/days (blue top border on a day change, see
-          // dayDividerCls above). CC/Inv/WNW are blanked out on the bar
-          // while itemNameMatch is true, same as before.
+          // fit on one line. CC/Inv/WNW are blanked out on the bar while
+          // itemNameMatch is true, same as before.
           if (editingId === r.id) {
             return (
               <tr key={r.id} id={`receipt-${r.id}`}>
-                <td colSpan={5} className={`p-0 bg-blue-50/40 border-b border-gray-200 ${dayDividerCls}`}>
+                <td colSpan={5} className={`p-0 bg-blue-50/40 border-b border-gray-200 ${isDayHead ? 'border-t-4 border-t-blue-600' : ''}`}>
                 <div className="p-2 space-y-2">
                   <p className="text-[10px] font-bold text-gray-600">Edit Receipt</p>
                   <div className="grid grid-cols-2 gap-1">
@@ -771,11 +782,11 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
             : (rLines.length === 0 ? [null] : rLines)
           return (
             <Fragment key={r.id}>
-            <tr className={`bg-gray-50 ${dayDividerCls}`}>
-              <td colSpan={5} id={`receipt-${r.id}`} className="px-1 py-1 relative"
+            <tr className={isDayHead ? 'bg-blue-600' : 'bg-gray-50'}>
+              <td colSpan={5} id={`receipt-${r.id}`} className={`relative ${isDayHead ? 'px-1.5 py-2' : 'px-1 py-1'}`}
                 ref={menuOpenId === r.id ? menuRef : undefined}>
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-gray-600 font-medium whitespace-nowrap">
+                  <span className={isDayHead ? 'text-white font-semibold' : 'text-gray-600 font-medium whitespace-nowrap'}>
                     {fmtShort(r.receipt_date)}
                     {verifiedDates.has(r.receipt_date?.slice(0, 10)) && (
                       <span title="Every item sold this day is verified" className="ml-0.5">✅</span>
@@ -784,14 +795,14 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
                   <div className="flex items-center gap-2 shrink-0">
                     {!itemNameMatch && (
                       <>
-                        <span className="text-gray-500">CC {fmt(r.cash_counted)}</span>
-                        <span className="text-gray-900 font-semibold">Inv {fmt(r.invoice_amount)}</span>
-                        <span className={`font-semibold ${wnwColor(r.wnw)}`}>WNW {fmt(r.wnw)}</span>
+                        <span className={isDayHead ? 'text-blue-100' : 'text-gray-500'}>CC {fmt(r.cash_counted)}</span>
+                        <span className={`font-semibold ${isDayHead ? 'text-white' : 'text-gray-900'}`}>Inv {fmt(r.invoice_amount)}</span>
+                        <span className={`font-semibold ${wnwColor(r.wnw, isDayHead)}`}>WNW {fmt(r.wnw)}</span>
                       </>
                     )}
                     <button onClick={() => { setMenuOpenId(menuOpenId === r.id ? null : r.id); setConfirmDeleteId(null) }}
                       title="Edit or delete this receipt"
-                      className="text-gray-400 hover:text-gray-700 font-bold px-1 leading-none">
+                      className={`font-bold px-1 leading-none ${isDayHead ? 'text-blue-100 hover:text-white' : 'text-gray-400 hover:text-gray-700'}`}>
                       ⋮
                     </button>
                   </div>
