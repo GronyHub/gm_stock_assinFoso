@@ -634,10 +634,16 @@ function ItemHubPageInner() {
         )}
 
         {/* Violation pills for whichever Grony Cash submenu is active --
-            Items/Sales/Counts/Feed only (see LOSSVIEW_PILL_KEYS); tapping
-            one swaps the submenu's normal content for its filtered fix view
-            below. Tapping the active pill again clears it. */}
-        {outerTab === 'loss' && pillKeys && (
+            Items/Counts/Feed only (see LOSSVIEW_PILL_KEYS); tapping one
+            swaps the submenu's normal content for its filtered fix view
+            below. Tapping the active pill again clears it. Sales' own pills
+            (no_cash/missing_days/cost_price/dup_receipt) are hidden here --
+            they already surface on Joe's Role Bar panel (see cashViolations
+            in useViolations.ts), so they'd just be a duplicate row on this
+            screen. pillKeys itself stays wired for 'sales' though (not
+            removed from LOSSVIEW_PILL_KEYS), since Joe's panel "Fix now"
+            still jumps here with a violation preselected and relies on it. */}
+        {outerTab === 'loss' && pillKeys && lossView !== 'sales' && (
           <div className="flex items-center gap-1 px-2 py-1 bg-red-50 border-t border-red-100 overflow-x-auto">
             {ERROR_VIOLATIONS.filter(v => pillKeys.includes(v.key)).map(v => {
               const c = violationCounts[v.key] ?? 0
