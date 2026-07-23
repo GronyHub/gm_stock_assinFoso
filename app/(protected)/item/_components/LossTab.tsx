@@ -1,8 +1,7 @@
 'use client'
-import { Fragment, useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
-import { useSession } from 'next-auth/react'
+import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
+import Link from 'next/link'
 import { fmtDate } from '@/lib/fmtDate'
-import { isOwnerLevel } from '@/lib/roles'
 import type { ItemDayRow as DayRow, CountRevision } from '@/lib/itemDayRows'
 import {
   numVal, computeRows, buildPackCycles, buildPackChainRows, packSideCedis, realizedCycleCedis,
@@ -970,18 +969,17 @@ function MergeItemPicker({ itemId, itemName, typeLabel, mergePool, onMerged }: {
   )
 }
 
-// The Edit button in renderRow's row sets editTriggerId, which flows in here
-// as autoEdit -- the only thing that opens the editing/merge/alias UI below.
-// Exported so ItemDetailPanel.tsx can also render it standalone on the Item
-// 360 page, with its own equivalents of the pools/records this file builds
-// from its own full-list fetch.
-export function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, mergePool, isOwnerLevelUser, autoEdit, onSaved, onRelationsSaved, onMerged, onDateClick, showPrices, lossOnly, gainOnly }: {
+// Self-contained: has its own Edit button (below) that opens the
+// editing/merge/alias UI, rather than relying on a caller to flip it open
+// externally. Exported so ItemDetailPanel.tsx can also render it standalone
+// on the Item 360 page, with its own equivalents of the pools/records this
+// file builds from its own full-list fetch.
+export function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, mergePool, isOwnerLevelUser, onSaved, onRelationsSaved, onMerged, onDateClick, showPrices, lossOnly, gainOnly }: {
   item: SummaryRow; groups: string[]; allItems: { item_id: number; item_name: string }[]
   currentAliases: AliasRecord[]; currentMatches: MatchRecord[]
   candidatePool: CandidateItem[]
   mergePool: CandidateItem[]
   isOwnerLevelUser: boolean
-  autoEdit: boolean
   onSaved: (u: Partial<SummaryRow>) => void
   onRelationsSaved: (aliases: AliasRecord[], matches: MatchRecord[]) => void
   onMerged: () => void
@@ -1086,11 +1084,6 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
     setEditing(true)
   }
 
-  useEffect(() => {
-    if (autoEdit) startEdit()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoEdit])
-
   async function saveEdit() {
     setSaving(true)
     await fetch(`/api/items/${item.item_id}`, {
@@ -1161,6 +1154,14 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
     // (w-max) instead of clipping it (overflow-hidden), so the detail panel
     // can scroll sideways while the frozen DATE column stays put.
     <div className={`bg-white border border-gray-200 rounded-lg mt-0.5 ${isPackChain ? 'w-max min-w-full' : 'overflow-hidden'}`}>
+      {!editing && (
+        <div className="flex items-center justify-end px-2 pt-1.5">
+          <button onClick={startEdit}
+            className="text-[8px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+            ✏️ Edit
+          </button>
+        </div>
+      )}
       {editing && (
         <div className="px-2 pt-1.5 pb-2 space-y-2">
           <div className="flex items-center justify-end gap-1">
@@ -1671,33 +1672,15 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
 }
 
 /* ── main LossTab ── */
-export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 'All', productType = 'all', jumpToItemId, onJumpDone, onDateClick, showPrices, lossOnly, gainOnly, onExpandedIdChange }: {
+export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 'All', productType = 'all' }: {
   onOpenItem: (itemId: number) => void
   search?: string
   group?: string | null
   productType?: 'all' | 'goods' | 'services'
-  jumpToItemId?: number | null
-  onJumpDone?: () => void
-  onDateClick?: (date: string, itemName: string) => void
-  showPrices?: boolean
-  lossOnly?: boolean
-  gainOnly?: boolean
-  onExpandedIdChange?: (id: number | null) => void
 }) {
   const [rows, setRows] = useState<SummaryRow[]>([])
   const [loading, setLoading] = useState(true)
   const [sort, setSort] = useState<{ col: SortCol; dir: SortDir }>({ col: 'lgAmt', dir: 'desc' })
-  // Seeded from jumpToItemId (not null) so a restored ?item= from the URL
-  // is already correct on the very first render -- otherwise this would
-  // start closed, report that closed state up, and briefly strip ?item=
-  // from the URL before the jump effect below has a chance to reopen it.
-  const [expandedId, setExpandedId] = useState<number | null>(() => jumpToItemId ?? null)
-  const [editTriggerId, setEditTriggerId] = useState<number | null>(null)
-  const [aliasRecords, setAliasRecords] = useState<Record<number, AliasRecord[]>>({})
-  const [matchRecords, setMatchRecords] = useState<Record<string, MatchRecord[]>>({})
-
-  const { data: session } = useSession()
-  const isOwnerLevelUser = isOwnerLevel(session?.user as any)
 
   function loadSummary() {
     return fetch('/api/losses/summary').then(r => r.json())
@@ -1706,88 +1689,12 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   }
   useEffect(() => { loadSummary() }, [])
 
-  // Report the expanded row up so a refresh can restore it via the URL.
-  useEffect(() => { onExpandedIdChange?.(expandedId) }, [expandedId, onExpandedIdChange])
-
-  // Incoming jump from a sales receipt line: expand that item's row and
-  // scroll it into view.
-  useEffect(() => {
-    if (!jumpToItemId || loading) return
-    const row = rows.find(r => r.item_id === jumpToItemId)
-    if (row) {
-      setExpandedId(row.item_id)
-      setTimeout(() => document.getElementById(`item-row-${row.item_id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
-    }
-    onJumpDone?.()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jumpToItemId, loading])
-
-  function reloadAfterMerge() {
-    setExpandedId(null)
-    loadSummary()
-    loadAliases()
-    loadMatches()
-  }
-
-  function loadMatches() {
-    fetch('/api/good-service-matches').then(r => r.json())
-      .then((d: { id: number; good_name: string; service_name: string }[]) => {
-        if (!Array.isArray(d)) return
-        // Bidirectional: a Good's key collects its Services, a Service's key collects its Goods
-        const acc: Record<string, MatchRecord[]> = {}
-        for (const { id, good_name, service_name } of d) {
-          const gk = good_name.trim().toLowerCase()
-          const sk = service_name.trim().toLowerCase()
-          if (!acc[gk]) acc[gk] = []
-          acc[gk].push({ id, name: service_name.trim() })
-          if (!acc[sk]) acc[sk] = []
-          acc[sk].push({ id, name: good_name.trim() })
-        }
-        setMatchRecords(acc)
-      })
-      .catch(() => {})
-  }
-  useEffect(() => { loadMatches() }, [])
-
-  function loadAliases() {
-    fetch('/api/aliases/wide').then(r => r.json())
-      .then((d: any[]) => {
-        if (!Array.isArray(d)) return
-        const map: Record<number, AliasRecord[]> = {}
-        for (const row of d) {
-          const records = (row.aliases ?? []).map((a: any) => ({ id: a.id, name: a.name })).filter((a: AliasRecord) => a.name)
-          if (records.length) map[row.item_id] = records
-        }
-        setAliasRecords(map)
-      })
-      .catch(() => {})
-  }
-  useEffect(() => { loadAliases() }, [])
-
   function handleSort(col: SortCol) {
     setSort(s => s.col === col
       ? { col, dir: s.dir === 'desc' ? 'asc' : 'desc' }
       : { col, dir: col === 'item_name' ? 'asc' : 'desc' }
     )
   }
-
-  function patchRow(itemId: number, updates: Partial<SummaryRow>) {
-    setRows(prev => prev.map(r => r.item_id === itemId ? { ...r, ...updates } : r))
-  }
-
-  const groupNames = useMemo(() =>
-    Array.from(new Set(rows.map(r => r.cf_group ?? 'Ungrouped'))).sort()
-  , [rows])
-
-  const goodsPool = useMemo<CandidateItem[]>(() =>
-    rows.filter(r => r.product_type !== 'service').map(r => ({ item_id: r.item_id, item_name: r.item_name, product_type: r.product_type }))
-  , [rows])
-  const servicesPool = useMemo<CandidateItem[]>(() =>
-    rows.filter(r => r.product_type === 'service').map(r => ({ item_id: r.item_id, item_name: r.item_name, product_type: r.product_type }))
-  , [rows])
-  const allItemsList = useMemo(() =>
-    rows.map(r => ({ item_id: r.item_id, item_name: r.item_name })).sort((a, b) => a.item_name.localeCompare(b.item_name))
-  , [rows])
 
   const filtered = useMemo(() => {
     const q = (search ?? '').toLowerCase()
@@ -1825,24 +1732,18 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
       <col style={{width:'26px'}} />
       <col style={{width:'56px'}} />
       <col style={{width:'50px'}} />
-      <col style={{width:'18px'}} />
-      <col style={{width:'50px'}} />
     </colgroup>
   )
 
   function renderRow(row: SummaryRow) {
     const lossAmt = row.lgAmt > 0, gainAmt = row.lgAmt < 0
     const soh = parseFloat(row.soh ?? '0') || 0
-    const isOpen = expandedId === row.item_id
     return (
-      <Fragment key={row.item_id}>
-      <tr
-        id={`item-row-${row.item_id}`}
-        onClick={() => { setExpandedId(isOpen ? null : row.item_id); setEditTriggerId(null) }}
-        className={`cursor-pointer transition
-          ${isOpen ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-        <td className={`pl-1 pr-0 py-0.5 font-bold text-gray-900 whitespace-normal break-words sticky left-0 z-10 border border-black ${isOpen ? 'bg-blue-50' : 'bg-white'}`}
-          title={row.item_name}>{row.item_name}</td>
+      <tr key={row.item_id} className="hover:bg-gray-50 transition">
+        <td className="pl-1 pr-0 py-0.5 font-bold whitespace-normal break-words sticky left-0 z-10 border border-black bg-white"
+          title={row.item_name}>
+          <Link href={`/stock/${row.item_id}`} className="text-blue-600 hover:underline">{row.item_name}</Link>
+        </td>
         <td className={`text-center py-0.5 font-bold tabular-nums border border-black ${lossAmt ? 'text-red-600' : gainAmt ? 'text-green-600' : 'text-gray-300'}`}>
           {fmtAmt(row.lgAmt)}
         </td>
@@ -1865,55 +1766,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
           title={row.product_type === 'service' ? 'Service' : 'Good'}>
           {row.product_type === 'service' ? 'Service' : 'Good'}
         </td>
-        <td className="text-center py-0.5 font-bold text-gray-400 border border-black">{isOpen ? '▾' : '▸'}</td>
-        <td className="text-center py-0.5 border border-black">
-          <button
-            onClick={e => { e.stopPropagation(); setExpandedId(row.item_id); setEditTriggerId(row.item_id) }}
-            className="text-[8px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
-            Edit
-          </button>
-        </td>
       </tr>
-      {isOpen && (
-        <tr>
-          {/* colSpan makes this cell as wide as the scrollable table, but the inner
-              wrapper is sticky-pinned to the left edge and capped to the visible
-              viewport width (like the frozen Item column above), so the detail
-              table renders at phone width directly under the row that opened it.
-              The cell itself has no background of its own, so whatever part of it
-              sits past the sticky content just blends into the page instead of
-              showing as a visible bar. */}
-          <td colSpan={14} className="p-0 border border-black">
-            {/* Was calc(100vw - 2rem) -- a leftover assumption of 2rem of
-                horizontal page padding that doesn't actually exist anywhere
-                in this layout (the scroll container above and the page
-                wrapper in page.tsx both have zero horizontal padding), so it
-                just reserved 32px of permanently blank space on every
-                screen. Plain 100vw matches the real available width. */}
-            <div className="sticky left-0 w-[100vw] max-w-[100vw] max-h-[50vh] overflow-auto bg-blue-50 px-0.5 pb-2 pt-0.5">
-              <ItemDetail item={row} groups={groupNames} allItems={allItemsList}
-                currentAliases={aliasRecords[row.item_id] ?? []}
-                currentMatches={matchRecords[row.item_name.trim().toLowerCase()] ?? []}
-                candidatePool={row.product_type === 'service' ? goodsPool : servicesPool}
-                mergePool={[...goodsPool, ...servicesPool].filter(i => i.item_id !== row.item_id)}
-                isOwnerLevelUser={isOwnerLevelUser}
-                autoEdit={editTriggerId === row.item_id}
-                onSaved={u => patchRow(row.item_id, u)}
-                onRelationsSaved={(newAliases, newMatches) => {
-                  setAliasRecords(prev => ({ ...prev, [row.item_id]: newAliases }))
-                  setMatchRecords(prev => ({ ...prev, [row.item_name.trim().toLowerCase()]: newMatches }))
-                  setEditTriggerId(null)
-                }}
-                onMerged={reloadAfterMerge}
-                onDateClick={onDateClick}
-                showPrices={showPrices}
-                lossOnly={lossOnly}
-                gainOnly={gainOnly} />
-            </div>
-          </td>
-        </tr>
-      )}
-      </Fragment>
     )
   }
 
@@ -1937,8 +1790,6 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
               <SortTh label="CP" col="cp" {...thProps} cls="text-center" />
               <SortTh label="Group" col="cf_group" {...thProps} cls="text-center" />
               <SortTh label="Type" col="product_type" {...thProps} cls="text-center" />
-              <th className={`${thBase} text-center text-gray-400`}>▸</th>
-              <th className={`${thBase} text-center`}>Edit</th>
             </tr>
           </thead>
           <tbody>

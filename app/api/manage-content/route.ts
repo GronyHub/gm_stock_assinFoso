@@ -37,7 +37,7 @@ Everything to do with money. Top row: Sales, Bills, Daily Loss, Gd/Srv., Expense
 - Sales -- every sales receipt (WIC = Walk-In Customer, GMC = Grony Multimedia as Customer, i.e. internal use, not a real sale).
 - Bills -- what the shop has bought from vendors.
 - Daily Loss -- loss/gain records feed, with its own trend charts.
-- Gd/Srv. (Goods & Services) -- the shop's stock list, with pack-chain loss/gain tracking. Has its own sub-row: 💲 Prices / 🔻 Loss Only / 🔺 Gain Only toggles for the pack-chain detail table.
+- Gd/Srv. (Goods & Services) -- the shop's stock list. Tap an item's name to open its Item 360 page: stock/history stats plus the same pack-chain loss/gain detail, editing, aliases, matches, and merge tools that used to open inline here.
 - Expenses -- money spent.
 - P&L -- Profit & Loss.
 - CAB -- Cash at Bank reconciliation.

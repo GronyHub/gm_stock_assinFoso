@@ -86,16 +86,12 @@ const REPORT_VIEWS = new Set<LossView>(['pl', 'cab', 'vendors', 'customers', 're
 // entry + the CountsTab render further down) purely for cross-navigation --
 // Joe's "Fix now" flags and the item Loss dialog's "Go to Counts" both land
 // here, and that flow still needs somewhere to land even with no visible nav
-// button pointing at it any more. CHILDREN_OF.items stays present (as an
-// empty array, not removed) so the 💲 Prices/🔻 Loss Only/🔺 Gain Only
-// toggle row -- gated on the same lossChildren check -- keeps rendering.
+// button pointing at it any more.
 // Sub-views not listed here have no parent and no children.
 const PARENT_OF: Partial<Record<LossView, LossView>> = {
   items: 'items', counts: 'items',
 }
-const CHILDREN_OF: Partial<Record<LossView, { key: LossView; label: string }[]>> = {
-  items: [],
-}
+const CHILDREN_OF: Partial<Record<LossView, { key: LossView; label: string }[]>> = {}
 
 type Item = {
   id: number
@@ -280,33 +276,12 @@ function ItemHubPageInner() {
   const [lossView, setLossView]         = useState<LossView>(
     rawInitialTab === 'losses' ? 'feed' : (oldTabView ?? initialView ?? 'items')
   )
-  // SP/AMOUNT/CP/PROFIT columns on the pack-chain detail table are collapsed
-  // by default (they're only needed occasionally) -- toggled from the submenu.
-  const [showPrices, setShowPrices]     = useState(false)
-  // Filters the pack-chain detail table down to rows with an actual loss/gain.
-  // Mutually exclusive -- turning one on turns the other off.
-  const [lossOnly, setLossOnly]         = useState(false)
-  const [gainOnly, setGainOnly]         = useState(false)
   const [search, setSearch]             = useState(searchParams.get('q') ?? '')
-  // Which item row is expanded on the Grony Cash tab's Items view, if any -- only
-  // used to keep the URL (and thus a refresh) pointed at the same row;
-  // LossTab owns the actual expand/collapse state and reports changes here.
-  const initialItemParam = searchParams.get('item')
-  const [expandedItemId, setExpandedItemId] = useState<number | null>(
-    initialItemParam ? Number(initialItemParam) || null : null
-  )
   const [violation, setViolation]       = useState<string | null>(searchParams.get('violation'))
   const [groupOpen, setGroupOpen]       = useState(false)
   const [hamburgerOpen, setHamburgerOpen] = useState(false)
   const [addForm, setAddForm]             = useState<'item' | 'sale' | 'bill' | 'expense' | null>(null)
   const [jumpToItemId, setJumpToItemId]   = useState<number | null>(null)
-  // Seeded from ?item= on first load so a refreshed page re-expands (and
-  // scrolls to) the same row via LossTab's existing jump-to-item effect.
-  const [jumpToLossItemId, setJumpToLossItemId] = useState<number | null>(
-    initialItemParam ? Number(initialItemParam) || null : null
-  )
-  const [jumpToReceiptDate, setJumpToReceiptDate] = useState<string | null>(null)
-  const [jumpToReceiptItemName, setJumpToReceiptItemName] = useState<string | null>(null)
   const groupRef     = useRef<HTMLDivElement>(null)
   const hamburgerRef = useRef<HTMLDivElement>(null)
 
@@ -438,26 +413,17 @@ function ItemHubPageInner() {
     if (t === 'loss') setLossView('items')
   }
 
-  // A refresh should land back on the same tab/sub-view/search/expanded row
-  // instead of resetting to Today -- single writer for the URL so nothing
-  // fights over it. expandedItemId is only ever non-null while actually on
-  // the Items view (cleared below), so ?item= only appears there.
+  // A refresh should land back on the same tab/sub-view/search instead of
+  // resetting to Today -- single writer for the URL so nothing fights over it.
   useEffect(() => {
-    if (!(outerTab === 'loss' && lossView === 'items') && expandedItemId !== null) {
-      setExpandedItemId(null)
-      return
-    }
     const params = new URLSearchParams()
     if (outerTab !== 'today') params.set('tab', outerTab)
     if (outerTab === 'loss' && lossView !== 'items') params.set('view', lossView)
     if (search.trim()) params.set('q', search)
-    if (outerTab === 'loss' && lossView === 'items' && expandedItemId !== null) {
-      params.set('item', String(expandedItemId))
-    }
     const qs = params.toString()
     router.replace(qs ? `/item?${qs}` : '/item', { scroll: false })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [outerTab, lossView, search, expandedItemId])
+  }, [outerTab, lossView, search])
 
   function goToViolation(key: string) {
     // The loss-summary rows point at the Loss feed (a submenu of the Grony
@@ -473,16 +439,6 @@ function ItemHubPageInner() {
     changeTab('loss')
     setLossView(targetView)
     setViolation(key)
-  }
-
-  // Cross-navigation from an item's activity table to its sales receipts.
-  // Reset the filters that could otherwise hide the jump target.
-  function openReceiptFromItem(date: string, itemName: string) {
-    setSearch('')
-    setLossView('sales')
-    setViolation(null)
-    setJumpToReceiptDate(date)
-    setJumpToReceiptItemName(itemName)
   }
 
   const groups = ['All', ...Array.from(new Set(items.map(i => i.cf_group ?? 'Ungrouped'))).sort()]
@@ -576,15 +532,8 @@ function ItemHubPageInner() {
         )}
 
         {/* Children row -- only for sections that have any, and only while
-            that section (or one of its children) is the active view.
-            lossChildren can be an empty array (see CHILDREN_OF.items) purely
-            to keep the 💲 Prices/🔻 Loss Only/🔺 Gain Only toggles below
-            alive -- those only render when lossView === 'items', so also
-            require that here, otherwise landing on 'counts' via a Fix Now
-            deep link would show this row as an empty strip with nothing in
-            it (no children left, and the toggles hidden since lossView
-            isn't 'items'). */}
-        {outerTab === 'loss' && lossChildren && (lossChildren.length > 0 || lossView === 'items') && (
+            that section (or one of its children) is the active view. */}
+        {outerTab === 'loss' && lossChildren && lossChildren.length > 0 && (
           <div className="flex items-center gap-1 px-2 py-0.5 bg-gray-50 border-t border-gray-100 overflow-x-auto">
             {lossChildren.map(c => (
               <button key={c.key} onClick={() => { setLossView(c.key); setAddForm(null); setViolation(null) }}
@@ -593,29 +542,6 @@ function ItemHubPageInner() {
                 {c.label}
               </button>
             ))}
-            {lossView === 'items' && (
-              <>
-                <div className="w-px h-3 bg-gray-200 shrink-0 mx-0.5" />
-                <button onClick={() => setShowPrices(p => !p)}
-                  title="Show/hide the SP, AMOUNT, CP and PROFIT columns on the pack-chain detail table"
-                  className={`shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-lg whitespace-nowrap transition
-                    ${showPrices ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gray-100'}`}>
-                  💲 Prices {showPrices ? '▾' : '▸'}
-                </button>
-                <button onClick={() => setLossOnly(o => { const v = !o; if (v) setGainOnly(false); return v })}
-                  title="Show only rows with an actual loss on the pack-chain detail table"
-                  className={`shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-lg whitespace-nowrap transition
-                    ${lossOnly ? 'bg-red-600 text-white' : 'text-gray-400 hover:bg-gray-100'}`}>
-                  🔻 Loss Only
-                </button>
-                <button onClick={() => setGainOnly(o => { const v = !o; if (v) setLossOnly(false); return v })}
-                  title="Show only rows with an actual gain on the pack-chain detail table"
-                  className={`shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-lg whitespace-nowrap transition
-                    ${gainOnly ? 'bg-orange-500 text-white' : 'text-gray-400 hover:bg-gray-100'}`}>
-                  🔺 Gain Only
-                </button>
-              </>
-            )}
           </div>
         )}
 
@@ -812,18 +738,13 @@ function ItemHubPageInner() {
               )
           ) : (
             <TabErrorBoundary>
-              <LossTab onOpenItem={() => {}} search={search} group={group} productType={productType}
-                jumpToItemId={jumpToLossItemId} onJumpDone={() => setJumpToLossItemId(null)}
-                onDateClick={openReceiptFromItem} showPrices={showPrices} lossOnly={lossOnly} gainOnly={gainOnly}
-                onExpandedIdChange={setExpandedItemId} />
+              <LossTab onOpenItem={() => {}} search={search} group={group} productType={productType} />
             </TabErrorBoundary>
           )
         )}
         {addForm !== 'sale' && outerTab === 'loss' && lossView === 'sales' && (
           <SalesTab items={items} groupFilter={group} search={search}
-            violation={pillKeys?.includes(violation ?? '') ? violation : null}
-            jumpToDate={jumpToReceiptDate} jumpToItemName={jumpToReceiptItemName}
-            onJumpDone={() => { setJumpToReceiptDate(null); setJumpToReceiptItemName(null) }} />
+            violation={pillKeys?.includes(violation ?? '') ? violation : null} />
         )}
         {addForm !== 'bill' && outerTab === 'loss' && lossView === 'bills' && (
           <BillsTab items={items} groupFilter={group} search={search} />
