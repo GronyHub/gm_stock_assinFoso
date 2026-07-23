@@ -1816,7 +1816,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
 
   const colgroup = (
     <colgroup>
-      <col style={{width:'104px'}} />
+      <col style={{width:'180px'}} />
       <col style={{width:'40px'}} />
       <col style={{width:'40px'}} />
       <col style={{width:'26px'}} />
@@ -1846,8 +1846,8 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
         onClick={() => { setExpandedId(isOpen ? null : row.item_id); setEditTriggerId(null) }}
         className={`cursor-pointer transition
           ${isOpen ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-        <td className={`pl-1 pr-0 py-0.5 font-bold text-gray-900 whitespace-nowrap overflow-hidden sticky left-0 z-10 border border-black ${isOpen ? 'bg-blue-50' : 'bg-white'}`}
-          title={row.item_name}>{row.item_name.slice(0, 20)}</td>
+        <td className={`pl-1 pr-0 py-0.5 font-bold text-gray-900 whitespace-normal break-words sticky left-0 z-10 border border-black ${isOpen ? 'bg-blue-50' : 'bg-white'}`}
+          title={row.item_name}>{row.item_name}</td>
         <td className={`text-center py-0.5 font-bold tabular-nums border border-black ${lossAmt ? 'text-red-600' : gainAmt ? 'text-green-600' : 'text-gray-300'}`}>
           {fmtAmt(row.lgAmt)}
         </td>
@@ -1932,7 +1932,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* Table — all columns fit on screen; Item column compact */}
+      {/* Table — horizontally scrollable; Item column wraps instead of truncating so full names are always visible */}
       <div className="flex-1 min-h-0 overflow-auto rounded-xl border border-black bg-white">
         <table className="table-fixed border-collapse text-[8px]">
           {colgroup}
