@@ -88,7 +88,6 @@ export default function ItemDetailPanel({ itemId }: { itemId: number }) {
         candidatePool={item.product_type === 'service' ? goodsPool : servicesPool}
         mergePool={[...goodsPool, ...servicesPool].filter(i => i.item_id !== item.item_id)}
         isOwnerLevelUser={isOwnerLevelUser}
-        autoEdit={false}
         onSaved={u => patchItem(item.item_id, u)}
         onRelationsSaved={(newAliases, newMatches) => {
           setAliasRecords(prev => ({ ...prev, [item.item_id]: newAliases }))
