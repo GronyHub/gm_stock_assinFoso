@@ -1,6 +1,11 @@
 import sql from '@/lib/db'
 import { NextResponse } from 'next/server'
 
+export async function GET() {
+  const [row] = await sql`SELECT 1 AS ok`
+  return NextResponse.json(row)
+}
+
 // New items covering the remaining Pre-Zoho Bills lines with a real,
 // identifiable product. C-EXV 28/33 colors each cover both the "C-EXV" and
 // "CEXV" spelling variants seen on different dates (same product).
