@@ -653,7 +653,7 @@ function rowSortVal(row: SummaryRow, col: SortCol): number | string {
 }
 
 /* ── compact th with sort indicator ── */
-const thBase = 'py-1 font-bold cursor-pointer select-none whitespace-nowrap border border-black'
+const thBase = 'px-2 py-2 font-bold cursor-pointer select-none whitespace-nowrap border-b border-gray-200 text-[10px] uppercase tracking-wide'
 function SortTh({ label, col, sort, onSort, cls = '' }: {
   label: ReactNode; col: SortCol
   sort: { col: SortCol; dir: SortDir }
@@ -664,8 +664,8 @@ function SortTh({ label, col, sort, onSort, cls = '' }: {
   const arrow = active ? (sort.dir === 'desc' ? '↓' : '↑') : ''
   return (
     <th onClick={() => onSort(col)}
-      className={`${thBase} ${cls} ${active ? 'text-blue-600' : 'text-gray-500 hover:text-gray-800'}`}>
-      {label}{arrow && <span className="ml-0.5 text-[7px]">{arrow}</span>}
+      className={`${thBase} ${cls} ${active ? 'text-blue-600' : 'text-gray-400 hover:text-gray-700'}`}>
+      {label}{arrow && <span className="ml-0.5 text-[9px]">{arrow}</span>}
     </th>
   )
 }
@@ -1692,18 +1692,18 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
 
   const colgroup = (
     <colgroup>
-      <col style={{width:'180px'}} />
-      <col style={{width:'40px'}} />
-      <col style={{width:'40px'}} />
-      <col style={{width:'26px'}} />
-      <col style={{width:'26px'}} />
-      <col style={{width:'26px'}} />
-      <col style={{width:'22px'}} />
-      <col style={{width:'26px'}} />
-      <col style={{width:'30px'}} />
-      <col style={{width:'26px'}} />
+      <col style={{width:'200px'}} />
       <col style={{width:'56px'}} />
-      <col style={{width:'50px'}} />
+      <col style={{width:'52px'}} />
+      <col style={{width:'44px'}} />
+      <col style={{width:'40px'}} />
+      <col style={{width:'40px'}} />
+      <col style={{width:'36px'}} />
+      <col style={{width:'40px'}} />
+      <col style={{width:'44px'}} />
+      <col style={{width:'40px'}} />
+      <col style={{width:'70px'}} />
+      <col style={{width:'64px'}} />
     </colgroup>
   )
 
@@ -1712,31 +1712,33 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
     const soh = parseFloat(row.soh ?? '0') || 0
     return (
       <tr key={row.item_id} className="hover:bg-gray-50 transition">
-        <td className="pl-1 pr-0 py-0.5 font-bold whitespace-normal break-words sticky left-0 z-10 border border-black bg-white"
+        <td className="pl-2 pr-2 py-1.5 font-bold whitespace-normal break-words sticky left-0 z-10 bg-white border-r border-gray-200"
           title={row.item_name}>
           <Link href={`/stock/${row.item_id}`} className="text-blue-600 hover:underline">{row.item_name}</Link>
         </td>
-        <td className={`text-center py-0.5 font-bold tabular-nums border border-black ${lossAmt ? 'text-red-600' : gainAmt ? 'text-green-600' : 'text-gray-300'}`}>
+        <td className={`text-center py-1.5 font-semibold tabular-nums ${lossAmt ? 'text-red-500' : gainAmt ? 'text-green-600' : 'text-gray-300'}`}>
           {fmtAmt(row.lgAmt)}
         </td>
-        <td className={`text-center py-0.5 font-bold tabular-nums border border-black ${row.lossCount > 0 ? 'text-red-500' : 'text-gray-300'}`}>
+        <td className={`text-center py-1.5 font-semibold tabular-nums ${row.lossCount > 0 ? 'text-red-500' : 'text-gray-300'}`}>
           {row.lossCount}
         </td>
-        <td className={`text-center py-0.5 font-bold tabular-nums border border-black ${row.gainAmt > 0.001 ? 'text-green-600' : 'text-gray-300'}`}>
+        <td className={`text-center py-1.5 font-semibold tabular-nums ${row.gainAmt > 0.001 ? 'text-green-600' : 'text-gray-300'}`}>
           {row.gainAmt > 0.001 ? `+${fmtN(row.gainAmt)}` : '—'}
         </td>
-        <td className="text-center py-0.5 font-bold text-gray-700 tabular-nums border border-black">{fmtQ(row.wic)}</td>
-        <td className="text-center py-0.5 font-bold text-gray-700 tabular-nums border border-black">{fmtQ(row.gmc)}</td>
-        <td className="text-center py-0.5 font-bold text-blue-600 tabular-nums border border-black">{fmtQ(row.bl)}</td>
-        <td className={`text-center py-0.5 font-bold tabular-nums border border-black ${soh <= 0 ? 'text-red-500' : 'text-gray-700'}`}>
+        <td className="text-center py-1.5 text-gray-600 tabular-nums">{fmtQ(row.wic)}</td>
+        <td className="text-center py-1.5 text-gray-600 tabular-nums">{fmtQ(row.gmc)}</td>
+        <td className="text-center py-1.5 text-blue-600 tabular-nums">{fmtQ(row.bl)}</td>
+        <td className={`text-center py-1.5 font-semibold tabular-nums ${soh <= 0 ? 'text-red-500' : 'text-gray-700'}`}>
           {soh % 1 === 0 ? soh : soh.toFixed(1)}
         </td>
-        <td className="text-center py-0.5 font-bold text-blue-600 tabular-nums border border-black">{fmtCcy(row.sp)}</td>
-        <td className="text-center py-0.5 font-bold text-green-600 tabular-nums border border-black">{fmtCcy(row.cp)}</td>
-        <td className="text-center py-0.5 font-bold text-gray-500 truncate border border-black" title={row.cf_group ?? undefined}>{row.cf_group ?? '—'}</td>
-        <td className={`text-center py-0.5 font-bold border border-black ${row.product_type === 'service' ? 'text-purple-500' : 'text-teal-600'}`}
-          title={row.product_type === 'service' ? 'Service' : 'Good'}>
-          {row.product_type === 'service' ? 'Service' : 'Good'}
+        <td className="text-center py-1.5 text-blue-600 tabular-nums">{fmtCcy(row.sp)}</td>
+        <td className="text-center py-1.5 text-green-600 tabular-nums">{fmtCcy(row.cp)}</td>
+        <td className="text-center py-1.5 text-gray-500 truncate" title={row.cf_group ?? undefined}>{row.cf_group ?? '—'}</td>
+        <td className="text-center py-1.5">
+          <span className={`inline-block px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${
+            row.product_type === 'service' ? 'bg-purple-50 text-purple-600' : 'bg-teal-50 text-teal-600'}`}>
+            {row.product_type === 'service' ? 'Service' : 'Good'}
+          </span>
         </td>
       </tr>
     )
@@ -1745,12 +1747,12 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Table — horizontally scrollable; Item column wraps instead of truncating so full names are always visible */}
-      <div className="flex-1 min-h-0 overflow-auto rounded-xl border border-black bg-white">
-        <table className="table-fixed border-collapse text-[8px]">
+      <div className="flex-1 min-h-0 overflow-auto rounded-xl border border-gray-200 bg-white">
+        <table className="table-fixed border-collapse text-[11px]">
           {colgroup}
           <thead className="sticky top-0 z-20">
             <tr className="bg-gray-50">
-              <SortTh label="Item" col="item_name" sort={sort} onSort={handleSort} cls="text-left pl-1 pr-0 sticky left-0 z-30 bg-gray-50 border-black" />
+              <SortTh label="Item" col="item_name" sort={sort} onSort={handleSort} cls="text-left pl-2 pr-2 sticky left-0 z-30 bg-gray-50 border-r border-gray-200" />
               <SortTh label={<>Loss<span className="block">Amount</span></>} col="lgAmt" {...thProps} cls="text-center" />
               <SortTh label={<>Num. of<span className="block">Losses</span></>} col="lossCount" {...thProps} cls="text-center" />
               <SortTh label="Gain" col="gainAmt" {...thProps} cls="text-center" />
@@ -1764,9 +1766,9 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
               <SortTh label="Type" col="product_type" {...thProps} cls="text-center" />
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-gray-100">
             {filtered.length === 0 && (
-              <tr><td colSpan={14} className="py-10 text-center text-gray-400 text-[9px]">No items</td></tr>
+              <tr><td colSpan={12} className="py-10 text-center text-gray-400 text-xs">No items</td></tr>
             )}
             {filtered.map(renderRow)}
           </tbody>
