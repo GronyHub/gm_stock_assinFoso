@@ -40,10 +40,10 @@ function fmtShort(dateStr: string) {
 }
 
 function fmtCust(name: string | null) {
-  if (!name) return 'WIC'
+  if (!name) return 'W'
   const u = name.toLowerCase()
-  if (u.includes('walk') || u.includes('wic')) return 'WIC'
-  return 'GMC'
+  if (u.includes('walk') || u.includes('wic')) return 'W'
+  return 'G'
 }
 
 function n(val: string | null) {
@@ -608,7 +608,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
           <tr>
             <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200 whitespace-nowrap">DATE</th>
             <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">ITEM</th>
-            <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">CST</th>
+            <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">C</th>
             <th className="text-right px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">QTY</th>
             <th className="text-right px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">SP</th>
             <th className="text-right px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">TOTAL</th>
@@ -623,7 +623,8 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
           const rLines = linesMap[r.id] ?? []
 
           // Every line item shows as its own row, always -- no click needed
-          // to reveal them. DATE/CST repeat on every line (so a long list
+          // to reveal them. DATE/C (customer: W = Walk-In, G = Grony
+          // Multimedia as Customer) repeat on every line (so a long list
           // still reads correctly at a glance); CC/INV/WNW are receipt-level
           // totals, not per-line, so they only appear once via rowSpan on
           // the first line instead of repeating the same number down the
