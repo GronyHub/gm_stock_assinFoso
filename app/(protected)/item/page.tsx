@@ -34,12 +34,10 @@ const BillsTab       = dynamic(() => import('./_components/BillsTab'),        { 
 const CountsTab      = dynamic(() => import('./_components/CountsTab'),       { ssr: false, loading: () => loading('Loading…') })
 const ExpensesTab    = dynamic(() => import('./_components/ExpensesTab'),     { ssr: false, loading: () => loading('Loading…') })
 const CABTab         = dynamic(() => import('./_components/CABTab'),          { ssr: false, loading: () => loading('Loading…') })
-const POTab          = dynamic(() => import('./_components/POTab'),           { ssr: false, loading: () => loading('Loading…') })
 const TodayContent   = dynamic(() => import('./_components/TodayContent'),    { ssr: false, loading: () => loading('Loading…') })
 const NewSaleForm    = dynamic(() => import('../sales/new/page'),             { ssr: false, loading: () => loading('Loading…') })
 const NewBillForm    = dynamic(() => import('../bills/new/page'),             { ssr: false, loading: () => loading('Loading…') })
 const NewExpenseForm = dynamic(() => import('../expenses/new/page'),          { ssr: false, loading: () => loading('Loading…') })
-const NewPOForm      = dynamic(() => import('../purchase-orders/new/page'),   { ssr: false, loading: () => loading('Loading…') })
 const NewItemForm    = dynamic(() => import('./_components/NewItemForm'),     { ssr: false, loading: () => loading('Loading…') })
 const AnalyticsPanel = dynamic(() => import('./_components/AnalyticsPanel'),  { ssr: false, loading: () => loading('Loading analytics…') })
 const LossTab        = dynamic(() => import('./_components/LossTab'),         { ssr: false, loading: () => loading('Loading…') })
@@ -59,7 +57,7 @@ type OuterTab = 'today' | 'loss' | 'manage' | 'dailySummary' | 'data'
 // -- kept as the internal key since it's referenced throughout; only the
 // label changed). Data is its own top-level tab (outerTab 'data'), not a
 // Grony Cash submenu.
-type LossView = 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'expenses' | 'po' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts'
+type LossView = 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts'
 
 // Old top-level tabs that got folded into Grony Cash submenus -- old
 // bookmarks/links using ?tab=pl etc. still land on the right submenu instead
@@ -294,7 +292,7 @@ function ItemHubPageInner() {
   const [violation, setViolation]       = useState<string | null>(searchParams.get('violation'))
   const [groupOpen, setGroupOpen]       = useState(false)
   const [hamburgerOpen, setHamburgerOpen] = useState(false)
-  const [addForm, setAddForm]             = useState<'item' | 'sale' | 'bill' | 'expense' | 'po' | null>(null)
+  const [addForm, setAddForm]             = useState<'item' | 'sale' | 'bill' | 'expense' | null>(null)
   const [jumpToItemId, setJumpToItemId]   = useState<number | null>(null)
   // Seeded from ?item= on first load so a refreshed page re-expands (and
   // scrolls to) the same row via LossTab's existing jump-to-item effect.
@@ -553,7 +551,6 @@ function ItemHubPageInner() {
               { key: 'feed',     label: 'Daily Loss' },
               { key: 'items',    label: 'Gd/Srv.' },
               { key: 'expenses', label: 'Expenses' },
-              { key: 'po',       label: 'PO' },
               ...(canSeePL ? [{ key: 'pl' as LossView, label: 'P&L' }] : []),
               { key: 'cab',      label: 'CAB' },
             ] as { key: LossView; label: string }[]).map(v => (
@@ -648,9 +645,9 @@ function ItemHubPageInner() {
               placeholder="Search…" autoComplete="off"
               className="min-w-0 w-24 flex-1 text-xs bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
 
-            {/* New button — Items/Sales/Bills/Expenses/PO submenus only; report-style and Counts submenus have no add-form */}
-            {outerTab === 'loss' && ['items', 'sales', 'bills', 'expenses', 'po'].includes(lossView) && (() => {
-              const formKey = lossView === 'items' ? 'item' : lossView === 'sales' ? 'sale' : lossView === 'bills' ? 'bill' : lossView === 'po' ? 'po' : 'expense'
+            {/* New button — Items/Sales/Bills/Expenses submenus only; report-style and Counts submenus have no add-form */}
+            {outerTab === 'loss' && ['items', 'sales', 'bills', 'expenses'].includes(lossView) && (() => {
+              const formKey = lossView === 'items' ? 'item' : lossView === 'sales' ? 'sale' : lossView === 'bills' ? 'bill' : 'expense'
               return (
                 <button onClick={() => setAddForm(addForm === formKey ? null : formKey)}
                   className={`shrink-0 text-xs font-semibold px-3 py-1 rounded-lg transition
@@ -722,7 +719,6 @@ function ItemHubPageInner() {
         {addForm === 'sale'    && outerTab === 'loss' && lossView === 'sales'    && <div className="px-4"><NewSaleForm    onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'bill'    && outerTab === 'loss' && lossView === 'bills'    && <div className="px-4"><NewBillForm    onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'expense' && outerTab === 'loss' && lossView === 'expenses' && <div className="px-4"><NewExpenseForm onSuccess={() => setAddForm(null)} /></div>}
-        {addForm === 'po'      && outerTab === 'loss' && lossView === 'po'       && <div className="px-4"><NewPOForm       onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'item'    && outerTab === 'loss' && lossView === 'items'    && <div className="px-4"><NewItemForm    onSuccess={() => { setAddForm(null); loadItems() }} /></div>}
         {outerTab === 'loss' && lossView === 'pl' && (
           <TabErrorBoundary>
@@ -818,11 +814,6 @@ function ItemHubPageInner() {
         )}
         {addForm !== 'bill' && outerTab === 'loss' && lossView === 'bills' && (
           <BillsTab items={items} groupFilter={group} search={search} />
-        )}
-        {addForm !== 'po' && outerTab === 'loss' && lossView === 'po' && (
-          <TabErrorBoundary>
-            <POTab search={search} />
-          </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'counts' && (
           <CountsTab items={items} groupFilter={group} search={search}
