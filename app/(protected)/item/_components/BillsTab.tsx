@@ -76,7 +76,7 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
   // Editing and item-detail toggles are keyed by FlatRow.key (bill id + line
   // index) since each visible row is now one item line, not one bill.
   const [editingKey, setEditingKey] = useState<string | null>(null)
-  const [editForm, setEditForm] = useState({ bill_date: '', vendor_name: '', status: 'paid' })
+  const [editForm, setEditForm] = useState({ bill_date: '', vendor_name: '' })
   const [saving, setSaving] = useState(false)
   const [expandedItemKey, setExpandedItemKey] = useState<string | null>(null)
 
@@ -187,7 +187,7 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
   function toggleEdit(row: FlatRow) {
     if (editingKey === row.key) { setEditingKey(null); return }
     const b = billsById[row.billId]
-    setEditForm({ bill_date: b?.bill_date?.slice(0, 10) ?? '', vendor_name: b?.vendor_name ?? '', status: b?.status ?? 'paid' })
+    setEditForm({ bill_date: b?.bill_date?.slice(0, 10) ?? '', vendor_name: b?.vendor_name ?? '' })
     setEditingKey(row.key)
     setExpandedItemKey(null)
   }
@@ -196,7 +196,7 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
     setSaving(true)
     const res = await fetch(`/api/bills/${row.billId}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bill_date: editForm.bill_date || undefined, vendor_name: editForm.vendor_name || null, status: editForm.status }),
+      body: JSON.stringify({ bill_date: editForm.bill_date || undefined, vendor_name: editForm.vendor_name || null }),
     })
     setSaving(false)
     if (res.ok) {
@@ -303,15 +303,6 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
                           <p className="text-[9px] text-gray-400 mb-0.5">Vendor</p>
                           <input value={editForm.vendor_name} autoComplete="off"
                             onChange={e => setEditForm(f => ({ ...f, vendor_name: e.target.value }))} className={inputCls} />
-                        </div>
-                        <div>
-                          <p className="text-[9px] text-gray-400 mb-0.5">Status</p>
-                          <select value={editForm.status}
-                            onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))} className={inputCls}>
-                            <option value="paid">Paid</option>
-                            <option value="open">Open</option>
-                            <option value="overdue">Overdue</option>
-                          </select>
                         </div>
                         <div className="flex gap-1">
                           <button onClick={() => saveEdit(row)} disabled={saving}
