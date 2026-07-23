@@ -33,11 +33,11 @@ A Home button plus four tabs across the top: Grony Cash, Grony Manage, Daily, Da
 Just the news feed -- announcements, photos, and voice notes. Post a message here to keep everyone informed. Flags live in the role bar at the very bottom of the screen instead (see below), so the feed is always the first thing you see.
 
 ## Grony Cash
-Everything to do with money. Top row: Sales, Bills, Daily Loss, Gd/Srv., Expenses, P&L (owner and Joe only), CAB.
+Everything to do with money. Top row: Items, Sales, Bills, Daily Loss, Expenses, P&L (owner and Joe only), CAB.
+- Items (Goods & Services) -- the shop's stock list. Tap an item's name to open its Item 360 page: stock/history stats plus the same pack-chain loss/gain detail, editing, aliases, matches, and merge tools that used to open inline here.
 - Sales -- every sales receipt (WIC = Walk-In Customer, GMC = Grony Multimedia as Customer, i.e. internal use, not a real sale).
 - Bills -- what the shop has bought from vendors.
 - Daily Loss -- loss/gain records feed, with its own trend charts.
-- Gd/Srv. (Goods & Services) -- the shop's stock list. Tap an item's name to open its Item 360 page: stock/history stats plus the same pack-chain loss/gain detail, editing, aliases, matches, and merge tools that used to open inline here.
 - Expenses -- money spent.
 - P&L -- Profit & Loss.
 - CAB -- Cash at Bank reconciliation.

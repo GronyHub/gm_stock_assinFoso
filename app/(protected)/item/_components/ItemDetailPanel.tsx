@@ -6,10 +6,10 @@ import { isOwnerLevel } from '@/lib/roles'
 import { ItemDetail, type SummaryRow, type AliasRecord, type MatchRecord, type CandidateItem } from './LossTab'
 
 // Standalone home for the same pack-chain/edit/alias/merge detail view that
-// opens inline under a row on Gd/Srv. -- reused here on the Item 360 page so
-// it's reachable without going through the Gd/Srv list. Builds its own
-// equivalents of the pools/records LossTab derives from its full-list
-// fetch, scoped down to the one item this page is about.
+// used to open inline under a row on the Items list -- reused here on the
+// Item 360 page so it's reachable without going through that list. Builds
+// its own equivalents of the pools/records LossTab derives from its
+// full-list fetch, scoped down to the one item this page is about.
 export default function ItemDetailPanel({ itemId }: { itemId: number }) {
   const router = useRouter()
   const { data: session } = useSession()
