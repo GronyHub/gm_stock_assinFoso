@@ -10,5 +10,15 @@ export async function GET() {
     WHERE bl.item_id IS NULL OR bl.unresolved = true
     ORDER BY b.bill_date, b.id
   `
-  return NextResponse.json({ count: rows.length, rows })
+  const cols = await sql`
+    SELECT column_name, data_type, is_nullable, column_default
+    FROM information_schema.columns
+    WHERE table_name = 'items'
+    ORDER BY ordinal_position
+  `
+  const existing = await sql`
+    SELECT id, canonical_name, product_type, status FROM items
+    WHERE canonical_name ILIKE '%unspecified%' OR canonical_name ILIKE '%placeholder%' OR canonical_name ILIKE '%misc%'
+  `
+  return NextResponse.json({ count: rows.length, rows, itemsColumns: cols, existingPlaceholders: existing })
 }
