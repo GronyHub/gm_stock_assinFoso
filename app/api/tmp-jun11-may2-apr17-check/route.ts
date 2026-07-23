@@ -16,5 +16,9 @@ export async function GET() {
     `
     result[d] = { lineCount: lines.length, lines, billCount: bills.length, bills }
   }
-  return NextResponse.json(result)
+  const candidateItems = await sql`
+    SELECT id, canonical_name, status FROM items
+    WHERE canonical_name ILIKE '%paper cutter%' OR canonical_name ILIKE '%glue%'
+  `
+  return NextResponse.json({ ...result, candidateItems })
 }
