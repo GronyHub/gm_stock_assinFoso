@@ -28,6 +28,24 @@ type BillLine = {
   unresolved: boolean
 }
 
+// One row per item line (not per bill) -- date/vendor come from the line's
+// parent bill, so the same vendor repeats across every line it supplied
+// that day instead of being a single group header hiding the items below it.
+type FlatRow = {
+  key: string
+  billId: number
+  billNumber: string
+  billDate: string
+  vendorName: string | null
+  status: string
+  itemId: number | null
+  itemName: string
+  quantity: string
+  unitPrice: string
+  itemTotal: string
+  unresolved: boolean
+}
+
 const MONTHS = ['Ja','Fe','Mr','Ap','My','Ju','Jl','Au','Se','Oc','No','De']
 const DAYS   = ['Su','Mo','Tu','We','Th','Fr','Sa']
 
@@ -53,16 +71,14 @@ type Props = {
 export default function BillsTab({ items, groupFilter, search }: Props) {
   const [bills, setBills] = useState<Bill[]>([])
   const [loading, setLoading] = useState(true)
-  const [expandedId, setExpandedId] = useState<number | null>(null)
   const [showHistory, setShowHistory] = useState(false)
   const [linesMap, setLinesMap] = useState<Record<number, BillLine[]>>({})
-  const [editingId, setEditingId] = useState<number | null>(null)
+  // Editing and item-detail toggles are keyed by FlatRow.key (bill id + line
+  // index) since each visible row is now one item line, not one bill.
+  const [editingKey, setEditingKey] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({ bill_date: '', vendor_name: '', status: 'paid' })
   const [saving, setSaving] = useState(false)
-  // Which bill line's item drop-down (ItemDetailDropdown) is open, if any --
-  // bill lines have no id of their own, so keyed by "bill id:row index"
-  // instead, same purpose as SalesTab's expandedLineId.
-  const [expandedLineKey, setExpandedLineKey] = useState<string | null>(null)
+  const [expandedItemKey, setExpandedItemKey] = useState<string | null>(null)
 
   function loadBills() {
     Promise.all([
@@ -83,7 +99,38 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
   }
 
   useEffect(() => { loadBills() }, [])
-  usePolling(loadBills, 5000, editingId === null)
+  usePolling(loadBills, 5000, editingKey === null)
+
+  const billsById = useMemo(() => {
+    const m: Record<number, Bill> = {}
+    for (const b of bills) m[b.id] = b
+    return m
+  }, [bills])
+
+  const flatRows = useMemo(() => {
+    const rows: FlatRow[] = []
+    for (const b of bills) {
+      const lines = linesMap[b.id] ?? []
+      lines.forEach((l, i) => {
+        rows.push({
+          key: `${b.id}:${i}`,
+          billId: b.id,
+          billNumber: b.bill_number,
+          billDate: b.bill_date,
+          vendorName: b.vendor_name,
+          status: b.status,
+          itemId: l.item_id,
+          itemName: l.item_name,
+          quantity: l.quantity,
+          unitPrice: l.unit_price,
+          itemTotal: l.item_total,
+          unresolved: l.item_id == null || l.unresolved,
+        })
+      })
+    }
+    rows.sort((a, b) => b.billDate.localeCompare(a.billDate) || b.billId - a.billId)
+    return rows
+  }, [bills, linesMap])
 
   const groupItemNames = useMemo(() => {
     if (!groupFilter || groupFilter === 'All') return null
@@ -91,47 +138,40 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
   }, [items, groupFilter])
 
   const filtered = useMemo(() => {
-    let list = bills
+    let list = flatRows
     if (groupItemNames) {
-      list = list.filter(b => (linesMap[b.id] ?? []).some(l => groupItemNames.has(l.item_name)))
+      list = list.filter(r => groupItemNames.has(r.itemName))
     }
     if (search) {
       const q = search.toLowerCase()
-      list = list.filter(b =>
-        (b.vendor_name ?? '').toLowerCase().includes(q) ||
-        b.bill_number.toLowerCase().includes(q) ||
-        (linesMap[b.id] ?? []).some(l => l.item_name.toLowerCase().includes(q))
+      list = list.filter(r =>
+        (r.vendorName ?? '').toLowerCase().includes(q) ||
+        r.billNumber.toLowerCase().includes(q) ||
+        r.itemName.toLowerCase().includes(q)
       )
     }
     return list
-  }, [bills, linesMap, groupItemNames, search])
+  }, [flatRows, groupItemNames, search])
 
-  function errorCount(billId: number) {
-    return (linesMap[billId] ?? []).filter(l => l.item_id == null || l.unresolved).length
+  function toggleEdit(row: FlatRow) {
+    if (editingKey === row.key) { setEditingKey(null); return }
+    const b = billsById[row.billId]
+    setEditForm({ bill_date: b?.bill_date?.slice(0, 10) ?? '', vendor_name: b?.vendor_name ?? '', status: b?.status ?? 'paid' })
+    setEditingKey(row.key)
+    setExpandedItemKey(null)
   }
 
-  function toggleExpand(bill: Bill) {
-    setExpandedId(id => id === bill.id ? null : bill.id)
-    setEditingId(null)
-  }
-
-  function startEdit(b: Bill) {
-    setEditForm({ bill_date: b.bill_date?.slice(0, 10) ?? '', vendor_name: b.vendor_name ?? '', status: b.status ?? 'paid' })
-    setEditingId(b.id)
-  }
-
-  async function saveEdit() {
-    if (editingId == null) return
+  async function saveEdit(row: FlatRow) {
     setSaving(true)
-    const res = await fetch(`/api/bills/${editingId}`, {
+    const res = await fetch(`/api/bills/${row.billId}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ bill_date: editForm.bill_date || undefined, vendor_name: editForm.vendor_name || null, status: editForm.status }),
     })
     setSaving(false)
     if (res.ok) {
       const updated: Bill = await res.json()
-      setBills(prev => prev.map(b => b.id === editingId ? { ...b, ...updated } : b))
-      setEditingId(null)
+      setBills(prev => prev.map(b => b.id === row.billId ? { ...b, ...updated } : b))
+      setEditingKey(null)
     }
   }
 
@@ -160,8 +200,7 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
         }
         setShowHistory(false)
         if (target) {
-          setExpandedId(target.id)
-          setTimeout(() => document.getElementById(`bill-${target!.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+          setTimeout(() => document.getElementById(`billrow-${target!.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
         }
       }} />
     </div>
@@ -184,132 +223,77 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
           <thead className="sticky top-0 bg-gray-100 z-10">
             <tr>
               <th className="text-left px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">DATE</th>
+              <th className="text-left px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">ITEM</th>
+              <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">QTY</th>
+              <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">COST PRICE</th>
+              <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">TOTAL</th>
               <th className="text-left px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">VENDOR</th>
-              <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">AMT</th>
-              <th className="text-center px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">ERRORS</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map(b => {
-              const errs = errorCount(b.id)
-              const isOpen = expandedId === b.id
-              const billLines = linesMap[b.id] ?? []
+            {filtered.map(row => {
+              const isEditing = editingKey === row.key
+              const isItemOpen = expandedItemKey === row.key
               return (
-                <Fragment key={b.id}>
-                  <tr id={`bill-${b.id}`} onClick={() => toggleExpand(b)}
-                    className={`cursor-pointer border-b border-gray-100 transition ${isOpen ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-                    <td className="px-0.5 py-0.5 text-gray-700 whitespace-nowrap">{fmtShort(b.bill_date)}</td>
-                    <td className="px-0.5 py-0.5 text-gray-700 truncate max-w-[70px]">{b.vendor_name ?? '—'}</td>
-                    <td className="px-0.5 py-0.5 text-right text-gray-900 font-semibold">{fmt(b.total)}</td>
-                    <td className="px-0.5 py-0.5 text-center">
-                      {errs > 0
-                        ? <span className="inline-block text-[9px] font-bold text-white bg-red-500 rounded-full px-1.5">{errs}</span>
-                        : <span className="text-gray-300">—</span>}
+                <Fragment key={row.key}>
+                  <tr id={`billrow-${row.billId}`} onClick={() => toggleEdit(row)}
+                    className={`cursor-pointer border-b border-gray-100 transition ${isEditing ? 'bg-blue-50' : row.unresolved ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
+                    <td className="px-0.5 py-0.5 text-gray-700 whitespace-nowrap">{fmtShort(row.billDate)}</td>
+                    <td className="px-0.5 py-0.5">
+                      {row.itemId ? (
+                        <button onClick={e => { e.stopPropagation(); setExpandedItemKey(isItemOpen ? null : row.key); setEditingKey(null) }}
+                          className="text-left text-blue-600 hover:underline">
+                          {row.itemName}
+                        </button>
+                      ) : (
+                        <span className="text-red-600">{row.itemName}</span>
+                      )}
                     </td>
+                    <td className="px-0.5 py-0.5 text-right text-gray-700">{parseFloat(row.quantity)}</td>
+                    <td className="px-0.5 py-0.5 text-right text-gray-700">{fmt(row.unitPrice)}</td>
+                    <td className="px-0.5 py-0.5 text-right font-semibold text-gray-900">{fmt(row.itemTotal)}</td>
+                    <td className="px-0.5 py-0.5 text-gray-700 truncate max-w-[100px]">{row.vendorName ?? '—'}</td>
                   </tr>
-                  {isOpen && (
+                  {isEditing && (
                     <tr className="border-b border-gray-200">
-                      <td colSpan={4} className="p-0 bg-white">
-                        {editingId === b.id ? (
-                          <div className="p-2 space-y-2">
-                            <p className="text-[10px] font-bold text-gray-600">Edit Bill</p>
-                            <div>
-                              <p className="text-[9px] text-gray-400 mb-0.5">Date</p>
-                              <input type="date" value={editForm.bill_date}
-                                onChange={e => setEditForm(f => ({ ...f, bill_date: e.target.value }))} className={inputCls} />
-                            </div>
-                            <div>
-                              <p className="text-[9px] text-gray-400 mb-0.5">Vendor</p>
-                              <input value={editForm.vendor_name}
-                                onChange={e => setEditForm(f => ({ ...f, vendor_name: e.target.value }))} className={inputCls} />
-                            </div>
-                            <div>
-                              <p className="text-[9px] text-gray-400 mb-0.5">Status</p>
-                              <select value={editForm.status}
-                                onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))} className={inputCls}>
-                                <option value="paid">Paid</option>
-                                <option value="open">Open</option>
-                                <option value="overdue">Overdue</option>
-                              </select>
-                            </div>
-                            <div className="flex gap-1">
-                              <button onClick={saveEdit} disabled={saving}
-                                className="flex-1 bg-green-600 text-white text-[10px] font-bold rounded py-1 disabled:opacity-40">
-                                {saving ? 'Saving…' : 'Save'}
-                              </button>
-                              <button onClick={() => setEditingId(null)}
-                                className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="flex items-center justify-between px-2 py-1 bg-gray-50 border-b border-gray-200">
-                              <div>
-                                <p className="text-[10px] font-bold text-gray-900">{b.vendor_name ?? 'Unknown'}</p>
-                                <p className="text-[9px] text-gray-400">{fmtShort(b.bill_date)} · {b.bill_number}</p>
-                              </div>
-                              <button onClick={() => startEdit(b)}
-                                className="text-[9px] text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100">
-                                Edit
-                              </button>
-                            </div>
-                            {billLines.length === 0 ? (
-                              <p className="text-[10px] text-gray-400 text-center py-4">No items.</p>
-                            ) : (
-                              <table className="w-full border-collapse text-[10px]">
-                                <thead>
-                                  <tr>
-                                    <th className="text-left px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">item</th>
-                                    <th className="text-right px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">qty</th>
-                                    <th className="text-right px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">price</th>
-                                    <th className="text-right px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">total</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {billLines.map((l, i) => {
-                                    const key = `${b.id}:${i}`
-                                    const lineOpen = expandedLineKey === key
-                                    const lineError = l.item_id == null || l.unresolved
-                                    return (
-                                    <Fragment key={i}>
-                                      <tr className={`border-b border-gray-100 ${lineError ? 'bg-red-50' : ''}`}>
-                                        <td className="px-1.5 py-0.5 text-gray-900">
-                                          {l.item_id ? (
-                                            <button onClick={() => setExpandedLineKey(lineOpen ? null : key)}
-                                              className="text-left text-blue-600 hover:underline">
-                                              {l.item_name}
-                                            </button>
-                                          ) : (
-                                            <span className="text-red-600">{l.item_name}</span>
-                                          )}
-                                        </td>
-                                        <td className="px-1.5 py-0.5 text-right text-gray-700">{parseFloat(l.quantity)}</td>
-                                        <td className="px-1.5 py-0.5 text-right text-gray-700">{fmt(l.unit_price)}</td>
-                                        <td className="px-1.5 py-0.5 text-right font-semibold text-gray-900">{fmt(l.item_total)}</td>
-                                      </tr>
-                                      {lineOpen && l.item_id && (
-                                        <tr>
-                                          <td colSpan={4} className="p-0 border-b border-gray-100">
-                                            <div className="sticky left-0 w-[100vw] max-w-[100vw] max-h-[50vh] overflow-auto bg-blue-50 px-0.5 pb-2 pt-0.5">
-                                              <ItemDetailDropdown itemId={l.item_id} />
-                                            </div>
-                                          </td>
-                                        </tr>
-                                      )}
-                                    </Fragment>
-                                    )
-                                  })}
-                                </tbody>
-                                <tfoot>
-                                  <tr className="border-t border-gray-200 bg-gray-50">
-                                    <td colSpan={3} className="px-1.5 py-1 text-right font-bold text-gray-600">Total</td>
-                                    <td className="px-1.5 py-1 text-right font-bold text-gray-900">{fmt(b.total)}</td>
-                                  </tr>
-                                </tfoot>
-                              </table>
-                            )}
-                          </>
-                        )}
+                      <td colSpan={6} className="p-2 bg-white space-y-2">
+                        <p className="text-[10px] font-bold text-gray-600">Edit Bill · {row.billNumber}</p>
+                        <div>
+                          <p className="text-[9px] text-gray-400 mb-0.5">Date</p>
+                          <input type="date" value={editForm.bill_date}
+                            onChange={e => setEditForm(f => ({ ...f, bill_date: e.target.value }))} className={inputCls} />
+                        </div>
+                        <div>
+                          <p className="text-[9px] text-gray-400 mb-0.5">Vendor</p>
+                          <input value={editForm.vendor_name}
+                            onChange={e => setEditForm(f => ({ ...f, vendor_name: e.target.value }))} className={inputCls} />
+                        </div>
+                        <div>
+                          <p className="text-[9px] text-gray-400 mb-0.5">Status</p>
+                          <select value={editForm.status}
+                            onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))} className={inputCls}>
+                            <option value="paid">Paid</option>
+                            <option value="open">Open</option>
+                            <option value="overdue">Overdue</option>
+                          </select>
+                        </div>
+                        <div className="flex gap-1">
+                          <button onClick={() => saveEdit(row)} disabled={saving}
+                            className="flex-1 bg-green-600 text-white text-[10px] font-bold rounded py-1 disabled:opacity-40">
+                            {saving ? 'Saving…' : 'Save'}
+                          </button>
+                          <button onClick={() => setEditingKey(null)}
+                            className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  {isItemOpen && row.itemId && (
+                    <tr className="border-b border-gray-200">
+                      <td colSpan={6} className="p-0">
+                        <div className="sticky left-0 w-[100vw] max-w-[100vw] max-h-[50vh] overflow-auto bg-blue-50 px-0.5 pb-2 pt-0.5">
+                          <ItemDetailDropdown itemId={row.itemId} />
+                        </div>
                       </td>
                     </tr>
                   )}

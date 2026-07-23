@@ -4,15 +4,11 @@ import { useRouter } from 'next/navigation'
 import { usePresenceReporter } from '@/lib/usePresenceReporter'
 
 type Item = { id: number; name: string; group: string; soh: number }
-type Vendor = { id: number; name: string }
-type Line = { item: Item; qty: number; price: number }
+type Line = { item: Item; qty: number; price: number; vendorName: string }
 
 export default function NewBillPage({ onSuccess }: { onSuccess?: () => void } = {}) {
   usePresenceReporter('entering a bill')
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
-  const [vendors, setVendors] = useState<Vendor[]>([])
-  const [vendorId, setVendorId] = useState('')
-  const [vendorName, setVendorName] = useState('')
   const [lines, setLines] = useState<Line[]>([])
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Item[]>([])
@@ -23,10 +19,6 @@ export default function NewBillPage({ onSuccess }: { onSuccess?: () => void } = 
   const debounce = useRef<ReturnType<typeof setTimeout>>(null)
 
   useEffect(() => {
-    fetch('/api/vendors').then(r => r.json()).then(setVendors)
-  }, [])
-
-  useEffect(() => {
     if (query.length < 2) { setResults([]); return }
     clearTimeout(debounce.current ?? undefined)
     debounce.current = setTimeout(async () => {
@@ -35,9 +27,18 @@ export default function NewBillPage({ onSuccess }: { onSuccess?: () => void } = 
     }, 250)
   }, [query])
 
-  function addItem(item: Item) { setLines(p => [...p, { item, qty: 1, price: 0 }]); setQuery(''); setResults([]) }
+  function addItem(item: Item) {
+    // Default the new line's vendor to whatever was last typed -- most
+    // items entered in one sitting come from the same vendor, but it
+    // stays fully editable per line.
+    const lastVendor = lines.length ? lines[lines.length - 1].vendorName : ''
+    setLines(p => [...p, { item, qty: 1, price: 0, vendorName: lastVendor }])
+    setQuery('')
+    setResults([])
+  }
   function removeLine(i: number) { setLines(p => p.filter((_, idx) => idx !== i)) }
   function updateLine(i: number, f: 'qty' | 'price', v: number) { setLines(p => p.map((l, idx) => idx === i ? { ...l, [f]: v } : l)) }
+  function updateVendor(i: number, v: string) { setLines(p => p.map((l, idx) => idx === i ? { ...l, vendorName: v } : l)) }
   const total = lines.reduce((s, l) => s + l.qty * l.price, 0)
 
   async function handleSubmit(e: React.FormEvent) {
@@ -49,8 +50,13 @@ export default function NewBillPage({ onSuccess }: { onSuccess?: () => void } = 
       const res = await fetch('/api/bills', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date, vendorId: vendorId || null, vendorName: vendorName || null,
-          lines: lines.map(l => ({ itemId: l.item.id, itemName: l.item.name, qty: l.qty, price: l.price, total: l.qty * l.price })) }),
+        body: JSON.stringify({
+          date,
+          lines: lines.map(l => ({
+            itemId: l.item.id, itemName: l.item.name, qty: l.qty, price: l.price,
+            total: l.qty * l.price, vendorName: l.vendorName.trim() || null,
+          })),
+        }),
       })
       const d = await res.json().catch(() => ({}))
       setSaving(false)
@@ -68,13 +74,13 @@ export default function NewBillPage({ onSuccess }: { onSuccess?: () => void } = 
 
   if (done) return (
     <div className="py-20 text-center">
-      <p className="text-5xl mb-4">?</p>
+      <p className="text-5xl mb-4">✓</p>
       <p className="text-gray-900 font-semibold text-lg">Bill saved!</p>
     </div>
   )
 
   return (
-    <div className="py-4 max-w-lg space-y-4">
+    <div className="py-4 max-w-2xl space-y-4">
       <h1 className="text-xl font-bold">New Bill (Purchase)</h1>
       <form onSubmit={handleSubmit} className="space-y-4">
 
@@ -83,23 +89,6 @@ export default function NewBillPage({ onSuccess }: { onSuccess?: () => void } = 
           <input type="date" value={date} onChange={e => setDate(e.target.value)}
             className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-base text-gray-900 outline-none focus:ring-2 focus:ring-blue-400" />
         </div>
-
-        <div>
-          <label className="text-sm text-gray-600 block mb-1.5">Vendor</label>
-          <select value={vendorId} onChange={e => setVendorId(e.target.value)}
-            className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-base text-gray-900 outline-none focus:ring-2 focus:ring-blue-400">
-            <option value="">Select vendor…</option>
-            {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-          </select>
-        </div>
-
-        {!vendorId && (
-          <div>
-            <label className="text-sm text-gray-600 block mb-1.5">Or enter vendor name</label>
-            <input value={vendorName} onChange={e => setVendorName(e.target.value)} placeholder="Vendor name"
-              className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-base text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-400" />
-          </div>
-        )}
 
         <div className="relative">
           <label className="text-sm text-gray-600 block mb-1.5">Add Item</label>
@@ -120,30 +109,39 @@ export default function NewBillPage({ onSuccess }: { onSuccess?: () => void } = 
           )}
         </div>
 
-        {lines.map((l, i) => (
-          <div key={i} className="bg-white border border-gray-300 rounded-xl p-4">
-            <div className="flex justify-between mb-3">
-              <span className="text-gray-900 font-medium">{l.item.name}</span>
-              <button type="button" onClick={() => removeLine(i)}
-                className="text-gray-400 hover:text-red-400 text-sm px-2 py-1">Remove</button>
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              {(['qty', 'price'] as const).map(f => (
-                <div key={f}>
-                  <label className="text-xs text-gray-400 block mb-1">{f === 'price' ? 'Unit Price' : 'Qty'}</label>
-                  <input type="number" min="0" step="any" value={l[f]}
-                    onChange={e => updateLine(i, f, Number(e.target.value))}
-                    inputMode="decimal"
-                    className="w-full bg-gray-100 rounded-lg px-3 py-2.5 text-base text-gray-900 outline-none" />
+        {lines.length > 0 && (
+          <div className="space-y-2">
+            {lines.map((l, i) => (
+              <div key={i} className="bg-white border border-gray-300 rounded-xl p-4">
+                <div className="flex justify-between mb-3">
+                  <span className="text-gray-900 font-medium">{l.item.name}</span>
+                  <button type="button" onClick={() => removeLine(i)}
+                    className="text-gray-400 hover:text-red-400 text-sm px-2 py-1">Remove</button>
                 </div>
-              ))}
-              <div>
-                <label className="text-xs text-gray-400 block mb-1">Total</label>
-                <p className="text-base text-gray-900 font-medium py-2.5">₵ {(l.qty * l.price).toFixed(2)}</p>
+                <div className="grid grid-cols-3 gap-3 mb-3">
+                  {(['qty', 'price'] as const).map(f => (
+                    <div key={f}>
+                      <label className="text-xs text-gray-400 block mb-1">{f === 'price' ? 'Cost Price' : 'Qty'}</label>
+                      <input type="number" min="0" step="any" value={l[f]}
+                        onChange={e => updateLine(i, f, Number(e.target.value))}
+                        inputMode="decimal"
+                        className="w-full bg-gray-100 rounded-lg px-3 py-2.5 text-base text-gray-900 outline-none" />
+                    </div>
+                  ))}
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Total</label>
+                    <p className="text-base text-gray-900 font-medium py-2.5">₵ {(l.qty * l.price).toFixed(2)}</p>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">Vendor</label>
+                  <input value={l.vendorName} onChange={e => updateVendor(i, e.target.value)} placeholder="Vendor name"
+                    className="w-full bg-gray-100 rounded-lg px-3 py-2.5 text-base text-gray-900 placeholder-gray-400 outline-none" />
+                </div>
               </div>
-            </div>
+            ))}
           </div>
-        ))}
+        )}
 
         {lines.length > 0 && <div className="text-right text-gray-900 font-bold text-xl py-1">Total: ₵ {total.toFixed(2)}</div>}
 
@@ -156,4 +154,3 @@ export default function NewBillPage({ onSuccess }: { onSuccess?: () => void } = 
     </div>
   )
 }
-

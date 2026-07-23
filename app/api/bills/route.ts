@@ -25,7 +25,10 @@ export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { date, vendorId, vendorName, lines } = await req.json()
+  const { date, lines } = (await req.json()) as {
+    date: string
+    lines: { itemId: number; itemName: string; qty: number; price: number; total: number; vendorName: string | null }[]
+  }
   if (!date || !lines?.length) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
 
   // A line with no real quantity isn't a transaction -- it's a phantom row
@@ -38,29 +41,36 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const total = lines.reduce((s: number, l: any) => s + Number(l.total), 0)
-  const billNumber = `APP-BILL-${date.replace(/-/g,'')}-${Date.now().toString().slice(-4)}`
-
   const enteredBy = session.user?.name || (session.user as any)?.username || null
+  const grandTotal = lines.reduce((s: number, l) => s + Number(l.total), 0)
 
+  // Each item line becomes its own bills row (one bill_lines child each),
+  // matching the historical import pattern -- so a line's vendor is its own
+  // column, not a single vendor shared across a whole multi-item bill.
   try {
-    let bill
-    try {
-      [bill] = await sql`
-        INSERT INTO bills (bill_number, bill_date, vendor_id, vendor_name, total, subtotal, status, source, entered_by)
-        VALUES (${billNumber}, ${date}, ${vendorId ?? null}, ${vendorName ?? null}, ${total}, ${total}, 'paid', 'app', ${enteredBy})
-        RETURNING id
-      `
-    } catch (e) {
-      console.error('bills insert with entered_by failed, retrying without it:', e)
-      ;[bill] = await sql`
-        INSERT INTO bills (bill_number, bill_date, vendor_id, vendor_name, total, subtotal, status, source)
-        VALUES (${billNumber}, ${date}, ${vendorId ?? null}, ${vendorName ?? null}, ${total}, ${total}, 'paid', 'app')
-        RETURNING id
-      `
-    }
+    const billNumbers: string[] = []
+    for (let i = 0; i < lines.length; i++) {
+      const l = lines[i]
+      const billNumber = `APP-BILL-${date.replace(/-/g, '')}-${Date.now().toString().slice(-4)}-${i}`
+      billNumbers.push(billNumber)
+      const vendorName = l.vendorName || null
 
-    for (const l of lines) {
+      let bill
+      try {
+        [bill] = await sql`
+          INSERT INTO bills (bill_number, bill_date, vendor_name, total, subtotal, status, source, entered_by, zoho_bill_id)
+          VALUES (${billNumber}, ${date}, ${vendorName}, ${l.total}, ${l.total}, 'paid', 'app', ${enteredBy}, ${billNumber})
+          RETURNING id
+        `
+      } catch (e) {
+        console.error('bills insert with entered_by failed, retrying without it:', e)
+        ;[bill] = await sql`
+          INSERT INTO bills (bill_number, bill_date, vendor_name, total, subtotal, status, source, zoho_bill_id)
+          VALUES (${billNumber}, ${date}, ${vendorName}, ${l.total}, ${l.total}, 'paid', 'app', ${billNumber})
+          RETURNING id
+        `
+      }
+
       await sql`
         INSERT INTO bill_lines (bill_id, item_id, raw_item_name, resolved_name, quantity, unit_price, item_total, unresolved, source)
         VALUES (${bill.id}, ${l.itemId}, ${l.itemName}, ${l.itemName}, ${l.qty}, ${l.price}, ${l.total}, false, 'app')
@@ -74,8 +84,10 @@ export async function POST(req: NextRequest) {
       console.error('cash_at_bank ensure-row error (non-fatal):', e)
     }
 
-    await logActivity(enteredBy ?? 'Unknown', 'added bill', `${billNumber} · ₵${total.toFixed(2)}${vendorName ? ` from ${vendorName}` : ''}`)
-    return NextResponse.json({ ok: true, billNumber })
+    const vendorsUsed = Array.from(new Set(lines.map(l => l.vendorName).filter(Boolean)))
+    const vendorNote = vendorsUsed.length === 1 ? ` from ${vendorsUsed[0]}` : vendorsUsed.length > 1 ? ` from ${vendorsUsed.length} vendors` : ''
+    await logActivity(enteredBy ?? 'Unknown', 'added bill', `${lines.length} line${lines.length > 1 ? 's' : ''} · ₵${grandTotal.toFixed(2)}${vendorNote}`)
+    return NextResponse.json({ ok: true, billNumbers })
   } catch (e) {
     console.error('bills POST error:', e)
     const detail = e instanceof Error ? e.message : String(e)
