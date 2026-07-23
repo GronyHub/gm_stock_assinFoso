@@ -22,8 +22,8 @@ export async function POST() {
   try {
     for (const g of MISSING_GOODS) {
       const [bill] = await sql`
-        INSERT INTO bills (bill_number, bill_date, vendor_name, total, subtotal, status, source)
-        VALUES (${g.billNumber}, '2025-08-02', NULL, ${g.total}, ${g.total}, 'paid', 'bizims_historical')
+        INSERT INTO bills (zoho_bill_id, bill_number, bill_date, vendor_name, total, subtotal, status, source)
+        VALUES (${g.billNumber}, ${g.billNumber}, '2025-08-02', NULL, ${g.total}, ${g.total}, 'paid', 'bizims_historical')
         RETURNING id, bill_number
       `
       await sql`
