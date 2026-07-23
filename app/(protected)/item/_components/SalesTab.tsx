@@ -299,16 +299,6 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
   useEffect(() => { loadReceipts() }, [])
   usePolling(loadReceipts, 5000, editingId === null)
 
-  const [verifiedDates, setVerifiedDates] = useState<Set<string>>(new Set())
-  function loadVerifiedDates() {
-    fetch('/api/sales/verified-dates')
-      .then(r => r.ok ? r.json() : [])
-      .then(d => setVerifiedDates(new Set(Array.isArray(d) ? d : [])))
-      .catch(() => {})
-  }
-  useEffect(() => { loadVerifiedDates() }, [])
-  usePolling(loadVerifiedDates, 20000)
-
   const groupItemNames = useMemo(() => {
     if (!groupFilter || groupFilter === 'All') return null
     return new Set(items.filter(i => (i.cf_group ?? 'Ungrouped') === groupFilter).map(i => i.item_name))
@@ -780,9 +770,6 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
                 <div className="flex items-center gap-2">
                   <span className={`whitespace-nowrap ${isDayHead ? 'text-white font-semibold' : 'text-gray-600 font-medium'}`}>
                     {fmtShort(r.receipt_date)}
-                    {verifiedDates.has(r.receipt_date?.slice(0, 10)) && (
-                      <span title="Every item sold this day is verified" className="ml-0.5">✅</span>
-                    )}
                   </span>
                   {/* Jumps straight into editingId === r.id below -- no menu
                       step. Delete lives on that edit screen now, not here. */}
