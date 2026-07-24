@@ -44,6 +44,10 @@ type PO = {
   lines: POLine[]
 }
 
+type Vendor = { id: number; display_name: string }
+type SearchItem = { id: number; name: string; group: string }
+type EditLine = { id: number | null; itemId: number | null; itemName: string; qty: string; price: string }
+
 const MONTHS = ['Ja','Fe','Mr','Ap','My','Ju','Jl','Au','Se','Oc','No','De']
 const DAYS   = ['Su','Mo','Tu','We','Th','Fr','Sa']
 
@@ -104,6 +108,21 @@ export default function POTab({ search }: Props) {
   const [receiveQtys, setReceiveQtys] = useState<Record<number, string>>({})
   const [receivePrices, setReceivePrices] = useState<Record<number, string>>({})
   const [receiveError, setReceiveError] = useState('')
+  // Full edit (vendor/dates/notes/lines) -- only offered for still-draft
+  // POs, matching Send/Delete's own draft-only gating. Reuses the same
+  // add-item-by-search pattern as the New PO form.
+  const [editMode, setEditMode] = useState(false)
+  const [vendors, setVendors] = useState<Vendor[]>([])
+  const [editOrderDate, setEditOrderDate] = useState('')
+  const [editExpectedDate, setEditExpectedDate] = useState('')
+  const [editVendorId, setEditVendorId] = useState('')
+  const [editVendorName, setEditVendorName] = useState('')
+  const [editNotes, setEditNotes] = useState('')
+  const [editLines, setEditLines] = useState<EditLine[]>([])
+  const [editQuery, setEditQuery] = useState('')
+  const [editResults, setEditResults] = useState<SearchItem[]>([])
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState('')
 
   function loadList() {
     fetch('/api/purchase-orders').then(r => r.json()).then(d => {
@@ -113,7 +132,20 @@ export default function POTab({ search }: Props) {
   }
 
   useEffect(() => { loadList() }, [])
-  usePolling(loadList, 8000, !receiveOpen)
+  usePolling(loadList, 8000, !receiveOpen && !editMode)
+
+  useEffect(() => {
+    fetch('/api/vendors').then(r => r.json()).then(d => setVendors(Array.isArray(d) ? d : [])).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (editQuery.length < 2) { setEditResults([]); return }
+    const t = setTimeout(async () => {
+      const r = await fetch(`/api/items/search?q=${encodeURIComponent(editQuery)}`)
+      setEditResults(await r.json())
+    }, 250)
+    return () => clearTimeout(t)
+  }, [editQuery])
 
   function loadDetail(id: number) {
     setDetailLoading(true)
@@ -127,7 +159,62 @@ export default function POTab({ search }: Props) {
     setSelectedId(po.id)
     setReceiveOpen(false)
     setReceiveError('')
+    setEditMode(false)
     loadDetail(po.id)
+  }
+
+  function startEdit() {
+    if (!detail) return
+    setEditOrderDate(detail.order_date.slice(0, 10))
+    setEditExpectedDate(detail.expected_date?.slice(0, 10) ?? '')
+    setEditVendorId(detail.vendor_id != null ? String(detail.vendor_id) : '')
+    setEditVendorName(detail.vendor_id == null ? (detail.vendor_name ?? '') : '')
+    setEditNotes(detail.notes ?? '')
+    setEditLines(detail.lines.map(l => ({
+      id: l.id, itemId: l.item_id, itemName: l.item_name,
+      qty: l.qty_ordered, price: l.unit_price,
+    })))
+    setEditQuery('')
+    setEditError('')
+    setEditMode(true)
+  }
+
+  function addEditLine(item: SearchItem) {
+    setEditLines(prev => [...prev, { id: null, itemId: item.id, itemName: item.name, qty: '1', price: '0' }])
+    setEditQuery('')
+    setEditResults([])
+  }
+  function removeEditLine(idx: number) {
+    setEditLines(prev => prev.filter((_, i) => i !== idx))
+  }
+  function updateEditLine(idx: number, field: 'qty' | 'price', val: string) {
+    setEditLines(prev => prev.map((l, i) => i === idx ? { ...l, [field]: val } : l))
+  }
+  const editTotal = editLines.reduce((s, l) => s + (parseFloat(l.qty) || 0) * (parseFloat(l.price) || 0), 0)
+
+  async function saveEdit() {
+    if (!detail) return
+    if (editLines.length === 0) { setEditError('Add at least one item.'); return }
+    setEditSaving(true)
+    setEditError('')
+    const res = await fetch(`/api/purchase-orders/${detail.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        orderDate: editOrderDate, expectedDate: editExpectedDate || null,
+        vendorId: editVendorId ? Number(editVendorId) : null, vendorName: editVendorName || null,
+        notes: editNotes || null,
+        lines: editLines.map(l => ({ itemId: l.itemId, itemName: l.itemName, qty: Number(l.qty) || 0, price: Number(l.price) || 0 })),
+      }),
+    })
+    const d = await res.json().catch(() => ({}))
+    setEditSaving(false)
+    if (res.ok) {
+      setEditMode(false)
+      loadDetail(detail.id)
+      loadList()
+    } else {
+      setEditError(d.error || 'Could not save changes. Please try again.')
+    }
   }
 
   const filtered = useMemo(() => {
@@ -259,35 +346,146 @@ export default function POTab({ search }: Props) {
                   <p className="text-[9px] text-gray-400">Expected: {fmtShort(detail.expected_date)}</p>
                 )}
                 {detail.notes && <p className="text-[9px] text-gray-500 italic">{detail.notes}</p>}
-                <div className="flex gap-1 pt-1 flex-wrap">
-                  {detail.status === 'draft' && (
-                    <>
-                      <button onClick={() => setStatus('sent')} disabled={busy}
-                        className="text-[9px] font-bold text-white bg-blue-600 px-2 py-0.5 rounded hover:bg-blue-700 disabled:opacity-40">
-                        Send
+                {!editMode && (
+                  <div className="flex gap-1 pt-1 flex-wrap">
+                    {detail.status === 'draft' && (
+                      <>
+                        <button onClick={() => setStatus('sent')} disabled={busy}
+                          className="text-[9px] font-bold text-white bg-blue-600 px-2 py-0.5 rounded hover:bg-blue-700 disabled:opacity-40">
+                          Send
+                        </button>
+                        <button onClick={startEdit} disabled={busy}
+                          className="text-[9px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100 disabled:opacity-40">
+                          ✏️ Edit
+                        </button>
+                        <button onClick={deleteDraft} disabled={busy}
+                          className="text-[9px] font-semibold text-red-500 bg-red-50 px-2 py-0.5 rounded hover:bg-red-100 disabled:opacity-40">
+                          Delete
+                        </button>
+                      </>
+                    )}
+                    {detail.status === 'sent' && receivingState(detail.lines) !== 'complete' && (
+                      <button onClick={openReceive} disabled={busy}
+                        className="text-[9px] font-bold text-white bg-green-600 px-2 py-0.5 rounded hover:bg-green-700 disabled:opacity-40">
+                        Receive Items
                       </button>
-                      <button onClick={deleteDraft} disabled={busy}
-                        className="text-[9px] font-semibold text-red-500 bg-red-50 px-2 py-0.5 rounded hover:bg-red-100 disabled:opacity-40">
-                        Delete
+                    )}
+                    {(detail.status === 'draft' || detail.status === 'sent') && receivingState(detail.lines) !== 'complete' && (
+                      <button onClick={() => setStatus('cancelled')} disabled={busy}
+                        className="text-[9px] font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded hover:bg-gray-200 disabled:opacity-40">
+                        Cancel
                       </button>
-                    </>
-                  )}
-                  {detail.status === 'sent' && receivingState(detail.lines) !== 'complete' && (
-                    <button onClick={openReceive} disabled={busy}
-                      className="text-[9px] font-bold text-white bg-green-600 px-2 py-0.5 rounded hover:bg-green-700 disabled:opacity-40">
-                      Receive Items
-                    </button>
-                  )}
-                  {(detail.status === 'draft' || detail.status === 'sent') && receivingState(detail.lines) !== 'complete' && (
-                    <button onClick={() => setStatus('cancelled')} disabled={busy}
-                      className="text-[9px] font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded hover:bg-gray-200 disabled:opacity-40">
-                      Cancel
-                    </button>
-                  )}
-                </div>
+                    )}
+                    <a href={`/purchase-orders/${detail.id}/print`} target="_blank" rel="noopener noreferrer"
+                      className="text-[9px] font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded hover:bg-gray-200">
+                      🖨️ Print / Download
+                    </a>
+                  </div>
+                )}
               </div>
 
-              {receiveOpen && (
+              {editMode && (
+                <div className="p-2 bg-blue-50 border-b border-blue-100 space-y-2">
+                  <p className="text-[10px] font-bold text-blue-800">Edit Purchase Order</p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div>
+                      <p className="text-[9px] text-gray-500 mb-0.5">Order Date</p>
+                      <input type="date" value={editOrderDate} onChange={e => setEditOrderDate(e.target.value)} className={inputCls} />
+                    </div>
+                    <div>
+                      <p className="text-[9px] text-gray-500 mb-0.5">Expected Delivery</p>
+                      <input type="date" value={editExpectedDate} onChange={e => setEditExpectedDate(e.target.value)} className={inputCls} />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-gray-500 mb-0.5">Vendor</p>
+                    <select value={editVendorId} onChange={e => { setEditVendorId(e.target.value); if (e.target.value) setEditVendorName('') }} className={inputCls}>
+                      <option value="">Select vendor…</option>
+                      {vendors.map(v => <option key={v.id} value={v.id}>{v.display_name}</option>)}
+                    </select>
+                  </div>
+                  {!editVendorId && (
+                    <div>
+                      <p className="text-[9px] text-gray-500 mb-0.5">Or enter vendor name</p>
+                      <input value={editVendorName} onChange={e => setEditVendorName(e.target.value)} placeholder="Vendor name" className={inputCls} />
+                    </div>
+                  )}
+
+                  <table className="w-full border-collapse text-[10px]">
+                    <thead>
+                      <tr className="bg-gray-100 border-b border-gray-200">
+                        <th className="text-left px-1 py-0.5 font-semibold text-gray-500">Item</th>
+                        <th className="text-right px-1 py-0.5 font-semibold text-gray-500">Qty</th>
+                        <th className="text-right px-1 py-0.5 font-semibold text-gray-500">Price</th>
+                        <th className="text-right px-1 py-0.5 font-semibold text-gray-500">Total</th>
+                        <th className="w-5" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {editLines.map((l, idx) => (
+                        <tr key={l.id ?? `new-${idx}`} className="border-b border-gray-100">
+                          <td className="px-1 py-0.5 text-gray-800">{l.itemName}</td>
+                          <td className="px-1 py-0.5">
+                            <input type="number" min="0" step="any" value={l.qty} onChange={e => updateEditLine(idx, 'qty', e.target.value)}
+                              className="w-full text-right bg-gray-50 border border-gray-200 rounded px-1 py-0.5 text-[10px] outline-none focus:ring-1 focus:ring-blue-400" />
+                          </td>
+                          <td className="px-1 py-0.5">
+                            <input type="number" min="0" step="any" value={l.price} onChange={e => updateEditLine(idx, 'price', e.target.value)}
+                              className="w-full text-right bg-gray-50 border border-gray-200 rounded px-1 py-0.5 text-[10px] outline-none focus:ring-1 focus:ring-blue-400" />
+                          </td>
+                          <td className="px-1 py-0.5 text-right text-gray-700">
+                            {((parseFloat(l.qty) || 0) * (parseFloat(l.price) || 0)).toFixed(0)}
+                          </td>
+                          <td className="px-0.5 py-0.5 text-center">
+                            <button onClick={() => removeEditLine(idx)} title="Remove item"
+                              className="text-red-500 hover:text-red-700 font-bold leading-none">×</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t border-gray-200 bg-gray-50">
+                        <td colSpan={3} className="px-1 py-0.5 text-right font-bold text-gray-600">Total</td>
+                        <td className="px-1 py-0.5 text-right font-bold text-gray-900">{editTotal.toFixed(0)}</td>
+                        <td />
+                      </tr>
+                    </tfoot>
+                  </table>
+
+                  <div className="relative">
+                    <input value={editQuery} onChange={e => setEditQuery(e.target.value)}
+                      placeholder="+ Search item to add…" className={inputCls} />
+                    {editResults.length > 0 && (
+                      <div className="absolute z-20 left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto">
+                        {editResults.map(item => (
+                          <button key={item.id} onClick={() => addEditLine(item)}
+                            className="w-full text-left px-2 py-1 text-[10px] text-gray-800 hover:bg-blue-50 border-b border-gray-100 last:border-0">
+                            {item.name}
+                            <span className="text-gray-400 ml-1.5">{item.group}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <p className="text-[9px] text-gray-500 mb-0.5">Notes</p>
+                    <textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} rows={2} className={inputCls} />
+                  </div>
+
+                  {editError && <p className="text-[10px] text-red-500 font-medium">{editError}</p>}
+                  <div className="flex gap-1">
+                    <button onClick={saveEdit} disabled={editSaving}
+                      className="flex-1 bg-green-600 text-white text-[10px] font-bold rounded py-1 disabled:opacity-40">
+                      {editSaving ? 'Saving…' : 'Save'}
+                    </button>
+                    <button onClick={() => setEditMode(false)} disabled={editSaving}
+                      className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
+                  </div>
+                </div>
+              )}
+
+              {!editMode && receiveOpen && (
                 <div className="p-2 bg-green-50 border-b border-green-100 space-y-2">
                   <p className="text-[10px] font-bold text-green-800">Receive Items</p>
                   <div>
@@ -327,51 +525,55 @@ export default function POTab({ search }: Props) {
                 </div>
               )}
 
-              <table className="w-full border-collapse text-[10px]">
-                <thead>
-                  <tr>
-                    <th className="text-left px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">item</th>
-                    <th className="text-right px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">ord</th>
-                    <th className="text-right px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">recv</th>
-                    <th className="text-right px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">price</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detail.lines.map((l, i) => (
-                    <tr key={i} className="border-b border-gray-100">
-                      <td className="px-1.5 py-0.5 text-gray-900">
-                        {l.item_id ? (
-                          <Link href={`/stock/${l.item_id}`} className="text-blue-600 hover:underline">
-                            {l.item_name}
-                          </Link>
-                        ) : l.item_name}
-                      </td>
-                      <td className="px-1.5 py-0.5 text-right text-gray-700">{fmt(l.qty_ordered)}</td>
-                      <td className={`px-1.5 py-0.5 text-right font-semibold ${parseFloat(l.qty_received) >= parseFloat(l.qty_ordered) ? 'text-green-600' : parseFloat(l.qty_received) > 0 ? 'text-amber-600' : 'text-gray-400'}`}>
-                        {fmt(l.qty_received)}
-                      </td>
-                      <td className="px-1.5 py-0.5 text-right text-gray-700">{fmt(l.unit_price)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              {!editMode && (
+                <>
+                  <table className="w-full border-collapse text-[10px]">
+                    <thead>
+                      <tr>
+                        <th className="text-left px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">item</th>
+                        <th className="text-right px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">ord</th>
+                        <th className="text-right px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">recv</th>
+                        <th className="text-right px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">price</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detail.lines.map((l, i) => (
+                        <tr key={i} className="border-b border-gray-100">
+                          <td className="px-1.5 py-0.5 text-gray-900">
+                            {l.item_id ? (
+                              <Link href={`/stock/${l.item_id}`} className="text-blue-600 hover:underline">
+                                {l.item_name}
+                              </Link>
+                            ) : l.item_name}
+                          </td>
+                          <td className="px-1.5 py-0.5 text-right text-gray-700">{fmt(l.qty_ordered)}</td>
+                          <td className={`px-1.5 py-0.5 text-right font-semibold ${parseFloat(l.qty_received) >= parseFloat(l.qty_ordered) ? 'text-green-600' : parseFloat(l.qty_received) > 0 ? 'text-amber-600' : 'text-gray-400'}`}>
+                            {fmt(l.qty_received)}
+                          </td>
+                          <td className="px-1.5 py-0.5 text-right text-gray-700">{fmt(l.unit_price)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
 
-              {detail.receipts.length > 0 && (
-                <div className="border-t border-gray-200">
-                  <p className="text-[9px] font-bold text-gray-500 px-1.5 py-1 bg-gray-50">Receiving History</p>
-                  {detail.receipts.map(r => (
-                    <div key={r.id} className="px-1.5 py-1 border-b border-gray-100 text-[9px]">
-                      <p className="text-gray-700">
-                        <span className="font-semibold text-gray-900">{fmtShort(r.received_date)}</span>
-                        {r.received_by && <span className="text-gray-400"> · {r.received_by}</span>}
-                        {r.bill_number && <span className="text-gray-400"> · {r.bill_number}</span>}
-                      </p>
-                      <p className="text-gray-400">
-                        {r.lines.map(l => `${l.item_name} (${fmt(l.quantity)})`).join(', ')}
-                      </p>
+                  {detail.receipts.length > 0 && (
+                    <div className="border-t border-gray-200">
+                      <p className="text-[9px] font-bold text-gray-500 px-1.5 py-1 bg-gray-50">Receiving History</p>
+                      {detail.receipts.map(r => (
+                        <div key={r.id} className="px-1.5 py-1 border-b border-gray-100 text-[9px]">
+                          <p className="text-gray-700">
+                            <span className="font-semibold text-gray-900">{fmtShort(r.received_date)}</span>
+                            {r.received_by && <span className="text-gray-400"> · {r.received_by}</span>}
+                            {r.bill_number && <span className="text-gray-400"> · {r.bill_number}</span>}
+                          </p>
+                          <p className="text-gray-400">
+                            {r.lines.map(l => `${l.item_name} (${fmt(l.quantity)})`).join(', ')}
+                          </p>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               )}
             </div>
           )}

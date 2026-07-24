@@ -7,8 +7,14 @@ type Item = { id: number; name: string; group: string; soh: number }
 type Vendor = { id: number; display_name: string }
 type Line = { item: Item; qty: number; price: number }
 
+function fmtDate(iso: string) {
+  if (!iso) return '—'
+  return new Date(`${iso}T00:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
 export default function NewPurchaseOrderPage({ onSuccess }: { onSuccess?: () => void } = {}) {
   usePresenceReporter('entering a purchase order')
+  const [step, setStep] = useState<'build' | 'preview'>('build')
   const [orderDate, setOrderDate] = useState(new Date().toISOString().slice(0, 10))
   const [expectedDate, setExpectedDate] = useState('')
   const [vendors, setVendors] = useState<Vendor[]>([])
@@ -41,9 +47,9 @@ export default function NewPurchaseOrderPage({ onSuccess }: { onSuccess?: () => 
   function removeLine(i: number) { setLines(p => p.filter((_, idx) => idx !== i)) }
   function updateLine(i: number, f: 'qty' | 'price', v: number) { setLines(p => p.map((l, idx) => idx === i ? { ...l, [f]: v } : l)) }
   const total = lines.reduce((s, l) => s + l.qty * l.price, 0)
+  const vendorLabel = vendorId ? (vendors.find(v => v.id === Number(vendorId))?.display_name ?? '—') : (vendorName || '—')
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  async function handleSubmit() {
     if (!lines.length) return
     setSaving(true)
     setError('')
@@ -78,10 +84,79 @@ export default function NewPurchaseOrderPage({ onSuccess }: { onSuccess?: () => 
     </div>
   )
 
+  if (step === 'preview') return (
+    <div className="py-4 max-w-lg space-y-4">
+      <h1 className="text-xl font-bold">Review Purchase Order</h1>
+      <p className="text-sm text-gray-500">Check everything below before confirming -- you can still go back and change it.</p>
+
+      <div className="bg-white border border-gray-300 rounded-xl p-4 space-y-2">
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-500">Order Date</span>
+          <span className="text-gray-900 font-medium">{fmtDate(orderDate)}</span>
+        </div>
+        {expectedDate && (
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Expected Delivery</span>
+            <span className="text-gray-900 font-medium">{fmtDate(expectedDate)}</span>
+          </div>
+        )}
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-500">Vendor</span>
+          <span className="text-gray-900 font-medium">{vendorLabel}</span>
+        </div>
+        {notes && (
+          <div className="pt-1 border-t border-gray-100">
+            <p className="text-xs text-gray-400 mb-0.5">Notes</p>
+            <p className="text-sm text-gray-700">{notes}</p>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white border border-gray-300 rounded-xl overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-gray-50 border-b border-gray-200 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+              <th className="text-left px-3 py-2">Item</th>
+              <th className="text-right px-3 py-2">Qty</th>
+              <th className="text-right px-3 py-2">Price</th>
+              <th className="text-right px-3 py-2">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lines.map((l, i) => (
+              <tr key={i} className="border-b border-gray-100 last:border-0">
+                <td className="px-3 py-2 text-gray-900">{l.item.name}</td>
+                <td className="px-3 py-2 text-right text-gray-600">{l.qty}</td>
+                <td className="px-3 py-2 text-right text-gray-600">₵ {l.price.toFixed(2)}</td>
+                <td className="px-3 py-2 text-right font-semibold text-gray-900">₵ {(l.qty * l.price).toFixed(2)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="flex justify-between items-center px-3 py-3 bg-gray-50 border-t border-gray-200">
+          <span className="text-sm font-bold text-gray-600">Total</span>
+          <span className="text-xl font-bold text-gray-900">₵ {total.toFixed(2)}</span>
+        </div>
+      </div>
+
+      {error && <p className="text-sm text-red-500 font-medium text-center">{error}</p>}
+      <div className="flex gap-2">
+        <button type="button" onClick={() => setStep('build')} disabled={saving}
+          className="flex-1 bg-gray-100 hover:bg-gray-200 disabled:opacity-40 text-gray-700 font-semibold rounded-xl py-4 text-base transition">
+          ← Back to Edit
+        </button>
+        <button type="button" onClick={handleSubmit} disabled={saving}
+          className="flex-1 bg-orange-600 hover:bg-orange-500 active:bg-orange-700 disabled:opacity-40 text-white font-semibold rounded-xl py-4 text-base transition">
+          {saving ? 'Saving…' : 'Confirm & Save'}
+        </button>
+      </div>
+    </div>
+  )
+
   return (
     <div className="py-4 max-w-lg space-y-4">
       <h1 className="text-xl font-bold">New Purchase Order</h1>
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={e => { e.preventDefault(); if (lines.length) setStep('preview') }} className="space-y-4">
 
         <div>
           <label className="text-sm text-gray-600 block mb-1.5">Order Date</label>
@@ -131,6 +206,10 @@ export default function NewPurchaseOrderPage({ onSuccess }: { onSuccess?: () => 
           )}
         </div>
 
+        {lines.length === 0 && (
+          <p className="text-sm text-gray-400 text-center py-2">No items added yet -- search above to build the order list.</p>
+        )}
+
         {lines.map((l, i) => (
           <div key={i} className="bg-white border border-gray-300 rounded-xl p-4">
             <div className="flex justify-between mb-3">
@@ -164,10 +243,9 @@ export default function NewPurchaseOrderPage({ onSuccess }: { onSuccess?: () => 
             className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-base text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-400" />
         </div>
 
-        {error && <p className="text-sm text-red-500 font-medium text-center">{error}</p>}
-        <button type="submit" disabled={!lines.length || saving}
+        <button type="submit" disabled={!lines.length}
           className="w-full bg-orange-600 hover:bg-orange-500 active:bg-orange-700 disabled:opacity-40 text-white font-semibold rounded-xl py-4 text-base transition">
-          {saving ? 'Saving…' : 'Save Purchase Order'}
+          Review Order →
         </button>
       </form>
     </div>

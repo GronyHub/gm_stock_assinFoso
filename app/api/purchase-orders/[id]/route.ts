@@ -50,30 +50,67 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   }
 }
 
+type LineInput = { itemId: number | null; itemName: string; qty: number; price: number }
+
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
-  const { status, notes, expectedDate } = await req.json() as { status?: string; notes?: string | null; expectedDate?: string | null }
+  const poId = Number(id)
+  const { status, notes, expectedDate, orderDate, vendorId, vendorName, lines } = await req.json() as {
+    status?: string; notes?: string | null; expectedDate?: string | null
+    orderDate?: string; vendorId?: number | null; vendorName?: string | null
+    lines?: LineInput[]
+  }
 
   if (status && !['draft', 'sent', 'cancelled'].includes(status)) {
     return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
   }
 
   try {
+    // Full line replacement -- only while still a draft, same rule as
+    // Delete: nothing's been sent to the vendor or received against it yet,
+    // so swapping the whole item list out is safe.
+    if (lines) {
+      const [po] = await sql`SELECT status FROM purchase_orders WHERE id = ${poId}`
+      if (!po) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      if (po.status !== 'draft') {
+        return NextResponse.json({ error: 'Only a draft purchase order can have its items changed -- cancel it and start a new one instead.' }, { status: 400 })
+      }
+      if (!lines.length) return NextResponse.json({ error: 'A purchase order needs at least one item.' }, { status: 400 })
+      for (const l of lines) {
+        const qty = Number(l.qty)
+        if (!Number.isFinite(qty) || qty <= 0) {
+          return NextResponse.json({ error: `"${l.itemName || 'a line'}" needs a valid quantity greater than 0.` }, { status: 400 })
+        }
+      }
+      await sql`DELETE FROM purchase_order_lines WHERE po_id = ${poId}`
+      for (let i = 0; i < lines.length; i++) {
+        const l = lines[i]
+        await sql`
+          INSERT INTO purchase_order_lines (po_id, item_id, item_name, qty_ordered, unit_price, sort_order)
+          VALUES (${poId}, ${l.itemId ?? null}, ${l.itemName}, ${l.qty}, ${l.price}, ${i})
+        `
+      }
+    }
+
     const [row] = await sql`
       UPDATE purchase_orders
       SET
         status = COALESCE(${status ?? null}, status),
         notes = CASE WHEN ${notes !== undefined} THEN ${notes ?? null} ELSE notes END,
-        expected_date = CASE WHEN ${expectedDate !== undefined} THEN ${expectedDate ?? null} ELSE expected_date END
-      WHERE id = ${Number(id)}
+        expected_date = CASE WHEN ${expectedDate !== undefined} THEN ${expectedDate ?? null} ELSE expected_date END,
+        order_date = COALESCE(${orderDate ?? null}, order_date),
+        vendor_id = CASE WHEN ${vendorId !== undefined} THEN ${vendorId ?? null} ELSE vendor_id END,
+        vendor_name = CASE WHEN ${vendorName !== undefined} THEN ${vendorName ?? null} ELSE vendor_name END
+      WHERE id = ${poId}
       RETURNING id, po_number, status, vendor_name
     `
     if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
     if (status) await logActivity(actor, 'updated purchase order', `${row.po_number} → ${status}`)
+    else if (lines) await logActivity(actor, 'edited purchase order', row.po_number)
     return NextResponse.json(row)
   } catch (e) {
     console.error('purchase-order PATCH error:', e)
