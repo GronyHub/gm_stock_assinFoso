@@ -2,7 +2,11 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { isOwnerLevel, isConfidentialExpense } from '@/lib/roles'
 import { logActivity } from '@/lib/logger'
+import { ensureExpensePropertyColumns } from '@/lib/expenseProperties'
 import { NextRequest, NextResponse } from 'next/server'
+
+const AVAILABILITY_VALUES = ['available', 'not_available']
+const WORKING_VALUES = ['working', 'not_working']
 
 type Ctx = { params: Promise<{ id: string }> }
 
@@ -98,24 +102,74 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
-  const { property_status } = await req.json()
-
-  if (!['at_shop', 'not_at_shop', 'spoilt'].includes(property_status)) {
-    return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+  const body = await req.json() as {
+    property_status?: string
+    availability?: 'available' | 'not_available'
+    working?: 'working' | 'not_working' | null
+    location?: string | null
+    notWorkingReason?: string | null
+    notAvailableReason?: string | null
   }
 
+  // Two independent shapes land here: the older standalone /expenses page
+  // still sends the original { property_status } (at_shop/not_at_shop/
+  // spoilt), while the Expenses tab's edit panel sends the newer
+  // Available/Not Available -> Working+Location or Reason cascade. Each
+  // only ever touches its own columns, so neither can clobber the other.
+  if (body.property_status !== undefined) {
+    if (!['at_shop', 'not_at_shop', 'spoilt'].includes(body.property_status)) {
+      return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+    }
+    await sql`
+      INSERT INTO expense_properties (expense_id, property_status, updated_at)
+      VALUES (${Number(id)}, ${body.property_status}, NOW())
+      ON CONFLICT (expense_id) DO UPDATE SET property_status = ${body.property_status}, updated_at = NOW()
+    `
+
+    const [expense] = await sql`SELECT expense_account, amount, expense_date::date AS expense_date FROM expenses WHERE id = ${Number(id)}`
+    if (expense) {
+      const actor = session.user?.name || (session.user as any)?.username || 'Unknown'
+      await logActivity(actor, 'edited expense',
+        `${describeExpense(expense.expense_account, expense.amount, expense.expense_date)} — property status → ${body.property_status}`)
+    }
+
+    return NextResponse.json({ ok: true, property_status: body.property_status })
+  }
+
+  const { availability, working, location, notWorkingReason, notAvailableReason } = body
+  if (!availability || !AVAILABILITY_VALUES.includes(availability)) {
+    return NextResponse.json({ error: 'Invalid availability' }, { status: 400 })
+  }
+  if (working != null && !WORKING_VALUES.includes(working)) {
+    return NextResponse.json({ error: 'Invalid working status' }, { status: 400 })
+  }
+
+  await ensureExpensePropertyColumns()
   await sql`
-    INSERT INTO expense_properties (expense_id, property_status, updated_at)
-    VALUES (${Number(id)}, ${property_status}, NOW())
-    ON CONFLICT (expense_id) DO UPDATE SET property_status = ${property_status}, updated_at = NOW()
+    INSERT INTO expense_properties (expense_id, availability, working, location, not_working_reason, not_available_reason, updated_at)
+    VALUES (${Number(id)}, ${availability}, ${working ?? null}, ${location ?? null}, ${notWorkingReason ?? null}, ${notAvailableReason ?? null}, NOW())
+    ON CONFLICT (expense_id) DO UPDATE SET
+      availability = ${availability}, working = ${working ?? null}, location = ${location ?? null},
+      not_working_reason = ${notWorkingReason ?? null}, not_available_reason = ${notAvailableReason ?? null}, updated_at = NOW()
   `
 
   const [expense] = await sql`SELECT expense_account, amount, expense_date::date AS expense_date FROM expenses WHERE id = ${Number(id)}`
   if (expense) {
     const actor = session.user?.name || (session.user as any)?.username || 'Unknown'
+    const parts = [availability === 'available' ? 'Available' : 'Not Available']
+    if (availability === 'available') {
+      if (working) parts.push(working === 'working' ? 'Working' : 'Not Working')
+      if (location) parts.push(location)
+      if (working === 'not_working' && notWorkingReason) parts.push(notWorkingReason)
+    } else if (notAvailableReason) {
+      parts.push(notAvailableReason)
+    }
     await logActivity(actor, 'edited expense',
-      `${describeExpense(expense.expense_account, expense.amount, expense.expense_date)} — property status → ${property_status}`)
+      `${describeExpense(expense.expense_account, expense.amount, expense.expense_date)} — ${parts.join(', ')}`)
   }
 
-  return NextResponse.json({ ok: true, property_status })
+  return NextResponse.json({
+    ok: true, availability, working: working ?? null, location: location ?? null,
+    not_working_reason: notWorkingReason ?? null, not_available_reason: notAvailableReason ?? null,
+  })
 }

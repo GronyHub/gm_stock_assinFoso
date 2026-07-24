@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { isOwnerLevel, isConfidentialExpense } from '@/lib/roles'
 import { logActivity } from '@/lib/logger'
+import { ensureExpensePropertyColumns } from '@/lib/expenseProperties'
 import { NextRequest, NextResponse } from 'next/server'
 
 function redact(rows: any[], canSeeAmounts: boolean) {
@@ -14,13 +15,16 @@ export async function GET() {
   if (!session) return NextResponse.json([], { status: 401 })
   const canSeeAmounts = isOwnerLevel(session.user as any)
 
+  await ensureExpensePropertyColumns()
+
   try {
     const rows = await sql`
       SELECT
         e.id, e.expense_date::date AS expense_date, e.expense_account,
         e.description, e.cf_justify, e.vendor_name, e.amount, e.cf_expense_type,
-        e.is_property, COALESCE(ep.property_status, 'at_shop') AS property_status, e.entered_by,
-        e.source, e.source_sheet
+        e.is_property, COALESCE(ep.property_status, 'at_shop') AS property_status,
+        ep.availability, ep.working, ep.location, ep.not_working_reason, ep.not_available_reason,
+        e.entered_by, e.source, e.source_sheet
       FROM expenses e
       LEFT JOIN expense_properties ep ON ep.expense_id = e.id
       ORDER BY e.expense_date DESC, e.id DESC
@@ -31,8 +35,9 @@ export async function GET() {
       SELECT
         e.id, e.expense_date::date AS expense_date, e.expense_account,
         e.description, e.cf_justify, e.vendor_name, e.amount, e.cf_expense_type,
-        e.is_property, COALESCE(ep.property_status, 'at_shop') AS property_status, NULL AS entered_by,
-        e.source, e.source_sheet
+        e.is_property, COALESCE(ep.property_status, 'at_shop') AS property_status,
+        ep.availability, ep.working, ep.location, ep.not_working_reason, ep.not_available_reason,
+        NULL AS entered_by, e.source, e.source_sheet
       FROM expenses e
       LEFT JOIN expense_properties ep ON ep.expense_id = e.id
       ORDER BY e.expense_date DESC, e.id DESC
