@@ -777,40 +777,40 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
             : (rLines.length === 0 ? [null] : rLines)
           return (
             <Fragment key={r.id}>
-            <tr className={isDayHead ? 'bg-blue-600' : 'bg-gray-50'}>
-              <td colSpan={4} id={`receipt-${r.id}`} className={`relative ${isDayHead ? 'px-1.5 py-2' : 'px-1 py-1'}`}>
-                <div className="flex items-center gap-2">
-                  <span className={`whitespace-nowrap ${isDayHead ? 'text-white font-semibold' : 'text-gray-600 font-medium'}`}>
-                    {fmtShort(r.receipt_date)}
-                  </span>
-                  {/* Jumps straight into editingId === r.id below -- no menu
-                      step. Delete lives on that edit screen now, not here. */}
-                  <button onClick={() => startEdit(r)} title="Edit this receipt"
-                    className={`leading-none ${isDayHead ? 'text-blue-100 hover:text-white' : 'text-gray-400 hover:text-gray-700'}`}>
-                    ✏️
-                  </button>
-                  {/* Middle: customer letter + the unlabeled CC/WNW figures
-                      (see the "CC · WNW" legend docked in the ITEM header
-                      above). Right: the invoice figure, unlabeled -- it's
-                      the same number as the TOTAL column's sum, so it sits
-                      at that side instead of repeating a label for it. */}
-                  <span className="flex-1 flex items-center justify-center gap-2">
+            <tr id={`receipt-${r.id}`} className={isDayHead ? 'bg-blue-600' : 'bg-gray-50'}>
+              {/* Real columns matching the ITEM/QTY/SP/TOTAL header instead of
+                  one manually-flexed cell -- date/edit/customer sit in the ITEM
+                  cell (left), CC/WNW dock at that same cell's right edge (under
+                  the "CC · WNW" legend in the header), QTY/SP stay blank, and
+                  the invoice figure lands under TOTAL like the line rows below. */}
+              <td className={isDayHead ? 'px-1.5 py-2' : 'px-1 py-1'}>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5 whitespace-nowrap">
+                    <span className={isDayHead ? 'text-white font-semibold' : 'text-gray-600 font-medium'}>
+                      {fmtShort(r.receipt_date)}
+                    </span>
+                    {/* Jumps straight into editingId === r.id below -- no menu
+                        step. Delete lives on that edit screen now, not here. */}
+                    <button onClick={() => startEdit(r)} title="Edit this receipt"
+                      className={`leading-none ${isDayHead ? 'text-blue-100 hover:text-white' : 'text-gray-400 hover:text-gray-700'}`}>
+                      ✏️
+                    </button>
                     <span className={`font-extrabold ${isDayHead ? 'text-white text-base' : 'text-gray-700 text-sm'}`}>
                       {fmtCust(r.customer_name)}
                     </span>
-                    {!itemNameMatch && (
-                      <>
-                        <span className={isDayHead ? 'text-blue-100' : 'text-gray-500'}>{fmt(r.cash_counted)}</span>
-                        <span className={`font-semibold ${wnwColor(r.wnw, isDayHead)}`}>{fmt(r.wnw)}</span>
-                      </>
-                    )}
                   </span>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {!itemNameMatch && (
-                      <span className={`font-semibold ${isDayHead ? 'text-white' : 'text-gray-900'}`}>{fmt(r.invoice_amount)}</span>
-                    )}
-                  </div>
+                  {!itemNameMatch && (
+                    <span className="flex items-center gap-2 shrink-0">
+                      <span className={isDayHead ? 'text-blue-100' : 'text-gray-500'}>{fmt(r.cash_counted)}</span>
+                      <span className={`font-semibold ${wnwColor(r.wnw, isDayHead)}`}>{fmt(r.wnw)}</span>
+                    </span>
+                  )}
                 </div>
+              </td>
+              <td className={isDayHead ? 'px-1.5 py-2' : 'px-1 py-1'} />
+              <td className={isDayHead ? 'px-1.5 py-2' : 'px-1 py-1'} />
+              <td className={`px-1 py-1 text-right font-semibold ${isDayHead ? 'text-white' : 'text-gray-900'}`}>
+                {!itemNameMatch && fmt(r.invoice_amount)}
               </td>
             </tr>
             {!barsOnly && rows.map(line => (
