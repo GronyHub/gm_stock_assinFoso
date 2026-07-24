@@ -325,7 +325,7 @@ function rowHasGain(row: PackChainRow, packCyclesByStart: Map<string, PackCycle>
 function SingleServicePackChainTable({
   item, targetName, packChainRows, packCyclesByStart, closedCycles,
   packLossTotal, packGainTotal, cycleLossTotal, cycleGainTotal,
-  unitsPerPack, sheetPrice, sheetCP, sp, onDateClick, packChainBreakdownNames, showPrices, wnwByDate, lossOnly, gainOnly,
+  unitsPerPack, sheetPrice, sheetCP, sp, onDateClick, packChainBreakdownNames, showPrices, lossOnly, gainOnly,
 }: {
   item: SummaryRow; targetName: string; packChainRows: PackChainRow[]
   packCyclesByStart: Map<string, PackCycle>; closedCycles: PackCycle[]
@@ -334,7 +334,6 @@ function SingleServicePackChainTable({
   onDateClick?: (date: string, itemName: string) => void
   packChainBreakdownNames: string[]
   showPrices: boolean
-  wnwByDate: Map<string, number>
   lossOnly: boolean
   gainOnly: boolean
 }) {
@@ -344,7 +343,7 @@ function SingleServicePackChainTable({
   const packGainCedisTotal = packGainTotal * unitsPerPack * sheetPrice
   const grandTotalCedis = packChainRows.reduce((s, r) => s + (packSideCedis(r, unitsPerPack, sheetPrice) ?? 0), 0)
     + Array.from(packCyclesByStart.values()).reduce((s, c) => s + (realizedCycleCedis(c, sheetPrice) ?? 0), 0)
-  // EXP COUNT / ACTUAL COUNT sit as trailing standalone columns (after WNW),
+  // EXP COUNT / ACTUAL COUNT sit as trailing standalone columns after TOTAL,
   // so they're no longer part of the singles group span.
   // Gains should never happen on the pack side (any gain means a record is
   // missing) -- once there's genuinely nothing to show, the column is just
@@ -360,7 +359,7 @@ function SingleServicePackChainTable({
   const showPackPrices = showPrices && sp > 0
   const packColSpan = (showPackPrices ? 12 : 8) - (showPackGain ? 0 : 1)
   const singlesColSpan = showPrices ? 9 : 5
-  const totalColSpan = 1 + packColSpan + singlesColSpan + 6 // date + pack + singles + total + WNW + 2 count cols + 2 alias cols
+  const totalColSpan = 1 + packColSpan + singlesColSpan + 5 // date + pack + singles + total + 2 count cols + 2 alias cols
 
   const visibleRows = lossOnly ? packChainRows.filter(r => rowHasLoss(r, packCyclesByStart))
     : gainOnly ? packChainRows.filter(r => rowHasGain(r, packCyclesByStart))
@@ -392,7 +391,6 @@ function SingleServicePackChainTable({
           <col style={{width:'30px'}} /><col style={{width:'20px'}} /><col style={{width:'20px'}} />
           <col style={{width:'34px'}} />
           <col style={{width:'34px'}} />
-          <col style={{width:'40px'}} />
           <col style={{width:'36px'}} /><col style={{width:'48px'}} />
           <col style={{width:'70px'}} /><col style={{width:'70px'}} />
         </colgroup>
@@ -404,10 +402,6 @@ function SingleServicePackChainTable({
             <th rowSpan={2} className="py-0.5 border-b-2 border-gray-500 text-center align-bottom border-l-2 border-l-gray-600 leading-tight bg-slate-600 text-white"
               title={`TOTAL LOSS/GAIN AMOUNT — combined ₵ for the row: pack side (packs × singles-per-pack × ₵${sheetPrice}) plus the singles side's own USED/PACK cycle ₵.`}>
               TOTAL<span className="block">₵</span>
-            </th>
-            <th rowSpan={2} className="py-0.5 border-b-2 border-gray-500 text-center align-bottom border-l-2 border-l-gray-600 bg-slate-600 text-white"
-              title="Work Not Written — cash counted beyond what was invoiced that day, across ALL receipts (not just this item's chain). A large amount is a candidate explanation for an otherwise-unrecorded loss.">
-              WNW<span className="block">₵</span>
             </th>
             <th rowSpan={2} className="py-0.5 border-b-2 border-gray-400 text-center align-bottom border-l-2 border-l-gray-600 bg-gray-200 text-gray-500"
               title="Secondary cross-check only, from the daily count ledger -- not the primary loss measure.">
@@ -590,13 +584,6 @@ function SingleServicePackChainTable({
                     : totalCedisRow < -0.001 ? <span className="text-green-600">+₵{fmtN(Math.abs(totalCedisRow))}</span>
                     : <span className="text-gray-400">0</span>}
                 </td>
-                <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-amber-700 whitespace-nowrap"
-                  title="Work Not Written -- cash counted beyond what was invoiced that day, across all receipts (not just this item's chain).">
-                  {(() => {
-                    const wnw = wnwByDate.get(row.date) ?? 0
-                    return wnw > 0.001 ? `₵${fmtN(wnw)}` : null
-                  })()}
-                </td>
                 <td className="text-center py-0.5 font-bold border-l-2 border-l-gray-600 text-gray-400">{blankDash(fmtN(row.singlesExp))}</td>
                 <td className="text-center py-0.5 font-bold border-l border-gray-300 text-gray-400 whitespace-nowrap">
                   <CntValue qty={row.singlesCnt} countedBy={row.singlesCntBy} history={row.singlesCntHistory} blank />
@@ -622,7 +609,6 @@ function SingleServicePackChainTable({
                 : grandTotalCedis < -0.001 ? <span className="text-green-600">+₵{fmtN(Math.abs(parseFloat(grandTotalCedis.toFixed(2))))}</span>
                 : <span className="text-gray-400">0</span>}
             </td>
-            <td className="border-l-2 border-l-gray-600" />
             <td className="border-l-2 border-l-gray-600" />
             <td className="border-l border-gray-400" />
             <td className="border-l-2 border-l-gray-600" />
@@ -1048,31 +1034,6 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPackChain, item.converts_to_item_id])
 
-  // Work Not Written (cash counted beyond what was invoiced, per receipt) --
-  // a shop-wide daily reconciliation figure, unrelated to any one item. When
-  // this chain shows a possible stock loss with no record explaining it, a
-  // same-day WNW amount is a candidate explanation: the missing stock may
-  // have gone into an unwritten job whose cash still turned up. Summed per
-  // day from positive-WNW receipts only (a same-day cash shortfall on some
-  // other receipt is a separate problem).
-  const [wnwByDate, setWnwByDate] = useState<Map<string, number> | null>(null)
-  useEffect(() => {
-    if (!isPackChain) return
-    fetch('/api/sales').then(r => r.json())
-      .then(d => {
-        const map = new Map<string, number>()
-        for (const r of (Array.isArray(d) ? d : [])) {
-          const w = parseFloat(r?.wnw ?? '0') || 0
-          if (w <= 0.001 || !r?.receipt_date) continue
-          const date = String(r.receipt_date).slice(0, 10)
-          map.set(date, parseFloat(((map.get(date) ?? 0) + w).toFixed(2)))
-        }
-        setWnwByDate(map)
-      })
-      .catch(() => setWnwByDate(new Map()))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPackChain])
-
   function startEdit() {
     setForm({
       item_name: item.item_name, cf_group: item.cf_group ?? '', selling_rate: item.sp ?? '', purchase_rate: item.cp ?? '',
@@ -1238,7 +1199,6 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
             onDateClick={onDateClick}
             packChainBreakdownNames={packChainBreakdownNames}
             showPrices={showPrices ?? false}
-            wnwByDate={wnwByDate ?? new Map()}
             lossOnly={lossOnly ?? false}
             gainOnly={gainOnly ?? false}
           />
