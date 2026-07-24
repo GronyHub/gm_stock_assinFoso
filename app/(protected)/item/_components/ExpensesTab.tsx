@@ -1,5 +1,5 @@
 'use client'
-import { Fragment, useState, useEffect, useMemo } from 'react'
+import { Fragment, useState, useEffect, useMemo, useRef } from 'react'
 import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
 
@@ -70,6 +70,12 @@ type TableProps = {
   onPropertyStatus: (e: Expense, status: string) => void
   hideAccount?: boolean
   hideVendor?: boolean
+  accounts: string[]
+  vendors: string[]
+  accountFilter: string | null
+  vendorFilter: string | null
+  onAccountFilter: (v: string | null) => void
+  onVendorFilter: (v: string | null) => void
 }
 
 const EMPTY_FORM = {
@@ -77,8 +83,51 @@ const EMPTY_FORM = {
   amount: '', cf_expense_type: '', is_property: false,
 }
 
+// Clicking the header opens a dropdown of every distinct value in that
+// column -- picking one filters the table down to just that value; "All"
+// clears it. The header itself turns blue while a filter is active.
+function FilterHeaderCell({ label, options, value, onChange }: {
+  label: string; options: string[]; value: string | null; onChange: (v: string | null) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLTableCellElement>(null)
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  return (
+    <th className={`${TH} relative`} ref={ref}>
+      <button onClick={() => setOpen(o => !o)}
+        className={`flex items-center gap-0.5 ${value ? 'text-blue-600' : ''}`}>
+        <span className="truncate max-w-[80px]">{value ?? label}</span>
+        <span className="text-[8px] shrink-0">▾</span>
+      </button>
+      {open && (
+        <div className="absolute z-30 left-0 top-full mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto min-w-[140px] normal-case font-normal">
+          <button onClick={() => { onChange(null); setOpen(false) }}
+            className={`w-full text-left px-3 py-1.5 text-xs hover:bg-blue-50 transition ${!value ? 'text-blue-600 font-semibold' : 'text-gray-700'}`}>
+            All
+          </button>
+          {options.map(o => (
+            <button key={o} onClick={() => { onChange(o); setOpen(false) }}
+              className={`w-full text-left px-3 py-1.5 text-xs hover:bg-blue-50 transition ${value === o ? 'text-blue-600 font-semibold' : 'text-gray-700'}`}>
+              {o}
+            </button>
+          ))}
+        </div>
+      )}
+    </th>
+  )
+}
+
 function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, saving, form, onEdit, onCloseEdit,
-  onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, onPropertyStatus, hideAccount, hideVendor }: TableProps) {
+  onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, onPropertyStatus, hideAccount, hideVendor,
+  accounts, vendors, accountFilter, vendorFilter, onAccountFilter, onVendorFilter }: TableProps) {
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
     <table className="w-full border-collapse text-xs">
@@ -86,10 +135,14 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
         <tr className="bg-gray-50">
           <th className={`${TH} whitespace-nowrap`}>Date</th>
           <th className={`${TH} text-right`}>Amt</th>
-          {!hideAccount && <th className={TH}>Account</th>}
+          {!hideAccount && (
+            <FilterHeaderCell label="Account" options={accounts} value={accountFilter} onChange={onAccountFilter} />
+          )}
           <th className={TH}>Description</th>
           <th className={TH}>Justify</th>
-          {!hideVendor && <th className={TH}>Vendor</th>}
+          {!hideVendor && (
+            <FilterHeaderCell label="Vendor" options={vendors} value={vendorFilter} onChange={onVendorFilter} />
+          )}
           <th className={TH}>Source</th>
           <th className={TH}>By</th>
         </tr>
@@ -210,6 +263,8 @@ export default function ExpensesTab({ search, initialTab }: Props) {
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
+  const [accountFilter, setAccountFilter] = useState<string | null>(null)
+  const [vendorFilter, setVendorFilter] = useState<string | null>(null)
 
   function loadExpenses() {
     fetch('/api/expenses')
@@ -222,11 +277,20 @@ export default function ExpensesTab({ search, initialTab }: Props) {
   usePolling(loadExpenses, 5000, editId === null)
 
 
+  const accountOptions = useMemo(() =>
+    Array.from(new Set(expenses.map(e => e.expense_account).filter(Boolean))).sort()
+  , [expenses])
+  const vendorOptions = useMemo(() =>
+    Array.from(new Set(expenses.map(e => e.vendor_name).filter((v): v is string => !!v))).sort()
+  , [expenses])
+
   const filtered = useMemo(() => {
     let list = expenses
     if (tab === 'properties') list = list.filter(e => e.is_property)
     if (tab === 'at_shop')    list = list.filter(e => e.is_property && e.property_status === 'at_shop')
     if (tab === 'away')       list = list.filter(e => e.is_property && (e.property_status === 'not_at_shop' || e.property_status === 'spoilt'))
+    if (accountFilter) list = list.filter(e => e.expense_account === accountFilter)
+    if (vendorFilter)  list = list.filter(e => e.vendor_name === vendorFilter)
     const q = search.toLowerCase()
     if (!q) return list
     return list.filter(e =>
@@ -237,7 +301,7 @@ export default function ExpensesTab({ search, initialTab }: Props) {
       (e.source_sheet ?? '').toLowerCase().includes(q) ||
       (e.source ?? '').toLowerCase().includes(q)
     )
-  }, [expenses, tab, search])
+  }, [expenses, tab, search, accountFilter, vendorFilter])
 
   const grouped = useMemo(() => {
     if (groupBy === 'none') return []
@@ -317,6 +381,12 @@ export default function ExpensesTab({ search, initialTab }: Props) {
     onDeleteConfirm: deleteExpense,
     onDeleteCancel: () => setConfirmDeleteId(null),
     onPropertyStatus: setPropertyStatus,
+    accounts: accountOptions,
+    vendors: vendorOptions,
+    accountFilter,
+    vendorFilter,
+    onAccountFilter: setAccountFilter,
+    onVendorFilter: setVendorFilter,
   }
 
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
