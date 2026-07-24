@@ -92,14 +92,14 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
           {!hideVendor && <th className={TH}>Vendor</th>}
           <th className={TH}>Source</th>
           <th className={TH}>By</th>
-          <th className="px-3 py-2 border-b border-gray-200" />
         </tr>
       </thead>
       <tbody className="divide-y divide-gray-100">
         {rows.map((e, i) => (
           <Fragment key={e.id}>
             <tr id={`expense-${e.id}`}
-              className={`transition-colors ${highlightId === e.id ? 'bg-yellow-100' : i % 2 === 1 ? 'bg-gray-50' : 'bg-white'} hover:bg-blue-50/60`}>
+              onClick={() => { if (e.amount_hidden) return; if (editId === e.id) onCloseEdit(); else onEdit(e) }}
+              className={`transition-colors ${e.amount_hidden ? '' : 'cursor-pointer'} ${highlightId === e.id ? 'bg-yellow-100' : i % 2 === 1 ? 'bg-gray-50' : 'bg-white'} hover:bg-blue-50/60`}>
               <td className={`${TD} text-gray-600 whitespace-nowrap`}>{fmtShort(e.expense_date)}</td>
               <td className={`${TD} text-right font-bold text-gray-900`}>{e.amount_hidden ? '🔒 Hidden' : `₵${fmt(e.amount)}`}</td>
               {!hideAccount && <td className={`${TD} text-gray-900 font-semibold`}>{e.expense_account}</td>}
@@ -108,22 +108,10 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
               {!hideVendor && <td className={`${TD} text-gray-500`}>{e.vendor_name ?? '—'}</td>}
               <td className={`${TD} text-gray-400`}>{e.source_sheet ?? e.source ?? '—'}</td>
               <td className={`${TD} text-blue-500`}>{e.entered_by ?? '—'}</td>
-              <td className={TD}>
-                {e.amount_hidden ? (
-                  <p className="text-[10px] text-gray-300 text-right">—</p>
-                ) : (
-                <div className="flex items-center justify-end">
-                  <button onClick={() => editId === e.id ? onCloseEdit() : onEdit(e)}
-                    className="text-[10px] text-blue-600 font-semibold bg-blue-50 px-2 py-1 rounded-lg hover:bg-blue-100">
-                    {editId === e.id ? 'Close' : 'Edit'}
-                  </button>
-                </div>
-                )}
-              </td>
             </tr>
             {editId === e.id && (
               <tr className="bg-blue-50/40">
-                <td colSpan={9 - (hideAccount ? 1 : 0) - (hideVendor ? 1 : 0)} className="px-3 py-3">
+                <td colSpan={8 - (hideAccount ? 1 : 0) - (hideVendor ? 1 : 0)} className="px-3 py-3">
                   <div className="grid grid-cols-2 gap-1 max-w-lg">
                     <div>
                       <p className="text-[9px] text-gray-400 mb-0.5">Date</p>
