@@ -590,11 +590,12 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
           className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700 transition">
           History
         </button>
-        <button onClick={() => setBarsOnly(b => !b)} title="Show only the date bars, hiding each receipt's item lines"
-          className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition ${
-            barsOnly ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-700'}`}>
-          {barsOnly ? 'Bars Only ▾' : 'Bars Only ▸'}
-        </button>
+        <label title="Show only the date bars, hiding each receipt's item lines"
+          className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
+          <input type="checkbox" checked={barsOnly} onChange={() => setBarsOnly(b => !b)}
+            className="w-3 h-3 accent-blue-600" />
+          Bars Only
+        </label>
       </div>
       <Link href="/sales/new"
             className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100">
