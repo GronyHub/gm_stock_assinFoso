@@ -2,10 +2,13 @@ import sql from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { isOwnerLevel } from '@/lib/roles'
+import { computeLossEvents } from '@/lib/lossEvents'
 
-// Profit / Loss = all cash counted − all expenses − all bills. This includes
-// the confidential Salaries expense category, so the whole endpoint is
-// owner-level only (same gate as payslip confirmation).
+// Profit / Loss = cash counted − (bills + expenses + stock loss). Stock loss
+// is the same ₵ valuation used by the Daily Loss feed and the Items list's
+// Loss Amount column (shrinkage the cash-flow numbers alone don't capture).
+// This includes the confidential Salaries expense category, so the whole
+// endpoint is owner-level only (same gate as payslip confirmation).
 export async function GET() {
   const session = await auth()
   if (!isOwnerLevel(session?.user as any)) {
@@ -13,48 +16,71 @@ export async function GET() {
   }
 
   try {
-    const [cashTotal, expenseTotal, billTotal, cashMonthly, expenseMonthly, billMonthly] = await Promise.all([
-      sql`SELECT COALESCE(SUM(cash_counted), 0) AS total FROM sales_receipts`,
-      sql`SELECT COALESCE(SUM(amount), 0) AS total FROM expenses`,
-      sql`SELECT COALESCE(SUM(total), 0) AS total FROM bills`,
+    const [cashDaily, expenseDaily, billDaily, lossEvents] = await Promise.all([
       sql`
-        SELECT to_char(receipt_date, 'YYYY-MM') AS month, COALESCE(SUM(cash_counted), 0) AS total
-        FROM sales_receipts WHERE receipt_date IS NOT NULL GROUP BY 1 ORDER BY 1
+        SELECT receipt_date::date::text AS date, COALESCE(SUM(cash_counted), 0) AS total
+        FROM sales_receipts WHERE receipt_date IS NOT NULL GROUP BY 1
       `,
       sql`
-        SELECT to_char(expense_date, 'YYYY-MM') AS month, COALESCE(SUM(amount), 0) AS total
-        FROM expenses WHERE expense_date IS NOT NULL GROUP BY 1 ORDER BY 1
+        SELECT expense_date::date::text AS date, COALESCE(SUM(amount), 0) AS total
+        FROM expenses WHERE expense_date IS NOT NULL GROUP BY 1
       `,
       sql`
-        SELECT to_char(bill_date, 'YYYY-MM') AS month, COALESCE(SUM(total), 0) AS total
-        FROM bills WHERE bill_date IS NOT NULL GROUP BY 1 ORDER BY 1
+        SELECT bill_date::date::text AS date, COALESCE(SUM(total), 0) AS total
+        FROM bills WHERE bill_date IS NOT NULL GROUP BY 1
       `,
+      computeLossEvents(),
     ])
 
-    const cashCounted = Number(cashTotal[0]?.total ?? 0)
-    const expenses = Number(expenseTotal[0]?.total ?? 0)
-    const bills = Number(billTotal[0]?.total ?? 0)
+    const cashMap = Object.fromEntries(cashDaily.map((r: any) => [r.date, Number(r.total)]))
+    const expenseMap = Object.fromEntries(expenseDaily.map((r: any) => [r.date, Number(r.total)]))
+    const billMap = Object.fromEntries(billDaily.map((r: any) => [r.date, Number(r.total)]))
 
-    const cashMap = Object.fromEntries(cashMonthly.map((r: any) => [r.month, Number(r.total)]))
-    const expenseMap = Object.fromEntries(expenseMonthly.map((r: any) => [r.month, Number(r.total)]))
-    const billMap = Object.fromEntries(billMonthly.map((r: any) => [r.month, Number(r.total)]))
+    const lossMap: Record<string, number> = {}
+    for (const e of lossEvents) {
+      if (e.kind !== 'loss') continue
+      lossMap[e.date] = (lossMap[e.date] ?? 0) + e.loss_amt
+    }
 
-    const months = Array.from(new Set([
-      ...cashMonthly.map((r: any) => r.month as string),
-      ...expenseMonthly.map((r: any) => r.month as string),
-      ...billMonthly.map((r: any) => r.month as string),
-    ])).sort()
+    const dates = Array.from(new Set([
+      ...Object.keys(cashMap), ...Object.keys(expenseMap), ...Object.keys(billMap), ...Object.keys(lossMap),
+    ])).sort().reverse()
 
-    const monthly = months.map(month => {
-      const cash = cashMap[month] ?? 0
-      const exp = expenseMap[month] ?? 0
-      const bl = billMap[month] ?? 0
-      return { month, cashCounted: cash, expenses: exp, bills: bl, profit: cash - exp - bl }
+    const daily = dates.map(date => {
+      const cashCounted = cashMap[date] ?? 0
+      const bills = billMap[date] ?? 0
+      const expenses = expenseMap[date] ?? 0
+      const dailyLoss = parseFloat((lossMap[date] ?? 0).toFixed(2))
+      const cashOut = bills + expenses
+      return { date, cashCounted, bills, expenses, cashOut, dailyLoss, profit: cashCounted - cashOut - dailyLoss }
     })
 
+    const cashCounted = daily.reduce((s, d) => s + d.cashCounted, 0)
+    const expenses = daily.reduce((s, d) => s + d.expenses, 0)
+    const bills = daily.reduce((s, d) => s + d.bills, 0)
+    const totalLoss = parseFloat(daily.reduce((s, d) => s + d.dailyLoss, 0).toFixed(2))
+
+    const monthlyMap = new Map<string, { cashCounted: number; expenses: number; bills: number; dailyLoss: number }>()
+    for (const d of daily) {
+      const month = d.date.slice(0, 7)
+      const m = monthlyMap.get(month) ?? { cashCounted: 0, expenses: 0, bills: 0, dailyLoss: 0 }
+      m.cashCounted += d.cashCounted
+      m.expenses += d.expenses
+      m.bills += d.bills
+      m.dailyLoss += d.dailyLoss
+      monthlyMap.set(month, m)
+    }
+    const monthly = Array.from(monthlyMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([month, m]) => ({
+        month, cashCounted: m.cashCounted, expenses: m.expenses, bills: m.bills, dailyLoss: m.dailyLoss,
+        profit: m.cashCounted - m.expenses - m.bills - m.dailyLoss,
+      }))
+
     return NextResponse.json({
-      totals: { cashCounted, expenses, bills, profit: cashCounted - expenses - bills },
+      totals: { cashCounted, expenses, bills, dailyLoss: totalLoss, profit: cashCounted - expenses - bills - totalLoss },
       monthly,
+      daily,
     })
   } catch (e) {
     console.error('profit-loss error:', e)
