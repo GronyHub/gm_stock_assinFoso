@@ -451,6 +451,7 @@ function AnnouncementsPanel() {
   }
 
   async function removePost(id: number) {
+    if (!confirm('Delete this post?')) return
     await fetch('/api/announcements', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
     load()
   }

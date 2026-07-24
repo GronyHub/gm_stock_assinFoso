@@ -82,7 +82,8 @@ export default function MatchesWidePage() {
     await load()
   }
 
-  async function removeMatch(matchId: number) {
+  async function removeMatch(matchId: number, name: string) {
+    if (!confirm(`Remove match "${name}"?`)) return
     setDeletingId(matchId)
     await fetch(`/api/good-service-matches/${matchId}`, { method: 'DELETE' })
     setDeletingId(null)
@@ -199,7 +200,7 @@ export default function MatchesWidePage() {
                         <tr key={m.id} className="border-b border-gray-100 hover:bg-gray-50">
                           <td className="px-1.5 py-0.5 text-gray-900 break-words">{m.name}</td>
                           <td className="px-1.5 py-0.5 text-right whitespace-nowrap">
-                            <button onClick={() => removeMatch(m.id)} disabled={deletingId === m.id}
+                            <button onClick={() => removeMatch(m.id, m.name)} disabled={deletingId === m.id}
                               className="text-gray-300 hover:text-red-500 font-bold text-xs transition disabled:opacity-40">
                               {deletingId === m.id ? '…' : '×'}
                             </button>

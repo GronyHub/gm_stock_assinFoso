@@ -1711,7 +1711,8 @@ function ViolationsTab({ role, username, vtab, setVtab }: { role: string; userna
     }
   }
 
-  async function remove(id: number) {
+  async function remove(id: number, staffName: string, violation: string) {
+    if (!confirm(`Delete "${violation}" for ${staffName}?`)) return
     await fetch('/api/staff/violations', {
       method: 'DELETE', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
@@ -1857,7 +1858,7 @@ function ViolationsTab({ role, username, vtab, setVtab }: { role: string; userna
                     )}
                   </div>
                   {(role === 'owner' || username === 'joe') && (
-                    <button onClick={() => remove(v.id)} className="text-xs text-red-400 hover:text-red-600 font-semibold shrink-0">Delete</button>
+                    <button onClick={() => remove(v.id, v.staff_name, v.violation)} className="text-xs text-red-400 hover:text-red-600 font-semibold shrink-0">Delete</button>
                   )}
                 </div>
                 <p className="text-sm font-semibold text-gray-900">{v.violation}</p>
@@ -2232,7 +2233,8 @@ function RotaTab() {
     setSavingAbs(false)
   }
 
-  async function deleteAbsence(id: number) {
+  async function deleteAbsence(id: number, staffName: string) {
+    if (!confirm(`Remove this absence for ${staffName}?`)) return
     await fetch('/api/rota/absences', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
     setAbsences(prev => prev.filter(a => a.id !== id))
   }
@@ -2467,7 +2469,7 @@ function RotaTab() {
                   <p className="text-sm text-gray-800 mt-1 font-medium">{fmtDate(a.start_date)} → {fmtDate(a.end_date)}</p>
                   {a.reason && <p className="text-xs text-gray-400 mt-0.5">{a.reason}</p>}
                 </div>
-                <button onClick={() => deleteAbsence(a.id)}
+                <button onClick={() => deleteAbsence(a.id, a.staff_name)}
                   className="shrink-0 text-xs text-red-500 font-semibold px-2.5 py-1 rounded-lg bg-red-50 hover:bg-red-100 transition">
                   Remove
                 </button>
