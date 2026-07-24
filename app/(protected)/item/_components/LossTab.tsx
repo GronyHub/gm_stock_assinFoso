@@ -1693,7 +1693,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
 
   const colgroup = (
     <colgroup>
-      <col style={{width:'200px'}} />
+      <col style={{width:'260px'}} />
       <col style={{width:'56px'}} />
       <col style={{width:'52px'}} />
       <col style={{width:'44px'}} />
@@ -1714,7 +1714,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
     return (
       <tr key={row.item_id} onClick={() => router.push(`/stock/${row.item_id}`)}
         className="cursor-pointer hover:bg-gray-50 transition">
-        <td className="pl-2 pr-2 py-1.5 font-bold whitespace-normal break-words sticky left-0 z-10 bg-white border-r border-gray-200"
+        <td className="pl-2 pr-2 py-1.5 font-bold truncate sticky left-0 z-10 bg-white border-r border-gray-200"
           title={row.item_name}>
           <span className="text-blue-600">{row.item_name}</span>
         </td>
