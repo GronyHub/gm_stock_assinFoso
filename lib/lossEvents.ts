@@ -24,6 +24,20 @@ type DayRow = {
 
 function n(v: string | null) { return parseFloat(v ?? '0') || 0 }
 
+// A count is a physical tally taken the morning after, closing out the
+// PREVIOUS day's business -- not a same-day snapshot. From this date
+// onward, a count stored with count_date X is reconciled against X-1's
+// bills/sales (not X's, which haven't happened relative to the count) and
+// any loss/gain it produces is dated X-1. Counts before this date keep the
+// old same-day reading, unchanged.
+const SHIFT_CUTOFF = '2026-07-20'
+
+function addDays(dateStr: string, delta: number) {
+  const d = new Date(`${dateStr}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + delta)
+  return d.toISOString().slice(0, 10)
+}
+
 export type LossEvent = {
   date: string; item_id: number; item_name: string
   expected: number; counted: number; loss_qty: number; loss_amt: number
@@ -119,10 +133,8 @@ export async function computeLossEvents(): Promise<LossEvent[]> {
 
   const events: LossEvent[] = []
   // Ghana runs on UTC year-round (no DST/offset), so this is also "today"
-  // in local shop time. A count entered today, before the day's sales are
-  // all in yet, would otherwise read as a loss just because those
-  // not-yet-recorded sales aren't in `expected` -- today only gets a
-  // loss/gain figure once it's no longer today.
+  // in local shop time -- a defensive backstop below in case a shifted or
+  // pre-cutoff date is ever somehow not in the past.
   const today = new Date().toISOString().slice(0, 10)
 
   for (const item of itemRows as any[]) {
@@ -136,29 +148,46 @@ export async function computeLossEvents(): Promise<LossEvent[]> {
     for (const row of byItem.get(item.item_id) ?? []) {
       const counted = row.qty_counted !== null ? parseFloat(row.qty_counted) : null
       const bills = n(row.bills_qty), w = n(row.wic_qty), g = n(row.gmc_qty), c = n(row.converted_in_qty)
+      const dayTxn = parseFloat((bills + c - w - g).toFixed(4))
+      const shifted = row.date >= SHIFT_CUTOFF
+
       if (prev === null) {
-        if (counted !== null) prev = counted
-      } else {
-        const expected = parseFloat((prev + bills + c - w - g).toFixed(4))
         if (counted !== null) {
-          const loss = parseFloat((expected - counted).toFixed(4))
+          // First-ever count for this item establishes the baseline with no
+          // prior state to compare against -- same as before the shift, no
+          // event is possible here regardless of shifted/not.
+          prev = shifted ? parseFloat((counted + dayTxn).toFixed(4)) : counted
+        }
+      } else {
+        // Shifted: this count closes out the day BEFORE row.date, so it's
+        // compared against `prev` as it stood before row.date's own
+        // transactions are folded in. Not shifted: same-day reading, as before.
+        const preTxnExpected = prev
+        const postTxnExpected = parseFloat((prev + dayTxn).toFixed(4))
+        if (counted !== null) {
+          const compareExpected = shifted ? preTxnExpected : postTxnExpected
+          const eventDate = shifted ? addDays(row.date, -1) : row.date
+          const loss = parseFloat((compareExpected - counted).toFixed(4))
           const kind: 'loss' | 'gain' | null = loss > 0.001 ? 'loss' : loss < -0.001 ? 'gain' : null
-          if (kind && row.date < today) {
+          if (kind && eventDate < today) {
             const qty = Math.abs(loss)
             events.push({
-              date: row.date,
+              date: eventDate,
               item_id: item.item_id,
               item_name: item.item_name,
-              expected,
+              expected: compareExpected,
               counted,
               loss_qty: qty,
               loss_amt: parseFloat((qty * sp).toFixed(2)),
               kind,
             })
           }
-          prev = counted
+          // Baseline going forward always needs to land on "expected as of
+          // end of row.date" -- shifted counts already closed out the PRIOR
+          // day, so row.date's own transactions still need folding in on top.
+          prev = shifted ? parseFloat((counted + dayTxn).toFixed(4)) : counted
         } else {
-          prev = expected
+          prev = postTxnExpected
         }
       }
     }
