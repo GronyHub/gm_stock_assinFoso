@@ -1655,6 +1655,25 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   const [loading, setLoading] = useState(true)
   const [sort, setSort] = useState<{ col: SortCol; dir: SortDir }>({ col: 'lgAmt', dir: 'desc' })
 
+  // Drag-to-resize handle on the right edge of the Item header (rendered
+  // below) -- onMove/onUp are created fresh per drag and stay paired with
+  // the same document listener instance for that one drag's duration.
+  const [itemColWidth, setItemColWidth] = useState(260)
+  function startResize(e: React.MouseEvent) {
+    e.preventDefault()
+    const startX = e.clientX
+    const startWidth = itemColWidth
+    function onMove(ev: MouseEvent) {
+      setItemColWidth(Math.min(480, Math.max(120, startWidth + (ev.clientX - startX))))
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }
+
   function loadSummary() {
     return fetch('/api/losses/summary').then(r => r.json())
       .then(d => { setRows(Array.isArray(d) ? d : []); setLoading(false) })
@@ -1693,7 +1712,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
 
   const colgroup = (
     <colgroup>
-      <col style={{width:'260px'}} />
+      <col style={{width:`${itemColWidth}px`}} />
       <col style={{width:'56px'}} />
       <col style={{width:'52px'}} />
       <col style={{width:'44px'}} />
@@ -1754,7 +1773,15 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
           {colgroup}
           <thead className="sticky top-0 z-20">
             <tr className="bg-gray-50">
-              <SortTh label="Item" col="item_name" sort={sort} onSort={handleSort} cls="text-left pl-2 pr-2 sticky left-0 z-30 bg-gray-50 border-r border-gray-200" />
+              <th onClick={() => handleSort('item_name')}
+                className={`${thBase} relative text-left pl-2 pr-2 sticky left-0 z-30 bg-gray-50 border-r border-gray-200 ${sort.col === 'item_name' ? 'text-blue-600' : 'text-gray-400 hover:text-gray-700'}`}>
+                Item
+                {sort.col === 'item_name' && <span className="ml-0.5 text-[9px]">{sort.dir === 'desc' ? '↓' : '↑'}</span>}
+                {/* Drag this edge to resize the Item column -- stopPropagation
+                    keeps the drag from also toggling the item_name sort. */}
+                <span onMouseDown={e => { e.stopPropagation(); startResize(e) }} onClick={e => e.stopPropagation()}
+                  className="absolute top-0 right-0 h-full w-2 cursor-col-resize hover:bg-blue-300/50" />
+              </th>
               <SortTh label={<>Loss<span className="block">Amount</span></>} col="lgAmt" {...thProps} cls="text-center" />
               <SortTh label={<>Num. of<span className="block">Losses</span></>} col="lossCount" {...thProps} cls="text-center" />
               <SortTh label="Gain" col="gainAmt" {...thProps} cls="text-center" />
