@@ -112,28 +112,11 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
                 {e.amount_hidden ? (
                   <p className="text-[10px] text-gray-300 text-right">—</p>
                 ) : (
-                <div className="flex items-center gap-1 justify-end">
+                <div className="flex items-center justify-end">
                   <button onClick={() => editId === e.id ? onCloseEdit() : onEdit(e)}
                     className="text-[10px] text-blue-600 font-semibold bg-blue-50 px-2 py-1 rounded-lg hover:bg-blue-100">
                     {editId === e.id ? 'Close' : 'Edit'}
                   </button>
-                  {confirmDeleteId === e.id ? (
-                    <>
-                      <button onClick={() => onDeleteConfirm(e.id)} disabled={deleting}
-                        className="text-[10px] text-white font-semibold bg-red-600 px-2 py-1 rounded-lg hover:bg-red-700 disabled:opacity-40">
-                        {deleting ? '…' : 'Yes'}
-                      </button>
-                      <button onClick={onDeleteCancel}
-                        className="text-[10px] text-gray-600 font-semibold bg-gray-100 px-2 py-1 rounded-lg">
-                        No
-                      </button>
-                    </>
-                  ) : (
-                    <button onClick={() => onDeleteStart(e.id)}
-                      className="text-[10px] text-red-600 font-semibold bg-red-50 px-2 py-1 rounded-lg hover:bg-red-100">
-                      Del
-                    </button>
-                  )}
                 </div>
                 )}
               </td>
@@ -188,13 +171,31 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
                       </select>
                     </div>
                   )}
-                  <div className="flex gap-1 mt-2">
+                  <div className="flex items-center gap-1 mt-2">
                     <button onClick={onSaveEdit} disabled={saving}
                       className="bg-green-600 text-white text-[10px] font-bold rounded px-3 py-1 disabled:opacity-40">
                       {saving ? 'Saving…' : 'Save'}
                     </button>
                     <button onClick={onCloseEdit}
                       className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
+                    {/* Delete lives here, inside Edit, rather than as its own
+                        button on every row -- one extra tap discourages
+                        accidental deletes. */}
+                    {confirmDeleteId === e.id ? (
+                      <span className="ml-auto flex items-center gap-1">
+                        <button onClick={() => onDeleteConfirm(e.id)} disabled={deleting}
+                          className="px-3 py-1 bg-red-600 text-white text-[10px] font-bold rounded disabled:opacity-40">
+                          {deleting ? 'Deleting…' : 'Yes, Delete'}
+                        </button>
+                        <button onClick={onDeleteCancel}
+                          className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
+                      </span>
+                    ) : (
+                      <button onClick={() => onDeleteStart(e.id)}
+                        className="ml-auto px-3 py-1 bg-red-50 text-red-600 text-[10px] font-semibold rounded hover:bg-red-100">
+                        Delete
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -306,6 +307,7 @@ export default function ExpensesTab({ search, initialTab }: Props) {
     if (res.ok) {
       setExpenses(prev => prev.filter(e => e.id !== id))
       setConfirmDeleteId(null)
+      setEditId(null)
     }
   }
 
@@ -320,10 +322,10 @@ export default function ExpensesTab({ search, initialTab }: Props) {
   const tableProps = {
     highlightId, editId, confirmDeleteId, deleting, saving, form,
     onEdit: openEdit,
-    onCloseEdit: () => setEditId(null),
+    onCloseEdit: () => { setEditId(null); setConfirmDeleteId(null) },
     onFormChange: setForm,
     onSaveEdit: saveEdit,
-    onDeleteStart: (id: number) => { setConfirmDeleteId(id); setEditId(null) },
+    onDeleteStart: (id: number) => setConfirmDeleteId(id),
     onDeleteConfirm: deleteExpense,
     onDeleteCancel: () => setConfirmDeleteId(null),
     onPropertyStatus: setPropertyStatus,
