@@ -51,7 +51,6 @@ Everything that isn't directly about money:
 - Staff -- clock in and out here, and see the staff rota (see "Clocking In/Out" below).
 - Advert -- Bino is in charge, the same way Joe is in charge of Grony Manage overall, so Bino is the default assignee shown on Advert (and other Grony Manage) flags. Nine sub-tabs: Audio (the rules), Advert Status (mark each item/service as having an audio advert or not -- missing ones become a flag), Jingle Log (at least one new jingle a month, or it flags), Equipment Check (Amplifier/Speaker/wires confirmed every Monday & Thursday, or it flags), Photoshop/WhatsApp/Cuttings/Video (their own rules, matching the shop's Google Drive advert folders), and Daily Log (pulled from the Closer's end-of-day questionnaire -- was the roadside advert played today).
 - Dress Code -- pulled from the Closer's end-of-day questionnaire.
-- Properties -- the shop's tracked physical assets.
 - Arrangement, Cleanliness, Future, Customer Display, Staff Display, Repair Works, Quality Assurance -- simple day-to-day logs; add a note (and a photo if useful) whenever something in that category happens.
 - Training -- this page, plus Company Laws and Assessment.
 - Logs -- the activity log.

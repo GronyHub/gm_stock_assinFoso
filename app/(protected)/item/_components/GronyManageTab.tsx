@@ -7,10 +7,6 @@ import ManageLogPanel from './ManageLogPanel'
 import TrainingTab from './TrainingTab'
 import AdvertTab from './AdvertTab'
 
-const ExpensesTab = dynamic(() => import('./ExpensesTab'), {
-  ssr: false,
-  loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div>,
-})
 const StaffClient = dynamic(() => import('../../staff/StaffClient'), {
   ssr: false,
   loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div>,
@@ -21,7 +17,7 @@ const LogsPage = dynamic(() => import('../../logs/page'), {
 })
 
 export type ManageView =
-  | 'staff_times' | 'advert' | 'staff_dress' | 'properties'
+  | 'staff_times' | 'advert' | 'staff_dress'
   | 'arrangement' | 'cleanliness' | 'future' | 'customer_display'
   | 'staff_display' | 'training' | 'repair_works' | 'quality_assurance' | 'logs'
 
@@ -42,7 +38,6 @@ const SUBMENU: { key: ManageView; label: string }[] = [
   { key: 'staff_times', label: 'Staff' },
   { key: 'advert', label: 'Advert' },
   { key: 'staff_dress', label: 'Dress Code' },
-  { key: 'properties', label: 'Properties' },
   ...LOG_CATEGORIES.map(c => ({ key: c.key, label: c.label })),
   { key: 'training', label: 'Training' },
   { key: 'logs', label: 'Logs' },
@@ -76,7 +71,6 @@ export default function GronyManageTab() {
         {view === 'staff_times' && <StaffClient role={role} username={username} embedded />}
         {view === 'advert' && <AdvertTab />}
         {view === 'staff_dress' && <ClosingReportLogView field="no_tshirt_staff" label="Dress Code" icon="👕" />}
-        {view === 'properties' && <ExpensesTab search="" propertiesOnly />}
         {view === 'training' && <TrainingTab />}
         {view === 'logs' && <div className="px-2"><LogsPage /></div>}
         {logCategory && <ManageLogPanel category={logCategory.key} label={logCategory.label} icon={logCategory.icon} />}
