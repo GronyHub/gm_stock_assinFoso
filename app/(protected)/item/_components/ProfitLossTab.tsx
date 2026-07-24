@@ -73,16 +73,21 @@ export default function ProfitLossTab() {
 
       <div>
         <p className="text-sm font-semibold text-gray-700 mb-1">Daily Profit &amp; Loss</p>
-        <p className="text-[10px] text-gray-400 mb-2">CC − (Cash Out + Daily Loss), one row per day.</p>
+        <p className="text-[10px] text-gray-400 mb-2">CC − (Cash Out + Daily Loss), one row per day. Cash Out = Bills + Expenses.</p>
         <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
           <table className="w-full border-collapse text-xs">
             <thead>
               <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
-                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Date</th>
-                <th className="text-right px-3 py-2 font-bold border-b border-gray-200">CC</th>
-                <th className="text-right px-3 py-2 font-bold border-b border-gray-200">Cash Out</th>
-                <th className="text-right px-3 py-2 font-bold border-b border-gray-200">Daily Loss</th>
-                <th className="text-right px-3 py-2 font-bold border-b border-gray-200">P/L</th>
+                <th rowSpan={2} className="text-left px-3 py-2 font-bold border-b border-gray-200 align-bottom whitespace-nowrap">Date</th>
+                <th rowSpan={2} className="text-right px-3 py-2 font-bold border-b border-gray-200 align-bottom">CC</th>
+                <th colSpan={3} className="text-center px-3 py-1.5 font-bold border-b border-gray-100">Cash Out</th>
+                <th rowSpan={2} className="text-right px-3 py-2 font-bold border-b border-gray-200 align-bottom">Daily Loss</th>
+                <th rowSpan={2} className="text-right px-3 py-2 font-bold border-b border-gray-200 align-bottom">P/L</th>
+              </tr>
+              <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
+                <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 border-l border-gray-100">Bills</th>
+                <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200">Expenses</th>
+                <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 text-gray-500">Total</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -92,7 +97,9 @@ export default function ProfitLossTab() {
                   <tr key={d.date} className={i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
                     <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{dayLabel(d.date)}</td>
                     <td className="px-3 py-2 text-right text-blue-600">{fc(d.cashCounted)}</td>
-                    <td className="px-3 py-2 text-right text-orange-600">{fc(d.cashOut)}</td>
+                    <td className="px-3 py-2 text-right text-gray-600 border-l border-gray-100">{d.bills > 0 ? fc(d.bills) : '—'}</td>
+                    <td className="px-3 py-2 text-right text-gray-600">{d.expenses > 0 ? fc(d.expenses) : '—'}</td>
+                    <td className="px-3 py-2 text-right font-semibold text-orange-600">{fc(d.cashOut)}</td>
                     <td className="px-3 py-2 text-right text-red-500">{d.dailyLoss > 0 ? fc(d.dailyLoss) : '—'}</td>
                     <td className={`px-3 py-2 text-right font-semibold ${dayProfit ? 'text-green-600' : 'text-red-500'}`}>
                       {dayProfit ? '' : '-'}{fc(Math.abs(d.profit))}
