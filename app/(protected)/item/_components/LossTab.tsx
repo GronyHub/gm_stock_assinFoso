@@ -1656,35 +1656,33 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   const [sort, setSort] = useState<{ col: SortCol; dir: SortDir }>({ col: 'lgAmt', dir: 'desc' })
 
   // Drag-to-resize handle on the right edge of the Item header (rendered
-  // below) -- mouse and touch both funnel through startResize, which wires
-  // up onMove/onStop fresh per drag so they stay paired with the same
-  // document listener instances for that one drag's duration. touchmove is
-  // registered non-passive so preventDefault can stop the table's own
-  // horizontal scroll from hijacking the drag.
+  // below). Pointer Events (not separate mouse/touch handlers) so mouse,
+  // touch, and pen all go through one code path -- setPointerCapture pins
+  // every subsequent pointermove/up to the handle itself regardless of
+  // where the finger/cursor physically ends up, which is the standard,
+  // reliable way to build a drag handle that doesn't lose the gesture
+  // partway through on touch devices.
   const [itemColWidth, setItemColWidth] = useState(260)
-  function startResize(startX: number) {
+  function startResize(e: React.PointerEvent<HTMLSpanElement>) {
+    e.preventDefault()
+    const handle = e.currentTarget
+    const pointerId = e.pointerId
+    const startX = e.clientX
     const startWidth = itemColWidth
-    function onMouseMove(ev: MouseEvent) {
+    handle.setPointerCapture(pointerId)
+    function onMove(ev: PointerEvent) {
       setItemColWidth(Math.min(480, Math.max(120, startWidth + (ev.clientX - startX))))
     }
-    function onTouchMove(ev: TouchEvent) {
-      if (!ev.touches[0]) return
-      ev.preventDefault()
-      setItemColWidth(Math.min(480, Math.max(120, startWidth + (ev.touches[0].clientX - startX))))
+    function onUp() {
+      handle.releasePointerCapture(pointerId)
+      handle.removeEventListener('pointermove', onMove)
+      handle.removeEventListener('pointerup', onUp)
+      handle.removeEventListener('pointercancel', onUp)
     }
-    function onStop() {
-      document.removeEventListener('mousemove', onMouseMove)
-      document.removeEventListener('mouseup', onStop)
-      document.removeEventListener('touchmove', onTouchMove)
-      document.removeEventListener('touchend', onStop)
-    }
-    document.addEventListener('mousemove', onMouseMove)
-    document.addEventListener('mouseup', onStop)
-    document.addEventListener('touchmove', onTouchMove, { passive: false })
-    document.addEventListener('touchend', onStop)
+    handle.addEventListener('pointermove', onMove)
+    handle.addEventListener('pointerup', onUp)
+    handle.addEventListener('pointercancel', onUp)
   }
-  function startResizeMouse(e: React.MouseEvent) { e.preventDefault(); startResize(e.clientX) }
-  function startResizeTouch(e: React.TouchEvent) { if (e.touches[0]) startResize(e.touches[0].clientX) }
 
   function loadSummary() {
     return fetch('/api/losses/summary').then(r => r.json())
@@ -1795,8 +1793,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
                     always-visible (not just on hover like a mouse cursor would
                     show it), and the tappable strip is wider than the line
                     itself so a finger doesn't have to land pixel-perfect. */}
-                <span onMouseDown={e => { e.stopPropagation(); startResizeMouse(e) }}
-                  onTouchStart={e => { e.stopPropagation(); startResizeTouch(e) }}
+                <span onPointerDown={e => { e.stopPropagation(); startResize(e) }}
                   onClick={e => e.stopPropagation()}
                   className="absolute top-0 right-0 h-full w-5 flex items-center justify-center cursor-col-resize touch-none hover:bg-blue-100">
                   <span className="w-0.5 h-4 rounded-full bg-gray-300" />
