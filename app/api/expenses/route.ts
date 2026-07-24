@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { expense_date, expense_account, cf_justify, vendor_name, amount, cf_expense_type, is_property } = await req.json()
+  const { expense_date, expense_account, description, cf_justify, vendor_name, amount, cf_expense_type, is_property } = await req.json()
   if (!expense_date || !expense_account || !amount) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
@@ -66,21 +66,21 @@ export async function POST(req: NextRequest) {
     let row
     try {
       [row] = await sql`
-        INSERT INTO expenses (zoho_expense_id, expense_date, expense_account, cf_justify, vendor_name, amount, total,
+        INSERT INTO expenses (zoho_expense_id, expense_date, expense_account, description, cf_justify, vendor_name, amount, total,
                               cf_expense_type, is_property, source, entry_number, entered_by)
-        VALUES (${zohoExpenseId}, ${expense_date}, ${expense_account}, ${cf_justify ?? null}, ${vendor_name ?? null},
+        VALUES (${zohoExpenseId}, ${expense_date}, ${expense_account}, ${description ?? null}, ${cf_justify ?? null}, ${vendor_name ?? null},
                 ${amount}, ${amount}, ${cf_expense_type ?? null}, ${isProp}, 'app', ${entryNumber}, ${enteredBy})
-        RETURNING id, expense_date::date AS expense_date, expense_account, cf_justify,
+        RETURNING id, expense_date::date AS expense_date, expense_account, description, cf_justify,
                   vendor_name, amount, cf_expense_type, is_property, entered_by
       `
     } catch (e) {
       console.error('expenses insert with entered_by failed, retrying without it:', e)
       ;[row] = await sql`
-        INSERT INTO expenses (zoho_expense_id, expense_date, expense_account, cf_justify, vendor_name, amount, total,
+        INSERT INTO expenses (zoho_expense_id, expense_date, expense_account, description, cf_justify, vendor_name, amount, total,
                               cf_expense_type, is_property, source, entry_number)
-        VALUES (${zohoExpenseId}, ${expense_date}, ${expense_account}, ${cf_justify ?? null}, ${vendor_name ?? null},
+        VALUES (${zohoExpenseId}, ${expense_date}, ${expense_account}, ${description ?? null}, ${cf_justify ?? null}, ${vendor_name ?? null},
                 ${amount}, ${amount}, ${cf_expense_type ?? null}, ${isProp}, 'app', ${entryNumber})
-        RETURNING id, expense_date::date AS expense_date, expense_account, cf_justify,
+        RETURNING id, expense_date::date AS expense_date, expense_account, description, cf_justify,
                   vendor_name, amount, cf_expense_type, is_property
       `
     }

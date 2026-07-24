@@ -10,7 +10,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
-  const { expense_date, expense_account, cf_justify, vendor_name, amount, cf_expense_type, is_property } = await req.json()
+  const { expense_date, expense_account, description, cf_justify, vendor_name, amount, cf_expense_type, is_property } = await req.json()
 
   if (!isOwnerLevel(session.user as any)) {
     const [existing] = await sql`SELECT expense_account FROM expenses WHERE id = ${Number(id)}`
@@ -19,18 +19,24 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
     }
   }
 
+  // description/cf_justify are set conditionally, not unconditionally like
+  // the other fields -- the Expenses tab's edit form only ever sends
+  // description now, and the older standalone /expenses page only ever
+  // sends cf_justify, so whichever one a given caller omits must be left
+  // alone rather than nulled out.
   const [row] = await sql`
     UPDATE expenses SET
       expense_date    = COALESCE(${expense_date ?? null}::date, expense_date),
       expense_account = COALESCE(${expense_account ?? null}, expense_account),
-      cf_justify      = ${cf_justify ?? null},
+      description     = CASE WHEN ${description !== undefined} THEN ${description ?? null} ELSE description END,
+      cf_justify      = CASE WHEN ${cf_justify !== undefined} THEN ${cf_justify ?? null} ELSE cf_justify END,
       vendor_name     = ${vendor_name ?? null},
       amount          = COALESCE(${amount ?? null}, amount),
       total           = COALESCE(${amount ?? null}, total),
       cf_expense_type = ${cf_expense_type ?? null},
       is_property     = COALESCE(${is_property ?? null}, is_property)
     WHERE id = ${Number(id)}
-    RETURNING id, expense_date::date AS expense_date, expense_account, cf_justify,
+    RETURNING id, expense_date::date AS expense_date, expense_account, description, cf_justify,
               vendor_name, amount, cf_expense_type, is_property
   `
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })

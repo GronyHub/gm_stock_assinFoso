@@ -28,7 +28,7 @@ export default function NewExpensePage({ onSuccess }: { onSuccess?: () => void }
         body: JSON.stringify({
           expense_date: date,
           expense_account: account,
-          cf_justify: description,
+          description,
           amount: Number(amount),
         }),
       })

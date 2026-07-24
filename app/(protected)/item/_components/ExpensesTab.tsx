@@ -8,7 +8,6 @@ type Expense = {
   expense_date: string
   expense_account: string
   description: string | null
-  cf_justify: string | null
   vendor_name: string | null
   amount: string | null
   amount_hidden?: boolean
@@ -79,7 +78,7 @@ type TableProps = {
 }
 
 const EMPTY_FORM = {
-  expense_date: '', expense_account: '', cf_justify: '', vendor_name: '',
+  expense_date: '', expense_account: '', description: '', vendor_name: '',
   amount: '', cf_expense_type: '', is_property: false,
 }
 
@@ -139,7 +138,6 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
             <FilterHeaderCell label="Account" options={accounts} value={accountFilter} onChange={onAccountFilter} />
           )}
           <th className={TH}>Description</th>
-          <th className={TH}>Justify</th>
           {!hideVendor && (
             <FilterHeaderCell label="Vendor" options={vendors} value={vendorFilter} onChange={onVendorFilter} />
           )}
@@ -157,14 +155,13 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
               <td className={`${TD} text-right font-bold text-gray-900`}>{e.amount_hidden ? '🔒 Hidden' : `₵${fmt(e.amount)}`}</td>
               {!hideAccount && <td className={`${TD} text-gray-900 font-semibold`}>{e.expense_account}</td>}
               <td className={`${TD} text-gray-700`}>{e.description ?? '—'}</td>
-              <td className={`${TD} text-gray-700`}>{e.cf_justify ?? '—'}</td>
               {!hideVendor && <td className={`${TD} text-gray-500`}>{e.vendor_name ?? '—'}</td>}
               <td className={`${TD} text-gray-400`}>{e.source_sheet ?? e.source ?? '—'}</td>
               <td className={`${TD} text-blue-500`}>{e.entered_by ?? '—'}</td>
             </tr>
             {editId === e.id && (
               <tr className="bg-blue-50/40">
-                <td colSpan={8 - (hideAccount ? 1 : 0) - (hideVendor ? 1 : 0)} className="px-3 py-3">
+                <td colSpan={7 - (hideAccount ? 1 : 0) - (hideVendor ? 1 : 0)} className="px-3 py-3">
                   <div className="grid grid-cols-2 gap-1 max-w-lg">
                     <div>
                       <p className="text-[9px] text-gray-400 mb-0.5">Date</p>
@@ -185,9 +182,9 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
                       </datalist>
                     </div>
                     <div>
-                      <p className="text-[9px] text-gray-400 mb-0.5">Justify</p>
-                      <input value={form.cf_justify}
-                        onChange={ev => onFormChange({ ...form, cf_justify: ev.target.value })} className={inputCls} />
+                      <p className="text-[9px] text-gray-400 mb-0.5">Description</p>
+                      <input value={form.description}
+                        onChange={ev => onFormChange({ ...form, description: ev.target.value })} className={inputCls} />
                     </div>
                     <div>
                       <p className="text-[9px] text-gray-400 mb-0.5">Vendor</p>
@@ -296,7 +293,6 @@ export default function ExpensesTab({ search, initialTab }: Props) {
     return list.filter(e =>
       e.expense_account.toLowerCase().includes(q) ||
       (e.description ?? '').toLowerCase().includes(q) ||
-      (e.cf_justify ?? '').toLowerCase().includes(q) ||
       (e.vendor_name ?? '').toLowerCase().includes(q) ||
       (e.source_sheet ?? '').toLowerCase().includes(q) ||
       (e.source ?? '').toLowerCase().includes(q)
@@ -321,7 +317,7 @@ export default function ExpensesTab({ search, initialTab }: Props) {
     setForm({
       expense_date: e.expense_date?.slice(0, 10) ?? '',
       expense_account: e.expense_account,
-      cf_justify: e.cf_justify ?? '',
+      description: e.description ?? '',
       vendor_name: e.vendor_name ?? '',
       amount: e.amount != null ? parseFloat(e.amount).toString() : '',
       cf_expense_type: e.cf_expense_type ?? '',
@@ -337,7 +333,7 @@ export default function ExpensesTab({ search, initialTab }: Props) {
     const body = {
       expense_date: form.expense_date || undefined,
       expense_account: form.expense_account,
-      cf_justify: form.cf_justify || null,
+      description: form.description || null,
       vendor_name: form.vendor_name || null,
       amount: parseFloat(form.amount),
       cf_expense_type: form.cf_expense_type || null,
