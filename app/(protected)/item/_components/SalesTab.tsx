@@ -793,7 +793,8 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
             : (rLines.length === 0 ? [null] : rLines)
           return (
             <Fragment key={r.id}>
-            <tr id={`receipt-${r.id}`} className={isDayHead ? 'bg-blue-600' : 'bg-gray-50'}>
+            <tr id={`receipt-${r.id}`} onClick={() => startEdit(r)} title="Open this receipt"
+              className={`cursor-pointer ${isDayHead ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-50 hover:bg-gray-100'}`}>
               {/* Real columns matching the ITEM/QTY/SP/TOTAL header instead of
                   one manually-flexed cell -- date/edit/customer sit in the ITEM
                   cell (left); CC and WNW get their own real columns (same ones
