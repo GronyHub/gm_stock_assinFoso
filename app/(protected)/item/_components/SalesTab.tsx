@@ -242,9 +242,12 @@ type Props = {
   groupFilter: string | null
   search: string
   violation: string | null
+  jumpToDate?: string | null
+  jumpToItemName?: string | null
+  onJumpDone?: () => void
 }
 
-export default function SalesTab({ items, groupFilter, search, violation }: Props) {
+export default function SalesTab({ items, groupFilter, search, violation, jumpToDate, jumpToItemName, onJumpDone }: Props) {
   const [receipts, setReceipts] = useState<Receipt[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -330,6 +333,25 @@ export default function SalesTab({ items, groupFilter, search, violation }: Prop
     setSelectedId(r.id)
     document.getElementById(`receipt-${r.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
+
+  // Incoming jump from an item's day table (Item 360's Detail section, or
+  // Gd/Srv historically): find the receipt for that date, preferring the
+  // one that actually has the item on it (a date can have both a WIC and a
+  // GMC receipt) over just the first match.
+  useEffect(() => {
+    if (!jumpToDate || loading) return
+    const targetDate = jumpToDate.slice(0, 10)
+    const candidates = receipts.filter(r => r.receipt_date?.slice(0, 10) === targetDate)
+    if (candidates.length > 0) {
+      const withItem = jumpToItemName
+        ? candidates.find(r => (linesMap[r.id] ?? []).some(l => l.item_name.toLowerCase() === jumpToItemName.toLowerCase()))
+        : undefined
+      const target = withItem ?? candidates[0]
+      setTimeout(() => jumpTo(target), 50)
+    }
+    onJumpDone?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jumpToDate, loading])
 
   function startEdit(r: Receipt) {
     setEditForm({

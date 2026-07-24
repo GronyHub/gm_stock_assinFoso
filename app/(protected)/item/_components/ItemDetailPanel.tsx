@@ -94,6 +94,8 @@ export default function ItemDetailPanel({ itemId }: { itemId: number }) {
           setMatchRecords(prev => ({ ...prev, [item.item_name.trim().toLowerCase()]: newMatches }))
         }}
         onMerged={() => router.push('/item')}
+        onDateClick={(date, itemName) =>
+          router.push(`/item?tab=loss&view=sales&jumpDate=${encodeURIComponent(date)}&jumpItem=${encodeURIComponent(itemName)}`)}
         showPrices
         lossOnly={false}
         gainOnly={false} />
