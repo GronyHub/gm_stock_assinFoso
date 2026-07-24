@@ -277,6 +277,7 @@ function ItemHubPageInner() {
   const [search, setSearch]             = useState(searchParams.get('q') ?? '')
   const [violation, setViolation]       = useState<string | null>(searchParams.get('violation'))
   const [groupOpen, setGroupOpen]       = useState(false)
+  const [searchOpen, setSearchOpen]     = useState(false)
   const [hamburgerOpen, setHamburgerOpen] = useState(false)
   const [addForm, setAddForm]             = useState<'item' | 'sale' | 'bill' | 'expense' | null>(null)
   const [jumpToItemId, setJumpToItemId]   = useState<number | null>(null)
@@ -287,6 +288,7 @@ function ItemHubPageInner() {
   const [jumpToReceiptDate, setJumpToReceiptDate] = useState<string | null>(searchParams.get('jumpDate'))
   const [jumpToReceiptItemName, setJumpToReceiptItemName] = useState<string | null>(searchParams.get('jumpItem'))
   const groupRef     = useRef<HTMLDivElement>(null)
+  const searchRef    = useRef<HTMLDivElement>(null)
   const hamburgerRef = useRef<HTMLDivElement>(null)
 
   const [items, setItems]           = useState<Item[]>([])
@@ -391,6 +393,7 @@ function ItemHubPageInner() {
   useEffect(() => {
     function handler(e: MouseEvent) {
       if (groupRef.current && !groupRef.current.contains(e.target as Node)) setGroupOpen(false)
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchOpen(false)
       if (hamburgerRef.current && !hamburgerRef.current.contains(e.target as Node)) setHamburgerOpen(false)
     }
     document.addEventListener('mousedown', handler)
@@ -446,6 +449,14 @@ function ItemHubPageInner() {
   }
 
   const groups = ['All', ...Array.from(new Set(items.map(i => i.cf_group ?? 'Ungrouped'))).sort()]
+  // Clicking the search box (even before typing) shows a browsable dropdown
+  // of item names -- typing narrows it. Picking one fills the box with that
+  // item's name, which the tabs below already know how to search on.
+  const searchMatches = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    const list = q ? items.filter(i => i.item_name.toLowerCase().includes(q)) : items
+    return [...list].sort((a, b) => a.item_name.localeCompare(b.item_name)).slice(0, 25)
+  }, [items, search])
   const activeLossParent = PARENT_OF[lossView]
   const lossChildren = activeLossParent ? CHILDREN_OF[activeLossParent] : undefined
   const pillKeys = LOSSVIEW_PILL_KEYS[lossView]
@@ -582,9 +593,28 @@ function ItemHubPageInner() {
             </div>
 
             {/* Search */}
-            <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search…" autoComplete="off"
-              className="min-w-0 w-24 flex-1 text-xs bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+            <div className="relative min-w-0 flex-1" ref={searchRef}>
+              <input value={search} onChange={e => setSearch(e.target.value)}
+                onFocus={() => setSearchOpen(true)}
+                placeholder="Search…" autoComplete="off"
+                className="w-full text-xs bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+              {searchOpen && searchMatches.length > 0 && (
+                <div className="absolute z-30 left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                  {searchMatches.map(i => (
+                    <button key={i.id} onClick={() => { setSearch(i.item_name); setSearchOpen(false) }}
+                      className="w-full text-left px-3 py-1.5 text-xs text-gray-800 hover:bg-blue-50 border-b border-gray-100 last:border-0">
+                      {i.item_name}
+                      {i.cf_group && <span className="text-gray-400 ml-1.5">· {i.cf_group}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {searchOpen && search.trim() && searchMatches.length === 0 && (
+                <div className="absolute z-30 left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-1.5 text-xs text-gray-400">
+                  No matching items
+                </div>
+              )}
+            </div>
 
             {/* New button — Items/Sales/Bills/Expenses submenus only; report-style and Counts submenus have no add-form */}
             {outerTab === 'loss' && ['items', 'sales', 'bills', 'expenses'].includes(lossView) && (() => {
