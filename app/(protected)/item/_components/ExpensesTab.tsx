@@ -195,6 +195,12 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
                         onChange={ev => onFormChange({ ...form, cf_expense_type: ev.target.value })} className={inputCls} />
                     </div>
                   </div>
+                  <label className="flex items-center gap-1.5 cursor-pointer mt-2">
+                    <input type="checkbox" checked={form.is_property}
+                      onChange={ev => onFormChange({ ...form, is_property: ev.target.checked })}
+                      className="w-3 h-3 accent-blue-600" />
+                    <span className="text-[10px] text-gray-700">Is property (shows up in Grony Manage &gt; Properties)</span>
+                  </label>
                   {e.is_property && (
                     <div className="mt-1">
                       <p className="text-[9px] text-gray-400 mb-0.5">Property Status</p>
