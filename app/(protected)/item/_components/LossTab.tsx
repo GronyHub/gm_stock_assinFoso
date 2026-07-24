@@ -1656,23 +1656,35 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   const [sort, setSort] = useState<{ col: SortCol; dir: SortDir }>({ col: 'lgAmt', dir: 'desc' })
 
   // Drag-to-resize handle on the right edge of the Item header (rendered
-  // below) -- onMove/onUp are created fresh per drag and stay paired with
-  // the same document listener instance for that one drag's duration.
+  // below) -- mouse and touch both funnel through startResize, which wires
+  // up onMove/onStop fresh per drag so they stay paired with the same
+  // document listener instances for that one drag's duration. touchmove is
+  // registered non-passive so preventDefault can stop the table's own
+  // horizontal scroll from hijacking the drag.
   const [itemColWidth, setItemColWidth] = useState(260)
-  function startResize(e: React.MouseEvent) {
-    e.preventDefault()
-    const startX = e.clientX
+  function startResize(startX: number) {
     const startWidth = itemColWidth
-    function onMove(ev: MouseEvent) {
+    function onMouseMove(ev: MouseEvent) {
       setItemColWidth(Math.min(480, Math.max(120, startWidth + (ev.clientX - startX))))
     }
-    function onUp() {
-      document.removeEventListener('mousemove', onMove)
-      document.removeEventListener('mouseup', onUp)
+    function onTouchMove(ev: TouchEvent) {
+      if (!ev.touches[0]) return
+      ev.preventDefault()
+      setItemColWidth(Math.min(480, Math.max(120, startWidth + (ev.touches[0].clientX - startX))))
     }
-    document.addEventListener('mousemove', onMove)
-    document.addEventListener('mouseup', onUp)
+    function onStop() {
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onStop)
+      document.removeEventListener('touchmove', onTouchMove)
+      document.removeEventListener('touchend', onStop)
+    }
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onStop)
+    document.addEventListener('touchmove', onTouchMove, { passive: false })
+    document.addEventListener('touchend', onStop)
   }
+  function startResizeMouse(e: React.MouseEvent) { e.preventDefault(); startResize(e.clientX) }
+  function startResizeTouch(e: React.TouchEvent) { if (e.touches[0]) startResize(e.touches[0].clientX) }
 
   function loadSummary() {
     return fetch('/api/losses/summary').then(r => r.json())
@@ -1777,10 +1789,12 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
                 className={`${thBase} relative text-left pl-2 pr-2 sticky left-0 z-30 bg-gray-50 border-r border-gray-200 ${sort.col === 'item_name' ? 'text-blue-600' : 'text-gray-400 hover:text-gray-700'}`}>
                 Item
                 {sort.col === 'item_name' && <span className="ml-0.5 text-[9px]">{sort.dir === 'desc' ? '↓' : '↑'}</span>}
-                {/* Drag this edge to resize the Item column -- stopPropagation
-                    keeps the drag from also toggling the item_name sort. */}
-                <span onMouseDown={e => { e.stopPropagation(); startResize(e) }} onClick={e => e.stopPropagation()}
-                  className="absolute top-0 right-0 h-full w-2 cursor-col-resize hover:bg-blue-300/50" />
+                {/* Drag (mouse or touch) this edge to resize the Item column --
+                    stopPropagation keeps it from also toggling the item_name sort. */}
+                <span onMouseDown={e => { e.stopPropagation(); startResizeMouse(e) }}
+                  onTouchStart={e => { e.stopPropagation(); startResizeTouch(e) }}
+                  onClick={e => e.stopPropagation()}
+                  className="absolute top-0 right-0 h-full w-3 cursor-col-resize hover:bg-blue-300/50 touch-none" />
               </th>
               <SortTh label={<>Loss<span className="block">Amount</span></>} col="lgAmt" {...thProps} cls="text-center" />
               <SortTh label={<>Num. of<span className="block">Losses</span></>} col="lossCount" {...thProps} cls="text-center" />
