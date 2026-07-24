@@ -68,13 +68,51 @@ export default function CABTab() {
   const [showWeekly, setShowWeekly] = useState(false)
   const [onlyUnconfirmed, setOnlyUnconfirmed] = useState(false)
   const [confirmedColsOnly, setConfirmedColsOnly] = useState(false)
+  const [showConfirmForm, setShowConfirmForm] = useState(false)
+  const [confirmDate, setConfirmDate] = useState('')
+  const [confirmBank, setConfirmBank] = useState('')
+  const [confirmMomo, setConfirmMomo] = useState('')
+  const [confirmPhysical, setConfirmPhysical] = useState('')
+  const [confirmSaving, setConfirmSaving] = useState(false)
+  const [confirmError, setConfirmError] = useState<string | null>(null)
 
-  useEffect(() => {
+  function loadRows() {
     fetch('/api/cash-at-bank')
       .then(r => r.json())
       .then(d => { setRows(Array.isArray(d) ? d : []); setLoading(false) })
       .catch(() => setLoading(false))
-  }, [])
+  }
+
+  useEffect(() => { loadRows() }, [])
+
+  function openConfirmForm() {
+    setConfirmDate(rows.find(r => r.cab_total == null)?.entry_date?.slice(0, 10) ?? rows[0]?.entry_date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10))
+    setConfirmBank(''); setConfirmMomo(''); setConfirmPhysical(''); setConfirmError(null)
+    setShowConfirmForm(true)
+  }
+
+  async function saveConfirm() {
+    if (!confirmDate || confirmBank === '' || confirmMomo === '' || confirmPhysical === '') {
+      setConfirmError('All fields are required'); return
+    }
+    setConfirmSaving(true)
+    setConfirmError(null)
+    const res = await fetch('/api/cash-at-bank', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        entry_date: confirmDate, cab_bank: Number(confirmBank), cab_momo: Number(confirmMomo), cab_physical: Number(confirmPhysical),
+      }),
+    })
+    setConfirmSaving(false)
+    if (res.ok) {
+      setShowConfirmForm(false)
+      loadRows()
+      setFlags(null)
+    } else {
+      const d = await res.json().catch(() => null)
+      setConfirmError(d?.error ?? 'Could not save confirmation')
+    }
+  }
 
   useEffect(() => {
     if (!flags && !flagsLoading) {
@@ -139,6 +177,10 @@ export default function CABTab() {
             <span className="ml-1 bg-red-100 text-red-600 text-[8px] font-bold px-1 py-0.5 rounded-full">{unconfirmedCount}</span>
           )}
         </button>
+        <button onClick={openConfirmForm}
+          className="text-[9px] font-semibold px-1.5 py-0.5 rounded transition bg-green-600 text-white hover:bg-green-700">
+          + New CAB Confirm
+        </button>
         {showWeekly && (
           <label className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none ml-auto">
             <input type="checkbox" checked={onlyUnconfirmed} onChange={() => setOnlyUnconfirmed(o => !o)}
@@ -154,6 +196,49 @@ export default function CABTab() {
           </label>
         )}
       </div>
+
+      {showConfirmForm && (
+        <div className="px-2 py-2 border-b border-gray-200 bg-green-50/60 shrink-0 space-y-1.5">
+          <p className="text-[10px] font-semibold text-gray-700">New CAB Confirm</p>
+          <div className="flex flex-wrap items-end gap-1.5">
+            <div>
+              <p className="text-[9px] text-gray-400 mb-0.5">Date</p>
+              <input type="date" value={confirmDate} onChange={e => setConfirmDate(e.target.value)}
+                className="bg-white border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
+            </div>
+            <div>
+              <p className="text-[9px] text-gray-400 mb-0.5">Bank</p>
+              <input type="number" min="0" step="any" value={confirmBank} onChange={e => setConfirmBank(e.target.value)}
+                placeholder="0" className="w-24 bg-white border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
+            </div>
+            <div>
+              <p className="text-[9px] text-gray-400 mb-0.5">MoMo</p>
+              <input type="number" min="0" step="any" value={confirmMomo} onChange={e => setConfirmMomo(e.target.value)}
+                placeholder="0" className="w-24 bg-white border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
+            </div>
+            <div>
+              <p className="text-[9px] text-gray-400 mb-0.5">Physical</p>
+              <input type="number" min="0" step="any" value={confirmPhysical} onChange={e => setConfirmPhysical(e.target.value)}
+                placeholder="0" className="w-24 bg-white border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
+            </div>
+            <div>
+              <p className="text-[9px] text-gray-400 mb-0.5">Total</p>
+              <p className="text-[11px] font-bold text-blue-600 px-2 py-1">
+                {fmtn((Number(confirmBank) || 0) + (Number(confirmMomo) || 0) + (Number(confirmPhysical) || 0))}
+              </p>
+            </div>
+            <button onClick={saveConfirm} disabled={confirmSaving}
+              className="text-[9px] font-semibold px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
+              {confirmSaving ? 'Saving…' : 'Save'}
+            </button>
+            <button onClick={() => setShowConfirmForm(false)}
+              className="text-[9px] font-semibold px-2 py-1 rounded bg-gray-100 text-gray-600 hover:bg-gray-200">
+              Cancel
+            </button>
+          </div>
+          {confirmError && <p className="text-[9px] text-red-500">{confirmError}</p>}
+        </div>
+      )}
 
       {showWeekly ? (
         <div className="flex-1 overflow-auto min-h-0 p-2">
