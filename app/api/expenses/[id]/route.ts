@@ -1,9 +1,20 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { isOwnerLevel, isConfidentialExpense } from '@/lib/roles'
+import { logActivity } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 
 type Ctx = { params: Promise<{ id: string }> }
+
+// Same "<account> · ₵<amount> on <date>" shape "added expense" already logs
+// (see /api/expenses POST) -- keeps every expense action readable the same
+// way in History, and keeps ExpensesTab's click-to-jump regex working
+// against edit/delete entries too, not just adds. Salaries stays amount-free
+// either way, matching the confidentiality rule elsewhere.
+function describeExpense(account: string, amount: string | number, date: string) {
+  const d = String(date).slice(0, 10)
+  return isConfidentialExpense(account) ? `${account} on ${d}` : `${account} · ₵${Number(amount).toFixed(2)} on ${d}`
+}
 
 export async function PUT(req: NextRequest, { params }: Ctx) {
   const session = await auth()
@@ -49,6 +60,9 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
     `
   }
 
+  const actor = session.user?.name || (session.user as any)?.username || 'Unknown'
+  await logActivity(actor, 'edited expense', describeExpense(row.expense_account, row.amount, row.expense_date))
+
   const [ep] = await sql`SELECT property_status FROM expense_properties WHERE expense_id = ${row.id}`
   return NextResponse.json({ ...row, property_status: ep?.property_status ?? null })
 }
@@ -67,8 +81,15 @@ export async function DELETE(_req: NextRequest, { params }: Ctx) {
   }
 
   await sql`DELETE FROM expense_properties WHERE expense_id = ${Number(id)}`
-  const [row] = await sql`DELETE FROM expenses WHERE id = ${Number(id)} RETURNING id`
+  const [row] = await sql`
+    DELETE FROM expenses WHERE id = ${Number(id)}
+    RETURNING id, expense_account, amount, expense_date::date AS expense_date
+  `
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  const actor = session.user?.name || (session.user as any)?.username || 'Unknown'
+  await logActivity(actor, 'deleted expense', describeExpense(row.expense_account, row.amount, row.expense_date))
+
   return NextResponse.json({ ok: true })
 }
 
@@ -88,5 +109,13 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     VALUES (${Number(id)}, ${property_status}, NOW())
     ON CONFLICT (expense_id) DO UPDATE SET property_status = ${property_status}, updated_at = NOW()
   `
+
+  const [expense] = await sql`SELECT expense_account, amount, expense_date::date AS expense_date FROM expenses WHERE id = ${Number(id)}`
+  if (expense) {
+    const actor = session.user?.name || (session.user as any)?.username || 'Unknown'
+    await logActivity(actor, 'edited expense',
+      `${describeExpense(expense.expense_account, expense.amount, expense.expense_date)} — property status → ${property_status}`)
+  }
+
   return NextResponse.json({ ok: true, property_status })
 }
