@@ -5,16 +5,26 @@ import {
 } from 'recharts'
 
 const SHORT_MON = ['Ja','Fe','Mr','Ap','My','Ju','Jl','Au','Se','Oc','No','De']
+const DAYS = ['Su','Mo','Tu','We','Th','Fr','Sa']
 function monthLabel(k: string) {
   const [y, m] = k.split('-').map(Number)
   return `${SHORT_MON[m - 1]} ${String(y).slice(-2)}`
+}
+function dayLabel(dateStr: string) {
+  const d = new Date(`${dateStr}T00:00:00Z`)
+  return `${d.getUTCDate()} ${SHORT_MON[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(-2)}-${DAYS[d.getUTCDay()]}`
 }
 function fc(v: number) {
   return `₵${v.toLocaleString('en-GH', { maximumFractionDigits: 0 })}`
 }
 
-type Monthly = { month: string; cashCounted: number; expenses: number; bills: number; profit: number }
-type Data = { totals: { cashCounted: number; expenses: number; bills: number; profit: number }; monthly: Monthly[] }
+type Monthly = { month: string; cashCounted: number; expenses: number; bills: number; dailyLoss: number; profit: number }
+type Daily = { date: string; cashCounted: number; bills: number; expenses: number; cashOut: number; dailyLoss: number; profit: number }
+type Data = {
+  totals: { cashCounted: number; expenses: number; bills: number; dailyLoss: number; profit: number }
+  monthly: Monthly[]
+  daily: Daily[]
+}
 
 const TONE_CLS = {
   blue:   'bg-blue-50 text-blue-700',
@@ -48,22 +58,57 @@ export default function ProfitLossTab() {
   if (forbidden) return <div className="py-20 text-center text-gray-400 text-xs px-6">Only the owner or Joe can view Profit &amp; Loss.</div>
   if (!data) return <div className="py-20 text-center text-gray-400 text-xs">Failed to load Profit &amp; Loss.</div>
 
-  const { totals, monthly } = data
+  const { totals, monthly, daily } = data
   const isProfit = totals.profit >= 0
 
   return (
     <div className="px-4 py-3 space-y-4">
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         <StatCard label="Cash Counted" value={fc(totals.cashCounted)} tone="blue" />
-        <StatCard label="Expenses" value={fc(totals.expenses)} tone="orange" />
-        <StatCard label="Bills" value={fc(totals.bills)} tone="red" />
+        <StatCard label="Bills + Expenses" value={fc(totals.bills + totals.expenses)} tone="orange" />
+        <StatCard label="Daily Loss" value={fc(totals.dailyLoss)} tone="red" />
         <StatCard label={isProfit ? 'Net Profit' : 'Net Loss'} value={fc(Math.abs(totals.profit))} tone={isProfit ? 'green' : 'red'} />
       </div>
-      <p className="text-[11px] text-gray-400 -mt-2">Cash Counted − Expenses − Bills, all time.</p>
+      <p className="text-[11px] text-gray-400 -mt-2">Cash Counted − (Bills + Expenses + Daily Loss), all time.</p>
+
+      <div>
+        <p className="text-sm font-semibold text-gray-700 mb-1">Daily Profit &amp; Loss</p>
+        <p className="text-[10px] text-gray-400 mb-2">CC − (Cash Out + Daily Loss), one row per day.</p>
+        <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+          <table className="w-full border-collapse text-xs">
+            <thead>
+              <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
+                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Date</th>
+                <th className="text-right px-3 py-2 font-bold border-b border-gray-200">CC</th>
+                <th className="text-right px-3 py-2 font-bold border-b border-gray-200">Cash Out</th>
+                <th className="text-right px-3 py-2 font-bold border-b border-gray-200">Daily Loss</th>
+                <th className="text-right px-3 py-2 font-bold border-b border-gray-200">P/L</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {daily.map((d, i) => {
+                const dayProfit = d.profit >= 0
+                return (
+                  <tr key={d.date} className={i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
+                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{dayLabel(d.date)}</td>
+                    <td className="px-3 py-2 text-right text-blue-600">{fc(d.cashCounted)}</td>
+                    <td className="px-3 py-2 text-right text-orange-600">{fc(d.cashOut)}</td>
+                    <td className="px-3 py-2 text-right text-red-500">{d.dailyLoss > 0 ? fc(d.dailyLoss) : '—'}</td>
+                    <td className={`px-3 py-2 text-right font-semibold ${dayProfit ? 'text-green-600' : 'text-red-500'}`}>
+                      {dayProfit ? '' : '-'}{fc(Math.abs(d.profit))}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+          {daily.length === 0 && <p className="text-xs text-gray-400 text-center py-10">No data</p>}
+        </div>
+      </div>
 
       <div className="bg-white border border-gray-200 rounded-xl p-3">
         <p className="text-sm font-semibold text-gray-700 mb-1">Monthly Profit &amp; Loss</p>
-        <p className="text-[10px] text-gray-400 mb-2">Cash counted against expenses and bills, by month.</p>
+        <p className="text-[10px] text-gray-400 mb-2">Cash counted against expenses, bills, and daily loss, by month.</p>
         <ResponsiveContainer width="100%" height={260}>
           <ComposedChart data={monthly.map(m => ({ ...m, month: monthLabel(m.month) }))} margin={{ left: -20 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -74,6 +119,7 @@ export default function ProfitLossTab() {
             <Bar dataKey="cashCounted" name="Cash Counted" fill="#3b82f6" radius={[3,3,0,0]} />
             <Bar dataKey="expenses" name="Expenses" fill="#f97316" radius={[3,3,0,0]} />
             <Bar dataKey="bills" name="Bills" fill="#ef4444" radius={[3,3,0,0]} />
+            <Bar dataKey="dailyLoss" name="Daily Loss" fill="#a855f7" radius={[3,3,0,0]} />
             <Line type="monotone" dataKey="profit" name="Profit / Loss" stroke="#16a34a" strokeWidth={2} dot={false} />
           </ComposedChart>
         </ResponsiveContainer>
@@ -82,7 +128,7 @@ export default function ProfitLossTab() {
       <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex gap-2">
         <span className="text-sm shrink-0">💡</span>
         <p className="text-[11px] text-amber-800 leading-snug">
-          This is a simple cash-basis view -- it does not account for unsold stock sitting in inventory, so a month with heavy restocking can look like a loss even if the goods have simply not sold yet.
+          Daily Loss is stock shrinkage valued at selling price (same figure as the Daily Loss feed and the Items list Loss Amount column) -- it does not account for unsold stock still sitting in inventory, so a day or month with heavy restocking can still look worse than it really is.
         </p>
       </div>
     </div>
