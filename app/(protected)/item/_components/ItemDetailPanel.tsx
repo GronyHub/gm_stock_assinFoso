@@ -19,6 +19,12 @@ export default function ItemDetailPanel({ itemId }: { itemId: number }) {
   const [loading, setLoading] = useState(true)
   const [aliasRecords, setAliasRecords] = useState<Record<number, AliasRecord[]>>({})
   const [matchRecords, setMatchRecords] = useState<Record<string, MatchRecord[]>>({})
+  // Same three filters the pack-chain table's submenu used to offer back
+  // when it lived inline under a row on the Items list. Loss/Gain Only are
+  // mutually exclusive -- turning one on turns the other off.
+  const [showPrices, setShowPrices] = useState(true)
+  const [lossOnly, setLossOnly] = useState(false)
+  const [gainOnly, setGainOnly] = useState(false)
 
   useEffect(() => {
     fetch('/api/losses/summary').then(r => r.json())
@@ -82,6 +88,26 @@ export default function ItemDetailPanel({ itemId }: { itemId: number }) {
 
   return (
     <div className="overflow-x-auto">
+      <div className="flex items-center gap-1.5 pb-1.5 flex-wrap">
+        <button onClick={() => setShowPrices(p => !p)}
+          title="Show/hide the SP, AMOUNT, CP and PROFIT columns on the pack-chain detail table"
+          className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap transition
+            ${showPrices ? 'bg-blue-600 text-white' : 'bg-white border border-blue-200 text-blue-700 hover:bg-blue-100'}`}>
+          💲 Prices {showPrices ? '▾' : '▸'}
+        </button>
+        <button onClick={() => setLossOnly(o => { const v = !o; if (v) setGainOnly(false); return v })}
+          title="Show only rows with an actual loss on the pack-chain detail table"
+          className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap transition
+            ${lossOnly ? 'bg-red-600 text-white' : 'bg-white border border-red-200 text-red-700 hover:bg-red-100'}`}>
+          🔻 Loss Only
+        </button>
+        <button onClick={() => setGainOnly(o => { const v = !o; if (v) setLossOnly(false); return v })}
+          title="Show only rows with an actual gain on the pack-chain detail table"
+          className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap transition
+            ${gainOnly ? 'bg-orange-500 text-white' : 'bg-white border border-orange-200 text-orange-700 hover:bg-orange-100'}`}>
+          🔺 Gain Only
+        </button>
+      </div>
       <ItemDetail item={item} groups={groupNames} allItems={allItemsList}
         currentAliases={aliasRecords[item.item_id] ?? []}
         currentMatches={matchRecords[item.item_name.trim().toLowerCase()] ?? []}
@@ -96,9 +122,9 @@ export default function ItemDetailPanel({ itemId }: { itemId: number }) {
         onMerged={() => router.push('/item')}
         onDateClick={(date, itemName) =>
           router.push(`/item?tab=loss&view=sales&jumpDate=${encodeURIComponent(date)}&jumpItem=${encodeURIComponent(itemName)}`)}
-        showPrices
-        lossOnly={false}
-        gainOnly={false} />
+        showPrices={showPrices}
+        lossOnly={lossOnly}
+        gainOnly={gainOnly} />
     </div>
   )
 }
