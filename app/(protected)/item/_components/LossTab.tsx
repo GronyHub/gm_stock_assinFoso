@@ -1714,15 +1714,9 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
     return (
       <tr key={row.item_id} onClick={() => router.push(`/stock/${row.item_id}`)}
         className="cursor-pointer hover:bg-gray-50 transition">
-        <td className="pl-2 pr-2 py-1.5 font-bold sticky left-0 z-10 bg-white border-r border-gray-200"
+        <td className="pl-2 pr-2 py-1.5 font-bold truncate sticky left-0 z-10 bg-white border-r border-gray-200"
           title={row.item_name}>
-          {/* Column width is fixed (~15 characters) rather than resizable --
-              a longer name doesn't wrap or get clipped, it just scrolls
-              inside its own cell (native touch/scrollbar drag, no custom JS)
-              without disturbing the column width itself. */}
-          <div className="overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
-            <span className="text-blue-600">{row.item_name}</span>
-          </div>
+          <span className="text-blue-600">{row.item_name}</span>
         </td>
         <td className={`text-center py-1.5 font-semibold tabular-nums ${lossAmt ? 'text-red-500' : gainAmt ? 'text-green-600' : 'text-gray-300'}`}>
           {fmtAmt(row.lgAmt)}
