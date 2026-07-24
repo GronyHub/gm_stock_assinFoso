@@ -19,6 +19,8 @@ type Expense = {
   source_sheet: string | null
 }
 
+type ExpTab = 'all' | 'properties' | 'at_shop' | 'away'
+
 const MONTHS = ['Ja','Fe','Mr','Ap','My','Ju','Jl','Au','Se','Oc','No','De']
 const DAYS   = ['Su','Mo','Tu','We','Th','Fr','Sa']
 
@@ -261,11 +263,12 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
   )
 }
 
-type Props = { search: string; propertiesOnly?: boolean }
+type Props = { search: string }
 
-export default function ExpensesTab({ search, propertiesOnly }: Props) {
+export default function ExpensesTab({ search }: Props) {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
+  const [tab, setTab] = useState<ExpTab>('all')
   const [groupBy, setGroupBy] = useState<'none' | 'account' | 'vendor'>('none')
   const [showHistory, setShowHistory] = useState(false)
   const [highlightId, setHighlightId] = useState<number | null>(null)
@@ -276,8 +279,8 @@ export default function ExpensesTab({ search, propertiesOnly }: Props) {
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [accountFilter, setAccountFilter] = useState<string | null>(null)
   const [vendorFilter, setVendorFilter] = useState<string | null>(null)
-  // Only meaningful when !propertiesOnly -- unchecking either one drops that
-  // side of the is_property split from the list.
+  // Independent of the All/Props/At Shop/Away tabs -- unchecking either one
+  // drops that side of the is_property split from the list.
   const [showProperties, setShowProperties] = useState(true)
   const [showNonProperties, setShowNonProperties] = useState(true)
 
@@ -300,14 +303,13 @@ export default function ExpensesTab({ search, propertiesOnly }: Props) {
   , [expenses])
 
   const filtered = useMemo(() => {
-    // propertiesOnly reads straight off the full list fetched above (the
-    // same "All" data the main Expenses view shows) rather than going
-    // through any tab/view state -- Grony Manage's Properties page wants
-    // exactly this list, not a switchable one.
-    let list = propertiesOnly ? expenses.filter(e => e.is_property) : expenses
+    let list = expenses
+    if (tab === 'properties') list = list.filter(e => e.is_property)
+    if (tab === 'at_shop')    list = list.filter(e => e.is_property && e.property_status === 'at_shop')
+    if (tab === 'away')       list = list.filter(e => e.is_property && (e.property_status === 'not_at_shop' || e.property_status === 'spoilt'))
     if (accountFilter) list = list.filter(e => e.expense_account === accountFilter)
     if (vendorFilter)  list = list.filter(e => e.vendor_name === vendorFilter)
-    if (!propertiesOnly && (!showProperties || !showNonProperties)) {
+    if (!showProperties || !showNonProperties) {
       list = list.filter(e => e.is_property ? showProperties : showNonProperties)
     }
     const q = search.toLowerCase()
@@ -319,7 +321,7 @@ export default function ExpensesTab({ search, propertiesOnly }: Props) {
       (e.source_sheet ?? '').toLowerCase().includes(q) ||
       (e.source ?? '').toLowerCase().includes(q)
     )
-  }, [expenses, propertiesOnly, search, accountFilter, vendorFilter, showProperties, showNonProperties])
+  }, [expenses, tab, search, accountFilter, vendorFilter, showProperties, showNonProperties])
 
   const grouped = useMemo(() => {
     if (groupBy === 'none') return []
@@ -409,9 +411,22 @@ export default function ExpensesTab({ search, propertiesOnly }: Props) {
 
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
 
+  const expTabs: { key: ExpTab; label: string }[] = [
+    { key: 'all', label: 'All' }, { key: 'properties', label: 'Props' },
+    { key: 'at_shop', label: 'At Shop' }, { key: 'away', label: 'Away' },
+  ]
+
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0 flex-wrap">
+        {expTabs.map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)}
+            className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition
+              ${tab === t.key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
+            {t.label}
+          </button>
+        ))}
+        <div className="w-px h-3 bg-gray-300 shrink-0" />
         <button onClick={() => setGroupBy(g => g === 'account' ? 'none' : 'account')}
           className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition
             ${groupBy === 'account' ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
@@ -422,21 +437,17 @@ export default function ExpensesTab({ search, propertiesOnly }: Props) {
             ${groupBy === 'vendor' ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
           By Vendor
         </button>
-        {!propertiesOnly && (
-          <>
-            <div className="w-px h-3 bg-gray-300 shrink-0" />
-            <label className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
-              <input type="checkbox" checked={showProperties} onChange={() => setShowProperties(p => !p)}
-                className="w-3 h-3 accent-blue-600" />
-              Properties
-            </label>
-            <label className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
-              <input type="checkbox" checked={showNonProperties} onChange={() => setShowNonProperties(p => !p)}
-                className="w-3 h-3 accent-blue-600" />
-              Non-Properties
-            </label>
-          </>
-        )}
+        <div className="w-px h-3 bg-gray-300 shrink-0" />
+        <label className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
+          <input type="checkbox" checked={showProperties} onChange={() => setShowProperties(p => !p)}
+            className="w-3 h-3 accent-blue-600" />
+          Properties
+        </label>
+        <label className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
+          <input type="checkbox" checked={showNonProperties} onChange={() => setShowNonProperties(p => !p)}
+            className="w-3 h-3 accent-blue-600" />
+          Non-Properties
+        </label>
         <div className="w-px h-3 bg-gray-300 shrink-0" />
         <button onClick={() => setShowHistory(h => !h)}
           className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition
