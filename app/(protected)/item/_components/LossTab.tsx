@@ -1790,11 +1790,17 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
                 Item
                 {sort.col === 'item_name' && <span className="ml-0.5 text-[9px]">{sort.dir === 'desc' ? '↓' : '↑'}</span>}
                 {/* Drag (mouse or touch) this edge to resize the Item column --
-                    stopPropagation keeps it from also toggling the item_name sort. */}
+                    stopPropagation keeps it from also toggling the item_name sort.
+                    Touch devices don't have :hover, so the grip line is drawn
+                    always-visible (not just on hover like a mouse cursor would
+                    show it), and the tappable strip is wider than the line
+                    itself so a finger doesn't have to land pixel-perfect. */}
                 <span onMouseDown={e => { e.stopPropagation(); startResizeMouse(e) }}
                   onTouchStart={e => { e.stopPropagation(); startResizeTouch(e) }}
                   onClick={e => e.stopPropagation()}
-                  className="absolute top-0 right-0 h-full w-3 cursor-col-resize hover:bg-blue-300/50 touch-none" />
+                  className="absolute top-0 right-0 h-full w-5 flex items-center justify-center cursor-col-resize touch-none hover:bg-blue-100">
+                  <span className="w-0.5 h-4 rounded-full bg-gray-300" />
+                </span>
               </th>
               <SortTh label={<>Loss<span className="block">Amount</span></>} col="lgAmt" {...thProps} cls="text-center" />
               <SortTh label={<>Num. of<span className="block">Losses</span></>} col="lossCount" {...thProps} cls="text-center" />
