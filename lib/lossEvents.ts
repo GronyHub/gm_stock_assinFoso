@@ -118,6 +118,12 @@ export async function computeLossEvents(): Promise<LossEvent[]> {
   }
 
   const events: LossEvent[] = []
+  // Ghana runs on UTC year-round (no DST/offset), so this is also "today"
+  // in local shop time. A count entered today, before the day's sales are
+  // all in yet, would otherwise read as a loss just because those
+  // not-yet-recorded sales aren't in `expected` -- today only gets a
+  // loss/gain figure once it's no longer today.
+  const today = new Date().toISOString().slice(0, 10)
 
   for (const item of itemRows as any[]) {
     const sp = paperPackIds.has(item.item_id)
@@ -137,7 +143,7 @@ export async function computeLossEvents(): Promise<LossEvent[]> {
         if (counted !== null) {
           const loss = parseFloat((expected - counted).toFixed(4))
           const kind: 'loss' | 'gain' | null = loss > 0.001 ? 'loss' : loss < -0.001 ? 'gain' : null
-          if (kind) {
+          if (kind && row.date < today) {
             const qty = Math.abs(loss)
             events.push({
               date: row.date,
