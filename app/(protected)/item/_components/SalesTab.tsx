@@ -256,6 +256,10 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
   // Inv/WNW) -- the item lines beneath stay hidden until toggled back on,
   // so a long list of days can be scanned at a glance.
   const [barsOnly, setBarsOnly] = useState(false)
+  // Show/hide Walk-In (W) and Grony Multimedia (G) receipts independently --
+  // unchecking one drops every bar of that customer type from the list.
+  const [showW, setShowW] = useState(true)
+  const [showG, setShowG] = useState(true)
   const [linesMap, setLinesMap] = useState<Record<number, Line[]>>({})
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState({ receipt_date: '', customer_name: '', cash_counted: '' })
@@ -310,6 +314,9 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
 
   const filtered = useMemo(() => {
     let list = receipts
+    if (!showW || !showG) {
+      list = list.filter(r => fmtCust(r.customer_name) === 'W' ? showW : showG)
+    }
     if (groupItemNames) {
       list = list.filter(r => (linesMap[r.id] ?? []).some(l => groupItemNames.has(l.item_name)))
     }
@@ -331,7 +338,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
       return rank(a) - rank(b)
     })
     return list
-  }, [receipts, linesMap, groupItemNames, search])
+  }, [receipts, linesMap, groupItemNames, search, showW, showG])
 
   function jumpTo(r: Receipt) {
     setSelectedId(r.id)
@@ -595,6 +602,16 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
           <input type="checkbox" checked={barsOnly} onChange={() => setBarsOnly(b => !b)}
             className="w-3 h-3 accent-blue-600" />
           Bars Only
+        </label>
+        <label title="Show Walk-In receipts" className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
+          <input type="checkbox" checked={showW} onChange={() => setShowW(w => !w)}
+            className="w-3 h-3 accent-blue-600" />
+          W
+        </label>
+        <label title="Show Grony Multimedia receipts" className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
+          <input type="checkbox" checked={showG} onChange={() => setShowG(g => !g)}
+            className="w-3 h-3 accent-blue-600" />
+          G
         </label>
       </div>
       <Link href="/sales/new"
