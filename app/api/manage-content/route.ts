@@ -27,13 +27,13 @@ This app is how Grony Multimedia tracks sales, stock, money, and daily operation
 
 # The Main Tabs
 
-A Home button plus four tabs across the top: Grony Cash, Grony Manage, Daily, Data.
+A Home button plus two tabs across the top: Grony Cash, Grony Manage.
 
 ## Home
 Just the news feed -- announcements, photos, and voice notes. Post a message here to keep everyone informed. Flags live in the role bar at the very bottom of the screen instead (see below), so the feed is always the first thing you see.
 
 ## Grony Cash
-Everything to do with money. Top row: Items, Sales, Bills, Daily Loss, Expenses, P&L (owner and Joe only), CAB.
+Everything to do with money. Top row: Items, Sales, Bills, Daily Loss, Expenses, P&L (owner and Joe only), CAB, Daily, Data.
 - Items (Goods & Services) -- the shop's stock list. Tap an item's name to open its Item 360 page: stock/history stats plus the same pack-chain loss/gain detail, editing, aliases, matches, and merge tools that used to open inline here.
 - Sales -- every sales receipt (WIC = Walk-In Customer, GMC = Grony Multimedia as Customer, i.e. internal use, not a real sale).
 - Bills -- what the shop has bought from vendors.
@@ -41,10 +41,9 @@ Everything to do with money. Top row: Items, Sales, Bills, Daily Loss, Expenses,
 - Expenses -- money spent.
 - P&L -- Profit & Loss.
 - CAB -- Cash at Bank reconciliation.
+- Daily -- the end-of-day report (see "Daily Summary" below). Not the same thing as Daily Loss above -- Daily Loss is the ongoing loss/gain feed, Daily is one report per day.
+- Data -- analytics and charts across Items, Violations, Loss, Sales, Bills, Counts, Expenses, and Cash.
 - Customers, Receipts, Vendors, and Counts aren't in this tab any more -- they're one tap away from the account menu (person icon, bottom right) instead. Counts isn't a daily-glance destination any more anyway -- the actual daily-count flow is already surfaced via Joe's flags and the Opener's own clock-in step.
-
-## Data
-Its own top-level tab, after Daily -- analytics and charts across Items, Violations, Loss, Sales, Bills, Counts, Expenses, and Cash.
 
 ## Grony Manage
 Everything that isn't directly about money:
