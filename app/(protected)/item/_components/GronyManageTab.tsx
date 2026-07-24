@@ -76,7 +76,7 @@ export default function GronyManageTab() {
         {view === 'staff_times' && <StaffClient role={role} username={username} embedded />}
         {view === 'advert' && <AdvertTab />}
         {view === 'staff_dress' && <ClosingReportLogView field="no_tshirt_staff" label="Dress Code" icon="👕" />}
-        {view === 'properties' && <ExpensesTab search="" initialTab="properties" />}
+        {view === 'properties' && <ExpensesTab search="" propertiesOnly />}
         {view === 'training' && <TrainingTab />}
         {view === 'logs' && <div className="px-2"><LogsPage /></div>}
         {logCategory && <ManageLogPanel category={logCategory.key} label={logCategory.label} icon={logCategory.icon} />}
