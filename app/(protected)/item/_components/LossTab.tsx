@@ -1655,35 +1655,6 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   const [loading, setLoading] = useState(true)
   const [sort, setSort] = useState<{ col: SortCol; dir: SortDir }>({ col: 'lgAmt', dir: 'desc' })
 
-  // Drag-to-resize handle on the right edge of the Item header (rendered
-  // below). Pointer Events (not separate mouse/touch handlers) so mouse,
-  // touch, and pen all go through one code path -- setPointerCapture pins
-  // every subsequent pointermove/up to the handle itself regardless of
-  // where the finger/cursor physically ends up, which is the standard,
-  // reliable way to build a drag handle that doesn't lose the gesture
-  // partway through on touch devices.
-  const [itemColWidth, setItemColWidth] = useState(260)
-  function startResize(e: React.PointerEvent<HTMLSpanElement>) {
-    e.preventDefault()
-    const handle = e.currentTarget
-    const pointerId = e.pointerId
-    const startX = e.clientX
-    const startWidth = itemColWidth
-    handle.setPointerCapture(pointerId)
-    function onMove(ev: PointerEvent) {
-      setItemColWidth(Math.min(480, Math.max(120, startWidth + (ev.clientX - startX))))
-    }
-    function onUp() {
-      handle.releasePointerCapture(pointerId)
-      handle.removeEventListener('pointermove', onMove)
-      handle.removeEventListener('pointerup', onUp)
-      handle.removeEventListener('pointercancel', onUp)
-    }
-    handle.addEventListener('pointermove', onMove)
-    handle.addEventListener('pointerup', onUp)
-    handle.addEventListener('pointercancel', onUp)
-  }
-
   function loadSummary() {
     return fetch('/api/losses/summary').then(r => r.json())
       .then(d => { setRows(Array.isArray(d) ? d : []); setLoading(false) })
@@ -1722,7 +1693,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
 
   const colgroup = (
     <colgroup>
-      <col style={{width:`${itemColWidth}px`}} />
+      <col style={{width:'140px'}} />
       <col style={{width:'56px'}} />
       <col style={{width:'52px'}} />
       <col style={{width:'44px'}} />
@@ -1743,9 +1714,15 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
     return (
       <tr key={row.item_id} onClick={() => router.push(`/stock/${row.item_id}`)}
         className="cursor-pointer hover:bg-gray-50 transition">
-        <td className="pl-2 pr-2 py-1.5 font-bold truncate sticky left-0 z-10 bg-white border-r border-gray-200"
+        <td className="pl-2 pr-2 py-1.5 font-bold sticky left-0 z-10 bg-white border-r border-gray-200"
           title={row.item_name}>
-          <span className="text-blue-600">{row.item_name}</span>
+          {/* Column width is fixed (~15 characters) rather than resizable --
+              a longer name doesn't wrap or get clipped, it just scrolls
+              inside its own cell (native touch/scrollbar drag, no custom JS)
+              without disturbing the column width itself. */}
+          <div className="overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
+            <span className="text-blue-600">{row.item_name}</span>
+          </div>
         </td>
         <td className={`text-center py-1.5 font-semibold tabular-nums ${lossAmt ? 'text-red-500' : gainAmt ? 'text-green-600' : 'text-gray-300'}`}>
           {fmtAmt(row.lgAmt)}
@@ -1783,22 +1760,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
           {colgroup}
           <thead className="sticky top-0 z-20">
             <tr className="bg-gray-50">
-              <th onClick={() => handleSort('item_name')}
-                className={`${thBase} relative text-left pl-2 pr-2 sticky left-0 z-30 bg-gray-50 border-r border-gray-200 ${sort.col === 'item_name' ? 'text-blue-600' : 'text-gray-400 hover:text-gray-700'}`}>
-                Item
-                {sort.col === 'item_name' && <span className="ml-0.5 text-[9px]">{sort.dir === 'desc' ? '↓' : '↑'}</span>}
-                {/* Drag (mouse or touch) this edge to resize the Item column --
-                    stopPropagation keeps it from also toggling the item_name sort.
-                    Touch devices don't have :hover, so the grip line is drawn
-                    always-visible (not just on hover like a mouse cursor would
-                    show it), and the tappable strip is wider than the line
-                    itself so a finger doesn't have to land pixel-perfect. */}
-                <span onPointerDown={e => { e.stopPropagation(); startResize(e) }}
-                  onClick={e => e.stopPropagation()}
-                  className="absolute top-0 right-0 h-full w-5 flex items-center justify-center cursor-col-resize touch-none hover:bg-blue-100">
-                  <span className="w-0.5 h-4 rounded-full bg-gray-300" />
-                </span>
-              </th>
+              <SortTh label="Item" col="item_name" sort={sort} onSort={handleSort} cls="text-left pl-2 pr-2 sticky left-0 z-30 bg-gray-50 border-r border-gray-200" />
               <SortTh label={<>Loss<span className="block">Amount</span></>} col="lgAmt" {...thProps} cls="text-center" />
               <SortTh label={<>Num. of<span className="block">Losses</span></>} col="lossCount" {...thProps} cls="text-center" />
               <SortTh label="Gain" col="gainAmt" {...thProps} cls="text-center" />
