@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { fmtDate } from '@/lib/fmtDate'
 import type { ItemDayRow as DayRow, CountRevision } from '@/lib/itemDayRows'
 import {
@@ -1650,6 +1650,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   group?: string | null
   productType?: 'all' | 'goods' | 'services'
 }) {
+  const router = useRouter()
   const [rows, setRows] = useState<SummaryRow[]>([])
   const [loading, setLoading] = useState(true)
   const [sort, setSort] = useState<{ col: SortCol; dir: SortDir }>({ col: 'lgAmt', dir: 'desc' })
@@ -1711,10 +1712,11 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
     const lossAmt = row.lgAmt > 0, gainAmt = row.lgAmt < 0
     const soh = parseFloat(row.soh ?? '0') || 0
     return (
-      <tr key={row.item_id} className="hover:bg-gray-50 transition">
+      <tr key={row.item_id} onClick={() => router.push(`/stock/${row.item_id}`)}
+        className="cursor-pointer hover:bg-gray-50 transition">
         <td className="pl-2 pr-2 py-1.5 font-bold whitespace-normal break-words sticky left-0 z-10 bg-white border-r border-gray-200"
           title={row.item_name}>
-          <Link href={`/stock/${row.item_id}`} className="text-blue-600 hover:underline">{row.item_name}</Link>
+          <span className="text-blue-600">{row.item_name}</span>
         </td>
         <td className={`text-center py-1.5 font-semibold tabular-nums ${lossAmt ? 'text-red-500' : gainAmt ? 'text-green-600' : 'text-gray-300'}`}>
           {fmtAmt(row.lgAmt)}
