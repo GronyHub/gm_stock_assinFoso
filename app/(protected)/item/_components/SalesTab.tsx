@@ -606,15 +606,13 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
       <table className="w-full border-collapse text-[10px]">
         <thead className="sticky top-0 bg-gray-100 z-10">
           <tr>
-            <th className="text-left px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">
-              <div className="flex items-center justify-between gap-2">
-                <span>ITEM</span>
-                {/* Standing legend for the two unlabeled figures next to the
-                    customer letter on every receipt bar below (CC, then WNW) --
-                    not a real column, just docked in the wide ITEM header cell. */}
-                <span className="font-semibold text-gray-400">CC · WNW</span>
-              </div>
-            </th>
+            <th className="text-left px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">ITEM</th>
+            {/* CC/WNW are real columns (not text docked inside the ITEM
+                header) so the header label and every row's value share the
+                same table column and can't drift out of alignment. Only the
+                bar row ever fills them in -- line rows below leave them blank. */}
+            <th className="text-left px-1 py-1 pl-3 text-[11px] font-bold text-gray-500 border-b border-gray-200 whitespace-nowrap">CC</th>
+            <th className="text-left px-1 py-1 pl-3 text-[11px] font-bold text-gray-500 border-b border-gray-200 whitespace-nowrap">WNW</th>
             <th className="text-right px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">QTY</th>
             <th className="text-right px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">SP</th>
             <th className="text-right px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">TOTAL</th>
@@ -651,7 +649,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
           if (editingId === r.id) {
             return (
               <tr key={r.id} id={`receipt-${r.id}`}>
-                <td colSpan={4} className={`p-0 bg-blue-50/40 border-b border-gray-200 ${isDayHead ? 'border-t-4 border-t-blue-600' : ''}`}>
+                <td colSpan={6} className={`p-0 bg-blue-50/40 border-b border-gray-200 ${isDayHead ? 'border-t-4 border-t-blue-600' : ''}`}>
                 <div className="p-2 space-y-2">
                   <p className="text-[10px] font-bold text-gray-600">Edit Receipt</p>
                   <div className="grid grid-cols-2 gap-1">
@@ -781,32 +779,32 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
             <tr id={`receipt-${r.id}`} className={isDayHead ? 'bg-blue-600' : 'bg-gray-50'}>
               {/* Real columns matching the ITEM/QTY/SP/TOTAL header instead of
                   one manually-flexed cell -- date/edit/customer sit in the ITEM
-                  cell (left), CC/WNW dock at that same cell's right edge (under
-                  the "CC · WNW" legend in the header), QTY/SP stay blank, and
-                  the invoice figure lands under TOTAL like the line rows below. */}
+                  cell (left); CC and WNW get their own real columns (same ones
+                  the header uses) so their values can't drift out of alignment
+                  with the CC/WNW header labels the way a hand-flexed group can.
+                  QTY/SP stay blank, and the invoice figure lands under TOTAL
+                  like the line rows below. */}
               <td className={isDayHead ? 'px-1.5 py-2' : 'px-1 py-1'}>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-1.5 whitespace-nowrap">
-                    <span className={`font-extrabold ${isDayHead ? 'text-white text-base' : 'text-gray-600 text-sm'}`}>
-                      {fmtShort(r.receipt_date)}
-                    </span>
-                    {/* Jumps straight into editingId === r.id below -- no menu
-                        step. Delete lives on that edit screen now, not here. */}
-                    <button onClick={() => startEdit(r)} title="Edit this receipt"
-                      className={`leading-none ${isDayHead ? 'text-blue-100 hover:text-white' : 'text-gray-400 hover:text-gray-700'}`}>
-                      ✏️
-                    </button>
-                    <span className={`font-extrabold ${isDayHead ? 'text-white text-base' : 'text-gray-700 text-sm'}`}>
-                      {fmtCust(r.customer_name)}
-                    </span>
+                <span className="flex items-center gap-1.5 whitespace-nowrap">
+                  <span className={`font-extrabold ${isDayHead ? 'text-white text-base' : 'text-gray-600 text-sm'}`}>
+                    {fmtShort(r.receipt_date)}
                   </span>
-                  {!itemNameMatch && (
-                    <span className="flex items-center gap-5 shrink-0">
-                      <span className={`font-extrabold ${isDayHead ? 'text-blue-100 text-base' : 'text-gray-500 text-sm'}`}>{fmt(r.cash_counted)}</span>
-                      <span className={`font-extrabold ${isDayHead ? 'text-base' : 'text-sm'} ${wnwColor(r.wnw, isDayHead)}`}>{fmt(r.wnw)}</span>
-                    </span>
-                  )}
-                </div>
+                  {/* Jumps straight into editingId === r.id below -- no menu
+                      step. Delete lives on that edit screen now, not here. */}
+                  <button onClick={() => startEdit(r)} title="Edit this receipt"
+                    className={`leading-none ${isDayHead ? 'text-blue-100 hover:text-white' : 'text-gray-400 hover:text-gray-700'}`}>
+                    ✏️
+                  </button>
+                  <span className={`font-extrabold ${isDayHead ? 'text-white text-base' : 'text-gray-700 text-sm'}`}>
+                    {fmtCust(r.customer_name)}
+                  </span>
+                </span>
+              </td>
+              <td className={`text-left pl-3 font-extrabold ${isDayHead ? 'px-1.5 py-2 text-blue-100 text-base' : 'px-1 py-1 text-gray-500 text-sm'}`}>
+                {!itemNameMatch && fmt(r.cash_counted)}
+              </td>
+              <td className={`text-left pl-3 font-extrabold ${isDayHead ? 'px-1.5 py-2 text-base' : 'px-1 py-1 text-sm'} ${wnwColor(r.wnw, isDayHead)}`}>
+                {!itemNameMatch && fmt(r.wnw)}
               </td>
               <td className={isDayHead ? 'px-1.5 py-2' : 'px-1 py-1'} />
               <td className={isDayHead ? 'px-1.5 py-2' : 'px-1 py-1'} />
@@ -826,6 +824,8 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
                     ) : line.item_name
                   ) : <span className="text-gray-400 italic">No items</span>}
                 </td>
+                <td className="px-1 py-1 align-top" />
+                <td className="px-1 py-1 align-top" />
                 <td className="px-1 py-1 text-right text-gray-700 align-top">{line ? (line.quantity ? parseFloat(line.quantity) : '—') : ''}</td>
                 <td className="px-1 py-1 text-right text-gray-700 align-top">{line ? fmt(line.item_price) : ''}</td>
                 <td className="px-1 py-1 text-right font-semibold text-gray-900 align-top">{line ? fmt(line.item_total) : ''}</td>
