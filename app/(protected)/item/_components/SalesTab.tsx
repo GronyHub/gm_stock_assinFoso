@@ -786,7 +786,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
               <td className={isDayHead ? 'px-1.5 py-2' : 'px-1 py-1'}>
                 <div className="flex items-center justify-between gap-2">
                   <span className="flex items-center gap-1.5 whitespace-nowrap">
-                    <span className={isDayHead ? 'text-white font-semibold' : 'text-gray-600 font-medium'}>
+                    <span className={`font-extrabold ${isDayHead ? 'text-white text-base' : 'text-gray-600 text-sm'}`}>
                       {fmtShort(r.receipt_date)}
                     </span>
                     {/* Jumps straight into editingId === r.id below -- no menu
@@ -801,15 +801,15 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
                   </span>
                   {!itemNameMatch && (
                     <span className="flex items-center gap-2 shrink-0">
-                      <span className={isDayHead ? 'text-blue-100' : 'text-gray-500'}>{fmt(r.cash_counted)}</span>
-                      <span className={`font-semibold ${wnwColor(r.wnw, isDayHead)}`}>{fmt(r.wnw)}</span>
+                      <span className={`font-extrabold ${isDayHead ? 'text-blue-100 text-base' : 'text-gray-500 text-sm'}`}>{fmt(r.cash_counted)}</span>
+                      <span className={`font-extrabold ${isDayHead ? 'text-base' : 'text-sm'} ${wnwColor(r.wnw, isDayHead)}`}>{fmt(r.wnw)}</span>
                     </span>
                   )}
                 </div>
               </td>
               <td className={isDayHead ? 'px-1.5 py-2' : 'px-1 py-1'} />
               <td className={isDayHead ? 'px-1.5 py-2' : 'px-1 py-1'} />
-              <td className={`px-1 py-1 text-right font-semibold ${isDayHead ? 'text-white' : 'text-gray-900'}`}>
+              <td className={`px-1 py-1 text-right font-extrabold ${isDayHead ? 'text-white text-base' : 'text-gray-900 text-sm'}`}>
                 {!itemNameMatch && fmt(r.invoice_amount)}
               </td>
             </tr>
