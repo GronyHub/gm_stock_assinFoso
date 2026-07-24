@@ -195,12 +195,23 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
                         onChange={ev => onFormChange({ ...form, cf_expense_type: ev.target.value })} className={inputCls} />
                     </div>
                   </div>
-                  <label className="flex items-center gap-1.5 cursor-pointer mt-2">
-                    <input type="checkbox" checked={form.is_property}
-                      onChange={ev => onFormChange({ ...form, is_property: ev.target.checked })}
-                      className="w-3 h-3 accent-blue-600" />
-                    <span className="text-[10px] text-gray-700">Is property (shows up in Grony Manage &gt; Properties)</span>
-                  </label>
+                  <div className="mt-2">
+                    <p className="text-[9px] text-gray-400 mb-0.5">Property? (shows up in Grony Manage &gt; Properties)</p>
+                    <div className="flex items-center gap-3">
+                      <label className="flex items-center gap-1 cursor-pointer">
+                        <input type="radio" name={`is-property-${e.id}`} checked={form.is_property === true}
+                          onChange={() => onFormChange({ ...form, is_property: true })}
+                          className="w-3 h-3 accent-blue-600" />
+                        <span className="text-[10px] text-gray-700">Property</span>
+                      </label>
+                      <label className="flex items-center gap-1 cursor-pointer">
+                        <input type="radio" name={`is-property-${e.id}`} checked={form.is_property === false}
+                          onChange={() => onFormChange({ ...form, is_property: false })}
+                          className="w-3 h-3 accent-blue-600" />
+                        <span className="text-[10px] text-gray-700">Not a property</span>
+                      </label>
+                    </div>
+                  </div>
                   {e.is_property && (
                     <div className="mt-1">
                       <p className="text-[9px] text-gray-400 mb-0.5">Property Status</p>
