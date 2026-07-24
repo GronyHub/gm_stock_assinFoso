@@ -11,6 +11,9 @@ export async function POST() {
   const session = await auth()
   if ((session?.user as any)?.role !== 'owner') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
+  // Idempotent -- skips any row whose description already contains its own
+  // cf_justify text, so tapping the trigger button more than once can't
+  // double-append the same text.
   const results = await sql`
     UPDATE expenses
     SET description = CASE
@@ -18,6 +21,7 @@ export async function POST() {
       ELSE description || ' — ' || cf_justify
     END
     WHERE cf_justify IS NOT NULL AND cf_justify <> ''
+      AND (description IS NULL OR description NOT LIKE '%' || cf_justify || '%')
     RETURNING id
   `
 

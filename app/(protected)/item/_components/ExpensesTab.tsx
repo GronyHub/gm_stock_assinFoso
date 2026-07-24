@@ -1,5 +1,6 @@
 'use client'
 import { Fragment, useState, useEffect, useMemo, useRef } from 'react'
+import { useSession } from 'next-auth/react'
 import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
 
@@ -249,6 +250,8 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
 type Props = { search: string; initialTab?: ExpTab }
 
 export default function ExpensesTab({ search, initialTab }: Props) {
+  const { data: session } = useSession()
+  const isOwner = (session?.user as any)?.role === 'owner'
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<ExpTab>(initialTab ?? 'all')
@@ -262,6 +265,20 @@ export default function ExpensesTab({ search, initialTab }: Props) {
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [accountFilter, setAccountFilter] = useState<string | null>(null)
   const [vendorFilter, setVendorFilter] = useState<string | null>(null)
+  const [merging, setMerging] = useState(false)
+
+  // One-time migration trigger for the Justify -> Description merge --
+  // owner-only, safe to tap more than once (the endpoint skips rows it's
+  // already merged). Remove this button once it's been run.
+  async function runJustifyMerge() {
+    if (!confirm('Merge every expense\'s old Justify text into Description? Safe to run more than once.')) return
+    setMerging(true)
+    const res = await fetch('/api/admin/merge-expense-justify', { method: 'POST' })
+    const d = await res.json().catch(() => ({}))
+    setMerging(false)
+    if (res.ok) { alert(`Merged ${d.merged} expense(s).`); loadExpenses() }
+    else alert(d.error || 'Could not run the merge.')
+  }
 
   function loadExpenses() {
     fetch('/api/expenses')
@@ -419,6 +436,12 @@ export default function ExpensesTab({ search, initialTab }: Props) {
             ${showHistory ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
           History
         </button>
+        {isOwner && (
+          <button onClick={runJustifyMerge} disabled={merging} title="One-time: fold old Justify text into Description"
+            className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 hover:bg-amber-100 disabled:opacity-40">
+            {merging ? 'Merging…' : '🔧 Merge Justify'}
+          </button>
+        )}
         <span className="ml-auto text-[9px] text-gray-400">{filtered.length} records</span>
       </div>
 
