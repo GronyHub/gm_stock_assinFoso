@@ -262,6 +262,10 @@ export default function ExpensesTab({ search, initialTab }: Props) {
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [accountFilter, setAccountFilter] = useState<string | null>(null)
   const [vendorFilter, setVendorFilter] = useState<string | null>(null)
+  // Independent of the All/Props/At Shop/Away tabs above -- unchecking
+  // either one drops that side of the is_property split from the list.
+  const [showProperties, setShowProperties] = useState(true)
+  const [showNonProperties, setShowNonProperties] = useState(true)
 
   function loadExpenses() {
     fetch('/api/expenses')
@@ -288,6 +292,9 @@ export default function ExpensesTab({ search, initialTab }: Props) {
     if (tab === 'away')       list = list.filter(e => e.is_property && (e.property_status === 'not_at_shop' || e.property_status === 'spoilt'))
     if (accountFilter) list = list.filter(e => e.expense_account === accountFilter)
     if (vendorFilter)  list = list.filter(e => e.vendor_name === vendorFilter)
+    if (!showProperties || !showNonProperties) {
+      list = list.filter(e => e.is_property ? showProperties : showNonProperties)
+    }
     const q = search.toLowerCase()
     if (!q) return list
     return list.filter(e =>
@@ -297,7 +304,7 @@ export default function ExpensesTab({ search, initialTab }: Props) {
       (e.source_sheet ?? '').toLowerCase().includes(q) ||
       (e.source ?? '').toLowerCase().includes(q)
     )
-  }, [expenses, tab, search, accountFilter, vendorFilter])
+  }, [expenses, tab, search, accountFilter, vendorFilter, showProperties, showNonProperties])
 
   const grouped = useMemo(() => {
     if (groupBy === 'none') return []
@@ -413,6 +420,17 @@ export default function ExpensesTab({ search, initialTab }: Props) {
             ${groupBy === 'vendor' ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
           By Vendor
         </button>
+        <div className="w-px h-3 bg-gray-300 shrink-0" />
+        <label className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
+          <input type="checkbox" checked={showProperties} onChange={() => setShowProperties(p => !p)}
+            className="w-3 h-3 accent-blue-600" />
+          Properties
+        </label>
+        <label className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
+          <input type="checkbox" checked={showNonProperties} onChange={() => setShowNonProperties(p => !p)}
+            className="w-3 h-3 accent-blue-600" />
+          Non-Properties
+        </label>
         <div className="w-px h-3 bg-gray-300 shrink-0" />
         <button onClick={() => setShowHistory(h => !h)}
           className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition
