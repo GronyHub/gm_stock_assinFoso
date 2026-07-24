@@ -67,6 +67,7 @@ export default function CABTab() {
   const [flagsLoading, setFlagsLoading] = useState(false)
   const [showWeekly, setShowWeekly] = useState(false)
   const [onlyUnconfirmed, setOnlyUnconfirmed] = useState(false)
+  const [confirmedColsOnly, setConfirmedColsOnly] = useState(false)
 
   useEffect(() => {
     fetch('/api/cash-at-bank')
@@ -145,6 +146,13 @@ export default function CABTab() {
             Unconfirmed only
           </label>
         )}
+        {!showWeekly && (
+          <label className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none ml-auto">
+            <input type="checkbox" checked={confirmedColsOnly} onChange={() => setConfirmedColsOnly(o => !o)}
+              className="w-3 h-3 accent-blue-600" />
+            Confirmed CAB check
+          </label>
+        )}
       </div>
 
       {showWeekly ? (
@@ -194,32 +202,46 @@ export default function CABTab() {
           <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
           <table className="w-full border-collapse text-xs">
             <thead className="sticky top-0 z-10">
-              <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
-                <th rowSpan={2} className="text-left px-3 py-2 font-bold border-b border-gray-200 align-bottom whitespace-nowrap">Date</th>
-                <th rowSpan={2} className="text-right px-3 py-2 font-bold border-b border-gray-200 align-bottom" title="Cash Counted">CC</th>
-                <th rowSpan={2} className="text-right px-3 py-2 font-bold text-green-500 border-b border-gray-200 align-bottom" title="Grony Personal cash paid into the business that day">GP In</th>
-                <th rowSpan={2} className="text-right px-3 py-2 font-bold text-green-500 border-b border-gray-200 align-bottom" title="Debtor repayments received that day">Debtors</th>
-                <th rowSpan={2} className="text-right px-3 py-2 font-bold border-b border-gray-200 align-bottom" title="Bills paid to vendors">Bills</th>
-                <th rowSpan={2} className="text-right px-3 py-2 font-bold border-b border-gray-200 align-bottom" title="Expenses">Exp</th>
-                <th rowSpan={2} className="text-right px-3 py-2 font-bold text-orange-500 border-b border-gray-200 align-bottom" title="Cash taken out for Grony's personal use">GP Out</th>
-                <th rowSpan={2} className="text-right px-3 py-2 font-bold border-b border-gray-200 align-bottom" title="Net cash movement for the day">Net</th>
-                <th rowSpan={2} className="text-right px-3 py-2 font-bold border-b border-gray-200 align-bottom" title="Running cash-at-bank balance, carried day to day">Running</th>
-                <th colSpan={4} className="text-center px-3 py-1.5 font-bold border-b border-gray-100">Confirmed (physical count)</th>
-                <th rowSpan={2} className="text-right px-3 py-2 font-bold text-red-400 border-b border-gray-200 align-bottom" title="Confirmed total minus Running balance">Diff</th>
-              </tr>
-              <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
-                <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 border-l border-gray-100">Bank</th>
-                <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200">MoMo</th>
-                <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200">Physical</th>
-                <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 text-blue-500">Total</th>
-              </tr>
+              {confirmedColsOnly ? (
+                <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
+                  <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Date</th>
+                  <th className="text-right px-3 py-2 font-bold border-b border-gray-200 text-blue-500">Confirmed Total</th>
+                </tr>
+              ) : (
+                <>
+                  <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
+                    <th rowSpan={2} className="text-left px-3 py-2 font-bold border-b border-gray-200 align-bottom whitespace-nowrap">Date</th>
+                    <th rowSpan={2} className="text-right px-3 py-2 font-bold border-b border-gray-200 align-bottom" title="Cash Counted">CC</th>
+                    <th rowSpan={2} className="text-right px-3 py-2 font-bold text-green-500 border-b border-gray-200 align-bottom" title="Grony Personal cash paid into the business that day">GP In</th>
+                    <th rowSpan={2} className="text-right px-3 py-2 font-bold text-green-500 border-b border-gray-200 align-bottom" title="Debtor repayments received that day">Debtors</th>
+                    <th rowSpan={2} className="text-right px-3 py-2 font-bold border-b border-gray-200 align-bottom" title="Bills paid to vendors">Bills</th>
+                    <th rowSpan={2} className="text-right px-3 py-2 font-bold border-b border-gray-200 align-bottom" title="Expenses">Exp</th>
+                    <th rowSpan={2} className="text-right px-3 py-2 font-bold text-orange-500 border-b border-gray-200 align-bottom" title="Cash taken out for Grony's personal use">GP Out</th>
+                    <th rowSpan={2} className="text-right px-3 py-2 font-bold border-b border-gray-200 align-bottom" title="Net cash movement for the day">Net</th>
+                    <th rowSpan={2} className="text-right px-3 py-2 font-bold border-b border-gray-200 align-bottom" title="Running cash-at-bank balance, carried day to day">Running</th>
+                    <th colSpan={4} className="text-center px-3 py-1.5 font-bold border-b border-gray-100">Confirmed (physical count)</th>
+                    <th rowSpan={2} className="text-right px-3 py-2 font-bold text-red-400 border-b border-gray-200 align-bottom" title="Confirmed total minus Running balance">Diff</th>
+                  </tr>
+                  <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
+                    <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 border-l border-gray-100">Bank</th>
+                    <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200">MoMo</th>
+                    <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200">Physical</th>
+                    <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 text-blue-500">Total</th>
+                  </tr>
+                </>
+              )}
             </thead>
             <tbody className="divide-y divide-gray-100">
               {rows.map((r, i) => {
                 const hasConfirm = r.cab_total != null
                 const net = Number(r.daily_net)
                 const stripe = hasConfirm ? 'bg-blue-50/60' : i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'
-                return (
+                return confirmedColsOnly ? (
+                  <tr key={r.entry_date} className={stripe}>
+                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmtDate(String(r.entry_date).slice(0,10))}</td>
+                    <td className="px-3 py-2 text-right text-blue-600 font-semibold">{hasConfirm ? fmtn(r.cab_total) : ''}</td>
+                  </tr>
+                ) : (
                   <tr key={r.entry_date} className={stripe}>
                     <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmtDate(String(r.entry_date).slice(0,10))}</td>
                     <td className="px-3 py-2 text-right text-gray-700">{nz(r.cash_counted)}</td>
