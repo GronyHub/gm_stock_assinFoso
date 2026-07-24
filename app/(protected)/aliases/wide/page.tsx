@@ -101,7 +101,8 @@ export default function AliasEditorPage() {
     setAddError('Failed — alias may already exist for this item')
   }
 
-  async function deleteAlias(aliasId: number) {
+  async function deleteAlias(aliasId: number, name: string) {
+    if (!confirm(`Delete alias "${name}"?`)) return
     setDeletingId(aliasId)
     await fetch(`/api/aliases/${aliasId}`, { method: 'DELETE' })
     setDeletingId(null)
@@ -335,7 +336,7 @@ export default function AliasEditorPage() {
                               className="text-[9px] text-orange-500 font-semibold hover:text-orange-600 mr-2 transition">
                               Move
                             </button>
-                            <button onClick={() => deleteAlias(a.id)} disabled={deletingId === a.id}
+                            <button onClick={() => deleteAlias(a.id, a.name)} disabled={deletingId === a.id}
                               className="text-gray-300 hover:text-red-500 font-bold text-xs transition disabled:opacity-40">
                               {deletingId === a.id ? '…' : '×'}
                             </button>

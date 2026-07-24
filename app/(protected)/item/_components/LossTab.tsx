@@ -745,6 +745,7 @@ function AliasPicker({ itemId, current, onChange }: {
   }
 
   async function remove(alias: AliasRecord) {
+    if (!confirm(`Remove alias "${alias.name}"?`)) return
     setBusy(true)
     await fetch(`/api/aliases/${alias.id}`, { method: 'DELETE' })
     setBusy(false)
@@ -818,6 +819,7 @@ function MatchPicker({ itemId, itemName, isService, current, candidatePool, onCh
   }
 
   async function remove(match: MatchRecord) {
+    if (!confirm(`Remove match "${match.name}"?`)) return
     setBusy(true)
     await fetch(`/api/good-service-matches/${match.id}`, { method: 'DELETE' })
     setBusy(false)
