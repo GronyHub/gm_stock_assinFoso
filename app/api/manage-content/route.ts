@@ -33,12 +33,13 @@ A Home button plus two tabs across the top: Grony Cash, Grony Manage.
 Just the news feed -- announcements, photos, and voice notes. Post a message here to keep everyone informed. Flags live in the role bar at the very bottom of the screen instead (see below), so the feed is always the first thing you see.
 
 ## Grony Cash
-Everything to do with money. Top row: Items, Sales, Bills, Daily Loss, Expenses, P&L (owner and Joe only), CAB, Daily, Data.
+Everything to do with money. Top row: Items, Sales, Bills, Daily Loss, Expenses, PO, P&L (owner and Joe only), CAB, Daily, Data.
 - Items (Goods & Services) -- the shop's stock list. Tap an item's name to open its Item 360 page: stock/history stats plus the same pack-chain loss/gain detail, editing, aliases, matches, and merge tools that used to open inline here.
 - Sales -- every sales receipt (WIC = Walk-In Customer, GMC = Grony Multimedia as Customer, i.e. internal use, not a real sale).
 - Bills -- what the shop has bought from vendors.
 - Daily Loss -- loss/gain records feed, with its own trend charts.
 - Expenses -- money spent.
+- PO (Purchase Orders) -- a request sent to a vendor for goods not yet received, separate from a Bill (which records a purchase already made). Draft it, Send it, then Receive Items against it as deliveries actually arrive -- partial deliveries are fine, each "Receive Items" batch creates a real Bill for exactly what showed up that time, so a PO can be received across several dates before every line is fully accounted for. Cancel a draft or sent PO any time before it's fully received; a draft with nothing received yet can also be deleted outright.
 - P&L -- Profit & Loss.
 - CAB -- Cash at Bank reconciliation.
 - Daily -- the end-of-day report (see "Daily Summary" below). Not the same thing as Daily Loss above -- Daily Loss is the ongoing loss/gain feed, Daily is one report per day.
