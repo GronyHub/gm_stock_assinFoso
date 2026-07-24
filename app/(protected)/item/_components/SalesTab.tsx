@@ -801,7 +801,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
                     </span>
                   </span>
                   {!itemNameMatch && (
-                    <span className="flex items-center gap-2 shrink-0">
+                    <span className="flex items-center gap-5 shrink-0">
                       <span className={`font-extrabold ${isDayHead ? 'text-blue-100 text-base' : 'text-gray-500 text-sm'}`}>{fmt(r.cash_counted)}</span>
                       <span className={`font-extrabold ${isDayHead ? 'text-base' : 'text-sm'} ${wnwColor(r.wnw, isDayHead)}`}>{fmt(r.wnw)}</span>
                     </span>
