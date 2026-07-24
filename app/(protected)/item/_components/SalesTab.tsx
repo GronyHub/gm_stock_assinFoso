@@ -675,10 +675,9 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
           // below with just ITEM/C/QTY/SP/TOTAL, so ITEM has the width to
           // fit on one line. CC/Inv/WNW are blanked out on the bar while
           // itemNameMatch is true, same as before.
-          if (editingId === r.id) {
-            return (
-              <tr key={r.id} id={`receipt-${r.id}`}>
-                <td colSpan={6} className={`p-0 bg-blue-50/40 border-b border-gray-200 ${isDayHead ? 'border-t-4 border-t-blue-600' : ''}`}>
+          const editingRow = editingId === r.id && (
+              <tr>
+                <td colSpan={6} className="p-0 bg-blue-50/40 border-b border-gray-200">
                 <div className="p-2 space-y-2">
                   <p className="text-[10px] font-bold text-gray-600">Edit Receipt</p>
                   <div className="grid grid-cols-2 gap-1">
@@ -797,8 +796,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
                 </div>
                 </td>
               </tr>
-            )
-          }
+          )
 
           const rows: (Line | null)[] = itemNameMatch
             ? rLines.filter(l => l.item_name.toLowerCase().includes(q))
@@ -842,7 +840,8 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
                 {!itemNameMatch && fmt(r.invoice_amount)}
               </td>
             </tr>
-            {(!barsOnly || expandedIds.has(r.id)) && rows.map(line => (
+            {editingRow}
+            {editingId !== r.id && (!barsOnly || expandedIds.has(r.id)) && rows.map(line => (
               <tr key={line ? line.id : `${r.id}-empty`}
                 className={`border-b border-gray-100 text-[13px] font-bold ${selectedId === r.id ? 'bg-blue-50/40' : 'hover:bg-gray-50'}`}>
                 <td className="px-1 py-1 text-gray-900 align-top">
