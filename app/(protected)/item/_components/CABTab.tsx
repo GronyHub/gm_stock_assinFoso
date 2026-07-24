@@ -66,20 +66,20 @@ export default function CABTab() {
       </div>
 
       {showWeekly ? (
-        <div className="flex-1 overflow-y-auto py-2">
-          <p className="text-[10px] text-gray-400 px-2 mb-1">
+        <div className="flex-1 overflow-y-auto p-2">
+          <p className="text-xs text-gray-400 mb-2">
             {flagsLoading || !flags ? 'Loading…' : `${flags.uncheckedCab.length} week${flags.uncheckedCab.length !== 1 ? 's' : ''} with no CAB confirmation`}
           </p>
           {!flagsLoading && flags && (flags.uncheckedCab.length === 0
-            ? <p className="py-4 text-center text-gray-400 text-[10px]">All weeks confirmed.</p>
-            : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
+            ? <p className="py-10 text-center text-gray-400 text-xs">All weeks confirmed.</p>
+            : <div className="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100 overflow-hidden">
                 {flags.uncheckedCab.map((r: any) => (
-                  <div key={r.week_start} className="flex items-center justify-between px-2 py-1.5 gap-2">
-                    <span className="text-[10px] font-semibold text-gray-900">
+                  <div key={r.week_start} className="flex items-center justify-between px-3 py-2.5 gap-2">
+                    <span className="text-xs font-semibold text-gray-900">
                       {fmtDate(r.week_start)} – {fmtDate(r.week_end)}
                     </span>
                     <button onClick={() => setShowWeekly(false)}
-                      className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition">
+                      className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition">
                       View List →
                     </button>
                   </div>
@@ -88,37 +88,38 @@ export default function CABTab() {
           )}
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto min-h-0">
-          {/* Compact table for hub — shows key columns */}
-          <table className="w-full border-collapse text-[9px]">
-            <thead className="sticky top-0 bg-gray-100 z-10">
-              <tr>
-                <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200 whitespace-nowrap">DATE</th>
-                <th className="text-right px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">CC</th>
-                <th className="text-right px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">BL</th>
-                <th className="text-right px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">EXP</th>
-                <th className="text-right px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">NET</th>
-                <th className="text-right px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">RUNNING</th>
-                <th className="text-right px-1 py-1 font-semibold text-blue-500 border-b border-gray-200">CAB</th>
-                <th className="text-right px-1 py-1 font-semibold text-red-400 border-b border-gray-200">DIFF</th>
+        <div className="flex-1 overflow-auto min-h-0 p-2">
+          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <table className="w-full border-collapse text-xs">
+            <thead className="sticky top-0 z-10">
+              <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
+                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Date</th>
+                <th className="text-right px-3 py-2 font-bold border-b border-gray-200">CC</th>
+                <th className="text-right px-3 py-2 font-bold border-b border-gray-200">BL</th>
+                <th className="text-right px-3 py-2 font-bold border-b border-gray-200">Exp</th>
+                <th className="text-right px-3 py-2 font-bold border-b border-gray-200">Net</th>
+                <th className="text-right px-3 py-2 font-bold border-b border-gray-200">Running</th>
+                <th className="text-right px-3 py-2 font-bold text-blue-500 border-b border-gray-200">CAB</th>
+                <th className="text-right px-3 py-2 font-bold text-red-400 border-b border-gray-200">Diff</th>
               </tr>
             </thead>
-            <tbody>
-              {rows.map(r => {
+            <tbody className="divide-y divide-gray-100">
+              {rows.map((r, i) => {
                 const hasConfirm = r.cab_total != null
                 const net = Number(r.daily_net)
+                const stripe = hasConfirm ? 'bg-blue-50/60' : i % 2 === 1 ? 'bg-gray-50' : 'bg-white'
                 return (
-                  <tr key={r.entry_date} className={`border-b border-gray-100 ${hasConfirm ? 'bg-blue-50/60' : ''}`}>
-                    <td className="px-1 py-0.5 text-gray-600 whitespace-nowrap">{fmtDate(String(r.entry_date).slice(0,10))}</td>
-                    <td className="px-1 py-0.5 text-right text-gray-700">{nz(r.cash_counted)}</td>
-                    <td className="px-1 py-0.5 text-right text-red-500">{nz(r.bills)}</td>
-                    <td className="px-1 py-0.5 text-right text-red-500">{nz(r.expenses)}</td>
-                    <td className={`px-1 py-0.5 text-right font-semibold ${net >= 0 ? 'text-gray-800' : 'text-red-500'}`}>
+                  <tr key={r.entry_date} className={stripe}>
+                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmtDate(String(r.entry_date).slice(0,10))}</td>
+                    <td className="px-3 py-2 text-right text-gray-700">{nz(r.cash_counted)}</td>
+                    <td className="px-3 py-2 text-right text-red-500">{nz(r.bills)}</td>
+                    <td className="px-3 py-2 text-right text-red-500">{nz(r.expenses)}</td>
+                    <td className={`px-3 py-2 text-right font-semibold ${net >= 0 ? 'text-gray-800' : 'text-red-500'}`}>
                       {fmtn(r.daily_net)}
                     </td>
-                    <td className="px-1 py-0.5 text-right font-bold text-gray-900">{fmtn(r.running_cash_at_bank)}</td>
-                    <td className="px-1 py-0.5 text-right text-blue-600">{hasConfirm ? fmtn(r.cab_total) : ''}</td>
-                    <td className={`px-1 py-0.5 text-right font-semibold ${r.deficit != null && Number(r.deficit) < 0 ? 'text-red-500' : 'text-green-600'}`}>
+                    <td className="px-3 py-2 text-right font-bold text-gray-900">{fmtn(r.running_cash_at_bank)}</td>
+                    <td className="px-3 py-2 text-right text-blue-600">{hasConfirm ? fmtn(r.cab_total) : ''}</td>
+                    <td className={`px-3 py-2 text-right font-semibold ${r.deficit != null && Number(r.deficit) < 0 ? 'text-red-500' : 'text-green-600'}`}>
                       {r.deficit != null ? fmtn(r.deficit) : ''}
                     </td>
                   </tr>
@@ -126,7 +127,8 @@ export default function CABTab() {
               })}
             </tbody>
           </table>
-          {rows.length === 0 && <p className="text-[10px] text-gray-400 text-center py-10">No data</p>}
+          </div>
+          {rows.length === 0 && <p className="text-xs text-gray-400 text-center py-10">No data</p>}
         </div>
       )}
     </div>

@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useMemo } from 'react'
+import { Fragment, useState, useEffect, useMemo } from 'react'
 import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
 
@@ -49,8 +49,8 @@ const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 te
 
 const ACCOUNTS = ['Office Expenses','Rent','Utilities','Salaries','Transport','Repairs','Supplies','Other']
 
-const TH = 'text-left px-1 py-1 font-semibold text-gray-700 border border-black'
-const TD = 'px-1 py-1 border border-black'
+const TH = 'text-left px-3 py-2 font-bold text-gray-400 text-[10px] uppercase tracking-wide border-b border-gray-200'
+const TD = 'px-3 py-2'
 
 type TableProps = {
   rows: Expense[]
@@ -80,25 +80,26 @@ const EMPTY_FORM = {
 function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, saving, form, onEdit, onCloseEdit,
   onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, onPropertyStatus, hideAccount, hideVendor }: TableProps) {
   return (
-    <table className="w-full border-collapse text-[10px] border border-black">
-      <thead className="sticky top-0 bg-gray-100 z-10">
-        <tr>
-          <th className={`${TH} whitespace-nowrap`}>DATE</th>
-          {!hideAccount && <th className={TH}>ACCOUNT</th>}
-          <th className={TH}>DESCRIPTION</th>
-          <th className={TH}>JUSTIFY</th>
-          {!hideVendor && <th className={TH}>VENDOR</th>}
-          <th className={TH}>SOURCE</th>
-          <th className={`${TH} text-right`}>AMT</th>
-          <th className={TH}>BY</th>
-          <th className="px-1 py-1 border border-black" />
+    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <table className="w-full border-collapse text-xs">
+      <thead className="sticky top-0 z-10">
+        <tr className="bg-gray-50">
+          <th className={`${TH} whitespace-nowrap`}>Date</th>
+          {!hideAccount && <th className={TH}>Account</th>}
+          <th className={TH}>Description</th>
+          <th className={TH}>Justify</th>
+          {!hideVendor && <th className={TH}>Vendor</th>}
+          <th className={TH}>Source</th>
+          <th className={`${TH} text-right`}>Amt</th>
+          <th className={TH}>By</th>
+          <th className="px-3 py-2 border-b border-gray-200" />
         </tr>
       </thead>
-      <tbody>
-        {rows.map(e => (
-          <>
-            <tr key={e.id} id={`expense-${e.id}`}
-              className={`hover:bg-gray-50 transition-colors ${highlightId === e.id ? 'bg-yellow-100' : ''}`}>
+      <tbody className="divide-y divide-gray-100">
+        {rows.map((e, i) => (
+          <Fragment key={e.id}>
+            <tr id={`expense-${e.id}`}
+              className={`transition-colors ${highlightId === e.id ? 'bg-yellow-100' : i % 2 === 1 ? 'bg-gray-50' : 'bg-white'} hover:bg-blue-50/60`}>
               <td className={`${TD} text-gray-600 whitespace-nowrap`}>{fmtShort(e.expense_date)}</td>
               {!hideAccount && <td className={`${TD} text-gray-900 font-semibold`}>{e.expense_account}</td>}
               <td className={`${TD} text-gray-700`}>{e.description ?? '—'}</td>
@@ -109,27 +110,27 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
               <td className={`${TD} text-blue-500`}>{e.entered_by ?? '—'}</td>
               <td className={TD}>
                 {e.amount_hidden ? (
-                  <p className="text-[9px] text-gray-300 text-right">—</p>
+                  <p className="text-[10px] text-gray-300 text-right">—</p>
                 ) : (
                 <div className="flex items-center gap-1 justify-end">
                   <button onClick={() => editId === e.id ? onCloseEdit() : onEdit(e)}
-                    className="text-[9px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded hover:bg-blue-100">
+                    className="text-[10px] text-blue-600 font-semibold bg-blue-50 px-2 py-1 rounded-lg hover:bg-blue-100">
                     {editId === e.id ? 'Close' : 'Edit'}
                   </button>
                   {confirmDeleteId === e.id ? (
                     <>
                       <button onClick={() => onDeleteConfirm(e.id)} disabled={deleting}
-                        className="text-[9px] text-white font-semibold bg-red-600 px-1.5 py-0.5 rounded hover:bg-red-700 disabled:opacity-40">
+                        className="text-[10px] text-white font-semibold bg-red-600 px-2 py-1 rounded-lg hover:bg-red-700 disabled:opacity-40">
                         {deleting ? '…' : 'Yes'}
                       </button>
                       <button onClick={onDeleteCancel}
-                        className="text-[9px] text-gray-600 font-semibold bg-gray-100 px-1.5 py-0.5 rounded">
+                        className="text-[10px] text-gray-600 font-semibold bg-gray-100 px-2 py-1 rounded-lg">
                         No
                       </button>
                     </>
                   ) : (
                     <button onClick={() => onDeleteStart(e.id)}
-                      className="text-[9px] text-red-600 font-semibold bg-red-50 px-1.5 py-0.5 rounded hover:bg-red-100">
+                      className="text-[10px] text-red-600 font-semibold bg-red-50 px-2 py-1 rounded-lg hover:bg-red-100">
                       Del
                     </button>
                   )}
@@ -138,8 +139,8 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
               </td>
             </tr>
             {editId === e.id && (
-              <tr key={`edit-${e.id}`} className="bg-blue-50/40 border-b border-blue-200">
-                <td colSpan={9 - (hideAccount ? 1 : 0) - (hideVendor ? 1 : 0)} className="px-2 py-2">
+              <tr className="bg-blue-50/40">
+                <td colSpan={9 - (hideAccount ? 1 : 0) - (hideVendor ? 1 : 0)} className="px-3 py-3">
                   <div className="grid grid-cols-2 gap-1 max-w-lg">
                     <div>
                       <p className="text-[9px] text-gray-400 mb-0.5">Date</p>
@@ -198,10 +199,11 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
                 </td>
               </tr>
             )}
-          </>
+          </Fragment>
         ))}
       </tbody>
     </table>
+    </div>
   )
 }
 
@@ -383,27 +385,31 @@ export default function ExpensesTab({ search, initialTab }: Props) {
         }
       }} />}
 
-      {!showHistory && <div className="flex-1 overflow-y-auto min-h-0">
+      {!showHistory && <div className="flex-1 overflow-y-auto min-h-0 p-2">
         {groupBy !== 'none' ? (
           grouped.length === 0
-            ? <p className="text-[10px] text-gray-400 text-center py-10">No expenses</p>
-            : grouped.map(([label, rows]) => (
-              <div key={label} className="mb-4">
-                <div className="flex items-center justify-between px-2 py-1 bg-blue-600 sticky top-0 z-20">
-                  <p className="text-[10px] font-bold text-white">{label}</p>
-                  <p className="text-[9px] text-blue-200">
-                    {rows.length} record{rows.length !== 1 ? 's' : ''} · {rows.some(r => r.amount_hidden) ? '🔒 Hidden' : `₵${fmtTotal(rows)}`}
-                  </p>
+            ? <p className="text-xs text-gray-400 text-center py-10">No expenses</p>
+            : <div className="space-y-3">
+              {grouped.map(([label, rows]) => (
+                <div key={label}>
+                  <div className="flex items-center justify-between px-3 py-2 bg-blue-600 rounded-t-xl sticky top-0 z-20">
+                    <p className="text-xs font-bold text-white">{label}</p>
+                    <p className="text-[10px] text-blue-100">
+                      {rows.length} record{rows.length !== 1 ? 's' : ''} · {rows.some(r => r.amount_hidden) ? '🔒 Hidden' : `₵${fmtTotal(rows)}`}
+                    </p>
+                  </div>
+                  <div className="[&>div]:rounded-t-none">
+                    <ExpenseTable rows={rows} {...tableProps}
+                      hideAccount={groupBy === 'account'}
+                      hideVendor={groupBy === 'vendor'} />
+                  </div>
                 </div>
-                <ExpenseTable rows={rows} {...tableProps}
-                  hideAccount={groupBy === 'account'}
-                  hideVendor={groupBy === 'vendor'} />
-              </div>
-            ))
+              ))}
+            </div>
         ) : (
           <>
             <ExpenseTable rows={filtered} {...tableProps} />
-            {filtered.length === 0 && <p className="text-[10px] text-gray-400 text-center py-10">No expenses</p>}
+            {filtered.length === 0 && <p className="text-xs text-gray-400 text-center py-10">No expenses</p>}
           </>
         )}
       </div>}
