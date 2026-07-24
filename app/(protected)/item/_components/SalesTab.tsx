@@ -256,6 +256,10 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
   // Inv/WNW) -- the item lines beneath stay hidden until toggled back on,
   // so a long list of days can be scanned at a glance.
   const [barsOnly, setBarsOnly] = useState(false)
+  // Under Bars Only, clicking a bar reveals just that receipt's item lines
+  // (a second click hides them again) without leaving the collapsed view --
+  // the pencil icon still opens the full edit form.
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
   // Show/hide Walk-In (W) and Grony Multimedia (G) receipts independently --
   // unchecking one drops every bar of that customer type from the list.
   const [showW, setShowW] = useState(true)
@@ -339,6 +343,14 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
     })
     return list
   }, [receipts, linesMap, groupItemNames, search, showW, showG])
+
+  function toggleExpanded(id: number) {
+    setExpandedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
 
   function jumpTo(r: Receipt) {
     setSelectedId(r.id)
@@ -793,7 +805,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
             : (rLines.length === 0 ? [null] : rLines)
           return (
             <Fragment key={r.id}>
-            <tr id={`receipt-${r.id}`} onClick={() => startEdit(r)} title="Open this receipt"
+            <tr id={`receipt-${r.id}`} onClick={() => toggleExpanded(r.id)} title="Show/hide this receipt's items"
               className={`cursor-pointer ${isDayHead ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-50 hover:bg-gray-100'}`}>
               {/* Real columns matching the ITEM/QTY/SP/TOTAL header instead of
                   one manually-flexed cell -- date/edit/customer sit in the ITEM
@@ -809,7 +821,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
                   </span>
                   {/* Jumps straight into editingId === r.id below -- no menu
                       step. Delete lives on that edit screen now, not here. */}
-                  <button onClick={() => startEdit(r)} title="Edit this receipt"
+                  <button onClick={e => { e.stopPropagation(); startEdit(r) }} title="Edit this receipt"
                     className={`leading-none ${isDayHead ? 'text-blue-100 hover:text-white' : 'text-gray-400 hover:text-gray-700'}`}>
                     ✏️
                   </button>
@@ -830,7 +842,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
                 {!itemNameMatch && fmt(r.invoice_amount)}
               </td>
             </tr>
-            {!barsOnly && rows.map(line => (
+            {(!barsOnly || expandedIds.has(r.id)) && rows.map(line => (
               <tr key={line ? line.id : `${r.id}-empty`}
                 className={`border-b border-gray-100 text-[13px] font-bold ${selectedId === r.id ? 'bg-blue-50/40' : 'hover:bg-gray-50'}`}>
                 <td className="px-1 py-1 text-gray-900 align-top">
