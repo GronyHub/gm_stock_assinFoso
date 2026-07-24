@@ -89,7 +89,7 @@ export default function CABTab() {
         </div>
       ) : (
         <div className="flex-1 overflow-auto min-h-0 p-2">
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
           <table className="w-full border-collapse text-xs">
             <thead className="sticky top-0 z-10">
               <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
