@@ -280,6 +280,12 @@ function ItemHubPageInner() {
   const [hamburgerOpen, setHamburgerOpen] = useState(false)
   const [addForm, setAddForm]             = useState<'item' | 'sale' | 'bill' | 'expense' | null>(null)
   const [jumpToItemId, setJumpToItemId]   = useState<number | null>(null)
+  // Seeded from ?jumpDate=/?jumpItem= -- Item 360's Detail table (and its
+  // "click a date" links) lands here via /item?tab=loss&view=sales&jumpDate=
+  // ...&jumpItem=..., which the URL-sync effect below strips off again on
+  // its first run since only tab/view/q are ever written back to the URL.
+  const [jumpToReceiptDate, setJumpToReceiptDate] = useState<string | null>(searchParams.get('jumpDate'))
+  const [jumpToReceiptItemName, setJumpToReceiptItemName] = useState<string | null>(searchParams.get('jumpItem'))
   const groupRef     = useRef<HTMLDivElement>(null)
   const hamburgerRef = useRef<HTMLDivElement>(null)
 
@@ -740,7 +746,9 @@ function ItemHubPageInner() {
         )}
         {addForm !== 'sale' && outerTab === 'loss' && lossView === 'sales' && (
           <SalesTab items={items} groupFilter={group} search={search}
-            violation={pillKeys?.includes(violation ?? '') ? violation : null} />
+            violation={pillKeys?.includes(violation ?? '') ? violation : null}
+            jumpToDate={jumpToReceiptDate} jumpToItemName={jumpToReceiptItemName}
+            onJumpDone={() => { setJumpToReceiptDate(null); setJumpToReceiptItemName(null) }} />
         )}
         {addForm !== 'bill' && outerTab === 'loss' && lossView === 'bills' && (
           <BillsTab items={items} groupFilter={group} search={search} />
