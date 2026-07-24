@@ -597,7 +597,13 @@ function ItemHubPageInner() {
               <input value={search} onChange={e => setSearch(e.target.value)}
                 onFocus={() => setSearchOpen(true)}
                 placeholder="Search…" autoComplete="off"
-                className="w-full text-xs bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+                className="w-full text-xs bg-gray-50 border border-gray-200 rounded-lg pl-2 pr-6 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+              {search && (
+                <button onClick={() => { setSearch(''); setSearchOpen(false) }} title="Clear search"
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm leading-none px-0.5">
+                  ×
+                </button>
+              )}
               {searchOpen && searchMatches.length > 0 && (
                 <div className="absolute z-30 left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
                   {searchMatches.map(i => (
