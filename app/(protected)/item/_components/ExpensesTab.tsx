@@ -85,12 +85,12 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
       <thead className="sticky top-0 z-10">
         <tr className="bg-gray-50">
           <th className={`${TH} whitespace-nowrap`}>Date</th>
+          <th className={`${TH} text-right`}>Amt</th>
           {!hideAccount && <th className={TH}>Account</th>}
           <th className={TH}>Description</th>
           <th className={TH}>Justify</th>
           {!hideVendor && <th className={TH}>Vendor</th>}
           <th className={TH}>Source</th>
-          <th className={`${TH} text-right`}>Amt</th>
           <th className={TH}>By</th>
           <th className="px-3 py-2 border-b border-gray-200" />
         </tr>
@@ -101,12 +101,12 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
             <tr id={`expense-${e.id}`}
               className={`transition-colors ${highlightId === e.id ? 'bg-yellow-100' : i % 2 === 1 ? 'bg-gray-50' : 'bg-white'} hover:bg-blue-50/60`}>
               <td className={`${TD} text-gray-600 whitespace-nowrap`}>{fmtShort(e.expense_date)}</td>
+              <td className={`${TD} text-right font-bold text-gray-900`}>{e.amount_hidden ? '🔒 Hidden' : `₵${fmt(e.amount)}`}</td>
               {!hideAccount && <td className={`${TD} text-gray-900 font-semibold`}>{e.expense_account}</td>}
               <td className={`${TD} text-gray-700`}>{e.description ?? '—'}</td>
               <td className={`${TD} text-gray-700`}>{e.cf_justify ?? '—'}</td>
               {!hideVendor && <td className={`${TD} text-gray-500`}>{e.vendor_name ?? '—'}</td>}
               <td className={`${TD} text-gray-400`}>{e.source_sheet ?? e.source ?? '—'}</td>
-              <td className={`${TD} text-right font-bold text-gray-900`}>{e.amount_hidden ? '🔒 Hidden' : `₵${fmt(e.amount)}`}</td>
               <td className={`${TD} text-blue-500`}>{e.entered_by ?? '—'}</td>
               <td className={TD}>
                 {e.amount_hidden ? (
