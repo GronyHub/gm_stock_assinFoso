@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { fmtDate } from '@/lib/fmtDate'
 
 type LossEvent = {
@@ -80,7 +81,9 @@ export default function LossFeedTab({ search, kind = 'loss' }: { search: string;
                     <td className="px-1.5 py-1 font-bold text-gray-600 whitespace-nowrap">
                       {newDay ? fmtDate(e.date) : <span className="text-gray-300">〃</span>}
                     </td>
-                    <td className="px-1.5 py-1 font-semibold text-gray-900">{e.item_name}</td>
+                    <td className="px-1.5 py-1 font-semibold text-gray-900">
+                      <Link href={`/stock/${e.item_id}`} className="text-blue-600 hover:underline">{e.item_name}</Link>
+                    </td>
                     <td className="px-1 py-1 text-center text-gray-500">{fmtN(e.expected)}</td>
                     <td className="px-1 py-1 text-center text-gray-900 font-semibold">{fmtN(e.counted)}</td>
                     <td className={`px-1 py-1 text-center font-bold ${valueCls}`}>{sign}{fmtN(e.loss_qty)}</td>
