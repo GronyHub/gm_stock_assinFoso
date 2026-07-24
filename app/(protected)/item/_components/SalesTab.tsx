@@ -252,6 +252,10 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [showHistory, setShowHistory] = useState(false)
+  // Collapses every receipt down to just its header bar (date/customer/CC/
+  // Inv/WNW) -- the item lines beneath stay hidden until toggled back on,
+  // so a long list of days can be scanned at a glance.
+  const [barsOnly, setBarsOnly] = useState(false)
   const [linesMap, setLinesMap] = useState<Record<number, Line[]>>({})
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState({ receipt_date: '', customer_name: '', cash_counted: '' })
@@ -581,10 +585,17 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
   return (
     <div className="flex flex-col h-full min-h-0">
     <div className="flex items-center justify-between px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
-      <button onClick={() => setShowHistory(true)}
-        className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700 transition">
-        History
-      </button>
+      <div className="flex items-center gap-1.5">
+        <button onClick={() => setShowHistory(true)}
+          className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700 transition">
+          History
+        </button>
+        <button onClick={() => setBarsOnly(b => !b)} title="Show only the date bars, hiding each receipt's item lines"
+          className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition ${
+            barsOnly ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-700'}`}>
+          {barsOnly ? 'Bars Only ▾' : 'Bars Only ▸'}
+        </button>
+      </div>
       <Link href="/sales/new"
             className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100">
             + New Receipt
@@ -802,7 +813,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
                 </div>
               </td>
             </tr>
-            {rows.map(line => (
+            {!barsOnly && rows.map(line => (
               <tr key={line ? line.id : `${r.id}-empty`}
                 className={`border-b border-gray-100 text-[13px] font-bold ${selectedId === r.id ? 'bg-blue-50/40' : 'hover:bg-gray-50'}`}>
                 <td className="px-1 py-1 text-gray-900 align-top">
