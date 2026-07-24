@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     const zohoExpenseId = `APP-PAYROLL-${Date.now()}`
 
     const [expense] = await sql`
-      INSERT INTO expenses (zoho_expense_id, expense_date, expense_account, cf_justify, amount, total, is_property, source, entry_number, entered_by)
+      INSERT INTO expenses (zoho_expense_id, expense_date, expense_account, description, amount, total, is_property, source, entry_number, entered_by)
       VALUES (${zohoExpenseId}, ${pay_month}, 'Salaries', ${`Staff salaries for ${monthLabel}`}, ${total}, ${total}, false, 'app', ${entryNumber}, ${actor})
       RETURNING id
     `
