@@ -1708,13 +1708,18 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
     </colgroup>
   )
 
-  function renderRow(row: SummaryRow) {
+  function renderRow(row: SummaryRow, i: number) {
     const lossAmt = row.lgAmt > 0, gainAmt = row.lgAmt < 0
     const soh = parseFloat(row.soh ?? '0') || 0
+    // Alternating row tint (zebra striping) so a row is easy to track across
+    // this many columns without losing your place -- the sticky Item cell
+    // carries the same tint explicitly since it needs its own opaque
+    // background to stay legible while the rest of the row scrolls under it.
+    const stripe = i % 2 === 1 ? 'bg-gray-50' : 'bg-white'
     return (
       <tr key={row.item_id} onClick={() => router.push(`/stock/${row.item_id}`)}
-        className="cursor-pointer hover:bg-gray-50 transition">
-        <td className="pl-2 pr-2 py-1.5 font-bold whitespace-normal break-words sticky left-0 z-10 bg-white border-r border-gray-200"
+        className={`cursor-pointer hover:bg-blue-50/60 transition ${stripe}`}>
+        <td className={`pl-2 pr-2 py-1.5 font-bold whitespace-normal break-words sticky left-0 z-10 border-r border-gray-200 ${stripe}`}
           title={row.item_name}>
           <span className="text-blue-600">{row.item_name}</span>
         </td>
