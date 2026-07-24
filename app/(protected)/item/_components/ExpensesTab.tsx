@@ -13,11 +13,21 @@ type Expense = {
   amount_hidden?: boolean
   cf_expense_type: string | null
   is_property: boolean
-  property_status: string | null
+  availability: string | null
+  working: string | null
+  location: string | null
+  not_working_reason: string | null
+  not_available_reason: string | null
   entered_by: string | null
   source: string | null
   source_sheet: string | null
 }
+
+type PropertyFields = Pick<Expense, 'availability' | 'working' | 'location' | 'not_working_reason' | 'not_available_reason'>
+
+const PROPERTY_LOCATIONS = Array.from({ length: 10 }, (_, i) => `Grony ${i + 1}`)
+const NOT_WORKING_REASONS = ['Faulty - Needs Repair', 'Condemned - Beyond Repairs']
+const NOT_AVAILABLE_REASONS = ['Spoilt and thrown away', 'Stolen', "At Grony's House"]
 
 type ExpTab = 'all' | 'properties' | 'at_shop' | 'away'
 
@@ -38,10 +48,6 @@ function fmt(val: string | null) {
 function fmtTotal(expenses: Expense[]) {
   const total = expenses.reduce((s, e) => s + (e.amount != null ? parseFloat(e.amount) || 0 : 0), 0)
   return total.toLocaleString('en-GH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
-}
-
-const STATUS_COLORS: Record<string, string> = {
-  at_shop: 'text-green-600', not_at_shop: 'text-orange-500', spoilt: 'text-red-500',
 }
 
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
@@ -66,7 +72,7 @@ type TableProps = {
   onDeleteStart: (id: number) => void
   onDeleteConfirm: (id: number) => void
   onDeleteCancel: () => void
-  onPropertyStatus: (e: Expense, status: string) => void
+  onPropertyFields: (e: Expense, updates: Partial<PropertyFields>) => void
   hideAccount?: boolean
   hideVendor?: boolean
   accounts: string[]
@@ -125,7 +131,7 @@ function FilterHeaderCell({ label, options, value, onChange }: {
 }
 
 function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, saving, form, onEdit, onCloseEdit,
-  onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, onPropertyStatus, hideAccount, hideVendor,
+  onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, onPropertyFields, hideAccount, hideVendor,
   accounts, vendors, accountFilter, vendorFilter, onAccountFilter, onVendorFilter }: TableProps) {
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
@@ -198,7 +204,7 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
                     </div>
                   </div>
                   <div className="mt-2">
-                    <p className="text-[9px] text-gray-400 mb-0.5">Property? (shows up in Grony Manage &gt; Properties)</p>
+                    <p className="text-[9px] text-gray-400 mb-0.5">Property?</p>
                     <div className="flex items-center gap-3">
                       <label className="flex items-center gap-1 cursor-pointer">
                         <input type="radio" name={`is-property-${e.id}`} checked={form.is_property === true}
@@ -215,15 +221,75 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
                     </div>
                   </div>
                   {e.is_property && (
-                    <div className="mt-1">
-                      <p className="text-[9px] text-gray-400 mb-0.5">Property Status</p>
-                      <select value={e.property_status ?? 'at_shop'}
-                        onChange={ev => onPropertyStatus(e, ev.target.value)}
-                        className={`${inputCls} w-auto ${STATUS_COLORS[e.property_status ?? ''] ?? 'text-gray-600'}`}>
-                        <option value="at_shop">At Shop</option>
-                        <option value="not_at_shop">Not at Shop</option>
-                        <option value="spoilt">Spoilt</option>
-                      </select>
+                    <div className="mt-1 space-y-1.5">
+                      <div>
+                        <p className="text-[9px] text-gray-400 mb-0.5">Availability</p>
+                        <div className="flex items-center gap-3">
+                          <label className="flex items-center gap-1 cursor-pointer">
+                            <input type="radio" name={`availability-${e.id}`} checked={e.availability === 'available'}
+                              onChange={() => onPropertyFields(e, { availability: 'available', working: null, location: null, not_working_reason: null, not_available_reason: null })}
+                              className="w-3 h-3 accent-blue-600" />
+                            <span className="text-[10px] text-gray-700">Available</span>
+                          </label>
+                          <label className="flex items-center gap-1 cursor-pointer">
+                            <input type="radio" name={`availability-${e.id}`} checked={e.availability === 'not_available'}
+                              onChange={() => onPropertyFields(e, { availability: 'not_available', working: null, location: null, not_working_reason: null, not_available_reason: null })}
+                              className="w-3 h-3 accent-blue-600" />
+                            <span className="text-[10px] text-gray-700">Not Available</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {e.availability === 'available' && (
+                        <>
+                          <div>
+                            <p className="text-[9px] text-gray-400 mb-0.5">Condition</p>
+                            <div className="flex items-center gap-3">
+                              <label className="flex items-center gap-1 cursor-pointer">
+                                <input type="radio" name={`working-${e.id}`} checked={e.working === 'working'}
+                                  onChange={() => onPropertyFields(e, { working: 'working', not_working_reason: null })}
+                                  className="w-3 h-3 accent-blue-600" />
+                                <span className="text-[10px] text-gray-700">Working</span>
+                              </label>
+                              <label className="flex items-center gap-1 cursor-pointer">
+                                <input type="radio" name={`working-${e.id}`} checked={e.working === 'not_working'}
+                                  onChange={() => onPropertyFields(e, { working: 'not_working' })}
+                                  className="w-3 h-3 accent-blue-600" />
+                                <span className="text-[10px] text-gray-700">Not Working</span>
+                              </label>
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-[9px] text-gray-400 mb-0.5">Location</p>
+                            <select value={e.location ?? ''} onChange={ev => onPropertyFields(e, { location: ev.target.value })}
+                              className={`${inputCls} w-auto`}>
+                              <option value="" disabled>Select…</option>
+                              {PROPERTY_LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                            </select>
+                          </div>
+                          {e.working === 'not_working' && (
+                            <div>
+                              <p className="text-[9px] text-gray-400 mb-0.5">Reason</p>
+                              <select value={e.not_working_reason ?? ''} onChange={ev => onPropertyFields(e, { not_working_reason: ev.target.value })}
+                                className={`${inputCls} w-auto`}>
+                                <option value="" disabled>Select…</option>
+                                {NOT_WORKING_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                              </select>
+                            </div>
+                          )}
+                        </>
+                      )}
+
+                      {e.availability === 'not_available' && (
+                        <div>
+                          <p className="text-[9px] text-gray-400 mb-0.5">Reason / Location</p>
+                          <select value={e.not_available_reason ?? ''} onChange={ev => onPropertyFields(e, { not_available_reason: ev.target.value })}
+                            className={`${inputCls} w-auto`}>
+                            <option value="" disabled>Select…</option>
+                            {NOT_AVAILABLE_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                          </select>
+                        </div>
+                      )}
                     </div>
                   )}
                   <div className="flex items-center gap-1 mt-2">
@@ -305,8 +371,8 @@ export default function ExpensesTab({ search }: Props) {
   const filtered = useMemo(() => {
     let list = expenses
     if (tab === 'properties') list = list.filter(e => e.is_property)
-    if (tab === 'at_shop')    list = list.filter(e => e.is_property && e.property_status === 'at_shop')
-    if (tab === 'away')       list = list.filter(e => e.is_property && (e.property_status === 'not_at_shop' || e.property_status === 'spoilt'))
+    if (tab === 'at_shop')    list = list.filter(e => e.is_property && e.availability === 'available')
+    if (tab === 'away')       list = list.filter(e => e.is_property && e.availability === 'not_available')
     if (accountFilter) list = list.filter(e => e.expense_account === accountFilter)
     if (vendorFilter)  list = list.filter(e => e.vendor_name === vendorFilter)
     if (!showProperties || !showNonProperties) {
@@ -383,12 +449,20 @@ export default function ExpensesTab({ search }: Props) {
     }
   }
 
-  async function setPropertyStatus(expense: Expense, status: string) {
+  async function patchPropertyFields(expense: Expense, updates: Partial<PropertyFields>) {
+    const merged: PropertyFields = {
+      availability: expense.availability, working: expense.working, location: expense.location,
+      not_working_reason: expense.not_working_reason, not_available_reason: expense.not_available_reason,
+      ...updates,
+    }
     const res = await fetch(`/api/expenses/${expense.id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ property_status: status }),
+      body: JSON.stringify({
+        availability: merged.availability, working: merged.working, location: merged.location,
+        notWorkingReason: merged.not_working_reason, notAvailableReason: merged.not_available_reason,
+      }),
     })
-    if (res.ok) setExpenses(prev => prev.map(e => e.id === expense.id ? { ...e, property_status: status } : e))
+    if (res.ok) setExpenses(prev => prev.map(e => e.id === expense.id ? { ...e, ...merged } : e))
   }
 
   const tableProps = {
@@ -400,7 +474,7 @@ export default function ExpensesTab({ search }: Props) {
     onDeleteStart: (id: number) => setConfirmDeleteId(id),
     onDeleteConfirm: deleteExpense,
     onDeleteCancel: () => setConfirmDeleteId(null),
-    onPropertyStatus: setPropertyStatus,
+    onPropertyFields: patchPropertyFields,
     accounts: accountOptions,
     vendors: vendorOptions,
     accountFilter,
@@ -413,7 +487,7 @@ export default function ExpensesTab({ search }: Props) {
 
   const expTabs: { key: ExpTab; label: string }[] = [
     { key: 'all', label: 'All' }, { key: 'properties', label: 'Props' },
-    { key: 'at_shop', label: 'At Shop' }, { key: 'away', label: 'Away' },
+    { key: 'at_shop', label: 'Available' }, { key: 'away', label: 'Not Available' },
   ]
 
   return (
