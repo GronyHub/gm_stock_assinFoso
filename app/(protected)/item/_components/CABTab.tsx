@@ -150,6 +150,7 @@ export default function CABTab() {
       })
   }, [rows])
   const visibleWeeks = onlyUnconfirmed ? weeks.filter(w => !w.confirmed) : weeks
+  const confirmedRows = rows.filter(r => r.cab_total != null && Number(r.cab_total) !== 0)
 
   const latest = rows[0]
   const latestConfirmed = rows.find(r => r.cab_total != null)
@@ -288,10 +289,18 @@ export default function CABTab() {
           <table className="w-full border-collapse text-xs">
             <thead className="sticky top-0 z-10">
               {confirmedColsOnly ? (
-                <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
-                  <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Date</th>
-                  <th className="text-right px-3 py-2 font-bold border-b border-gray-200 text-blue-500">Confirmed Total</th>
-                </tr>
+                <>
+                  <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
+                    <th rowSpan={2} className="text-left px-3 py-2 font-bold border-b border-gray-200 align-bottom whitespace-nowrap">Date</th>
+                    <th colSpan={4} className="text-center px-3 py-1.5 font-bold border-b border-gray-100">Confirmed (physical count)</th>
+                  </tr>
+                  <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
+                    <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 border-l border-gray-100">Bank</th>
+                    <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200">MoMo</th>
+                    <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200">Physical</th>
+                    <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 text-blue-500">Total</th>
+                  </tr>
+                </>
               ) : (
                 <>
                   <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
@@ -317,14 +326,17 @@ export default function CABTab() {
               )}
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {rows.map((r, i) => {
+              {(confirmedColsOnly ? confirmedRows : rows).map((r, i) => {
                 const hasConfirm = r.cab_total != null
                 const net = Number(r.daily_net)
                 const stripe = hasConfirm ? 'bg-blue-50/60' : i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'
                 return confirmedColsOnly ? (
                   <tr key={r.entry_date} className={stripe}>
                     <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmtDate(String(r.entry_date).slice(0,10))}</td>
-                    <td className="px-3 py-2 text-right text-blue-600 font-semibold">{hasConfirm ? fmtn(r.cab_total) : ''}</td>
+                    <td className="px-3 py-2 text-right text-gray-500 border-l border-gray-100">{nz(r.cab_bank)}</td>
+                    <td className="px-3 py-2 text-right text-gray-500">{nz(r.cab_momo)}</td>
+                    <td className="px-3 py-2 text-right text-gray-500">{nz(r.cab_physical)}</td>
+                    <td className="px-3 py-2 text-right text-blue-600 font-semibold">{fmtn(r.cab_total)}</td>
                   </tr>
                 ) : (
                   <tr key={r.entry_date} className={stripe}>
@@ -352,7 +364,11 @@ export default function CABTab() {
             </tbody>
           </table>
           </div>
-          {rows.length === 0 && <p className="text-xs text-gray-400 text-center py-10">No data</p>}
+          {(confirmedColsOnly ? confirmedRows : rows).length === 0 && (
+            <p className="text-xs text-gray-400 text-center py-10">
+              {confirmedColsOnly ? 'No confirmed days in range.' : 'No data'}
+            </p>
+          )}
         </div>
       )}
     </div>
