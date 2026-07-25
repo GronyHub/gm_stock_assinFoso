@@ -8,12 +8,17 @@ export type PersonalEntry = {
   amount: string
   direction: 'in' | 'out'
   category: string | null
+  subcategory: string | null
   notes: string | null
   needs_review: boolean
 }
 type Entry = PersonalEntry
 
 export const CATEGORIES = ['Children', 'Building', 'Car', 'Health', 'Mama/Family', 'Household', 'Other']
+
+// Children is the only category with a fixed set of subcategories so far --
+// one per kid, so an entry can say which of them it's actually for.
+export const CHILDREN_SUBCATEGORIES = ['Percy', 'Prisley', 'Preston', 'Princess']
 
 export const CAT_ICON: Record<string, string> = {
   Children:     '👶',
@@ -60,6 +65,7 @@ export default function PersonalTab({ embedded = false }: { embedded?: boolean }
   const [editId, setEditId]     = useState<number | null>(null)
   const [editCat, setEditCat]   = useState('')
   const [editCatCustom, setEditCatCustom] = useState(false)
+  const [editSubcat, setEditSubcat] = useState('')
   const [showAdd, setShowAdd]   = useState(false)
 
   // New entry form
@@ -69,6 +75,7 @@ export default function PersonalTab({ embedded = false }: { embedded?: boolean }
   const [newDir, setNewDir]     = useState<'out' | 'in'>('out')
   const [newCat, setNewCat]     = useState('Other')
   const [newCatCustom, setNewCatCustom] = useState(false)
+  const [newSubcat, setNewSubcat] = useState('')
   const [newNotes, setNewNotes] = useState('')
   const [saving, setSaving]     = useState(false)
 
@@ -114,8 +121,9 @@ export default function PersonalTab({ embedded = false }: { embedded?: boolean }
   }, [entries, catFilter, search])
 
   async function saveCategory(id: number) {
-    await fetch('/api/personal', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, category: editCat }) })
-    setEntries(prev => prev.map(e => e.id === id ? { ...e, category: editCat } : e))
+    const subcategory = editCat === 'Children' ? (editSubcat || null) : null
+    await fetch('/api/personal', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, category: editCat, subcategory }) })
+    setEntries(prev => prev.map(e => e.id === id ? { ...e, category: editCat, subcategory } : e))
     setEditId(null)
     setEditCatCustom(false)
   }
@@ -123,15 +131,16 @@ export default function PersonalTab({ embedded = false }: { embedded?: boolean }
   async function addEntry() {
     if (!newDate || !newDesc || !newAmt) return
     setSaving(true)
+    const subcategory = newCat === 'Children' ? (newSubcat || null) : null
     const res = await fetch('/api/personal', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entry_date: newDate, description: newDesc, amount: parseFloat(newAmt), direction: newDir, category: newCat, notes: newNotes || null }),
+      body: JSON.stringify({ entry_date: newDate, description: newDesc, amount: parseFloat(newAmt), direction: newDir, category: newCat, subcategory, notes: newNotes || null }),
     })
     const data = await res.json()
     if (data.id) {
-      setEntries(prev => [{ id: data.id, entry_date: newDate, description: newDesc, amount: newAmt, direction: newDir, category: newCat, notes: newNotes || null, needs_review: false }, ...prev])
-      setShowAdd(false); setNewDate(''); setNewDesc(''); setNewAmt(''); setNewDir('out'); setNewCat('Other'); setNewCatCustom(false); setNewNotes('')
+      setEntries(prev => [{ id: data.id, entry_date: newDate, description: newDesc, amount: newAmt, direction: newDir, category: newCat, subcategory, notes: newNotes || null, needs_review: false }, ...prev])
+      setShowAdd(false); setNewDate(''); setNewDesc(''); setNewAmt(''); setNewDir('out'); setNewCat('Other'); setNewCatCustom(false); setNewSubcat(''); setNewNotes('')
     }
     setSaving(false)
   }
@@ -186,10 +195,18 @@ export default function PersonalTab({ embedded = false }: { embedded?: boolean }
             ) : (
               <select value={newCat} onChange={e => {
                   if (e.target.value === '__new__') { setNewCatCustom(true); setNewCat('') } else setNewCat(e.target.value)
+                  setNewSubcat('')
                 }}
                 className="col-span-2 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400">
                 {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
                 <option value="__new__">+ Add new category…</option>
+              </select>
+            )}
+            {newCat === 'Children' && !newCatCustom && (
+              <select value={newSubcat} onChange={e => setNewSubcat(e.target.value)}
+                className="col-span-2 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400">
+                <option value="">Which child? (optional)</option>
+                {CHILDREN_SUBCATEGORIES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             )}
             <input value={newNotes} onChange={e => setNewNotes(e.target.value)} placeholder="Notes (optional)"
@@ -325,22 +342,30 @@ export default function PersonalTab({ embedded = false }: { embedded?: boolean }
                               <button onClick={() => { setEditId(null); setEditCatCustom(false) }} className="text-[10px] px-2 py-1 bg-gray-100 text-gray-600 rounded-lg">✕</button>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1 flex-wrap">
                               <select value={editCat} onChange={ev => {
                                   if (ev.target.value === '__new__') { setEditCatCustom(true); setEditCat('') } else setEditCat(ev.target.value)
+                                  setEditSubcat('')
                                 }}
                                 className="border border-blue-300 rounded-lg px-2 py-1 text-[10px] outline-none">
                                 {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
                                 <option value="__new__">+ Add new category…</option>
                               </select>
+                              {editCat === 'Children' && (
+                                <select value={editSubcat} onChange={ev => setEditSubcat(ev.target.value)}
+                                  className="border border-blue-300 rounded-lg px-2 py-1 text-[10px] outline-none">
+                                  <option value="">Which child?</option>
+                                  {CHILDREN_SUBCATEGORIES.map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                              )}
                               <button onClick={() => saveCategory(e.id)} className="text-[10px] px-2 py-1 bg-blue-600 text-white rounded-lg font-semibold">Save</button>
                               <button onClick={() => setEditId(null)} className="text-[10px] px-2 py-1 bg-gray-100 text-gray-600 rounded-lg">✕</button>
                             </div>
                           )
                         ) : (
-                          <button onClick={() => { setEditId(e.id); setEditCat(e.category ?? 'Other'); setEditCatCustom(false) }}
+                          <button onClick={() => { setEditId(e.id); setEditCat(e.category ?? 'Other'); setEditCatCustom(false); setEditSubcat(e.subcategory ?? '') }}
                             className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${CAT_COLOR[e.category ?? 'Other'] ?? CAT_COLOR['Other']}`}>
-                            {CAT_ICON[e.category ?? 'Other'] ?? '🏷️'} {e.category ?? 'Other'} ✎
+                            {CAT_ICON[e.category ?? 'Other'] ?? '🏷️'} {e.category ?? 'Other'}{e.subcategory ? ` · ${e.subcategory}` : ''} ✎
                           </button>
                         )}
                       </td>
