@@ -143,7 +143,7 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
           <tbody key={submenu} className="divide-y divide-gray-100">
             {inlineFix && showSection && (
               <tr>
-                <td colSpan={4} className="px-3 py-1.5 bg-green-600">
+                <td colSpan={4} className="px-3 py-1.5 bg-green-600 text-center">
                   <span className="font-bold text-white text-[11px] uppercase tracking-wide">{section}</span>
                 </td>
               </tr>
