@@ -97,6 +97,9 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
   // Hidden by default so the table reads as a to-do list, not an audit log --
   // "Done" reveals the already-clear (✓) rows alongside the active ones.
   const [showDone, setShowDone] = useState(false)
+  // Collapses every group down to just its green/blue header bars -- an
+  // at-a-glance summary with no row detail underneath (overrides "Done").
+  const [barsOnly, setBarsOnly] = useState(false)
 
   // Bucket by the submenu each flag's fix view actually lives under (Items,
   // Counts, Sales, etc.) so a row's origin is obvious without opening it --
@@ -132,10 +135,16 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
 
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden">
-      <label className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-50 border-b border-gray-200 text-[11px] font-semibold text-gray-500 cursor-pointer">
-        <input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} />
-        Done
-      </label>
+      <div className="flex items-center gap-3 px-2.5 py-1.5 bg-gray-50 border-b border-gray-200 text-[11px] font-semibold text-gray-500">
+        <label className="flex items-center gap-1.5 cursor-pointer">
+          <input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} />
+          Done
+        </label>
+        <label className="flex items-center gap-1.5 cursor-pointer">
+          <input type="checkbox" checked={barsOnly} onChange={e => setBarsOnly(e.target.checked)} />
+          Bars only
+        </label>
+      </div>
       <div className="overflow-x-auto">
       <table className="w-full min-w-[480px] text-[11px] border-collapse">
         <thead className="bg-gray-50">
@@ -163,7 +172,7 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
                 </div>
               </td>
             </tr>
-            {submenu === 'Daily Loss' && lossRows.map(r => (
+            {!barsOnly && submenu === 'Daily Loss' && lossRows.map(r => (
               <tr key={r.label} onClick={() => r.period.n > 0 && onFixLossFeed?.()}
                 className={`transition ${r.period.n > 0 ? 'cursor-pointer hover:bg-blue-50' : ''}`}>
                 <td className={`px-2 py-1.5 whitespace-nowrap ${r.period.n > 0 ? 'text-gray-800' : 'text-gray-400'}`}>{r.label}</td>
@@ -176,7 +185,7 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
                 <td className="px-1.5 py-1.5 text-gray-500 whitespace-nowrap">—</td>
               </tr>
             ))}
-            {(showDone ? rows : rows.filter(v => v.count > 0)).map(v => {
+            {!barsOnly && (showDone ? rows : rows.filter(v => v.count > 0)).map(v => {
               const { label: dueLabel, atRisk } = dueCell(v, deadlines[v.type], threshold)
               const explicitlyAssigned = !!assignments[v.type]
               const violationKey = ERRORS_TAB_VIOLATION[v.type] ?? v.type
