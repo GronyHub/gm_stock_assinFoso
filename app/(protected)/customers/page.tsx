@@ -108,13 +108,19 @@ function NewCustomerForm({ onCreated, onCancel }: { onCreated: (c: Customer) => 
   )
 }
 
-export default function CustomersPage() {
+export default function CustomersPage({ openAddSignal }: { openAddSignal?: number } = {}) {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive' | 'internal'>('all')
   const [selected, setSelected] = useState<Customer | null>(null)
   const [showForm, setShowForm] = useState(false)
+
+  // Driven by the RoleBar "+" shortcut menu.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (openAddSignal) setShowForm(true)
+  }, [openAddSignal])
 
   useEffect(() => {
     fetch('/api/customers')

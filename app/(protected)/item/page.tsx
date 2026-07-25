@@ -24,7 +24,7 @@ class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boole
 }
 import { usePolling } from '@/lib/usePolling'
 import { useViolations } from './_components/useViolations'
-import RoleBar, { type RoleKey } from './_components/RoleBar'
+import RoleBar, { type RoleKey, type ShortcutKey } from './_components/RoleBar'
 import RolePanel from './_components/RolePanel'
 import dynamic from 'next/dynamic'
 const loading = (h: string) => <div className={`py-10 text-center text-gray-400 text-sm`}>{h}</div>
@@ -391,6 +391,13 @@ function ItemHubPageInner() {
     assignments, deadlines, assignedBy, assignedOn, vSettings,
   } = useViolations(violationCounts)
   const [openRole, setOpenRole] = useState<RoleKey | null>(null)
+  // Bumped by the RoleBar "+" shortcut menu for flows that live inside an
+  // already-mounted tab (CAB Confirm, Staff Time, Customer, Vendor) -- each
+  // target component watches its own signal and reopens its "new" form.
+  const [cabConfirmSignal, setCabConfirmSignal] = useState(0)
+  const [staffTimeSignal, setStaffTimeSignal]   = useState(0)
+  const [customerSignal, setCustomerSignal]     = useState(0)
+  const [vendorSignal, setVendorSignal]         = useState(0)
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -408,6 +415,24 @@ function ItemHubPageInner() {
   function goFixRecords(view: 'sales' | 'bills' | 'counts') {
     changeTab('loss')
     setLossView(view)
+  }
+
+  // RoleBar "+" shortcut menu -- jumps straight to a "create new" flow
+  // wherever it already lives. Sales/Bills/Item/Expenses reuse the existing
+  // addForm mechanism (changeTab resets it, so set it after); the rest
+  // reopen via a per-target signal since their forms are local component
+  // state with no addForm equivalent.
+  function handleShortcut(key: ShortcutKey) {
+    switch (key) {
+      case 'sale':       changeTab('loss'); setLossView('sales');     setAddForm('sale'); break
+      case 'bill':       changeTab('loss'); setLossView('bills');     setAddForm('bill'); break
+      case 'item':       changeTab('loss'); setLossView('items');     setAddForm('item'); break
+      case 'expense':    changeTab('loss'); setLossView('expenses');  setAddForm('expense'); break
+      case 'cabConfirm': changeTab('loss'); setLossView('cab');       setCabConfirmSignal(n => n + 1); break
+      case 'customer':   changeTab('loss'); setLossView('customers'); setCustomerSignal(n => n + 1); break
+      case 'vendor':     changeTab('loss'); setLossView('vendors');   setVendorSignal(n => n + 1); break
+      case 'staffTime':  changeTab('manage'); setStaffTimeSignal(n => n + 1); break
+    }
   }
 
   function changeTab(t: OuterTab) {
@@ -707,12 +732,12 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'loss' && lossView === 'vendors' && (
           <TabErrorBoundary>
-            <div className="px-4"><VendorsPage /></div>
+            <div className="px-4"><VendorsPage openAddSignal={vendorSignal} /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'customers' && (
           <TabErrorBoundary>
-            <div className="px-4"><CustomersPage /></div>
+            <div className="px-4"><CustomersPage openAddSignal={customerSignal} /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'receipts' && (
@@ -732,7 +757,7 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'manage' && (
           <TabErrorBoundary>
-            <GronyManageTab />
+            <GronyManageTab openStaffTimeSignal={staffTimeSignal} />
           </TabErrorBoundary>
         )}
         {outerTab === 'today' && !(addForm === 'sale' || addForm === 'bill' || addForm === 'expense') && (
@@ -743,7 +768,7 @@ function ItemHubPageInner() {
           </TabErrorBoundary>
         )}
         {addForm !== 'expense' && outerTab === 'loss' && lossView === 'expenses' && <ExpensesTab search={search} />}
-        {outerTab === 'loss' && lossView === 'cab' && <CABTab />}
+        {outerTab === 'loss' && lossView === 'cab' && <CABTab openConfirmSignal={cabConfirmSignal} />}
         {/* Items pill selected -> ItemsTab's filtered fix view; otherwise the
             submenu's normal content (LossTab). Same swap pattern for
             Sales/Counts/Feed below -- each of those already knows how to
@@ -817,6 +842,7 @@ function ItemHubPageInner() {
       <RoleBar
         openRole={openRole}
         onSelectRole={key => setOpenRole(prev => prev === key ? null : key)}
+        onShortcut={handleShortcut}
         cashCount={cashCount} dailyCount={openerViolationCount}
         missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
         trailing={

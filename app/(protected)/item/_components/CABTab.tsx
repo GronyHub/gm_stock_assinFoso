@@ -62,7 +62,7 @@ function StatCard({ label, value, sub, tone }: { label: string; value: string; s
   )
 }
 
-export default function CABTab() {
+export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: number } = {}) {
   const { data: session } = useSession()
   const role = (session?.user as any)?.role ?? 'staff'
   const username = ((session?.user as any)?.username ?? session?.user?.name ?? '').toLowerCase()
@@ -157,6 +157,14 @@ export default function CABTab() {
   }, [personalEntries])
 
   useEffect(() => { loadRows() }, [])
+
+  // Driven by the RoleBar "+" shortcut menu -- a signal that increments each
+  // time "CAB Confirm" is picked, so it re-fires even if this tab is already
+  // open and mounted.
+  useEffect(() => {
+    if (openConfirmSignal) openConfirmForm()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openConfirmSignal])
 
   function openConfirmForm() {
     setConfirmDate(rows.find(r => r.cab_total == null)?.entry_date?.slice(0, 10) ?? rows[0]?.entry_date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10))

@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
-import { NextResponse } from 'next/server'
+import { logActivity } from '@/lib/logger'
+import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET() {
   const session = await auth()
@@ -22,4 +23,38 @@ export async function GET() {
     ORDER BY bill_total DESC
   `
   return NextResponse.json(vendors)
+}
+
+export async function POST(req: NextRequest) {
+  const session = await auth()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { display_name, company_name, email, phone, notes } = await req.json()
+
+  if (!display_name || !String(display_name).trim()) {
+    return NextResponse.json({ error: 'Vendor name is required' }, { status: 400 })
+  }
+
+  const enteredBy = session.user?.name || (session.user as any)?.username || null
+
+  try {
+    const [vendor] = await sql`
+      INSERT INTO vendors
+        (display_name, company_name, email, phone, status, is_internal, notes)
+      VALUES
+        (${String(display_name).trim()}, ${company_name || null}, ${email || null}, ${phone || null}, 'Active', false, ${notes || null})
+      RETURNING
+        id, display_name, company_name, email, phone, status, payment_terms_label, is_internal, notes
+    `
+
+    await logActivity(enteredBy ?? 'Unknown', 'added vendor', vendor.display_name)
+    return NextResponse.json({
+      ...vendor,
+      bill_count: 0, bill_total: '0', outstanding: '0', payment_count: 0, amount_paid: '0',
+    })
+  } catch (e) {
+    console.error('vendor insert error:', e)
+    const detail = e instanceof Error ? e.message : String(e)
+    return NextResponse.json({ error: `Could not save vendor: ${detail}` }, { status: 500 })
+  }
 }

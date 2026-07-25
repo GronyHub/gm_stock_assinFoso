@@ -191,7 +191,7 @@ function groupByDate(rows: RecentRow[]) {
   return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0]))
 }
 
-function TimesTab({ username, role }: { username: string; role: string }) {
+function TimesTab({ username, role, openAddSignal }: { username: string; role: string; openAddSignal?: number }) {
   const isAdmin = role === 'owner' || role === 'admin' || username === 'rawlings' || username === 'grony' || username === 'joe'
 
   const [today, setToday] = useState<TodayRow[]>([])
@@ -225,6 +225,14 @@ function TimesTab({ username, role }: { username: string; role: string }) {
   const [adminEditOut, setAdminEditOut] = useState('')
   const [adminEditSaving, setAdminEditSaving] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
+
+  // Driven by the RoleBar "+" shortcut menu.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (openAddSignal && isAdmin) setShowAddForm(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openAddSignal])
+
   const [addStaff, setAddStaff] = useState(STAFF[0])
   const [addDate, setAddDate] = useState('')
   const [addIn, setAddIn] = useState('')
@@ -2856,7 +2864,7 @@ function AssignmentsTab({ role, username }: { role: string; username: string }) 
 
 // ── MAIN ──────────────────────────────────────────────────────────────────────
 
-function StaffClientInner({ role, username, embedded }: { role: string; username: string; embedded?: boolean }) {
+function StaffClientInner({ role, username, embedded, openAddSignal }: { role: string; username: string; embedded?: boolean; openAddSignal?: number }) {
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
@@ -2884,6 +2892,14 @@ function StaffClientInner({ role, username, embedded }: { role: string; username
     router.replace(`${pathname}?${p.toString()}`, { scroll: false })
   }, [searchParams, router, pathname])
 
+  // Driven by the RoleBar "+" shortcut menu -- lands back on Times even if
+  // another Staff sub-tab was open.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (openAddSignal) setTab('Times')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openAddSignal])
+
   return (
     <div className="py-4 space-y-4">
       {!embedded && <h1 className="text-xl font-bold text-gray-900">Staff</h1>}
@@ -2899,7 +2915,7 @@ function StaffClientInner({ role, username, embedded }: { role: string; username
         ))}
       </div>
 
-      {tab === 'Times' && <TimesTab username={username} role={role} />}
+      {tab === 'Times' && <TimesTab username={username} role={role} openAddSignal={openAddSignal} />}
       {tab === 'Payslips' && <PayslipsTab role={role} username={username} />}
       {tab === 'Violations' && <ViolationsTab role={role} username={username} vtab={vtab} setVtab={setVtab} />}
       {tab === 'Role' && <RoleTab role={role} username={username} />}
@@ -2910,10 +2926,10 @@ function StaffClientInner({ role, username, embedded }: { role: string; username
   )
 }
 
-export default function StaffClient({ role, username, embedded }: { role: string; username: string; embedded?: boolean }) {
+export default function StaffClient({ role, username, embedded, openAddSignal }: { role: string; username: string; embedded?: boolean; openAddSignal?: number }) {
   return (
     <Suspense fallback={<div className="py-10 text-center text-gray-400">Loading…</div>}>
-      <StaffClientInner role={role} username={username} embedded={embedded} />
+      <StaffClientInner role={role} username={username} embedded={embedded} openAddSignal={openAddSignal} />
     </Suspense>
   )
 }
