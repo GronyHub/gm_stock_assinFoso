@@ -381,7 +381,16 @@ export default function CABTab() {
                   <td className="px-3 py-2 text-center border-r-2 border-gray-300" title={verify ? `Expected ${fmtn(verify.expected)}, diff ${fmtn(verify.diff)}` : undefined}>
                     {verify && (verify.ok
                       ? <span className="text-green-600 font-bold">✓</span>
-                      : <span className="text-red-500 font-bold" title={`Off by ${fmtn(verify.diff)}`}>✗</span>)}
+                      : (
+                        <div className="leading-tight">
+                          <span className="text-red-500 font-bold">✗</span>
+                          {/* Diff shown inline, not just in the title -- hover
+                              tooltips aren't reachable on mobile touch. */}
+                          <div className="text-[9px] text-red-500 font-semibold whitespace-nowrap">
+                            {verify.diff > 0 ? '+' : ''}{fmtn(verify.diff)}
+                          </div>
+                        </div>
+                      ))}
                   </td>
                 )
                 const bmpCells = !hideBankMomoPhysical && (
