@@ -100,8 +100,7 @@ export default function CABTab() {
   const [editEntryCat, setEditEntryCat] = useState('')
   const [editEntryCatCustom, setEditEntryCatCustom] = useState(false)
   const [deleteEntryConfirmId, setDeleteEntryConfirmId] = useState<number | null>(null)
-  const [editCell, setEditCell] = useState<{ date: string; category: string } | null>(null)
-  const [editDate, setEditDate] = useState<string | null>(null)
+  const [openEntryRow, setOpenEntryRow] = useState<number | null>(null)
   const [splitEntryId, setSplitEntryId] = useState<number | null>(null)
   const [splitParts, setSplitParts] = useState<{ description: string; amount: string }[]>([])
   const [splitSaving, setSplitSaving] = useState(false)
@@ -266,8 +265,8 @@ export default function CABTab() {
     setDeleteEntryConfirmId(null)
   }
 
-  function toggleEditCell(date: string, category: string) {
-    setEditCell(prev => (prev && prev.date === date && prev.category === category) ? null : { date, category })
+  function toggleEntryRow(id: number) {
+    setOpenEntryRow(prev => prev === id ? null : id)
     setEditEntryId(null); setEditEntryCatCustom(false); setDeleteEntryConfirmId(null); setSplitEntryId(null)
   }
 
@@ -293,7 +292,7 @@ export default function CABTab() {
     const [first, ...rest] = valid
     await fetch('/api/personal', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: entry.id, description: first.description, amount: parseFloat(first.amount) }),
+      body: JSON.stringify({ id: entry.id, description: first.description, amount: parseFloat(first.amount), needs_review: false }),
     })
     const newEntries: PersonalEntry[] = []
     for (const part of rest) {
@@ -301,7 +300,7 @@ export default function CABTab() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           entry_date: entry.entry_date, description: part.description, amount: parseFloat(part.amount),
-          direction: entry.direction, category: entry.category ?? 'Other', notes: entry.notes,
+          direction: entry.direction, category: entry.category ?? 'Other', notes: entry.notes, needs_review: false,
         }),
       })
       const data = await res.json()
@@ -313,7 +312,7 @@ export default function CABTab() {
       }
     }
     setPersonalEntries(prev => [
-      ...prev.map(e => e.id === entry.id ? { ...e, description: first.description, amount: first.amount } : e),
+      ...prev.map(e => e.id === entry.id ? { ...e, description: first.description, amount: first.amount, needs_review: false } : e),
       ...newEntries,
     ])
     setSplitSaving(false)
@@ -363,6 +362,9 @@ export default function CABTab() {
         <div className="min-w-0">
           <p className="text-xs text-gray-800">{e.description}</p>
           <p className="text-[10px] text-gray-400">{fmtn(parseFloat(e.amount))}</p>
+          {e.needs_review && (
+            <span className="inline-block mt-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">⚠ Needs split</span>
+          )}
         </div>
         {editEntryId === e.id ? (
           editEntryCatCustom ? (
@@ -407,34 +409,25 @@ export default function CABTab() {
     )
   }
 
-  function toggleEditDate(date: string) {
-    setEditDate(prev => prev === date ? null : date)
-    setEditEntryId(null); setEditEntryCatCustom(false); setDeleteEntryConfirmId(null); setSplitEntryId(null)
-  }
 
   const displayRows = baseDailyRows
-  const filteredPersonalOutRows = categoryFilter.size === 0
-    ? personalOutRows
-    : personalOutRows
-        .map(r => ({ ...r, entries: r.entries.filter(e => categoryFilter.has(e.category ?? 'Other')) }))
-        .filter(r => r.entries.length > 0)
 
-  // By Category pivots the same personalOutRows data into one column per
-  // category -- the checkbox filter picks which categories become columns
-  // instead of narrowing which rows show, since every column here already
-  // represents one category.
+  // Flattened one row per entry -- entries sharing a date (most visibly two
+  // parts of the same Split) used to get summed into one row/cell, which
+  // undid the whole point of splitting them apart. Each entry keeps its own
+  // row everywhere in this view now; only which entries show is filtered.
+  const personalOutEntryRows = personalOutRows.flatMap(r => r.entries.map(e => ({ date: r.date, entry: e })))
+  const filteredPersonalOutEntryRows = categoryFilter.size === 0
+    ? personalOutEntryRows
+    : personalOutEntryRows.filter(({ entry: e }) => categoryFilter.has(e.category ?? 'Other'))
+
+  // By Category pivots the same entries into one column per category -- the
+  // checkbox filter picks which categories become columns instead of
+  // narrowing which rows show, since every column here is one category.
   const pivotCategories = categoryFilter.size === 0
     ? personalAllCategories.filter(cat => personalOutRows.some(r => r.entries.some(e => (e.category ?? 'Other') === cat)))
     : personalAllCategories.filter(cat => categoryFilter.has(cat))
-  const pivotRows = personalOutRows
-    .map(r => ({
-      date: r.date,
-      cells: pivotCategories.map(cat => {
-        const entries = r.entries.filter(e => (e.category ?? 'Other') === cat)
-        return { total: entries.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0), entries }
-      }),
-    }))
-    .filter(r => r.cells.some(cell => cell.total !== 0))
+  const pivotEntryRows = personalOutEntryRows.filter(({ entry: e }) => pivotCategories.includes(e.category ?? 'Other'))
 
   // Per confirmed day: does prior confirmed total + net movement since then
   // (a running total spanning only that one gap) land on this day's
@@ -777,69 +770,61 @@ export default function CABTab() {
               )}
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {gpOutOnly && byCategory ? pivotRows.map((r, i) => {
-                const openCat = editCell?.date === r.date ? editCell.category : null
-                const openCell = openCat ? r.cells[pivotCategories.indexOf(openCat)] : null
+              {gpOutOnly && byCategory ? pivotEntryRows.map(({ date, entry: e }, i) => {
+                const cat = e.category ?? 'Other'
+                const isOpen = openEntryRow === e.id
                 return (
-                  <Fragment key={r.date}>
-                    <tr className={i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'}>
-                      <td className="px-3 py-2 text-gray-600 whitespace-nowrap align-top">{fmtDate(r.date)}</td>
-                      {r.cells.map((cell, ci) => {
-                        const cat = pivotCategories[ci]
-                        const isOpen = openCat === cat
-                        return (
-                          <td key={cat}
-                            onClick={() => cell.total !== 0 && toggleEditCell(r.date, cat)}
-                            className={`px-3 py-2 text-right align-top ${cell.total !== 0 ? 'cursor-pointer hover:bg-blue-50/60' : ''} ${isOpen ? 'bg-blue-50' : ''}`}>
-                            {cell.total !== 0 && (
-                              <>
-                                <div className="font-semibold text-gray-800">{fmtn(cell.total)}</div>
-                                {cell.entries.map(e => <div key={e.id} className="text-[9px] text-gray-400 font-normal">{e.description}</div>)}
-                              </>
-                            )}
-                          </td>
-                        )
-                      })}
+                  <Fragment key={e.id}>
+                    <tr className={isOpen ? 'bg-blue-50' : i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'}>
+                      <td className="px-3 py-2 text-gray-600 whitespace-nowrap align-top">{fmtDate(date)}</td>
+                      {pivotCategories.map(pc => (
+                        <td key={pc}
+                          onClick={() => pc === cat && toggleEntryRow(e.id)}
+                          className={`px-3 py-2 text-right align-top ${pc === cat ? 'cursor-pointer hover:bg-blue-50/60' : ''}`}>
+                          {pc === cat && (
+                            <>
+                              <div className="font-semibold text-gray-800">{fmtn(parseFloat(e.amount))}</div>
+                              <div className="text-[9px] text-gray-400 font-normal">{e.description}</div>
+                              {e.needs_review && <span className="text-[9px]" title="Needs split">⚠</span>}
+                            </>
+                          )}
+                        </td>
+                      ))}
                     </tr>
-                    {openCell && openCat && (
+                    {isOpen && (
                       <tr className="bg-blue-50/40">
                         <td colSpan={1 + pivotCategories.length} className="px-3 py-3">
-                          <p className="text-[10px] font-semibold text-gray-700 mb-1.5">{fmtDate(r.date)} · {CAT_ICON[openCat] ?? '🏷️'} {openCat}</p>
-                          <div className="space-y-2">
-                            {openCell.entries.map(renderEntryEditor)}
-                          </div>
+                          <p className="text-[10px] font-semibold text-gray-700 mb-1.5">{fmtDate(date)} · {CAT_ICON[cat] ?? '🏷️'} {cat}</p>
+                          {renderEntryEditor(e)}
                         </td>
                       </tr>
                     )}
                   </Fragment>
                 )
-              }) : gpOutOnly ? filteredPersonalOutRows.map((r, i) => {
-                const isOpen = editDate === r.date
+              }) : gpOutOnly ? filteredPersonalOutEntryRows.map(({ date, entry: e }, i) => {
+                const isOpen = openEntryRow === e.id
                 return (
-                  <Fragment key={r.date}>
-                    <tr className={isOpen ? 'bg-blue-50' : i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'}>
-                      <td className="px-3 py-2 text-gray-600 whitespace-nowrap align-top cursor-pointer" onClick={() => toggleEditDate(r.date)}>{fmtDate(r.date)}</td>
-                      <td className="px-3 py-2 text-right text-orange-500 align-top cursor-pointer" onClick={() => toggleEditDate(r.date)}>{fmtn(r.total)}</td>
-                      <td className="px-3 py-2 text-gray-800 border-l-2 border-gray-300 align-top cursor-pointer" onClick={() => toggleEditDate(r.date)}>
-                        {r.entries.map(e => <div key={e.id}>{e.description}</div>)}
+                  <Fragment key={e.id}>
+                    <tr className={`cursor-pointer ${isOpen ? 'bg-blue-50' : i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'}`} onClick={() => toggleEntryRow(e.id)}>
+                      <td className="px-3 py-2 text-gray-600 whitespace-nowrap align-top">{fmtDate(date)}</td>
+                      <td className="px-3 py-2 text-right text-orange-500 align-top">{fmtn(parseFloat(e.amount))}</td>
+                      <td className="px-3 py-2 text-gray-800 border-l-2 border-gray-300 align-top">
+                        {e.description}
+                        {e.needs_review && (
+                          <span className="ml-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">⚠ Needs split</span>
+                        )}
                       </td>
-                      <td className="px-3 py-2 align-top cursor-pointer" onClick={() => toggleEditDate(r.date)}>
-                        {r.entries.map(e => (
-                          <div key={e.id} className="mb-1 last:mb-0">
-                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${CAT_COLOR[e.category ?? 'Other'] ?? CAT_COLOR['Other']}`}>
-                              {CAT_ICON[e.category ?? 'Other'] ?? '🏷️'} {e.category ?? 'Other'}
-                            </span>
-                          </div>
-                        ))}
+                      <td className="px-3 py-2 align-top">
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${CAT_COLOR[e.category ?? 'Other'] ?? CAT_COLOR['Other']}`}>
+                          {CAT_ICON[e.category ?? 'Other'] ?? '🏷️'} {e.category ?? 'Other'}
+                        </span>
                       </td>
                     </tr>
                     {isOpen && (
                       <tr className="bg-blue-50/40">
                         <td colSpan={4} className="px-3 py-3">
-                          <p className="text-[10px] font-semibold text-gray-700 mb-1.5">{fmtDate(r.date)}</p>
-                          <div className="space-y-2">
-                            {r.entries.map(renderEntryEditor)}
-                          </div>
+                          <p className="text-[10px] font-semibold text-gray-700 mb-1.5">{fmtDate(date)}</p>
+                          {renderEntryEditor(e)}
                         </td>
                       </tr>
                     )}
@@ -907,7 +892,7 @@ export default function CABTab() {
             </tbody>
           </table>
           </div>
-          {(gpOutOnly && byCategory ? pivotRows.length === 0 : gpOutOnly ? filteredPersonalOutRows.length === 0 : displayRows.length === 0) && (
+          {(gpOutOnly && byCategory ? pivotEntryRows.length === 0 : gpOutOnly ? filteredPersonalOutEntryRows.length === 0 : displayRows.length === 0) && (
             <p className="text-xs text-gray-400 text-center py-10">
               {gpOutOnly ? 'No GP Out entries in range.' : confirmedColsOnly ? 'No confirmed days in range.' : 'No data'}
             </p>
