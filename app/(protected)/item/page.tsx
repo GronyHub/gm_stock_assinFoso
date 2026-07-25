@@ -447,17 +447,59 @@ function ItemHubPageInner() {
     if (t === 'loss') setLossView('items')
   }
 
-  // A refresh should land back on the same tab/sub-view/search instead of
-  // resetting to Today -- single writer for the URL so nothing fights over it.
+  // Tab/sub-view/Role Bar panel changes push a new history entry each --
+  // real "pages" the user expects the back button to step through one at a
+  // time, landing on the exact one they were on (see the popstate sync
+  // effect below, which pulls state back OUT of the URL when that happens).
+  // Search stays on router.replace (below) since it shouldn't spam history
+  // per keystroke. Skips the push entirely when the computed URL already
+  // matches the current one, which is what happens right after that same
+  // popstate sync applies a change that came FROM the URL in the first
+  // place -- without this guard every back-press would immediately push a
+  // duplicate entry back on top of the one just popped.
   useEffect(() => {
-    const params = new URLSearchParams()
-    if (outerTab !== 'today') params.set('tab', outerTab)
-    if (outerTab === 'loss' && lossView !== 'items') params.set('view', lossView)
-    if (search.trim()) params.set('q', search)
+    const params = new URLSearchParams(window.location.search)
+    if (outerTab !== 'today') params.set('tab', outerTab); else params.delete('tab')
+    if (outerTab === 'loss' && lossView !== 'items') params.set('view', lossView); else params.delete('view')
+    if (openRole) params.set('role', openRole); else params.delete('role')
+    const qs = params.toString()
+    const target = qs ? `/item?${qs}` : '/item'
+    const current = window.location.pathname + window.location.search
+    if (target === current) return
+    router.push(target, { scroll: false })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [outerTab, lossView, openRole])
+
+  // A refresh should land back on the same search instead of resetting it --
+  // replace (not push) since typing shouldn't create a history entry per
+  // keystroke.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (search.trim()) params.set('q', search); else params.delete('q')
     const qs = params.toString()
     router.replace(qs ? `/item?${qs}` : '/item', { scroll: false })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [outerTab, lossView, search])
+  }, [search])
+
+  // Pulls tab/sub-view/Role Bar state back OUT of the URL whenever it
+  // changes without our own doing -- i.e. the user pressed back/forward.
+  // Harmless no-op the rest of the time, since the state this derives
+  // already matches what's live once our own push above has run.
+  useEffect(() => {
+    const urlTab = searchParams.get('tab')
+    const nextTab: OuterTab = urlTab && VALID_TABS.includes(urlTab as OuterTab) ? (urlTab as OuterTab) : 'today'
+    const urlRole = searchParams.get('role')
+    const nextRole: RoleKey | null = urlRole && ['joe', 'opener', 'closer'].includes(urlRole) ? (urlRole as RoleKey) : null
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (nextTab !== outerTab) setOuterTab(nextTab)
+    if (nextRole !== openRole) setOpenRole(nextRole)
+    if (nextTab === 'loss') {
+      const urlView = searchParams.get('view') as LossView | null
+      const nextView: LossView = urlView ?? 'items'
+      if (nextView !== lossView) setLossView(nextView)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   function goToViolation(key: string) {
     // The loss-summary rows point at the Loss feed (a submenu of the Grony
