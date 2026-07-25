@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { fmtDate } from '@/lib/fmtDate'
-import PersonalTab from './PersonalTab'
+import PersonalTab, { CAT_ICON, CAT_COLOR, type PersonalEntry } from './PersonalTab'
 
 type Row = {
   entry_date: string
@@ -84,6 +84,7 @@ export default function CABTab() {
   const [confirmPhysical, setConfirmPhysical] = useState('')
   const [confirmSaving, setConfirmSaving] = useState(false)
   const [confirmError, setConfirmError] = useState<string | null>(null)
+  const [personalEntries, setPersonalEntries] = useState<PersonalEntry[]>([])
 
   function loadRows() {
     fetch('/api/cash-at-bank')
@@ -91,6 +92,28 @@ export default function CABTab() {
       .then(d => { setRows(Array.isArray(d) ? d : []); setLoading(false) })
       .catch(() => setLoading(false))
   }
+
+  useEffect(() => {
+    if (!isOwnerOrJoe) return
+    fetch('/api/personal')
+      .then(r => r.ok ? r.json() : [])
+      .then(d => setPersonalEntries(Array.isArray(d) ? d : []))
+      .catch(() => {})
+  }, [isOwnerOrJoe])
+
+  // GP Out days keyed by date -- lets the Personal (GP Out only) view show
+  // which Personal entries (item + category) made up that day's total,
+  // instead of just the aggregate number cash_at_bank_view reports.
+  const personalOutByDate = useMemo(() => {
+    const map = new Map<string, PersonalEntry[]>()
+    for (const e of personalEntries) {
+      if (e.direction !== 'out') continue
+      const d = String(e.entry_date).slice(0, 10)
+      if (!map.has(d)) map.set(d, [])
+      map.get(d)!.push(e)
+    }
+    return map
+  }, [personalEntries])
 
   useEffect(() => { loadRows() }, [])
 
@@ -358,6 +381,8 @@ export default function CABTab() {
                 <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
                   <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Date</th>
                   <th className="text-right px-3 py-2 font-bold text-orange-500 border-b border-gray-200" title="Cash taken out for Grony's personal use">GP Out</th>
+                  <th className="text-left px-3 py-2 font-bold border-b border-gray-200 border-l-2 border-gray-300">Item</th>
+                  <th className="text-left px-3 py-2 font-bold border-b border-gray-200">Category</th>
                 </tr>
               ) : confirmedColsOnly ? (
                 <>
@@ -437,10 +462,25 @@ export default function CABTab() {
                   </>
                 )
                 const totalCls = `px-3 py-2 text-right text-blue-600 font-semibold ${hideBankMomoPhysical ? 'border-l-2 border-gray-300' : ''}`
+                const personalOut = personalOutByDate.get(dateKey) ?? []
                 return gpOutOnly ? (
                   <tr key={r.entry_date} className={stripe}>
-                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmtDate(dateKey)}</td>
-                    <td className="px-3 py-2 text-right text-orange-500">{nz(r.grony_personal_expenses)}</td>
+                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap align-top">{fmtDate(dateKey)}</td>
+                    <td className="px-3 py-2 text-right text-orange-500 align-top">{nz(r.grony_personal_expenses)}</td>
+                    <td className="px-3 py-2 text-gray-800 border-l-2 border-gray-300 align-top">
+                      {personalOut.length === 0
+                        ? <span className="text-gray-300">—</span>
+                        : personalOut.map(e => <div key={e.id}>{e.description}</div>)}
+                    </td>
+                    <td className="px-3 py-2 align-top">
+                      {personalOut.map(e => (
+                        <div key={e.id} className="mb-1 last:mb-0">
+                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${CAT_COLOR[e.category ?? 'Other'] ?? CAT_COLOR['Other']}`}>
+                            {CAT_ICON[e.category ?? 'Other']} {e.category ?? 'Other'}
+                          </span>
+                        </div>
+                      ))}
+                    </td>
                   </tr>
                 ) : confirmedColsOnly ? (
                   <tr key={r.entry_date} className={stripe}>
