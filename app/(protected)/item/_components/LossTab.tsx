@@ -1693,6 +1693,16 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   const [loading, setLoading] = useState(true)
   const [sort, setSort] = useState<{ col: SortCol; dir: SortDir }>({ col: 'lgAmt', dir: 'desc' })
 
+  // Remembers scroll position across a trip to an item's 360° page and back
+  // -- otherwise returning via the browser's back button drops you at the
+  // top of a long list instead of where you actually were.
+  const scrollRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (loading || !scrollRef.current) return
+    const saved = Number(sessionStorage.getItem('lossTabScrollTop') ?? '0')
+    if (saved > 0) scrollRef.current.scrollTop = saved
+  }, [loading])
+
   // Which columns (besides the always-visible sticky Item column) show, and
   // their order/width -- driven by this one array so the colgroup, header,
   // and every row's cells all stay in sync automatically. Remembered across
@@ -1847,7 +1857,8 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
       {/* Table — horizontally scrollable; Item column is kept short and
           truncates long names with an ellipsis instead of wrapping or
           growing to fit them. */}
-      <div className="flex-1 min-h-0 overflow-auto rounded-xl border border-gray-200 bg-white">
+      <div ref={scrollRef} onScroll={e => sessionStorage.setItem('lossTabScrollTop', String(e.currentTarget.scrollTop))}
+        className="flex-1 min-h-0 overflow-auto rounded-xl border border-gray-200 bg-white">
         <table className="table-fixed border-collapse text-[11px]">
           {colgroup}
           <thead className="sticky top-0 z-20">
