@@ -9,6 +9,16 @@ import ViolationFixPanel from './ViolationFixPanel'
 // that, just bucketed under whichever submenu bar comes first here.
 const SUBMENU_ORDER = ['Items', 'Counts', 'Daily Loss', 'Sales', 'CAB', 'Grony Manage']
 
+// Which top-level tab each submenu bar actually lives under -- everything
+// except the former-Bino bucket is a Grony Cash submenu. A green section bar
+// marks the boundary each time this changes walking down SUBMENU_ORDER, so
+// Joe's panel (which now mixes both) still shows which half of the app
+// a group of flags belongs to.
+const SECTION_OF: Record<string, string> = {
+  Items: 'Grony Cash', Counts: 'Grony Cash', 'Daily Loss': 'Grony Cash', Sales: 'Grony Cash', CAB: 'Grony Cash',
+  'Grony Manage': 'Grony Manage',
+}
+
 type Item = {
   id: number
   item_name: string
@@ -107,9 +117,13 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
       map.get(submenu)!.push(v)
     }
     if (lossSummary && !map.has('Daily Loss')) map.set('Daily Loss', [])
-    return SUBMENU_ORDER.filter(s => map.has(s)).map(submenu => {
+    const order = SUBMENU_ORDER.filter(s => map.has(s))
+    return order.map((submenu, i) => {
       const rows = map.get(submenu)!
-      return { submenu, rows, total: rows.reduce((s, v) => s + v.count, 0) }
+      const section = SECTION_OF[submenu] ?? submenu
+      const prevSubmenu = order[i - 1]
+      const prevSection = prevSubmenu !== undefined ? (SECTION_OF[prevSubmenu] ?? prevSubmenu) : null
+      return { submenu, rows, total: rows.reduce((s, v) => s + v.count, 0), section, showSection: section !== prevSection }
     })
   }, [violations, lossSummary])
 
@@ -125,8 +139,15 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
             <th className="text-left px-1.5 py-1.5 font-semibold text-gray-500">Assigned</th>
           </tr>
         </thead>
-        {groupedViolations.map(({ submenu, rows, total }) => (
+        {groupedViolations.map(({ submenu, rows, total, section, showSection }) => (
           <tbody key={submenu} className="divide-y divide-gray-100">
+            {inlineFix && showSection && (
+              <tr>
+                <td colSpan={4} className="px-3 py-1.5 bg-green-600">
+                  <span className="font-bold text-white text-[11px] uppercase tracking-wide">{section}</span>
+                </td>
+              </tr>
+            )}
             <tr>
               <td colSpan={4} className="px-3 py-1.5 bg-blue-600">
                 <div className="flex items-center justify-between">
