@@ -292,19 +292,20 @@ export default function CABTab() {
                 <>
                   <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
                     <th rowSpan={2} className="text-left px-3 py-2 font-bold border-b border-gray-200 align-bottom whitespace-nowrap">Date</th>
-                    <th colSpan={4} className="text-center px-3 py-1.5 font-bold border-b border-gray-100">Confirmed (physical count)</th>
+                    <th colSpan={4} className="text-center px-3 py-1.5 font-bold border-b border-gray-100 border-x-2 border-gray-300">Confirmed (physical count)</th>
                   </tr>
                   <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
-                    <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 border-l border-gray-100">Bank</th>
+                    <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 border-l-2 border-gray-300">Bank</th>
                     <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200">MoMo</th>
                     <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200">Physical</th>
-                    <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 text-blue-500">Total</th>
+                    <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 text-blue-500 border-r-2 border-gray-300">Total</th>
                   </tr>
                 </>
               ) : (
                 <>
                   <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
                     <th rowSpan={2} className="text-left px-3 py-2 font-bold border-b border-gray-200 align-bottom whitespace-nowrap">Date</th>
+                    <th colSpan={4} className="text-center px-3 py-1.5 font-bold border-b border-gray-100 border-x-2 border-gray-300">Confirmed (physical count)</th>
                     <th rowSpan={2} className="text-right px-3 py-2 font-bold border-b border-gray-200 align-bottom" title="Cash Counted">CC</th>
                     <th rowSpan={2} className="text-right px-3 py-2 font-bold text-green-500 border-b border-gray-200 align-bottom" title="Grony Personal cash paid into the business that day">GP In</th>
                     <th rowSpan={2} className="text-right px-3 py-2 font-bold text-green-500 border-b border-gray-200 align-bottom" title="Debtor repayments received that day">Debtors</th>
@@ -313,14 +314,13 @@ export default function CABTab() {
                     <th rowSpan={2} className="text-right px-3 py-2 font-bold text-orange-500 border-b border-gray-200 align-bottom" title="Cash taken out for Grony's personal use">GP Out</th>
                     <th rowSpan={2} className="text-right px-3 py-2 font-bold border-b border-gray-200 align-bottom" title="Net cash movement for the day">Net</th>
                     <th rowSpan={2} className="text-right px-3 py-2 font-bold border-b border-gray-200 align-bottom" title="Running cash-at-bank balance, carried day to day">Running</th>
-                    <th colSpan={4} className="text-center px-3 py-1.5 font-bold border-b border-gray-100">Confirmed (physical count)</th>
                     <th rowSpan={2} className="text-right px-3 py-2 font-bold text-red-400 border-b border-gray-200 align-bottom" title="Confirmed total minus Running balance">Diff</th>
                   </tr>
                   <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
-                    <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 border-l border-gray-100">Bank</th>
+                    <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 border-l-2 border-gray-300">Bank</th>
                     <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200">MoMo</th>
                     <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200">Physical</th>
-                    <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 text-blue-500">Total</th>
+                    <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 text-blue-500 border-r-2 border-gray-300">Total</th>
                   </tr>
                 </>
               )}
@@ -333,14 +333,18 @@ export default function CABTab() {
                 return confirmedColsOnly ? (
                   <tr key={r.entry_date} className={stripe}>
                     <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmtDate(String(r.entry_date).slice(0,10))}</td>
-                    <td className="px-3 py-2 text-right text-gray-500 border-l border-gray-100">{nz(r.cab_bank)}</td>
+                    <td className="px-3 py-2 text-right text-gray-500 border-l-2 border-gray-300">{nz(r.cab_bank)}</td>
                     <td className="px-3 py-2 text-right text-gray-500">{nz(r.cab_momo)}</td>
                     <td className="px-3 py-2 text-right text-gray-500">{nz(r.cab_physical)}</td>
-                    <td className="px-3 py-2 text-right text-blue-600 font-semibold">{fmtn(r.cab_total)}</td>
+                    <td className="px-3 py-2 text-right text-blue-600 font-semibold border-r-2 border-gray-300">{fmtn(r.cab_total)}</td>
                   </tr>
                 ) : (
                   <tr key={r.entry_date} className={stripe}>
                     <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmtDate(String(r.entry_date).slice(0,10))}</td>
+                    <td className="px-3 py-2 text-right text-gray-500 border-l-2 border-gray-300">{nz(r.cab_bank)}</td>
+                    <td className="px-3 py-2 text-right text-gray-500">{nz(r.cab_momo)}</td>
+                    <td className="px-3 py-2 text-right text-gray-500">{nz(r.cab_physical)}</td>
+                    <td className="px-3 py-2 text-right text-blue-600 font-semibold border-r-2 border-gray-300">{hasConfirm ? fmtn(r.cab_total) : ''}</td>
                     <td className="px-3 py-2 text-right text-gray-700">{nz(r.cash_counted)}</td>
                     <td className="px-3 py-2 text-right text-green-600">{nz(r.grony_personal_cash_in)}</td>
                     <td className="px-3 py-2 text-right text-green-600">{nz(r.debtors_cash_in)}</td>
@@ -351,10 +355,6 @@ export default function CABTab() {
                       {fmtn(r.daily_net)}
                     </td>
                     <td className="px-3 py-2 text-right font-bold text-gray-900">{fmtn(r.running_cash_at_bank)}</td>
-                    <td className="px-3 py-2 text-right text-gray-500 border-l border-gray-100">{nz(r.cab_bank)}</td>
-                    <td className="px-3 py-2 text-right text-gray-500">{nz(r.cab_momo)}</td>
-                    <td className="px-3 py-2 text-right text-gray-500">{nz(r.cab_physical)}</td>
-                    <td className="px-3 py-2 text-right text-blue-600 font-semibold">{hasConfirm ? fmtn(r.cab_total) : ''}</td>
                     <td className={`px-3 py-2 text-right font-semibold ${r.deficit != null && Number(r.deficit) < 0 ? 'text-red-500' : 'text-green-600'}`}>
                       {r.deficit != null ? fmtn(r.deficit) : ''}
                     </td>
