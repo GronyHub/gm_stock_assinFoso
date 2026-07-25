@@ -98,10 +98,11 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
 
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden">
-      <table className="w-full text-[11px] border-collapse">
+      <div className="overflow-x-auto">
+      <table className="w-full min-w-[480px] text-[11px] border-collapse">
         <thead className="bg-gray-50">
           <tr>
-            <th className="text-left px-2 py-1.5 font-semibold text-gray-500">Flag Type</th>
+            <th className="text-left px-2 py-1.5 font-semibold text-gray-500 whitespace-nowrap">Flag Type</th>
             <th className="text-center px-1.5 py-1.5 font-semibold text-gray-500">Count</th>
             <th className="text-left px-1.5 py-1.5 font-semibold text-gray-500">Due</th>
             <th className="text-left px-1.5 py-1.5 font-semibold text-gray-500">Assigned</th>
@@ -128,7 +129,7 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
                   <tr
                     onClick={() => inlineFix ? setExpandedType(isOpen ? null : v.type) : onGoToViolation?.(violationKey)}
                     className={`cursor-pointer hover:bg-blue-50 transition ${atRisk ? 'bg-red-50' : ''} ${isOpen ? 'bg-blue-50' : ''}`}>
-                    <td className={`px-2 py-1.5 ${v.count > 0 ? 'text-gray-800' : 'text-gray-400'}`}>{SHORT_LABEL[v.type] ?? v.label}</td>
+                    <td className={`px-2 py-1.5 whitespace-nowrap ${v.count > 0 ? 'text-gray-800' : 'text-gray-400'}`}>{SHORT_LABEL[v.type] ?? v.label}</td>
                     <td className={`px-1.5 py-1.5 text-center font-bold ${v.count > 0 ? (atRisk ? 'text-red-600' : 'text-gray-900') : 'text-green-600'}`}>
                       {v.count > 0 ? v.count : '✓'}
                     </td>
@@ -154,6 +155,7 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
           </tbody>
         ))}
       </table>
+      </div>
     </div>
   )
 }
