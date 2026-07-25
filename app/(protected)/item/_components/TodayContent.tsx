@@ -351,6 +351,12 @@ function AnnouncementsPanel() {
   useEffect(() => { load() }, [])
   usePolling(load, 15000, !hasActiveSearch)
 
+  // Clears the Home badge -- opening this panel means the user has seen
+  // whatever's currently posted, even before scrolling through it.
+  useEffect(() => {
+    fetch('/api/announcements/mark-read', { method: 'POST' }).catch(() => {})
+  }, [])
+
   // Stop any in-progress recording if the panel unmounts mid-recording
   useEffect(() => () => {
     if (recordTimerRef.current) clearInterval(recordTimerRef.current)
