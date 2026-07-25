@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { fmtDate } from '@/lib/fmtDate'
-import PersonalTab, { CAT_ICON, CAT_COLOR, type PersonalEntry } from './PersonalTab'
+import PersonalTab, { CATEGORIES, CAT_ICON, CAT_COLOR, type PersonalEntry } from './PersonalTab'
 
 type Row = {
   entry_date: string
@@ -77,6 +77,7 @@ export default function CABTab() {
   const [confirmedColsOnly, setConfirmedColsOnly] = useState(false)
   const [hideBankMomoPhysical, setHideBankMomoPhysical] = useState(false)
   const [gpOutOnly, setGpOutOnly] = useState(false)
+  const [categoryFilter, setCategoryFilter] = useState<Set<string>>(new Set())
   const [showConfirmForm, setShowConfirmForm] = useState(false)
   const [confirmDate, setConfirmDate] = useState('')
   const [confirmBank, setConfirmBank] = useState('')
@@ -184,8 +185,20 @@ export default function CABTab() {
   const visibleWeeks = onlyUnconfirmed ? weeks.filter(w => !w.confirmed) : weeks
   const confirmedRows = rows.filter(r => r.cab_total != null && Number(r.cab_total) !== 0)
   const baseDailyRows = confirmedColsOnly ? confirmedRows : rows
+  function toggleCategory(cat: string) {
+    setCategoryFilter(prev => {
+      const next = new Set(prev)
+      if (next.has(cat)) next.delete(cat); else next.add(cat)
+      return next
+    })
+  }
   const displayRows = gpOutOnly
-    ? baseDailyRows.filter(r => r.grony_personal_expenses != null && Number(r.grony_personal_expenses) !== 0)
+    ? baseDailyRows.filter(r => {
+        if (r.grony_personal_expenses == null || Number(r.grony_personal_expenses) === 0) return false
+        if (categoryFilter.size === 0) return true
+        const entries = personalOutByDate.get(String(r.entry_date).slice(0, 10)) ?? []
+        return entries.some(e => categoryFilter.has(e.category ?? 'Other'))
+      })
     : baseDailyRows
 
   // Per confirmed day: does prior confirmed total + net movement since then
@@ -280,6 +293,24 @@ export default function CABTab() {
           </label>
         )}
       </div>
+
+      {!showPersonal && !showWeekly && gpOutOnly && (
+        <div className="flex flex-wrap items-center gap-2 px-2 py-1.5 border-b border-gray-200 bg-gray-50 shrink-0">
+          {CATEGORIES.map(cat => (
+            <label key={cat} className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
+              <input type="checkbox" checked={categoryFilter.has(cat)} onChange={() => toggleCategory(cat)}
+                className="w-3 h-3 accent-blue-600" />
+              {CAT_ICON[cat]} {cat}
+            </label>
+          ))}
+          {categoryFilter.size > 0 && (
+            <button onClick={() => setCategoryFilter(new Set())}
+              className="text-[9px] font-semibold text-blue-600 hover:underline">
+              Clear
+            </button>
+          )}
+        </div>
+      )}
 
       {showPersonal && (
         <div className="flex-1 overflow-auto min-h-0 p-2">
@@ -462,7 +493,10 @@ export default function CABTab() {
                   </>
                 )
                 const totalCls = `px-3 py-2 text-right text-blue-600 font-semibold ${hideBankMomoPhysical ? 'border-l-2 border-gray-300' : ''}`
-                const personalOut = personalOutByDate.get(dateKey) ?? []
+                const allPersonalOut = personalOutByDate.get(dateKey) ?? []
+                const personalOut = categoryFilter.size === 0
+                  ? allPersonalOut
+                  : allPersonalOut.filter(e => categoryFilter.has(e.category ?? 'Other'))
                 return gpOutOnly ? (
                   <tr key={r.entry_date} className={stripe}>
                     <td className="px-3 py-2 text-gray-600 whitespace-nowrap align-top">{fmtDate(dateKey)}</td>
