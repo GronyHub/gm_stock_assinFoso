@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo, Fragment } from 'react'
 import { useSession } from 'next-auth/react'
 import { fmtDate } from '@/lib/fmtDate'
-import PersonalTab, { CATEGORIES, CAT_ICON, CAT_COLOR, type PersonalEntry } from './PersonalTab'
+import { CATEGORIES, CAT_ICON, CAT_COLOR, type PersonalEntry } from './PersonalTab'
 
 type Row = {
   entry_date: string
@@ -72,11 +72,11 @@ export default function CABTab() {
   const [flags, setFlags] = useState<any | null>(null)
   const [flagsLoading, setFlagsLoading] = useState(false)
   const [showWeekly, setShowWeekly] = useState(false)
-  const [showPersonal, setShowPersonal] = useState(false)
   const [onlyUnconfirmed, setOnlyUnconfirmed] = useState(false)
   const [confirmedColsOnly, setConfirmedColsOnly] = useState(false)
   const [hideBankMomoPhysical, setHideBankMomoPhysical] = useState(false)
   const [gpOutOnly, setGpOutOnly] = useState(false)
+  const [personalDirection, setPersonalDirection] = useState<'out' | 'in'>('out')
   const [categoryFilter, setCategoryFilter] = useState<Set<string>>(new Set())
   const [byCategory, setByCategory] = useState(false)
   const [showConfirmForm, setShowConfirmForm] = useState(false)
@@ -120,18 +120,20 @@ export default function CABTab() {
       .catch(() => {})
   }, [isOwnerOrJoe])
 
-  // GP Out days keyed by date -- lets the Personal (GP Out only) view show
-  // which Personal entries (item + category) made up that day's total.
+  // Personal entries for the selected direction, keyed by date -- lets the
+  // Personal view show which entries (item + category) made up that day's
+  // total. The In/Out toggle is what keeps this in sync with what Personal
+  // itself shows (both directions), not just GP Out.
   const personalOutByDate = useMemo(() => {
     const map = new Map<string, PersonalEntry[]>()
     for (const e of personalEntries) {
-      if (e.direction !== 'out') continue
+      if (e.direction !== personalDirection) continue
       const d = String(e.entry_date).slice(0, 10)
       if (!map.has(d)) map.set(d, [])
       map.get(d)!.push(e)
     }
     return map
-  }, [personalEntries])
+  }, [personalEntries, personalDirection])
 
   // The Personal (GP Out only) view is built straight from
   // grony_personal_ledger, not from cash_at_bank rows -- cash_at_bank only
@@ -231,7 +233,7 @@ export default function CABTab() {
 
   function openAddPersonal() {
     setAddDate(new Date().toISOString().slice(0, 10))
-    setAddDesc(''); setAddAmt(''); setAddDir('out'); setAddCat('Other'); setAddCatCustom(false); setAddNotes('')
+    setAddDesc(''); setAddAmt(''); setAddDir(personalDirection); setAddCat('Other'); setAddCatCustom(false); setAddNotes('')
     setShowAddPersonal(true)
   }
 
@@ -411,6 +413,8 @@ export default function CABTab() {
 
 
   const displayRows = baseDailyRows
+  const personalAmountLabel = personalDirection === 'out' ? 'GP Out' : 'Received'
+  const personalAmountCls = personalDirection === 'out' ? 'text-orange-500' : 'text-green-600'
 
   // Flattened one row per entry -- entries sharing a date (most visibly two
   // parts of the same Split) used to get summed into one row/cell, which
@@ -471,12 +475,12 @@ export default function CABTab() {
       </div>
 
       <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0">
-        <button onClick={() => { setShowWeekly(false); setShowPersonal(false) }}
-          className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition ${!showWeekly && !showPersonal ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
+        <button onClick={() => setShowWeekly(false)}
+          className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition ${!showWeekly ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
           Daily
         </button>
-        <button onClick={() => { setShowWeekly(true); setShowPersonal(false) }}
-          className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition ${showWeekly && !showPersonal ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
+        <button onClick={() => setShowWeekly(true)}
+          className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition ${showWeekly ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
           Weekly
           {unconfirmedCount > 0 && (
             <span className="ml-1 bg-red-100 text-red-600 text-[8px] font-bold px-1 py-0.5 rounded-full">{unconfirmedCount}</span>
@@ -486,48 +490,52 @@ export default function CABTab() {
           className="text-[9px] font-semibold px-1.5 py-0.5 rounded transition bg-green-600 text-white hover:bg-green-700">
           + New CAB Confirm
         </button>
-        {isOwnerOrJoe && (
-          <button onClick={() => setShowPersonal(p => !p)}
-            className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition ${showPersonal ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-            Personal
-          </button>
-        )}
-        {!showPersonal && showWeekly && (
+        {showWeekly && (
           <label className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none ml-auto">
             <input type="checkbox" checked={onlyUnconfirmed} onChange={() => setOnlyUnconfirmed(o => !o)}
               className="w-3 h-3 accent-blue-600" />
             Unconfirmed only
           </label>
         )}
-        {!showPersonal && !showWeekly && (
+        {!showWeekly && (
           <label className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none ml-auto">
             <input type="checkbox" checked={hideBankMomoPhysical} onChange={() => setHideBankMomoPhysical(o => !o)}
               className="w-3 h-3 accent-blue-600" />
             Confirmed 3
           </label>
         )}
-        {!showPersonal && !showWeekly && (
+        {!showWeekly && (
           <label className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
             <input type="checkbox" checked={confirmedColsOnly} onChange={() => setConfirmedColsOnly(o => !o)}
               className="w-3 h-3 accent-blue-600" />
             Confirmed CAB check
           </label>
         )}
-        {!showPersonal && !showWeekly && !confirmedColsOnly && (
+        {!showWeekly && !confirmedColsOnly && (
           <label className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
             <input type="checkbox" checked={gpOutOnly} onChange={() => setGpOutOnly(o => !o)}
               className="w-3 h-3 accent-blue-600" />
-            Personal (GP Out only)
+            Personal
           </label>
         )}
       </div>
 
-      {!showPersonal && !showWeekly && gpOutOnly && (
+      {!showWeekly && gpOutOnly && (
         <div className="flex flex-wrap items-center gap-2 px-2 py-1.5 border-b border-gray-200 bg-gray-50 shrink-0">
           <button onClick={openAddPersonal}
             className="text-[9px] font-semibold px-1.5 py-0.5 rounded transition bg-blue-600 text-white hover:bg-blue-700">
             + Add
           </button>
+          <div className="flex gap-1 bg-gray-100 rounded p-0.5">
+            <button onClick={() => setPersonalDirection('out')}
+              className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition ${personalDirection === 'out' ? 'bg-orange-500 text-white' : 'text-gray-600'}`}>
+              Out
+            </button>
+            <button onClick={() => setPersonalDirection('in')}
+              className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition ${personalDirection === 'in' ? 'bg-green-600 text-white' : 'text-gray-600'}`}>
+              In
+            </button>
+          </div>
           <label className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
             <input type="checkbox" checked={byCategory} onChange={() => setByCategory(o => !o)}
               className="w-3 h-3 accent-blue-600" />
@@ -549,7 +557,7 @@ export default function CABTab() {
         </div>
       )}
 
-      {!showPersonal && !showWeekly && gpOutOnly && showAddPersonal && (
+      {!showWeekly && gpOutOnly && showAddPersonal && (
         <div className="px-2 py-2 border-b border-gray-200 bg-blue-50/60 shrink-0 space-y-1.5">
           <p className="text-[10px] font-semibold text-gray-700">New Personal Entry</p>
           <div className="flex flex-wrap items-end gap-1.5">
@@ -612,13 +620,7 @@ export default function CABTab() {
         </div>
       )}
 
-      {showPersonal && (
-        <div className="flex-1 overflow-auto min-h-0 p-2">
-          <PersonalTab embedded />
-        </div>
-      )}
-
-      {!showPersonal && showConfirmForm && (
+      {showConfirmForm && (
         <div className="px-2 py-2 border-b border-gray-200 bg-green-50/60 shrink-0 space-y-1.5">
           <p className="text-[10px] font-semibold text-gray-700">New CAB Confirm</p>
           <div className="flex flex-wrap items-end gap-1.5">
@@ -661,7 +663,7 @@ export default function CABTab() {
         </div>
       )}
 
-      {!showPersonal && (showWeekly ? (
+      {showWeekly ? (
         <div className="flex-1 overflow-auto min-h-0 p-2">
           <p className="text-[10px] text-gray-400 mb-1.5">Last {weeks.length} week{weeks.length !== 1 ? 's' : ''} (Mon–Sun), most recent first.</p>
           <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
@@ -718,7 +720,7 @@ export default function CABTab() {
               ) : gpOutOnly ? (
                 <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
                   <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Date</th>
-                  <th className="text-right px-3 py-2 font-bold text-orange-500 border-b border-gray-200" title="Cash taken out for Grony's personal use">GP Out</th>
+                  <th className={`text-right px-3 py-2 font-bold border-b border-gray-200 ${personalAmountCls}`} title={personalDirection === 'out' ? "Cash taken out for Grony's personal use" : "Cash received by Grony personally"}>{personalAmountLabel}</th>
                   <th className="text-left px-3 py-2 font-bold border-b border-gray-200 border-l-2 border-gray-300">Item</th>
                   <th className="text-left px-3 py-2 font-bold border-b border-gray-200">Category</th>
                 </tr>
@@ -807,7 +809,7 @@ export default function CABTab() {
                   <Fragment key={e.id}>
                     <tr className={`cursor-pointer ${isOpen ? 'bg-blue-50' : i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'}`} onClick={() => toggleEntryRow(e.id)}>
                       <td className="px-3 py-2 text-gray-600 whitespace-nowrap align-top">{fmtDate(date)}</td>
-                      <td className="px-3 py-2 text-right text-orange-500 align-top">{fmtn(parseFloat(e.amount))}</td>
+                      <td className={`px-3 py-2 text-right align-top ${personalAmountCls}`}>{fmtn(parseFloat(e.amount))}</td>
                       <td className="px-3 py-2 text-gray-800 border-l-2 border-gray-300 align-top">
                         {e.description}
                         {e.needs_review && (
@@ -894,11 +896,11 @@ export default function CABTab() {
           </div>
           {(gpOutOnly && byCategory ? pivotEntryRows.length === 0 : gpOutOnly ? filteredPersonalOutEntryRows.length === 0 : displayRows.length === 0) && (
             <p className="text-xs text-gray-400 text-center py-10">
-              {gpOutOnly ? 'No GP Out entries in range.' : confirmedColsOnly ? 'No confirmed days in range.' : 'No data'}
+              {gpOutOnly ? `No ${personalAmountLabel} entries in range.` : confirmedColsOnly ? 'No confirmed days in range.' : 'No data'}
             </p>
           )}
         </div>
-      ))}
+      )}
     </div>
   )
 }
