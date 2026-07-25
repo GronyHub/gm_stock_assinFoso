@@ -97,17 +97,25 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
   // Hidden by default so the table reads as a to-do list, not an audit log --
   // "Done" reveals the already-clear (✓) rows alongside the active ones.
   const [showDone, setShowDone] = useState(false)
-  // Collapses every group down to just its green/blue header bars -- an
-  // at-a-glance summary with no row detail underneath (overrides "Done").
-  // Clicking a bar while collapsed expands just that group, tracked here so
-  // it survives independently of the blanket "Bars only" toggle.
+  // "Bars only" collapses every group down to just its green/blue header
+  // bars in one tap -- the baseline every group falls back to. Clicking a
+  // bar (blue = one group, green = every group in that section) then
+  // overrides just that bar's own groups, independent of the blanket
+  // setting and of each other.
   const [barsOnly, setBarsOnly] = useState(false)
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
+  const [groupOverride, setGroupOverride] = useState<Map<string, boolean>>(new Map())
 
+  function groupShown(submenu: string) {
+    return groupOverride.has(submenu) ? groupOverride.get(submenu)! : !barsOnly
+  }
   function toggleGroup(submenu: string) {
-    setExpandedGroups(prev => {
-      const next = new Set(prev)
-      if (next.has(submenu)) next.delete(submenu); else next.add(submenu)
+    setGroupOverride(prev => new Map(prev).set(submenu, !groupShown(submenu)))
+  }
+  function toggleSection(submenus: string[]) {
+    const allShown = submenus.every(groupShown)
+    setGroupOverride(prev => {
+      const next = new Map(prev)
+      for (const s of submenus) next.set(s, !allShown)
       return next
     })
   }
@@ -144,6 +152,17 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
     })
   }, [violations, lossSummary])
 
+  // Every submenu belonging to each section, so a green bar's click can
+  // toggle all of its blue bars together.
+  const submenusBySection = useMemo(() => {
+    const m = new Map<string, string[]>()
+    for (const g of groupedViolations) {
+      if (!m.has(g.section)) m.set(g.section, [])
+      m.get(g.section)!.push(g.submenu)
+    }
+    return m
+  }, [groupedViolations])
+
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden">
       <div className="flex items-center gap-3 px-2.5 py-1.5 bg-gray-50 border-b border-gray-200 text-[11px] font-semibold text-gray-500">
@@ -153,7 +172,7 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
         </label>
         <label className="flex items-center gap-1.5 cursor-pointer">
           <input type="checkbox" checked={barsOnly}
-            onChange={e => { setBarsOnly(e.target.checked); setExpandedGroups(new Set()) }} />
+            onChange={e => { setBarsOnly(e.target.checked); setGroupOverride(new Map()) }} />
           Bars only
         </label>
       </div>
@@ -168,23 +187,21 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
           </tr>
         </thead>
         {groupedViolations.map(({ submenu, rows, total, section, showSection }) => {
-          const groupExpanded = expandedGroups.has(submenu)
-          const showRows = !barsOnly || groupExpanded
+          const showRows = groupShown(submenu)
           return (
           <tbody key={submenu} className="divide-y divide-gray-100">
             {inlineFix && showSection && (
-              <tr>
+              <tr onClick={() => toggleSection(submenusBySection.get(section) ?? [submenu])} className="cursor-pointer">
                 <td colSpan={4} className="px-3 py-1.5 bg-green-600 text-center">
                   <span className="font-bold text-white text-[11px] uppercase tracking-wide">{section}</span>
                 </td>
               </tr>
             )}
-            <tr onClick={barsOnly ? () => toggleGroup(submenu) : undefined}
-              className={barsOnly ? 'cursor-pointer' : ''}>
+            <tr onClick={() => toggleGroup(submenu)} className="cursor-pointer">
               <td colSpan={4} className="px-3 py-1.5 bg-blue-600">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-white text-[11px]">
-                    {barsOnly && (groupExpanded ? '▾ ' : '▸ ')}{submenu}
+                    {showRows ? '▾ ' : '▸ '}{submenu}
                   </span>
                   <span className="font-bold text-white text-[11px]">{total > 0 ? total : '✓'}</span>
                 </div>
