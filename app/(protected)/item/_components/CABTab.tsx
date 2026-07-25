@@ -329,7 +329,12 @@ export default function CABTab() {
               {(confirmedColsOnly ? confirmedRows : rows).map((r, i) => {
                 const hasConfirm = r.cab_total != null
                 const net = Number(r.daily_net)
-                const stripe = hasConfirm ? 'bg-blue-50/60' : i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'
+                // Every row here is already confirmed, so the confirm
+                // highlight would color the whole table -- fall back to
+                // the plain zebra stripe (same rule Weekly uses) instead.
+                const stripe = confirmedColsOnly
+                  ? (i % 2 === 1 ? 'bg-cyan-50' : 'bg-white')
+                  : hasConfirm ? 'bg-blue-50/60' : i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'
                 return confirmedColsOnly ? (
                   <tr key={r.entry_date} className={stripe}>
                     <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmtDate(String(r.entry_date).slice(0,10))}</td>
