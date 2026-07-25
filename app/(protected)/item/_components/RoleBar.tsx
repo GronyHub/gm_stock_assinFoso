@@ -86,7 +86,7 @@ export default function RoleBar({ openRole, onSelectRole, onShortcut, cashCount,
           </div>
         )}
         <button onClick={() => setShortcutOpen(o => !o)} title="New…"
-          className={`flex items-center justify-center px-4 py-4 text-lg font-bold transition
+          className={`flex items-center justify-center px-4 py-4 text-2xl font-bold transition
             ${shortcutOpen ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
           +
         </button>
