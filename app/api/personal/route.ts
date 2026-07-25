@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
+import { ensurePersonalSubcategoryColumn } from '@/lib/personalLedger'
 import { NextResponse } from 'next/server'
 
 function isAllowed(session: any) {
@@ -12,8 +13,9 @@ export async function GET() {
   const session = await auth()
   if (!session || !isAllowed(session)) return NextResponse.json([], { status: 403 })
 
+  await ensurePersonalSubcategoryColumn()
   const entries = await sql`
-    SELECT id, entry_date, description, amount, direction, category, notes, needs_review
+    SELECT id, entry_date, description, amount, direction, category, subcategory, notes, needs_review
     FROM grony_personal_ledger
     ORDER BY entry_date DESC, id DESC
   `
@@ -24,13 +26,14 @@ export async function POST(req: Request) {
   const session = await auth()
   if (!session || !isAllowed(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { entry_date, description, amount, direction, category, notes, needs_review } = await req.json()
+  const { entry_date, description, amount, direction, category, subcategory, notes, needs_review } = await req.json()
   if (!entry_date || !description || !amount || !direction) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
   }
+  await ensurePersonalSubcategoryColumn()
   const [row] = await sql`
-    INSERT INTO grony_personal_ledger (entry_date, description, amount, direction, category, notes, needs_review, source)
-    VALUES (${entry_date}, ${description}, ${amount}, ${direction}, ${category ?? 'Other'}, ${notes ?? null}, ${needs_review ?? false}, 'app')
+    INSERT INTO grony_personal_ledger (entry_date, description, amount, direction, category, subcategory, notes, needs_review, source)
+    VALUES (${entry_date}, ${description}, ${amount}, ${direction}, ${category ?? 'Other'}, ${subcategory ?? null}, ${notes ?? null}, ${needs_review ?? false}, 'app')
     RETURNING id
   `
   return NextResponse.json({ id: row.id })
@@ -40,12 +43,14 @@ export async function PUT(req: Request) {
   const session = await auth()
   if (!session || !isAllowed(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { id, category, notes, description, amount, needs_review } = await req.json()
+  const { id, category, subcategory, notes, description, amount, needs_review } = await req.json()
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
 
+  await ensurePersonalSubcategoryColumn()
   await sql`
     UPDATE grony_personal_ledger
     SET category     = COALESCE(${category ?? null}, category),
+        subcategory  = CASE WHEN ${subcategory !== undefined} THEN ${subcategory ?? null} ELSE subcategory END,
         notes        = COALESCE(${notes ?? null}, notes),
         description  = COALESCE(${description ?? null}, description),
         amount       = COALESCE(${amount ?? null}, amount),

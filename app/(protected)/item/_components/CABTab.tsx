@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo, Fragment } from 'react'
 import { useSession } from 'next-auth/react'
 import { fmtDate } from '@/lib/fmtDate'
-import { CATEGORIES, CAT_ICON, CAT_COLOR, type PersonalEntry } from './PersonalTab'
+import { CATEGORIES, CAT_ICON, CAT_COLOR, CHILDREN_SUBCATEGORIES, type PersonalEntry } from './PersonalTab'
 
 type Row = {
   entry_date: string
@@ -94,11 +94,13 @@ export default function CABTab() {
   const [addDir, setAddDir] = useState<'out' | 'in'>('out')
   const [addCat, setAddCat] = useState('Other')
   const [addCatCustom, setAddCatCustom] = useState(false)
+  const [addSubcat, setAddSubcat] = useState('')
   const [addNotes, setAddNotes] = useState('')
   const [addSaving, setAddSaving] = useState(false)
   const [editEntryId, setEditEntryId] = useState<number | null>(null)
   const [editEntryCat, setEditEntryCat] = useState('')
   const [editEntryCatCustom, setEditEntryCatCustom] = useState(false)
+  const [editEntrySubcat, setEditEntrySubcat] = useState('')
   const [deleteEntryConfirmId, setDeleteEntryConfirmId] = useState<number | null>(null)
   const [openEntryRow, setOpenEntryRow] = useState<number | null>(null)
   const [splitEntryId, setSplitEntryId] = useState<number | null>(null)
@@ -233,30 +235,32 @@ export default function CABTab() {
 
   function openAddPersonal() {
     setAddDate(new Date().toISOString().slice(0, 10))
-    setAddDesc(''); setAddAmt(''); setAddDir(personalDirection); setAddCat('Other'); setAddCatCustom(false); setAddNotes('')
+    setAddDesc(''); setAddAmt(''); setAddDir(personalDirection); setAddCat('Other'); setAddCatCustom(false); setAddSubcat(''); setAddNotes('')
     setShowAddPersonal(true)
   }
 
   async function addPersonalEntry() {
     if (!addDate || !addDesc || !addAmt) return
     setAddSaving(true)
+    const subcategory = addCat === 'Children' ? (addSubcat || null) : null
     const res = await fetch('/api/personal', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entry_date: addDate, description: addDesc, amount: parseFloat(addAmt), direction: addDir, category: addCat, notes: addNotes || null }),
+      body: JSON.stringify({ entry_date: addDate, description: addDesc, amount: parseFloat(addAmt), direction: addDir, category: addCat, subcategory, notes: addNotes || null }),
     })
     const data = await res.json()
     setAddSaving(false)
     if (data.id) {
-      setPersonalEntries(prev => [{ id: data.id, entry_date: addDate, description: addDesc, amount: addAmt, direction: addDir, category: addCat, notes: addNotes || null, needs_review: false }, ...prev])
+      setPersonalEntries(prev => [{ id: data.id, entry_date: addDate, description: addDesc, amount: addAmt, direction: addDir, category: addCat, subcategory, notes: addNotes || null, needs_review: false }, ...prev])
       setShowAddPersonal(false)
     }
   }
 
   async function saveEntryCategory(id: number) {
+    const subcategory = editEntryCat === 'Children' ? (editEntrySubcat || null) : null
     await fetch('/api/personal', {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, category: editEntryCat }),
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, category: editEntryCat, subcategory }),
     })
-    setPersonalEntries(prev => prev.map(e => e.id === id ? { ...e, category: editEntryCat } : e))
+    setPersonalEntries(prev => prev.map(e => e.id === id ? { ...e, category: editEntryCat, subcategory } : e))
     setEditEntryId(null)
     setEditEntryCatCustom(false)
   }
@@ -302,14 +306,14 @@ export default function CABTab() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           entry_date: entry.entry_date, description: part.description, amount: parseFloat(part.amount),
-          direction: entry.direction, category: entry.category ?? 'Other', notes: entry.notes, needs_review: false,
+          direction: entry.direction, category: entry.category ?? 'Other', subcategory: entry.subcategory, notes: entry.notes, needs_review: false,
         }),
       })
       const data = await res.json()
       if (data.id) {
         newEntries.push({
           id: data.id, entry_date: entry.entry_date, description: part.description, amount: part.amount,
-          direction: entry.direction, category: entry.category, notes: entry.notes, needs_review: false,
+          direction: entry.direction, category: entry.category, subcategory: entry.subcategory, notes: entry.notes, needs_review: false,
         })
       }
     }
@@ -362,7 +366,7 @@ export default function CABTab() {
     return (
       <div key={e.id} className="flex items-center justify-between gap-2 bg-white border border-gray-200 rounded-lg px-2 py-1.5">
         <div className="min-w-0">
-          <p className="text-xs text-gray-800">{e.description}</p>
+          <p className="text-xs text-gray-800">{e.description}{e.subcategory ? ` (${e.subcategory})` : ''}</p>
           <p className="text-[10px] text-gray-400">{fmtn(parseFloat(e.amount))}</p>
           {e.needs_review && (
             <span className="inline-block mt-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">⚠ Needs split</span>
@@ -377,14 +381,22 @@ export default function CABTab() {
               <button onClick={() => { setEditEntryId(null); setEditEntryCatCustom(false) }} className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">✕</button>
             </div>
           ) : (
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
               <select value={editEntryCat} onChange={ev => {
                   if (ev.target.value === '__new__') { setEditEntryCatCustom(true); setEditEntryCat('') } else setEditEntryCat(ev.target.value)
+                  setEditEntrySubcat('')
                 }}
                 className="border border-blue-300 rounded px-1.5 py-0.5 text-[10px] outline-none">
                 {personalAllCategories.map(c => <option key={c} value={c}>{c}</option>)}
                 <option value="__new__">+ Add new category…</option>
               </select>
+              {editEntryCat === 'Children' && (
+                <select value={editEntrySubcat} onChange={ev => setEditEntrySubcat(ev.target.value)}
+                  className="border border-blue-300 rounded px-1.5 py-0.5 text-[10px] outline-none">
+                  <option value="">Which child?</option>
+                  {CHILDREN_SUBCATEGORIES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              )}
               <button onClick={() => saveEntryCategory(e.id)} className="text-[10px] px-1.5 py-0.5 bg-blue-600 text-white rounded font-semibold">Save</button>
               <button onClick={() => setEditEntryId(null)} className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">✕</button>
             </div>
@@ -399,7 +411,7 @@ export default function CABTab() {
               </>
             ) : (
               <>
-                <button onClick={() => { setEditEntryId(e.id); setEditEntryCat(cat); setEditEntryCatCustom(false) }}
+                <button onClick={() => { setEditEntryId(e.id); setEditEntryCat(cat); setEditEntryCatCustom(false); setEditEntrySubcat(e.subcategory ?? '') }}
                   className="text-[10px] text-blue-600 hover:underline">Recategorize</button>
                 <button onClick={() => openSplit(e)} className="text-[10px] text-purple-600 hover:underline">Split</button>
                 <button onClick={() => setDeleteEntryConfirmId(e.id)} className="text-[10px] text-red-500 hover:underline">Remove</button>
@@ -596,6 +608,7 @@ export default function CABTab() {
               ) : (
                 <select value={addCat} onChange={e => {
                     if (e.target.value === '__new__') { setAddCatCustom(true); setAddCat('') } else setAddCat(e.target.value)
+                    setAddSubcat('')
                   }}
                   className="bg-white border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400">
                   {personalAllCategories.map(c => <option key={c} value={c}>{c}</option>)}
@@ -603,6 +616,16 @@ export default function CABTab() {
                 </select>
               )}
             </div>
+            {addCat === 'Children' && !addCatCustom && (
+              <div>
+                <p className="text-[9px] text-gray-400 mb-0.5">Which child?</p>
+                <select value={addSubcat} onChange={e => setAddSubcat(e.target.value)}
+                  className="bg-white border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400">
+                  <option value="">Optional</option>
+                  {CHILDREN_SUBCATEGORIES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+            )}
             <div>
               <p className="text-[9px] text-gray-400 mb-0.5">Notes</p>
               <input value={addNotes} onChange={e => setAddNotes(e.target.value)} placeholder="Optional"
@@ -786,7 +809,7 @@ export default function CABTab() {
                           {pc === cat && (
                             <>
                               <div className="font-semibold text-gray-800">{fmtn(parseFloat(e.amount))}</div>
-                              <div className="text-[9px] text-gray-400 font-normal">{e.description}</div>
+                              <div className="text-[9px] text-gray-400 font-normal">{e.description}{e.subcategory ? ` (${e.subcategory})` : ''}</div>
                               {e.needs_review && <span className="text-[9px]" title="Needs split">⚠</span>}
                             </>
                           )}
@@ -818,7 +841,7 @@ export default function CABTab() {
                       </td>
                       <td className="px-3 py-2 align-top">
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${CAT_COLOR[e.category ?? 'Other'] ?? CAT_COLOR['Other']}`}>
-                          {CAT_ICON[e.category ?? 'Other'] ?? '🏷️'} {e.category ?? 'Other'}
+                          {CAT_ICON[e.category ?? 'Other'] ?? '🏷️'} {e.category ?? 'Other'}{e.subcategory ? ` · ${e.subcategory}` : ''}
                         </span>
                       </td>
                     </tr>
