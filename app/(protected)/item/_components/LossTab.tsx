@@ -1824,24 +1824,25 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
     <div className="flex flex-col h-full min-h-0">
       {/* "Columns" lets each header be brought in or out of the table --
           which ones show is remembered across visits alongside the Item
-          column's own width. */}
-      <div className="shrink-0 flex justify-end px-1 pb-1">
-        <div className="relative" ref={colMenuRef}>
-          <button onClick={() => setColMenuOpen(o => !o)}
-            className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg transition ${colMenuOpen ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-            Columns
-          </button>
-          {colMenuOpen && (
-            <div className="absolute right-0 top-full mt-1 z-40 bg-white border border-gray-200 rounded-lg shadow-xl min-w-[130px] max-h-64 overflow-y-auto">
-              {COLUMNS.map(c => (
-                <label key={c.key} className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-gray-700 hover:bg-gray-50 cursor-pointer border-t border-gray-100 first:border-t-0">
-                  <input type="checkbox" checked={visibleCols.has(c.key)} onChange={() => toggleCol(c.key)} />
-                  {c.label}
-                </label>
-              ))}
-            </div>
-          )}
-        </div>
+          column's own width. Spread out as a wrapping row of big tappable
+          pills instead of a cramped dropdown list, so every one is easy to
+          reach on a touch screen. */}
+      <div className="shrink-0 flex flex-col gap-1.5 px-1 pb-1.5" ref={colMenuRef}>
+        <button onClick={() => setColMenuOpen(o => !o)}
+          className={`self-end text-[10px] font-semibold px-2.5 py-1 rounded-lg transition ${colMenuOpen ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+          Columns
+        </button>
+        {colMenuOpen && (
+          <div className="flex flex-wrap gap-2">
+            {COLUMNS.map(c => (
+              <button key={c.key} onClick={() => toggleCol(c.key)}
+                className={`text-[11px] font-semibold px-3 py-2 rounded-full border transition ${
+                  visibleCols.has(c.key) ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'}`}>
+                {c.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       {/* Table — horizontally scrollable; Item column is kept short and
           truncates long names with an ellipsis instead of wrapping or
