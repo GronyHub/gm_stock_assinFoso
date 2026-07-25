@@ -152,6 +152,33 @@ export default function CABTab() {
   const visibleWeeks = onlyUnconfirmed ? weeks.filter(w => !w.confirmed) : weeks
   const confirmedRows = rows.filter(r => r.cab_total != null && Number(r.cab_total) !== 0)
 
+  // Per confirmed day: does prior confirmed total + net movement since then
+  // (a running total spanning only that one gap) land on this day's
+  // confirmed total? Verifies each confirmation against the one before it,
+  // independent of the all-time running_cash_at_bank the Diff column checks.
+  const verifyMap = useMemo(() => {
+    const map = new Map<string, { ok: boolean; expected: number; diff: number }>()
+    const asc = [...rows].sort((a, b) => String(a.entry_date).localeCompare(String(b.entry_date)))
+    let prevTotal: number | null = null
+    let netSincePrev = 0
+    for (const r of asc) {
+      const date = String(r.entry_date).slice(0, 10)
+      netSincePrev = parseFloat((netSincePrev + (Number(r.daily_net) || 0)).toFixed(4))
+      const isConfirmed = r.cab_total != null && Number(r.cab_total) !== 0
+      if (isConfirmed) {
+        const total = Number(r.cab_total)
+        if (prevTotal != null) {
+          const expected = parseFloat((prevTotal + netSincePrev).toFixed(2))
+          const diff = parseFloat((total - expected).toFixed(2))
+          map.set(date, { ok: Math.abs(diff) < 0.01, expected, diff })
+        }
+        prevTotal = total
+        netSincePrev = 0
+      }
+    }
+    return map
+  }, [rows])
+
   const latest = rows[0]
   const latestConfirmed = rows.find(r => r.cab_total != null)
   const unconfirmedCount = flags?.uncheckedCab?.length ?? 0
@@ -292,20 +319,21 @@ export default function CABTab() {
                 <>
                   <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
                     <th rowSpan={2} className="text-left px-3 py-2 font-bold border-b border-gray-200 align-bottom whitespace-nowrap">Date</th>
-                    <th colSpan={4} className="text-center px-3 py-1.5 font-bold border-b border-gray-100 border-x-2 border-gray-300">Confirmed (physical count)</th>
+                    <th colSpan={5} className="text-center px-3 py-1.5 font-bold border-b border-gray-100 border-x-2 border-gray-300">Confirmed (physical count)</th>
                   </tr>
                   <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
                     <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 border-l-2 border-gray-300">Bank</th>
                     <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200">MoMo</th>
                     <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200">Physical</th>
-                    <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 text-blue-500 border-r-2 border-gray-300">Total</th>
+                    <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 text-blue-500">Total</th>
+                    <th className="text-center px-3 py-1.5 font-bold border-b border-gray-200 border-r-2 border-gray-300" title="Checks this confirmation against the previous one: prior confirmed total + net movement since then">Verify</th>
                   </tr>
                 </>
               ) : (
                 <>
                   <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
                     <th rowSpan={2} className="text-left px-3 py-2 font-bold border-b border-gray-200 align-bottom whitespace-nowrap">Date</th>
-                    <th colSpan={4} className="text-center px-3 py-1.5 font-bold border-b border-gray-100 border-x-2 border-gray-300">Confirmed (physical count)</th>
+                    <th colSpan={5} className="text-center px-3 py-1.5 font-bold border-b border-gray-100 border-x-2 border-gray-300">Confirmed (physical count)</th>
                     <th rowSpan={2} className="text-right px-3 py-2 font-bold border-b border-gray-200 align-bottom" title="Cash Counted">CC</th>
                     <th rowSpan={2} className="text-right px-3 py-2 font-bold text-green-500 border-b border-gray-200 align-bottom" title="Grony Personal cash paid into the business that day">GP In</th>
                     <th rowSpan={2} className="text-right px-3 py-2 font-bold text-green-500 border-b border-gray-200 align-bottom" title="Debtor repayments received that day">Debtors</th>
@@ -320,7 +348,8 @@ export default function CABTab() {
                     <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 border-l-2 border-gray-300">Bank</th>
                     <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200">MoMo</th>
                     <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200">Physical</th>
-                    <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 text-blue-500 border-r-2 border-gray-300">Total</th>
+                    <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 text-blue-500">Total</th>
+                    <th className="text-center px-3 py-1.5 font-bold border-b border-gray-200 border-r-2 border-gray-300" title="Checks this confirmation against the previous one: prior confirmed total + net movement since then">Verify</th>
                   </tr>
                 </>
               )}
@@ -330,21 +359,32 @@ export default function CABTab() {
                 const hasConfirm = r.cab_total != null
                 const net = Number(r.daily_net)
                 const stripe = i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'
+                const dateKey = String(r.entry_date).slice(0, 10)
+                const verify = verifyMap.get(dateKey)
+                const verifyCell = (
+                  <td className="px-3 py-2 text-center border-r-2 border-gray-300" title={verify ? `Expected ${fmtn(verify.expected)}, diff ${fmtn(verify.diff)}` : undefined}>
+                    {verify && (verify.ok
+                      ? <span className="text-green-600 font-bold">✓</span>
+                      : <span className="text-red-500 font-bold" title={`Off by ${fmtn(verify.diff)}`}>✗</span>)}
+                  </td>
+                )
                 return confirmedColsOnly ? (
                   <tr key={r.entry_date} className={stripe}>
-                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmtDate(String(r.entry_date).slice(0,10))}</td>
+                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmtDate(dateKey)}</td>
                     <td className="px-3 py-2 text-right text-gray-500 border-l-2 border-gray-300">{nz(r.cab_bank)}</td>
                     <td className="px-3 py-2 text-right text-gray-500">{nz(r.cab_momo)}</td>
                     <td className="px-3 py-2 text-right text-gray-500">{nz(r.cab_physical)}</td>
-                    <td className="px-3 py-2 text-right text-blue-600 font-semibold border-r-2 border-gray-300">{fmtn(r.cab_total)}</td>
+                    <td className="px-3 py-2 text-right text-blue-600 font-semibold">{fmtn(r.cab_total)}</td>
+                    {verifyCell}
                   </tr>
                 ) : (
                   <tr key={r.entry_date} className={stripe}>
-                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmtDate(String(r.entry_date).slice(0,10))}</td>
+                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmtDate(dateKey)}</td>
                     <td className="px-3 py-2 text-right text-gray-500 border-l-2 border-gray-300">{nz(r.cab_bank)}</td>
                     <td className="px-3 py-2 text-right text-gray-500">{nz(r.cab_momo)}</td>
                     <td className="px-3 py-2 text-right text-gray-500">{nz(r.cab_physical)}</td>
-                    <td className="px-3 py-2 text-right text-blue-600 font-semibold border-r-2 border-gray-300">{hasConfirm ? fmtn(r.cab_total) : ''}</td>
+                    <td className="px-3 py-2 text-right text-blue-600 font-semibold">{hasConfirm ? fmtn(r.cab_total) : ''}</td>
+                    {verifyCell}
                     <td className="px-3 py-2 text-right text-gray-700">{nz(r.cash_counted)}</td>
                     <td className="px-3 py-2 text-right text-green-600">{nz(r.grony_personal_cash_in)}</td>
                     <td className="px-3 py-2 text-right text-green-600">{nz(r.debtors_cash_in)}</td>
