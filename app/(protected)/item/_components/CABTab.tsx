@@ -1,5 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
+import { useSession } from 'next-auth/react'
+import Link from 'next/link'
 import { fmtDate } from '@/lib/fmtDate'
 
 type Row = {
@@ -61,6 +63,10 @@ function StatCard({ label, value, sub, tone }: { label: string; value: string; s
 }
 
 export default function CABTab() {
+  const { data: session } = useSession()
+  const role = (session?.user as any)?.role ?? 'staff'
+  const username = ((session?.user as any)?.username ?? session?.user?.name ?? '').toLowerCase()
+  const isOwnerOrJoe = role === 'owner' || username === 'joe'
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [flags, setFlags] = useState<any | null>(null)
@@ -210,6 +216,12 @@ export default function CABTab() {
           className="text-[9px] font-semibold px-1.5 py-0.5 rounded transition bg-green-600 text-white hover:bg-green-700">
           + New CAB Confirm
         </button>
+        {isOwnerOrJoe && (
+          <Link href="/personal"
+            className="text-[9px] font-semibold px-1.5 py-0.5 rounded transition bg-gray-100 text-gray-600 hover:bg-gray-200">
+            Personal
+          </Link>
+        )}
         {showWeekly && (
           <label className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none ml-auto">
             <input type="checkbox" checked={onlyUnconfirmed} onChange={() => setOnlyUnconfirmed(o => !o)}

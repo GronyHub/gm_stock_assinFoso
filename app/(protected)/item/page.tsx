@@ -478,7 +478,6 @@ function ItemHubPageInner() {
   const hamburgerLinks = [
     ...HAMBURGER_LINKS,
     ...(isOwnerOrJoe ? [
-      { href: '/personal', label: 'Personal' },
       { href: '/debug/unlink-mismatch', label: 'Fix Mislinked Sales' },
     ] : []),
   ]
