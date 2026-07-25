@@ -1721,16 +1721,6 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   }
   const shownColumns = COLUMNS.filter(c => visibleCols.has(c.key))
 
-  const [colMenuOpen, setColMenuOpen] = useState(false)
-  const colMenuRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (colMenuRef.current && !colMenuRef.current.contains(e.target as Node)) setColMenuOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
-
   // Item column width -- user-resizable via the drag handle on its header,
   // remembered across visits since everyone's own item names run different
   // lengths.
@@ -1822,27 +1812,17 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* "Columns" lets each header be brought in or out of the table --
-          which ones show is remembered across visits alongside the Item
-          column's own width. Spread out as a wrapping row of big tappable
-          pills instead of a cramped dropdown list, so every one is easy to
-          reach on a touch screen. */}
-      <div className="shrink-0 flex flex-col gap-1.5 px-1 pb-1.5" ref={colMenuRef}>
-        <button onClick={() => setColMenuOpen(o => !o)}
-          className={`self-end text-[10px] font-semibold px-2.5 py-1 rounded-lg transition ${colMenuOpen ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-          Columns
-        </button>
-        {colMenuOpen && (
-          <div className="flex flex-wrap gap-2">
-            {COLUMNS.map(c => (
-              <button key={c.key} onClick={() => toggleCol(c.key)}
-                className={`text-[11px] font-semibold px-3 py-2 rounded-full border transition ${
-                  visibleCols.has(c.key) ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'}`}>
-                {c.label}
-              </button>
-            ))}
-          </div>
-        )}
+      {/* Which headers show (besides the always-visible Item column) --
+          remembered across visits alongside the Item column's own width.
+          Plain checkboxes, always visible and spread out, rather than
+          hidden behind a menu button. */}
+      <div className="shrink-0 flex flex-wrap gap-x-3 gap-y-1.5 px-1 pb-1.5">
+        {COLUMNS.map(c => (
+          <label key={c.key} className="flex items-center gap-1.5 text-[11px] font-medium text-gray-600 cursor-pointer">
+            <input type="checkbox" checked={visibleCols.has(c.key)} onChange={() => toggleCol(c.key)} />
+            {c.label}
+          </label>
+        ))}
       </div>
       {/* Table — horizontally scrollable; Item column is kept short and
           truncates long names with an ellipsis instead of wrapping or
