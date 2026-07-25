@@ -1,7 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
 import { RoleFlagsTable } from './RoleFlagsTable'
-import { LossSummaryTable } from './LossSummaryTable'
 import type { Violation } from './useViolations'
 import type { RoleKey } from './RoleBar'
 
@@ -121,16 +120,15 @@ export default function RolePanel({
       <div className="flex-1 min-h-0 overflow-y-auto px-4 py-2 space-y-2">
         {role === 'joe' && (
           <>
-            {/* Loss Feed period totals — same table treatment as the flags below */}
-            {lossSummary && (
-              <LossSummaryTable summary={lossSummary} onFixNow={() => { onClose(); onGoToViolation('__loss_feed') }} />
-            )}
             {/* Joe fixes violations inline here -- each row drops down to its
                 own fix view (reused from whichever tab normally renders it)
-                instead of navigating away, so the panel stays open. */}
+                instead of navigating away, so the panel stays open. Loss Feed
+                period totals (All-Time/Yesterday/etc.) are pinned into the
+                Daily Loss group of the same table, not a separate one above it. */}
             <RoleFlagsTable violations={cashViolations} assignments={assignments} deadlines={deadlines}
               assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
-              items={items} onItemsChanged={onItemsChanged} />
+              items={items} onItemsChanged={onItemsChanged}
+              lossSummary={lossSummary ?? undefined} onFixLossFeed={() => { onClose(); onGoToViolation('__loss_feed') }} />
           </>
         )}
         {role === 'bino' && (
