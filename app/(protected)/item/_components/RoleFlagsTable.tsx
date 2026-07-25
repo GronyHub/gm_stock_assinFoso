@@ -99,7 +99,18 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
   const [showDone, setShowDone] = useState(false)
   // Collapses every group down to just its green/blue header bars -- an
   // at-a-glance summary with no row detail underneath (overrides "Done").
+  // Clicking a bar while collapsed expands just that group, tracked here so
+  // it survives independently of the blanket "Bars only" toggle.
   const [barsOnly, setBarsOnly] = useState(false)
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
+
+  function toggleGroup(submenu: string) {
+    setExpandedGroups(prev => {
+      const next = new Set(prev)
+      if (next.has(submenu)) next.delete(submenu); else next.add(submenu)
+      return next
+    })
+  }
 
   // Bucket by the submenu each flag's fix view actually lives under (Items,
   // Counts, Sales, etc.) so a row's origin is obvious without opening it --
@@ -141,7 +152,8 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
           Done
         </label>
         <label className="flex items-center gap-1.5 cursor-pointer">
-          <input type="checkbox" checked={barsOnly} onChange={e => setBarsOnly(e.target.checked)} />
+          <input type="checkbox" checked={barsOnly}
+            onChange={e => { setBarsOnly(e.target.checked); setExpandedGroups(new Set()) }} />
           Bars only
         </label>
       </div>
@@ -155,7 +167,10 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
             <th className="text-left px-1.5 py-1.5 font-semibold text-gray-500">Assigned</th>
           </tr>
         </thead>
-        {groupedViolations.map(({ submenu, rows, total, section, showSection }) => (
+        {groupedViolations.map(({ submenu, rows, total, section, showSection }) => {
+          const groupExpanded = expandedGroups.has(submenu)
+          const showRows = !barsOnly || groupExpanded
+          return (
           <tbody key={submenu} className="divide-y divide-gray-100">
             {inlineFix && showSection && (
               <tr>
@@ -164,15 +179,18 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
                 </td>
               </tr>
             )}
-            <tr>
+            <tr onClick={barsOnly ? () => toggleGroup(submenu) : undefined}
+              className={barsOnly ? 'cursor-pointer' : ''}>
               <td colSpan={4} className="px-3 py-1.5 bg-blue-600">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-white text-[11px]">{submenu}</span>
+                  <span className="font-bold text-white text-[11px]">
+                    {barsOnly && (groupExpanded ? '▾ ' : '▸ ')}{submenu}
+                  </span>
                   <span className="font-bold text-white text-[11px]">{total > 0 ? total : '✓'}</span>
                 </div>
               </td>
             </tr>
-            {!barsOnly && submenu === 'Daily Loss' && lossRows.map(r => (
+            {showRows && submenu === 'Daily Loss' && lossRows.map(r => (
               <tr key={r.label} onClick={() => r.period.n > 0 && onFixLossFeed?.()}
                 className={`transition ${r.period.n > 0 ? 'cursor-pointer hover:bg-blue-50' : ''}`}>
                 <td className={`px-2 py-1.5 whitespace-nowrap ${r.period.n > 0 ? 'text-gray-800' : 'text-gray-400'}`}>{r.label}</td>
@@ -185,7 +203,7 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
                 <td className="px-1.5 py-1.5 text-gray-500 whitespace-nowrap">—</td>
               </tr>
             ))}
-            {!barsOnly && (showDone ? rows : rows.filter(v => v.count > 0)).map(v => {
+            {showRows && (showDone ? rows : rows.filter(v => v.count > 0)).map(v => {
               const { label: dueLabel, atRisk } = dueCell(v, deadlines[v.type], threshold)
               const explicitlyAssigned = !!assignments[v.type]
               const violationKey = ERRORS_TAB_VIOLATION[v.type] ?? v.type
@@ -220,7 +238,8 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
               )
             })}
           </tbody>
-        ))}
+          )
+        })}
       </table>
       </div>
     </div>
