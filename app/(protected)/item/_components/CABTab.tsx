@@ -103,8 +103,7 @@ export default function CABTab() {
   }, [isOwnerOrJoe])
 
   // GP Out days keyed by date -- lets the Personal (GP Out only) view show
-  // which Personal entries (item + category) made up that day's total,
-  // instead of just the aggregate number cash_at_bank_view reports.
+  // which Personal entries (item + category) made up that day's total.
   const personalOutByDate = useMemo(() => {
     const map = new Map<string, PersonalEntry[]>()
     for (const e of personalEntries) {
@@ -115,6 +114,18 @@ export default function CABTab() {
     }
     return map
   }, [personalEntries])
+
+  // The Personal (GP Out only) view is built straight from
+  // grony_personal_ledger, not from cash_at_bank rows -- cash_at_bank only
+  // has a row for a date when some other shop transaction (sale/expense/
+  // bill/etc.) "ensured" one, and it's capped to the last 90 days, so
+  // driving this view off it silently dropped Personal entries on days
+  // with no other activity, or older than 90 days.
+  const personalOutRows = useMemo(() => {
+    return Array.from(personalOutByDate.entries())
+      .map(([date, entries]) => ({ date, total: entries.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0), entries }))
+      .sort((a, b) => b.date.localeCompare(a.date))
+  }, [personalOutByDate])
 
   useEffect(() => { loadRows() }, [])
 
@@ -192,14 +203,12 @@ export default function CABTab() {
       return next
     })
   }
-  const displayRows = gpOutOnly
-    ? baseDailyRows.filter(r => {
-        if (r.grony_personal_expenses == null || Number(r.grony_personal_expenses) === 0) return false
-        if (categoryFilter.size === 0) return true
-        const entries = personalOutByDate.get(String(r.entry_date).slice(0, 10)) ?? []
-        return entries.some(e => categoryFilter.has(e.category ?? 'Other'))
-      })
-    : baseDailyRows
+  const displayRows = baseDailyRows
+  const filteredPersonalOutRows = categoryFilter.size === 0
+    ? personalOutRows
+    : personalOutRows
+        .map(r => ({ ...r, entries: r.entries.filter(e => categoryFilter.has(e.category ?? 'Other')) }))
+        .filter(r => r.entries.length > 0)
 
   // Per confirmed day: does prior confirmed total + net movement since then
   // (a running total spanning only that one gap) land on this day's
@@ -463,7 +472,24 @@ export default function CABTab() {
               )}
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {displayRows.map((r, i) => {
+              {gpOutOnly ? filteredPersonalOutRows.map((r, i) => (
+                <tr key={r.date} className={i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'}>
+                  <td className="px-3 py-2 text-gray-600 whitespace-nowrap align-top">{fmtDate(r.date)}</td>
+                  <td className="px-3 py-2 text-right text-orange-500 align-top">{fmtn(r.total)}</td>
+                  <td className="px-3 py-2 text-gray-800 border-l-2 border-gray-300 align-top">
+                    {r.entries.map(e => <div key={e.id}>{e.description}</div>)}
+                  </td>
+                  <td className="px-3 py-2 align-top">
+                    {r.entries.map(e => (
+                      <div key={e.id} className="mb-1 last:mb-0">
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${CAT_COLOR[e.category ?? 'Other'] ?? CAT_COLOR['Other']}`}>
+                          {CAT_ICON[e.category ?? 'Other']} {e.category ?? 'Other'}
+                        </span>
+                      </div>
+                    ))}
+                  </td>
+                </tr>
+              )) : displayRows.map((r, i) => {
                 const hasConfirm = r.cab_total != null
                 const net = Number(r.daily_net)
                 const stripe = i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'
@@ -493,30 +519,7 @@ export default function CABTab() {
                   </>
                 )
                 const totalCls = `px-3 py-2 text-right text-blue-600 font-semibold ${hideBankMomoPhysical ? 'border-l-2 border-gray-300' : ''}`
-                const allPersonalOut = personalOutByDate.get(dateKey) ?? []
-                const personalOut = categoryFilter.size === 0
-                  ? allPersonalOut
-                  : allPersonalOut.filter(e => categoryFilter.has(e.category ?? 'Other'))
-                return gpOutOnly ? (
-                  <tr key={r.entry_date} className={stripe}>
-                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap align-top">{fmtDate(dateKey)}</td>
-                    <td className="px-3 py-2 text-right text-orange-500 align-top">{nz(r.grony_personal_expenses)}</td>
-                    <td className="px-3 py-2 text-gray-800 border-l-2 border-gray-300 align-top">
-                      {personalOut.length === 0
-                        ? <span className="text-gray-300">—</span>
-                        : personalOut.map(e => <div key={e.id}>{e.description}</div>)}
-                    </td>
-                    <td className="px-3 py-2 align-top">
-                      {personalOut.map(e => (
-                        <div key={e.id} className="mb-1 last:mb-0">
-                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${CAT_COLOR[e.category ?? 'Other'] ?? CAT_COLOR['Other']}`}>
-                            {CAT_ICON[e.category ?? 'Other']} {e.category ?? 'Other'}
-                          </span>
-                        </div>
-                      ))}
-                    </td>
-                  </tr>
-                ) : confirmedColsOnly ? (
+                return confirmedColsOnly ? (
                   <tr key={r.entry_date} className={stripe}>
                     <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmtDate(dateKey)}</td>
                     {bmpCells}
@@ -548,9 +551,9 @@ export default function CABTab() {
             </tbody>
           </table>
           </div>
-          {displayRows.length === 0 && (
+          {(gpOutOnly ? filteredPersonalOutRows.length === 0 : displayRows.length === 0) && (
             <p className="text-xs text-gray-400 text-center py-10">
-              {gpOutOnly ? 'No days with GP Out in range.' : confirmedColsOnly ? 'No confirmed days in range.' : 'No data'}
+              {gpOutOnly ? 'No GP Out entries in range.' : confirmedColsOnly ? 'No confirmed days in range.' : 'No data'}
             </p>
           )}
         </div>
