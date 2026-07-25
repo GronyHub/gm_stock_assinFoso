@@ -78,6 +78,7 @@ export default function CABTab() {
   const [hideBankMomoPhysical, setHideBankMomoPhysical] = useState(false)
   const [gpOutOnly, setGpOutOnly] = useState(false)
   const [categoryFilter, setCategoryFilter] = useState<Set<string>>(new Set())
+  const [byCategory, setByCategory] = useState(false)
   const [showConfirmForm, setShowConfirmForm] = useState(false)
   const [confirmDate, setConfirmDate] = useState('')
   const [confirmBank, setConfirmBank] = useState('')
@@ -247,6 +248,20 @@ export default function CABTab() {
         .map(r => ({ ...r, entries: r.entries.filter(e => categoryFilter.has(e.category ?? 'Other')) }))
         .filter(r => r.entries.length > 0)
 
+  // By Category pivots the same personalOutRows data into one column per
+  // category -- the checkbox filter picks which categories become columns
+  // instead of narrowing which rows show, since every column here already
+  // represents one category.
+  const pivotCategories = categoryFilter.size === 0
+    ? personalAllCategories.filter(cat => personalOutRows.some(r => r.entries.some(e => (e.category ?? 'Other') === cat)))
+    : personalAllCategories.filter(cat => categoryFilter.has(cat))
+  const pivotRows = personalOutRows
+    .map(r => ({
+      date: r.date,
+      totals: pivotCategories.map(cat => r.entries.filter(e => (e.category ?? 'Other') === cat).reduce((s, e) => s + (parseFloat(e.amount) || 0), 0)),
+    }))
+    .filter(r => r.totals.some(t => t !== 0))
+
   // Per confirmed day: does prior confirmed total + net movement since then
   // (a running total spanning only that one gap) land on this day's
   // confirmed total? Verifies each confirmation against the one before it,
@@ -346,6 +361,11 @@ export default function CABTab() {
             className="text-[9px] font-semibold px-1.5 py-0.5 rounded transition bg-blue-600 text-white hover:bg-blue-700">
             + Add
           </button>
+          <label className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
+            <input type="checkbox" checked={byCategory} onChange={() => setByCategory(o => !o)}
+              className="w-3 h-3 accent-blue-600" />
+            By Category
+          </label>
           {personalAllCategories.map(cat => (
             <label key={cat} className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
               <input type="checkbox" checked={categoryFilter.has(cat)} onChange={() => toggleCategory(cat)}
@@ -521,7 +541,14 @@ export default function CABTab() {
           <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
           <table className="w-full border-collapse text-xs">
             <thead className="sticky top-0 z-10">
-              {gpOutOnly ? (
+              {gpOutOnly && byCategory ? (
+                <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
+                  <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Date</th>
+                  {pivotCategories.map(cat => (
+                    <th key={cat} className="text-right px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">{CAT_ICON[cat] ?? '🏷️'} {cat}</th>
+                  ))}
+                </tr>
+              ) : gpOutOnly ? (
                 <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
                   <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Date</th>
                   <th className="text-right px-3 py-2 font-bold text-orange-500 border-b border-gray-200" title="Cash taken out for Grony's personal use">GP Out</th>
@@ -576,7 +603,14 @@ export default function CABTab() {
               )}
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {gpOutOnly ? filteredPersonalOutRows.map((r, i) => (
+              {gpOutOnly && byCategory ? pivotRows.map((r, i) => (
+                <tr key={r.date} className={i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'}>
+                  <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmtDate(r.date)}</td>
+                  {r.totals.map((t, ci) => (
+                    <td key={pivotCategories[ci]} className="px-3 py-2 text-right text-gray-700">{t === 0 ? '' : fmtn(t)}</td>
+                  ))}
+                </tr>
+              )) : gpOutOnly ? filteredPersonalOutRows.map((r, i) => (
                 <tr key={r.date} className={i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'}>
                   <td className="px-3 py-2 text-gray-600 whitespace-nowrap align-top">{fmtDate(r.date)}</td>
                   <td className="px-3 py-2 text-right text-orange-500 align-top">{fmtn(r.total)}</td>
@@ -655,7 +689,7 @@ export default function CABTab() {
             </tbody>
           </table>
           </div>
-          {(gpOutOnly ? filteredPersonalOutRows.length === 0 : displayRows.length === 0) && (
+          {(gpOutOnly && byCategory ? pivotRows.length === 0 : gpOutOnly ? filteredPersonalOutRows.length === 0 : displayRows.length === 0) && (
             <p className="text-xs text-gray-400 text-center py-10">
               {gpOutOnly ? 'No GP Out entries in range.' : confirmedColsOnly ? 'No confirmed days in range.' : 'No data'}
             </p>
