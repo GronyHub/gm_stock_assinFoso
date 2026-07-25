@@ -2,24 +2,24 @@
 import { useState, useEffect } from 'react'
 import { usePolling } from '@/lib/usePolling'
 
-export type RoleKey = 'joe' | 'bino' | 'opener' | 'closer'
+export type RoleKey = 'joe' | 'opener' | 'closer'
 
 type Props = {
   openRole: RoleKey | null
   onSelectRole: (key: RoleKey) => void
   cashCount: number
-  manageCount: number
   dailyCount: number
   missingClosingReportsCount: number
   trailing?: React.ReactNode
 }
 
-// Persistent bottom bar -- one tab per role player (Joe/cash, Bino/manage,
-// today's Opener, today's Closer) with a red badge for outstanding issues.
-// Behaves like the top-level tabs: the active one gets the same blue
-// highlight, and the bar itself never gets hidden -- its panel (RolePanel)
-// replaces the content area above it instead of covering the bar in a modal.
-export default function RoleBar({ openRole, onSelectRole, cashCount, manageCount, dailyCount, missingClosingReportsCount, trailing }: Props) {
+// Persistent bottom bar -- one tab per role player (Joe/cash -- which now
+// also carries the former Bino/manage flags, today's Opener, today's Closer)
+// with a red badge for outstanding issues. Behaves like the top-level tabs:
+// the active one gets the same blue highlight, and the bar itself never gets
+// hidden -- its panel (RolePanel) replaces the content area above it instead
+// of covering the bar in a modal.
+export default function RoleBar({ openRole, onSelectRole, cashCount, dailyCount, missingClosingReportsCount, trailing }: Props) {
   const [today, setToday] = useState<{ opener: string | null; openerConfirmed: boolean | null }>({ opener: null, openerConfirmed: null })
 
   function load() {
@@ -40,7 +40,6 @@ export default function RoleBar({ openRole, onSelectRole, cashCount, manageCount
 
   const TABS: { key: RoleKey; label: string; count: number }[] = [
     { key: 'joe', label: 'Joe', count: cashCount },
-    { key: 'bino', label: 'Bino', count: manageCount },
     { key: 'opener', label: 'Opener', count: openerCount },
     { key: 'closer', label: 'Closer', count: closerCount },
   ]

@@ -44,16 +44,12 @@ export const SHORT_LABEL: Record<string, string> = {
 export const DEFAULT_ASSIGNEE = 'Joe'
 
 // Every error type the app tracks -- active ones become task rows, clear
-// ones are named in the ✓ line so nothing is silently missing. Split in
-// three: CASH holds everything that touches money directly; MANAGE holds
-// the operational/housekeeping tasks (staff times, count duties, item
-// hygiene, and the Advert sub-tab's own audio-advert/jingle/equipment
-// checks); OPENER holds the morning count -- that's the opener's job, not
-// Joe's or Bino's, so it shows on the Opener panel instead of either.
-// Move a type between sections by moving its key in the matching set.
-const MANAGE_TYPES = new Set([
-  'no_staff_times', 'no_advert', 'jingle_overdue', 'equipment_check_overdue',
-])
+// ones are named in the ✓ line so nothing is silently missing. OPENER holds
+// the morning count -- that's the opener's job, so it shows on the Opener
+// panel instead of Joe's; everything else (cash-related and the former
+// Bino/manage bucket: staff times, count duties, item hygiene, the Advert
+// sub-tab's audio-advert/jingle/equipment checks) is one list now that
+// there's no separate Bino panel to split it into.
 const OPENER_TYPES = new Set(['daily'])
 
 const ALL_ERROR_TYPES = [
@@ -228,16 +224,14 @@ export function useViolations(counts?: Record<string, number>) {
     return list.sort((a, b) => b.count - a.count)
   }, [flags, counts])
 
-  const cashViolations = violations.filter(v => !MANAGE_TYPES.has(v.type) && !OPENER_TYPES.has(v.type))
-  const manageViolations = violations.filter(v => MANAGE_TYPES.has(v.type))
+  const cashViolations = violations.filter(v => !OPENER_TYPES.has(v.type))
   const openerViolations = violations.filter(v => OPENER_TYPES.has(v.type))
   const cashCount = cashViolations.reduce((s, v) => s + v.count, 0)
-  const manageCount = manageViolations.reduce((s, v) => s + v.count, 0)
   const openerViolationCount = openerViolations.reduce((s, v) => s + v.count, 0)
 
   return {
     flags, assignments, deadlines, assignedBy, assignedOn, vSettings,
-    violations, cashViolations, manageViolations, openerViolations,
-    cashCount, manageCount, openerViolationCount,
+    violations, cashViolations, openerViolations,
+    cashCount, openerViolationCount,
   }
 }
