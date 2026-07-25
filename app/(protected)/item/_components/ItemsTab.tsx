@@ -101,7 +101,7 @@ function FixRow({ label, sub, children }: { label: string; sub?: string; childre
   return (
     <div>
       <div className="flex items-center justify-between px-2 py-1.5 gap-2">
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 truncate">
           <span className="text-[10px] text-gray-900 font-semibold">{label}</span>
           {sub && <span className="ml-2 text-[9px] text-gray-400">{sub}</span>}
         </div>
