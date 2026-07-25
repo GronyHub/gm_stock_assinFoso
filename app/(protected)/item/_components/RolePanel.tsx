@@ -19,7 +19,6 @@ type Item = {
 type Props = {
   role: RoleKey
   cashViolations: Violation[]
-  manageViolations: Violation[]
   openerViolations: Violation[]
   assignments: Record<string, string>
   deadlines: Record<string, string>
@@ -39,7 +38,7 @@ type Props = {
 // top-level tab does -- not a modal, so the bar stays visible/clickable and
 // there's a plain Close button instead of a small ×.
 export default function RolePanel({
-  role, cashViolations, manageViolations, openerViolations, assignments, deadlines, assignedBy, assignedOn, vSettings,
+  role, cashViolations, openerViolations, assignments, deadlines, assignedBy, assignedOn, vSettings,
   onGoToViolation, missingClosingReportsCount, onOpenManage, onClose, items, onItemsChanged,
 }: Props) {
   const [today, setToday] = useState<{ opener: string | null; openerConfirmed: boolean | null }>({ opener: null, openerConfirmed: null })
@@ -124,17 +123,15 @@ export default function RolePanel({
                 own fix view (reused from whichever tab normally renders it)
                 instead of navigating away, so the panel stays open. Loss Feed
                 period totals (All-Time/Yesterday/etc.) are pinned into the
-                Daily Loss group of the same table, not a separate one above it. */}
+                Daily Loss group of the same table, not a separate one above it.
+                The former Bino bucket (staff times, adverts, jingle,
+                equipment checks) is included too -- it falls into cashViolations
+                and groups under its own "Grony Manage" bar automatically. */}
             <RoleFlagsTable violations={cashViolations} assignments={assignments} deadlines={deadlines}
               assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
               items={items} onItemsChanged={onItemsChanged}
               lossSummary={lossSummary ?? undefined} onFixLossFeed={() => { onClose(); onGoToViolation('__loss_feed') }} />
           </>
-        )}
-        {role === 'bino' && (
-          <RoleFlagsTable violations={manageViolations} assignments={assignments} deadlines={deadlines}
-            assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
-            onGoToViolation={key => { onClose(); onGoToViolation(key) }} />
         )}
         {role === 'opener' && (
           <>
