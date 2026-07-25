@@ -101,6 +101,7 @@ export default function CABTab() {
   const [editEntryCatCustom, setEditEntryCatCustom] = useState(false)
   const [deleteEntryConfirmId, setDeleteEntryConfirmId] = useState<number | null>(null)
   const [editCell, setEditCell] = useState<{ date: string; category: string } | null>(null)
+  const [editDate, setEditDate] = useState<string | null>(null)
   const [splitEntryId, setSplitEntryId] = useState<number | null>(null)
   const [splitParts, setSplitParts] = useState<{ description: string; amount: string }[]>([])
   const [splitSaving, setSplitSaving] = useState(false)
@@ -318,6 +319,97 @@ export default function CABTab() {
     setSplitSaving(false)
     setSplitEntryId(null)
     setSplitParts([])
+  }
+
+  // Shared by both the By Category cell panel and the plain GP Out row
+  // panel -- same Recategorize/Split/Remove controls either way, just
+  // triggered from a different tap target.
+  function renderEntryEditor(e: PersonalEntry) {
+    const cat = e.category ?? 'Other'
+    if (splitEntryId === e.id) {
+      return (
+        <div key={e.id} className="bg-white border border-blue-200 rounded-lg px-2 py-2 space-y-1.5">
+          <p className="text-[10px] font-semibold text-gray-600">
+            Split into {splitParts.length} — total {fmtn(splitParts.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0))}
+            {' '}(original {fmtn(parseFloat(e.amount))})
+          </p>
+          {splitParts.map((p, pi) => (
+            <div key={pi} className="flex items-center gap-1">
+              <input value={p.description} onChange={ev => updateSplitPart(pi, 'description', ev.target.value)} placeholder="Description"
+                className="flex-1 border border-gray-200 rounded px-1.5 py-1 text-[10px] outline-none focus:ring-1 focus:ring-blue-400" />
+              <input type="number" min="0" step="any" value={p.amount} onChange={ev => updateSplitPart(pi, 'amount', ev.target.value)} placeholder="Amount"
+                className="w-20 border border-gray-200 rounded px-1.5 py-1 text-[10px] outline-none focus:ring-1 focus:ring-blue-400" />
+              {splitParts.length > 2 && (
+                <button onClick={() => setSplitParts(prev => prev.filter((_, idx) => idx !== pi))}
+                  className="text-[10px] text-gray-400 hover:text-red-500">✕</button>
+              )}
+            </div>
+          ))}
+          <div className="flex items-center gap-2">
+            <button onClick={() => setSplitParts(prev => [...prev, { description: '', amount: '' }])}
+              className="text-[10px] text-blue-600 hover:underline">+ Add part</button>
+            <button onClick={() => saveSplit(e)} disabled={splitSaving || splitParts.filter(p => p.description.trim() && p.amount.trim()).length < 2}
+              className="text-[10px] px-1.5 py-0.5 bg-blue-600 text-white rounded font-semibold disabled:opacity-40">
+              {splitSaving ? 'Saving…' : 'Save Split'}
+            </button>
+            <button onClick={() => { setSplitEntryId(null); setSplitParts([]) }}
+              className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">Cancel</button>
+          </div>
+        </div>
+      )
+    }
+    return (
+      <div key={e.id} className="flex items-center justify-between gap-2 bg-white border border-gray-200 rounded-lg px-2 py-1.5">
+        <div className="min-w-0">
+          <p className="text-xs text-gray-800">{e.description}</p>
+          <p className="text-[10px] text-gray-400">{fmtn(parseFloat(e.amount))}</p>
+        </div>
+        {editEntryId === e.id ? (
+          editEntryCatCustom ? (
+            <div className="flex items-center gap-1 shrink-0">
+              <input value={editEntryCat} onChange={ev => setEditEntryCat(ev.target.value)} placeholder="New category" autoFocus
+                className="w-28 border border-blue-300 rounded px-1.5 py-0.5 text-[10px] outline-none" />
+              <button onClick={() => saveEntryCategory(e.id)} className="text-[10px] px-1.5 py-0.5 bg-blue-600 text-white rounded font-semibold">Save</button>
+              <button onClick={() => { setEditEntryId(null); setEditEntryCatCustom(false) }} className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">✕</button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1 shrink-0">
+              <select value={editEntryCat} onChange={ev => {
+                  if (ev.target.value === '__new__') { setEditEntryCatCustom(true); setEditEntryCat('') } else setEditEntryCat(ev.target.value)
+                }}
+                className="border border-blue-300 rounded px-1.5 py-0.5 text-[10px] outline-none">
+                {personalAllCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                <option value="__new__">+ Add new category…</option>
+              </select>
+              <button onClick={() => saveEntryCategory(e.id)} className="text-[10px] px-1.5 py-0.5 bg-blue-600 text-white rounded font-semibold">Save</button>
+              <button onClick={() => setEditEntryId(null)} className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">✕</button>
+            </div>
+          )
+        ) : (
+          <div className="flex items-center gap-1.5 shrink-0">
+            {deleteEntryConfirmId === e.id ? (
+              <>
+                <span className="text-[10px] text-gray-500">Remove?</span>
+                <button onClick={() => deleteEntry(e.id)} className="text-[10px] text-red-600 font-semibold hover:underline">Yes</button>
+                <button onClick={() => setDeleteEntryConfirmId(null)} className="text-[10px] text-gray-500 hover:underline">No</button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => { setEditEntryId(e.id); setEditEntryCat(cat); setEditEntryCatCustom(false) }}
+                  className="text-[10px] text-blue-600 hover:underline">Recategorize</button>
+                <button onClick={() => openSplit(e)} className="text-[10px] text-purple-600 hover:underline">Split</button>
+                <button onClick={() => setDeleteEntryConfirmId(e.id)} className="text-[10px] text-red-500 hover:underline">Remove</button>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  function toggleEditDate(date: string) {
+    setEditDate(prev => prev === date ? null : date)
+    setEditEntryId(null); setEditEntryCatCustom(false); setDeleteEntryConfirmId(null); setSplitEntryId(null)
   }
 
   const displayRows = baseDailyRows
@@ -714,108 +806,46 @@ export default function CABTab() {
                         <td colSpan={1 + pivotCategories.length} className="px-3 py-3">
                           <p className="text-[10px] font-semibold text-gray-700 mb-1.5">{fmtDate(r.date)} · {CAT_ICON[openCat] ?? '🏷️'} {openCat}</p>
                           <div className="space-y-2">
-                            {openCell.entries.map(e => (
-                              splitEntryId === e.id ? (
-                                <div key={e.id} className="bg-white border border-blue-200 rounded-lg px-2 py-2 space-y-1.5">
-                                  <p className="text-[10px] font-semibold text-gray-600">
-                                    Split into {splitParts.length} — total {fmtn(splitParts.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0))}
-                                    {' '}(original {fmtn(parseFloat(e.amount))})
-                                  </p>
-                                  {splitParts.map((p, pi) => (
-                                    <div key={pi} className="flex items-center gap-1">
-                                      <input value={p.description} onChange={ev => updateSplitPart(pi, 'description', ev.target.value)} placeholder="Description"
-                                        className="flex-1 border border-gray-200 rounded px-1.5 py-1 text-[10px] outline-none focus:ring-1 focus:ring-blue-400" />
-                                      <input type="number" min="0" step="any" value={p.amount} onChange={ev => updateSplitPart(pi, 'amount', ev.target.value)} placeholder="Amount"
-                                        className="w-20 border border-gray-200 rounded px-1.5 py-1 text-[10px] outline-none focus:ring-1 focus:ring-blue-400" />
-                                      {splitParts.length > 2 && (
-                                        <button onClick={() => setSplitParts(prev => prev.filter((_, idx) => idx !== pi))}
-                                          className="text-[10px] text-gray-400 hover:text-red-500">✕</button>
-                                      )}
-                                    </div>
-                                  ))}
-                                  <div className="flex items-center gap-2">
-                                    <button onClick={() => setSplitParts(prev => [...prev, { description: '', amount: '' }])}
-                                      className="text-[10px] text-blue-600 hover:underline">+ Add part</button>
-                                    <button onClick={() => saveSplit(e)} disabled={splitSaving || splitParts.filter(p => p.description.trim() && p.amount.trim()).length < 2}
-                                      className="text-[10px] px-1.5 py-0.5 bg-blue-600 text-white rounded font-semibold disabled:opacity-40">
-                                      {splitSaving ? 'Saving…' : 'Save Split'}
-                                    </button>
-                                    <button onClick={() => { setSplitEntryId(null); setSplitParts([]) }}
-                                      className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">Cancel</button>
-                                  </div>
-                                </div>
-                              ) : (
-                              <div key={e.id} className="flex items-center justify-between gap-2 bg-white border border-gray-200 rounded-lg px-2 py-1.5">
-                                <div className="min-w-0">
-                                  <p className="text-xs text-gray-800">{e.description}</p>
-                                  <p className="text-[10px] text-gray-400">{fmtn(parseFloat(e.amount))}</p>
-                                </div>
-                                {editEntryId === e.id ? (
-                                  editEntryCatCustom ? (
-                                    <div className="flex items-center gap-1 shrink-0">
-                                      <input value={editEntryCat} onChange={ev => setEditEntryCat(ev.target.value)} placeholder="New category" autoFocus
-                                        className="w-28 border border-blue-300 rounded px-1.5 py-0.5 text-[10px] outline-none" />
-                                      <button onClick={() => saveEntryCategory(e.id)} className="text-[10px] px-1.5 py-0.5 bg-blue-600 text-white rounded font-semibold">Save</button>
-                                      <button onClick={() => { setEditEntryId(null); setEditEntryCatCustom(false) }} className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">✕</button>
-                                    </div>
-                                  ) : (
-                                    <div className="flex items-center gap-1 shrink-0">
-                                      <select value={editEntryCat} onChange={ev => {
-                                          if (ev.target.value === '__new__') { setEditEntryCatCustom(true); setEditEntryCat('') } else setEditEntryCat(ev.target.value)
-                                        }}
-                                        className="border border-blue-300 rounded px-1.5 py-0.5 text-[10px] outline-none">
-                                        {personalAllCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                                        <option value="__new__">+ Add new category…</option>
-                                      </select>
-                                      <button onClick={() => saveEntryCategory(e.id)} className="text-[10px] px-1.5 py-0.5 bg-blue-600 text-white rounded font-semibold">Save</button>
-                                      <button onClick={() => setEditEntryId(null)} className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">✕</button>
-                                    </div>
-                                  )
-                                ) : (
-                                  <div className="flex items-center gap-1.5 shrink-0">
-                                    {deleteEntryConfirmId === e.id ? (
-                                      <>
-                                        <span className="text-[10px] text-gray-500">Remove?</span>
-                                        <button onClick={() => deleteEntry(e.id)} className="text-[10px] text-red-600 font-semibold hover:underline">Yes</button>
-                                        <button onClick={() => setDeleteEntryConfirmId(null)} className="text-[10px] text-gray-500 hover:underline">No</button>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <button onClick={() => { setEditEntryId(e.id); setEditEntryCat(openCat); setEditEntryCatCustom(false) }}
-                                          className="text-[10px] text-blue-600 hover:underline">Recategorize</button>
-                                        <button onClick={() => openSplit(e)} className="text-[10px] text-purple-600 hover:underline">Split</button>
-                                        <button onClick={() => setDeleteEntryConfirmId(e.id)} className="text-[10px] text-red-500 hover:underline">Remove</button>
-                                      </>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                              )
-                            ))}
+                            {openCell.entries.map(renderEntryEditor)}
                           </div>
                         </td>
                       </tr>
                     )}
                   </Fragment>
                 )
-              }) : gpOutOnly ? filteredPersonalOutRows.map((r, i) => (
-                <tr key={r.date} className={i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'}>
-                  <td className="px-3 py-2 text-gray-600 whitespace-nowrap align-top">{fmtDate(r.date)}</td>
-                  <td className="px-3 py-2 text-right text-orange-500 align-top">{fmtn(r.total)}</td>
-                  <td className="px-3 py-2 text-gray-800 border-l-2 border-gray-300 align-top">
-                    {r.entries.map(e => <div key={e.id}>{e.description}</div>)}
-                  </td>
-                  <td className="px-3 py-2 align-top">
-                    {r.entries.map(e => (
-                      <div key={e.id} className="mb-1 last:mb-0">
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${CAT_COLOR[e.category ?? 'Other'] ?? CAT_COLOR['Other']}`}>
-                          {CAT_ICON[e.category ?? 'Other'] ?? '🏷️'} {e.category ?? 'Other'}
-                        </span>
-                      </div>
-                    ))}
-                  </td>
-                </tr>
-              )) : displayRows.map((r, i) => {
+              }) : gpOutOnly ? filteredPersonalOutRows.map((r, i) => {
+                const isOpen = editDate === r.date
+                return (
+                  <Fragment key={r.date}>
+                    <tr className={isOpen ? 'bg-blue-50' : i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'}>
+                      <td className="px-3 py-2 text-gray-600 whitespace-nowrap align-top cursor-pointer" onClick={() => toggleEditDate(r.date)}>{fmtDate(r.date)}</td>
+                      <td className="px-3 py-2 text-right text-orange-500 align-top cursor-pointer" onClick={() => toggleEditDate(r.date)}>{fmtn(r.total)}</td>
+                      <td className="px-3 py-2 text-gray-800 border-l-2 border-gray-300 align-top cursor-pointer" onClick={() => toggleEditDate(r.date)}>
+                        {r.entries.map(e => <div key={e.id}>{e.description}</div>)}
+                      </td>
+                      <td className="px-3 py-2 align-top cursor-pointer" onClick={() => toggleEditDate(r.date)}>
+                        {r.entries.map(e => (
+                          <div key={e.id} className="mb-1 last:mb-0">
+                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${CAT_COLOR[e.category ?? 'Other'] ?? CAT_COLOR['Other']}`}>
+                              {CAT_ICON[e.category ?? 'Other'] ?? '🏷️'} {e.category ?? 'Other'}
+                            </span>
+                          </div>
+                        ))}
+                      </td>
+                    </tr>
+                    {isOpen && (
+                      <tr className="bg-blue-50/40">
+                        <td colSpan={4} className="px-3 py-3">
+                          <p className="text-[10px] font-semibold text-gray-700 mb-1.5">{fmtDate(r.date)}</p>
+                          <div className="space-y-2">
+                            {r.entries.map(renderEntryEditor)}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                )
+              }) : displayRows.map((r, i) => {
                 const hasConfirm = r.cab_total != null
                 const net = Number(r.daily_net)
                 const stripe = i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'
