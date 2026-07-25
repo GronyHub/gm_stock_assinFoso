@@ -23,10 +23,12 @@ export async function GET() {
 }
 
 // Records a Cash at Bank confirmation for a single day -- cab_bank/cab_momo/
-// cab_physical/cab_total/deficit are plain stored columns on cash_at_bank
-// (see /api/flags's uncheckedCab query, which reads cab_total straight off
-// this table, not the view), so this writes them directly. deficit needs
-// that day's computed running_cash_at_bank, which only the view exposes.
+// cab_physical/deficit are plain stored columns on cash_at_bank (see
+// /api/flags's uncheckedCab query, which reads cab_total straight off this
+// table, not the view), so this writes them directly. cab_total itself is a
+// generated column (cab_bank + cab_momo + cab_physical) and recomputes on
+// its own. deficit needs that day's computed running_cash_at_bank, which
+// only the view exposes.
 export async function POST(req: NextRequest) {
   const session = await auth()
   const role = (session?.user as any)?.role
@@ -53,9 +55,12 @@ export async function POST(req: NextRequest) {
     const running = viewRow?.running_cash_at_bank != null ? Number(viewRow.running_cash_at_bank) : null
     const deficit = running != null ? parseFloat((total - running).toFixed(2)) : null
 
+    // cab_total is a generated column (cab_bank + cab_momo + cab_physical),
+    // so Postgres rejects any attempt to set it directly -- it recomputes on
+    // its own once the three source columns below are written.
     await sql`
       UPDATE cash_at_bank SET cab_bank = ${bank}, cab_momo = ${momo}, cab_physical = ${physical},
-        cab_total = ${total}, deficit = ${deficit}
+        deficit = ${deficit}
       WHERE entry_date = ${entry_date}
     `
 
