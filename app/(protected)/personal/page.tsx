@@ -44,6 +44,9 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
+const TH = 'text-left px-3 py-2 font-bold text-gray-400 text-[10px] uppercase tracking-wide border-b border-gray-200'
+const TD = 'px-3 py-2'
+
 export default function PersonalPage() {
   const router = useRouter()
   const [entries, setEntries]   = useState<Entry[]>([])
@@ -262,41 +265,51 @@ export default function PersonalPage() {
 
           {filtered.length === 0 && <p className="py-10 text-center text-gray-400 text-sm">No entries found.</p>}
 
-          {filtered.map(e => (
-            <div key={e.id} className="bg-white border border-gray-200 rounded-xl p-3 space-y-1.5">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-xs text-gray-500">{fmtDate(e.entry_date)}</p>
-                  <p className="text-sm text-gray-800 leading-snug">{e.description}</p>
-                  {e.notes && <p className="text-xs text-gray-400 mt-0.5">{e.notes}</p>}
-                </div>
-                <div className="shrink-0 text-right">
-                  <p className={`text-sm font-bold ${e.direction === 'in' ? 'text-green-700' : 'text-red-600'}`}>
-                    {e.direction === 'in' ? '+' : '-'}{c(e.amount)}
-                  </p>
-                </div>
-              </div>
-
-              {/* Category tag + edit */}
-              <div className="flex items-center gap-2">
-                {editId === e.id ? (
-                  <>
-                    <select value={editCat} onChange={ev => setEditCat(ev.target.value)}
-                      className="flex-1 border border-blue-300 rounded-lg px-2 py-1 text-xs outline-none">
-                      {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                    <button onClick={() => saveCategory(e.id)} className="text-[10px] px-2 py-1 bg-blue-600 text-white rounded-lg font-semibold">Save</button>
-                    <button onClick={() => setEditId(null)} className="text-[10px] px-2 py-1 bg-gray-100 text-gray-600 rounded-lg">✕</button>
-                  </>
-                ) : (
-                  <button onClick={() => { setEditId(e.id); setEditCat(e.category ?? 'Other') }}
-                    className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${CAT_COLOR[e.category ?? 'Other'] ?? CAT_COLOR['Other']}`}>
-                    {CAT_ICON[e.category ?? 'Other']} {e.category ?? 'Other'} ✎
-                  </button>
-                )}
-              </div>
+          {filtered.length > 0 && (
+            <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+              <table className="w-full border-collapse text-xs">
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className={`${TH} whitespace-nowrap`}>Date</th>
+                    <th className={TH}>Item</th>
+                    <th className={`${TH} text-right`}>Amount</th>
+                    <th className={TH}>Category</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filtered.map((e, i) => (
+                    <tr key={e.id} className={i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
+                      <td className={`${TD} text-gray-500 whitespace-nowrap align-top`}>{fmtDate(e.entry_date)}</td>
+                      <td className={`${TD} text-gray-800 align-top`}>
+                        {e.description}
+                        {e.notes && <p className="text-[10px] text-gray-400 mt-0.5">{e.notes}</p>}
+                      </td>
+                      <td className={`${TD} text-right font-bold align-top whitespace-nowrap ${e.direction === 'in' ? 'text-green-700' : 'text-red-600'}`}>
+                        {e.direction === 'in' ? '+' : '-'}{c(e.amount)}
+                      </td>
+                      <td className={`${TD} align-top`}>
+                        {editId === e.id ? (
+                          <div className="flex items-center gap-1">
+                            <select value={editCat} onChange={ev => setEditCat(ev.target.value)}
+                              className="border border-blue-300 rounded-lg px-2 py-1 text-[10px] outline-none">
+                              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                            <button onClick={() => saveCategory(e.id)} className="text-[10px] px-2 py-1 bg-blue-600 text-white rounded-lg font-semibold">Save</button>
+                            <button onClick={() => setEditId(null)} className="text-[10px] px-2 py-1 bg-gray-100 text-gray-600 rounded-lg">✕</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => { setEditId(e.id); setEditCat(e.category ?? 'Other') }}
+                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${CAT_COLOR[e.category ?? 'Other'] ?? CAT_COLOR['Other']}`}>
+                            {CAT_ICON[e.category ?? 'Other']} {e.category ?? 'Other'} ✎
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>
