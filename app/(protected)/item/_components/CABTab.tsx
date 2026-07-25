@@ -96,6 +96,10 @@ export default function CABTab() {
   const [addCatCustom, setAddCatCustom] = useState(false)
   const [addNotes, setAddNotes] = useState('')
   const [addSaving, setAddSaving] = useState(false)
+  const [editEntryId, setEditEntryId] = useState<number | null>(null)
+  const [editEntryCat, setEditEntryCat] = useState('')
+  const [editEntryCatCustom, setEditEntryCatCustom] = useState(false)
+  const [deleteEntryConfirmId, setDeleteEntryConfirmId] = useState<number | null>(null)
 
   function loadRows() {
     fetch('/api/cash-at-bank')
@@ -241,6 +245,22 @@ export default function CABTab() {
       setShowAddPersonal(false)
     }
   }
+
+  async function saveEntryCategory(id: number) {
+    await fetch('/api/personal', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, category: editEntryCat }),
+    })
+    setPersonalEntries(prev => prev.map(e => e.id === id ? { ...e, category: editEntryCat } : e))
+    setEditEntryId(null)
+    setEditEntryCatCustom(false)
+  }
+
+  async function deleteEntry(id: number) {
+    await fetch('/api/personal', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    setPersonalEntries(prev => prev.filter(e => e.id !== id))
+    setDeleteEntryConfirmId(null)
+  }
+
   const displayRows = baseDailyRows
   const filteredPersonalOutRows = categoryFilter.size === 0
     ? personalOutRows
@@ -255,15 +275,13 @@ export default function CABTab() {
   const pivotCategories = categoryFilter.size === 0
     ? personalAllCategories.filter(cat => personalOutRows.some(r => r.entries.some(e => (e.category ?? 'Other') === cat)))
     : personalAllCategories.filter(cat => categoryFilter.has(cat))
-  const pivotRows = personalOutRows
-    .map(r => ({
-      date: r.date,
-      cells: pivotCategories.map(cat => {
-        const entries = r.entries.filter(e => (e.category ?? 'Other') === cat)
-        return { total: entries.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0), entries }
-      }),
-    }))
-    .filter(r => r.cells.some(cell => cell.total !== 0))
+  // One row per entry (not per date) -- grouping same-day entries into a
+  // single cell made them impossible to recategorize or remove individually.
+  const pivotEntryRows = personalOutRows.flatMap(r =>
+    r.entries
+      .filter(e => pivotCategories.includes(e.category ?? 'Other'))
+      .map(e => ({ date: r.date, entry: e }))
+  )
 
   // Per confirmed day: does prior confirmed total + net movement since then
   // (a running total spanning only that one gap) land on this day's
@@ -606,21 +624,66 @@ export default function CABTab() {
               )}
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {gpOutOnly && byCategory ? pivotRows.map((r, i) => (
-                <tr key={r.date} className={i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'}>
-                  <td className="px-3 py-2 text-gray-600 whitespace-nowrap align-top">{fmtDate(r.date)}</td>
-                  {r.cells.map((cell, ci) => (
-                    <td key={pivotCategories[ci]} className="px-3 py-2 text-right align-top">
-                      {cell.total !== 0 && (
-                        <>
-                          <div className="font-semibold text-gray-800">{fmtn(cell.total)}</div>
-                          {cell.entries.map(e => <div key={e.id} className="text-[9px] text-gray-400 font-normal">{e.description}</div>)}
-                        </>
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              )) : gpOutOnly ? filteredPersonalOutRows.map((r, i) => (
+              {gpOutOnly && byCategory ? pivotEntryRows.map(({ date, entry: e }, i) => {
+                const cat = e.category ?? 'Other'
+                return (
+                  <tr key={e.id} className={i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'}>
+                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap align-top">{fmtDate(date)}</td>
+                    {pivotCategories.map(pc => (
+                      <td key={pc} className="px-3 py-2 text-right align-top">
+                        {pc === cat && (
+                          editEntryId === e.id ? (
+                            editEntryCatCustom ? (
+                              <div className="flex flex-col items-end gap-1">
+                                <input value={editEntryCat} onChange={ev => setEditEntryCat(ev.target.value)} placeholder="New category" autoFocus
+                                  className="w-28 border border-blue-300 rounded px-1.5 py-0.5 text-[9px] outline-none" />
+                                <div className="flex gap-1">
+                                  <button onClick={() => saveEntryCategory(e.id)} className="text-[9px] px-1.5 py-0.5 bg-blue-600 text-white rounded font-semibold">Save</button>
+                                  <button onClick={() => { setEditEntryId(null); setEditEntryCatCustom(false) }} className="text-[9px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">✕</button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-end gap-1">
+                                <select value={editEntryCat} onChange={ev => {
+                                    if (ev.target.value === '__new__') { setEditEntryCatCustom(true); setEditEntryCat('') } else setEditEntryCat(ev.target.value)
+                                  }}
+                                  className="border border-blue-300 rounded px-1.5 py-0.5 text-[9px] outline-none">
+                                  {personalAllCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                                  <option value="__new__">+ Add new category…</option>
+                                </select>
+                                <div className="flex gap-1">
+                                  <button onClick={() => saveEntryCategory(e.id)} className="text-[9px] px-1.5 py-0.5 bg-blue-600 text-white rounded font-semibold">Save</button>
+                                  <button onClick={() => setEditEntryId(null)} className="text-[9px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">✕</button>
+                                </div>
+                              </div>
+                            )
+                          ) : (
+                            <div>
+                              <div className="font-semibold text-gray-800">{fmtn(parseFloat(e.amount))}</div>
+                              <div className="text-[9px] text-gray-400 font-normal">{e.description}</div>
+                              <div className="flex justify-end gap-1.5 mt-0.5">
+                                {deleteEntryConfirmId === e.id ? (
+                                  <>
+                                    <span className="text-[9px] text-gray-500">Remove?</span>
+                                    <button onClick={() => deleteEntry(e.id)} className="text-[9px] text-red-600 font-semibold hover:underline">Yes</button>
+                                    <button onClick={() => setDeleteEntryConfirmId(null)} className="text-[9px] text-gray-500 hover:underline">No</button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <button onClick={() => { setEditEntryId(e.id); setEditEntryCat(cat); setEditEntryCatCustom(false) }}
+                                      className="text-[9px] text-blue-600 hover:underline">Recategorize</button>
+                                    <button onClick={() => setDeleteEntryConfirmId(e.id)} className="text-[9px] text-red-500 hover:underline">Remove</button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                )
+              }) : gpOutOnly ? filteredPersonalOutRows.map((r, i) => (
                 <tr key={r.date} className={i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'}>
                   <td className="px-3 py-2 text-gray-600 whitespace-nowrap align-top">{fmtDate(r.date)}</td>
                   <td className="px-3 py-2 text-right text-orange-500 align-top">{fmtn(r.total)}</td>
@@ -699,7 +762,7 @@ export default function CABTab() {
             </tbody>
           </table>
           </div>
-          {(gpOutOnly && byCategory ? pivotRows.length === 0 : gpOutOnly ? filteredPersonalOutRows.length === 0 : displayRows.length === 0) && (
+          {(gpOutOnly && byCategory ? pivotEntryRows.length === 0 : gpOutOnly ? filteredPersonalOutRows.length === 0 : displayRows.length === 0) && (
             <p className="text-xs text-gray-400 text-center py-10">
               {gpOutOnly ? 'No GP Out entries in range.' : confirmedColsOnly ? 'No confirmed days in range.' : 'No data'}
             </p>
