@@ -258,7 +258,7 @@ export default function CABTab() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {visibleWeeks.map((w, i) => (
-                  <tr key={w.weekStart} className={w.confirmed ? 'bg-blue-50/60' : i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'}>
+                  <tr key={w.weekStart} className={i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'}>
                     <td className="px-3 py-2 text-gray-700 whitespace-nowrap font-medium">{fmtDate(w.weekStart)} – {fmtDate(w.weekEnd)}</td>
                     <td className={`px-3 py-2 text-right font-semibold ${w.net >= 0 ? 'text-gray-800' : 'text-red-500'}`}>{fmtn(w.net)}</td>
                     <td className="px-3 py-2 text-right font-bold text-gray-900">{fmtn(w.runningEnd)}</td>
@@ -329,12 +329,7 @@ export default function CABTab() {
               {(confirmedColsOnly ? confirmedRows : rows).map((r, i) => {
                 const hasConfirm = r.cab_total != null
                 const net = Number(r.daily_net)
-                // Every row here is already confirmed, so the confirm
-                // highlight would color the whole table -- fall back to
-                // the plain zebra stripe (same rule Weekly uses) instead.
-                const stripe = confirmedColsOnly
-                  ? (i % 2 === 1 ? 'bg-cyan-50' : 'bg-white')
-                  : hasConfirm ? 'bg-blue-50/60' : i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'
+                const stripe = i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'
                 return confirmedColsOnly ? (
                   <tr key={r.entry_date} className={stripe}>
                     <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmtDate(String(r.entry_date).slice(0,10))}</td>
