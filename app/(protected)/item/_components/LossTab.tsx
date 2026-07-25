@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
+import { useState, useEffect, useMemo, useRef, type ReactNode, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 import { fmtDate } from '@/lib/fmtDate'
 import type { ItemDayRow as DayRow, CountRevision } from '@/lib/itemDayRows'
@@ -640,16 +640,17 @@ function rowSortVal(row: SummaryRow, col: SortCol): number | string {
 
 /* ── compact th with sort indicator ── */
 const thBase = 'px-2 py-2 font-bold cursor-pointer select-none whitespace-nowrap border-b border-gray-200 text-[10px] uppercase tracking-wide'
-function SortTh({ label, col, sort, onSort, cls = '' }: {
+function SortTh({ label, col, sort, onSort, cls = '', style }: {
   label: ReactNode; col: SortCol
   sort: { col: SortCol; dir: SortDir }
   onSort: (col: SortCol) => void
   cls?: string
+  style?: CSSProperties
 }) {
   const active = sort.col === col
   const arrow = active ? (sort.dir === 'desc' ? '↓' : '↑') : ''
   return (
-    <th onClick={() => onSort(col)}
+    <th onClick={() => onSort(col)} style={style}
       className={`${thBase} ${cls} ${active ? 'text-blue-600' : 'text-gray-400 hover:text-gray-700'}`}>
       {label}{arrow && <span className="ml-0.5 text-[9px]">{arrow}</span>}
     </th>
@@ -1682,7 +1683,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
       <tr key={row.item_id} onClick={() => router.push(`/stock/${row.item_id}`)}
         className={`cursor-pointer hover:bg-blue-50/60 transition ${stripe}`}>
         <td className={`pl-2 pr-2 py-1.5 font-bold truncate sticky left-0 z-10 ${stripe}`}
-          title={row.item_name}>
+          style={{ width: 84, maxWidth: 84 }} title={row.item_name}>
           <span className="text-blue-600">{row.item_name}</span>
         </td>
         <td className={`text-center py-1.5 font-semibold tabular-nums ${lossAmt ? 'text-red-500' : gainAmt ? 'text-green-600' : 'text-gray-300'}`}>
@@ -1723,7 +1724,8 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
           {colgroup}
           <thead className="sticky top-0 z-20">
             <tr className="bg-gray-50">
-              <SortTh label="Item" col="item_name" sort={sort} onSort={handleSort} cls="text-left pl-2 pr-2 sticky left-0 z-30 bg-gray-50 truncate" />
+              <SortTh label="Item" col="item_name" sort={sort} onSort={handleSort}
+                cls="text-left pl-2 pr-2 sticky left-0 z-30 bg-gray-50 truncate" style={{ width: 84, maxWidth: 84 }} />
               <SortTh label={<>Loss<span className="block">Amount</span></>} col="lgAmt" {...thProps} cls="text-center" />
               <SortTh label={<>Num. of<span className="block">Losses</span></>} col="lossCount" {...thProps} cls="text-center" />
               <SortTh label="Gain" col="gainAmt" {...thProps} cls="text-center" />
