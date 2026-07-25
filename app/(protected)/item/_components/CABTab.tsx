@@ -354,7 +354,12 @@ export default function CABTab() {
           <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
           <table className="w-full border-collapse text-xs">
             <thead className="sticky top-0 z-10">
-              {confirmedColsOnly ? (
+              {gpOutOnly ? (
+                <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
+                  <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Date</th>
+                  <th className="text-right px-3 py-2 font-bold text-orange-500 border-b border-gray-200" title="Cash taken out for Grony's personal use">GP Out</th>
+                </tr>
+              ) : confirmedColsOnly ? (
                 <>
                   <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
                     <th rowSpan={2} className="text-left px-3 py-2 font-bold border-b border-gray-200 align-bottom whitespace-nowrap">Date</th>
@@ -432,7 +437,12 @@ export default function CABTab() {
                   </>
                 )
                 const totalCls = `px-3 py-2 text-right text-blue-600 font-semibold ${hideBankMomoPhysical ? 'border-l-2 border-gray-300' : ''}`
-                return confirmedColsOnly ? (
+                return gpOutOnly ? (
+                  <tr key={r.entry_date} className={stripe}>
+                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmtDate(dateKey)}</td>
+                    <td className="px-3 py-2 text-right text-orange-500">{nz(r.grony_personal_expenses)}</td>
+                  </tr>
+                ) : confirmedColsOnly ? (
                   <tr key={r.entry_date} className={stripe}>
                     <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmtDate(dateKey)}</td>
                     {bmpCells}
