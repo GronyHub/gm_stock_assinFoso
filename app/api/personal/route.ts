@@ -40,14 +40,15 @@ export async function PUT(req: Request) {
   const session = await auth()
   if (!session || !isAllowed(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { id, category, notes, description } = await req.json()
+  const { id, category, notes, description, amount } = await req.json()
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
 
   await sql`
     UPDATE grony_personal_ledger
     SET category    = COALESCE(${category ?? null}, category),
         notes       = COALESCE(${notes ?? null}, notes),
-        description = COALESCE(${description ?? null}, description)
+        description = COALESCE(${description ?? null}, description),
+        amount      = COALESCE(${amount ?? null}, amount)
     WHERE id = ${id}
   `
   return NextResponse.json({ ok: true })
