@@ -42,21 +42,27 @@ export async function POST(req: NextRequest) {
   }
   const total = parseFloat((bank + momo + physical).toFixed(2))
 
-  const [existing] = await sql`SELECT 1 FROM cash_at_bank WHERE entry_date = ${entry_date}`
-  if (!existing) await sql`INSERT INTO cash_at_bank (entry_date) VALUES (${entry_date})`
+  try {
+    const [existing] = await sql`SELECT 1 FROM cash_at_bank WHERE entry_date = ${entry_date}`
+    if (!existing) await sql`INSERT INTO cash_at_bank (entry_date) VALUES (${entry_date})`
 
-  const [viewRow] = await sql`SELECT running_cash_at_bank FROM cash_at_bank_view WHERE entry_date = ${entry_date}`
-  const running = viewRow?.running_cash_at_bank != null ? Number(viewRow.running_cash_at_bank) : null
-  const deficit = running != null ? parseFloat((total - running).toFixed(2)) : null
+    const [viewRow] = await sql`SELECT running_cash_at_bank FROM cash_at_bank_view WHERE entry_date = ${entry_date}`
+    const running = viewRow?.running_cash_at_bank != null ? Number(viewRow.running_cash_at_bank) : null
+    const deficit = running != null ? parseFloat((total - running).toFixed(2)) : null
 
-  await sql`
-    UPDATE cash_at_bank SET cab_bank = ${bank}, cab_momo = ${momo}, cab_physical = ${physical},
-      cab_total = ${total}, deficit = ${deficit}
-    WHERE entry_date = ${entry_date}
-  `
+    await sql`
+      UPDATE cash_at_bank SET cab_bank = ${bank}, cab_momo = ${momo}, cab_physical = ${physical},
+        cab_total = ${total}, deficit = ${deficit}
+      WHERE entry_date = ${entry_date}
+    `
 
-  const actor = session.user?.name || (session.user as any)?.username || 'Unknown'
-  await logActivity(actor, 'confirmed cash at bank', `₵${total.toFixed(2)} on ${entry_date}`)
+    const actor = session.user?.name || (session.user as any)?.username || 'Unknown'
+    await logActivity(actor, 'confirmed cash at bank', `₵${total.toFixed(2)} on ${entry_date}`)
 
-  return NextResponse.json({ ok: true, entry_date, cab_bank: bank, cab_momo: momo, cab_physical: physical, cab_total: total, deficit })
+    return NextResponse.json({ ok: true, entry_date, cab_bank: bank, cab_momo: momo, cab_physical: physical, cab_total: total, deficit })
+  } catch (e) {
+    console.error('cash-at-bank confirm error:', e)
+    const detail = e instanceof Error ? e.message : String(e)
+    return NextResponse.json({ error: `Could not save confirmation: ${detail}` }, { status: 500 })
+  }
 }
