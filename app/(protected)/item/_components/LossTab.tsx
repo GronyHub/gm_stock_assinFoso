@@ -1681,7 +1681,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
     return (
       <tr key={row.item_id} onClick={() => router.push(`/stock/${row.item_id}`)}
         className={`cursor-pointer hover:bg-blue-50/60 transition ${stripe}`}>
-        <td className={`pl-2 pr-2 py-1.5 font-bold whitespace-normal break-words sticky left-0 z-10 border-r border-gray-200 ${stripe}`}
+        <td className={`pl-2 pr-2 py-1.5 font-bold whitespace-nowrap sticky left-0 z-10 ${stripe}`}
           title={row.item_name}>
           <span className="text-blue-600">{row.item_name}</span>
         </td>
@@ -1715,13 +1715,15 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* Table — horizontally scrollable; Item column wraps instead of truncating so full names are always visible */}
+      {/* Table — horizontally scrollable; Item column stays one line and grows
+          to fit the longest name instead of wrapping, pushing the rest of
+          the columns right (auto layout, not fixed, so it can grow). */}
       <div className="flex-1 min-h-0 overflow-auto rounded-xl border border-gray-200 bg-white">
-        <table className="table-fixed border-collapse text-[11px]">
+        <table className="border-collapse text-[11px]">
           {colgroup}
           <thead className="sticky top-0 z-20">
             <tr className="bg-gray-50">
-              <SortTh label="Item" col="item_name" sort={sort} onSort={handleSort} cls="text-left pl-2 pr-2 sticky left-0 z-30 bg-gray-50 border-r border-gray-200" />
+              <SortTh label="Item" col="item_name" sort={sort} onSort={handleSort} cls="text-left pl-2 pr-2 sticky left-0 z-30 bg-gray-50 whitespace-nowrap" />
               <SortTh label={<>Loss<span className="block">Amount</span></>} col="lgAmt" {...thProps} cls="text-center" />
               <SortTh label={<>Num. of<span className="block">Losses</span></>} col="lossCount" {...thProps} cls="text-center" />
               <SortTh label="Gain" col="gainAmt" {...thProps} cls="text-center" />
