@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { useSession } from 'next-auth/react'
 import ClosingReportLogView from './ClosingReportLogView'
@@ -47,11 +47,18 @@ const SUBMENU: { key: ManageView; label: string }[] = [
 // mirroring Grony Cash: Cash covers the money aspect, Manage covers
 // everything else (staff times, count duties, item hygiene, and now the
 // shop's day-to-day operational checklist categories).
-export default function GronyManageTab() {
+export default function GronyManageTab({ openStaffTimeSignal }: { openStaffTimeSignal?: number } = {}) {
   const [view, setView] = useState<ManageView>('staff_times')
   const { data: session } = useSession()
   const role = (session?.user as any)?.role ?? 'staff'
   const username = (session?.user as any)?.username ?? session?.user?.name ?? ''
+
+  // Driven by the RoleBar "+" shortcut menu -- lands back on Staff even if
+  // another Manage sub-tab was open.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (openStaffTimeSignal) setView('staff_times')
+  }, [openStaffTimeSignal])
 
   const logCategory = LOG_CATEGORIES.find(c => c.key === view)
 
@@ -68,7 +75,7 @@ export default function GronyManageTab() {
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto">
-        {view === 'staff_times' && <StaffClient role={role} username={username} embedded />}
+        {view === 'staff_times' && <StaffClient role={role} username={username} embedded openAddSignal={openStaffTimeSignal} />}
         {view === 'advert' && <AdvertTab />}
         {view === 'staff_dress' && <ClosingReportLogView field="no_tshirt_staff" label="Dress Code" icon="👕" />}
         {view === 'training' && <TrainingTab />}

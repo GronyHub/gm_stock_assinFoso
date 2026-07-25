@@ -23,12 +23,99 @@ function c(v: string | null | undefined) {
   return isNaN(n) ? '—' : `₵${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-export default function VendorsPage() {
+const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-400'
+const labelCls = 'text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5 block'
+
+function NewVendorForm({ onCreated, onCancel }: { onCreated: (v: Vendor) => void; onCancel: () => void }) {
+  const [displayName, setDisplayName] = useState('')
+  const [companyName, setCompanyName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
+  const [notes, setNotes] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function submit() {
+    setError(null)
+    if (!displayName.trim()) { setError('Vendor name is required.'); return }
+
+    setSaving(true)
+    const res = await fetch('/api/vendors', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        display_name: displayName.trim(),
+        company_name: companyName.trim() || null,
+        phone: phone.trim() || null,
+        email: email.trim() || null,
+        notes: notes.trim() || null,
+      }),
+    })
+    setSaving(false)
+    if (res.ok) {
+      onCreated(await res.json())
+    } else {
+      const d = await res.json().catch(() => null)
+      setError(d?.error ?? 'Could not save vendor.')
+    }
+  }
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="font-bold text-gray-900">New Vendor</p>
+        <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 text-xl font-bold leading-none">×</button>
+      </div>
+
+      <div>
+        <label className={labelCls}>Vendor Name</label>
+        <input value={displayName} onChange={e => setDisplayName(e.target.value)}
+          placeholder="e.g. Kwame Mensah" className={inputCls} />
+      </div>
+      <div>
+        <label className={labelCls}>Company (optional)</label>
+        <input value={companyName} onChange={e => setCompanyName(e.target.value)} className={inputCls} />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className={labelCls}>Phone</label>
+          <input value={phone} onChange={e => setPhone(e.target.value)} className={inputCls} />
+        </div>
+        <div>
+          <label className={labelCls}>Email</label>
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} className={inputCls} />
+        </div>
+      </div>
+      <div>
+        <label className={labelCls}>Notes (optional)</label>
+        <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className={inputCls} />
+      </div>
+
+      {error && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-2.5 py-1.5">{error}</p>}
+
+      <div className="flex gap-2">
+        <button onClick={submit} disabled={saving}
+          className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2.5 transition">
+          {saving ? 'Saving…' : 'Save Vendor'}
+        </button>
+        <button onClick={onCancel} className="px-4 py-2.5 bg-gray-100 text-gray-600 text-sm font-semibold rounded-xl">Cancel</button>
+      </div>
+    </div>
+  )
+}
+
+export default function VendorsPage({ openAddSignal }: { openAddSignal?: number } = {}) {
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'all' | 'external' | 'internal' | 'outstanding'>('all')
   const [selected, setSelected] = useState<Vendor | null>(null)
+  const [showForm, setShowForm] = useState(false)
+
+  // Driven by the RoleBar "+" shortcut menu.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (openAddSignal) setShowForm(true)
+  }, [openAddSignal])
 
   useEffect(() => {
     fetch('/api/vendors')
@@ -67,8 +154,22 @@ export default function VendorsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold text-gray-900">Vendors</h1>
-        <span className="text-xs text-gray-400">{vendors.length} vendors</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-400">{vendors.length} vendors</span>
+          <button onClick={() => setShowForm(f => !f)}
+            className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition
+              ${showForm ? 'bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
+            {showForm ? '×' : '+ New Vendor'}
+          </button>
+        </div>
       </div>
+
+      {showForm && (
+        <NewVendorForm
+          onCancel={() => setShowForm(false)}
+          onCreated={created => { setVendors(prev => [created, ...prev]); setShowForm(false) }}
+        />
+      )}
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-2">
