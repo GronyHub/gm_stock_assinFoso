@@ -258,9 +258,12 @@ export default function CABTab() {
   const pivotRows = personalOutRows
     .map(r => ({
       date: r.date,
-      totals: pivotCategories.map(cat => r.entries.filter(e => (e.category ?? 'Other') === cat).reduce((s, e) => s + (parseFloat(e.amount) || 0), 0)),
+      cells: pivotCategories.map(cat => {
+        const entries = r.entries.filter(e => (e.category ?? 'Other') === cat)
+        return { total: entries.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0), entries }
+      }),
     }))
-    .filter(r => r.totals.some(t => t !== 0))
+    .filter(r => r.cells.some(cell => cell.total !== 0))
 
   // Per confirmed day: does prior confirmed total + net movement since then
   // (a running total spanning only that one gap) land on this day's
@@ -605,9 +608,16 @@ export default function CABTab() {
             <tbody className="divide-y divide-gray-100">
               {gpOutOnly && byCategory ? pivotRows.map((r, i) => (
                 <tr key={r.date} className={i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'}>
-                  <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmtDate(r.date)}</td>
-                  {r.totals.map((t, ci) => (
-                    <td key={pivotCategories[ci]} className="px-3 py-2 text-right text-gray-700">{t === 0 ? '' : fmtn(t)}</td>
+                  <td className="px-3 py-2 text-gray-600 whitespace-nowrap align-top">{fmtDate(r.date)}</td>
+                  {r.cells.map((cell, ci) => (
+                    <td key={pivotCategories[ci]} className="px-3 py-2 text-right align-top">
+                      {cell.total !== 0 && (
+                        <>
+                          <div className="font-semibold text-gray-800">{fmtn(cell.total)}</div>
+                          {cell.entries.map(e => <div key={e.id} className="text-[9px] text-gray-400 font-normal">{e.description}</div>)}
+                        </>
+                      )}
+                    </td>
                   ))}
                 </tr>
               )) : gpOutOnly ? filteredPersonalOutRows.map((r, i) => (
