@@ -1814,12 +1814,13 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
     <div className="flex flex-col h-full min-h-0">
       {/* Which headers show (besides the always-visible Item column) --
           remembered across visits alongside the Item column's own width.
-          Plain checkboxes, always visible and spread out, rather than
-          hidden behind a menu button. */}
-      <div className="shrink-0 flex flex-wrap gap-x-3 gap-y-1.5 px-1 pb-1.5">
+          Same checkbox style as CAB's "Confirmed 3" checkbox, spread out in
+          a wrapping row instead of hidden behind a menu button. */}
+      <div className="shrink-0 flex flex-wrap px-1 pb-1.5">
         {COLUMNS.map(c => (
-          <label key={c.key} className="flex items-center gap-1.5 text-[11px] font-medium text-gray-600 cursor-pointer">
-            <input type="checkbox" checked={visibleCols.has(c.key)} onChange={() => toggleCol(c.key)} />
+          <label key={c.key} className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
+            <input type="checkbox" checked={visibleCols.has(c.key)} onChange={() => toggleCol(c.key)}
+              className="w-3 h-3 accent-blue-600" />
             {c.label}
           </label>
         ))}
