@@ -90,7 +90,10 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
       if (!map.has(submenu)) map.set(submenu, [])
       map.get(submenu)!.push(v)
     }
-    return SUBMENU_ORDER.filter(s => map.has(s)).map(submenu => ({ submenu, rows: map.get(submenu)! }))
+    return SUBMENU_ORDER.filter(s => map.has(s)).map(submenu => {
+      const rows = map.get(submenu)!
+      return { submenu, rows, total: rows.reduce((s, v) => s + v.count, 0) }
+    })
   }, [violations])
 
   return (
@@ -104,11 +107,14 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
             <th className="text-left px-1.5 py-1.5 font-semibold text-gray-500">Assigned</th>
           </tr>
         </thead>
-        {groupedViolations.map(({ submenu, rows }) => (
+        {groupedViolations.map(({ submenu, rows, total }) => (
           <tbody key={submenu} className="divide-y divide-gray-100">
             <tr>
-              <td colSpan={4} className="px-2 py-1 font-bold text-gray-500 bg-gray-100 uppercase tracking-wide text-[10px]">
-                {submenu}
+              <td colSpan={4} className="px-3 py-1.5 bg-blue-600">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-white text-[11px]">{submenu}</span>
+                  <span className="font-bold text-white text-[11px]">{total > 0 ? total : '✓'}</span>
+                </div>
               </td>
             </tr>
             {rows.map(v => {
