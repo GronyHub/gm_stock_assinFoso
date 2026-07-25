@@ -76,6 +76,7 @@ export default function CABTab() {
   const [onlyUnconfirmed, setOnlyUnconfirmed] = useState(false)
   const [confirmedColsOnly, setConfirmedColsOnly] = useState(false)
   const [hideBankMomoPhysical, setHideBankMomoPhysical] = useState(false)
+  const [gpOutOnly, setGpOutOnly] = useState(false)
   const [showConfirmForm, setShowConfirmForm] = useState(false)
   const [confirmDate, setConfirmDate] = useState('')
   const [confirmBank, setConfirmBank] = useState('')
@@ -159,6 +160,10 @@ export default function CABTab() {
   }, [rows])
   const visibleWeeks = onlyUnconfirmed ? weeks.filter(w => !w.confirmed) : weeks
   const confirmedRows = rows.filter(r => r.cab_total != null && Number(r.cab_total) !== 0)
+  const baseDailyRows = confirmedColsOnly ? confirmedRows : rows
+  const displayRows = gpOutOnly
+    ? baseDailyRows.filter(r => r.grony_personal_expenses != null && Number(r.grony_personal_expenses) !== 0)
+    : baseDailyRows
 
   // Per confirmed day: does prior confirmed total + net movement since then
   // (a running total spanning only that one gap) land on this day's
@@ -242,6 +247,13 @@ export default function CABTab() {
             <input type="checkbox" checked={confirmedColsOnly} onChange={() => setConfirmedColsOnly(o => !o)}
               className="w-3 h-3 accent-blue-600" />
             Confirmed CAB check
+          </label>
+        )}
+        {!showPersonal && !showWeekly && !confirmedColsOnly && (
+          <label className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
+            <input type="checkbox" checked={gpOutOnly} onChange={() => setGpOutOnly(o => !o)}
+              className="w-3 h-3 accent-blue-600" />
+            Personal (GP Out only)
           </label>
         )}
       </div>
@@ -390,7 +402,7 @@ export default function CABTab() {
               )}
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {(confirmedColsOnly ? confirmedRows : rows).map((r, i) => {
+              {displayRows.map((r, i) => {
                 const hasConfirm = r.cab_total != null
                 const net = Number(r.daily_net)
                 const stripe = i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'
@@ -452,9 +464,9 @@ export default function CABTab() {
             </tbody>
           </table>
           </div>
-          {(confirmedColsOnly ? confirmedRows : rows).length === 0 && (
+          {displayRows.length === 0 && (
             <p className="text-xs text-gray-400 text-center py-10">
-              {confirmedColsOnly ? 'No confirmed days in range.' : 'No data'}
+              {gpOutOnly ? 'No days with GP Out in range.' : confirmedColsOnly ? 'No confirmed days in range.' : 'No data'}
             </p>
           )}
         </div>
