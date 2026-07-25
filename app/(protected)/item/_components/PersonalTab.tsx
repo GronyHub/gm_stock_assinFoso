@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
 
-type Entry = {
+export type PersonalEntry = {
   id: number
   entry_date: string
   description: string
@@ -11,10 +11,11 @@ type Entry = {
   notes: string | null
   needs_review: boolean
 }
+type Entry = PersonalEntry
 
-const CATEGORIES = ['Children', 'Building', 'Car', 'Health', 'Mama/Family', 'Household', 'Other']
+export const CATEGORIES = ['Children', 'Building', 'Car', 'Health', 'Mama/Family', 'Household', 'Other']
 
-const CAT_ICON: Record<string, string> = {
+export const CAT_ICON: Record<string, string> = {
   Children:     '👶',
   Building:     '🏗️',
   Car:          '🚗',
@@ -24,7 +25,7 @@ const CAT_ICON: Record<string, string> = {
   Other:        '📋',
 }
 
-const CAT_COLOR: Record<string, string> = {
+export const CAT_COLOR: Record<string, string> = {
   Children:     'bg-blue-100 text-blue-700',
   Building:     'bg-amber-100 text-amber-700',
   Car:          'bg-slate-100 text-slate-700',
