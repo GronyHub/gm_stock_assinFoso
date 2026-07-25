@@ -1608,6 +1608,79 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   )
 }
 
+// Every column besides the always-visible sticky Item column, in display
+// order -- the single source of truth for the colgroup, header, and each
+// row's cells so a column's visibility/width can't drift out of sync
+// between them.
+type ColKey = Exclude<SortCol, 'item_name'>
+const COLUMNS: { key: ColKey; label: string; width: number }[] = [
+  { key: 'lgAmt', label: 'Loss Amt.', width: 56 },
+  { key: 'lossCount', label: 'Loss No.', width: 52 },
+  { key: 'gainAmt', label: 'Gain', width: 44 },
+  { key: 'wic', label: 'WIC', width: 40 },
+  { key: 'gmc', label: 'GMC', width: 40 },
+  { key: 'bl', label: 'BL', width: 36 },
+  { key: 'soh', label: 'SOH', width: 40 },
+  { key: 'sp', label: 'SP', width: 44 },
+  { key: 'cp', label: 'CP', width: 40 },
+  { key: 'cf_group', label: 'Group', width: 70 },
+  { key: 'product_type', label: 'Type', width: 64 },
+]
+
+function renderCell(key: ColKey, row: SummaryRow) {
+  switch (key) {
+    case 'lgAmt': {
+      const lossAmt = row.lgAmt > 0, gainAmt = row.lgAmt < 0
+      return (
+        <td key={key} className={`text-center py-1.5 font-semibold tabular-nums ${lossAmt ? 'text-red-500' : gainAmt ? 'text-green-600' : 'text-gray-300'}`}>
+          {fmtAmt(row.lgAmt)}
+        </td>
+      )
+    }
+    case 'lossCount':
+      return (
+        <td key={key} className={`text-center py-1.5 font-semibold tabular-nums ${row.lossCount > 0 ? 'text-red-500' : 'text-gray-300'}`}>
+          {row.lossCount}
+        </td>
+      )
+    case 'gainAmt':
+      return (
+        <td key={key} className={`text-center py-1.5 font-semibold tabular-nums ${row.gainAmt > 0.001 ? 'text-green-600' : 'text-gray-300'}`}>
+          {row.gainAmt > 0.001 ? `+${fmtN(row.gainAmt)}` : '—'}
+        </td>
+      )
+    case 'wic':
+      return <td key={key} className="text-center py-1.5 text-gray-600 tabular-nums">{fmtQ(row.wic)}</td>
+    case 'gmc':
+      return <td key={key} className="text-center py-1.5 text-gray-600 tabular-nums">{fmtQ(row.gmc)}</td>
+    case 'bl':
+      return <td key={key} className="text-center py-1.5 text-blue-600 tabular-nums">{fmtQ(row.bl)}</td>
+    case 'soh': {
+      const soh = parseFloat(row.soh ?? '0') || 0
+      return (
+        <td key={key} className={`text-center py-1.5 font-semibold tabular-nums ${soh <= 0 ? 'text-red-500' : 'text-gray-700'}`}>
+          {soh % 1 === 0 ? soh : soh.toFixed(1)}
+        </td>
+      )
+    }
+    case 'sp':
+      return <td key={key} className="text-center py-1.5 text-blue-600 tabular-nums">{fmtCcy(row.sp)}</td>
+    case 'cp':
+      return <td key={key} className="text-center py-1.5 text-green-600 tabular-nums">{fmtCcy(row.cp)}</td>
+    case 'cf_group':
+      return <td key={key} className="text-center py-1.5 text-gray-500 truncate" title={row.cf_group ?? undefined}>{row.cf_group ?? '—'}</td>
+    case 'product_type':
+      return (
+        <td key={key} className="text-center py-1.5">
+          <span className={`inline-block px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${
+            row.product_type === 'service' ? 'bg-purple-50 text-purple-600' : 'bg-teal-50 text-teal-600'}`}>
+            {row.product_type === 'service' ? 'Service' : 'Good'}
+          </span>
+        </td>
+      )
+  }
+}
+
 /* ── main LossTab ── */
 export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 'All', productType = 'all' }: {
   onOpenItem: (itemId: number) => void
@@ -1619,6 +1692,44 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   const [rows, setRows] = useState<SummaryRow[]>([])
   const [loading, setLoading] = useState(true)
   const [sort, setSort] = useState<{ col: SortCol; dir: SortDir }>({ col: 'lgAmt', dir: 'desc' })
+
+  // Which columns (besides the always-visible sticky Item column) show, and
+  // their order/width -- driven by this one array so the colgroup, header,
+  // and every row's cells all stay in sync automatically. Remembered across
+  // visits like the Item column's width.
+  const ALL_COL_KEYS = COLUMNS.map(c => c.key)
+  const [visibleCols, setVisibleCols] = useState<Set<ColKey>>(() => {
+    if (typeof window === 'undefined') return new Set(ALL_COL_KEYS)
+    try {
+      const saved = JSON.parse(localStorage.getItem('lossTabVisibleCols') ?? 'null')
+      if (Array.isArray(saved) && saved.length > 0) {
+        const keep = saved.filter((k): k is ColKey => (ALL_COL_KEYS as string[]).includes(k))
+        if (keep.length > 0) return new Set(keep)
+      }
+    } catch { /* ignore malformed storage */ }
+    return new Set(ALL_COL_KEYS)
+  })
+  useEffect(() => {
+    localStorage.setItem('lossTabVisibleCols', JSON.stringify(Array.from(visibleCols)))
+  }, [visibleCols])
+  function toggleCol(key: ColKey) {
+    setVisibleCols(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key); else next.add(key)
+      return next
+    })
+  }
+  const shownColumns = COLUMNS.filter(c => visibleCols.has(c.key))
+
+  const [colMenuOpen, setColMenuOpen] = useState(false)
+  const colMenuRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (colMenuRef.current && !colMenuRef.current.contains(e.target as Node)) setColMenuOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
   // Item column width -- user-resizable via the drag handle on its header,
   // remembered across visits since everyone's own item names run different
@@ -1687,23 +1798,11 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   const colgroup = (
     <colgroup>
       <col style={{width: itemColWidth}} />
-      <col style={{width:'56px'}} />
-      <col style={{width:'52px'}} />
-      <col style={{width:'44px'}} />
-      <col style={{width:'40px'}} />
-      <col style={{width:'40px'}} />
-      <col style={{width:'36px'}} />
-      <col style={{width:'40px'}} />
-      <col style={{width:'44px'}} />
-      <col style={{width:'40px'}} />
-      <col style={{width:'70px'}} />
-      <col style={{width:'64px'}} />
+      {shownColumns.map(c => <col key={c.key} style={{width: c.width}} />)}
     </colgroup>
   )
 
   function renderRow(row: SummaryRow, i: number) {
-    const lossAmt = row.lgAmt > 0, gainAmt = row.lgAmt < 0
-    const soh = parseFloat(row.soh ?? '0') || 0
     // Alternating row tint (zebra striping) so a row is easy to track across
     // this many columns without losing your place -- the sticky Item cell
     // carries the same tint explicitly since it needs its own opaque
@@ -1716,36 +1815,34 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
           style={{ width: itemColWidth, maxWidth: itemColWidth }} title={row.item_name}>
           <span className="text-blue-600">{row.item_name}</span>
         </td>
-        <td className={`text-center py-1.5 font-semibold tabular-nums ${lossAmt ? 'text-red-500' : gainAmt ? 'text-green-600' : 'text-gray-300'}`}>
-          {fmtAmt(row.lgAmt)}
-        </td>
-        <td className={`text-center py-1.5 font-semibold tabular-nums ${row.lossCount > 0 ? 'text-red-500' : 'text-gray-300'}`}>
-          {row.lossCount}
-        </td>
-        <td className={`text-center py-1.5 font-semibold tabular-nums ${row.gainAmt > 0.001 ? 'text-green-600' : 'text-gray-300'}`}>
-          {row.gainAmt > 0.001 ? `+${fmtN(row.gainAmt)}` : '—'}
-        </td>
-        <td className="text-center py-1.5 text-gray-600 tabular-nums">{fmtQ(row.wic)}</td>
-        <td className="text-center py-1.5 text-gray-600 tabular-nums">{fmtQ(row.gmc)}</td>
-        <td className="text-center py-1.5 text-blue-600 tabular-nums">{fmtQ(row.bl)}</td>
-        <td className={`text-center py-1.5 font-semibold tabular-nums ${soh <= 0 ? 'text-red-500' : 'text-gray-700'}`}>
-          {soh % 1 === 0 ? soh : soh.toFixed(1)}
-        </td>
-        <td className="text-center py-1.5 text-blue-600 tabular-nums">{fmtCcy(row.sp)}</td>
-        <td className="text-center py-1.5 text-green-600 tabular-nums">{fmtCcy(row.cp)}</td>
-        <td className="text-center py-1.5 text-gray-500 truncate" title={row.cf_group ?? undefined}>{row.cf_group ?? '—'}</td>
-        <td className="text-center py-1.5">
-          <span className={`inline-block px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${
-            row.product_type === 'service' ? 'bg-purple-50 text-purple-600' : 'bg-teal-50 text-teal-600'}`}>
-            {row.product_type === 'service' ? 'Service' : 'Good'}
-          </span>
-        </td>
+        {shownColumns.map(c => renderCell(c.key, row))}
       </tr>
     )
   }
 
   return (
     <div className="flex flex-col h-full min-h-0">
+      {/* "Columns" lets each header be brought in or out of the table --
+          which ones show is remembered across visits alongside the Item
+          column's own width. */}
+      <div className="shrink-0 flex justify-end px-1 pb-1">
+        <div className="relative" ref={colMenuRef}>
+          <button onClick={() => setColMenuOpen(o => !o)}
+            className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg transition ${colMenuOpen ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+            Columns
+          </button>
+          {colMenuOpen && (
+            <div className="absolute right-0 top-full mt-1 z-40 bg-white border border-gray-200 rounded-lg shadow-xl min-w-[130px] max-h-64 overflow-y-auto">
+              {COLUMNS.map(c => (
+                <label key={c.key} className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-gray-700 hover:bg-gray-50 cursor-pointer border-t border-gray-100 first:border-t-0">
+                  <input type="checkbox" checked={visibleCols.has(c.key)} onChange={() => toggleCol(c.key)} />
+                  {c.label}
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
       {/* Table — horizontally scrollable; Item column is kept short and
           truncates long names with an ellipsis instead of wrapping or
           growing to fit them. */}
@@ -1761,22 +1858,14 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
                   <div onPointerDown={startResize} onClick={e => e.stopPropagation()}
                     className="absolute top-0 right-0 h-full w-2 cursor-col-resize touch-none hover:bg-blue-300/50 active:bg-blue-400/60" />
                 } />
-              <SortTh label="Loss Amt." col="lgAmt" {...thProps} cls="text-center" />
-              <SortTh label="Loss No." col="lossCount" {...thProps} cls="text-center" />
-              <SortTh label="Gain" col="gainAmt" {...thProps} cls="text-center" />
-              <SortTh label="WIC" col="wic" {...thProps} cls="text-center" />
-              <SortTh label="GMC" col="gmc" {...thProps} cls="text-center" />
-              <SortTh label="BL" col="bl" {...thProps} cls="text-center" />
-              <SortTh label="SOH" col="soh" {...thProps} cls="text-center" />
-              <SortTh label="SP" col="sp" {...thProps} cls="text-center" />
-              <SortTh label="CP" col="cp" {...thProps} cls="text-center" />
-              <SortTh label="Group" col="cf_group" {...thProps} cls="text-center" />
-              <SortTh label="Type" col="product_type" {...thProps} cls="text-center" />
+              {shownColumns.map(c => (
+                <SortTh key={c.key} label={c.label} col={c.key} {...thProps} cls="text-center" />
+              ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {filtered.length === 0 && (
-              <tr><td colSpan={12} className="py-10 text-center text-gray-400 text-xs">No items</td></tr>
+              <tr><td colSpan={1 + shownColumns.length} className="py-10 text-center text-gray-400 text-xs">No items</td></tr>
             )}
             {filtered.map(renderRow)}
           </tbody>
