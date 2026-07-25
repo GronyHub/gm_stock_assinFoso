@@ -101,6 +101,9 @@ export default function CABTab() {
   const [editEntryCatCustom, setEditEntryCatCustom] = useState(false)
   const [deleteEntryConfirmId, setDeleteEntryConfirmId] = useState<number | null>(null)
   const [editCell, setEditCell] = useState<{ date: string; category: string } | null>(null)
+  const [splitEntryId, setSplitEntryId] = useState<number | null>(null)
+  const [splitParts, setSplitParts] = useState<{ description: string; amount: string }[]>([])
+  const [splitSaving, setSplitSaving] = useState(false)
 
   function loadRows() {
     fetch('/api/cash-at-bank')
@@ -264,7 +267,57 @@ export default function CABTab() {
 
   function toggleEditCell(date: string, category: string) {
     setEditCell(prev => (prev && prev.date === date && prev.category === category) ? null : { date, category })
+    setEditEntryId(null); setEditEntryCatCustom(false); setDeleteEntryConfirmId(null); setSplitEntryId(null)
+  }
+
+  // Some ledger entries were bulk-imported with two or three items merged
+  // into one description/amount (e.g. "Maa Julie TNT = 100, Children's
+  // Coupon = 140"). Splitting keeps the original id for the first part
+  // (so its history stays attached) and creates a fresh entry per
+  // additional part on the same date/direction/category.
+  function openSplit(e: PersonalEntry) {
+    setSplitEntryId(e.id)
+    setSplitParts([{ description: e.description, amount: e.amount }, { description: '', amount: '' }])
     setEditEntryId(null); setEditEntryCatCustom(false); setDeleteEntryConfirmId(null)
+  }
+
+  function updateSplitPart(i: number, field: 'description' | 'amount', value: string) {
+    setSplitParts(prev => prev.map((p, idx) => idx === i ? { ...p, [field]: value } : p))
+  }
+
+  async function saveSplit(entry: PersonalEntry) {
+    const valid = splitParts.filter(p => p.description.trim() && p.amount.trim())
+    if (valid.length < 2) return
+    setSplitSaving(true)
+    const [first, ...rest] = valid
+    await fetch('/api/personal', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: entry.id, description: first.description, amount: parseFloat(first.amount) }),
+    })
+    const newEntries: PersonalEntry[] = []
+    for (const part of rest) {
+      const res = await fetch('/api/personal', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entry_date: entry.entry_date, description: part.description, amount: parseFloat(part.amount),
+          direction: entry.direction, category: entry.category ?? 'Other', notes: entry.notes,
+        }),
+      })
+      const data = await res.json()
+      if (data.id) {
+        newEntries.push({
+          id: data.id, entry_date: entry.entry_date, description: part.description, amount: part.amount,
+          direction: entry.direction, category: entry.category, notes: entry.notes, needs_review: false,
+        })
+      }
+    }
+    setPersonalEntries(prev => [
+      ...prev.map(e => e.id === entry.id ? { ...e, description: first.description, amount: first.amount } : e),
+      ...newEntries,
+    ])
+    setSplitSaving(false)
+    setSplitEntryId(null)
+    setSplitParts([])
   }
 
   const displayRows = baseDailyRows
@@ -662,6 +715,36 @@ export default function CABTab() {
                           <p className="text-[10px] font-semibold text-gray-700 mb-1.5">{fmtDate(r.date)} · {CAT_ICON[openCat] ?? '🏷️'} {openCat}</p>
                           <div className="space-y-2">
                             {openCell.entries.map(e => (
+                              splitEntryId === e.id ? (
+                                <div key={e.id} className="bg-white border border-blue-200 rounded-lg px-2 py-2 space-y-1.5">
+                                  <p className="text-[10px] font-semibold text-gray-600">
+                                    Split into {splitParts.length} — total {fmtn(splitParts.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0))}
+                                    {' '}(original {fmtn(parseFloat(e.amount))})
+                                  </p>
+                                  {splitParts.map((p, pi) => (
+                                    <div key={pi} className="flex items-center gap-1">
+                                      <input value={p.description} onChange={ev => updateSplitPart(pi, 'description', ev.target.value)} placeholder="Description"
+                                        className="flex-1 border border-gray-200 rounded px-1.5 py-1 text-[10px] outline-none focus:ring-1 focus:ring-blue-400" />
+                                      <input type="number" min="0" step="any" value={p.amount} onChange={ev => updateSplitPart(pi, 'amount', ev.target.value)} placeholder="Amount"
+                                        className="w-20 border border-gray-200 rounded px-1.5 py-1 text-[10px] outline-none focus:ring-1 focus:ring-blue-400" />
+                                      {splitParts.length > 2 && (
+                                        <button onClick={() => setSplitParts(prev => prev.filter((_, idx) => idx !== pi))}
+                                          className="text-[10px] text-gray-400 hover:text-red-500">✕</button>
+                                      )}
+                                    </div>
+                                  ))}
+                                  <div className="flex items-center gap-2">
+                                    <button onClick={() => setSplitParts(prev => [...prev, { description: '', amount: '' }])}
+                                      className="text-[10px] text-blue-600 hover:underline">+ Add part</button>
+                                    <button onClick={() => saveSplit(e)} disabled={splitSaving || splitParts.filter(p => p.description.trim() && p.amount.trim()).length < 2}
+                                      className="text-[10px] px-1.5 py-0.5 bg-blue-600 text-white rounded font-semibold disabled:opacity-40">
+                                      {splitSaving ? 'Saving…' : 'Save Split'}
+                                    </button>
+                                    <button onClick={() => { setSplitEntryId(null); setSplitParts([]) }}
+                                      className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">Cancel</button>
+                                  </div>
+                                </div>
+                              ) : (
                               <div key={e.id} className="flex items-center justify-between gap-2 bg-white border border-gray-200 rounded-lg px-2 py-1.5">
                                 <div className="min-w-0">
                                   <p className="text-xs text-gray-800">{e.description}</p>
@@ -700,12 +783,14 @@ export default function CABTab() {
                                       <>
                                         <button onClick={() => { setEditEntryId(e.id); setEditEntryCat(openCat); setEditEntryCatCustom(false) }}
                                           className="text-[10px] text-blue-600 hover:underline">Recategorize</button>
+                                        <button onClick={() => openSplit(e)} className="text-[10px] text-purple-600 hover:underline">Split</button>
                                         <button onClick={() => setDeleteEntryConfirmId(e.id)} className="text-[10px] text-red-500 hover:underline">Remove</button>
                                       </>
                                     )}
                                   </div>
                                 )}
                               </div>
+                              )
                             ))}
                           </div>
                         </td>
