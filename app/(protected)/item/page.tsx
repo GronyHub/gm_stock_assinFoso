@@ -245,12 +245,16 @@ const HAMBURGER_LINKS = [
 ]
 
 // Plain text, no icons -- keeps the top nav to a single line so it doesn't
-// eat vertical space. Only the selected tab gets the brand color. flex-1 +
-// wrapping (no shrink-0/whitespace-nowrap) so all 4 always fit on screen --
-// "Grony Manage" wraps to two lines on narrow phones rather than forcing
-// the row to scroll.
-function topTabCls(active: boolean) {
-  return `flex-1 min-w-0 text-center text-sm font-bold px-2 py-3 rounded-xl leading-tight transition
+// eat vertical space. flex-1 + wrapping (no shrink-0/whitespace-nowrap) so
+// both always fit on screen -- "Grony Manage" wraps to two lines on narrow
+// phones rather than forcing the row to scroll. The button itself stays a
+// full-width tap target; only the label's own small pill gets the brand
+// color when active, not the whole button-sized box.
+function topTabCls() {
+  return 'flex-1 min-w-0 flex items-center justify-center py-1'
+}
+function topTabLabelCls(active: boolean) {
+  return `text-sm font-bold text-center px-3 py-1.5 rounded-xl leading-tight transition
     ${active ? 'bg-brand text-white shadow-md' : 'text-gray-500 hover:bg-gray-100'}`
 }
 
@@ -563,9 +567,13 @@ function ItemHubPageInner() {
             of their own. Home moved to its own floating icon (bottom-right)
             so it doesn't take up a slot in this row. */}
         <div className="flex items-stretch gap-1 px-2 py-2">
-          <button onClick={() => changeTab('loss')} className={topTabCls(outerTab === 'loss' && !openRole)}>Grony Cash</button>
+          <button onClick={() => changeTab('loss')} className={topTabCls()}>
+            <span className={topTabLabelCls(outerTab === 'loss' && !openRole)}>Grony Cash</span>
+          </button>
           <div className="w-px bg-gray-200 shrink-0" />
-          <button onClick={() => changeTab('manage')} className={topTabCls(outerTab === 'manage' && !openRole)}>Grony Manage</button>
+          <button onClick={() => changeTab('manage')} className={topTabCls()}>
+            <span className={topTabLabelCls(outerTab === 'manage' && !openRole)}>Grony Manage</span>
+          </button>
         </div>
 
         {/* Everything below this point (submenus, search/New, violations)
