@@ -52,3 +52,14 @@ export async function PUT(req: Request) {
   `
   return NextResponse.json({ ok: true })
 }
+
+export async function DELETE(req: Request) {
+  const session = await auth()
+  if (!session || !isAllowed(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const { id } = await req.json()
+  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+
+  await sql`DELETE FROM grony_personal_ledger WHERE id = ${id}`
+  return NextResponse.json({ ok: true })
+}
