@@ -86,6 +86,14 @@ export default function CABTab() {
   const [confirmSaving, setConfirmSaving] = useState(false)
   const [confirmError, setConfirmError] = useState<string | null>(null)
   const [personalEntries, setPersonalEntries] = useState<PersonalEntry[]>([])
+  const [showAddPersonal, setShowAddPersonal] = useState(false)
+  const [addDate, setAddDate] = useState('')
+  const [addDesc, setAddDesc] = useState('')
+  const [addAmt, setAddAmt] = useState('')
+  const [addDir, setAddDir] = useState<'out' | 'in'>('out')
+  const [addCat, setAddCat] = useState('Other')
+  const [addNotes, setAddNotes] = useState('')
+  const [addSaving, setAddSaving] = useState(false)
 
   function loadRows() {
     fetch('/api/cash-at-bank')
@@ -203,6 +211,27 @@ export default function CABTab() {
       return next
     })
   }
+
+  function openAddPersonal() {
+    setAddDate(new Date().toISOString().slice(0, 10))
+    setAddDesc(''); setAddAmt(''); setAddDir('out'); setAddCat('Other'); setAddNotes('')
+    setShowAddPersonal(true)
+  }
+
+  async function addPersonalEntry() {
+    if (!addDate || !addDesc || !addAmt) return
+    setAddSaving(true)
+    const res = await fetch('/api/personal', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entry_date: addDate, description: addDesc, amount: parseFloat(addAmt), direction: addDir, category: addCat, notes: addNotes || null }),
+    })
+    const data = await res.json()
+    setAddSaving(false)
+    if (data.id) {
+      setPersonalEntries(prev => [{ id: data.id, entry_date: addDate, description: addDesc, amount: addAmt, direction: addDir, category: addCat, notes: addNotes || null, needs_review: false }, ...prev])
+      setShowAddPersonal(false)
+    }
+  }
   const displayRows = baseDailyRows
   const filteredPersonalOutRows = categoryFilter.size === 0
     ? personalOutRows
@@ -305,6 +334,10 @@ export default function CABTab() {
 
       {!showPersonal && !showWeekly && gpOutOnly && (
         <div className="flex flex-wrap items-center gap-2 px-2 py-1.5 border-b border-gray-200 bg-gray-50 shrink-0">
+          <button onClick={openAddPersonal}
+            className="text-[9px] font-semibold px-1.5 py-0.5 rounded transition bg-blue-600 text-white hover:bg-blue-700">
+            + Add
+          </button>
           {CATEGORIES.map(cat => (
             <label key={cat} className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
               <input type="checkbox" checked={categoryFilter.has(cat)} onChange={() => toggleCategory(cat)}
@@ -318,6 +351,57 @@ export default function CABTab() {
               Clear
             </button>
           )}
+        </div>
+      )}
+
+      {!showPersonal && !showWeekly && gpOutOnly && showAddPersonal && (
+        <div className="px-2 py-2 border-b border-gray-200 bg-blue-50/60 shrink-0 space-y-1.5">
+          <p className="text-[10px] font-semibold text-gray-700">New Personal Entry</p>
+          <div className="flex flex-wrap items-end gap-1.5">
+            <div>
+              <p className="text-[9px] text-gray-400 mb-0.5">Date</p>
+              <input type="date" value={addDate} onChange={e => setAddDate(e.target.value)}
+                className="bg-white border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
+            </div>
+            <div>
+              <p className="text-[9px] text-gray-400 mb-0.5">Description</p>
+              <input value={addDesc} onChange={e => setAddDesc(e.target.value)} placeholder="Description"
+                className="w-40 bg-white border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
+            </div>
+            <div>
+              <p className="text-[9px] text-gray-400 mb-0.5">Amount</p>
+              <input type="number" min="0" step="any" value={addAmt} onChange={e => setAddAmt(e.target.value)}
+                placeholder="0" className="w-24 bg-white border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
+            </div>
+            <div>
+              <p className="text-[9px] text-gray-400 mb-0.5">Direction</p>
+              <select value={addDir} onChange={e => setAddDir(e.target.value as 'out' | 'in')}
+                className="bg-white border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400">
+                <option value="out">Out (expense)</option>
+                <option value="in">In (received)</option>
+              </select>
+            </div>
+            <div>
+              <p className="text-[9px] text-gray-400 mb-0.5">Category</p>
+              <select value={addCat} onChange={e => setAddCat(e.target.value)}
+                className="bg-white border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400">
+                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <p className="text-[9px] text-gray-400 mb-0.5">Notes</p>
+              <input value={addNotes} onChange={e => setAddNotes(e.target.value)} placeholder="Optional"
+                className="w-32 bg-white border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
+            </div>
+            <button onClick={addPersonalEntry} disabled={addSaving || !addDate || !addDesc || !addAmt}
+              className="text-[9px] font-semibold px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
+              {addSaving ? 'Saving…' : 'Save'}
+            </button>
+            <button onClick={() => setShowAddPersonal(false)}
+              className="text-[9px] font-semibold px-2 py-1 rounded bg-gray-100 text-gray-600 hover:bg-gray-200">
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 
