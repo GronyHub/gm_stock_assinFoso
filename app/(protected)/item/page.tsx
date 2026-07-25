@@ -555,15 +555,14 @@ function ItemHubPageInner() {
       {/* ── Header ── */}
       <div className="shrink-0 sticky top-0 z-30 bg-white border-b border-gray-200">
 
-        {/* Row 1: raw-text tabs, no icons. All 3 always fit on one screen --
+        {/* Row 1: raw-text tabs, no icons. Both always fit on one screen --
             no horizontal scroll -- via flex-1 + wrapping instead of a fixed
-            width per tab (hamburger moved to a fixed bottom-left button).
-            Divider lines between each tab so they read as distinct menus,
-            not one blob. Daily and Data are Grony Cash submenus now (see
-            the children row below), not top-level tabs of their own. */}
+            width per tab. Divider line between them so they read as
+            distinct menus, not one blob. Daily and Data are Grony Cash
+            submenus now (see the children row below), not top-level tabs
+            of their own. Home moved to its own floating icon (bottom-right)
+            so it doesn't take up a slot in this row. */}
         <div className="flex items-stretch gap-1 px-2 py-2">
-          <button onClick={() => changeTab('today')} className={topTabCls(outerTab === 'today' && !openRole)}>Home</button>
-          <div className="w-px bg-gray-200 shrink-0" />
           <button onClick={() => changeTab('loss')} className={topTabCls(outerTab === 'loss' && !openRole)}>Grony Cash</button>
           <div className="w-px bg-gray-200 shrink-0" />
           <button onClick={() => changeTab('manage')} className={topTabCls(outerTab === 'manage' && !openRole)}>Grony Manage</button>
@@ -917,6 +916,18 @@ function ItemHubPageInner() {
           </div>
         }
       />
+
+      {/* Home -- floating above the Role Bar instead of taking a slot in the
+          top tab row, since it's a single, always-in-the-same-place shortcut
+          rather than a peer of Grony Cash/Grony Manage. */}
+      <button onClick={() => changeTab('today')} aria-label="Home"
+        className={`fixed bottom-20 right-4 z-40 w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition
+          ${outerTab === 'today' && !openRole ? 'bg-brand text-white' : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'}`}>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 11.5 12 4l9 7.5" />
+          <path d="M5 10v9a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h0a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-9" />
+        </svg>
+      </button>
     </div>
   )
 }
