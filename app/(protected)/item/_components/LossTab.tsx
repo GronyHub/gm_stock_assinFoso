@@ -1761,8 +1761,8 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
                   <div onPointerDown={startResize} onClick={e => e.stopPropagation()}
                     className="absolute top-0 right-0 h-full w-2 cursor-col-resize touch-none hover:bg-blue-300/50 active:bg-blue-400/60" />
                 } />
-              <SortTh label={<>Loss<span className="block">Amount</span></>} col="lgAmt" {...thProps} cls="text-center" />
-              <SortTh label={<>Num. of<span className="block">Losses</span></>} col="lossCount" {...thProps} cls="text-center" />
+              <SortTh label="Loss Amt." col="lgAmt" {...thProps} cls="text-center" />
+              <SortTh label="Loss No." col="lossCount" {...thProps} cls="text-center" />
               <SortTh label="Gain" col="gainAmt" {...thProps} cls="text-center" />
               <SortTh label="WIC" col="wic" {...thProps} cls="text-center" />
               <SortTh label="GMC" col="gmc" {...thProps} cls="text-center" />
