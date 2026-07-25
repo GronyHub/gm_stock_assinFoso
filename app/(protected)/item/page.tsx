@@ -316,6 +316,7 @@ function ItemHubPageInner() {
   const [prezohoSalesCount, setPrezohoSalesCount] = useState(0)
   const [prezohoBillsCount, setPrezohoBillsCount] = useState(0)
   const [aliasFlaggedCount, setAliasFlaggedCount] = useState(0)
+  const [unreadAnnouncements, setUnreadAnnouncements] = useState(0)
   const [aliasAmbiguousCount, setAliasAmbiguousCount] = useState(0)
   const [gainsCount, setGainsCount] = useState(0)
 
@@ -352,6 +353,9 @@ function ItemHubPageInner() {
       setPrezohoBillsCount(pending(billRows))
       setAliasFlaggedCount(Array.isArray(auditRows) ? auditRows.length : 0)
       setAliasAmbiguousCount(Array.isArray(ambiguousRows) ? ambiguousRows.length : 0)
+    }).catch(() => {})
+    fetch('/api/announcements/unread-count').then(r => r.ok ? r.json() : null).then(d => {
+      setUnreadAnnouncements(Number(d?.count) || 0)
     }).catch(() => {})
   }
 
@@ -449,6 +453,9 @@ function ItemHubPageInner() {
     setAddForm(null)
     if (t !== 'loss') setProductType('all')
     if (t === 'loss') setLossView('items')
+    // Optimistic -- TodayContent marks these read for real as soon as it
+    // mounts, but that round-trip shouldn't leave the badge lingering.
+    if (t === 'today') setUnreadAnnouncements(0)
   }
 
   // Tab/sub-view/Role Bar panel changes push a new history entry each --
@@ -935,6 +942,14 @@ function ItemHubPageInner() {
           <path d="M3 11.5 12 4l9 7.5" />
           <path d="M5 10v9a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h0a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-9" />
         </svg>
+        {/* Unread announcements -- draws the eye back to Home instead of
+            requiring a check-in tap to find out something new was posted. */}
+        {unreadAnnouncements > 0 && (
+          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white
+            text-[10px] font-bold leading-none flex items-center justify-center border-2 border-white">
+            {unreadAnnouncements > 99 ? '99+' : unreadAnnouncements}
+          </span>
+        )}
       </button>
     </div>
   )
