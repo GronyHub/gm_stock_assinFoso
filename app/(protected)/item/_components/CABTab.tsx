@@ -68,6 +68,7 @@ export default function CABTab() {
   const [showWeekly, setShowWeekly] = useState(false)
   const [onlyUnconfirmed, setOnlyUnconfirmed] = useState(false)
   const [confirmedColsOnly, setConfirmedColsOnly] = useState(false)
+  const [hideBankMomoPhysical, setHideBankMomoPhysical] = useState(false)
   const [showConfirmForm, setShowConfirmForm] = useState(false)
   const [confirmDate, setConfirmDate] = useState('')
   const [confirmBank, setConfirmBank] = useState('')
@@ -218,6 +219,13 @@ export default function CABTab() {
         )}
         {!showWeekly && (
           <label className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none ml-auto">
+            <input type="checkbox" checked={hideBankMomoPhysical} onChange={() => setHideBankMomoPhysical(o => !o)}
+              className="w-3 h-3 accent-blue-600" />
+            Confirmed 3
+          </label>
+        )}
+        {!showWeekly && (
+          <label className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
             <input type="checkbox" checked={confirmedColsOnly} onChange={() => setConfirmedColsOnly(o => !o)}
               className="w-3 h-3 accent-blue-600" />
             Confirmed CAB check
@@ -319,13 +327,17 @@ export default function CABTab() {
                 <>
                   <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
                     <th rowSpan={2} className="text-left px-3 py-2 font-bold border-b border-gray-200 align-bottom whitespace-nowrap">Date</th>
-                    <th colSpan={5} className="text-center px-3 py-1.5 font-bold border-b border-gray-100 border-x-2 border-gray-300">Confirmed (physical count)</th>
+                    <th colSpan={hideBankMomoPhysical ? 2 : 5} className="text-center px-3 py-1.5 font-bold border-b border-gray-100 border-x-2 border-gray-300">Confirmed (physical count)</th>
                   </tr>
                   <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
-                    <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 border-l-2 border-gray-300">Bank</th>
-                    <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200">MoMo</th>
-                    <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200">Physical</th>
-                    <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 text-blue-500">Total</th>
+                    {!hideBankMomoPhysical && (
+                      <>
+                        <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 border-l-2 border-gray-300">Bank</th>
+                        <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200">MoMo</th>
+                        <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200">Physical</th>
+                      </>
+                    )}
+                    <th className={`text-right px-3 py-1.5 font-bold border-b border-gray-200 text-blue-500 ${hideBankMomoPhysical ? 'border-l-2 border-gray-300' : ''}`}>Total</th>
                     <th className="text-center px-3 py-1.5 font-bold border-b border-gray-200 border-r-2 border-gray-300" title="Checks this confirmation against the previous one: prior confirmed total + net movement since then">Verify</th>
                   </tr>
                 </>
@@ -333,7 +345,7 @@ export default function CABTab() {
                 <>
                   <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
                     <th rowSpan={2} className="text-left px-3 py-2 font-bold border-b border-gray-200 align-bottom whitespace-nowrap">Date</th>
-                    <th colSpan={5} className="text-center px-3 py-1.5 font-bold border-b border-gray-100 border-x-2 border-gray-300">Confirmed (physical count)</th>
+                    <th colSpan={hideBankMomoPhysical ? 2 : 5} className="text-center px-3 py-1.5 font-bold border-b border-gray-100 border-x-2 border-gray-300">Confirmed (physical count)</th>
                     <th rowSpan={2} className="text-right px-3 py-2 font-bold border-b border-gray-200 align-bottom" title="Cash Counted">CC</th>
                     <th rowSpan={2} className="text-right px-3 py-2 font-bold text-green-500 border-b border-gray-200 align-bottom" title="Grony Personal cash paid into the business that day">GP In</th>
                     <th rowSpan={2} className="text-right px-3 py-2 font-bold text-green-500 border-b border-gray-200 align-bottom" title="Debtor repayments received that day">Debtors</th>
@@ -345,10 +357,14 @@ export default function CABTab() {
                     <th rowSpan={2} className="text-right px-3 py-2 font-bold text-red-400 border-b border-gray-200 align-bottom" title="Confirmed total minus Running balance">Diff</th>
                   </tr>
                   <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
-                    <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 border-l-2 border-gray-300">Bank</th>
-                    <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200">MoMo</th>
-                    <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200">Physical</th>
-                    <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 text-blue-500">Total</th>
+                    {!hideBankMomoPhysical && (
+                      <>
+                        <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 border-l-2 border-gray-300">Bank</th>
+                        <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200">MoMo</th>
+                        <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200">Physical</th>
+                      </>
+                    )}
+                    <th className={`text-right px-3 py-1.5 font-bold border-b border-gray-200 text-blue-500 ${hideBankMomoPhysical ? 'border-l-2 border-gray-300' : ''}`}>Total</th>
                     <th className="text-center px-3 py-1.5 font-bold border-b border-gray-200 border-r-2 border-gray-300" title="Checks this confirmation against the previous one: prior confirmed total + net movement since then">Verify</th>
                   </tr>
                 </>
@@ -368,22 +384,26 @@ export default function CABTab() {
                       : <span className="text-red-500 font-bold" title={`Off by ${fmtn(verify.diff)}`}>✗</span>)}
                   </td>
                 )
-                return confirmedColsOnly ? (
-                  <tr key={r.entry_date} className={stripe}>
-                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmtDate(dateKey)}</td>
+                const bmpCells = !hideBankMomoPhysical && (
+                  <>
                     <td className="px-3 py-2 text-right text-gray-500 border-l-2 border-gray-300">{nz(r.cab_bank)}</td>
                     <td className="px-3 py-2 text-right text-gray-500">{nz(r.cab_momo)}</td>
                     <td className="px-3 py-2 text-right text-gray-500">{nz(r.cab_physical)}</td>
-                    <td className="px-3 py-2 text-right text-blue-600 font-semibold">{fmtn(r.cab_total)}</td>
+                  </>
+                )
+                const totalCls = `px-3 py-2 text-right text-blue-600 font-semibold ${hideBankMomoPhysical ? 'border-l-2 border-gray-300' : ''}`
+                return confirmedColsOnly ? (
+                  <tr key={r.entry_date} className={stripe}>
+                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmtDate(dateKey)}</td>
+                    {bmpCells}
+                    <td className={totalCls}>{fmtn(r.cab_total)}</td>
                     {verifyCell}
                   </tr>
                 ) : (
                   <tr key={r.entry_date} className={stripe}>
                     <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmtDate(dateKey)}</td>
-                    <td className="px-3 py-2 text-right text-gray-500 border-l-2 border-gray-300">{nz(r.cab_bank)}</td>
-                    <td className="px-3 py-2 text-right text-gray-500">{nz(r.cab_momo)}</td>
-                    <td className="px-3 py-2 text-right text-gray-500">{nz(r.cab_physical)}</td>
-                    <td className="px-3 py-2 text-right text-blue-600 font-semibold">{hasConfirm ? fmtn(r.cab_total) : ''}</td>
+                    {bmpCells}
+                    <td className={totalCls}>{hasConfirm ? fmtn(r.cab_total) : ''}</td>
                     {verifyCell}
                     <td className="px-3 py-2 text-right text-gray-700">{nz(r.cash_counted)}</td>
                     <td className="px-3 py-2 text-right text-green-600">{nz(r.grony_personal_cash_in)}</td>
