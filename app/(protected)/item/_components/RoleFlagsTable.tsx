@@ -21,6 +21,10 @@ type Item = {
   calculated_soh: number
 }
 
+type Period = { n: number; amt: number }
+export type LossSummary = { total: Period; yesterday: Period; week: Period; month: Period; year: Period }
+const cedis = (v: number) => `₵${v.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+
 function daysSince(dateStr: string): number {
   const d = new Date(dateStr + 'T00:00:00')
   const today = new Date(); today.setHours(0, 0, 0, 0)
@@ -64,7 +68,7 @@ function dueCell(v: Violation, deadline: string | undefined, threshold: number):
 // (reused from whichever tab already renders it) directly in place, with no
 // navigation. Omit them (Bino/Opener) and a row click falls back to
 // `onGoToViolation`, navigating to that violation's home tab as before.
-export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy, assignedOn, vSettings, onGoToViolation, items, onItemsChanged }: {
+export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy, assignedOn, vSettings, onGoToViolation, items, onItemsChanged, lossSummary, onFixLossFeed }: {
   violations: Violation[]
   assignments: Record<string, string>
   deadlines: Record<string, string>
@@ -74,6 +78,8 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
   onGoToViolation?: (key: string) => void
   items?: Item[]
   onItemsChanged?: (items: Item[]) => void
+  lossSummary?: LossSummary
+  onFixLossFeed?: () => void
 }) {
   const threshold = parseInt(vSettings.threshold_days ?? '3', 10)
   const inlineFix = items !== undefined && onItemsChanged !== undefined
@@ -82,6 +88,16 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
   // Bucket by the submenu each flag's fix view actually lives under (Items,
   // Counts, Sales, etc.) so a row's origin is obvious without opening it --
   // a bar per group instead of repeating the submenu name on every row.
+  // The Loss Feed period totals (All-Time/Yesterday/etc.) are pinned into
+  // the Daily Loss group ahead of the Gains violation row instead of
+  // living in their own separate table above this one.
+  const lossRows = lossSummary ? [
+    { label: 'All-Time', period: lossSummary.total },
+    { label: 'Yesterday', period: lossSummary.yesterday },
+    { label: 'This Week', period: lossSummary.week },
+    { label: 'This Month', period: lossSummary.month },
+    { label: 'This Year', period: lossSummary.year },
+  ] : []
   const groupedViolations = useMemo(() => {
     const map = new Map<string, Violation[]>()
     for (const v of violations) {
@@ -90,11 +106,12 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
       if (!map.has(submenu)) map.set(submenu, [])
       map.get(submenu)!.push(v)
     }
+    if (lossSummary && !map.has('Daily Loss')) map.set('Daily Loss', [])
     return SUBMENU_ORDER.filter(s => map.has(s)).map(submenu => {
       const rows = map.get(submenu)!
       return { submenu, rows, total: rows.reduce((s, v) => s + v.count, 0) }
     })
-  }, [violations])
+  }, [violations, lossSummary])
 
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -118,6 +135,19 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
                 </div>
               </td>
             </tr>
+            {submenu === 'Daily Loss' && lossRows.map(r => (
+              <tr key={r.label} onClick={() => r.period.n > 0 && onFixLossFeed?.()}
+                className={`transition ${r.period.n > 0 ? 'cursor-pointer hover:bg-blue-50' : ''}`}>
+                <td className={`px-2 py-1.5 whitespace-nowrap ${r.period.n > 0 ? 'text-gray-800' : 'text-gray-400'}`}>{r.label}</td>
+                <td className={`px-1.5 py-1.5 text-center font-bold ${r.period.n > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  {r.period.n > 0 ? r.period.n : '✓'}
+                </td>
+                <td className={`px-1.5 py-1.5 whitespace-nowrap ${r.period.n > 0 ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
+                  {r.period.n > 0 ? cedis(r.period.amt) : '—'}
+                </td>
+                <td className="px-1.5 py-1.5 text-gray-500 whitespace-nowrap">—</td>
+              </tr>
+            ))}
             {rows.map(v => {
               const { label: dueLabel, atRisk } = dueCell(v, deadlines[v.type], threshold)
               const explicitlyAssigned = !!assignments[v.type]
