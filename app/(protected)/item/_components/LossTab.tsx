@@ -1827,8 +1827,9 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
       {/* Which headers show (besides the always-visible Item column) --
           remembered across visits alongside the Item column's own width.
           Same checkbox style as CAB's "Confirmed 3" checkbox, spread out in
-          a wrapping row instead of hidden behind a menu button. */}
-      <div className="shrink-0 flex flex-wrap px-1 pb-1.5">
+          a wrapping row instead of hidden behind a menu button. Clear wipes
+          them all at once instead of unchecking each one by hand. */}
+      <div className="shrink-0 flex flex-wrap items-center gap-x-2 px-1 pb-1.5">
         {COLUMNS.map(c => (
           <label key={c.key} className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
             <input type="checkbox" checked={visibleCols.has(c.key)} onChange={() => toggleCol(c.key)}
@@ -1836,6 +1837,12 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
             {c.label}
           </label>
         ))}
+        {visibleCols.size > 0 && (
+          <button onClick={() => setVisibleCols(new Set())}
+            className="text-[9px] font-semibold text-blue-600 hover:underline">
+            Clear
+          </button>
+        )}
       </div>
       {/* Table — horizontally scrollable; Item column is kept short and
           truncates long names with an ellipsis instead of wrapping or
