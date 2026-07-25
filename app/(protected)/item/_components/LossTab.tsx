@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useMemo, useRef, type ReactNode, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
+import { useState, useEffect, useMemo, useRef, Fragment, type ReactNode, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { fmtDate } from '@/lib/fmtDate'
 import type { ItemDayRow as DayRow, CountRevision } from '@/lib/itemDayRows'
@@ -1781,6 +1781,18 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
     return list
   }, [rows, search, group, productType, sort])
 
+  // Grouped by cf_group -- items keep the sort order computed above within
+  // their own group, groups themselves ordered alphabetically by name.
+  const groupedRows = useMemo(() => {
+    const map = new Map<string, SummaryRow[]>()
+    for (const r of filtered) {
+      const g = r.cf_group ?? 'Ungrouped'
+      if (!map.has(g)) map.set(g, [])
+      map.get(g)!.push(r)
+    }
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]))
+  }, [filtered])
+
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
 
   const thProps = { sort, onSort: handleSort }
@@ -1849,7 +1861,16 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
             {filtered.length === 0 && (
               <tr><td colSpan={1 + shownColumns.length} className="py-10 text-center text-gray-400 text-xs">No items</td></tr>
             )}
-            {filtered.map(renderRow)}
+            {groupedRows.map(([groupName, items]) => (
+              <Fragment key={groupName}>
+                <tr className="bg-gray-100">
+                  <td colSpan={1 + shownColumns.length} className="sticky left-0 z-10 bg-gray-100 px-2 py-1 font-bold text-gray-700 text-[10px] uppercase tracking-wide">
+                    {groupName} <span className="text-gray-400 font-normal normal-case">({items.length})</span>
+                  </td>
+                </tr>
+                {items.map((row, i) => renderRow(row, i))}
+              </Fragment>
+            ))}
           </tbody>
         </table>
       </div>
