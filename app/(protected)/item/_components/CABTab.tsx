@@ -1,8 +1,8 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
-import Link from 'next/link'
 import { fmtDate } from '@/lib/fmtDate'
+import PersonalTab from './PersonalTab'
 
 type Row = {
   entry_date: string
@@ -72,6 +72,7 @@ export default function CABTab() {
   const [flags, setFlags] = useState<any | null>(null)
   const [flagsLoading, setFlagsLoading] = useState(false)
   const [showWeekly, setShowWeekly] = useState(false)
+  const [showPersonal, setShowPersonal] = useState(false)
   const [onlyUnconfirmed, setOnlyUnconfirmed] = useState(false)
   const [confirmedColsOnly, setConfirmedColsOnly] = useState(false)
   const [hideBankMomoPhysical, setHideBankMomoPhysical] = useState(false)
@@ -201,12 +202,12 @@ export default function CABTab() {
       </div>
 
       <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0">
-        <button onClick={() => setShowWeekly(false)}
-          className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition ${!showWeekly ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
+        <button onClick={() => { setShowWeekly(false); setShowPersonal(false) }}
+          className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition ${!showWeekly && !showPersonal ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
           Daily
         </button>
-        <button onClick={() => setShowWeekly(true)}
-          className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition ${showWeekly ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
+        <button onClick={() => { setShowWeekly(true); setShowPersonal(false) }}
+          className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition ${showWeekly && !showPersonal ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
           Weekly
           {unconfirmedCount > 0 && (
             <span className="ml-1 bg-red-100 text-red-600 text-[8px] font-bold px-1 py-0.5 rounded-full">{unconfirmedCount}</span>
@@ -217,26 +218,26 @@ export default function CABTab() {
           + New CAB Confirm
         </button>
         {isOwnerOrJoe && (
-          <Link href="/personal"
-            className="text-[9px] font-semibold px-1.5 py-0.5 rounded transition bg-gray-100 text-gray-600 hover:bg-gray-200">
+          <button onClick={() => setShowPersonal(p => !p)}
+            className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition ${showPersonal ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
             Personal
-          </Link>
+          </button>
         )}
-        {showWeekly && (
+        {!showPersonal && showWeekly && (
           <label className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none ml-auto">
             <input type="checkbox" checked={onlyUnconfirmed} onChange={() => setOnlyUnconfirmed(o => !o)}
               className="w-3 h-3 accent-blue-600" />
             Unconfirmed only
           </label>
         )}
-        {!showWeekly && (
+        {!showPersonal && !showWeekly && (
           <label className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none ml-auto">
             <input type="checkbox" checked={hideBankMomoPhysical} onChange={() => setHideBankMomoPhysical(o => !o)}
               className="w-3 h-3 accent-blue-600" />
             Confirmed 3
           </label>
         )}
-        {!showWeekly && (
+        {!showPersonal && !showWeekly && (
           <label className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
             <input type="checkbox" checked={confirmedColsOnly} onChange={() => setConfirmedColsOnly(o => !o)}
               className="w-3 h-3 accent-blue-600" />
@@ -245,7 +246,13 @@ export default function CABTab() {
         )}
       </div>
 
-      {showConfirmForm && (
+      {showPersonal && (
+        <div className="flex-1 overflow-auto min-h-0 p-2">
+          <PersonalTab embedded />
+        </div>
+      )}
+
+      {!showPersonal && showConfirmForm && (
         <div className="px-2 py-2 border-b border-gray-200 bg-green-50/60 shrink-0 space-y-1.5">
           <p className="text-[10px] font-semibold text-gray-700">New CAB Confirm</p>
           <div className="flex flex-wrap items-end gap-1.5">
@@ -288,7 +295,7 @@ export default function CABTab() {
         </div>
       )}
 
-      {showWeekly ? (
+      {!showPersonal && (showWeekly ? (
         <div className="flex-1 overflow-auto min-h-0 p-2">
           <p className="text-[10px] text-gray-400 mb-1.5">Last {weeks.length} week{weeks.length !== 1 ? 's' : ''} (Mon–Sun), most recent first.</p>
           <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
@@ -451,7 +458,7 @@ export default function CABTab() {
             </p>
           )}
         </div>
-      )}
+      ))}
     </div>
   )
 }
