@@ -59,6 +59,7 @@ export default function PersonalTab({ embedded = false }: { embedded?: boolean }
   const [search, setSearch]     = useState('')
   const [editId, setEditId]     = useState<number | null>(null)
   const [editCat, setEditCat]   = useState('')
+  const [editCatCustom, setEditCatCustom] = useState(false)
   const [showAdd, setShowAdd]   = useState(false)
 
   // New entry form
@@ -67,6 +68,7 @@ export default function PersonalTab({ embedded = false }: { embedded?: boolean }
   const [newAmt, setNewAmt]     = useState('')
   const [newDir, setNewDir]     = useState<'out' | 'in'>('out')
   const [newCat, setNewCat]     = useState('Other')
+  const [newCatCustom, setNewCatCustom] = useState(false)
   const [newNotes, setNewNotes] = useState('')
   const [saving, setSaving]     = useState(false)
 
@@ -77,17 +79,26 @@ export default function PersonalTab({ embedded = false }: { embedded?: boolean }
       .catch(() => setLoading(false))
   }, [])
 
+  // Fixed CATEGORIES plus any custom category already in use, so a
+  // category someone typed in via "+ Add new category…" stays selectable
+  // (for new entries and re-editing) instead of only existing on the one
+  // entry it was first typed on.
+  const allCategories = useMemo(() => {
+    const custom = entries.map(e => e.category).filter((c): c is string => !!c && !CATEGORIES.includes(c))
+    return [...CATEGORIES, ...Array.from(new Set(custom)).sort()]
+  }, [entries])
+
   const breakdown = useMemo(() => {
     const out = entries.filter(e => e.direction === 'out')
     const map: Record<string, { count: number; total: number }> = {}
-    for (const cat of CATEGORIES) map[cat] = { count: 0, total: 0 }
+    for (const cat of allCategories) map[cat] = { count: 0, total: 0 }
     for (const e of out) {
-      const cat = e.category && CATEGORIES.includes(e.category) ? e.category : 'Other'
+      const cat = e.category && allCategories.includes(e.category) ? e.category : 'Other'
       map[cat].count++
       map[cat].total += parseFloat(e.amount)
     }
-    return CATEGORIES.map(cat => ({ cat, ...map[cat] })).sort((a, b) => b.total - a.total)
-  }, [entries])
+    return allCategories.map(cat => ({ cat, ...map[cat] })).sort((a, b) => b.total - a.total)
+  }, [entries, allCategories])
 
   const grandOut = useMemo(() => entries.filter(e => e.direction === 'out').reduce((s, e) => s + parseFloat(e.amount), 0), [entries])
   const grandIn  = useMemo(() => entries.filter(e => e.direction === 'in').reduce((s, e)  => s + parseFloat(e.amount), 0), [entries])
@@ -106,6 +117,7 @@ export default function PersonalTab({ embedded = false }: { embedded?: boolean }
     await fetch('/api/personal', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, category: editCat }) })
     setEntries(prev => prev.map(e => e.id === id ? { ...e, category: editCat } : e))
     setEditId(null)
+    setEditCatCustom(false)
   }
 
   async function addEntry() {
@@ -119,7 +131,7 @@ export default function PersonalTab({ embedded = false }: { embedded?: boolean }
     const data = await res.json()
     if (data.id) {
       setEntries(prev => [{ id: data.id, entry_date: newDate, description: newDesc, amount: newAmt, direction: newDir, category: newCat, notes: newNotes || null, needs_review: false }, ...prev])
-      setShowAdd(false); setNewDate(''); setNewDesc(''); setNewAmt(''); setNewDir('out'); setNewCat('Other'); setNewNotes('')
+      setShowAdd(false); setNewDate(''); setNewDesc(''); setNewAmt(''); setNewDir('out'); setNewCat('Other'); setNewCatCustom(false); setNewNotes('')
     }
     setSaving(false)
   }
@@ -164,10 +176,22 @@ export default function PersonalTab({ embedded = false }: { embedded?: boolean }
               <option value="out">Out (expense)</option>
               <option value="in">In (received)</option>
             </select>
-            <select value={newCat} onChange={e => setNewCat(e.target.value)}
-              className="col-span-2 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400">
-              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+            {newCatCustom ? (
+              <div className="col-span-2 flex gap-2">
+                <input value={newCat} onChange={e => setNewCat(e.target.value)} placeholder="New category name" autoFocus
+                  className="flex-1 border border-blue-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400" />
+                <button type="button" onClick={() => { setNewCatCustom(false); setNewCat('Other') }}
+                  className="text-xs text-gray-500 underline whitespace-nowrap">Choose existing</button>
+              </div>
+            ) : (
+              <select value={newCat} onChange={e => {
+                  if (e.target.value === '__new__') { setNewCatCustom(true); setNewCat('') } else setNewCat(e.target.value)
+                }}
+                className="col-span-2 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400">
+                {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                <option value="__new__">+ Add new category…</option>
+              </select>
+            )}
             <input value={newNotes} onChange={e => setNewNotes(e.target.value)} placeholder="Notes (optional)"
               className="col-span-2 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400" />
           </div>
@@ -221,7 +245,7 @@ export default function PersonalTab({ embedded = false }: { embedded?: boolean }
                 className="w-full text-left bg-white border border-gray-200 rounded-xl p-3 hover:border-gray-300 transition">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-lg">{CAT_ICON[cat]}</span>
+                    <span className="text-lg">{CAT_ICON[cat] ?? '🏷️'}</span>
                     <div>
                       <p className="text-sm font-semibold text-gray-900">{cat}</p>
                       <p className="text-[10px] text-gray-400">{count} entr{count !== 1 ? 'ies' : 'y'}</p>
@@ -246,11 +270,11 @@ export default function PersonalTab({ embedded = false }: { embedded?: boolean }
         <div className="space-y-3">
           {/* Category chips */}
           <div className="flex gap-1.5 overflow-x-auto pb-0.5">
-            {['All', ...CATEGORIES].map(f => (
+            {['All', ...allCategories].map(f => (
               <button key={f} onClick={() => setCatFilter(f)}
                 className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition
                   ${catFilter === f ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                {f === 'All' ? 'All' : `${CAT_ICON[f]} ${f}`}
+                {f === 'All' ? 'All' : `${CAT_ICON[f] ?? '🏷️'} ${f}`}
               </button>
             ))}
           </div>
@@ -262,7 +286,7 @@ export default function PersonalTab({ embedded = false }: { embedded?: boolean }
           {/* Category total */}
           {catFilter !== 'All' && (
             <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
-              <span className="text-xs font-semibold text-gray-600">{CAT_ICON[catFilter]} {catFilter} total</span>
+              <span className="text-xs font-semibold text-gray-600">{CAT_ICON[catFilter] ?? '🏷️'} {catFilter} total</span>
               <span className="text-sm font-bold text-gray-900">{c(filtered.filter(e=>e.direction==='out').reduce((s,e)=>s+parseFloat(e.amount),0))}</span>
             </div>
           )}
@@ -293,18 +317,30 @@ export default function PersonalTab({ embedded = false }: { embedded?: boolean }
                       </td>
                       <td className={`${TD} align-top`}>
                         {editId === e.id ? (
-                          <div className="flex items-center gap-1">
-                            <select value={editCat} onChange={ev => setEditCat(ev.target.value)}
-                              className="border border-blue-300 rounded-lg px-2 py-1 text-[10px] outline-none">
-                              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
-                            <button onClick={() => saveCategory(e.id)} className="text-[10px] px-2 py-1 bg-blue-600 text-white rounded-lg font-semibold">Save</button>
-                            <button onClick={() => setEditId(null)} className="text-[10px] px-2 py-1 bg-gray-100 text-gray-600 rounded-lg">✕</button>
-                          </div>
+                          editCatCustom ? (
+                            <div className="flex items-center gap-1">
+                              <input value={editCat} onChange={ev => setEditCat(ev.target.value)} placeholder="New category name" autoFocus
+                                className="border border-blue-300 rounded-lg px-2 py-1 text-[10px] outline-none" />
+                              <button onClick={() => saveCategory(e.id)} className="text-[10px] px-2 py-1 bg-blue-600 text-white rounded-lg font-semibold">Save</button>
+                              <button onClick={() => { setEditId(null); setEditCatCustom(false) }} className="text-[10px] px-2 py-1 bg-gray-100 text-gray-600 rounded-lg">✕</button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1">
+                              <select value={editCat} onChange={ev => {
+                                  if (ev.target.value === '__new__') { setEditCatCustom(true); setEditCat('') } else setEditCat(ev.target.value)
+                                }}
+                                className="border border-blue-300 rounded-lg px-2 py-1 text-[10px] outline-none">
+                                {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                                <option value="__new__">+ Add new category…</option>
+                              </select>
+                              <button onClick={() => saveCategory(e.id)} className="text-[10px] px-2 py-1 bg-blue-600 text-white rounded-lg font-semibold">Save</button>
+                              <button onClick={() => setEditId(null)} className="text-[10px] px-2 py-1 bg-gray-100 text-gray-600 rounded-lg">✕</button>
+                            </div>
+                          )
                         ) : (
-                          <button onClick={() => { setEditId(e.id); setEditCat(e.category ?? 'Other') }}
+                          <button onClick={() => { setEditId(e.id); setEditCat(e.category ?? 'Other'); setEditCatCustom(false) }}
                             className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${CAT_COLOR[e.category ?? 'Other'] ?? CAT_COLOR['Other']}`}>
-                            {CAT_ICON[e.category ?? 'Other']} {e.category ?? 'Other'} ✎
+                            {CAT_ICON[e.category ?? 'Other'] ?? '🏷️'} {e.category ?? 'Other'} ✎
                           </button>
                         )}
                       </td>

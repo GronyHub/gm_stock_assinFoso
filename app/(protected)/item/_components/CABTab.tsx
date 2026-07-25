@@ -92,6 +92,7 @@ export default function CABTab() {
   const [addAmt, setAddAmt] = useState('')
   const [addDir, setAddDir] = useState<'out' | 'in'>('out')
   const [addCat, setAddCat] = useState('Other')
+  const [addCatCustom, setAddCatCustom] = useState(false)
   const [addNotes, setAddNotes] = useState('')
   const [addSaving, setAddSaving] = useState(false)
 
@@ -134,6 +135,13 @@ export default function CABTab() {
       .map(([date, entries]) => ({ date, total: entries.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0), entries }))
       .sort((a, b) => b.date.localeCompare(a.date))
   }, [personalOutByDate])
+
+  // Fixed CATEGORIES plus any custom category already in use, so a category
+  // typed in via "+ Add new category…" stays selectable/filterable.
+  const personalAllCategories = useMemo(() => {
+    const custom = personalEntries.map(e => e.category).filter((c): c is string => !!c && !CATEGORIES.includes(c))
+    return [...CATEGORIES, ...Array.from(new Set(custom)).sort()]
+  }, [personalEntries])
 
   useEffect(() => { loadRows() }, [])
 
@@ -214,7 +222,7 @@ export default function CABTab() {
 
   function openAddPersonal() {
     setAddDate(new Date().toISOString().slice(0, 10))
-    setAddDesc(''); setAddAmt(''); setAddDir('out'); setAddCat('Other'); setAddNotes('')
+    setAddDesc(''); setAddAmt(''); setAddDir('out'); setAddCat('Other'); setAddCatCustom(false); setAddNotes('')
     setShowAddPersonal(true)
   }
 
@@ -338,11 +346,11 @@ export default function CABTab() {
             className="text-[9px] font-semibold px-1.5 py-0.5 rounded transition bg-blue-600 text-white hover:bg-blue-700">
             + Add
           </button>
-          {CATEGORIES.map(cat => (
+          {personalAllCategories.map(cat => (
             <label key={cat} className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
               <input type="checkbox" checked={categoryFilter.has(cat)} onChange={() => toggleCategory(cat)}
                 className="w-3 h-3 accent-blue-600" />
-              {CAT_ICON[cat]} {cat}
+              {CAT_ICON[cat] ?? '🏷️'} {cat}
             </label>
           ))}
           {categoryFilter.size > 0 && (
@@ -383,10 +391,22 @@ export default function CABTab() {
             </div>
             <div>
               <p className="text-[9px] text-gray-400 mb-0.5">Category</p>
-              <select value={addCat} onChange={e => setAddCat(e.target.value)}
-                className="bg-white border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400">
-                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+              {addCatCustom ? (
+                <div className="flex items-center gap-1">
+                  <input value={addCat} onChange={e => setAddCat(e.target.value)} placeholder="New category name" autoFocus
+                    className="w-32 bg-white border border-blue-300 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
+                  <button type="button" onClick={() => { setAddCatCustom(false); setAddCat('Other') }}
+                    className="text-[9px] text-gray-500 underline whitespace-nowrap">Existing</button>
+                </div>
+              ) : (
+                <select value={addCat} onChange={e => {
+                    if (e.target.value === '__new__') { setAddCatCustom(true); setAddCat('') } else setAddCat(e.target.value)
+                  }}
+                  className="bg-white border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400">
+                  {personalAllCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                  <option value="__new__">+ Add new category…</option>
+                </select>
+              )}
             </div>
             <div>
               <p className="text-[9px] text-gray-400 mb-0.5">Notes</p>
@@ -567,7 +587,7 @@ export default function CABTab() {
                     {r.entries.map(e => (
                       <div key={e.id} className="mb-1 last:mb-0">
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${CAT_COLOR[e.category ?? 'Other'] ?? CAT_COLOR['Other']}`}>
-                          {CAT_ICON[e.category ?? 'Other']} {e.category ?? 'Other'}
+                          {CAT_ICON[e.category ?? 'Other'] ?? '🏷️'} {e.category ?? 'Other'}
                         </span>
                       </div>
                     ))}
