@@ -81,6 +81,22 @@ export const ERRORS_TAB_VIOLATION: Record<string, string> = {
 
 export type Violation = { type: string; label: string; count: number; days: number | null }
 
+// Which submenu each violation's own fix view actually lives under -- keyed
+// by the ERRORS_TAB_VIOLATION-translated key (same namespace as page.tsx's
+// VIOLATION_HOME, which this mirrors) so RoleFlagsTable can group/label its
+// rows without importing from the page component itself. Types with no
+// Grony Cash submenu (staff times, adverts, jingle, equipment) fall back to
+// "Grony Manage" wherever this is looked up.
+export const SUBMENU_HOME: Record<string, string> = {
+  neg_soh: 'Items', no_sp: 'Items', no_cp: 'Items', no_group: 'Items',
+  duplicates: 'Items', unlinked_named: 'Items', service_violation: 'Items',
+  alias_prezoho_sales: 'Items', alias_prezoho_bills: 'Items', alias_flagged: 'Items', alias_ambiguous: 'Items',
+  daily: 'Counts', '7day': 'Counts', '15day': 'Counts',
+  gains: 'Daily Loss',
+  no_cash: 'Sales', missing_days: 'Sales', cost_price: 'Sales', dup_receipt: 'Sales',
+  unchecked_cab: 'CAB',
+}
+
 // Shared by the Grony Cash panel (Item hub) and Grony Manage panel (Home) --
 // both are just filtered views of the same flags/assignments data, so the
 // fetching and violation-list computation lives in one place.

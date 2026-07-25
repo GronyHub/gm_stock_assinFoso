@@ -1,8 +1,13 @@
 'use client'
-import { Fragment, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { fmtOrdinalDate } from '@/lib/fmtDate'
-import { SHORT_LABEL, ERRORS_TAB_VIOLATION, type Violation } from './useViolations'
+import { SHORT_LABEL, ERRORS_TAB_VIOLATION, SUBMENU_HOME, type Violation } from './useViolations'
 import ViolationFixPanel from './ViolationFixPanel'
+
+// Display order for the group bars -- violations themselves are pre-sorted
+// by count within a role's list, so grouping is done without disturbing
+// that, just bucketed under whichever submenu bar comes first here.
+const SUBMENU_ORDER = ['Items', 'Counts', 'Daily Loss', 'Sales', 'CAB', 'Grony Manage']
 
 type Item = {
   id: number
@@ -74,6 +79,20 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
   const inlineFix = items !== undefined && onItemsChanged !== undefined
   const [expandedType, setExpandedType] = useState<string | null>(null)
 
+  // Bucket by the submenu each flag's fix view actually lives under (Items,
+  // Counts, Sales, etc.) so a row's origin is obvious without opening it --
+  // a bar per group instead of repeating the submenu name on every row.
+  const groupedViolations = useMemo(() => {
+    const map = new Map<string, Violation[]>()
+    for (const v of violations) {
+      const violationKey = ERRORS_TAB_VIOLATION[v.type] ?? v.type
+      const submenu = SUBMENU_HOME[violationKey] ?? 'Grony Manage'
+      if (!map.has(submenu)) map.set(submenu, [])
+      map.get(submenu)!.push(v)
+    }
+    return SUBMENU_ORDER.filter(s => map.has(s)).map(submenu => ({ submenu, rows: map.get(submenu)! }))
+  }, [violations])
+
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden">
       <table className="w-full text-[11px] border-collapse">
@@ -85,42 +104,49 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
             <th className="text-left px-1.5 py-1.5 font-semibold text-gray-500">Assigned</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100">
-          {violations.map(v => {
-            const { label: dueLabel, atRisk } = dueCell(v, deadlines[v.type], threshold)
-            const explicitlyAssigned = !!assignments[v.type]
-            const violationKey = ERRORS_TAB_VIOLATION[v.type] ?? v.type
-            const isOpen = expandedType === v.type
+        {groupedViolations.map(({ submenu, rows }) => (
+          <tbody key={submenu} className="divide-y divide-gray-100">
+            <tr>
+              <td colSpan={4} className="px-2 py-1 font-bold text-gray-500 bg-gray-100 uppercase tracking-wide text-[10px]">
+                {submenu}
+              </td>
+            </tr>
+            {rows.map(v => {
+              const { label: dueLabel, atRisk } = dueCell(v, deadlines[v.type], threshold)
+              const explicitlyAssigned = !!assignments[v.type]
+              const violationKey = ERRORS_TAB_VIOLATION[v.type] ?? v.type
+              const isOpen = expandedType === v.type
 
-            return (
-              <Fragment key={v.type}>
-                <tr
-                  onClick={() => inlineFix ? setExpandedType(isOpen ? null : v.type) : onGoToViolation?.(violationKey)}
-                  className={`cursor-pointer hover:bg-blue-50 transition ${atRisk ? 'bg-red-50' : ''} ${isOpen ? 'bg-blue-50' : ''}`}>
-                  <td className={`px-2 py-1.5 ${v.count > 0 ? 'text-gray-800' : 'text-gray-400'}`}>{SHORT_LABEL[v.type] ?? v.label}</td>
-                  <td className={`px-1.5 py-1.5 text-center font-bold ${v.count > 0 ? (atRisk ? 'text-red-600' : 'text-gray-900') : 'text-green-600'}`}>
-                    {v.count > 0 ? v.count : '✓'}
-                  </td>
-                  <td className={`px-1.5 py-1.5 whitespace-nowrap ${atRisk ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>{dueLabel}</td>
-                  <td className="px-1.5 py-1.5 text-gray-500 whitespace-nowrap">
-                    {explicitlyAssigned && assignedOn[v.type] ? (
-                      <>{fmtOrdinalDate(assignedOn[v.type])}{assignedBy[v.type] && <> by <span className="capitalize">{assignedBy[v.type]}</span></>}</>
-                    ) : '—'}
-                  </td>
-                </tr>
-                {inlineFix && isOpen && (
-                  <tr>
-                    <td colSpan={4} className="p-0 border-t border-gray-200 bg-white">
-                      <div className="max-h-[60vh] overflow-auto">
-                        <ViolationFixPanel type={v.type} items={items!} onItemsChanged={onItemsChanged!} />
-                      </div>
+              return (
+                <Fragment key={v.type}>
+                  <tr
+                    onClick={() => inlineFix ? setExpandedType(isOpen ? null : v.type) : onGoToViolation?.(violationKey)}
+                    className={`cursor-pointer hover:bg-blue-50 transition ${atRisk ? 'bg-red-50' : ''} ${isOpen ? 'bg-blue-50' : ''}`}>
+                    <td className={`px-2 py-1.5 ${v.count > 0 ? 'text-gray-800' : 'text-gray-400'}`}>{SHORT_LABEL[v.type] ?? v.label}</td>
+                    <td className={`px-1.5 py-1.5 text-center font-bold ${v.count > 0 ? (atRisk ? 'text-red-600' : 'text-gray-900') : 'text-green-600'}`}>
+                      {v.count > 0 ? v.count : '✓'}
+                    </td>
+                    <td className={`px-1.5 py-1.5 whitespace-nowrap ${atRisk ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>{dueLabel}</td>
+                    <td className="px-1.5 py-1.5 text-gray-500 whitespace-nowrap">
+                      {explicitlyAssigned && assignedOn[v.type] ? (
+                        <>{fmtOrdinalDate(assignedOn[v.type])}{assignedBy[v.type] && <> by <span className="capitalize">{assignedBy[v.type]}</span></>}</>
+                      ) : '—'}
                     </td>
                   </tr>
-                )}
-              </Fragment>
-            )
-          })}
-        </tbody>
+                  {inlineFix && isOpen && (
+                    <tr>
+                      <td colSpan={4} className="p-0 border-t border-gray-200 bg-white">
+                        <div className="max-h-[60vh] overflow-auto">
+                          <ViolationFixPanel type={v.type} items={items!} onItemsChanged={onItemsChanged!} />
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              )
+            })}
+          </tbody>
+        ))}
       </table>
     </div>
   )
