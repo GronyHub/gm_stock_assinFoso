@@ -655,7 +655,7 @@ function ItemHubPageInner() {
     setViolation(key)
   }
 
-  const groups = ['All', ...Array.from(new Set(lossGroups.map(g => g ?? 'Ungrouped'))).sort()]
+  const groups = ['All Groups', ...Array.from(new Set(lossGroups.map(g => g ?? 'Ungrouped'))).sort()]
   // Clicking the search box (even before typing) shows a browsable dropdown
   // of item names -- typing narrows it. Picking one fills the box with that
   // item's name, which the tabs below already know how to search on.
@@ -669,7 +669,7 @@ function ItemHubPageInner() {
   const pillKeys = LOSSVIEW_PILL_KEYS[lossView]
 
   const groupLabel = [
-    group ?? 'All',
+    group ?? 'All Groups',
     productType !== 'all' ? (productType === 'goods' ? 'Goods' : 'Services') : null,
   ].filter(Boolean).join(' · ')
 
@@ -731,7 +731,7 @@ function ItemHubPageInner() {
               { key: 'items',    label: 'Items' },
               { key: 'sales',    label: 'Sales' },
               { key: 'bills',    label: 'Bills' },
-              { key: 'feed',     label: 'Daily Loss' },
+              { key: 'feed',     label: 'Loss' },
               { key: 'expenses', label: 'Expenses' },
               { key: 'po',       label: 'PO' },
               ...(canSeePL ? [{ key: 'pl' as LossView, label: 'P&L' }] : []),
@@ -794,17 +794,26 @@ function ItemHubPageInner() {
                     </div>
                   ) : (
                     <div key={g} className="flex items-center">
-                      <button onClick={() => { setGroup(g === 'All' ? null : g); setGroupOpen(false) }}
+                      <button onClick={() => { setGroup(g === 'All Groups' ? null : g); setGroupOpen(false) }}
                         className={`flex-1 min-w-0 text-left px-3 py-1.5 text-xs hover:bg-blue-50 transition truncate
-                          ${(g === 'All' && !group) || g === group ? 'text-blue-600 font-semibold' : 'text-gray-700'}`}>
+                          ${(g === 'All Groups' && !group) || g === group ? 'text-blue-600 font-semibold' : 'text-gray-700'}`}>
                         {g}
                       </button>
-                      {g !== 'All' && g !== 'Ungrouped' && (
+                      {g !== 'All Groups' && g !== 'Ungrouped' && (
                         <button onClick={e => { e.stopPropagation(); setRenamingGroup(g); setRenameGroupValue(g) }} title="Rename group"
                           className="shrink-0 px-2 text-gray-300 hover:text-gray-600">✎</button>
                       )}
                     </div>
                   ))}
+                  {/* New groups only ever come from naming one on an item
+                      (New Item's own "+ New group name…" option) -- a group
+                      with no items has nowhere to live, so this jumps
+                      straight to that flow instead of pretending an empty
+                      group can be created here. */}
+                  <button onClick={() => { changeTab('loss'); setAddForm('item'); setGroupOpen(false) }}
+                    className="w-full text-left px-3 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-50 border-t border-gray-100">
+                    + New group…
+                  </button>
                   <div className="border-t border-gray-100 mt-0.5 pt-0.5">
                     <p className="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Type</p>
                     {(['all', 'goods', 'services'] as const).map(t => (
