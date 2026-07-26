@@ -668,13 +668,26 @@ function ItemEditForm({ form, onChange, groups, itemId, isService, allItems }: {
 }) {
   const set = (k: keyof typeof EMPTY_FORM) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     onChange({ ...form, [k]: e.target.value })
+  // Existing groups only show up here once some item already uses them --
+  // "+ New group name…" (same option NewItemForm offers) is what lets you
+  // introduce one while editing an item instead of only from New Item.
+  const [customGroup, setCustomGroup] = useState(!!form.cf_group && !groups.includes(form.cf_group))
   return (
     <div className="space-y-1 p-2 bg-gray-50 border-b border-gray-200">
       <input placeholder="Item name *" value={form.item_name} onChange={set('item_name')} className={inputCls} />
-      <select value={form.cf_group} onChange={set('cf_group')} className={inputCls}>
+      <select value={customGroup ? '__custom__' : form.cf_group}
+        onChange={e => {
+          if (e.target.value === '__custom__') { setCustomGroup(true); onChange({ ...form, cf_group: '' }) }
+          else { setCustomGroup(false); onChange({ ...form, cf_group: e.target.value }) }
+        }}
+        className={inputCls}>
         <option value="">— No group —</option>
         {groups.map(g => <option key={g} value={g}>{g}</option>)}
+        <option value="__custom__">+ New group name…</option>
       </select>
+      {customGroup && (
+        <input value={form.cf_group} onChange={set('cf_group')} placeholder="Type new group name" className={inputCls} />
+      )}
       <div className="grid grid-cols-2 gap-1">
         <input placeholder="SP" type="number" value={form.selling_rate} onChange={set('selling_rate')} className={inputCls} />
         <input placeholder="CP" type="number" value={form.purchase_rate} onChange={set('purchase_rate')} className={inputCls} />
@@ -1663,7 +1676,7 @@ function renderCell(key: ColKey, row: SummaryRow) {
 }
 
 /* ── main LossTab ── */
-export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 'All', productType = 'all', visibleCols, colOrder }: {
+export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 'All', productType = 'all', visibleCols, colOrder, columnLabels = {} }: {
   onOpenItem: (itemId: number) => void
   search?: string
   group?: string | null
@@ -1673,6 +1686,9 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   // that drives these now lives there, next to the New button.
   visibleCols: Set<ColKey>
   colOrder: ColKey[]
+  // Custom display labels from that same picker -- purely cosmetic, applied
+  // over COLUMNS' default label below.
+  columnLabels?: Partial<Record<ColKey, string>>
 }) {
   const router = useRouter()
   const [rows, setRows] = useState<SummaryRow[]>([])
@@ -1690,6 +1706,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   }, [loading])
 
   const shownColumns = colOrder.map(k => COL_BY_KEY.get(k)!).filter(c => visibleCols.has(c.key))
+    .map(c => columnLabels[c.key] ? { ...c, label: columnLabels[c.key]! } : c)
 
   // Item column width -- user-resizable via the drag handle on its header,
   // remembered across visits since everyone's own item names run different
