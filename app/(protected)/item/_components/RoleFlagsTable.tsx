@@ -31,6 +31,17 @@ type Item = {
   calculated_soh: number
 }
 
+export type CustomTask = {
+  id: number
+  title: string
+  notes: string | null
+  due_date: string | null
+  submenu: string | null
+  done: boolean
+  created_by: string | null
+  created_at: string
+}
+
 type Period = { n: number; amt: number }
 export type LossSummary = { total: Period; yesterday: Period; week: Period; month: Period; year: Period }
 const cedis = (v: number) => `₵${v.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
@@ -78,7 +89,7 @@ function dueCell(v: Violation, deadline: string | undefined, threshold: number):
 // (reused from whichever tab already renders it) directly in place, with no
 // navigation. Omit them (Bino/Opener) and a row click falls back to
 // `onGoToViolation`, navigating to that violation's home tab as before.
-export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy, assignedOn, vSettings, onGoToViolation, items, onItemsChanged, lossSummary, onFixLossFeed, allSubmenus, onNavigateSubmenu }: {
+export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy, assignedOn, vSettings, onGoToViolation, items, onItemsChanged, lossSummary, onFixLossFeed, allSubmenus, onNavigateSubmenu, customTasks, onToggleTask, onDeleteTask }: {
   violations: Violation[]
   assignments: Record<string, string>
   deadlines: Record<string, string>
@@ -95,6 +106,12 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
   // ones that happen to have a violation type mapped to them.
   allSubmenus?: { label: string; section: string }[]
   onNavigateSubmenu?: (label: string) => void
+  // User-created tasks (Tasks only), pinned to a submenu -- rendered as
+  // extra rows under that submenu's bar, and counted into its total/badge
+  // alongside the violation rows.
+  customTasks?: CustomTask[]
+  onToggleTask?: (task: CustomTask) => void
+  onDeleteTask?: (id: number) => void
 }) {
   const threshold = parseInt(vSettings.threshold_days ?? '3', 10)
   const inlineFix = items !== undefined && onItemsChanged !== undefined
@@ -148,21 +165,30 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
     }
     if (lossSummary && !map.has('Loss')) map.set('Loss', [])
 
+    const tasksBySubmenu = new Map<string, CustomTask[]>()
+    for (const t of customTasks ?? []) {
+      const key = t.submenu ?? 'Grony Manage'
+      if (!tasksBySubmenu.has(key)) tasksBySubmenu.set(key, [])
+      tasksBySubmenu.get(key)!.push(t)
+    }
+
     // Comprehensive mode (Tasks): a bar for every real submenu, not just
     // ones with something flagged -- empty ones just show 0/✓ with no rows
     // and no expand/collapse (there's nothing to show), and clicking them
     // navigates there directly instead.
     if (allSubmenus) {
       const order = allSubmenus.map(s => s.label)
-      const extra = Array.from(map.keys()).filter(k => !order.includes(k))
+      const extra = Array.from(new Set([...map.keys(), ...tasksBySubmenu.keys()])).filter(k => !order.includes(k))
       const fullOrder = [...order, ...extra]
       const sectionOf = new Map(allSubmenus.map(s => [s.label, s.section]))
       return fullOrder.map((submenu, i) => {
         const rows = map.get(submenu) ?? []
+        const tasks = tasksBySubmenu.get(submenu) ?? []
         const section = sectionOf.get(submenu) ?? 'Grony Manage'
         const prevSubmenu = fullOrder[i - 1]
         const prevSection = prevSubmenu !== undefined ? (sectionOf.get(prevSubmenu) ?? 'Grony Manage') : null
-        return { submenu, rows, total: rows.reduce((s, v) => s + v.count, 0), section, showSection: section !== prevSection }
+        const total = rows.reduce((s, v) => s + v.count, 0) + tasks.filter(t => !t.done).length
+        return { submenu, rows, tasks, total, section, showSection: section !== prevSection }
       })
     }
 
@@ -172,9 +198,9 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
       const section = SECTION_OF[submenu] ?? submenu
       const prevSubmenu = order[i - 1]
       const prevSection = prevSubmenu !== undefined ? (SECTION_OF[prevSubmenu] ?? prevSubmenu) : null
-      return { submenu, rows, total: rows.reduce((s, v) => s + v.count, 0), section, showSection: section !== prevSection }
+      return { submenu, rows, tasks: [] as CustomTask[], total: rows.reduce((s, v) => s + v.count, 0), section, showSection: section !== prevSection }
     })
-  }, [violations, lossSummary, allSubmenus])
+  }, [violations, lossSummary, allSubmenus, customTasks])
 
   // Every submenu belonging to each section, so a green bar's click can
   // toggle all of its blue bars together.
@@ -210,12 +236,12 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
             <th className="text-left px-1.5 py-1.5 font-semibold text-gray-500">Assigned</th>
           </tr>
         </thead>
-        {groupedViolations.map(({ submenu, rows, total, section, showSection }) => {
+        {groupedViolations.map(({ submenu, rows, tasks, total, section, showSection }) => {
           const showRows = groupShown(submenu)
           // The Loss bar always has its period totals (lossRows) to show
           // regardless of whether there's an active Gains violation, so it
           // never counts as "empty" even when total (violation count) is 0.
-          const hasContent = total > 0 || (submenu === 'Loss' && lossRows.length > 0)
+          const hasContent = total > 0 || tasks.length > 0 || (submenu === 'Loss' && lossRows.length > 0)
           return (
           <tbody key={submenu} className="divide-y divide-gray-100">
             {inlineFix && showSection && (
@@ -235,6 +261,25 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
                 </div>
               </td>
             </tr>
+            {showRows && (showDone ? tasks : tasks.filter(t => !t.done)).map(t => (
+              <tr key={`task-${t.id}`} className="hover:bg-blue-50 transition">
+                <td className="px-2 py-1.5">
+                  <label className="flex items-start gap-1.5 cursor-pointer">
+                    <input type="checkbox" checked={t.done} onChange={() => onToggleTask?.(t)} className="shrink-0 mt-0.5" />
+                    <span>
+                      <span className={`block ${t.done ? 'line-through text-gray-400' : 'text-gray-800'}`}>{t.title}</span>
+                      {t.notes && <span className="block text-[9px] text-gray-400">{t.notes}</span>}
+                    </span>
+                  </label>
+                </td>
+                <td className={`px-1.5 py-1.5 text-center font-bold ${t.done ? 'text-green-600' : 'text-gray-900'}`}>{t.done ? '✓' : 1}</td>
+                <td className="px-1.5 py-1.5 whitespace-nowrap text-gray-500">{t.due_date ? fmtOrdinalDate(t.due_date) : '—'}</td>
+                <td className="px-1.5 py-1.5 text-gray-500 whitespace-nowrap">
+                  {t.created_by && <span className="capitalize">{t.created_by}</span>}
+                  <button onClick={() => onDeleteTask?.(t.id)} title="Delete task" className="ml-1.5 text-gray-300 hover:text-red-500">×</button>
+                </td>
+              </tr>
+            ))}
             {showRows && submenu === 'Loss' && lossRows.map(r => (
               <tr key={r.label} onClick={() => r.period.n > 0 && onFixLossFeed?.()}
                 className={`transition ${r.period.n > 0 ? 'cursor-pointer hover:bg-blue-50' : ''}`}>

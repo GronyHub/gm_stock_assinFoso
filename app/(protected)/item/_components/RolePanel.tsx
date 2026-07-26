@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
-import { RoleFlagsTable } from './RoleFlagsTable'
+import { RoleFlagsTable, type CustomTask } from './RoleFlagsTable'
 import CustomTasksSection from './CustomTasksSection'
 import type { Violation } from './useViolations'
 import type { RoleKey } from './RoleBar'
@@ -66,6 +66,31 @@ export default function RolePanel({
       .catch(() => {})
   }, [role])
 
+  // User-created tasks -- each pinned to a submenu, rendered as extra rows
+  // under that submenu's bar in RoleFlagsTable (see customTasks prop there).
+  const [customTasks, setCustomTasks] = useState<CustomTask[]>([])
+  function loadCustomTasks() {
+    fetch('/api/tasks').then(r => r.ok ? r.json() : []).then(d => {
+      setCustomTasks(Array.isArray(d) ? d : [])
+    }).catch(() => {})
+  }
+  useEffect(() => {
+    if (role !== 'joe') return
+    loadCustomTasks()
+  }, [role])
+  async function toggleTask(task: CustomTask) {
+    setCustomTasks(prev => prev.map(t => t.id === task.id ? { ...t, done: !t.done } : t))
+    await fetch(`/api/tasks/${task.id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ done: !task.done }),
+    }).catch(() => {})
+    loadCustomTasks()
+  }
+  async function deleteTask(id: number) {
+    setCustomTasks(prev => prev.filter(t => t.id !== id))
+    await fetch(`/api/tasks/${id}`, { method: 'DELETE' }).catch(() => {})
+  }
+
   const lossSummary = useMemo(() => {
     if (!lossEvents) return null
     const fmtLocal = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -125,10 +150,10 @@ export default function RolePanel({
       <div className="flex-1 min-h-0 overflow-y-auto px-4 py-2 space-y-2">
         {role === 'joe' && (
           <>
-            {/* Plain user-created to-do list -- independent of everything
-                below, which is all auto-generated from the app's own
-                flags/checks. */}
-            <CustomTasksSection />
+            {/* Creates a task pinned to a submenu -- it then shows up as an
+                extra row under that submenu's own bar below, alongside its
+                auto-generated violation rows, not in a list of its own. */}
+            <CustomTasksSection submenus={taskSubmenus} onAdded={loadCustomTasks} />
             {/* Joe fixes violations inline here -- each row drops down to its
                 own fix view (reused from whichever tab normally renders it)
                 instead of navigating away, so the panel stays open. Loss Feed
@@ -142,7 +167,8 @@ export default function RolePanel({
               items={items} onItemsChanged={onItemsChanged}
               lossSummary={lossSummary ?? undefined} onFixLossFeed={() => { onClose(); onGoToViolation('__loss_feed') }}
               allSubmenus={taskSubmenus}
-              onNavigateSubmenu={label => { onClose(); taskSubmenus.find(s => s.label === label)?.action() }} />
+              onNavigateSubmenu={label => { onClose(); taskSubmenus.find(s => s.label === label)?.action() }}
+              customTasks={customTasks} onToggleTask={toggleTask} onDeleteTask={deleteTask} />
           </>
         )}
         {role === 'opener' && (
