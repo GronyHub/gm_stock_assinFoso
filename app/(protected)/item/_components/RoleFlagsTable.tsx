@@ -264,19 +264,21 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
             {showRows && (showDone ? tasks : tasks.filter(t => !t.done)).map(t => (
               <tr key={`task-${t.id}`} className="hover:bg-blue-50 transition">
                 <td className="px-2 py-1.5">
-                  <label className="flex items-start gap-1.5 cursor-pointer">
-                    <input type="checkbox" checked={t.done} onChange={() => onToggleTask?.(t)} className="shrink-0 mt-0.5" />
-                    <span>
-                      <span className={`block ${t.done ? 'line-through text-gray-400' : 'text-gray-800'}`}>{t.title}</span>
-                      {t.notes && <span className="block text-[9px] text-gray-400">{t.notes}</span>}
-                    </span>
-                  </label>
+                  <span className={`block ${t.done ? 'line-through text-gray-400' : 'text-gray-800'}`}>{t.title}</span>
+                  {t.notes && <span className="block text-[9px] text-gray-400">{t.notes}</span>}
+                  {t.created_by && <span className="block text-[9px] text-gray-400">by <span className="capitalize">{t.created_by}</span></span>}
                 </td>
-                <td className={`px-1.5 py-1.5 text-center font-bold ${t.done ? 'text-green-600' : 'text-gray-900'}`}>{t.done ? '✓' : 1}</td>
+                <td className={`px-1.5 py-1.5 text-center font-bold ${t.done ? 'text-green-600' : 'text-gray-300'}`}>{t.done ? '✓' : '—'}</td>
                 <td className="px-1.5 py-1.5 whitespace-nowrap text-gray-500">{t.due_date ? fmtOrdinalDate(t.due_date) : '—'}</td>
-                <td className="px-1.5 py-1.5 text-gray-500 whitespace-nowrap">
-                  {t.created_by && <span className="capitalize">{t.created_by}</span>}
-                  <button onClick={() => onDeleteTask?.(t.id)} title="Delete task" className="ml-1.5 text-gray-300 hover:text-red-500">×</button>
+                <td className="px-1.5 py-1.5 whitespace-nowrap">
+                  <div className="flex items-center justify-end gap-1.5">
+                    <button onClick={() => onToggleTask?.(t)}
+                      className={`text-[10px] font-semibold px-1.5 py-0.5 rounded whitespace-nowrap transition
+                        ${t.done ? 'bg-green-50 text-green-700 hover:bg-green-100' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
+                      {t.done ? '✓ Completed' : 'Completed'}
+                    </button>
+                    <button onClick={() => onDeleteTask?.(t.id)} title="Delete task" className="shrink-0 text-gray-300 hover:text-red-500">×</button>
+                  </div>
                 </td>
               </tr>
             ))}
