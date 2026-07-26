@@ -731,7 +731,6 @@ function ItemHubPageInner() {
               { key: 'items',    label: 'Items' },
               { key: 'sales',    label: 'Sales' },
               { key: 'bills',    label: 'Bills' },
-              { key: 'feed',     label: 'Loss' },
               { key: 'expenses', label: 'Expenses' },
               { key: 'po',       label: 'PO' },
               ...(canSeePL ? [{ key: 'pl' as LossView, label: 'P&L' }] : []),
@@ -1165,6 +1164,19 @@ function ItemHubPageInner() {
             {unreadAnnouncements > 99 ? '99+' : unreadAnnouncements}
           </span>
         )}
+      </button>
+
+      {/* Loss -- same treatment as Home: floating above the Role Bar
+          instead of taking a slot in the Grony Cash submenu row, since it's
+          a single, always-in-the-same-place shortcut. Mirrored to the
+          bottom-left so it doesn't collide with Home. */}
+      <button onClick={() => { changeTab('loss'); setLossView('feed') }} aria-label="Loss"
+        className={`fixed bottom-20 left-4 z-40 w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition
+          ${outerTab === 'loss' && lossView === 'feed' && !openRole ? 'bg-brand text-white' : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'}`}>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" />
+          <polyline points="17 18 23 18 23 12" />
+        </svg>
       </button>
     </div>
   )
