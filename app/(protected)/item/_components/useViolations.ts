@@ -80,17 +80,21 @@ export type Violation = { type: string; label: string; count: number; days: numb
 // Which submenu each violation's own fix view actually lives under -- keyed
 // by the ERRORS_TAB_VIOLATION-translated key (same namespace as page.tsx's
 // VIOLATION_HOME, which this mirrors) so RoleFlagsTable can group/label its
-// rows without importing from the page component itself. Types with no
-// Grony Cash submenu (staff times, adverts, jingle, equipment) fall back to
-// "Grony Manage" wherever this is looked up.
+// rows without importing from the page component itself. Every value here
+// must be a real submenu name (matches a label in page.tsx's
+// taskSubmenus) -- Tasks' blue bars are one per submenu now, not one per
+// section, so there's no generic "Grony Manage" bucket to fall back to
+// anymore.
 export const SUBMENU_HOME: Record<string, string> = {
   neg_soh: 'Items', no_sp: 'Items', no_cp: 'Items', no_group: 'Items',
   duplicates: 'Items', unlinked_named: 'Items', service_violation: 'Items',
   alias_prezoho_sales: 'Items', alias_prezoho_bills: 'Items', alias_flagged: 'Items', alias_ambiguous: 'Items',
   daily: 'Counts', '7day': 'Counts', '15day': 'Counts',
-  gains: 'Daily Loss',
+  gains: 'Loss',
   no_cash: 'Sales', missing_days: 'Sales', cost_price: 'Sales', dup_receipt: 'Sales',
   unchecked_cab: 'CAB',
+  no_staff_times: 'Staff',
+  no_advert: 'Advert', jingle_overdue: 'Advert', equipment_check_overdue: 'Advert',
 }
 
 // Shared by the Grony Cash panel (Item hub) and Grony Manage panel (Home) --
