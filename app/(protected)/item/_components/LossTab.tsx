@@ -7,6 +7,7 @@ import {
   numVal, computeRows, buildPackCycles, buildPackChainRows, packSideCedis, realizedCycleCedis,
   type PackCycle, type PackChainRow,
 } from '@/lib/packChain'
+import { COL_BY_KEY, type ColKey, type SortCol } from './lossTabColumns'
 
 /* ── types ── */
 export type SummaryRow = {
@@ -29,7 +30,6 @@ export type SummaryRow = {
   cnv: number
 }
 
-type SortCol = 'item_name' | 'cf_group' | 'product_type' | 'lgAmt' | 'lgQty' | 'lossCount' | 'gainAmt' | 'wic' | 'gmc' | 'bl' | 'soh' | 'sp' | 'cp'
 type SortDir = 'asc' | 'desc'
 
 const EMPTY_FORM = { item_name: '', cf_group: '', selling_rate: '', purchase_rate: '', units_per_pack: '', unit_name: '', converts_to_item_id: '' }
@@ -640,10 +640,6 @@ function rowSortVal(row: SummaryRow, col: SortCol): number | string {
 
 /* ── compact th with sort indicator ── */
 const thBase = 'px-2 py-2 font-bold cursor-pointer select-none whitespace-nowrap border-b border-gray-200 text-[10px] uppercase tracking-wide'
-// Width of the Columns-icon's own sticky cell -- kept separate from the
-// first data column (Item by default) so that column is a normal,
-// reorderable member of COLUMNS instead of a special case hardcoded outside it.
-const ICON_COL_WIDTH = 26
 function SortTh({ label, col, sort, onSort, cls = '', style, extra }: {
   label: ReactNode; col: SortCol
   sort: { col: SortCol; dir: SortDir }
@@ -1612,98 +1608,71 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   )
 }
 
-// Every column besides the always-visible sticky Item column, in display
-// order -- the single source of truth for the colgroup, header, and each
-// row's cells so a column's visibility/width can't drift out of sync
-// between them.
-type ColKey = SortCol
-const COLUMNS: { key: ColKey; label: string; width: number }[] = [
-  { key: 'item_name', label: 'Item', width: 84 },
-  { key: 'lgAmt', label: 'Loss Amt.', width: 56 },
-  { key: 'lossCount', label: 'Loss No.', width: 52 },
-  { key: 'gainAmt', label: 'Gain', width: 44 },
-  { key: 'wic', label: 'WIC', width: 40 },
-  { key: 'gmc', label: 'GMC', width: 40 },
-  { key: 'bl', label: 'BL', width: 36 },
-  { key: 'soh', label: 'SOH', width: 40 },
-  { key: 'sp', label: 'SP', width: 44 },
-  { key: 'cp', label: 'CP', width: 40 },
-  { key: 'cf_group', label: 'Group', width: 70 },
-  { key: 'product_type', label: 'Type', width: 64 },
-]
-const COL_BY_KEY = new Map(COLUMNS.map(c => [c.key, c]))
-
-// Per-key value + styling, shared between the plain centered cells and
-// whichever column currently sits first (sticky, left-aligned -- see
-// renderFirstCell). Keeping this separate from the two <td> wrappers is what
-// lets Item be just another entry in COLUMNS/colOrder instead of a
-// hardcoded, non-reorderable special case.
-function cellContent(key: ColKey, row: SummaryRow): { node: ReactNode; cls: string; title?: string } {
+function renderCell(key: ColKey, row: SummaryRow) {
   switch (key) {
-    case 'item_name':
-      return { node: row.item_name, cls: 'text-blue-600', title: row.item_name }
     case 'lgAmt': {
       const lossAmt = row.lgAmt > 0, gainAmt = row.lgAmt < 0
-      return { node: fmtAmt(row.lgAmt), cls: `font-semibold tabular-nums ${lossAmt ? 'text-red-500' : gainAmt ? 'text-green-600' : 'text-gray-300'}` }
+      return (
+        <td key={key} className={`text-center py-1.5 font-semibold tabular-nums ${lossAmt ? 'text-red-500' : gainAmt ? 'text-green-600' : 'text-gray-300'}`}>
+          {fmtAmt(row.lgAmt)}
+        </td>
+      )
     }
     case 'lossCount':
-      return { node: row.lossCount, cls: `font-semibold tabular-nums ${row.lossCount > 0 ? 'text-red-500' : 'text-gray-300'}` }
+      return (
+        <td key={key} className={`text-center py-1.5 font-semibold tabular-nums ${row.lossCount > 0 ? 'text-red-500' : 'text-gray-300'}`}>
+          {row.lossCount}
+        </td>
+      )
     case 'gainAmt':
-      return { node: row.gainAmt > 0.001 ? `+${fmtN(row.gainAmt)}` : '—', cls: `font-semibold tabular-nums ${row.gainAmt > 0.001 ? 'text-green-600' : 'text-gray-300'}` }
+      return (
+        <td key={key} className={`text-center py-1.5 font-semibold tabular-nums ${row.gainAmt > 0.001 ? 'text-green-600' : 'text-gray-300'}`}>
+          {row.gainAmt > 0.001 ? `+${fmtN(row.gainAmt)}` : '—'}
+        </td>
+      )
     case 'wic':
-      return { node: fmtQ(row.wic), cls: 'text-gray-600 tabular-nums' }
+      return <td key={key} className="text-center py-1.5 text-gray-600 tabular-nums">{fmtQ(row.wic)}</td>
     case 'gmc':
-      return { node: fmtQ(row.gmc), cls: 'text-gray-600 tabular-nums' }
+      return <td key={key} className="text-center py-1.5 text-gray-600 tabular-nums">{fmtQ(row.gmc)}</td>
     case 'bl':
-      return { node: fmtQ(row.bl), cls: 'text-blue-600 tabular-nums' }
+      return <td key={key} className="text-center py-1.5 text-blue-600 tabular-nums">{fmtQ(row.bl)}</td>
     case 'soh': {
       const soh = parseFloat(row.soh ?? '0') || 0
-      return { node: soh % 1 === 0 ? soh : soh.toFixed(1), cls: `font-semibold tabular-nums ${soh <= 0 ? 'text-red-500' : 'text-gray-700'}` }
+      return (
+        <td key={key} className={`text-center py-1.5 font-semibold tabular-nums ${soh <= 0 ? 'text-red-500' : 'text-gray-700'}`}>
+          {soh % 1 === 0 ? soh : soh.toFixed(1)}
+        </td>
+      )
     }
     case 'sp':
-      return { node: fmtCcy(row.sp), cls: 'text-blue-600 tabular-nums' }
+      return <td key={key} className="text-center py-1.5 text-blue-600 tabular-nums">{fmtCcy(row.sp)}</td>
     case 'cp':
-      return { node: fmtCcy(row.cp), cls: 'text-green-600 tabular-nums' }
+      return <td key={key} className="text-center py-1.5 text-green-600 tabular-nums">{fmtCcy(row.cp)}</td>
     case 'cf_group':
-      return { node: row.cf_group ?? '—', cls: 'text-gray-500 truncate', title: row.cf_group ?? undefined }
+      return <td key={key} className="text-center py-1.5 text-gray-500 truncate" title={row.cf_group ?? undefined}>{row.cf_group ?? '—'}</td>
     case 'product_type':
-      return {
-        node: (
+      return (
+        <td key={key} className="text-center py-1.5">
           <span className={`inline-block px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${
             row.product_type === 'service' ? 'bg-purple-50 text-purple-600' : 'bg-teal-50 text-teal-600'}`}>
             {row.product_type === 'service' ? 'Service' : 'Good'}
           </span>
-        ), cls: '',
-      }
-    case 'lgQty':
-      return { node: row.lgQty, cls: 'tabular-nums' }
+        </td>
+      )
   }
 }
 
-function renderCell(key: ColKey, row: SummaryRow) {
-  const { node, cls, title } = cellContent(key, row)
-  return <td key={key} className={`text-center py-1.5 ${cls}`} title={title}>{node}</td>
-}
-
-// Whichever column is first in colOrder renders here instead -- sticky,
-// left-aligned, bold, using the same resizable width the Item column always
-// had (see itemColWidth below).
-function renderFirstCell(key: ColKey, row: SummaryRow, width: number, stripe: string) {
-  const { node, cls, title } = cellContent(key, row)
-  return (
-    <td className={`pl-2 pr-2 py-1.5 font-bold truncate sticky z-10 text-left ${stripe} ${cls}`}
-      style={{ left: ICON_COL_WIDTH, width, maxWidth: width }} title={title}>
-      {node}
-    </td>
-  )
-}
-
 /* ── main LossTab ── */
-export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 'All', productType = 'all' }: {
+export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 'All', productType = 'all', visibleCols, colOrder }: {
   onOpenItem: (itemId: number) => void
   search?: string
   group?: string | null
   productType?: 'all' | 'goods' | 'services'
+  // Which columns (besides the always-visible sticky Item column) show, and
+  // their order -- lifted up to the parent page since the "Columns" picker
+  // that drives these now lives there, next to the New button.
+  visibleCols: Set<ColKey>
+  colOrder: ColKey[]
 }) {
   const router = useRouter()
   const [rows, setRows] = useState<SummaryRow[]>([])
@@ -1720,80 +1689,11 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
     if (saved > 0) scrollRef.current.scrollTop = saved
   }, [loading])
 
-  // Which columns show, and their order/width -- driven by this one array
-  // so the colgroup, header, and every row's cells all stay in sync
-  // automatically. Item is always visible (its checkbox in the dropdown is
-  // locked on) but is otherwise a normal member of this list, so it can be
-  // reordered like any other column -- see colOrder/renderFirstCell below.
-  const ALL_COL_KEYS = COLUMNS.map(c => c.key)
-  const [visibleCols, setVisibleCols] = useState<Set<ColKey>>(() => {
-    if (typeof window === 'undefined') return new Set(ALL_COL_KEYS)
-    try {
-      const saved = JSON.parse(localStorage.getItem('lossTabVisibleCols') ?? 'null')
-      if (Array.isArray(saved) && saved.length > 0) {
-        const keep = saved.filter((k): k is ColKey => (ALL_COL_KEYS as string[]).includes(k))
-        if (keep.length > 0) return new Set(keep)
-      }
-    } catch { /* ignore malformed storage */ }
-    return new Set(ALL_COL_KEYS)
-  })
-  useEffect(() => {
-    localStorage.setItem('lossTabVisibleCols', JSON.stringify(Array.from(visibleCols)))
-  }, [visibleCols])
-  function toggleCol(key: ColKey) {
-    if (key === 'item_name') return
-    setVisibleCols(prev => {
-      const next = new Set(prev)
-      if (next.has(key)) next.delete(key); else next.add(key)
-      return next
-    })
-  }
+  const shownColumns = colOrder.map(k => COL_BY_KEY.get(k)!).filter(c => visibleCols.has(c.key))
 
-  // Column order -- separate from visibility so hiding/showing a column
-  // doesn't lose its place in line. Remembered across visits the same way.
-  // Item defaults first (and is re-inserted at the front, not the end, for
-  // anyone whose saved order predates it becoming reorderable) so existing
-  // layouts don't jump around after this change.
-  const [colOrder, setColOrder] = useState<ColKey[]>(() => {
-    if (typeof window === 'undefined') return ALL_COL_KEYS
-    try {
-      const saved = JSON.parse(localStorage.getItem('lossTabColOrder') ?? 'null')
-      if (Array.isArray(saved)) {
-        let valid = saved.filter((k): k is ColKey => (ALL_COL_KEYS as string[]).includes(k))
-        if (valid.length > 0) {
-          if (!valid.includes('item_name')) valid = ['item_name', ...valid]
-          return [...valid, ...ALL_COL_KEYS.filter(k => !valid.includes(k))]
-        }
-      }
-    } catch { /* ignore malformed storage */ }
-    return ALL_COL_KEYS
-  })
-  useEffect(() => {
-    localStorage.setItem('lossTabColOrder', JSON.stringify(colOrder))
-  }, [colOrder])
-  function moveCol(key: ColKey, dir: -1 | 1) {
-    setColOrder(prev => {
-      const i = prev.indexOf(key)
-      const j = i + dir
-      if (i < 0 || j < 0 || j >= prev.length) return prev
-      const next = [...prev]
-      ;[next[i], next[j]] = [next[j], next[i]]
-      return next
-    })
-  }
-  const [colMenuOpen, setColMenuOpen] = useState(false)
-  const colMenuRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    function onOut(e: MouseEvent) {
-      if (colMenuRef.current && !colMenuRef.current.contains(e.target as Node)) setColMenuOpen(false)
-    }
-    document.addEventListener('mousedown', onOut)
-    return () => document.removeEventListener('mousedown', onOut)
-  }, [])
-  const shownColumns = colOrder.map(k => COL_BY_KEY.get(k)!).filter(c => c.key === 'item_name' || visibleCols.has(c.key))
-
-  // Width of whichever column is first (Item by default) -- user-resizable
-  // via the drag handle on its header, remembered across visits.
+  // Item column width -- user-resizable via the drag handle on its header,
+  // remembered across visits since everyone's own item names run different
+  // lengths.
   const [itemColWidth, setItemColWidth] = useState<number>(() => {
     if (typeof window === 'undefined') return 84
     const saved = Number(localStorage.getItem('lossTabItemColWidth'))
@@ -1866,84 +1766,36 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
 
   const thProps = { sort, onSort: handleSort }
-  // Whichever column is first gets the sticky/resizable treatment Item
-  // always had; the rest render as plain centered cells.
-  const [firstCol, ...restColumns] = shownColumns
 
   const colgroup = (
     <colgroup>
-      <col style={{width: ICON_COL_WIDTH}} />
       <col style={{width: itemColWidth}} />
-      {restColumns.map(c => <col key={c.key} style={{width: c.width}} />)}
+      {shownColumns.map(c => <col key={c.key} style={{width: c.width}} />)}
     </colgroup>
   )
 
   function renderRow(row: SummaryRow, i: number) {
     // Alternating row tint (zebra striping) so a row is easy to track across
-    // this many columns without losing your place -- the sticky icon and
-    // first-column cells carry the same tint explicitly since they need
-    // their own opaque background to stay legible while the rest of the row
-    // scrolls under them.
+    // this many columns without losing your place -- the sticky Item cell
+    // carries the same tint explicitly since it needs its own opaque
+    // background to stay legible while the rest of the row scrolls under it.
     const stripe = i % 2 === 1 ? 'bg-gray-50' : 'bg-white'
     return (
       <tr key={row.item_id} onClick={() => router.push(`/stock/${row.item_id}`)}
         className={`cursor-pointer hover:bg-blue-50/60 transition ${stripe}`}>
-        <td className={`sticky left-0 z-10 ${stripe}`} />
-        {renderFirstCell(firstCol.key, row, itemColWidth, stripe)}
-        {restColumns.map(c => renderCell(c.key, row))}
+        <td className={`pl-2 pr-2 py-1.5 font-bold truncate sticky left-0 z-10 ${stripe}`}
+          style={{ width: itemColWidth, maxWidth: itemColWidth }} title={row.item_name}>
+          <span className="text-blue-600">{row.item_name}</span>
+        </td>
+        {shownColumns.map(c => renderCell(c.key, row))}
       </tr>
     )
   }
 
-  // Columns icon + its dropdown -- its own sticky header cell (left of
-  // everything else, including Item) rather than sharing space with a
-  // column label, since that's what lets Item sit in COLUMNS/colOrder as a
-  // normal, reorderable, non-special column.
-  const columnsMenu = (
-    <div className="relative" ref={colMenuRef}>
-      <button onClick={() => setColMenuOpen(o => !o)} title="Columns"
-        className="flex items-center justify-center w-full py-2 text-gray-400 hover:text-gray-700 hover:bg-gray-200">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="4" width="18" height="16" rx="2" />
-          <line x1="9" y1="4" x2="9" y2="20" />
-          <line x1="15" y1="4" x2="15" y2="20" />
-        </svg>
-      </button>
-      {colMenuOpen && (
-        <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-40 min-w-[200px] max-h-60 overflow-y-auto normal-case font-normal cursor-auto">
-          {colOrder.map((key, i) => {
-            const c = COL_BY_KEY.get(key)!
-            const locked = key === 'item_name'
-            return (
-              <div key={key} className="flex items-center gap-1 px-2 py-1 border-b border-gray-100 last:border-0">
-                <label className={`flex items-center gap-1.5 flex-1 min-w-0 text-xs text-gray-700 select-none ${locked ? '' : 'cursor-pointer'}`}>
-                  <input type="checkbox" checked={locked || visibleCols.has(key)} disabled={locked}
-                    onChange={() => toggleCol(key)}
-                    className="w-3.5 h-3.5 accent-blue-600 shrink-0 disabled:opacity-60" />
-                  <span className="truncate">{c.label}</span>
-                </label>
-                <button onClick={() => moveCol(key, -1)} disabled={i === 0} title="Move up"
-                  className="text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:hover:text-gray-400 px-1 text-xs leading-none">▲</button>
-                <button onClick={() => moveCol(key, 1)} disabled={i === colOrder.length - 1} title="Move down"
-                  className="text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:hover:text-gray-400 px-1 text-xs leading-none">▼</button>
-              </div>
-            )
-          })}
-          {visibleCols.size > 0 && (
-            <button onClick={() => setVisibleCols(new Set())}
-              className="w-full text-left px-2.5 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-50">
-              Clear all
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  )
-
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* Table — horizontally scrollable; the first column is kept short
-          and truncates long values with an ellipsis instead of wrapping or
+      {/* Table — horizontally scrollable; Item column is kept short and
+          truncates long names with an ellipsis instead of wrapping or
           growing to fit them. */}
       <div ref={scrollRef} onScroll={e => sessionStorage.setItem('lossTabScrollTop', String(e.currentTarget.scrollTop))}
         className="flex-1 min-h-0 overflow-auto rounded-xl border border-gray-200 bg-white">
@@ -1951,17 +1803,14 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
           {colgroup}
           <thead className="sticky top-0 z-20">
             <tr className="bg-gray-50">
-              <th className="sticky left-0 z-30 bg-gray-50 border-b border-gray-200 p-0">
-                {columnsMenu}
-              </th>
-              <SortTh label={firstCol.label} col={firstCol.key} sort={sort} onSort={handleSort}
-                cls="text-left pl-2 pr-2 sticky z-30 bg-gray-50"
-                style={{ left: ICON_COL_WIDTH, width: itemColWidth, maxWidth: itemColWidth }}
+              <SortTh label="Item" col="item_name" sort={sort} onSort={handleSort}
+                cls="text-left pl-2 pr-2 sticky left-0 z-30 bg-gray-50 truncate"
+                style={{ width: itemColWidth, maxWidth: itemColWidth }}
                 extra={
                   <div onPointerDown={startResize} onClick={e => e.stopPropagation()}
                     className="absolute top-0 right-0 h-full w-2 cursor-col-resize touch-none hover:bg-blue-300/50 active:bg-blue-400/60" />
                 } />
-              {restColumns.map(c => (
+              {shownColumns.map(c => (
                 <SortTh key={c.key} label={c.label} col={c.key} {...thProps} cls="text-center" />
               ))}
             </tr>
