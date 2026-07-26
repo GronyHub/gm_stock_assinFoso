@@ -364,6 +364,22 @@ function ItemHubPageInner() {
   useEffect(() => { loadItems() }, [])
   usePolling(loadItems, 5000)
 
+  // Group filter options -- deliberately NOT derived from `items` above.
+  // The Items table (LossTab) is built from item_stock_summary, which can
+  // contain groups/items that never made it into (or have since drifted
+  // from) the `items` table `/api/items` reads from -- a group could then
+  // show up as a heading in the table without ever being selectable here.
+  // /api/items/groups mirrors the table's own query exactly, so this list
+  // can't miss anything the table actually shows.
+  const [lossGroups, setLossGroups] = useState<(string | null)[]>([])
+  function loadLossGroups() {
+    fetch('/api/items/groups').then(r => r.ok ? r.json() : []).then(d => {
+      setLossGroups(Array.isArray(d) ? d : [])
+    }).catch(() => {})
+  }
+  useEffect(() => { loadLossGroups() }, [])
+  usePolling(loadLossGroups, 20000)
+
   const [globalFlags, setGlobalFlags] = useState<any | null>(null)
   const [pendingCounts, setPendingCounts] = useState<{ daily: number; gmcWeekly: number; overdue: number }>({ daily: 0, gmcWeekly: 0, overdue: 0 })
   const [serviceViolationCount, setServiceViolationCount] = useState(0)
@@ -583,7 +599,7 @@ function ItemHubPageInner() {
     setViolation(key)
   }
 
-  const groups = ['All', ...Array.from(new Set(items.map(i => i.cf_group ?? 'Ungrouped'))).sort()]
+  const groups = ['All', ...Array.from(new Set(lossGroups.map(g => g ?? 'Ungrouped'))).sort()]
   // Clicking the search box (even before typing) shows a browsable dropdown
   // of item names -- typing narrows it. Picking one fills the box with that
   // item's name, which the tabs below already know how to search on.
