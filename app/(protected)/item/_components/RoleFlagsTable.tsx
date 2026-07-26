@@ -3,7 +3,7 @@ import { Fragment, useMemo, useState } from 'react'
 import { fmtOrdinalDate } from '@/lib/fmtDate'
 import { SHORT_LABEL, ERRORS_TAB_VIOLATION, SUBMENU_HOME, type Violation } from './useViolations'
 import ViolationFixPanel from './ViolationFixPanel'
-import TaskViewPanel from './TaskViewPanel'
+import TaskViewPanel, { TASK_VIEWS } from './TaskViewPanel'
 
 // Fallback display order for the group bars when no comprehensive
 // allSubmenus list is supplied (Opener's own use of this table) --
@@ -81,6 +81,55 @@ function dueCell(v: Violation, deadline: string | undefined, threshold: number):
   return { label: `${fmtOrdinalDate(expiry)} · ${days}`, atRisk }
 }
 
+// Editing an existing custom task reuses the same fields as creating one
+// (CustomTasksSection) -- title, which submenu bar it lives under, which
+// view (if any) its Fix button opens, notes, due date -- pre-filled from
+// the task being edited. Kept as its own top-level component (not defined
+// inline in the row map) so it isn't recreated every render.
+function TaskEditForm({ task, submenuOptions, onSave, onCancel }: {
+  task: CustomTask
+  submenuOptions: string[]
+  onSave: (patch: { title: string; notes: string | null; due_date: string | null; submenu: string; view: string | null }) => void
+  onCancel: () => void
+}) {
+  const [title, setTitle] = useState(task.title)
+  const [notes, setNotes] = useState(task.notes ?? '')
+  const [dueDate, setDueDate] = useState(task.due_date ?? '')
+  const [submenu, setSubmenu] = useState(task.submenu ?? submenuOptions[0] ?? '')
+  const [view, setView] = useState(task.view ?? '')
+
+  return (
+    <div className="p-2 space-y-1.5 bg-gray-50">
+      <input autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder="Task title *"
+        className="w-full text-xs bg-white border border-gray-300 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-400" />
+      <select value={submenu} onChange={e => setSubmenu(e.target.value)}
+        className="w-full text-xs bg-white border border-gray-300 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-400">
+        {submenuOptions.map(s => <option key={s} value={s}>{s}</option>)}
+      </select>
+      <select value={view} onChange={e => setView(e.target.value)}
+        className="w-full text-xs bg-white border border-gray-300 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-400">
+        {TASK_VIEWS.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
+      </select>
+      <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Notes (optional)"
+        className="w-full text-xs bg-white border border-gray-300 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-400" />
+      <div className="flex items-center gap-1.5">
+        <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
+          className="text-xs bg-white border border-gray-300 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-400" />
+        <button onClick={onCancel}
+          className="ml-auto text-xs font-semibold px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition">
+          Cancel
+        </button>
+        <button
+          onClick={() => title.trim() && submenu && onSave({ title: title.trim(), notes: notes.trim() || null, due_date: dueDate || null, submenu, view: view || null })}
+          disabled={!title.trim() || !submenu}
+          className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 transition">
+          Save
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // Flag data as a table instead of repeated "Name, X days left to fix..."
 // sentences -- the panel title already says whose flags these are, so rows
 // don't need to repeat it. One row per flag type: how many, when it's due,
@@ -91,7 +140,7 @@ function dueCell(v: Violation, deadline: string | undefined, threshold: number):
 // (reused from whichever tab already renders it) directly in place, with no
 // navigation. Omit them (Bino/Opener) and a row click falls back to
 // `onGoToViolation`, navigating to that violation's home tab as before.
-export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy, assignedOn, vSettings, onGoToViolation, items, onItemsChanged, lossSummary, onFixLossFeed, allSubmenus, onNavigateSubmenu, customTasks, onToggleTask, onDeleteTask }: {
+export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy, assignedOn, vSettings, onGoToViolation, items, onItemsChanged, lossSummary, onFixLossFeed, allSubmenus, onNavigateSubmenu, customTasks, onToggleTask, onDeleteTask, onUpdateTask }: {
   violations: Violation[]
   assignments: Record<string, string>
   deadlines: Record<string, string>
@@ -114,6 +163,7 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
   customTasks?: CustomTask[]
   onToggleTask?: (task: CustomTask) => void
   onDeleteTask?: (id: number) => void
+  onUpdateTask?: (id: number, patch: { title: string; notes: string | null; due_date: string | null; submenu: string; view: string | null }) => void
 }) {
   const threshold = parseInt(vSettings.threshold_days ?? '3', 10)
   const inlineFix = items !== undefined && onItemsChanged !== undefined
@@ -122,6 +172,9 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
   // expandedType (violation types) since a task has no violation type of
   // its own, just whichever view it was pinned to when created.
   const [expandedTaskId, setExpandedTaskId] = useState<number | null>(null)
+  // Which custom task is being edited -- mutually exclusive with the Fix
+  // expansion above so a row never shows both open at once.
+  const [editingTaskId, setEditingTaskId] = useState<number | null>(null)
   // Hidden by default so the table reads as a to-do list, not an audit log --
   // "Done" reveals the already-clear (✓) rows alongside the active ones.
   const [showDone, setShowDone] = useState(false)
@@ -211,6 +264,12 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
       return { submenu, rows, tasks: [] as CustomTask[], total: rows.reduce((s, v) => s + v.count, 0), section, showSection: section !== prevSection }
     })
   }, [violations, lossSummary, allSubmenus, customTasks])
+
+  // Options for the submenu picker when editing a task -- every real
+  // submenu bar in Tasks mode, else whatever's already grouped here.
+  const submenuOptions = useMemo(() => (
+    allSubmenus ? allSubmenus.map(s => s.label) : groupedViolations.map(g => g.submenu)
+  ), [allSubmenus, groupedViolations])
 
   // Every submenu belonging to each section, so a green bar's click can
   // toggle all of its blue bars together.
@@ -303,6 +362,7 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
             ))}
             {showRows && pendingTasks.map(t => {
               const taskOpen = expandedTaskId === t.id
+              const isEditing = editingTaskId === t.id
               return (
               <Fragment key={`task-${t.id}`}>
                 <tr className="hover:bg-blue-50 transition">
@@ -315,8 +375,15 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
                   <td className="px-1.5 py-1.5 whitespace-nowrap text-gray-500">{t.due_date ? fmtOrdinalDate(t.due_date) : '—'}</td>
                   <td className="px-1.5 py-1.5 whitespace-nowrap">
                     <div className="flex items-center justify-end gap-1.5">
+                      {onUpdateTask && (
+                        <button onClick={() => { setEditingTaskId(isEditing ? null : t.id); setExpandedTaskId(null) }}
+                          className={`text-[10px] font-semibold px-1.5 py-0.5 rounded whitespace-nowrap transition
+                            ${isEditing ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                          Edit
+                        </button>
+                      )}
                       {inlineFix && t.view && (
-                        <button onClick={() => setExpandedTaskId(taskOpen ? null : t.id)}
+                        <button onClick={() => { setExpandedTaskId(taskOpen ? null : t.id); setEditingTaskId(null) }}
                           className={`text-[10px] font-semibold px-1.5 py-0.5 rounded whitespace-nowrap transition
                             ${taskOpen ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
                           Fix
@@ -331,6 +398,15 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
                     </div>
                   </td>
                 </tr>
+                {isEditing && (
+                  <tr>
+                    <td colSpan={4} className="p-0 border-t border-gray-200">
+                      <TaskEditForm task={t} submenuOptions={submenuOptions}
+                        onCancel={() => setEditingTaskId(null)}
+                        onSave={patch => { onUpdateTask?.(t.id, patch); setEditingTaskId(null) }} />
+                    </td>
+                  </tr>
+                )}
                 {inlineFix && taskOpen && t.view && (
                   <tr>
                     <td colSpan={4} className="p-0 border-t border-gray-200 bg-white">
