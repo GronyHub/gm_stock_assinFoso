@@ -351,6 +351,32 @@ function ItemHubPageInner() {
   }
   const [colMenuOpen, setColMenuOpen] = useState(false)
 
+  // Custom display labels for the metric columns (e.g. renaming "BL" to
+  // something the team actually calls it) -- purely cosmetic, keyed by the
+  // same ColKey the column's real data/sort behavior still uses. Passed
+  // down to LossTab so its headers show the override too.
+  const [columnLabels, setColumnLabels] = useState<Partial<Record<ColKey, string>>>(() => {
+    if (typeof window === 'undefined') return {}
+    try {
+      const saved = JSON.parse(localStorage.getItem('lossTabColumnLabels') ?? 'null')
+      if (saved && typeof saved === 'object') return saved
+    } catch { /* ignore malformed storage */ }
+    return {}
+  })
+  useEffect(() => {
+    localStorage.setItem('lossTabColumnLabels', JSON.stringify(columnLabels))
+  }, [columnLabels])
+  function renameColumn(key: ColKey, label: string) {
+    const trimmed = label.trim()
+    setColumnLabels(prev => {
+      const next = { ...prev }
+      if (trimmed) next[key] = trimmed; else delete next[key]
+      return next
+    })
+  }
+  const [renamingCol, setRenamingCol] = useState<ColKey | null>(null)
+  const [renameColValue, setRenameColValue] = useState('')
+
   const [items, setItems]           = useState<Item[]>([])
   const [itemsLoading, setItemsLoading] = useState(true)
 
@@ -379,6 +405,36 @@ function ItemHubPageInner() {
   }
   useEffect(() => { loadLossGroups() }, [])
   usePolling(loadLossGroups, 20000)
+
+  // Renaming a group from the Group dropdown itself, rather than one item
+  // at a time -- applies everywhere via PUT /api/items/groups.
+  const [renamingGroup, setRenamingGroup] = useState<string | null>(null)
+  const [renameGroupValue, setRenameGroupValue] = useState('')
+  const [renameGroupBusy, setRenameGroupBusy] = useState(false)
+  async function submitGroupRename() {
+    const oldName = renamingGroup
+    const newName = renameGroupValue.trim()
+    if (!oldName) return
+    if (!newName || newName === oldName) { setRenamingGroup(null); return }
+    setRenameGroupBusy(true)
+    try {
+      const res = await fetch('/api/items/groups', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from: oldName, to: newName }),
+      })
+      if (res.ok) {
+        setRenamingGroup(null)
+        if (group === oldName) setGroup(newName)
+        loadLossGroups()
+        loadItems()
+      } else {
+        const d = await res.json().catch(() => ({}))
+        alert(d.error || 'Could not rename group.')
+      }
+    } finally {
+      setRenameGroupBusy(false)
+    }
+  }
 
   const [globalFlags, setGlobalFlags] = useState<any | null>(null)
   const [pendingCounts, setPendingCounts] = useState<{ daily: number; gmcWeekly: number; overdue: number }>({ daily: 0, gmcWeekly: 0, overdue: 0 })
@@ -725,12 +781,29 @@ function ItemHubPageInner() {
               </button>
               {groupOpen && (
                 <div className="absolute top-full left-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg z-30 min-w-[140px] max-h-64 overflow-y-auto">
-                  {groups.map(g => (
-                    <button key={g} onClick={() => { setGroup(g === 'All' ? null : g); setGroupOpen(false) }}
-                      className={`w-full text-left px-3 py-1.5 text-xs hover:bg-blue-50 transition
-                        ${(g === 'All' && !group) || g === group ? 'text-blue-600 font-semibold' : 'text-gray-700'}`}>
-                      {g}
-                    </button>
+                  {groups.map(g => renamingGroup === g ? (
+                    <div key={g} className="flex items-center gap-1 px-2 py-1">
+                      <input autoFocus value={renameGroupValue} onChange={e => setRenameGroupValue(e.target.value)}
+                        onClick={e => e.stopPropagation()}
+                        onKeyDown={e => { if (e.key === 'Enter') submitGroupRename(); if (e.key === 'Escape') setRenamingGroup(null) }}
+                        className="flex-1 min-w-0 text-xs border border-gray-300 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+                      <button onClick={e => { e.stopPropagation(); submitGroupRename() }} disabled={renameGroupBusy} title="Save"
+                        className="shrink-0 text-green-600 hover:text-green-700 disabled:opacity-40 px-1 text-xs font-bold">✓</button>
+                      <button onClick={e => { e.stopPropagation(); setRenamingGroup(null) }} title="Cancel"
+                        className="shrink-0 text-gray-400 hover:text-gray-600 px-1 text-xs font-bold">×</button>
+                    </div>
+                  ) : (
+                    <div key={g} className="flex items-center">
+                      <button onClick={() => { setGroup(g === 'All' ? null : g); setGroupOpen(false) }}
+                        className={`flex-1 min-w-0 text-left px-3 py-1.5 text-xs hover:bg-blue-50 transition truncate
+                          ${(g === 'All' && !group) || g === group ? 'text-blue-600 font-semibold' : 'text-gray-700'}`}>
+                        {g}
+                      </button>
+                      {g !== 'All' && g !== 'Ungrouped' && (
+                        <button onClick={e => { e.stopPropagation(); setRenamingGroup(g); setRenameGroupValue(g) }} title="Rename group"
+                          className="shrink-0 px-2 text-gray-300 hover:text-gray-600">✎</button>
+                      )}
+                    </div>
                   ))}
                   <div className="border-t border-gray-100 mt-0.5 pt-0.5">
                     <p className="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Type</p>
@@ -794,13 +867,31 @@ function ItemHubPageInner() {
                   <div className="absolute top-full right-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg z-30 min-w-[200px] max-h-72 overflow-y-auto">
                     {colOrder.map((key, i) => {
                       const c = COL_BY_KEY.get(key)!
+                      const label = columnLabels[key] ?? c.label
+                      if (renamingCol === key) return (
+                        <div key={key} className="flex items-center gap-1 px-2 py-1 border-b border-gray-100 last:border-0">
+                          <input autoFocus value={renameColValue} onChange={e => setRenameColValue(e.target.value)}
+                            placeholder={c.label}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') { renameColumn(key, renameColValue); setRenamingCol(null) }
+                              if (e.key === 'Escape') setRenamingCol(null)
+                            }}
+                            className="flex-1 min-w-0 text-xs border border-gray-300 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+                          <button onClick={() => { renameColumn(key, renameColValue); setRenamingCol(null) }} title="Save"
+                            className="shrink-0 text-green-600 hover:text-green-700 px-1 text-xs font-bold">✓</button>
+                          <button onClick={() => setRenamingCol(null)} title="Cancel"
+                            className="shrink-0 text-gray-400 hover:text-gray-600 px-1 text-xs font-bold">×</button>
+                        </div>
+                      )
                       return (
                         <div key={key} className="flex items-center gap-1 px-2 py-1 border-b border-gray-100 last:border-0">
                           <label className="flex items-center gap-1.5 flex-1 min-w-0 text-xs text-gray-700 cursor-pointer select-none">
                             <input type="checkbox" checked={visibleCols.has(key)} onChange={() => toggleCol(key)}
                               className="w-3.5 h-3.5 accent-blue-600 shrink-0" />
-                            <span className="truncate">{c.label}</span>
+                            <span className="truncate">{label}</span>
                           </label>
+                          <button onClick={() => { setRenamingCol(key); setRenameColValue(label === c.label ? '' : label) }} title="Rename column"
+                            className="shrink-0 text-gray-300 hover:text-gray-600 px-0.5 text-xs">✎</button>
                           <button onClick={() => moveCol(key, -1)} disabled={i === 0} title="Move up"
                             className="text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:hover:text-gray-400 px-1 text-xs leading-none">▲</button>
                           <button onClick={() => moveCol(key, 1)} disabled={i === colOrder.length - 1} title="Move down"
@@ -975,7 +1066,7 @@ function ItemHubPageInner() {
           ) : (
             <TabErrorBoundary>
               <LossTab onOpenItem={() => {}} search={search} group={group} productType={productType}
-                visibleCols={visibleCols} colOrder={colOrder} />
+                visibleCols={visibleCols} colOrder={colOrder} columnLabels={columnLabels} />
             </TabErrorBoundary>
           )
         )}
