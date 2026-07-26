@@ -45,6 +45,7 @@ const NewItemForm    = dynamic(() => import('./_components/NewItemForm'),     { 
 const AnalyticsPanel = dynamic(() => import('./_components/AnalyticsPanel'),  { ssr: false, loading: () => loading('Loading analytics…') })
 const LossTab        = dynamic(() => import('./_components/LossTab'),         { ssr: false, loading: () => loading('Loading…') })
 const LossFeedTab    = dynamic(() => import('./_components/LossFeedTab'),     { ssr: false, loading: () => loading('Loading…') })
+const LossOverviewTab = dynamic(() => import('./_components/LossOverviewTab'), { ssr: false, loading: () => loading('Loading…') })
 const ProfitLossTab  = dynamic(() => import('./_components/ProfitLossTab'),   { ssr: false, loading: () => loading('Loading…') })
 const DailySummaryTab = dynamic(() => import('./_components/DailySummaryTab'), { ssr: false, loading: () => loading('Loading…') })
 const GronyManageTab = dynamic(() => import('./_components/GronyManageTab'),  { ssr: false, loading: () => loading('Loading…') })
@@ -1096,9 +1097,16 @@ function ItemHubPageInner() {
           <CountsTab items={items} groupFilter={group} search={search}
             violation={pillKeys?.includes(violation ?? '') ? violation : null} onFixRecords={goFixRecords} />
         )}
+        {/* The gains pill (see LOSSVIEW_PILL_KEYS['feed']) bypasses the
+            by-date/by-item/by-target sub-tabs entirely -- it's a violation
+            to fix, not a way of browsing losses, so it stays on the
+            original single-list view regardless of which sub-tab was last
+            selected. */}
         {outerTab === 'loss' && lossView === 'feed' && (
           <TabErrorBoundary>
-            <LossFeedTab search={search} kind={violation === 'gains' ? 'gain' : 'loss'} />
+            {violation === 'gains'
+              ? <LossFeedTab search={search} kind="gain" />
+              : <LossOverviewTab search={search} />}
           </TabErrorBoundary>
         )}
         </>)}
