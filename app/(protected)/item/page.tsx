@@ -300,6 +300,48 @@ function ItemHubPageInner() {
   const hamburgerRef = useRef<HTMLDivElement>(null)
   const colMenuRef   = useRef<HTMLDivElement>(null)
 
+  // Global search (top row, next to Grony Cash/Grony Manage) -- separate
+  // from the per-view search bars already on most tabs, which only filter
+  // whatever's already on screen. This looks across items/customers/
+  // vendors/sales/bills/announcements by name/number and jumps straight to
+  // the right one, for when you don't know which section something's in.
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false)
+  const [globalSearchQuery, setGlobalSearchQuery] = useState('')
+  const [globalSearchLoading, setGlobalSearchLoading] = useState(false)
+  const [globalSearchResults, setGlobalSearchResults] = useState<{
+    items?: { id: number; name: string; cf_group: string | null }[]
+    customers?: { id: number; display_name: string; company_name: string | null }[]
+    vendors?: { id: number; display_name: string; company_name: string | null }[]
+    sales?: { id: number; receipt_number: string | null; customer_name: string | null; receipt_date: string }[]
+    bills?: { id: number; bill_number: string | null; vendor_name: string | null; bill_date: string }[]
+    announcements?: { id: number; body: string; author: string; created_at: string }[]
+  } | null>(null)
+  // Fed into CustomersPage/VendorsPage as initialSearch when a result from
+  // one of those categories is picked -- those pages own their own search
+  // state (unlike Sales/Bills, which already read the shared `search` above).
+  const [customerSearchText, setCustomerSearchText] = useState('')
+  const [vendorSearchText, setVendorSearchText] = useState('')
+
+  useEffect(() => {
+    const q = globalSearchQuery.trim()
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (q.length < 2) { setGlobalSearchResults(null); setGlobalSearchLoading(false); return }
+    setGlobalSearchLoading(true)
+    const t = setTimeout(() => {
+      fetch(`/api/search?q=${encodeURIComponent(q)}`).then(r => r.ok ? r.json() : null).then(d => {
+        setGlobalSearchResults(d)
+        setGlobalSearchLoading(false)
+      }).catch(() => setGlobalSearchLoading(false))
+    }, 250)
+    return () => clearTimeout(t)
+  }, [globalSearchQuery])
+
+  function closeGlobalSearch() {
+    setGlobalSearchOpen(false)
+    setGlobalSearchQuery('')
+    setGlobalSearchResults(null)
+  }
+
   // Which Items-table columns (besides the always-visible sticky Item
   // column) show, and their order -- lives here (next to the New button)
   // rather than inside LossTab, since that's where the "Columns" picker
@@ -709,6 +751,20 @@ function ItemHubPageInner() {
           <button onClick={() => changeTab('manage')} className={topTabCls()}>
             <span className={topTabLabelCls(outerTab === 'manage' && !openRole)}>Grony Manage</span>
           </button>
+          <div className="w-px bg-gray-200 shrink-0" />
+          {/* Global search -- looks across the whole app (items, customers,
+              vendors, sales, bills, announcements), unlike the per-view
+              search bars already on most tabs below, which only filter
+              what's already on screen. Icon rather than a permanent text
+              field so it doesn't compete with those for the same "search"
+              affordance/space. */}
+          <button onClick={() => setGlobalSearchOpen(true)} aria-label="Search everywhere" title="Search everywhere"
+            className="shrink-0 flex items-center justify-center w-10 text-gray-500 hover:bg-gray-100 rounded-xl transition">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="7" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+          </button>
         </div>
 
         {/* Everything below this point (submenus, search/New, violations)
@@ -1002,12 +1058,12 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'loss' && lossView === 'vendors' && (
           <TabErrorBoundary>
-            <div className="px-4"><VendorsPage openAddSignal={vendorSignal} /></div>
+            <div className="px-4"><VendorsPage openAddSignal={vendorSignal} initialSearch={vendorSearchText} /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'customers' && (
           <TabErrorBoundary>
-            <div className="px-4"><CustomersPage openAddSignal={customerSignal} /></div>
+            <div className="px-4"><CustomersPage openAddSignal={customerSignal} initialSearch={customerSearchText} /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'receipts' && (
@@ -1188,6 +1244,118 @@ function ItemHubPageInner() {
           <line x1="3" y1="10" x2="21" y2="10" />
         </svg>
       </button>
+
+      {/* Global search overlay -- click outside/× closes it; each result
+          jumps straight to the right tab (and, for Sales/Bills/Customers/
+          Vendors, pre-fills that tab's own search with the match) or
+          straight to the item's 360 page. */}
+      {globalSearchOpen && (
+        <div className="fixed inset-0 z-50 bg-black/30 flex items-start justify-center pt-16 px-4" onClick={closeGlobalSearch}>
+          <div onClick={e => e.stopPropagation()}
+            className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[70vh] flex flex-col overflow-hidden">
+            <div className="flex items-center gap-2 p-3 border-b border-gray-100 shrink-0">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 shrink-0">
+                <circle cx="11" cy="11" r="7" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input autoFocus value={globalSearchQuery} onChange={e => setGlobalSearchQuery(e.target.value)}
+                placeholder="Search items, customers, vendors, sales, bills, announcements…"
+                className="flex-1 min-w-0 text-sm outline-none" />
+              <button onClick={closeGlobalSearch} className="shrink-0 text-gray-400 hover:text-gray-600 text-lg leading-none px-1">×</button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {globalSearchLoading && <p className="p-4 text-center text-xs text-gray-400">Searching…</p>}
+              {!globalSearchLoading && globalSearchQuery.trim().length > 0 && globalSearchQuery.trim().length < 2 && (
+                <p className="p-4 text-center text-xs text-gray-400">Keep typing…</p>
+              )}
+              {!globalSearchLoading && globalSearchResults && (() => {
+                const r = globalSearchResults
+                const totalCount = (r.items?.length ?? 0) + (r.customers?.length ?? 0) + (r.vendors?.length ?? 0)
+                  + (r.sales?.length ?? 0) + (r.bills?.length ?? 0) + (r.announcements?.length ?? 0)
+                if (totalCount === 0) return <p className="p-4 text-center text-xs text-gray-400">No matches</p>
+                return (<>
+                  {!!r.items?.length && (
+                    <div>
+                      <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Items</p>
+                      {r.items.map(i => (
+                        <button key={i.id} onClick={() => { router.push(`/stock/${i.id}`); closeGlobalSearch() }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
+                          {i.name}
+                          {i.cf_group && <span className="text-gray-400 text-xs ml-1.5">· {i.cf_group}</span>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {!!r.customers?.length && (
+                    <div>
+                      <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Customers</p>
+                      {r.customers.map(c => (
+                        <button key={c.id}
+                          onClick={() => { changeTab('loss'); setLossView('customers'); setCustomerSearchText(c.display_name); closeGlobalSearch() }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
+                          {c.display_name}
+                          {c.company_name && <span className="text-gray-400 text-xs ml-1.5">· {c.company_name}</span>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {!!r.vendors?.length && (
+                    <div>
+                      <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Vendors</p>
+                      {r.vendors.map(v => (
+                        <button key={v.id}
+                          onClick={() => { changeTab('loss'); setLossView('vendors'); setVendorSearchText(v.display_name); closeGlobalSearch() }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
+                          {v.display_name}
+                          {v.company_name && <span className="text-gray-400 text-xs ml-1.5">· {v.company_name}</span>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {!!r.sales?.length && (
+                    <div>
+                      <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Sales</p>
+                      {r.sales.map(s => (
+                        <button key={s.id}
+                          onClick={() => { changeTab('loss'); setLossView('sales'); setSearch(s.receipt_number || s.customer_name || ''); closeGlobalSearch() }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
+                          {s.receipt_number || `Receipt #${s.id}`}
+                          {s.customer_name && <span className="text-gray-400 text-xs ml-1.5">· {s.customer_name}</span>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {!!r.bills?.length && (
+                    <div>
+                      <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Bills</p>
+                      {r.bills.map(b => (
+                        <button key={b.id}
+                          onClick={() => { changeTab('loss'); setLossView('bills'); setSearch(b.bill_number || b.vendor_name || ''); closeGlobalSearch() }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
+                          {b.bill_number || `Bill #${b.id}`}
+                          {b.vendor_name && <span className="text-gray-400 text-xs ml-1.5">· {b.vendor_name}</span>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {!!r.announcements?.length && (
+                    <div>
+                      <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Announcements</p>
+                      {r.announcements.map(a => (
+                        <button key={a.id} onClick={() => { changeTab('today'); closeGlobalSearch() }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
+                          {a.body || '(no text)'}
+                          <span className="text-gray-400 text-xs ml-1.5">· {a.author}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>)
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
