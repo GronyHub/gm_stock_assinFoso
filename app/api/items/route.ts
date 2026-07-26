@@ -7,7 +7,7 @@ export async function GET() {
       SELECT
         i.id,
         i.canonical_name AS item_name,
-        i.cf_group,
+        COALESCE(i.cf_group, s.cf_group) AS cf_group,
         i.selling_rate,
         i.purchase_rate,
         i.units_per_pack,
@@ -18,7 +18,7 @@ export async function GET() {
       FROM items i
       LEFT JOIN item_stock_summary s ON s.item_id = i.id
       WHERE LOWER(i.status) != 'inactive'
-      ORDER BY i.cf_group NULLS LAST, i.canonical_name
+      ORDER BY cf_group NULLS LAST, i.canonical_name
     `
     return NextResponse.json(rows)
   } catch {
@@ -27,7 +27,7 @@ export async function GET() {
       SELECT
         i.id,
         i.canonical_name AS item_name,
-        i.cf_group,
+        COALESCE(i.cf_group, s.cf_group) AS cf_group,
         i.selling_rate,
         i.purchase_rate,
         i.units_per_pack,
@@ -36,7 +36,7 @@ export async function GET() {
         COALESCE(s.calculated_soh, 0) AS calculated_soh
       FROM items i
       LEFT JOIN item_stock_summary s ON s.item_id = i.id
-      ORDER BY i.cf_group NULLS LAST, i.canonical_name
+      ORDER BY cf_group NULLS LAST, i.canonical_name
     `
     return NextResponse.json(rows)
   }
