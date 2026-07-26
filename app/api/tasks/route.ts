@@ -2,9 +2,11 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
 
-// User-created tasks -- separate from the auto-generated violation flags
-// RoleFlagsTable already surfaces. Self-migrating table, same convention
-// as the rest of this app's ad-hoc schema changes.
+// User-created tasks -- each pinned to a submenu (the same taskSubmenus
+// list page.tsx builds for the global search/Tasks blue bars) so it shows
+// up as an extra row under that submenu's bar in RoleFlagsTable, right
+// alongside the auto-generated violation rows. Self-migrating table/column,
+// same convention as the rest of this app's ad-hoc schema changes.
 async function ensureTable() {
   await sql`
     CREATE TABLE IF NOT EXISTS custom_tasks (
@@ -12,19 +14,21 @@ async function ensureTable() {
       title TEXT NOT NULL,
       notes TEXT,
       due_date DATE,
+      submenu TEXT,
       done BOOLEAN NOT NULL DEFAULT false,
       created_by TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       completed_at TIMESTAMPTZ
     )
   `.catch(() => {})
+  await sql`ALTER TABLE custom_tasks ADD COLUMN IF NOT EXISTS submenu TEXT`.catch(() => {})
 }
 
 export async function GET() {
   await ensureTable()
   try {
     const rows = await sql`
-      SELECT id, title, notes, due_date, done, created_by, created_at, completed_at
+      SELECT id, title, notes, due_date, submenu, done, created_by, created_at, completed_at
       FROM custom_tasks
       ORDER BY done ASC, due_date NULLS LAST, created_at DESC
     `
@@ -40,17 +44,19 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   await ensureTable()
 
-  const { title, notes, due_date } = await req.json()
+  const { title, notes, due_date, submenu } = await req.json()
   const text = typeof title === 'string' ? title.trim() : ''
+  const submenuText = typeof submenu === 'string' ? submenu.trim() : ''
   if (!text) return NextResponse.json({ error: 'Title is required' }, { status: 400 })
+  if (!submenuText) return NextResponse.json({ error: 'Submenu is required' }, { status: 400 })
 
   const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
 
   try {
     const [row] = await sql`
-      INSERT INTO custom_tasks (title, notes, due_date, created_by)
-      VALUES (${text}, ${typeof notes === 'string' && notes.trim() ? notes.trim() : null}, ${due_date || null}, ${actor})
-      RETURNING id, title, notes, due_date, done, created_by, created_at, completed_at
+      INSERT INTO custom_tasks (title, notes, due_date, submenu, created_by)
+      VALUES (${text}, ${typeof notes === 'string' && notes.trim() ? notes.trim() : null}, ${due_date || null}, ${submenuText}, ${actor})
+      RETURNING id, title, notes, due_date, submenu, done, created_by, created_at, completed_at
     `
     return NextResponse.json(row, { status: 201 })
   } catch (e) {
