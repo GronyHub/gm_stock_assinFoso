@@ -254,6 +254,14 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
           // regardless of whether there's an active Gains violation, so it
           // never counts as "empty" even when total (violation count) is 0.
           const hasContent = total > 0 || tasks.length > 0 || (submenu === 'Loss' && lossRows.length > 0)
+          const pendingTasks = showDone ? tasks : tasks.filter(t => !t.done)
+          // While collapsed, each pending task's own text still surfaces as a
+          // subrow under the bar (col 2) instead of being hidden entirely
+          // behind the count (now col 3) -- a submenu with several tasks gets
+          // several subrows here. Expanding swaps these previews for the full
+          // detail rows below instead of showing both.
+          const [firstPreview, ...restPreview] = showRows ? [] : pendingTasks
+          const onBarClick = () => (!hasContent && onNavigateSubmenu ? onNavigateSubmenu(submenu) : toggleGroup(submenu))
           return (
           <tbody key={submenu} className="divide-y divide-gray-100">
             {inlineFix && showSection && (
@@ -263,17 +271,31 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
                 </td>
               </tr>
             )}
-            <tr onClick={() => !hasContent && onNavigateSubmenu ? onNavigateSubmenu(submenu) : toggleGroup(submenu)} className="cursor-pointer">
-              <td colSpan={4} className="px-3 py-1 bg-blue-600">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-white text-[11px]">
-                    {!hasContent && onNavigateSubmenu ? '→ ' : showRows ? '▾ ' : '▸ '}{submenu}
-                  </span>
-                  <span className="font-bold text-white text-[11px]">{total > 0 ? total : '✓'}</span>
-                </div>
+            <tr onClick={onBarClick} className="cursor-pointer">
+              <td colSpan={2} className="px-3 py-1 bg-blue-600">
+                <span className="font-bold text-white text-[11px]">
+                  {!hasContent && onNavigateSubmenu ? '→ ' : showRows ? '▾ ' : '▸ '}{submenu}
+                </span>
+              </td>
+              <td className="px-3 py-1 bg-blue-600 overflow-hidden">
+                {firstPreview && (
+                  <span className="block font-semibold text-white text-[11px] truncate" title={firstPreview.title}>{firstPreview.title}</span>
+                )}
+              </td>
+              <td className="px-3 py-1 bg-blue-600 text-right">
+                <span className="font-bold text-white text-[11px]">{total > 0 ? total : '✓'}</span>
               </td>
             </tr>
-            {showRows && (showDone ? tasks : tasks.filter(t => !t.done)).map(t => (
+            {restPreview.map(t => (
+              <tr key={`preview-${t.id}`} onClick={onBarClick} className="cursor-pointer">
+                <td colSpan={2} className="px-3 py-1 bg-blue-600" />
+                <td className="px-3 py-1 bg-blue-600 overflow-hidden">
+                  <span className="block font-semibold text-white text-[11px] truncate" title={t.title}>{t.title}</span>
+                </td>
+                <td className="px-3 py-1 bg-blue-600" />
+              </tr>
+            ))}
+            {showRows && pendingTasks.map(t => (
               <tr key={`task-${t.id}`} className="hover:bg-blue-50 transition">
                 <td className="px-2 py-1.5">
                   <span className={`block ${t.done ? 'line-through text-gray-400' : 'text-gray-800'}`}>{t.title}</span>
