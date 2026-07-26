@@ -90,6 +90,14 @@ export default function RolePanel({
     setCustomTasks(prev => prev.filter(t => t.id !== id))
     await fetch(`/api/tasks/${id}`, { method: 'DELETE' }).catch(() => {})
   }
+  async function updateTask(id: number, patch: { title: string; notes: string | null; due_date: string | null; submenu: string; view: string | null }) {
+    setCustomTasks(prev => prev.map(t => t.id === id ? { ...t, ...patch } : t))
+    await fetch(`/api/tasks/${id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    }).catch(() => {})
+    loadCustomTasks()
+  }
 
   const lossSummary = useMemo(() => {
     if (!lossEvents) return null
@@ -168,7 +176,7 @@ export default function RolePanel({
               lossSummary={lossSummary ?? undefined} onFixLossFeed={() => { onClose(); onGoToViolation('__loss_feed') }}
               allSubmenus={taskSubmenus}
               onNavigateSubmenu={label => { onClose(); taskSubmenus.find(s => s.label === label)?.action() }}
-              customTasks={customTasks} onToggleTask={toggleTask} onDeleteTask={deleteTask} />
+              customTasks={customTasks} onToggleTask={toggleTask} onDeleteTask={deleteTask} onUpdateTask={updateTask} />
           </>
         )}
         {role === 'opener' && (
