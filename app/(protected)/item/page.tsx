@@ -27,6 +27,7 @@ import { useViolations } from './_components/useViolations'
 import RoleBar, { type RoleKey, type ShortcutKey } from './_components/RoleBar'
 import RolePanel from './_components/RolePanel'
 import { COL_BY_KEY, ALL_COL_KEYS, type ColKey } from './_components/lossTabColumns'
+import type { ManageView } from './_components/GronyManageTab'
 import dynamic from 'next/dynamic'
 const loading = (h: string) => <div className={`py-10 text-center text-gray-400 text-sm`}>{h}</div>
 const ItemsTab       = dynamic(() => import('./_components/ItemsTab'),        { ssr: false, loading: () => loading('Loading…') })
@@ -321,6 +322,9 @@ function ItemHubPageInner() {
   // state (unlike Sales/Bills, which already read the shared `search` above).
   const [customerSearchText, setCustomerSearchText] = useState('')
   const [vendorSearchText, setVendorSearchText] = useState('')
+  // Same idea, for jumping straight into a specific Grony Manage sub-tab
+  // (GronyManageTab owns that sub-tab state itself, same as Customers/Vendors).
+  const [manageInitialView, setManageInitialView] = useState<ManageView | undefined>(undefined)
 
   useEffect(() => {
     const q = globalSearchQuery.trim()
@@ -730,6 +734,60 @@ function ItemHubPageInner() {
     ] : []),
   ]
 
+  // Every tab/sub-tab/menu/page the global search can jump to directly --
+  // matched and ranked ahead of the data categories below (Items/
+  // Customers/etc.) so typing e.g. "sales" lands on the Sales tab itself
+  // rather than making you scroll past item/customer/vendor name matches
+  // first. Recomputed each render rather than memoized -- it's a small
+  // array of cheap closures, not worth the dependency-list upkeep.
+  const navDestinations: { label: string; action: () => void }[] = [
+    { label: 'Home', action: () => changeTab('today') },
+    { label: 'Grony Cash', action: () => changeTab('loss') },
+    { label: 'Grony Manage', action: () => changeTab('manage') },
+    { label: 'Items', action: () => { changeTab('loss'); setLossView('items') } },
+    { label: 'Sales', action: () => { changeTab('loss'); setLossView('sales') } },
+    { label: 'Bills', action: () => { changeTab('loss'); setLossView('bills') } },
+    { label: 'Loss', action: () => { changeTab('loss'); setLossView('feed') } },
+    { label: 'Expenses', action: () => { changeTab('loss'); setLossView('expenses') } },
+    { label: 'PO', action: () => { changeTab('loss'); setLossView('po') } },
+    ...(canSeePL ? [{ label: 'P&L', action: () => { changeTab('loss'); setLossView('pl') } }] : []),
+    { label: 'CAB', action: () => { changeTab('loss'); setLossView('cab') } },
+    { label: 'Data', action: () => { changeTab('loss'); setLossView('data') } },
+    { label: 'Vendors', action: () => { changeTab('loss'); setLossView('vendors') } },
+    { label: 'Customers', action: () => { changeTab('loss'); setLossView('customers') } },
+    { label: 'Receipts', action: () => { changeTab('loss'); setLossView('receipts') } },
+    { label: 'Daily', action: () => { changeTab('loss'); setLossView('dailySummary') } },
+    { label: 'Staff', action: () => { changeTab('manage'); setManageInitialView('staff_times') } },
+    { label: 'Advert', action: () => { changeTab('manage'); setManageInitialView('advert') } },
+    { label: 'Dress Code', action: () => { changeTab('manage'); setManageInitialView('staff_dress') } },
+    { label: 'Arrangement', action: () => { changeTab('manage'); setManageInitialView('arrangement') } },
+    { label: 'Cleanliness', action: () => { changeTab('manage'); setManageInitialView('cleanliness') } },
+    { label: 'Future', action: () => { changeTab('manage'); setManageInitialView('future') } },
+    { label: 'Customer Display', action: () => { changeTab('manage'); setManageInitialView('customer_display') } },
+    { label: 'Staff Display', action: () => { changeTab('manage'); setManageInitialView('staff_display') } },
+    { label: 'Repair Works', action: () => { changeTab('manage'); setManageInitialView('repair_works') } },
+    { label: 'Quality Assurance', action: () => { changeTab('manage'); setManageInitialView('quality_assurance') } },
+    { label: 'Training', action: () => { changeTab('manage'); setManageInitialView('training') } },
+    { label: 'Logs', action: () => { changeTab('manage'); setManageInitialView('logs') } },
+    { label: 'Joe', action: () => setOpenRole('joe') },
+    { label: 'Opener', action: () => setOpenRole('opener') },
+    { label: 'Closer', action: () => setOpenRole('closer') },
+    ...hamburgerLinks.map(l => ({ label: l.label, action: () => router.push(l.href) })),
+  ]
+  const navQuery = globalSearchQuery.trim().toLowerCase()
+  const navMatches = navQuery
+    ? navDestinations
+        .filter(d => d.label.toLowerCase().includes(navQuery))
+        .sort((a, b) => {
+          const rank = (d: typeof a) => {
+            const l = d.label.toLowerCase()
+            return l === navQuery ? 0 : l.startsWith(navQuery) ? 1 : 2
+          }
+          return rank(a) - rank(b) || a.label.localeCompare(b.label)
+        })
+        .slice(0, 6)
+    : []
+
   return (
     <div className="-mx-4 -mt-4 -mb-6 flex flex-col h-[100dvh] md:h-[calc(100dvh-56px)]">
 
@@ -1083,7 +1141,7 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'manage' && (
           <TabErrorBoundary>
-            <GronyManageTab openStaffTimeSignal={staffTimeSignal} />
+            <GronyManageTab openStaffTimeSignal={staffTimeSignal} initialView={manageInitialView} />
           </TabErrorBoundary>
         )}
         {outerTab === 'today' && !(addForm === 'sale' || addForm === 'bill' || addForm === 'expense') && (
@@ -1264,15 +1322,26 @@ function ItemHubPageInner() {
               <button onClick={closeGlobalSearch} className="shrink-0 text-gray-400 hover:text-gray-600 text-lg leading-none px-1">×</button>
             </div>
             <div className="flex-1 overflow-y-auto">
+              {navMatches.length > 0 && (
+                <div>
+                  <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Go to</p>
+                  {navMatches.map(d => (
+                    <button key={d.label} onClick={() => { d.action(); closeGlobalSearch() }}
+                      className="w-full text-left px-3 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 transition truncate">
+                      {d.label}
+                    </button>
+                  ))}
+                </div>
+              )}
               {globalSearchLoading && <p className="p-4 text-center text-xs text-gray-400">Searching…</p>}
-              {!globalSearchLoading && globalSearchQuery.trim().length > 0 && globalSearchQuery.trim().length < 2 && (
+              {!globalSearchLoading && navMatches.length === 0 && globalSearchQuery.trim().length > 0 && globalSearchQuery.trim().length < 2 && (
                 <p className="p-4 text-center text-xs text-gray-400">Keep typing…</p>
               )}
               {!globalSearchLoading && globalSearchResults && (() => {
                 const r = globalSearchResults
                 const totalCount = (r.items?.length ?? 0) + (r.customers?.length ?? 0) + (r.vendors?.length ?? 0)
                   + (r.sales?.length ?? 0) + (r.bills?.length ?? 0) + (r.announcements?.length ?? 0)
-                if (totalCount === 0) return <p className="p-4 text-center text-xs text-gray-400">No matches</p>
+                if (totalCount === 0 && navMatches.length === 0) return <p className="p-4 text-center text-xs text-gray-400">No matches</p>
                 return (<>
                   {!!r.items?.length && (
                     <div>
