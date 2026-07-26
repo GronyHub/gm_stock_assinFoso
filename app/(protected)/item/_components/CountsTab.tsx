@@ -2,9 +2,12 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
+import dynamic from 'next/dynamic'
 import { usePolling } from '@/lib/usePolling'
 import { isOwnerLevel } from '@/lib/roles'
 import HistoryPanel from './HistoryPanel'
+import { AnalyticsToggle } from './analyticsShared'
+const CountsAnalyticsSection = dynamic(() => import('./CountsAnalyticsSection'), { ssr: false })
 
 type Item = { id: number; item_name: string; cf_group: string | null; product_type?: string | null }
 
@@ -375,6 +378,10 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
   const [overdueItems, setOverdueItems] = useState<DailyItem[]>([])
   const [dailyLoading, setDailyLoading] = useState(true)
   const [showManual, setShowManual] = useState(false)
+  // Trend charts that used to live under the removed "Data" tab's "Counts"
+  // section -- shown here since CountsTab is the shared component behind
+  // both the Grony Cash lossView and the standalone /counts page.
+  const [showAnalytics, setShowAnalytics] = useState(false)
   const [lossPrompt, setLossPrompt] = useState<LossPrompt | null>(null)
   const promptLoss = (d: any, retry: (extra: LossExtra) => void) => setLossPrompt({ d, retry })
   const [pairingPrompt, setPairingPrompt] = useState<PairingPrompt | null>(null)
@@ -567,6 +574,8 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
       {lossPrompt && <LossDialog prompt={lossPrompt} onClose={() => setLossPrompt(null)} onFixRecords={onFixRecords} />}
       {pairingPrompt && <PairingDialog prompt={pairingPrompt} onClose={() => setPairingPrompt(null)} />}
       <div className="flex items-center justify-end gap-1.5 px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
+        <AnalyticsToggle showing={showAnalytics} onToggle={() => setShowAnalytics(a => !a)} />
+        {!showAnalytics && <>
         <button onClick={() => setShowManual(v => !v)}
           className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-600 text-white hover:bg-blue-500 transition">
           {showManual ? '× Close' : '+ Manual Count'}
@@ -575,12 +584,18 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
           className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700 transition">
           History
         </button>
+        </>}
       </div>
-      {showManual && (
+      {showAnalytics && (
+        <div className="flex-1 overflow-y-auto min-h-0 p-2">
+          <CountsAnalyticsSection />
+        </div>
+      )}
+      {!showAnalytics && showManual && (
         <ManualCountForm items={items} onClose={() => setShowManual(false)} onLoss={promptLoss} onPairing={promptPairing}
           onSaved={() => { loadRecords(); loadDaily() }} />
       )}
-      <div className="flex-1 overflow-y-auto min-h-0">
+      {!showAnalytics && <div className="flex-1 overflow-y-auto min-h-0">
         <table className="w-full border-collapse text-[10px] border border-black">
           <thead className="sticky top-0 bg-gray-100 z-10">
             <tr>
@@ -656,7 +671,7 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
           </tbody>
         </table>
         {filtered.length === 0 && <p className="text-[10px] text-gray-400 text-center py-10">No records</p>}
-      </div>
+      </div>}
     </div>
   )
 }
