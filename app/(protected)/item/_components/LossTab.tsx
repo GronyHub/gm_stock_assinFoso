@@ -1822,8 +1822,18 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
             {groupedRows.map(([groupName, items]) => (
               <Fragment key={groupName}>
                 <tr className="bg-gray-100">
-                  <td colSpan={1 + shownColumns.length} className="sticky left-0 z-10 bg-gray-100 px-2 py-1 font-bold text-gray-700 text-[10px] uppercase tracking-wide">
-                    {groupName} <span className="text-gray-400 font-normal normal-case">({items.length})</span>
+                  {/* The sticky positioning goes on this inner, content-width
+                      wrapper -- not the <td> itself, which spans every
+                      column via colSpan and so is already as wide as the
+                      whole scrollable table. A sticky element needs room to
+                      slide within a wider container to actually stick;
+                      applied straight to something that wide, it has none,
+                      and the heading visibly drifts while scrolling instead
+                      of staying put like the Item column does. */}
+                  <td colSpan={1 + shownColumns.length} className="p-0">
+                    <div className="sticky left-0 z-10 w-fit bg-gray-100 px-2 py-1 font-bold text-gray-700 text-[10px] uppercase tracking-wide">
+                      {groupName} <span className="text-gray-400 font-normal normal-case">({items.length})</span>
+                    </div>
                   </td>
                 </tr>
                 {items.map((row, i) => renderRow(row, i))}
