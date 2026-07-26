@@ -47,8 +47,8 @@ const SUBMENU: { key: ManageView; label: string }[] = [
 // mirroring Grony Cash: Cash covers the money aspect, Manage covers
 // everything else (staff times, count duties, item hygiene, and now the
 // shop's day-to-day operational checklist categories).
-export default function GronyManageTab({ openStaffTimeSignal }: { openStaffTimeSignal?: number } = {}) {
-  const [view, setView] = useState<ManageView>('staff_times')
+export default function GronyManageTab({ openStaffTimeSignal, initialView }: { openStaffTimeSignal?: number; initialView?: ManageView } = {}) {
+  const [view, setView] = useState<ManageView>(initialView ?? 'staff_times')
   const { data: session } = useSession()
   const role = (session?.user as any)?.role ?? 'staff'
   const username = (session?.user as any)?.username ?? session?.user?.name ?? ''
@@ -59,6 +59,14 @@ export default function GronyManageTab({ openStaffTimeSignal }: { openStaffTimeS
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (openStaffTimeSignal) setView('staff_times')
   }, [openStaffTimeSignal])
+
+  // Driven by the global search (page.tsx) landing here already knowing
+  // which sub-tab to show -- also covers re-arriving at a different one
+  // while this page is already mounted, not just the first mount.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (initialView) setView(initialView)
+  }, [initialView])
 
   const logCategory = LOG_CATEGORIES.find(c => c.key === view)
 
