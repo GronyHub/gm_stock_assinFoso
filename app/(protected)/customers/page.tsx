@@ -108,10 +108,10 @@ function NewCustomerForm({ onCreated, onCancel }: { onCreated: (c: Customer) => 
   )
 }
 
-export default function CustomersPage({ openAddSignal }: { openAddSignal?: number } = {}) {
+export default function CustomersPage({ openAddSignal, initialSearch }: { openAddSignal?: number; initialSearch?: string } = {}) {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useState(initialSearch ?? '')
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive' | 'internal'>('all')
   const [selected, setSelected] = useState<Customer | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -121,6 +121,14 @@ export default function CustomersPage({ openAddSignal }: { openAddSignal?: numbe
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (openAddSignal) setShowForm(true)
   }, [openAddSignal])
+
+  // Driven by the global search (page.tsx) landing here already knowing
+  // which customer to show -- also covers re-arriving with a different
+  // name while this page is already mounted, not just the first mount.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (initialSearch) setSearch(initialSearch)
+  }, [initialSearch])
 
   useEffect(() => {
     fetch('/api/customers')

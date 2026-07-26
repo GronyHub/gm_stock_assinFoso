@@ -103,10 +103,10 @@ function NewVendorForm({ onCreated, onCancel }: { onCreated: (v: Vendor) => void
   )
 }
 
-export default function VendorsPage({ openAddSignal }: { openAddSignal?: number } = {}) {
+export default function VendorsPage({ openAddSignal, initialSearch }: { openAddSignal?: number; initialSearch?: string } = {}) {
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useState(initialSearch ?? '')
   const [filter, setFilter] = useState<'all' | 'external' | 'internal' | 'outstanding'>('all')
   const [selected, setSelected] = useState<Vendor | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -116,6 +116,14 @@ export default function VendorsPage({ openAddSignal }: { openAddSignal?: number 
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (openAddSignal) setShowForm(true)
   }, [openAddSignal])
+
+  // Driven by the global search (page.tsx) landing here already knowing
+  // which vendor to show -- also covers re-arriving with a different name
+  // while this page is already mounted, not just the first mount.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (initialSearch) setSearch(initialSearch)
+  }, [initialSearch])
 
   useEffect(() => {
     fetch('/api/vendors')
