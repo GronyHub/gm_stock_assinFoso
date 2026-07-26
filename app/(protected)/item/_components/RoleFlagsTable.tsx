@@ -3,6 +3,7 @@ import { Fragment, useMemo, useState } from 'react'
 import { fmtOrdinalDate } from '@/lib/fmtDate'
 import { SHORT_LABEL, ERRORS_TAB_VIOLATION, SUBMENU_HOME, type Violation } from './useViolations'
 import ViolationFixPanel from './ViolationFixPanel'
+import TaskViewPanel from './TaskViewPanel'
 
 // Fallback display order for the group bars when no comprehensive
 // allSubmenus list is supplied (Opener's own use of this table) --
@@ -37,6 +38,7 @@ export type CustomTask = {
   notes: string | null
   due_date: string | null
   submenu: string | null
+  view: string | null
   done: boolean
   created_by: string | null
   created_at: string
@@ -116,6 +118,10 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
   const threshold = parseInt(vSettings.threshold_days ?? '3', 10)
   const inlineFix = items !== undefined && onItemsChanged !== undefined
   const [expandedType, setExpandedType] = useState<string | null>(null)
+  // Which custom task's own "Fix" button is expanded -- separate from
+  // expandedType (violation types) since a task has no violation type of
+  // its own, just whichever view it was pinned to when created.
+  const [expandedTaskId, setExpandedTaskId] = useState<number | null>(null)
   // Hidden by default so the table reads as a to-do list, not an audit log --
   // "Done" reveals the already-clear (✓) rows alongside the active ones.
   const [showDone, setShowDone] = useState(false)
@@ -295,27 +301,48 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
                 <td className="px-3 py-1 bg-blue-600" />
               </tr>
             ))}
-            {showRows && pendingTasks.map(t => (
-              <tr key={`task-${t.id}`} className="hover:bg-blue-50 transition">
-                <td className="px-2 py-1.5">
-                  <span className={`block ${t.done ? 'line-through text-gray-400' : 'text-gray-800'}`}>{t.title}</span>
-                  {t.notes && <span className="block text-[9px] text-gray-400">{t.notes}</span>}
-                  {t.created_by && <span className="block text-[9px] text-gray-400">by <span className="capitalize">{t.created_by}</span></span>}
-                </td>
-                <td className={`px-1.5 py-1.5 text-center font-bold ${t.done ? 'text-green-600' : 'text-gray-300'}`}>{t.done ? '✓' : '—'}</td>
-                <td className="px-1.5 py-1.5 whitespace-nowrap text-gray-500">{t.due_date ? fmtOrdinalDate(t.due_date) : '—'}</td>
-                <td className="px-1.5 py-1.5 whitespace-nowrap">
-                  <div className="flex items-center justify-end gap-1.5">
-                    <button onClick={() => onToggleTask?.(t)}
-                      className={`text-[10px] font-semibold px-1.5 py-0.5 rounded whitespace-nowrap transition
-                        ${t.done ? 'bg-green-50 text-green-700 hover:bg-green-100' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
-                      {t.done ? '✓ Completed' : 'Completed'}
-                    </button>
-                    <button onClick={() => onDeleteTask?.(t.id)} title="Delete task" className="shrink-0 text-gray-300 hover:text-red-500">×</button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {showRows && pendingTasks.map(t => {
+              const taskOpen = expandedTaskId === t.id
+              return (
+              <Fragment key={`task-${t.id}`}>
+                <tr className="hover:bg-blue-50 transition">
+                  <td className="px-2 py-1.5">
+                    <span className={`block ${t.done ? 'line-through text-gray-400' : 'text-gray-800'}`}>{t.title}</span>
+                    {t.notes && <span className="block text-[9px] text-gray-400">{t.notes}</span>}
+                    {t.created_by && <span className="block text-[9px] text-gray-400">by <span className="capitalize">{t.created_by}</span></span>}
+                  </td>
+                  <td className={`px-1.5 py-1.5 text-center font-bold ${t.done ? 'text-green-600' : 'text-gray-300'}`}>{t.done ? '✓' : '—'}</td>
+                  <td className="px-1.5 py-1.5 whitespace-nowrap text-gray-500">{t.due_date ? fmtOrdinalDate(t.due_date) : '—'}</td>
+                  <td className="px-1.5 py-1.5 whitespace-nowrap">
+                    <div className="flex items-center justify-end gap-1.5">
+                      {inlineFix && t.view && (
+                        <button onClick={() => setExpandedTaskId(taskOpen ? null : t.id)}
+                          className={`text-[10px] font-semibold px-1.5 py-0.5 rounded whitespace-nowrap transition
+                            ${taskOpen ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                          Fix
+                        </button>
+                      )}
+                      <button onClick={() => onToggleTask?.(t)}
+                        className={`text-[10px] font-semibold px-1.5 py-0.5 rounded whitespace-nowrap transition
+                          ${t.done ? 'bg-green-50 text-green-700 hover:bg-green-100' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
+                        {t.done ? '✓ Completed' : 'Completed'}
+                      </button>
+                      <button onClick={() => onDeleteTask?.(t.id)} title="Delete task" className="shrink-0 text-gray-300 hover:text-red-500">×</button>
+                    </div>
+                  </td>
+                </tr>
+                {inlineFix && taskOpen && t.view && (
+                  <tr>
+                    <td colSpan={4} className="p-0 border-t border-gray-200 bg-white">
+                      <div className="max-h-[60vh] overflow-auto">
+                        <TaskViewPanel view={t.view} items={items!} onItemsChanged={onItemsChanged!} />
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+              )
+            })}
             {showRows && submenu === 'Loss' && lossRows.map(r => (
               <tr key={r.label} onClick={() => r.period.n > 0 && onFixLossFeed?.()}
                 className={`transition ${r.period.n > 0 ? 'cursor-pointer hover:bg-blue-50' : ''}`}>

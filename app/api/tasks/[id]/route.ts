@@ -14,21 +14,22 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const body = await req.json()
   const has = (k: string) => Object.prototype.hasOwnProperty.call(body, k)
 
-  const [current] = await sql`SELECT title, notes, due_date, submenu, done FROM custom_tasks WHERE id = ${taskId}`
+  const [current] = await sql`SELECT title, notes, due_date, submenu, view, done FROM custom_tasks WHERE id = ${taskId}`
   if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const title    = has('title') ? body.title : current.title
   const notes    = has('notes') ? body.notes : current.notes
   const due_date = has('due_date') ? body.due_date : current.due_date
   const submenu  = has('submenu') ? body.submenu : current.submenu
+  const view     = has('view') ? body.view : current.view
   const done     = has('done') ? !!body.done : current.done
 
   const [row] = await sql`
     UPDATE custom_tasks SET
       title = ${title}, notes = ${notes || null}, due_date = ${due_date || null}, submenu = ${submenu || null},
-      done = ${done}, completed_at = ${done ? new Date().toISOString() : null}
+      view = ${view || null}, done = ${done}, completed_at = ${done ? new Date().toISOString() : null}
     WHERE id = ${taskId}
-    RETURNING id, title, notes, due_date, submenu, done, created_by, created_at, completed_at
+    RETURNING id, title, notes, due_date, submenu, view, done, created_by, created_at, completed_at
   `
   return NextResponse.json(row)
 }

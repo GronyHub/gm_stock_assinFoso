@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { TASK_VIEWS } from './TaskViewPanel'
 
 // Just the "+ New Task" trigger/form -- the tasks themselves render inline
 // under their chosen submenu's blue bar in RoleFlagsTable, right alongside
@@ -13,6 +14,10 @@ export default function CustomTasksSection({ submenus, onAdded }: {
   const [notes, setNotes] = useState('')
   const [dueDate, setDueDate] = useState('')
   const [submenu, setSubmenu] = useState(submenus[0]?.label ?? '')
+  // Which existing tab a click on this task's own "Fix" button should open
+  // inline -- most tasks won't have a matching screen, so this defaults to
+  // "No view" rather than forcing a pick.
+  const [view, setView] = useState('')
   const [saving, setSaving] = useState(false)
 
   async function addTask(e: React.FormEvent) {
@@ -21,11 +26,11 @@ export default function CustomTasksSection({ submenus, onAdded }: {
     setSaving(true)
     const res = await fetch('/api/tasks', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, notes, due_date: dueDate || null, submenu }),
+      body: JSON.stringify({ title, notes, due_date: dueDate || null, submenu, view }),
     })
     setSaving(false)
     if (res.ok) {
-      setTitle(''); setNotes(''); setDueDate(''); setShowForm(false)
+      setTitle(''); setNotes(''); setDueDate(''); setView(''); setShowForm(false)
       onAdded()
     } else {
       const d = await res.json().catch(() => ({}))
@@ -46,6 +51,10 @@ export default function CustomTasksSection({ submenus, onAdded }: {
           <select value={submenu} onChange={e => setSubmenu(e.target.value)}
             className="w-full text-xs bg-white border border-gray-300 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-400">
             {submenus.map(s => <option key={s.label} value={s.label}>{s.label}</option>)}
+          </select>
+          <select value={view} onChange={e => setView(e.target.value)}
+            className="w-full text-xs bg-white border border-gray-300 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-400">
+            {TASK_VIEWS.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
           </select>
           <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Notes (optional)"
             className="w-full text-xs bg-white border border-gray-300 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-400" />
