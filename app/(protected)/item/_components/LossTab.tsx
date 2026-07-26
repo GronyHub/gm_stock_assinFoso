@@ -1869,46 +1869,53 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
     )
   }
 
-  return (
-    <div className="flex flex-col h-full min-h-0">
-      {/* Which headers show (besides the always-visible Item column), and in
-          what order -- both remembered across visits alongside the Item
-          column's own width. Tucked behind one button instead of a wrapping
-          row of checkboxes so it doesn't eat vertical space. */}
-      <div className="shrink-0 flex items-center px-1 pb-1.5">
-        <div className="relative" ref={colMenuRef}>
-          <button onClick={() => setColMenuOpen(o => !o)}
-            className="text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap flex items-center gap-1 transition bg-gray-100 text-gray-700 hover:bg-gray-200">
-            Columns <span className="text-[10px]">▾</span>
-          </button>
-          {colMenuOpen && (
-            <div className="absolute top-full left-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg z-30 min-w-[200px] max-h-72 overflow-y-auto">
-              {colOrder.map((key, i) => {
-                const c = COL_BY_KEY.get(key)!
-                return (
-                  <div key={key} className="flex items-center gap-1 px-2 py-1 border-b border-gray-100 last:border-0">
-                    <label className="flex items-center gap-1.5 flex-1 min-w-0 text-xs text-gray-700 cursor-pointer select-none">
-                      <input type="checkbox" checked={visibleCols.has(key)} onChange={() => toggleCol(key)}
-                        className="w-3.5 h-3.5 accent-blue-600 shrink-0" />
-                      <span className="truncate">{c.label}</span>
-                    </label>
-                    <button onClick={() => moveCol(key, -1)} disabled={i === 0} title="Move up"
-                      className="text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:hover:text-gray-400 px-1 text-xs leading-none">▲</button>
-                    <button onClick={() => moveCol(key, 1)} disabled={i === colOrder.length - 1} title="Move down"
-                      className="text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:hover:text-gray-400 px-1 text-xs leading-none">▼</button>
-                  </div>
-                )
-              })}
-              {visibleCols.size > 0 && (
-                <button onClick={() => setVisibleCols(new Set())}
-                  className="w-full text-left px-2.5 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-50">
-                  Clear all
-                </button>
-              )}
-            </div>
+  // Columns icon + its dropdown -- lives in the Item header cell itself
+  // (left part of the header bar) instead of a row of its own above the
+  // table. Note: no "truncate" on the Item <th> itself (only on the "Item"
+  // text span inside it) since overflow:hidden there would clip this
+  // dropdown along with the text.
+  const columnsMenu = (
+    <span className="relative shrink-0" ref={colMenuRef}>
+      <button onClick={e => { e.stopPropagation(); setColMenuOpen(o => !o) }} title="Columns"
+        className="flex items-center justify-center w-4 h-4 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-200">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4" width="18" height="16" rx="2" />
+          <line x1="9" y1="4" x2="9" y2="20" />
+          <line x1="15" y1="4" x2="15" y2="20" />
+        </svg>
+      </button>
+      {colMenuOpen && (
+        <div onClick={e => e.stopPropagation()}
+          className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-40 min-w-[200px] max-h-60 overflow-y-auto normal-case font-normal cursor-auto">
+          {colOrder.map((key, i) => {
+            const c = COL_BY_KEY.get(key)!
+            return (
+              <div key={key} className="flex items-center gap-1 px-2 py-1 border-b border-gray-100 last:border-0">
+                <label className="flex items-center gap-1.5 flex-1 min-w-0 text-xs text-gray-700 cursor-pointer select-none">
+                  <input type="checkbox" checked={visibleCols.has(key)} onChange={() => toggleCol(key)}
+                    className="w-3.5 h-3.5 accent-blue-600 shrink-0" />
+                  <span className="truncate">{c.label}</span>
+                </label>
+                <button onClick={() => moveCol(key, -1)} disabled={i === 0} title="Move up"
+                  className="text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:hover:text-gray-400 px-1 text-xs leading-none">▲</button>
+                <button onClick={() => moveCol(key, 1)} disabled={i === colOrder.length - 1} title="Move down"
+                  className="text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:hover:text-gray-400 px-1 text-xs leading-none">▼</button>
+              </div>
+            )
+          })}
+          {visibleCols.size > 0 && (
+            <button onClick={() => setVisibleCols(new Set())}
+              className="w-full text-left px-2.5 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-50">
+              Clear all
+            </button>
           )}
         </div>
-      </div>
+      )}
+    </span>
+  )
+
+  return (
+    <div className="flex flex-col h-full min-h-0">
       {/* Table — horizontally scrollable; Item column is kept short and
           truncates long names with an ellipsis instead of wrapping or
           growing to fit them. */}
@@ -1918,8 +1925,9 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
           {colgroup}
           <thead className="sticky top-0 z-20">
             <tr className="bg-gray-50">
-              <SortTh label="Item" col="item_name" sort={sort} onSort={handleSort}
-                cls="text-left pl-2 pr-2 sticky left-0 z-30 bg-gray-50 truncate"
+              <SortTh label={<span className="flex items-center gap-1 min-w-0">{columnsMenu}<span className="truncate min-w-0">Item</span></span>}
+                col="item_name" sort={sort} onSort={handleSort}
+                cls="text-left pl-2 pr-2 sticky left-0 z-30 bg-gray-50"
                 style={{ width: itemColWidth, maxWidth: itemColWidth }}
                 extra={
                   <div onPointerDown={startResize} onClick={e => e.stopPropagation()}
