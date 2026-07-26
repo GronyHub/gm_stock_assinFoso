@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
 import { RoleFlagsTable } from './RoleFlagsTable'
+import CustomTasksSection from './CustomTasksSection'
 import type { Violation } from './useViolations'
 import type { RoleKey } from './RoleBar'
 
@@ -124,14 +125,18 @@ export default function RolePanel({
       <div className="flex-1 min-h-0 overflow-y-auto px-4 py-2 space-y-2">
         {role === 'joe' && (
           <>
+            {/* Plain user-created to-do list -- independent of everything
+                below, which is all auto-generated from the app's own
+                flags/checks. */}
+            <CustomTasksSection />
             {/* Joe fixes violations inline here -- each row drops down to its
                 own fix view (reused from whichever tab normally renders it)
                 instead of navigating away, so the panel stays open. Loss Feed
                 period totals (All-Time/Yesterday/etc.) are pinned into the
-                Daily Loss group of the same table, not a separate one above it.
+                Loss group of the same table, not a separate one above it.
                 The former Bino bucket (staff times, adverts, jingle,
-                equipment checks) is included too -- it falls into cashViolations
-                and groups under its own "Grony Manage" bar automatically. */}
+                equipment checks) is included too -- it falls into
+                cashViolations and groups under its own Staff/Advert bars. */}
             <RoleFlagsTable violations={cashViolations} assignments={assignments} deadlines={deadlines}
               assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
               items={items} onItemsChanged={onItemsChanged}
