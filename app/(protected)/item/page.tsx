@@ -26,6 +26,7 @@ import { usePolling } from '@/lib/usePolling'
 import { useViolations } from './_components/useViolations'
 import RoleBar, { type RoleKey, type ShortcutKey } from './_components/RoleBar'
 import RolePanel from './_components/RolePanel'
+import { COL_BY_KEY, ALL_COL_KEYS, type ColKey } from './_components/lossTabColumns'
 import dynamic from 'next/dynamic'
 const loading = (h: string) => <div className={`py-10 text-center text-gray-400 text-sm`}>{h}</div>
 const ItemsTab       = dynamic(() => import('./_components/ItemsTab'),        { ssr: false, loading: () => loading('Loading…') })
@@ -296,6 +297,59 @@ function ItemHubPageInner() {
   const groupRef     = useRef<HTMLDivElement>(null)
   const searchRef    = useRef<HTMLDivElement>(null)
   const hamburgerRef = useRef<HTMLDivElement>(null)
+  const colMenuRef   = useRef<HTMLDivElement>(null)
+
+  // Which Items-table columns (besides the always-visible sticky Item
+  // column) show, and their order -- lives here (next to the New button)
+  // rather than inside LossTab, since that's where the "Columns" picker
+  // lives. Remembered across visits the same way the Item column's own
+  // width already is (inside LossTab).
+  const [visibleCols, setVisibleCols] = useState<Set<ColKey>>(() => {
+    if (typeof window === 'undefined') return new Set(ALL_COL_KEYS)
+    try {
+      const saved = JSON.parse(localStorage.getItem('lossTabVisibleCols') ?? 'null')
+      if (Array.isArray(saved) && saved.length > 0) {
+        const keep = saved.filter((k): k is ColKey => (ALL_COL_KEYS as string[]).includes(k))
+        if (keep.length > 0) return new Set(keep)
+      }
+    } catch { /* ignore malformed storage */ }
+    return new Set(ALL_COL_KEYS)
+  })
+  useEffect(() => {
+    localStorage.setItem('lossTabVisibleCols', JSON.stringify(Array.from(visibleCols)))
+  }, [visibleCols])
+  function toggleCol(key: ColKey) {
+    setVisibleCols(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key); else next.add(key)
+      return next
+    })
+  }
+  const [colOrder, setColOrder] = useState<ColKey[]>(() => {
+    if (typeof window === 'undefined') return ALL_COL_KEYS
+    try {
+      const saved = JSON.parse(localStorage.getItem('lossTabColOrder') ?? 'null')
+      if (Array.isArray(saved)) {
+        const valid = saved.filter((k): k is ColKey => (ALL_COL_KEYS as string[]).includes(k))
+        if (valid.length > 0) return [...valid, ...ALL_COL_KEYS.filter(k => !valid.includes(k))]
+      }
+    } catch { /* ignore malformed storage */ }
+    return ALL_COL_KEYS
+  })
+  useEffect(() => {
+    localStorage.setItem('lossTabColOrder', JSON.stringify(colOrder))
+  }, [colOrder])
+  function moveCol(key: ColKey, dir: -1 | 1) {
+    setColOrder(prev => {
+      const i = prev.indexOf(key)
+      const j = i + dir
+      if (i < 0 || j < 0 || j >= prev.length) return prev
+      const next = [...prev]
+      ;[next[i], next[j]] = [next[j], next[i]]
+      return next
+    })
+  }
+  const [colMenuOpen, setColMenuOpen] = useState(false)
 
   const [items, setItems]           = useState<Item[]>([])
   const [itemsLoading, setItemsLoading] = useState(true)
@@ -412,6 +466,7 @@ function ItemHubPageInner() {
       if (groupRef.current && !groupRef.current.contains(e.target as Node)) setGroupOpen(false)
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchOpen(false)
       if (hamburgerRef.current && !hamburgerRef.current.contains(e.target as Node)) setHamburgerOpen(false)
+      if (colMenuRef.current && !colMenuRef.current.contains(e.target as Node)) setColMenuOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -705,6 +760,49 @@ function ItemHubPageInner() {
               )}
             </div>
 
+            {/* Columns picker -- Items submenu only, next to New since it's
+                the same kind of per-view control. Drives LossTab's column
+                visibility/order (lifted up here, see visibleCols/colOrder
+                above) rather than living inside LossTab itself. */}
+            {outerTab === 'loss' && lossView === 'items' && (
+              <div className="relative shrink-0" ref={colMenuRef}>
+                <button onClick={() => setColMenuOpen(o => !o)} title="Columns"
+                  className="flex items-center justify-center w-7 h-7 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="4" width="18" height="16" rx="2" />
+                    <line x1="9" y1="4" x2="9" y2="20" />
+                    <line x1="15" y1="4" x2="15" y2="20" />
+                  </svg>
+                </button>
+                {colMenuOpen && (
+                  <div className="absolute top-full right-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg z-30 min-w-[200px] max-h-72 overflow-y-auto">
+                    {colOrder.map((key, i) => {
+                      const c = COL_BY_KEY.get(key)!
+                      return (
+                        <div key={key} className="flex items-center gap-1 px-2 py-1 border-b border-gray-100 last:border-0">
+                          <label className="flex items-center gap-1.5 flex-1 min-w-0 text-xs text-gray-700 cursor-pointer select-none">
+                            <input type="checkbox" checked={visibleCols.has(key)} onChange={() => toggleCol(key)}
+                              className="w-3.5 h-3.5 accent-blue-600 shrink-0" />
+                            <span className="truncate">{c.label}</span>
+                          </label>
+                          <button onClick={() => moveCol(key, -1)} disabled={i === 0} title="Move up"
+                            className="text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:hover:text-gray-400 px-1 text-xs leading-none">▲</button>
+                          <button onClick={() => moveCol(key, 1)} disabled={i === colOrder.length - 1} title="Move down"
+                            className="text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:hover:text-gray-400 px-1 text-xs leading-none">▼</button>
+                        </div>
+                      )
+                    })}
+                    {visibleCols.size > 0 && (
+                      <button onClick={() => setVisibleCols(new Set())}
+                        className="w-full text-left px-2.5 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-50">
+                        Clear all
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* New button — Items/Sales/Bills/Expenses/PO submenus only; report-style and Counts submenus have no add-form */}
             {outerTab === 'loss' && ['items', 'sales', 'bills', 'expenses', 'po'].includes(lossView) && (() => {
               const formKey = lossView === 'items' ? 'item' : lossView === 'sales' ? 'sale' : lossView === 'bills' ? 'bill' : lossView === 'po' ? 'po' : 'expense'
@@ -860,7 +958,8 @@ function ItemHubPageInner() {
               )
           ) : (
             <TabErrorBoundary>
-              <LossTab onOpenItem={() => {}} search={search} group={group} productType={productType} />
+              <LossTab onOpenItem={() => {}} search={search} group={group} productType={productType}
+                visibleCols={visibleCols} colOrder={colOrder} />
             </TabErrorBoundary>
           )
         )}

@@ -7,6 +7,7 @@ import {
   numVal, computeRows, buildPackCycles, buildPackChainRows, packSideCedis, realizedCycleCedis,
   type PackCycle, type PackChainRow,
 } from '@/lib/packChain'
+import { COL_BY_KEY, type ColKey, type SortCol } from './lossTabColumns'
 
 /* ── types ── */
 export type SummaryRow = {
@@ -29,7 +30,6 @@ export type SummaryRow = {
   cnv: number
 }
 
-type SortCol = 'item_name' | 'cf_group' | 'product_type' | 'lgAmt' | 'lgQty' | 'lossCount' | 'gainAmt' | 'wic' | 'gmc' | 'bl' | 'soh' | 'sp' | 'cp'
 type SortDir = 'asc' | 'desc'
 
 const EMPTY_FORM = { item_name: '', cf_group: '', selling_rate: '', purchase_rate: '', units_per_pack: '', unit_name: '', converts_to_item_id: '' }
@@ -1608,26 +1608,6 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   )
 }
 
-// Every column besides the always-visible sticky Item column, in display
-// order -- the single source of truth for the colgroup, header, and each
-// row's cells so a column's visibility/width can't drift out of sync
-// between them.
-type ColKey = Exclude<SortCol, 'item_name'>
-const COLUMNS: { key: ColKey; label: string; width: number }[] = [
-  { key: 'lgAmt', label: 'Loss Amt.', width: 56 },
-  { key: 'lossCount', label: 'Loss No.', width: 52 },
-  { key: 'gainAmt', label: 'Gain', width: 44 },
-  { key: 'wic', label: 'WIC', width: 40 },
-  { key: 'gmc', label: 'GMC', width: 40 },
-  { key: 'bl', label: 'BL', width: 36 },
-  { key: 'soh', label: 'SOH', width: 40 },
-  { key: 'sp', label: 'SP', width: 44 },
-  { key: 'cp', label: 'CP', width: 40 },
-  { key: 'cf_group', label: 'Group', width: 70 },
-  { key: 'product_type', label: 'Type', width: 64 },
-]
-const COL_BY_KEY = new Map(COLUMNS.map(c => [c.key, c]))
-
 function renderCell(key: ColKey, row: SummaryRow) {
   switch (key) {
     case 'lgAmt': {
@@ -1683,11 +1663,16 @@ function renderCell(key: ColKey, row: SummaryRow) {
 }
 
 /* ── main LossTab ── */
-export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 'All', productType = 'all' }: {
+export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 'All', productType = 'all', visibleCols, colOrder }: {
   onOpenItem: (itemId: number) => void
   search?: string
   group?: string | null
   productType?: 'all' | 'goods' | 'services'
+  // Which columns (besides the always-visible sticky Item column) show, and
+  // their order -- lifted up to the parent page since the "Columns" picker
+  // that drives these now lives there, next to the New button.
+  visibleCols: Set<ColKey>
+  colOrder: ColKey[]
 }) {
   const router = useRouter()
   const [rows, setRows] = useState<SummaryRow[]>([])
@@ -1704,68 +1689,6 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
     if (saved > 0) scrollRef.current.scrollTop = saved
   }, [loading])
 
-  // Which columns (besides the always-visible sticky Item column) show, and
-  // their order/width -- driven by this one array so the colgroup, header,
-  // and every row's cells all stay in sync automatically. Remembered across
-  // visits like the Item column's width.
-  const ALL_COL_KEYS = COLUMNS.map(c => c.key)
-  const [visibleCols, setVisibleCols] = useState<Set<ColKey>>(() => {
-    if (typeof window === 'undefined') return new Set(ALL_COL_KEYS)
-    try {
-      const saved = JSON.parse(localStorage.getItem('lossTabVisibleCols') ?? 'null')
-      if (Array.isArray(saved) && saved.length > 0) {
-        const keep = saved.filter((k): k is ColKey => (ALL_COL_KEYS as string[]).includes(k))
-        if (keep.length > 0) return new Set(keep)
-      }
-    } catch { /* ignore malformed storage */ }
-    return new Set(ALL_COL_KEYS)
-  })
-  useEffect(() => {
-    localStorage.setItem('lossTabVisibleCols', JSON.stringify(Array.from(visibleCols)))
-  }, [visibleCols])
-  function toggleCol(key: ColKey) {
-    setVisibleCols(prev => {
-      const next = new Set(prev)
-      if (next.has(key)) next.delete(key); else next.add(key)
-      return next
-    })
-  }
-
-  // Column order -- separate from visibility so hiding/showing a column
-  // doesn't lose its place in line. Remembered across visits the same way.
-  const [colOrder, setColOrder] = useState<ColKey[]>(() => {
-    if (typeof window === 'undefined') return ALL_COL_KEYS
-    try {
-      const saved = JSON.parse(localStorage.getItem('lossTabColOrder') ?? 'null')
-      if (Array.isArray(saved)) {
-        const valid = saved.filter((k): k is ColKey => (ALL_COL_KEYS as string[]).includes(k))
-        if (valid.length > 0) return [...valid, ...ALL_COL_KEYS.filter(k => !valid.includes(k))]
-      }
-    } catch { /* ignore malformed storage */ }
-    return ALL_COL_KEYS
-  })
-  useEffect(() => {
-    localStorage.setItem('lossTabColOrder', JSON.stringify(colOrder))
-  }, [colOrder])
-  function moveCol(key: ColKey, dir: -1 | 1) {
-    setColOrder(prev => {
-      const i = prev.indexOf(key)
-      const j = i + dir
-      if (i < 0 || j < 0 || j >= prev.length) return prev
-      const next = [...prev]
-      ;[next[i], next[j]] = [next[j], next[i]]
-      return next
-    })
-  }
-  const [colMenuOpen, setColMenuOpen] = useState(false)
-  const colMenuRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    function onOut(e: MouseEvent) {
-      if (colMenuRef.current && !colMenuRef.current.contains(e.target as Node)) setColMenuOpen(false)
-    }
-    document.addEventListener('mousedown', onOut)
-    return () => document.removeEventListener('mousedown', onOut)
-  }, [])
   const shownColumns = colOrder.map(k => COL_BY_KEY.get(k)!).filter(c => visibleCols.has(c.key))
 
   // Item column width -- user-resizable via the drag handle on its header,
@@ -1871,44 +1794,6 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* Which headers show (besides the always-visible Item column), and in
-          what order -- both remembered across visits alongside the Item
-          column's own width. Tucked behind one button instead of a wrapping
-          row of checkboxes so it doesn't eat vertical space. */}
-      <div className="shrink-0 flex items-center px-1 pb-1.5">
-        <div className="relative" ref={colMenuRef}>
-          <button onClick={() => setColMenuOpen(o => !o)}
-            className="text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap flex items-center gap-1 transition bg-gray-100 text-gray-700 hover:bg-gray-200">
-            Columns <span className="text-[10px]">▾</span>
-          </button>
-          {colMenuOpen && (
-            <div className="absolute top-full left-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg z-30 min-w-[200px] max-h-72 overflow-y-auto">
-              {colOrder.map((key, i) => {
-                const c = COL_BY_KEY.get(key)!
-                return (
-                  <div key={key} className="flex items-center gap-1 px-2 py-1 border-b border-gray-100 last:border-0">
-                    <label className="flex items-center gap-1.5 flex-1 min-w-0 text-xs text-gray-700 cursor-pointer select-none">
-                      <input type="checkbox" checked={visibleCols.has(key)} onChange={() => toggleCol(key)}
-                        className="w-3.5 h-3.5 accent-blue-600 shrink-0" />
-                      <span className="truncate">{c.label}</span>
-                    </label>
-                    <button onClick={() => moveCol(key, -1)} disabled={i === 0} title="Move up"
-                      className="text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:hover:text-gray-400 px-1 text-xs leading-none">▲</button>
-                    <button onClick={() => moveCol(key, 1)} disabled={i === colOrder.length - 1} title="Move down"
-                      className="text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:hover:text-gray-400 px-1 text-xs leading-none">▼</button>
-                  </div>
-                )
-              })}
-              {visibleCols.size > 0 && (
-                <button onClick={() => setVisibleCols(new Set())}
-                  className="w-full text-left px-2.5 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-50">
-                  Clear all
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
       {/* Table — horizontally scrollable; Item column is kept short and
           truncates long names with an ellipsis instead of wrapping or
           growing to fit them. */}
