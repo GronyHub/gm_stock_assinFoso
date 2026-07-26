@@ -124,7 +124,11 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
   // bar (blue = one group, green = every group in that section) then
   // overrides just that bar's own groups, independent of the blanket
   // setting and of each other.
-  const [barsOnly, setBarsOnly] = useState(false)
+  // Defaults to collapsed -- with a bar for every submenu now (not just
+  // ones with something flagged), starting fully expanded is far too tall
+  // to fit one screen. Bars-only is one line each, so the panel opens
+  // compact and each bar is still one tap away from its own detail.
+  const [barsOnly, setBarsOnly] = useState(true)
   const [groupOverride, setGroupOverride] = useState<Map<string, boolean>>(new Map())
 
   function groupShown(submenu: string) {
@@ -213,6 +217,12 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
     return m
   }, [groupedViolations])
 
+  // The column header row is only meaningful once at least one bar has
+  // rows showing underneath it -- with every bar collapsed (the default),
+  // it's just dead weight taking up space this panel needs to stay
+  // scroll-free.
+  const anyExpanded = groupedViolations.some(g => groupShown(g.submenu))
+
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden">
       <div className="flex items-center gap-3 px-2.5 py-1.5 bg-gray-50 border-b border-gray-200 text-[11px] font-semibold text-gray-500">
@@ -227,15 +237,17 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
         </label>
       </div>
       <div className="overflow-x-auto">
-      <table className="w-full min-w-[480px] text-[11px] border-collapse">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="text-left px-2 py-1.5 font-semibold text-gray-500 whitespace-nowrap">Flag Type</th>
-            <th className="text-center px-1.5 py-1.5 font-semibold text-gray-500">Count</th>
-            <th className="text-left px-1.5 py-1.5 font-semibold text-gray-500">Due</th>
-            <th className="text-left px-1.5 py-1.5 font-semibold text-gray-500">Assigned</th>
-          </tr>
-        </thead>
+      <table className="w-full text-[11px] border-collapse table-fixed">
+        {anyExpanded && (
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="text-left px-2 py-1 font-semibold text-gray-500 whitespace-nowrap">Flag Type</th>
+              <th className="text-center px-1.5 py-1 font-semibold text-gray-500 w-12">Count</th>
+              <th className="text-left px-1.5 py-1 font-semibold text-gray-500 w-24">Due</th>
+              <th className="text-left px-1.5 py-1 font-semibold text-gray-500 w-24">Assigned</th>
+            </tr>
+          </thead>
+        )}
         {groupedViolations.map(({ submenu, rows, tasks, total, section, showSection }) => {
           const showRows = groupShown(submenu)
           // The Loss bar always has its period totals (lossRows) to show
@@ -246,13 +258,13 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
           <tbody key={submenu} className="divide-y divide-gray-100">
             {inlineFix && showSection && (
               <tr onClick={() => toggleSection(submenusBySection.get(section) ?? [submenu])} className="cursor-pointer">
-                <td colSpan={4} className="px-3 py-1.5 bg-green-600 text-center">
+                <td colSpan={4} className="px-3 py-1 bg-green-600 text-center">
                   <span className="font-bold text-white text-[11px] uppercase tracking-wide">{section}</span>
                 </td>
               </tr>
             )}
             <tr onClick={() => !hasContent && onNavigateSubmenu ? onNavigateSubmenu(submenu) : toggleGroup(submenu)} className="cursor-pointer">
-              <td colSpan={4} className="px-3 py-1.5 bg-blue-600">
+              <td colSpan={4} className="px-3 py-1 bg-blue-600">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-white text-[11px]">
                     {!hasContent && onNavigateSubmenu ? '→ ' : showRows ? '▾ ' : '▸ '}{submenu}
