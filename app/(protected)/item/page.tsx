@@ -780,7 +780,7 @@ function ItemHubPageInner() {
     { label: 'Quality Assurance', action: () => { changeTab('manage'); setManageInitialView('quality_assurance') } },
     { label: 'Training', action: () => { changeTab('manage'); setManageInitialView('training') } },
     { label: 'Logs', action: () => { changeTab('manage'); setManageInitialView('logs') } },
-    { label: 'Joe', action: () => setOpenRole('joe') },
+    { label: 'Tasks', action: () => setOpenRole('joe') },
     { label: 'Opener', action: () => setOpenRole('opener') },
     { label: 'Closer', action: () => setOpenRole('closer') },
     ...hamburgerLinks.map(l => ({ label: l.label, action: () => router.push(l.href) })),

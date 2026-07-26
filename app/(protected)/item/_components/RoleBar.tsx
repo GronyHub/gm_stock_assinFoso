@@ -65,7 +65,7 @@ export default function RoleBar({ openRole, onSelectRole, onShortcut, cashCount,
   const closerCount = missingClosingReportsCount
 
   const TABS: { key: RoleKey; label: string; count: number }[] = [
-    { key: 'joe', label: 'Joe', count: cashCount },
+    { key: 'joe', label: 'Tasks', count: cashCount },
     { key: 'opener', label: 'Opener', count: openerCount },
     { key: 'closer', label: 'Closer', count: closerCount },
   ]
