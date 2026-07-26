@@ -31,6 +31,11 @@ type Props = {
   onClose: () => void
   items: Item[]
   onItemsChanged: (items: Item[]) => void
+  // Every submenu under Grony Cash/Grony Manage/the account menu, tagged by
+  // section -- lets Tasks show one blue bar per submenu (not just ones with
+  // an actual violation type mapped to them), sourced from the same list
+  // page.tsx's global search uses so the two can't drift apart.
+  taskSubmenus: { label: string; section: string; action: () => void }[]
 }
 
 // Whichever Role Bar tab is open, its flagged items fill the content area
@@ -39,7 +44,7 @@ type Props = {
 // there's a plain Close button instead of a small ×.
 export default function RolePanel({
   role, cashViolations, openerViolations, assignments, deadlines, assignedBy, assignedOn, vSettings,
-  onGoToViolation, missingClosingReportsCount, onOpenManage, onClose, items, onItemsChanged,
+  onGoToViolation, missingClosingReportsCount, onOpenManage, onClose, items, onItemsChanged, taskSubmenus,
 }: Props) {
   const [today, setToday] = useState<{ opener: string | null; openerConfirmed: boolean | null }>({ opener: null, openerConfirmed: null })
   useEffect(() => {
@@ -130,7 +135,9 @@ export default function RolePanel({
             <RoleFlagsTable violations={cashViolations} assignments={assignments} deadlines={deadlines}
               assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
               items={items} onItemsChanged={onItemsChanged}
-              lossSummary={lossSummary ?? undefined} onFixLossFeed={() => { onClose(); onGoToViolation('__loss_feed') }} />
+              lossSummary={lossSummary ?? undefined} onFixLossFeed={() => { onClose(); onGoToViolation('__loss_feed') }}
+              allSubmenus={taskSubmenus}
+              onNavigateSubmenu={label => { onClose(); taskSubmenus.find(s => s.label === label)?.action() }} />
           </>
         )}
         {role === 'opener' && (

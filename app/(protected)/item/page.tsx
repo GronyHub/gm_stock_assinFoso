@@ -747,16 +747,15 @@ function ItemHubPageInner() {
     ] : []),
   ]
 
-  // Every tab/sub-tab/menu/page the global search can jump to directly --
-  // matched and ranked ahead of the data categories below (Items/
-  // Customers/etc.) so typing e.g. "sales" lands on the Sales tab itself
-  // rather than making you scroll past item/customer/vendor name matches
-  // first. Recomputed each render rather than memoized -- it's a small
-  // array of cheap closures, not worth the dependency-list upkeep.
-  const navDestinations: { label: string; action: () => void }[] = [
-    { label: 'Home', action: () => changeTab('today') },
-    { label: 'Grony Cash', action: () => changeTab('loss') },
-    { label: 'Grony Manage', action: () => changeTab('manage') },
+  // Every real submenu under Grony Cash, Grony Manage, and the account
+  // (person icon) menu -- three separate, tagged lists rather than one
+  // flat one, since both the global search's "Go to" section AND the
+  // Tasks panel's blue bars (see RoleFlagsTable's allSubmenus prop) need
+  // this same set. Keeping it in exactly one place is the point: add a
+  // submenu here and it shows up in both places on its own, instead of
+  // two separately-maintained lists drifting apart (which is what
+  // happened to "Daily Loss" vs "Loss" before this).
+  const cashSubmenus: { label: string; action: () => void }[] = [
     { label: 'Items', action: () => { changeTab('loss'); setLossView('items') } },
     { label: 'Sales', action: () => { changeTab('loss'); setLossView('sales') } },
     { label: 'Bills', action: () => { changeTab('loss'); setLossView('bills') } },
@@ -768,6 +767,8 @@ function ItemHubPageInner() {
     { label: 'Customers', action: () => { changeTab('loss'); setLossView('customers') } },
     { label: 'Receipts', action: () => { changeTab('loss'); setLossView('receipts') } },
     { label: 'Daily', action: () => { changeTab('loss'); setLossView('dailySummary') } },
+  ]
+  const manageSubmenus: { label: string; action: () => void }[] = [
     { label: 'Staff', action: () => { changeTab('manage'); setManageInitialView('staff_times') } },
     { label: 'Advert', action: () => { changeTab('manage'); setManageInitialView('advert') } },
     { label: 'Dress Code', action: () => { changeTab('manage'); setManageInitialView('staff_dress') } },
@@ -780,10 +781,33 @@ function ItemHubPageInner() {
     { label: 'Quality Assurance', action: () => { changeTab('manage'); setManageInitialView('quality_assurance') } },
     { label: 'Training', action: () => { changeTab('manage'); setManageInitialView('training') } },
     { label: 'Logs', action: () => { changeTab('manage'); setManageInitialView('logs') } },
+  ]
+  const accountSubmenus = hamburgerLinks.map(l => ({ label: l.label, action: () => router.push(l.href) }))
+
+  // Feeds the Tasks panel's blue bars (RolePanel -> RoleFlagsTable) -- one
+  // bar per submenu here, tagged with which section it belongs to.
+  const taskSubmenus: { label: string; section: string; action: () => void }[] = [
+    ...cashSubmenus.map(s => ({ ...s, section: 'Grony Cash' })),
+    ...manageSubmenus.map(s => ({ ...s, section: 'Grony Manage' })),
+    ...accountSubmenus.map(s => ({ ...s, section: 'Account' })),
+  ]
+
+  // Every tab/sub-tab/menu/page the global search can jump to directly --
+  // matched and ranked ahead of the data categories below (Items/
+  // Customers/etc.) so typing e.g. "sales" lands on the Sales tab itself
+  // rather than making you scroll past item/customer/vendor name matches
+  // first. Recomputed each render rather than memoized -- it's a small
+  // array of cheap closures, not worth the dependency-list upkeep.
+  const navDestinations: { label: string; action: () => void }[] = [
+    { label: 'Home', action: () => changeTab('today') },
+    { label: 'Grony Cash', action: () => changeTab('loss') },
+    { label: 'Grony Manage', action: () => changeTab('manage') },
+    ...cashSubmenus,
+    ...manageSubmenus,
     { label: 'Tasks', action: () => setOpenRole('joe') },
     { label: 'Opener', action: () => setOpenRole('opener') },
     { label: 'Closer', action: () => setOpenRole('closer') },
-    ...hamburgerLinks.map(l => ({ label: l.label, action: () => router.push(l.href) })),
+    ...accountSubmenus,
   ]
   const navQuery = globalSearchQuery.trim().toLowerCase()
   const navMatches = navQuery
@@ -1124,6 +1148,7 @@ function ItemHubPageInner() {
             onClose={() => setOpenRole(null)}
             items={items}
             onItemsChanged={setItems}
+            taskSubmenus={taskSubmenus}
           />
         ) : (<>
         {addForm === 'sale'    && outerTab === 'loss' && lossView === 'sales'    && <div className="px-4"><NewSaleForm    onSuccess={() => setAddForm(null)} /></div>}

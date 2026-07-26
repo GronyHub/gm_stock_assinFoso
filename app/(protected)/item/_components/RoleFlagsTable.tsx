@@ -4,18 +4,18 @@ import { fmtOrdinalDate } from '@/lib/fmtDate'
 import { SHORT_LABEL, ERRORS_TAB_VIOLATION, SUBMENU_HOME, type Violation } from './useViolations'
 import ViolationFixPanel from './ViolationFixPanel'
 
-// Display order for the group bars -- violations themselves are pre-sorted
-// by count within a role's list, so grouping is done without disturbing
-// that, just bucketed under whichever submenu bar comes first here.
-const SUBMENU_ORDER = ['Items', 'Counts', 'Daily Loss', 'Sales', 'CAB', 'Grony Manage']
+// Fallback display order for the group bars when no comprehensive
+// allSubmenus list is supplied (Opener's own use of this table) --
+// violations themselves are pre-sorted by count within a role's list, so
+// grouping is done without disturbing that, just bucketed under whichever
+// submenu bar comes first here.
+const SUBMENU_ORDER = ['Items', 'Counts', 'Loss', 'Sales', 'CAB', 'Grony Manage']
 
-// Which top-level tab each submenu bar actually lives under -- everything
-// except the former-Bino bucket is a Grony Cash submenu. A green section bar
-// marks the boundary each time this changes walking down SUBMENU_ORDER, so
-// Joe's panel (which now mixes both) still shows which half of the app
-// a group of flags belongs to.
+// Which top-level tab each submenu bar actually lives under, same fallback
+// case as above. A green section bar marks the boundary each time this
+// changes walking down SUBMENU_ORDER.
 const SECTION_OF: Record<string, string> = {
-  Items: 'Grony Cash', Counts: 'Grony Cash', 'Daily Loss': 'Grony Cash', Sales: 'Grony Cash', CAB: 'Grony Cash',
+  Items: 'Grony Cash', Counts: 'Grony Cash', Loss: 'Grony Cash', Sales: 'Grony Cash', CAB: 'Grony Cash',
   'Grony Manage': 'Grony Manage',
 }
 
@@ -78,7 +78,7 @@ function dueCell(v: Violation, deadline: string | undefined, threshold: number):
 // (reused from whichever tab already renders it) directly in place, with no
 // navigation. Omit them (Bino/Opener) and a row click falls back to
 // `onGoToViolation`, navigating to that violation's home tab as before.
-export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy, assignedOn, vSettings, onGoToViolation, items, onItemsChanged, lossSummary, onFixLossFeed }: {
+export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy, assignedOn, vSettings, onGoToViolation, items, onItemsChanged, lossSummary, onFixLossFeed, allSubmenus, onNavigateSubmenu }: {
   violations: Violation[]
   assignments: Record<string, string>
   deadlines: Record<string, string>
@@ -90,6 +90,11 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
   onItemsChanged?: (items: Item[]) => void
   lossSummary?: LossSummary
   onFixLossFeed?: () => void
+  // Every real submenu (Tasks only) -- when supplied, every one of these
+  // gets its own blue bar (0/✓ if nothing's flagged there), instead of only
+  // ones that happen to have a violation type mapped to them.
+  allSubmenus?: { label: string; section: string }[]
+  onNavigateSubmenu?: (label: string) => void
 }) {
   const threshold = parseInt(vSettings.threshold_days ?? '3', 10)
   const inlineFix = items !== undefined && onItemsChanged !== undefined
@@ -124,8 +129,8 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
   // Counts, Sales, etc.) so a row's origin is obvious without opening it --
   // a bar per group instead of repeating the submenu name on every row.
   // The Loss Feed period totals (All-Time/Yesterday/etc.) are pinned into
-  // the Daily Loss group ahead of the Gains violation row instead of
-  // living in their own separate table above this one.
+  // the Loss group ahead of the Gains violation row instead of living in
+  // their own separate table above this one.
   const lossRows = lossSummary ? [
     { label: 'All-Time', period: lossSummary.total },
     { label: 'Yesterday', period: lossSummary.yesterday },
@@ -141,7 +146,26 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
       if (!map.has(submenu)) map.set(submenu, [])
       map.get(submenu)!.push(v)
     }
-    if (lossSummary && !map.has('Daily Loss')) map.set('Daily Loss', [])
+    if (lossSummary && !map.has('Loss')) map.set('Loss', [])
+
+    // Comprehensive mode (Tasks): a bar for every real submenu, not just
+    // ones with something flagged -- empty ones just show 0/✓ with no rows
+    // and no expand/collapse (there's nothing to show), and clicking them
+    // navigates there directly instead.
+    if (allSubmenus) {
+      const order = allSubmenus.map(s => s.label)
+      const extra = Array.from(map.keys()).filter(k => !order.includes(k))
+      const fullOrder = [...order, ...extra]
+      const sectionOf = new Map(allSubmenus.map(s => [s.label, s.section]))
+      return fullOrder.map((submenu, i) => {
+        const rows = map.get(submenu) ?? []
+        const section = sectionOf.get(submenu) ?? 'Grony Manage'
+        const prevSubmenu = fullOrder[i - 1]
+        const prevSection = prevSubmenu !== undefined ? (sectionOf.get(prevSubmenu) ?? 'Grony Manage') : null
+        return { submenu, rows, total: rows.reduce((s, v) => s + v.count, 0), section, showSection: section !== prevSection }
+      })
+    }
+
     const order = SUBMENU_ORDER.filter(s => map.has(s))
     return order.map((submenu, i) => {
       const rows = map.get(submenu)!
@@ -150,7 +174,7 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
       const prevSection = prevSubmenu !== undefined ? (SECTION_OF[prevSubmenu] ?? prevSubmenu) : null
       return { submenu, rows, total: rows.reduce((s, v) => s + v.count, 0), section, showSection: section !== prevSection }
     })
-  }, [violations, lossSummary])
+  }, [violations, lossSummary, allSubmenus])
 
   // Every submenu belonging to each section, so a green bar's click can
   // toggle all of its blue bars together.
@@ -188,6 +212,10 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
         </thead>
         {groupedViolations.map(({ submenu, rows, total, section, showSection }) => {
           const showRows = groupShown(submenu)
+          // The Loss bar always has its period totals (lossRows) to show
+          // regardless of whether there's an active Gains violation, so it
+          // never counts as "empty" even when total (violation count) is 0.
+          const hasContent = total > 0 || (submenu === 'Loss' && lossRows.length > 0)
           return (
           <tbody key={submenu} className="divide-y divide-gray-100">
             {inlineFix && showSection && (
@@ -197,17 +225,17 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
                 </td>
               </tr>
             )}
-            <tr onClick={() => toggleGroup(submenu)} className="cursor-pointer">
+            <tr onClick={() => !hasContent && onNavigateSubmenu ? onNavigateSubmenu(submenu) : toggleGroup(submenu)} className="cursor-pointer">
               <td colSpan={4} className="px-3 py-1.5 bg-blue-600">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-white text-[11px]">
-                    {showRows ? '▾ ' : '▸ '}{submenu}
+                    {!hasContent && onNavigateSubmenu ? '→ ' : showRows ? '▾ ' : '▸ '}{submenu}
                   </span>
                   <span className="font-bold text-white text-[11px]">{total > 0 ? total : '✓'}</span>
                 </div>
               </td>
             </tr>
-            {showRows && submenu === 'Daily Loss' && lossRows.map(r => (
+            {showRows && submenu === 'Loss' && lossRows.map(r => (
               <tr key={r.label} onClick={() => r.period.n > 0 && onFixLossFeed?.()}
                 className={`transition ${r.period.n > 0 ? 'cursor-pointer hover:bg-blue-50' : ''}`}>
                 <td className={`px-2 py-1.5 whitespace-nowrap ${r.period.n > 0 ? 'text-gray-800' : 'text-gray-400'}`}>{r.label}</td>
