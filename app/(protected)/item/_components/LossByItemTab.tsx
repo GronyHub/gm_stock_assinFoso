@@ -1,6 +1,9 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
+import { AnalyticsToggle } from './analyticsShared'
+const LossAnalyticsSection = dynamic(() => import('./LossAnalyticsSection'), { ssr: false })
 
 type Row = { item_id: number; item_name: string; lgAmt: number; lossCount: number }
 type SortCol = 'item_name' | 'lossCount' | 'lgAmt'
@@ -36,6 +39,10 @@ export default function LossByItemTab({ search }: { search: string }) {
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [sort, setSort] = useState<{ col: SortCol; dir: SortDir }>({ col: 'lgAmt', dir: 'desc' })
+  // Trend charts + top/least-loss rankings that used to live under the
+  // removed "Data" tab's "Loss" section -- shown here since both this list
+  // and that section are ultimately about ranking items by loss.
+  const [showAnalytics, setShowAnalytics] = useState(false)
 
   useEffect(() => {
     fetch('/api/losses/summary').then(r => r.json())
@@ -59,8 +66,22 @@ export default function LossByItemTab({ search }: { search: string }) {
 
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
 
+  if (showAnalytics) {
+    return (
+      <div className="flex flex-col h-full min-h-0 p-2 overflow-y-auto">
+        <div className="shrink-0 flex justify-end mb-2">
+          <AnalyticsToggle showing={showAnalytics} onToggle={() => setShowAnalytics(false)} />
+        </div>
+        <LossAnalyticsSection />
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col h-full min-h-0 p-2">
+      <div className="shrink-0 flex justify-end mb-2">
+        <AnalyticsToggle showing={showAnalytics} onToggle={() => setShowAnalytics(true)} />
+      </div>
       <div className="flex-1 min-h-0 overflow-auto rounded-xl border border-gray-200 bg-white">
         <table className="w-full table-fixed border-collapse text-[11px]">
           <colgroup>
