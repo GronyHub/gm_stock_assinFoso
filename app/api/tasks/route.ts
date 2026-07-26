@@ -15,6 +15,7 @@ async function ensureTable() {
       notes TEXT,
       due_date DATE,
       submenu TEXT,
+      view TEXT,
       done BOOLEAN NOT NULL DEFAULT false,
       created_by TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -22,13 +23,14 @@ async function ensureTable() {
     )
   `.catch(() => {})
   await sql`ALTER TABLE custom_tasks ADD COLUMN IF NOT EXISTS submenu TEXT`.catch(() => {})
+  await sql`ALTER TABLE custom_tasks ADD COLUMN IF NOT EXISTS view TEXT`.catch(() => {})
 }
 
 export async function GET() {
   await ensureTable()
   try {
     const rows = await sql`
-      SELECT id, title, notes, due_date, submenu, done, created_by, created_at, completed_at
+      SELECT id, title, notes, due_date, submenu, view, done, created_by, created_at, completed_at
       FROM custom_tasks
       ORDER BY done ASC, due_date NULLS LAST, created_at DESC
     `
@@ -44,9 +46,10 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   await ensureTable()
 
-  const { title, notes, due_date, submenu } = await req.json()
+  const { title, notes, due_date, submenu, view } = await req.json()
   const text = typeof title === 'string' ? title.trim() : ''
   const submenuText = typeof submenu === 'string' ? submenu.trim() : ''
+  const viewText = typeof view === 'string' ? view.trim() : ''
   if (!text) return NextResponse.json({ error: 'Title is required' }, { status: 400 })
   if (!submenuText) return NextResponse.json({ error: 'Submenu is required' }, { status: 400 })
 
@@ -54,9 +57,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const [row] = await sql`
-      INSERT INTO custom_tasks (title, notes, due_date, submenu, created_by)
-      VALUES (${text}, ${typeof notes === 'string' && notes.trim() ? notes.trim() : null}, ${due_date || null}, ${submenuText}, ${actor})
-      RETURNING id, title, notes, due_date, submenu, done, created_by, created_at, completed_at
+      INSERT INTO custom_tasks (title, notes, due_date, submenu, view, created_by)
+      VALUES (${text}, ${typeof notes === 'string' && notes.trim() ? notes.trim() : null}, ${due_date || null}, ${submenuText}, ${viewText || null}, ${actor})
+      RETURNING id, title, notes, due_date, submenu, view, done, created_by, created_at, completed_at
     `
     return NextResponse.json(row, { status: 201 })
   } catch (e) {
