@@ -740,11 +740,16 @@ function ItemHubPageInner() {
   const username = (session?.user as any)?.username ?? session?.user?.name ?? ''
   const canSeePL = role === 'owner' || username === 'joe'
   const isOwnerOrJoe = role === 'owner' || username.toLowerCase() === 'joe'
+  const isGrony = username.toLowerCase() === 'grony'
   const hamburgerLinks = [
     ...HAMBURGER_LINKS,
     ...(isOwnerOrJoe ? [
       { href: '/debug/unlink-mismatch', label: 'Fix Mislinked Sales' },
     ] : []),
+    // Private to Grony alone -- UKTab re-checks the session itself too, so
+    // this hidden link is just about not showing it to anyone else, not the
+    // only thing guarding the page.
+    ...(isGrony ? [{ href: '/uk', label: 'UK' }] : []),
   ]
 
   // Every real submenu under Grony Cash, Grony Manage, and the account
