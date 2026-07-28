@@ -61,13 +61,24 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const {
-    invoice_number, invoice_date, customer_name, notes, lines, document_type,
+    invoice_number, invoice_date, customer_name, customer_id, notes, lines, document_type,
     customer_phone, customer_organisation, customer_town_district, customer_region,
   } = await req.json()
   if (!invoice_number || !invoice_date || !customer_name) {
     return NextResponse.json({ error: 'Receipt number, date, and customer name are required' }, { status: 400 })
   }
   const docType = document_type === 'Invoice' ? 'Invoice' : 'Receipt'
+
+  // A picked customer's name is resolved here rather than trusted from the
+  // client -- same reasoning as vendors on Purchase Orders and customers on
+  // Sales receipts, so a stale name sent alongside customer_id can't leave
+  // this record linked to one customer but displaying another's name.
+  let resolvedCustomerName = String(customer_name).trim()
+  const customerIdVal = customer_id ? Number(customer_id) : null
+  if (customerIdVal) {
+    const [cust] = await sql`SELECT display_name FROM customers WHERE id = ${customerIdVal}`
+    if (cust) resolvedCustomerName = cust.display_name
+  }
 
   const cleanLines = (Array.isArray(lines) ? lines : [])
     .map((l: any) => ({
@@ -100,7 +111,7 @@ export async function POST(req: NextRequest) {
          subtotal, total, balance, adjustment, notes)
       VALUES
         (${zohoInvoiceId}, ${invoice_number}, ${invoice_date}, NULL, 'Closed', ${docType},
-         ${customer_name}, NULL, 'GHS',
+         ${resolvedCustomerName}, ${customerIdVal}, 'GHS',
          ${customer_phone || null}, ${customer_organisation || null}, ${customer_town_district || null}, ${customer_region || null},
          ${subtotal}, ${subtotal}, 0, 0, ${notes ?? null})
       RETURNING id
@@ -119,7 +130,7 @@ export async function POST(req: NextRequest) {
       GROUP BY i.id, c.display_name
     `, [invoice.id])
 
-    await logActivity(enteredBy ?? 'Unknown', 'added receipt', `${invoice_number} · ₵${subtotal.toFixed(2)} for ${customer_name}`)
+    await logActivity(enteredBy ?? 'Unknown', 'added receipt', `${invoice_number} · ₵${subtotal.toFixed(2)} for ${resolvedCustomerName}`)
     return NextResponse.json(created)
   } catch (e) {
     console.error('receipt insert error:', e)
