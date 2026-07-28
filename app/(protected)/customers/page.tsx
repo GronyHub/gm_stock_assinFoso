@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 
 type Customer = {
   id: number
@@ -38,9 +38,43 @@ function NewCustomerForm({ onCreated, onCancel }: { onCreated: (c: Customer) => 
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [location, setLocation] = useState('')
+  const [locationOptions, setLocationOptions] = useState<string[]>([])
+  const [locationDropdownOpen, setLocationDropdownOpen] = useState(false)
+  const locationBoxRef = useRef<HTMLDivElement>(null)
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/locations')
+      .then(r => r.json())
+      .then(d => setLocationOptions(Array.isArray(d) ? d : []))
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (locationBoxRef.current && !locationBoxRef.current.contains(e.target as Node)) setLocationDropdownOpen(false)
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [])
+
+  const locationMatches = location.trim()
+    ? locationOptions.filter(l => l.toLowerCase().includes(location.trim().toLowerCase()))
+    : locationOptions
+
+  function pickLocation(l: string) {
+    setLocation(l)
+    setLocationDropdownOpen(false)
+  }
+  function addNewLocation() {
+    const name = location.trim()
+    if (!name) return
+    setLocationOptions(prev => prev.includes(name) ? prev : [...prev, name].sort())
+    setLocation(name)
+    setLocationDropdownOpen(false)
+  }
 
   async function submit() {
     setError(null)
@@ -93,10 +127,29 @@ function NewCustomerForm({ onCreated, onCancel }: { onCreated: (c: Customer) => 
           <input type="email" value={email} onChange={e => setEmail(e.target.value)} className={inputCls} />
         </div>
       </div>
-      <div>
+      <div className="relative" ref={locationBoxRef}>
         <label className={labelCls}>Location (optional)</label>
-        <input value={location} onChange={e => setLocation(e.target.value)}
-          placeholder="e.g. Assin Foso" className={inputCls} />
+        <input value={location}
+          onChange={e => { setLocation(e.target.value); setLocationDropdownOpen(true) }}
+          onFocus={() => setLocationDropdownOpen(true)}
+          placeholder="Search or add a location" className={inputCls} />
+        {locationDropdownOpen && (
+          <div className="absolute z-20 left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+            {/* Always the first option -- picking or adding a location
+                shouldn't require free-typing something that might not
+                match how it's already spelled elsewhere. */}
+            <button type="button" onClick={addNewLocation} disabled={!location.trim()}
+              className="w-full text-left px-2.5 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 disabled:opacity-40 border-b border-gray-100">
+              {location.trim() ? `+ Add "${location.trim()}" as a new location` : '+ Add new location'}
+            </button>
+            {locationMatches.map(l => (
+              <button key={l} type="button" onClick={() => pickLocation(l)}
+                className="w-full text-left px-2.5 py-2 text-sm text-gray-800 hover:bg-blue-50 border-b border-gray-100 last:border-0">
+                {l}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       <div>
         <label className={labelCls}>Notes (optional)</label>
