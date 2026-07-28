@@ -238,15 +238,14 @@ const LOSSVIEW_PILL_KEYS: Partial<Record<LossView, string[]>> = {
 }
 
 // Analysis dropped -- it's a strict subset of Grony Cash's Data submenu.
-// Vendors/Customers/Receipts also live nested three deep under Items in
-// Grony Cash (Items -> children row), so they're repeated here as one-tap
-// shortcuts to their own standalone page. Logs moved into Grony Manage.
+// Customers/Vendors/Receipts are NOT here -- they're rendered by
+// cashSubmenus' own actions instead of a route (see hamburgerLinks below),
+// so opening them from the account menu keeps the Grony Cash/Manage top
+// bar and the RoleBar instead of landing on a bare standalone page.
+// Logs moved into Grony Manage.
 const HAMBURGER_LINKS = [
   { href: '/users',        label: 'Users'            },
   { href: '/profile',      label: 'Profile'          },
-  { href: '/customers',    label: 'Customers'        },
-  { href: '/receipts',     label: 'Receipts'         },
-  { href: '/vendors',      label: 'Vendors'          },
   { href: '/counts',       label: 'Counts'           },
   { href: '/purchase-orders', label: 'Purchase Orders' },
   { href: '/aliases/wide', label: 'Alias Wide Table' },
@@ -741,16 +740,6 @@ function ItemHubPageInner() {
   const canSeePL = role === 'owner' || username === 'joe'
   const isOwnerOrJoe = role === 'owner' || username.toLowerCase() === 'joe'
   const isGrony = username.toLowerCase() === 'grony'
-  const hamburgerLinks = [
-    ...HAMBURGER_LINKS,
-    ...(isOwnerOrJoe ? [
-      { href: '/debug/unlink-mismatch', label: 'Fix Mislinked Sales' },
-    ] : []),
-    // Private to Grony alone -- UKTab re-checks the session itself too, so
-    // this hidden link is just about not showing it to anyone else, not the
-    // only thing guarding the page.
-    ...(isGrony ? [{ href: '/uk', label: 'UK' }] : []),
-  ]
 
   // Every real submenu under Grony Cash, Grony Manage, and the account
   // (person icon) menu -- three separate, tagged lists rather than one
@@ -787,7 +776,27 @@ function ItemHubPageInner() {
     { label: 'Training', action: () => { changeTab('manage'); setManageInitialView('training') } },
     { label: 'Logs', action: () => { changeTab('manage'); setManageInitialView('logs') } },
   ]
-  const accountSubmenus = hamburgerLinks.map(l => ({ label: l.label, action: () => router.push(l.href) }))
+
+  // Customers/Vendors/Receipts reuse cashSubmenus' own actions (find, not a
+  // second copy of the changeTab/setLossView calls) so opening them from
+  // the account menu still lands inside Grony Cash's shell -- the Grony
+  // Cash/Manage top bar and RoleBar stay up, instead of a route push to a
+  // bare standalone page with no way back except the browser's back button.
+  const byLabel = (label: string) => cashSubmenus.find(s => s.label === label)!
+  const hamburgerLinks: { label: string; href?: string; action?: () => void }[] = [
+    ...HAMBURGER_LINKS,
+    byLabel('Customers'),
+    byLabel('Receipts'),
+    byLabel('Vendors'),
+    ...(isOwnerOrJoe ? [
+      { href: '/debug/unlink-mismatch', label: 'Fix Mislinked Sales' },
+    ] : []),
+    // Private to Grony alone -- UKTab re-checks the session itself too, so
+    // this hidden link is just about not showing it to anyone else, not the
+    // only thing guarding the page.
+    ...(isGrony ? [{ href: '/uk', label: 'UK' }] : []),
+  ]
+  const accountSubmenus = hamburgerLinks.map(l => ({ label: l.label, action: l.action ?? (() => router.push(l.href!)) }))
 
   // Feeds the Tasks panel's blue bars (RolePanel -> RoleFlagsTable) -- one
   // bar per submenu here, tagged with which section it belongs to.
@@ -1300,8 +1309,13 @@ function ItemHubPageInner() {
             {hamburgerOpen && (
               <div className="absolute bottom-full right-0 mb-1 bg-white border border-gray-200 rounded-xl shadow-xl min-w-[180px] overflow-hidden">
                 <ViewPortalAsButton onDone={() => setHamburgerOpen(false)} />
-                {hamburgerLinks.map(l => (
-                  <Link key={l.href} href={l.href}
+                {hamburgerLinks.map(l => l.action ? (
+                  <button key={l.label} onClick={() => { l.action!(); setHamburgerOpen(false) }}
+                    className="block w-full text-left px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-t border-gray-100 transition">
+                    {l.label}
+                  </button>
+                ) : (
+                  <Link key={l.href} href={l.href!}
                     onClick={() => setHamburgerOpen(false)}
                     className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-t border-gray-100 transition">
                     {l.label}

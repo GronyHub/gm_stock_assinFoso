@@ -112,7 +112,6 @@ export default function CustomersPage({ openAddSignal, initialSearch }: { openAd
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState(initialSearch ?? '')
-  const [filter, setFilter] = useState<'all' | 'active' | 'inactive' | 'internal'>('all')
   const [selected, setSelected] = useState<Customer | null>(null)
   const [showForm, setShowForm] = useState(false)
 
@@ -139,9 +138,6 @@ export default function CustomersPage({ openAddSignal, initialSearch }: { openAd
 
   const filtered = useMemo(() => {
     let v = customers
-    if (filter === 'active')   v = v.filter(x => x.status === 'Active')
-    if (filter === 'inactive') v = v.filter(x => x.status !== 'Active')
-    if (filter === 'internal') v = v.filter(x => x.is_internal)
     if (search.trim()) {
       const q = search.toLowerCase()
       v = v.filter(x =>
@@ -152,7 +148,7 @@ export default function CustomersPage({ openAddSignal, initialSearch }: { openAd
       )
     }
     return v
-  }, [customers, filter, search])
+  }, [customers, search])
 
   const totals = useMemo(() => ({
     customers:   customers.length,
@@ -185,38 +181,20 @@ export default function CustomersPage({ openAddSignal, initialSearch }: { openAd
         />
       )}
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 gap-2">
-        {[
-          { label: 'Total Sales',    value: c(String(totals.sales)),       color: 'text-gray-900' },
-          { label: 'Receipts',       value: String(totals.receipts),       color: 'text-blue-700' },
-          { label: 'Outstanding',    value: c(String(totals.outstanding)), color: totals.outstanding > 0 ? 'text-red-600' : 'text-gray-400' },
-          { label: 'Customers',      value: String(totals.customers),      color: 'text-purple-700' },
-        ].map(s => (
-          <div key={s.label} className="bg-white border border-gray-200 rounded-xl px-3 py-2.5">
-            <p className="text-[10px] text-gray-400 font-medium">{s.label}</p>
-            <p className={`text-base font-bold ${s.color}`}>{s.value}</p>
-          </div>
-        ))}
+      {/* Summary line -- one plain row instead of four boxed cards */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400">
+        <span>Total Sales <b className="text-gray-900 font-bold">{c(String(totals.sales))}</b></span>
+        <span>Receipts <b className="text-blue-700 font-bold">{totals.receipts}</b></span>
+        <span>Outstanding <b className={`font-bold ${totals.outstanding > 0 ? 'text-red-600' : 'text-gray-400'}`}>{c(String(totals.outstanding))}</b></span>
+        <span>Customers <b className="text-purple-700 font-bold">{totals.customers}</b></span>
       </div>
 
-      {/* Search + filter */}
-      <div className="space-y-2">
-        <input
-          value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Search customers…"
-          className="w-full bg-gray-100 border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-400"
-        />
-        <div className="flex gap-1.5 overflow-x-auto pb-0.5">
-          {(['all', 'active', 'inactive', 'internal'] as const).map(f => (
-            <button key={f} onClick={() => setFilter(f)}
-              className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition
-                ${filter === f ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-              {f}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Search */}
+      <input
+        value={search} onChange={e => setSearch(e.target.value)}
+        placeholder="Search customers…"
+        className="w-full bg-gray-100 border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-400"
+      />
 
       {/* Selected customer detail */}
       {selected && (
@@ -277,7 +255,7 @@ export default function CustomersPage({ openAddSignal, initialSearch }: { openAd
           <table className="w-full border-collapse text-xs">
             <thead>
               <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
-                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Name</th>
+                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap sticky left-0 z-10 bg-gray-50">Name</th>
                 <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Company</th>
                 <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Contact Number</th>
                 <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Email Address</th>
@@ -294,7 +272,7 @@ export default function CustomersPage({ openAddSignal, initialSearch }: { openAd
                 return (
                   <tr key={v.id} onClick={() => setSelected(v === selected ? null : v)}
                     className={`cursor-pointer transition ${selected?.id === v.id ? 'bg-blue-50' : i % 2 === 1 ? 'bg-gray-50/60 hover:bg-blue-50/40' : 'hover:bg-blue-50/40'}`}>
-                    <td className="px-3 py-2 font-semibold text-gray-900 whitespace-nowrap">
+                    <td className="px-3 py-2 font-semibold text-gray-900 whitespace-nowrap sticky left-0 z-[1] bg-inherit">
                       {v.is_internal && (
                         <span className="mr-1 text-[9px] bg-purple-100 text-purple-700 font-bold px-1.5 py-0.5 rounded-full align-middle">INT</span>
                       )}
