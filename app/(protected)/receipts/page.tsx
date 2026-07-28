@@ -89,7 +89,6 @@ function NewReceiptForm({ onCreated, onCancel }: { onCreated: (r: Receipt) => vo
   const customerMatches = customerName.trim()
     ? customerOptions.filter(c => c.display_name.toLowerCase().includes(customerName.trim().toLowerCase())).slice(0, 8)
     : customerOptions.slice(0, 8)
-  const exactCustomerMatch = customerOptions.some(c => c.display_name.toLowerCase() === customerName.trim().toLowerCase())
 
   function pickCustomer(c: CustomerOption) {
     setCustomerName(c.display_name)
@@ -224,20 +223,21 @@ function NewReceiptForm({ onCreated, onCancel }: { onCreated: (r: Receipt) => vo
         {customerId != null && (
           <p className="text-[10px] text-green-600 font-semibold mt-0.5">✓ Linked to saved customer</p>
         )}
-        {customerDropdownOpen && (customerMatches.length > 0 || customerName.trim()) && (
+        {customerDropdownOpen && (
           <div className="absolute z-20 left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+            {/* Always the first option, not just once a non-matching name is
+                typed -- adding a customer shouldn't require guessing
+                whether they're new. */}
+            <button type="button" onClick={addNewCustomer} disabled={addingCustomer || !customerName.trim()}
+              className="w-full text-left px-2.5 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 disabled:opacity-40 border-b border-gray-100">
+              {addingCustomer ? 'Adding…' : customerName.trim() ? `+ Add "${customerName.trim()}" as a new customer` : '+ Add new customer'}
+            </button>
             {customerMatches.map(c => (
               <button key={c.id} type="button" onClick={() => pickCustomer(c)}
                 className="w-full text-left px-2.5 py-2 text-sm text-gray-800 hover:bg-blue-50 border-b border-gray-100 last:border-0">
                 {c.display_name}
               </button>
             ))}
-            {customerName.trim() && !exactCustomerMatch && (
-              <button type="button" onClick={addNewCustomer} disabled={addingCustomer}
-                className="w-full text-left px-2.5 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 disabled:opacity-40">
-                {addingCustomer ? 'Adding…' : `+ Add "${customerName.trim()}" as a new customer`}
-              </button>
-            )}
           </div>
         )}
         {customerPickError && <p className="text-xs text-red-500 font-medium mt-0.5">{customerPickError}</p>}
