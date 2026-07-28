@@ -9,9 +9,27 @@
  * info = neutral supplementary info.
  */
 @theme {
-  --color-brand: #2563eb;      /* blue-600 */
-  --color-brand-dark: #1d4ed8; /* blue-700, for hover/active */
-  --color-brand-light: #eff6ff; /* blue-50, for tints/backgrounds */
+  /* Sea blue theme -- overrides Tailwind's built-in `blue` scale itself
+     (not just the `brand` token below), since the app's buttons/links/
+     highlights are written throughout as raw bg-blue-600/text-blue-600/
+     etc. rather than the brand-* utilities. Overriding the scale here
+     reskins all of that in one place instead of touching every file
+     that picked a blue-* shade directly. */
+  --color-blue-50: #f0f9ff;
+  --color-blue-100: #e0f2fe;
+  --color-blue-200: #bae6fd;
+  --color-blue-300: #7dd3fc;
+  --color-blue-400: #38bdf8;
+  --color-blue-500: #0ea5e9;
+  --color-blue-600: #0284c7;
+  --color-blue-700: #0369a1;
+  --color-blue-800: #075985;
+  --color-blue-900: #0c4a6e;
+  --color-blue-950: #082f49;
+
+  --color-brand: #0284c7;      /* sea blue (was blue-600) */
+  --color-brand-dark: #0369a1; /* sea blue, darker (was blue-700), for hover/active */
+  --color-brand-light: #f0f9ff; /* sea blue, lightest (was blue-50), for tints/backgrounds */
 
   --color-success: #059669;       /* emerald-600 */
   --color-success-light: #ecfdf5; /* emerald-50 */
