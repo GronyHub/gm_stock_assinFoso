@@ -3,14 +3,22 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 
+// customers predates a location field -- ADD COLUMN IF NOT EXISTS is cheap
+// once it's there, so just ensure it on every request rather than a
+// separate migration step (same approach as invoices' customer_* columns).
+async function ensureColumns() {
+  await sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS location TEXT`.catch(() => {})
+}
+
 export async function GET() {
   const session = await auth()
   if (!session) return NextResponse.json([], { status: 401 })
 
+  await ensureColumns()
   const customers = await sql`
     SELECT
       c.id, c.display_name, c.company_name, c.first_name, c.last_name,
-      c.email, c.phone, c.status, c.payment_terms_label,
+      c.email, c.phone, c.location, c.status, c.payment_terms_label,
       c.opening_balance, c.credit_limit, c.notes, c.is_internal,
       COUNT(DISTINCT sr.id)::int              AS receipt_count,
       COALESCE(SUM(sr.total), 0)::numeric     AS receipt_total,
@@ -33,7 +41,7 @@ export async function POST(req: NextRequest) {
 
   const {
     display_name, company_name, first_name, last_name,
-    email, phone, payment_terms_label, opening_balance, credit_limit, notes,
+    email, phone, location, payment_terms_label, opening_balance, credit_limit, notes,
   } = await req.json()
 
   if (!display_name || !String(display_name).trim()) {
@@ -43,16 +51,17 @@ export async function POST(req: NextRequest) {
   const enteredBy = session.user?.name || (session.user as any)?.username || null
 
   try {
+    await ensureColumns()
     const [customer] = await sql`
       INSERT INTO customers
-        (display_name, company_name, first_name, last_name, email, phone,
+        (display_name, company_name, first_name, last_name, email, phone, location,
          status, payment_terms_label, opening_balance, credit_limit, notes, is_internal)
       VALUES
         (${String(display_name).trim()}, ${company_name || null}, ${first_name || null}, ${last_name || null},
-         ${email || null}, ${phone || null},
+         ${email || null}, ${phone || null}, ${location || null},
          'Active', ${payment_terms_label || null}, ${opening_balance || 0}, ${credit_limit || null}, ${notes || null}, false)
       RETURNING
-        id, display_name, company_name, first_name, last_name, email, phone,
+        id, display_name, company_name, first_name, last_name, email, phone, location,
         status, payment_terms_label, opening_balance, credit_limit, notes, is_internal
     `
 
