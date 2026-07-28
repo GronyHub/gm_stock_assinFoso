@@ -57,7 +57,6 @@ export default function NewReceiptPage({ onSuccess }: { onSuccess?: () => void }
   const customerMatches = customer.trim()
     ? customers.filter(c => c.display_name.toLowerCase().includes(customer.trim().toLowerCase())).slice(0, 8)
     : customers.slice(0, 8)
-  const exactCustomerMatch = customers.some(c => c.display_name.toLowerCase() === customer.trim().toLowerCase())
 
   function pickCustomer(c: Customer) {
     setCustomer(c.display_name)
@@ -287,20 +286,21 @@ placeholder={loadingItems ? 'Loading…' : `Search ${allItems.length} items…`}
               {customerId != null && (
                 <p className="text-[8px] text-green-600 font-semibold mt-0.5">✓ Linked to saved customer</p>
               )}
-              {customerDropdownOpen && (customerMatches.length > 0 || customer.trim()) && (
+              {customerDropdownOpen && (
                 <div className="absolute z-20 left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                  {/* Always the first option, not just once a non-matching
+                      name is typed -- adding a walk-in as a saved customer
+                      shouldn't require guessing whether they're new. */}
+                  <button type="button" onClick={addNewCustomer} disabled={addingCustomer || !customer.trim()}
+                    className="w-full text-left px-2 py-1.5 text-[10px] font-semibold text-blue-600 hover:bg-blue-50 disabled:opacity-40 border-b border-gray-100">
+                    {addingCustomer ? 'Adding…' : customer.trim() ? `+ Add "${customer.trim()}" as a new customer` : '+ Add new customer'}
+                  </button>
                   {customerMatches.map(c => (
                     <button key={c.id} type="button" onClick={() => pickCustomer(c)}
                       className="w-full text-left px-2 py-1.5 text-[10px] text-gray-800 hover:bg-blue-50 border-b border-gray-100 last:border-0">
                       {c.display_name}
                     </button>
                   ))}
-                  {customer.trim() && !exactCustomerMatch && (
-                    <button type="button" onClick={addNewCustomer} disabled={addingCustomer}
-                      className="w-full text-left px-2 py-1.5 text-[10px] font-semibold text-blue-600 hover:bg-blue-50 disabled:opacity-40">
-                      {addingCustomer ? 'Adding…' : `+ Add "${customer.trim()}" as a new customer`}
-                    </button>
-                  )}
                 </div>
               )}
               {customerError && <p className="text-[9px] text-red-500 font-medium mt-0.5">{customerError}</p>}
