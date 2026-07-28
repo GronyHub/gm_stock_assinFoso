@@ -9,6 +9,7 @@ type Customer = {
   last_name: string | null
   email: string | null
   phone: string | null
+  location: string | null
   status: string | null
   payment_terms_label: string | null
   opening_balance: string | null
@@ -36,6 +37,7 @@ function NewCustomerForm({ onCreated, onCancel }: { onCreated: (c: Customer) => 
   const [companyName, setCompanyName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
+  const [location, setLocation] = useState('')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -52,6 +54,7 @@ function NewCustomerForm({ onCreated, onCancel }: { onCreated: (c: Customer) => 
         company_name: companyName.trim() || null,
         phone: phone.trim() || null,
         email: email.trim() || null,
+        location: location.trim() || null,
         notes: notes.trim() || null,
       }),
     })
@@ -89,6 +92,11 @@ function NewCustomerForm({ onCreated, onCancel }: { onCreated: (c: Customer) => 
           <label className={labelCls}>Email</label>
           <input type="email" value={email} onChange={e => setEmail(e.target.value)} className={inputCls} />
         </div>
+      </div>
+      <div>
+        <label className={labelCls}>Location (optional)</label>
+        <input value={location} onChange={e => setLocation(e.target.value)}
+          placeholder="e.g. Assin Foso" className={inputCls} />
       </div>
       <div>
         <label className={labelCls}>Notes (optional)</label>
@@ -219,6 +227,7 @@ export default function CustomersPage({ openAddSignal, initialSearch }: { openAd
           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs border-t border-gray-100 pt-3">
             <div><span className="text-gray-400">Phone: </span><span className="font-medium">{selected.phone ?? '—'}</span></div>
             <div><span className="text-gray-400">Email: </span><span className="font-medium">{selected.email ?? '—'}</span></div>
+            <div><span className="text-gray-400">Location: </span><span className="font-medium">{selected.location ?? '—'}</span></div>
             <div><span className="text-gray-400">Terms: </span><span className="font-medium">{selected.payment_terms_label ?? '—'}</span></div>
             <div><span className="text-gray-400">Credit: </span><span className="font-medium">{c(selected.credit_limit)}</span></div>
           </div>
@@ -259,6 +268,7 @@ export default function CustomersPage({ openAddSignal, initialSearch }: { openAd
                 <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Company</th>
                 <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Contact Number</th>
                 <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Email Address</th>
+                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Location</th>
                 <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Status</th>
                 <th className="text-right px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Sales Amount</th>
                 <th className="text-right px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Outstanding</th>
@@ -281,6 +291,7 @@ export default function CustomersPage({ openAddSignal, initialSearch }: { openAd
                     <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{v.company_name ?? '—'}</td>
                     <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{v.phone ?? '—'}</td>
                     <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{v.email ?? '—'}</td>
+                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{v.location ?? '—'}</td>
                     <td className="px-3 py-2 whitespace-nowrap">
                       <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${v.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                         {v.status ?? '—'}
