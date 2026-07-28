@@ -32,49 +32,83 @@ function c(v: string | null | undefined) {
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-400'
 const labelCls = 'text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5 block'
 
+// Shared by New Customer and editing an existing one -- a pick-from-list
+// combobox rather than free text, so a location gets picked from what's
+// already in use (or added as a genuinely new one) instead of a
+// free-typed near-duplicate variant.
+function LocationField({ value, onChange, label = 'Location (optional)' }: { value: string; onChange: (v: string) => void; label?: string }) {
+  const [options, setOptions] = useState<string[]>([])
+  const [open, setOpen] = useState(false)
+  const boxRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    fetch('/api/locations')
+      .then(r => r.json())
+      .then(d => setOptions(Array.isArray(d) ? d : []))
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [])
+
+  const matches = value.trim()
+    ? options.filter(l => l.toLowerCase().includes(value.trim().toLowerCase()))
+    : options
+
+  function pick(l: string) {
+    onChange(l)
+    setOpen(false)
+  }
+  function addNew() {
+    const name = value.trim()
+    if (!name) return
+    setOptions(prev => prev.includes(name) ? prev : [...prev, name].sort())
+    onChange(name)
+    setOpen(false)
+  }
+
+  return (
+    <div className="relative" ref={boxRef}>
+      <label className={labelCls}>{label}</label>
+      <input value={value}
+        onChange={e => { onChange(e.target.value); setOpen(true) }}
+        onFocus={() => setOpen(true)}
+        placeholder="Search or add a location" className={inputCls} />
+      {open && (
+        <div className="absolute z-20 left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+          {/* Always the first option -- picking or adding a location
+              shouldn't require free-typing something that might not
+              match how it's already spelled elsewhere. */}
+          <button type="button" onClick={addNew} disabled={!value.trim()}
+            className="w-full text-left px-2.5 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 disabled:opacity-40 border-b border-gray-100">
+            {value.trim() ? `+ Add "${value.trim()}" as a new location` : '+ Add new location'}
+          </button>
+          {matches.map(l => (
+            <button key={l} type="button" onClick={() => pick(l)}
+              className="w-full text-left px-2.5 py-2 text-sm text-gray-800 hover:bg-blue-50 border-b border-gray-100 last:border-0">
+              {l}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function NewCustomerForm({ onCreated, onCancel }: { onCreated: (c: Customer) => void; onCancel: () => void }) {
   const [displayName, setDisplayName] = useState('')
   const [companyName, setCompanyName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [location, setLocation] = useState('')
-  const [locationOptions, setLocationOptions] = useState<string[]>([])
-  const [locationDropdownOpen, setLocationDropdownOpen] = useState(false)
-  const locationBoxRef = useRef<HTMLDivElement>(null)
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    fetch('/api/locations')
-      .then(r => r.json())
-      .then(d => setLocationOptions(Array.isArray(d) ? d : []))
-      .catch(() => {})
-  }, [])
-
-  useEffect(() => {
-    function onClickOutside(e: MouseEvent) {
-      if (locationBoxRef.current && !locationBoxRef.current.contains(e.target as Node)) setLocationDropdownOpen(false)
-    }
-    document.addEventListener('mousedown', onClickOutside)
-    return () => document.removeEventListener('mousedown', onClickOutside)
-  }, [])
-
-  const locationMatches = location.trim()
-    ? locationOptions.filter(l => l.toLowerCase().includes(location.trim().toLowerCase()))
-    : locationOptions
-
-  function pickLocation(l: string) {
-    setLocation(l)
-    setLocationDropdownOpen(false)
-  }
-  function addNewLocation() {
-    const name = location.trim()
-    if (!name) return
-    setLocationOptions(prev => prev.includes(name) ? prev : [...prev, name].sort())
-    setLocation(name)
-    setLocationDropdownOpen(false)
-  }
 
   async function submit() {
     setError(null)
@@ -127,30 +161,7 @@ function NewCustomerForm({ onCreated, onCancel }: { onCreated: (c: Customer) => 
           <input type="email" value={email} onChange={e => setEmail(e.target.value)} className={inputCls} />
         </div>
       </div>
-      <div className="relative" ref={locationBoxRef}>
-        <label className={labelCls}>Location (optional)</label>
-        <input value={location}
-          onChange={e => { setLocation(e.target.value); setLocationDropdownOpen(true) }}
-          onFocus={() => setLocationDropdownOpen(true)}
-          placeholder="Search or add a location" className={inputCls} />
-        {locationDropdownOpen && (
-          <div className="absolute z-20 left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
-            {/* Always the first option -- picking or adding a location
-                shouldn't require free-typing something that might not
-                match how it's already spelled elsewhere. */}
-            <button type="button" onClick={addNewLocation} disabled={!location.trim()}
-              className="w-full text-left px-2.5 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 disabled:opacity-40 border-b border-gray-100">
-              {location.trim() ? `+ Add "${location.trim()}" as a new location` : '+ Add new location'}
-            </button>
-            {locationMatches.map(l => (
-              <button key={l} type="button" onClick={() => pickLocation(l)}
-                className="w-full text-left px-2.5 py-2 text-sm text-gray-800 hover:bg-blue-50 border-b border-gray-100 last:border-0">
-                {l}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      <LocationField value={location} onChange={setLocation} />
       <div>
         <label className={labelCls}>Notes (optional)</label>
         <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className={inputCls} />
@@ -169,12 +180,80 @@ function NewCustomerForm({ onCreated, onCancel }: { onCreated: (c: Customer) => 
   )
 }
 
+function EditCustomerForm({ customer, onSaved, onCancel }: { customer: Customer; onSaved: (c: Customer) => void; onCancel: () => void }) {
+  const [companyName, setCompanyName] = useState(customer.company_name ?? '')
+  const [phone, setPhone] = useState(customer.phone ?? '')
+  const [email, setEmail] = useState(customer.email ?? '')
+  const [location, setLocation] = useState(customer.location ?? '')
+  const [notes, setNotes] = useState(customer.notes ?? '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function submit() {
+    setError(null)
+    setSaving(true)
+    const res = await fetch(`/api/customers/${customer.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        company_name: companyName.trim() || null,
+        phone: phone.trim() || null,
+        email: email.trim() || null,
+        location: location.trim() || null,
+        notes: notes.trim() || null,
+      }),
+    })
+    setSaving(false)
+    if (res.ok) {
+      onSaved(await res.json())
+    } else {
+      const d = await res.json().catch(() => null)
+      setError(d?.error ?? 'Could not save changes.')
+    }
+  }
+
+  return (
+    <div className="space-y-3 border-t border-gray-100 pt-3">
+      <p className="text-xs font-bold text-blue-600">Edit Customer</p>
+      <div>
+        <label className={labelCls}>Company (optional)</label>
+        <input value={companyName} onChange={e => setCompanyName(e.target.value)} className={inputCls} />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className={labelCls}>Phone</label>
+          <input value={phone} onChange={e => setPhone(e.target.value)} className={inputCls} />
+        </div>
+        <div>
+          <label className={labelCls}>Email</label>
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} className={inputCls} />
+        </div>
+      </div>
+      <LocationField value={location} onChange={setLocation} />
+      <div>
+        <label className={labelCls}>Notes (optional)</label>
+        <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className={inputCls} />
+      </div>
+
+      {error && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-2.5 py-1.5">{error}</p>}
+
+      <div className="flex gap-2">
+        <button onClick={submit} disabled={saving}
+          className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2.5 transition">
+          {saving ? 'Saving…' : 'Save Changes'}
+        </button>
+        <button onClick={onCancel} disabled={saving} className="px-4 py-2.5 bg-gray-100 text-gray-600 text-sm font-semibold rounded-xl">Cancel</button>
+      </div>
+    </div>
+  )
+}
+
 export default function CustomersPage({ openAddSignal, initialSearch }: { openAddSignal?: number; initialSearch?: string } = {}) {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState(initialSearch ?? '')
   const [selected, setSelected] = useState<Customer | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const [editingCustomer, setEditingCustomer] = useState(false)
 
   // Driven by the RoleBar "+" shortcut menu.
   useEffect(() => {
@@ -274,37 +353,59 @@ export default function CustomersPage({ openAddSignal, initialSearch }: { openAd
                 </span>
               </div>
             </div>
-            <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 text-xl font-bold leading-none">×</button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs border-t border-gray-100 pt-3">
-            <div><span className="text-gray-400">Phone: </span><span className="font-medium">{selected.phone ?? '—'}</span></div>
-            <div><span className="text-gray-400">Email: </span><span className="font-medium">{selected.email ?? '—'}</span></div>
-            <div><span className="text-gray-400">Location: </span><span className="font-medium">{selected.location ?? '—'}</span></div>
-            <div><span className="text-gray-400">Terms: </span><span className="font-medium">{selected.payment_terms_label ?? '—'}</span></div>
-            <div><span className="text-gray-400">Credit: </span><span className="font-medium">{c(selected.credit_limit)}</span></div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 border-t border-gray-100 pt-3">
-            {[
-              { label: 'Receipts',     value: String(selected.receipt_count),    sub: c(selected.receipt_total) + ' sales' },
-              { label: 'Invoices',     value: String(selected.invoice_count),    sub: c(selected.invoice_total) + ' invoiced' },
-              { label: 'Inv. Balance', value: c(selected.invoice_outstanding),   sub: parseFloat(selected.invoice_outstanding) > 0 ? '⚠ unpaid' : 'settled' },
-              { label: 'Opening Bal', value: c(selected.opening_balance),        sub: 'opening balance' },
-            ].map(s => (
-              <div key={s.label} className="bg-gray-50 rounded-lg px-3 py-2">
-                <p className="text-[10px] text-gray-400">{s.label}</p>
-                <p className={`text-sm font-bold ${s.label === 'Inv. Balance' && parseFloat(selected.invoice_outstanding) > 0 ? 'text-red-600' : 'text-gray-900'}`}>{s.value}</p>
-                <p className="text-[9px] text-gray-400">{s.sub}</p>
-              </div>
-            ))}
-          </div>
-
-          {selected.notes && (
-            <div className="border-t border-gray-100 pt-2">
-              <p className="text-xs text-gray-400">Notes</p>
-              <p className="text-xs text-gray-700 mt-0.5">{selected.notes}</p>
+            <div className="flex items-center gap-2 shrink-0">
+              {!editingCustomer && (
+                <button onClick={() => setEditingCustomer(true)}
+                  className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded-lg hover:bg-blue-100">
+                  ✏️ Edit
+                </button>
+              )}
+              <button onClick={() => { setSelected(null); setEditingCustomer(false) }}
+                className="text-gray-400 hover:text-gray-600 text-xl font-bold leading-none">×</button>
             </div>
+          </div>
+
+          {editingCustomer ? (
+            <EditCustomerForm customer={selected}
+              onCancel={() => setEditingCustomer(false)}
+              onSaved={updated => {
+                const merged = { ...selected, ...updated }
+                setSelected(merged)
+                setCustomers(prev => prev.map(x => x.id === merged.id ? merged : x))
+                setEditingCustomer(false)
+              }} />
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs border-t border-gray-100 pt-3">
+                <div><span className="text-gray-400">Phone: </span><span className="font-medium">{selected.phone ?? '—'}</span></div>
+                <div><span className="text-gray-400">Email: </span><span className="font-medium">{selected.email ?? '—'}</span></div>
+                <div><span className="text-gray-400">Location: </span><span className="font-medium">{selected.location ?? '—'}</span></div>
+                <div><span className="text-gray-400">Terms: </span><span className="font-medium">{selected.payment_terms_label ?? '—'}</span></div>
+                <div><span className="text-gray-400">Credit: </span><span className="font-medium">{c(selected.credit_limit)}</span></div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 border-t border-gray-100 pt-3">
+                {[
+                  { label: 'Receipts',     value: String(selected.receipt_count),    sub: c(selected.receipt_total) + ' sales' },
+                  { label: 'Invoices',     value: String(selected.invoice_count),    sub: c(selected.invoice_total) + ' invoiced' },
+                  { label: 'Inv. Balance', value: c(selected.invoice_outstanding),   sub: parseFloat(selected.invoice_outstanding) > 0 ? '⚠ unpaid' : 'settled' },
+                  { label: 'Opening Bal', value: c(selected.opening_balance),        sub: 'opening balance' },
+                ].map(s => (
+                  <div key={s.label} className="bg-gray-50 rounded-lg px-3 py-2">
+                    <p className="text-[10px] text-gray-400">{s.label}</p>
+                    <p className={`text-sm font-bold ${s.label === 'Inv. Balance' && parseFloat(selected.invoice_outstanding) > 0 ? 'text-red-600' : 'text-gray-900'}`}>{s.value}</p>
+                    <p className="text-[9px] text-gray-400">{s.sub}</p>
+                  </div>
+                ))}
+              </div>
+
+              {selected.notes && (
+                <div className="border-t border-gray-100 pt-2">
+                  <p className="text-xs text-gray-400">Notes</p>
+                  <p className="text-xs text-gray-700 mt-0.5">{selected.notes}</p>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
@@ -333,7 +434,7 @@ export default function CustomersPage({ openAddSignal, initialSearch }: { openAd
                 const sales = parseFloat(v.receipt_total)
                 const outstanding = parseFloat(v.invoice_outstanding)
                 return (
-                  <tr key={v.id} onClick={() => setSelected(v === selected ? null : v)}
+                  <tr key={v.id} onClick={() => { setSelected(v === selected ? null : v); setEditingCustomer(false) }}
                     className={`cursor-pointer transition ${selected?.id === v.id ? 'bg-blue-50' : i % 2 === 1 ? 'bg-gray-50/60 hover:bg-blue-50/40' : 'hover:bg-blue-50/40'}`}>
                     <td className="px-3 py-2 font-semibold text-gray-900 whitespace-nowrap sticky left-0 z-[1] bg-inherit">
                       {v.is_internal && (
