@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 
 type Line = {
   id: number
@@ -47,12 +47,19 @@ const labelCls = 'text-[10px] font-semibold text-gray-400 uppercase tracking-wid
 
 type DraftLine = { item: string; qty: string; price: string; unit: string; dimensions: string }
 const emptyLine = (): DraftLine => ({ item: '', qty: '1', price: '', unit: '', dimensions: '' })
+type CustomerOption = { id: number; display_name: string }
 
 function NewReceiptForm({ onCreated, onCancel }: { onCreated: (r: Receipt) => void; onCancel: () => void }) {
   const [documentType, setDocumentType] = useState<'Receipt' | 'Invoice'>('Receipt')
   const [invoiceNumber, setInvoiceNumber] = useState(() => `RCT-${Date.now().toString().slice(-8)}`)
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [customerName, setCustomerName] = useState('')
+  const [customerId, setCustomerId] = useState<number | null>(null)
+  const [customerOptions, setCustomerOptions] = useState<CustomerOption[]>([])
+  const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false)
+  const [addingCustomer, setAddingCustomer] = useState(false)
+  const [customerPickError, setCustomerPickError] = useState('')
+  const customerBoxRef = useRef<HTMLDivElement>(null)
   const [notes, setNotes] = useState('')
   const [lines, setLines] = useState<DraftLine[]>([emptyLine()])
   const [saving, setSaving] = useState(false)
@@ -63,6 +70,53 @@ function NewReceiptForm({ onCreated, onCancel }: { onCreated: (r: Receipt) => vo
   const [customerOrganisation, setCustomerOrganisation] = useState('')
   const [customerTownDistrict, setCustomerTownDistrict] = useState('')
   const [customerRegion, setCustomerRegion] = useState('')
+
+  useEffect(() => {
+    fetch('/api/customers')
+      .then(r => r.json())
+      .then(d => setCustomerOptions(Array.isArray(d) ? d.map((c: any) => ({ id: c.id, display_name: c.display_name })) : []))
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (customerBoxRef.current && !customerBoxRef.current.contains(e.target as Node)) setCustomerDropdownOpen(false)
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [])
+
+  const customerMatches = customerName.trim()
+    ? customerOptions.filter(c => c.display_name.toLowerCase().includes(customerName.trim().toLowerCase())).slice(0, 8)
+    : customerOptions.slice(0, 8)
+  const exactCustomerMatch = customerOptions.some(c => c.display_name.toLowerCase() === customerName.trim().toLowerCase())
+
+  function pickCustomer(c: CustomerOption) {
+    setCustomerName(c.display_name)
+    setCustomerId(c.id)
+    setCustomerDropdownOpen(false)
+  }
+
+  async function addNewCustomer() {
+    const name = customerName.trim()
+    if (!name) return
+    setAddingCustomer(true)
+    setCustomerPickError('')
+    const res = await fetch('/api/customers', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ display_name: name }),
+    })
+    const d = await res.json().catch(() => ({}))
+    setAddingCustomer(false)
+    if (res.ok) {
+      setCustomerOptions(prev => [...prev, { id: d.id, display_name: d.display_name }])
+      setCustomerName(d.display_name)
+      setCustomerId(d.id)
+      setCustomerDropdownOpen(false)
+    } else {
+      setCustomerPickError(d.error || 'Could not add customer.')
+    }
+  }
 
   function setDocType(t: 'Receipt' | 'Invoice') {
     setDocumentType(t)
@@ -103,6 +157,7 @@ function NewReceiptForm({ onCreated, onCancel }: { onCreated: (r: Receipt) => vo
         invoice_number: invoiceNumber.trim(),
         invoice_date: date,
         customer_name: customerName.trim(),
+        customer_id: customerId,
         customer_phone: customerPhone.trim() || null,
         customer_organisation: customerOrganisation.trim() || null,
         customer_town_district: customerTownDistrict.trim() || null,
@@ -160,10 +215,32 @@ function NewReceiptForm({ onCreated, onCancel }: { onCreated: (r: Receipt) => vo
         </div>
       </div>
 
-      <div>
+      <div className="relative" ref={customerBoxRef}>
         <label className={labelCls}>Customer Name</label>
-        <input value={customerName} onChange={e => setCustomerName(e.target.value)}
+        <input value={customerName}
+          onChange={e => { setCustomerName(e.target.value); setCustomerId(null); setCustomerDropdownOpen(true) }}
+          onFocus={() => setCustomerDropdownOpen(true)}
           placeholder="Who is this receipt for?" className={inputCls} />
+        {customerId != null && (
+          <p className="text-[10px] text-green-600 font-semibold mt-0.5">✓ Linked to saved customer</p>
+        )}
+        {customerDropdownOpen && (customerMatches.length > 0 || customerName.trim()) && (
+          <div className="absolute z-20 left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+            {customerMatches.map(c => (
+              <button key={c.id} type="button" onClick={() => pickCustomer(c)}
+                className="w-full text-left px-2.5 py-2 text-sm text-gray-800 hover:bg-blue-50 border-b border-gray-100 last:border-0">
+                {c.display_name}
+              </button>
+            ))}
+            {customerName.trim() && !exactCustomerMatch && (
+              <button type="button" onClick={addNewCustomer} disabled={addingCustomer}
+                className="w-full text-left px-2.5 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 disabled:opacity-40">
+                {addingCustomer ? 'Adding…' : `+ Add "${customerName.trim()}" as a new customer`}
+              </button>
+            )}
+          </div>
+        )}
+        {customerPickError && <p className="text-xs text-red-500 font-medium mt-0.5">{customerPickError}</p>}
       </div>
 
       <div>
