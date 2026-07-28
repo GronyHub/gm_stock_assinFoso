@@ -22,4 +22,20 @@ export async function ensureUkTables() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `.catch(() => {})
+  await sql`
+    CREATE TABLE IF NOT EXISTS uk_rows (
+      id SERIAL PRIMARY KEY,
+      submenu_id INT NOT NULL REFERENCES uk_submenus(id) ON DELETE CASCADE,
+      sort_order INT NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `.catch(() => {})
+  await sql`
+    CREATE TABLE IF NOT EXISTS uk_cells (
+      row_id INT NOT NULL REFERENCES uk_rows(id) ON DELETE CASCADE,
+      column_id INT NOT NULL REFERENCES uk_columns(id) ON DELETE CASCADE,
+      value TEXT NOT NULL DEFAULT '',
+      PRIMARY KEY (row_id, column_id)
+    )
+  `.catch(() => {})
 }

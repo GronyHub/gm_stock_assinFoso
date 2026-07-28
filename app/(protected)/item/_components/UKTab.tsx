@@ -7,6 +7,7 @@ type Person = typeof PEOPLE[number]
 
 type Submenu = { id: number; person: string; name: string; sort_order: number; created_at: string }
 type Column = { id: number; submenu_id: number; name: string; sort_order: number; created_at: string }
+type Row = { id: number; submenu_id: number; sort_order: number; created_at: string; values: Record<number, string> }
 
 const chipCls = (active: boolean) =>
   `text-xs font-semibold px-3 py-1.5 rounded-lg transition
@@ -14,8 +15,8 @@ const chipCls = (active: boolean) =>
 
 // A generic "define your own submenus, then define your own columns under
 // each one" builder -- Grony/Mina/Prisca each get their own independent set
-// of submenus. No row data yet, just the structure (name + columns); a
-// table preview shows the header row so the shape is visible as it's built.
+// of submenus. Once a submenu has columns, rows of actual data can be added
+// underneath them, each cell saved independently on blur.
 export default function UKTab() {
   const { data: session } = useSession()
   const username = ((session?.user as any)?.username ?? session?.user?.name ?? '').toLowerCase()
@@ -24,6 +25,7 @@ export default function UKTab() {
   const [submenus, setSubmenus] = useState<Submenu[]>([])
   const [selectedSubmenuId, setSelectedSubmenuId] = useState<number | null>(null)
   const [columns, setColumns] = useState<Column[]>([])
+  const [rows, setRows] = useState<Row[]>([])
 
   const [newSubmenuName, setNewSubmenuName] = useState('')
   const [showAddSubmenu, setShowAddSubmenu] = useState(false)
@@ -61,6 +63,21 @@ export default function UKTab() {
       return
     }
     loadColumns(selectedSubmenuId)
+  }, [selectedSubmenuId])
+
+  function loadRows(submenuId: number) {
+    fetch(`/api/uk/rows?submenu_id=${submenuId}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(d => setRows(Array.isArray(d) ? d : []))
+      .catch(() => {})
+  }
+  useEffect(() => {
+    if (selectedSubmenuId == null) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setRows([])
+      return
+    }
+    loadRows(selectedSubmenuId)
   }, [selectedSubmenuId])
 
   async function addSubmenu() {
@@ -111,6 +128,28 @@ export default function UKTab() {
   async function deleteColumn(id: number) {
     setColumns(prev => prev.filter(c => c.id !== id))
     await fetch(`/api/uk/columns/${id}`, { method: 'DELETE' }).catch(() => {})
+  }
+
+  async function addRow() {
+    if (selectedSubmenuId == null) return
+    const res = await fetch('/api/uk/rows', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ submenu_id: selectedSubmenuId, values: {} }),
+    })
+    if (res.ok) { const row = await res.json(); setRows(prev => [...prev, row]) }
+  }
+  function editCell(rowId: number, columnId: number, value: string) {
+    setRows(prev => prev.map(r => r.id === rowId ? { ...r, values: { ...r.values, [columnId]: value } } : r))
+  }
+  async function saveCell(rowId: number, columnId: number, value: string) {
+    await fetch(`/api/uk/rows/${rowId}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: { [columnId]: value } }),
+    }).catch(() => {})
+  }
+  async function deleteRow(id: number) {
+    setRows(prev => prev.filter(r => r.id !== id))
+    await fetch(`/api/uk/rows/${id}`, { method: 'DELETE' }).catch(() => {})
   }
 
   if (username !== 'grony') {
@@ -220,9 +259,30 @@ export default function UKTab() {
                         {c.name}
                       </th>
                     ))}
+                    <th className="border-b border-gray-200 w-8" />
                   </tr>
                 </thead>
+                <tbody>
+                  {rows.map(r => (
+                    <tr key={r.id} className="border-b border-gray-100 last:border-0">
+                      {columns.map(c => (
+                        <td key={c.id} className="px-1 py-1">
+                          <input value={r.values[c.id] ?? ''}
+                            onChange={e => editCell(r.id, c.id, e.target.value)}
+                            onBlur={e => saveCell(r.id, c.id, e.target.value)}
+                            className="w-full min-w-[80px] text-xs px-2 py-1.5 rounded-lg border border-transparent hover:border-gray-200 focus:border-blue-300 outline-none" />
+                        </td>
+                      ))}
+                      <td className="px-1">
+                        <button onClick={() => deleteRow(r.id)} className="text-gray-300 hover:text-red-500 px-1" title="Delete row">×</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
               </table>
+              <button onClick={addRow} className="w-full text-left px-3 py-2 text-xs font-semibold text-blue-600 hover:bg-gray-50 border-t border-gray-100">
+                + New Row
+              </button>
             </div>
           )}
         </div>
