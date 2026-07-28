@@ -636,7 +636,21 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
         breaks position:sticky (thead/ITEM column stop sticking once the
         scrolling happens on an ancestor instead of their own container). */}
     <div className="flex-1 overflow-auto min-h-0">
-      <table className="w-full border-collapse text-[10px]">
+      {/* table-fixed + colgroup gives every column a fixed share of the
+          width up front -- with the default table-layout:auto, a sticky
+          column's width is only settled after the browser has measured
+          every row (bar rows vs. item-name rows differ a lot), and that
+          left the sticky ITEM column and the CC column next to it
+          disagreeing by a few px, clipping CC's leading characters. */}
+      <table className="w-full table-fixed border-collapse text-[10px]">
+        <colgroup>
+          <col style={{ width: '40%' }} />
+          <col style={{ width: '13%' }} />
+          <col style={{ width: '13%' }} />
+          <col style={{ width: '10%' }} />
+          <col style={{ width: '10%' }} />
+          <col style={{ width: '14%' }} />
+        </colgroup>
         <thead className="sticky top-0 bg-gray-100 z-10">
           <tr>
             <th className="text-left px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200 sticky left-0 z-20 bg-gray-100">ITEM</th>
@@ -816,18 +830,21 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
                   with the CC/WNW header labels the way a hand-flexed group can.
                   QTY/SP stay blank, and the invoice figure lands under TOTAL
                   like the line rows below. */}
-              <td className={`sticky left-0 z-[5] bg-inherit ${isDayHead ? 'px-1.5 py-2' : 'px-1 py-1'}`}>
-                <span className="flex items-center gap-1.5 whitespace-nowrap">
-                  <span className={`font-extrabold ${isDayHead ? 'text-white text-base' : 'text-gray-600 text-sm'}`}>
+              <td className={`sticky left-0 z-[5] bg-inherit overflow-hidden ${isDayHead ? 'px-1.5 py-2' : 'px-1 py-1'}`}>
+                <span className="flex items-center gap-1.5 min-w-0">
+                  <span className={`font-extrabold shrink-0 ${isDayHead ? 'text-white text-base' : 'text-gray-600 text-sm'}`}>
                     {fmtShort(r.receipt_date)}
                   </span>
                   {/* Jumps straight into editingId === r.id below -- no menu
                       step. Delete lives on that edit screen now, not here. */}
                   <button onClick={e => { e.stopPropagation(); startEdit(r) }} title="Edit this receipt"
-                    className={`leading-none ${isDayHead ? 'text-blue-100 hover:text-white' : 'text-gray-400 hover:text-gray-700'}`}>
+                    className={`leading-none shrink-0 ${isDayHead ? 'text-blue-100 hover:text-white' : 'text-gray-400 hover:text-gray-700'}`}>
                     ✏️
                   </button>
-                  <span className={`font-extrabold ${isDayHead ? 'text-white text-base' : 'text-gray-700 text-sm'}`}>
+                  {/* truncate (not whitespace-nowrap on the whole span) so a
+                      long customer name ellipsizes within its fixed-width
+                      column instead of overflowing into CC next door. */}
+                  <span className={`font-extrabold truncate ${isDayHead ? 'text-white text-base' : 'text-gray-700 text-sm'}`}>
                     {fmtCust(r.customer_name)}
                   </span>
                 </span>
