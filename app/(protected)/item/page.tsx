@@ -270,7 +270,7 @@ function topTabCls() {
   return 'flex-1 min-w-0 flex items-center justify-center py-1'
 }
 function topTabLabelCls(active: boolean) {
-  return `text-sm font-bold text-center px-3 py-1.5 rounded-xl leading-tight transition
+  return `text-sm font-bold text-center px-1.5 py-1.5 rounded-xl leading-tight whitespace-nowrap transition
     ${active ? 'bg-brand text-white shadow-md' : 'text-gray-500 hover:bg-gray-100'}`
 }
 
