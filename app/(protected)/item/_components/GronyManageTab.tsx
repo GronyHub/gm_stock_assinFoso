@@ -34,11 +34,18 @@ const LOG_CATEGORIES: { key: ManageView; label: string; icon: string }[] = [
   { key: 'quality_assurance', label: 'Quality Assurance', icon: '✅' },
 ]
 
-const SUBMENU: { key: ManageView; label: string }[] = [
+// Grouped under one "Shop Beautification" submenu instead of four separate
+// top-level pills -- Arrangement/Cleanliness/Customer Display/Staff Display
+// are all "how the shop looks" checklists, distinct from Repair Works/
+// Quality Assurance/Future which stay as their own top-level items.
+const SHOP_BEAUTIFICATION: ManageView[] = ['arrangement', 'cleanliness', 'customer_display', 'staff_display']
+
+const SUBMENU: { key: ManageView | 'shop_beautification'; label: string }[] = [
   { key: 'staff_times', label: 'Staff' },
   { key: 'advert', label: 'Advert' },
   { key: 'staff_dress', label: 'Dress Code' },
-  ...LOG_CATEGORIES.map(c => ({ key: c.key, label: c.label })),
+  { key: 'shop_beautification', label: 'Shop Beautification' },
+  ...LOG_CATEGORIES.filter(c => !SHOP_BEAUTIFICATION.includes(c.key)).map(c => ({ key: c.key, label: c.label })),
   { key: 'training', label: 'Training' },
   { key: 'logs', label: 'Logs' },
 ]
@@ -69,18 +76,35 @@ export default function GronyManageTab({ openStaffTimeSignal, initialView }: { o
   }, [initialView])
 
   const logCategory = LOG_CATEGORIES.find(c => c.key === view)
+  const inShopBeautification = SHOP_BEAUTIFICATION.includes(view)
 
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center gap-1 px-2 py-0.5 bg-white border-b border-gray-100 overflow-x-auto shrink-0">
-        {SUBMENU.map(v => (
-          <button key={v.key} onClick={() => setView(v.key)}
-            className={`shrink-0 text-sm font-semibold px-1.5 py-0.5 rounded-lg whitespace-nowrap border transition
-              ${view === v.key ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-500 border-gray-200 hover:bg-gray-100'}`}>
-            {v.label}
-          </button>
-        ))}
+        {SUBMENU.map(v => {
+          const active = v.key === 'shop_beautification' ? inShopBeautification : view === v.key
+          return (
+            <button key={v.key}
+              onClick={() => setView(v.key === 'shop_beautification' ? 'arrangement' : v.key)}
+              className={`shrink-0 text-sm font-semibold px-1.5 py-0.5 rounded-lg whitespace-nowrap border transition
+                ${active ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-500 border-gray-200 hover:bg-gray-100'}`}>
+              {v.label}
+            </button>
+          )
+        })}
       </div>
+
+      {inShopBeautification && (
+        <div className="flex items-center gap-1 px-2 py-0.5 bg-gray-50 border-b border-gray-100 overflow-x-auto shrink-0">
+          {LOG_CATEGORIES.filter(c => SHOP_BEAUTIFICATION.includes(c.key)).map(c => (
+            <button key={c.key} onClick={() => setView(c.key)}
+              className={`shrink-0 text-[13px] font-semibold px-1.5 py-0.5 rounded-lg whitespace-nowrap border transition
+                ${view === c.key ? 'bg-blue-500 text-white border-blue-500' : 'text-gray-400 border-gray-200 hover:bg-gray-100'}`}>
+              {c.icon} {c.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="flex-1 min-h-0 overflow-y-auto">
         {view === 'staff_times' && <StaffClient role={role} username={username} embedded openAddSignal={openStaffTimeSignal} />}
