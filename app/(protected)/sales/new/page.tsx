@@ -1,16 +1,23 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { usePresenceReporter } from '@/lib/usePresenceReporter'
 
 type Item = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number }
 type CartLine = { item: Item; qty: number; price: number }
+type Customer = { id: number; display_name: string }
 
 export default function NewReceiptPage({ onSuccess }: { onSuccess?: () => void } = {}) {
   usePresenceReporter('entering a sale')
   const [date, setDate] = useState('')
   const [saleType, setSaleType] = useState<'WIC' | 'GMC'>('WIC')
   const [customer, setCustomer] = useState('')
+  const [customerId, setCustomerId] = useState<number | null>(null)
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false)
+  const [addingCustomer, setAddingCustomer] = useState(false)
+  const [customerError, setCustomerError] = useState('')
+  const customerBoxRef = useRef<HTMLDivElement>(null)
   const [cashCounted, setCashCounted] = useState('')
   const [allItems, setAllItems] = useState<Item[]>([])
   const [loadingItems, setLoadingItems] = useState(true)
@@ -31,6 +38,53 @@ export default function NewReceiptPage({ onSuccess }: { onSuccess?: () => void }
       .then(d => { setAllItems(Array.isArray(d) ? d : []); setLoadingItems(false) })
       .catch(() => setLoadingItems(false))
   }, [])
+
+  useEffect(() => {
+    fetch('/api/customers')
+      .then(r => r.json())
+      .then(d => setCustomers(Array.isArray(d) ? d.map((c: any) => ({ id: c.id, display_name: c.display_name })) : []))
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (customerBoxRef.current && !customerBoxRef.current.contains(e.target as Node)) setCustomerDropdownOpen(false)
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [])
+
+  const customerMatches = customer.trim()
+    ? customers.filter(c => c.display_name.toLowerCase().includes(customer.trim().toLowerCase())).slice(0, 8)
+    : customers.slice(0, 8)
+  const exactCustomerMatch = customers.some(c => c.display_name.toLowerCase() === customer.trim().toLowerCase())
+
+  function pickCustomer(c: Customer) {
+    setCustomer(c.display_name)
+    setCustomerId(c.id)
+    setCustomerDropdownOpen(false)
+  }
+
+  async function addNewCustomer() {
+    const name = customer.trim()
+    if (!name) return
+    setAddingCustomer(true)
+    setCustomerError('')
+    const res = await fetch('/api/customers', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ display_name: name }),
+    })
+    const d = await res.json().catch(() => ({}))
+    setAddingCustomer(false)
+    if (res.ok) {
+      setCustomers(prev => [...prev, { id: d.id, display_name: d.display_name }])
+      setCustomer(d.display_name)
+      setCustomerId(d.id)
+      setCustomerDropdownOpen(false)
+    } else {
+      setCustomerError(d.error || 'Could not add customer.')
+    }
+  }
 
   // Groups derived from items
   const groups = ['All', ...Array.from(new Set(allItems.map(i => i.group ?? 'Other'))).sort()]
@@ -83,6 +137,7 @@ export default function NewReceiptPage({ onSuccess }: { onSuccess?: () => void }
         body: JSON.stringify({
           date,
           customerName,
+          customerId: saleType === 'WIC' ? customerId : null,
           cashCounted: cashCounted ? Number(cashCounted) : null,
           lines: cart.map(l => ({
             itemId: l.item.id,
@@ -222,10 +277,33 @@ placeholder={loadingItems ? 'Loading…' : `Search ${allItems.length} items…`}
             </div>
           </div>
           {saleType === 'WIC' ? (
-            <div>
+            <div className="relative" ref={customerBoxRef}>
               <p className="text-[9px] text-gray-400">Customer (optional — leave blank for a walk-in)</p>
-              <input value={customer} onChange={e => setCustomer(e.target.value)} placeholder="Walk-in Customer"
+              <input value={customer}
+                onChange={e => { setCustomer(e.target.value); setCustomerId(null); setCustomerDropdownOpen(true) }}
+                onFocus={() => setCustomerDropdownOpen(true)}
+                placeholder="Search or type a walk-in name"
                 className="w-full text-[10px] text-gray-900 bg-gray-50 border border-gray-200 rounded px-1 py-0.5 outline-none placeholder-gray-300" />
+              {customerId != null && (
+                <p className="text-[8px] text-green-600 font-semibold mt-0.5">✓ Linked to saved customer</p>
+              )}
+              {customerDropdownOpen && (customerMatches.length > 0 || customer.trim()) && (
+                <div className="absolute z-20 left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                  {customerMatches.map(c => (
+                    <button key={c.id} type="button" onClick={() => pickCustomer(c)}
+                      className="w-full text-left px-2 py-1.5 text-[10px] text-gray-800 hover:bg-blue-50 border-b border-gray-100 last:border-0">
+                      {c.display_name}
+                    </button>
+                  ))}
+                  {customer.trim() && !exactCustomerMatch && (
+                    <button type="button" onClick={addNewCustomer} disabled={addingCustomer}
+                      className="w-full text-left px-2 py-1.5 text-[10px] font-semibold text-blue-600 hover:bg-blue-50 disabled:opacity-40">
+                      {addingCustomer ? 'Adding…' : `+ Add "${customer.trim()}" as a new customer`}
+                    </button>
+                  )}
+                </div>
+              )}
+              {customerError && <p className="text-[9px] text-red-500 font-medium mt-0.5">{customerError}</p>}
             </div>
           ) : (
             <p className="text-[9px] text-purple-600 font-semibold">Internal use — recorded as &quot;Grony Multimedia as Customer&quot;</p>

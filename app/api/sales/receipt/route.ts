@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { date, cashCounted, lines, total: directTotal, customerName } = await req.json()
+  const { date, cashCounted, lines, total: directTotal, customerName, customerId } = await req.json()
   if (!date) return NextResponse.json({ error: 'Missing date' }, { status: 400 })
   const hasLines = Array.isArray(lines) && lines.length > 0
   if (!hasLines && directTotal == null) return NextResponse.json({ error: 'Provide lines or total' }, { status: 400 })
@@ -31,7 +31,16 @@ export async function POST(req: NextRequest) {
   const receiptNumber = `APP-${date.replace(/-/g,'')}-${Date.now().toString().slice(-4)}`
 
   const enteredBy = session.user?.name || (session.user as any)?.username || null
-  const customer = customerName ?? null
+
+  // A picked customer's name is resolved here rather than trusted from the
+  // client, same reasoning as vendors on Purchase Orders -- otherwise a
+  // stale/blank name sent alongside customerId can leave the receipt
+  // linked to a customer but still showing "Unknown"/blank.
+  let customer: string | null = customerName ?? null
+  if (customerId) {
+    const [cust] = await sql`SELECT display_name FROM customers WHERE id = ${Number(customerId)}`
+    if (cust) customer = cust.display_name
+  }
   const customerType = customer === 'Grony Multimedia as Customer' ? 'GMC' : 'WIC'
 
   try {
@@ -58,15 +67,16 @@ export async function POST(req: NextRequest) {
       }, { status: 409 })
     }
 
+    const customerIdVal = customerId ? Number(customerId) : null
     let receipt
     try {
       [receipt] = await sql`
-        INSERT INTO sales_receipts (receipt_number, receipt_date, customer_name, total, cash_counted, source, entered_by)
-        VALUES (${receiptNumber}, ${date}, ${customer}, ${total}, ${cashCounted ?? null}, 'app', ${enteredBy})
+        INSERT INTO sales_receipts (receipt_number, receipt_date, customer_id, customer_name, total, cash_counted, source, entered_by)
+        VALUES (${receiptNumber}, ${date}, ${customerIdVal}, ${customer}, ${total}, ${cashCounted ?? null}, 'app', ${enteredBy})
         RETURNING id
       `
     } catch (e) {
-      console.error('sales_receipts insert with entered_by failed, retrying without it:', e)
+      console.error('sales_receipts insert with customer_id/entered_by failed, retrying without them:', e)
       ;[receipt] = await sql`
         INSERT INTO sales_receipts (receipt_number, receipt_date, customer_name, total, cash_counted, source)
         VALUES (${receiptNumber}, ${date}, ${customer}, ${total}, ${cashCounted ?? null}, 'app')
