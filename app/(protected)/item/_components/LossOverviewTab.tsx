@@ -22,7 +22,7 @@ export default function LossOverviewTab({ search }: { search: string }) {
       <div className="flex items-stretch gap-1 px-2 py-1.5 shrink-0 border-b border-gray-100">
         {SUB_TABS.map(t => (
           <button key={t.key} onClick={() => setSub(t.key)}
-            className={`flex-1 min-w-0 text-center text-[11px] font-bold px-2 py-1.5 rounded-lg border transition truncate
+            className={`flex-1 min-w-0 text-center text-[13px] font-bold px-1 py-1 rounded-lg border transition truncate
               ${sub === t.key ? 'bg-red-600 text-white border-red-600' : 'text-gray-500 border-gray-200 hover:bg-gray-100'}`}>
             {t.label}
           </button>
