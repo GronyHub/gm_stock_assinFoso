@@ -28,6 +28,7 @@ import RoleBar, { type RoleKey, type ShortcutKey } from './_components/RoleBar'
 import RolePanel from './_components/RolePanel'
 import { COL_BY_KEY, ALL_COL_KEYS, type ColKey } from './_components/lossTabColumns'
 import type { ManageView } from './_components/GronyManageTab'
+import type { ViolationView } from '../staff/StaffClient'
 import dynamic from 'next/dynamic'
 const loading = (h: string) => <div className={`py-10 text-center text-gray-400 text-sm`}>{h}</div>
 const ItemsTab       = dynamic(() => import('./_components/ItemsTab'),        { ssr: false, loading: () => loading('Loading…') })
@@ -56,8 +57,15 @@ const VendorsPage    = dynamic(() => import('../vendors/page'),               { 
 const CustomersPage  = dynamic(() => import('../customers/page'),             { ssr: false, loading: () => loading('Loading…') })
 const ReceiptsPage   = dynamic(() => import('../receipts/page'),              { ssr: false, loading: () => loading('Loading…') })
 const ViewPortalAsButton = dynamic(() => import('@/components/ViewPortalAsButton'), { ssr: false })
+const StaffPersonTab = dynamic(() => import('./_components/StaffPersonTab'),  { ssr: false, loading: () => loading('Loading…') })
+const ViolationsTab = dynamic(() => import('../staff/StaffClient').then(m => ({ default: m.ViolationsTab })), { ssr: false, loading: () => loading('Loading…') })
 
-type OuterTab = 'today' | 'loss' | 'manage'
+// The 4 staff Times/Payslips/etc. are keyed against -- kept here as the one
+// canonical roster for the Staff tab's picker (see StaffClient.tsx's own
+// STAFF constant, which this must stay in sync with).
+const STAFF_ROSTER = ['Joe', 'Bino', 'James', 'Rawlings']
+
+type OuterTab = 'today' | 'loss' | 'manage' | 'staff'
 
 // Sales, Bills, Counts, Feed, Expenses, PO, P&L, CAB, Vendors, Customers,
 // Receipts, Daily (Summary), and Data all live as submenus inside the Grony
@@ -209,10 +217,10 @@ const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCategory; d
 // Where each violation type actually lives now that there's no separate
 // Errors screen -- drives both goToViolation (routing a flag-table click
 // from Joe/Bino's Role Bar panel to the right place) and which submenu
-// shows which pills. no_advert/jingle_overdue/equipment_check_overdue and
-// no_staff_times aren't listed: they're handled as a plain changeTab('manage')
-// in goToViolation, same as before -- Grony Manage's Staff submenu already
-// has its own "Times" view for no_staff_times, and Advert for the others.
+// shows which pills. no_advert/jingle_overdue/equipment_check_overdue aren't
+// listed: they land on Grony Manage's Advert sub-tab. no_staff_times isn't
+// listed either: it lands on the Staff tab's Team overview, which carries
+// that checklist since it's about a missing day, not one person.
 const VIOLATION_HOME: Partial<Record<string, LossView>> = {
   neg_soh: 'items', no_sp: 'items', no_cp: 'items', no_group: 'items',
   duplicates: 'items', unlinked_named: 'items', service_violation: 'items',
@@ -266,7 +274,7 @@ function topTabLabelCls(active: boolean) {
     ${active ? 'bg-brand text-white shadow-md' : 'text-gray-500 hover:bg-gray-100'}`
 }
 
-const VALID_TABS: OuterTab[] = ['today', 'loss', 'manage']
+const VALID_TABS: OuterTab[] = ['today', 'loss', 'manage', 'staff']
 
 function ItemHubPageInner() {
   const router = useRouter()
@@ -330,6 +338,15 @@ function ItemHubPageInner() {
   // Same idea, for jumping straight into a specific Grony Manage sub-tab
   // (GronyManageTab owns that sub-tab state itself, same as Customers/Vendors).
   const [manageInitialView, setManageInitialView] = useState<ManageView | undefined>(undefined)
+  // Which staff member's page is open under the Staff tab -- null shows the
+  // roster picker instead. Persists across switching away and back (same as
+  // lossView does for Grony Cash), so it's only reset explicitly.
+  const [staffPerson, setStaffPerson] = useState<string | null>(null)
+  // The roster picker also carries the shop-wide Violations checklist
+  // (Disciplinary/Payslips/Times, e.g. "which day is missing staff times") --
+  // that's about the team, not one person, so it doesn't belong on any
+  // individual's page.
+  const [teamVtab, setTeamVtab] = useState<ViolationView>('Disciplinary')
 
   useEffect(() => {
     const q = globalSearchQuery.trim()
@@ -624,7 +641,16 @@ function ItemHubPageInner() {
       case 'cabConfirm': changeTab('loss'); setLossView('cab');       setCabConfirmSignal(n => n + 1); break
       case 'customer':   changeTab('loss'); setLossView('customers'); setCustomerSignal(n => n + 1); break
       case 'vendor':     changeTab('loss'); setLossView('vendors');   setVendorSignal(n => n + 1); break
-      case 'staffTime':  changeTab('manage'); setStaffTimeSignal(n => n + 1); break
+      case 'staffTime': {
+        changeTab('staff')
+        // Lands the shortcut on your own page if you're staff yourself,
+        // otherwise the roster picker -- same as before this only ever
+        // meant "go clock my own time in".
+        const self = STAFF_ROSTER.find(s => s.toLowerCase() === username.toLowerCase())
+        setStaffPerson(self ?? null)
+        setStaffTimeSignal(n => n + 1)
+        break
+      }
     }
   }
 
@@ -702,11 +728,14 @@ function ItemHubPageInner() {
     // The loss-summary rows point at the Loss feed (a submenu of the Grony
     // Cash tab), not a violation pill.
     if (key === '__loss_feed') { changeTab('loss'); setLossView('feed'); return }
-    // The Advert sub-tab's own checks (audio adverts, jingle, equipment),
-    // and No Staff Times (which has its own "Times" view on the Staff
-    // submenu already) just land on Grony Manage -- same shallow landing
-    // as before, one more tap to the exact sub-view.
-    if (['no_advert', 'jingle_overdue', 'equipment_check_overdue', 'no_staff_times'].includes(key)) { changeTab('manage'); return }
+    // The Advert sub-tab's own checks (audio adverts, jingle, equipment)
+    // just land on Grony Manage -- same shallow landing as before, one more
+    // tap to the exact sub-view.
+    if (['no_advert', 'jingle_overdue', 'equipment_check_overdue'].includes(key)) { changeTab('manage'); return }
+    // No Staff Times is about a missing day, not one person, so it lands on
+    // the Staff tab's Team overview (roster picker) with its checklist open,
+    // not any individual's page.
+    if (key === 'no_staff_times') { changeTab('staff'); setStaffPerson(null); setTeamVtab('Times'); return }
     const targetView = VIOLATION_HOME[key]
     if (!targetView) return
     changeTab('loss')
@@ -763,7 +792,7 @@ function ItemHubPageInner() {
     { label: 'Daily', action: () => { changeTab('loss'); setLossView('dailySummary') } },
   ]
   const manageSubmenus: { label: string; action: () => void }[] = [
-    { label: 'Staff', action: () => { changeTab('manage'); setManageInitialView('staff_times') } },
+    { label: 'Rota', action: () => { changeTab('manage'); setManageInitialView('rota') } },
     { label: 'Advert', action: () => { changeTab('manage'); setManageInitialView('advert') } },
     { label: 'Dress Code', action: () => { changeTab('manage'); setManageInitialView('staff_dress') } },
     { label: 'Shop Beautification', action: () => { changeTab('manage'); setManageInitialView('arrangement') } },
@@ -777,6 +806,13 @@ function ItemHubPageInner() {
     { label: 'Training', action: () => { changeTab('manage'); setManageInitialView('training') } },
     { label: 'Logs', action: () => { changeTab('manage'); setManageInitialView('logs') } },
   ]
+
+  // One entry per staff member -- each opens their own Times/Payslips/
+  // Violations/Role/Analytics/Assignments page directly, same "jump
+  // straight there" contract as cashSubmenus/manageSubmenus.
+  const staffSubmenus: { label: string; action: () => void }[] = STAFF_ROSTER.map(name => ({
+    label: name, action: () => { changeTab('staff'); setStaffPerson(name) },
+  }))
 
   // Customers/Vendors/Receipts reuse cashSubmenus' own actions (find, not a
   // second copy of the changeTab/setLossView calls) so opening them from
@@ -805,6 +841,7 @@ function ItemHubPageInner() {
   const taskSubmenus: { label: string; section: string; action: () => void }[] = [
     ...cashSubmenus.map(s => ({ ...s, section: 'Grony Cash' })),
     ...manageSubmenus.map(s => ({ ...s, section: 'Grony Manage' })),
+    ...staffSubmenus.map(s => ({ ...s, section: 'Staff' })),
     ...accountSubmenus.map(s => ({ ...s, section: 'Account' })),
   ]
 
@@ -818,8 +855,10 @@ function ItemHubPageInner() {
     { label: 'Home', action: () => changeTab('today') },
     { label: 'Grony Cash', action: () => changeTab('loss') },
     { label: 'Grony Manage', action: () => changeTab('manage') },
+    { label: 'Staff', action: () => changeTab('staff') },
     ...cashSubmenus,
     ...manageSubmenus,
+    ...staffSubmenus,
     { label: 'Tasks', action: () => setOpenRole('joe') },
     { label: 'Opener', action: () => setOpenRole('opener') },
     { label: 'Closer', action: () => setOpenRole('closer') },
@@ -859,6 +898,10 @@ function ItemHubPageInner() {
           <div className="w-px bg-gray-200 shrink-0" />
           <button onClick={() => changeTab('manage')} className={topTabCls()}>
             <span className={topTabLabelCls(outerTab === 'manage' && !openRole)}>Grony Manage</span>
+          </button>
+          <div className="w-px bg-gray-200 shrink-0" />
+          <button onClick={() => changeTab('staff')} className={topTabCls()}>
+            <span className={topTabLabelCls(outerTab === 'staff' && !openRole)}>Staff</span>
           </button>
           <div className="w-px bg-gray-200 shrink-0" />
           {/* Global search -- looks across the whole app (items, customers,
@@ -1198,7 +1241,42 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'manage' && (
           <TabErrorBoundary>
-            <GronyManageTab openStaffTimeSignal={staffTimeSignal} initialView={manageInitialView} />
+            <GronyManageTab initialView={manageInitialView} />
+          </TabErrorBoundary>
+        )}
+        {outerTab === 'staff' && (
+          <TabErrorBoundary>
+            {staffPerson ? (
+              <div className="flex flex-col h-full min-h-0">
+                <button onClick={() => setStaffPerson(null)}
+                  className="shrink-0 text-left text-xs font-semibold text-blue-600 px-2 py-1.5 hover:bg-gray-50">
+                  ← All Staff
+                </button>
+                <div className="flex-1 min-h-0">
+                  <StaffPersonTab staffName={staffPerson} role={role} username={username} openAddSignal={staffTimeSignal} />
+                </div>
+              </div>
+            ) : (
+              <div className="px-2 py-3 space-y-4 overflow-y-auto h-full">
+                <div className="space-y-2">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wide px-1">Staff</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {STAFF_ROSTER.map(name => (
+                      <button key={name} onClick={() => setStaffPerson(name)}
+                        className="text-sm font-semibold px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition">
+                        {name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {/* Team-wide (not any one person's) -- penalty leaderboard,
+                    missing payslips, missing staff-times checklist. */}
+                <div className="space-y-2 border-t border-gray-100 pt-3">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wide px-1">Team</p>
+                  <ViolationsTab role={role} username={username} vtab={teamVtab} setVtab={setTeamVtab} />
+                </div>
+              </div>
+            )}
           </TabErrorBoundary>
         )}
         {outerTab === 'today' && !(addForm === 'sale' || addForm === 'bill' || addForm === 'expense') && (

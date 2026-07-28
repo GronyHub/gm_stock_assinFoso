@@ -52,8 +52,12 @@ export default function ViolationFixPanel({ type, items, onItemsChanged }: Props
   if (type === 'unchecked_cab') {
     return <CABTab />
   }
-  // no_staff_times, no_advert, jingle_overdue, equipment_check_overdue --
-  // these already land on Grony Manage via goToViolation's plain
-  // changeTab('manage') fallback, with no filtered fix view of their own.
+  // no_advert, jingle_overdue, equipment_check_overdue -- these land on
+  // Grony Manage via goToViolation's plain changeTab('manage') fallback,
+  // with no filtered fix view of their own. no_staff_times lands on the
+  // Staff tab's Team overview instead (see goToViolation).
+  if (type === 'no_staff_times') {
+    return <p className="text-[11px] text-gray-400 py-3 px-2">Open the Staff tab to fix this.</p>
+  }
   return <p className="text-[11px] text-gray-400 py-3 px-2">Open Grony Manage to fix this.</p>
 }
