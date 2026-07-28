@@ -10,9 +10,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     await ensurePurchaseOrderTables()
     const [[po], lines, receipts] = await Promise.all([
       sql`
-        SELECT id, po_number, vendor_id, vendor_name, order_date::date AS order_date,
-          expected_date::date AS expected_date, status, notes, created_by, created_at::text
-        FROM purchase_orders WHERE id = ${Number(id)}
+        SELECT po.id, po.po_number, po.vendor_id,
+          COALESCE(v.display_name, po.vendor_name) AS vendor_name,
+          po.order_date::date AS order_date,
+          po.expected_date::date AS expected_date, po.status, po.notes, po.created_by, po.created_at::text
+        FROM purchase_orders po
+        LEFT JOIN vendors v ON v.id = po.vendor_id
+        WHERE po.id = ${Number(id)}
       `,
       sql`
         SELECT id, item_id, item_name, qty_ordered, qty_received, unit_price
