@@ -902,8 +902,8 @@ function ItemHubPageInner() {
               { key: 'cab',        label: 'CAB' },
             ] as { key: LossView; label: string }[]).map(v => (
               <button key={v.key} onClick={() => { setLossView(v.key); setAddForm(null); setViolation(null); setShowAnalytics(false) }}
-                className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 text-center text-[10px] font-semibold px-1 py-1 rounded-lg leading-tight transition
-                  ${(activeLossParent ?? lossView) === v.key ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>
+                className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 text-center text-[11px] font-semibold px-1.5 py-1.5 rounded-lg leading-tight border transition
+                  ${(activeLossParent ?? lossView) === v.key ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-500 border-gray-200 hover:bg-gray-100'}`}>
                 <span>{v.label}</span>
                 {v.key === 'cab' && violationCounts.unchecked_cab > 0 && (
                   <span className={`text-[9px] font-bold rounded-full px-1.5 leading-tight
@@ -922,8 +922,8 @@ function ItemHubPageInner() {
           <div className="flex items-center gap-1 px-2 py-0.5 bg-gray-50 border-t border-gray-100 overflow-x-auto">
             {lossChildren.map(c => (
               <button key={c.key} onClick={() => { setLossView(c.key); setAddForm(null); setViolation(null) }}
-                className={`shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-lg whitespace-nowrap transition
-                  ${lossView === c.key ? 'bg-blue-500 text-white' : 'text-gray-400 hover:bg-gray-100'}`}>
+                className={`shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap border transition
+                  ${lossView === c.key ? 'bg-blue-500 text-white border-blue-500' : 'text-gray-400 border-gray-200 hover:bg-gray-100'}`}>
                 {c.label}
               </button>
             ))}
