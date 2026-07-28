@@ -89,7 +89,10 @@ const SEVERITY_COLORS: Record<string, string> = {
   serious: 'bg-red-100 text-red-600',
 }
 
-const TABS = ['Times', 'Payslips', 'Violations', 'Role', 'Rota', 'Analytics', 'Assignments'] as const
+// Rota isn't here -- it's a shared weekly schedule across everyone at once,
+// so it lives under Grony Manage's own submenu instead (see RotaTab's
+// export below), not as one of this per-person/all-staff tab set.
+const TABS = ['Times', 'Payslips', 'Violations', 'Role', 'Analytics', 'Assignments'] as const
 type Tab = (typeof TABS)[number]
 
 const TAB_ICONS: Record<Tab, React.ReactNode> = {
@@ -111,11 +114,6 @@ const TAB_ICONS: Record<Tab, React.ReactNode> = {
   Role: (
     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-    </svg>
-  ),
-  Rota: (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
     </svg>
   ),
   Analytics: (
@@ -191,8 +189,15 @@ function groupByDate(rows: RecentRow[]) {
   return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0]))
 }
 
-function TimesTab({ username, role, openAddSignal }: { username: string; role: string; openAddSignal?: number }) {
+export function TimesTab({ username, role, openAddSignal, viewingStaff }: { username: string; role: string; openAddSignal?: number; viewingStaff?: string }) {
   const isAdmin = role === 'owner' || role === 'admin' || username === 'rawlings' || username === 'grony' || username === 'joe'
+  // A per-person page (viewingStaff set) narrows every staff-keyed list/table
+  // down to just this one name, and hides the "My Time Today" clock panel
+  // unless you're looking at your own page -- clocking someone else in from
+  // their page would be wrong, and the panel is otherwise meaningless there.
+  const viewName = viewingStaff?.toLowerCase()
+  const displayStaff = viewName ? [viewName] : STAFF
+  const isOwnPage = !viewingStaff || viewName === username.toLowerCase()
 
   const [today, setToday] = useState<TodayRow[]>([])
   const [mine, setMine] = useState<Mine>(null)
@@ -233,7 +238,10 @@ function TimesTab({ username, role, openAddSignal }: { username: string; role: s
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openAddSignal])
 
-  const [addStaff, setAddStaff] = useState(STAFF[0])
+  // STAFF (and every staff_name this writes) is lowercase -- normalize here
+  // so a caller can pass either casing without silently forking a person's
+  // records into two different-cased staff_name values.
+  const [addStaff, setAddStaff] = useState(viewName ?? STAFF[0])
   const [addDate, setAddDate] = useState('')
   const [addIn, setAddIn] = useState('')
   const [addOut, setAddOut] = useState('')
@@ -430,9 +438,13 @@ function TimesTab({ username, role, openAddSignal }: { username: string; role: s
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className={labelCls}>Staff</label>
-              <select value={addStaff} onChange={e => setAddStaff(e.target.value)} className={inputCls}>
-                {STAFF.map(s => <option key={s} value={s} className="capitalize">{s.charAt(0).toUpperCase()+s.slice(1)}</option>)}
-              </select>
+              {viewingStaff ? (
+                <p className={inputCls + ' capitalize'}>{viewingStaff}</p>
+              ) : (
+                <select value={addStaff} onChange={e => setAddStaff(e.target.value)} className={inputCls}>
+                  {STAFF.map(s => <option key={s} value={s} className="capitalize">{s.charAt(0).toUpperCase()+s.slice(1)}</option>)}
+                </select>
+              )}
             </div>
             <div>
               <label className={labelCls}>Date</label>
@@ -453,6 +465,10 @@ function TimesTab({ username, role, openAddSignal }: { username: string; role: s
           </button>
         </div>
       )}
+      {/* Everything below is about the logged-in user's own clock-in state --
+          meaningless (and potentially misleading, e.g. "clocking Ama in"
+          from someone else's browsing session) on another person's page. */}
+      {isOwnPage && (<>
       {/* Closer questionnaire — shown when this user is the last to clock out */}
       {closerPrompt && (
         <CloserQuestionnaire
@@ -549,15 +565,16 @@ function TimesTab({ username, role, openAddSignal }: { username: string; role: s
         </div>
         <p className="text-[11px] text-gray-400 text-center">📍 Location must be enabled — you must be at the shop to clock in/out.</p>
       </div>
+      </>)}
 
-      {/* Today's times for all staff */}
-      {today.length > 0 && (
+      {/* Today's times for all staff (or just this one, on a per-person page) */}
+      {(viewName ? today.filter(r => r.staff_name.toLowerCase() === viewName) : today).length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
           <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200">
-            <span className="text-xs font-semibold text-gray-600">Today — All Staff</span>
+            <span className="text-xs font-semibold text-gray-600">{viewName ? 'Today' : 'Today — All Staff'}</span>
           </div>
           <div className="divide-y divide-gray-100">
-            {today.map(r => (
+            {(viewName ? today.filter(r => r.staff_name.toLowerCase() === viewName) : today).map(r => (
               <div key={r.staff_name} className="flex items-center justify-between px-4 py-2 text-sm">
                 <span className="font-medium text-gray-800 capitalize">
                   {r.staff_name}
@@ -580,19 +597,19 @@ function TimesTab({ username, role, openAddSignal }: { username: string; role: s
             <table className="w-full text-[11px] table-fixed">
               <colgroup>
                 <col style={{width:'22%'}} />
-                {STAFF.map(s => <col key={s} />)}
+                {displayStaff.map(s => <col key={s} />)}
               </colgroup>
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="text-left px-1.5 py-2 text-gray-500 font-semibold">Date</th>
-                  {STAFF.map(s => (
+                  {displayStaff.map(s => (
                     <th key={s} className="text-center px-0.5 py-2 text-gray-500 font-semibold capitalize">{s}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {adminGrouped.length === 0 && (
-                  <tr><td colSpan={STAFF.length + 1} className="py-8 text-center text-gray-400">No records yet.</td></tr>
+                  <tr><td colSpan={displayStaff.length + 1} className="py-8 text-center text-gray-400">No records yet.</td></tr>
                 )}
                 {adminGrouped.map(([date, map], i) => {
                   const monthKey = date.slice(0, 7)
@@ -603,7 +620,7 @@ function TimesTab({ username, role, openAddSignal }: { username: string; role: s
                       {isMonthStart && (
                         <tr className="bg-gray-100 border-t-2 border-b-2 border-gray-300">
                           <td className="px-1.5 py-2 text-[10px] font-bold text-gray-600 leading-tight">{monthKeyLabel(monthKey)}<br/>Total</td>
-                          {STAFF.map(s => {
+                          {displayStaff.map(s => {
                             const mins = allRecords
                               .filter(r => r.staff_name === s && r.work_date.startsWith(monthKey) && r.actual_in && r.actual_out)
                               .reduce((sum, r) => {
@@ -621,7 +638,7 @@ function TimesTab({ username, role, openAddSignal }: { username: string; role: s
                       )}
                       <tr className="hover:bg-gray-50">
                         <td className="px-1.5 py-1.5 text-gray-600 leading-tight">{fmtShortDate(date)}</td>
-                        {STAFF.map(s => {
+                        {displayStaff.map(s => {
                           const record = allRecords.find(r => r.staff_name === s && r.work_date === date)
                           const cellData = map[s]
                           const isEditing = adminEditRow?.id === record?.id
@@ -675,12 +692,12 @@ function TimesTab({ username, role, openAddSignal }: { username: string; role: s
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th rowSpan={2} className="text-left px-1.5 py-1 text-gray-500 font-semibold align-bottom">Date</th>
-                {STAFF.map(s => (
+                {displayStaff.map(s => (
                   <th key={s} colSpan={2} className="text-center px-0.5 py-1 text-gray-500 font-semibold capitalize border-l border-gray-200">{s}</th>
                 ))}
               </tr>
               <tr>
-                {STAFF.map(s => (
+                {displayStaff.map(s => (
                   <Fragment key={s}>
                     <th className="text-center px-0.5 py-0.5 text-green-600 font-medium border-l border-gray-200">In</th>
                     <th className="text-center px-0.5 py-0.5 text-orange-500 font-medium">Out</th>
@@ -698,7 +715,7 @@ function TimesTab({ username, role, openAddSignal }: { username: string; role: s
                     {isMonthStart && (
                       <tr className="bg-gray-100 border-t-2 border-b-2 border-gray-300">
                         <td className="px-1.5 py-2 text-[9px] font-bold text-gray-600 leading-tight">{monthKeyLabel(monthKey)}<br/>Total</td>
-                        {STAFF.map(s => {
+                        {displayStaff.map(s => {
                           const mins = monthMinutesFor(s, monthKey)
                           return (
                             <td key={s} colSpan={2} className="text-center px-0.5 py-2 text-[9px] font-bold text-gray-700 border-l border-gray-200">
@@ -710,7 +727,7 @@ function TimesTab({ username, role, openAddSignal }: { username: string; role: s
                     )}
                     <tr className="hover:bg-gray-50">
                       <td className="px-1.5 py-1 text-gray-600 leading-tight whitespace-nowrap">{fmtShortDate(date)}</td>
-                      {STAFF.map(s => {
+                      {displayStaff.map(s => {
                         const isMine = s === username
                         const cellIn = map[s]?.in ?? <span className="text-gray-200">—</span>
                         const cellOut = map[s]?.out ?? <span className="text-gray-200">—</span>
@@ -785,7 +802,7 @@ function TimesTab({ username, role, openAddSignal }: { username: string; role: s
       {/* Analytics */}
       <p className="text-sm font-semibold text-gray-700">Analytics</p>
       <div className="space-y-3">
-        {STAFF.map(name => {
+        {displayStaff.map(name => {
           const rows = recent.filter(r => r.staff_name === name)
           const fullDays = rows.filter(r => r.actual_in && r.actual_out)
           const durations = fullDays.map(r => {
@@ -909,14 +926,17 @@ function detectPayFlags(payslips: Payslip[]): PayFlag[] {
   return flags
 }
 
-function PayslipsTab({ role, username }: { role: string; username: string }) {
+export function PayslipsTab({ role, username, viewingStaff }: { role: string; username: string; viewingStaff?: string }) {
   const canBuild = role === 'owner' || username === 'joe'
   const [payslips, setPayslips] = useState<Payslip[]>([])
   const [profiles, setProfiles] = useState<StaffProfile[]>([])
   const [loading, setLoading] = useState(true)
-  const [view, setView] = useState<PayView>('monthly')
+  // A per-person page locks straight into the "By Staff" history for that
+  // one name -- the By Month/Build/Profiles/Flags views are payslip-admin
+  // tools, not part of "this person's own records".
+  const [view, setView] = useState<PayView>(viewingStaff ? 'staff' : 'monthly')
   const [selectedMonth, setSelectedMonth] = useState<string>('')
-  const [selectedStaff, setSelectedStaff] = useState<string>('Joe')
+  const [selectedStaff, setSelectedStaff] = useState<string>(viewingStaff ?? 'Joe')
   const [editProfile, setEditProfile] = useState<StaffProfile | null>(null)
   const [editForm, setEditForm] = useState<Partial<StaffProfile>>({})
   const [savingProfile, setSavingProfile] = useState(false)
@@ -1017,13 +1037,15 @@ function PayslipsTab({ role, username }: { role: string; username: string }) {
   return (
     <div className="space-y-4">
       {/* View selector */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {viewBtn('monthly',  '📅 By Month')}
-        {viewBtn('staff',    '👤 By Staff')}
-        {canBuild && viewBtn('build', '🧮 Build')}
-        {viewBtn('profiles', '🪪 Profiles')}
-        {payFlags.length > 0 && viewBtn('flags' as any, `⚠️ Flags (${payFlags.length})`)}
-      </div>
+      {!viewingStaff && (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {viewBtn('monthly',  '📅 By Month')}
+          {viewBtn('staff',    '👤 By Staff')}
+          {canBuild && viewBtn('build', '🧮 Build')}
+          {viewBtn('profiles', '🪪 Profiles')}
+          {payFlags.length > 0 && viewBtn('flags' as any, `⚠️ Flags (${payFlags.length})`)}
+        </div>
+      )}
 
       {/* ── FLAGS VIEW ──────────────────────────────────────────────────────────── */}
       {(view as string) === 'flags' && (
@@ -1179,19 +1201,21 @@ function PayslipsTab({ role, username }: { role: string; username: string }) {
       {/* ── STAFF VIEW ────────────────────────────────────────────────────────── */}
       {view === 'staff' && (
         <div className="space-y-3">
-          {/* Staff selector */}
-          <div className="flex gap-1.5 overflow-x-auto pb-1">
-            {ALL_STAFF_NAMES.map(name => {
-              const color = STAFF_COLORS[name] ?? 'bg-gray-100 text-gray-600'
-              return (
-                <button key={name} onClick={() => setSelectedStaff(name)}
-                  className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition
-                    ${selectedStaff === name ? color + ' ring-2 ring-blue-400' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                  {name}
-                </button>
-              )
-            })}
-          </div>
+          {/* Staff selector -- locked/hidden on a per-person page */}
+          {!viewingStaff && (
+            <div className="flex gap-1.5 overflow-x-auto pb-1">
+              {ALL_STAFF_NAMES.map(name => {
+                const color = STAFF_COLORS[name] ?? 'bg-gray-100 text-gray-600'
+                return (
+                  <button key={name} onClick={() => setSelectedStaff(name)}
+                    className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition
+                      ${selectedStaff === name ? color + ' ring-2 ring-blue-400' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                    {name}
+                  </button>
+                )
+              })}
+            </div>
+          )}
 
           {/* Profile quick-view */}
           {(() => {
@@ -1645,7 +1669,7 @@ function PayslipBuilder({ payslips, onSaved }: { payslips: Payslip[]; onSaved: (
 // ── VIOLATIONS TAB ────────────────────────────────────────────────────────────
 
 const VIOLATION_VIEWS = ['Disciplinary', 'Payslips', 'Times'] as const
-type ViolationView = (typeof VIOLATION_VIEWS)[number]
+export type ViolationView = (typeof VIOLATION_VIEWS)[number]
 
 const VIOLATION_ICONS: Record<ViolationView, React.ReactNode> = {
   Disciplinary: (
@@ -1665,20 +1689,27 @@ const VIOLATION_ICONS: Record<ViolationView, React.ReactNode> = {
   ),
 }
 
-function ViolationsTab({ role, username, vtab, setVtab }: { role: string; username: string; vtab: ViolationView; setVtab: (v: ViolationView) => void }) {
+export function ViolationsTab({ role, username, vtab, setVtab, viewingStaff }: { role: string; username: string; vtab: ViolationView; setVtab: (v: ViolationView) => void; viewingStaff?: string }) {
   const PAYSLIP_MONTHS = ['2026-04', '2026-05']
   const PAYSLIP_MONTH_LABELS: Record<string, string> = { '2026-04': 'April 2026', '2026-05': 'May 2026' }
 
-  const vview = vtab
+  // Payslips/Times are shop-wide admin checklists (who's missing what),
+  // not this one person's records -- a per-person page only ever shows
+  // Disciplinary, locked to their own history.
+  const vview = viewingStaff ? 'Disciplinary' : vtab
   const setVview = setVtab
+  // STAFF (and every staff_name this writes) is lowercase -- normalize here
+  // so a caller can pass either casing without silently forking a person's
+  // records into two different-cased staff_name values.
+  const viewName = viewingStaff?.toLowerCase()
   const [violations, setViolations] = useState<Violation[]>([])
   const [noTimesDays, setNoTimesDays] = useState<string[]>([])
   const [missingPayslips, setMissingPayslips] = useState<{ staff: string; month: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ staff_name: STAFF[0], violation: '', details: '', severity: 'minor', points: '5' })
+  const [form, setForm] = useState({ staff_name: viewName ?? STAFF[0], violation: '', details: '', severity: 'minor', points: '5' })
   const [saving, setSaving] = useState(false)
-  const [staffFilter, setStaffFilter] = useState('All')
+  const [staffFilter, setStaffFilter] = useState(viewName ?? 'All')
 
   useEffect(() => {
     const safe = (p: Promise<Response>) => p.then(r => r.ok ? r.json() : null).catch(() => null)
@@ -1714,7 +1745,7 @@ function ViolationsTab({ role, username, vtab, setVtab }: { role: string; userna
     if (res.ok) {
       const row = await res.json()
       setViolations(prev => [row, ...prev])
-      setForm({ staff_name: STAFF[0], violation: '', details: '', severity: 'minor', points: '5' })
+      setForm({ staff_name: viewName ?? STAFF[0], violation: '', details: '', severity: 'minor', points: '5' })
       setShowForm(false)
     }
   }
@@ -1747,7 +1778,8 @@ function ViolationsTab({ role, username, vtab, setVtab }: { role: string; userna
 
   return (
     <div className="space-y-4">
-      {/* ── sub-menu row ── */}
+      {/* ── sub-menu row (hidden when locked to one person's Disciplinary record) ── */}
+      {!viewingStaff && (
       <div className="flex gap-2 overflow-x-auto pb-1">
         {VIOLATION_VIEWS.map(v => {
           const count = vviewCounts[v]
@@ -1768,10 +1800,12 @@ function ViolationsTab({ role, username, vtab, setVtab }: { role: string; userna
           )
         })}
       </div>
+      )}
 
       {/* ── Disciplinary ── */}
       {vview === 'Disciplinary' && (
         <div className="space-y-4">
+          {!viewingStaff && (
           <div className="bg-white border border-gray-200 rounded-xl p-3">
             <p className="text-xs font-semibold text-gray-500 mb-2">Penalty Points Leaderboard</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -1783,8 +1817,10 @@ function ViolationsTab({ role, username, vtab, setVtab }: { role: string; userna
               ))}
             </div>
           </div>
+          )}
 
           <div className="flex items-center justify-between">
+            {!viewingStaff && (
             <div className="flex gap-1.5 overflow-x-auto pb-1">
               {['All', ...STAFF].map(s => (
                 <button key={s} onClick={() => setStaffFilter(s)}
@@ -1794,6 +1830,7 @@ function ViolationsTab({ role, username, vtab, setVtab }: { role: string; userna
                 </button>
               ))}
             </div>
+            )}
             {canManage && (
               <button onClick={() => setShowForm(v => !v)}
                 className="shrink-0 ml-2 bg-red-500 hover:bg-red-400 text-white text-sm font-semibold px-3 py-1.5 rounded-lg transition">
@@ -1808,9 +1845,13 @@ function ViolationsTab({ role, username, vtab, setVtab }: { role: string; userna
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={labelCls}>Staff Member</label>
-                  <select value={form.staff_name} onChange={e => setForm(f => ({ ...f, staff_name: e.target.value }))} className={inputCls}>
-                    {STAFF.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-                  </select>
+                  {viewingStaff ? (
+                    <p className={inputCls + ' capitalize'}>{viewingStaff}</p>
+                  ) : (
+                    <select value={form.staff_name} onChange={e => setForm(f => ({ ...f, staff_name: e.target.value }))} className={inputCls}>
+                      {STAFF.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                    </select>
+                  )}
                 </div>
                 <div>
                   <label className={labelCls}>Severity</label>
@@ -2069,11 +2110,14 @@ function NoTimesFix({ date, onFixed }: { date: string; onFixed: (d: string) => v
 
 
 
-function RoleTab({ role, username }: { role: string; username: string }) {
+export function RoleTab({ role, username, viewingStaff }: { role: string; username: string; viewingStaff?: string }) {
   const [users, setUsers] = useState<AppUser[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<number | null>(null)
   const canManageRoles = role === 'owner' || username === 'joe'
+  // Role is account/login permissions, not "this person's records" -- a
+  // per-person page shows just their one account card, not the full list.
+  const visibleUsers = viewingStaff ? users.filter(u => u.username?.toLowerCase() === viewingStaff.toLowerCase()) : users
 
   useEffect(() => {
     fetch('/api/users').then(r => r.json())
@@ -2108,7 +2152,10 @@ function RoleTab({ role, username }: { role: string; username: string }) {
 
   return (
     <div className="space-y-2">
-      {users.map(u => {
+      {visibleUsers.length === 0 && viewingStaff && (
+        <p className="py-10 text-center text-gray-400 text-sm">No login account found for {viewingStaff}.</p>
+      )}
+      {visibleUsers.map(u => {
         // Joe's owner-level access does not extend to editing the owner's own account
         const protectedFromMe = role !== 'owner' && (u.role === 'owner' || u.username?.toLowerCase() === 'grony')
         return (
@@ -2181,7 +2228,7 @@ function hoursFromShift(entry: RotaEntry): number {
   return Math.max(0, parse(entry.sched_out) - parse(entry.sched_in))
 }
 
-function RotaTab() {
+export function RotaTab() {
   const today = new Date()
   const [subTab, setSubTab] = useState<'schedule' | 'absences'>('schedule')
   const [year, setYear] = useState(today.getFullYear())
@@ -2492,10 +2539,10 @@ function RotaTab() {
 
 // ── ANALYTICS TAB ────────────────────────────────────────────────────────────
 
-function AnalyticsTab() {
+export function AnalyticsTab({ viewingStaff }: { viewingStaff?: string } = {}) {
   const [recent, setRecent] = useState<RecentRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeStaff, setActiveStaff] = useState<string[]>(STAFF)
+  const [activeStaff, setActiveStaff] = useState<string[]>(viewingStaff ? [viewingStaff] : STAFF)
 
   useEffect(() => {
     fetch('/api/staff-times/today')
@@ -2610,17 +2657,19 @@ function AnalyticsTab() {
 
   return (
     <div className="space-y-5">
-      {/* Staff filter chips */}
-      <div className="flex gap-1.5 flex-wrap">
-        {STAFF.map(s => (
-          <button key={s} onClick={() => toggleStaff(s)}
-            className={`px-3 py-1.5 rounded-full text-xs font-semibold capitalize transition
-              ${activeStaff.includes(s) ? 'text-white' : 'bg-gray-100 text-gray-400'}`}
-            style={activeStaff.includes(s) ? { backgroundColor: STAFF_CHART_COLORS[s] } : {}}>
-            {s}
-          </button>
-        ))}
-      </div>
+      {/* Staff filter chips -- locked/hidden on a per-person page */}
+      {!viewingStaff && (
+        <div className="flex gap-1.5 flex-wrap">
+          {STAFF.map(s => (
+            <button key={s} onClick={() => toggleStaff(s)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold capitalize transition
+                ${activeStaff.includes(s) ? 'text-white' : 'bg-gray-100 text-gray-400'}`}
+              style={activeStaff.includes(s) ? { backgroundColor: STAFF_CHART_COLORS[s] } : {}}>
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
 
       {recent.length === 0 ? (
         <p className="py-10 text-center text-gray-400 text-sm">No staff time data yet.</p>
@@ -2729,7 +2778,7 @@ const VIOLATION_TYPES: { type: string; label: string; auto: boolean }[] = [
   { type: 'dup_receipts', label: 'Days with duplicate WIC/GMC receipts', auto: true },
 ]
 
-function AssignmentsTab({ role, username }: { role: string; username: string }) {
+export function AssignmentsTab({ role, username, viewingStaff }: { role: string; username: string; viewingStaff?: string }) {
   const [assignments, setAssignments] = useState<Record<string, string>>({})
   const [deadlines, setDeadlines] = useState<Record<string, string>>({})
   const [settings, setSettings] = useState<Record<string, string>>({})
@@ -2796,9 +2845,18 @@ function AssignmentsTab({ role, username }: { role: string; username: string }) 
 
   if (loading) return <div className="py-10 text-center text-gray-400">Loading…</div>
 
+  // A per-person page shows only what's currently assigned to them -- a
+  // read-only-feeling "what they're responsible for" summary rather than
+  // the full shop-wide assignment table. Auto-Penalty Settings is a global
+  // setting, not this person's, so it's hidden entirely here.
+  const visibleTypes = viewingStaff
+    ? VIOLATION_TYPES.filter(v => (assignments[v.type] ?? '').toLowerCase() === viewingStaff.toLowerCase())
+    : VIOLATION_TYPES
+
   return (
     <div className="space-y-4">
       {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
+      {!viewingStaff && (
       <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
         <p className="text-sm font-semibold text-gray-700">Auto-Penalty Settings</p>
         <p className="text-[11px] text-gray-400">
@@ -2829,9 +2887,14 @@ function AssignmentsTab({ role, username }: { role: string; username: string }) 
           </button>
         )}
       </div>
+      )}
+
+      {viewingStaff && visibleTypes.length === 0 && (
+        <p className="py-10 text-center text-gray-400 text-sm">Nothing is currently assigned to {viewingStaff}.</p>
+      )}
 
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
-        {VIOLATION_TYPES.map(v => {
+        {visibleTypes.map(v => {
           const assignedStaff = assignments[v.type] ?? ''
           return (
             <div key={v.type} className="flex items-center justify-between gap-3 px-4 py-3 flex-wrap">
@@ -2919,7 +2982,6 @@ function StaffClientInner({ role, username, embedded, openAddSignal }: { role: s
       {tab === 'Payslips' && <PayslipsTab role={role} username={username} />}
       {tab === 'Violations' && <ViolationsTab role={role} username={username} vtab={vtab} setVtab={setVtab} />}
       {tab === 'Role' && <RoleTab role={role} username={username} />}
-      {tab === 'Rota' && <RotaTab />}
       {tab === 'Analytics' && <AnalyticsTab />}
       {tab === 'Assignments' && <AssignmentsTab role={role} username={username} />}
     </div>

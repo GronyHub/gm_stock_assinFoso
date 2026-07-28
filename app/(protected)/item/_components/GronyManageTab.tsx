@@ -1,13 +1,16 @@
 'use client'
 import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
-import { useSession } from 'next-auth/react'
 import ClosingReportLogView from './ClosingReportLogView'
 import ManageLogPanel from './ManageLogPanel'
 import TrainingTab from './TrainingTab'
 import AdvertTab from './AdvertTab'
 
-const StaffClient = dynamic(() => import('../../staff/StaffClient'), {
+// Staff (Times/Payslips/Violations/Role/Analytics/Assignments) moved to its
+// own top-level "Staff" tab, one per person -- see item/page.tsx. Rota stays
+// here since it's a shared weekly schedule across everyone, not one
+// person's record.
+const RotaTab = dynamic(() => import('../../staff/StaffClient').then(m => ({ default: m.RotaTab })), {
   ssr: false,
   loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div>,
 })
@@ -17,7 +20,7 @@ const LogsPage = dynamic(() => import('../../logs/page'), {
 })
 
 export type ManageView =
-  | 'staff_times' | 'advert' | 'staff_dress'
+  | 'rota' | 'advert' | 'staff_dress'
   | 'arrangement' | 'cleanliness' | 'future' | 'customer_display'
   | 'staff_display' | 'training' | 'repair_works' | 'quality_assurance' | 'logs'
 
@@ -41,31 +44,21 @@ const LOG_CATEGORIES: { key: ManageView; label: string; icon: string }[] = [
 const SHOP_BEAUTIFICATION: ManageView[] = ['arrangement', 'cleanliness', 'customer_display', 'staff_display']
 
 const SUBMENU: { key: ManageView | 'shop_beautification'; label: string }[] = [
-  { key: 'staff_times', label: 'Staff' },
   { key: 'advert', label: 'Advert' },
   { key: 'staff_dress', label: 'Dress Code' },
   { key: 'shop_beautification', label: 'Shop Beautification' },
   ...LOG_CATEGORIES.filter(c => !SHOP_BEAUTIFICATION.includes(c.key)).map(c => ({ key: c.key, label: c.label })),
+  { key: 'rota', label: 'Rota' },
   { key: 'training', label: 'Training' },
   { key: 'logs', label: 'Logs' },
 ]
 
 // Promoted from Home's "🗂️ Grony Manage" submenu to its own top-level tab,
 // mirroring Grony Cash: Cash covers the money aspect, Manage covers
-// everything else (staff times, count duties, item hygiene, and now the
+// everything else (count duties, item hygiene, shift scheduling, and the
 // shop's day-to-day operational checklist categories).
-export default function GronyManageTab({ openStaffTimeSignal, initialView }: { openStaffTimeSignal?: number; initialView?: ManageView } = {}) {
-  const [view, setView] = useState<ManageView>(initialView ?? 'staff_times')
-  const { data: session } = useSession()
-  const role = (session?.user as any)?.role ?? 'staff'
-  const username = (session?.user as any)?.username ?? session?.user?.name ?? ''
-
-  // Driven by the RoleBar "+" shortcut menu -- lands back on Staff even if
-  // another Manage sub-tab was open.
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (openStaffTimeSignal) setView('staff_times')
-  }, [openStaffTimeSignal])
+export default function GronyManageTab({ initialView }: { initialView?: ManageView } = {}) {
+  const [view, setView] = useState<ManageView>(initialView ?? 'advert')
 
   // Driven by the global search (page.tsx) landing here already knowing
   // which sub-tab to show -- also covers re-arriving at a different one
@@ -107,7 +100,7 @@ export default function GronyManageTab({ openStaffTimeSignal, initialView }: { o
       )}
 
       <div className="flex-1 min-h-0 overflow-y-auto">
-        {view === 'staff_times' && <StaffClient role={role} username={username} embedded openAddSignal={openStaffTimeSignal} />}
+        {view === 'rota' && <div className="px-2"><RotaTab /></div>}
         {view === 'advert' && <AdvertTab />}
         {view === 'staff_dress' && <ClosingReportLogView field="no_tshirt_staff" label="Dress Code" icon="👕" />}
         {view === 'training' && <TrainingTab />}
