@@ -55,8 +55,8 @@ export default function NewReceiptPage({ onSuccess }: { onSuccess?: () => void }
   }, [])
 
   const customerMatches = customer.trim()
-    ? customers.filter(c => c.display_name.toLowerCase().includes(customer.trim().toLowerCase())).slice(0, 8)
-    : customers.slice(0, 8)
+    ? customers.filter(c => c.display_name.toLowerCase().includes(customer.trim().toLowerCase()))
+    : customers
 
   function pickCustomer(c: Customer) {
     setCustomer(c.display_name)
