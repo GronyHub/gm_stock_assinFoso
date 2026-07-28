@@ -32,11 +32,18 @@ export async function POST(req: NextRequest) {
   const { activity } = await req.json()
   if (!activity) return NextResponse.json({ error: 'Missing activity' }, { status: 400 })
 
-  await sql`
-    INSERT INTO user_presence (staff_name, activity, updated_at)
-    VALUES (${staffName}, ${activity}, NOW())
-    ON CONFLICT (staff_name) DO UPDATE SET activity = ${activity}, updated_at = NOW()
-  `
+  // Presence is a "who's online" nicety, not real data -- a DB hiccup here
+  // shouldn't 500 out of whatever the user was actually doing, so fail the
+  // same quiet way GET already does.
+  try {
+    await sql`
+      INSERT INTO user_presence (staff_name, activity, updated_at)
+      VALUES (${staffName}, ${activity}, NOW())
+      ON CONFLICT (staff_name) DO UPDATE SET activity = ${activity}, updated_at = NOW()
+    `
+  } catch (e) {
+    console.error('presence POST error:', e)
+  }
   return NextResponse.json({ ok: true })
 }
 
@@ -45,6 +52,10 @@ export async function DELETE(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const staffName = (session.user as any)?.username ?? session.user?.name
-  await sql`DELETE FROM user_presence WHERE staff_name = ${staffName}`
+  try {
+    await sql`DELETE FROM user_presence WHERE staff_name = ${staffName}`
+  } catch (e) {
+    console.error('presence DELETE error:', e)
+  }
   return NextResponse.json({ ok: true })
 }
