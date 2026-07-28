@@ -631,11 +631,15 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
             + New Receipt
           </Link>
     </div>
-    <div className="flex-1 overflow-y-auto min-h-0">
+    {/* overflow-auto (not just -y) so this single element handles both
+        scroll directions -- nesting a separate overflow-x-auto div inside
+        breaks position:sticky (thead/ITEM column stop sticking once the
+        scrolling happens on an ancestor instead of their own container). */}
+    <div className="flex-1 overflow-auto min-h-0">
       <table className="w-full border-collapse text-[10px]">
         <thead className="sticky top-0 bg-gray-100 z-10">
           <tr>
-            <th className="text-left px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">ITEM</th>
+            <th className="text-left px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200 sticky left-0 z-20 bg-gray-100">ITEM</th>
             {/* CC/WNW are real columns (not text docked inside the ITEM
                 header) so the header label and every row's value share the
                 same table column and can't drift out of alignment. Only the
@@ -812,7 +816,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
                   with the CC/WNW header labels the way a hand-flexed group can.
                   QTY/SP stay blank, and the invoice figure lands under TOTAL
                   like the line rows below. */}
-              <td className={isDayHead ? 'px-1.5 py-2' : 'px-1 py-1'}>
+              <td className={`sticky left-0 z-[5] bg-inherit ${isDayHead ? 'px-1.5 py-2' : 'px-1 py-1'}`}>
                 <span className="flex items-center gap-1.5 whitespace-nowrap">
                   <span className={`font-extrabold ${isDayHead ? 'text-white text-base' : 'text-gray-600 text-sm'}`}>
                     {fmtShort(r.receipt_date)}
@@ -844,7 +848,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
             {editingId !== r.id && (!barsOnly || expandedIds.has(r.id)) && rows.map(line => (
               <tr key={line ? line.id : `${r.id}-empty`}
                 className={`border-b border-gray-100 text-[13px] font-bold ${selectedId === r.id ? 'bg-blue-50/40' : 'hover:bg-gray-50'}`}>
-                <td className="px-1 py-1 text-gray-900 align-top">
+                <td className="px-1 py-1 text-gray-900 align-top sticky left-0 z-[5] bg-inherit">
                   {line ? (
                     line.item_id ? (
                       <Link href={`/stock/${line.item_id}`} className="text-blue-600 hover:underline">
