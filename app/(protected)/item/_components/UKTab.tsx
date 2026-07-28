@@ -13,6 +13,11 @@ const chipCls = (active: boolean) =>
   `text-xs font-semibold px-3 py-1.5 rounded-lg transition
    ${active ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`
 
+// A cell holding a URL renders as a clickable link instead of a text box --
+// no per-column "type" needed, the value itself decides.
+const isUrlLike = (v: string) => /^https?:\/\//i.test(v.trim()) || /^www\./i.test(v.trim())
+const toHref = (v: string) => /^https?:\/\//i.test(v.trim()) ? v.trim() : `https://${v.trim()}`
+
 // A generic "define your own submenus, then define your own columns under
 // each one" builder -- Grony/Mina/Prisca each get their own independent set
 // of submenus. Once a submenu has columns, rows of actual data can be added
@@ -26,6 +31,7 @@ export default function UKTab() {
   const [selectedSubmenuId, setSelectedSubmenuId] = useState<number | null>(null)
   const [columns, setColumns] = useState<Column[]>([])
   const [rows, setRows] = useState<Row[]>([])
+  const [editingCellKey, setEditingCellKey] = useState<string | null>(null)
 
   const [newSubmenuName, setNewSubmenuName] = useState('')
   const [showAddSubmenu, setShowAddSubmenu] = useState(false)
@@ -265,14 +271,27 @@ export default function UKTab() {
                 <tbody>
                   {rows.map(r => (
                     <tr key={r.id} className="border-b border-gray-100 last:border-0">
-                      {columns.map(c => (
-                        <td key={c.id} className="px-1 py-1">
-                          <input value={r.values[c.id] ?? ''}
-                            onChange={e => editCell(r.id, c.id, e.target.value)}
-                            onBlur={e => saveCell(r.id, c.id, e.target.value)}
-                            className="w-full min-w-[80px] text-xs px-2 py-1.5 rounded-lg border border-transparent hover:border-gray-200 focus:border-blue-300 outline-none" />
-                        </td>
-                      ))}
+                      {columns.map(c => {
+                        const val = r.values[c.id] ?? ''
+                        const key = `${r.id}-${c.id}`
+                        const showAsLink = isUrlLike(val) && editingCellKey !== key
+                        return (
+                          <td key={c.id} className="px-1 py-1">
+                            {showAsLink ? (
+                              <div className="flex items-center gap-1 px-2 py-1.5">
+                                <a href={toHref(val)} target="_blank" rel="noopener noreferrer"
+                                  className="text-xs text-blue-600 underline truncate max-w-[140px]">{val}</a>
+                                <button onClick={() => setEditingCellKey(key)} className="text-gray-300 hover:text-gray-600 shrink-0" title="Edit">✎</button>
+                              </div>
+                            ) : (
+                              <input value={val} autoFocus={editingCellKey === key}
+                                onChange={e => editCell(r.id, c.id, e.target.value)}
+                                onBlur={e => { saveCell(r.id, c.id, e.target.value); setEditingCellKey(null) }}
+                                className="w-full min-w-[80px] text-xs px-2 py-1.5 rounded-lg border border-transparent hover:border-gray-200 focus:border-blue-300 outline-none" />
+                            )}
+                          </td>
+                        )
+                      })}
                       <td className="px-1">
                         <button onClick={() => deleteRow(r.id)} className="text-gray-300 hover:text-red-500 px-1" title="Delete row">×</button>
                       </td>
