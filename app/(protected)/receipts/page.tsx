@@ -87,8 +87,8 @@ function NewReceiptForm({ onCreated, onCancel }: { onCreated: (r: Receipt) => vo
   }, [])
 
   const customerMatches = customerName.trim()
-    ? customerOptions.filter(c => c.display_name.toLowerCase().includes(customerName.trim().toLowerCase())).slice(0, 8)
-    : customerOptions.slice(0, 8)
+    ? customerOptions.filter(c => c.display_name.toLowerCase().includes(customerName.trim().toLowerCase()))
+    : customerOptions
 
   function pickCustomer(c: CustomerOption) {
     setCustomerName(c.display_name)
