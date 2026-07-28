@@ -75,7 +75,7 @@ export default function GronyManageTab({ openStaffTimeSignal, initialView }: { o
       <div className="flex items-center gap-1 px-2 py-0.5 bg-white border-b border-gray-100 overflow-x-auto shrink-0">
         {SUBMENU.map(v => (
           <button key={v.key} onClick={() => setView(v.key)}
-            className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap border transition
+            className={`shrink-0 text-sm font-semibold px-1.5 py-0.5 rounded-lg whitespace-nowrap border transition
               ${view === v.key ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-500 border-gray-200 hover:bg-gray-100'}`}>
             {v.label}
           </button>
