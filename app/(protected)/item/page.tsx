@@ -784,10 +784,11 @@ function ItemHubPageInner() {
   // bare standalone page with no way back except the browser's back button.
   const byLabel = (label: string) => cashSubmenus.find(s => s.label === label)!
   const hamburgerLinks: { label: string; href?: string; action?: () => void }[] = [
-    ...HAMBURGER_LINKS,
+    ...HAMBURGER_LINKS.slice(0, 2), // Users, Profile
     byLabel('Customers'),
     byLabel('Receipts'),
     byLabel('Vendors'),
+    ...HAMBURGER_LINKS.slice(2), // Counts, Purchase Orders, Alias Wide Table, Service Matches
     ...(isOwnerOrJoe ? [
       { href: '/debug/unlink-mismatch', label: 'Fix Mislinked Sales' },
     ] : []),
