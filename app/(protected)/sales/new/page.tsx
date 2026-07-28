@@ -291,7 +291,7 @@ placeholder={loadingItems ? 'Loading…' : `Search ${allItems.length} items…`}
                   {/* Always the first option, not just once a non-matching
                       name is typed -- adding a walk-in as a saved customer
                       shouldn't require guessing whether they're new. */}
-                  <button type="button" onClick={addNewCustomer} disabled={addingCustomer || !customer.trim()}
+                  <button type="button" onClick={addNewCustomer} disabled={addingCustomer}
                     className="w-full text-left px-2 py-1.5 text-[10px] font-semibold text-blue-600 hover:bg-blue-50 disabled:opacity-40 border-b border-gray-100">
                     {addingCustomer ? 'Adding…' : customer.trim() ? `+ Add "${customer.trim()}" as a new customer` : '+ Add new customer'}
                   </button>

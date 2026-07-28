@@ -228,7 +228,7 @@ function NewReceiptForm({ onCreated, onCancel }: { onCreated: (r: Receipt) => vo
             {/* Always the first option, not just once a non-matching name is
                 typed -- adding a customer shouldn't require guessing
                 whether they're new. */}
-            <button type="button" onClick={addNewCustomer} disabled={addingCustomer || !customerName.trim()}
+            <button type="button" onClick={addNewCustomer} disabled={addingCustomer}
               className="w-full text-left px-2.5 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 disabled:opacity-40 border-b border-gray-100">
               {addingCustomer ? 'Adding…' : customerName.trim() ? `+ Add "${customerName.trim()}" as a new customer` : '+ Add new customer'}
             </button>
