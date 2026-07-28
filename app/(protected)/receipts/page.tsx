@@ -463,30 +463,50 @@ export default function ReceiptsPage() {
         </div>
       )}
 
-      {/* Receipt list */}
-      <div className="space-y-2">
-        {filtered.length === 0 && (
+      {/* Receipt table */}
+      <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+        {filtered.length === 0 ? (
           <p className="py-10 text-center text-gray-400 text-sm">No receipts found.</p>
+        ) : (
+          <table className="w-full border-collapse text-xs">
+            <thead>
+              <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
+                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Number</th>
+                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Type</th>
+                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Customer</th>
+                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Contact Number</th>
+                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Location</th>
+                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Date</th>
+                <th className="text-right px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Items</th>
+                <th className="text-right px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Total</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filtered.map((r, i) => {
+                const location = [r.customer_town_district, r.customer_region].filter(Boolean).join(', ')
+                return (
+                  <tr key={r.id} onClick={() => setSelected(r === selected ? null : r)}
+                    className={`cursor-pointer transition ${selected?.id === r.id ? 'bg-blue-50' : i % 2 === 1 ? 'bg-gray-50/60 hover:bg-blue-50/40' : 'hover:bg-blue-50/40'}`}>
+                    <td className="px-3 py-2 font-semibold text-gray-900 whitespace-nowrap">{r.invoice_number}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {r.document_type === 'Invoice' ? (
+                        <span className="text-[9px] font-bold uppercase tracking-wide text-blue-700 bg-blue-50 rounded px-1.5 py-0.5">Invoice</span>
+                      ) : (
+                        <span className="text-[9px] font-bold uppercase tracking-wide text-gray-500 bg-gray-100 rounded px-1.5 py-0.5">Receipt</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{r.customer_display ?? r.customer_name}</td>
+                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{r.customer_phone ?? '—'}</td>
+                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{location || '—'}</td>
+                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmtDate(r.invoice_date)}</td>
+                    <td className="px-3 py-2 text-right text-gray-500 whitespace-nowrap">{r.lines.length}</td>
+                    <td className="px-3 py-2 text-right font-bold text-gray-900 whitespace-nowrap">{c(r.total)}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         )}
-        {filtered.map(r => (
-          <button key={r.id} onClick={() => setSelected(r === selected ? null : r)}
-            className={`w-full text-left rounded-xl border p-3 transition
-              ${selected?.id === r.id ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-gray-900">
-                  {r.invoice_number}
-                  {r.document_type === 'Invoice' && (
-                    <span className="ml-1.5 align-middle text-[9px] font-bold uppercase tracking-wide text-blue-700 bg-blue-50 rounded px-1 py-0.5">Invoice</span>
-                  )}
-                </p>
-                <p className="text-xs text-gray-500 truncate">{r.customer_display ?? r.customer_name}</p>
-              </div>
-              <p className="shrink-0 text-sm font-bold text-gray-900">{c(r.total)}</p>
-            </div>
-            <p className="text-[10px] text-gray-400 mt-1">{fmtDate(r.invoice_date)} · {r.lines.length} item{r.lines.length !== 1 ? 's' : ''}</p>
-          </button>
-        ))}
       </div>
     </div>
   )

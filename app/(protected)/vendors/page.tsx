@@ -257,43 +257,60 @@ export default function VendorsPage({ openAddSignal, initialSearch }: { openAddS
         </div>
       )}
 
-      {/* Vendor list */}
-      <div className="space-y-2">
-        {filtered.length === 0 && (
+      {/* Vendor table */}
+      <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+        {filtered.length === 0 ? (
           <p className="py-10 text-center text-gray-400 text-sm">No vendors found.</p>
+        ) : (
+          <table className="w-full border-collapse text-xs">
+            <thead>
+              <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
+                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Name</th>
+                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Company</th>
+                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Contact Number</th>
+                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Email Address</th>
+                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Status</th>
+                <th className="text-right px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Billed</th>
+                <th className="text-right px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Paid</th>
+                <th className="text-right px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Outstanding</th>
+                <th className="text-right px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Bills</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filtered.map((v, i) => {
+                const outstanding = parseFloat(v.outstanding)
+                const billed      = parseFloat(v.bill_total)
+                return (
+                  <tr key={v.id} onClick={() => setSelected(v === selected ? null : v)}
+                    className={`cursor-pointer transition ${selected?.id === v.id ? 'bg-blue-50' : i % 2 === 1 ? 'bg-gray-50/60 hover:bg-blue-50/40' : 'hover:bg-blue-50/40'}`}>
+                    <td className="px-3 py-2 font-semibold text-gray-900 whitespace-nowrap">
+                      {v.is_internal && (
+                        <span className="mr-1 text-[9px] bg-purple-100 text-purple-700 font-bold px-1.5 py-0.5 rounded-full align-middle">INT</span>
+                      )}
+                      {v.display_name}
+                    </td>
+                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{v.company_name ?? '—'}</td>
+                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{v.phone ?? '—'}</td>
+                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{v.email ?? '—'}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${v.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                        {v.status ?? '—'}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-right font-semibold whitespace-nowrap">
+                      {billed > 0 ? <span className="text-gray-900">{c(v.bill_total)}</span> : <span className="text-gray-300">—</span>}
+                    </td>
+                    <td className="px-3 py-2 text-right font-semibold text-green-600 whitespace-nowrap">{c(v.amount_paid)}</td>
+                    <td className="px-3 py-2 text-right font-semibold whitespace-nowrap">
+                      {outstanding > 0 ? <span className="text-red-500">{c(v.outstanding)}</span> : <span className="text-gray-300">—</span>}
+                    </td>
+                    <td className="px-3 py-2 text-right text-gray-500 whitespace-nowrap">{v.bill_count}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         )}
-        {filtered.map(v => {
-          const outstanding = parseFloat(v.outstanding)
-          const billed      = parseFloat(v.bill_total)
-          return (
-            <button key={v.id} onClick={() => setSelected(v === selected ? null : v)}
-              className={`w-full text-left rounded-xl border p-3 transition
-                ${selected?.id === v.id ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  {v.is_internal && (
-                    <span className="shrink-0 text-[9px] bg-purple-100 text-purple-700 font-bold px-1.5 py-0.5 rounded-full">INT</span>
-                  )}
-                  <p className="text-sm font-semibold text-gray-900 truncate">{v.display_name}</p>
-                </div>
-                <div className="shrink-0 text-right">
-                  {billed > 0
-                    ? <p className="text-sm font-bold text-gray-900">{c(v.bill_total)}</p>
-                    : <p className="text-xs text-gray-400">No bills</p>}
-                  {outstanding > 0 &&
-                    <p className="text-[10px] font-semibold text-red-500">↑ {c(v.outstanding)} due</p>}
-                </div>
-              </div>
-              {v.bill_count > 0 && (
-                <div className="flex gap-3 mt-1.5 text-[10px] text-gray-400">
-                  <span>{v.bill_count} bill{v.bill_count !== 1 ? 's' : ''}</span>
-                  <span>{v.payment_count} payment{v.payment_count !== 1 ? 's' : ''}</span>
-                  <span className="text-green-600 font-medium">{c(v.amount_paid)} paid</span>
-                </div>
-              )}
-            </button>
-          )
-        })}
       </div>
     </div>
   )
