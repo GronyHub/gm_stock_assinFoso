@@ -3,13 +3,21 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 
+// vendors predates a location field -- ADD COLUMN IF NOT EXISTS is cheap
+// once it's there, so just ensure it on every request (same approach as
+// customers' location column).
+async function ensureColumns() {
+  await sql`ALTER TABLE vendors ADD COLUMN IF NOT EXISTS location TEXT`.catch(() => {})
+}
+
 export async function GET() {
   const session = await auth()
   if (!session) return NextResponse.json([], { status: 401 })
 
+  await ensureColumns()
   const vendors = await sql`
     SELECT
-      v.id, v.display_name, v.company_name, v.email, v.phone,
+      v.id, v.display_name, v.company_name, v.email, v.phone, v.location,
       v.status, v.payment_terms_label, v.is_internal, v.notes,
       COUNT(DISTINCT b.id)::int             AS bill_count,
       COALESCE(SUM(b.total), 0)::numeric    AS bill_total,
@@ -29,7 +37,7 @@ export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { display_name, company_name, email, phone, notes } = await req.json()
+  const { display_name, company_name, email, phone, location, notes } = await req.json()
 
   if (!display_name || !String(display_name).trim()) {
     return NextResponse.json({ error: 'Vendor name is required' }, { status: 400 })
@@ -38,13 +46,14 @@ export async function POST(req: NextRequest) {
   const enteredBy = session.user?.name || (session.user as any)?.username || null
 
   try {
+    await ensureColumns()
     const [vendor] = await sql`
       INSERT INTO vendors
-        (display_name, company_name, email, phone, status, is_internal, notes)
+        (display_name, company_name, email, phone, location, status, is_internal, notes)
       VALUES
-        (${String(display_name).trim()}, ${company_name || null}, ${email || null}, ${phone || null}, 'Active', false, ${notes || null})
+        (${String(display_name).trim()}, ${company_name || null}, ${email || null}, ${phone || null}, ${location || null}, 'Active', false, ${notes || null})
       RETURNING
-        id, display_name, company_name, email, phone, status, payment_terms_label, is_internal, notes
+        id, display_name, company_name, email, phone, location, status, payment_terms_label, is_internal, notes
     `
 
     await logActivity(enteredBy ?? 'Unknown', 'added vendor', vendor.display_name)

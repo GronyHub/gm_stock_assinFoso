@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
+import LocationField from '@/components/LocationField'
 
 type Vendor = {
   id: number
@@ -7,6 +8,7 @@ type Vendor = {
   company_name: string | null
   email: string | null
   phone: string | null
+  location: string | null
   status: string | null
   payment_terms_label: string | null
   is_internal: boolean
@@ -31,6 +33,7 @@ function NewVendorForm({ onCreated, onCancel }: { onCreated: (v: Vendor) => void
   const [companyName, setCompanyName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
+  const [location, setLocation] = useState('')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -47,6 +50,7 @@ function NewVendorForm({ onCreated, onCancel }: { onCreated: (v: Vendor) => void
         company_name: companyName.trim() || null,
         phone: phone.trim() || null,
         email: email.trim() || null,
+        location: location.trim() || null,
         notes: notes.trim() || null,
       }),
     })
@@ -85,6 +89,7 @@ function NewVendorForm({ onCreated, onCancel }: { onCreated: (v: Vendor) => void
           <input type="email" value={email} onChange={e => setEmail(e.target.value)} className={inputCls} />
         </div>
       </div>
+      <LocationField value={location} onChange={setLocation} />
       <div>
         <label className={labelCls}>Notes (optional)</label>
         <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className={inputCls} />
@@ -229,6 +234,7 @@ export default function VendorsPage({ openAddSignal, initialSearch }: { openAddS
           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs border-t border-gray-100 pt-3">
             <div><span className="text-gray-400">Phone: </span><span className="font-medium">{selected.phone ?? '—'}</span></div>
             <div><span className="text-gray-400">Email: </span><span className="font-medium">{selected.email ?? '—'}</span></div>
+            <div><span className="text-gray-400">Location: </span><span className="font-medium">{selected.location ?? '—'}</span></div>
             <div><span className="text-gray-400">Terms: </span><span className="font-medium">{selected.payment_terms_label ?? '—'}</span></div>
             <div><span className="text-gray-400">Status: </span><span className="font-medium">{selected.status ?? '—'}</span></div>
           </div>
@@ -269,6 +275,7 @@ export default function VendorsPage({ openAddSignal, initialSearch }: { openAddS
                 <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Company</th>
                 <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Contact Number</th>
                 <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Email Address</th>
+                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Location</th>
                 <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Status</th>
                 <th className="text-right px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Billed</th>
                 <th className="text-right px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Paid</th>
@@ -292,6 +299,7 @@ export default function VendorsPage({ openAddSignal, initialSearch }: { openAddS
                     <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{v.company_name ?? '—'}</td>
                     <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{v.phone ?? '—'}</td>
                     <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{v.email ?? '—'}</td>
+                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{v.location ?? '—'}</td>
                     <td className="px-3 py-2 whitespace-nowrap">
                       <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${v.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                         {v.status ?? '—'}
