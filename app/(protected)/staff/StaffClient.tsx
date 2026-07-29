@@ -250,15 +250,19 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
   const [addErr, setAddErr] = useState('')
 
   function load() {
+    // /api/staff-times/all isn't actually admin-restricted server-side (it
+    // only checks for a logged-in session) -- it's the same shared history
+    // everyone's Times tab now shows, so it's always fetched, not just for
+    // admins. Admin-ness only gates which cells are clickable, further down.
     const p1 = fetch('/api/staff-times/today').then(r => r.ok ? r.json() : { today: [], mine: null, recent: [] })
-    const p2 = isAdmin ? fetch('/api/staff-times/all').then(r => r.ok ? r.json() : []) : Promise.resolve([])
+    const p2 = fetch('/api/staff-times/all').then(r => r.ok ? r.json() : [])
     Promise.all([p1, p2]).then(([d, all]) => {
       setToday(Array.isArray(d.today) ? d.today : [])
       setMine(d.mine ?? null)
       setRecent(Array.isArray(d.recent) ? d.recent : [])
       setOpener(d.opener ?? null)
       setCloser(d.closer ?? null)
-      if (isAdmin) setAllRecords(Array.isArray(all) ? all : [])
+      setAllRecords(Array.isArray(all) ? all : [])
       setLoading(false)
     }).catch(() => setLoading(false))
   }
@@ -386,16 +390,6 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
     clock('out')
   }
 
-  const grouped = groupByDate(recent)
-
-  function monthMinutesFor(staffName: string, monthKey: string): number {
-    const rows = recent.filter(r => r.staff_name === staffName && r.work_date.startsWith(monthKey) && r.actual_in && r.actual_out)
-    return rows.reduce((sum, r) => {
-      const i = parseTimeMins(r.actual_in), o = parseTimeMins(r.actual_out)
-      if (i == null || o == null) return sum
-      return sum + (o >= i ? o - i : (o + 1440) - i)
-    }, 0)
-  }
 
   function openEdit(date: string, map: Record<string, { in: string | null; out: string | null }>) {
     setEditDate(date)
@@ -590,9 +584,17 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
         </div>
       )}
 
-      {/* All records — grouped by date, one row per day, month total bar */}
-      {isAdmin ? (() => {
-        const adminGrouped = groupByDate(allRecords)
+      {/* All records — grouped by date, one row per day, month total bar.
+          One layout for everyone (each person's In/Out stacked inside a
+          single cell, not split into side-by-side sub-columns) -- the old
+          side-by-side layout let long times like "8:12am"/"4:18pm" overflow
+          into the neighboring column on narrow screens once there was real
+          data for all 5 people, which read as garbled overlapping text.
+          Only the *interaction* differs by who's looking: admins can edit
+          any cell (with delete), everyone else can only edit their own
+          column, and the rest is read-only. */}
+      {(() => {
+        const historyGrouped = groupByDate(allRecords)
         return (
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
             <table className="w-full text-[11px] table-fixed">
@@ -609,12 +611,12 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {adminGrouped.length === 0 && (
+                {historyGrouped.length === 0 && (
                   <tr><td colSpan={displayStaff.length + 1} className="py-8 text-center text-gray-400">No records yet.</td></tr>
                 )}
-                {adminGrouped.map(([date, map], i) => {
+                {historyGrouped.map(([date, map], i) => {
                   const monthKey = date.slice(0, 7)
-                  const prevMonthKey = adminGrouped[i - 1]?.[0]?.slice(0, 7)
+                  const prevMonthKey = historyGrouped[i - 1]?.[0]?.slice(0, 7)
                   const isMonthStart = prevMonthKey !== monthKey
                   return (
                     <Fragment key={date}>
@@ -642,7 +644,18 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
                         {displayStaff.map(s => {
                           const record = allRecords.find(r => r.staff_name === s && r.work_date === date)
                           const cellData = map[s]
-                          const isEditing = adminEditRow?.id === record?.id
+                          const isMine = s === username
+                          // adminEditRow?.id === record?.id would be true whenever
+                          // BOTH are undefined (no row open, no record that day),
+                          // wrongly putting every empty cell into edit mode -- the
+                          // `!= null` guard requires a real edit target first.
+                          const isEditing = isAdmin && adminEditRow != null && adminEditRow.id === record?.id
+                          const cellContent = (
+                            <div className="flex flex-col items-center leading-tight">
+                              <span className="text-green-700">{cellData?.in ?? <span className="text-gray-300">—</span>}</span>
+                              <span className="text-orange-600">{cellData?.out ?? <span className="text-gray-300">—</span>}</span>
+                            </div>
+                          )
                           return (
                             <td key={s} className="px-0.5 py-1 text-center">
                               {isEditing ? (
@@ -664,17 +677,19 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
                                       className="flex-1 text-[8px] font-bold bg-gray-100 text-gray-600 rounded py-0.5">—</button>
                                   </div>
                                 </div>
-                              ) : record ? (
+                              ) : isAdmin && record ? (
                                 <button
                                   onClick={() => { setAdminEditRow(record); setAdminEditIn(record.actual_in ?? ''); setAdminEditOut(record.actual_out ?? '') }}
                                   className="w-full rounded-lg hover:bg-blue-50 py-0.5 transition">
-                                  <div className="flex flex-col items-center leading-tight">
-                                    <span className="text-green-700">{cellData?.in ?? <span className="text-gray-300">—</span>}</span>
-                                    <span className="text-orange-600">{cellData?.out ?? <span className="text-gray-300">—</span>}</span>
-                                  </div>
+                                  {cellContent}
+                                </button>
+                              ) : !isAdmin && isMine ? (
+                                <button onClick={() => openEdit(date, map)}
+                                  className="w-full rounded-lg hover:bg-blue-50 py-0.5 transition">
+                                  {cellContent}
                                 </button>
                               ) : (
-                                <span className="text-gray-200">—</span>
+                                cellContent
                               )}
                             </td>
                           )
@@ -687,80 +702,7 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
             </table>
           </div>
         )
-      })() : (
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <table className="w-full text-[11px] table-fixed">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th rowSpan={2} className="text-left px-1.5 py-1 text-gray-500 font-semibold align-bottom">Date</th>
-                {displayStaff.map(s => (
-                  <th key={s} colSpan={2} className="text-center px-0.5 py-1 text-gray-500 font-semibold capitalize border-l border-gray-200">{s}</th>
-                ))}
-              </tr>
-              <tr>
-                {displayStaff.map(s => (
-                  <Fragment key={s}>
-                    <th className="text-center px-0.5 py-0.5 text-green-600 font-medium border-l border-gray-200">In</th>
-                    <th className="text-center px-0.5 py-0.5 text-orange-500 font-medium">Out</th>
-                  </Fragment>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {grouped.map(([date, map], i) => {
-                const monthKey = date.slice(0, 7)
-                const prevMonthKey = grouped[i - 1]?.[0]?.slice(0, 7)
-                const isMonthStart = prevMonthKey !== monthKey
-                return (
-                  <Fragment key={date}>
-                    {isMonthStart && (
-                      <tr className="bg-gray-100 border-t-2 border-b-2 border-gray-300">
-                        <td className="px-1.5 py-2 text-[9px] font-bold text-gray-600 leading-tight">{monthKeyLabel(monthKey)}<br/>Total</td>
-                        {displayStaff.map(s => {
-                          const mins = monthMinutesFor(s, monthKey)
-                          return (
-                            <td key={s} colSpan={2} className="text-center px-0.5 py-2 text-[9px] font-bold text-gray-700 border-l border-gray-200">
-                              {mins ? minsToHrs(mins) : '—'}
-                            </td>
-                          )
-                        })}
-                      </tr>
-                    )}
-                    <tr className="hover:bg-gray-50">
-                      <td className="px-1.5 py-1 text-gray-600 leading-tight whitespace-nowrap">{fmtShortDate(date)}</td>
-                      {displayStaff.map(s => {
-                        const isMine = s === username
-                        const cellIn = map[s]?.in ?? <span className="text-gray-200">—</span>
-                        const cellOut = map[s]?.out ?? <span className="text-gray-200">—</span>
-                        if (isMine) {
-                          return (
-                            <Fragment key={s}>
-                              <td className="px-0.5 py-0.5 border-l border-gray-200">
-                                <button onClick={() => openEdit(date, map)}
-                                  className="w-full text-center text-green-700 rounded hover:bg-blue-50 py-0.5 transition">{cellIn}</button>
-                              </td>
-                              <td className="px-0.5 py-0.5">
-                                <button onClick={() => openEdit(date, map)}
-                                  className="w-full text-center text-orange-600 rounded hover:bg-blue-50 py-0.5 transition">{cellOut}</button>
-                              </td>
-                            </Fragment>
-                          )
-                        }
-                        return (
-                          <Fragment key={s}>
-                            <td className="px-0.5 py-0.5 text-center text-green-700 border-l border-gray-200">{cellIn}</td>
-                            <td className="px-0.5 py-0.5 text-center text-orange-600">{cellOut}</td>
-                          </Fragment>
-                        )
-                      })}
-                    </tr>
-                  </Fragment>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+      })()}
 
       {/* Edit my time modal */}
       {editDate && (
