@@ -4,9 +4,10 @@ import {
   TimesTab, PayslipsTab, ViolationsTab, AnalyticsTab, AssignmentsTab, RotaTab, ALL_STAFF_NAMES,
 } from '../../staff/StaffClient'
 import type { ViolationView } from '../../staff/StaffClient'
+import ProfileTab from './ProfileTab'
 
 const STANDARD_TABS = ['Times', 'Payslips', 'Violations', 'Analytics', 'Assignments'] as const
-type StandardTab = (typeof STANDARD_TABS)[number]
+type StandardTab = (typeof STANDARD_TABS)[number] | 'Profile'
 
 const tabBtnCls = (active: boolean) =>
   `shrink-0 text-sm font-semibold px-1.5 py-0.5 rounded-lg whitespace-nowrap border transition
@@ -20,17 +21,22 @@ const tabBtnCls = (active: boolean) =>
 // "Personal" tab and "Others" tab (once they've picked which other person
 // to look at). There's no separate Rota tab here -- actually building/
 // editing it lives in Build only; everyone just sees it read-only inside
-// Times.
+// Times. Profile only shows up when this really is your own page -- it
+// edits login credentials off the session itself, not a viewingStaff param,
+// so under "Others" it would otherwise show YOUR profile mislabeled as
+// theirs.
 function StandardStaffTabs({ staffName, role, username, openAddSignal }: {
   staffName: string; role: string; username: string; openAddSignal?: number
 }) {
+  const isSelf = staffName.toLowerCase() === username.toLowerCase()
+  const tabs: StandardTab[] = isSelf ? [...STANDARD_TABS, 'Profile'] : [...STANDARD_TABS]
   const [tab, setTab] = useState<StandardTab>('Times')
   const [vtab, setVtab] = useState<ViolationView>('Disciplinary')
 
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center gap-1 px-2 py-0.5 bg-white border-b border-gray-100 overflow-x-auto shrink-0">
-        {STANDARD_TABS.map(t => <button key={t} onClick={() => setTab(t)} className={tabBtnCls(tab === t)}>{t}</button>)}
+        {tabs.map(t => <button key={t} onClick={() => setTab(t)} className={tabBtnCls(tab === t)}>{t}</button>)}
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto px-2 py-3">
         {tab === 'Times' && <TimesTab username={username} role={role} openAddSignal={openAddSignal} />}
@@ -38,6 +44,7 @@ function StandardStaffTabs({ staffName, role, username, openAddSignal }: {
         {tab === 'Violations' && <ViolationsTab role={role} username={username} vtab={vtab} setVtab={setVtab} viewingStaff={staffName} />}
         {tab === 'Analytics' && <AnalyticsTab viewingStaff={staffName} />}
         {tab === 'Assignments' && <AssignmentsTab role={role} username={username} viewingStaff={staffName} />}
+        {tab === 'Profile' && isSelf && <ProfileTab />}
       </div>
     </div>
   )
