@@ -1,7 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
 import { RoleFlagsTable, type CustomTask } from './RoleFlagsTable'
-import CustomTasksSection from './CustomTasksSection'
 import type { Violation } from './useViolations'
 import type { RoleKey } from './RoleBar'
 
@@ -158,10 +157,10 @@ export default function RolePanel({
       <div className="flex-1 min-h-0 overflow-y-auto px-4 py-2 space-y-2">
         {role === 'joe' && (
           <>
-            {/* Creates a task pinned to a submenu -- it then shows up as an
-                extra row under that submenu's own bar below, alongside its
-                auto-generated violation rows, not in a list of its own. */}
-            <CustomTasksSection submenus={taskSubmenus} onAdded={loadCustomTasks} />
+            {/* Creating a new task now happens in the Staff tab's Build tab
+                (Joe/Grony only) instead of here -- this panel just shows
+                whatever's already been created (toggle/edit/delete still
+                live below, per submenu bar), same as it always has. */}
             {/* Joe fixes violations inline here -- each row drops down to its
                 own fix view (reused from whichever tab normally renders it)
                 instead of navigating away, so the panel stays open. Loss Feed
