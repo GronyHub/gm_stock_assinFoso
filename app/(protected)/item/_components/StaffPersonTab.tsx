@@ -5,22 +5,24 @@ import {
 } from '../../staff/StaffClient'
 import type { ViolationView } from '../../staff/StaffClient'
 
-const STANDARD_TABS = ['Times', 'Payslips', 'Violations', 'Analytics', 'Assignments', 'Rota'] as const
+const STANDARD_TABS = ['Times', 'Payslips', 'Violations', 'Analytics', 'Assignments'] as const
 type StandardTab = (typeof STANDARD_TABS)[number]
 
 const tabBtnCls = (active: boolean) =>
   `shrink-0 text-sm font-semibold px-1.5 py-0.5 rounded-lg whitespace-nowrap border transition
     ${active ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-500 border-gray-200 hover:bg-gray-100'}`
 
-// The standard page every staff member has: Times/Rota are shared and
-// unfiltered (everyone sees the whole team's clock records and schedule),
-// Payslips/Violations/Analytics/Assignments are locked to `staffName` via
-// viewingStaff. Reused for a regular staff member's whole page, and for
-// Joe/Grony's own "Personal" tab and "Others" tab (once they've picked
-// which other person to look at) -- Rota is always read-only here
-// (canManageRota=false); actually changing it lives in Build only.
-function StandardStaffTabs({ staffName, role, username, openAddSignal, canManageRota }: {
-  staffName: string; role: string; username: string; openAddSignal?: number; canManageRota: boolean
+// The standard page every staff member has: Times is shared and unfiltered
+// (everyone sees the whole team's clock records, plus an upcoming-schedule
+// preview built from the rota -- see TimesTab itself), Payslips/Violations/
+// Analytics/Assignments are locked to `staffName` via viewingStaff. Reused
+// for a regular staff member's whole page, and for Joe/Grony's own
+// "Personal" tab and "Others" tab (once they've picked which other person
+// to look at). There's no separate Rota tab here -- actually building/
+// editing it lives in Build only; everyone just sees it read-only inside
+// Times.
+function StandardStaffTabs({ staffName, role, username, openAddSignal }: {
+  staffName: string; role: string; username: string; openAddSignal?: number
 }) {
   const [tab, setTab] = useState<StandardTab>('Times')
   const [vtab, setVtab] = useState<ViolationView>('Disciplinary')
@@ -36,7 +38,6 @@ function StandardStaffTabs({ staffName, role, username, openAddSignal, canManage
         {tab === 'Violations' && <ViolationsTab role={role} username={username} vtab={vtab} setVtab={setVtab} viewingStaff={staffName} />}
         {tab === 'Analytics' && <AnalyticsTab viewingStaff={staffName} />}
         {tab === 'Assignments' && <AssignmentsTab role={role} username={username} viewingStaff={staffName} />}
-        {tab === 'Rota' && <RotaTab canManage={canManageRota} />}
       </div>
     </div>
   )
@@ -62,7 +63,7 @@ function OthersTab({ role, username, selfName }: { role: string; username: strin
         ))}
       </div>
       <div className="flex-1 min-h-0">
-        <StandardStaffTabs key={selected} staffName={selected} role={role} username={username} canManageRota={false} />
+        <StandardStaffTabs key={selected} staffName={selected} role={role} username={username} />
       </div>
     </div>
   )
@@ -107,7 +108,7 @@ function BuilderStaffTabs({ staffName, role, username, openAddSignal }: {
         {BUILDER_TOP_TABS.map(t => <button key={t} onClick={() => setTopTab(t)} className={tabBtnCls(topTab === t)}>{t}</button>)}
       </div>
       <div className="flex-1 min-h-0">
-        {topTab === 'Personal' && <StandardStaffTabs staffName={staffName} role={role} username={username} openAddSignal={openAddSignal} canManageRota={false} />}
+        {topTab === 'Personal' && <StandardStaffTabs staffName={staffName} role={role} username={username} openAddSignal={openAddSignal} />}
         {topTab === 'Others' && <OthersTab role={role} username={username} selfName={staffName} />}
         {topTab === 'Build' && <BuildTab role={role} username={username} />}
         {topTab === 'All Staff' && <ViolationsTab role={role} username={username} vtab={teamVtab} setVtab={setTeamVtab} />}
@@ -123,5 +124,5 @@ export default function StaffPersonTab({ staffName, role, username, openAddSigna
   if (isBuilder) {
     return <BuilderStaffTabs staffName={staffName} role={role} username={username} openAddSignal={openAddSignal} />
   }
-  return <StandardStaffTabs staffName={staffName} role={role} username={username} openAddSignal={openAddSignal} canManageRota={false} />
+  return <StandardStaffTabs staffName={staffName} role={role} username={username} openAddSignal={openAddSignal} />
 }
