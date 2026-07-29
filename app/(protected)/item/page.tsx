@@ -1254,7 +1254,7 @@ function ItemHubPageInner() {
               // state (which sub-tab, who Joe/Grony are "Viewing") is only
               // ever set from props on first mount, so without this it
               // would keep showing the previous person's selections.
-              <StaffPersonTab key={myStaffName} staffName={myStaffName} role={role} username={username} openAddSignal={staffTimeSignal} />
+              <StaffPersonTab key={myStaffName} staffName={myStaffName} role={role} username={username} openAddSignal={staffTimeSignal} taskSubmenus={taskSubmenus} />
             ) : (
               <p className="py-10 text-center text-gray-400 text-sm px-4">No staff profile is set up for your account.</p>
             )}
