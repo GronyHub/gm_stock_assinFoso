@@ -5,76 +5,123 @@ import {
 } from '../../staff/StaffClient'
 import type { ViolationView } from '../../staff/StaffClient'
 
-// Personal tabs -- each Tab already fetches everyone's data and filters
-// client-side, so `viewingStaff` just locks each one to this name instead
-// of duplicating any of that logic.
-const PERSONAL_TABS = ['Payslips', 'Violations', 'Analytics', 'Assignments'] as const
-type PersonalTab = (typeof PERSONAL_TABS)[number]
-// Shared tabs -- Times and Rota show the whole team's structure, not just
-// this person's slice, even on their own page (everyone can see who else is
-// clocked in / scheduled).
-type SharedTab = 'Times' | 'Rota' | 'Rota Builder'
-// Joe and Grony additionally get the shop-wide admin tools that used to live
-// on the old roster-picker's "Team" section -- Payslip Builder covers all of
-// By Month/By Staff/Profiles/Flags/Build (it's the same unfiltered
-// PayslipsTab, which already has its own view switcher for those), and All
-// Staff covers the shop-wide Violations checklist/leaderboard.
-type BuilderTab = 'Payslip Builder' | 'All Staff'
-type PersonTab = PersonalTab | SharedTab | BuilderTab
+const STANDARD_TABS = ['Times', 'Payslips', 'Violations', 'Analytics', 'Assignments', 'Rota'] as const
+type StandardTab = (typeof STANDARD_TABS)[number]
+
+const tabBtnCls = (active: boolean) =>
+  `shrink-0 text-sm font-semibold px-1.5 py-0.5 rounded-lg whitespace-nowrap border transition
+    ${active ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-500 border-gray-200 hover:bg-gray-100'}`
+
+// The standard page every staff member has: Times/Rota are shared and
+// unfiltered (everyone sees the whole team's clock records and schedule),
+// Payslips/Violations/Analytics/Assignments are locked to `staffName` via
+// viewingStaff. Reused for a regular staff member's whole page, and for
+// Joe/Grony's own "Personal" tab and "Others" tab (once they've picked
+// which other person to look at) -- Rota is always read-only here
+// (canManageRota=false); actually changing it lives in Build only.
+function StandardStaffTabs({ staffName, role, username, openAddSignal, canManageRota }: {
+  staffName: string; role: string; username: string; openAddSignal?: number; canManageRota: boolean
+}) {
+  const [tab, setTab] = useState<StandardTab>('Times')
+  const [vtab, setVtab] = useState<ViolationView>('Disciplinary')
+
+  return (
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex items-center gap-1 px-2 py-0.5 bg-white border-b border-gray-100 overflow-x-auto shrink-0">
+        {STANDARD_TABS.map(t => <button key={t} onClick={() => setTab(t)} className={tabBtnCls(tab === t)}>{t}</button>)}
+      </div>
+      <div className="flex-1 min-h-0 overflow-y-auto px-2 py-3">
+        {tab === 'Times' && <TimesTab username={username} role={role} openAddSignal={openAddSignal} />}
+        {tab === 'Payslips' && <PayslipsTab role={role} username={username} viewingStaff={staffName} />}
+        {tab === 'Violations' && <ViolationsTab role={role} username={username} vtab={vtab} setVtab={setVtab} viewingStaff={staffName} />}
+        {tab === 'Analytics' && <AnalyticsTab viewingStaff={staffName} />}
+        {tab === 'Assignments' && <AssignmentsTab role={role} username={username} viewingStaff={staffName} />}
+        {tab === 'Rota' && <RotaTab canManage={canManageRota} />}
+      </div>
+    </div>
+  )
+}
+
+// Joe/Grony only -- pick any other staff member and see their standard page,
+// same shape as "Personal" but for someone else. `key={selected}` forces a
+// clean remount on each pick so StandardStaffTabs' own state (which sub-tab,
+// its Violations vtab) doesn't carry over stale from the previous person.
+function OthersTab({ role, username, selfName }: { role: string; username: string; selfName: string }) {
+  const others = ALL_STAFF_NAMES.filter(n => n.toLowerCase() !== selfName.toLowerCase())
+  const [selected, setSelected] = useState(others[0])
+
+  return (
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex items-center gap-1 px-2 py-1 bg-gray-50 border-b border-gray-100 overflow-x-auto shrink-0">
+        {others.map(name => (
+          <button key={name} onClick={() => setSelected(name)}
+            className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full border transition
+              ${selected === name ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-500 border-gray-200 hover:bg-gray-100'}`}>
+            {name}
+          </button>
+        ))}
+      </div>
+      <div className="flex-1 min-h-0">
+        <StandardStaffTabs key={selected} staffName={selected} role={role} username={username} canManageRota={false} />
+      </div>
+    </div>
+  )
+}
+
+// Joe/Grony only -- the tools that populate what shows up in everyone's
+// (including their own) Payslips/Rota. This is the only place Rota is
+// actually editable; Personal/Others both show it read-only.
+function BuildTab({ role, username }: { role: string; username: string }) {
+  const [tab, setTab] = useState<'Payslips' | 'Rota'>('Payslips')
+  return (
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex items-center gap-1 px-2 py-0.5 bg-white border-b border-gray-100 shrink-0">
+        <button onClick={() => setTab('Payslips')} className={tabBtnCls(tab === 'Payslips')}>Payslips</button>
+        <button onClick={() => setTab('Rota')} className={tabBtnCls(tab === 'Rota')}>Rota</button>
+      </div>
+      <div className="flex-1 min-h-0 overflow-y-auto px-2 py-3">
+        {tab === 'Payslips' && <PayslipsTab role={role} username={username} />}
+        {tab === 'Rota' && <RotaTab canManage={true} />}
+      </div>
+    </div>
+  )
+}
+
+const BUILDER_TOP_TABS = ['Personal', 'Others', 'Build', 'All Staff'] as const
+type BuilderTopTab = (typeof BUILDER_TOP_TABS)[number]
+
+// Joe/Grony's page: 4 top-level tabs instead of everyone else's flat 6 --
+// Personal (their own standard page), Others (anyone else's standard page),
+// Build (the payslip/rota admin tools), and All Staff (the shop-wide
+// violations leaderboard/checklist, kept as its own tab for now rather than
+// folded into Build).
+function BuilderStaffTabs({ staffName, role, username, openAddSignal }: {
+  staffName: string; role: string; username: string; openAddSignal?: number
+}) {
+  const [topTab, setTopTab] = useState<BuilderTopTab>('Personal')
+  const [teamVtab, setTeamVtab] = useState<ViolationView>('Disciplinary')
+
+  return (
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex items-center gap-1 px-2 py-0.5 bg-white border-b border-gray-100 overflow-x-auto shrink-0">
+        {BUILDER_TOP_TABS.map(t => <button key={t} onClick={() => setTopTab(t)} className={tabBtnCls(topTab === t)}>{t}</button>)}
+      </div>
+      <div className="flex-1 min-h-0">
+        {topTab === 'Personal' && <StandardStaffTabs staffName={staffName} role={role} username={username} openAddSignal={openAddSignal} canManageRota={false} />}
+        {topTab === 'Others' && <OthersTab role={role} username={username} selfName={staffName} />}
+        {topTab === 'Build' && <BuildTab role={role} username={username} />}
+        {topTab === 'All Staff' && <ViolationsTab role={role} username={username} vtab={teamVtab} setVtab={setTeamVtab} />}
+      </div>
+    </div>
+  )
+}
 
 export default function StaffPersonTab({ staffName, role, username, openAddSignal }: {
   staffName: string; role: string; username: string; openAddSignal?: number
 }) {
   const isBuilder = ['joe', 'grony'].includes(staffName.toLowerCase())
-  const rotaLabel: SharedTab = isBuilder ? 'Rota Builder' : 'Rota'
-  const baseTabs: PersonTab[] = ['Times', ...PERSONAL_TABS, rotaLabel]
-  const extraTabs: PersonTab[] = isBuilder ? ['Payslip Builder', 'All Staff'] : []
-
-  const [tab, setTab] = useState<PersonTab>('Times')
-  const [vtab, setVtab] = useState<ViolationView>('Disciplinary')
-  const [teamVtab, setTeamVtab] = useState<ViolationView>('Disciplinary')
-  // Joe/Grony only -- lets them check one specific other person's personal
-  // tabs (Payslips/Violations/Analytics/Assignments) without a top-level
-  // roster picker. Times/Rota ignore this -- they're already
-  // shared/unfiltered for everyone regardless of whose page you're on.
-  const [viewAs, setViewAs] = useState(staffName)
-  const isPersonalTab = (PERSONAL_TABS as readonly string[]).includes(tab)
-
-  const tabBtnCls = (active: boolean) =>
-    `shrink-0 text-sm font-semibold px-1.5 py-0.5 rounded-lg whitespace-nowrap border transition
-      ${active ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-500 border-gray-200 hover:bg-gray-100'}`
-
-  return (
-    <div className="flex flex-col h-full min-h-0">
-      <div className="flex items-center gap-1 px-2 py-0.5 bg-white border-b border-gray-100 overflow-x-auto shrink-0">
-        {baseTabs.map(t => <button key={t} onClick={() => setTab(t)} className={tabBtnCls(tab === t)}>{t}</button>)}
-        {extraTabs.length > 0 && <div className="w-px self-stretch bg-gray-200 shrink-0 mx-0.5" />}
-        {extraTabs.map(t => <button key={t} onClick={() => setTab(t)} className={tabBtnCls(tab === t)}>{t}</button>)}
-      </div>
-
-      {isBuilder && isPersonalTab && (
-        <div className="flex items-center gap-1 px-2 py-1 bg-gray-50 border-b border-gray-100 overflow-x-auto shrink-0">
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide shrink-0">Viewing</span>
-          {ALL_STAFF_NAMES.map(name => (
-            <button key={name} onClick={() => setViewAs(name)}
-              className={`shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full border transition
-                ${viewAs === name ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-500 border-gray-200 hover:bg-gray-100'}`}>
-              {name}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div className="flex-1 min-h-0 overflow-y-auto px-2 py-3">
-        {tab === 'Times' && <TimesTab username={username} role={role} openAddSignal={openAddSignal} />}
-        {tab === 'Payslips' && <PayslipsTab role={role} username={username} viewingStaff={viewAs} />}
-        {tab === 'Violations' && <ViolationsTab role={role} username={username} vtab={vtab} setVtab={setVtab} viewingStaff={viewAs} />}
-        {tab === 'Analytics' && <AnalyticsTab viewingStaff={viewAs} />}
-        {tab === 'Assignments' && <AssignmentsTab role={role} username={username} viewingStaff={viewAs} />}
-        {(tab === 'Rota' || tab === 'Rota Builder') && <RotaTab canManage={isBuilder} />}
-        {tab === 'Payslip Builder' && <PayslipsTab role={role} username={username} />}
-        {tab === 'All Staff' && <ViolationsTab role={role} username={username} vtab={teamVtab} setVtab={setTeamVtab} />}
-      </div>
-    </div>
-  )
+  if (isBuilder) {
+    return <BuilderStaffTabs staffName={staffName} role={role} username={username} openAddSignal={openAddSignal} />
+  }
+  return <StandardStaffTabs staffName={staffName} role={role} username={username} openAddSignal={openAddSignal} canManageRota={false} />
 }
