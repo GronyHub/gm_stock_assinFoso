@@ -59,6 +59,7 @@ const ReceiptsPage   = dynamic(() => import('../receipts/page'),              { 
 const ViewPortalAsButton = dynamic(() => import('@/components/ViewPortalAsButton'), { ssr: false })
 const StaffPersonTab = dynamic(() => import('./_components/StaffPersonTab'),  { ssr: false, loading: () => loading('Loading…') })
 const ViolationsTab = dynamic(() => import('../staff/StaffClient').then(m => ({ default: m.ViolationsTab })), { ssr: false, loading: () => loading('Loading…') })
+const PayslipsTab = dynamic(() => import('../staff/StaffClient').then(m => ({ default: m.PayslipsTab })), { ssr: false, loading: () => loading('Loading…') })
 
 // The 4 staff Times/Payslips/etc. are keyed against -- kept here as the one
 // canonical roster for the Staff tab's picker (see StaffClient.tsx's own
@@ -1274,6 +1275,13 @@ function ItemHubPageInner() {
                 <div className="space-y-2 border-t border-gray-100 pt-3">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wide px-1">Team</p>
                   <ViolationsTab role={role} username={username} vtab={teamVtab} setVtab={setTeamVtab} />
+                </div>
+                {/* Payslips unfiltered -- By Month (all staff), the Payslip
+                    Builder, Profiles, and Flags are all shop-wide admin
+                    tools, not one person's records, so they live here
+                    instead of any individual's page. */}
+                <div className="space-y-2 border-t border-gray-100 pt-3">
+                  <PayslipsTab role={role} username={username} />
                 </div>
               </div>
             )}
