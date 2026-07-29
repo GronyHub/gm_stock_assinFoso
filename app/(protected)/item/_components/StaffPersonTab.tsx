@@ -1,14 +1,14 @@
 'use client'
 import { useState } from 'react'
 import {
-  TimesTab, PayslipsTab, ViolationsTab, RoleTab, AnalyticsTab, AssignmentsTab, RotaTab, ALL_STAFF_NAMES,
+  TimesTab, PayslipsTab, ViolationsTab, AnalyticsTab, AssignmentsTab, RotaTab, ALL_STAFF_NAMES,
 } from '../../staff/StaffClient'
 import type { ViolationView } from '../../staff/StaffClient'
 
 // Personal tabs -- each Tab already fetches everyone's data and filters
 // client-side, so `viewingStaff` just locks each one to this name instead
 // of duplicating any of that logic.
-const PERSONAL_TABS = ['Payslips', 'Violations', 'Role', 'Analytics', 'Assignments'] as const
+const PERSONAL_TABS = ['Payslips', 'Violations', 'Analytics', 'Assignments'] as const
 type PersonalTab = (typeof PERSONAL_TABS)[number]
 // Shared tabs -- Times and Rota show the whole team's structure, not just
 // this person's slice, even on their own page (everyone can see who else is
@@ -34,8 +34,8 @@ export default function StaffPersonTab({ staffName, role, username, openAddSigna
   const [vtab, setVtab] = useState<ViolationView>('Disciplinary')
   const [teamVtab, setTeamVtab] = useState<ViolationView>('Disciplinary')
   // Joe/Grony only -- lets them check one specific other person's personal
-  // tabs (Payslips/Violations/Role/Analytics/Assignments) without a
-  // top-level roster picker. Times/Rota ignore this -- they're already
+  // tabs (Payslips/Violations/Analytics/Assignments) without a top-level
+  // roster picker. Times/Rota ignore this -- they're already
   // shared/unfiltered for everyone regardless of whose page you're on.
   const [viewAs, setViewAs] = useState(staffName)
   const isPersonalTab = (PERSONAL_TABS as readonly string[]).includes(tab)
@@ -69,7 +69,6 @@ export default function StaffPersonTab({ staffName, role, username, openAddSigna
         {tab === 'Times' && <TimesTab username={username} role={role} openAddSignal={openAddSignal} />}
         {tab === 'Payslips' && <PayslipsTab role={role} username={username} viewingStaff={viewAs} />}
         {tab === 'Violations' && <ViolationsTab role={role} username={username} vtab={vtab} setVtab={setVtab} viewingStaff={viewAs} />}
-        {tab === 'Role' && <RoleTab role={role} username={username} viewingStaff={viewAs} />}
         {tab === 'Analytics' && <AnalyticsTab viewingStaff={viewAs} />}
         {tab === 'Assignments' && <AssignmentsTab role={role} username={username} viewingStaff={viewAs} />}
         {(tab === 'Rota' || tab === 'Rota Builder') && <RotaTab canManage={isBuilder} />}

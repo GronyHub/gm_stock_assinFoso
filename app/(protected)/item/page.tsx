@@ -1249,7 +1249,13 @@ function ItemHubPageInner() {
         {outerTab === 'staff' && (
           <TabErrorBoundary>
             {myStaffName ? (
-              <StaffPersonTab staffName={myStaffName} role={role} username={username} openAddSignal={staffTimeSignal} />
+              // key forces a full remount whenever the logged-in identity
+              // changes (e.g. an admin switching "View as" between staff
+              // without leaving this tab) -- StaffPersonTab's internal
+              // state (which sub-tab, who Joe/Grony are "Viewing") is only
+              // ever set from props on first mount, so without this it
+              // would keep showing the previous person's selections.
+              <StaffPersonTab key={myStaffName} staffName={myStaffName} role={role} username={username} openAddSignal={staffTimeSignal} />
             ) : (
               <p className="py-10 text-center text-gray-400 text-sm px-4">No staff profile is set up for your account.</p>
             )}
