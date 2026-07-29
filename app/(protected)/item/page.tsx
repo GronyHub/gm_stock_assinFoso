@@ -252,7 +252,6 @@ const LOSSVIEW_PILL_KEYS: Partial<Record<LossView, string[]>> = {
 // Logs moved into Grony Manage.
 const HAMBURGER_LINKS = [
   { href: '/users',        label: 'Users'            },
-  { href: '/profile',      label: 'Profile'          },
   { href: '/counts',       label: 'Counts'           },
   { href: '/purchase-orders', label: 'Purchase Orders' },
   { href: '/aliases/wide', label: 'Alias Wide Table' },
@@ -816,11 +815,11 @@ function ItemHubPageInner() {
   // bare standalone page with no way back except the browser's back button.
   const byLabel = (label: string) => cashSubmenus.find(s => s.label === label)!
   const hamburgerLinks: { label: string; href?: string; action?: () => void }[] = [
-    ...HAMBURGER_LINKS.slice(0, 2), // Users, Profile
+    ...HAMBURGER_LINKS.slice(0, 1), // Users
     byLabel('Customers'),
     byLabel('Receipts'),
     byLabel('Vendors'),
-    ...HAMBURGER_LINKS.slice(2), // Counts, Purchase Orders, Alias Wide Table, Service Matches
+    ...HAMBURGER_LINKS.slice(1), // Counts, Purchase Orders, Alias Wide Table, Service Matches
     ...(isOwnerOrJoe ? [
       { href: '/debug/unlink-mismatch', label: 'Fix Mislinked Sales' },
     ] : []),
