@@ -270,6 +270,40 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
   useEffect(() => { load() }, [])
   usePolling(load, 5000, !pickingTime && editDate === null)
 
+  // Upcoming Schedule -- a read-only preview of the next 7 days' rota
+  // (built/edited in the Build tab, see RotaTab) shown right inside Times,
+  // so this one screen covers past actual clock records AND the near-term
+  // plan. Deliberately NOT a data merge: staff_times (actual, GPS-gated
+  // clock events that feed payroll hour totals) and the rota (a plan that
+  // gets revised) stay separate tables -- this just reads the existing
+  // /api/rota endpoint for display.
+  const [upcomingRota, setUpcomingRota] = useState<RotaEntry[]>([])
+  useEffect(() => {
+    const today = new Date()
+    const next = new Date(today.getFullYear(), today.getMonth() + 1, 1)
+    Promise.all([
+      fetch(`/api/rota?year=${today.getFullYear()}&month=${today.getMonth() + 1}`).then(r => r.ok ? r.json() : []),
+      fetch(`/api/rota?year=${next.getFullYear()}&month=${next.getMonth() + 1}`).then(r => r.ok ? r.json() : []),
+    ]).then(([a, b]) => {
+      const all = [...(Array.isArray(a) ? a : []), ...(Array.isArray(b) ? b : [])]
+      const todayStr = today.toISOString().slice(0, 10)
+      const cutoff = new Date(today)
+      cutoff.setDate(cutoff.getDate() + 6)
+      const cutoffStr = cutoff.toISOString().slice(0, 10)
+      setUpcomingRota(all.filter((e: RotaEntry) => e.rota_date >= todayStr && e.rota_date <= cutoffStr))
+    }).catch(() => {})
+  }, [])
+
+  const upcomingStaff = viewName ? ROTA_STAFF.filter(s => s.toLowerCase() === viewName) : ROTA_STAFF
+  const upcomingByDate = useMemo(() => {
+    const map: Record<string, Record<string, RotaEntry>> = {}
+    for (const e of upcomingRota) {
+      if (!map[e.rota_date]) map[e.rota_date] = {}
+      map[e.rota_date][e.staff_name] = e
+    }
+    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b))
+  }, [upcomingRota])
+
   async function adminSaveEdit() {
     if (!adminEditRow?.id) return
     setAdminEditSaving(true)
@@ -581,6 +615,56 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Upcoming Schedule -- read-only preview of the rota for the next 7
+          days, built/edited elsewhere (Build tab). Hidden entirely once
+          nothing's published for that window, rather than showing an empty
+          table. */}
+      {upcomingByDate.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200">
+            <span className="text-xs font-semibold text-gray-600">Upcoming Schedule</span>
+          </div>
+          <table className="w-full text-[11px] table-fixed">
+            <colgroup>
+              <col style={{width:'22%'}} />
+              {upcomingStaff.map(s => <col key={s} />)}
+            </colgroup>
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="text-left px-1.5 py-2 text-gray-500 font-semibold">Date</th>
+                {upcomingStaff.map(s => (
+                  <th key={s} className="text-center px-0.5 py-2 text-gray-500 font-semibold">{s}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {upcomingByDate.map(([date, map]) => (
+                <tr key={date}>
+                  <td className="px-1.5 py-1.5 text-gray-600 leading-tight">{fmtShortDate(date)}</td>
+                  {upcomingStaff.map(s => {
+                    const e = map[s]
+                    return (
+                      <td key={s} className="px-0.5 py-1 text-center">
+                        {!e ? (
+                          <span className="text-gray-200">—</span>
+                        ) : e.is_off ? (
+                          <span className="text-gray-400">OFF</span>
+                        ) : (
+                          <div className="flex flex-col items-center leading-tight">
+                            <span className="text-green-700">{e.sched_in ?? '—'}</span>
+                            <span className="text-orange-600">{e.sched_out ?? '—'}</span>
+                          </div>
+                        )}
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
