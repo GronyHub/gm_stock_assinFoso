@@ -11,7 +11,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell,
 } from 'recharts'
 
-const STAFF = ['joe', 'bino', 'james', 'rawlings']
+const STAFF = ['joe', 'bino', 'james', 'rawlings', 'grony']
 
 function nowAsHHMM() {
   const d = new Date()
@@ -58,7 +58,7 @@ function monthsBetween(from: string, to: string): number {
 }
 
 const STAFF_CHART_COLORS: Record<string, string> = {
-  joe: '#3b82f6', bino: '#a855f7', james: '#22c55e', rawlings: '#f97316',
+  joe: '#3b82f6', bino: '#a855f7', james: '#22c55e', rawlings: '#f97316', grony: '#ec4899',
 }
 
 function to12hToHHMM(t: string | null | undefined): string {
@@ -81,6 +81,7 @@ const STAFF_COLORS: Record<string, string> = {
   Bino: 'bg-purple-100 text-purple-700',
   James: 'bg-green-100 text-green-700',
   Rawlings: 'bg-orange-100 text-orange-700',
+  Grony: 'bg-pink-100 text-pink-700',
 }
 
 const SEVERITY_COLORS: Record<string, string> = {

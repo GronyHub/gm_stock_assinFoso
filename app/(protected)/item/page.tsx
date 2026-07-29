@@ -28,7 +28,6 @@ import RoleBar, { type RoleKey, type ShortcutKey } from './_components/RoleBar'
 import RolePanel from './_components/RolePanel'
 import { COL_BY_KEY, ALL_COL_KEYS, type ColKey } from './_components/lossTabColumns'
 import type { ManageView } from './_components/GronyManageTab'
-import type { ViolationView } from '../staff/StaffClient'
 import dynamic from 'next/dynamic'
 const loading = (h: string) => <div className={`py-10 text-center text-gray-400 text-sm`}>{h}</div>
 const ItemsTab       = dynamic(() => import('./_components/ItemsTab'),        { ssr: false, loading: () => loading('Loading…') })
@@ -58,13 +57,12 @@ const CustomersPage  = dynamic(() => import('../customers/page'),             { 
 const ReceiptsPage   = dynamic(() => import('../receipts/page'),              { ssr: false, loading: () => loading('Loading…') })
 const ViewPortalAsButton = dynamic(() => import('@/components/ViewPortalAsButton'), { ssr: false })
 const StaffPersonTab = dynamic(() => import('./_components/StaffPersonTab'),  { ssr: false, loading: () => loading('Loading…') })
-const ViolationsTab = dynamic(() => import('../staff/StaffClient').then(m => ({ default: m.ViolationsTab })), { ssr: false, loading: () => loading('Loading…') })
-const PayslipsTab = dynamic(() => import('../staff/StaffClient').then(m => ({ default: m.PayslipsTab })), { ssr: false, loading: () => loading('Loading…') })
 
-// The 4 staff Times/Payslips/etc. are keyed against -- kept here as the one
-// canonical roster for the Staff tab's picker (see StaffClient.tsx's own
-// STAFF constant, which this must stay in sync with).
-const STAFF_ROSTER = ['Joe', 'Bino', 'James', 'Rawlings']
+// Every real staff member, including Grony -- the third top-level tab shows
+// whichever one of these matches the logged-in username, and that person's
+// own page is built from this same roster (see StaffClient.tsx's own STAFF/
+// ALL_STAFF_NAMES constants, which this must stay in sync with).
+const STAFF_ROSTER = ['Joe', 'Bino', 'James', 'Rawlings', 'Grony']
 
 type OuterTab = 'today' | 'loss' | 'manage' | 'staff'
 
@@ -339,15 +337,6 @@ function ItemHubPageInner() {
   // Same idea, for jumping straight into a specific Grony Manage sub-tab
   // (GronyManageTab owns that sub-tab state itself, same as Customers/Vendors).
   const [manageInitialView, setManageInitialView] = useState<ManageView | undefined>(undefined)
-  // Which staff member's page is open under the Staff tab -- null shows the
-  // roster picker instead. Persists across switching away and back (same as
-  // lossView does for Grony Cash), so it's only reset explicitly.
-  const [staffPerson, setStaffPerson] = useState<string | null>(null)
-  // The roster picker also carries the shop-wide Violations checklist
-  // (Disciplinary/Payslips/Times, e.g. "which day is missing staff times") --
-  // that's about the team, not one person, so it doesn't belong on any
-  // individual's page.
-  const [teamVtab, setTeamVtab] = useState<ViolationView>('Disciplinary')
 
   useEffect(() => {
     const q = globalSearchQuery.trim()
@@ -643,12 +632,9 @@ function ItemHubPageInner() {
       case 'customer':   changeTab('loss'); setLossView('customers'); setCustomerSignal(n => n + 1); break
       case 'vendor':     changeTab('loss'); setLossView('vendors');   setVendorSignal(n => n + 1); break
       case 'staffTime': {
+        // The Staff tab always opens straight to your own page now, and
+        // Times is its first (shared) sub-tab -- nothing left to pick.
         changeTab('staff')
-        // Lands the shortcut on your own page if you're staff yourself,
-        // otherwise the roster picker -- same as before this only ever
-        // meant "go clock my own time in".
-        const self = STAFF_ROSTER.find(s => s.toLowerCase() === username.toLowerCase())
-        setStaffPerson(self ?? null)
         setStaffTimeSignal(n => n + 1)
         break
       }
@@ -733,10 +719,10 @@ function ItemHubPageInner() {
     // just land on Grony Manage -- same shallow landing as before, one more
     // tap to the exact sub-view.
     if (['no_advert', 'jingle_overdue', 'equipment_check_overdue'].includes(key)) { changeTab('manage'); return }
-    // No Staff Times is about a missing day, not one person, so it lands on
-    // the Staff tab's Team overview (roster picker) with its checklist open,
-    // not any individual's page.
-    if (key === 'no_staff_times') { changeTab('staff'); setStaffPerson(null); setTeamVtab('Times'); return }
+    // No Staff Times is about a missing day, not one person, so it just
+    // lands on the Staff tab -- Times is its first (shared, unfiltered)
+    // sub-tab, which already shows every staff member's clock records.
+    if (key === 'no_staff_times') { changeTab('staff'); return }
     const targetView = VIOLATION_HOME[key]
     if (!targetView) return
     changeTab('loss')
@@ -770,6 +756,13 @@ function ItemHubPageInner() {
   const canSeePL = role === 'owner' || username === 'joe'
   const isOwnerOrJoe = role === 'owner' || username.toLowerCase() === 'joe'
   const isGrony = username.toLowerCase() === 'grony'
+  // Drives the third top-level tab's label AND which staff page it opens --
+  // "just like the user profile icon", it's always your own name, not a
+  // generic "Staff" label or a pick-a-person screen. Falls back to
+  // undefined for a logged-in account with no matching staff page (there
+  // shouldn't be one in practice, but the tab still needs to degrade
+  // gracefully instead of showing a stranger's personal records).
+  const myStaffName = STAFF_ROSTER.find(n => n.toLowerCase() === username.toLowerCase())
 
   // Every real submenu under Grony Cash, Grony Manage, and the account
   // (person icon) menu -- three separate, tagged lists rather than one
@@ -808,12 +801,13 @@ function ItemHubPageInner() {
     { label: 'Logs', action: () => { changeTab('manage'); setManageInitialView('logs') } },
   ]
 
-  // One entry per staff member -- each opens their own Times/Payslips/
-  // Violations/Role/Analytics/Assignments page directly, same "jump
-  // straight there" contract as cashSubmenus/manageSubmenus.
-  const staffSubmenus: { label: string; action: () => void }[] = STAFF_ROSTER.map(name => ({
-    label: name, action: () => { changeTab('staff'); setStaffPerson(name) },
-  }))
+  // Just the one destination now -- your own Staff page. Picking a
+  // different staff member's individual records isn't a top-level
+  // destination any more; Joe/Grony do that from inside their own page's
+  // Payslip Builder / All Staff sub-tabs instead (see StaffPersonTab).
+  const staffSubmenus: { label: string; action: () => void }[] = myStaffName
+    ? [{ label: myStaffName, action: () => changeTab('staff') }]
+    : []
 
   // Customers/Vendors/Receipts reuse cashSubmenus' own actions (find, not a
   // second copy of the changeTab/setLossView calls) so opening them from
@@ -856,10 +850,9 @@ function ItemHubPageInner() {
     { label: 'Home', action: () => changeTab('today') },
     { label: 'Grony Cash', action: () => changeTab('loss') },
     { label: 'Grony Manage', action: () => changeTab('manage') },
-    { label: 'Staff', action: () => changeTab('staff') },
+    { label: myStaffName ?? 'Staff', action: () => changeTab('staff') },
     ...cashSubmenus,
     ...manageSubmenus,
-    ...staffSubmenus,
     { label: 'Tasks', action: () => setOpenRole('joe') },
     { label: 'Opener', action: () => setOpenRole('opener') },
     { label: 'Closer', action: () => setOpenRole('closer') },
@@ -902,7 +895,7 @@ function ItemHubPageInner() {
           </button>
           <div className="w-px bg-gray-200 shrink-0" />
           <button onClick={() => changeTab('staff')} className={topTabCls()}>
-            <span className={topTabLabelCls(outerTab === 'staff' && !openRole)}>Staff</span>
+            <span className={topTabLabelCls(outerTab === 'staff' && !openRole)}>{myStaffName ?? 'Staff'}</span>
           </button>
           <div className="w-px bg-gray-200 shrink-0" />
           {/* Global search -- looks across the whole app (items, customers,
@@ -1247,43 +1240,10 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'staff' && (
           <TabErrorBoundary>
-            {staffPerson ? (
-              <div className="flex flex-col h-full min-h-0">
-                <button onClick={() => setStaffPerson(null)}
-                  className="shrink-0 text-left text-xs font-semibold text-blue-600 px-2 py-1.5 hover:bg-gray-50">
-                  ← All Staff
-                </button>
-                <div className="flex-1 min-h-0">
-                  <StaffPersonTab staffName={staffPerson} role={role} username={username} openAddSignal={staffTimeSignal} />
-                </div>
-              </div>
+            {myStaffName ? (
+              <StaffPersonTab staffName={myStaffName} role={role} username={username} openAddSignal={staffTimeSignal} />
             ) : (
-              <div className="px-2 py-3 space-y-4 overflow-y-auto h-full">
-                <div className="space-y-2">
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wide px-1">Staff</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {STAFF_ROSTER.map(name => (
-                      <button key={name} onClick={() => setStaffPerson(name)}
-                        className="text-sm font-semibold px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition">
-                        {name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {/* Team-wide (not any one person's) -- penalty leaderboard,
-                    missing payslips, missing staff-times checklist. */}
-                <div className="space-y-2 border-t border-gray-100 pt-3">
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wide px-1">Team</p>
-                  <ViolationsTab role={role} username={username} vtab={teamVtab} setVtab={setTeamVtab} />
-                </div>
-                {/* Payslips unfiltered -- By Month (all staff), the Payslip
-                    Builder, Profiles, and Flags are all shop-wide admin
-                    tools, not one person's records, so they live here
-                    instead of any individual's page. */}
-                <div className="space-y-2 border-t border-gray-100 pt-3">
-                  <PayslipsTab role={role} username={username} />
-                </div>
-              </div>
+              <p className="py-10 text-center text-gray-400 text-sm px-4">No staff profile is set up for your account.</p>
             )}
           </TabErrorBoundary>
         )}
