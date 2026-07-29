@@ -850,7 +850,7 @@ function ItemHubPageInner() {
     { label: 'Home', action: () => changeTab('today') },
     { label: 'Grony Cash', action: () => changeTab('loss') },
     { label: 'Grony Manage', action: () => changeTab('manage') },
-    { label: myStaffName ?? 'Staff', action: () => changeTab('staff') },
+    ...(myStaffName ? [{ label: myStaffName, action: () => changeTab('staff') }] : []),
     ...cashSubmenus,
     ...manageSubmenus,
     { label: 'Tasks', action: () => setOpenRole('joe') },
@@ -893,10 +893,18 @@ function ItemHubPageInner() {
           <button onClick={() => changeTab('manage')} className={topTabCls()}>
             <span className={topTabLabelCls(outerTab === 'manage' && !openRole)}>Grony Manage</span>
           </button>
+          {/* Only shown for an account with a real staff page -- a stray
+              login with no matching roster entry has nothing behind this
+              tab, so it's left off entirely rather than opening a dead
+              end. The 👤 glyph stays constant even though the name next to
+              it changes per person, so "tap the person icon" still works
+              as a stable instruction regardless of who's logged in. */}
+          {myStaffName && (<>
           <div className="w-px bg-gray-200 shrink-0" />
           <button onClick={() => changeTab('staff')} className={topTabCls()}>
-            <span className={topTabLabelCls(outerTab === 'staff' && !openRole)}>{myStaffName ?? 'Staff'}</span>
+            <span className={topTabLabelCls(outerTab === 'staff' && !openRole)}>👤 {myStaffName}</span>
           </button>
+          </>)}
           <div className="w-px bg-gray-200 shrink-0" />
           {/* Global search -- looks across the whole app (items, customers,
               vendors, sales, bills, announcements), unlike the per-view
@@ -1235,7 +1243,7 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'manage' && (
           <TabErrorBoundary>
-            <GronyManageTab initialView={manageInitialView} />
+            <GronyManageTab initialView={manageInitialView} role={role} username={username} />
           </TabErrorBoundary>
         )}
         {outerTab === 'staff' && (

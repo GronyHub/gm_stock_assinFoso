@@ -57,8 +57,11 @@ const SUBMENU: { key: ManageView | 'shop_beautification'; label: string }[] = [
 // mirroring Grony Cash: Cash covers the money aspect, Manage covers
 // everything else (count duties, item hygiene, shift scheduling, and the
 // shop's day-to-day operational checklist categories).
-export default function GronyManageTab({ initialView }: { initialView?: ManageView } = {}) {
+export default function GronyManageTab({ initialView, role, username }: { initialView?: ManageView; role: string; username: string }) {
   const [view, setView] = useState<ManageView>(initialView ?? 'advert')
+  // Same "Rota Builder" gate as the per-person Staff tab -- reaching the
+  // schedule from here shouldn't be a back door around that restriction.
+  const canManageRota = role === 'owner' || ['joe', 'grony'].includes(username.toLowerCase())
 
   // Driven by the global search (page.tsx) landing here already knowing
   // which sub-tab to show -- also covers re-arriving at a different one
@@ -100,7 +103,7 @@ export default function GronyManageTab({ initialView }: { initialView?: ManageVi
       )}
 
       <div className="flex-1 min-h-0 overflow-y-auto">
-        {view === 'rota' && <div className="px-2"><RotaTab /></div>}
+        {view === 'rota' && <div className="px-2"><RotaTab canManage={canManageRota} /></div>}
         {view === 'advert' && <AdvertTab />}
         {view === 'staff_dress' && <ClosingReportLogView field="no_tshirt_staff" label="Dress Code" icon="👕" />}
         {view === 'training' && <TrainingTab />}
