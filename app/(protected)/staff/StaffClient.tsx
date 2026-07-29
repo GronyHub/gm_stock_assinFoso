@@ -875,7 +875,7 @@ const PAY_COLS = [
   { key: 'total_salary',        label: 'TOTAL',      fmt: fmtC },
 ] as const
 
-const ALL_STAFF_NAMES = ['Joe', 'Bino', 'James', 'Rawlings', 'Grony']
+export const ALL_STAFF_NAMES = ['Joe', 'Bino', 'James', 'Rawlings', 'Grony']
 
 type PayView = 'monthly' | 'staff' | 'profiles' | 'build'
 
@@ -2229,7 +2229,10 @@ function hoursFromShift(entry: RotaEntry): number {
   return Math.max(0, parse(entry.sched_out) - parse(entry.sched_in))
 }
 
-export function RotaTab() {
+// canManage gates Generate/Re-generate, editing a shift, and recording/
+// removing absences -- everyone can still see the full schedule (it's
+// shared), but only Joe/Grony's "Rota Builder" can actually change it.
+export function RotaTab({ canManage }: { canManage: boolean }) {
   const today = new Date()
   const [subTab, setSubTab] = useState<'schedule' | 'absences'>('schedule')
   const [year, setYear] = useState(today.getFullYear())
@@ -2339,10 +2342,12 @@ export function RotaTab() {
               className="bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm font-medium outline-none focus:ring-2 focus:ring-blue-400">
               {[2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
             </select>
-            <button onClick={generate} disabled={generating}
-              className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-semibold px-4 py-2 rounded-xl transition">
-              {generating ? 'Generating…' : rota.length ? 'Re-generate' : 'Generate'}
-            </button>
+            {canManage && (
+              <button onClick={generate} disabled={generating}
+                className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-semibold px-4 py-2 rounded-xl transition">
+                {generating ? 'Generating…' : rota.length ? 'Re-generate' : 'Generate'}
+              </button>
+            )}
           </div>
 
           {rota.length > 0 && (
@@ -2370,7 +2375,9 @@ export function RotaTab() {
 
           {loading && <p className="py-8 text-center text-gray-400">Loading…</p>}
           {!loading && rota.length === 0 && (
-            <p className="py-8 text-center text-gray-400 text-sm">No rota for {ROTA_MONTHS[month-1]} {year}. Click Generate to create one.</p>
+            <p className="py-8 text-center text-gray-400 text-sm">
+              No rota for {ROTA_MONTHS[month-1]} {year}{canManage ? '. Click Generate to create one.' : ' yet.'}
+            </p>
           )}
 
           {editEntry && (
@@ -2437,8 +2444,8 @@ export function RotaTab() {
                       const e = dayEntries.find(x => x.staff_name === staff)
                       if (!e) return null
                       return (
-                        <button key={staff} onClick={() => setEditEntry({...e})}
-                          className="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-50 text-left transition">
+                        <button key={staff} onClick={() => canManage && setEditEntry({...e})} disabled={!canManage}
+                          className={`w-full flex items-center gap-3 px-3 py-2 text-left transition ${canManage ? 'hover:bg-gray-50' : 'cursor-default'}`}>
                           <span className={`shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full w-16 text-center ${ROTA_STAFF_COLORS[staff]}`}>{staff}</span>
                           {e.is_off ? (
                             <span className="text-xs text-gray-400">OFF</span>
@@ -2467,12 +2474,14 @@ export function RotaTab() {
       {/* ── ABSENCES SUB-TAB ── */}
       {subTab === 'absences' && (
         <div className="space-y-3">
-          <button onClick={() => setShowAbsForm(v => !v)}
-            className="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2 rounded-xl transition">
-            + Record Absence
-          </button>
+          {canManage && (
+            <button onClick={() => setShowAbsForm(v => !v)}
+              className="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2 rounded-xl transition">
+              + Record Absence
+            </button>
+          )}
 
-          {showAbsForm && (
+          {showAbsForm && canManage && (
             <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
               <p className="text-sm font-semibold text-gray-900">New Absence</p>
               <div className="grid grid-cols-2 gap-2">
@@ -2525,10 +2534,12 @@ export function RotaTab() {
                   <p className="text-sm text-gray-800 mt-1 font-medium">{fmtDate(a.start_date)} → {fmtDate(a.end_date)}</p>
                   {a.reason && <p className="text-xs text-gray-400 mt-0.5">{a.reason}</p>}
                 </div>
-                <button onClick={() => deleteAbsence(a.id, a.staff_name)}
-                  className="shrink-0 text-xs text-red-500 font-semibold px-2.5 py-1 rounded-lg bg-red-50 hover:bg-red-100 transition">
-                  Remove
-                </button>
+                {canManage && (
+                  <button onClick={() => deleteAbsence(a.id, a.staff_name)}
+                    className="shrink-0 text-xs text-red-500 font-semibold px-2.5 py-1 rounded-lg bg-red-50 hover:bg-red-100 transition">
+                    Remove
+                  </button>
+                )}
               </div>
             ))}
           </div>
