@@ -1389,14 +1389,14 @@ function ItemHubPageInner() {
                 </button>
               </div>
             )}
-            {/* Doubles as the account menu trigger and an always-visible
-                reminder of who's actually logged in -- a device left signed
-                in as one person for hours/days is easy to miss (see the
-                Joe/Bino misattribution case), and this sits right where the
-                eye lands before tapping into any form. */}
-            <button onClick={() => setHamburgerOpen(o => !o)} title="Logged in as"
-              className="flex items-center justify-center px-4 py-4 text-gray-500 hover:bg-gray-50 transition text-[9px] font-semibold capitalize whitespace-nowrap">
-              👤 {username || '—'}
+            {/* Account menu trigger only -- the "who's logged in" job this
+                used to double as (see the Joe/Bino misattribution case)
+                now belongs to the top pill's 👤 {name}, and impersonation
+                specifically already has its own always-visible banner
+                (ImpersonationBar). No name here any more, just the icon. */}
+            <button onClick={() => setHamburgerOpen(o => !o)} title="Account menu"
+              className="flex items-center justify-center px-4 py-4 text-gray-500 hover:bg-gray-50 transition text-base">
+              👤
             </button>
           </div>
         }
