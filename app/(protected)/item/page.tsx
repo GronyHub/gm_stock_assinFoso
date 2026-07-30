@@ -82,7 +82,7 @@ type OuterTab = 'today' | 'loss' | 'manage' | 'staff' | 'uk' | 'ch'
 // Receipts, Daily (Summary), and Data all live as submenus inside the Grony
 // Cash tab (outerTab 'loss' -- kept as the internal key since it's
 // referenced throughout; only the label changed).
-type LossView = 'tasks' | 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'lossByItem' | 'lossByTarget' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts' | 'dailySummary'
+type LossView = 'home' | 'tasks' | 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'lossByItem' | 'lossByTarget' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts' | 'dailySummary'
   | 'purchaseOrders' | 'aliasWide' | 'serviceMatches' | 'fixMislinkedSales' | 'item360'
 
 // Old top-level tabs that got folded into Grony Cash submenus -- old
@@ -105,7 +105,7 @@ const OLD_TAB_TO_OUTER: Partial<Record<string, OuterTab>> = {
 // page with its own internal search/filter/add UI -- so the shared
 // groups/search/New controls row doesn't apply to them.
 const REPORT_VIEWS = new Set<LossView>([
-  'tasks', 'pl', 'cab', 'vendors', 'customers', 'receipts', 'dailySummary',
+  'home', 'tasks', 'pl', 'cab', 'vendors', 'customers', 'receipts', 'dailySummary',
   'purchaseOrders', 'aliasWide', 'serviceMatches', 'fixMislinkedSales', 'item360',
 ])
 
@@ -944,9 +944,10 @@ function ItemHubPageInner() {
       <div className="flex-1 min-h-0 flex overflow-hidden">
         {outerTab === 'loss' && (
           <SidePaneContainer mode={cashDisplayMode}
-            footer={<PaneHomeDaily mode={cashDisplayMode} onHome={() => changeTab('today')}
-              onDaily={() => { changeTab('loss'); setLossView('dailySummary') }}
-              dailyActive={outerTab === 'loss' && lossView === 'dailySummary'}
+            footer={<PaneHomeDaily mode={cashDisplayMode}
+              onHome={() => { setLossView('home'); setUnreadAnnouncements(0) }}
+              onDaily={() => setLossView('dailySummary')}
+              homeActive={lossView === 'home'} dailyActive={lossView === 'dailySummary'}
               unreadAnnouncements={unreadAnnouncements} />}>
             <SidePaneToggle mode={cashDisplayMode} onChange={changeCashDisplayMode} />
             {CASH_ITEMS.filter(v => v.key !== 'pl' || canSeePL)
@@ -1127,6 +1128,11 @@ function ItemHubPageInner() {
             <div className="px-4"><ReceiptsPage /></div>
           </TabErrorBoundary>
         )}
+        {outerTab === 'loss' && lossView === 'home' && (
+          <TabErrorBoundary>
+            <div className="px-4"><TodayContent /></div>
+          </TabErrorBoundary>
+        )}
         {outerTab === 'loss' && lossView === 'dailySummary' && (
           <TabErrorBoundary>
             <DailySummaryTab />
@@ -1167,8 +1173,7 @@ function ItemHubPageInner() {
               onOpenStaff={() => changeTab('staff')}
               tasksBadge={manageTasksCount} openerBadge={openerBadgeCount}
               closerBadge={globalFlags?.missingClosingReports?.length ?? 0}
-              onGoHome={() => changeTab('today')}
-              onGoDaily={() => { changeTab('loss'); setLossView('dailySummary') }}
+              onHomeOpened={() => setUnreadAnnouncements(0)}
               unreadAnnouncements={unreadAnnouncements} />
           </TabErrorBoundary>
         )}

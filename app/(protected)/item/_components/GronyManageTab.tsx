@@ -27,12 +27,27 @@ const LogsPage = dynamic(() => import('../../logs/page'), {
   ssr: false,
   loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div>,
 })
+// Home/Daily used to be a footer shortcut that jumped clean out of this tab
+// (changeTab('today') / changeTab('loss')) -- that dropped this pane and its
+// own left-hand list off screen entirely, replaced by Today's full-width
+// view or Cash's own different pane. Rendering them as views of this same
+// pane instead (like Tasks/Opener/Closer already are) keeps the pane and
+// top menu on screen exactly like clicking any other item here does.
+const TodayContent = dynamic(() => import('./TodayContent'), {
+  ssr: false,
+  loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div>,
+})
+const DailySummaryTab = dynamic(() => import('./DailySummaryTab'), {
+  ssr: false,
+  loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div>,
+})
 
 // Advert and Training used to each hold their own sub-tabs (nested one
 // level deeper, e.g. Advert > WhatsApp) -- now flattened into this same
 // list alongside everything else, same treatment Shop Beautification's
 // children already got. No more nested tab bars inside the right pane.
 export type ManageView =
+  | 'home' | 'daily'
   | 'tasks' | 'opener' | 'closer'
   | 'rota'
   | 'audio' | 'audio_status' | 'jingle' | 'equipment' | 'photoshop' | 'whatsapp' | 'cuttings' | 'video' | 'advert_log'
@@ -97,7 +112,7 @@ export default function GronyManageTab({
   violations, openerViolations, assignments, deadlines, assignedBy, assignedOn, vSettings,
   manageSubmenus, onGoToViolation, missingClosingReportsCount, onOpenStaff,
   tasksBadge, openerBadge, closerBadge,
-  onGoHome, onGoDaily, unreadAnnouncements,
+  onHomeOpened, unreadAnnouncements,
 }: {
   initialView?: ManageView; role: string; username: string
   // Tasks/Opener -- see item/page.tsx's manageTasksViolations/
@@ -116,10 +131,11 @@ export default function GronyManageTab({
   tasksBadge: number
   openerBadge: number
   closerBadge: number
-  // Home/Daily -- see PaneHomeDaily; Daily jumps into Grony Cash's Daily
-  // Summary even from here, the same global shortcut it always was.
-  onGoHome: () => void
-  onGoDaily: () => void
+  // Home is its own view here (see ManageView/TodayContent below) -- this is
+  // just an optimistic hook for the parent's unread-announcements badge,
+  // the same nicety changeTab('today') used to provide before Home moved
+  // off of it.
+  onHomeOpened?: () => void
   unreadAnnouncements: number
 }) {
   const [view, setView] = useState<ManageView>(initialView ?? 'audio')
@@ -220,8 +236,10 @@ export default function GronyManageTab({
           Width tightens further in icon-only mode; labels cap at 2 lines
           (line-clamp) rather than pushing the pane wider for long names. */}
       <SidePaneContainer mode={displayMode}
-        footer={<PaneHomeDaily mode={displayMode} onHome={onGoHome} onDaily={onGoDaily}
-          dailyActive={false} unreadAnnouncements={unreadAnnouncements} />}>
+        footer={<PaneHomeDaily mode={displayMode}
+          onHome={() => { pick('home'); onHomeOpened?.() }} onDaily={() => pick('daily')}
+          homeActive={!activeDynamic && view === 'home'} dailyActive={!activeDynamic && view === 'daily'}
+          unreadAnnouncements={unreadAnnouncements} />}>
         <SidePaneToggle mode={displayMode} onChange={changeDisplayMode} />
 
         {LIST_ITEMS.map(entry => {
@@ -284,6 +302,8 @@ export default function GronyManageTab({
         {activeDynamic ? (
           <DynamicCategoryPage categoryId={activeDynamic.id} categoryLabel={activeDynamic.label} canManage={canManage} />
         ) : (<>
+          {view === 'home' && <div className="px-4"><TodayContent /></div>}
+          {view === 'daily' && <DailySummaryTab />}
           {view === 'tasks' && (
             <TasksView violations={violations} allSubmenus={manageAllSubmenus}
               assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
