@@ -884,7 +884,7 @@ function ItemHubPageInner() {
               <span className="sm:hidden">Cash</span>
             </span>
           </button>
-          <div className="w-px bg-green-900 shrink-0" />
+          <div className="w-px bg-white/25 shrink-0" />
           <button onClick={() => changeTab('manage')} className={topTabCls()}>
             <span className={topTabLabelCls(outerTab === 'manage')}>
               <span className="hidden sm:inline">Grony Manage</span>
@@ -898,7 +898,7 @@ function ItemHubPageInner() {
               it changes per person, so "tap the person icon" still works
               as a stable instruction regardless of who's logged in. */}
           {myStaffName && (<>
-          <div className="w-px bg-green-900 shrink-0" />
+          <div className="w-px bg-white/25 shrink-0" />
           <button onClick={() => changeTab('staff')} className={topTabClsCompact()}>
             <span className={topTabLabelCls(outerTab === 'staff')}>👤 {myStaffName}</span>
           </button>
@@ -908,7 +908,7 @@ function ItemHubPageInner() {
               removed once every one of its old links had somewhere else to
               live. */}
           {isGrony && (<>
-          <div className="w-px bg-green-900 shrink-0" />
+          <div className="w-px bg-white/25 shrink-0" />
           <button onClick={() => changeTab('uk')} className={topTabClsCompact()}>
             <span className={topTabLabelCls(outerTab === 'uk')}>UK</span>
           </button>
@@ -916,12 +916,12 @@ function ItemHubPageInner() {
           {/* Owner-level only (Grony/Joe) -- content TBD, CHTab is a
               placeholder for now. */}
           {isOwnerOrJoe && (<>
-          <div className="w-px bg-green-900 shrink-0" />
+          <div className="w-px bg-white/25 shrink-0" />
           <button onClick={() => changeTab('ch')} className={topTabClsCompact()}>
             <span className={topTabLabelCls(outerTab === 'ch')}>C&amp;H</span>
           </button>
           </>)}
-          <div className="w-px bg-green-900 shrink-0" />
+          <div className="w-px bg-white/25 shrink-0" />
           {/* Global search -- looks across the whole app (items, customers,
               vendors, sales, bills, announcements), unlike the per-view
               search bars already on most tabs below, which only filter
