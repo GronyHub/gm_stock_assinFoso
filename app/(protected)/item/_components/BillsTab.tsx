@@ -340,7 +340,7 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
                       className={`border-b border-gray-100 text-[13px] font-bold ${row.unresolved ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
                       <td className="px-1 py-1 text-gray-900">
                         {row.itemId ? (
-                          <Link href={`/stock/${row.itemId}`} className="text-blue-600 hover:underline">
+                          <Link href={`/item?tab=loss&view=item360&jumpItemId=${row.itemId}`} className="text-blue-600 hover:underline">
                             {row.itemName}
                           </Link>
                         ) : (

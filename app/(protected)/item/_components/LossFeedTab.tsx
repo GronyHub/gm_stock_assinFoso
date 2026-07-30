@@ -103,7 +103,7 @@ export default function LossFeedTab({ search, kind = 'loss' }: { search: string;
                       {newDay ? fmtDate(e.date) : <span className="text-gray-300">〃</span>}
                     </td>
                     <td className="px-1.5 py-1 font-semibold text-gray-900">
-                      <Link href={`/stock/${e.item_id}`} className="text-blue-600 hover:underline">{e.item_name}</Link>
+                      <Link href={`/item?tab=loss&view=item360&jumpItemId=${e.item_id}`} className="text-blue-600 hover:underline">{e.item_name}</Link>
                     </td>
                     {colPrefs.shownColumns.map(c => {
                       if (c.key === 'expected') return <td key={c.key} className="px-1 py-1 text-center text-gray-500">{fmtN(e.expected)}</td>

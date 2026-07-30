@@ -891,7 +891,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
                 <td className="px-1 py-1 text-gray-900 align-top sticky left-0 z-[5] bg-inherit">
                   {line ? (
                     line.item_id ? (
-                      <Link href={`/stock/${line.item_id}`} className="text-blue-600 hover:underline">
+                      <Link href={`/item?tab=loss&view=item360&jumpItemId=${line.item_id}`} className="text-blue-600 hover:underline">
                         {line.item_name}
                       </Link>
                     ) : line.item_name
