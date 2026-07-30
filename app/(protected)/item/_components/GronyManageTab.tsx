@@ -37,17 +37,36 @@ const LOG_CATEGORIES: { key: ManageView; label: string; icon: string }[] = [
   { key: 'quality_assurance', label: 'Quality Assurance', icon: '✅' },
 ]
 
-// Grouped under one "Shop Beautification" submenu instead of four separate
-// top-level pills -- Arrangement/Cleanliness/Customer Display/Staff Display
-// are all "how the shop looks" checklists, distinct from Repair Works/
-// Quality Assurance/Future which stay as their own top-level items.
+// Grouped under one "Shop Beautification" heading in the drawer instead of
+// four separate flat entries -- Arrangement/Cleanliness/Customer Display/
+// Staff Display are all "how the shop looks" checklists, distinct from
+// Repair Works/Quality Assurance/Future which stay as their own entries.
 const SHOP_BEAUTIFICATION: ManageView[] = ['arrangement', 'cleanliness', 'customer_display', 'staff_display']
 
-const SUBMENU: { key: ManageView | 'shop_beautification'; label: string }[] = [
+type DrawerEntry =
+  | { type: 'item'; key: ManageView; label: string; icon?: string }
+  | { type: 'group'; label: string; children: { key: ManageView; label: string; icon: string }[] }
+
+// The drawer's full contents, top to bottom -- Shop Beautification's children
+// are listed right here under their own heading (not a second row that only
+// appears once you're already inside it), so the whole hierarchy is visible
+// in one look instead of being discovered one tap at a time.
+const DRAWER_ITEMS: DrawerEntry[] = [
+  { type: 'item', key: 'advert', label: 'Advert' },
+  { type: 'item', key: 'staff_dress', label: 'Dress Code' },
+  { type: 'group', label: 'Shop Beautification', children: LOG_CATEGORIES.filter(c => SHOP_BEAUTIFICATION.includes(c.key)) },
+  ...LOG_CATEGORIES.filter(c => !SHOP_BEAUTIFICATION.includes(c.key)).map(c => ({ type: 'item' as const, key: c.key, label: c.label, icon: c.icon })),
+  { type: 'item', key: 'rota', label: 'Rota' },
+  { type: 'item', key: 'training', label: 'Training' },
+  { type: 'item', key: 'logs', label: 'Logs' },
+]
+
+// Flat key->label lookup for the trigger bar -- same data as DRAWER_ITEMS,
+// just without the grouping, since the trigger only ever shows one label.
+const ALL_VIEWS: { key: ManageView; label: string }[] = [
   { key: 'advert', label: 'Advert' },
   { key: 'staff_dress', label: 'Dress Code' },
-  { key: 'shop_beautification', label: 'Shop Beautification' },
-  ...LOG_CATEGORIES.filter(c => !SHOP_BEAUTIFICATION.includes(c.key)).map(c => ({ key: c.key, label: c.label })),
+  ...LOG_CATEGORIES.map(c => ({ key: c.key, label: c.label })),
   { key: 'rota', label: 'Rota' },
   { key: 'training', label: 'Training' },
   { key: 'logs', label: 'Logs' },
@@ -59,6 +78,7 @@ const SUBMENU: { key: ManageView | 'shop_beautification'; label: string }[] = [
 // shop's day-to-day operational checklist categories).
 export default function GronyManageTab({ initialView, role, username }: { initialView?: ManageView; role: string; username: string }) {
   const [view, setView] = useState<ManageView>(initialView ?? 'advert')
+  const [drawerOpen, setDrawerOpen] = useState(false)
   // Same "Rota Builder" gate as the per-person Staff tab -- reaching the
   // schedule from here shouldn't be a back door around that restriction.
   const canManageRota = role === 'owner' || ['joe', 'grony'].includes(username.toLowerCase())
@@ -72,33 +92,60 @@ export default function GronyManageTab({ initialView, role, username }: { initia
   }, [initialView])
 
   const logCategory = LOG_CATEGORIES.find(c => c.key === view)
-  const inShopBeautification = SHOP_BEAUTIFICATION.includes(view)
+  const currentLabel = ALL_VIEWS.find(v => v.key === view)?.label ?? 'Grony Manage'
+
+  function pick(key: ManageView) {
+    setView(key)
+    setDrawerOpen(false)
+  }
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="flex items-center gap-1 px-2 py-0.5 bg-white border-b border-gray-100 overflow-x-auto shrink-0">
-        {SUBMENU.map(v => {
-          const active = v.key === 'shop_beautification' ? inShopBeautification : view === v.key
-          return (
-            <button key={v.key}
-              onClick={() => setView(v.key === 'shop_beautification' ? 'arrangement' : v.key)}
-              className={`shrink-0 text-sm font-semibold px-1.5 py-0.5 rounded-lg whitespace-nowrap border transition
-                ${active ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-500 border-gray-200 hover:bg-gray-100'}`}>
-              {v.label}
-            </button>
-          )
-        })}
-      </div>
+      {/* Trigger bar -- tap to open the drawer instead of scrolling a long
+          horizontal tab strip. Shows which category is currently open so
+          it also works as a breadcrumb. */}
+      <button onClick={() => setDrawerOpen(true)}
+        className="shrink-0 flex items-center gap-2 px-3 py-2.5 bg-white border-b border-gray-200 text-left hover:bg-gray-50 transition">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 shrink-0">
+          <line x1="4" y1="6" x2="20" y2="6" />
+          <line x1="4" y1="12" x2="20" y2="12" />
+          <line x1="4" y1="18" x2="20" y2="18" />
+        </svg>
+        <span className="text-sm font-bold text-gray-900">{currentLabel}</span>
+      </button>
 
-      {inShopBeautification && (
-        <div className="flex items-center gap-1 px-2 py-0.5 bg-gray-50 border-b border-gray-100 overflow-x-auto shrink-0">
-          {LOG_CATEGORIES.filter(c => SHOP_BEAUTIFICATION.includes(c.key)).map(c => (
-            <button key={c.key} onClick={() => setView(c.key)}
-              className={`shrink-0 text-[13px] font-semibold px-1.5 py-0.5 rounded-lg whitespace-nowrap border transition
-                ${view === c.key ? 'bg-blue-500 text-white border-blue-500' : 'text-gray-400 border-gray-200 hover:bg-gray-100'}`}>
-              {c.icon} {c.label}
-            </button>
-          ))}
+      {/* Drawer -- slides in from the left, covers most of the screen on
+          mobile. Backdrop tap (or picking a category) closes it. */}
+      {drawerOpen && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setDrawerOpen(false)} />
+          <div className="absolute left-0 top-0 h-full w-72 max-w-[80%] bg-white shadow-xl overflow-y-auto">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 sticky top-0 bg-white">
+              <p className="font-bold text-gray-900">Grony Manage</p>
+              <button onClick={() => setDrawerOpen(false)} aria-label="Close"
+                className="text-gray-400 hover:text-gray-600 text-2xl leading-none px-1">×</button>
+            </div>
+            <div className="py-2">
+              {DRAWER_ITEMS.map(entry => entry.type === 'item' ? (
+                <button key={entry.key} onClick={() => pick(entry.key)}
+                  className={`w-full text-left px-4 py-2.5 text-sm font-medium transition
+                    ${view === entry.key ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}>
+                  {entry.label}
+                </button>
+              ) : (
+                <div key={entry.label}>
+                  <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">{entry.label}</p>
+                  {entry.children.map(c => (
+                    <button key={c.key} onClick={() => pick(c.key)}
+                      className={`w-full flex items-center gap-2 text-left pl-7 pr-4 py-2 text-sm font-medium transition
+                        ${view === c.key ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}>
+                      <span>{c.icon}</span>{c.label}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
