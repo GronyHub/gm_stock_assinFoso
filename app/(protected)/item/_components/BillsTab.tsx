@@ -271,10 +271,6 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
         </button>
         <div className="flex items-center gap-1.5">
           <ColumnsPickerButton prefs={colPrefs} />
-          <Link href="/bills/new"
-            className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100">
-            + New Bill
-          </Link>
         </div>
       </div>
       <div className="flex-1 overflow-y-auto min-h-0">
