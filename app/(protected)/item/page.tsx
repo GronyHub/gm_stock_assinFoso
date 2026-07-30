@@ -23,8 +23,8 @@ class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boole
 }
 import { usePolling } from '@/lib/usePolling'
 import { useViolations } from './_components/useViolations'
-import RoleBar, { type RoleKey, type ShortcutKey } from './_components/RoleBar'
-import RolePanel from './_components/RolePanel'
+import NewShortcutButton, { type ShortcutKey } from './_components/NewShortcutButton'
+import TasksView from './_components/TasksView'
 import { COLUMNS, type ColKey } from './_components/lossTabColumns'
 import { useColumnPrefs, ColumnsPickerButton } from './_components/columnPrefs'
 import type { ManageView } from './_components/GronyManageTab'
@@ -81,7 +81,7 @@ type OuterTab = 'today' | 'loss' | 'manage' | 'staff' | 'uk' | 'ch'
 // Receipts, Daily (Summary), and Data all live as submenus inside the Grony
 // Cash tab (outerTab 'loss' -- kept as the internal key since it's
 // referenced throughout; only the label changed).
-type LossView = 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'lossByItem' | 'lossByTarget' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts' | 'dailySummary'
+type LossView = 'tasks' | 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'lossByItem' | 'lossByTarget' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts' | 'dailySummary'
   | 'purchaseOrders' | 'aliasWide' | 'serviceMatches' | 'fixMislinkedSales' | 'item360'
 
 // Old top-level tabs that got folded into Grony Cash submenus -- old
@@ -104,7 +104,7 @@ const OLD_TAB_TO_OUTER: Partial<Record<string, OuterTab>> = {
 // page with its own internal search/filter/add UI -- so the shared
 // groups/search/New controls row doesn't apply to them.
 const REPORT_VIEWS = new Set<LossView>([
-  'pl', 'cab', 'vendors', 'customers', 'receipts', 'dailySummary',
+  'tasks', 'pl', 'cab', 'vendors', 'customers', 'receipts', 'dailySummary',
   'purchaseOrders', 'aliasWide', 'serviceMatches', 'fixMislinkedSales', 'item360',
 ])
 
@@ -123,7 +123,16 @@ const REPORT_VIEWS = new Set<LossView>([
 // violation deep-link that already points at it) but is relabeled to "Loss
 // by Date", with Loss by Item and Loss by Target following right after as
 // their own lossViews.
+//
+// Tasks used to live on the bottom Role Bar (Joe's tab), bundled together
+// with Grony Manage's own violations (the "former Bino bucket" -- staff
+// times, adverts, jingle, equipment checks). That bar is gone now -- Tasks
+// is a left-pane item on whichever top-level tab it actually belongs to
+// instead, so Cash only ever shows Cash's own outstanding items (see
+// cashTasksViolations below); Manage gets the same treatment on its own
+// left pane (see GronyManageTab).
 const CASH_ITEMS: { key: LossView; label: string; icon: string }[] = [
+  { key: 'tasks',    label: 'Tasks',    icon: '✅' },
   { key: 'items',    label: 'Items',    icon: '📦' },
   { key: 'sales',    label: 'Sales',    icon: '🧾' },
   { key: 'bills',    label: 'Bills',    icon: '📃' },
@@ -279,6 +288,15 @@ const LOSSVIEW_PILL_KEYS: Partial<Record<LossView, string[]>> = {
   sales: ['no_cash', 'missing_days', 'cost_price', 'dup_receipt'],
   cab: ['unchecked_cab'],
 }
+
+// The "former Bino bucket" -- everything in cashViolations that isn't
+// actually a Cash concern. Used to split one merged Tasks list back into
+// Cash's own Tasks and Manage's own Tasks now that each top-level tab has
+// its own left-pane Tasks item instead of one shared Role Bar tab covering
+// both. no_staff_times lands here too (not in its own Staff Tasks list --
+// there isn't one) since Manage is the closest operational home for it, and
+// clicking it still jumps to the Staff tab same as it always has.
+const MANAGE_VIOLATION_TYPES = new Set(['no_staff_times', 'no_advert', 'jingle_overdue', 'equipment_check_overdue'])
 
 // Grony Cash/Grony Manage are the two tabs everyone has, so they stay the
 // row's flex-1 anchors -- always equal width, always the widest targets.
@@ -540,13 +558,30 @@ function ItemHubPageInner() {
     }
   }, [items, globalFlags, pendingCounts, serviceViolationCount, prezohoSalesCount, prezohoBillsCount, aliasFlaggedCount, aliasAmbiguousCount, gainsCount])
 
-  // Backs the bottom RoleBar (Joe/Opener/Closer tabs) -- shared here so it's
+  // Backs Cash's and Manage's own Tasks, and Manage's Opener/Closer --
   // computed once regardless of which outer tab is showing.
   const {
-    cashViolations, openerViolations, cashCount, openerViolationCount,
+    cashViolations, openerViolations, openerViolationCount,
     assignments, deadlines, assignedBy, assignedOn, vSettings,
   } = useViolations(violationCounts)
-  const [openRole, setOpenRole] = useState<RoleKey | null>(null)
+  const cashTasksViolations = cashViolations.filter(v => !MANAGE_VIOLATION_TYPES.has(v.type))
+  const manageTasksViolations = cashViolations.filter(v => MANAGE_VIOLATION_TYPES.has(v.type))
+  const cashTasksCount = cashTasksViolations.reduce((s, v) => s + v.count, 0)
+  const manageTasksCount = manageTasksViolations.reduce((s, v) => s + v.count, 0)
+
+  // The morning stock count is the opener's own job -- its badge (on
+  // Manage's Opener left-pane item) combines "hasn't confirmed clock-in
+  // yet" with the separate "items not yet counted today" violation count,
+  // same formula the old Role Bar's Opener tab used.
+  const [openerToday, setOpenerToday] = useState<{ opener: string | null; openerConfirmed: boolean | null }>({ opener: null, openerConfirmed: null })
+  useEffect(() => {
+    fetch('/api/staff-times/today')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setOpenerToday({ opener: d.opener ?? null, openerConfirmed: d.openerConfirmed ?? null }) })
+      .catch(() => {})
+  }, [])
+  const openerBadgeCount = (openerToday.opener && !openerToday.openerConfirmed ? 1 : 0) + openerViolationCount
+
   // Bumped by the RoleBar "+" shortcut menu for flows that live inside an
   // already-mounted tab (CAB Confirm, Staff Time, Customer, Vendor) -- each
   // target component watches its own signal and reopens its "new" form.
@@ -597,10 +632,6 @@ function ItemHubPageInner() {
   }
 
   function changeTab(t: OuterTab) {
-    // Switching to a top-level tab always wins over a Role Bar panel, so
-    // either bar can hand off to the other with one tap -- not just
-    // bottom-overrides-top.
-    setOpenRole(null)
     setOuterTab(t)
     setViolation(null)
     setAddForm(null)
@@ -612,28 +643,27 @@ function ItemHubPageInner() {
     if (t === 'today') setUnreadAnnouncements(0)
   }
 
-  // Tab/sub-view/Role Bar panel changes push a new history entry each --
-  // real "pages" the user expects the back button to step through one at a
-  // time, landing on the exact one they were on (see the popstate sync
-  // effect below, which pulls state back OUT of the URL when that happens).
-  // Search stays on router.replace (below) since it shouldn't spam history
-  // per keystroke. Skips the push entirely when the computed URL already
-  // matches the current one, which is what happens right after that same
-  // popstate sync applies a change that came FROM the URL in the first
-  // place -- without this guard every back-press would immediately push a
-  // duplicate entry back on top of the one just popped.
+  // Tab/sub-view changes push a new history entry each -- real "pages" the
+  // user expects the back button to step through one at a time, landing on
+  // the exact one they were on (see the popstate sync effect below, which
+  // pulls state back OUT of the URL when that happens). Search stays on
+  // router.replace (below) since it shouldn't spam history per keystroke.
+  // Skips the push entirely when the computed URL already matches the
+  // current one, which is what happens right after that same popstate sync
+  // applies a change that came FROM the URL in the first place -- without
+  // this guard every back-press would immediately push a duplicate entry
+  // back on top of the one just popped.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (outerTab !== 'today') params.set('tab', outerTab); else params.delete('tab')
     if (outerTab === 'loss' && lossView !== 'items') params.set('view', lossView); else params.delete('view')
-    if (openRole) params.set('role', openRole); else params.delete('role')
     const qs = params.toString()
     const target = qs ? `/item?${qs}` : '/item'
     const current = window.location.pathname + window.location.search
     if (target === current) return
     router.push(target, { scroll: false })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [outerTab, lossView, openRole])
+  }, [outerTab, lossView])
 
   // A refresh should land back on the same search instead of resetting it --
   // replace (not push) since typing shouldn't create a history entry per
@@ -646,18 +676,15 @@ function ItemHubPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search])
 
-  // Pulls tab/sub-view/Role Bar state back OUT of the URL whenever it
-  // changes without our own doing -- i.e. the user pressed back/forward.
-  // Harmless no-op the rest of the time, since the state this derives
-  // already matches what's live once our own push above has run.
+  // Pulls tab/sub-view state back OUT of the URL whenever it changes
+  // without our own doing -- i.e. the user pressed back/forward. Harmless
+  // no-op the rest of the time, since the state this derives already
+  // matches what's live once our own push above has run.
   useEffect(() => {
     const urlTab = searchParams.get('tab')
     const nextTab: OuterTab = urlTab && VALID_TABS.includes(urlTab as OuterTab) ? (urlTab as OuterTab) : 'today'
-    const urlRole = searchParams.get('role')
-    const nextRole: RoleKey | null = urlRole && ['joe', 'opener', 'closer'].includes(urlRole) ? (urlRole as RoleKey) : null
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (nextTab !== outerTab) setOuterTab(nextTab)
-    if (nextRole !== openRole) setOpenRole(nextRole)
     if (nextTab === 'loss') {
       const urlView = searchParams.get('view') as LossView | null
       const nextView: LossView = urlView ?? 'items'
@@ -808,9 +835,10 @@ function ItemHubPageInner() {
     ...(isOwnerOrJoe ? [{ label: 'C&H', action: () => changeTab('ch') }] : []),
     ...cashSubmenus,
     ...manageSubmenus,
-    { label: 'Tasks', action: () => setOpenRole('joe') },
-    { label: 'Opener', action: () => setOpenRole('opener') },
-    { label: 'Closer', action: () => setOpenRole('closer') },
+    { label: 'Cash Tasks', action: () => { changeTab('loss'); setLossView('tasks') } },
+    { label: 'Manage Tasks', action: () => { changeTab('manage'); setManageInitialView('tasks') } },
+    { label: 'Opener', action: () => { changeTab('manage'); setManageInitialView('opener') } },
+    { label: 'Closer', action: () => { changeTab('manage'); setManageInitialView('closer') } },
   ]
   const navQuery = globalSearchQuery.trim().toLowerCase()
   const navMatches = navQuery
@@ -846,7 +874,7 @@ function ItemHubPageInner() {
             so it doesn't take up a slot in this row. */}
         <div className="flex items-stretch gap-1 px-2 py-2 overflow-x-auto">
           <button onClick={() => changeTab('loss')} className={topTabCls()}>
-            <span className={topTabLabelCls(outerTab === 'loss' && !openRole)}>
+            <span className={topTabLabelCls(outerTab === 'loss')}>
               {/* "Grony" is redundant with the logo already on screen -- on
                   a narrow phone (below the full 5-tab set fitting comfortably)
                   dropping it here buys real room back instead of just
@@ -857,7 +885,7 @@ function ItemHubPageInner() {
           </button>
           <div className="w-px bg-gray-200 shrink-0" />
           <button onClick={() => changeTab('manage')} className={topTabCls()}>
-            <span className={topTabLabelCls(outerTab === 'manage' && !openRole)}>
+            <span className={topTabLabelCls(outerTab === 'manage')}>
               <span className="hidden sm:inline">Grony Manage</span>
               <span className="sm:hidden">Manage</span>
             </span>
@@ -871,7 +899,7 @@ function ItemHubPageInner() {
           {myStaffName && (<>
           <div className="w-px bg-gray-200 shrink-0" />
           <button onClick={() => changeTab('staff')} className={topTabClsCompact()}>
-            <span className={topTabLabelCls(outerTab === 'staff' && !openRole)}>👤 {myStaffName}</span>
+            <span className={topTabLabelCls(outerTab === 'staff')}>👤 {myStaffName}</span>
           </button>
           </>)}
           {/* Private to Grony alone -- was a hidden hamburger-menu link
@@ -881,7 +909,7 @@ function ItemHubPageInner() {
           {isGrony && (<>
           <div className="w-px bg-gray-200 shrink-0" />
           <button onClick={() => changeTab('uk')} className={topTabClsCompact()}>
-            <span className={topTabLabelCls(outerTab === 'uk' && !openRole)}>UK</span>
+            <span className={topTabLabelCls(outerTab === 'uk')}>UK</span>
           </button>
           </>)}
           {/* Owner-level only (Grony/Joe) -- content TBD, CHTab is a
@@ -889,7 +917,7 @@ function ItemHubPageInner() {
           {isOwnerOrJoe && (<>
           <div className="w-px bg-gray-200 shrink-0" />
           <button onClick={() => changeTab('ch')} className={topTabClsCompact()}>
-            <span className={topTabLabelCls(outerTab === 'ch' && !openRole)}>C&amp;H</span>
+            <span className={topTabLabelCls(outerTab === 'ch')}>C&amp;H</span>
           </button>
           </>)}
           <div className="w-px bg-gray-200 shrink-0" />
@@ -911,11 +939,9 @@ function ItemHubPageInner() {
 
       {/* ── Body ── Grony Cash gets its own left pane (same one-pane shape
           as Grony Manage's / Staff's), everything else just gets the full-
-          width content area as before. Hidden while a Role Bar panel is
-          open -- same as before, RolePanel takes over the whole area below
-          Row 1. */}
+          width content area as before. */}
       <div className="flex-1 min-h-0 flex overflow-hidden">
-        {!openRole && outerTab === 'loss' && (
+        {outerTab === 'loss' && (
           <SidePaneContainer mode={cashDisplayMode}>
             <SidePaneToggle mode={cashDisplayMode} onChange={changeCashDisplayMode} />
             {CASH_ITEMS.filter(v => v.key !== 'pl' || canSeePL)
@@ -923,7 +949,7 @@ function ItemHubPageInner() {
               const active = lossView === v.key
               return (
                 <SidePaneButton key={v.key} icon={v.icon} label={v.label} mode={cashDisplayMode}
-                  active={active}
+                  active={active} badge={v.key === 'tasks' ? cashTasksCount : undefined}
                   onClick={() => { setLossView(v.key); setAddForm(null); setViolation(null); setShowAnalytics(false) }} />
               )
             })}
@@ -931,7 +957,7 @@ function ItemHubPageInner() {
         )}
 
         <div className="relative flex-1 min-w-0 min-h-0 flex flex-col">
-          {!openRole && outerTab === 'loss' && (
+          {outerTab === 'loss' && (
             <div className="shrink-0 bg-white border-b border-gray-100">
               {/* Row 2: groups + violations + search — hidden on report-style submenus */}
               {showControls && (
@@ -1060,31 +1086,22 @@ function ItemHubPageInner() {
 
           {/* ── Content ── */}
           <div className="relative flex-1 min-h-0 overflow-y-auto">
-        {/* Role Bar panel — replaces the tab content area (below the header,
-            above the Role Bar) the same way switching a top-level tab does,
-            instead of a modal that hides everything behind it. Mutually
-            exclusive with the normal tab content below (not just visually
-            stacked on top of it), so nothing from the underlying tab can
-            bleed through and there's no wasted rendering/fetching while a
-            Role Bar panel is open. */}
-        {openRole ? (
-          <RolePanel
-            role={openRole}
-            cashViolations={cashViolations} openerViolations={openerViolations}
-            assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
-            onGoToViolation={goToViolation}
-            missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
-            onOpenManage={() => changeTab('manage')}
-            onClose={() => setOpenRole(null)}
-            items={items}
-            onItemsChanged={setItems}
-            taskSubmenus={taskSubmenus}
-          />
-        ) : (<>
         {addForm === 'sale'    && outerTab === 'loss' && lossView === 'sales'    && <div className="px-4"><NewSaleForm    onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'bill'    && outerTab === 'loss' && lossView === 'bills'    && <div className="px-4"><NewBillForm    onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'expense' && outerTab === 'loss' && lossView === 'expenses' && <div className="px-4"><NewExpenseForm onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'item'    && outerTab === 'loss' && lossView === 'items'    && <div className="px-4"><NewItemForm    onSuccess={() => { setAddForm(null); loadItems() }} /></div>}
+        {outerTab === 'loss' && lossView === 'tasks' && (
+          <TabErrorBoundary>
+            <TasksView
+              violations={cashTasksViolations}
+              allSubmenus={cashSubmenus.map(s => ({ ...s, section: 'Grony Cash' }))}
+              assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
+              isOwnTask={submenu => cashSubmenus.some(s => s.label === submenu)}
+              items={items} onItemsChanged={setItems}
+              showLossSummary onFixLossFeed={() => goToViolation('__loss_feed')}
+            />
+          </TabErrorBoundary>
+        )}
         {outerTab === 'loss' && lossView === 'pl' && (
           <TabErrorBoundary>
             <ProfitLossTab />
@@ -1137,7 +1154,14 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'manage' && (
           <TabErrorBoundary>
-            <GronyManageTab initialView={manageInitialView} role={role} username={username} />
+            <GronyManageTab initialView={manageInitialView} role={role} username={username}
+              violations={manageTasksViolations} openerViolations={openerViolations}
+              assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
+              manageSubmenus={manageSubmenus} onGoToViolation={goToViolation}
+              missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
+              onOpenStaff={() => changeTab('staff')}
+              tasksBadge={manageTasksCount} openerBadge={openerBadgeCount}
+              closerBadge={globalFlags?.missingClosingReports?.length ?? 0} />
           </TabErrorBoundary>
         )}
         {outerTab === 'staff' && (
@@ -1257,34 +1281,24 @@ function ItemHubPageInner() {
             <div className="py-20 text-center text-gray-400 text-xs">Coming soon.</div>
           </TabErrorBoundary>
         )}
-        </>)}
           </div>
         </div>
       </div>
 
-      {/* Role bar — Joe/Bino/Opener/Closer, always visible (never hidden by
-          its own panel) so a skipped mandatory task (Opener's count
-          confirmation, Closer's closing report) is always one tap away. The
-          active tab gets the same blue highlight the top menu uses. The
-          account (⋮) menu that used to ride along on the right edge of this
-          bar is gone -- Users, UK, View Portal As, and Sign Out each ended
-          up with a real home of their own (every Staff pane, and UK's own
-          top-level tab), so there was nothing left in it to justify keeping
-          a whole extra menu around. */}
-      <RoleBar
-        openRole={openRole}
-        onSelectRole={key => setOpenRole(prev => prev === key ? null : key)}
-        onShortcut={handleShortcut}
-        cashCount={cashCount} dailyCount={openerViolationCount}
-        missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
-      />
+      {/* The bottom Role Bar (Joe/Opener/Closer tabs) is gone -- each moved
+          into a left-pane item on whichever top-level tab it actually
+          belongs to (Tasks lives on both Cash's and Manage's own pane now;
+          Opener/Closer moved to Manage's). The "+" shortcut menu is the one
+          thing in that bar worth keeping on its own, so it's now a floating
+          button instead, matching Home's own floating circle. */}
+      <NewShortcutButton onShortcut={handleShortcut} />
 
-      {/* Home -- floating above the Role Bar instead of taking a slot in the
-          top tab row, since it's a single, always-in-the-same-place shortcut
-          rather than a peer of Grony Cash/Grony Manage. */}
+      {/* Home -- floating above where the Role Bar used to be, since it's a
+          single, always-in-the-same-place shortcut rather than a peer of
+          Grony Cash/Grony Manage. */}
       <button onClick={() => changeTab('today')} aria-label="Home"
         className={`fixed bottom-20 right-4 z-40 w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition
-          ${outerTab === 'today' && !openRole ? 'bg-brand text-white' : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'}`}>
+          ${outerTab === 'today' ? 'bg-brand text-white' : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'}`}>
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M3 11.5 12 4l9 7.5" />
           <path d="M5 10v9a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h0a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-9" />
@@ -1305,7 +1319,7 @@ function ItemHubPageInner() {
           bottom-left so it doesn't collide with Home. */}
       <button onClick={() => { changeTab('loss'); setLossView('dailySummary') }} aria-label="Daily"
         className={`fixed bottom-20 left-4 z-40 w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition
-          ${outerTab === 'loss' && lossView === 'dailySummary' && !openRole ? 'bg-brand text-white' : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'}`}>
+          ${outerTab === 'loss' && lossView === 'dailySummary' ? 'bg-brand text-white' : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'}`}>
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="5" width="18" height="16" rx="2" />
           <line x1="16" y1="3" x2="16" y2="7" />

@@ -67,8 +67,8 @@ export async function GET() {
     } catch { /* table may not exist yet */ }
 
     // Today's opener's own confirmation status -- not just "mine" -- so
-    // anyone (e.g. the RoleBar's Opener tab) can see whether today's opener
-    // has confirmed their opening count, regardless of who's asking.
+    // anyone (e.g. Grony Manage's Opener view) can see whether today's
+    // opener has confirmed their opening count, regardless of who's asking.
     const openerName = openerOf(todayRows)
     let openerConfirmed: boolean | null = null
     if (openerName) {
