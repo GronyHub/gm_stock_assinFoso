@@ -109,9 +109,9 @@ const REPORT_VIEWS = new Set<LossView>([
 // view. P&L only shows for owner/joe (see canSeePL below), Fix Mislinked
 // Sales only for owner/joe (see isOwnerOrJoe below) -- both filtered where
 // this list is used. The rest (Customers onward) used to live only in the
-// account menu; they're reachable from there too, unchanged, but now also
-// get a direct left-pane entry so nothing Grony-Cash-related needs the
-// hamburger menu as its only way in.
+// account menu; they've since moved here instead (their hamburger entries
+// were removed once this list covered them) so nothing Grony-Cash-related
+// needs the hamburger menu any more.
 const CASH_ITEMS: { key: LossView; label: string; icon: string }[] = [
   { key: 'items',    label: 'Items',    icon: '📦' },
   { key: 'sales',    label: 'Sales',    icon: '🧾' },
@@ -271,10 +271,10 @@ const LOSSVIEW_PILL_KEYS: Partial<Record<LossView, string[]>> = {
 // Everything else Grony-Cash-related (Customers/Vendors/Receipts/Counts/
 // Purchase Orders/Alias Wide Table/Service Matches/Fix Mislinked Sales) is
 // NOT here any more -- they're all cashSubmenus entries now (own left-pane
-// button + hamburger link + global search, from one action), so opening
-// them from anywhere keeps the Grony Cash/Manage top bar and the RoleBar
-// instead of landing on a bare standalone page. Only Users is left, since
-// it isn't a Cash concern. Logs moved into Grony Manage.
+// button + global search, from one action) with their own CASH_ITEMS
+// left-pane entry, so a hamburger copy would just be a second path to the
+// same place. Only Users is left, since it isn't a Cash concern. Logs
+// moved into Grony Manage.
 const HAMBURGER_LINKS = [
   { href: '/users', label: 'Users' },
 ]
@@ -771,23 +771,15 @@ function ItemHubPageInner() {
     ? [{ label: myStaffName, action: () => changeTab('staff') }]
     : []
 
-  // Every Grony-Cash-related hamburger link reuses cashSubmenus' own action
-  // (find, not a second copy of the changeTab/setLossView calls) so opening
-  // it from the account menu still lands inside Grony Cash's shell -- the
-  // Grony Cash/Manage top bar and RoleBar stay up, instead of a route push
-  // to a bare standalone page with no way back except the browser's back
-  // button.
-  const byLabel = (label: string) => cashSubmenus.find(s => s.label === label)!
+  // Customers/Receipts/Vendors/Counts/Purchase Orders/Alias Wide Table/
+  // Service Matches/Fix Mislinked Sales used to be duplicated in here too
+  // (account menu as a second way in, alongside their own CASH_ITEMS
+  // left-pane button), but now that every one of them has a direct left-pane
+  // entry the hamburger copy is just dead weight -- removed rather than
+  // kept as a redundant second path to the same place. They're still
+  // reachable via cashSubmenus (left pane + global search), just not here.
   const hamburgerLinks: { label: string; href?: string; action?: () => void }[] = [
     ...HAMBURGER_LINKS, // Users
-    byLabel('Customers'),
-    byLabel('Receipts'),
-    byLabel('Vendors'),
-    byLabel('Counts'),
-    byLabel('Purchase Orders'),
-    byLabel('Alias Wide Table'),
-    byLabel('Service Matches'),
-    ...(isOwnerOrJoe ? [byLabel('Fix Mislinked Sales')] : []),
     // Private to Grony alone -- UKTab re-checks the session itself too, so
     // this hidden link is just about not showing it to anyone else, not the
     // only thing guarding the page.
