@@ -7,6 +7,7 @@ import ContentPage from './ContentPage'
 import AdvertStatusPanel from './AdvertStatusPanel'
 import AssessmentPanel from './AssessmentPanel'
 import DynamicCategoryPage from './DynamicCategoryPage'
+import { SidePaneContainer, SidePaneToggle, SidePaneButton, useSidePaneDisplayMode } from './SidePane'
 
 // Staff (Times/Payslips/Violations/Role/Analytics/Assignments) moved to its
 // own top-level "Staff" tab, one per person -- see item/page.tsx. Rota stays
@@ -67,15 +68,6 @@ const LIST_ITEMS: { key: ManageView; label: string; icon?: string }[] = [
   { key: 'logs', label: 'Logs', icon: '📜' },
 ]
 
-// User can pick how the left pane renders each entry -- icons only (widest
-// squeeze), text only, or both (the default). Remembered across visits since
-// it's a personal display preference, not app state.
-type DisplayMode = 'icon' | 'text' | 'both'
-const DISPLAY_MODE_KEY = 'gronyManageDisplayMode'
-const DISPLAY_MODE_GLYPH: Record<DisplayMode, string> = { icon: '🔘', both: '◧', text: '🔤' }
-const DISPLAY_MODE_LABEL: Record<DisplayMode, string> = { icon: 'Icons only', both: 'Icons + text', text: 'Text only' }
-const PANE_WIDTH: Record<DisplayMode, string> = { icon: 'w-14', both: 'w-20', text: 'w-24' }
-
 type DynamicCategory = { id: number; label: string }
 
 // Promoted from Home's "🗂️ Grony Manage" submenu to its own top-level tab,
@@ -93,7 +85,7 @@ export default function GronyManageTab({ initialView, role, username }: { initia
   const [showAddCategory, setShowAddCategory] = useState(false)
   const [newCategoryLabel, setNewCategoryLabel] = useState('')
   const [savingCategory, setSavingCategory] = useState(false)
-  const [displayMode, setDisplayMode] = useState<DisplayMode>('both')
+  const [displayMode, changeDisplayMode] = useSidePaneDisplayMode()
   // Same gate throughout this file -- Rota's edit controls, and adding/
   // removing a category or one of its tabs, are all owner-level only.
   // Viewing is open to everyone.
@@ -105,16 +97,6 @@ export default function GronyManageTab({ initialView, role, username }: { initia
     }).catch(() => {})
   }
   useEffect(() => { loadDynamicCategories() }, [])
-
-  useEffect(() => {
-    const saved = localStorage.getItem(DISPLAY_MODE_KEY)
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (saved === 'icon' || saved === 'text' || saved === 'both') setDisplayMode(saved)
-  }, [])
-  function changeDisplayMode(mode: DisplayMode) {
-    setDisplayMode(mode)
-    localStorage.setItem(DISPLAY_MODE_KEY, mode)
-  }
 
   // Driven by the global search (page.tsx) landing here already knowing
   // which sub-tab to show -- also covers re-arriving at a different one
@@ -164,24 +146,12 @@ export default function GronyManageTab({ initialView, role, username }: { initia
       {/* Left pane -- always visible instead of a drawer you have to open.
           Width tightens further in icon-only mode; labels cap at 2 lines
           (line-clamp) rather than pushing the pane wider for long names. */}
-      <div className={`${PANE_WIDTH[displayMode]} shrink-0 border-r border-gray-200 bg-gray-50 overflow-y-auto`}>
-        <div className="flex items-stretch gap-0.5 p-1 border-b border-gray-200 bg-white sticky top-0 z-10">
-          {(['icon', 'both', 'text'] as DisplayMode[]).map(m => (
-            <button key={m} onClick={() => changeDisplayMode(m)} title={DISPLAY_MODE_LABEL[m]}
-              className={`flex-1 flex items-center justify-center py-1 rounded text-[11px] transition
-                ${displayMode === m ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
-              {DISPLAY_MODE_GLYPH[m]}
-            </button>
-          ))}
-        </div>
+      <SidePaneContainer mode={displayMode}>
+        <SidePaneToggle mode={displayMode} onChange={changeDisplayMode} />
 
         {LIST_ITEMS.map(entry => (
-          <button key={entry.key} onClick={() => pick(entry.key)} title={entry.label} aria-label={entry.label}
-            className={`w-full flex flex-col items-center justify-center gap-0.5 px-1 py-2 text-[10px] font-medium leading-tight text-center transition
-              ${!activeDynamic && view === entry.key ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-gray-700 hover:bg-gray-100'}`}>
-            {displayMode !== 'text' && <span className="text-base leading-none">{entry.icon ?? '•'}</span>}
-            {displayMode !== 'icon' && <span className="line-clamp-2">{entry.label}</span>}
-          </button>
+          <SidePaneButton key={entry.key} icon={entry.icon} label={entry.label} mode={displayMode}
+            active={!activeDynamic && view === entry.key} onClick={() => pick(entry.key)} />
         ))}
 
         {dynamicCategories.length > 0 && (
@@ -191,12 +161,8 @@ export default function GronyManageTab({ initialView, role, username }: { initia
             )}
             {dynamicCategories.map(c => (
               <div key={c.id} className={`flex items-stretch ${activeDynamicId === c.id ? 'bg-blue-100' : ''}`}>
-                <button onClick={() => pickDynamic(c.id)} title={c.label} aria-label={c.label}
-                  className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 px-1 py-2 text-[10px] font-medium leading-tight text-center transition
-                    ${activeDynamicId === c.id ? 'text-blue-700 font-semibold' : 'text-gray-700 hover:bg-gray-100'}`}>
-                  {displayMode !== 'text' && <span className="text-base leading-none">🗂️</span>}
-                  {displayMode !== 'icon' && <span className="line-clamp-2">{c.label}</span>}
-                </button>
+                <SidePaneButton icon="🗂️" label={c.label} mode={displayMode} className="flex-1 min-w-0"
+                  active={activeDynamicId === c.id} onClick={() => pickDynamic(c.id)} />
                 {canManage && (
                   <button onClick={() => removeCategory(c.id, c.label)} title="Delete category"
                     className="shrink-0 px-1.5 pt-2 text-gray-300 hover:text-red-500 font-bold text-xs">×</button>
@@ -225,15 +191,12 @@ export default function GronyManageTab({ initialView, role, username }: { initia
                 </div>
               </form>
             ) : (
-              <button onClick={() => setShowAddCategory(true)} title="Add Category"
-                className="w-full flex flex-col items-center justify-center gap-0.5 px-1 py-2 text-[10px] font-semibold text-blue-600 hover:bg-blue-50 rounded transition text-center">
-                {displayMode !== 'text' && <span className="text-base leading-none">➕</span>}
-                {displayMode !== 'icon' && <span className="line-clamp-2">Add Category</span>}
-              </button>
+              <SidePaneButton icon="➕" label="Add Category" mode={displayMode} active={false}
+                onClick={() => setShowAddCategory(true)} className="w-full text-blue-600 hover:bg-blue-50 font-semibold" />
             )}
           </div>
         )}
-      </div>
+      </SidePaneContainer>
 
       {/* Right pane -- whichever category is selected, full remaining width. */}
       <div className="flex-1 min-w-0 overflow-y-auto">
