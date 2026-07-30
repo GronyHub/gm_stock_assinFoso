@@ -65,16 +65,23 @@ export function SidePaneToggle({ mode, onChange }: { mode: DisplayMode; onChange
 // depending on `mode`, label capped at 2 lines instead of forcing the pane
 // wider for a long name. `className` controls sizing: default `w-full` for
 // a standalone list; pass `flex-1 min-w-0` when placed in a row alongside
-// another control (e.g. a trailing delete button).
-export function SidePaneButton({ icon, label, active, mode, onClick, className = 'w-full' }: {
-  icon?: string; label: string; active: boolean; mode: DisplayMode; onClick: () => void; className?: string
+// another control (e.g. a trailing delete button). `badge` overlays a small
+// count in the corner (e.g. Grony Cash's flag counts) -- shown in every mode
+// including icon-only, since that's exactly when a count matters most.
+export function SidePaneButton({ icon, label, active, mode, onClick, badge, className = 'w-full' }: {
+  icon?: string; label: string; active: boolean; mode: DisplayMode; onClick: () => void; badge?: number; className?: string
 }) {
   return (
     <button onClick={onClick} title={label} aria-label={label}
-      className={`flex flex-col items-center justify-center gap-0.5 px-1 py-2 text-[10px] font-medium leading-tight text-center transition
+      className={`relative flex flex-col items-center justify-center gap-0.5 px-1 py-2 text-[10px] font-medium leading-tight text-center transition
         ${active ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-gray-700 hover:bg-gray-100'} ${className}`}>
       {mode !== 'text' && <span className="text-base leading-none">{icon ?? '•'}</span>}
       {mode !== 'icon' && <span className="line-clamp-2">{label}</span>}
+      {!!badge && badge > 0 && (
+        <span className="absolute top-0.5 right-0.5 flex items-center justify-center min-w-[14px] h-[14px] px-0.5 text-[8px] font-bold leading-none rounded-full bg-red-600 text-white">
+          {badge > 99 ? '99+' : badge}
+        </span>
+      )}
     </button>
   )
 }
