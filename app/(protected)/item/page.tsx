@@ -319,7 +319,7 @@ function topTabClsCompact() {
 }
 function topTabLabelCls(active: boolean) {
   return `text-sm font-bold text-center px-1.5 py-1.5 rounded-xl leading-tight whitespace-nowrap truncate transition
-    ${active ? 'bg-brand text-white shadow-md' : 'text-gray-500 hover:bg-gray-100'}`
+    ${active ? 'bg-brand text-white shadow-md' : 'text-white hover:bg-white/10'}`
 }
 
 const VALID_TABS: OuterTab[] = ['today', 'loss', 'manage', 'staff', 'uk', 'ch']
@@ -859,7 +859,7 @@ function ItemHubPageInner() {
     <div className="-mx-4 -mt-4 -mb-6 flex flex-col h-[100dvh] md:h-[calc(100dvh-56px)]">
 
       {/* ── Header ── */}
-      <div className="shrink-0 sticky top-0 z-30 bg-white border-b border-gray-200">
+      <div className="shrink-0 sticky top-0 z-30 bg-green-800 border-b border-green-900">
 
         {/* Row 1: raw-text tabs, no icons. Grony Cash/Grony Manage are the
             two flex-1 anchors everyone gets, sharing the row equally; Staff/
@@ -884,7 +884,7 @@ function ItemHubPageInner() {
               <span className="sm:hidden">Cash</span>
             </span>
           </button>
-          <div className="w-px bg-gray-200 shrink-0" />
+          <div className="w-px bg-green-900 shrink-0" />
           <button onClick={() => changeTab('manage')} className={topTabCls()}>
             <span className={topTabLabelCls(outerTab === 'manage')}>
               <span className="hidden sm:inline">Grony Manage</span>
@@ -898,7 +898,7 @@ function ItemHubPageInner() {
               it changes per person, so "tap the person icon" still works
               as a stable instruction regardless of who's logged in. */}
           {myStaffName && (<>
-          <div className="w-px bg-gray-200 shrink-0" />
+          <div className="w-px bg-green-900 shrink-0" />
           <button onClick={() => changeTab('staff')} className={topTabClsCompact()}>
             <span className={topTabLabelCls(outerTab === 'staff')}>👤 {myStaffName}</span>
           </button>
@@ -908,7 +908,7 @@ function ItemHubPageInner() {
               removed once every one of its old links had somewhere else to
               live. */}
           {isGrony && (<>
-          <div className="w-px bg-gray-200 shrink-0" />
+          <div className="w-px bg-green-900 shrink-0" />
           <button onClick={() => changeTab('uk')} className={topTabClsCompact()}>
             <span className={topTabLabelCls(outerTab === 'uk')}>UK</span>
           </button>
@@ -916,12 +916,12 @@ function ItemHubPageInner() {
           {/* Owner-level only (Grony/Joe) -- content TBD, CHTab is a
               placeholder for now. */}
           {isOwnerOrJoe && (<>
-          <div className="w-px bg-gray-200 shrink-0" />
+          <div className="w-px bg-green-900 shrink-0" />
           <button onClick={() => changeTab('ch')} className={topTabClsCompact()}>
             <span className={topTabLabelCls(outerTab === 'ch')}>C&amp;H</span>
           </button>
           </>)}
-          <div className="w-px bg-gray-200 shrink-0" />
+          <div className="w-px bg-green-900 shrink-0" />
           {/* Global search -- looks across the whole app (items, customers,
               vendors, sales, bills, announcements), unlike the per-view
               search bars already on most tabs below, which only filter
@@ -929,7 +929,7 @@ function ItemHubPageInner() {
               field so it doesn't compete with those for the same "search"
               affordance/space. */}
           <button onClick={() => setGlobalSearchOpen(true)} aria-label="Search everywhere" title="Search everywhere"
-            className="shrink-0 flex items-center justify-center w-10 text-gray-500 hover:bg-gray-100 rounded-xl transition">
+            className="shrink-0 flex items-center justify-center w-10 text-white hover:bg-white/10 rounded-xl transition">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="7" />
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -964,7 +964,7 @@ function ItemHubPageInner() {
 
         <div className="relative flex-1 min-w-0 min-h-0 flex flex-col">
           {outerTab === 'loss' && (
-            <div className="shrink-0 bg-white border-b border-gray-100">
+            <div className="shrink-0 bg-green-800 border-b border-green-900">
               {/* Row 2: groups + violations + search — hidden on report-style submenus */}
               {showControls && (
                 <div className="flex items-center gap-1.5 px-2 py-1.5">
@@ -973,7 +973,7 @@ function ItemHubPageInner() {
                   <div className="relative shrink-0" ref={groupRef}>
                     <button onClick={() => setGroupOpen(o => !o)}
                       className={`text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap flex items-center gap-1 transition
-                        ${(group || productType !== 'all') ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+                        ${(group || productType !== 'all') ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
                       {groupLabel} <span className="text-[10px]">▾</span>
                     </button>
                     {groupOpen && (
@@ -1030,7 +1030,7 @@ function ItemHubPageInner() {
                     <input value={search} onChange={e => setSearch(e.target.value)}
                       onFocus={() => setSearchOpen(true)}
                       placeholder="Search…" autoComplete="off"
-                      className="w-full text-xs bg-gray-50 border border-gray-200 rounded-lg pl-2 pr-6 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+                      className="w-full text-xs bg-white border border-green-900 rounded-lg pl-2 pr-6 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
                     {search && (
                       <button onClick={() => { setSearch(''); setSearchOpen(false) }} title="Clear search"
                         className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm leading-none px-0.5">
@@ -1059,7 +1059,7 @@ function ItemHubPageInner() {
                       the same kind of per-view control. Drives LossTab's column
                       visibility/order (lifted up here, see itemsColPrefs above)
                       rather than living inside LossTab itself. */}
-                  {lossView === 'items' && <ColumnsPickerButton prefs={itemsColPrefs} />}
+                  {lossView === 'items' && <ColumnsPickerButton prefs={itemsColPrefs} dark />}
 
                   {/* Analytics toggle -- swaps this submenu's normal list for the
                       charts/trends that used to live under the removed "Data"
@@ -1069,7 +1069,7 @@ function ItemHubPageInner() {
                   {['items', 'sales', 'bills', 'expenses'].includes(lossView) && (
                     <button onClick={() => { setShowAnalytics(a => !a); setAddForm(null); setViolation(null) }}
                       className={`shrink-0 flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg transition
-                        ${showAnalytics ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                        ${showAnalytics ? 'bg-blue-600 text-white' : 'text-white hover:bg-white/10'}`}>
                       📊 {showAnalytics ? 'List' : 'Analytics'}
                     </button>
                   )}
