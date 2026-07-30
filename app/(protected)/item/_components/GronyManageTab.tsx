@@ -58,14 +58,23 @@ const LIST_ITEMS: { key: ManageView; label: string; icon?: string }[] = [
   { key: 'cuttings', label: 'Cuttings', icon: '✂️' },
   { key: 'video', label: 'Video', icon: '🎬' },
   { key: 'advert_log', label: 'Daily Log', icon: '📢' },
-  { key: 'staff_dress', label: 'Dress Code' },
+  { key: 'staff_dress', label: 'Dress Code', icon: '👕' },
   ...LOG_CATEGORIES.map(c => ({ key: c.key, label: c.label, icon: c.icon })),
   { key: 'tutorial', label: 'Tutorial', icon: '📖' },
   { key: 'training_laws', label: 'Company Laws', icon: '⚖️' },
   { key: 'assessment', label: 'Assessment', icon: '📝' },
-  { key: 'rota', label: 'Rota' },
-  { key: 'logs', label: 'Logs' },
+  { key: 'rota', label: 'Rota', icon: '🗓️' },
+  { key: 'logs', label: 'Logs', icon: '📜' },
 ]
+
+// User can pick how the left pane renders each entry -- icons only (widest
+// squeeze), text only, or both (the default). Remembered across visits since
+// it's a personal display preference, not app state.
+type DisplayMode = 'icon' | 'text' | 'both'
+const DISPLAY_MODE_KEY = 'gronyManageDisplayMode'
+const DISPLAY_MODE_GLYPH: Record<DisplayMode, string> = { icon: '🔘', both: '◧', text: '🔤' }
+const DISPLAY_MODE_LABEL: Record<DisplayMode, string> = { icon: 'Icons only', both: 'Icons + text', text: 'Text only' }
+const PANE_WIDTH: Record<DisplayMode, string> = { icon: 'w-14', both: 'w-20', text: 'w-24' }
 
 type DynamicCategory = { id: number; label: string }
 
@@ -84,6 +93,7 @@ export default function GronyManageTab({ initialView, role, username }: { initia
   const [showAddCategory, setShowAddCategory] = useState(false)
   const [newCategoryLabel, setNewCategoryLabel] = useState('')
   const [savingCategory, setSavingCategory] = useState(false)
+  const [displayMode, setDisplayMode] = useState<DisplayMode>('both')
   // Same gate throughout this file -- Rota's edit controls, and adding/
   // removing a category or one of its tabs, are all owner-level only.
   // Viewing is open to everyone.
@@ -95,6 +105,16 @@ export default function GronyManageTab({ initialView, role, username }: { initia
     }).catch(() => {})
   }
   useEffect(() => { loadDynamicCategories() }, [])
+
+  useEffect(() => {
+    const saved = localStorage.getItem(DISPLAY_MODE_KEY)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (saved === 'icon' || saved === 'text' || saved === 'both') setDisplayMode(saved)
+  }, [])
+  function changeDisplayMode(mode: DisplayMode) {
+    setDisplayMode(mode)
+    localStorage.setItem(DISPLAY_MODE_KEY, mode)
+  }
 
   // Driven by the global search (page.tsx) landing here already knowing
   // which sub-tab to show -- also covers re-arriving at a different one
@@ -141,26 +161,41 @@ export default function GronyManageTab({ initialView, role, username }: { initia
 
   return (
     <div className="flex h-full min-h-0">
-      {/* Left pane -- always visible instead of a drawer you have to open,
-          narrow so the content pane keeps most of the width on a phone. */}
-      <div className="w-32 shrink-0 border-r border-gray-200 bg-gray-50 overflow-y-auto">
+      {/* Left pane -- always visible instead of a drawer you have to open.
+          Width tightens further in icon-only mode; labels cap at 2 lines
+          (line-clamp) rather than pushing the pane wider for long names. */}
+      <div className={`${PANE_WIDTH[displayMode]} shrink-0 border-r border-gray-200 bg-gray-50 overflow-y-auto`}>
+        <div className="flex items-stretch gap-0.5 p-1 border-b border-gray-200 bg-white sticky top-0 z-10">
+          {(['icon', 'both', 'text'] as DisplayMode[]).map(m => (
+            <button key={m} onClick={() => changeDisplayMode(m)} title={DISPLAY_MODE_LABEL[m]}
+              className={`flex-1 flex items-center justify-center py-1 rounded text-[11px] transition
+                ${displayMode === m ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+              {DISPLAY_MODE_GLYPH[m]}
+            </button>
+          ))}
+        </div>
+
         {LIST_ITEMS.map(entry => (
-          <button key={entry.key} onClick={() => pick(entry.key)}
-            className={`w-full flex items-start gap-1 text-left px-2 py-2 text-[11px] font-medium leading-tight transition
+          <button key={entry.key} onClick={() => pick(entry.key)} title={entry.label} aria-label={entry.label}
+            className={`w-full flex flex-col items-center justify-center gap-0.5 px-1 py-2 text-[10px] font-medium leading-tight text-center transition
               ${!activeDynamic && view === entry.key ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-gray-700 hover:bg-gray-100'}`}>
-            {entry.icon && <span className="shrink-0">{entry.icon}</span>}<span>{entry.label}</span>
+            {displayMode !== 'text' && <span className="text-base leading-none">{entry.icon ?? '•'}</span>}
+            {displayMode !== 'icon' && <span className="line-clamp-2">{entry.label}</span>}
           </button>
         ))}
 
         {dynamicCategories.length > 0 && (
           <div className="mt-1 pt-1 border-t border-gray-200">
-            <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-gray-400 uppercase tracking-wide">Added by you</p>
+            {displayMode !== 'icon' && (
+              <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-gray-400 uppercase tracking-wide">Added by you</p>
+            )}
             {dynamicCategories.map(c => (
-              <div key={c.id} className={`flex items-start ${activeDynamicId === c.id ? 'bg-blue-100' : ''}`}>
-                <button onClick={() => pickDynamic(c.id)}
-                  className={`flex-1 min-w-0 text-left px-2 py-2 text-[11px] font-medium leading-tight transition
+              <div key={c.id} className={`flex items-stretch ${activeDynamicId === c.id ? 'bg-blue-100' : ''}`}>
+                <button onClick={() => pickDynamic(c.id)} title={c.label} aria-label={c.label}
+                  className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 px-1 py-2 text-[10px] font-medium leading-tight text-center transition
                     ${activeDynamicId === c.id ? 'text-blue-700 font-semibold' : 'text-gray-700 hover:bg-gray-100'}`}>
-                  {c.label}
+                  {displayMode !== 'text' && <span className="text-base leading-none">🗂️</span>}
+                  {displayMode !== 'icon' && <span className="line-clamp-2">{c.label}</span>}
                 </button>
                 {canManage && (
                   <button onClick={() => removeCategory(c.id, c.label)} title="Delete category"
@@ -190,9 +225,10 @@ export default function GronyManageTab({ initialView, role, username }: { initia
                 </div>
               </form>
             ) : (
-              <button onClick={() => setShowAddCategory(true)}
-                className="w-full text-left px-1 py-2 text-[11px] font-semibold text-blue-600 hover:bg-blue-50 rounded transition">
-                + Add Category
+              <button onClick={() => setShowAddCategory(true)} title="Add Category"
+                className="w-full flex flex-col items-center justify-center gap-0.5 px-1 py-2 text-[10px] font-semibold text-blue-600 hover:bg-blue-50 rounded transition text-center">
+                {displayMode !== 'text' && <span className="text-base leading-none">➕</span>}
+                {displayMode !== 'icon' && <span className="line-clamp-2">Add Category</span>}
               </button>
             )}
           </div>
