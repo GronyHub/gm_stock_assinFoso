@@ -56,6 +56,10 @@ const GronyManageTab = dynamic(() => import('./_components/GronyManageTab'),  { 
 const VendorsPage    = dynamic(() => import('../vendors/page'),               { ssr: false, loading: () => loading('Loading…') })
 const CustomersPage  = dynamic(() => import('../customers/page'),             { ssr: false, loading: () => loading('Loading…') })
 const ReceiptsPage   = dynamic(() => import('../receipts/page'),              { ssr: false, loading: () => loading('Loading…') })
+const PurchaseOrdersPage  = dynamic(() => import('../purchase-orders/page'),        { ssr: false, loading: () => loading('Loading…') })
+const AliasWidePage       = dynamic(() => import('../aliases/wide/page'),           { ssr: false, loading: () => loading('Loading…') })
+const ServiceMatchesPage  = dynamic(() => import('../matches/wide/page'),           { ssr: false, loading: () => loading('Loading…') })
+const FixMislinkedSalesPage = dynamic(() => import('../debug/unlink-mismatch/page'), { ssr: false, loading: () => loading('Loading…') })
 const ViewPortalAsButton = dynamic(() => import('@/components/ViewPortalAsButton'), { ssr: false })
 const StaffPersonTab = dynamic(() => import('./_components/StaffPersonTab'),  { ssr: false, loading: () => loading('Loading…') })
 
@@ -72,6 +76,7 @@ type OuterTab = 'today' | 'loss' | 'manage' | 'staff'
 // Cash tab (outerTab 'loss' -- kept as the internal key since it's
 // referenced throughout; only the label changed).
 type LossView = 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts' | 'dailySummary'
+  | 'purchaseOrders' | 'aliasWide' | 'serviceMatches' | 'fixMislinkedSales'
 
 // Old top-level tabs that got folded into Grony Cash submenus -- old
 // bookmarks/links using ?tab=pl etc. still land on the right submenu instead
@@ -92,27 +97,19 @@ const OLD_TAB_TO_OUTER: Partial<Record<string, OuterTab>> = {
 // Self-contained submenus -- either their own dashboard, or a standalone
 // page with its own internal search/filter/add UI -- so the shared
 // groups/search/New controls row doesn't apply to them.
-const REPORT_VIEWS = new Set<LossView>(['pl', 'cab', 'vendors', 'customers', 'receipts', 'dailySummary'])
-
-// Sales, Bills, and Daily Loss (Feed) are top-level sections of their own,
-// sitting in the main Grony Cash row. Counts, Customers/Receipts/Vendors
-// aren't in the main row either -- they're reachable from the account menu
-// (person icon, bottom right) instead, as their own standalone pages.
-// Counts still keeps its 'counts' lossView wired up internally (PARENT_OF
-// entry + the CountsTab render further down) purely for cross-navigation --
-// Joe's "Fix now" flags and the item Loss dialog's "Go to Counts" both land
-// here, and that flow still needs somewhere to land even with no visible nav
-// button pointing at it any more.
-// Sub-views not listed here have no parent and no children.
-const PARENT_OF: Partial<Record<LossView, LossView>> = {
-  items: 'items', counts: 'items',
-}
-const CHILDREN_OF: Partial<Record<LossView, { key: LossView; label: string }[]>> = {}
+const REPORT_VIEWS = new Set<LossView>([
+  'pl', 'cab', 'vendors', 'customers', 'receipts', 'dailySummary',
+  'purchaseOrders', 'aliasWide', 'serviceMatches', 'fixMislinkedSales',
+])
 
 // Grony Cash's own left pane, same shape as Grony Manage's -- Sales, Bills,
 // and Daily Loss (Feed) come first, then Items is the tab's own default
-// view. P&L only shows for owner/joe (see canSeePL below, applied where
-// this is used).
+// view. P&L only shows for owner/joe (see canSeePL below), Fix Mislinked
+// Sales only for owner/joe (see isOwnerOrJoe below) -- both filtered where
+// this list is used. The rest (Customers onward) used to live only in the
+// account menu; they're reachable from there too, unchanged, but now also
+// get a direct left-pane entry so nothing Grony-Cash-related needs the
+// hamburger menu as its only way in.
 const CASH_ITEMS: { key: LossView; label: string; icon: string }[] = [
   { key: 'items',    label: 'Items',    icon: '📦' },
   { key: 'sales',    label: 'Sales',    icon: '🧾' },
@@ -121,6 +118,14 @@ const CASH_ITEMS: { key: LossView; label: string; icon: string }[] = [
   { key: 'expenses', label: 'Expenses', icon: '💳' },
   { key: 'pl',       label: 'P&L',      icon: '📈' },
   { key: 'cab',      label: 'CAB',      icon: '🗂️' },
+  { key: 'customers', label: 'Customers', icon: '👥' },
+  { key: 'vendors',   label: 'Vendors',   icon: '🏭' },
+  { key: 'receipts',  label: 'Receipts',  icon: '📑' },
+  { key: 'counts',    label: 'Counts',    icon: '🔢' },
+  { key: 'purchaseOrders',   label: 'Purchase Orders',   icon: '🛒' },
+  { key: 'aliasWide',        label: 'Alias Wide Table',  icon: '🔗' },
+  { key: 'serviceMatches',   label: 'Service Matches',   icon: '🧩' },
+  { key: 'fixMislinkedSales', label: 'Fix Mislinked Sales', icon: '🩹' },
 ]
 
 type Item = {
@@ -260,17 +265,15 @@ const LOSSVIEW_PILL_KEYS: Partial<Record<LossView, string[]>> = {
 }
 
 // Analysis dropped -- it's a strict subset of Grony Cash's Data submenu.
-// Customers/Vendors/Receipts are NOT here -- they're rendered by
-// cashSubmenus' own actions instead of a route (see hamburgerLinks below),
-// so opening them from the account menu keeps the Grony Cash/Manage top
-// bar and the RoleBar instead of landing on a bare standalone page.
-// Logs moved into Grony Manage.
+// Everything else Grony-Cash-related (Customers/Vendors/Receipts/Counts/
+// Purchase Orders/Alias Wide Table/Service Matches/Fix Mislinked Sales) is
+// NOT here any more -- they're all cashSubmenus entries now (own left-pane
+// button + hamburger link + global search, from one action), so opening
+// them from anywhere keeps the Grony Cash/Manage top bar and the RoleBar
+// instead of landing on a bare standalone page. Only Users is left, since
+// it isn't a Cash concern. Logs moved into Grony Manage.
 const HAMBURGER_LINKS = [
-  { href: '/users',        label: 'Users'            },
-  { href: '/counts',       label: 'Counts'           },
-  { href: '/purchase-orders', label: 'Purchase Orders' },
-  { href: '/aliases/wide', label: 'Alias Wide Table' },
-  { href: '/matches/wide', label: 'Service Matches'  },
+  { href: '/users', label: 'Users' },
 ]
 
 // Plain text, no icons -- keeps the top nav to a single line so it doesn't
@@ -753,8 +756,6 @@ function ItemHubPageInner() {
     const list = q ? items.filter(i => i.item_name.toLowerCase().includes(q)) : items
     return [...list].sort((a, b) => a.item_name.localeCompare(b.item_name)).slice(0, 25)
   }, [items, search])
-  const activeLossParent = PARENT_OF[lossView]
-  const lossChildren = activeLossParent ? CHILDREN_OF[activeLossParent] : undefined
   const pillKeys = LOSSVIEW_PILL_KEYS[lossView]
 
   const groupLabel = [
@@ -799,6 +800,11 @@ function ItemHubPageInner() {
     { label: 'Customers', action: () => { changeTab('loss'); setLossView('customers') } },
     { label: 'Receipts', action: () => { changeTab('loss'); setLossView('receipts') } },
     { label: 'Daily', action: () => { changeTab('loss'); setLossView('dailySummary') } },
+    { label: 'Counts', action: () => { changeTab('loss'); setLossView('counts') } },
+    { label: 'Purchase Orders', action: () => { changeTab('loss'); setLossView('purchaseOrders') } },
+    { label: 'Alias Wide Table', action: () => { changeTab('loss'); setLossView('aliasWide') } },
+    { label: 'Service Matches', action: () => { changeTab('loss'); setLossView('serviceMatches') } },
+    ...(isOwnerOrJoe ? [{ label: 'Fix Mislinked Sales', action: () => { changeTab('loss'); setLossView('fixMislinkedSales') } }] : []),
   ]
   const manageSubmenus: { label: string; action: () => void }[] = [
     { label: 'Rota', action: () => { changeTab('manage'); setManageInitialView('rota') } },
@@ -833,21 +839,23 @@ function ItemHubPageInner() {
     ? [{ label: myStaffName, action: () => changeTab('staff') }]
     : []
 
-  // Customers/Vendors/Receipts reuse cashSubmenus' own actions (find, not a
-  // second copy of the changeTab/setLossView calls) so opening them from
-  // the account menu still lands inside Grony Cash's shell -- the Grony
-  // Cash/Manage top bar and RoleBar stay up, instead of a route push to a
-  // bare standalone page with no way back except the browser's back button.
+  // Every Grony-Cash-related hamburger link reuses cashSubmenus' own action
+  // (find, not a second copy of the changeTab/setLossView calls) so opening
+  // it from the account menu still lands inside Grony Cash's shell -- the
+  // Grony Cash/Manage top bar and RoleBar stay up, instead of a route push
+  // to a bare standalone page with no way back except the browser's back
+  // button.
   const byLabel = (label: string) => cashSubmenus.find(s => s.label === label)!
   const hamburgerLinks: { label: string; href?: string; action?: () => void }[] = [
-    ...HAMBURGER_LINKS.slice(0, 1), // Users
+    ...HAMBURGER_LINKS, // Users
     byLabel('Customers'),
     byLabel('Receipts'),
     byLabel('Vendors'),
-    ...HAMBURGER_LINKS.slice(1), // Counts, Purchase Orders, Alias Wide Table, Service Matches
-    ...(isOwnerOrJoe ? [
-      { href: '/debug/unlink-mismatch', label: 'Fix Mislinked Sales' },
-    ] : []),
+    byLabel('Counts'),
+    byLabel('Purchase Orders'),
+    byLabel('Alias Wide Table'),
+    byLabel('Service Matches'),
+    ...(isOwnerOrJoe ? [byLabel('Fix Mislinked Sales')] : []),
     // Private to Grony alone -- UKTab re-checks the session itself too, so
     // this hidden link is just about not showing it to anyone else, not the
     // only thing guarding the page.
@@ -955,11 +963,9 @@ function ItemHubPageInner() {
         {!openRole && outerTab === 'loss' && (
           <SidePaneContainer mode={cashDisplayMode}>
             <SidePaneToggle mode={cashDisplayMode} onChange={changeCashDisplayMode} />
-            {/* Items is still the home for Counts (see CHILDREN_OF),
-                highlighted by PARENT_OF so it stays lit up while looking at
-                that child sub-view. */}
-            {CASH_ITEMS.filter(v => v.key !== 'pl' || canSeePL).map(v => {
-              const active = (activeLossParent ?? lossView) === v.key
+            {CASH_ITEMS.filter(v => v.key !== 'pl' || canSeePL)
+              .filter(v => v.key !== 'fixMislinkedSales' || isOwnerOrJoe).map(v => {
+              const active = lossView === v.key
               return (
                 <SidePaneButton key={v.key} icon={v.icon} label={v.label} mode={cashDisplayMode}
                   active={active}
@@ -972,20 +978,6 @@ function ItemHubPageInner() {
         <div className="relative flex-1 min-w-0 min-h-0 flex flex-col">
           {!openRole && outerTab === 'loss' && (
             <div className="shrink-0 bg-white border-b border-gray-100">
-              {/* Children row -- only for sections that have any, and only while
-                  that section (or one of its children) is the active view. */}
-              {lossChildren && lossChildren.length > 0 && (
-                <div className="flex items-center gap-1 px-2 py-0.5 bg-gray-50 border-t border-gray-100 overflow-x-auto">
-                  {lossChildren.map(c => (
-                    <button key={c.key} onClick={() => { setLossView(c.key); setAddForm(null); setViolation(null) }}
-                      className={`shrink-0 text-[13px] font-semibold px-1.5 py-0.5 rounded-lg whitespace-nowrap border transition
-                        ${lossView === c.key ? 'bg-blue-500 text-white border-blue-500' : 'text-gray-400 border-gray-200 hover:bg-gray-100'}`}>
-                      {c.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-
               {/* Row 2: groups + violations + search — hidden on report-style submenus */}
               {showControls && (
                 <div className="flex items-center gap-1.5 px-2 py-1.5">
@@ -1216,6 +1208,26 @@ function ItemHubPageInner() {
         {outerTab === 'loss' && lossView === 'dailySummary' && (
           <TabErrorBoundary>
             <DailySummaryTab />
+          </TabErrorBoundary>
+        )}
+        {outerTab === 'loss' && lossView === 'purchaseOrders' && (
+          <TabErrorBoundary>
+            <div className="px-4 pt-4"><PurchaseOrdersPage /></div>
+          </TabErrorBoundary>
+        )}
+        {outerTab === 'loss' && lossView === 'aliasWide' && (
+          <TabErrorBoundary>
+            <div className="px-4 pt-4"><AliasWidePage /></div>
+          </TabErrorBoundary>
+        )}
+        {outerTab === 'loss' && lossView === 'serviceMatches' && (
+          <TabErrorBoundary>
+            <div className="px-4 pt-4"><ServiceMatchesPage /></div>
+          </TabErrorBoundary>
+        )}
+        {outerTab === 'loss' && lossView === 'fixMislinkedSales' && (
+          <TabErrorBoundary>
+            <div className="px-4"><FixMislinkedSalesPage /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'manage' && (
