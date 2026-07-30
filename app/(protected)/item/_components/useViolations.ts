@@ -90,7 +90,7 @@ export const SUBMENU_HOME: Record<string, string> = {
   duplicates: 'Items', unlinked_named: 'Items', service_violation: 'Items',
   alias_prezoho_sales: 'Items', alias_prezoho_bills: 'Items', alias_flagged: 'Items', alias_ambiguous: 'Items',
   daily: 'Counts', '7day': 'Counts', '15day': 'Counts',
-  gains: 'Loss',
+  gains: 'Loss by Date',
   no_cash: 'Sales', missing_days: 'Sales', cost_price: 'Sales', dup_receipt: 'Sales',
   unchecked_cab: 'CAB',
   no_staff_times: 'Staff',

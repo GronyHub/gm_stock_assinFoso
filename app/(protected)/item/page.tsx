@@ -50,7 +50,7 @@ const BillsAnalyticsSection      = dynamic(() => import('./_components/BillsAnal
 const ExpensesAnalyticsSection   = dynamic(() => import('./_components/ExpensesAnalyticsSection'),   { ssr: false, loading: () => loading('Loading analytics…') })
 const LossTab        = dynamic(() => import('./_components/LossTab'),         { ssr: false, loading: () => loading('Loading…') })
 const LossFeedTab    = dynamic(() => import('./_components/LossFeedTab'),     { ssr: false, loading: () => loading('Loading…') })
-const LossOverviewTab = dynamic(() => import('./_components/LossOverviewTab'), { ssr: false, loading: () => loading('Loading…') })
+const LossByItemTab  = dynamic(() => import('./_components/LossByItemTab'),   { ssr: false, loading: () => loading('Loading…') })
 const ProfitLossTab  = dynamic(() => import('./_components/ProfitLossTab'),   { ssr: false, loading: () => loading('Loading…') })
 const DailySummaryTab = dynamic(() => import('./_components/DailySummaryTab'), { ssr: false, loading: () => loading('Loading…') })
 const GronyManageTab = dynamic(() => import('./_components/GronyManageTab'),  { ssr: false, loading: () => loading('Loading…') })
@@ -77,7 +77,7 @@ type OuterTab = 'today' | 'loss' | 'manage' | 'staff'
 // Receipts, Daily (Summary), and Data all live as submenus inside the Grony
 // Cash tab (outerTab 'loss' -- kept as the internal key since it's
 // referenced throughout; only the label changed).
-type LossView = 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts' | 'dailySummary'
+type LossView = 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'lossByItem' | 'lossByTarget' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts' | 'dailySummary'
   | 'purchaseOrders' | 'aliasWide' | 'serviceMatches' | 'fixMislinkedSales' | 'item360'
 
 // Old top-level tabs that got folded into Grony Cash submenus -- old
@@ -112,11 +112,20 @@ const REPORT_VIEWS = new Set<LossView>([
 // account menu; they've since moved here instead (their hamburger entries
 // were removed once this list covered them) so nothing Grony-Cash-related
 // needs the hamburger menu any more.
+//
+// Loss by Date/Item/Target used to be one 'feed' entry with its own internal
+// pill row (LossOverviewTab) switching between the three. They're now three
+// separate left-pane entries instead -- 'feed' keeps its key (and the gains
+// violation deep-link that already points at it) but is relabeled to "Loss
+// by Date", with Loss by Item and Loss by Target following right after as
+// their own lossViews.
 const CASH_ITEMS: { key: LossView; label: string; icon: string }[] = [
   { key: 'items',    label: 'Items',    icon: '📦' },
   { key: 'sales',    label: 'Sales',    icon: '🧾' },
   { key: 'bills',    label: 'Bills',    icon: '📃' },
-  { key: 'feed',     label: 'Loss',     icon: '📉' },
+  { key: 'feed',         label: 'Loss by Date',   icon: '📉' },
+  { key: 'lossByItem',   label: 'Loss by Item',   icon: '📊' },
+  { key: 'lossByTarget', label: 'Loss by Target', icon: '🎯' },
   { key: 'expenses', label: 'Expenses', icon: '💳' },
   { key: 'pl',       label: 'P&L',      icon: '📈' },
   { key: 'cab',      label: 'CAB',      icon: '🗂️' },
@@ -723,7 +732,9 @@ function ItemHubPageInner() {
     { label: 'Items', action: () => { changeTab('loss'); setLossView('items') } },
     { label: 'Sales', action: () => { changeTab('loss'); setLossView('sales') } },
     { label: 'Bills', action: () => { changeTab('loss'); setLossView('bills') } },
-    { label: 'Loss', action: () => { changeTab('loss'); setLossView('feed') } },
+    { label: 'Loss by Date', action: () => { changeTab('loss'); setLossView('feed') } },
+    { label: 'Loss by Item', action: () => { changeTab('loss'); setLossView('lossByItem') } },
+    { label: 'Loss by Target', action: () => { changeTab('loss'); setLossView('lossByTarget') } },
     { label: 'Expenses', action: () => { changeTab('loss'); setLossView('expenses') } },
     ...(canSeePL ? [{ label: 'P&L', action: () => { changeTab('loss'); setLossView('pl') } }] : []),
     { label: 'CAB', action: () => { changeTab('loss'); setLossView('cab') } },
@@ -1203,16 +1214,21 @@ function ItemHubPageInner() {
           <CountsTab items={items} groupFilter={group} search={search}
             violation={pillKeys?.includes(violation ?? '') ? violation : null} onFixRecords={goFixRecords} />
         )}
-        {/* The gains pill (see LOSSVIEW_PILL_KEYS['feed']) bypasses the
-            by-date/by-item/by-target sub-tabs entirely -- it's a violation
-            to fix, not a way of browsing losses, so it stays on the
-            original single-list view regardless of which sub-tab was last
-            selected. */}
+        {/* The gains pill (see LOSSVIEW_PILL_KEYS['feed']) always lands here
+            via VIOLATION_HOME['gains'] = 'feed' -- it's a violation to fix,
+            not a way of browsing losses, so this view shows the gain feed
+            instead of the loss feed while it's active. */}
         {outerTab === 'loss' && lossView === 'feed' && (
           <TabErrorBoundary>
-            {violation === 'gains'
-              ? <LossFeedTab search={search} kind="gain" />
-              : <LossOverviewTab search={search} />}
+            <LossFeedTab search={search} kind={violation === 'gains' ? 'gain' : 'loss'} />
+          </TabErrorBoundary>
+        )}
+        {outerTab === 'loss' && lossView === 'lossByItem' && (
+          <TabErrorBoundary><LossByItemTab search={search} /></TabErrorBoundary>
+        )}
+        {outerTab === 'loss' && lossView === 'lossByTarget' && (
+          <TabErrorBoundary>
+            <div className="py-20 text-center text-gray-400 text-xs">Coming soon.</div>
           </TabErrorBoundary>
         )}
         </>)}
