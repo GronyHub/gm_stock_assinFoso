@@ -75,13 +75,13 @@ A row of four buttons fixed to the bottom of the screen, always visible: Joe, Bi
 
 # The Account Menu
 
-The 👤 button, at the bottom right of the Role Bar (shows who's logged in), holds account-level actions and a few shortcuts: View Portal As (owner and Joe only -- lets you see the app as a specific staff member), Users, Profile, Customers, Receipts, Vendors, Counts, Alias Wide Table, Service Matches, and Sign out (plus Personal and Fix Mislinked Sales for owner-level users).
+The 👤 button, at the bottom right of the Role Bar (shows who's logged in), holds account-level actions and a few shortcuts: View (owner and Joe only -- lets you see the app as a specific staff member), Users, Profile, Customers, Receipts, Vendors, Counts, Alias Wide Table, Service Matches, and Sign out (plus Personal and Fix Mislinked Sales for owner-level users).
 
 # Roles
 
 - Staff -- the default role. Can clock in/out, enter sales/bills/expenses, do counts, and use most of the app.
 - Manager -- can additionally delete posts and see certain confidential entries.
-- Owner (and Joe, who holds the same rights as the owner) -- the only ones who can see P&L, confidential expenses like Salaries, use View Portal As, and edit this Tutorial and the Company Laws page.
+- Owner (and Joe, who holds the same rights as the owner) -- the only ones who can see P&L, confidential expenses like Salaries, use View, and edit this Tutorial and the Company Laws page.
 
 # A Few Things Worth Knowing
 

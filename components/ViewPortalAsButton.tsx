@@ -51,7 +51,7 @@ export default function ViewPortalAsButton({ onDone }: { onDone?: () => void }) 
     <div className="px-4 py-2.5 border-t border-blue-700 first:border-t-0">
       {picking ? (
         <div className="space-y-1.5">
-          <p className="text-[10px] text-blue-100 font-semibold">View portal as:</p>
+          <p className="text-[10px] text-blue-100 font-semibold">View:</p>
           <select
             autoFocus
             defaultValue=""
@@ -68,7 +68,7 @@ export default function ViewPortalAsButton({ onDone }: { onDone?: () => void }) 
       ) : (
         <button onClick={() => setPicking(true)}
           className="w-full text-left text-sm font-medium text-white hover:text-blue-100 flex items-center gap-1.5">
-          👁 View Portal as…
+          👁 View
         </button>
       )}
     </div>
