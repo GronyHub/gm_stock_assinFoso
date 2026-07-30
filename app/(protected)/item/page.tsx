@@ -280,17 +280,26 @@ const LOSSVIEW_PILL_KEYS: Partial<Record<LossView, string[]>> = {
   cab: ['unchecked_cab'],
 }
 
-// Plain text, no icons -- keeps the top nav to a single line so it doesn't
-// eat vertical space. flex-1 + wrapping (no shrink-0/whitespace-nowrap) so
-// both always fit on screen -- "Grony Manage" wraps to two lines on narrow
-// phones rather than forcing the row to scroll. The button itself stays a
-// full-width tap target; only the label's own small pill gets the brand
-// color when active, not the whole button-sized box.
+// Grony Cash/Grony Manage are the two tabs everyone has, so they stay the
+// row's flex-1 anchors -- always equal width, always the widest targets.
+// Staff/UK/C&H are per-account extras (not everyone sees all three, and
+// nobody sees more than one at a time growing this row further), so they're
+// shrink-0 instead of flex-1 -- sized to their own short label, not forced
+// to share the row equally with Grony Cash/Manage. That's what was
+// overlapping text in the first place: every tab fighting flex-1 for an
+// equal slice eventually squeezes below its label's natural width, and
+// whitespace-nowrap has nowhere to put the overflow but on top of its
+// neighbor. truncate is still kept as a last-resort safety net, and the
+// row scrolls horizontally rather than overlapping if it's ever tight
+// enough that even that isn't sufficient.
 function topTabCls() {
   return 'flex-1 min-w-0 flex items-center justify-center py-1'
 }
+function topTabClsCompact() {
+  return 'shrink-0 flex items-center justify-center py-1'
+}
 function topTabLabelCls(active: boolean) {
-  return `text-sm font-bold text-center px-1.5 py-1.5 rounded-xl leading-tight whitespace-nowrap transition
+  return `text-sm font-bold text-center px-1.5 py-1.5 rounded-xl leading-tight whitespace-nowrap truncate transition
     ${active ? 'bg-brand text-white shadow-md' : 'text-gray-500 hover:bg-gray-100'}`
 }
 
@@ -823,20 +832,35 @@ function ItemHubPageInner() {
       {/* ── Header ── */}
       <div className="shrink-0 sticky top-0 z-30 bg-white border-b border-gray-200">
 
-        {/* Row 1: raw-text tabs, no icons. Both always fit on one screen --
-            no horizontal scroll -- via flex-1 + wrapping instead of a fixed
-            width per tab. Divider line between them so they read as
-            distinct menus, not one blob. Daily and Data are Grony Cash
+        {/* Row 1: raw-text tabs, no icons. Grony Cash/Grony Manage are the
+            two flex-1 anchors everyone gets, sharing the row equally; Staff/
+            UK/C&H are shrink-0 (sized to their own label) since they're
+            per-account extras, not peers those two need to keep sharing
+            room with as more of them get added. overflow-x-auto is a last
+            resort -- on any screen wide enough for the full set (every
+            phone this has actually been tested on), nothing scrolls, it
+            just sits there unused. Divider line between them so they read
+            as distinct menus, not one blob. Daily and Data are Grony Cash
             submenus now (see the children row below), not top-level tabs
             of their own. Home moved to its own floating icon (bottom-right)
             so it doesn't take up a slot in this row. */}
-        <div className="flex items-stretch gap-1 px-2 py-2">
+        <div className="flex items-stretch gap-1 px-2 py-2 overflow-x-auto">
           <button onClick={() => changeTab('loss')} className={topTabCls()}>
-            <span className={topTabLabelCls(outerTab === 'loss' && !openRole)}>Grony Cash</span>
+            <span className={topTabLabelCls(outerTab === 'loss' && !openRole)}>
+              {/* "Grony" is redundant with the logo already on screen -- on
+                  a narrow phone (below the full 5-tab set fitting comfortably)
+                  dropping it here buys real room back instead of just
+                  truncating "Grony Cash" down to "Gron...". */}
+              <span className="hidden sm:inline">Grony Cash</span>
+              <span className="sm:hidden">Cash</span>
+            </span>
           </button>
           <div className="w-px bg-gray-200 shrink-0" />
           <button onClick={() => changeTab('manage')} className={topTabCls()}>
-            <span className={topTabLabelCls(outerTab === 'manage' && !openRole)}>Grony Manage</span>
+            <span className={topTabLabelCls(outerTab === 'manage' && !openRole)}>
+              <span className="hidden sm:inline">Grony Manage</span>
+              <span className="sm:hidden">Manage</span>
+            </span>
           </button>
           {/* Only shown for an account with a real staff page -- a stray
               login with no matching roster entry has nothing behind this
@@ -846,7 +870,7 @@ function ItemHubPageInner() {
               as a stable instruction regardless of who's logged in. */}
           {myStaffName && (<>
           <div className="w-px bg-gray-200 shrink-0" />
-          <button onClick={() => changeTab('staff')} className={topTabCls()}>
+          <button onClick={() => changeTab('staff')} className={topTabClsCompact()}>
             <span className={topTabLabelCls(outerTab === 'staff' && !openRole)}>👤 {myStaffName}</span>
           </button>
           </>)}
@@ -856,7 +880,7 @@ function ItemHubPageInner() {
               live. */}
           {isGrony && (<>
           <div className="w-px bg-gray-200 shrink-0" />
-          <button onClick={() => changeTab('uk')} className={topTabCls()}>
+          <button onClick={() => changeTab('uk')} className={topTabClsCompact()}>
             <span className={topTabLabelCls(outerTab === 'uk' && !openRole)}>UK</span>
           </button>
           </>)}
@@ -864,7 +888,7 @@ function ItemHubPageInner() {
               placeholder for now. */}
           {isOwnerOrJoe && (<>
           <div className="w-px bg-gray-200 shrink-0" />
-          <button onClick={() => changeTab('ch')} className={topTabCls()}>
+          <button onClick={() => changeTab('ch')} className={topTabClsCompact()}>
             <span className={topTabLabelCls(outerTab === 'ch' && !openRole)}>C&amp;H</span>
           </button>
           </>)}
