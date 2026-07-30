@@ -28,6 +28,7 @@ import RoleBar, { type RoleKey, type ShortcutKey } from './_components/RoleBar'
 import RolePanel from './_components/RolePanel'
 import { COL_BY_KEY, ALL_COL_KEYS, type ColKey } from './_components/lossTabColumns'
 import type { ManageView } from './_components/GronyManageTab'
+import { SidePaneContainer, SidePaneToggle, SidePaneButton, useSidePaneDisplayMode } from './_components/SidePane'
 import dynamic from 'next/dynamic'
 const loading = (h: string) => <div className={`py-10 text-center text-gray-400 text-sm`}>{h}</div>
 const ItemsTab       = dynamic(() => import('./_components/ItemsTab'),        { ssr: false, loading: () => loading('Loading…') })
@@ -108,6 +109,20 @@ const PARENT_OF: Partial<Record<LossView, LossView>> = {
   items: 'items', counts: 'items',
 }
 const CHILDREN_OF: Partial<Record<LossView, { key: LossView; label: string }[]>> = {}
+
+// Grony Cash's own left pane, same shape as Grony Manage's -- Sales, Bills,
+// and Daily Loss (Feed) come first, then Items is the tab's own default
+// view. P&L only shows for owner/joe (see canSeePL below, applied where
+// this is used).
+const CASH_ITEMS: { key: LossView; label: string; icon: string }[] = [
+  { key: 'items',    label: 'Items',    icon: '📦' },
+  { key: 'sales',    label: 'Sales',    icon: '🧾' },
+  { key: 'bills',    label: 'Bills',    icon: '📃' },
+  { key: 'feed',     label: 'Loss',     icon: '📉' },
+  { key: 'expenses', label: 'Expenses', icon: '💳' },
+  { key: 'pl',       label: 'P&L',      icon: '📈' },
+  { key: 'cab',      label: 'CAB',      icon: '🗂️' },
+]
 
 type Item = {
   id: number
@@ -789,6 +804,7 @@ function ItemHubPageInner() {
 
   const showControls = outerTab !== 'today' && outerTab !== 'manage'
     && !(outerTab === 'loss' && REPORT_VIEWS.has(lossView))
+  const [cashDisplayMode, changeCashDisplayMode] = useSidePaneDisplayMode()
   const { data: session } = useSession()
   const role = (session?.user as any)?.role ?? 'staff'
   const username = (session?.user as any)?.username ?? session?.user?.name ?? ''
@@ -968,302 +984,285 @@ function ItemHubPageInner() {
             </svg>
           </button>
         </div>
+      </div>
 
-        {/* Everything below this point (submenus, search/New, violations)
-            has nothing to do with the Role Bar's own panel, so none of it
-            renders while one is open -- avoids two things reading as
-            "selected" at once and keeps the panel free of unrelated chrome. */}
-        {!openRole && (<>
-        {/* Grony Cash top-level row: Sales, Bills, and Daily Loss (Feed)
-            come first, then Items is the tab's own default view -- Items
-            is still the home for Counts (see CHILDREN_OF), highlighted by
-            PARENT_OF so it stays lit up while looking at that child
-            sub-view. Every button carries its own 🚩 flag badge (violations
-            + open custom tasks combined) -- tap the button to switch tabs
-            as before, then the Flags & Tasks toggle below opens that same
-            count's detail. flex-1 + wrap (no shrink-0/whitespace-nowrap/
-            overflow-x-auto) so all of them always fit on one screen without
-            scrolling -- same fix as the top-level Home/Grony Cash/Grony
-            Manage row. */}
-        {outerTab === 'loss' && (
-          <div className="flex items-stretch gap-1 px-2 py-0.5 bg-white border-t border-gray-100 flex-wrap">
-            {([
-              { key: 'items',    label: 'Items' },
-              { key: 'sales',    label: 'Sales' },
-              { key: 'bills',    label: 'Bills' },
-              { key: 'feed',     label: 'Loss' },
-              { key: 'expenses', label: 'Expenses' },
-              ...(canSeePL ? [{ key: 'pl' as LossView, label: 'P&L' }] : []),
-              { key: 'cab',        label: 'CAB' },
-            ] as { key: LossView; label: string }[]).map(v => {
+      {/* ── Body ── Grony Cash gets its own left pane (same one-pane shape
+          as Grony Manage's / Staff's), everything else just gets the full-
+          width content area as before. Hidden while a Role Bar panel is
+          open -- same as before, RolePanel takes over the whole area below
+          Row 1. */}
+      <div className="flex-1 min-h-0 flex overflow-hidden">
+        {!openRole && outerTab === 'loss' && (
+          <SidePaneContainer mode={cashDisplayMode}>
+            <SidePaneToggle mode={cashDisplayMode} onChange={changeCashDisplayMode} />
+            {/* Every button carries its own 🚩 flag badge (violations + open
+                custom tasks combined) -- tap the button to switch tabs, then
+                the Flags & Tasks toggle below opens that same count's detail.
+                Items is still the home for Counts (see CHILDREN_OF),
+                highlighted by PARENT_OF so it stays lit up while looking at
+                that child sub-view. */}
+            {CASH_ITEMS.filter(v => v.key !== 'pl' || canSeePL).map(v => {
               const flagCount = flagCountFor(v.key)
               const active = (activeLossParent ?? lossView) === v.key
               return (
-                <button key={v.key} onClick={() => { setLossView(v.key); setAddForm(null); setViolation(null); setShowAnalytics(false); setFlagsPanelOpen(false) }}
-                  className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 text-center text-[13px] font-semibold px-1 py-1 rounded-lg leading-tight border transition
-                    ${active ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-500 border-gray-200 hover:bg-gray-100'}`}>
-                  <span>{v.label}</span>
-                  {flagCount > 0 && (
-                    <span className={`flex items-center gap-0.5 text-[9px] font-bold rounded-full px-1.5 leading-tight
-                      ${active ? 'bg-white/25 text-white' : 'bg-red-600 text-white'}`}>
-                      🚩{flagCount > 99 ? '99+' : flagCount}
-                    </span>
-                  )}
-                </button>
+                <SidePaneButton key={v.key} icon={v.icon} label={v.label} mode={cashDisplayMode}
+                  active={active} badge={flagCount}
+                  onClick={() => { setLossView(v.key); setAddForm(null); setViolation(null); setShowAnalytics(false); setFlagsPanelOpen(false) }} />
               )
             })}
-          </div>
+          </SidePaneContainer>
         )}
 
-        {/* Children row -- only for sections that have any, and only while
-            that section (or one of its children) is the active view. */}
-        {outerTab === 'loss' && lossChildren && lossChildren.length > 0 && (
-          <div className="flex items-center gap-1 px-2 py-0.5 bg-gray-50 border-t border-gray-100 overflow-x-auto">
-            {lossChildren.map(c => (
-              <button key={c.key} onClick={() => { setLossView(c.key); setAddForm(null); setViolation(null) }}
-                className={`shrink-0 text-[13px] font-semibold px-1.5 py-0.5 rounded-lg whitespace-nowrap border transition
-                  ${lossView === c.key ? 'bg-blue-500 text-white border-blue-500' : 'text-gray-400 border-gray-200 hover:bg-gray-100'}`}>
-                {c.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Row 2: groups + violations + search — hidden on Today tab */}
-        {showControls && (
-          <div className="flex items-center gap-1.5 px-2 py-1.5">
-
-            {/* Groups dropdown */}
-            <div className="relative shrink-0" ref={groupRef}>
-              <button onClick={() => setGroupOpen(o => !o)}
-                className={`text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap flex items-center gap-1 transition
-                  ${(group || productType !== 'all') ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
-                {groupLabel} <span className="text-[10px]">▾</span>
-              </button>
-              {groupOpen && (
-                <div className="absolute top-full left-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg z-30 min-w-[140px] max-h-64 overflow-y-auto">
-                  {groups.map(g => renamingGroup === g ? (
-                    <div key={g} className="flex items-center gap-1 px-2 py-1">
-                      <input autoFocus value={renameGroupValue} onChange={e => setRenameGroupValue(e.target.value)}
-                        onClick={e => e.stopPropagation()}
-                        onKeyDown={e => { if (e.key === 'Enter') submitGroupRename(); if (e.key === 'Escape') setRenamingGroup(null) }}
-                        className="flex-1 min-w-0 text-xs border border-gray-300 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
-                      <button onClick={e => { e.stopPropagation(); submitGroupRename() }} disabled={renameGroupBusy} title="Save"
-                        className="shrink-0 text-green-600 hover:text-green-700 disabled:opacity-40 px-1 text-xs font-bold">✓</button>
-                      <button onClick={e => { e.stopPropagation(); setRenamingGroup(null) }} title="Cancel"
-                        className="shrink-0 text-gray-400 hover:text-gray-600 px-1 text-xs font-bold">×</button>
-                    </div>
-                  ) : (
-                    <div key={g} className="flex items-center">
-                      <button onClick={() => { setGroup(g === 'All Groups' ? null : g); setGroupOpen(false) }}
-                        className={`flex-1 min-w-0 text-left px-3 py-1.5 text-xs hover:bg-blue-50 transition truncate
-                          ${(g === 'All Groups' && !group) || g === group ? 'text-blue-600 font-semibold' : 'text-gray-700'}`}>
-                        {g}
-                      </button>
-                      {g !== 'All Groups' && g !== 'Ungrouped' && (
-                        <button onClick={e => { e.stopPropagation(); setRenamingGroup(g); setRenameGroupValue(g) }} title="Rename group"
-                          className="shrink-0 px-2 text-gray-300 hover:text-gray-600">✎</button>
-                      )}
-                    </div>
-                  ))}
-                  {/* New groups only ever come from naming one on an item
-                      (New Item's own "+ New group name…" option) -- a group
-                      with no items has nowhere to live, so this jumps
-                      straight to that flow instead of pretending an empty
-                      group can be created here. */}
-                  <button onClick={() => { changeTab('loss'); setAddForm('item'); setGroupOpen(false) }}
-                    className="w-full text-left px-3 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-50 border-t border-gray-100">
-                    + New group…
-                  </button>
-                  <div className="border-t border-gray-100 mt-0.5 pt-0.5">
-                    <p className="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Type</p>
-                    {(['all', 'goods', 'services'] as const).map(t => (
-                      <button key={t} onClick={() => { setProductType(t); setGroupOpen(false) }}
-                        className={`w-full text-left px-3 py-1.5 text-xs hover:bg-blue-50 transition capitalize
-                          ${productType === t ? 'text-blue-600 font-semibold' : 'text-gray-700'}`}>
-                        {t === 'all' ? 'All Types' : t.charAt(0).toUpperCase() + t.slice(1)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Search */}
-            <div className="relative min-w-0 flex-1" ref={searchRef}>
-              <input value={search} onChange={e => setSearch(e.target.value)}
-                onFocus={() => setSearchOpen(true)}
-                placeholder="Search…" autoComplete="off"
-                className="w-full text-xs bg-gray-50 border border-gray-200 rounded-lg pl-2 pr-6 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
-              {search && (
-                <button onClick={() => { setSearch(''); setSearchOpen(false) }} title="Clear search"
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm leading-none px-0.5">
-                  ×
-                </button>
-              )}
-              {searchOpen && searchMatches.length > 0 && (
-                <div className="absolute z-30 left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
-                  {searchMatches.map(i => (
-                    <button key={i.id} onClick={() => { setSearch(i.item_name); setSearchOpen(false) }}
-                      className="w-full text-left px-3 py-1.5 text-xs text-gray-800 hover:bg-blue-50 border-b border-gray-100 last:border-0">
-                      {i.item_name}
-                      {i.cf_group && <span className="text-gray-400 ml-1.5">· {i.cf_group}</span>}
+        <div className="relative flex-1 min-w-0 min-h-0 flex flex-col">
+          {!openRole && outerTab === 'loss' && (
+            <div className="shrink-0 bg-white border-b border-gray-100">
+              {/* Children row -- only for sections that have any, and only while
+                  that section (or one of its children) is the active view. */}
+              {lossChildren && lossChildren.length > 0 && (
+                <div className="flex items-center gap-1 px-2 py-0.5 bg-gray-50 border-t border-gray-100 overflow-x-auto">
+                  {lossChildren.map(c => (
+                    <button key={c.key} onClick={() => { setLossView(c.key); setAddForm(null); setViolation(null) }}
+                      className={`shrink-0 text-[13px] font-semibold px-1.5 py-0.5 rounded-lg whitespace-nowrap border transition
+                        ${lossView === c.key ? 'bg-blue-500 text-white border-blue-500' : 'text-gray-400 border-gray-200 hover:bg-gray-100'}`}>
+                      {c.label}
                     </button>
                   ))}
                 </div>
               )}
-              {searchOpen && search.trim() && searchMatches.length === 0 && (
-                <div className="absolute z-30 left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-1.5 text-xs text-gray-400">
-                  No matching items
+
+              {/* Row 2: groups + violations + search — hidden on report-style submenus */}
+              {showControls && (
+                <div className="flex items-center gap-1.5 px-2 py-1.5">
+
+                  {/* Groups dropdown */}
+                  <div className="relative shrink-0" ref={groupRef}>
+                    <button onClick={() => setGroupOpen(o => !o)}
+                      className={`text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap flex items-center gap-1 transition
+                        ${(group || productType !== 'all') ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+                      {groupLabel} <span className="text-[10px]">▾</span>
+                    </button>
+                    {groupOpen && (
+                      <div className="absolute top-full left-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg z-30 min-w-[140px] max-h-64 overflow-y-auto">
+                        {groups.map(g => renamingGroup === g ? (
+                          <div key={g} className="flex items-center gap-1 px-2 py-1">
+                            <input autoFocus value={renameGroupValue} onChange={e => setRenameGroupValue(e.target.value)}
+                              onClick={e => e.stopPropagation()}
+                              onKeyDown={e => { if (e.key === 'Enter') submitGroupRename(); if (e.key === 'Escape') setRenamingGroup(null) }}
+                              className="flex-1 min-w-0 text-xs border border-gray-300 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+                            <button onClick={e => { e.stopPropagation(); submitGroupRename() }} disabled={renameGroupBusy} title="Save"
+                              className="shrink-0 text-green-600 hover:text-green-700 disabled:opacity-40 px-1 text-xs font-bold">✓</button>
+                            <button onClick={e => { e.stopPropagation(); setRenamingGroup(null) }} title="Cancel"
+                              className="shrink-0 text-gray-400 hover:text-gray-600 px-1 text-xs font-bold">×</button>
+                          </div>
+                        ) : (
+                          <div key={g} className="flex items-center">
+                            <button onClick={() => { setGroup(g === 'All Groups' ? null : g); setGroupOpen(false) }}
+                              className={`flex-1 min-w-0 text-left px-3 py-1.5 text-xs hover:bg-blue-50 transition truncate
+                                ${(g === 'All Groups' && !group) || g === group ? 'text-blue-600 font-semibold' : 'text-gray-700'}`}>
+                              {g}
+                            </button>
+                            {g !== 'All Groups' && g !== 'Ungrouped' && (
+                              <button onClick={e => { e.stopPropagation(); setRenamingGroup(g); setRenameGroupValue(g) }} title="Rename group"
+                                className="shrink-0 px-2 text-gray-300 hover:text-gray-600">✎</button>
+                            )}
+                          </div>
+                        ))}
+                        {/* New groups only ever come from naming one on an item
+                            (New Item's own "+ New group name…" option) -- a group
+                            with no items has nowhere to live, so this jumps
+                            straight to that flow instead of pretending an empty
+                            group can be created here. */}
+                        <button onClick={() => { changeTab('loss'); setAddForm('item'); setGroupOpen(false) }}
+                          className="w-full text-left px-3 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-50 border-t border-gray-100">
+                          + New group…
+                        </button>
+                        <div className="border-t border-gray-100 mt-0.5 pt-0.5">
+                          <p className="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Type</p>
+                          {(['all', 'goods', 'services'] as const).map(t => (
+                            <button key={t} onClick={() => { setProductType(t); setGroupOpen(false) }}
+                              className={`w-full text-left px-3 py-1.5 text-xs hover:bg-blue-50 transition capitalize
+                                ${productType === t ? 'text-blue-600 font-semibold' : 'text-gray-700'}`}>
+                              {t === 'all' ? 'All Types' : t.charAt(0).toUpperCase() + t.slice(1)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Search */}
+                  <div className="relative min-w-0 flex-1" ref={searchRef}>
+                    <input value={search} onChange={e => setSearch(e.target.value)}
+                      onFocus={() => setSearchOpen(true)}
+                      placeholder="Search…" autoComplete="off"
+                      className="w-full text-xs bg-gray-50 border border-gray-200 rounded-lg pl-2 pr-6 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+                    {search && (
+                      <button onClick={() => { setSearch(''); setSearchOpen(false) }} title="Clear search"
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm leading-none px-0.5">
+                        ×
+                      </button>
+                    )}
+                    {searchOpen && searchMatches.length > 0 && (
+                      <div className="absolute z-30 left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                        {searchMatches.map(i => (
+                          <button key={i.id} onClick={() => { setSearch(i.item_name); setSearchOpen(false) }}
+                            className="w-full text-left px-3 py-1.5 text-xs text-gray-800 hover:bg-blue-50 border-b border-gray-100 last:border-0">
+                            {i.item_name}
+                            {i.cf_group && <span className="text-gray-400 ml-1.5">· {i.cf_group}</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {searchOpen && search.trim() && searchMatches.length === 0 && (
+                      <div className="absolute z-30 left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-1.5 text-xs text-gray-400">
+                        No matching items
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Columns picker -- Items submenu only, next to New since it's
+                      the same kind of per-view control. Drives LossTab's column
+                      visibility/order (lifted up here, see visibleCols/colOrder
+                      above) rather than living inside LossTab itself. */}
+                  {lossView === 'items' && (
+                    <div className="relative shrink-0" ref={colMenuRef}>
+                      <button onClick={() => setColMenuOpen(o => !o)} title="Columns"
+                        className="flex items-center justify-center w-7 h-7 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="4" width="18" height="16" rx="2" />
+                          <line x1="9" y1="4" x2="9" y2="20" />
+                          <line x1="15" y1="4" x2="15" y2="20" />
+                        </svg>
+                      </button>
+                      {colMenuOpen && (
+                        <div className="absolute top-full right-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg z-30 min-w-[200px] max-h-72 overflow-y-auto">
+                          {colOrder.map((key, i) => {
+                            const c = COL_BY_KEY.get(key)!
+                            const label = columnLabels[key] ?? c.label
+                            if (renamingCol === key) return (
+                              <div key={key} className="flex items-center gap-1 px-2 py-1 border-b border-gray-100 last:border-0">
+                                <input autoFocus value={renameColValue} onChange={e => setRenameColValue(e.target.value)}
+                                  placeholder={c.label}
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter') { renameColumn(key, renameColValue); setRenamingCol(null) }
+                                    if (e.key === 'Escape') setRenamingCol(null)
+                                  }}
+                                  className="flex-1 min-w-0 text-xs border border-gray-300 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+                                <button onClick={() => { renameColumn(key, renameColValue); setRenamingCol(null) }} title="Save"
+                                  className="shrink-0 text-green-600 hover:text-green-700 px-1 text-xs font-bold">✓</button>
+                                <button onClick={() => setRenamingCol(null)} title="Cancel"
+                                  className="shrink-0 text-gray-400 hover:text-gray-600 px-1 text-xs font-bold">×</button>
+                              </div>
+                            )
+                            return (
+                              <div key={key} className="flex items-center gap-1 px-2 py-1 border-b border-gray-100 last:border-0">
+                                <label className="flex items-center gap-1.5 flex-1 min-w-0 text-xs text-gray-700 cursor-pointer select-none">
+                                  <input type="checkbox" checked={visibleCols.has(key)} onChange={() => toggleCol(key)}
+                                    className="w-3.5 h-3.5 accent-blue-600 shrink-0" />
+                                  <span className="truncate">{label}</span>
+                                </label>
+                                <button onClick={() => { setRenamingCol(key); setRenameColValue(label === c.label ? '' : label) }} title="Rename column"
+                                  className="shrink-0 text-gray-300 hover:text-gray-600 px-0.5 text-xs">✎</button>
+                                <button onClick={() => moveCol(key, -1)} disabled={i === 0} title="Move up"
+                                  className="text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:hover:text-gray-400 px-1 text-xs leading-none">▲</button>
+                                <button onClick={() => moveCol(key, 1)} disabled={i === colOrder.length - 1} title="Move down"
+                                  className="text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:hover:text-gray-400 px-1 text-xs leading-none">▼</button>
+                              </div>
+                            )
+                          })}
+                          {visibleCols.size > 0 && (
+                            <button onClick={() => setVisibleCols(new Set())}
+                              className="w-full text-left px-2.5 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-50">
+                              Clear all
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Analytics toggle -- swaps this submenu's normal list for the
+                      charts/trends that used to live under the removed "Data"
+                      tab. Items also carries Violations' charts (no single tab of
+                      its own to move those into); Loss and Counts get the same
+                      toggle inside their own components instead of here. */}
+                  {['items', 'sales', 'bills', 'expenses'].includes(lossView) && (
+                    <button onClick={() => { setShowAnalytics(a => !a); setAddForm(null); setViolation(null) }}
+                      className={`shrink-0 flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg transition
+                        ${showAnalytics ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                      📊 {showAnalytics ? 'List' : 'Analytics'}
+                    </button>
+                  )}
+
+                  {/* New button — Items/Sales/Bills/Expenses/PO submenus only; report-style and Counts submenus have no add-form */}
+                  {!showAnalytics && ['items', 'sales', 'bills', 'expenses'].includes(lossView) && (() => {
+                    const formKey = lossView === 'items' ? 'item' : lossView === 'sales' ? 'sale' : lossView === 'bills' ? 'bill' : 'expense'
+                    return (
+                      <button onClick={() => setAddForm(addForm === formKey ? null : formKey)}
+                        className={`shrink-0 text-xs font-semibold px-3 py-1 rounded-lg transition
+                          ${addForm ? 'bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
+                        {addForm ? '×' : 'New'}
+                      </button>
+                    )
+                  })()}
                 </div>
               )}
-            </div>
 
-            {/* Columns picker -- Items submenu only, next to New since it's
-                the same kind of per-view control. Drives LossTab's column
-                visibility/order (lifted up here, see visibleCols/colOrder
-                above) rather than living inside LossTab itself. */}
-            {outerTab === 'loss' && lossView === 'items' && (
-              <div className="relative shrink-0" ref={colMenuRef}>
-                <button onClick={() => setColMenuOpen(o => !o)} title="Columns"
-                  className="flex items-center justify-center w-7 h-7 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="4" width="18" height="16" rx="2" />
-                    <line x1="9" y1="4" x2="9" y2="20" />
-                    <line x1="15" y1="4" x2="15" y2="20" />
-                  </svg>
+              {/* Flags & Tasks -- one toggle per Grony Cash sub-tab, regrouping
+                  that tab's own violation pills (Items/Sales' were previously
+                  hidden here since they already showed on Joe's Role Bar panel --
+                  restored now, per request) together with its custom tasks
+                  (previously only visible in the bottom Tasks panel). Tapping a
+                  pill again clears it; the panel itself stays open across pill
+                  taps so fixing several in a row doesn't require reopening it. */}
+              <div className="border-t border-gray-100">
+                <button onClick={() => setFlagsPanelOpen(o => !o)}
+                  className={`w-full flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-semibold transition
+                    ${flagsPanelOpen ? 'bg-red-600 text-white' : 'bg-red-50 text-red-700 hover:bg-red-100'}`}>
+                  🚩 Flags & Tasks
+                  {flagCountFor(lossView) > 0 && (
+                    <span className={`text-[10px] font-bold rounded-full px-1.5 leading-tight ${flagsPanelOpen ? 'bg-white/25 text-white' : 'bg-red-600 text-white'}`}>
+                      {flagCountFor(lossView) > 99 ? '99+' : flagCountFor(lossView)}
+                    </span>
+                  )}
+                  <span className="text-[9px]">{flagsPanelOpen ? '▲' : '▼'}</span>
                 </button>
-                {colMenuOpen && (
-                  <div className="absolute top-full right-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg z-30 min-w-[200px] max-h-72 overflow-y-auto">
-                    {colOrder.map((key, i) => {
-                      const c = COL_BY_KEY.get(key)!
-                      const label = columnLabels[key] ?? c.label
-                      if (renamingCol === key) return (
-                        <div key={key} className="flex items-center gap-1 px-2 py-1 border-b border-gray-100 last:border-0">
-                          <input autoFocus value={renameColValue} onChange={e => setRenameColValue(e.target.value)}
-                            placeholder={c.label}
-                            onKeyDown={e => {
-                              if (e.key === 'Enter') { renameColumn(key, renameColValue); setRenamingCol(null) }
-                              if (e.key === 'Escape') setRenamingCol(null)
-                            }}
-                            className="flex-1 min-w-0 text-xs border border-gray-300 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
-                          <button onClick={() => { renameColumn(key, renameColValue); setRenamingCol(null) }} title="Save"
-                            className="shrink-0 text-green-600 hover:text-green-700 px-1 text-xs font-bold">✓</button>
-                          <button onClick={() => setRenamingCol(null)} title="Cancel"
-                            className="shrink-0 text-gray-400 hover:text-gray-600 px-1 text-xs font-bold">×</button>
-                        </div>
-                      )
-                      return (
-                        <div key={key} className="flex items-center gap-1 px-2 py-1 border-b border-gray-100 last:border-0">
-                          <label className="flex items-center gap-1.5 flex-1 min-w-0 text-xs text-gray-700 cursor-pointer select-none">
-                            <input type="checkbox" checked={visibleCols.has(key)} onChange={() => toggleCol(key)}
-                              className="w-3.5 h-3.5 accent-blue-600 shrink-0" />
-                            <span className="truncate">{label}</span>
-                          </label>
-                          <button onClick={() => { setRenamingCol(key); setRenameColValue(label === c.label ? '' : label) }} title="Rename column"
-                            className="shrink-0 text-gray-300 hover:text-gray-600 px-0.5 text-xs">✎</button>
-                          <button onClick={() => moveCol(key, -1)} disabled={i === 0} title="Move up"
-                            className="text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:hover:text-gray-400 px-1 text-xs leading-none">▲</button>
-                          <button onClick={() => moveCol(key, 1)} disabled={i === colOrder.length - 1} title="Move down"
-                            className="text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:hover:text-gray-400 px-1 text-xs leading-none">▼</button>
-                        </div>
-                      )
-                    })}
-                    {visibleCols.size > 0 && (
-                      <button onClick={() => setVisibleCols(new Set())}
-                        className="w-full text-left px-2.5 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-50">
-                        Clear all
-                      </button>
+
+                {flagsPanelOpen && (
+                  <div className="px-2 py-2 bg-red-50/40 space-y-2">
+                    {pillKeys && pillKeys.length > 0 && (
+                      <div className="flex items-center gap-1 flex-wrap">
+                        {ERROR_VIOLATIONS.filter(v => pillKeys.includes(v.key)).map(v => {
+                          const c = violationCounts[v.key] ?? 0
+                          return (
+                            <button key={v.key} onClick={() => setViolation(prev => prev === v.key ? null : v.key)}
+                              className={`shrink-0 flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg transition whitespace-nowrap
+                                ${violation === v.key ? 'bg-red-600 text-white' : 'bg-white border border-red-200 text-red-700 hover:bg-red-100'}`}>
+                              {v.label}
+                              {c > 0 && (
+                                <span className={`text-[10px] font-bold rounded-full px-1.5 leading-tight
+                                  ${violation === v.key ? 'bg-white/25 text-white' : 'bg-red-600 text-white'}`}>
+                                  {c > 99 ? '99+' : c}
+                                </span>
+                              )}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                    {LOSSVIEW_LABEL[lossView] && (
+                      <div className="bg-white rounded-lg border border-red-100">
+                        <DynamicTasksSection scopeKey={LOSSVIEW_LABEL[lossView]!} />
+                      </div>
                     )}
                   </div>
                 )}
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Analytics toggle -- swaps this submenu's normal list for the
-                charts/trends that used to live under the removed "Data"
-                tab. Items also carries Violations' charts (no single tab of
-                its own to move those into); Loss and Counts get the same
-                toggle inside their own components instead of here. */}
-            {outerTab === 'loss' && ['items', 'sales', 'bills', 'expenses'].includes(lossView) && (
-              <button onClick={() => { setShowAnalytics(a => !a); setAddForm(null); setViolation(null) }}
-                className={`shrink-0 flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg transition
-                  ${showAnalytics ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                📊 {showAnalytics ? 'List' : 'Analytics'}
-              </button>
-            )}
-
-            {/* New button — Items/Sales/Bills/Expenses/PO submenus only; report-style and Counts submenus have no add-form */}
-            {!showAnalytics && outerTab === 'loss' && ['items', 'sales', 'bills', 'expenses'].includes(lossView) && (() => {
-              const formKey = lossView === 'items' ? 'item' : lossView === 'sales' ? 'sale' : lossView === 'bills' ? 'bill' : 'expense'
-              return (
-                <button onClick={() => setAddForm(addForm === formKey ? null : formKey)}
-                  className={`shrink-0 text-xs font-semibold px-3 py-1 rounded-lg transition
-                    ${addForm ? 'bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
-                  {addForm ? '×' : 'New'}
-                </button>
-              )
-            })()}
-          </div>
-        )}
-
-        {/* Flags & Tasks -- one toggle per Grony Cash sub-tab, regrouping
-            that tab's own violation pills (Items/Sales' were previously
-            hidden here since they already showed on Joe's Role Bar panel --
-            restored now, per request) together with its custom tasks
-            (previously only visible in the bottom Tasks panel). Tapping a
-            pill again clears it; the panel itself stays open across pill
-            taps so fixing several in a row doesn't require reopening it. */}
-        {outerTab === 'loss' && (
-          <div className="border-t border-gray-100">
-            <button onClick={() => setFlagsPanelOpen(o => !o)}
-              className={`w-full flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-semibold transition
-                ${flagsPanelOpen ? 'bg-red-600 text-white' : 'bg-red-50 text-red-700 hover:bg-red-100'}`}>
-              🚩 Flags & Tasks
-              {flagCountFor(lossView) > 0 && (
-                <span className={`text-[10px] font-bold rounded-full px-1.5 leading-tight ${flagsPanelOpen ? 'bg-white/25 text-white' : 'bg-red-600 text-white'}`}>
-                  {flagCountFor(lossView) > 99 ? '99+' : flagCountFor(lossView)}
-                </span>
-              )}
-              <span className="text-[9px]">{flagsPanelOpen ? '▲' : '▼'}</span>
-            </button>
-
-            {flagsPanelOpen && (
-              <div className="px-2 py-2 bg-red-50/40 space-y-2">
-                {pillKeys && pillKeys.length > 0 && (
-                  <div className="flex items-center gap-1 flex-wrap">
-                    {ERROR_VIOLATIONS.filter(v => pillKeys.includes(v.key)).map(v => {
-                      const c = violationCounts[v.key] ?? 0
-                      return (
-                        <button key={v.key} onClick={() => setViolation(prev => prev === v.key ? null : v.key)}
-                          className={`shrink-0 flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg transition whitespace-nowrap
-                            ${violation === v.key ? 'bg-red-600 text-white' : 'bg-white border border-red-200 text-red-700 hover:bg-red-100'}`}>
-                          {v.label}
-                          {c > 0 && (
-                            <span className={`text-[10px] font-bold rounded-full px-1.5 leading-tight
-                              ${violation === v.key ? 'bg-white/25 text-white' : 'bg-red-600 text-white'}`}>
-                              {c > 99 ? '99+' : c}
-                            </span>
-                          )}
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
-                {LOSSVIEW_LABEL[lossView] && (
-                  <div className="bg-white rounded-lg border border-red-100">
-                    <DynamicTasksSection scopeKey={LOSSVIEW_LABEL[lossView]!} />
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-        </>)}
-      </div>
-
-      {/* ── Content ── */}
-      <div className="relative flex-1 min-h-0 overflow-y-auto">
+          {/* ── Content ── */}
+          <div className="relative flex-1 min-h-0 overflow-y-auto">
         {/* Role Bar panel — replaces the tab content area (below the header,
             above the Role Bar) the same way switching a top-level tab does,
             instead of a modal that hides everything behind it. Mutually
@@ -1426,6 +1425,8 @@ function ItemHubPageInner() {
           </TabErrorBoundary>
         )}
         </>)}
+          </div>
+        </div>
       </div>
 
       {/* Role bar — Joe/Bino/Opener/Closer, always visible (never hidden by
