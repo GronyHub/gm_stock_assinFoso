@@ -788,7 +788,6 @@ function ItemHubPageInner() {
     { label: 'Rota', action: () => { changeTab('manage'); setManageInitialView('rota') } },
     { label: 'Advert', action: () => { changeTab('manage'); setManageInitialView('advert') } },
     { label: 'Dress Code', action: () => { changeTab('manage'); setManageInitialView('staff_dress') } },
-    { label: 'Shop Beautification', action: () => { changeTab('manage'); setManageInitialView('arrangement') } },
     { label: 'Arrangement', action: () => { changeTab('manage'); setManageInitialView('arrangement') } },
     { label: 'Cleanliness', action: () => { changeTab('manage'); setManageInitialView('cleanliness') } },
     { label: 'Future', action: () => { changeTab('manage'); setManageInitialView('future') } },

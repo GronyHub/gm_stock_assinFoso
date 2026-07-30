@@ -37,36 +37,14 @@ const LOG_CATEGORIES: { key: ManageView; label: string; icon: string }[] = [
   { key: 'quality_assurance', label: 'Quality Assurance', icon: '✅' },
 ]
 
-// Grouped under one "Shop Beautification" heading in the drawer instead of
-// four separate flat entries -- Arrangement/Cleanliness/Customer Display/
-// Staff Display are all "how the shop looks" checklists, distinct from
-// Repair Works/Quality Assurance/Future which stay as their own entries.
-const SHOP_BEAUTIFICATION: ManageView[] = ['arrangement', 'cleanliness', 'customer_display', 'staff_display']
-
-type DrawerEntry =
-  | { type: 'item'; key: ManageView; label: string; icon?: string }
-  | { type: 'group'; label: string; children: { key: ManageView; label: string; icon: string }[] }
-
-// The drawer's full contents, top to bottom -- Shop Beautification's children
-// are listed right here under their own heading (not a second row that only
-// appears once you're already inside it), so the whole hierarchy is visible
-// in one look instead of being discovered one tap at a time.
-const DRAWER_ITEMS: DrawerEntry[] = [
-  { type: 'item', key: 'advert', label: 'Advert' },
-  { type: 'item', key: 'staff_dress', label: 'Dress Code' },
-  { type: 'group', label: 'Shop Beautification', children: LOG_CATEGORIES.filter(c => SHOP_BEAUTIFICATION.includes(c.key)) },
-  ...LOG_CATEGORIES.filter(c => !SHOP_BEAUTIFICATION.includes(c.key)).map(c => ({ type: 'item' as const, key: c.key, label: c.label, icon: c.icon })),
-  { type: 'item', key: 'rota', label: 'Rota' },
-  { type: 'item', key: 'training', label: 'Training' },
-  { type: 'item', key: 'logs', label: 'Logs' },
-]
-
-// Flat key->label lookup for the trigger bar -- same data as DRAWER_ITEMS,
-// just without the grouping, since the trigger only ever shows one label.
-const ALL_VIEWS: { key: ManageView; label: string }[] = [
+// The drawer's full contents, top to bottom -- one flat list, no nested
+// groups. Arrangement/Cleanliness/Customer Display/Staff Display (formerly
+// grouped under "Shop Beautification") are now standalone entries like
+// everything else.
+const DRAWER_ITEMS: { key: ManageView; label: string; icon?: string }[] = [
   { key: 'advert', label: 'Advert' },
   { key: 'staff_dress', label: 'Dress Code' },
-  ...LOG_CATEGORIES.map(c => ({ key: c.key, label: c.label })),
+  ...LOG_CATEGORIES.map(c => ({ key: c.key, label: c.label, icon: c.icon })),
   { key: 'rota', label: 'Rota' },
   { key: 'training', label: 'Training' },
   { key: 'logs', label: 'Logs' },
@@ -92,7 +70,7 @@ export default function GronyManageTab({ initialView, role, username }: { initia
   }, [initialView])
 
   const logCategory = LOG_CATEGORIES.find(c => c.key === view)
-  const currentLabel = ALL_VIEWS.find(v => v.key === view)?.label ?? 'Grony Manage'
+  const currentLabel = DRAWER_ITEMS.find(v => v.key === view)?.label ?? 'Grony Manage'
 
   function pick(key: ManageView) {
     setView(key)
@@ -126,23 +104,12 @@ export default function GronyManageTab({ initialView, role, username }: { initia
                 className="text-gray-400 hover:text-gray-600 text-2xl leading-none px-1">×</button>
             </div>
             <div className="py-2">
-              {DRAWER_ITEMS.map(entry => entry.type === 'item' ? (
+              {DRAWER_ITEMS.map(entry => (
                 <button key={entry.key} onClick={() => pick(entry.key)}
-                  className={`w-full text-left px-4 py-2.5 text-sm font-medium transition
+                  className={`w-full flex items-center gap-2 text-left px-4 py-2.5 text-sm font-medium transition
                     ${view === entry.key ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}>
-                  {entry.label}
+                  {entry.icon && <span>{entry.icon}</span>}{entry.label}
                 </button>
-              ) : (
-                <div key={entry.label}>
-                  <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">{entry.label}</p>
-                  {entry.children.map(c => (
-                    <button key={c.key} onClick={() => pick(c.key)}
-                      className={`w-full flex items-center gap-2 text-left pl-7 pr-4 py-2 text-sm font-medium transition
-                        ${view === c.key ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}>
-                      <span>{c.icon}</span>{c.label}
-                    </button>
-                  ))}
-                </div>
               ))}
             </div>
           </div>
