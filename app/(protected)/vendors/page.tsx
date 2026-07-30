@@ -1,6 +1,7 @@
 'use client'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import LocationField from '@/components/LocationField'
+import { useColumnPrefs, ColumnsPickerButton, type ColumnDef } from '../item/_components/columnPrefs'
 
 type Vendor = {
   id: number
@@ -27,6 +28,29 @@ function c(v: string | null | undefined) {
 
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-400'
 const labelCls = 'text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5 block'
+
+// Name stays sticky/always-visible (first column); these are the only ones
+// the picker can hide/reorder/rename.
+type ColKey = 'company' | 'phone' | 'email' | 'location' | 'status' | 'billed' | 'paid' | 'outstanding' | 'billCount'
+type VendorColumn = ColumnDef<ColKey> & { align: 'left' | 'right'; tdClass: string; render: (v: Vendor) => ReactNode }
+const VENDOR_COLUMNS: VendorColumn[] = [
+  { key: 'company',  label: 'Company', align: 'left', tdClass: 'text-gray-600', render: v => v.company_name ?? '—' },
+  { key: 'phone',    label: 'Contact Number', align: 'left', tdClass: 'text-gray-600', render: v => v.phone ?? '—' },
+  { key: 'email',    label: 'Email Address', align: 'left', tdClass: 'text-gray-600', render: v => v.email ?? '—' },
+  { key: 'location', label: 'Location', align: 'left', tdClass: 'text-gray-600', render: v => v.location ?? '—' },
+  { key: 'status',   label: 'Status', align: 'left', tdClass: '', render: v => (
+      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${v.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+        {v.status ?? '—'}
+      </span>
+    ) },
+  { key: 'billed', label: 'Billed', align: 'right', tdClass: 'font-semibold', render: v =>
+      parseFloat(v.bill_total) > 0 ? <span className="text-gray-900">{c(v.bill_total)}</span> : <span className="text-gray-300">—</span> },
+  { key: 'paid', label: 'Paid', align: 'right', tdClass: 'font-semibold text-green-600', render: v => c(v.amount_paid) },
+  { key: 'outstanding', label: 'Outstanding', align: 'right', tdClass: 'font-semibold', render: v =>
+      parseFloat(v.outstanding) > 0 ? <span className="text-red-500">{c(v.outstanding)}</span> : <span className="text-gray-300">—</span> },
+  { key: 'billCount', label: 'Bills', align: 'right', tdClass: 'text-gray-500', render: v => v.bill_count },
+]
+const VENDOR_COL_BY_KEY = new Map(VENDOR_COLUMNS.map(col => [col.key, col]))
 
 function NewVendorForm({ onCreated, onCancel }: { onCreated: (v: Vendor) => void; onCancel: () => void }) {
   const [displayName, setDisplayName] = useState('')
@@ -115,6 +139,7 @@ export default function VendorsPage({ openAddSignal, initialSearch }: { openAddS
   const [filter, setFilter] = useState<'all' | 'external' | 'internal' | 'outstanding'>('all')
   const [selected, setSelected] = useState<Vendor | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const colPrefs = useColumnPrefs<ColKey>('vendorsTable', VENDOR_COLUMNS)
 
   // Driven by the RoleBar "+" shortcut menu.
   useEffect(() => {
@@ -169,6 +194,7 @@ export default function VendorsPage({ openAddSignal, initialSearch }: { openAddS
         <h1 className="text-lg font-bold text-gray-900">Vendors</h1>
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-400">{vendors.length} vendors</span>
+          <ColumnsPickerButton prefs={colPrefs} />
           <button onClick={() => setShowForm(f => !f)}
             className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition
               ${showForm ? 'bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
@@ -272,50 +298,33 @@ export default function VendorsPage({ openAddSignal, initialSearch }: { openAddS
             <thead>
               <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
                 <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Name</th>
-                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Company</th>
-                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Contact Number</th>
-                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Email Address</th>
-                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Location</th>
-                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Status</th>
-                <th className="text-right px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Billed</th>
-                <th className="text-right px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Paid</th>
-                <th className="text-right px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Outstanding</th>
-                <th className="text-right px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Bills</th>
+                {colPrefs.shownColumns.map(col => (
+                  <th key={col.key} className={`${VENDOR_COL_BY_KEY.get(col.key)!.align === 'right' ? 'text-right' : 'text-left'} px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap`}>
+                    {col.label}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filtered.map((v, i) => {
-                const outstanding = parseFloat(v.outstanding)
-                const billed      = parseFloat(v.bill_total)
-                return (
-                  <tr key={v.id} onClick={() => setSelected(v === selected ? null : v)}
-                    className={`cursor-pointer transition ${selected?.id === v.id ? 'bg-blue-50' : i % 2 === 1 ? 'bg-gray-50/60 hover:bg-blue-50/40' : 'hover:bg-blue-50/40'}`}>
-                    <td className="px-3 py-2 font-semibold text-gray-900 whitespace-nowrap">
-                      {v.is_internal && (
-                        <span className="mr-1 text-[9px] bg-purple-100 text-purple-700 font-bold px-1.5 py-0.5 rounded-full align-middle">INT</span>
-                      )}
-                      {v.display_name}
-                    </td>
-                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{v.company_name ?? '—'}</td>
-                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{v.phone ?? '—'}</td>
-                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{v.email ?? '—'}</td>
-                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{v.location ?? '—'}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${v.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                        {v.status ?? '—'}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-right font-semibold whitespace-nowrap">
-                      {billed > 0 ? <span className="text-gray-900">{c(v.bill_total)}</span> : <span className="text-gray-300">—</span>}
-                    </td>
-                    <td className="px-3 py-2 text-right font-semibold text-green-600 whitespace-nowrap">{c(v.amount_paid)}</td>
-                    <td className="px-3 py-2 text-right font-semibold whitespace-nowrap">
-                      {outstanding > 0 ? <span className="text-red-500">{c(v.outstanding)}</span> : <span className="text-gray-300">—</span>}
-                    </td>
-                    <td className="px-3 py-2 text-right text-gray-500 whitespace-nowrap">{v.bill_count}</td>
-                  </tr>
-                )
-              })}
+              {filtered.map((v, i) => (
+                <tr key={v.id} onClick={() => setSelected(v === selected ? null : v)}
+                  className={`cursor-pointer transition ${selected?.id === v.id ? 'bg-blue-50' : i % 2 === 1 ? 'bg-gray-50/60 hover:bg-blue-50/40' : 'hover:bg-blue-50/40'}`}>
+                  <td className="px-3 py-2 font-semibold text-gray-900 whitespace-nowrap">
+                    {v.is_internal && (
+                      <span className="mr-1 text-[9px] bg-purple-100 text-purple-700 font-bold px-1.5 py-0.5 rounded-full align-middle">INT</span>
+                    )}
+                    {v.display_name}
+                  </td>
+                  {colPrefs.shownColumns.map(col => {
+                    const meta = VENDOR_COL_BY_KEY.get(col.key)!
+                    return (
+                      <td key={col.key} className={`px-3 py-2 whitespace-nowrap ${meta.align === 'right' ? 'text-right' : ''} ${meta.tdClass}`}>
+                        {meta.render(v)}
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
             </tbody>
           </table>
         )}

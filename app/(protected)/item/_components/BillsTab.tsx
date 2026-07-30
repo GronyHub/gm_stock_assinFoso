@@ -3,8 +3,18 @@ import { Fragment, useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
+import { useColumnPrefs, ColumnsPickerButton, type ColumnDef } from './columnPrefs'
 
 type Item = { id: number; item_name: string; cf_group: string | null }
+
+// Item stays sticky/always-visible (first column); these three are the
+// only ones the picker can hide/reorder/rename.
+type ColKey = 'quantity' | 'unitPrice' | 'itemTotal'
+const COLUMNS: ColumnDef<ColKey>[] = [
+  { key: 'quantity',  label: 'QTY' },
+  { key: 'unitPrice', label: 'COST PRICE' },
+  { key: 'itemTotal', label: 'TOTAL' },
+]
 
 type Bill = {
   id: number
@@ -77,6 +87,7 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
   const [editingBillId, setEditingBillId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState({ bill_date: '', vendor_name: '' })
   const [saving, setSaving] = useState(false)
+  const colPrefs = useColumnPrefs<ColKey>('billsTab', COLUMNS)
 
   function loadBills() {
     Promise.all([
@@ -258,19 +269,22 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
           className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700 transition">
           History
         </button>
-        <Link href="/bills/new"
-          className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100">
-          + New Bill
-        </Link>
+        <div className="flex items-center gap-1.5">
+          <ColumnsPickerButton prefs={colPrefs} />
+          <Link href="/bills/new"
+            className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100">
+            + New Bill
+          </Link>
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto min-h-0">
         <table className="w-full border-collapse text-[10px]">
           <thead className="sticky top-0 bg-gray-100 z-10">
             <tr>
               <th className="text-left px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">ITEM</th>
-              <th className="text-right px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">QTY</th>
-              <th className="text-right px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">COST PRICE</th>
-              <th className="text-right px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">TOTAL</th>
+              {colPrefs.shownColumns.map(c => (
+                <th key={c.key} className="text-right px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">{c.label}</th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -279,7 +293,7 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
               if (isEditing) {
                 return (
                   <tr key={g.key}>
-                    <td colSpan={4} className="p-2 bg-white space-y-2 border-b border-gray-200">
+                    <td colSpan={1 + colPrefs.shownColumns.length} className="p-2 bg-white space-y-2 border-b border-gray-200">
                       <p className="text-[10px] font-bold text-gray-600">Edit Bill · {billsById[g.editBillId]?.bill_number}</p>
                       <div>
                         <p className="text-[9px] text-gray-400 mb-0.5">Date</p>
@@ -306,7 +320,7 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
               return (
                 <Fragment key={g.key}>
                   <tr className={g.isDayHead ? 'bg-blue-600' : 'bg-gray-50'}>
-                    <td colSpan={4} className={`relative ${g.isDayHead ? 'px-1.5 py-2' : 'px-1 py-1'}`}>
+                    <td colSpan={1 + colPrefs.shownColumns.length} className={`relative ${g.isDayHead ? 'px-1.5 py-2' : 'px-1 py-1'}`}>
                       <div className="flex items-center gap-2">
                         <span className={`whitespace-nowrap ${g.isDayHead ? 'text-white font-semibold' : 'text-gray-600 font-medium'}`}>
                           {fmtShort(g.billDate)}
@@ -337,9 +351,17 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
                           <span className="text-red-600">{row.itemName}</span>
                         )}
                       </td>
-                      <td className="px-1 py-1 text-right text-gray-700">{row.quantity ? parseFloat(row.quantity) : '—'}</td>
-                      <td className="px-1 py-1 text-right text-gray-700">{fmt(row.unitPrice)}</td>
-                      <td className="px-1 py-1 text-right font-semibold text-gray-900">{fmt(row.itemTotal)}</td>
+                      {colPrefs.shownColumns.map(c => {
+                        if (c.key === 'quantity') return (
+                          <td key={c.key} className="px-1 py-1 text-right text-gray-700">{row.quantity ? parseFloat(row.quantity) : '—'}</td>
+                        )
+                        if (c.key === 'unitPrice') return (
+                          <td key={c.key} className="px-1 py-1 text-right text-gray-700">{fmt(row.unitPrice)}</td>
+                        )
+                        return (
+                          <td key={c.key} className="px-1 py-1 text-right font-semibold text-gray-900">{fmt(row.itemTotal)}</td>
+                        )
+                      })}
                     </tr>
                   ))}
                 </Fragment>

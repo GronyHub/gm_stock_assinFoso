@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
+import { useColumnPrefs, ColumnsPickerButton, type ColumnDef } from '../item/_components/columnPrefs'
 
 type Line = {
   id: number
@@ -44,6 +45,25 @@ function fmtDate(iso: string) {
 
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-400'
 const labelCls = 'text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5 block'
+
+// Number stays sticky/always-visible (first column); these are the only
+// ones the picker can hide/reorder/rename.
+type ColKey = 'type' | 'customer' | 'phone' | 'location' | 'date' | 'items' | 'total'
+type ReceiptColumn = ColumnDef<ColKey> & { align: 'left' | 'right'; tdClass: string; render: (r: Receipt) => ReactNode }
+const RECEIPT_COLUMNS: ReceiptColumn[] = [
+  { key: 'type', label: 'Type', align: 'left', tdClass: '', render: r =>
+      r.document_type === 'Invoice'
+        ? <span className="text-[9px] font-bold uppercase tracking-wide text-blue-700 bg-blue-50 rounded px-1.5 py-0.5">Invoice</span>
+        : <span className="text-[9px] font-bold uppercase tracking-wide text-gray-500 bg-gray-100 rounded px-1.5 py-0.5">Receipt</span> },
+  { key: 'customer', label: 'Customer', align: 'left', tdClass: 'text-gray-700', render: r => r.customer_display ?? r.customer_name },
+  { key: 'phone',    label: 'Contact Number', align: 'left', tdClass: 'text-gray-600', render: r => r.customer_phone ?? '—' },
+  { key: 'location', label: 'Location', align: 'left', tdClass: 'text-gray-600', render: r =>
+      [r.customer_town_district, r.customer_region].filter(Boolean).join(', ') || '—' },
+  { key: 'date', label: 'Date', align: 'left', tdClass: 'text-gray-600', render: r => fmtDate(r.invoice_date) },
+  { key: 'items', label: 'Items', align: 'right', tdClass: 'text-gray-500', render: r => r.lines.length },
+  { key: 'total', label: 'Total', align: 'right', tdClass: 'font-bold text-gray-900', render: r => c(r.total) },
+]
+const RECEIPT_COL_BY_KEY = new Map(RECEIPT_COLUMNS.map(col => [col.key, col]))
 
 type DraftLine = { item: string; qty: string; price: string; unit: string; dimensions: string }
 const emptyLine = (): DraftLine => ({ item: '', qty: '1', price: '', unit: '', dimensions: '' })
@@ -329,6 +349,7 @@ export default function ReceiptsPage() {
   const [search, setSearch]     = useState('')
   const [selected, setSelected] = useState<Receipt | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const colPrefs = useColumnPrefs<ColKey>('receiptsTable', RECEIPT_COLUMNS)
 
   useEffect(() => {
     fetch('/api/receipts')
@@ -359,11 +380,14 @@ export default function ReceiptsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold text-gray-900">Receipts</h1>
-        <button onClick={() => setShowForm(f => !f)}
-          className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition
-            ${showForm ? 'bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
-          {showForm ? '×' : '+ New Receipt'}
-        </button>
+        <div className="flex items-center gap-2">
+          <ColumnsPickerButton prefs={colPrefs} />
+          <button onClick={() => setShowForm(f => !f)}
+            className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition
+              ${showForm ? 'bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
+            {showForm ? '×' : '+ New Receipt'}
+          </button>
+        </div>
       </div>
 
       {showForm && (
@@ -472,38 +496,28 @@ export default function ReceiptsPage() {
             <thead>
               <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
                 <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Number</th>
-                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Type</th>
-                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Customer</th>
-                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Contact Number</th>
-                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Location</th>
-                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Date</th>
-                <th className="text-right px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Items</th>
-                <th className="text-right px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Total</th>
+                {colPrefs.shownColumns.map(col => (
+                  <th key={col.key} className={`${RECEIPT_COL_BY_KEY.get(col.key)!.align === 'right' ? 'text-right' : 'text-left'} px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap`}>
+                    {col.label}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filtered.map((r, i) => {
-                const location = [r.customer_town_district, r.customer_region].filter(Boolean).join(', ')
-                return (
-                  <tr key={r.id} onClick={() => setSelected(r === selected ? null : r)}
-                    className={`cursor-pointer transition ${selected?.id === r.id ? 'bg-blue-50' : i % 2 === 1 ? 'bg-gray-50/60 hover:bg-blue-50/40' : 'hover:bg-blue-50/40'}`}>
-                    <td className="px-3 py-2 font-semibold text-gray-900 whitespace-nowrap">{r.invoice_number}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      {r.document_type === 'Invoice' ? (
-                        <span className="text-[9px] font-bold uppercase tracking-wide text-blue-700 bg-blue-50 rounded px-1.5 py-0.5">Invoice</span>
-                      ) : (
-                        <span className="text-[9px] font-bold uppercase tracking-wide text-gray-500 bg-gray-100 rounded px-1.5 py-0.5">Receipt</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{r.customer_display ?? r.customer_name}</td>
-                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{r.customer_phone ?? '—'}</td>
-                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{location || '—'}</td>
-                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmtDate(r.invoice_date)}</td>
-                    <td className="px-3 py-2 text-right text-gray-500 whitespace-nowrap">{r.lines.length}</td>
-                    <td className="px-3 py-2 text-right font-bold text-gray-900 whitespace-nowrap">{c(r.total)}</td>
-                  </tr>
-                )
-              })}
+              {filtered.map((r, i) => (
+                <tr key={r.id} onClick={() => setSelected(r === selected ? null : r)}
+                  className={`cursor-pointer transition ${selected?.id === r.id ? 'bg-blue-50' : i % 2 === 1 ? 'bg-gray-50/60 hover:bg-blue-50/40' : 'hover:bg-blue-50/40'}`}>
+                  <td className="px-3 py-2 font-semibold text-gray-900 whitespace-nowrap">{r.invoice_number}</td>
+                  {colPrefs.shownColumns.map(col => {
+                    const meta = RECEIPT_COL_BY_KEY.get(col.key)!
+                    return (
+                      <td key={col.key} className={`px-3 py-2 whitespace-nowrap ${meta.align === 'right' ? 'text-right' : ''} ${meta.tdClass}`}>
+                        {meta.render(r)}
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
             </tbody>
           </table>
         )}

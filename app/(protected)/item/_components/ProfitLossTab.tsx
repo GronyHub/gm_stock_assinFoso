@@ -1,8 +1,9 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
+import { useColumnPrefs, ColumnsPickerButton, type ColumnDef } from './columnPrefs'
 
 const SHORT_MON = ['Ja','Fe','Mr','Ap','My','Ju','Jl','Au','Se','Oc','No','De']
 const DAYS = ['Su','Mo','Tu','We','Th','Fr','Sa']
@@ -33,6 +34,28 @@ const TONE_CLS = {
   green:  'bg-green-50 text-green-600',
 } as const
 
+// Date stays fixed/first (never hideable); these six are pickable. The
+// original 2-row grouped header ("Cash Out" spanning Bills/Expenses/Total)
+// only made sense with all three shown in that fixed order, so once the
+// picker can hide/reorder them independently we fold it to one header row
+// and fold the grouping into the "Cash Out Total" label instead.
+type ColKey = 'cc' | 'bills' | 'expenses' | 'cashOut' | 'dailyLoss' | 'pl'
+type PLColumn = ColumnDef<ColKey> & { align: 'right'; render: (d: Daily) => ReactNode }
+const PL_COLUMNS: PLColumn[] = [
+  { key: 'cc', label: 'CC', align: 'right', render: d => <span className="text-blue-600">{fc(d.cashCounted)}</span> },
+  { key: 'bills', label: 'Bills', align: 'right', render: d => <span className="text-gray-600">{d.bills > 0 ? fc(d.bills) : '—'}</span> },
+  { key: 'expenses', label: 'Expenses', align: 'right', render: d => <span className="text-gray-600">{d.expenses > 0 ? fc(d.expenses) : '—'}</span> },
+  { key: 'cashOut', label: 'Cash Out Total', align: 'right', render: d => <span className="font-semibold text-orange-600">{fc(d.cashOut)}</span> },
+  { key: 'dailyLoss', label: 'Daily Loss', align: 'right', render: d => <span className="text-red-500">{d.dailyLoss > 0 ? fc(d.dailyLoss) : '—'}</span> },
+  {
+    key: 'pl', label: 'P/L', align: 'right', render: d => {
+      const dayProfit = d.profit >= 0
+      return <span className={`font-semibold ${dayProfit ? 'text-green-600' : 'text-red-500'}`}>{dayProfit ? '' : '-'}{fc(Math.abs(d.profit))}</span>
+    },
+  },
+]
+const PL_COL_BY_KEY = new Map(PL_COLUMNS.map(c => [c.key, c]))
+
 function StatCard({ label, value, tone }: { label: string; value: string; tone: keyof typeof TONE_CLS }) {
   return (
     <div className={`rounded-xl p-3 ${TONE_CLS[tone]}`}>
@@ -46,6 +69,7 @@ export default function ProfitLossTab() {
   const [data, setData] = useState<Data | null>(null)
   const [loading, setLoading] = useState(true)
   const [forbidden, setForbidden] = useState(false)
+  const colPrefs = useColumnPrefs<ColKey>('profitLossTable', PL_COLUMNS)
 
   useEffect(() => {
     fetch('/api/analysis/profit-loss').then(r => {
@@ -72,41 +96,30 @@ export default function ProfitLossTab() {
       <p className="text-[11px] text-gray-400 -mt-2">Cash Counted − (Bills + Expenses + Daily Loss), all time.</p>
 
       <div>
-        <p className="text-sm font-semibold text-gray-700 mb-1">Daily Profit &amp; Loss</p>
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-sm font-semibold text-gray-700">Daily Profit &amp; Loss</p>
+          <ColumnsPickerButton prefs={colPrefs} />
+        </div>
         <p className="text-[10px] text-gray-400 mb-2">CC − (Cash Out + Daily Loss), one row per day. Cash Out = Bills + Expenses.</p>
         <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
           <table className="w-full border-collapse text-xs">
             <thead>
               <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
-                <th rowSpan={2} className="text-left px-3 py-2 font-bold border-b border-gray-200 align-bottom whitespace-nowrap">Date</th>
-                <th rowSpan={2} className="text-right px-3 py-2 font-bold border-b border-gray-200 align-bottom">CC</th>
-                <th colSpan={3} className="text-center px-3 py-1.5 font-bold border-b border-gray-100">Cash Out</th>
-                <th rowSpan={2} className="text-right px-3 py-2 font-bold border-b border-gray-200 align-bottom">Daily Loss</th>
-                <th rowSpan={2} className="text-right px-3 py-2 font-bold border-b border-gray-200 align-bottom">P/L</th>
-              </tr>
-              <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
-                <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 border-l border-gray-100">Bills</th>
-                <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200">Expenses</th>
-                <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 text-gray-500">Total</th>
+                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Date</th>
+                {colPrefs.shownColumns.map(c => (
+                  <th key={c.key} className="text-right px-3 py-2 font-bold border-b border-gray-200">{c.label}</th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {daily.map((d, i) => {
-                const dayProfit = d.profit >= 0
-                return (
-                  <tr key={d.date} className={i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
-                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{dayLabel(d.date)}</td>
-                    <td className="px-3 py-2 text-right text-blue-600">{fc(d.cashCounted)}</td>
-                    <td className="px-3 py-2 text-right text-gray-600 border-l border-gray-100">{d.bills > 0 ? fc(d.bills) : '—'}</td>
-                    <td className="px-3 py-2 text-right text-gray-600">{d.expenses > 0 ? fc(d.expenses) : '—'}</td>
-                    <td className="px-3 py-2 text-right font-semibold text-orange-600">{fc(d.cashOut)}</td>
-                    <td className="px-3 py-2 text-right text-red-500">{d.dailyLoss > 0 ? fc(d.dailyLoss) : '—'}</td>
-                    <td className={`px-3 py-2 text-right font-semibold ${dayProfit ? 'text-green-600' : 'text-red-500'}`}>
-                      {dayProfit ? '' : '-'}{fc(Math.abs(d.profit))}
-                    </td>
-                  </tr>
-                )
-              })}
+              {daily.map((d, i) => (
+                <tr key={d.date} className={i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
+                  <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{dayLabel(d.date)}</td>
+                  {colPrefs.shownColumns.map(c => (
+                    <td key={c.key} className="px-3 py-2 text-right">{PL_COL_BY_KEY.get(c.key)!.render(d)}</td>
+                  ))}
+                </tr>
+              ))}
             </tbody>
           </table>
           {daily.length === 0 && <p className="text-xs text-gray-400 text-center py-10">No data</p>}
