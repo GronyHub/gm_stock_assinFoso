@@ -1798,7 +1798,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
     // background to stay legible while the rest of the row scrolls under it.
     const stripe = i % 2 === 1 ? 'bg-gray-50' : 'bg-white'
     return (
-      <tr key={row.item_id} onClick={() => router.push(`/stock/${row.item_id}`)}
+      <tr key={row.item_id} onClick={() => router.push(`/item?tab=loss&view=item360&jumpItemId=${row.item_id}`)}
         className={`cursor-pointer hover:bg-blue-50/60 transition ${stripe}`}>
         <td className={`pl-2 pr-2 py-1.5 font-bold truncate sticky left-0 z-10 ${stripe}`}
           style={{ width: itemColWidth, maxWidth: itemColWidth }} title={row.item_name}>

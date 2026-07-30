@@ -824,7 +824,7 @@ export default function ItemsTab({ items, group, productType, search, violation,
                       </p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      <a href={`/stock/${item.id}`}
+                      <a href={`/item?tab=loss&view=item360&jumpItemId=${item.id}`}
                         className="text-[9px] text-blue-600 font-semibold bg-white px-2 py-0.5 rounded hover:bg-blue-50">
                         360°
                       </a>

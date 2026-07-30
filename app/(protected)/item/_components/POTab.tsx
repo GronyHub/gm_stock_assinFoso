@@ -558,7 +558,7 @@ export default function POTab({ search }: Props) {
                         <tr key={i} className="border-b border-gray-100">
                           <td className="px-1.5 py-0.5 text-gray-900">
                             {l.item_id ? (
-                              <Link href={`/stock/${l.item_id}`} className="text-blue-600 hover:underline">
+                              <Link href={`/item?tab=loss&view=item360&jumpItemId=${l.item_id}`} className="text-blue-600 hover:underline">
                                 {l.item_name}
                               </Link>
                             ) : l.item_name}

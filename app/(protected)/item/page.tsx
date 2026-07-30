@@ -371,6 +371,13 @@ function ItemHubPageInner() {
   // its first run since only tab/view/q are ever written back to the URL.
   const [jumpToReceiptDate, setJumpToReceiptDate] = useState<string | null>(searchParams.get('jumpDate'))
   const [jumpToReceiptItemName, setJumpToReceiptItemName] = useState<string | null>(searchParams.get('jumpItem'))
+  // Every "tap an item" spot in the app (Items list rows, Sales/Bills item
+  // links, the old standalone /stock/[id] route's former callers) now lands
+  // here instead -- ?jumpItemId= opens Item 360 straight to that item's
+  // detail rather than its search box. Seeded (and re-seeded on later
+  // same-page navigations) entirely by the searchParams effect below, since
+  // a plain useState initializer only ever sees the URL a page starts on.
+  const [item360JumpId, setItem360JumpId] = useState<number | null>(null)
   const groupRef     = useRef<HTMLDivElement>(null)
   const searchRef    = useRef<HTMLDivElement>(null)
 
@@ -707,6 +714,23 @@ function ItemHubPageInner() {
       const nextView: LossView = (urlExtraView ? 'items' : rawUrlView) as LossView ?? 'items'
       if (nextView !== lossView) setLossView(nextView)
       if (urlExtraView && urlExtraView !== itemsExtraView) setItemsExtraView(urlExtraView)
+    }
+    // Read (and re-read) on every searchParams change, not just first mount --
+    // unlike outerTab/lossView above, a plain useState initializer would only
+    // ever see this on a fresh page load, never on a same-page router.push
+    // from one Grony Cash submenu to another (Sales/Bills/Counts/etc. tapping
+    // an item all land here this way now that /stock/[id] is gone). Stripped
+    // back out of the URL immediately after being read, or switching lossView
+    // again later would keep re-triggering the same jump forever.
+    const rawJumpItemId = searchParams.get('jumpItemId')
+    if (rawJumpItemId) {
+      const n = Number(rawJumpItemId)
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (!Number.isNaN(n)) setItem360JumpId(n)
+      const params = new URLSearchParams(window.location.search)
+      params.delete('jumpItemId')
+      const qs = params.toString()
+      router.replace(qs ? `/item?${qs}` : '/item', { scroll: false })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
@@ -1185,7 +1209,7 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'loss' && lossView === 'item360' && (
           <TabErrorBoundary>
-            <Item360Tab items={items} />
+            <Item360Tab items={items} jumpToItemId={item360JumpId} onJumpDone={() => setItem360JumpId(null)} />
           </TabErrorBoundary>
         )}
         {outerTab === 'manage' && (
@@ -1388,7 +1412,7 @@ function ItemHubPageInner() {
                     <div>
                       <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Items</p>
                       {r.items.map(i => (
-                        <button key={i.id} onClick={() => { router.push(`/stock/${i.id}`); closeGlobalSearch() }}
+                        <button key={i.id} onClick={() => { changeTab('loss'); setLossView('item360'); setItem360JumpId(i.id); closeGlobalSearch() }}
                           className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
                           {i.name}
                           {i.cf_group && <span className="text-gray-400 text-xs ml-1.5">· {i.cf_group}</span>}

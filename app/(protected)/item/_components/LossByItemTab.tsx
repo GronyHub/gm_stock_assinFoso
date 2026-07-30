@@ -112,7 +112,7 @@ export default function LossByItemTab({ search }: { search: string }) {
               <tr><td colSpan={1 + colPrefs.shownColumns.length} className="py-10 text-center text-gray-400 text-xs">No items</td></tr>
             )}
             {filtered.map((row, i) => (
-              <tr key={row.item_id} onClick={() => router.push(`/stock/${row.item_id}`)}
+              <tr key={row.item_id} onClick={() => router.push(`/item?tab=loss&view=item360&jumpItemId=${row.item_id}`)}
                 className={`cursor-pointer hover:bg-blue-50/60 transition ${i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}`}>
                 <td className="pl-2 pr-2 py-1.5 font-bold truncate text-blue-600">{row.item_name}</td>
                 {colPrefs.shownColumns.map(c => c.key === 'lossCount' ? (

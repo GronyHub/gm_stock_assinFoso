@@ -42,7 +42,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
           const soh = Number(r.calculated_soh)
           const low = soh < 5
           return (
-            <Link key={r.item_id} href={`/stock/${r.item_id}`}
+            <Link key={r.item_id} href={`/item?tab=loss&view=item360&jumpItemId=${r.item_id}`}
               className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-3 active:bg-gray-100">
               <div className="min-w-0 flex-1 pr-3">
                 <p className={`font-medium truncate ${low ? 'text-red-400' : 'text-gray-900'}`}>{r.item_name}</p>
@@ -80,7 +80,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
               return (
                 <tr key={r.item_id} className="border-t border-gray-200 hover:bg-white/50">
                   <td className="px-3 py-2">
-                    <Link href={`/stock/${r.item_id}`} className="text-blue-600 hover:text-blue-600">
+                    <Link href={`/item?tab=loss&view=item360&jumpItemId=${r.item_id}`} className="text-blue-600 hover:text-blue-600">
                       {r.item_name}
                     </Link>
                   </td>

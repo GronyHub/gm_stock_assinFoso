@@ -630,7 +630,7 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
                   <td className="px-1 py-1 text-gray-600 whitespace-nowrap border border-black">{fmtShort(r.count_date)}</td>
                   <td className="px-1 py-1 text-gray-900 font-semibold border border-black">
                     {r.item_id ? (
-                      <Link href={`/stock/${r.item_id}`} className="text-blue-600 hover:underline">{r.item_name}</Link>
+                      <Link href={`/item?tab=loss&view=item360&jumpItemId=${r.item_id}`} className="text-blue-600 hover:underline">{r.item_name}</Link>
                     ) : r.item_name}
                   </td>
                   {colPrefs.shownColumns.map(c => {
