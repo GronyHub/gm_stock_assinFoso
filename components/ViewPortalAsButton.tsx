@@ -48,10 +48,10 @@ export default function ViewPortalAsButton({ onDone }: { onDone?: () => void }) 
   if (!amOwnerLevel || impersonating) return null
 
   return (
-    <div className="px-4 py-2.5 border-t border-gray-100 first:border-t-0">
+    <div className="px-4 py-2.5 border-t border-blue-700 first:border-t-0">
       {picking ? (
         <div className="space-y-1.5">
-          <p className="text-[10px] text-gray-500 font-semibold">View portal as:</p>
+          <p className="text-[10px] text-blue-100 font-semibold">View portal as:</p>
           <select
             autoFocus
             defaultValue=""
@@ -63,11 +63,11 @@ export default function ViewPortalAsButton({ onDone }: { onDone?: () => void }) 
               .filter(u => u.username.toLowerCase() !== (user?.username ?? '').toLowerCase())
               .map(u => <option key={u.id} value={u.username}>{u.display_name} (@{u.username})</option>)}
           </select>
-          <button onClick={() => setPicking(false)} className="text-[10px] text-gray-400 hover:text-gray-600 font-semibold">Cancel</button>
+          <button onClick={() => setPicking(false)} className="text-[10px] text-blue-200 hover:text-white font-semibold">Cancel</button>
         </div>
       ) : (
         <button onClick={() => setPicking(true)}
-          className="w-full text-left text-sm font-medium text-gray-700 hover:text-gray-900 flex items-center gap-1.5">
+          className="w-full text-left text-sm font-medium text-white hover:text-blue-100 flex items-center gap-1.5">
           👁 View Portal as…
         </button>
       )}

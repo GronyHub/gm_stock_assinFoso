@@ -28,7 +28,7 @@ const UsersPage = dynamic(() => import('../../users/page'), {
 // hamburger menu used.
 function PaneFooter({ mode }: { mode: import('./SidePane').DisplayMode }) {
   return (
-    <div className="mt-1 border-t border-gray-200 pt-1">
+    <div className="mt-1 border-t border-blue-700 pt-1">
       <ViewPortalAsButton />
       <SidePaneButton icon="🚪" label="Sign out" mode={mode} active={false}
         onClick={() => signOut({ callbackUrl: '/login' })} />
