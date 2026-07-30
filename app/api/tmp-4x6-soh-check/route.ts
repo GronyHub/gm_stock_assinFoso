@@ -47,7 +47,13 @@ export async function GET() {
       WHERE bl.item_id = ANY(${relatedIds})
       ORDER BY b.bill_date DESC LIMIT 30
     `
-    return NextResponse.json({ item, viewDef, stockCountsCols, counts, summary, packRelations, aliases, packCounts, salesLines, billLines })
+    let revisions = null
+    try {
+      revisions = await sql`SELECT * FROM stock_count_revisions WHERE item_id = 373 ORDER BY id DESC LIMIT 20`
+    } catch (e) {
+      revisions = `ERROR: ${e instanceof Error ? e.message : String(e)}`
+    }
+    return NextResponse.json({ item, viewDef, stockCountsCols, counts, summary, packRelations, aliases, packCounts, salesLines, billLines, revisions })
   } catch (e) {
     const detail = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ error: detail }, { status: 500 })
