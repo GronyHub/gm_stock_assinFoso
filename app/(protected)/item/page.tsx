@@ -60,6 +60,7 @@ const PurchaseOrdersPage  = dynamic(() => import('../purchase-orders/page'),    
 const AliasWidePage       = dynamic(() => import('../aliases/wide/page'),           { ssr: false, loading: () => loading('Loading…') })
 const ServiceMatchesPage  = dynamic(() => import('../matches/wide/page'),           { ssr: false, loading: () => loading('Loading…') })
 const FixMislinkedSalesPage = dynamic(() => import('../debug/unlink-mismatch/page'), { ssr: false, loading: () => loading('Loading…') })
+const Item360Tab = dynamic(() => import('./_components/Item360Tab'),          { ssr: false, loading: () => loading('Loading…') })
 const ViewPortalAsButton = dynamic(() => import('@/components/ViewPortalAsButton'), { ssr: false })
 const StaffPersonTab = dynamic(() => import('./_components/StaffPersonTab'),  { ssr: false, loading: () => loading('Loading…') })
 
@@ -76,7 +77,7 @@ type OuterTab = 'today' | 'loss' | 'manage' | 'staff'
 // Cash tab (outerTab 'loss' -- kept as the internal key since it's
 // referenced throughout; only the label changed).
 type LossView = 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts' | 'dailySummary'
-  | 'purchaseOrders' | 'aliasWide' | 'serviceMatches' | 'fixMislinkedSales'
+  | 'purchaseOrders' | 'aliasWide' | 'serviceMatches' | 'fixMislinkedSales' | 'item360'
 
 // Old top-level tabs that got folded into Grony Cash submenus -- old
 // bookmarks/links using ?tab=pl etc. still land on the right submenu instead
@@ -99,7 +100,7 @@ const OLD_TAB_TO_OUTER: Partial<Record<string, OuterTab>> = {
 // groups/search/New controls row doesn't apply to them.
 const REPORT_VIEWS = new Set<LossView>([
   'pl', 'cab', 'vendors', 'customers', 'receipts', 'dailySummary',
-  'purchaseOrders', 'aliasWide', 'serviceMatches', 'fixMislinkedSales',
+  'purchaseOrders', 'aliasWide', 'serviceMatches', 'fixMislinkedSales', 'item360',
 ])
 
 // Grony Cash's own left pane, same shape as Grony Manage's -- Sales, Bills,
@@ -126,6 +127,7 @@ const CASH_ITEMS: { key: LossView; label: string; icon: string }[] = [
   { key: 'aliasWide',        label: 'Alias Wide Table',  icon: '🔗' },
   { key: 'serviceMatches',   label: 'Service Matches',   icon: '🧩' },
   { key: 'fixMislinkedSales', label: 'Fix Mislinked Sales', icon: '🩹' },
+  { key: 'item360', label: 'Item 360', icon: '🔍' },
 ]
 
 type Item = {
@@ -805,6 +807,7 @@ function ItemHubPageInner() {
     { label: 'Alias Wide Table', action: () => { changeTab('loss'); setLossView('aliasWide') } },
     { label: 'Service Matches', action: () => { changeTab('loss'); setLossView('serviceMatches') } },
     ...(isOwnerOrJoe ? [{ label: 'Fix Mislinked Sales', action: () => { changeTab('loss'); setLossView('fixMislinkedSales') } }] : []),
+    { label: 'Item 360', action: () => { changeTab('loss'); setLossView('item360') } },
   ]
   const manageSubmenus: { label: string; action: () => void }[] = [
     { label: 'Rota', action: () => { changeTab('manage'); setManageInitialView('rota') } },
@@ -1228,6 +1231,11 @@ function ItemHubPageInner() {
         {outerTab === 'loss' && lossView === 'fixMislinkedSales' && (
           <TabErrorBoundary>
             <div className="px-4"><FixMislinkedSalesPage /></div>
+          </TabErrorBoundary>
+        )}
+        {outerTab === 'loss' && lossView === 'item360' && (
+          <TabErrorBoundary>
+            <Item360Tab items={items} />
           </TabErrorBoundary>
         )}
         {outerTab === 'manage' && (
