@@ -27,7 +27,12 @@ export async function GET() {
     } catch (e) {
       summary = `ERROR: ${e instanceof Error ? e.message : String(e)}`
     }
-    return NextResponse.json({ item, viewDef, stockCountsCols, counts, summary })
+    const packRelations = await sql`
+      SELECT id, canonical_name, converts_to_item_id, units_per_pack, track_inventory
+      FROM items WHERE converts_to_item_id = 373 OR id = 373
+    `
+    const aliases = await sql`SELECT id, item_id, alias_name, alias_type, source FROM item_aliases WHERE item_id = 373`
+    return NextResponse.json({ item, viewDef, stockCountsCols, counts, summary, packRelations, aliases })
   } catch (e) {
     const detail = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ error: detail }, { status: 500 })
