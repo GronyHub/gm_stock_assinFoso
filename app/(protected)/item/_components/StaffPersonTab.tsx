@@ -5,7 +5,6 @@ import {
 } from '../../staff/StaffClient'
 import type { ViolationView } from '../../staff/StaffClient'
 import ProfileTab from './ProfileTab'
-import CustomTasksSection from './CustomTasksSection'
 
 const STANDARD_TABS = ['Times', 'Payslips', 'Violations', 'Analytics', 'Assignments'] as const
 type StandardTab = (typeof STANDARD_TABS)[number] | 'Profile'
@@ -78,27 +77,22 @@ function OthersTab({ role, username, selfName }: { role: string; username: strin
 }
 
 // Joe/Grony only -- the tools that populate what shows up in everyone's
-// (including their own) Payslips/Rota/Tasks. This is the only place Rota is
-// actually editable (Personal/Others both show it read-only), and the only
-// place a new task gets created -- it still shows up (and gets toggled/
-// edited/deleted) in the bottom Tasks panel exactly as before, same as a
-// built payslip shows up in Payslips and a built shift shows up in the
-// Upcoming Schedule.
-function BuildTab({ role, username, taskSubmenus }: {
-  role: string; username: string; taskSubmenus: { label: string }[]
-}) {
-  const [tab, setTab] = useState<'Payslips' | 'Rota' | 'Tasks'>('Payslips')
+// (including their own) Payslips/Rota. This is the only place Rota is
+// actually editable; Personal/Others both show it read-only. Tasks isn't
+// here -- it's being redesigned as a section inside each Grony Manage
+// category itself rather than one central builder, so it's pulled out of
+// here for now.
+function BuildTab({ role, username }: { role: string; username: string }) {
+  const [tab, setTab] = useState<'Payslips' | 'Rota'>('Payslips')
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center gap-1 px-2 py-0.5 bg-white border-b border-gray-100 shrink-0">
         <button onClick={() => setTab('Payslips')} className={tabBtnCls(tab === 'Payslips')}>Payslips</button>
         <button onClick={() => setTab('Rota')} className={tabBtnCls(tab === 'Rota')}>Rota</button>
-        <button onClick={() => setTab('Tasks')} className={tabBtnCls(tab === 'Tasks')}>Tasks</button>
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto px-2 py-3">
         {tab === 'Payslips' && <PayslipsTab role={role} username={username} />}
         {tab === 'Rota' && <RotaTab canManage={true} />}
-        {tab === 'Tasks' && <CustomTasksSection submenus={taskSubmenus} onAdded={() => {}} />}
       </div>
     </div>
   )
@@ -112,8 +106,8 @@ type BuilderTopTab = (typeof BUILDER_TOP_TABS)[number]
 // Build (the payslip/rota admin tools), and All Staff (the shop-wide
 // violations leaderboard/checklist, kept as its own tab for now rather than
 // folded into Build).
-function BuilderStaffTabs({ staffName, role, username, openAddSignal, taskSubmenus }: {
-  staffName: string; role: string; username: string; openAddSignal?: number; taskSubmenus: { label: string }[]
+function BuilderStaffTabs({ staffName, role, username, openAddSignal }: {
+  staffName: string; role: string; username: string; openAddSignal?: number
 }) {
   const [topTab, setTopTab] = useState<BuilderTopTab>('Personal')
   const [teamVtab, setTeamVtab] = useState<ViolationView>('Disciplinary')
@@ -126,19 +120,19 @@ function BuilderStaffTabs({ staffName, role, username, openAddSignal, taskSubmen
       <div className="flex-1 min-h-0">
         {topTab === 'Personal' && <StandardStaffTabs staffName={staffName} role={role} username={username} openAddSignal={openAddSignal} />}
         {topTab === 'Others' && <OthersTab role={role} username={username} selfName={staffName} />}
-        {topTab === 'Build' && <BuildTab role={role} username={username} taskSubmenus={taskSubmenus} />}
+        {topTab === 'Build' && <BuildTab role={role} username={username} />}
         {topTab === 'All Staff' && <ViolationsTab role={role} username={username} vtab={teamVtab} setVtab={setTeamVtab} />}
       </div>
     </div>
   )
 }
 
-export default function StaffPersonTab({ staffName, role, username, openAddSignal, taskSubmenus }: {
-  staffName: string; role: string; username: string; openAddSignal?: number; taskSubmenus: { label: string }[]
+export default function StaffPersonTab({ staffName, role, username, openAddSignal }: {
+  staffName: string; role: string; username: string; openAddSignal?: number
 }) {
   const isBuilder = ['joe', 'grony'].includes(staffName.toLowerCase())
   if (isBuilder) {
-    return <BuilderStaffTabs staffName={staffName} role={role} username={username} openAddSignal={openAddSignal} taskSubmenus={taskSubmenus} />
+    return <BuilderStaffTabs staffName={staffName} role={role} username={username} openAddSignal={openAddSignal} />
   }
   return <StandardStaffTabs staffName={staffName} role={role} username={username} openAddSignal={openAddSignal} />
 }
