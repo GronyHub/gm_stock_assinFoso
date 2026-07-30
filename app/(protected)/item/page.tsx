@@ -58,7 +58,6 @@ const CustomersPage  = dynamic(() => import('../customers/page'),             { 
 const ReceiptsPage   = dynamic(() => import('../receipts/page'),              { ssr: false, loading: () => loading('Loading…') })
 const ViewPortalAsButton = dynamic(() => import('@/components/ViewPortalAsButton'), { ssr: false })
 const StaffPersonTab = dynamic(() => import('./_components/StaffPersonTab'),  { ssr: false, loading: () => loading('Loading…') })
-const DynamicTasksSection = dynamic(() => import('./_components/DynamicTasksSection'), { ssr: false, loading: () => loading('Loading…') })
 
 // Every real staff member, including Grony -- the third top-level tab shows
 // whichever one of these matches the logged-in username, and that person's
@@ -246,11 +245,9 @@ const VIOLATION_HOME: Partial<Record<string, LossView>> = {
   unchecked_cab: 'cab',
 }
 
-// Every lossView that gets a filterable pill row -- CAB has just the one
-// flag type and CABTab has no violation-filtered view to switch to (its
-// normal view already covers it), so its "pill" is really just the one
-// badge, but it still gets a row in the Flags & Tasks panel like everyone
-// else.
+// Which violation keys belong to each lossView -- scopes the info banner
+// and filtered views (ItemsTab/SalesTab/CountsTab/LossFeedTab) reached via
+// a "Fix now" deep link (see goFixRecords/goToViolation).
 const LOSSVIEW_PILL_KEYS: Partial<Record<LossView, string[]>> = {
   items: [
     'neg_soh', 'no_sp', 'no_cp', 'no_group', 'duplicates', 'unlinked_named', 'service_violation',
@@ -260,14 +257,6 @@ const LOSSVIEW_PILL_KEYS: Partial<Record<LossView, string[]>> = {
   feed: ['gains'],
   sales: ['no_cash', 'missing_days', 'cost_price', 'dup_receipt'],
   cab: ['unchecked_cab'],
-}
-
-// The exact submenu label each Grony Cash sub-tab's custom tasks are pinned
-// under (see cashSubmenus below, and RoleFlagsTable's own grouping) -- used
-// to scope both the flag badge's task count and the Flags & Tasks panel's
-// DynamicTasksSection to the right slice of /api/tasks.
-const LOSSVIEW_LABEL: Partial<Record<LossView, string>> = {
-  items: 'Items', sales: 'Sales', bills: 'Bills', feed: 'Loss', expenses: 'Expenses', pl: 'P&L', cab: 'CAB',
 }
 
 // Analysis dropped -- it's a strict subset of Grony Cash's Data submenu.
@@ -322,11 +311,6 @@ function ItemHubPageInner() {
   )
   const [search, setSearch]             = useState(searchParams.get('q') ?? '')
   const [violation, setViolation]       = useState<string | null>(searchParams.get('violation'))
-  // Toggles the per-tab "🚩 Flags & Tasks" panel (violation pills + that
-  // tab's own custom tasks) -- one flag, always scoped to whichever
-  // lossView is currently active. Reset to closed on every tab switch so
-  // it doesn't stay stuck open pointed at the wrong tab.
-  const [flagsPanelOpen, setFlagsPanelOpen] = useState(false)
   const [groupOpen, setGroupOpen]       = useState(false)
   const [searchOpen, setSearchOpen]     = useState(false)
   const [hamburgerOpen, setHamburgerOpen] = useState(false)
@@ -583,19 +567,6 @@ function ItemHubPageInner() {
   useEffect(() => { loadBadgeData() }, [])
   usePolling(loadBadgeData, 20000)
 
-  // Custom tasks (see /api/tasks) -- pinned to a submenu, same convention
-  // RoleFlagsTable already reads them by. Loaded here too so each Grony
-  // Cash sub-tab's own flag badge/count can include its open tasks, not
-  // just its auto-detected violations.
-  const [customTasks, setCustomTasks] = useState<{ id: number; submenu: string | null; done: boolean }[]>([])
-  function loadCustomTasks() {
-    fetch('/api/tasks').then(r => r.ok ? r.json() : []).then(d => {
-      setCustomTasks(Array.isArray(d) ? d : [])
-    }).catch(() => {})
-  }
-  useEffect(() => { loadCustomTasks() }, [])
-  usePolling(loadCustomTasks, 20000)
-
   const violationCounts: Record<string, number> = useMemo(() => {
     const negSoh = items.filter(i => Number(i.calculated_soh) < 0 && i.product_type !== 'service').length
     const noSp = items.filter(i => !i.selling_rate || parseFloat(i.selling_rate) === 0).length
@@ -785,17 +756,6 @@ function ItemHubPageInner() {
   const activeLossParent = PARENT_OF[lossView]
   const lossChildren = activeLossParent ? CHILDREN_OF[activeLossParent] : undefined
   const pillKeys = LOSSVIEW_PILL_KEYS[lossView]
-
-  // Powers each Grony Cash sub-tab's own 🚩 flag badge -- its violation
-  // count (same pillKeys the Flags & Tasks panel filters by) plus its own
-  // open custom tasks, so the badge reflects everything that panel holds.
-  function flagCountFor(v: LossView): number {
-    const keys = LOSSVIEW_PILL_KEYS[v] ?? []
-    const violationTotal = keys.reduce((sum, k) => sum + (violationCounts[k] ?? 0), 0)
-    const label = LOSSVIEW_LABEL[v]
-    const taskTotal = label ? customTasks.filter(t => t.submenu === label && !t.done).length : 0
-    return violationTotal + taskTotal
-  }
 
   const groupLabel = [
     group ?? 'All Groups',
@@ -995,19 +955,15 @@ function ItemHubPageInner() {
         {!openRole && outerTab === 'loss' && (
           <SidePaneContainer mode={cashDisplayMode}>
             <SidePaneToggle mode={cashDisplayMode} onChange={changeCashDisplayMode} />
-            {/* Every button carries its own 🚩 flag badge (violations + open
-                custom tasks combined) -- tap the button to switch tabs, then
-                the Flags & Tasks toggle below opens that same count's detail.
-                Items is still the home for Counts (see CHILDREN_OF),
+            {/* Items is still the home for Counts (see CHILDREN_OF),
                 highlighted by PARENT_OF so it stays lit up while looking at
                 that child sub-view. */}
             {CASH_ITEMS.filter(v => v.key !== 'pl' || canSeePL).map(v => {
-              const flagCount = flagCountFor(v.key)
               const active = (activeLossParent ?? lossView) === v.key
               return (
                 <SidePaneButton key={v.key} icon={v.icon} label={v.label} mode={cashDisplayMode}
-                  active={active} badge={flagCount}
-                  onClick={() => { setLossView(v.key); setAddForm(null); setViolation(null); setShowAnalytics(false); setFlagsPanelOpen(false) }} />
+                  active={active}
+                  onClick={() => { setLossView(v.key); setAddForm(null); setViolation(null); setShowAnalytics(false) }} />
               )
             })}
           </SidePaneContainer>
@@ -1207,57 +1163,6 @@ function ItemHubPageInner() {
                   })()}
                 </div>
               )}
-
-              {/* Flags & Tasks -- one toggle per Grony Cash sub-tab, regrouping
-                  that tab's own violation pills (Items/Sales' were previously
-                  hidden here since they already showed on Joe's Role Bar panel --
-                  restored now, per request) together with its custom tasks
-                  (previously only visible in the bottom Tasks panel). Tapping a
-                  pill again clears it; the panel itself stays open across pill
-                  taps so fixing several in a row doesn't require reopening it. */}
-              <div className="border-t border-gray-100">
-                <button onClick={() => setFlagsPanelOpen(o => !o)}
-                  className={`w-full flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-semibold transition
-                    ${flagsPanelOpen ? 'bg-red-600 text-white' : 'bg-red-50 text-red-700 hover:bg-red-100'}`}>
-                  🚩 Flags & Tasks
-                  {flagCountFor(lossView) > 0 && (
-                    <span className={`text-[10px] font-bold rounded-full px-1.5 leading-tight ${flagsPanelOpen ? 'bg-white/25 text-white' : 'bg-red-600 text-white'}`}>
-                      {flagCountFor(lossView) > 99 ? '99+' : flagCountFor(lossView)}
-                    </span>
-                  )}
-                  <span className="text-[9px]">{flagsPanelOpen ? '▲' : '▼'}</span>
-                </button>
-
-                {flagsPanelOpen && (
-                  <div className="px-2 py-2 bg-red-50/40 space-y-2">
-                    {pillKeys && pillKeys.length > 0 && (
-                      <div className="flex items-center gap-1 flex-wrap">
-                        {ERROR_VIOLATIONS.filter(v => pillKeys.includes(v.key)).map(v => {
-                          const c = violationCounts[v.key] ?? 0
-                          return (
-                            <button key={v.key} onClick={() => setViolation(prev => prev === v.key ? null : v.key)}
-                              className={`shrink-0 flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg transition whitespace-nowrap
-                                ${violation === v.key ? 'bg-red-600 text-white' : 'bg-white border border-red-200 text-red-700 hover:bg-red-100'}`}>
-                              {v.label}
-                              {c > 0 && (
-                                <span className={`text-[10px] font-bold rounded-full px-1.5 leading-tight
-                                  ${violation === v.key ? 'bg-white/25 text-white' : 'bg-red-600 text-white'}`}>
-                                  {c > 99 ? '99+' : c}
-                                </span>
-                              )}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    )}
-                    {LOSSVIEW_LABEL[lossView] && (
-                      <div className="bg-white rounded-lg border border-red-100">
-                        <DynamicTasksSection scopeKey={LOSSVIEW_LABEL[lossView]!} />
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
             </div>
           )}
 
