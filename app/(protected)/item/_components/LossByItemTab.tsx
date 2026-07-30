@@ -3,11 +3,20 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { AnalyticsToggle } from './analyticsShared'
+import { useColumnPrefs, ColumnsPickerButton, type ColumnDef } from './columnPrefs'
 const LossAnalyticsSection = dynamic(() => import('./LossAnalyticsSection'), { ssr: false })
 
 type Row = { item_id: number; item_name: string; lgAmt: number; lossCount: number }
 type SortCol = 'item_name' | 'lossCount' | 'lgAmt'
 type SortDir = 'asc' | 'desc'
+
+// Item stays sticky/always-visible (first column); these two are the only
+// ones the picker can hide/reorder/rename.
+type ColKey = 'lossCount' | 'lgAmt'
+const COLUMNS: ColumnDef<ColKey>[] = [
+  { key: 'lossCount', label: 'Loss No.', width: 90 },
+  { key: 'lgAmt',     label: 'Loss Amt.', width: 90 },
+]
 
 function fmtAmt(v: number) {
   if (v === 0) return '—'
@@ -39,6 +48,7 @@ export default function LossByItemTab({ search }: { search: string }) {
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [sort, setSort] = useState<{ col: SortCol; dir: SortDir }>({ col: 'lgAmt', dir: 'desc' })
+  const colPrefs = useColumnPrefs<ColKey>('lossByItem', COLUMNS)
   // Trend charts + top/least-loss rankings that used to live under the
   // removed "Data" tab's "Loss" section -- shown here since both this list
   // and that section are ultimately about ranking items by loss.
@@ -79,37 +89,41 @@ export default function LossByItemTab({ search }: { search: string }) {
 
   return (
     <div className="flex flex-col h-full min-h-0 p-2">
-      <div className="shrink-0 flex justify-end mb-2">
+      <div className="shrink-0 flex items-center justify-end gap-1.5 mb-2">
+        <ColumnsPickerButton prefs={colPrefs} />
         <AnalyticsToggle showing={showAnalytics} onToggle={() => setShowAnalytics(true)} />
       </div>
       <div className="flex-1 min-h-0 overflow-auto rounded-xl border border-gray-200 bg-white">
         <table className="w-full table-fixed border-collapse text-[11px]">
           <colgroup>
             <col />
-            <col style={{ width: 80 }} />
-            <col style={{ width: 90 }} />
+            {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: c.width }} />)}
           </colgroup>
           <thead className="sticky top-0 z-10">
             <tr className="bg-gray-50">
               <Th label="Item" col="item_name" cls="text-left pl-2" sort={sort} onSort={handleSort} />
-              <Th label="Loss No." col="lossCount" cls="text-center" sort={sort} onSort={handleSort} />
-              <Th label="Loss Amt." col="lgAmt" cls="text-center" sort={sort} onSort={handleSort} />
+              {colPrefs.shownColumns.map(c => (
+                <Th key={c.key} label={c.label} col={c.key} cls="text-center" sort={sort} onSort={handleSort} />
+              ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {filtered.length === 0 && (
-              <tr><td colSpan={3} className="py-10 text-center text-gray-400 text-xs">No items</td></tr>
+              <tr><td colSpan={1 + colPrefs.shownColumns.length} className="py-10 text-center text-gray-400 text-xs">No items</td></tr>
             )}
             {filtered.map((row, i) => (
               <tr key={row.item_id} onClick={() => router.push(`/stock/${row.item_id}`)}
                 className={`cursor-pointer hover:bg-blue-50/60 transition ${i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}`}>
                 <td className="pl-2 pr-2 py-1.5 font-bold truncate text-blue-600">{row.item_name}</td>
-                <td className={`text-center py-1.5 font-semibold tabular-nums ${row.lossCount > 0 ? 'text-red-500' : 'text-gray-300'}`}>
-                  {row.lossCount}
-                </td>
-                <td className={`text-center py-1.5 font-semibold tabular-nums ${row.lgAmt > 0 ? 'text-red-500' : row.lgAmt < 0 ? 'text-green-600' : 'text-gray-300'}`}>
-                  {fmtAmt(row.lgAmt)}
-                </td>
+                {colPrefs.shownColumns.map(c => c.key === 'lossCount' ? (
+                  <td key={c.key} className={`text-center py-1.5 font-semibold tabular-nums ${row.lossCount > 0 ? 'text-red-500' : 'text-gray-300'}`}>
+                    {row.lossCount}
+                  </td>
+                ) : (
+                  <td key={c.key} className={`text-center py-1.5 font-semibold tabular-nums ${row.lgAmt > 0 ? 'text-red-500' : row.lgAmt < 0 ? 'text-green-600' : 'text-gray-300'}`}>
+                    {fmtAmt(row.lgAmt)}
+                  </td>
+                ))}
               </tr>
             ))}
           </tbody>

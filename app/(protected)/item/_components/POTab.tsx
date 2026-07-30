@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { usePolling } from '@/lib/usePolling'
+import { useColumnPrefs, ColumnsPickerButton, type ColumnDef } from './columnPrefs'
 
 type POLine = {
   id: number
@@ -94,6 +95,14 @@ function ProgressBadge({ lines }: { lines: POLine[] }) {
 
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
 
+// Date stays sticky/always-visible (first column); these two are the only
+// ones the picker can hide/reorder/rename.
+type ColKey = 'vendor' | 'status'
+const PO_COLUMNS: ColumnDef<ColKey>[] = [
+  { key: 'vendor', label: 'VENDOR' },
+  { key: 'status', label: 'STATUS' },
+]
+
 type Props = { search: string }
 
 export default function POTab({ search }: Props) {
@@ -123,6 +132,7 @@ export default function POTab({ search }: Props) {
   const [editResults, setEditResults] = useState<SearchItem[]>([])
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState('')
+  const colPrefs = useColumnPrefs<ColKey>('poTable', PO_COLUMNS)
 
   function loadList() {
     fetch('/api/purchase-orders').then(r => r.json()).then(d => {
@@ -293,10 +303,13 @@ export default function POTab({ search }: Props) {
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center justify-between px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
         <span className="text-[9px] font-semibold text-gray-400">{filtered.length} purchase order{filtered.length !== 1 ? 's' : ''}</span>
-        <Link href="/purchase-orders/new"
-          className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100">
-          + New PO
-        </Link>
+        <div className="flex items-center gap-1.5">
+          <ColumnsPickerButton prefs={colPrefs} />
+          <Link href="/purchase-orders/new"
+            className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100">
+            + New PO
+          </Link>
+        </div>
       </div>
       <div className="flex flex-1 min-h-0">
         <div className="w-1/2 border-r border-gray-200 overflow-y-auto min-h-0">
@@ -304,8 +317,9 @@ export default function POTab({ search }: Props) {
             <thead className="sticky top-0 bg-gray-100 z-10">
               <tr>
                 <th className="text-left px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">PO</th>
-                <th className="text-left px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">VENDOR</th>
-                <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">STATUS</th>
+                {colPrefs.shownColumns.map(c => (
+                  <th key={c.key} className={`${c.key === 'status' ? 'text-right' : 'text-left'} px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200`}>{c.label}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -313,13 +327,16 @@ export default function POTab({ search }: Props) {
                 <tr key={p.id} onClick={() => select(p)}
                   className={`cursor-pointer border-b border-gray-100 transition ${selectedId === p.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
                   <td className="px-0.5 py-0.5 text-gray-700 whitespace-nowrap">{fmtShort(p.order_date)}</td>
-                  <td className="px-0.5 py-0.5 text-gray-700 truncate max-w-[70px]">{p.vendor_name ?? '—'}</td>
-                  <td className="px-0.5 py-0.5">
-                    <div className="flex flex-col items-end gap-0.5">
-                      <StatusBadge status={p.status} />
-                      {p.status !== 'draft' && p.status !== 'cancelled' && <ProgressBadge lines={p.lines} />}
-                    </div>
-                  </td>
+                  {colPrefs.shownColumns.map(c => c.key === 'vendor' ? (
+                    <td key={c.key} className="px-0.5 py-0.5 text-gray-700 truncate max-w-[70px]">{p.vendor_name ?? '—'}</td>
+                  ) : (
+                    <td key={c.key} className="px-0.5 py-0.5">
+                      <div className="flex flex-col items-end gap-0.5">
+                        <StatusBadge status={p.status} />
+                        {p.status !== 'draft' && p.status !== 'cancelled' && <ProgressBadge lines={p.lines} />}
+                      </div>
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>

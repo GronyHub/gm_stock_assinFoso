@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { fmtDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
+import { useColumnPrefs, ColumnsPickerButton, type ColumnDef } from './columnPrefs'
 
 type Item = { id: number; item_name: string; cf_group: string | null }
 
@@ -69,6 +70,22 @@ function wnwColor(wnw: string | null, light = false) {
 }
 
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 placeholder-gray-400 outline-none focus:ring-1 focus:ring-blue-400'
+
+// Item stays sticky/always-visible (first column); these five are the only
+// ones the picker can hide/reorder/rename. CC/WNW only ever get filled in
+// on a receipt's own bar row (blank on its item lines); QTY/SP/TOTAL are
+// the reverse -- blank on the bar, filled on each line. Widths are the
+// same percentages the fixed 6-column layout used; table-layout:fixed
+// scales them proportionally when fewer columns are shown, so they don't
+// need to be renormalized to sum to 100 by hand.
+type ColKey = 'cc' | 'wnw' | 'qty' | 'sp' | 'total'
+const SALES_COLUMNS: ColumnDef<ColKey>[] = [
+  { key: 'cc',    label: 'CC',    width: 13 },
+  { key: 'wnw',   label: 'WNW',   width: 13 },
+  { key: 'qty',   label: 'QTY',   width: 10 },
+  { key: 'sp',    label: 'SP',    width: 10 },
+  { key: 'total', label: 'TOTAL', width: 14 },
+]
 
 const NO_WORK_REASONS = [
   'No work — Public Holiday','No work — Christmas Day','No work — Good Friday',
@@ -277,6 +294,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
   const [newItemQuery, setNewItemQuery] = useState('')
   const [flags, setFlags] = useState<any | null>(null)
   const [flagsLoading, setFlagsLoading] = useState(false)
+  const colPrefs = useColumnPrefs<ColKey>('salesTable', SALES_COLUMNS)
 
   const needsFlags = violation === 'no_cash' || violation === 'missing_days' || violation === 'cost_price' || violation === 'dup_receipt'
 
@@ -626,10 +644,13 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
           G
         </label>
       </div>
-      <Link href="/sales/new"
-            className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100">
-            + New Receipt
-          </Link>
+      <div className="flex items-center gap-1.5">
+        <ColumnsPickerButton prefs={colPrefs} />
+        <Link href="/sales/new"
+              className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100">
+              + New Receipt
+            </Link>
+      </div>
     </div>
     {/* overflow-auto (not just -y) so this single element handles both
         scroll directions -- nesting a separate overflow-x-auto div inside
@@ -645,11 +666,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
       <table className="w-full table-fixed border-collapse text-[10px]">
         <colgroup>
           <col style={{ width: '40%' }} />
-          <col style={{ width: '13%' }} />
-          <col style={{ width: '13%' }} />
-          <col style={{ width: '10%' }} />
-          <col style={{ width: '10%' }} />
-          <col style={{ width: '14%' }} />
+          {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: `${c.width}%` }} />)}
         </colgroup>
         <thead className="sticky top-0 bg-gray-100 z-10">
           <tr>
@@ -658,11 +675,14 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
                 header) so the header label and every row's value share the
                 same table column and can't drift out of alignment. Only the
                 bar row ever fills them in -- line rows below leave them blank. */}
-            <th className="text-left px-1 py-1 pl-3 text-[11px] font-bold text-gray-500 border-b border-gray-200 whitespace-nowrap">CC</th>
-            <th className="text-left px-1 py-1 pl-3 text-[11px] font-bold text-gray-500 border-b border-gray-200 whitespace-nowrap">WNW</th>
-            <th className="text-right px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">QTY</th>
-            <th className="text-right px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">SP</th>
-            <th className="text-right px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">TOTAL</th>
+            {colPrefs.shownColumns.map(c => (
+              <th key={c.key}
+                className={c.key === 'cc' || c.key === 'wnw'
+                  ? 'text-left px-1 py-1 pl-3 text-[11px] font-bold text-gray-500 border-b border-gray-200 whitespace-nowrap'
+                  : 'text-right px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200'}>
+                {c.label}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
@@ -695,7 +715,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
           // itemNameMatch is true, same as before.
           const editingRow = editingId === r.id && (
               <tr>
-                <td colSpan={6} className="p-0 bg-blue-50/40 border-b border-gray-200">
+                <td colSpan={1 + colPrefs.shownColumns.length} className="p-0 bg-blue-50/40 border-b border-gray-200">
                 <div className="p-2 space-y-2">
                   <p className="text-[10px] font-bold text-gray-600">Edit Receipt</p>
                   <div className="grid grid-cols-2 gap-1">
@@ -849,17 +869,24 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
                   </span>
                 </span>
               </td>
-              <td className={`text-left pl-3 font-extrabold ${isDayHead ? 'px-1.5 py-2 text-blue-100 text-base' : 'px-1 py-1 text-gray-500 text-sm'}`}>
-                {!itemNameMatch && fmt(r.cash_counted)}
-              </td>
-              <td className={`text-left pl-3 font-extrabold ${isDayHead ? 'px-1.5 py-2 text-base' : 'px-1 py-1 text-sm'} ${wnwColor(r.wnw, isDayHead)}`}>
-                {!itemNameMatch && fmt(r.wnw)}
-              </td>
-              <td className={isDayHead ? 'px-1.5 py-2' : 'px-1 py-1'} />
-              <td className={isDayHead ? 'px-1.5 py-2' : 'px-1 py-1'} />
-              <td className={`px-1 py-1 text-right font-extrabold ${isDayHead ? 'text-white text-base' : 'text-gray-900 text-sm'}`}>
-                {!itemNameMatch && fmt(r.invoice_amount)}
-              </td>
+              {colPrefs.shownColumns.map(c => {
+                if (c.key === 'cc') return (
+                  <td key={c.key} className={`text-left pl-3 font-extrabold ${isDayHead ? 'px-1.5 py-2 text-blue-100 text-base' : 'px-1 py-1 text-gray-500 text-sm'}`}>
+                    {!itemNameMatch && fmt(r.cash_counted)}
+                  </td>
+                )
+                if (c.key === 'wnw') return (
+                  <td key={c.key} className={`text-left pl-3 font-extrabold ${isDayHead ? 'px-1.5 py-2 text-base' : 'px-1 py-1 text-sm'} ${wnwColor(r.wnw, isDayHead)}`}>
+                    {!itemNameMatch && fmt(r.wnw)}
+                  </td>
+                )
+                if (c.key === 'total') return (
+                  <td key={c.key} className={`px-1 py-1 text-right font-extrabold ${isDayHead ? 'text-white text-base' : 'text-gray-900 text-sm'}`}>
+                    {!itemNameMatch && fmt(r.invoice_amount)}
+                  </td>
+                )
+                return <td key={c.key} className={isDayHead ? 'px-1.5 py-2' : 'px-1 py-1'} />
+              })}
             </tr>
             {editingRow}
             {editingId !== r.id && (!barsOnly || expandedIds.has(r.id)) && rows.map(line => (
@@ -874,11 +901,18 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
                     ) : line.item_name
                   ) : <span className="text-gray-400 italic">No items</span>}
                 </td>
-                <td className="px-1 py-1 align-top" />
-                <td className="px-1 py-1 align-top" />
-                <td className="px-1 py-1 text-right text-gray-700 align-top">{line ? (line.quantity ? parseFloat(line.quantity) : '—') : ''}</td>
-                <td className="px-1 py-1 text-right text-gray-700 align-top">{line ? fmt(line.item_price) : ''}</td>
-                <td className="px-1 py-1 text-right font-semibold text-gray-900 align-top">{line ? fmt(line.item_total) : ''}</td>
+                {colPrefs.shownColumns.map(c => {
+                  if (c.key === 'qty') return (
+                    <td key={c.key} className="px-1 py-1 text-right text-gray-700 align-top">{line ? (line.quantity ? parseFloat(line.quantity) : '—') : ''}</td>
+                  )
+                  if (c.key === 'sp') return (
+                    <td key={c.key} className="px-1 py-1 text-right text-gray-700 align-top">{line ? fmt(line.item_price) : ''}</td>
+                  )
+                  if (c.key === 'total') return (
+                    <td key={c.key} className="px-1 py-1 text-right font-semibold text-gray-900 align-top">{line ? fmt(line.item_total) : ''}</td>
+                  )
+                  return <td key={c.key} className="px-1 py-1 align-top" />
+                })}
               </tr>
             ))}
             </Fragment>

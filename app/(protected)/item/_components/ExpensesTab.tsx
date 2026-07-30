@@ -2,6 +2,7 @@
 import { Fragment, useState, useEffect, useMemo, useRef } from 'react'
 import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
+import { useColumnPrefs, ColumnsPickerButton, type ColumnDef, type ColumnPrefs } from './columnPrefs'
 
 type Expense = {
   id: number
@@ -57,6 +58,19 @@ const ACCOUNTS = ['Office Expenses','Rent','Utilities','Salaries','Transport','R
 const TH = 'text-left px-3 py-2 font-bold text-gray-400 text-[10px] uppercase tracking-wide border-b border-gray-200'
 const TD = 'px-3 py-2'
 
+// Date and Amt stay sticky/always-visible (first two columns); these five
+// are the only ones the picker can hide/reorder/rename. Account and Vendor
+// also get force-hidden while grouped by that same field (see hideAccount/
+// hideVendor below) -- that's independent of the picker's own choice.
+type ColKey = 'account' | 'description' | 'vendor' | 'source' | 'by'
+const EXPENSE_COLUMNS: ColumnDef<ColKey>[] = [
+  { key: 'account',     label: 'Account' },
+  { key: 'description', label: 'Description' },
+  { key: 'vendor',      label: 'Vendor' },
+  { key: 'source',      label: 'Source' },
+  { key: 'by',          label: 'By' },
+]
+
 type TableProps = {
   rows: Expense[]
   highlightId?: number | null
@@ -73,6 +87,7 @@ type TableProps = {
   onDeleteConfirm: (id: number) => void
   onDeleteCancel: () => void
   onPropertyFields: (e: Expense, updates: Partial<PropertyFields>) => void
+  colPrefs: ColumnPrefs<ColKey>
   hideAccount?: boolean
   hideVendor?: boolean
   accounts: string[]
@@ -131,8 +146,25 @@ function FilterHeaderCell({ label, options, value, onChange }: {
 }
 
 function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, saving, form, onEdit, onCloseEdit,
-  onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, onPropertyFields, hideAccount, hideVendor,
+  onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, onPropertyFields, colPrefs, hideAccount, hideVendor,
   accounts, vendors, accountFilter, vendorFilter, onAccountFilter, onVendorFilter }: TableProps) {
+  const visibleKeys = colPrefs.colOrder.filter(k => colPrefs.visibleCols.has(k)
+    && !(k === 'account' && hideAccount) && !(k === 'vendor' && hideVendor))
+
+  function headerCellFor(key: ColKey) {
+    const label = colPrefs.columnLabels[key] ?? EXPENSE_COLUMNS.find(c => c.key === key)!.label
+    if (key === 'account') return <FilterHeaderCell key={key} label={label} options={accounts} value={accountFilter} onChange={onAccountFilter} />
+    if (key === 'vendor') return <FilterHeaderCell key={key} label={label} options={vendors} value={vendorFilter} onChange={onVendorFilter} />
+    return <th key={key} className={TH}>{label}</th>
+  }
+  function bodyCellFor(key: ColKey, e: Expense) {
+    if (key === 'account') return <td key={key} className={`${TD} text-gray-900 font-semibold`}>{e.expense_account}</td>
+    if (key === 'description') return <td key={key} className={`${TD} text-gray-700`}>{e.description ?? '—'}</td>
+    if (key === 'vendor') return <td key={key} className={`${TD} text-gray-500`}>{e.vendor_name ?? '—'}</td>
+    if (key === 'source') return <td key={key} className={`${TD} text-gray-400`}>{e.source_sheet ?? e.source ?? '—'}</td>
+    return <td key={key} className={`${TD} text-blue-500`}>{e.entered_by ?? '—'}</td>
+  }
+
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
     <table className="w-full border-collapse text-xs">
@@ -140,15 +172,7 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
         <tr className="bg-gray-50">
           <th className={`${TH} whitespace-nowrap`}>Date</th>
           <th className={`${TH} text-right`}>Amt</th>
-          {!hideAccount && (
-            <FilterHeaderCell label="Account" options={accounts} value={accountFilter} onChange={onAccountFilter} />
-          )}
-          <th className={TH}>Description</th>
-          {!hideVendor && (
-            <FilterHeaderCell label="Vendor" options={vendors} value={vendorFilter} onChange={onVendorFilter} />
-          )}
-          <th className={TH}>Source</th>
-          <th className={TH}>By</th>
+          {visibleKeys.map(headerCellFor)}
         </tr>
       </thead>
       <tbody className="divide-y divide-gray-100">
@@ -159,15 +183,11 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
               className={`transition-colors ${e.amount_hidden ? '' : 'cursor-pointer'} ${highlightId === e.id ? 'bg-yellow-100' : i % 2 === 1 ? 'bg-gray-50' : 'bg-white'} hover:bg-blue-50/60`}>
               <td className={`${TD} text-gray-600 whitespace-nowrap`}>{fmtShort(e.expense_date)}</td>
               <td className={`${TD} text-right font-bold text-gray-900`}>{e.amount_hidden ? '🔒 Hidden' : `₵${fmt(e.amount)}`}</td>
-              {!hideAccount && <td className={`${TD} text-gray-900 font-semibold`}>{e.expense_account}</td>}
-              <td className={`${TD} text-gray-700`}>{e.description ?? '—'}</td>
-              {!hideVendor && <td className={`${TD} text-gray-500`}>{e.vendor_name ?? '—'}</td>}
-              <td className={`${TD} text-gray-400`}>{e.source_sheet ?? e.source ?? '—'}</td>
-              <td className={`${TD} text-blue-500`}>{e.entered_by ?? '—'}</td>
+              {visibleKeys.map(k => bodyCellFor(k, e))}
             </tr>
             {editId === e.id && (
               <tr className="bg-blue-50/40">
-                <td colSpan={7 - (hideAccount ? 1 : 0) - (hideVendor ? 1 : 0)} className="px-3 py-3">
+                <td colSpan={2 + visibleKeys.length} className="px-3 py-3">
                   <div className="grid grid-cols-2 gap-1 max-w-lg">
                     <div>
                       <p className="text-[9px] text-gray-400 mb-0.5">Date</p>
@@ -349,6 +369,7 @@ export default function ExpensesTab({ search }: Props) {
   // drops that side of the is_property split from the list.
   const [showProperties, setShowProperties] = useState(true)
   const [showNonProperties, setShowNonProperties] = useState(true)
+  const colPrefs = useColumnPrefs<ColKey>('expensesTable', EXPENSE_COLUMNS)
 
   function loadExpenses() {
     fetch('/api/expenses')
@@ -475,6 +496,7 @@ export default function ExpensesTab({ search }: Props) {
     onDeleteConfirm: deleteExpense,
     onDeleteCancel: () => setConfirmDeleteId(null),
     onPropertyFields: patchPropertyFields,
+    colPrefs,
     accounts: accountOptions,
     vendors: vendorOptions,
     accountFilter,
@@ -529,6 +551,7 @@ export default function ExpensesTab({ search }: Props) {
           History
         </button>
         <span className="ml-auto text-[9px] text-gray-400">{filtered.length} records</span>
+        <ColumnsPickerButton prefs={colPrefs} />
       </div>
 
       {showHistory && <HistoryPanel keywords={['expense']} onEntryClick={log => {

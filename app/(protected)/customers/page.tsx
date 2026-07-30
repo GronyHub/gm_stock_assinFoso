@@ -1,6 +1,7 @@
 'use client'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import LocationField from '@/components/LocationField'
+import { useColumnPrefs, ColumnsPickerButton, type ColumnDef } from '../item/_components/columnPrefs'
 
 type Customer = {
   id: number
@@ -32,6 +33,28 @@ function c(v: string | null | undefined) {
 
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-400'
 const labelCls = 'text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5 block'
+
+// Name stays sticky/always-visible (first column); these are the only ones
+// the picker can hide/reorder/rename.
+type ColKey = 'company' | 'phone' | 'email' | 'location' | 'status' | 'sales' | 'outstanding' | 'receiptCount'
+type CustomerColumn = ColumnDef<ColKey> & { align: 'left' | 'right'; tdClass: string; render: (v: Customer) => ReactNode }
+const CUSTOMER_COLUMNS: CustomerColumn[] = [
+  { key: 'company',  label: 'Company', align: 'left', tdClass: 'text-gray-600', render: v => v.company_name ?? '—' },
+  { key: 'phone',    label: 'Contact Number', align: 'left', tdClass: 'text-gray-600', render: v => v.phone ?? '—' },
+  { key: 'email',    label: 'Email Address', align: 'left', tdClass: 'text-gray-600', render: v => v.email ?? '—' },
+  { key: 'location', label: 'Location', align: 'left', tdClass: 'text-gray-600', render: v => v.location ?? '—' },
+  { key: 'status',   label: 'Status', align: 'left', tdClass: '', render: v => (
+      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${v.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+        {v.status ?? '—'}
+      </span>
+    ) },
+  { key: 'sales', label: 'Sales Amount', align: 'right', tdClass: 'font-semibold', render: v =>
+      parseFloat(v.receipt_total) > 0 ? <span className="text-gray-900">{c(v.receipt_total)}</span> : <span className="text-gray-300">—</span> },
+  { key: 'outstanding', label: 'Outstanding', align: 'right', tdClass: 'font-semibold', render: v =>
+      parseFloat(v.invoice_outstanding) > 0 ? <span className="text-red-500">{c(v.invoice_outstanding)}</span> : <span className="text-gray-300">—</span> },
+  { key: 'receiptCount', label: 'Receipts', align: 'right', tdClass: 'text-gray-500', render: v => v.receipt_count },
+]
+const CUSTOMER_COL_BY_KEY = new Map(CUSTOMER_COLUMNS.map(col => [col.key, col]))
 
 function NewCustomerForm({ onCreated, onCancel }: { onCreated: (c: Customer) => void; onCancel: () => void }) {
   const [displayName, setDisplayName] = useState('')
@@ -187,6 +210,7 @@ export default function CustomersPage({ openAddSignal, initialSearch }: { openAd
   const [selected, setSelected] = useState<Customer | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState(false)
+  const colPrefs = useColumnPrefs<ColKey>('customersTable', CUSTOMER_COLUMNS)
 
   // Driven by the RoleBar "+" shortcut menu.
   useEffect(() => {
@@ -239,6 +263,7 @@ export default function CustomersPage({ openAddSignal, initialSearch }: { openAd
         <h1 className="text-lg font-bold text-gray-900">Customers</h1>
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-400">{customers.length} contacts</span>
+          <ColumnsPickerButton prefs={colPrefs} />
           <button onClick={() => setShowForm(f => !f)}
             className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition
               ${showForm ? 'bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
@@ -352,48 +377,33 @@ export default function CustomersPage({ openAddSignal, initialSearch }: { openAd
             <thead>
               <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
                 <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap sticky left-0 z-10 bg-gray-50">Name</th>
-                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Company</th>
-                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Contact Number</th>
-                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Email Address</th>
-                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Location</th>
-                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Status</th>
-                <th className="text-right px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Sales Amount</th>
-                <th className="text-right px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Outstanding</th>
-                <th className="text-right px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Receipts</th>
+                {colPrefs.shownColumns.map(col => (
+                  <th key={col.key} className={`${CUSTOMER_COL_BY_KEY.get(col.key)!.align === 'right' ? 'text-right' : 'text-left'} px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap`}>
+                    {col.label}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filtered.map((v, i) => {
-                const sales = parseFloat(v.receipt_total)
-                const outstanding = parseFloat(v.invoice_outstanding)
-                return (
-                  <tr key={v.id} onClick={() => { setSelected(v === selected ? null : v); setEditingCustomer(false) }}
-                    className={`cursor-pointer transition ${selected?.id === v.id ? 'bg-blue-50' : i % 2 === 1 ? 'bg-gray-50/60 hover:bg-blue-50/40' : 'hover:bg-blue-50/40'}`}>
-                    <td className="px-3 py-2 font-semibold text-gray-900 whitespace-nowrap sticky left-0 z-[1] bg-inherit">
-                      {v.is_internal && (
-                        <span className="mr-1 text-[9px] bg-purple-100 text-purple-700 font-bold px-1.5 py-0.5 rounded-full align-middle">INT</span>
-                      )}
-                      {v.display_name}
-                    </td>
-                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{v.company_name ?? '—'}</td>
-                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{v.phone ?? '—'}</td>
-                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{v.email ?? '—'}</td>
-                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{v.location ?? '—'}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${v.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                        {v.status ?? '—'}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-right font-semibold whitespace-nowrap">
-                      {sales > 0 ? <span className="text-gray-900">{c(v.receipt_total)}</span> : <span className="text-gray-300">—</span>}
-                    </td>
-                    <td className="px-3 py-2 text-right font-semibold whitespace-nowrap">
-                      {outstanding > 0 ? <span className="text-red-500">{c(v.invoice_outstanding)}</span> : <span className="text-gray-300">—</span>}
-                    </td>
-                    <td className="px-3 py-2 text-right text-gray-500 whitespace-nowrap">{v.receipt_count}</td>
-                  </tr>
-                )
-              })}
+              {filtered.map((v, i) => (
+                <tr key={v.id} onClick={() => { setSelected(v === selected ? null : v); setEditingCustomer(false) }}
+                  className={`cursor-pointer transition ${selected?.id === v.id ? 'bg-blue-50' : i % 2 === 1 ? 'bg-gray-50/60 hover:bg-blue-50/40' : 'hover:bg-blue-50/40'}`}>
+                  <td className="px-3 py-2 font-semibold text-gray-900 whitespace-nowrap sticky left-0 z-[1] bg-inherit">
+                    {v.is_internal && (
+                      <span className="mr-1 text-[9px] bg-purple-100 text-purple-700 font-bold px-1.5 py-0.5 rounded-full align-middle">INT</span>
+                    )}
+                    {v.display_name}
+                  </td>
+                  {colPrefs.shownColumns.map(col => {
+                    const meta = CUSTOMER_COL_BY_KEY.get(col.key)!
+                    return (
+                      <td key={col.key} className={`px-3 py-2 whitespace-nowrap ${meta.align === 'right' ? 'text-right' : ''} ${meta.tdClass}`}>
+                        {meta.render(v)}
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
             </tbody>
           </table>
         )}

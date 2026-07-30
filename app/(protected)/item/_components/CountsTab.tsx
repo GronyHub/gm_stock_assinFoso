@@ -7,7 +7,20 @@ import { usePolling } from '@/lib/usePolling'
 import { isOwnerLevel } from '@/lib/roles'
 import HistoryPanel from './HistoryPanel'
 import { AnalyticsToggle } from './analyticsShared'
+import { useColumnPrefs, ColumnsPickerButton, type ColumnDef } from './columnPrefs'
 const CountsAnalyticsSection = dynamic(() => import('./CountsAnalyticsSection'), { ssr: false })
+
+// Date and Item stay sticky/always-visible (first two columns), and the
+// Edit/Delete actions column stays fixed at the end; these five are the
+// only ones the picker can hide/reorder/rename.
+type ColKey = 'group' | 'qty' | 'by' | 'src' | 'notes'
+const COUNTS_COLUMNS: ColumnDef<ColKey>[] = [
+  { key: 'group', label: 'GROUP' },
+  { key: 'qty',   label: 'QTY' },
+  { key: 'by',    label: 'BY' },
+  { key: 'src',   label: 'SRC' },
+  { key: 'notes', label: 'NOTES' },
+]
 
 type Item = { id: number; item_name: string; cf_group: string | null; product_type?: string | null }
 
@@ -386,6 +399,7 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
   const promptLoss = (d: any, retry: (extra: LossExtra) => void) => setLossPrompt({ d, retry })
   const [pairingPrompt, setPairingPrompt] = useState<PairingPrompt | null>(null)
   const promptPairing = (itemName: string, packs: PackRef[], retry: () => void) => setPairingPrompt({ itemName, packs, retry })
+  const colPrefs = useColumnPrefs<ColKey>('countsTable', COUNTS_COLUMNS)
 
   function loadRecords() {
     fetch('/api/stock/counts').then(r => r.json()).then(d => { setRecords(d); setLoading(false) })
@@ -584,6 +598,7 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
           className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700 transition">
           History
         </button>
+        <ColumnsPickerButton prefs={colPrefs} />
         </>}
       </div>
       {showAnalytics && (
@@ -601,11 +616,9 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
             <tr>
               <th className="text-left px-1 py-1 font-semibold text-gray-700 border border-black whitespace-nowrap">DATE</th>
               <th className="text-left px-1 py-1 font-semibold text-gray-700 border border-black">ITEM</th>
-              <th className="text-left px-1 py-1 font-semibold text-gray-700 border border-black">GROUP</th>
-              <th className="text-center px-1 py-1 font-semibold text-gray-700 border border-black">QTY</th>
-              <th className="text-left px-1 py-1 font-semibold text-gray-700 border border-black">BY</th>
-              <th className="text-left px-1 py-1 font-semibold text-gray-700 border border-black">SRC</th>
-              <th className="text-left px-1 py-1 font-semibold text-gray-700 border border-black">NOTES</th>
+              {colPrefs.shownColumns.map(c => (
+                <th key={c.key} className={`${c.key === 'qty' ? 'text-center' : 'text-left'} px-1 py-1 font-semibold text-gray-700 border border-black`}>{c.label}</th>
+              ))}
               <th className="px-1 py-1 border border-black" />
             </tr>
           </thead>
@@ -620,11 +633,13 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
                       <Link href={`/stock/${r.item_id}`} className="text-blue-600 hover:underline">{r.item_name}</Link>
                     ) : r.item_name}
                   </td>
-                  <td className="px-1 py-1 text-gray-500 border border-black">{r.cf_group ?? '—'}</td>
-                  <td className="px-1 py-1 text-center font-bold text-gray-900 border border-black">{Number(r.quantity_counted)}</td>
-                  <td className="px-1 py-1 text-blue-500 border border-black">{r.counted_by ?? '—'}</td>
-                  <td className="px-1 py-1 text-gray-500 border border-black">{r.source ?? '—'}</td>
-                  <td className="px-1 py-1 text-gray-500 italic border border-black">{r.notes ?? '—'}</td>
+                  {colPrefs.shownColumns.map(c => {
+                    if (c.key === 'group') return <td key={c.key} className="px-1 py-1 text-gray-500 border border-black">{r.cf_group ?? '—'}</td>
+                    if (c.key === 'qty') return <td key={c.key} className="px-1 py-1 text-center font-bold text-gray-900 border border-black">{Number(r.quantity_counted)}</td>
+                    if (c.key === 'by') return <td key={c.key} className="px-1 py-1 text-blue-500 border border-black">{r.counted_by ?? '—'}</td>
+                    if (c.key === 'src') return <td key={c.key} className="px-1 py-1 text-gray-500 border border-black">{r.source ?? '—'}</td>
+                    return <td key={c.key} className="px-1 py-1 text-gray-500 italic border border-black">{r.notes ?? '—'}</td>
+                  })}
                   <td className="px-1 py-1 border border-black">
                     <div className="flex gap-0.5 justify-end whitespace-nowrap">
                       <button onClick={() => editingId === r.id ? setEditingId(null) : startEdit(r)}
@@ -642,7 +657,7 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
                 </tr>
                 {editingId === r.id && (
                   <tr key={`edit-${r.id}`} className="bg-blue-50/40 border-b border-blue-200">
-                    <td colSpan={8} className="px-2 py-2">
+                    <td colSpan={3 + colPrefs.shownColumns.length} className="px-2 py-2">
                       <div className="flex items-end gap-2 flex-wrap">
                         <div>
                           <p className="text-[9px] text-gray-400 mb-0.5">Qty Counted</p>

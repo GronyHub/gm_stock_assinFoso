@@ -2,6 +2,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { fmtDate } from '@/lib/fmtDate'
+import { useColumnPrefs, ColumnsPickerButton, type ColumnDef } from './columnPrefs'
+
+// Date + Item stay sticky/always-visible; these four are the only ones the
+// picker can hide/reorder/rename. Labels flip between Loss/Gain wording
+// depending on `kind`, same as the header already did.
+type ColKey = 'expected' | 'counted' | 'lossQty' | 'lossAmt'
 
 type LossEvent = {
   date: string
@@ -24,6 +30,14 @@ export default function LossFeedTab({ search, kind = 'loss' }: { search: string;
   const [events, setEvents] = useState<LossEvent[]>([])
   const [loading, setLoading] = useState(true)
   const isGain = kind === 'gain'
+  const columns: (ColumnDef<ColKey> & { title: string })[] = [
+    { key: 'expected', label: 'EXP', title: 'Stock the records expected on that day' },
+    { key: 'counted',  label: 'CNT', title: 'What was physically counted' },
+    { key: 'lossQty',  label: isGain ? 'GAIN' : 'LOSS', title: isGain ? 'Counted minus expected — should always be 0' : 'Expected minus counted' },
+    { key: 'lossAmt',  label: isGain ? 'GAIN ₵' : 'LOSS ₵', title: 'Valued in cedis (4x6 papers at ₵20/sheet; other items at selling price)' },
+  ]
+  const colPrefs = useColumnPrefs<ColKey>(`lossFeed_${kind}`, columns)
+  const colByKey = new Map(columns.map(c => [c.key, c]))
 
   useEffect(() => {
     fetch(`/api/losses/events${isGain ? '?kind=gain' : ''}`)
@@ -54,7 +68,10 @@ export default function LossFeedTab({ search, kind = 'loss' }: { search: string;
             ? `⚠ ${filtered.length} gain${filtered.length === 1 ? '' : 's'} on record — all should be 0; each one is a missing bill/GMC or a count error to fix`
             : `${filtered.length} loss${filtered.length === 1 ? '' : 'es'} detected`}
         </p>
-        <p className={`text-[10px] font-bold shrink-0 ${isGain ? 'text-amber-800' : 'text-red-800'}`}>Total: ₵{fmtN(parseFloat(totalAmt.toFixed(2)))}</p>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <p className={`text-[10px] font-bold ${isGain ? 'text-amber-800' : 'text-red-800'}`}>Total: ₵{fmtN(parseFloat(totalAmt.toFixed(2)))}</p>
+          <ColumnsPickerButton prefs={colPrefs} />
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto min-h-0">
         {filtered.length === 0 ? (
@@ -67,10 +84,14 @@ export default function LossFeedTab({ search, kind = 'loss' }: { search: string;
               <tr className={`${isGain ? 'bg-amber-500' : 'bg-red-600'} text-white font-bold`}>
                 <th className="text-left px-1.5 py-1 whitespace-nowrap">DATE</th>
                 <th className="text-left px-1.5 py-1">ITEM</th>
-                <th className="text-center px-1 py-1" title="Stock the records expected on that day">EXP</th>
-                <th className="text-center px-1 py-1" title="What was physically counted">CNT</th>
-                <th className="text-center px-1 py-1" title={isGain ? 'Counted minus expected — should always be 0' : 'Expected minus counted'}>{isGain ? 'GAIN' : 'LOSS'}</th>
-                <th className="text-right px-1.5 py-1" title="Valued in cedis (4x6 papers at ₵20/sheet; other items at selling price)">{isGain ? 'GAIN ₵' : 'LOSS ₵'}</th>
+                {colPrefs.shownColumns.map(c => {
+                  const meta = colByKey.get(c.key)!
+                  return (
+                    <th key={c.key} className={c.key === 'lossAmt' ? 'text-right px-1.5 py-1' : 'text-center px-1 py-1'} title={meta.title}>
+                      {c.label}
+                    </th>
+                  )
+                })}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -84,10 +105,12 @@ export default function LossFeedTab({ search, kind = 'loss' }: { search: string;
                     <td className="px-1.5 py-1 font-semibold text-gray-900">
                       <Link href={`/stock/${e.item_id}`} className="text-blue-600 hover:underline">{e.item_name}</Link>
                     </td>
-                    <td className="px-1 py-1 text-center text-gray-500">{fmtN(e.expected)}</td>
-                    <td className="px-1 py-1 text-center text-gray-900 font-semibold">{fmtN(e.counted)}</td>
-                    <td className={`px-1 py-1 text-center font-bold ${valueCls}`}>{sign}{fmtN(e.loss_qty)}</td>
-                    <td className={`px-1.5 py-1 text-right font-bold whitespace-nowrap ${valueCls}`}>{sign}₵{fmtN(e.loss_amt)}</td>
+                    {colPrefs.shownColumns.map(c => {
+                      if (c.key === 'expected') return <td key={c.key} className="px-1 py-1 text-center text-gray-500">{fmtN(e.expected)}</td>
+                      if (c.key === 'counted') return <td key={c.key} className="px-1 py-1 text-center text-gray-900 font-semibold">{fmtN(e.counted)}</td>
+                      if (c.key === 'lossQty') return <td key={c.key} className={`px-1 py-1 text-center font-bold ${valueCls}`}>{sign}{fmtN(e.loss_qty)}</td>
+                      return <td key={c.key} className={`px-1.5 py-1 text-right font-bold whitespace-nowrap ${valueCls}`}>{sign}₵{fmtN(e.loss_amt)}</td>
+                    })}
                   </tr>
                 )
               })}
