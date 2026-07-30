@@ -233,17 +233,17 @@ export default function GronyManageTab({
         })}
 
         {dynamicCategories.length > 0 && (
-          <div className="mt-1 pt-1 border-t border-gray-200">
+          <div className="mt-1 pt-1 border-t border-blue-700">
             {displayMode !== 'icon' && (
-              <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-gray-400 uppercase tracking-wide">Added by you</p>
+              <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Added by you</p>
             )}
             {dynamicCategories.map(c => (
-              <div key={c.id} className={`flex items-stretch ${activeDynamicId === c.id ? 'bg-blue-100' : ''}`}>
+              <div key={c.id} className={`flex items-stretch ${activeDynamicId === c.id ? 'bg-white' : ''}`}>
                 <SidePaneButton icon="🗂️" label={c.label} mode={displayMode} className="flex-1 min-w-0"
                   active={activeDynamicId === c.id} onClick={() => pickDynamic(c.id)} />
                 {canManage && (
                   <button onClick={() => removeCategory(c.id, c.label)} title="Delete category"
-                    className="shrink-0 px-1.5 pt-2 text-gray-300 hover:text-red-500 font-bold text-xs">×</button>
+                    className={`shrink-0 px-1.5 pt-2 font-bold text-xs ${activeDynamicId === c.id ? 'text-gray-300 hover:text-red-500' : 'text-blue-200 hover:text-red-300'}`}>×</button>
                 )}
               </div>
             ))}
@@ -251,26 +251,26 @@ export default function GronyManageTab({
         )}
 
         {canManage && (
-          <div className="mt-1 pt-1 border-t border-gray-200 px-1.5 pb-2">
+          <div className="mt-1 pt-1 border-t border-blue-700 px-1.5 pb-2">
             {showAddCategory ? (
               <form onSubmit={addCategory} className="space-y-1 py-1">
                 <input autoFocus value={newCategoryLabel} onChange={e => setNewCategoryLabel(e.target.value)}
                   placeholder="Name *"
-                  className="w-full text-[10px] bg-white border border-gray-300 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+                  className="w-full text-[10px] bg-white border border-blue-300 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
                 <div className="flex items-center gap-1">
                   <button type="submit" disabled={savingCategory || !newCategoryLabel.trim()}
-                    className="flex-1 text-[10px] font-semibold px-1.5 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 transition">
+                    className="flex-1 text-[10px] font-semibold px-1.5 py-1 rounded bg-white text-blue-700 hover:bg-blue-50 disabled:opacity-40 transition">
                     {savingCategory ? '…' : 'Add'}
                   </button>
                   <button type="button" onClick={() => { setShowAddCategory(false); setNewCategoryLabel('') }}
-                    className="text-[10px] font-semibold px-1.5 py-1 rounded bg-gray-200 text-gray-600 hover:bg-gray-300 transition">
+                    className="text-[10px] font-semibold px-1.5 py-1 rounded bg-white/20 text-white hover:bg-white/30 transition">
                     ✕
                   </button>
                 </div>
               </form>
             ) : (
               <SidePaneButton icon="➕" label="Add Category" mode={displayMode} active={false}
-                onClick={() => setShowAddCategory(true)} className="w-full text-blue-600 hover:bg-blue-50 font-semibold" />
+                onClick={() => setShowAddCategory(true)} className="w-full text-white hover:bg-white/10 font-semibold" />
             )}
             {justAddedCategory && (
               <p className="text-center pt-1"><SavedFlash show /></p>
