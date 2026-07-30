@@ -83,94 +83,88 @@ function StandardStaffTabs({ staffName, role, username, openAddSignal }: {
   )
 }
 
-type BuilderLevel = 'top' | 'personal' | 'othersList' | 'othersPerson' | 'build' | 'allStaff' | 'users'
+type BuilderTab = ViewTab | 'TeamPayslips' | 'Rota' | 'AllStaff' | 'Users'
 
-const TOP_ITEMS = [
-  { key: 'personal', label: 'Personal', icon: '🙋' },
-  { key: 'others', label: 'Others', icon: '👥' },
-  { key: 'build', label: 'Build', icon: '🛠️' },
-  { key: 'allStaff', label: 'All Staff', icon: '🏢' },
-  { key: 'users', label: 'Users', icon: '🔑' },
-] as const
+const TEAM_ITEMS: { key: BuilderTab; label: string; icon: string }[] = [
+  { key: 'TeamPayslips', label: 'Team Payslips', icon: '💵' },
+  { key: 'Rota',         label: 'Rota',          icon: '🗓️' },
+  { key: 'AllStaff',     label: 'All Staff',     icon: '🏢' },
+]
 
-// Joe/Grony's page. Deliberately ONE pane at a time, not one pane per
-// navigation level stacked side by side -- on a phone that ate the entire
-// screen width and left no room for content at all. Picking "Others" (or
-// "Build") swaps the same pane's contents for that level's list instead of
-// opening a second pane next to it; a "← Back" entry at the top steps back
-// out one level, same as a drill-down list in a settings app. Personal is
-// the default landing (Times shown first), matching the old default.
+// Joe/Grony's page. One flat, always-visible list -- no drill-down levels
+// and no "← Back" button to step back out of one. "Viewing" (who the
+// person-scoped tabs below it apply to) and the tabs themselves are two
+// independent choices sitting side by side in the same pane, rather than
+// picking a person hiding everything else the way the old
+// Personal/Others/Build/All Staff levels did.
 function BuilderStaffTabs({ staffName, role, username, openAddSignal }: {
   staffName: string; role: string; username: string; openAddSignal?: number
 }) {
   const others = ALL_STAFF_NAMES.filter(n => n.toLowerCase() !== staffName.toLowerCase())
-  const [level, setLevel] = useState<BuilderLevel>('personal')
-  const [selectedOther, setSelectedOther] = useState(others[0])
-  const [tab, setTab] = useState<ViewTab>('Times')
-  const [buildTab, setBuildTab] = useState<'Payslips' | 'Rota'>('Payslips')
+  const [viewingName, setViewingName] = useState(staffName)
+  const [tab, setTab] = useState<BuilderTab>('Times')
   const [vtab, setVtab] = useState<ViolationView>('Disciplinary')
   const [teamVtab, setTeamVtab] = useState<ViolationView>('Disciplinary')
   const [mode, changeMode] = useSidePaneDisplayMode()
 
-  const isSelf = level !== 'othersPerson'
-  const viewingName = isSelf ? staffName : selectedOther
-  const viewTabs: { key: ViewTab; icon: string }[] = isSelf ? [...VIEW_TABS, { key: 'Profile', icon: '👤' }] : [...VIEW_TABS]
+  const isSelf = viewingName.toLowerCase() === staffName.toLowerCase()
+
+  // Profile only ever means "my own login" -- switching to someone else's
+  // name while it's showing has nowhere sensible to land, so fall back to
+  // Times instead of leaving the content area blank.
+  function pickViewing(name: string) {
+    setViewingName(name)
+    if (tab === 'Profile' && name.toLowerCase() !== staffName.toLowerCase()) setTab('Times')
+  }
 
   return (
     <div className="flex h-full min-h-0">
       <SidePaneContainer mode={mode}>
         <SidePaneToggle mode={mode} onChange={changeMode} />
 
-        {level === 'top' && TOP_ITEMS.map(t => (
-          <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={mode} active={false}
-            onClick={() => setLevel(
-              t.key === 'personal' ? 'personal' :
-              t.key === 'others' ? 'othersList' :
-              t.key === 'build' ? 'build' :
-              t.key === 'allStaff' ? 'allStaff' : 'users'
-            )} />
+        {mode !== 'icon' && <p className="px-2 pt-2 pb-0.5 text-[9px] font-bold text-blue-200 uppercase tracking-wide">Viewing</p>}
+        <SidePaneButton icon="🙋" label="Me" mode={mode} active={isSelf} onClick={() => pickViewing(staffName)} />
+        {others.map(name => (
+          <SidePaneButton key={name} icon="👤" label={name} mode={mode}
+            active={viewingName === name} onClick={() => pickViewing(name)} />
         ))}
 
-        {level !== 'top' && (
-          <SidePaneButton icon="←" label="Back" mode={mode} active={false}
-            onClick={() => setLevel(level === 'othersPerson' ? 'othersList' : 'top')} />
-        )}
+        <div className="mt-1 pt-1 border-t border-blue-700">
+          {VIEW_TABS.map(t => (
+            <SidePaneButton key={t.key} icon={t.icon} label={t.key} mode={mode}
+              active={tab === t.key} onClick={() => setTab(t.key)} />
+          ))}
+          {isSelf && (
+            <SidePaneButton icon="👤" label="Profile" mode={mode} active={tab === 'Profile'} onClick={() => setTab('Profile')} />
+          )}
+        </div>
 
-        {(level === 'personal' || level === 'othersPerson') && viewTabs.map(t => (
-          <SidePaneButton key={t.key} icon={t.icon} label={t.key} mode={mode}
-            active={tab === t.key} onClick={() => setTab(t.key)} />
-        ))}
+        <div className="mt-1 pt-1 border-t border-blue-700">
+          {mode !== 'icon' && <p className="px-2 pb-0.5 text-[9px] font-bold text-blue-200 uppercase tracking-wide">Team</p>}
+          {TEAM_ITEMS.map(t => (
+            <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={mode}
+              active={tab === t.key} onClick={() => setTab(t.key)} />
+          ))}
+        </div>
 
-        {level === 'othersList' && others.map(name => (
-          <SidePaneButton key={name} icon="👤" label={name} mode={mode} active={false}
-            onClick={() => { setSelectedOther(name); setTab('Times'); setVtab('Disciplinary'); setLevel('othersPerson') }} />
-        ))}
-
-        {level === 'build' && (<>
-          <SidePaneButton icon="💵" label="Payslips" mode={mode} active={buildTab === 'Payslips'} onClick={() => setBuildTab('Payslips')} />
-          <SidePaneButton icon="🗓️" label="Rota" mode={mode} active={buildTab === 'Rota'} onClick={() => setBuildTab('Rota')} />
-        </>)}
+        <div className="mt-1 pt-1 border-t border-blue-700">
+          <SidePaneButton icon="🔑" label="Users" mode={mode} active={tab === 'Users'} onClick={() => setTab('Users')} />
+        </div>
 
         <PaneFooter mode={mode} />
       </SidePaneContainer>
 
       <div className="flex-1 min-w-0 overflow-y-auto px-2 py-3">
-        {level === 'top' && <p className="text-center text-gray-400 text-sm py-10">Pick a section on the left.</p>}
-        {(level === 'personal' || level === 'othersPerson') && (<>
-          {tab === 'Times' && <TimesTab username={username} role={role} openAddSignal={isSelf ? openAddSignal : undefined} />}
-          {tab === 'Payslips' && <PayslipsTab role={role} username={username} viewingStaff={viewingName} />}
-          {tab === 'Violations' && <ViolationsTab role={role} username={username} vtab={vtab} setVtab={setVtab} viewingStaff={viewingName} />}
-          {tab === 'Analytics' && <AnalyticsTab viewingStaff={viewingName} />}
-          {tab === 'Assignments' && <AssignmentsTab role={role} username={username} viewingStaff={viewingName} />}
-          {tab === 'Profile' && isSelf && <ProfileTab />}
-        </>)}
-        {level === 'othersList' && <p className="text-center text-gray-400 text-sm py-10">Pick a name on the left.</p>}
-        {level === 'build' && (<>
-          {buildTab === 'Payslips' && <PayslipsTab role={role} username={username} />}
-          {buildTab === 'Rota' && <RotaTab canManage={true} />}
-        </>)}
-        {level === 'allStaff' && <ViolationsTab role={role} username={username} vtab={teamVtab} setVtab={setTeamVtab} />}
-        {level === 'users' && <UsersPage />}
+        {tab === 'Times' && <TimesTab username={username} role={role} openAddSignal={isSelf ? openAddSignal : undefined} />}
+        {tab === 'Payslips' && <PayslipsTab role={role} username={username} viewingStaff={viewingName} />}
+        {tab === 'Violations' && <ViolationsTab role={role} username={username} vtab={vtab} setVtab={setVtab} viewingStaff={viewingName} />}
+        {tab === 'Analytics' && <AnalyticsTab viewingStaff={viewingName} />}
+        {tab === 'Assignments' && <AssignmentsTab role={role} username={username} viewingStaff={viewingName} />}
+        {tab === 'Profile' && isSelf && <ProfileTab />}
+        {tab === 'TeamPayslips' && <PayslipsTab role={role} username={username} />}
+        {tab === 'Rota' && <RotaTab canManage={true} />}
+        {tab === 'AllStaff' && <ViolationsTab role={role} username={username} vtab={teamVtab} setVtab={setTeamVtab} />}
+        {tab === 'Users' && <UsersPage />}
       </div>
     </div>
   )
