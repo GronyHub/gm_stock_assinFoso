@@ -965,9 +965,13 @@ function ItemHubPageInner() {
         <div className="relative flex-1 min-w-0 min-h-0 flex flex-col">
           {outerTab === 'loss' && (
             <div className="shrink-0 bg-green-800 border-b border-green-900">
-              {/* Row 2: groups + violations + search — hidden on report-style submenus */}
+              {/* Row 2: groups + violations + search — hidden on report-style submenus.
+                  Groups/Search share their own line, and Columns/Analytics/New share a
+                  second one below -- crammed onto one line together they were fighting
+                  each other for width, squeezing Search down to nothing on a phone. */}
               {showControls && (
-                <div className="flex items-center gap-1.5 px-2 py-1.5">
+                <div className="flex flex-col gap-1.5 px-2 py-1.5">
+                <div className="flex items-center gap-1.5">
 
                   {/* Groups dropdown */}
                   <div className="relative shrink-0" ref={groupRef}>
@@ -1054,38 +1058,42 @@ function ItemHubPageInner() {
                       </div>
                     )}
                   </div>
+                </div>
 
-                  {/* Columns picker -- Items submenu only, next to New since it's
-                      the same kind of per-view control. Drives LossTab's column
-                      visibility/order (lifted up here, see itemsColPrefs above)
-                      rather than living inside LossTab itself. */}
-                  {lossView === 'items' && <ColumnsPickerButton prefs={itemsColPrefs} dark />}
+                {['items', 'sales', 'bills', 'expenses'].includes(lossView) && (
+                  <div className="flex items-center gap-1.5">
 
-                  {/* Analytics toggle -- swaps this submenu's normal list for the
-                      charts/trends that used to live under the removed "Data"
-                      tab. Items also carries Violations' charts (no single tab of
-                      its own to move those into); Loss and Counts get the same
-                      toggle inside their own components instead of here. */}
-                  {['items', 'sales', 'bills', 'expenses'].includes(lossView) && (
+                    {/* Columns picker -- Items submenu only, next to New since it's
+                        the same kind of per-view control. Drives LossTab's column
+                        visibility/order (lifted up here, see itemsColPrefs above)
+                        rather than living inside LossTab itself. */}
+                    {lossView === 'items' && <ColumnsPickerButton prefs={itemsColPrefs} dark />}
+
+                    {/* Analytics toggle -- swaps this submenu's normal list for the
+                        charts/trends that used to live under the removed "Data"
+                        tab. Items also carries Violations' charts (no single tab of
+                        its own to move those into); Loss and Counts get the same
+                        toggle inside their own components instead of here. */}
                     <button onClick={() => { setShowAnalytics(a => !a); setAddForm(null); setViolation(null) }}
                       className={`shrink-0 flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg transition
                         ${showAnalytics ? 'bg-blue-600 text-white' : 'text-white hover:bg-white/10'}`}>
                       📊 {showAnalytics ? 'List' : 'Analytics'}
                     </button>
-                  )}
 
-                  {/* New button — Items/Sales/Bills/Expenses/PO submenus only; report-style and Counts submenus have no add-form */}
-                  {!showAnalytics && ['items', 'sales', 'bills', 'expenses'].includes(lossView) && (() => {
-                    const formKey = lossView === 'items' ? 'item' : lossView === 'sales' ? 'sale' : lossView === 'bills' ? 'bill' : 'expense'
-                    return (
-                      <button onClick={() => setAddForm(addForm === formKey ? null : formKey)}
-                        className={`shrink-0 text-xs font-semibold px-3 py-1 rounded-lg transition
-                          ${addForm ? 'bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
-                        {addForm ? '×' : 'New'}
-                      </button>
-                    )
-                  })()}
-                </div>
+                    {/* New button — Items/Sales/Bills/Expenses/PO submenus only; report-style and Counts submenus have no add-form */}
+                    {!showAnalytics && (() => {
+                      const formKey = lossView === 'items' ? 'item' : lossView === 'sales' ? 'sale' : lossView === 'bills' ? 'bill' : 'expense'
+                      return (
+                        <button onClick={() => setAddForm(addForm === formKey ? null : formKey)}
+                          className={`shrink-0 ml-auto text-xs font-semibold px-3 py-1 rounded-lg transition
+                            ${addForm ? 'bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
+                          {addForm ? '×' : 'New'}
+                        </button>
+                      )
+                    })()}
+                  </div>
+                )}
+              </div>
               )}
             </div>
           )}
