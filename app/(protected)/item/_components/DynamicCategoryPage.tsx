@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import ManageLogPanel from './ManageLogPanel'
 import ContentPage from './ContentPage'
 import DynamicTasksSection from './DynamicTasksSection'
+import SavedFlash from './SavedFlash'
 
 type ContentType = 'log' | 'notes' | 'tasks'
 type CategoryTab = { id: number; category_id: number; label: string; content_type: ContentType }
@@ -28,6 +29,7 @@ export default function DynamicCategoryPage({ categoryId, categoryLabel, canMana
   const [newLabel, setNewLabel] = useState('')
   const [newType, setNewType] = useState<ContentType>('log')
   const [saving, setSaving] = useState(false)
+  const [justAdded, setJustAdded] = useState(false)
 
   function load() {
     fetch(`/api/manage-category-tabs?category_id=${categoryId}`).then(r => r.ok ? r.json() : []).then(d => {
@@ -53,6 +55,8 @@ export default function DynamicCategoryPage({ categoryId, categoryLabel, canMana
       setNewLabel(''); setNewType('log'); setShowAddTab(false)
       load()
       setActiveTabId(row.id)
+      setJustAdded(true)
+      setTimeout(() => setJustAdded(false), 2500)
     }
   }
 
@@ -83,6 +87,7 @@ export default function DynamicCategoryPage({ categoryId, categoryLabel, canMana
               + Tab
             </button>
           )}
+          {justAdded && <SavedFlash show />}
         </div>
       )}
 

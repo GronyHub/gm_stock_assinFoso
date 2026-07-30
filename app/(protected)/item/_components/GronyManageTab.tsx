@@ -7,6 +7,7 @@ import ContentPage from './ContentPage'
 import AdvertStatusPanel from './AdvertStatusPanel'
 import AssessmentPanel from './AssessmentPanel'
 import DynamicCategoryPage from './DynamicCategoryPage'
+import SavedFlash from './SavedFlash'
 import { SidePaneContainer, SidePaneToggle, SidePaneButton, useSidePaneDisplayMode } from './SidePane'
 
 // Staff (Times/Payslips/Violations/Role/Analytics/Assignments) moved to its
@@ -85,6 +86,7 @@ export default function GronyManageTab({ initialView, role, username }: { initia
   const [showAddCategory, setShowAddCategory] = useState(false)
   const [newCategoryLabel, setNewCategoryLabel] = useState('')
   const [savingCategory, setSavingCategory] = useState(false)
+  const [justAddedCategory, setJustAddedCategory] = useState(false)
   const [displayMode, changeDisplayMode] = useSidePaneDisplayMode()
   // Same gate throughout this file -- Rota's edit controls, and adding/
   // removing a category or one of its tabs, are all owner-level only.
@@ -131,6 +133,8 @@ export default function GronyManageTab({ initialView, role, username }: { initia
       setNewCategoryLabel(''); setShowAddCategory(false)
       loadDynamicCategories()
       setActiveDynamicId(row.id)
+      setJustAddedCategory(true)
+      setTimeout(() => setJustAddedCategory(false), 2500)
     }
   }
 
@@ -193,6 +197,9 @@ export default function GronyManageTab({ initialView, role, username }: { initia
             ) : (
               <SidePaneButton icon="➕" label="Add Category" mode={displayMode} active={false}
                 onClick={() => setShowAddCategory(true)} className="w-full text-blue-600 hover:bg-blue-50 font-semibold" />
+            )}
+            {justAddedCategory && (
+              <p className="text-center pt-1"><SavedFlash show /></p>
             )}
           </div>
         )}

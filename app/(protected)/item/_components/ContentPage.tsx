@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { fmtDate } from '@/lib/fmtDate'
+import SavedFlash from './SavedFlash'
 
 type Content = { key: string; body: string; updated_by: string | null; updated_at: string | null }
 
@@ -53,6 +54,7 @@ export default function ContentPage({ contentKey, title }: { contentKey: string;
   const [draft, setDraft] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [justSaved, setJustSaved] = useState(false)
 
   function load() {
     fetch(`/api/manage-content?key=${contentKey}`)
@@ -80,6 +82,8 @@ export default function ContentPage({ contentKey, title }: { contentKey: string;
       if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? 'Failed to save') }
       setEditing(false)
       load()
+      setJustSaved(true)
+      setTimeout(() => setJustSaved(false), 2500)
     } catch (e: any) {
       setError(e.message ?? 'Failed to save')
     } finally {
@@ -93,11 +97,14 @@ export default function ContentPage({ contentKey, title }: { contentKey: string;
     <div className="py-2 px-2 space-y-2">
       <div className="flex items-center justify-between">
         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{title}</p>
-        {canEdit && !editing && (
-          <button onClick={startEdit} className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100">
-            Edit
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <SavedFlash show={justSaved} />
+          {canEdit && !editing && (
+            <button onClick={startEdit} className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100">
+              Edit
+            </button>
+          )}
+        </div>
       </div>
 
       {editing ? (

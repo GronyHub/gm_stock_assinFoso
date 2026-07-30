@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { usePolling } from '@/lib/usePolling'
 import { fmtDate } from '@/lib/fmtDate'
+import SavedFlash from './SavedFlash'
 
 type LogEntry = {
   id: number
@@ -25,6 +26,7 @@ export default function ManageLogPanel({ category, label, icon }: { category: st
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
+  const [justSaved, setJustSaved] = useState(false)
 
   function load() {
     fetch(`/api/manage-logs?category=${category}`)
@@ -66,6 +68,8 @@ export default function ManageLogPanel({ category, label, icon }: { category: st
       setNotes('')
       setPhotoUrl(null)
       load()
+      setJustSaved(true)
+      setTimeout(() => setJustSaved(false), 2500)
     } catch (e: any) {
       setError(e.message ?? 'Failed to save')
     } finally {
@@ -104,6 +108,7 @@ export default function ManageLogPanel({ category, label, icon }: { category: st
             className="flex-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white transition">
             {saving ? 'Saving…' : 'Add Entry'}
           </button>
+          <SavedFlash show={justSaved} />
         </div>
       </div>
 
