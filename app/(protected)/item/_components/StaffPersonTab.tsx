@@ -1,11 +1,40 @@
 'use client'
 import { useState } from 'react'
+import dynamic from 'next/dynamic'
+import { signOut } from 'next-auth/react'
 import {
   TimesTab, PayslipsTab, ViolationsTab, AnalyticsTab, AssignmentsTab, RotaTab, ALL_STAFF_NAMES,
 } from '../../staff/StaffClient'
 import type { ViolationView } from '../../staff/StaffClient'
 import ProfileTab from './ProfileTab'
 import { SidePaneContainer, SidePaneToggle, SidePaneButton, useSidePaneDisplayMode } from './SidePane'
+
+// Same lazy hamburger-menu widget Grony Cash's account menu uses -- it
+// already self-gates to owner-level (Grony/Joe) and hides itself while
+// already impersonating, so dropping it into every staff pane unconditionally
+// is safe: it simply renders nothing for anyone else.
+const ViewPortalAsButton = dynamic(() => import('@/components/ViewPortalAsButton'), { ssr: false })
+// Users lives at /users as its own page/route, but pulled in and rendered
+// inline here (like VendorsPage/CustomersPage are inside Grony Cash) so
+// picking it from Joe/Grony's left pane keeps this tab's shell up instead
+// of navigating away.
+const UsersPage = dynamic(() => import('../../users/page'), {
+  ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div>,
+})
+
+// Bottom-of-pane block every staff person's left pane ends with, regardless
+// of which level/tab is currently showing above it -- View Portal As
+// (no-op unless you're owner-level) then Sign Out, same order the old
+// hamburger menu used.
+function PaneFooter({ mode }: { mode: import('./SidePane').DisplayMode }) {
+  return (
+    <div className="mt-1 border-t border-gray-200 pt-1">
+      <ViewPortalAsButton />
+      <SidePaneButton icon="🚪" label="Sign out" mode={mode} active={false}
+        onClick={() => signOut({ callbackUrl: '/login' })} />
+    </div>
+  )
+}
 
 const VIEW_TABS = [
   { key: 'Times', icon: '🕐' },
@@ -40,6 +69,7 @@ function StandardStaffTabs({ staffName, role, username, openAddSignal }: {
           <SidePaneButton key={t.key} icon={t.icon} label={t.key} mode={mode}
             active={tab === t.key} onClick={() => setTab(t.key)} />
         ))}
+        <PaneFooter mode={mode} />
       </SidePaneContainer>
       <div className="flex-1 min-w-0 overflow-y-auto px-2 py-3">
         {tab === 'Times' && <TimesTab username={username} role={role} openAddSignal={openAddSignal} />}
@@ -53,13 +83,14 @@ function StandardStaffTabs({ staffName, role, username, openAddSignal }: {
   )
 }
 
-type BuilderLevel = 'top' | 'personal' | 'othersList' | 'othersPerson' | 'build' | 'allStaff'
+type BuilderLevel = 'top' | 'personal' | 'othersList' | 'othersPerson' | 'build' | 'allStaff' | 'users'
 
 const TOP_ITEMS = [
   { key: 'personal', label: 'Personal', icon: '🙋' },
   { key: 'others', label: 'Others', icon: '👥' },
   { key: 'build', label: 'Build', icon: '🛠️' },
   { key: 'allStaff', label: 'All Staff', icon: '🏢' },
+  { key: 'users', label: 'Users', icon: '🔑' },
 ] as const
 
 // Joe/Grony's page. Deliberately ONE pane at a time, not one pane per
@@ -92,7 +123,12 @@ function BuilderStaffTabs({ staffName, role, username, openAddSignal }: {
 
         {level === 'top' && TOP_ITEMS.map(t => (
           <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={mode} active={false}
-            onClick={() => setLevel(t.key === 'personal' ? 'personal' : t.key === 'others' ? 'othersList' : t.key === 'build' ? 'build' : 'allStaff')} />
+            onClick={() => setLevel(
+              t.key === 'personal' ? 'personal' :
+              t.key === 'others' ? 'othersList' :
+              t.key === 'build' ? 'build' :
+              t.key === 'allStaff' ? 'allStaff' : 'users'
+            )} />
         ))}
 
         {level !== 'top' && (
@@ -114,6 +150,8 @@ function BuilderStaffTabs({ staffName, role, username, openAddSignal }: {
           <SidePaneButton icon="💵" label="Payslips" mode={mode} active={buildTab === 'Payslips'} onClick={() => setBuildTab('Payslips')} />
           <SidePaneButton icon="🗓️" label="Rota" mode={mode} active={buildTab === 'Rota'} onClick={() => setBuildTab('Rota')} />
         </>)}
+
+        <PaneFooter mode={mode} />
       </SidePaneContainer>
 
       <div className="flex-1 min-w-0 overflow-y-auto px-2 py-3">
@@ -132,6 +170,7 @@ function BuilderStaffTabs({ staffName, role, username, openAddSignal }: {
           {buildTab === 'Rota' && <RotaTab canManage={true} />}
         </>)}
         {level === 'allStaff' && <ViolationsTab role={role} username={username} vtab={teamVtab} setVtab={setTeamVtab} />}
+        {level === 'users' && <UsersPage />}
       </div>
     </div>
   )
