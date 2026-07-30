@@ -8,6 +8,10 @@ import AdvertStatusPanel from './AdvertStatusPanel'
 import AssessmentPanel from './AssessmentPanel'
 import DynamicCategoryPage from './DynamicCategoryPage'
 import SavedFlash from './SavedFlash'
+import TasksView from './TasksView'
+import OpenerView from './OpenerView'
+import CloserView from './CloserView'
+import type { Violation } from './useViolations'
 import { SidePaneContainer, SidePaneToggle, SidePaneButton, useSidePaneDisplayMode } from './SidePane'
 
 // Staff (Times/Payslips/Violations/Role/Analytics/Assignments) moved to its
@@ -28,6 +32,7 @@ const LogsPage = dynamic(() => import('../../logs/page'), {
 // list alongside everything else, same treatment Shop Beautification's
 // children already got. No more nested tab bars inside the right pane.
 export type ManageView =
+  | 'tasks' | 'opener' | 'closer'
   | 'rota'
   | 'audio' | 'audio_status' | 'jingle' | 'equipment' | 'photoshop' | 'whatsapp' | 'cuttings' | 'video' | 'advert_log'
   | 'staff_dress'
@@ -50,7 +55,16 @@ const LOG_CATEGORIES: { key: ManageView; label: string; icon: string }[] = [
 
 // The left pane's fixed contents, top to bottom -- one flat list, no nested
 // groups and no nested tab bars within any single item's own content.
+// Tasks/Opener/Closer used to live on the bottom Role Bar, shared with
+// Grony Cash's own Joe tab -- now each top-level tab gets its own Tasks
+// (see item/page.tsx's manageTasksViolations split), and Opener/Closer move
+// here specifically since their daily counts/closing reports are an
+// operational concern, same family as Rota and the checklist categories
+// below.
 const LIST_ITEMS: { key: ManageView; label: string; icon?: string }[] = [
+  { key: 'tasks', label: 'Tasks', icon: '✅' },
+  { key: 'opener', label: 'Opener', icon: '🌅' },
+  { key: 'closer', label: 'Closer', icon: '🌙' },
   { key: 'audio', label: 'Audio', icon: '🎙️' },
   { key: 'audio_status', label: 'Advert Status', icon: '📋' },
   { key: 'jingle', label: 'Jingle Log', icon: '🎵' },
@@ -75,7 +89,32 @@ type DynamicCategory = { id: number; label: string }
 // mirroring Grony Cash: Cash covers the money aspect, Manage covers
 // everything else (count duties, item hygiene, shift scheduling, and the
 // shop's day-to-day operational checklist categories).
-export default function GronyManageTab({ initialView, role, username }: { initialView?: ManageView; role: string; username: string }) {
+type SubmenuEntry = { label: string; action: () => void }
+
+export default function GronyManageTab({
+  initialView, role, username,
+  violations, openerViolations, assignments, deadlines, assignedBy, assignedOn, vSettings,
+  manageSubmenus, onGoToViolation, missingClosingReportsCount, onOpenStaff,
+  tasksBadge, openerBadge, closerBadge,
+}: {
+  initialView?: ManageView; role: string; username: string
+  // Tasks/Opener -- see item/page.tsx's manageTasksViolations/
+  // openerViolations, shared with Cash's own Tasks and computed once there.
+  violations: Violation[]
+  openerViolations: Violation[]
+  assignments: Record<string, string>
+  deadlines: Record<string, string>
+  assignedBy: Record<string, string>
+  assignedOn: Record<string, string>
+  vSettings: Record<string, string>
+  manageSubmenus: SubmenuEntry[]
+  onGoToViolation: (key: string) => void
+  missingClosingReportsCount: number
+  onOpenStaff: () => void
+  tasksBadge: number
+  openerBadge: number
+  closerBadge: number
+}) {
   const [view, setView] = useState<ManageView>(initialView ?? 'audio')
   // User-added categories (see manage-categories) -- listed after the fixed
   // ones. Selecting one is a separate mode from `view` above (null = a fixed
@@ -119,6 +158,29 @@ export default function GronyManageTab({ initialView, role, username }: { initia
     setActiveDynamicId(id)
   }
 
+  // Every real submenu on this pane, tagged for TasksView's grouping --
+  // clicking an empty bar navigates locally via `pick` (through
+  // manageSubmenus' own action, which already does exactly that -- see
+  // item/page.tsx) instead of leaving the tab.
+  const manageAllSubmenus = manageSubmenus.map(s => ({ ...s, section: 'Grony Manage' }))
+  // Manage keeps whatever customTask isn't explicitly tagged to one of its
+  // own real submenus -- the "former Bino bucket" violations (advert/
+  // jingle/equipment/staff-times) have no single submenu name of their own
+  // either, so this mirrors that same "everything else defaults here" rule.
+  const isManageTask = (submenu: string) => !manageSubmenus.some(s => s.label === submenu)
+
+  // Audio's own violations have a real fix view here (unlike the generic
+  // ViolationFixPanel fallback), so Manage's Tasks navigates to them
+  // directly instead of showing that stub message. no_staff_times has no
+  // Manage view of its own -- it passes through to the Staff tab exactly
+  // like it always has.
+  function handleManageViolation(key: string) {
+    if (key === 'no_advert') { pick('audio_status'); return }
+    if (key === 'jingle_overdue') { pick('jingle'); return }
+    if (key === 'equipment_check_overdue') { pick('equipment'); return }
+    onGoToViolation(key)
+  }
+
   async function addCategory(e: React.FormEvent) {
     e.preventDefault()
     if (!newCategoryLabel.trim() || savingCategory) return
@@ -153,10 +215,13 @@ export default function GronyManageTab({ initialView, role, username }: { initia
       <SidePaneContainer mode={displayMode}>
         <SidePaneToggle mode={displayMode} onChange={changeDisplayMode} />
 
-        {LIST_ITEMS.map(entry => (
-          <SidePaneButton key={entry.key} icon={entry.icon} label={entry.label} mode={displayMode}
-            active={!activeDynamic && view === entry.key} onClick={() => pick(entry.key)} />
-        ))}
+        {LIST_ITEMS.map(entry => {
+          const badge = entry.key === 'tasks' ? tasksBadge : entry.key === 'opener' ? openerBadge : entry.key === 'closer' ? closerBadge : undefined
+          return (
+            <SidePaneButton key={entry.key} icon={entry.icon} label={entry.label} mode={displayMode}
+              active={!activeDynamic && view === entry.key} badge={badge} onClick={() => pick(entry.key)} />
+          )
+        })}
 
         {dynamicCategories.length > 0 && (
           <div className="mt-1 pt-1 border-t border-gray-200">
@@ -210,6 +275,19 @@ export default function GronyManageTab({ initialView, role, username }: { initia
         {activeDynamic ? (
           <DynamicCategoryPage categoryId={activeDynamic.id} categoryLabel={activeDynamic.label} canManage={canManage} />
         ) : (<>
+          {view === 'tasks' && (
+            <TasksView violations={violations} allSubmenus={manageAllSubmenus}
+              assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
+              isOwnTask={isManageTask} onGoToViolation={handleManageViolation} />
+          )}
+          {view === 'opener' && (
+            <OpenerView violations={openerViolations}
+              assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
+              onGoToViolation={onGoToViolation} />
+          )}
+          {view === 'closer' && (
+            <CloserView missingClosingReportsCount={missingClosingReportsCount} onOpenStaff={onOpenStaff} />
+          )}
           {view === 'rota' && <div className="px-2"><RotaTab canManage={canManage} /></div>}
           {view === 'audio' && <ContentPage contentKey="advert_audio_roadside" title="Advert 1 — Audio (for Roadside)" />}
           {view === 'audio_status' && <AdvertStatusPanel />}

@@ -4,8 +4,8 @@ import { requiredDailyItemIds } from '@/lib/countRules'
 import { openerOf } from '@/lib/staffTimes'
 import { NextRequest, NextResponse } from 'next/server'
 
-// Shown as-is in the Opener Role Bar panel's Penalty Points section (see
-// RolePanel.tsx) -- must match the literal string used there.
+// Shown as-is in Grony Manage's Opener view's Penalty Points section (see
+// OpenerView.tsx) -- must match the literal string used there.
 const OPENER_VIOLATION_TYPE = 'opener_daily_count'
 const OPENER_VIOLATION_LABEL = 'Missed daily opener counts'
 

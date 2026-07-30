@@ -667,8 +667,9 @@ function AnnouncementsPanel() {
   )
 }
 
-// Flags moved to the bottom RoleBar (Joe/Bino/Opener/Closer tabs) so this
-// page stays announcement-focused and the feed never gets pushed down.
+// Flags moved to Grony Cash's and Grony Manage's own Tasks left-pane items
+// so this page stays announcement-focused and the feed never gets pushed
+// down.
 export default function TodayPage() {
   return (
     <div className="py-2">
