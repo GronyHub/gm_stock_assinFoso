@@ -157,10 +157,11 @@ export default function RolePanel({
       <div className="flex-1 min-h-0 overflow-y-auto px-4 py-2 space-y-2">
         {role === 'joe' && (
           <>
-            {/* Creating a new task now happens in the Staff tab's Build tab
-                (Joe/Grony only) instead of here -- this panel just shows
-                whatever's already been created (toggle/edit/delete still
-                live below, per submenu bar), same as it always has. */}
+            {/* No "+ New Task" entry point right now -- creation is being
+                redesigned as a section inside each Grony Manage category
+                itself rather than one central form. This panel still shows
+                whatever's already been created (toggle/edit/delete live
+                below, per submenu bar), same as it always has. */}
             {/* Joe fixes violations inline here -- each row drops down to its
                 own fix view (reused from whichever tab normally renders it)
                 instead of navigating away, so the panel stays open. Loss Feed
