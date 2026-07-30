@@ -646,10 +646,6 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
       </div>
       <div className="flex items-center gap-1.5">
         <ColumnsPickerButton prefs={colPrefs} />
-        <Link href="/sales/new"
-              className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100">
-              + New Receipt
-            </Link>
       </div>
     </div>
     {/* overflow-auto (not just -y) so this single element handles both
