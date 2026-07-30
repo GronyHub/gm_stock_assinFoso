@@ -18,12 +18,10 @@ export async function GET() {
       SELECT column_name, data_type FROM information_schema.columns
       WHERE table_name = 'stock_counts' ORDER BY ordinal_position
     `
-    const counts = item.length
-      ? await sql`SELECT * FROM stock_counts WHERE item_id = ${item[0].id} ORDER BY id DESC LIMIT 20`
-      : []
+    const counts = await sql`SELECT * FROM stock_counts WHERE item_id = 373 ORDER BY id DESC LIMIT 20`
     let summary = null
     try {
-      summary = item.length ? await sql`SELECT * FROM item_stock_summary WHERE item_id = ${item[0].id}` : []
+      summary = await sql`SELECT * FROM item_stock_summary WHERE item_id = 373`
     } catch (e) {
       summary = `ERROR: ${e instanceof Error ? e.message : String(e)}`
     }
