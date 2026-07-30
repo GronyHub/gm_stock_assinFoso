@@ -10,13 +10,13 @@ import TaskViewPanel, { TASK_VIEWS } from './TaskViewPanel'
 // violations themselves are pre-sorted by count within a role's list, so
 // grouping is done without disturbing that, just bucketed under whichever
 // submenu bar comes first here.
-const SUBMENU_ORDER = ['Items', 'Counts', 'Loss', 'Sales', 'CAB', 'Grony Manage']
+const SUBMENU_ORDER = ['Items', 'Counts', 'Loss by Date', 'Sales', 'CAB', 'Grony Manage']
 
 // Which top-level tab each submenu bar actually lives under, same fallback
 // case as above. A green section bar marks the boundary each time this
 // changes walking down SUBMENU_ORDER.
 const SECTION_OF: Record<string, string> = {
-  Items: 'Grony Cash', Counts: 'Grony Cash', Loss: 'Grony Cash', Sales: 'Grony Cash', CAB: 'Grony Cash',
+  Items: 'Grony Cash', Counts: 'Grony Cash', 'Loss by Date': 'Grony Cash', Sales: 'Grony Cash', CAB: 'Grony Cash',
   'Grony Manage': 'Grony Manage',
 }
 
@@ -209,8 +209,8 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
   // Counts, Sales, etc.) so a row's origin is obvious without opening it --
   // a bar per group instead of repeating the submenu name on every row.
   // The Loss Feed period totals (All-Time/Yesterday/etc.) are pinned into
-  // the Loss group ahead of the Gains violation row instead of living in
-  // their own separate table above this one.
+  // the Loss by Date group ahead of the Gains violation row instead of
+  // living in their own separate table above this one.
   const lossRows = lossSummary ? [
     { label: 'All-Time', period: lossSummary.total },
     { label: 'Yesterday', period: lossSummary.yesterday },
@@ -226,7 +226,7 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
       if (!map.has(submenu)) map.set(submenu, [])
       map.get(submenu)!.push(v)
     }
-    if (lossSummary && !map.has('Loss')) map.set('Loss', [])
+    if (lossSummary && !map.has('Loss by Date')) map.set('Loss by Date', [])
 
     const tasksBySubmenu = new Map<string, CustomTask[]>()
     for (const t of customTasks ?? []) {
@@ -315,10 +315,10 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
         )}
         {groupedViolations.map(({ submenu, rows, tasks, total, section, showSection }) => {
           const showRows = groupShown(submenu)
-          // The Loss bar always has its period totals (lossRows) to show
-          // regardless of whether there's an active Gains violation, so it
-          // never counts as "empty" even when total (violation count) is 0.
-          const hasContent = total > 0 || tasks.length > 0 || (submenu === 'Loss' && lossRows.length > 0)
+          // The Loss by Date bar always has its period totals (lossRows) to
+          // show regardless of whether there's an active Gains violation, so
+          // it never counts as "empty" even when total (violation count) is 0.
+          const hasContent = total > 0 || tasks.length > 0 || (submenu === 'Loss by Date' && lossRows.length > 0)
           const pendingTasks = showDone ? tasks : tasks.filter(t => !t.done)
           // While collapsed, each pending task's own text still surfaces as a
           // subrow under the bar (col 2) instead of being hidden entirely
@@ -419,7 +419,7 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
               </Fragment>
               )
             })}
-            {showRows && submenu === 'Loss' && lossRows.map(r => (
+            {showRows && submenu === 'Loss by Date' && lossRows.map(r => (
               <tr key={r.label} onClick={() => r.period.n > 0 && onFixLossFeed?.()}
                 className={`transition ${r.period.n > 0 ? 'cursor-pointer hover:bg-blue-50' : ''}`}>
                 <td className={`px-2 py-1.5 whitespace-nowrap ${r.period.n > 0 ? 'text-gray-800' : 'text-gray-400'}`}>{r.label}</td>
