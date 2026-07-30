@@ -14,8 +14,12 @@ export async function GET() {
     } catch (e) {
       viewDef = `ERROR: ${e instanceof Error ? e.message : String(e)}`
     }
+    const stockCountsCols = await sql`
+      SELECT column_name, data_type FROM information_schema.columns
+      WHERE table_name = 'stock_counts' ORDER BY ordinal_position
+    `
     const counts = item.length
-      ? await sql`SELECT id, count_date, quantity, notes, source, created_at FROM stock_counts WHERE item_id = ${item[0].id} ORDER BY count_date DESC, id DESC LIMIT 20`
+      ? await sql`SELECT * FROM stock_counts WHERE item_id = ${item[0].id} ORDER BY id DESC LIMIT 20`
       : []
     let summary = null
     try {
@@ -23,7 +27,7 @@ export async function GET() {
     } catch (e) {
       summary = `ERROR: ${e instanceof Error ? e.message : String(e)}`
     }
-    return NextResponse.json({ item, viewDef, counts, summary })
+    return NextResponse.json({ item, viewDef, stockCountsCols, counts, summary })
   } catch (e) {
     const detail = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ error: detail }, { status: 500 })
