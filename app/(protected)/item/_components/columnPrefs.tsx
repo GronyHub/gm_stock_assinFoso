@@ -102,10 +102,25 @@ export function useColumnPrefs<K extends string>(storageKey: string, columns: Co
   return { columns, visibleCols, colOrder, columnLabels, shownColumns, toggleCol, moveCol, renameColumn, resetVisible }
 }
 
+export type ExtraToggle = { key: string; label: string; active: boolean; onToggle: () => void }
+
 // `dark` is for the one instance sitting directly on Grony Cash's own deep
 // green controls row (see item/page.tsx) -- every other caller renders on a
-// plain white content area, so it stays the default gray chip there.
-export function ColumnsPickerButton<K extends string>({ prefs, dark = false }: { prefs: ColumnPrefs<K>; dark?: boolean }) {
+// plain white content area, so it stays the default gray chip there. That
+// same instance's trigger also sits at the LEFT of its row (Columns/
+// Analytics/New, New pushed right via ml-auto) instead of the right like
+// every other caller's, so `dark` doubles as the signal to open the
+// dropdown from the left edge instead -- anchoring it to the right there
+// pushed it half off a narrow phone screen.
+// `extraToggles` are on/off switches unrelated to any one column -- Items'
+// Alias Wide Table and Service Matches views, currently -- shown above the
+// column list with their own "Views" header so they read as a distinct
+// group rather than more columns. The trigger button itself picks up an
+// accent color whenever one of them is on, so that's visible without
+// opening the panel.
+export function ColumnsPickerButton<K extends string>({ prefs, dark = false, extraToggles }: {
+  prefs: ColumnPrefs<K>; dark?: boolean; extraToggles?: ExtraToggle[]
+}) {
   const [open, setOpen] = useState(false)
   const [renamingCol, setRenamingCol] = useState<K | null>(null)
   const [renameValue, setRenameValue] = useState('')
@@ -120,11 +135,13 @@ export function ColumnsPickerButton<K extends string>({ prefs, dark = false }: {
     return () => document.removeEventListener('mousedown', onOut)
   }, [])
 
+  const anyExtraActive = !!extraToggles?.some(t => t.active)
+
   return (
     <div className="relative shrink-0" ref={ref}>
       <button onClick={() => setOpen(o => !o)} title="Columns"
         className={`flex items-center justify-center w-7 h-7 rounded-lg transition
-          ${dark ? 'text-white hover:bg-white/10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+          ${anyExtraActive ? 'bg-blue-600 text-white' : dark ? 'text-white hover:bg-white/10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="4" width="18" height="16" rx="2" />
           <line x1="9" y1="4" x2="9" y2="20" />
@@ -132,7 +149,21 @@ export function ColumnsPickerButton<K extends string>({ prefs, dark = false }: {
         </svg>
       </button>
       {open && (
-        <div className="absolute top-full right-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg z-30 min-w-[200px] max-h-72 overflow-y-auto">
+        <div className={`absolute top-full mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg z-30 min-w-[200px] max-h-72 overflow-y-auto
+          ${dark ? 'left-0' : 'right-0'}`}>
+          {extraToggles && extraToggles.length > 0 && (
+            <div className="border-b border-gray-100 pb-0.5 mb-0.5">
+              <p className="px-2.5 pt-1.5 pb-0.5 text-[9px] font-bold text-gray-400 uppercase tracking-wide">Views</p>
+              {extraToggles.map(t => (
+                <label key={t.key}
+                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs text-gray-700 cursor-pointer select-none hover:bg-gray-50">
+                  <input type="checkbox" checked={t.active} onChange={t.onToggle}
+                    className="w-3.5 h-3.5 accent-blue-600 shrink-0" />
+                  <span className="truncate">{t.label}</span>
+                </label>
+              ))}
+            </div>
+          )}
           {prefs.colOrder.map((key, i) => {
             const c = byKey.get(key)
             if (!c) return null

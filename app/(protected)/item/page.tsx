@@ -83,7 +83,15 @@ type OuterTab = 'today' | 'loss' | 'manage' | 'staff' | 'uk' | 'ch'
 // Cash tab (outerTab 'loss' -- kept as the internal key since it's
 // referenced throughout; only the label changed).
 type LossView = 'home' | 'tasks' | 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'lossByItem' | 'lossByTarget' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts' | 'dailySummary'
-  | 'purchaseOrders' | 'aliasWide' | 'serviceMatches' | 'fixMislinkedSales' | 'item360'
+  | 'purchaseOrders' | 'fixMislinkedSales' | 'item360'
+// Alias Wide Table and Service Matches used to be their own lossViews --
+// they're now reached from inside Items itself (see ItemsExtraView below),
+// so an old '?view=aliasWide'/'serviceMatches' link still needs a home to
+// land on instead of a blank pane.
+type ItemsExtraView = 'none' | 'aliasWide' | 'serviceMatches'
+const OLD_LOSSVIEW_TO_EXTRA: Partial<Record<string, ItemsExtraView>> = {
+  aliasWide: 'aliasWide', serviceMatches: 'serviceMatches',
+}
 
 // Old top-level tabs that got folded into Grony Cash submenus -- old
 // bookmarks/links using ?tab=pl etc. still land on the right submenu instead
@@ -106,7 +114,7 @@ const OLD_TAB_TO_OUTER: Partial<Record<string, OuterTab>> = {
 // groups/search/New controls row doesn't apply to them.
 const REPORT_VIEWS = new Set<LossView>([
   'home', 'tasks', 'pl', 'cab', 'vendors', 'customers', 'receipts', 'dailySummary',
-  'purchaseOrders', 'aliasWide', 'serviceMatches', 'fixMislinkedSales', 'item360',
+  'purchaseOrders', 'fixMislinkedSales', 'item360',
 ])
 
 // Grony Cash's own left pane, same shape as Grony Manage's -- Sales, Bills,
@@ -148,8 +156,6 @@ const CASH_ITEMS: { key: LossView; label: string; icon: string }[] = [
   { key: 'receipts',  label: 'Receipts',  icon: '📑' },
   { key: 'counts',    label: 'Counts',    icon: '🔢' },
   { key: 'purchaseOrders',   label: 'Purchase Orders',   icon: '🛒' },
-  { key: 'aliasWide',        label: 'Alias Wide Table',  icon: '🔗' },
-  { key: 'serviceMatches',   label: 'Service Matches',   icon: '🧩' },
   { key: 'fixMislinkedSales', label: 'Fix Mislinked Sales', icon: '🩹' },
   { key: 'item360', label: 'Item 360', icon: '🔍' },
 ]
@@ -340,10 +346,19 @@ function ItemHubPageInner() {
   )
   const [group, setGroup]               = useState<string | null>(null)
   const [productType, setProductType]   = useState<'all' | 'goods' | 'services'>('all')
-  const initialView = searchParams.get('view') as LossView | null
+  const rawInitialView = searchParams.get('view')
+  const initialExtraView = rawInitialView ? OLD_LOSSVIEW_TO_EXTRA[rawInitialView] : undefined
+  const initialView = (initialExtraView ? 'items' : rawInitialView) as LossView | null
   const [lossView, setLossView]         = useState<LossView>(
     rawInitialTab === 'losses' ? 'feed' : (oldTabView ?? initialView ?? 'items')
   )
+  const [itemsExtraView, setItemsExtraView] = useState<ItemsExtraView>(initialExtraView ?? 'none')
+  // Alias Wide / Service Match only make sense while actually on Items --
+  // leaving it (any other submenu, or another top-level tab) drops back to
+  // the normal item list instead of stranding you in one of them.
+  useEffect(() => {
+    if (lossView !== 'items') setItemsExtraView('none')
+  }, [lossView])
   const [search, setSearch]             = useState(searchParams.get('q') ?? '')
   const [violation, setViolation]       = useState<string | null>(searchParams.get('violation'))
   const [groupOpen, setGroupOpen]       = useState(false)
@@ -687,9 +702,11 @@ function ItemHubPageInner() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (nextTab !== outerTab) setOuterTab(nextTab)
     if (nextTab === 'loss') {
-      const urlView = searchParams.get('view') as LossView | null
-      const nextView: LossView = urlView ?? 'items'
+      const rawUrlView = searchParams.get('view')
+      const urlExtraView = rawUrlView ? OLD_LOSSVIEW_TO_EXTRA[rawUrlView] : undefined
+      const nextView: LossView = (urlExtraView ? 'items' : rawUrlView) as LossView ?? 'items'
       if (nextView !== lossView) setLossView(nextView)
+      if (urlExtraView && urlExtraView !== itemsExtraView) setItemsExtraView(urlExtraView)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
@@ -770,8 +787,8 @@ function ItemHubPageInner() {
     { label: 'Daily', action: () => { changeTab('loss'); setLossView('dailySummary') } },
     { label: 'Counts', action: () => { changeTab('loss'); setLossView('counts') } },
     { label: 'Purchase Orders', action: () => { changeTab('loss'); setLossView('purchaseOrders') } },
-    { label: 'Alias Wide Table', action: () => { changeTab('loss'); setLossView('aliasWide') } },
-    { label: 'Service Matches', action: () => { changeTab('loss'); setLossView('serviceMatches') } },
+    { label: 'Alias Wide Table', action: () => { changeTab('loss'); setLossView('items'); setItemsExtraView('aliasWide') } },
+    { label: 'Service Matches', action: () => { changeTab('loss'); setLossView('items'); setItemsExtraView('serviceMatches') } },
     ...(isOwnerOrJoe ? [{ label: 'Fix Mislinked Sales', action: () => { changeTab('loss'); setLossView('fixMislinkedSales') } }] : []),
     { label: 'Item 360', action: () => { changeTab('loss'); setLossView('item360') } },
   ]
@@ -1066,8 +1083,18 @@ function ItemHubPageInner() {
                     {/* Columns picker -- Items submenu only, next to New since it's
                         the same kind of per-view control. Drives LossTab's column
                         visibility/order (lifted up here, see itemsColPrefs above)
-                        rather than living inside LossTab itself. */}
-                    {lossView === 'items' && <ColumnsPickerButton prefs={itemsColPrefs} dark />}
+                        rather than living inside LossTab itself. Alias Wide Table and
+                        Service Matches used to be their own left-pane entries -- now
+                        they're two more on/off switches in this same panel, since
+                        they're just other ways of looking at the same item catalog. */}
+                    {lossView === 'items' && (
+                      <ColumnsPickerButton prefs={itemsColPrefs} dark extraToggles={[
+                        { key: 'aliasWide', label: 'Alias Wide Table', active: itemsExtraView === 'aliasWide',
+                          onToggle: () => setItemsExtraView(v => v === 'aliasWide' ? 'none' : 'aliasWide') },
+                        { key: 'serviceMatches', label: 'Service Matches', active: itemsExtraView === 'serviceMatches',
+                          onToggle: () => setItemsExtraView(v => v === 'serviceMatches' ? 'none' : 'serviceMatches') },
+                      ]} />
+                    )}
 
                     {/* Analytics toggle -- swaps this submenu's normal list for the
                         charts/trends that used to live under the removed "Data"
@@ -1151,16 +1178,6 @@ function ItemHubPageInner() {
             <div className="px-4 pt-4"><PurchaseOrdersPage /></div>
           </TabErrorBoundary>
         )}
-        {outerTab === 'loss' && lossView === 'aliasWide' && (
-          <TabErrorBoundary>
-            <div className="px-4 pt-4"><AliasWidePage /></div>
-          </TabErrorBoundary>
-        )}
-        {outerTab === 'loss' && lossView === 'serviceMatches' && (
-          <TabErrorBoundary>
-            <div className="px-4 pt-4"><ServiceMatchesPage /></div>
-          </TabErrorBoundary>
-        )}
         {outerTab === 'loss' && lossView === 'fixMislinkedSales' && (
           <TabErrorBoundary>
             <div className="px-4"><FixMislinkedSalesPage /></div>
@@ -1231,7 +1248,17 @@ function ItemHubPageInner() {
             </p>
           </div>
         )}
-        {showAnalytics && outerTab === 'loss' && lossView === 'items' && (
+        {outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'aliasWide' && (
+          <TabErrorBoundary>
+            <div className="px-4 pt-4"><AliasWidePage /></div>
+          </TabErrorBoundary>
+        )}
+        {outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'serviceMatches' && (
+          <TabErrorBoundary>
+            <div className="px-4 pt-4"><ServiceMatchesPage /></div>
+          </TabErrorBoundary>
+        )}
+        {showAnalytics && outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'none' && (
           <TabErrorBoundary>
             <div className="px-3 pt-3">
               <ItemsAnalyticsSection />
@@ -1239,7 +1266,7 @@ function ItemHubPageInner() {
             </div>
           </TabErrorBoundary>
         )}
-        {!showAnalytics && addForm !== 'item' && outerTab === 'loss' && lossView === 'items' && (
+        {!showAnalytics && addForm !== 'item' && outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'none' && (
           violation && pillKeys?.includes(violation) ? (
             itemsLoading
               ? <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
