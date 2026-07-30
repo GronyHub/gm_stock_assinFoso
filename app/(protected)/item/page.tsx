@@ -1,8 +1,7 @@
 'use client'
 import { useState, useEffect, useRef, useMemo, Component, Suspense, type ReactNode } from 'react'
-import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { signOut, useSession } from 'next-auth/react'
+import { useSession } from 'next-auth/react'
 
 class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boolean; message: string }> {
   state = { error: false, message: '' }
@@ -62,8 +61,8 @@ const AliasWidePage       = dynamic(() => import('../aliases/wide/page'),       
 const ServiceMatchesPage  = dynamic(() => import('../matches/wide/page'),           { ssr: false, loading: () => loading('Loading…') })
 const FixMislinkedSalesPage = dynamic(() => import('../debug/unlink-mismatch/page'), { ssr: false, loading: () => loading('Loading…') })
 const Item360Tab = dynamic(() => import('./_components/Item360Tab'),          { ssr: false, loading: () => loading('Loading…') })
-const ViewPortalAsButton = dynamic(() => import('@/components/ViewPortalAsButton'), { ssr: false })
 const StaffPersonTab = dynamic(() => import('./_components/StaffPersonTab'),  { ssr: false, loading: () => loading('Loading…') })
+const UKTab = dynamic(() => import('./_components/UKTab'), { ssr: false, loading: () => loading('Loading…') })
 
 // Every real staff member, including Grony -- the third top-level tab shows
 // whichever one of these matches the logged-in username, and that person's
@@ -71,7 +70,10 @@ const StaffPersonTab = dynamic(() => import('./_components/StaffPersonTab'),  { 
 // ALL_STAFF_NAMES constants, which this must stay in sync with).
 const STAFF_ROSTER = ['Joe', 'Bino', 'James', 'Rawlings', 'Grony']
 
-type OuterTab = 'today' | 'loss' | 'manage' | 'staff'
+// 'uk' is Grony's own private top-level tab -- UKTab re-checks the session
+// itself too, so this is just about not showing the tab button to anyone
+// else, not the only thing guarding the page.
+type OuterTab = 'today' | 'loss' | 'manage' | 'staff' | 'uk'
 
 // Sales, Bills, Counts, Feed, Expenses, PO, P&L, CAB, Vendors, Customers,
 // Receipts, Daily (Summary), and Data all live as submenus inside the Grony
@@ -276,18 +278,6 @@ const LOSSVIEW_PILL_KEYS: Partial<Record<LossView, string[]>> = {
   cab: ['unchecked_cab'],
 }
 
-// Analysis dropped -- it's a strict subset of Grony Cash's Data submenu.
-// Everything else Grony-Cash-related (Customers/Vendors/Receipts/Counts/
-// Purchase Orders/Alias Wide Table/Service Matches/Fix Mislinked Sales) is
-// NOT here any more -- they're all cashSubmenus entries now (own left-pane
-// button + global search, from one action) with their own CASH_ITEMS
-// left-pane entry, so a hamburger copy would just be a second path to the
-// same place. Only Users is left, since it isn't a Cash concern. Logs
-// moved into Grony Manage.
-const HAMBURGER_LINKS = [
-  { href: '/users', label: 'Users' },
-]
-
 // Plain text, no icons -- keeps the top nav to a single line so it doesn't
 // eat vertical space. flex-1 + wrapping (no shrink-0/whitespace-nowrap) so
 // both always fit on screen -- "Grony Manage" wraps to two lines on narrow
@@ -302,7 +292,7 @@ function topTabLabelCls(active: boolean) {
     ${active ? 'bg-brand text-white shadow-md' : 'text-gray-500 hover:bg-gray-100'}`
 }
 
-const VALID_TABS: OuterTab[] = ['today', 'loss', 'manage', 'staff']
+const VALID_TABS: OuterTab[] = ['today', 'loss', 'manage', 'staff', 'uk']
 
 function ItemHubPageInner() {
   const router = useRouter()
@@ -328,7 +318,6 @@ function ItemHubPageInner() {
   const [violation, setViolation]       = useState<string | null>(searchParams.get('violation'))
   const [groupOpen, setGroupOpen]       = useState(false)
   const [searchOpen, setSearchOpen]     = useState(false)
-  const [hamburgerOpen, setHamburgerOpen] = useState(false)
   const [addForm, setAddForm]             = useState<'item' | 'sale' | 'bill' | 'expense' | null>(null)
   const [jumpToItemId, setJumpToItemId]   = useState<number | null>(null)
   // Seeded from ?jumpDate=/?jumpItem= -- Item 360's Detail table (and its
@@ -339,7 +328,6 @@ function ItemHubPageInner() {
   const [jumpToReceiptItemName, setJumpToReceiptItemName] = useState<string | null>(searchParams.get('jumpItem'))
   const groupRef     = useRef<HTMLDivElement>(null)
   const searchRef    = useRef<HTMLDivElement>(null)
-  const hamburgerRef = useRef<HTMLDivElement>(null)
 
   // Global search (top row, next to Grony Cash/Grony Manage) -- separate
   // from the per-view search bars already on most tabs, which only filter
@@ -560,7 +548,6 @@ function ItemHubPageInner() {
     function handler(e: MouseEvent) {
       if (groupRef.current && !groupRef.current.contains(e.target as Node)) setGroupOpen(false)
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchOpen(false)
-      if (hamburgerRef.current && !hamburgerRef.current.contains(e.target as Node)) setHamburgerOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -782,29 +769,17 @@ function ItemHubPageInner() {
     ? [{ label: myStaffName, action: () => changeTab('staff') }]
     : []
 
-  // Customers/Receipts/Vendors/Counts/Purchase Orders/Alias Wide Table/
-  // Service Matches/Fix Mislinked Sales used to be duplicated in here too
-  // (account menu as a second way in, alongside their own CASH_ITEMS
-  // left-pane button), but now that every one of them has a direct left-pane
-  // entry the hamburger copy is just dead weight -- removed rather than
-  // kept as a redundant second path to the same place. They're still
-  // reachable via cashSubmenus (left pane + global search), just not here.
-  const hamburgerLinks: { label: string; href?: string; action?: () => void }[] = [
-    ...HAMBURGER_LINKS, // Users
-    // Private to Grony alone -- UKTab re-checks the session itself too, so
-    // this hidden link is just about not showing it to anyone else, not the
-    // only thing guarding the page.
-    ...(isGrony ? [{ href: '/uk', label: 'UK' }] : []),
-  ]
-  const accountSubmenus = hamburgerLinks.map(l => ({ label: l.label, action: l.action ?? (() => router.push(l.href!)) }))
-
   // Feeds the Tasks panel's blue bars (RolePanel -> RoleFlagsTable) -- one
-  // bar per submenu here, tagged with which section it belongs to.
+  // bar per submenu here, tagged with which section it belongs to. The old
+  // account (hamburger) menu used to feed its own 'Account' section here too
+  // -- Users, UK, View Portal As, Sign Out -- but every one of those now
+  // lives somewhere with its own real navigation (Users/View Portal As/Sign
+  // Out on every Staff pane, UK as its own top-level tab), so there's
+  // nothing left to bucket under 'Account' any more.
   const taskSubmenus: { label: string; section: string; action: () => void }[] = [
     ...cashSubmenus.map(s => ({ ...s, section: 'Grony Cash' })),
     ...manageSubmenus.map(s => ({ ...s, section: 'Grony Manage' })),
     ...staffSubmenus.map(s => ({ ...s, section: 'Staff' })),
-    ...accountSubmenus.map(s => ({ ...s, section: 'Account' })),
   ]
 
   // Every tab/sub-tab/menu/page the global search can jump to directly --
@@ -818,12 +793,12 @@ function ItemHubPageInner() {
     { label: 'Grony Cash', action: () => changeTab('loss') },
     { label: 'Grony Manage', action: () => changeTab('manage') },
     ...(myStaffName ? [{ label: myStaffName, action: () => changeTab('staff') }] : []),
+    ...(isGrony ? [{ label: 'UK', action: () => changeTab('uk') }] : []),
     ...cashSubmenus,
     ...manageSubmenus,
     { label: 'Tasks', action: () => setOpenRole('joe') },
     { label: 'Opener', action: () => setOpenRole('opener') },
     { label: 'Closer', action: () => setOpenRole('closer') },
-    ...accountSubmenus,
   ]
   const navQuery = globalSearchQuery.trim().toLowerCase()
   const navMatches = navQuery
@@ -870,6 +845,16 @@ function ItemHubPageInner() {
           <div className="w-px bg-gray-200 shrink-0" />
           <button onClick={() => changeTab('staff')} className={topTabCls()}>
             <span className={topTabLabelCls(outerTab === 'staff' && !openRole)}>👤 {myStaffName}</span>
+          </button>
+          </>)}
+          {/* Private to Grony alone -- was a hidden hamburger-menu link
+              before, now a real tab since the hamburger it lived in got
+              removed once every one of its old links had somewhere else to
+              live. */}
+          {isGrony && (<>
+          <div className="w-px bg-gray-200 shrink-0" />
+          <button onClick={() => changeTab('uk')} className={topTabCls()}>
+            <span className={topTabLabelCls(outerTab === 'uk' && !openRole)}>UK</span>
           </button>
           </>)}
           <div className="w-px bg-gray-200 shrink-0" />
@@ -1135,6 +1120,9 @@ function ItemHubPageInner() {
             )}
           </TabErrorBoundary>
         )}
+        {outerTab === 'uk' && (
+          <TabErrorBoundary><UKTab /></TabErrorBoundary>
+        )}
         {outerTab === 'today' && !(addForm === 'sale' || addForm === 'bill' || addForm === 'expense') && (
           <TabErrorBoundary>
             <div className="h-full overflow-y-auto px-4">
@@ -1240,47 +1228,17 @@ function ItemHubPageInner() {
           its own panel) so a skipped mandatory task (Opener's count
           confirmation, Closer's closing report) is always one tap away. The
           active tab gets the same blue highlight the top menu uses. The
-          account menu (⋮) rides along on the right edge of the same bar. */}
+          account (⋮) menu that used to ride along on the right edge of this
+          bar is gone -- Users, UK, View Portal As, and Sign Out each ended
+          up with a real home of their own (every Staff pane, and UK's own
+          top-level tab), so there was nothing left in it to justify keeping
+          a whole extra menu around. */}
       <RoleBar
         openRole={openRole}
         onSelectRole={key => setOpenRole(prev => prev === key ? null : key)}
         onShortcut={handleShortcut}
         cashCount={cashCount} dailyCount={openerViolationCount}
         missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
-        trailing={
-          <div className="relative shrink-0" ref={hamburgerRef}>
-            {hamburgerOpen && (
-              <div className="absolute bottom-full right-0 mb-1 bg-white border border-gray-200 rounded-xl shadow-xl min-w-[180px] overflow-hidden">
-                <ViewPortalAsButton onDone={() => setHamburgerOpen(false)} />
-                {hamburgerLinks.map(l => l.action ? (
-                  <button key={l.label} onClick={() => { l.action!(); setHamburgerOpen(false) }}
-                    className="block w-full text-left px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-t border-gray-100 transition">
-                    {l.label}
-                  </button>
-                ) : (
-                  <Link key={l.href} href={l.href!}
-                    onClick={() => setHamburgerOpen(false)}
-                    className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-t border-gray-100 transition">
-                    {l.label}
-                  </Link>
-                ))}
-                <button onClick={() => signOut({ callbackUrl: '/login' })}
-                  className="w-full text-left px-4 py-3 text-sm font-medium text-red-500 hover:bg-red-50 border-t border-gray-100 transition">
-                  Sign out
-                </button>
-              </div>
-            )}
-            {/* Account menu trigger only -- the "who's logged in" job this
-                used to double as (see the Joe/Bino misattribution case)
-                now belongs to the top pill's 👤 {name}, and impersonation
-                specifically already has its own always-visible banner
-                (ImpersonationBar). No name here any more, just the icon. */}
-            <button onClick={() => setHamburgerOpen(o => !o)} title="Account menu"
-              className="flex items-center justify-center px-4 py-4 text-gray-500 hover:bg-gray-50 transition text-base">
-              👤
-            </button>
-          </div>
-        }
       />
 
       {/* Home -- floating above the Role Bar instead of taking a slot in the
