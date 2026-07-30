@@ -63,6 +63,7 @@ const FixMislinkedSalesPage = dynamic(() => import('../debug/unlink-mismatch/pag
 const Item360Tab = dynamic(() => import('./_components/Item360Tab'),          { ssr: false, loading: () => loading('Loading…') })
 const StaffPersonTab = dynamic(() => import('./_components/StaffPersonTab'),  { ssr: false, loading: () => loading('Loading…') })
 const UKTab = dynamic(() => import('./_components/UKTab'), { ssr: false, loading: () => loading('Loading…') })
+const CHTab = dynamic(() => import('./_components/CHTab'), { ssr: false, loading: () => loading('Loading…') })
 
 // Every real staff member, including Grony -- the third top-level tab shows
 // whichever one of these matches the logged-in username, and that person's
@@ -70,10 +71,11 @@ const UKTab = dynamic(() => import('./_components/UKTab'), { ssr: false, loading
 // ALL_STAFF_NAMES constants, which this must stay in sync with).
 const STAFF_ROSTER = ['Joe', 'Bino', 'James', 'Rawlings', 'Grony']
 
-// 'uk' is Grony's own private top-level tab -- UKTab re-checks the session
-// itself too, so this is just about not showing the tab button to anyone
-// else, not the only thing guarding the page.
-type OuterTab = 'today' | 'loss' | 'manage' | 'staff' | 'uk'
+// 'uk' is Grony's own private top-level tab; 'ch' is Grony/Joe's -- both
+// tabs' own components re-check the session themselves too, so this is
+// just about not showing the tab button to anyone else, not the only thing
+// guarding the page.
+type OuterTab = 'today' | 'loss' | 'manage' | 'staff' | 'uk' | 'ch'
 
 // Sales, Bills, Counts, Feed, Expenses, PO, P&L, CAB, Vendors, Customers,
 // Receipts, Daily (Summary), and Data all live as submenus inside the Grony
@@ -292,7 +294,7 @@ function topTabLabelCls(active: boolean) {
     ${active ? 'bg-brand text-white shadow-md' : 'text-gray-500 hover:bg-gray-100'}`
 }
 
-const VALID_TABS: OuterTab[] = ['today', 'loss', 'manage', 'staff', 'uk']
+const VALID_TABS: OuterTab[] = ['today', 'loss', 'manage', 'staff', 'uk', 'ch']
 
 function ItemHubPageInner() {
   const router = useRouter()
@@ -794,6 +796,7 @@ function ItemHubPageInner() {
     { label: 'Grony Manage', action: () => changeTab('manage') },
     ...(myStaffName ? [{ label: myStaffName, action: () => changeTab('staff') }] : []),
     ...(isGrony ? [{ label: 'UK', action: () => changeTab('uk') }] : []),
+    ...(isOwnerOrJoe ? [{ label: 'C&H', action: () => changeTab('ch') }] : []),
     ...cashSubmenus,
     ...manageSubmenus,
     { label: 'Tasks', action: () => setOpenRole('joe') },
@@ -855,6 +858,14 @@ function ItemHubPageInner() {
           <div className="w-px bg-gray-200 shrink-0" />
           <button onClick={() => changeTab('uk')} className={topTabCls()}>
             <span className={topTabLabelCls(outerTab === 'uk' && !openRole)}>UK</span>
+          </button>
+          </>)}
+          {/* Owner-level only (Grony/Joe) -- content TBD, CHTab is a
+              placeholder for now. */}
+          {isOwnerOrJoe && (<>
+          <div className="w-px bg-gray-200 shrink-0" />
+          <button onClick={() => changeTab('ch')} className={topTabCls()}>
+            <span className={topTabLabelCls(outerTab === 'ch' && !openRole)}>C&amp;H</span>
           </button>
           </>)}
           <div className="w-px bg-gray-200 shrink-0" />
@@ -1122,6 +1133,9 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'uk' && (
           <TabErrorBoundary><UKTab /></TabErrorBoundary>
+        )}
+        {outerTab === 'ch' && (
+          <TabErrorBoundary><CHTab /></TabErrorBoundary>
         )}
         {outerTab === 'today' && !(addForm === 'sale' || addForm === 'bill' || addForm === 'expense') && (
           <TabErrorBoundary>
