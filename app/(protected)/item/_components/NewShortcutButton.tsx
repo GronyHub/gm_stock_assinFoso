@@ -16,11 +16,13 @@ const SHORTCUTS: { key: ShortcutKey; label: string; icon: string }[] = [
   { key: 'vendor',     label: 'Vendor',      icon: '🏭' },
 ]
 
-// Floating action button, bottom-left -- mirrors the Home button's own
-// floating circle on the bottom-right. Used to live inside the Role Bar
-// (the bottom strip with Tasks/Opener/Closer), but that bar is gone now
-// that all three moved into their own top-level tab's left pane -- this is
-// the one thing in it worth keeping as its own control.
+// Floating action button, bottom-right -- the spot Home used to float in
+// before it moved into Grony Cash's/Grony Manage's own left pane (see
+// PaneHomeDaily). Used to live at bottom-left inside the Role Bar (the
+// bottom strip with Tasks/Opener/Closer), but that bar is gone now that all
+// three moved into their own top-level tab's left pane, and bottom-left is
+// where that pane itself is docked -- floating there would sit right on top
+// of its new Home/Daily footer instead of beside it.
 export default function NewShortcutButton({ onShortcut }: { onShortcut: (key: ShortcutKey) => void }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -34,12 +36,9 @@ export default function NewShortcutButton({ onShortcut }: { onShortcut: (key: Sh
   }, [])
 
   return (
-    // bottom-36, not bottom-20 -- the pre-existing Daily shortcut already
-    // sits at bottom-20 left-4, so this stacks directly above it instead of
-    // the two colliding on top of each other.
-    <div ref={ref} className="fixed bottom-36 left-4 z-40">
+    <div ref={ref} className="fixed bottom-20 right-4 z-40">
       {open && (
-        <div className="absolute bottom-full left-0 mb-1 bg-white border border-gray-200 rounded-xl shadow-xl min-w-[180px] overflow-hidden">
+        <div className="absolute bottom-full right-0 mb-1 bg-white border border-gray-200 rounded-xl shadow-xl min-w-[180px] overflow-hidden">
           {SHORTCUTS.map(s => (
             <button key={s.key} onClick={() => { setOpen(false); onShortcut(s.key) }}
               className="w-full text-left flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 border-t border-gray-100 first:border-t-0 transition">
