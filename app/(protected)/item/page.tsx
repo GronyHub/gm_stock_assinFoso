@@ -826,7 +826,15 @@ function ItemHubPageInner() {
   ]
   const manageSubmenus: { label: string; action: () => void }[] = [
     { label: 'Rota', action: () => { changeTab('manage'); setManageInitialView('rota') } },
-    { label: 'Advert', action: () => { changeTab('manage'); setManageInitialView('advert') } },
+    { label: 'Audio', action: () => { changeTab('manage'); setManageInitialView('audio') } },
+    { label: 'Advert Status', action: () => { changeTab('manage'); setManageInitialView('audio_status') } },
+    { label: 'Jingle Log', action: () => { changeTab('manage'); setManageInitialView('jingle') } },
+    { label: 'Equipment Check', action: () => { changeTab('manage'); setManageInitialView('equipment') } },
+    { label: 'Photoshop', action: () => { changeTab('manage'); setManageInitialView('photoshop') } },
+    { label: 'WhatsApp', action: () => { changeTab('manage'); setManageInitialView('whatsapp') } },
+    { label: 'Cuttings', action: () => { changeTab('manage'); setManageInitialView('cuttings') } },
+    { label: 'Video', action: () => { changeTab('manage'); setManageInitialView('video') } },
+    { label: 'Advert Daily Log', action: () => { changeTab('manage'); setManageInitialView('advert_log') } },
     { label: 'Dress Code', action: () => { changeTab('manage'); setManageInitialView('staff_dress') } },
     { label: 'Arrangement', action: () => { changeTab('manage'); setManageInitialView('arrangement') } },
     { label: 'Cleanliness', action: () => { changeTab('manage'); setManageInitialView('cleanliness') } },
@@ -835,7 +843,9 @@ function ItemHubPageInner() {
     { label: 'Staff Display', action: () => { changeTab('manage'); setManageInitialView('staff_display') } },
     { label: 'Repair Works', action: () => { changeTab('manage'); setManageInitialView('repair_works') } },
     { label: 'Quality Assurance', action: () => { changeTab('manage'); setManageInitialView('quality_assurance') } },
-    { label: 'Training', action: () => { changeTab('manage'); setManageInitialView('training') } },
+    { label: 'Tutorial', action: () => { changeTab('manage'); setManageInitialView('tutorial') } },
+    { label: 'Company Laws', action: () => { changeTab('manage'); setManageInitialView('training_laws') } },
+    { label: 'Assessment', action: () => { changeTab('manage'); setManageInitialView('assessment') } },
     { label: 'Logs', action: () => { changeTab('manage'); setManageInitialView('logs') } },
   ]
 

@@ -3,8 +3,9 @@ import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import ClosingReportLogView from './ClosingReportLogView'
 import ManageLogPanel from './ManageLogPanel'
-import TrainingTab from './TrainingTab'
-import AdvertTab from './AdvertTab'
+import ContentPage from './ContentPage'
+import AdvertStatusPanel from './AdvertStatusPanel'
+import AssessmentPanel from './AssessmentPanel'
 import DynamicCategoryPage from './DynamicCategoryPage'
 
 // Staff (Times/Payslips/Violations/Role/Analytics/Assignments) moved to its
@@ -20,14 +21,21 @@ const LogsPage = dynamic(() => import('../../logs/page'), {
   loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div>,
 })
 
+// Advert and Training used to each hold their own sub-tabs (nested one
+// level deeper, e.g. Advert > WhatsApp) -- now flattened into this same
+// list alongside everything else, same treatment Shop Beautification's
+// children already got. No more nested tab bars inside the right pane.
 export type ManageView =
-  | 'rota' | 'advert' | 'staff_dress'
+  | 'rota'
+  | 'audio' | 'audio_status' | 'jingle' | 'equipment' | 'photoshop' | 'whatsapp' | 'cuttings' | 'video' | 'advert_log'
+  | 'staff_dress'
   | 'arrangement' | 'cleanliness' | 'future' | 'customer_display'
-  | 'staff_display' | 'training' | 'repair_works' | 'quality_assurance' | 'logs'
+  | 'staff_display' | 'repair_works' | 'quality_assurance'
+  | 'tutorial' | 'training_laws' | 'assessment'
+  | 'logs'
 
 // Simple dated log/checklist categories -- no existing data behind them, so
 // each gets a ManageLogPanel (notes + optional photo, viewable as history).
-// Training gets its own richer sub-tabs (Tutorial/Laws/Assessment) instead.
 const LOG_CATEGORIES: { key: ManageView; label: string; icon: string }[] = [
   { key: 'arrangement',      label: 'Arrangement',       icon: '🪑' },
   { key: 'cleanliness',      label: 'Cleanliness',       icon: '🧹' },
@@ -39,13 +47,23 @@ const LOG_CATEGORIES: { key: ManageView; label: string; icon: string }[] = [
 ]
 
 // The left pane's fixed contents, top to bottom -- one flat list, no nested
-// groups.
+// groups and no nested tab bars within any single item's own content.
 const LIST_ITEMS: { key: ManageView; label: string; icon?: string }[] = [
-  { key: 'advert', label: 'Advert' },
+  { key: 'audio', label: 'Audio', icon: '🎙️' },
+  { key: 'audio_status', label: 'Advert Status', icon: '📋' },
+  { key: 'jingle', label: 'Jingle Log', icon: '🎵' },
+  { key: 'equipment', label: 'Equipment Check', icon: '🔊' },
+  { key: 'photoshop', label: 'Photoshop', icon: '🖌️' },
+  { key: 'whatsapp', label: 'WhatsApp', icon: '💬' },
+  { key: 'cuttings', label: 'Cuttings', icon: '✂️' },
+  { key: 'video', label: 'Video', icon: '🎬' },
+  { key: 'advert_log', label: 'Daily Log', icon: '📢' },
   { key: 'staff_dress', label: 'Dress Code' },
   ...LOG_CATEGORIES.map(c => ({ key: c.key, label: c.label, icon: c.icon })),
+  { key: 'tutorial', label: 'Tutorial', icon: '📖' },
+  { key: 'training_laws', label: 'Company Laws', icon: '⚖️' },
+  { key: 'assessment', label: 'Assessment', icon: '📝' },
   { key: 'rota', label: 'Rota' },
-  { key: 'training', label: 'Training' },
   { key: 'logs', label: 'Logs' },
 ]
 
@@ -56,7 +74,7 @@ type DynamicCategory = { id: number; label: string }
 // everything else (count duties, item hygiene, shift scheduling, and the
 // shop's day-to-day operational checklist categories).
 export default function GronyManageTab({ initialView, role, username }: { initialView?: ManageView; role: string; username: string }) {
-  const [view, setView] = useState<ManageView>(initialView ?? 'advert')
+  const [view, setView] = useState<ManageView>(initialView ?? 'audio')
   // User-added categories (see manage-categories) -- listed after the fixed
   // ones. Selecting one is a separate mode from `view` above (null = a fixed
   // category is active) rather than folding into the ManageView union,
@@ -187,9 +205,19 @@ export default function GronyManageTab({ initialView, role, username }: { initia
           <DynamicCategoryPage categoryId={activeDynamic.id} categoryLabel={activeDynamic.label} canManage={canManage} />
         ) : (<>
           {view === 'rota' && <div className="px-2"><RotaTab canManage={canManage} /></div>}
-          {view === 'advert' && <AdvertTab />}
+          {view === 'audio' && <ContentPage contentKey="advert_audio_roadside" title="Advert 1 — Audio (for Roadside)" />}
+          {view === 'audio_status' && <AdvertStatusPanel />}
+          {view === 'jingle' && <ManageLogPanel category="audio_jingle" label="Jingle Log" icon="🎵" />}
+          {view === 'equipment' && <ManageLogPanel category="audio_equipment_check" label="Equipment Check" icon="🔊" />}
+          {view === 'photoshop' && <ContentPage contentKey="advert_photo_photoshop" title="Advert 2 — Photo (Photoshop Files)" />}
+          {view === 'whatsapp' && <ContentPage contentKey="advert_photo_whatsapp" title="Advert 3 — Photo (WhatsApp Advert)" />}
+          {view === 'cuttings' && <ContentPage contentKey="advert_photo_cuttings" title="Advert 4 — Photo (Cuttings)" />}
+          {view === 'video' && <ContentPage contentKey="advert_video" title="Advert 5 — Video Advert" />}
+          {view === 'advert_log' && <ClosingReportLogView field="advert_played" label="Advert" icon="📢" />}
           {view === 'staff_dress' && <ClosingReportLogView field="no_tshirt_staff" label="Dress Code" icon="👕" />}
-          {view === 'training' && <TrainingTab />}
+          {view === 'tutorial' && <ContentPage contentKey="training_tutorial" title="📖 App Tutorial" />}
+          {view === 'training_laws' && <ContentPage contentKey="training_laws" title="⚖️ Company Laws" />}
+          {view === 'assessment' && <AssessmentPanel />}
           {view === 'logs' && <div className="px-2"><LogsPage /></div>}
           {logCategory && <ManageLogPanel category={logCategory.key} label={logCategory.label} icon={logCategory.icon} />}
         </>)}
