@@ -38,9 +38,9 @@ const LOG_CATEGORIES: { key: ManageView; label: string; icon: string }[] = [
   { key: 'quality_assurance', label: 'Quality Assurance', icon: '✅' },
 ]
 
-// The drawer's fixed contents, top to bottom -- one flat list, no nested
+// The left pane's fixed contents, top to bottom -- one flat list, no nested
 // groups.
-const DRAWER_ITEMS: { key: ManageView; label: string; icon?: string }[] = [
+const LIST_ITEMS: { key: ManageView; label: string; icon?: string }[] = [
   { key: 'advert', label: 'Advert' },
   { key: 'staff_dress', label: 'Dress Code' },
   ...LOG_CATEGORIES.map(c => ({ key: c.key, label: c.label, icon: c.icon })),
@@ -57,13 +57,12 @@ type DynamicCategory = { id: number; label: string }
 // shop's day-to-day operational checklist categories).
 export default function GronyManageTab({ initialView, role, username }: { initialView?: ManageView; role: string; username: string }) {
   const [view, setView] = useState<ManageView>(initialView ?? 'advert')
-  // User-added categories (see manage-categories) -- append after the fixed
-  // ones in the drawer. Selecting one is a separate mode from `view` above
-  // (null = a fixed category is active) rather than folding into the
-  // ManageView union, since these ids are open-ended, not a fixed set.
+  // User-added categories (see manage-categories) -- listed after the fixed
+  // ones. Selecting one is a separate mode from `view` above (null = a fixed
+  // category is active) rather than folding into the ManageView union,
+  // since these ids are open-ended, not a fixed set.
   const [dynamicCategories, setDynamicCategories] = useState<DynamicCategory[]>([])
   const [activeDynamicId, setActiveDynamicId] = useState<number | null>(null)
-  const [drawerOpen, setDrawerOpen] = useState(false)
   const [showAddCategory, setShowAddCategory] = useState(false)
   const [newCategoryLabel, setNewCategoryLabel] = useState('')
   const [savingCategory, setSavingCategory] = useState(false)
@@ -89,16 +88,13 @@ export default function GronyManageTab({ initialView, role, username }: { initia
 
   const logCategory = LOG_CATEGORIES.find(c => c.key === view)
   const activeDynamic = dynamicCategories.find(c => c.id === activeDynamicId)
-  const currentLabel = activeDynamic ? activeDynamic.label : (DRAWER_ITEMS.find(v => v.key === view)?.label ?? 'Grony Manage')
 
   function pick(key: ManageView) {
     setView(key)
     setActiveDynamicId(null)
-    setDrawerOpen(false)
   }
   function pickDynamic(id: number) {
     setActiveDynamicId(id)
-    setDrawerOpen(false)
   }
 
   async function addCategory(e: React.FormEvent) {
@@ -115,7 +111,6 @@ export default function GronyManageTab({ initialView, role, username }: { initia
       setNewCategoryLabel(''); setShowAddCategory(false)
       loadDynamicCategories()
       setActiveDynamicId(row.id)
-      setDrawerOpen(false)
     }
   }
 
@@ -127,91 +122,67 @@ export default function GronyManageTab({ initialView, role, username }: { initia
   }
 
   return (
-    <div className="flex flex-col h-full min-h-0">
-      {/* Trigger bar -- tap to open the drawer instead of scrolling a long
-          horizontal tab strip. Shows which category is currently open so
-          it also works as a breadcrumb. */}
-      <button onClick={() => setDrawerOpen(true)}
-        className="shrink-0 flex items-center gap-2 px-3 py-2.5 bg-white border-b border-gray-200 text-left hover:bg-gray-50 transition">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 shrink-0">
-          <line x1="4" y1="6" x2="20" y2="6" />
-          <line x1="4" y1="12" x2="20" y2="12" />
-          <line x1="4" y1="18" x2="20" y2="18" />
-        </svg>
-        <span className="text-sm font-bold text-gray-900">{currentLabel}</span>
-      </button>
+    <div className="flex h-full min-h-0">
+      {/* Left pane -- always visible instead of a drawer you have to open,
+          narrow so the content pane keeps most of the width on a phone. */}
+      <div className="w-32 shrink-0 border-r border-gray-200 bg-gray-50 overflow-y-auto">
+        {LIST_ITEMS.map(entry => (
+          <button key={entry.key} onClick={() => pick(entry.key)}
+            className={`w-full flex items-start gap-1 text-left px-2 py-2 text-[11px] font-medium leading-tight transition
+              ${!activeDynamic && view === entry.key ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-gray-700 hover:bg-gray-100'}`}>
+            {entry.icon && <span className="shrink-0">{entry.icon}</span>}<span>{entry.label}</span>
+          </button>
+        ))}
 
-      {/* Drawer -- slides in from the left, covers most of the screen on
-          mobile. Backdrop tap (or picking a category) closes it. */}
-      {drawerOpen && (
-        <div className="fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/30" onClick={() => setDrawerOpen(false)} />
-          <div className="absolute left-0 top-0 h-full w-72 max-w-[80%] bg-white shadow-xl overflow-y-auto">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 sticky top-0 bg-white">
-              <p className="font-bold text-gray-900">Grony Manage</p>
-              <button onClick={() => setDrawerOpen(false)} aria-label="Close"
-                className="text-gray-400 hover:text-gray-600 text-2xl leading-none px-1">×</button>
-            </div>
-            <div className="py-2">
-              {DRAWER_ITEMS.map(entry => (
-                <button key={entry.key} onClick={() => pick(entry.key)}
-                  className={`w-full flex items-center gap-2 text-left px-4 py-2.5 text-sm font-medium transition
-                    ${!activeDynamic && view === entry.key ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}>
-                  {entry.icon && <span>{entry.icon}</span>}{entry.label}
+        {dynamicCategories.length > 0 && (
+          <div className="mt-1 pt-1 border-t border-gray-200">
+            <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-gray-400 uppercase tracking-wide">Added by you</p>
+            {dynamicCategories.map(c => (
+              <div key={c.id} className={`flex items-start ${activeDynamicId === c.id ? 'bg-blue-100' : ''}`}>
+                <button onClick={() => pickDynamic(c.id)}
+                  className={`flex-1 min-w-0 text-left px-2 py-2 text-[11px] font-medium leading-tight transition
+                    ${activeDynamicId === c.id ? 'text-blue-700 font-semibold' : 'text-gray-700 hover:bg-gray-100'}`}>
+                  {c.label}
                 </button>
-              ))}
-
-              {dynamicCategories.length > 0 && (
-                <div className="mt-2 pt-2 border-t border-gray-100">
-                  <p className="px-4 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Added by you</p>
-                  {dynamicCategories.map(c => (
-                    <div key={c.id} className="flex items-center">
-                      <button onClick={() => pickDynamic(c.id)}
-                        className={`flex-1 min-w-0 text-left px-4 py-2.5 text-sm font-medium truncate transition
-                          ${activeDynamicId === c.id ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}>
-                        {c.label}
-                      </button>
-                      {canManage && (
-                        <button onClick={() => removeCategory(c.id, c.label)} title="Delete category"
-                          className="shrink-0 px-3 text-gray-300 hover:text-red-500 font-bold">×</button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {canManage && (
-                <div className="mt-2 pt-2 border-t border-gray-100 px-4">
-                  {showAddCategory ? (
-                    <form onSubmit={addCategory} className="space-y-1.5 py-1.5">
-                      <input autoFocus value={newCategoryLabel} onChange={e => setNewCategoryLabel(e.target.value)}
-                        placeholder="Category name *"
-                        className="w-full text-xs bg-gray-50 border border-gray-300 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-400" />
-                      <div className="flex items-center gap-1.5">
-                        <button type="submit" disabled={savingCategory || !newCategoryLabel.trim()}
-                          className="flex-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 transition">
-                          {savingCategory ? 'Saving…' : 'Add'}
-                        </button>
-                        <button type="button" onClick={() => { setShowAddCategory(false); setNewCategoryLabel('') }}
-                          className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition">
-                          Cancel
-                        </button>
-                      </div>
-                    </form>
-                  ) : (
-                    <button onClick={() => setShowAddCategory(true)}
-                      className="w-full text-left py-2.5 text-sm font-semibold text-blue-600 hover:bg-blue-50 rounded-lg transition">
-                      + Add Category
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
+                {canManage && (
+                  <button onClick={() => removeCategory(c.id, c.label)} title="Delete category"
+                    className="shrink-0 px-1.5 pt-2 text-gray-300 hover:text-red-500 font-bold text-xs">×</button>
+                )}
+              </div>
+            ))}
           </div>
-        </div>
-      )}
+        )}
 
-      <div className="flex-1 min-h-0 overflow-y-auto">
+        {canManage && (
+          <div className="mt-1 pt-1 border-t border-gray-200 px-1.5 pb-2">
+            {showAddCategory ? (
+              <form onSubmit={addCategory} className="space-y-1 py-1">
+                <input autoFocus value={newCategoryLabel} onChange={e => setNewCategoryLabel(e.target.value)}
+                  placeholder="Name *"
+                  className="w-full text-[10px] bg-white border border-gray-300 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+                <div className="flex items-center gap-1">
+                  <button type="submit" disabled={savingCategory || !newCategoryLabel.trim()}
+                    className="flex-1 text-[10px] font-semibold px-1.5 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 transition">
+                    {savingCategory ? '…' : 'Add'}
+                  </button>
+                  <button type="button" onClick={() => { setShowAddCategory(false); setNewCategoryLabel('') }}
+                    className="text-[10px] font-semibold px-1.5 py-1 rounded bg-gray-200 text-gray-600 hover:bg-gray-300 transition">
+                    ✕
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <button onClick={() => setShowAddCategory(true)}
+                className="w-full text-left px-1 py-2 text-[11px] font-semibold text-blue-600 hover:bg-blue-50 rounded transition">
+                + Add Category
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Right pane -- whichever category is selected, full remaining width. */}
+      <div className="flex-1 min-w-0 overflow-y-auto">
         {activeDynamic ? (
           <DynamicCategoryPage categoryId={activeDynamic.id} categoryLabel={activeDynamic.label} canManage={canManage} />
         ) : (<>
