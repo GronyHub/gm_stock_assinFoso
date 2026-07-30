@@ -102,7 +102,10 @@ export function useColumnPrefs<K extends string>(storageKey: string, columns: Co
   return { columns, visibleCols, colOrder, columnLabels, shownColumns, toggleCol, moveCol, renameColumn, resetVisible }
 }
 
-export function ColumnsPickerButton<K extends string>({ prefs }: { prefs: ColumnPrefs<K> }) {
+// `dark` is for the one instance sitting directly on Grony Cash's own deep
+// green controls row (see item/page.tsx) -- every other caller renders on a
+// plain white content area, so it stays the default gray chip there.
+export function ColumnsPickerButton<K extends string>({ prefs, dark = false }: { prefs: ColumnPrefs<K>; dark?: boolean }) {
   const [open, setOpen] = useState(false)
   const [renamingCol, setRenamingCol] = useState<K | null>(null)
   const [renameValue, setRenameValue] = useState('')
@@ -120,7 +123,8 @@ export function ColumnsPickerButton<K extends string>({ prefs }: { prefs: Column
   return (
     <div className="relative shrink-0" ref={ref}>
       <button onClick={() => setOpen(o => !o)} title="Columns"
-        className="flex items-center justify-center w-7 h-7 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition">
+        className={`flex items-center justify-center w-7 h-7 rounded-lg transition
+          ${dark ? 'text-white hover:bg-white/10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="4" width="18" height="16" rx="2" />
           <line x1="9" y1="4" x2="9" y2="20" />
