@@ -50,15 +50,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     let bill
     try {
       [bill] = await sql`
-        INSERT INTO bills (bill_number, bill_date, vendor_id, vendor_name, total, subtotal, status, source, entered_by)
-        VALUES (${billNumber}, ${date}, ${po.vendor_id ?? null}, ${po.vendor_name ?? null}, ${total}, ${total}, 'paid', 'po', ${actor})
+        INSERT INTO bills (bill_number, bill_date, vendor_id, vendor_name, total, subtotal, status, source, entered_by, zoho_bill_id)
+        VALUES (${billNumber}, ${date}, ${po.vendor_id ?? null}, ${po.vendor_name ?? null}, ${total}, ${total}, 'paid', 'po', ${actor}, ${billNumber})
         RETURNING id
       `
     } catch (e) {
       console.error('bills insert with entered_by failed, retrying without it:', e)
       ;[bill] = await sql`
-        INSERT INTO bills (bill_number, bill_date, vendor_id, vendor_name, total, subtotal, status, source)
-        VALUES (${billNumber}, ${date}, ${po.vendor_id ?? null}, ${po.vendor_name ?? null}, ${total}, ${total}, 'paid', 'po')
+        INSERT INTO bills (bill_number, bill_date, vendor_id, vendor_name, total, subtotal, status, source, zoho_bill_id)
+        VALUES (${billNumber}, ${date}, ${po.vendor_id ?? null}, ${po.vendor_name ?? null}, ${total}, ${total}, 'paid', 'po', ${billNumber})
         RETURNING id
       `
     }
