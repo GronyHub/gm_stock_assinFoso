@@ -11,6 +11,7 @@ import SavedFlash from './SavedFlash'
 import TasksView from './TasksView'
 import OpenerView from './OpenerView'
 import CloserView from './CloserView'
+import PaneHomeDaily from './PaneHomeDaily'
 import type { Violation } from './useViolations'
 import { SidePaneContainer, SidePaneToggle, SidePaneButton, useSidePaneDisplayMode } from './SidePane'
 
@@ -96,6 +97,7 @@ export default function GronyManageTab({
   violations, openerViolations, assignments, deadlines, assignedBy, assignedOn, vSettings,
   manageSubmenus, onGoToViolation, missingClosingReportsCount, onOpenStaff,
   tasksBadge, openerBadge, closerBadge,
+  onGoHome, onGoDaily, unreadAnnouncements,
 }: {
   initialView?: ManageView; role: string; username: string
   // Tasks/Opener -- see item/page.tsx's manageTasksViolations/
@@ -114,6 +116,11 @@ export default function GronyManageTab({
   tasksBadge: number
   openerBadge: number
   closerBadge: number
+  // Home/Daily -- see PaneHomeDaily; Daily jumps into Grony Cash's Daily
+  // Summary even from here, the same global shortcut it always was.
+  onGoHome: () => void
+  onGoDaily: () => void
+  unreadAnnouncements: number
 }) {
   const [view, setView] = useState<ManageView>(initialView ?? 'audio')
   // User-added categories (see manage-categories) -- listed after the fixed
@@ -212,7 +219,9 @@ export default function GronyManageTab({
       {/* Left pane -- always visible instead of a drawer you have to open.
           Width tightens further in icon-only mode; labels cap at 2 lines
           (line-clamp) rather than pushing the pane wider for long names. */}
-      <SidePaneContainer mode={displayMode}>
+      <SidePaneContainer mode={displayMode}
+        footer={<PaneHomeDaily mode={displayMode} onHome={onGoHome} onDaily={onGoDaily}
+          dailyActive={false} unreadAnnouncements={unreadAnnouncements} />}>
         <SidePaneToggle mode={displayMode} onChange={changeDisplayMode} />
 
         {LIST_ITEMS.map(entry => {

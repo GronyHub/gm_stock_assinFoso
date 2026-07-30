@@ -65,17 +65,26 @@ export function SidePaneToggle({ mode, onChange }: { mode: DisplayMode; onChange
 // depending on `mode`, label capped at 2 lines instead of forcing the pane
 // wider for a long name. `className` controls sizing: default `w-full` for
 // a standalone list; pass `flex-1 min-w-0` when placed in a row alongside
-// another control (e.g. a trailing delete button). `badge` overlays a small
+// another control (e.g. a trailing delete button, or a sibling footer
+// button -- see Home/Daily in item/page.tsx). `badge` overlays a small
 // count in the corner (e.g. Grony Cash's flag counts) -- shown in every mode
 // including icon-only, since that's exactly when a count matters most.
+// `icon` takes a plain emoji string for the common case, or a ReactNode
+// (e.g. an inline SVG) for spots that need a real icon instead -- Home/Daily
+// used their own hand-drawn SVGs when they were floating buttons, and kept
+// them here rather than switching to an emoji.
 export function SidePaneButton({ icon, label, active, mode, onClick, badge, className = 'w-full' }: {
-  icon?: string; label: string; active: boolean; mode: DisplayMode; onClick: () => void; badge?: number; className?: string
+  icon?: string | React.ReactNode; label: string; active: boolean; mode: DisplayMode; onClick: () => void; badge?: number; className?: string
 }) {
   return (
     <button onClick={onClick} title={label} aria-label={label}
       className={`relative flex flex-col items-center justify-center gap-0.5 px-1 py-2 text-[10px] font-medium leading-tight text-center transition
         ${active ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-gray-700 hover:bg-gray-100'} ${className}`}>
-      {mode !== 'text' && <span className="text-base leading-none">{icon ?? '•'}</span>}
+      {mode !== 'text' && (
+        typeof icon === 'string' || icon === undefined
+          ? <span className="text-base leading-none">{icon ?? '•'}</span>
+          : <span className="leading-none">{icon}</span>
+      )}
       {mode !== 'icon' && <span className="line-clamp-2">{label}</span>}
       {!!badge && badge > 0 && (
         <span className="absolute top-0.5 right-0.5 flex items-center justify-center min-w-[14px] h-[14px] px-0.5 text-[8px] font-bold leading-none rounded-full bg-red-600 text-white">
@@ -86,10 +95,17 @@ export function SidePaneButton({ icon, label, active, mode, onClick, badge, clas
   )
 }
 
-export function SidePaneContainer({ mode, children }: { mode: DisplayMode; children: React.ReactNode }) {
+// `footer` renders outside the scrollable area, pinned to the pane's own
+// bottom edge instead of scrolling away with the rest of the list --
+// Home/Daily specifically, which used to float above the whole page and
+// needed to stay reachable no matter how far the list above scrolled.
+export function SidePaneContainer({ mode, footer, children }: { mode: DisplayMode; footer?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className={`${paneWidthClass(mode)} shrink-0 border-r border-gray-200 bg-gray-50 overflow-y-auto`}>
-      {children}
+    <div className={`${paneWidthClass(mode)} shrink-0 border-r border-gray-200 bg-gray-50 flex flex-col min-h-0`}>
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        {children}
+      </div>
+      {footer}
     </div>
   )
 }

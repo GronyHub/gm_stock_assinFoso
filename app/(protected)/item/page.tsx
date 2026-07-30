@@ -24,6 +24,7 @@ class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boole
 import { usePolling } from '@/lib/usePolling'
 import { useViolations } from './_components/useViolations'
 import NewShortcutButton, { type ShortcutKey } from './_components/NewShortcutButton'
+import PaneHomeDaily from './_components/PaneHomeDaily'
 import TasksView from './_components/TasksView'
 import { COLUMNS, type ColKey } from './_components/lossTabColumns'
 import { useColumnPrefs, ColumnsPickerButton } from './_components/columnPrefs'
@@ -942,7 +943,11 @@ function ItemHubPageInner() {
           width content area as before. */}
       <div className="flex-1 min-h-0 flex overflow-hidden">
         {outerTab === 'loss' && (
-          <SidePaneContainer mode={cashDisplayMode}>
+          <SidePaneContainer mode={cashDisplayMode}
+            footer={<PaneHomeDaily mode={cashDisplayMode} onHome={() => changeTab('today')}
+              onDaily={() => { changeTab('loss'); setLossView('dailySummary') }}
+              dailyActive={outerTab === 'loss' && lossView === 'dailySummary'}
+              unreadAnnouncements={unreadAnnouncements} />}>
             <SidePaneToggle mode={cashDisplayMode} onChange={changeCashDisplayMode} />
             {CASH_ITEMS.filter(v => v.key !== 'pl' || canSeePL)
               .filter(v => v.key !== 'fixMislinkedSales' || isOwnerOrJoe).map(v => {
@@ -1161,7 +1166,10 @@ function ItemHubPageInner() {
               missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
               onOpenStaff={() => changeTab('staff')}
               tasksBadge={manageTasksCount} openerBadge={openerBadgeCount}
-              closerBadge={globalFlags?.missingClosingReports?.length ?? 0} />
+              closerBadge={globalFlags?.missingClosingReports?.length ?? 0}
+              onGoHome={() => changeTab('today')}
+              onGoDaily={() => { changeTab('loss'); setLossView('dailySummary') }}
+              unreadAnnouncements={unreadAnnouncements} />
           </TabErrorBoundary>
         )}
         {outerTab === 'staff' && (
@@ -1290,43 +1298,11 @@ function ItemHubPageInner() {
           belongs to (Tasks lives on both Cash's and Manage's own pane now;
           Opener/Closer moved to Manage's). The "+" shortcut menu is the one
           thing in that bar worth keeping on its own, so it's now a floating
-          button instead, matching Home's own floating circle. */}
+          button instead. Home and Daily used to float here too (as two
+          circular buttons) but are now a fixed footer row inside Grony
+          Cash's and Grony Manage's own left panes instead (see
+          PaneHomeDaily) -- "+" is the only genuinely floating control left. */}
       <NewShortcutButton onShortcut={handleShortcut} />
-
-      {/* Home -- floating above where the Role Bar used to be, since it's a
-          single, always-in-the-same-place shortcut rather than a peer of
-          Grony Cash/Grony Manage. */}
-      <button onClick={() => changeTab('today')} aria-label="Home"
-        className={`fixed bottom-20 right-4 z-40 w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition
-          ${outerTab === 'today' ? 'bg-brand text-white' : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'}`}>
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 11.5 12 4l9 7.5" />
-          <path d="M5 10v9a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h0a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-9" />
-        </svg>
-        {/* Unread announcements -- draws the eye back to Home instead of
-            requiring a check-in tap to find out something new was posted. */}
-        {unreadAnnouncements > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white
-            text-[10px] font-bold leading-none flex items-center justify-center border-2 border-white">
-            {unreadAnnouncements > 99 ? '99+' : unreadAnnouncements}
-          </span>
-        )}
-      </button>
-
-      {/* Daily -- same treatment as Home: floating above the Role Bar
-          instead of taking a slot in the Grony Cash submenu row, since it's
-          a single, always-in-the-same-place shortcut. Mirrored to the
-          bottom-left so it doesn't collide with Home. */}
-      <button onClick={() => { changeTab('loss'); setLossView('dailySummary') }} aria-label="Daily"
-        className={`fixed bottom-20 left-4 z-40 w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition
-          ${outerTab === 'loss' && lossView === 'dailySummary' ? 'bg-brand text-white' : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'}`}>
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="5" width="18" height="16" rx="2" />
-          <line x1="16" y1="3" x2="16" y2="7" />
-          <line x1="8" y1="3" x2="8" y2="7" />
-          <line x1="3" y1="10" x2="21" y2="10" />
-        </svg>
-      </button>
 
       {/* Global search overlay -- click outside/× closes it; each result
           jumps straight to the right tab (and, for Sales/Bills/Customers/
