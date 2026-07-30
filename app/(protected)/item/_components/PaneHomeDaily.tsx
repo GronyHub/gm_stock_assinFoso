@@ -20,22 +20,23 @@ const DailyIcon = (
 // buttons, always on screen regardless of which tab or scroll position --
 // now they're a fixed footer row on Grony Cash's and Grony Manage's own
 // left panes instead (see SidePaneContainer's `footer` prop), side by side,
-// sitting right above the still-floating "+" shortcut button. Neither tab
-// this shows up on can itself be "Today" or Cash's Daily Summary at the
-// same time (both are panes of their own with no room for this pane
-// alongside them), so `dailyActive` is the only one of the two that's ever
-// really true -- Home's is kept for correctness/future-proofing, not
-// because it fires today.
-export default function PaneHomeDaily({ mode, onHome, onDaily, dailyActive, unreadAnnouncements }: {
+// sitting right above the still-floating "+" shortcut button. Both jump to
+// a view of the SAME pane they're clicked from (Cash's own 'home'/
+// 'dailySummary' lossViews, Manage's own 'home'/'daily' ManageViews) rather
+// than switching tabs, so the pane and top menu stay on screen exactly like
+// picking any other item here does -- `homeActive`/`dailyActive` reflect
+// that real per-pane state instead of always reading false/one-sided.
+export default function PaneHomeDaily({ mode, onHome, onDaily, homeActive = false, dailyActive, unreadAnnouncements }: {
   mode: DisplayMode
   onHome: () => void
   onDaily: () => void
+  homeActive?: boolean
   dailyActive: boolean
   unreadAnnouncements: number
 }) {
   return (
     <div className="border-t border-blue-700 flex items-stretch shrink-0">
-      <SidePaneButton icon={HomeIcon} label="Home" mode={mode} active={false} badge={unreadAnnouncements}
+      <SidePaneButton icon={HomeIcon} label="Home" mode={mode} active={homeActive} badge={unreadAnnouncements}
         onClick={onHome} className="flex-1 min-w-0" />
       <div className="w-px bg-blue-700 shrink-0" />
       <SidePaneButton icon={DailyIcon} label="Daily" mode={mode} active={dailyActive}
