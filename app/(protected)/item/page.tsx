@@ -330,27 +330,6 @@ const LOSSVIEW_PILL_KEYS: Partial<Record<LossView, string[]>> = {
 // clicking it still jumps to the Staff tab same as it always has.
 const MANAGE_VIOLATION_TYPES = new Set(['no_staff_times', 'no_advert', 'jingle_overdue', 'equipment_check_overdue'])
 
-// Grony Cash is the one tab everyone has, so it's the row's flex-1 anchor --
-// Grony Manage and Staff used to be separate tabs sharing this same anchor
-// treatment, but their rows now live inside Grony Cash's own merged pane
-// instead (see the pane below). UK/C&H are per-account extras (not everyone
-// sees either, and nobody sees more than one at a time growing this row
-// further), so they're shrink-0 instead of flex-1 -- sized to their own
-// short label, not forced to share the row with Grony Cash. truncate is
-// still kept as a last-resort safety net, and the row scrolls horizontally
-// rather than overlapping if it's ever tight enough that even that isn't
-// sufficient.
-function topTabCls() {
-  return 'flex-1 min-w-0 flex items-center justify-center py-1'
-}
-function topTabClsCompact() {
-  return 'shrink-0 flex items-center justify-center py-1'
-}
-function topTabLabelCls(active: boolean) {
-  return `text-sm font-bold text-center px-1.5 py-1.5 rounded-xl leading-tight whitespace-nowrap truncate transition
-    ${active ? 'bg-brand text-white shadow-md' : 'text-white hover:bg-white/10'}`
-}
-
 const VALID_TABS: OuterTab[] = ['today', 'loss', 'uk', 'ch']
 
 function ItemHubPageInner() {
@@ -968,76 +947,43 @@ function ItemHubPageInner() {
   return (
     <div className="-mx-4 -mt-4 -mb-6 flex flex-col h-[100dvh] md:h-[calc(100dvh-56px)]">
 
-      {/* ── Header ── */}
-      <div className="shrink-0 sticky top-0 z-30 bg-green-800 border-b border-green-900">
-
-        {/* Row 1: raw-text tabs, no icons. Grony Cash is the one flex-1
-            anchor everyone gets; UK/C&H are shrink-0 (sized to their own
-            label) since they're per-account extras, not peers Cash needs to
-            keep sharing room with as more of them get added. Grony Manage
-            and Staff used to be separate tabs here -- both folded into
-            Grony Cash's own merged pane instead (see the pane below), so
-            there's nothing left in this row to switch between besides Cash
-            itself and the two private extras. overflow-x-auto is a last
-            resort -- on any screen wide enough for the full set (every
-            phone this has actually been tested on), nothing scrolls, it
-            just sits there unused. Daily and Data are Grony Cash submenus
-            now too (see the children row below), not top-level tabs of
-            their own. Home moved to its own floating icon (bottom-right) so
-            it doesn't take up a slot in this row. */}
-        <div className="flex items-stretch gap-1 px-2 py-2 overflow-x-auto">
-          <button onClick={() => changeTab('loss')} className={topTabCls()}>
-            <span className={topTabLabelCls(outerTab === 'loss')}>
-              Grony Cash
-            </span>
-          </button>
-          {/* Private to Grony alone -- was a hidden hamburger-menu link
-              before, now a real tab since the hamburger it lived in got
-              removed once every one of its old links had somewhere else to
-              live. */}
-          {isGrony && (<>
-          <div className="w-px bg-white/25 shrink-0" />
-          <button onClick={() => changeTab('uk')} className={topTabClsCompact()}>
-            <span className={topTabLabelCls(outerTab === 'uk')}>UK</span>
-          </button>
-          </>)}
-          {/* Owner-level only (Grony/Joe) -- content TBD, CHTab is a
-              placeholder for now. */}
-          {isOwnerOrJoe && (<>
-          <div className="w-px bg-white/25 shrink-0" />
-          <button onClick={() => changeTab('ch')} className={topTabClsCompact()}>
-            <span className={topTabLabelCls(outerTab === 'ch')}>C&amp;H</span>
-          </button>
-          </>)}
-          <div className="w-px bg-white/25 shrink-0" />
-          {/* Global search -- looks across the whole app (items, customers,
-              vendors, sales, bills, announcements), unlike the per-view
-              search bars already on most tabs below, which only filter
-              what's already on screen. Icon rather than a permanent text
-              field so it doesn't compete with those for the same "search"
-              affordance/space. */}
-          <button onClick={() => setGlobalSearchOpen(true)} aria-label="Search everywhere" title="Search everywhere"
-            className="shrink-0 flex items-center justify-center w-10 text-white hover:bg-white/10 rounded-xl transition">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="7" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      {/* ── Body ── Grony Cash's one left pane now covers what used to be
-          three separate ones (Cash/Manage/Staff), everything else just gets
-          the full-width content area as before. */}
+      {/* ── Body ── No separate header row any more -- Grony Cash/UK/C&H
+          (formerly the top tab row) and global search now live inside the
+          pane's own footer instead (see below), so the pane itself reaches
+          the very top of the screen. The pane is no longer Cash-specific
+          either: it renders regardless of outerTab, so Today/UK/C&H all get
+          it alongside their own content instead of losing all navigation
+          the moment you leave Grony Cash. */}
       <div className="flex-1 min-h-0 flex overflow-hidden">
-        {outerTab === 'loss' && (
-          <SidePaneContainer mode={cashDisplayMode}
+        <SidePaneContainer mode={cashDisplayMode}
             footer={<>
               <PaneHomeDaily mode={cashDisplayMode}
                 onHome={() => { setLossView('home'); setUnreadAnnouncements(0) }}
                 onDaily={() => setLossView('dailySummary')}
                 homeActive={lossView === 'home'} dailyActive={lossView === 'dailySummary'}
                 unreadAnnouncements={unreadAnnouncements} />
+              {/* Formerly the top tab row -- Grony Cash is everyone's one
+                  flex-1 anchor up there; here it's just another footer
+                  button like the rest. UK/C&H stay private to Grony/owner-
+                  level the same as before. */}
+              <div className="mt-1 border-t border-blue-700 pt-1">
+                <SidePaneButton icon="💰" label="Grony Cash" mode={cashDisplayMode}
+                  active={outerTab === 'loss'} onClick={() => changeTab('loss')} />
+                {isGrony && (
+                  <SidePaneButton icon="🇬🇧" label="UK" mode={cashDisplayMode}
+                    active={outerTab === 'uk'} onClick={() => changeTab('uk')} />
+                )}
+                {isOwnerOrJoe && (
+                  <SidePaneButton icon="🏢" label="C&H" mode={cashDisplayMode}
+                    active={outerTab === 'ch'} onClick={() => changeTab('ch')} />
+                )}
+                {/* Global search -- looks across the whole app (items,
+                    customers, vendors, sales, bills, announcements), unlike
+                    the per-view search bars already on most tabs below,
+                    which only filter what's already on screen. */}
+                <SidePaneButton icon="🔍" label="Search" mode={cashDisplayMode}
+                  active={false} onClick={() => setGlobalSearchOpen(true)} />
+              </div>
               <div className="mt-1 border-t border-blue-700 pt-1">
                 <ViewPortalAsButton />
                 <SidePaneButton icon="🚪" label="Sign out" mode={cashDisplayMode} active={false}
@@ -1156,8 +1102,7 @@ function ItemHubPageInner() {
                 </>)}
               </div>
             )}
-          </SidePaneContainer>
-        )}
+        </SidePaneContainer>
 
         <div className="relative flex-1 min-w-0 min-h-0 flex flex-col">
           {outerTab === 'loss' && (
