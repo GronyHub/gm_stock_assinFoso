@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useMemo, Component, Suspense, type ReactNode } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
-import { hasFeature, type FeatureKey, type RolePermissionsMap } from '@/lib/permissions'
+import { hasFeature, type FeatureKey, type RolePermissionsMap } from '@/lib/permissionsShared'
 
 class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boolean; message: string }> {
   state = { error: false, message: '' }

@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { FEATURE_KEYS, FEATURE_LABELS, type FeatureKey } from '@/lib/permissions'
+import { FEATURE_KEYS, FEATURE_LABELS, type FeatureKey } from '@/lib/permissionsShared'
 
 type Role = { key: string; label: string; created_at: string }
 type User = { id: number; username: string; display_name: string; role: string }
