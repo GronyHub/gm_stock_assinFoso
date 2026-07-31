@@ -6,6 +6,7 @@ import { fmtDate } from '@/lib/fmtDate'
 type RecentRow = { id?: number; staff_name: string; work_date: string; actual_in: string | null; actual_out: string | null; entered_by: string | null }
 
 const FLAG_HOURS = 14
+const PM_CLOCK_IN_WATCH = new Set(['james', 'joe'])
 
 function parseTimeMins(t: string | null) {
   if (!t) return null
@@ -23,6 +24,12 @@ function minsToHrs(mins: number) {
 }
 function ghanaToday() {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Accra' })
+}
+function isPM(t: string | null) {
+  return !!t && /pm$/i.test(t.trim())
+}
+function isAM(t: string | null) {
+  return !!t && /am$/i.test(t.trim())
 }
 
 function LongShiftsTable({ rows }: { rows: (RecentRow & { mins: number })[] }) {
@@ -55,8 +62,8 @@ function LongShiftsTable({ rows }: { rows: (RecentRow & { mins: number })[] }) {
   )
 }
 
-function IncompleteTable({ rows }: { rows: RecentRow[] }) {
-  if (rows.length === 0) return <p className="text-center text-gray-400 py-6">Nothing missing an In or Out.</p>
+function TimesTable({ rows, emptyText }: { rows: RecentRow[]; emptyText: string }) {
+  if (rows.length === 0) return <p className="text-center text-gray-400 py-6">{emptyText}</p>
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
       <table className="w-full text-sm">
@@ -86,11 +93,14 @@ function IncompleteTable({ rows }: { rows: RecentRow[] }) {
 export default function FlaggedTimesReviewPage() {
   const [longShifts, setLongShifts] = useState<(RecentRow & { mins: number })[] | null>(null)
   const [incomplete, setIncomplete] = useState<RecentRow[] | null>(null)
+  const [pmClockIns, setPmClockIns] = useState<RecentRow[] | null>(null)
+  const [amClockOuts, setAmClockOuts] = useState<RecentRow[] | null>(null)
 
   useEffect(() => {
     fetch('/api/staff-times/all').then(r => r.ok ? r.json() : []).then(d => {
       const all: RecentRow[] = Array.isArray(d) ? d : []
       const today = ghanaToday()
+      const byDateDesc = (a: RecentRow, b: RecentRow) => b.work_date.localeCompare(a.work_date)
 
       const long = all
         .map(r => {
@@ -112,12 +122,22 @@ export default function FlaggedTimesReviewPage() {
       const inc = all
         .filter(r => (!!r.actual_in) !== (!!r.actual_out))
         .filter(r => !(r.actual_out && !r.actual_in && r.work_date === today))
-        .sort((a, b) => b.work_date.localeCompare(a.work_date))
+        .sort(byDateDesc)
       setIncomplete(inc)
-    }).catch(() => { setLongShifts([]); setIncomplete([]) })
+
+      // James and Joe are expected to open, not arrive in the afternoon --
+      // a PM clock-in for either of them is almost always a mistyped time.
+      setPmClockIns(all
+        .filter(r => PM_CLOCK_IN_WATCH.has(r.staff_name.toLowerCase()) && isPM(r.actual_in))
+        .sort(byDateDesc))
+
+      // Clocking out in the AM only makes sense for an overnight shift --
+      // for everyone else it's a mistyped time (meant PM).
+      setAmClockOuts(all.filter(r => isAM(r.actual_out)).sort(byDateDesc))
+    }).catch(() => { setLongShifts([]); setIncomplete([]); setPmClockIns([]); setAmClockOuts([]) })
   }, [])
 
-  const loading = longShifts === null || incomplete === null
+  const loading = longShifts === null || incomplete === null || pmClockIns === null || amClockOuts === null
 
   return (
     <div className="py-4 space-y-6">
@@ -137,7 +157,21 @@ export default function FlaggedTimesReviewPage() {
             <h2 className="text-sm font-semibold text-gray-700">
               Incomplete — Missing In or Out {incomplete.length > 0 && <span className="text-gray-400 font-normal">({incomplete.length})</span>}
             </h2>
-            <IncompleteTable rows={incomplete} />
+            <TimesTable rows={incomplete} emptyText="Nothing missing an In or Out." />
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="text-sm font-semibold text-gray-700">
+              James/Joe Clocked In (PM) {pmClockIns.length > 0 && <span className="text-gray-400 font-normal">({pmClockIns.length})</span>}
+            </h2>
+            <TimesTable rows={pmClockIns} emptyText="No PM clock-ins for James or Joe." />
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="text-sm font-semibold text-gray-700">
+              Clocked Out (AM) {amClockOuts.length > 0 && <span className="text-gray-400 font-normal">({amClockOuts.length})</span>}
+            </h2>
+            <TimesTable rows={amClockOuts} emptyText="No AM clock-outs." />
           </div>
 
           <div className="space-y-2">

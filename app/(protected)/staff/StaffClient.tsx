@@ -460,7 +460,7 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
     <div className="space-y-2.5">
       {isAdmin && (
         <div className="flex justify-between items-center">
-          <Link href="/staff-times/review" title="Review flagged times (incomplete, or over 14 hours)"
+          <Link href="/staff-times/review" title="Review flagged times"
             className="text-sm leading-none px-2 py-1 rounded-lg bg-red-50 hover:bg-red-100 transition">
             🚩
           </Link>
