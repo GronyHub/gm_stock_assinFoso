@@ -7,6 +7,7 @@ import { usePolling } from '@/lib/usePolling'
 import CloserQuestionnaire, { ClosingAnswers } from '@/components/CloserQuestionnaire'
 import BinoChecklist, { BinoChecklistAnswers } from '@/components/BinoChecklist'
 import ClosingReportsList from '@/components/ClosingReportsList'
+import ManageLogPanel from '../item/_components/ManageLogPanel'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell,
 } from 'recharts'
@@ -219,6 +220,7 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
   const [opener, setOpener] = useState<string | null>(null)
   const [closer, setCloser] = useState<string | null>(null)
   const [showReports, setShowReports] = useState(false)
+  const [showLog, setShowLog] = useState(false)
   const [confirmingCount, setConfirmingCount] = useState(false)
   const [confirmCountErr, setConfirmCountErr] = useState('')
   const [binoChecklistOpen, setBinoChecklistOpen] = useState(false)
@@ -455,15 +457,15 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
   if (loading) return <div className="py-10 text-center text-gray-400">Loading…</div>
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2.5">
       {isAdmin && (
         <div className="flex justify-between items-center">
           <Link href="/staff-times/review" title="Review flagged times (incomplete, or over 14 hours)"
-            className="text-base leading-none px-2.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 transition">
+            className="text-sm leading-none px-2 py-1 rounded-lg bg-red-50 hover:bg-red-100 transition">
             🚩
           </Link>
           <button onClick={() => setShowAddForm(v => !v)}
-            className="text-sm font-bold px-3 py-1.5 rounded-xl bg-blue-600 text-white hover:bg-blue-500 transition">
+            className="text-xs font-bold px-2.5 py-1 rounded-lg bg-blue-600 text-white hover:bg-blue-500 transition">
             {showAddForm ? 'Cancel' : '+ Add Entry'}
           </button>
         </div>
@@ -557,23 +559,23 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
       )}
 
       {/* Clock In/Out panel */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
-        <p className="text-sm font-semibold text-gray-700">My Time Today</p>
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <div className="bg-green-50 rounded-lg px-3 py-2">
-            <span className="text-xs text-gray-400 block">Time In</span>
+      <div className="bg-white border border-gray-200 rounded-xl p-2.5 space-y-2">
+        <p className="text-xs font-semibold text-gray-700">My Time Today</p>
+        <div className="grid grid-cols-2 gap-2 text-sm">
+          <div className="bg-green-50 rounded-lg px-2.5 py-1.5">
+            <span className="text-[10px] text-gray-400 block">Time In</span>
             <span className="font-semibold text-green-700">{mine?.actual_in ?? '—'}</span>
             {needsOpeningCount && <span className="text-[9px] text-amber-600 font-semibold block mt-0.5">Pending opening count</span>}
           </div>
-          <div className="bg-orange-50 rounded-lg px-3 py-2">
-            <span className="text-xs text-gray-400 block">Time Out</span>
+          <div className="bg-orange-50 rounded-lg px-2.5 py-1.5">
+            <span className="text-[10px] text-gray-400 block">Time Out</span>
             <span className="font-semibold text-orange-600">{mine?.actual_out ?? '—'}</span>
           </div>
         </div>
 
         {!pickingTime ? (
           <button onClick={() => setPickingTime(true)}
-            className="w-full text-center text-xs text-blue-600 font-medium py-1">
+            className="w-full text-center text-xs text-blue-600 font-medium py-0.5">
             Not now? Tap to pick a different time →
           </button>
         ) : (
@@ -593,27 +595,27 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
         {err && <p className="text-xs text-red-500">{err}</p>}
         <div className="flex gap-2">
           <button onClick={() => clock('in')} disabled={saving}
-            className="flex-1 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2.5 transition">
+            className="flex-1 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2 transition">
             {saving ? '…' : `Clock In${pickingTime ? '' : ' (Now)'}`}
           </button>
           <button onClick={() => isBino ? setBinoChecklistOpen(true) : clock('out')} disabled={saving}
-            className="flex-1 bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2.5 transition">
+            className="flex-1 bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2 transition">
             {saving ? '…' : `Clock Out${pickingTime ? '' : ' (Now)'}`}
           </button>
         </div>
-        <p className="text-[11px] text-gray-400 text-center">📍 Location must be enabled — you must be at the shop to clock in/out.</p>
+        <p className="text-[10px] text-gray-400 text-center">📍 Location must be enabled — you must be at the shop to clock in/out.</p>
       </div>
       </>)}
 
       {/* Today's times for all staff (or just this one, on a per-person page) */}
       {(viewName ? today.filter(r => r.staff_name.toLowerCase() === viewName) : today).length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200">
+          <div className="px-3 py-1.5 bg-gray-50 border-b border-gray-200">
             <span className="text-xs font-semibold text-gray-600">{viewName ? 'Today' : 'Today — All Staff'}</span>
           </div>
           <div className="divide-y divide-gray-100">
             {(viewName ? today.filter(r => r.staff_name.toLowerCase() === viewName) : today).map(r => (
-              <div key={r.staff_name} className="flex items-center justify-between px-4 py-2 text-sm">
+              <div key={r.staff_name} className="flex items-center justify-between px-3 py-1.5 text-sm">
                 <span className="font-medium text-gray-800 capitalize">
                   {r.staff_name}
                   {opener === r.staff_name && <span title="Opener" className="ml-1">🌅</span>}
@@ -841,6 +843,22 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
           <span className="text-gray-400 text-xs">{showReports ? '▲ Hide' : '▼ Show'}</span>
         </button>
         {showReports && <div className="mt-2"><ClosingReportsList /></div>}
+      </div>
+
+      {/* Times log — a shared record for anything worth writing down about
+          time-keeping (a bad habit spotted, a system change, work done on
+          this feature, etc.) that isn't tied to any one date's clock event. */}
+      <div>
+        <button onClick={() => setShowLog(v => !v)}
+          className="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-3">
+          <span className="text-sm font-semibold text-gray-700">📝 Times Log</span>
+          <span className="text-gray-400 text-xs">{showLog ? '▲ Hide' : '▼ Show'}</span>
+        </button>
+        {showLog && (
+          <div className="mt-2 bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <ManageLogPanel category="staff_times_log" label="Times Log" icon="📝" />
+          </div>
+        )}
       </div>
 
       {/* Analytics */}
