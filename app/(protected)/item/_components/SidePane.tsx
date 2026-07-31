@@ -49,11 +49,11 @@ export function paneWidthClass(mode: DisplayMode) {
 
 export function SidePaneToggle({ mode, onChange }: { mode: DisplayMode; onChange: (mode: DisplayMode) => void }) {
   return (
-    <div className="flex items-stretch gap-0.5 p-1 border-b border-blue-700 bg-blue-700 sticky top-0 z-10">
+    <div className="flex items-stretch gap-0.5 p-1 border-b border-blue-900 bg-blue-900 sticky top-0 z-10">
       {(['icon', 'both', 'text'] as DisplayMode[]).map(m => (
         <button key={m} onClick={() => onChange(m)} title={MODE_LABEL[m]}
           className={`flex-1 flex items-center justify-center py-1 rounded text-[11px] transition
-            ${mode === m ? 'bg-white text-blue-700' : 'bg-blue-600/60 text-blue-100 hover:bg-blue-600'}`}>
+            ${mode === m ? 'bg-white text-blue-800' : 'bg-blue-800/60 text-blue-100 hover:bg-blue-800'}`}>
           {GLYPH[m]}
         </button>
       ))}
@@ -79,7 +79,7 @@ export function SidePaneButton({ icon, label, active, mode, onClick, badge, clas
   return (
     <button onClick={onClick} title={label} aria-label={label}
       className={`relative flex flex-col items-center justify-center gap-0.5 px-1 py-2 text-[10px] font-medium leading-tight text-center transition
-        ${active ? 'bg-white text-blue-700 font-semibold' : 'text-white hover:bg-white/10'} ${className}`}>
+        ${active ? 'bg-white text-blue-800 font-semibold' : 'text-white hover:bg-white/10'} ${className}`}>
       {mode !== 'text' && (
         typeof icon === 'string' || icon === undefined
           ? <span className="text-base leading-none">{icon ?? '•'}</span>
@@ -104,7 +104,7 @@ export function SidePaneButton({ icon, label, active, mode, onClick, badge, clas
 // rather than the two blurring together.
 export function SidePaneContainer({ mode, footer, children }: { mode: DisplayMode; footer?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className={`${paneWidthClass(mode)} shrink-0 border-r border-blue-700 bg-blue-600 flex flex-col min-h-0`}>
+    <div className={`${paneWidthClass(mode)} shrink-0 border-r border-blue-900 bg-blue-800 flex flex-col min-h-0`}>
       <div className="flex-1 min-h-0 overflow-y-auto">
         {children}
       </div>
