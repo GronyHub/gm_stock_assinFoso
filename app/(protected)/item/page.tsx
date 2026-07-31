@@ -64,6 +64,7 @@ const ReceiptsPage   = dynamic(() => import('../receipts/page'),              { 
 const PurchaseOrdersPage  = dynamic(() => import('../purchase-orders/page'),        { ssr: false, loading: () => loading('Loading…') })
 const AliasWidePage       = dynamic(() => import('../aliases/wide/page'),           { ssr: false, loading: () => loading('Loading…') })
 const ServiceMatchesPage  = dynamic(() => import('../matches/wide/page'),           { ssr: false, loading: () => loading('Loading…') })
+const AliasesTab          = dynamic(() => import('./_components/AliasesTab'),       { ssr: false, loading: () => loading('Loading…') })
 const Item360Tab = dynamic(() => import('./_components/Item360Tab'),          { ssr: false, loading: () => loading('Loading…') })
 const StaffContent = dynamic(() => import('./_components/StaffPersonTab'),    { ssr: false, loading: () => loading('Loading…') })
 const UKTab = dynamic(() => import('./_components/UKTab'), { ssr: false, loading: () => loading('Loading…') })
@@ -104,7 +105,7 @@ type LossView = 'home' | 'tasks' | 'items' | 'sales' | 'bills' | 'counts' | 'fee
 // they're now reached from inside Items itself (see ItemsExtraView below),
 // so an old '?view=aliasWide'/'serviceMatches' link still needs a home to
 // land on instead of a blank pane.
-type ItemsExtraView = 'none' | 'aliasWide' | 'serviceMatches'
+type ItemsExtraView = 'none' | 'aliasWide' | 'serviceMatches' | 'nameConflicts'
 const OLD_LOSSVIEW_TO_EXTRA: Partial<Record<string, ItemsExtraView>> = {
   aliasWide: 'aliasWide', serviceMatches: 'serviceMatches',
 }
@@ -532,6 +533,7 @@ function ItemHubPageInner() {
   const [aliasFlaggedCount, setAliasFlaggedCount] = useState(0)
   const [unreadAnnouncements, setUnreadAnnouncements] = useState(0)
   const [aliasAmbiguousCount, setAliasAmbiguousCount] = useState(0)
+  const [nameConflictsCount, setNameConflictsCount] = useState(0)
   const [gainsCount, setGainsCount] = useState(0)
 
   function loadBadgeData() {
@@ -570,6 +572,9 @@ function ItemHubPageInner() {
     }).catch(() => {})
     fetch('/api/announcements/unread-count').then(r => r.ok ? r.json() : null).then(d => {
       setUnreadAnnouncements(Number(d?.count) || 0)
+    }).catch(() => {})
+    fetch('/api/aliases/leaks').then(r => r.ok ? r.json() : []).then(d => {
+      setNameConflictsCount(Array.isArray(d) ? d.length : 0)
     }).catch(() => {})
   }
 
@@ -1298,6 +1303,8 @@ function ItemHubPageInner() {
                           onToggle: () => setItemsExtraView(v => v === 'aliasWide' ? 'none' : 'aliasWide') },
                         { key: 'serviceMatches', label: 'Service Matches', active: itemsExtraView === 'serviceMatches',
                           onToggle: () => setItemsExtraView(v => v === 'serviceMatches' ? 'none' : 'serviceMatches') },
+                        { key: 'nameConflicts', label: `⚠ Name Conflicts (${nameConflictsCount})`, active: itemsExtraView === 'nameConflicts',
+                          onToggle: () => setItemsExtraView(v => v === 'nameConflicts' ? 'none' : 'nameConflicts') },
                       ]} />
                     )}
 
@@ -1456,6 +1463,11 @@ function ItemHubPageInner() {
         {outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'serviceMatches' && (
           <TabErrorBoundary>
             <div className="px-4 pt-4"><ServiceMatchesPage /></div>
+          </TabErrorBoundary>
+        )}
+        {outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'nameConflicts' && (
+          <TabErrorBoundary>
+            <div className="h-full min-h-0 flex flex-col"><AliasesTab defaultTab="name-conflicts" /></div>
           </TabErrorBoundary>
         )}
         {showAnalytics && outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'none' && (

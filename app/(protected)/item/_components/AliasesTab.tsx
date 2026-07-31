@@ -2,20 +2,26 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 
-type Tab = 'prezoho-sales' | 'prezoho-bills' | 'flagged' | 'ambiguous'
+type Tab = 'prezoho-sales' | 'prezoho-bills' | 'flagged' | 'ambiguous' | 'name-conflicts'
 type UnresolvedRow = { name: string; cnt: number; confirmed: boolean }
 type Item = { id: number; canonical_name: string; cf_group: string | null }
 type AuditRow = { raw_name: string; item_id: number; canonical_name: string; source: string; cnt: number; warning: string }
 type AmbiguousCandidate = { alias_id: number; alias_name: string; item_id: number; canonical_name: string; alias_type: string; source: string; line_count: number }
 type AmbiguousGroup = { norm_name: string; candidates: AmbiguousCandidate[] }
+type LeakRow = {
+  alias_id: number; alias_name: string; alias_type: string; alias_source: string
+  aliased_to_item_id: number; aliased_to_item_name: string
+  conflicting_item_id: number; conflicting_item_name: string; conflicting_item_status: string | null
+}
 
-const ALL_TAB_IDS: Tab[] = ['prezoho-sales', 'prezoho-bills', 'flagged', 'ambiguous']
+const ALL_TAB_IDS: Tab[] = ['prezoho-sales', 'prezoho-bills', 'flagged', 'ambiguous', 'name-conflicts']
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'prezoho-sales', label: 'Pre-Zoho Sales' },
-  { id: 'prezoho-bills', label: 'Pre-Zoho Bills' },
-  { id: 'flagged',       label: '⚠ Flagged' },
-  { id: 'ambiguous',     label: '⚠ Ambiguous' },
+  { id: 'prezoho-sales',   label: 'Pre-Zoho Sales' },
+  { id: 'prezoho-bills',   label: 'Pre-Zoho Bills' },
+  { id: 'flagged',         label: '⚠ Flagged' },
+  { id: 'ambiguous',       label: '⚠ Ambiguous' },
+  { id: 'name-conflicts',  label: '⚠ Name Conflicts' },
 ]
 
 const CATEGORY_HINTS: Record<string, string> = {
@@ -474,6 +480,131 @@ function AmbiguousPanel() {
   )
 }
 
+// An alias whose text is identical to a *different* item's own canonical
+// name -- the alias points sales/bills toward one item, while a second item
+// sitting right there under that exact name never gets picked. Review-only:
+// nothing here is auto-resolved, since the right fix differs per row (the
+// alias may be simply wrong, or the conflicting item may itself be the real
+// duplicate that needs merging/deleting elsewhere).
+function NameConflictsPanel() {
+  const [rows, setRows] = useState<LeakRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [dismissed, setDismissed] = useState<Set<number>>(new Set())
+  const [selected, setSelected] = useState<LeakRow | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [lastResult, setLastResult] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/aliases/leaks').then(r => r.json()).then(d => {
+      setRows(Array.isArray(d) ? d : [])
+      setLoading(false)
+    })
+  }, [])
+
+  const display = rows.filter(r => !dismissed.has(r.alias_id))
+
+  async function deleteAlias(row: LeakRow) {
+    setDeleting(true)
+    const res = await fetch('/api/aliases/leaks', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alias_id: row.alias_id }),
+    })
+    setDeleting(false)
+    if (!res.ok) { setLastResult('Failed — try again'); return }
+    setLastResult(`Deleted alias "${row.alias_name}" → ${row.aliased_to_item_name}`)
+    setRows(prev => prev.filter(r => r.alias_id !== row.alias_id))
+    setSelected(null)
+  }
+
+  if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
+
+  return (
+    <div className="flex flex-col flex-1 min-h-0">
+      <div className="shrink-0 px-2 py-1 border-b border-gray-200 bg-white">
+        <span className="text-[9px] text-red-600 font-bold">{display.length} name conflict{display.length === 1 ? '' : 's'}</span>
+        <span className="text-[9px] text-gray-400 ml-2">alias text also exists as a separate item&apos;s own canonical name</span>
+      </div>
+      {lastResult && (
+        <p className="shrink-0 text-[9px] text-gray-500 bg-gray-50 border-b border-gray-200 px-2 py-1">{lastResult}</p>
+      )}
+      <div className="flex flex-1 min-h-0">
+        <div className="w-1/2 border-r border-gray-200 overflow-y-auto min-h-0">
+          {display.length === 0 ? (
+            <p className="text-[10px] text-gray-400 text-center py-10">No name conflicts found. 🎉</p>
+          ) : (
+            <table className="w-full border-collapse text-[10px]">
+              <thead className="sticky top-0 bg-gray-100 z-10">
+                <tr>
+                  <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">ALIAS</th>
+                  <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">POINTS TO</th>
+                  <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">STATUS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {display.map(r => (
+                  <tr key={r.alias_id} onClick={() => setSelected(r)}
+                    className={`cursor-pointer border-b border-gray-100 transition ${selected?.alias_id === r.alias_id ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
+                    <td className="px-1 py-0.5"><p className="text-gray-900 truncate max-w-[110px]">{r.alias_name}</p></td>
+                    <td className="px-1 py-0.5"><p className="text-blue-600 truncate max-w-[90px]">{r.aliased_to_item_name}</p></td>
+                    <td className="px-1 py-0.5">
+                      <span className={`text-[9px] font-bold px-1 py-0.5 rounded ${
+                        r.conflicting_item_status === 'Active' ? 'bg-red-100 text-red-700'
+                        : r.conflicting_item_status ? 'bg-gray-100 text-gray-500' : 'bg-orange-100 text-orange-700'}`}>
+                        {r.conflicting_item_status ?? 'no status'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+        <div className="w-1/2 overflow-y-auto min-h-0 flex flex-col">
+          {!selected ? (
+            <p className="text-[10px] text-gray-400 text-center py-10">Select a conflict to review</p>
+          ) : (
+            <div className="flex flex-col h-full">
+              <div className="px-2 py-1.5 bg-red-50 border-b border-red-200 shrink-0">
+                <p className="text-[9px] text-red-500 font-semibold uppercase">Name Conflict</p>
+                <p className="text-[10px] font-bold text-gray-900 break-words">{selected.alias_name}</p>
+                <p className="text-[9px] text-gray-600 mt-1">
+                  This alias ({selected.alias_type}, {selected.alias_source}) currently resolves matching sales/bill lines to:
+                </p>
+                <p className="text-[10px] font-semibold text-blue-700">{selected.aliased_to_item_name} (id {selected.aliased_to_item_id})</p>
+                <p className="text-[9px] text-gray-600 mt-1">
+                  But that exact text is also the canonical name of a separate item:
+                </p>
+                <p className="text-[10px] font-semibold text-gray-900">
+                  {selected.conflicting_item_name} (id {selected.conflicting_item_id})
+                  <span className={`ml-1 text-[9px] font-bold px-1 py-0.5 rounded ${
+                    selected.conflicting_item_status === 'Active' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'}`}>
+                    {selected.conflicting_item_status ?? 'no status'}
+                  </span>
+                </p>
+              </div>
+              <div className="px-2 py-1.5 border-b border-gray-100 shrink-0">
+                <button onClick={() => { setDismissed(s => new Set(s).add(selected.alias_id)); setSelected(null) }}
+                  className="w-full text-[10px] font-semibold text-gray-600 bg-gray-100 rounded py-1.5 hover:bg-gray-200 transition">
+                  Keep as-is (dismiss)
+                </button>
+              </div>
+              <div className="px-2 py-1.5 shrink-0">
+                <button onClick={() => deleteAlias(selected)} disabled={deleting}
+                  className="w-full text-[10px] font-bold text-white bg-red-600 hover:bg-red-500 rounded py-1.5 transition disabled:opacity-40">
+                  {deleting ? 'Deleting…' : `Delete this alias`}
+                </button>
+                <p className="text-[9px] text-gray-400 mt-1">
+                  Removes the alias row only -- neither item is touched, and no sales/bill lines are moved.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 type Props = { defaultTab?: string | null }
 
 export default function AliasesTab({ defaultTab }: Props) {
@@ -537,7 +668,7 @@ export default function AliasesTab({ defaultTab }: Props) {
             <button key={t.id} onClick={() => setTab(t.id)}
               className={`shrink-0 text-[9px] font-bold px-2 py-0.5 rounded-full transition
                 ${tab === t.id
-                  ? ((t.id === 'flagged' || t.id === 'ambiguous') ? 'bg-red-600 text-white' : 'bg-blue-600 text-white')
+                  ? ((t.id === 'flagged' || t.id === 'ambiguous' || t.id === 'name-conflicts') ? 'bg-red-600 text-white' : 'bg-blue-600 text-white')
                   : 'bg-gray-100 text-gray-500'}`}>
               {t.label}
             </button>
@@ -548,6 +679,8 @@ export default function AliasesTab({ defaultTab }: Props) {
         ? <FlaggedPanel key={refreshKey} items={items} />
         : tab === 'ambiguous'
         ? <AmbiguousPanel key={refreshKey} />
+        : tab === 'name-conflicts'
+        ? <NameConflictsPanel key={refreshKey} />
         : <PreZohoPanel key={`${tab}-${refreshKey}`} tab={tab} items={items} />
       }
     </div>
