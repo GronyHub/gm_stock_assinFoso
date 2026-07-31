@@ -1,3 +1,10 @@
+// Take over from any previously-installed SW immediately on the next load,
+// instead of waiting for every tab of the site to be closed first -- without
+// this, a fix shipped here (like the navigate passthrough removed below)
+// can't reach an already-open device until it fully quits the app.
+self.addEventListener('install', () => self.skipWaiting())
+self.addEventListener('activate', event => event.waitUntil(clients.claim()))
+
 self.addEventListener('push', event => {
   if (!event.data) return
   const { title, body } = event.data.json()
