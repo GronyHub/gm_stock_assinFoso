@@ -347,8 +347,13 @@ function ItemHubPageInner() {
   // data/manage/staff top-level tabs (all folded into Grony Cash by now)
   // still land somewhere sensible instead of silently falling back to Today.
   const initialTab = (rawInitialTab === 'losses' || oldTabView ? 'loss' : rawInitialTab) as OuterTab | null
+  // A fresh login lands on a bare /item with no ?tab= at all -- that used to
+  // default to Today, whose own pane is intentionally empty (same treatment
+  // as UK/C&H), so the very first thing anyone saw was a near-blank screen.
+  // Defaulting to Grony Cash's Items view instead means the full pane is
+  // there immediately. Today is still one tap away via the Home button.
   const [outerTab, setOuterTab] = useState<OuterTab>(
-    initialTab && VALID_TABS.includes(initialTab) ? initialTab : 'today'
+    initialTab && VALID_TABS.includes(initialTab) ? initialTab : 'loss'
   )
   const [group, setGroup]               = useState<string | null>(null)
   const [productType, setProductType]   = useState<'all' | 'goods' | 'services'>('all')
@@ -700,7 +705,11 @@ function ItemHubPageInner() {
   // back on top of the one just popped.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
-    if (outerTab !== 'today') params.set('tab', outerTab); else params.delete('tab')
+    // 'loss' is the default now (see outerTab's initial state above), so
+    // it's the one that gets to omit ?tab= for a clean URL -- Today needs
+    // to stay explicit, or a bare /item on refresh would land back on Loss
+    // instead of wherever Today's own state actually was.
+    if (outerTab !== 'loss') params.set('tab', outerTab); else params.delete('tab')
     if (outerTab === 'loss' && lossView !== 'items') params.set('view', lossView); else params.delete('view')
     const qs = params.toString()
     const target = qs ? `/item?${qs}` : '/item'
@@ -727,7 +736,7 @@ function ItemHubPageInner() {
   // matches what's live once our own push above has run.
   useEffect(() => {
     const urlTab = searchParams.get('tab')
-    const nextTab: OuterTab = urlTab && VALID_TABS.includes(urlTab as OuterTab) ? (urlTab as OuterTab) : 'today'
+    const nextTab: OuterTab = urlTab && VALID_TABS.includes(urlTab as OuterTab) ? (urlTab as OuterTab) : 'loss'
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (nextTab !== outerTab) setOuterTab(nextTab)
     if (nextTab === 'loss') {
