@@ -164,9 +164,23 @@ function dayDurationLabel(tIn: string | null | undefined, tOut: string | null | 
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type RecentRow = { id?: number; staff_name: string; work_date: string; actual_in: string | null; actual_out: string | null; entered_by: string | null }
-type TodayRow = { staff_name: string; actual_in: string | null; actual_out: string | null }
-type Mine = { actual_in: string | null; actual_out: string | null; opening_count_confirmed?: boolean } | null
+type RecentRow = {
+  id?: number; staff_name: string; work_date: string; actual_in: string | null; actual_out: string | null
+  entered_by: string | null; in_source?: string | null; out_source?: string | null
+}
+type TodayRow = { staff_name: string; actual_in: string | null; actual_out: string | null; in_source?: string | null; out_source?: string | null }
+type Mine = { actual_in: string | null; actual_out: string | null; opening_count_confirmed?: boolean; in_source?: string | null; out_source?: string | null } | null
+
+// A dot next to a clock time shows how it got there: green for the actual
+// Clock In/Out button (GPS-verified, see /api/staff-times/today), red for a
+// manual adjustment (the "+ Add Entry"/edit forms, see /api/staff-times/entry
+// and entry-id). No dot for older rows recorded before this distinction
+// existed -- there's no way to know their origin, so guessing would mislead.
+function SourceDot({ source }: { source?: string | null }) {
+  if (source === 'clock') return <span title="Clocked with the button" className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 ml-1 align-middle" />
+  if (source === 'manual') return <span title="Manually adjusted" className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 ml-1 align-middle" />
+  return null
+}
 
 type Payslip = {
   id: number; staff_name: string; pay_month: string; payment_period: string | null
@@ -188,10 +202,10 @@ type AppUser = { id: number; username: string; display_name: string; email: stri
 // ── TIMES TAB ─────────────────────────────────────────────────────────────────
 
 function groupByDate(rows: RecentRow[]) {
-  const map = new Map<string, Record<string, { in: string | null; out: string | null }>>()
+  const map = new Map<string, Record<string, { in: string | null; out: string | null; inSource?: string | null; outSource?: string | null }>>()
   for (const r of rows) {
     if (!map.has(r.work_date)) map.set(r.work_date, {})
-    map.get(r.work_date)![r.staff_name] = { in: r.actual_in, out: r.actual_out }
+    map.get(r.work_date)![r.staff_name] = { in: r.actual_in, out: r.actual_out, inSource: r.in_source, outSource: r.out_source }
   }
   return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0]))
 }
@@ -564,12 +578,12 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div className="bg-green-50 rounded-lg px-2.5 py-1.5">
             <span className="text-[10px] text-gray-400 block">Time In</span>
-            <span className="font-semibold text-green-700">{mine?.actual_in ?? '—'}</span>
+            <span className="font-semibold text-green-700">{mine?.actual_in ?? '—'}<SourceDot source={mine?.in_source} /></span>
             {needsOpeningCount && <span className="text-[9px] text-amber-600 font-semibold block mt-0.5">Pending opening count</span>}
           </div>
           <div className="bg-orange-50 rounded-lg px-2.5 py-1.5">
             <span className="text-[10px] text-gray-400 block">Time Out</span>
-            <span className="font-semibold text-orange-600">{mine?.actual_out ?? '—'}</span>
+            <span className="font-semibold text-orange-600">{mine?.actual_out ?? '—'}<SourceDot source={mine?.out_source} /></span>
           </div>
         </div>
 
@@ -621,9 +635,9 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
                   {opener === r.staff_name && <span title="Opener" className="ml-1">🌅</span>}
                   {closer === r.staff_name && <span title="Closer" className="ml-1">🌙</span>}
                 </span>
-                <span className="text-green-700">{r.actual_in ?? '—'}</span>
+                <span className="text-green-700">{r.actual_in ?? '—'}<SourceDot source={r.in_source} /></span>
                 <div className="flex flex-col items-end leading-tight">
-                  <span className="text-orange-600">{r.actual_out ?? '—'}</span>
+                  <span className="text-orange-600">{r.actual_out ?? '—'}<SourceDot source={r.out_source} /></span>
                   {dayDurationLabel(r.actual_in, r.actual_out) && (
                     <span className="text-[10px] text-gray-400">{dayDurationLabel(r.actual_in, r.actual_out)}</span>
                   )}
@@ -752,8 +766,8 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
                           const isEditing = isAdmin && adminEditRow != null && adminEditRow.id === record?.id
                           const cellContent = (
                             <div className="flex flex-col items-center leading-tight">
-                              <span className="text-green-700">{cellData?.in ?? <span className="text-gray-300">—</span>}</span>
-                              <span className="text-orange-600">{cellData?.out ?? <span className="text-gray-300">—</span>}</span>
+                              <span className="text-green-700">{cellData?.in ?? <span className="text-gray-300">—</span>}{cellData?.in && <SourceDot source={cellData.inSource} />}</span>
+                              <span className="text-orange-600">{cellData?.out ?? <span className="text-gray-300">—</span>}{cellData?.out && <SourceDot source={cellData.outSource} />}</span>
                               {dayDurationLabel(cellData?.in, cellData?.out) && (
                                 <span className="text-[9px] text-gray-400">{dayDurationLabel(cellData?.in, cellData?.out)}</span>
                               )}

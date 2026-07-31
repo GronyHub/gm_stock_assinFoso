@@ -6,6 +6,8 @@ import { NextRequest, NextResponse } from 'next/server'
 async function ensureCols() {
   await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS entered_by TEXT`.catch(() => {})
   await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS status TEXT`.catch(() => {})
+  await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS in_source TEXT`.catch(() => {})
+  await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS out_source TEXT`.catch(() => {})
 }
 
 export async function POST(req: NextRequest) {
@@ -27,19 +29,29 @@ export async function POST(req: NextRequest) {
     const [existing] = await sql`
       SELECT id FROM staff_times WHERE staff_name = ${staff_name} AND work_date = ${work_date}
     `
+    // This endpoint is always a manual adjustment (the "+ Add Entry" form and
+    // the "Edit my time" modal) -- as opposed to the GPS-gated Clock In/Out
+    // buttons, which go through /api/staff-times/today instead and tag their
+    // own source as 'clock'. See SourceDot in StaffClient.tsx for the dot
+    // this drives on each displayed time.
+    const inSource = actual_in ? 'manual' : null
+    const outSource = actual_out ? 'manual' : null
+
     if (existing) {
       await sql`
         UPDATE staff_times
         SET actual_in = ${actual_in ?? null},
             actual_out = ${actual_out ?? null},
             status = ${status ?? null},
+            in_source = ${inSource},
+            out_source = ${outSource},
             entered_by = ${enteredBy}
         WHERE id = ${existing.id}
       `
     } else {
       await sql`
-        INSERT INTO staff_times (staff_name, work_date, actual_in, actual_out, status, entered_by)
-        VALUES (${staff_name}, ${work_date}, ${actual_in ?? null}, ${actual_out ?? null}, ${status ?? null}, ${enteredBy})
+        INSERT INTO staff_times (staff_name, work_date, actual_in, actual_out, status, in_source, out_source, entered_by)
+        VALUES (${staff_name}, ${work_date}, ${actual_in ?? null}, ${actual_out ?? null}, ${status ?? null}, ${inSource}, ${outSource}, ${enteredBy})
       `
     }
 

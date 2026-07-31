@@ -14,6 +14,15 @@ async function ensureOpeningCountCol() {
   await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS opening_count_confirmed BOOLEAN NOT NULL DEFAULT FALSE`.catch(() => {})
 }
 
+// in_source/out_source record how each time got there -- 'clock' for the
+// GPS-gated Clock In/Out buttons (set below), 'manual' for the "+ Add
+// Entry"/edit forms (see /api/staff-times/entry and entry-id). Drives the
+// green/red SourceDot next to each displayed time in StaffClient.tsx.
+async function ensureSourceCols() {
+  await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS in_source TEXT`.catch(() => {})
+  await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS out_source TEXT`.catch(() => {})
+}
+
 export async function GET() {
   const session = await auth()
   const sessionUser = session?.user as any
@@ -21,20 +30,31 @@ export async function GET() {
 
   try {
     const today = new Date().toISOString().slice(0, 10)
+    await ensureSourceCols()
 
-    const todayRows = await sql`
-      SELECT staff_name, actual_in, actual_out
-      FROM staff_times
-      WHERE work_date = ${today}
-      ORDER BY staff_name
-    `
+    let todayRows: any[]
+    try {
+      todayRows = await sql`
+        SELECT staff_name, actual_in, actual_out, in_source, out_source
+        FROM staff_times
+        WHERE work_date = ${today}
+        ORDER BY staff_name
+      `
+    } catch {
+      todayRows = await sql`
+        SELECT staff_name, actual_in, actual_out
+        FROM staff_times
+        WHERE work_date = ${today}
+        ORDER BY staff_name
+      `
+    }
 
     const username = sessionUser.username ?? sessionUser.name
     await ensureOpeningCountCol()
     let mine: any
     try {
       ;[mine] = await sql`
-        SELECT actual_in, actual_out, opening_count_confirmed FROM staff_times
+        SELECT actual_in, actual_out, opening_count_confirmed, in_source, out_source FROM staff_times
         WHERE staff_name = ${username} AND work_date = ${today}
       `
     } catch {
@@ -47,7 +67,7 @@ export async function GET() {
     let recent: any[] = []
     try {
       recent = await sql`
-        SELECT staff_name, work_date::text, actual_in, actual_out, entered_by
+        SELECT staff_name, work_date::text, actual_in, actual_out, entered_by, in_source, out_source
         FROM staff_times
         ORDER BY work_date DESC, staff_name
       `
@@ -227,16 +247,18 @@ export async function POST(req: NextRequest) {
       SELECT id FROM staff_times WHERE staff_name = ${username} AND work_date = ${today}
     `
 
+    await ensureSourceCols()
+
     if (existingRow) {
       if (action === 'in') {
         try {
-          await sql`UPDATE staff_times SET actual_in = ${time}, entered_by = ${enteredBy} WHERE id = ${existingRow.id}`
+          await sql`UPDATE staff_times SET actual_in = ${time}, in_source = 'clock', entered_by = ${enteredBy} WHERE id = ${existingRow.id}`
         } catch {
           await sql`UPDATE staff_times SET actual_in = ${time} WHERE id = ${existingRow.id}`
         }
       } else {
         try {
-          await sql`UPDATE staff_times SET actual_out = ${time}, entered_by = ${enteredBy} WHERE id = ${existingRow.id}`
+          await sql`UPDATE staff_times SET actual_out = ${time}, out_source = 'clock', entered_by = ${enteredBy} WHERE id = ${existingRow.id}`
         } catch {
           await sql`UPDATE staff_times SET actual_out = ${time} WHERE id = ${existingRow.id}`
         }
@@ -245,8 +267,8 @@ export async function POST(req: NextRequest) {
       if (action === 'in') {
         try {
           await sql`
-            INSERT INTO staff_times (staff_name, work_date, actual_in, entered_by)
-            VALUES (${username}, ${today}, ${time}, ${enteredBy})
+            INSERT INTO staff_times (staff_name, work_date, actual_in, in_source, entered_by)
+            VALUES (${username}, ${today}, ${time}, 'clock', ${enteredBy})
           `
         } catch {
           await sql`
@@ -257,8 +279,8 @@ export async function POST(req: NextRequest) {
       } else {
         try {
           await sql`
-            INSERT INTO staff_times (staff_name, work_date, actual_out, entered_by)
-            VALUES (${username}, ${today}, ${time}, ${enteredBy})
+            INSERT INTO staff_times (staff_name, work_date, actual_out, out_source, entered_by)
+            VALUES (${username}, ${today}, ${time}, 'clock', ${enteredBy})
           `
         } catch {
           await sql`
@@ -270,7 +292,7 @@ export async function POST(req: NextRequest) {
     }
 
     const [updated] = await sql`
-      SELECT actual_in, actual_out, opening_count_confirmed FROM staff_times
+      SELECT actual_in, actual_out, opening_count_confirmed, in_source, out_source FROM staff_times
       WHERE staff_name = ${username} AND work_date = ${today}
     `
 

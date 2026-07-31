@@ -11,10 +11,12 @@ export async function GET() {
   // Add missing columns if they don't exist yet
   await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS entered_by TEXT`.catch(() => {})
   await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS status TEXT`.catch(() => {})
+  await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS in_source TEXT`.catch(() => {})
+  await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS out_source TEXT`.catch(() => {})
 
   try {
     const rows = await sql`
-      SELECT id, staff_name, work_date::text, actual_in, actual_out, entered_by, status
+      SELECT id, staff_name, work_date::text, actual_in, actual_out, entered_by, status, in_source, out_source
       FROM staff_times
       ORDER BY work_date DESC, staff_name
       LIMIT 500

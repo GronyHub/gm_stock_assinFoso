@@ -18,11 +18,18 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   const { actual_in, actual_out } = await req.json()
   const actor = u?.username ?? u?.name ?? 'Unknown'
 
+  await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS in_source TEXT`.catch(() => {})
+  await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS out_source TEXT`.catch(() => {})
+
+  // Same as /api/staff-times/entry -- this is the admin's manual grid-edit
+  // path, so whichever time comes out of it is tagged 'manual', not 'clock'.
   const [row] = await sql`
     UPDATE staff_times
-    SET actual_in = ${actual_in ?? null}, actual_out = ${actual_out ?? null}, entered_by = ${actor}
+    SET actual_in = ${actual_in ?? null}, actual_out = ${actual_out ?? null},
+        in_source = ${actual_in ? 'manual' : null}, out_source = ${actual_out ? 'manual' : null},
+        entered_by = ${actor}
     WHERE id = ${Number(id)}
-    RETURNING id, staff_name, work_date::text, actual_in, actual_out, entered_by
+    RETURNING id, staff_name, work_date::text, actual_in, actual_out, in_source, out_source, entered_by
   `
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   await logActivity(actor, 'edited time entry', `${row.staff_name} on ${row.work_date} · in ${actual_in ?? '—'} out ${actual_out ?? '—'}`)
