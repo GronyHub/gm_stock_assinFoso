@@ -35,10 +35,10 @@ export default function PaneHomeDaily({ mode, onHome, onDaily, homeActive = fals
   unreadAnnouncements: number
 }) {
   return (
-    <div className="border-t border-blue-900 flex items-stretch shrink-0">
+    <div className="border-t border-white/10 flex items-stretch shrink-0">
       <SidePaneButton icon={HomeIcon} label="Home" mode={mode} active={homeActive} badge={unreadAnnouncements}
         onClick={onHome} className="flex-1 min-w-0" />
-      <div className="w-px bg-blue-900 shrink-0" />
+      <div className="w-px bg-white/10 shrink-0" />
       <SidePaneButton icon={DailyIcon} label="Daily" mode={mode} active={dailyActive}
         onClick={onDaily} className="flex-1 min-w-0" />
     </div>
