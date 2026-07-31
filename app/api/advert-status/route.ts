@@ -21,7 +21,7 @@ export async function GET() {
         s.notes, s.updated_by, s.updated_at
       FROM items i
       LEFT JOIN item_audio_advert_status s ON s.item_id = i.id
-      WHERE LOWER(i.status) != 'inactive'
+      WHERE i.status IS NULL OR LOWER(i.status) != 'inactive'
       ORDER BY has_advert ASC, i.cf_group NULLS LAST, i.canonical_name
     `
     return NextResponse.json(rows)

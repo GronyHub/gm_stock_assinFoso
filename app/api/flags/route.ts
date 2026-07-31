@@ -308,7 +308,7 @@ export async function GET() {
     SELECT i.id AS item_id, i.canonical_name AS item_name, COALESCE(i.product_type, 'goods') AS product_type
     FROM items i
     LEFT JOIN item_audio_advert_status s ON s.item_id = i.id AND s.has_advert = true
-    WHERE LOWER(i.status) != 'inactive' AND s.item_id IS NULL
+    WHERE (i.status IS NULL OR LOWER(i.status) != 'inactive') AND s.item_id IS NULL
     ORDER BY i.canonical_name
   `)
 

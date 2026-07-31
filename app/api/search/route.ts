@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     sql`
       SELECT id, canonical_name AS name, cf_group
       FROM items
-      WHERE canonical_name ILIKE ${like} AND LOWER(status) != 'inactive'
+      WHERE canonical_name ILIKE ${like} AND (status IS NULL OR LOWER(status) != 'inactive')
       ORDER BY canonical_name LIMIT 6
     `.catch(() => []),
     sql`
