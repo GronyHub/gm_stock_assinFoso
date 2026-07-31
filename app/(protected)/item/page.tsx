@@ -30,6 +30,7 @@ import { COLUMNS, type ColKey } from './_components/lossTabColumns'
 import { useColumnPrefs, ColumnsPickerButton } from './_components/columnPrefs'
 import { MANAGE_LIST_ITEMS, useDynamicManageCategories, type ManageView } from './_components/manageViewData'
 import { STAFF_PERSONAL_ITEMS, STAFF_TEAM_ITEMS, type StaffView } from './_components/staffViewData'
+import { CH_ITEMS, type CHView } from './_components/chViewData'
 import type { ViolationView } from '../staff/StaffClient'
 import SavedFlash from './_components/SavedFlash'
 import { SidePaneContainer, SidePaneToggle, SidePaneButton, useSidePaneDisplayMode } from './_components/SidePane'
@@ -94,9 +95,12 @@ type OuterTab = 'today' | 'loss' | 'uk' | 'ch'
 // menus). ManageView/StaffView are each still defined and maintained in
 // their own file (manageViewData.ts/staffViewData.ts) -- this just unions
 // them in so one `lossView` state can drive one merged pane + content area.
+// CHView is unioned in too even though C&H is its own separate top-level
+// tab, not part of the Grony Cash merge -- it just reuses this same shared
+// state/pane machinery rather than needing its own parallel copy.
 type LossView = 'home' | 'tasks' | 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'lossByItem' | 'lossByTarget' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts' | 'dailySummary'
   | 'purchaseOrders' | 'fixMislinkedSales' | 'item360'
-  | ManageView | StaffView
+  | ManageView | StaffView | CHView
 // Alias Wide Table and Service Matches used to be their own lossViews --
 // they're now reached from inside Items itself (see ItemsExtraView below),
 // so an old '?view=aliasWide'/'serviceMatches' link still needs a home to
@@ -116,6 +120,9 @@ const MANAGE_VIEW_KEYS = new Set<LossView>(MANAGE_LIST_ITEMS.map(i => i.key))
 const STAFF_VIEW_KEYS = new Set<LossView>([
   ...STAFF_PERSONAL_ITEMS.map(i => i.key), 'staffProfile', ...STAFF_TEAM_ITEMS.map(i => i.key), 'users',
 ])
+// C&H's own rows -- same purpose as the two sets above, but for the
+// separate C&H tab's own pane content (see chViewData.ts).
+const CH_VIEW_KEYS = new Set<LossView>(CH_ITEMS.map(i => i.key))
 
 // Old top-level tabs that got folded into Grony Cash submenus -- old
 // bookmarks/links using ?tab=pl etc. still land on the right submenu instead
@@ -138,7 +145,7 @@ const OLD_TAB_TO_VIEW: Partial<Record<string, LossView>> = {
 const REPORT_VIEWS = new Set<LossView>([
   'home', 'tasks', 'pl', 'cab', 'vendors', 'customers', 'receipts', 'dailySummary',
   'purchaseOrders', 'fixMislinkedSales', 'item360',
-  ...MANAGE_VIEW_KEYS, ...STAFF_VIEW_KEYS,
+  ...MANAGE_VIEW_KEYS, ...STAFF_VIEW_KEYS, ...CH_VIEW_KEYS,
 ])
 
 // Grony Cash's own left pane, same shape as Grony Manage's -- Sales, Bills,
@@ -350,7 +357,8 @@ function ItemHubPageInner() {
   const initialExtraView = rawInitialView ? OLD_LOSSVIEW_TO_EXTRA[rawInitialView] : undefined
   const initialView = (initialExtraView ? 'items' : rawInitialView) as LossView | null
   const [lossView, setLossView]         = useState<LossView>(
-    rawInitialTab === 'losses' ? 'feed' : (oldTabView ?? initialView ?? 'items')
+    rawInitialTab === 'losses' ? 'feed'
+      : oldTabView ?? initialView ?? (outerTab === 'ch' ? CH_ITEMS[0].key : 'items')
   )
   const [itemsExtraView, setItemsExtraView] = useState<ItemsExtraView>(initialExtraView ?? 'none')
   // Alias Wide / Service Match only make sense while actually on Items --
@@ -642,6 +650,7 @@ function ItemHubPageInner() {
     setShowAnalytics(false)
     if (t !== 'loss') setProductType('all')
     if (t === 'loss') setLossView('items')
+    if (t === 'ch') setLossView(CH_ITEMS[0].key)
     // Optimistic -- TodayContent marks these read for real as soon as it
     // mounts, but that round-trip shouldn't leave the badge lingering.
     if (t === 'today') setUnreadAnnouncements(0)
@@ -1117,6 +1126,16 @@ function ItemHubPageInner() {
             )}
             </>)}
 
+            {/* C&H's own rows -- a separate area with no relationship to
+                Cash/Manage/Staff, so it gets its own (much shorter) list
+                here instead of any of theirs. */}
+            {outerTab === 'ch' && (<>
+              {CH_ITEMS.map(item => (
+                <SidePaneButton key={item.key} icon={item.icon} label={item.label} mode={cashDisplayMode}
+                  active={lossView === item.key} onClick={() => pickLossView(item.key)} />
+              ))}
+            </>)}
+
             {/* View Portal As / Sign out -- part of the scrollable list now
                 (were pinned to the footer before) so the footer stays just
                 the paired shortcut rows above. */}
@@ -1370,7 +1389,7 @@ function ItemHubPageInner() {
           <TabErrorBoundary><UKTab /></TabErrorBoundary>
         )}
         {outerTab === 'ch' && (
-          <TabErrorBoundary><CHTab /></TabErrorBoundary>
+          <TabErrorBoundary><CHTab view={lossView as CHView} /></TabErrorBoundary>
         )}
         {outerTab === 'today' && !(addForm === 'sale' || addForm === 'bill' || addForm === 'expense') && (
           <TabErrorBoundary>
