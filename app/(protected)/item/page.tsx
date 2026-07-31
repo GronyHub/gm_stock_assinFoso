@@ -996,6 +996,11 @@ function ItemHubPageInner() {
             </>}>
             <SidePaneToggle mode={cashDisplayMode} onChange={changeCashDisplayMode} />
 
+            {/* Cash/Manage/Staff's own rows only make sense while actually
+                on that tab -- UK and C&H are separate areas with no
+                relationship to any of these, so the list is just empty
+                (toggle + View/Sign out only) while on either of them. */}
+            {outerTab === 'loss' && (<>
             {CASH_ITEMS.filter(v => v.key !== 'pl' || canSeePL)
               .filter(v => v.key !== 'fixMislinkedSales' || isOwnerOrJoe).map(v => (
                 <SidePaneButton key={v.key} icon={v.icon} label={v.label} mode={cashDisplayMode}
@@ -1106,6 +1111,7 @@ function ItemHubPageInner() {
                 </>)}
               </div>
             )}
+            </>)}
 
             {/* View Portal As / Sign out -- part of the scrollable list now
                 (were pinned to the footer before) so the footer stays just
