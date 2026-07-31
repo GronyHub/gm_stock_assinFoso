@@ -962,18 +962,22 @@ function ItemHubPageInner() {
                 onDaily={() => setLossView('dailySummary')}
                 homeActive={lossView === 'home'} dailyActive={lossView === 'dailySummary'}
                 unreadAnnouncements={unreadAnnouncements} />
-              {/* Formerly the top tab row -- Biz (Grony Cash) is everyone's
-                  one anchor up there; here it's just another footer button
-                  like the rest, paired side by side with Search the same
-                  way Home/Daily are paired above. Global search looks
-                  across the whole app (items, customers, vendors, sales,
-                  bills, announcements), unlike the per-view search bars
-                  already on most tabs below, which only filter what's
-                  already on screen. */}
+              {/* Formerly the top tab row -- Biz (Grony Cash) is just
+                  another footer button now, paired side by side with
+                  Search the same way Home/Daily are paired above. Biz only
+                  shows for accounts that also reach UK and/or C&H below --
+                  someone permitted to use only Grony Cash has nothing to
+                  switch to, so the button would be a no-op; Search always
+                  shows regardless, since it looks across the whole app
+                  (items, customers, vendors, sales, bills, announcements),
+                  unlike the per-view search bars already on most tabs
+                  below, which only filter what's already on screen. */}
               <div className="border-t border-blue-700 flex items-stretch shrink-0">
-                <SidePaneButton icon="💰" label="Biz" mode={cashDisplayMode}
-                  active={outerTab === 'loss'} onClick={() => changeTab('loss')} className="flex-1 min-w-0" />
-                <div className="w-px bg-blue-700 shrink-0" />
+                {(isGrony || isOwnerOrJoe) && (<>
+                  <SidePaneButton icon="💰" label="Biz" mode={cashDisplayMode}
+                    active={outerTab === 'loss'} onClick={() => changeTab('loss')} className="flex-1 min-w-0" />
+                  <div className="w-px bg-blue-700 shrink-0" />
+                </>)}
                 <SidePaneButton icon="🔍" label="Search" mode={cashDisplayMode}
                   active={false} onClick={() => setGlobalSearchOpen(true)} className="flex-1 min-w-0" />
               </div>
