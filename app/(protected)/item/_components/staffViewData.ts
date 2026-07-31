@@ -9,7 +9,7 @@ export const STAFF_PERSONAL_ITEMS: { key: StaffView; label: string; icon: string
   { key: 'staffTimes', label: 'Times', icon: '🕐' },
   { key: 'staffPayslips', label: 'Payslips', icon: '💵' },
   { key: 'staffViolations', label: 'Violations', icon: '⚠️' },
-  { key: 'staffAnalytics', label: 'Analytics', icon: '📊' },
+  { key: 'staffAnalytics', label: 'Ana', icon: '📊' },
   { key: 'staffAssignments', label: 'Assignments', icon: '📋' },
 ]
 
