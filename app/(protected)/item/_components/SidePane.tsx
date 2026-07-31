@@ -15,7 +15,7 @@ const MODE_LABEL: Record<DisplayMode, string> = { icon: 'Icons only', both: 'Ico
 // regardless of screen size meant the pane ate the same chunk out of a
 // 360px phone as a 1200px desktop, squeezing the content pane's tables
 // (often 5-6 columns wide) down to almost nothing on mobile.
-const WIDTH: Record<DisplayMode, string> = { icon: 'w-14', both: 'w-16 sm:w-20', text: 'w-16 sm:w-24' }
+const WIDTH: Record<DisplayMode, string> = { icon: 'w-14', both: 'w-14 sm:w-20', text: 'w-14 sm:w-24' }
 
 // A module-level store (not per-component state) so every left pane on
 // screen at once -- Grony Manage's, and Staff's several nested ones --

@@ -652,7 +652,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
         scroll directions -- nesting a separate overflow-x-auto div inside
         breaks position:sticky (thead/ITEM column stop sticking once the
         scrolling happens on an ancestor instead of their own container). */}
-    <div className="flex-1 overflow-auto min-h-0">
+    <div className="flex-1 overflow-auto min-h-0 pr-2">
       {/* table-fixed + colgroup gives every column a fixed share of the
           width up front -- with the default table-layout:auto, a sticky
           column's width is only settled after the browser has measured
