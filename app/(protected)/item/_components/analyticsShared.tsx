@@ -109,7 +109,7 @@ export function AnalyticsToggle({ showing, onToggle }: { showing: boolean; onTog
     <button onClick={onToggle}
       className={`shrink-0 flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg transition
         ${showing ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-      📊 {showing ? 'List' : 'Analytics'}
+      📊 {showing ? 'List' : 'Ana'}
     </button>
   )
 }

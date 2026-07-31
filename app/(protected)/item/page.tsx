@@ -1313,7 +1313,7 @@ function ItemHubPageInner() {
                     <button onClick={() => { setShowAnalytics(a => !a); setAddForm(null); setViolation(null) }}
                       className={`shrink-0 flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg transition
                         ${showAnalytics ? 'bg-blue-600 text-white' : 'text-white hover:bg-white/10'}`}>
-                      📊 {showAnalytics ? 'List' : 'Analytics'}
+                      📊 {showAnalytics ? 'List' : 'Ana'}
                     </button>
 
                     {/* New button — Items/Sales/Bills/Expenses/PO submenus only; report-style and Counts submenus have no add-form */}
