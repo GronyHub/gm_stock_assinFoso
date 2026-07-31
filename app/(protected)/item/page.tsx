@@ -23,7 +23,6 @@ class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boole
 }
 import { usePolling } from '@/lib/usePolling'
 import { useViolations } from './_components/useViolations'
-import NewShortcutButton, { type ShortcutKey } from './_components/NewShortcutButton'
 import PaneHomeDaily from './_components/PaneHomeDaily'
 import TasksView from './_components/TasksView'
 import { COLUMNS, type ColKey } from './_components/lossTabColumns'
@@ -633,14 +632,6 @@ function ItemHubPageInner() {
   }, [])
   const openerBadgeCount = (openerToday.opener && !openerToday.openerConfirmed ? 1 : 0) + openerViolationCount
 
-  // Bumped by the RoleBar "+" shortcut menu for flows that live inside an
-  // already-mounted tab (CAB Confirm, Staff Time, Customer, Vendor) -- each
-  // target component watches its own signal and reopens its "new" form.
-  const [cabConfirmSignal, setCabConfirmSignal] = useState(0)
-  const [staffTimeSignal, setStaffTimeSignal]   = useState(0)
-  const [customerSignal, setCustomerSignal]     = useState(0)
-  const [vendorSignal, setVendorSignal]         = useState(0)
-
   useEffect(() => {
     function handler(e: MouseEvent) {
       if (groupRef.current && !groupRef.current.contains(e.target as Node)) setGroupOpen(false)
@@ -692,30 +683,6 @@ function ItemHubPageInner() {
   // (Sales / Bills / Counts live as sub-views of the Grony Cash tab).
   function goFixRecords(view: 'sales' | 'bills' | 'counts') {
     pickLossView(view)
-  }
-
-  // RoleBar "+" shortcut menu -- jumps straight to a "create new" flow
-  // wherever it already lives. Sales/Bills/Item/Expenses reuse the existing
-  // addForm mechanism (pickLossView resets it, so set it after); the rest
-  // reopen via a per-target signal since their forms are local component
-  // state with no addForm equivalent.
-  function handleShortcut(key: ShortcutKey) {
-    switch (key) {
-      case 'sale':       pickLossView('sales');     setAddForm('sale'); break
-      case 'bill':       pickLossView('bills');     setAddForm('bill'); break
-      case 'item':       pickLossView('items');     setAddForm('item'); break
-      case 'expense':    pickLossView('expenses');  setAddForm('expense'); break
-      case 'cabConfirm': pickLossView('cab');       setCabConfirmSignal(n => n + 1); break
-      case 'customer':   pickLossView('customers'); setCustomerSignal(n => n + 1); break
-      case 'vendor':     pickLossView('vendors');   setVendorSignal(n => n + 1); break
-      case 'staffTime': {
-        // The Staff section always opens straight to your own page now, and
-        // Times is its first (shared) row -- nothing left to pick.
-        pickLossView('staffTimes')
-        setStaffTimeSignal(n => n + 1)
-        break
-      }
-    }
   }
 
   // Tab/sub-view changes push a new history entry each -- real "pages" the
@@ -1392,12 +1359,12 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'loss' && lossView === 'vendors' && (
           <TabErrorBoundary>
-            <div className="px-4"><VendorsPage openAddSignal={vendorSignal} initialSearch={vendorSearchText} /></div>
+            <div className="px-4"><VendorsPage initialSearch={vendorSearchText} /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'customers' && (
           <TabErrorBoundary>
-            <div className="px-4"><CustomersPage openAddSignal={customerSignal} initialSearch={customerSearchText} /></div>
+            <div className="px-4"><CustomersPage initialSearch={customerSearchText} /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'receipts' && (
@@ -1453,8 +1420,7 @@ function ItemHubPageInner() {
               // state across accounts.
               <StaffContent key={myStaffName} view={lossView as StaffView}
                 viewingName={viewingName} role={role} username={username} isBuilder={canManage}
-                vtab={vtab} setVtab={setVtab} teamVtab={teamVtab} setTeamVtab={setTeamVtab}
-                openAddSignal={staffTimeSignal} />
+                vtab={vtab} setVtab={setVtab} teamVtab={teamVtab} setTeamVtab={setTeamVtab} />
             ) : (
               <p className="py-10 text-center text-gray-400 text-sm px-4">No staff profile is set up for your account.</p>
             )}
@@ -1477,7 +1443,7 @@ function ItemHubPageInner() {
         {showAnalytics && outerTab === 'loss' && lossView === 'expenses' && (
           <TabErrorBoundary><div className="px-3 pt-3"><ExpensesAnalyticsSection /></div></TabErrorBoundary>
         )}
-        {outerTab === 'loss' && lossView === 'cab' && <CABTab openConfirmSignal={cabConfirmSignal} />}
+        {outerTab === 'loss' && lossView === 'cab' && <CABTab />}
         {/* Items pill selected -> ItemsTab's filtered fix view; otherwise the
             submenu's normal content (LossTab). Same swap pattern for
             Sales/Counts/Feed below -- each of those already knows how to
@@ -1575,17 +1541,6 @@ function ItemHubPageInner() {
           </div>
         </div>
       </div>
-
-      {/* The bottom Role Bar (Joe/Opener/Closer tabs) is gone -- each moved
-          into a left-pane item on whichever top-level tab it actually
-          belongs to (Tasks lives on both Cash's and Manage's own pane now;
-          Opener/Closer moved to Manage's). The "+" shortcut menu is the one
-          thing in that bar worth keeping on its own, so it's now a floating
-          button instead. Home and Daily used to float here too (as two
-          circular buttons) but are now a fixed footer row inside Grony
-          Cash's and Grony Manage's own left panes instead (see
-          PaneHomeDaily) -- "+" is the only genuinely floating control left. */}
-      <NewShortcutButton onShortcut={handleShortcut} />
 
       {/* Global search overlay -- click outside/× closes it; each result
           jumps straight to the right tab (and, for Sales/Bills/Customers/
