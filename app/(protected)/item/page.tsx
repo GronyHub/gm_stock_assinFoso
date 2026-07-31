@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef, useMemo, Component, Suspense, type ReactNode } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useSession } from 'next-auth/react'
+import { useSession, signOut } from 'next-auth/react'
 
 class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boolean; message: string }> {
   state = { error: false, message: '' }
@@ -28,7 +28,10 @@ import PaneHomeDaily from './_components/PaneHomeDaily'
 import TasksView from './_components/TasksView'
 import { COLUMNS, type ColKey } from './_components/lossTabColumns'
 import { useColumnPrefs, ColumnsPickerButton } from './_components/columnPrefs'
-import type { ManageView } from './_components/GronyManageTab'
+import { MANAGE_LIST_ITEMS, useDynamicManageCategories, type ManageView } from './_components/manageViewData'
+import { STAFF_PERSONAL_ITEMS, STAFF_TEAM_ITEMS, type StaffView } from './_components/staffViewData'
+import type { ViolationView } from '../staff/StaffClient'
+import SavedFlash from './_components/SavedFlash'
 import { SidePaneContainer, SidePaneToggle, SidePaneButton, useSidePaneDisplayMode } from './_components/SidePane'
 import dynamic from 'next/dynamic'
 const loading = (h: string) => <div className={`py-10 text-center text-gray-400 text-sm`}>{h}</div>
@@ -53,7 +56,7 @@ const LossFeedTab    = dynamic(() => import('./_components/LossFeedTab'),     { 
 const LossByItemTab  = dynamic(() => import('./_components/LossByItemTab'),   { ssr: false, loading: () => loading('Loading…') })
 const ProfitLossTab  = dynamic(() => import('./_components/ProfitLossTab'),   { ssr: false, loading: () => loading('Loading…') })
 const DailySummaryTab = dynamic(() => import('./_components/DailySummaryTab'), { ssr: false, loading: () => loading('Loading…') })
-const GronyManageTab = dynamic(() => import('./_components/GronyManageTab'),  { ssr: false, loading: () => loading('Loading…') })
+const GronyManageContent = dynamic(() => import('./_components/GronyManageTab'), { ssr: false, loading: () => loading('Loading…') })
 const VendorsPage    = dynamic(() => import('../vendors/page'),               { ssr: false, loading: () => loading('Loading…') })
 const CustomersPage  = dynamic(() => import('../customers/page'),             { ssr: false, loading: () => loading('Loading…') })
 const ReceiptsPage   = dynamic(() => import('../receipts/page'),              { ssr: false, loading: () => loading('Loading…') })
@@ -62,9 +65,14 @@ const AliasWidePage       = dynamic(() => import('../aliases/wide/page'),       
 const ServiceMatchesPage  = dynamic(() => import('../matches/wide/page'),           { ssr: false, loading: () => loading('Loading…') })
 const FixMislinkedSalesPage = dynamic(() => import('../debug/unlink-mismatch/page'), { ssr: false, loading: () => loading('Loading…') })
 const Item360Tab = dynamic(() => import('./_components/Item360Tab'),          { ssr: false, loading: () => loading('Loading…') })
-const StaffPersonTab = dynamic(() => import('./_components/StaffPersonTab'),  { ssr: false, loading: () => loading('Loading…') })
+const StaffContent = dynamic(() => import('./_components/StaffPersonTab'),    { ssr: false, loading: () => loading('Loading…') })
 const UKTab = dynamic(() => import('./_components/UKTab'), { ssr: false, loading: () => loading('Loading…') })
 const CHTab = dynamic(() => import('./_components/CHTab'), { ssr: false, loading: () => loading('Loading…') })
+// Same lazy hamburger-menu widget the old per-staff-page footer used -- it
+// already self-gates to owner-level (Grony/Joe) and hides itself while
+// already impersonating, so it's safe on the merged pane's shared footer
+// unconditionally; it simply renders nothing for anyone else.
+const ViewPortalAsButton = dynamic(() => import('@/components/ViewPortalAsButton'), { ssr: false })
 
 // Every real staff member, including Grony -- the third top-level tab shows
 // whichever one of these matches the logged-in username, and that person's
@@ -76,14 +84,19 @@ const STAFF_ROSTER = ['Joe', 'Bino', 'James', 'Rawlings', 'Grony']
 // tabs' own components re-check the session themselves too, so this is
 // just about not showing the tab button to anyone else, not the only thing
 // guarding the page.
-type OuterTab = 'today' | 'loss' | 'manage' | 'staff' | 'uk' | 'ch'
+type OuterTab = 'today' | 'loss' | 'uk' | 'ch'
 
 // Sales, Bills, Counts, Feed, Expenses, PO, P&L, CAB, Vendors, Customers,
-// Receipts, Daily (Summary), and Data all live as submenus inside the Grony
-// Cash tab (outerTab 'loss' -- kept as the internal key since it's
-// referenced throughout; only the label changed).
+// Receipts, Daily (Summary), Data, Grony Manage's own rows, and Staff's own
+// rows all live as submenus inside the one merged Grony Cash tab (outerTab
+// 'loss' -- kept as the internal key since it's referenced throughout; only
+// the label changed, and it now covers what used to be three separate top
+// menus). ManageView/StaffView are each still defined and maintained in
+// their own file (manageViewData.ts/staffViewData.ts) -- this just unions
+// them in so one `lossView` state can drive one merged pane + content area.
 type LossView = 'home' | 'tasks' | 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'lossByItem' | 'lossByTarget' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts' | 'dailySummary'
   | 'purchaseOrders' | 'fixMislinkedSales' | 'item360'
+  | ManageView | StaffView
 // Alias Wide Table and Service Matches used to be their own lossViews --
 // they're now reached from inside Items itself (see ItemsExtraView below),
 // so an old '?view=aliasWide'/'serviceMatches' link still needs a home to
@@ -93,28 +106,39 @@ const OLD_LOSSVIEW_TO_EXTRA: Partial<Record<string, ItemsExtraView>> = {
   aliasWide: 'aliasWide', serviceMatches: 'serviceMatches',
 }
 
+// Every row that used to belong to Grony Manage's or Staff's own separate
+// left panes -- now just more entries in Grony Cash's one merged pane and
+// `lossView`. Used below to keep the groups/search controls row hidden for
+// all of them (same as the old report-style Cash views) and to gate which
+// content component (Cash's own blocks vs GronyManageContent vs
+// StaffContent) a given lossView renders.
+const MANAGE_VIEW_KEYS = new Set<LossView>(MANAGE_LIST_ITEMS.map(i => i.key))
+const STAFF_VIEW_KEYS = new Set<LossView>([
+  ...STAFF_PERSONAL_ITEMS.map(i => i.key), 'staffProfile', ...STAFF_TEAM_ITEMS.map(i => i.key), 'users',
+])
+
 // Old top-level tabs that got folded into Grony Cash submenus -- old
 // bookmarks/links using ?tab=pl etc. still land on the right submenu instead
 // of silently falling back to Today. ?tab=data (the old standalone
 // Analytics/"Data" tab, now redistributed as an Analytics toggle on each of
 // Items/Sales/Bills/Expenses/Loss/Counts) lands on Items -- there's no
-// single tab left to send it to.
+// single tab left to send it to. ?tab=manage and ?tab=staff (the old
+// standalone Grony Manage/Staff top menus) now land here too, on each
+// area's own former default view, since both folded into this same tab.
 const OLD_TAB_TO_VIEW: Partial<Record<string, LossView>> = {
   pl: 'pl', expenses: 'expenses', cab: 'cab', dailySummary: 'dailySummary', data: 'items',
-}
-// Old top-level tabs that moved to a DIFFERENT tab's submenus (not Grony
-// Cash's) -- ?tab=staff now lands on Grony Manage instead of falling back to
-// Today. Its exact submenu isn't deep-linked, just the right parent tab.
-const OLD_TAB_TO_OUTER: Partial<Record<string, OuterTab>> = {
-  staff: 'manage',
+  manage: 'audio', staff: 'staffTimes',
 }
 
 // Self-contained submenus -- either their own dashboard, or a standalone
 // page with its own internal search/filter/add UI -- so the shared
-// groups/search/New controls row doesn't apply to them.
+// groups/search/New controls row doesn't apply to them. Every former
+// Manage/Staff view belongs here too -- none of them ever had a Cash-style
+// groups/search bar of their own.
 const REPORT_VIEWS = new Set<LossView>([
   'home', 'tasks', 'pl', 'cab', 'vendors', 'customers', 'receipts', 'dailySummary',
   'purchaseOrders', 'fixMislinkedSales', 'item360',
+  ...MANAGE_VIEW_KEYS, ...STAFF_VIEW_KEYS,
 ])
 
 // Grony Cash's own left pane, same shape as Grony Manage's -- Sales, Bills,
@@ -136,10 +160,11 @@ const REPORT_VIEWS = new Set<LossView>([
 // Tasks used to live on the bottom Role Bar (Joe's tab), bundled together
 // with Grony Manage's own violations (the "former Bino bucket" -- staff
 // times, adverts, jingle, equipment checks). That bar is gone now -- Tasks
-// is a left-pane item on whichever top-level tab it actually belongs to
-// instead, so Cash only ever shows Cash's own outstanding items (see
-// cashTasksViolations below); Manage gets the same treatment on its own
-// left pane (see GronyManageTab).
+// is a left-pane item for whichever section it actually belongs to instead,
+// so Cash only ever shows Cash's own outstanding items (see
+// cashTasksViolations below); Manage's own Tasks row (key 'manageTasks',
+// see manageViewData.ts) gets the same treatment further down this same
+// merged pane.
 const CASH_ITEMS: { key: LossView; label: string; icon: string }[] = [
   { key: 'tasks',    label: 'Tasks',    icon: '✅' },
   { key: 'items',    label: 'Items',    icon: '📦' },
@@ -305,18 +330,16 @@ const LOSSVIEW_PILL_KEYS: Partial<Record<LossView, string[]>> = {
 // clicking it still jumps to the Staff tab same as it always has.
 const MANAGE_VIOLATION_TYPES = new Set(['no_staff_times', 'no_advert', 'jingle_overdue', 'equipment_check_overdue'])
 
-// Grony Cash/Grony Manage are the two tabs everyone has, so they stay the
-// row's flex-1 anchors -- always equal width, always the widest targets.
-// Staff/UK/C&H are per-account extras (not everyone sees all three, and
-// nobody sees more than one at a time growing this row further), so they're
-// shrink-0 instead of flex-1 -- sized to their own short label, not forced
-// to share the row equally with Grony Cash/Manage. That's what was
-// overlapping text in the first place: every tab fighting flex-1 for an
-// equal slice eventually squeezes below its label's natural width, and
-// whitespace-nowrap has nowhere to put the overflow but on top of its
-// neighbor. truncate is still kept as a last-resort safety net, and the
-// row scrolls horizontally rather than overlapping if it's ever tight
-// enough that even that isn't sufficient.
+// Grony Cash is the one tab everyone has, so it's the row's flex-1 anchor --
+// Grony Manage and Staff used to be separate tabs sharing this same anchor
+// treatment, but their rows now live inside Grony Cash's own merged pane
+// instead (see the pane below). UK/C&H are per-account extras (not everyone
+// sees either, and nobody sees more than one at a time growing this row
+// further), so they're shrink-0 instead of flex-1 -- sized to their own
+// short label, not forced to share the row with Grony Cash. truncate is
+// still kept as a last-resort safety net, and the row scrolls horizontally
+// rather than overlapping if it's ever tight enough that even that isn't
+// sufficient.
 function topTabCls() {
   return 'flex-1 min-w-0 flex items-center justify-center py-1'
 }
@@ -328,19 +351,17 @@ function topTabLabelCls(active: boolean) {
     ${active ? 'bg-brand text-white shadow-md' : 'text-white hover:bg-white/10'}`
 }
 
-const VALID_TABS: OuterTab[] = ['today', 'loss', 'manage', 'staff', 'uk', 'ch']
+const VALID_TABS: OuterTab[] = ['today', 'loss', 'uk', 'ch']
 
 function ItemHubPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const rawInitialTab = searchParams.get('tab')
   const oldTabView = rawInitialTab ? OLD_TAB_TO_VIEW[rawInitialTab] : undefined
-  const oldTabOuter = rawInitialTab ? OLD_TAB_TO_OUTER[rawInitialTab] : undefined
-  // 'losses' (the old standalone Loss Feed tab), the old pl/expenses/cab/data
-  // top-level tabs (folded into Grony Cash), and the old standalone staff tab
-  // (folded into Grony Manage) all still land somewhere sensible instead of
-  // silently falling back to Today.
-  const initialTab = (rawInitialTab === 'losses' || oldTabView ? 'loss' : oldTabOuter ?? rawInitialTab) as OuterTab | null
+  // 'losses' (the old standalone Loss Feed tab) and the old pl/expenses/cab/
+  // data/manage/staff top-level tabs (all folded into Grony Cash by now)
+  // still land somewhere sensible instead of silently falling back to Today.
+  const initialTab = (rawInitialTab === 'losses' || oldTabView ? 'loss' : rawInitialTab) as OuterTab | null
   const [outerTab, setOuterTab] = useState<OuterTab>(
     initialTab && VALID_TABS.includes(initialTab) ? initialTab : 'today'
   )
@@ -402,9 +423,22 @@ function ItemHubPageInner() {
   // state (unlike Sales/Bills, which already read the shared `search` above).
   const [customerSearchText, setCustomerSearchText] = useState('')
   const [vendorSearchText, setVendorSearchText] = useState('')
-  // Same idea, for jumping straight into a specific Grony Manage sub-tab
-  // (GronyManageTab owns that sub-tab state itself, same as Customers/Vendors).
-  const [manageInitialView, setManageInitialView] = useState<ManageView | undefined>(undefined)
+
+  // Manage's user-added categories -- shared between the merged pane
+  // (listing/adding/removing them) and GronyManageContent (rendering the
+  // active one).
+  const {
+    dynamicCategories, activeDynamicId, setActiveDynamicId,
+    showAddCategory, setShowAddCategory, newCategoryLabel, setNewCategoryLabel,
+    savingCategory, justAddedCategory, addCategory, removeCategory,
+  } = useDynamicManageCategories()
+
+  // Staff's "Viewing" picker -- who the personal rows (Times/Payslips/etc.)
+  // apply to. Only Joe/Grony ever change this away from their own name;
+  // everyone else always views themself (see viewingName below).
+  const [viewingNameOverride, setViewingNameOverride] = useState<string | undefined>(undefined)
+  const [vtab, setVtab] = useState<ViolationView>('Disciplinary')
+  const [teamVtab, setTeamVtab] = useState<ViolationView>('Disciplinary')
 
   useEffect(() => {
     const q = globalSearchQuery.trim()
@@ -622,38 +656,6 @@ function ItemHubPageInner() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  // From the loss dialog: jump to the records that usually explain a "loss"
-  // (Sales / Bills / Counts live as sub-views of the Grony Cash tab). Must set the
-  // sub-view AFTER changeTab, which resets it to 'items'.
-  function goFixRecords(view: 'sales' | 'bills' | 'counts') {
-    changeTab('loss')
-    setLossView(view)
-  }
-
-  // RoleBar "+" shortcut menu -- jumps straight to a "create new" flow
-  // wherever it already lives. Sales/Bills/Item/Expenses reuse the existing
-  // addForm mechanism (changeTab resets it, so set it after); the rest
-  // reopen via a per-target signal since their forms are local component
-  // state with no addForm equivalent.
-  function handleShortcut(key: ShortcutKey) {
-    switch (key) {
-      case 'sale':       changeTab('loss'); setLossView('sales');     setAddForm('sale'); break
-      case 'bill':       changeTab('loss'); setLossView('bills');     setAddForm('bill'); break
-      case 'item':       changeTab('loss'); setLossView('items');     setAddForm('item'); break
-      case 'expense':    changeTab('loss'); setLossView('expenses');  setAddForm('expense'); break
-      case 'cabConfirm': changeTab('loss'); setLossView('cab');       setCabConfirmSignal(n => n + 1); break
-      case 'customer':   changeTab('loss'); setLossView('customers'); setCustomerSignal(n => n + 1); break
-      case 'vendor':     changeTab('loss'); setLossView('vendors');   setVendorSignal(n => n + 1); break
-      case 'staffTime': {
-        // The Staff tab always opens straight to your own page now, and
-        // Times is its first (shared) sub-tab -- nothing left to pick.
-        changeTab('staff')
-        setStaffTimeSignal(n => n + 1)
-        break
-      }
-    }
-  }
-
   function changeTab(t: OuterTab) {
     setOuterTab(t)
     setViolation(null)
@@ -664,6 +666,61 @@ function ItemHubPageInner() {
     // Optimistic -- TodayContent marks these read for real as soon as it
     // mounts, but that round-trip shouldn't leave the badge lingering.
     if (t === 'today') setUnreadAnnouncements(0)
+  }
+
+  // The one navigation primitive every Cash/Manage/Staff row (and every
+  // deep link into one) goes through -- unlike changeTab('loss') above,
+  // this jumps straight to a specific row regardless of which outer tab is
+  // currently showing, so callers don't need their own changeTab-then-
+  // override two-step any more.
+  function pickLossView(view: LossView) {
+    setOuterTab('loss')
+    setLossView(view)
+    setActiveDynamicId(null)
+    setViolation(null)
+    setAddForm(null)
+    setShowAnalytics(false)
+  }
+
+  // Joe/Grony's "Viewing" picker -- switches whose personal rows show.
+  // Profile only ever means "my own login", so switching away from it while
+  // it's showing has nowhere sensible to land -- falls back to Times
+  // instead of leaving the content area blank.
+  function pickViewing(name: string) {
+    setViewingNameOverride(name)
+    if (lossView === 'staffProfile' && name.toLowerCase() !== (myStaffName ?? '').toLowerCase()) {
+      setLossView('staffTimes')
+    }
+  }
+
+  // From the loss dialog: jump to the records that usually explain a "loss"
+  // (Sales / Bills / Counts live as sub-views of the Grony Cash tab).
+  function goFixRecords(view: 'sales' | 'bills' | 'counts') {
+    pickLossView(view)
+  }
+
+  // RoleBar "+" shortcut menu -- jumps straight to a "create new" flow
+  // wherever it already lives. Sales/Bills/Item/Expenses reuse the existing
+  // addForm mechanism (pickLossView resets it, so set it after); the rest
+  // reopen via a per-target signal since their forms are local component
+  // state with no addForm equivalent.
+  function handleShortcut(key: ShortcutKey) {
+    switch (key) {
+      case 'sale':       pickLossView('sales');     setAddForm('sale'); break
+      case 'bill':       pickLossView('bills');     setAddForm('bill'); break
+      case 'item':       pickLossView('items');     setAddForm('item'); break
+      case 'expense':    pickLossView('expenses');  setAddForm('expense'); break
+      case 'cabConfirm': pickLossView('cab');       setCabConfirmSignal(n => n + 1); break
+      case 'customer':   pickLossView('customers'); setCustomerSignal(n => n + 1); break
+      case 'vendor':     pickLossView('vendors');   setVendorSignal(n => n + 1); break
+      case 'staffTime': {
+        // The Staff section always opens straight to your own page now, and
+        // Times is its first (shared) row -- nothing left to pick.
+        pickLossView('staffTimes')
+        setStaffTimeSignal(n => n + 1)
+        break
+      }
+    }
   }
 
   // Tab/sub-view changes push a new history entry each -- real "pages" the
@@ -736,21 +793,22 @@ function ItemHubPageInner() {
   }, [searchParams])
 
   function goToViolation(key: string) {
-    // The loss-summary rows point at the Loss feed (a submenu of the Grony
-    // Cash tab), not a violation pill.
-    if (key === '__loss_feed') { changeTab('loss'); setLossView('feed'); return }
-    // The Advert sub-tab's own checks (audio adverts, jingle, equipment)
-    // just land on Grony Manage -- same shallow landing as before, one more
-    // tap to the exact sub-view.
-    if (['no_advert', 'jingle_overdue', 'equipment_check_overdue'].includes(key)) { changeTab('manage'); return }
+    // The loss-summary rows point at the Loss feed (a row of the merged
+    // pane), not a violation pill.
+    if (key === '__loss_feed') { pickLossView('feed'); return }
+    // The Advert section's own checks (audio adverts, jingle, equipment)
+    // now route straight to their exact row instead of just landing
+    // somewhere in Manage's section generally.
+    if (key === 'no_advert') { pickLossView('audio_status'); return }
+    if (key === 'jingle_overdue') { pickLossView('jingle'); return }
+    if (key === 'equipment_check_overdue') { pickLossView('equipment'); return }
     // No Staff Times is about a missing day, not one person, so it just
-    // lands on the Staff tab -- Times is its first (shared, unfiltered)
-    // sub-tab, which already shows every staff member's clock records.
-    if (key === 'no_staff_times') { changeTab('staff'); return }
+    // lands on Staff's Times row -- shared and unfiltered, it already shows
+    // every staff member's clock records.
+    if (key === 'no_staff_times') { pickLossView('staffTimes'); return }
     const targetView = VIOLATION_HOME[key]
     if (!targetView) return
-    changeTab('loss')
-    setLossView(targetView)
+    pickLossView(targetView)
     setViolation(key)
   }
 
@@ -770,8 +828,7 @@ function ItemHubPageInner() {
     productType !== 'all' ? (productType === 'goods' ? 'Goods' : 'Services') : null,
   ].filter(Boolean).join(' · ')
 
-  const showControls = outerTab !== 'today' && outerTab !== 'manage'
-    && !(outerTab === 'loss' && REPORT_VIEWS.has(lossView))
+  const showControls = outerTab === 'loss' && !REPORT_VIEWS.has(lossView)
   const [cashDisplayMode, changeCashDisplayMode] = useSidePaneDisplayMode()
   const { data: session } = useSession()
   const role = (session?.user as any)?.role ?? 'staff'
@@ -779,13 +836,22 @@ function ItemHubPageInner() {
   const canSeePL = role === 'owner' || username === 'joe'
   const isOwnerOrJoe = role === 'owner' || username.toLowerCase() === 'joe'
   const isGrony = username.toLowerCase() === 'grony'
-  // Drives the third top-level tab's label AND which staff page it opens --
-  // "just like the user profile icon", it's always your own name, not a
-  // generic "Staff" label or a pick-a-person screen. Falls back to
+  // The one owner-level gate Manage's Add Category/Rota edit controls AND
+  // the Staff section's admin extras (Viewing picker, Team, Users) both use
+  // -- previously each was its own hand-rolled, slightly different check;
+  // merging the three panes onto one is a good excuse to fold them into one.
+  const canManage = isOwnerOrJoe || isGrony
+  // Drives the merged pane's own-name section AND which staff page it
+  // opens -- "just like the user profile icon", it's always your own name,
+  // not a generic "Staff" label or a pick-a-person screen. Falls back to
   // undefined for a logged-in account with no matching staff page (there
-  // shouldn't be one in practice, but the tab still needs to degrade
+  // shouldn't be one in practice, but the section still needs to degrade
   // gracefully instead of showing a stranger's personal records).
   const myStaffName = STAFF_ROSTER.find(n => n.toLowerCase() === username.toLowerCase())
+  // Whose personal rows (Times/Payslips/etc.) currently show -- always your
+  // own name unless you're Joe/Grony and have switched it via the pane's
+  // Viewing picker.
+  const viewingName = viewingNameOverride ?? myStaffName ?? ''
 
   // Every real submenu under Grony Cash, Grony Manage, and the account
   // (person icon) menu -- three separate, tagged lists rather than one
@@ -796,66 +862,69 @@ function ItemHubPageInner() {
   // two separately-maintained lists drifting apart (which is what
   // happened to "Daily Loss" vs "Loss" before this).
   const cashSubmenus: { label: string; action: () => void }[] = [
-    { label: 'Items', action: () => { changeTab('loss'); setLossView('items') } },
-    { label: 'Sales', action: () => { changeTab('loss'); setLossView('sales') } },
-    { label: 'Bills', action: () => { changeTab('loss'); setLossView('bills') } },
-    { label: 'Loss by Date', action: () => { changeTab('loss'); setLossView('feed') } },
-    { label: 'Loss by Item', action: () => { changeTab('loss'); setLossView('lossByItem') } },
-    { label: 'Loss by Target', action: () => { changeTab('loss'); setLossView('lossByTarget') } },
-    { label: 'Expenses', action: () => { changeTab('loss'); setLossView('expenses') } },
-    ...(canSeePL ? [{ label: 'P&L', action: () => { changeTab('loss'); setLossView('pl') } }] : []),
-    { label: 'CAB', action: () => { changeTab('loss'); setLossView('cab') } },
-    { label: 'Vendors', action: () => { changeTab('loss'); setLossView('vendors') } },
-    { label: 'Customers', action: () => { changeTab('loss'); setLossView('customers') } },
-    { label: 'Receipts', action: () => { changeTab('loss'); setLossView('receipts') } },
-    { label: 'Daily', action: () => { changeTab('loss'); setLossView('dailySummary') } },
-    { label: 'Counts', action: () => { changeTab('loss'); setLossView('counts') } },
-    { label: 'Purchase Orders', action: () => { changeTab('loss'); setLossView('purchaseOrders') } },
-    { label: 'Alias Wide Table', action: () => { changeTab('loss'); setLossView('items'); setItemsExtraView('aliasWide') } },
-    { label: 'Service Matches', action: () => { changeTab('loss'); setLossView('items'); setItemsExtraView('serviceMatches') } },
-    ...(isOwnerOrJoe ? [{ label: 'Fix Mislinked Sales', action: () => { changeTab('loss'); setLossView('fixMislinkedSales') } }] : []),
-    { label: 'Item 360', action: () => { changeTab('loss'); setLossView('item360') } },
+    { label: 'Items', action: () => pickLossView('items') },
+    { label: 'Sales', action: () => pickLossView('sales') },
+    { label: 'Bills', action: () => pickLossView('bills') },
+    { label: 'Loss by Date', action: () => pickLossView('feed') },
+    { label: 'Loss by Item', action: () => pickLossView('lossByItem') },
+    { label: 'Loss by Target', action: () => pickLossView('lossByTarget') },
+    { label: 'Expenses', action: () => pickLossView('expenses') },
+    ...(canSeePL ? [{ label: 'P&L', action: () => pickLossView('pl') }] : []),
+    { label: 'CAB', action: () => pickLossView('cab') },
+    { label: 'Vendors', action: () => pickLossView('vendors') },
+    { label: 'Customers', action: () => pickLossView('customers') },
+    { label: 'Receipts', action: () => pickLossView('receipts') },
+    { label: 'Daily', action: () => pickLossView('dailySummary') },
+    { label: 'Counts', action: () => pickLossView('counts') },
+    { label: 'Purchase Orders', action: () => pickLossView('purchaseOrders') },
+    { label: 'Alias Wide Table', action: () => { pickLossView('items'); setItemsExtraView('aliasWide') } },
+    { label: 'Service Matches', action: () => { pickLossView('items'); setItemsExtraView('serviceMatches') } },
+    ...(isOwnerOrJoe ? [{ label: 'Fix Mislinked Sales', action: () => pickLossView('fixMislinkedSales') }] : []),
+    { label: 'Item 360', action: () => pickLossView('item360') },
   ]
   const manageSubmenus: { label: string; action: () => void }[] = [
-    { label: 'Rota', action: () => { changeTab('manage'); setManageInitialView('rota') } },
-    { label: 'Audio', action: () => { changeTab('manage'); setManageInitialView('audio') } },
-    { label: 'Advert Status', action: () => { changeTab('manage'); setManageInitialView('audio_status') } },
-    { label: 'Jingle Log', action: () => { changeTab('manage'); setManageInitialView('jingle') } },
-    { label: 'Equipment Check', action: () => { changeTab('manage'); setManageInitialView('equipment') } },
-    { label: 'Photoshop', action: () => { changeTab('manage'); setManageInitialView('photoshop') } },
-    { label: 'WhatsApp', action: () => { changeTab('manage'); setManageInitialView('whatsapp') } },
-    { label: 'Cuttings', action: () => { changeTab('manage'); setManageInitialView('cuttings') } },
-    { label: 'Video', action: () => { changeTab('manage'); setManageInitialView('video') } },
-    { label: 'Advert Daily Log', action: () => { changeTab('manage'); setManageInitialView('advert_log') } },
-    { label: 'Dress Code', action: () => { changeTab('manage'); setManageInitialView('staff_dress') } },
-    { label: 'Arrangement', action: () => { changeTab('manage'); setManageInitialView('arrangement') } },
-    { label: 'Cleanliness', action: () => { changeTab('manage'); setManageInitialView('cleanliness') } },
-    { label: 'Future', action: () => { changeTab('manage'); setManageInitialView('future') } },
-    { label: 'Customer Display', action: () => { changeTab('manage'); setManageInitialView('customer_display') } },
-    { label: 'Staff Display', action: () => { changeTab('manage'); setManageInitialView('staff_display') } },
-    { label: 'Repair Works', action: () => { changeTab('manage'); setManageInitialView('repair_works') } },
-    { label: 'Quality Assurance', action: () => { changeTab('manage'); setManageInitialView('quality_assurance') } },
-    { label: 'Tutorial', action: () => { changeTab('manage'); setManageInitialView('tutorial') } },
-    { label: 'Company Laws', action: () => { changeTab('manage'); setManageInitialView('training_laws') } },
-    { label: 'Assessment', action: () => { changeTab('manage'); setManageInitialView('assessment') } },
-    { label: 'Logs', action: () => { changeTab('manage'); setManageInitialView('logs') } },
+    { label: 'Rota', action: () => pickLossView('rota') },
+    { label: 'Audio', action: () => pickLossView('audio') },
+    { label: 'Advert Status', action: () => pickLossView('audio_status') },
+    { label: 'Jingle Log', action: () => pickLossView('jingle') },
+    { label: 'Equipment Check', action: () => pickLossView('equipment') },
+    { label: 'Photoshop', action: () => pickLossView('photoshop') },
+    { label: 'WhatsApp', action: () => pickLossView('whatsapp') },
+    { label: 'Cuttings', action: () => pickLossView('cuttings') },
+    { label: 'Video', action: () => pickLossView('video') },
+    { label: 'Advert Daily Log', action: () => pickLossView('advert_log') },
+    { label: 'Dress Code', action: () => pickLossView('staff_dress') },
+    { label: 'Arrangement', action: () => pickLossView('arrangement') },
+    { label: 'Cleanliness', action: () => pickLossView('cleanliness') },
+    { label: 'Future', action: () => pickLossView('future') },
+    { label: 'Customer Display', action: () => pickLossView('customer_display') },
+    { label: 'Staff Display', action: () => pickLossView('staff_display') },
+    { label: 'Repair Works', action: () => pickLossView('repair_works') },
+    { label: 'Quality Assurance', action: () => pickLossView('quality_assurance') },
+    { label: 'Tutorial', action: () => pickLossView('tutorial') },
+    { label: 'Company Laws', action: () => pickLossView('training_laws') },
+    { label: 'Assessment', action: () => pickLossView('assessment') },
+    { label: 'Logs', action: () => pickLossView('logs') },
   ]
 
   // Just the one destination now -- your own Staff page. Picking a
   // different staff member's individual records isn't a top-level
-  // destination any more; Joe/Grony do that from inside their own page's
-  // Payslip Builder / All Staff sub-tabs instead (see StaffPersonTab).
+  // destination any more; Joe/Grony do that from the pane's own Viewing
+  // picker / Team section instead (see StaffContent).
   const staffSubmenus: { label: string; action: () => void }[] = myStaffName
-    ? [{ label: myStaffName, action: () => changeTab('staff') }]
+    ? [{ label: myStaffName, action: () => pickLossView('staffTimes') }]
     : []
 
   // Feeds the Tasks panel's blue bars (RolePanel -> RoleFlagsTable) -- one
-  // bar per submenu here, tagged with which section it belongs to. The old
-  // account (hamburger) menu used to feed its own 'Account' section here too
-  // -- Users, UK, View Portal As, Sign Out -- but every one of those now
-  // lives somewhere with its own real navigation (Users/View Portal As/Sign
-  // Out on every Staff pane, UK as its own top-level tab), so there's
-  // nothing left to bucket under 'Account' any more.
+  // bar per submenu here, tagged with which section it belongs to. These
+  // three sections all live inside the one merged pane now, but the
+  // grouping labels are still worth keeping -- they describe what each row
+  // actually is, not which top-level tab it's on. The old account
+  // (hamburger) menu used to feed its own 'Account' section here too --
+  // Users, UK, View Portal As, Sign Out -- but every one of those now lives
+  // somewhere with its own real navigation (Users/View Portal As/Sign Out
+  // on the merged pane, UK as its own top-level tab), so there's nothing
+  // left to bucket under 'Account' any more.
   const taskSubmenus: { label: string; section: string; action: () => void }[] = [
     ...cashSubmenus.map(s => ({ ...s, section: 'Grony Cash' })),
     ...manageSubmenus.map(s => ({ ...s, section: 'Grony Manage' })),
@@ -870,17 +939,17 @@ function ItemHubPageInner() {
   // array of cheap closures, not worth the dependency-list upkeep.
   const navDestinations: { label: string; action: () => void }[] = [
     { label: 'Home', action: () => changeTab('today') },
-    { label: 'Grony Cash', action: () => changeTab('loss') },
-    { label: 'Grony Manage', action: () => changeTab('manage') },
-    ...(myStaffName ? [{ label: myStaffName, action: () => changeTab('staff') }] : []),
+    { label: 'Grony Cash', action: () => pickLossView('items') },
+    { label: 'Grony Manage', action: () => pickLossView('audio') },
+    ...(myStaffName ? [{ label: myStaffName, action: () => pickLossView('staffTimes') }] : []),
     ...(isGrony ? [{ label: 'UK', action: () => changeTab('uk') }] : []),
     ...(isOwnerOrJoe ? [{ label: 'C&H', action: () => changeTab('ch') }] : []),
     ...cashSubmenus,
     ...manageSubmenus,
-    { label: 'Cash Tasks', action: () => { changeTab('loss'); setLossView('tasks') } },
-    { label: 'Manage Tasks', action: () => { changeTab('manage'); setManageInitialView('tasks') } },
-    { label: 'Opener', action: () => { changeTab('manage'); setManageInitialView('opener') } },
-    { label: 'Closer', action: () => { changeTab('manage'); setManageInitialView('closer') } },
+    { label: 'Cash Tasks', action: () => pickLossView('tasks') },
+    { label: 'Manage Tasks', action: () => pickLossView('manageTasks') },
+    { label: 'Opener', action: () => pickLossView('opener') },
+    { label: 'Closer', action: () => pickLossView('closer') },
   ]
   const navQuery = globalSearchQuery.trim().toLowerCase()
   const navMatches = navQuery
@@ -902,48 +971,26 @@ function ItemHubPageInner() {
       {/* ── Header ── */}
       <div className="shrink-0 sticky top-0 z-30 bg-green-800 border-b border-green-900">
 
-        {/* Row 1: raw-text tabs, no icons. Grony Cash/Grony Manage are the
-            two flex-1 anchors everyone gets, sharing the row equally; Staff/
-            UK/C&H are shrink-0 (sized to their own label) since they're
-            per-account extras, not peers those two need to keep sharing
-            room with as more of them get added. overflow-x-auto is a last
+        {/* Row 1: raw-text tabs, no icons. Grony Cash is the one flex-1
+            anchor everyone gets; UK/C&H are shrink-0 (sized to their own
+            label) since they're per-account extras, not peers Cash needs to
+            keep sharing room with as more of them get added. Grony Manage
+            and Staff used to be separate tabs here -- both folded into
+            Grony Cash's own merged pane instead (see the pane below), so
+            there's nothing left in this row to switch between besides Cash
+            itself and the two private extras. overflow-x-auto is a last
             resort -- on any screen wide enough for the full set (every
             phone this has actually been tested on), nothing scrolls, it
-            just sits there unused. Divider line between them so they read
-            as distinct menus, not one blob. Daily and Data are Grony Cash
-            submenus now (see the children row below), not top-level tabs
-            of their own. Home moved to its own floating icon (bottom-right)
-            so it doesn't take up a slot in this row. */}
+            just sits there unused. Daily and Data are Grony Cash submenus
+            now too (see the children row below), not top-level tabs of
+            their own. Home moved to its own floating icon (bottom-right) so
+            it doesn't take up a slot in this row. */}
         <div className="flex items-stretch gap-1 px-2 py-2 overflow-x-auto">
           <button onClick={() => changeTab('loss')} className={topTabCls()}>
             <span className={topTabLabelCls(outerTab === 'loss')}>
-              {/* "Grony" is redundant with the logo already on screen -- on
-                  a narrow phone (below the full 5-tab set fitting comfortably)
-                  dropping it here buys real room back instead of just
-                  truncating "Grony Cash" down to "Gron...". */}
-              <span className="hidden sm:inline">Grony Cash</span>
-              <span className="sm:hidden">Cash</span>
+              Grony Cash
             </span>
           </button>
-          <div className="w-px bg-white/25 shrink-0" />
-          <button onClick={() => changeTab('manage')} className={topTabCls()}>
-            <span className={topTabLabelCls(outerTab === 'manage')}>
-              <span className="hidden sm:inline">Grony Manage</span>
-              <span className="sm:hidden">Manage</span>
-            </span>
-          </button>
-          {/* Only shown for an account with a real staff page -- a stray
-              login with no matching roster entry has nothing behind this
-              tab, so it's left off entirely rather than opening a dead
-              end. The 👤 glyph stays constant even though the name next to
-              it changes per person, so "tap the person icon" still works
-              as a stable instruction regardless of who's logged in. */}
-          {myStaffName && (<>
-          <div className="w-px bg-white/25 shrink-0" />
-          <button onClick={() => changeTab('staff')} className={topTabClsCompact()}>
-            <span className={topTabLabelCls(outerTab === 'staff')}>👤 {myStaffName}</span>
-          </button>
-          </>)}
           {/* Private to Grony alone -- was a hidden hamburger-menu link
               before, now a real tab since the hamburger it lived in got
               removed once every one of its old links had somewhere else to
@@ -979,27 +1026,136 @@ function ItemHubPageInner() {
         </div>
       </div>
 
-      {/* ── Body ── Grony Cash gets its own left pane (same one-pane shape
-          as Grony Manage's / Staff's), everything else just gets the full-
-          width content area as before. */}
+      {/* ── Body ── Grony Cash's one left pane now covers what used to be
+          three separate ones (Cash/Manage/Staff), everything else just gets
+          the full-width content area as before. */}
       <div className="flex-1 min-h-0 flex overflow-hidden">
         {outerTab === 'loss' && (
           <SidePaneContainer mode={cashDisplayMode}
-            footer={<PaneHomeDaily mode={cashDisplayMode}
-              onHome={() => { setLossView('home'); setUnreadAnnouncements(0) }}
-              onDaily={() => setLossView('dailySummary')}
-              homeActive={lossView === 'home'} dailyActive={lossView === 'dailySummary'}
-              unreadAnnouncements={unreadAnnouncements} />}>
+            footer={<>
+              <PaneHomeDaily mode={cashDisplayMode}
+                onHome={() => { setLossView('home'); setUnreadAnnouncements(0) }}
+                onDaily={() => setLossView('dailySummary')}
+                homeActive={lossView === 'home'} dailyActive={lossView === 'dailySummary'}
+                unreadAnnouncements={unreadAnnouncements} />
+              <div className="mt-1 border-t border-blue-700 pt-1">
+                <ViewPortalAsButton />
+                <SidePaneButton icon="🚪" label="Sign out" mode={cashDisplayMode} active={false}
+                  onClick={() => signOut({ callbackUrl: '/login' })} />
+              </div>
+            </>}>
             <SidePaneToggle mode={cashDisplayMode} onChange={changeCashDisplayMode} />
+
             {CASH_ITEMS.filter(v => v.key !== 'pl' || canSeePL)
-              .filter(v => v.key !== 'fixMislinkedSales' || isOwnerOrJoe).map(v => {
-              const active = lossView === v.key
-              return (
+              .filter(v => v.key !== 'fixMislinkedSales' || isOwnerOrJoe).map(v => (
                 <SidePaneButton key={v.key} icon={v.icon} label={v.label} mode={cashDisplayMode}
-                  active={active} badge={v.key === 'tasks' ? cashTasksCount : undefined}
-                  onClick={() => { setLossView(v.key); setAddForm(null); setViolation(null); setShowAnalytics(false) }} />
-              )
-            })}
+                  active={lossView === v.key} badge={v.key === 'tasks' ? cashTasksCount : undefined}
+                  onClick={() => pickLossView(v.key)} />
+              ))}
+
+            <div className="mt-1 pt-1 border-t border-blue-700">
+              {cashDisplayMode !== 'icon' && (
+                <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Manage</p>
+              )}
+              {MANAGE_LIST_ITEMS.map(entry => {
+                const badge = entry.key === 'manageTasks' ? manageTasksCount
+                  : entry.key === 'opener' ? openerBadgeCount
+                  : entry.key === 'closer' ? (globalFlags?.missingClosingReports?.length ?? 0)
+                  : undefined
+                return (
+                  <SidePaneButton key={entry.key} icon={entry.icon} label={entry.label} mode={cashDisplayMode}
+                    active={!activeDynamicId && lossView === entry.key} badge={badge}
+                    onClick={() => pickLossView(entry.key)} />
+                )
+              })}
+
+              {dynamicCategories.length > 0 && (
+                <div className="mt-1 pt-1 border-t border-blue-700">
+                  {cashDisplayMode !== 'icon' && (
+                    <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Added by you</p>
+                  )}
+                  {dynamicCategories.map(c => (
+                    <div key={c.id} className={`flex items-stretch ${activeDynamicId === c.id ? 'bg-white' : ''}`}>
+                      <SidePaneButton icon="🗂️" label={c.label} mode={cashDisplayMode} className="flex-1 min-w-0"
+                        active={activeDynamicId === c.id} onClick={() => setActiveDynamicId(c.id)} />
+                      {canManage && (
+                        <button onClick={() => removeCategory(c.id, c.label)} title="Delete category"
+                          className={`shrink-0 px-1.5 pt-2 font-bold text-xs ${activeDynamicId === c.id ? 'text-gray-300 hover:text-red-500' : 'text-blue-200 hover:text-red-300'}`}>×</button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {canManage && (
+                <div className="mt-1 pt-1 border-t border-blue-700 px-1.5 pb-2">
+                  {showAddCategory ? (
+                    <form onSubmit={addCategory} className="space-y-1 py-1">
+                      <input autoFocus value={newCategoryLabel} onChange={e => setNewCategoryLabel(e.target.value)}
+                        placeholder="Name *"
+                        className="w-full text-[10px] bg-white border border-blue-300 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+                      <div className="flex items-center gap-1">
+                        <button type="submit" disabled={savingCategory || !newCategoryLabel.trim()}
+                          className="flex-1 text-[10px] font-semibold px-1.5 py-1 rounded bg-white text-blue-700 hover:bg-blue-50 disabled:opacity-40 transition">
+                          {savingCategory ? '…' : 'Add'}
+                        </button>
+                        <button type="button" onClick={() => { setShowAddCategory(false); setNewCategoryLabel('') }}
+                          className="text-[10px] font-semibold px-1.5 py-1 rounded bg-white/20 text-white hover:bg-white/30 transition">
+                          ✕
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <SidePaneButton icon="➕" label="Add Category" mode={cashDisplayMode} active={false}
+                      onClick={() => setShowAddCategory(true)} className="w-full text-white hover:bg-white/10 font-semibold" />
+                  )}
+                  {justAddedCategory && (
+                    <p className="text-center pt-1"><SavedFlash show /></p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {myStaffName && (
+              <div className="mt-1 pt-1 border-t border-blue-700">
+                {cashDisplayMode !== 'icon' && (
+                  <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">
+                    {canManage ? 'Viewing' : 'My Staff'}
+                  </p>
+                )}
+                {canManage && (<>
+                  <SidePaneButton icon="🙋" label="Me" mode={cashDisplayMode} active={viewingName === myStaffName}
+                    onClick={() => pickViewing(myStaffName)} />
+                  {STAFF_ROSTER.filter(n => n.toLowerCase() !== myStaffName.toLowerCase()).map(name => (
+                    <SidePaneButton key={name} icon="👤" label={name} mode={cashDisplayMode}
+                      active={viewingName === name} onClick={() => pickViewing(name)} />
+                  ))}
+                </>)}
+
+                {STAFF_PERSONAL_ITEMS.map(t => (
+                  <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode}
+                    active={lossView === t.key} onClick={() => pickLossView(t.key)} />
+                ))}
+                {viewingName.toLowerCase() === username.toLowerCase() && (
+                  <SidePaneButton icon="👤" label="Profile" mode={cashDisplayMode} active={lossView === 'staffProfile'}
+                    onClick={() => pickLossView('staffProfile')} />
+                )}
+
+                {canManage && (<>
+                  <div className="mt-1 pt-1 border-t border-blue-700">
+                    {cashDisplayMode !== 'icon' && <p className="px-2 pb-0.5 text-[9px] font-bold text-blue-200 uppercase tracking-wide">Team</p>}
+                    {STAFF_TEAM_ITEMS.map(t => (
+                      <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode}
+                        active={lossView === t.key} onClick={() => pickLossView(t.key)} />
+                    ))}
+                  </div>
+                  <div className="mt-1 pt-1 border-t border-blue-700">
+                    <SidePaneButton icon="🔑" label="Users" mode={cashDisplayMode} active={lossView === 'users'}
+                      onClick={() => pickLossView('users')} />
+                  </div>
+                </>)}
+              </div>
+            )}
           </SidePaneContainer>
         )}
 
@@ -1212,30 +1368,31 @@ function ItemHubPageInner() {
             <Item360Tab items={items} jumpToItemId={item360JumpId} onJumpDone={() => setItem360JumpId(null)} />
           </TabErrorBoundary>
         )}
-        {outerTab === 'manage' && (
+        {outerTab === 'loss' && (MANAGE_VIEW_KEYS.has(lossView) || activeDynamicId !== null) && (
           <TabErrorBoundary>
-            <GronyManageTab initialView={manageInitialView} role={role} username={username}
+            <GronyManageContent view={lossView as ManageView}
+              activeDynamic={dynamicCategories.find(c => c.id === activeDynamicId)}
+              canManage={canManage}
               violations={manageTasksViolations} openerViolations={openerViolations}
               assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
-              manageSubmenus={manageSubmenus} onGoToViolation={goToViolation}
+              manageSubmenus={manageSubmenus} onGoToViolation={goToViolation} onPickView={pickLossView}
               missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
-              onOpenStaff={() => changeTab('staff')}
-              tasksBadge={manageTasksCount} openerBadge={openerBadgeCount}
-              closerBadge={globalFlags?.missingClosingReports?.length ?? 0}
-              onHomeOpened={() => setUnreadAnnouncements(0)}
-              unreadAnnouncements={unreadAnnouncements} />
+              onOpenStaff={() => pickLossView('staffTimes')} />
           </TabErrorBoundary>
         )}
-        {outerTab === 'staff' && (
+        {outerTab === 'loss' && STAFF_VIEW_KEYS.has(lossView) && (
           <TabErrorBoundary>
             {myStaffName ? (
               // key forces a full remount whenever the logged-in identity
               // changes (e.g. an admin switching "View as" between staff
-              // without leaving this tab) -- StaffPersonTab's internal
-              // state (which sub-tab, who Joe/Grony are "Viewing") is only
-              // ever set from props on first mount, so without this it
-              // would keep showing the previous person's selections.
-              <StaffPersonTab key={myStaffName} staffName={myStaffName} role={role} username={username} openAddSignal={staffTimeSignal} />
+              // without leaving this tab) -- StaffContent's own vtab/
+              // teamVtab state lives up here now, but a stale identity could
+              // still otherwise leak into TimesTab/PayslipsTab's own local
+              // state across accounts.
+              <StaffContent key={myStaffName} view={lossView as StaffView}
+                viewingName={viewingName} role={role} username={username} isBuilder={canManage}
+                vtab={vtab} setVtab={setVtab} teamVtab={teamVtab} setTeamVtab={setTeamVtab}
+                openAddSignal={staffTimeSignal} />
             ) : (
               <p className="py-10 text-center text-gray-400 text-sm px-4">No staff profile is set up for your account.</p>
             )}
