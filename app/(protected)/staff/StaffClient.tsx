@@ -457,7 +457,11 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
   return (
     <div className="space-y-4">
       {isAdmin && (
-        <div className="flex justify-end">
+        <div className="flex justify-between items-center">
+          <Link href="/staff-times/review" title="Review shifts over 14 hours"
+            className="text-base leading-none px-2.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 transition">
+            🚩
+          </Link>
           <button onClick={() => setShowAddForm(v => !v)}
             className="text-sm font-bold px-3 py-1.5 rounded-xl bg-blue-600 text-white hover:bg-blue-500 transition">
             {showAddForm ? 'Cancel' : '+ Add Entry'}
