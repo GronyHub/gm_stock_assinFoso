@@ -1,5 +1,34 @@
 import sql from '@/lib/db'
+import { sendPasswordResetEmail } from '@/lib/mailer'
 import { NextResponse } from 'next/server'
+import crypto from 'crypto'
+
+export async function POST() {
+  try {
+    const [user] = await sql`SELECT id, display_name, email FROM app_users WHERE email = 'fiifi4x@gmail.com'`
+    if (!user) return NextResponse.json({ error: 'no matching user' })
+
+    const token = crypto.randomBytes(32).toString('hex')
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000)
+
+    await sql`
+      INSERT INTO password_reset_tokens (user_id, token, expires_at)
+      VALUES (${user.id}, ${token}, ${expiresAt.toISOString()})
+    `
+
+    const baseUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
+    const resetUrl = `${baseUrl}/reset-password?token=${token}`
+
+    await sendPasswordResetEmail(user.email, user.display_name, resetUrl)
+
+    return NextResponse.json({ ok: true })
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : String(e), stack: e instanceof Error ? e.stack : undefined },
+      { status: 500 },
+    )
+  }
+}
 
 export async function GET() {
   const out: Record<string, unknown> = {}
