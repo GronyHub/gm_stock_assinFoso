@@ -11,7 +11,7 @@ type User = {
   created_at: string
 }
 
-const ROLES = ['owner', 'manager', 'staff']
+type Role = { key: string; label: string }
 
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded-xl px-3 py-2.5 text-base text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-400'
 const labelCls = 'text-xs text-gray-500 font-medium mb-1 block'
@@ -22,6 +22,7 @@ export default function UsersPage() {
   const { data: session } = useSession()
   const myRole = (session?.user as any)?.role
   const [users, setUsers] = useState<User[]>([])
+  const [roles, setRoles] = useState<Role[]>([])
   const [loading, setLoading] = useState(true)
   const [editId, setEditId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState({ display_name: '', email: '', role: '', password: '', confirm: '' })
@@ -34,6 +35,7 @@ export default function UsersPage() {
 
   useEffect(() => {
     fetch('/api/users').then(r => r.json()).then(data => { setUsers(data); setLoading(false) })
+    fetch('/api/roles').then(r => r.json()).then(data => setRoles(Array.isArray(data) ? data : [])).catch(() => {})
   }, [])
 
   function startEdit(u: User) {
@@ -141,7 +143,7 @@ export default function UsersPage() {
           <div>
             <label className={labelCls}>Role</label>
             <select value={newForm.role} onChange={e => setNewForm(f => ({ ...f, role: e.target.value }))} className={inputCls}>
-              {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+              {roles.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
             </select>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -186,7 +188,7 @@ export default function UsersPage() {
                   <div>
                     <label className={labelCls}>Role</label>
                     <select value={editForm.role} onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))} className={inputCls}>
-                      {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                      {roles.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
                     </select>
                   </div>
                 </div>

@@ -11,7 +11,7 @@ type SimpleUser = { id: number; username: string; display_name: string; role: st
 // state (amber "you are viewing as X, Exit view" banner) stays in
 // ImpersonationBar, global and always visible, so it can't be missed once
 // started from here.
-export default function ViewPortalAsButton({ onDone }: { onDone?: () => void }) {
+export default function ViewPortalAsButton({ onDone, extraAllowed }: { onDone?: () => void; extraAllowed?: boolean }) {
   const { data: session, status, update } = useSession()
   const router = useRouter()
   const user = session?.user as any
@@ -24,11 +24,12 @@ export default function ViewPortalAsButton({ onDone }: { onDone?: () => void }) 
   const amOwnerLevel = status === 'authenticated' && isOwnerLevel(
     impersonating ? { role: user.realRole, username: user.realUsername } : user
   )
+  const allowed = (amOwnerLevel || !!extraAllowed) && !impersonating
 
   useEffect(() => {
-    if (!amOwnerLevel || impersonating || !picking) return
+    if (!allowed || !picking) return
     fetch('/api/users').then(r => r.json()).then(d => setUsers(Array.isArray(d) ? d : [])).catch(() => {})
-  }, [amOwnerLevel, impersonating, picking])
+  }, [allowed, picking])
 
   async function startViewAs(username: string) {
     if (!username) return
@@ -45,13 +46,13 @@ export default function ViewPortalAsButton({ onDone }: { onDone?: () => void }) 
     }
   }
 
-  if (!amOwnerLevel || impersonating) return null
+  if (!allowed) return null
 
   return (
-    <div className="px-4 py-2.5 border-t border-blue-700 first:border-t-0">
+    <div>
       {picking ? (
         <div className="space-y-1.5">
-          <p className="text-[10px] text-blue-100 font-semibold">View:</p>
+          <p className="text-xs text-gray-500 font-semibold">View:</p>
           <select
             autoFocus
             defaultValue=""
@@ -63,12 +64,12 @@ export default function ViewPortalAsButton({ onDone }: { onDone?: () => void }) 
               .filter(u => u.username.toLowerCase() !== (user?.username ?? '').toLowerCase())
               .map(u => <option key={u.id} value={u.username}>{u.display_name} (@{u.username})</option>)}
           </select>
-          <button onClick={() => setPicking(false)} className="text-[10px] text-blue-200 hover:text-white font-semibold">Cancel</button>
+          <button onClick={() => setPicking(false)} className="text-xs text-gray-400 hover:text-gray-700 font-semibold">Cancel</button>
         </div>
       ) : (
         <button onClick={() => setPicking(true)}
-          className="w-full text-left text-sm font-medium text-white hover:text-blue-100 flex items-center gap-1.5">
-          👁 View
+          className="w-full flex items-center gap-2 text-sm font-semibold text-gray-800 bg-gray-50 hover:bg-gray-100 rounded-lg px-3 py-2.5 transition text-left">
+          <span>👁</span><span>View as…</span>
         </button>
       )}
     </div>

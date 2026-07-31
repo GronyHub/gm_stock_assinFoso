@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
-import { isOwnerLevel, isConfidentialExpense } from '@/lib/roles'
+import { isConfidentialExpense } from '@/lib/roles'
+import { hasFeature, getRolePermissionsMap } from '@/lib/permissions'
 import { logActivity } from '@/lib/logger'
 import { ensureExpensePropertyColumns } from '@/lib/expenseProperties'
 import { NextRequest, NextResponse } from 'next/server'
@@ -27,10 +28,10 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   const { id } = await params
   const { expense_date, expense_account, description, cf_justify, vendor_name, amount, cf_expense_type, is_property } = await req.json()
 
-  if (!isOwnerLevel(session.user as any)) {
+  if (!hasFeature(session.user as any, 'confidential_expenses', await getRolePermissionsMap())) {
     const [existing] = await sql`SELECT expense_account FROM expenses WHERE id = ${Number(id)}`
     if (existing && (isConfidentialExpense(existing.expense_account) || isConfidentialExpense(expense_account))) {
-      return NextResponse.json({ error: 'Only the owner or Joe can edit a Salaries expense' }, { status: 403 })
+      return NextResponse.json({ error: 'You do not have access to edit a Salaries expense' }, { status: 403 })
     }
   }
 
@@ -77,10 +78,10 @@ export async function DELETE(_req: NextRequest, { params }: Ctx) {
 
   const { id } = await params
 
-  if (!isOwnerLevel(session.user as any)) {
+  if (!hasFeature(session.user as any, 'confidential_expenses', await getRolePermissionsMap())) {
     const [existing] = await sql`SELECT expense_account FROM expenses WHERE id = ${Number(id)}`
     if (existing && isConfidentialExpense(existing.expense_account)) {
-      return NextResponse.json({ error: 'Only the owner or Joe can delete a Salaries expense' }, { status: 403 })
+      return NextResponse.json({ error: 'You do not have access to delete a Salaries expense' }, { status: 403 })
     }
   }
 

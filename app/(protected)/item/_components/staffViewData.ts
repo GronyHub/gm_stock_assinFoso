@@ -3,7 +3,7 @@
 // bundling) StaffContent's actual tab components just to know these labels.
 export type StaffView =
   | 'staffTimes' | 'staffPayslips' | 'staffViolations' | 'staffAnalytics' | 'staffAssignments' | 'staffProfile'
-  | 'teamPayslips' | 'allStaff' | 'users'
+  | 'teamPayslips' | 'allStaff' | 'users' | 'roles'
 
 export const STAFF_PERSONAL_ITEMS: { key: StaffView; label: string; icon: string }[] = [
   { key: 'staffTimes', label: 'Times', icon: '🕐' },
