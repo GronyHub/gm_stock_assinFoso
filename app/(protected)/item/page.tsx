@@ -32,7 +32,6 @@ import { STAFF_PERSONAL_ITEMS, STAFF_TEAM_ITEMS, type StaffView } from './_compo
 import { CH_ITEMS, type CHView } from './_components/chViewData'
 import { useUKData, UK_PEOPLE } from './_components/ukViewData'
 import type { ViolationView } from '../staff/StaffClient'
-import SavedFlash from './_components/SavedFlash'
 import { SidePaneContainer, SidePaneToggle, SidePaneButton, useSidePaneDisplayMode } from './_components/SidePane'
 import dynamic from 'next/dynamic'
 const loading = (h: string) => <div className={`py-10 text-center text-gray-400 text-sm`}>{h}</div>
@@ -65,15 +64,11 @@ const PurchaseOrdersPage  = dynamic(() => import('../purchase-orders/page'),    
 const AliasWidePage       = dynamic(() => import('../aliases/wide/page'),           { ssr: false, loading: () => loading('Loading…') })
 const ServiceMatchesPage  = dynamic(() => import('../matches/wide/page'),           { ssr: false, loading: () => loading('Loading…') })
 const AliasesTab          = dynamic(() => import('./_components/AliasesTab'),       { ssr: false, loading: () => loading('Loading…') })
+const SettingsPanel       = dynamic(() => import('./_components/SettingsPanel'),    { ssr: false, loading: () => loading('Loading…') })
 const Item360Tab = dynamic(() => import('./_components/Item360Tab'),          { ssr: false, loading: () => loading('Loading…') })
 const StaffContent = dynamic(() => import('./_components/StaffPersonTab'),    { ssr: false, loading: () => loading('Loading…') })
 const UKTab = dynamic(() => import('./_components/UKTab'), { ssr: false, loading: () => loading('Loading…') })
 const CHTab = dynamic(() => import('./_components/CHTab'), { ssr: false, loading: () => loading('Loading…') })
-// Same lazy hamburger-menu widget the old per-staff-page footer used -- it
-// already self-gates to owner-level (Grony/Joe) and hides itself while
-// already impersonating, so it's safe on the merged pane's shared footer
-// unconditionally; it simply renders nothing for anyone else.
-const ViewPortalAsButton = dynamic(() => import('@/components/ViewPortalAsButton'), { ssr: false })
 
 // Every real staff member, including Grony -- the third top-level tab shows
 // whichever one of these matches the logged-in username, and that person's
@@ -375,6 +370,10 @@ function ItemHubPageInner() {
   const [violation, setViolation]       = useState<string | null>(searchParams.get('violation'))
   const [groupOpen, setGroupOpen]       = useState(false)
   const [searchOpen, setSearchOpen]     = useState(false)
+  // Everything only Joe/Grony can do (Viewing, Team, Users, Add Category,
+  // View Portal As) lives behind this one Settings screen now instead of
+  // sitting inline in the pane -- see SettingsPanel.tsx.
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [addForm, setAddForm]             = useState<'item' | 'sale' | 'bill' | 'expense' | null>(null)
   const [jumpToItemId, setJumpToItemId]   = useState<number | null>(null)
   // Seeded from ?jumpDate=/?jumpItem= -- Item 360's Detail table (and its
@@ -948,6 +947,17 @@ function ItemHubPageInner() {
           either: it renders regardless of outerTab, so Today/UK/C&H all get
           it alongside their own content instead of losing all navigation
           the moment you leave Grony Cash. */}
+      {settingsOpen ? (
+        <SettingsPanel
+          onClose={() => setSettingsOpen(false)}
+          viewingName={viewingName} myStaffName={myStaffName} staffRoster={STAFF_ROSTER}
+          pickViewing={pickViewing} pickLossView={pickLossView}
+          dynamicCategories={dynamicCategories}
+          showAddCategory={showAddCategory} setShowAddCategory={setShowAddCategory}
+          newCategoryLabel={newCategoryLabel} setNewCategoryLabel={setNewCategoryLabel}
+          savingCategory={savingCategory} justAddedCategory={justAddedCategory} addCategory={addCategory}
+        />
+      ) : (
       <div className="flex-1 min-h-0 flex overflow-hidden">
         <SidePaneContainer mode={cashDisplayMode}
             footer={<>
@@ -1039,51 +1049,15 @@ function ItemHubPageInner() {
                 </div>
               )}
 
-              {canManage && (
-                <div className="mt-1 pt-1 border-t border-white/30 px-1.5 pb-2">
-                  {showAddCategory ? (
-                    <form onSubmit={addCategory} className="space-y-1 py-1">
-                      <input autoFocus value={newCategoryLabel} onChange={e => setNewCategoryLabel(e.target.value)}
-                        placeholder="Name *"
-                        className="w-full text-[10px] bg-white border border-blue-300 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
-                      <div className="flex items-center gap-1">
-                        <button type="submit" disabled={savingCategory || !newCategoryLabel.trim()}
-                          className="flex-1 text-[10px] font-semibold px-1.5 py-1 rounded bg-white text-[#00072d] hover:bg-blue-50 disabled:opacity-40 transition">
-                          {savingCategory ? '…' : 'Add'}
-                        </button>
-                        <button type="button" onClick={() => { setShowAddCategory(false); setNewCategoryLabel('') }}
-                          className="text-[10px] font-semibold px-1.5 py-1 rounded bg-white/20 text-white hover:bg-white/30 transition">
-                          ✕
-                        </button>
-                      </div>
-                    </form>
-                  ) : (
-                    <SidePaneButton icon="➕" label="Add Category" mode={cashDisplayMode} active={false}
-                      onClick={() => setShowAddCategory(true)} className="w-full text-white hover:bg-white/10 font-semibold" />
-                  )}
-                  {justAddedCategory && (
-                    <p className="text-center pt-1"><SavedFlash show /></p>
-                  )}
-                </div>
-              )}
             </div>
 
             {myStaffName && (
               <div className="mt-1 pt-1 border-t border-white/30">
                 {cashDisplayMode !== 'icon' && (
                   <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">
-                    {canManage ? 'Viewing' : 'My Staff'}
+                    {viewingName.toLowerCase() === myStaffName.toLowerCase() ? 'My Staff' : `Viewing: ${viewingName}`}
                   </p>
                 )}
-                {canManage && (<>
-                  <SidePaneButton icon="🙋" label="Me" mode={cashDisplayMode} active={viewingName === myStaffName}
-                    onClick={() => pickViewing(myStaffName)} />
-                  {STAFF_ROSTER.filter(n => n.toLowerCase() !== myStaffName.toLowerCase()).map(name => (
-                    <SidePaneButton key={name} icon="👤" label={name} mode={cashDisplayMode}
-                      active={viewingName === name} onClick={() => pickViewing(name)} />
-                  ))}
-                </>)}
-
                 {STAFF_PERSONAL_ITEMS.map(t => (
                   <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode}
                     active={lossView === t.key} onClick={() => pickLossView(t.key)} />
@@ -1092,20 +1066,6 @@ function ItemHubPageInner() {
                   <SidePaneButton icon="👤" label="Profile" mode={cashDisplayMode} active={lossView === 'staffProfile'}
                     onClick={() => pickLossView('staffProfile')} />
                 )}
-
-                {canManage && (<>
-                  <div className="mt-1 pt-1 border-t border-white/30">
-                    {cashDisplayMode !== 'icon' && <p className="px-2 pb-0.5 text-[9px] font-bold text-blue-200 uppercase tracking-wide">Team</p>}
-                    {STAFF_TEAM_ITEMS.map(t => (
-                      <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode}
-                        active={lossView === t.key} onClick={() => pickLossView(t.key)} />
-                    ))}
-                  </div>
-                  <div className="mt-1 pt-1 border-t border-white/30">
-                    <SidePaneButton icon="🔑" label="Users" mode={cashDisplayMode} active={lossView === 'users'}
-                      onClick={() => pickLossView('users')} />
-                  </div>
-                </>)}
               </div>
             )}
             </>)}
@@ -1188,11 +1148,16 @@ function ItemHubPageInner() {
               </div>
             </>)}
 
-            {/* View Portal As / Sign out -- part of the scrollable list now
-                (were pinned to the footer before) so the footer stays just
-                the paired shortcut rows above. */}
+            {/* Settings (Viewing/Team/Users/Add Category/View Portal As, all
+                moved out to their own screen -- see SettingsPanel.tsx) /
+                Sign out -- part of the scrollable list now (were pinned to
+                the footer before) so the footer stays just the paired
+                shortcut rows above. */}
             <div className="mt-1 pt-1 border-t border-white/30">
-              <ViewPortalAsButton />
+              {canManage && (
+                <SidePaneButton icon="⚙️" label="Settings" mode={cashDisplayMode} active={false}
+                  onClick={() => setSettingsOpen(true)} />
+              )}
               <SidePaneButton icon="🚪" label="Sign out" mode={cashDisplayMode} active={false}
                 onClick={() => signOut({ callbackUrl: '/login' })} />
             </div>
@@ -1553,6 +1518,7 @@ function ItemHubPageInner() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Global search overlay -- click outside/× closes it; each result
           jumps straight to the right tab (and, for Sales/Bills/Customers/
