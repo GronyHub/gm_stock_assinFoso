@@ -155,6 +155,11 @@ function minsTo12h(mins: number) {
 function minsToHrs(mins: number) {
   return `${Math.floor(mins / 60)}h ${Math.round(mins % 60)}m`
 }
+function dayDurationLabel(tIn: string | null | undefined, tOut: string | null | undefined) {
+  const tin = parseTimeMins(tIn ?? null), tout = parseTimeMins(tOut ?? null)
+  if (tin == null || tout == null) return null
+  return minsToHrs(tout >= tin ? tout - tin : (tout + 1440) - tin)
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -611,7 +616,12 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
                   {closer === r.staff_name && <span title="Closer" className="ml-1">🌙</span>}
                 </span>
                 <span className="text-green-700">{r.actual_in ?? '—'}</span>
-                <span className="text-orange-600">{r.actual_out ?? '—'}</span>
+                <div className="flex flex-col items-end leading-tight">
+                  <span className="text-orange-600">{r.actual_out ?? '—'}</span>
+                  {dayDurationLabel(r.actual_in, r.actual_out) && (
+                    <span className="text-[10px] text-gray-400">{dayDurationLabel(r.actual_in, r.actual_out)}</span>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -738,6 +748,9 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
                             <div className="flex flex-col items-center leading-tight">
                               <span className="text-green-700">{cellData?.in ?? <span className="text-gray-300">—</span>}</span>
                               <span className="text-orange-600">{cellData?.out ?? <span className="text-gray-300">—</span>}</span>
+                              {dayDurationLabel(cellData?.in, cellData?.out) && (
+                                <span className="text-[9px] text-gray-400">{dayDurationLabel(cellData?.in, cellData?.out)}</span>
+                              )}
                             </div>
                           )
                           return (
