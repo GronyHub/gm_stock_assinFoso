@@ -20,6 +20,11 @@ type Props = {
   staffRoster: string[]
   pickViewing: (name: string) => void
   pickLossView: (view: StaffView) => void
+  canSeeTeam: boolean
+  canSeeUsers: boolean
+  canAddCategory: boolean
+  canViewPortalAs: boolean
+  canManageRoles: boolean
   dynamicCategories: { id: number; label: string }[]
   showAddCategory: boolean
   setShowAddCategory: (show: boolean) => void
@@ -37,6 +42,7 @@ const rowCls = 'w-full flex items-center gap-2 text-sm font-semibold text-gray-8
 
 export default function SettingsPanel({
   onClose, viewingName, myStaffName, staffRoster, pickViewing, pickLossView,
+  canSeeTeam, canSeeUsers, canAddCategory, canViewPortalAs, canManageRoles,
   dynamicCategories, showAddCategory, setShowAddCategory, newCategoryLabel, setNewCategoryLabel,
   savingCategory, justAddedCategory, addCategory,
 }: Props) {
@@ -69,58 +75,73 @@ export default function SettingsPanel({
           </div>
         )}
 
-        <div className="space-y-1.5">
-          <p className={sectionLabelCls}>Team</p>
-          {STAFF_TEAM_ITEMS.map(t => (
-            <button key={t.key} onClick={() => goAndClose(t.key)} className={rowCls}>
-              <span>{t.icon}</span><span>{t.label}</span>
-            </button>
-          ))}
-        </div>
+        {canSeeTeam && (
+          <div className="space-y-1.5">
+            <p className={sectionLabelCls}>Team</p>
+            {STAFF_TEAM_ITEMS.map(t => (
+              <button key={t.key} onClick={() => goAndClose(t.key)} className={rowCls}>
+                <span>{t.icon}</span><span>{t.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
-        <div>
-          <p className={sectionLabelCls}>Access</p>
-          <button onClick={() => goAndClose('users')} className={rowCls}>
-            <span>🔑</span><span>Users</span>
-          </button>
-        </div>
+        {(canSeeUsers || canManageRoles) && (
+          <div className="space-y-1.5">
+            <p className={sectionLabelCls}>Access</p>
+            {canSeeUsers && (
+              <button onClick={() => goAndClose('users')} className={rowCls}>
+                <span>🔑</span><span>Users</span>
+              </button>
+            )}
+            {canManageRoles && (
+              <button onClick={() => goAndClose('roles')} className={rowCls}>
+                <span>🛡️</span><span>Roles &amp; Permissions</span>
+              </button>
+            )}
+          </div>
+        )}
 
-        <div>
-          <p className={sectionLabelCls}>Manage Categories</p>
-          {dynamicCategories.length > 0 && (
-            <ul className="text-xs text-gray-500 mb-1.5 space-y-0.5">
-              {dynamicCategories.map(c => <li key={c.id}>🗂️ {c.label}</li>)}
-            </ul>
-          )}
-          {showAddCategory ? (
-            <form onSubmit={addCategory} className="space-y-1.5">
-              <input autoFocus value={newCategoryLabel} onChange={e => setNewCategoryLabel(e.target.value)}
-                placeholder="Name *"
-                className="w-full text-sm bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1.5 outline-none focus:ring-1 focus:ring-blue-400" />
-              <div className="flex items-center gap-1.5">
-                <button type="submit" disabled={savingCategory || !newCategoryLabel.trim()}
-                  className="flex-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 transition">
-                  {savingCategory ? '…' : 'Add'}
-                </button>
-                <button type="button" onClick={() => { setShowAddCategory(false); setNewCategoryLabel('') }}
-                  className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition">
-                  ✕
-                </button>
-              </div>
-            </form>
-          ) : (
-            <button onClick={() => setShowAddCategory(true)} className={rowCls}>
-              <span>➕</span><span>Add Category</span>
-            </button>
-          )}
-          {justAddedCategory && <p className="pt-1"><SavedFlash show /></p>}
-          <p className="text-[11px] text-gray-400 mt-1.5">Delete an existing category from its row in Manage -- the × there is already owner-only.</p>
-        </div>
+        {canAddCategory && (
+          <div>
+            <p className={sectionLabelCls}>Manage Categories</p>
+            {dynamicCategories.length > 0 && (
+              <ul className="text-xs text-gray-500 mb-1.5 space-y-0.5">
+                {dynamicCategories.map(c => <li key={c.id}>🗂️ {c.label}</li>)}
+              </ul>
+            )}
+            {showAddCategory ? (
+              <form onSubmit={addCategory} className="space-y-1.5">
+                <input autoFocus value={newCategoryLabel} onChange={e => setNewCategoryLabel(e.target.value)}
+                  placeholder="Name *"
+                  className="w-full text-sm bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1.5 outline-none focus:ring-1 focus:ring-blue-400" />
+                <div className="flex items-center gap-1.5">
+                  <button type="submit" disabled={savingCategory || !newCategoryLabel.trim()}
+                    className="flex-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 transition">
+                    {savingCategory ? '…' : 'Add'}
+                  </button>
+                  <button type="button" onClick={() => { setShowAddCategory(false); setNewCategoryLabel('') }}
+                    className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition">
+                    ✕
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <button onClick={() => setShowAddCategory(true)} className={rowCls}>
+                <span>➕</span><span>Add Category</span>
+              </button>
+            )}
+            {justAddedCategory && <p className="pt-1"><SavedFlash show /></p>}
+            <p className="text-[11px] text-gray-400 mt-1.5">Delete an existing category from its row in Manage -- the × there uses this same permission.</p>
+          </div>
+        )}
 
-        <div>
-          <p className={sectionLabelCls}>View Portal As</p>
-          <ViewPortalAsButton />
-        </div>
+        {canViewPortalAs && (
+          <div>
+            <p className={sectionLabelCls}>View Portal As</p>
+            <ViewPortalAsButton extraAllowed={canViewPortalAs} />
+          </div>
+        )}
       </div>
     </div>
   )

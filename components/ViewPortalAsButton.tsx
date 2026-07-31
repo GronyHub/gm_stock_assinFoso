@@ -11,7 +11,7 @@ type SimpleUser = { id: number; username: string; display_name: string; role: st
 // state (amber "you are viewing as X, Exit view" banner) stays in
 // ImpersonationBar, global and always visible, so it can't be missed once
 // started from here.
-export default function ViewPortalAsButton({ onDone }: { onDone?: () => void }) {
+export default function ViewPortalAsButton({ onDone, extraAllowed }: { onDone?: () => void; extraAllowed?: boolean }) {
   const { data: session, status, update } = useSession()
   const router = useRouter()
   const user = session?.user as any
@@ -24,11 +24,12 @@ export default function ViewPortalAsButton({ onDone }: { onDone?: () => void }) 
   const amOwnerLevel = status === 'authenticated' && isOwnerLevel(
     impersonating ? { role: user.realRole, username: user.realUsername } : user
   )
+  const allowed = (amOwnerLevel || !!extraAllowed) && !impersonating
 
   useEffect(() => {
-    if (!amOwnerLevel || impersonating || !picking) return
+    if (!allowed || !picking) return
     fetch('/api/users').then(r => r.json()).then(d => setUsers(Array.isArray(d) ? d : [])).catch(() => {})
-  }, [amOwnerLevel, impersonating, picking])
+  }, [allowed, picking])
 
   async function startViewAs(username: string) {
     if (!username) return
@@ -45,7 +46,7 @@ export default function ViewPortalAsButton({ onDone }: { onDone?: () => void }) 
     }
   }
 
-  if (!amOwnerLevel || impersonating) return null
+  if (!allowed) return null
 
   return (
     <div>

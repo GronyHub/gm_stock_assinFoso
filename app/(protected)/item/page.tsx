@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useMemo, Component, Suspense, type ReactNode } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
+import { hasFeature, type FeatureKey, type RolePermissionsMap } from '@/lib/permissions'
 
 class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boolean; message: string }> {
   state = { error: false, message: '' }
@@ -806,14 +807,33 @@ function ItemHubPageInner() {
   const { data: session } = useSession()
   const role = (session?.user as any)?.role ?? 'staff'
   const username = (session?.user as any)?.username ?? session?.user?.name ?? ''
-  const canSeePL = role === 'owner' || username === 'joe'
   const isOwnerOrJoe = role === 'owner' || username.toLowerCase() === 'joe'
   const isGrony = username.toLowerCase() === 'grony'
-  // The one owner-level gate Manage's Add Category/Rota edit controls AND
-  // the Staff section's admin extras (Viewing picker, Team, Users) both use
-  // -- previously each was its own hand-rolled, slightly different check;
-  // merging the three panes onto one is a good excuse to fold them into one.
+  // The one owner-level gate managing roles/permissions themselves (and
+  // previously everything else below) uses -- kept separate from the
+  // granular per-feature grants in rolePermissions so a role can never grant
+  // itself more power than whoever configures Roles & Permissions intends.
   const canManage = isOwnerOrJoe || isGrony
+  // Additive, DB-editable feature grants (Roles & Permissions screen) on
+  // top of owner-level -- see lib/permissions.ts. Fetched once; changes
+  // there take effect on this user's next load, same as any other role
+  // change would.
+  const [rolePermissions, setRolePermissions] = useState<RolePermissionsMap>({})
+  useEffect(() => {
+    fetch('/api/role-permissions').then(r => r.ok ? r.json() : {}).then(setRolePermissions).catch(() => {})
+  }, [])
+  const perm = (feature: FeatureKey) => hasFeature({ role, username }, feature, rolePermissions)
+  const canSeePL = perm('pl')
+  const canSeeTeam = perm('team')
+  const canSeeUsers = perm('users')
+  const canAddCategory = perm('add_category')
+  const canViewPortalAs = perm('view_portal_as')
+  const canSeeUK = isGrony || perm('uk')
+  const canSeeCH = isOwnerOrJoe || perm('ch')
+  // Settings is worth opening if there's anything at all inside it --
+  // Roles & Permissions itself stays canManage-only regardless (root config
+  // shouldn't be grantable through the system it configures).
+  const canOpenSettings = canManage || canSeeTeam || canSeeUsers || canAddCategory || canViewPortalAs
   // Drives the merged pane's own-name section AND which staff page it
   // opens -- "just like the user profile icon", it's always your own name,
   // not a generic "Staff" label or a pick-a-person screen. Falls back to
@@ -914,8 +934,8 @@ function ItemHubPageInner() {
     { label: 'Grony Cash', action: () => pickLossView('items') },
     { label: 'Grony Manage', action: () => pickLossView('audio') },
     ...(myStaffName ? [{ label: myStaffName, action: () => pickLossView('staffTimes') }] : []),
-    ...(isGrony ? [{ label: 'UK', action: () => changeTab('uk') }] : []),
-    ...(isOwnerOrJoe ? [{ label: 'C&H', action: () => changeTab('ch') }] : []),
+    ...(canSeeUK ? [{ label: 'UK', action: () => changeTab('uk') }] : []),
+    ...(canSeeCH ? [{ label: 'C&H', action: () => changeTab('ch') }] : []),
     ...cashSubmenus,
     ...manageSubmenus,
     { label: 'Cash Tasks', action: () => pickLossView('tasks') },
@@ -952,6 +972,8 @@ function ItemHubPageInner() {
           onClose={() => setSettingsOpen(false)}
           viewingName={viewingName} myStaffName={myStaffName} staffRoster={STAFF_ROSTER}
           pickViewing={pickViewing} pickLossView={pickLossView}
+          canSeeTeam={canSeeTeam} canSeeUsers={canSeeUsers} canAddCategory={canAddCategory}
+          canViewPortalAs={canViewPortalAs} canManageRoles={canManage}
           dynamicCategories={dynamicCategories}
           showAddCategory={showAddCategory} setShowAddCategory={setShowAddCategory}
           newCategoryLabel={newCategoryLabel} setNewCategoryLabel={setNewCategoryLabel}
@@ -977,7 +999,7 @@ function ItemHubPageInner() {
                   unlike the per-view search bars already on most tabs
                   below, which only filter what's already on screen. */}
               <div className="border-t border-white/30 flex items-stretch shrink-0">
-                {(isGrony || isOwnerOrJoe) && (<>
+                {(canSeeUK || canSeeCH) && (<>
                   <SidePaneButton icon="💰" label="Biz" mode={cashDisplayMode}
                     active={outerTab === 'loss'} onClick={() => changeTab('loss')} className="flex-1 min-w-0" />
                   <div className="w-px bg-white/10 shrink-0" />
@@ -985,17 +1007,20 @@ function ItemHubPageInner() {
                 <SidePaneButton icon="🔍" label="Search" mode={cashDisplayMode}
                   active={false} onClick={() => setGlobalSearchOpen(true)} className="flex-1 min-w-0" />
               </div>
-              {/* UK/C&H stay private to Grony/owner-level the same as
-                  before -- paired side by side when both show, otherwise
-                  whichever one applies just takes the full row. */}
-              {(isGrony || isOwnerOrJoe) && (
+              {/* UK/C&H visibility now comes from Roles & Permissions (see
+                  canSeeUK/canSeeCH) -- Grony/owner-level always has both,
+                  same floor as before, but another role can be granted one
+                  or the other independently. Paired side by side when both
+                  show, otherwise whichever one applies just takes the full
+                  row. */}
+              {(canSeeUK || canSeeCH) && (
                 <div className="border-t border-white/30 flex items-stretch shrink-0">
-                  {isGrony && (
+                  {canSeeUK && (
                     <SidePaneButton icon="🇬🇧" label="UK" mode={cashDisplayMode}
                       active={outerTab === 'uk'} onClick={() => changeTab('uk')} className="flex-1 min-w-0" />
                   )}
-                  {isGrony && isOwnerOrJoe && <div className="w-px bg-white/10 shrink-0" />}
-                  {isOwnerOrJoe && (
+                  {canSeeUK && canSeeCH && <div className="w-px bg-white/10 shrink-0" />}
+                  {canSeeCH && (
                     <SidePaneButton icon="🏢" label="C&H" mode={cashDisplayMode}
                       active={outerTab === 'ch'} onClick={() => changeTab('ch')} className="flex-1 min-w-0" />
                   )}
@@ -1040,7 +1065,7 @@ function ItemHubPageInner() {
                     <div key={c.id} className={`flex items-stretch ${activeDynamicId === c.id ? 'bg-white' : ''}`}>
                       <SidePaneButton icon="🗂️" label={c.label} mode={cashDisplayMode} className="flex-1 min-w-0"
                         active={activeDynamicId === c.id} onClick={() => setActiveDynamicId(c.id)} />
-                      {canManage && (
+                      {canAddCategory && (
                         <button onClick={() => removeCategory(c.id, c.label)} title="Delete category"
                           className={`shrink-0 px-1.5 pt-2 font-bold text-xs ${activeDynamicId === c.id ? 'text-gray-300 hover:text-red-500' : 'text-blue-200 hover:text-red-300'}`}>×</button>
                       )}
@@ -1154,7 +1179,7 @@ function ItemHubPageInner() {
                 the footer before) so the footer stays just the paired
                 shortcut rows above. */}
             <div className="mt-1 pt-1 border-t border-white/30">
-              {canManage && (
+              {canOpenSettings && (
                 <SidePaneButton icon="⚙️" label="Settings" mode={cashDisplayMode} active={false}
                   onClick={() => setSettingsOpen(true)} />
               )}
@@ -1391,7 +1416,8 @@ function ItemHubPageInner() {
               // still otherwise leak into TimesTab/PayslipsTab's own local
               // state across accounts.
               <StaffContent key={myStaffName} view={lossView as StaffView}
-                viewingName={viewingName} role={role} username={username} isBuilder={canManage}
+                viewingName={viewingName} role={role} username={username}
+                canSeeTeam={canSeeTeam} canSeeUsers={canSeeUsers} canSeeRoles={canManage}
                 vtab={vtab} setVtab={setVtab} teamVtab={teamVtab} setTeamVtab={setTeamVtab} />
             ) : (
               <p className="py-10 text-center text-gray-400 text-sm px-4">No staff profile is set up for your account.</p>

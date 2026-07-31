@@ -16,6 +16,9 @@ export { ALL_STAFF_NAMES }
 const UsersPage = dynamic(() => import('../../users/page'), {
   ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div>,
 })
+const RolesPage = dynamic(() => import('../../roles/page'), {
+  ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div>,
+})
 
 // Just the right-pane content for whichever Staff view is active -- the
 // left-pane rows (personal tabs, the Joe/Grony "Viewing" picker, and the
@@ -25,14 +28,16 @@ const UsersPage = dynamic(() => import('../../users/page'), {
 //
 // `viewingName` is whose personal records show -- always your own for a
 // regular staff member, switchable for Joe/Grony via the pane's Viewing
-// picker. `isBuilder` gates the Team-only views (Team Payslips/All Staff/
-// Users), same population as Manage's own canManage.
+// picker. `canSeeTeam`/`canSeeUsers`/`canSeeRoles` each gate their own view
+// independently now (Roles & Permissions screen) instead of one blanket
+// isBuilder flag, so a role can be granted Team without also getting Users.
 export default function StaffContent({
-  view, viewingName, role, username, isBuilder, vtab, setVtab, teamVtab, setTeamVtab, openAddSignal,
+  view, viewingName, role, username, canSeeTeam, canSeeUsers, canSeeRoles, vtab, setVtab, teamVtab, setTeamVtab, openAddSignal,
 }: {
   view: StaffView
   viewingName: string
-  role: string; username: string; isBuilder: boolean
+  role: string; username: string
+  canSeeTeam: boolean; canSeeUsers: boolean; canSeeRoles: boolean
   vtab: ViolationView; setVtab: (v: ViolationView) => void
   teamVtab: ViolationView; setTeamVtab: (v: ViolationView) => void
   openAddSignal?: number
@@ -45,8 +50,9 @@ export default function StaffContent({
     {view === 'staffAnalytics' && <AnalyticsTab viewingStaff={viewingName} />}
     {view === 'staffAssignments' && <AssignmentsTab role={role} username={username} viewingStaff={viewingName} />}
     {view === 'staffProfile' && isSelf && <ProfileTab />}
-    {isBuilder && view === 'teamPayslips' && <PayslipsTab role={role} username={username} />}
-    {isBuilder && view === 'allStaff' && <ViolationsTab role={role} username={username} vtab={teamVtab} setVtab={setTeamVtab} />}
-    {isBuilder && view === 'users' && <UsersPage />}
+    {canSeeTeam && view === 'teamPayslips' && <PayslipsTab role={role} username={username} />}
+    {canSeeTeam && view === 'allStaff' && <ViolationsTab role={role} username={username} vtab={teamVtab} setVtab={setTeamVtab} />}
+    {canSeeUsers && view === 'users' && <UsersPage />}
+    {canSeeRoles && view === 'roles' && <RolesPage />}
   </>)
 }
