@@ -31,6 +31,7 @@ import { useColumnPrefs, ColumnsPickerButton } from './_components/columnPrefs'
 import { MANAGE_LIST_ITEMS, useDynamicManageCategories, type ManageView } from './_components/manageViewData'
 import { STAFF_PERSONAL_ITEMS, STAFF_TEAM_ITEMS, type StaffView } from './_components/staffViewData'
 import { CH_ITEMS, type CHView } from './_components/chViewData'
+import { useUKData, UK_PEOPLE } from './_components/ukViewData'
 import type { ViolationView } from '../staff/StaffClient'
 import SavedFlash from './_components/SavedFlash'
 import { SidePaneContainer, SidePaneToggle, SidePaneButton, useSidePaneDisplayMode } from './_components/SidePane'
@@ -426,6 +427,12 @@ function ItemHubPageInner() {
   const [viewingNameOverride, setViewingNameOverride] = useState<string | undefined>(undefined)
   const [vtab, setVtab] = useState<ViolationView>('Disciplinary')
   const [teamVtab, setTeamVtab] = useState<ViolationView>('Disciplinary')
+
+  // UK's people + per-person submenus + selected submenu's columns/rows --
+  // shared between the merged pane (people picker, submenu list with add/
+  // rename/delete) and UKTab (rendering the selected submenu's columns +
+  // row data).
+  const uk = useUKData()
 
   useEffect(() => {
     const q = globalSearchQuery.trim()
@@ -1136,6 +1143,74 @@ function ItemHubPageInner() {
               ))}
             </>)}
 
+            {/* UK's own rows -- people, then whichever person is picked's
+                own submenus (user-added, so add/rename/delete live right
+                here too, same treatment as Manage's dynamic categories).
+                Selecting a submenu is what drives UKTab's own content (its
+                columns + row data) on the right -- these ids are dynamic,
+                not a fixed set of view keys, so they're kept in useUKData's
+                own state (see ukViewData.ts) rather than folded into
+                lossView. */}
+            {outerTab === 'uk' && (<>
+              {cashDisplayMode !== 'icon' && (
+                <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">People</p>
+              )}
+              {UK_PEOPLE.map(p => (
+                <SidePaneButton key={p} icon="👤" label={p} mode={cashDisplayMode}
+                  active={uk.person === p} onClick={() => uk.pickPerson(p)} />
+              ))}
+
+              <div className="mt-1 pt-1 border-t border-white/10">
+                {cashDisplayMode !== 'icon' && (
+                  <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">{`${uk.person}'s Submenus`}</p>
+                )}
+                {uk.submenus.map(s => (
+                  <div key={s.id} className={`flex items-stretch ${uk.selectedSubmenuId === s.id ? 'bg-white' : ''}`}>
+                    {uk.editingSubmenuId === s.id ? (
+                      <input autoFocus value={uk.editSubmenuName} onChange={e => uk.setEditSubmenuName(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && uk.saveSubmenuName(s.id)}
+                        className="flex-1 min-w-0 text-[10px] m-1 bg-white border border-blue-300 rounded px-1.5 py-1 outline-none text-gray-900" />
+                    ) : (
+                      <SidePaneButton icon="📋" label={s.name} mode={cashDisplayMode} className="flex-1 min-w-0"
+                        active={uk.selectedSubmenuId === s.id} onClick={() => uk.pickSubmenu(s.id)} />
+                    )}
+                    {uk.editingSubmenuId === s.id ? (
+                      <button onClick={() => uk.saveSubmenuName(s.id)} title="Save"
+                        className="shrink-0 px-1.5 font-bold text-xs text-white">✓</button>
+                    ) : (
+                      <button onClick={() => { uk.setEditingSubmenuId(s.id); uk.setEditSubmenuName(s.name) }} title="Rename"
+                        className={`shrink-0 px-1 text-xs ${uk.selectedSubmenuId === s.id ? 'text-gray-300 hover:text-blue-600' : 'text-blue-200 hover:text-white'}`}>✎</button>
+                    )}
+                    <button onClick={() => uk.deleteSubmenu(s.id)} title="Delete submenu"
+                      className={`shrink-0 px-1.5 pt-2 font-bold text-xs ${uk.selectedSubmenuId === s.id ? 'text-gray-300 hover:text-red-500' : 'text-blue-200 hover:text-red-300'}`}>×</button>
+                  </div>
+                ))}
+
+                <div className="px-1.5 pb-2 pt-1">
+                  {uk.showAddSubmenu ? (
+                    <form onSubmit={e => { e.preventDefault(); uk.addSubmenu() }} className="space-y-1 py-1">
+                      <input autoFocus value={uk.newSubmenuName} onChange={e => uk.setNewSubmenuName(e.target.value)}
+                        placeholder="Name *"
+                        className="w-full text-[10px] bg-white border border-blue-300 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+                      <div className="flex items-center gap-1">
+                        <button type="submit" disabled={!uk.newSubmenuName.trim()}
+                          className="flex-1 text-[10px] font-semibold px-1.5 py-1 rounded bg-white text-[#00072d] hover:bg-blue-50 disabled:opacity-40 transition">
+                          Add
+                        </button>
+                        <button type="button" onClick={() => { uk.setShowAddSubmenu(false); uk.setNewSubmenuName('') }}
+                          className="text-[10px] font-semibold px-1.5 py-1 rounded bg-white/20 text-white hover:bg-white/30 transition">
+                          ✕
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <SidePaneButton icon="➕" label="Add Submenu" mode={cashDisplayMode} active={false}
+                      onClick={() => uk.setShowAddSubmenu(true)} className="w-full text-white hover:bg-white/10 font-semibold" />
+                  )}
+                </div>
+              </div>
+            </>)}
+
             {/* View Portal As / Sign out -- part of the scrollable list now
                 (were pinned to the footer before) so the footer stays just
                 the paired shortcut rows above. */}
@@ -1386,7 +1461,7 @@ function ItemHubPageInner() {
           </TabErrorBoundary>
         )}
         {outerTab === 'uk' && (
-          <TabErrorBoundary><UKTab /></TabErrorBoundary>
+          <TabErrorBoundary><UKTab uk={uk} /></TabErrorBoundary>
         )}
         {outerTab === 'ch' && (
           <TabErrorBoundary><CHTab view={lossView as CHView} /></TabErrorBoundary>
