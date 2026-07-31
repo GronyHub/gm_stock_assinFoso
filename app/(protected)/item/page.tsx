@@ -64,7 +64,6 @@ const ReceiptsPage   = dynamic(() => import('../receipts/page'),              { 
 const PurchaseOrdersPage  = dynamic(() => import('../purchase-orders/page'),        { ssr: false, loading: () => loading('Loading…') })
 const AliasWidePage       = dynamic(() => import('../aliases/wide/page'),           { ssr: false, loading: () => loading('Loading…') })
 const ServiceMatchesPage  = dynamic(() => import('../matches/wide/page'),           { ssr: false, loading: () => loading('Loading…') })
-const FixMislinkedSalesPage = dynamic(() => import('../debug/unlink-mismatch/page'), { ssr: false, loading: () => loading('Loading…') })
 const Item360Tab = dynamic(() => import('./_components/Item360Tab'),          { ssr: false, loading: () => loading('Loading…') })
 const StaffContent = dynamic(() => import('./_components/StaffPersonTab'),    { ssr: false, loading: () => loading('Loading…') })
 const UKTab = dynamic(() => import('./_components/UKTab'), { ssr: false, loading: () => loading('Loading…') })
@@ -99,7 +98,7 @@ type OuterTab = 'today' | 'loss' | 'uk' | 'ch'
 // tab, not part of the Grony Cash merge -- it just reuses this same shared
 // state/pane machinery rather than needing its own parallel copy.
 type LossView = 'home' | 'tasks' | 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'lossByItem' | 'lossByTarget' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts' | 'dailySummary'
-  | 'purchaseOrders' | 'fixMislinkedSales' | 'item360'
+  | 'purchaseOrders' | 'item360'
   | ManageView | StaffView | CHView
 // Alias Wide Table and Service Matches used to be their own lossViews --
 // they're now reached from inside Items itself (see ItemsExtraView below),
@@ -144,7 +143,7 @@ const OLD_TAB_TO_VIEW: Partial<Record<string, LossView>> = {
 // groups/search bar of their own.
 const REPORT_VIEWS = new Set<LossView>([
   'home', 'tasks', 'pl', 'cab', 'vendors', 'customers', 'receipts', 'dailySummary',
-  'purchaseOrders', 'fixMislinkedSales', 'item360',
+  'purchaseOrders', 'item360',
   ...MANAGE_VIEW_KEYS, ...STAFF_VIEW_KEYS, ...CH_VIEW_KEYS,
 ])
 
@@ -188,7 +187,6 @@ const CASH_ITEMS: { key: LossView; label: string; icon: string }[] = [
   { key: 'receipts',  label: 'Receipts',  icon: '📑' },
   { key: 'counts',    label: 'Counts',    icon: '🔢' },
   { key: 'purchaseOrders',   label: 'Purchase Orders',   icon: '🛒' },
-  { key: 'fixMislinkedSales', label: 'Fix Mislinked Sales', icon: '🩹' },
   { key: 'item360', label: 'Item 360', icon: '🔍' },
 ]
 
@@ -841,7 +839,6 @@ function ItemHubPageInner() {
     { label: 'Purchase Orders', action: () => pickLossView('purchaseOrders') },
     { label: 'Alias Wide Table', action: () => { pickLossView('items'); setItemsExtraView('aliasWide') } },
     { label: 'Service Matches', action: () => { pickLossView('items'); setItemsExtraView('serviceMatches') } },
-    ...(isOwnerOrJoe ? [{ label: 'Fix Mislinked Sales', action: () => pickLossView('fixMislinkedSales') }] : []),
     { label: 'Item 360', action: () => pickLossView('item360') },
   ]
   const manageSubmenus: { label: string; action: () => void }[] = [
@@ -988,8 +985,7 @@ function ItemHubPageInner() {
                 relationship to any of these, so the list is just empty
                 (toggle + View/Sign out only) while on either of them. */}
             {outerTab === 'loss' && (<>
-            {CASH_ITEMS.filter(v => v.key !== 'pl' || canSeePL)
-              .filter(v => v.key !== 'fixMislinkedSales' || isOwnerOrJoe).map(v => (
+            {CASH_ITEMS.filter(v => v.key !== 'pl' || canSeePL).map(v => (
                 <SidePaneButton key={v.key} icon={v.icon} label={v.label} mode={cashDisplayMode}
                   active={lossView === v.key} badge={v.key === 'tasks' ? cashTasksCount : undefined}
                   onClick={() => pickLossView(v.key)} />
@@ -1385,11 +1381,6 @@ function ItemHubPageInner() {
         {outerTab === 'loss' && lossView === 'purchaseOrders' && (
           <TabErrorBoundary>
             <div className="px-4 pt-4"><PurchaseOrdersPage /></div>
-          </TabErrorBoundary>
-        )}
-        {outerTab === 'loss' && lossView === 'fixMislinkedSales' && (
-          <TabErrorBoundary>
-            <div className="px-4"><FixMislinkedSalesPage /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'item360' && (
