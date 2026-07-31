@@ -962,33 +962,37 @@ function ItemHubPageInner() {
                 onDaily={() => setLossView('dailySummary')}
                 homeActive={lossView === 'home'} dailyActive={lossView === 'dailySummary'}
                 unreadAnnouncements={unreadAnnouncements} />
-              {/* Formerly the top tab row -- Grony Cash is everyone's one
-                  flex-1 anchor up there; here it's just another footer
-                  button like the rest. UK/C&H stay private to Grony/owner-
-                  level the same as before. */}
-              <div className="mt-1 border-t border-blue-700 pt-1">
-                <SidePaneButton icon="💰" label="Grony Cash" mode={cashDisplayMode}
-                  active={outerTab === 'loss'} onClick={() => changeTab('loss')} />
-                {isGrony && (
-                  <SidePaneButton icon="🇬🇧" label="UK" mode={cashDisplayMode}
-                    active={outerTab === 'uk'} onClick={() => changeTab('uk')} />
-                )}
-                {isOwnerOrJoe && (
-                  <SidePaneButton icon="🏢" label="C&H" mode={cashDisplayMode}
-                    active={outerTab === 'ch'} onClick={() => changeTab('ch')} />
-                )}
-                {/* Global search -- looks across the whole app (items,
-                    customers, vendors, sales, bills, announcements), unlike
-                    the per-view search bars already on most tabs below,
-                    which only filter what's already on screen. */}
+              {/* Formerly the top tab row -- Biz (Grony Cash) is everyone's
+                  one anchor up there; here it's just another footer button
+                  like the rest, paired side by side with Search the same
+                  way Home/Daily are paired above. Global search looks
+                  across the whole app (items, customers, vendors, sales,
+                  bills, announcements), unlike the per-view search bars
+                  already on most tabs below, which only filter what's
+                  already on screen. */}
+              <div className="border-t border-blue-700 flex items-stretch shrink-0">
+                <SidePaneButton icon="💰" label="Biz" mode={cashDisplayMode}
+                  active={outerTab === 'loss'} onClick={() => changeTab('loss')} className="flex-1 min-w-0" />
+                <div className="w-px bg-blue-700 shrink-0" />
                 <SidePaneButton icon="🔍" label="Search" mode={cashDisplayMode}
-                  active={false} onClick={() => setGlobalSearchOpen(true)} />
+                  active={false} onClick={() => setGlobalSearchOpen(true)} className="flex-1 min-w-0" />
               </div>
-              <div className="mt-1 border-t border-blue-700 pt-1">
-                <ViewPortalAsButton />
-                <SidePaneButton icon="🚪" label="Sign out" mode={cashDisplayMode} active={false}
-                  onClick={() => signOut({ callbackUrl: '/login' })} />
-              </div>
+              {/* UK/C&H stay private to Grony/owner-level the same as
+                  before -- paired side by side when both show, otherwise
+                  whichever one applies just takes the full row. */}
+              {(isGrony || isOwnerOrJoe) && (
+                <div className="border-t border-blue-700 flex items-stretch shrink-0">
+                  {isGrony && (
+                    <SidePaneButton icon="🇬🇧" label="UK" mode={cashDisplayMode}
+                      active={outerTab === 'uk'} onClick={() => changeTab('uk')} className="flex-1 min-w-0" />
+                  )}
+                  {isGrony && isOwnerOrJoe && <div className="w-px bg-blue-700 shrink-0" />}
+                  {isOwnerOrJoe && (
+                    <SidePaneButton icon="🏢" label="C&H" mode={cashDisplayMode}
+                      active={outerTab === 'ch'} onClick={() => changeTab('ch')} className="flex-1 min-w-0" />
+                  )}
+                </div>
+              )}
             </>}>
             <SidePaneToggle mode={cashDisplayMode} onChange={changeCashDisplayMode} />
 
@@ -1102,6 +1106,15 @@ function ItemHubPageInner() {
                 </>)}
               </div>
             )}
+
+            {/* View Portal As / Sign out -- part of the scrollable list now
+                (were pinned to the footer before) so the footer stays just
+                the paired shortcut rows above. */}
+            <div className="mt-1 pt-1 border-t border-blue-700">
+              <ViewPortalAsButton />
+              <SidePaneButton icon="🚪" label="Sign out" mode={cashDisplayMode} active={false}
+                onClick={() => signOut({ callbackUrl: '/login' })} />
+            </div>
         </SidePaneContainer>
 
         <div className="relative flex-1 min-w-0 min-h-0 flex flex-col">
