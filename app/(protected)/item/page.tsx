@@ -955,7 +955,7 @@ function ItemHubPageInner() {
                   (items, customers, vendors, sales, bills, announcements),
                   unlike the per-view search bars already on most tabs
                   below, which only filter what's already on screen. */}
-              <div className="border-t border-white/10 flex items-stretch shrink-0">
+              <div className="border-t border-white/30 flex items-stretch shrink-0">
                 {(isGrony || isOwnerOrJoe) && (<>
                   <SidePaneButton icon="💰" label="Biz" mode={cashDisplayMode}
                     active={outerTab === 'loss'} onClick={() => changeTab('loss')} className="flex-1 min-w-0" />
@@ -968,7 +968,7 @@ function ItemHubPageInner() {
                   before -- paired side by side when both show, otherwise
                   whichever one applies just takes the full row. */}
               {(isGrony || isOwnerOrJoe) && (
-                <div className="border-t border-white/10 flex items-stretch shrink-0">
+                <div className="border-t border-white/30 flex items-stretch shrink-0">
                   {isGrony && (
                     <SidePaneButton icon="🇬🇧" label="UK" mode={cashDisplayMode}
                       active={outerTab === 'uk'} onClick={() => changeTab('uk')} className="flex-1 min-w-0" />
@@ -995,7 +995,7 @@ function ItemHubPageInner() {
                   onClick={() => pickLossView(v.key)} />
               ))}
 
-            <div className="mt-1 pt-1 border-t border-white/10">
+            <div className="mt-1 pt-1 border-t border-white/30">
               {cashDisplayMode !== 'icon' && (
                 <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Manage</p>
               )}
@@ -1012,7 +1012,7 @@ function ItemHubPageInner() {
               })}
 
               {dynamicCategories.length > 0 && (
-                <div className="mt-1 pt-1 border-t border-white/10">
+                <div className="mt-1 pt-1 border-t border-white/30">
                   {cashDisplayMode !== 'icon' && (
                     <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Added by you</p>
                   )}
@@ -1030,7 +1030,7 @@ function ItemHubPageInner() {
               )}
 
               {canManage && (
-                <div className="mt-1 pt-1 border-t border-white/10 px-1.5 pb-2">
+                <div className="mt-1 pt-1 border-t border-white/30 px-1.5 pb-2">
                   {showAddCategory ? (
                     <form onSubmit={addCategory} className="space-y-1 py-1">
                       <input autoFocus value={newCategoryLabel} onChange={e => setNewCategoryLabel(e.target.value)}
@@ -1059,7 +1059,7 @@ function ItemHubPageInner() {
             </div>
 
             {myStaffName && (
-              <div className="mt-1 pt-1 border-t border-white/10">
+              <div className="mt-1 pt-1 border-t border-white/30">
                 {cashDisplayMode !== 'icon' && (
                   <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">
                     {canManage ? 'Viewing' : 'My Staff'}
@@ -1084,14 +1084,14 @@ function ItemHubPageInner() {
                 )}
 
                 {canManage && (<>
-                  <div className="mt-1 pt-1 border-t border-white/10">
+                  <div className="mt-1 pt-1 border-t border-white/30">
                     {cashDisplayMode !== 'icon' && <p className="px-2 pb-0.5 text-[9px] font-bold text-blue-200 uppercase tracking-wide">Team</p>}
                     {STAFF_TEAM_ITEMS.map(t => (
                       <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode}
                         active={lossView === t.key} onClick={() => pickLossView(t.key)} />
                     ))}
                   </div>
-                  <div className="mt-1 pt-1 border-t border-white/10">
+                  <div className="mt-1 pt-1 border-t border-white/30">
                     <SidePaneButton icon="🔑" label="Users" mode={cashDisplayMode} active={lossView === 'users'}
                       onClick={() => pickLossView('users')} />
                   </div>
@@ -1127,7 +1127,7 @@ function ItemHubPageInner() {
                   active={uk.person === p} onClick={() => uk.pickPerson(p)} />
               ))}
 
-              <div className="mt-1 pt-1 border-t border-white/10">
+              <div className="mt-1 pt-1 border-t border-white/30">
                 {cashDisplayMode !== 'icon' && (
                   <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">{`${uk.person}'s Submenus`}</p>
                 )}
@@ -1181,7 +1181,7 @@ function ItemHubPageInner() {
             {/* View Portal As / Sign out -- part of the scrollable list now
                 (were pinned to the footer before) so the footer stays just
                 the paired shortcut rows above. */}
-            <div className="mt-1 pt-1 border-t border-white/10">
+            <div className="mt-1 pt-1 border-t border-white/30">
               <ViewPortalAsButton />
               <SidePaneButton icon="🚪" label="Sign out" mode={cashDisplayMode} active={false}
                 onClick={() => signOut({ callbackUrl: '/login' })} />

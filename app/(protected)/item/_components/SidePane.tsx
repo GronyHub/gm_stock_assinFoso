@@ -53,7 +53,7 @@ export function paneWidthClass(mode: DisplayMode) {
 
 export function SidePaneToggle({ mode, onChange }: { mode: DisplayMode; onChange: (mode: DisplayMode) => void }) {
   return (
-    <div className="flex items-stretch gap-0.5 p-1 border-b border-white/10 bg-[#00072d] sticky top-0 z-10">
+    <div className="flex items-stretch gap-0.5 p-1 border-b border-white/30 bg-[#00072d] sticky top-0 z-10">
       {(['icon', 'both', 'text'] as DisplayMode[]).map(m => (
         <button key={m} onClick={() => onChange(m)} title={MODE_LABEL[m]}
           className={`flex-1 flex items-center justify-center py-1 rounded text-[11px] transition
