@@ -92,6 +92,12 @@ The 👤 button, at the bottom right of the Role Bar (shows who's logged in), ho
   training_laws: `# Company Laws
 
 No company policies have been added here yet -- the owner will add them.`,
+  // Staff > Times -- company policy specifically about time-keeping
+  // (lateness, overtime, clocking rules, etc.), separate from the general
+  // Company Laws above since that one isn't time-specific.
+  staff_times_laws: `# Company Laws — Time
+
+No time-related policies have been added here yet -- the owner will add them.`,
   // Grony Manage > Advert sub-tabs -- one per category in the shop's Google
   // Drive advert folder structure (1) ADVO - Advert 1..5). Each holds the
   // rules for that advert category once the owner adds them.

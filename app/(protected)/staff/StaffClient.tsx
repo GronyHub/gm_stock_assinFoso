@@ -7,6 +7,7 @@ import { usePolling } from '@/lib/usePolling'
 import CloserQuestionnaire, { ClosingAnswers } from '@/components/CloserQuestionnaire'
 import BinoChecklist, { BinoChecklistAnswers } from '@/components/BinoChecklist'
 import ManageLogPanel from '../item/_components/ManageLogPanel'
+import ContentPage from '../item/_components/ContentPage'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell,
 } from 'recharts'
@@ -232,6 +233,7 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
   const [closer, setCloser] = useState<string | null>(null)
   const [showLog, setShowLog] = useState(false)
   const [showAnalytics, setShowAnalytics] = useState(false)
+  const [showLaws, setShowLaws] = useState(false)
   const [confirmingCount, setConfirmingCount] = useState(false)
   const [confirmCountErr, setConfirmCountErr] = useState('')
   const [binoChecklistOpen, setBinoChecklistOpen] = useState(false)
@@ -468,16 +470,32 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
 
   return (
     <div className="space-y-2.5">
-      {isAdmin && (
-        <div className="flex justify-between items-center">
-          <Link href="/staff-times/review" title="Review flagged times"
-            className="text-sm leading-none px-2 py-1 rounded-lg bg-red-50 hover:bg-red-100 transition">
-            🚩
-          </Link>
-          <button onClick={() => setShowAddForm(v => !v)}
-            className="text-xs font-bold px-2.5 py-1 rounded-lg bg-blue-600 text-white hover:bg-blue-500 transition">
-            {showAddForm ? 'Cancel' : '+ Add Entry'}
-          </button>
+      <div className="flex justify-between items-center">
+        <button onClick={() => setShowLaws(v => !v)} title="Company Laws — Time"
+          className="text-sm leading-none px-2 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 transition">
+          ⚖️
+        </button>
+        {isAdmin && (
+          <div className="flex items-center gap-2">
+            <Link href="/staff-times/review" title="Review flagged times"
+              className="text-sm leading-none px-2 py-1 rounded-lg bg-red-50 hover:bg-red-100 transition">
+              🚩
+            </Link>
+            <button onClick={() => setShowAddForm(v => !v)}
+              className="text-xs font-bold px-2.5 py-1 rounded-lg bg-blue-600 text-white hover:bg-blue-500 transition">
+              {showAddForm ? 'Cancel' : '+ Add Entry'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Company Laws relating to time (lateness, overtime, clocking rules,
+          etc.) -- viewable by everyone, editable by owner-level only (see
+          ContentPage's own canEdit check). Separate content key from Grony
+          Manage's general Company Laws page, which isn't time-specific. */}
+      {showLaws && (
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <ContentPage contentKey="staff_times_laws" title="⚖️ Company Laws — Time" />
         </div>
       )}
 
