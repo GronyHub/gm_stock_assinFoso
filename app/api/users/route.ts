@@ -28,6 +28,16 @@ export async function POST(req: NextRequest) {
     const [existing] = await sql`SELECT id FROM app_users WHERE username = ${username}`
     if (existing) return NextResponse.json({ error: `Username "${username}" is already taken` }, { status: 409 })
 
+    const [roleRow] = await sql`SELECT key FROM roles WHERE key = ${role}`
+    if (!roleRow) return NextResponse.json({ error: `Role "${role}" does not exist` }, { status: 400 })
+
+    // Leftover from before custom roles existed -- app_users.role was
+    // originally CHECK-constrained to the three built-in values, so any
+    // custom role created from the Roles screen fails at the DB level the
+    // moment someone's assigned it. Role validity is enforced above via the
+    // roles table instead, which stays in sync as roles are added/removed.
+    await sql`ALTER TABLE app_users DROP CONSTRAINT IF EXISTS app_users_role_check`.catch(() => {})
+
     const hash = await bcrypt.hash(password, 12)
     const [row] = await sql`
       INSERT INTO app_users (username, display_name, email, role, password_hash)
@@ -55,6 +65,10 @@ export async function PATCH(req: NextRequest) {
   if (targetIsProtected && sessionUser?.role !== 'owner') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
+
+  const [roleRow] = await sql`SELECT key FROM roles WHERE key = ${role}`
+  if (!roleRow) return NextResponse.json({ error: `Role "${role}" does not exist` }, { status: 400 })
+  await sql`ALTER TABLE app_users DROP CONSTRAINT IF EXISTS app_users_role_check`.catch(() => {})
 
   const [row] = await sql`
     UPDATE app_users SET role = ${role} WHERE id = ${id}
