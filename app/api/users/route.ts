@@ -21,16 +21,25 @@ export async function POST(req: NextRequest) {
   const session = await auth()
   if (!isOwnerLevel(session?.user as any)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { username, display_name, email, role, password } = await req.json()
-  if (!username || !password || !role) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+  try {
+    const { username, display_name, email, role, password } = await req.json()
+    if (!username || !password || !role) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
 
-  const hash = await bcrypt.hash(password, 12)
-  const [row] = await sql`
-    INSERT INTO app_users (username, display_name, email, role, password_hash)
-    VALUES (${username}, ${display_name ?? username}, ${email ?? null}, ${role}, ${hash})
-    RETURNING id, username, display_name, email, role, created_at
-  `
-  return NextResponse.json(row)
+    const [existing] = await sql`SELECT id FROM app_users WHERE username = ${username}`
+    if (existing) return NextResponse.json({ error: `Username "${username}" is already taken` }, { status: 409 })
+
+    const hash = await bcrypt.hash(password, 12)
+    const [row] = await sql`
+      INSERT INTO app_users (username, display_name, email, role, password_hash)
+      VALUES (${username}, ${display_name ?? username}, ${email ?? null}, ${role}, ${hash})
+      RETURNING id, username, display_name, email, role, created_at
+    `
+    return NextResponse.json(row)
+  } catch (e) {
+    console.error('users POST error:', e)
+    const detail = e instanceof Error ? e.message : String(e)
+    return NextResponse.json({ error: `Could not create user: ${detail}` }, { status: 500 })
+  }
 }
 
 export async function PATCH(req: NextRequest) {

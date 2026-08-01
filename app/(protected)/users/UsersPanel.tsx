@@ -87,7 +87,7 @@ export default function UsersPanel({ users, setUsers, roles }: {
       setUsers(prev => prev.map(x => x.id === u.id ? { ...x, ...updated } : x))
       setEditId(null)
     } else {
-      const d = await res.json()
+      const d = await res.json().catch(() => ({}))
       setEditError(d.error ?? 'Save failed')
     }
   }
@@ -115,7 +115,7 @@ export default function UsersPanel({ users, setUsers, roles }: {
       setNewForm({ ...EMPTY_NEW })
       setShowAdd(false)
     } else {
-      const d = await res.json()
+      const d = await res.json().catch(() => ({}))
       setAddError(d.error ?? 'Could not create user')
     }
   }
