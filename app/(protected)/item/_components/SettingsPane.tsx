@@ -40,26 +40,24 @@ export default function SettingsPane({
           <p className="px-2 pt-2 pb-1 text-[10px] font-bold text-white uppercase tracking-wide">⚙️ Settings</p>
         )}
 
-        {myStaffName && (
+        {/* Viewing and Team used to be two separate sections, but they're
+            really the same question -- "whose data am I looking at" --
+            just with Team Payslips/All Staff answering it with "everyone"
+            instead of one specific name. One list, not two. */}
+        {(myStaffName || canSeeTeam) && (
           <div className="mt-1 pt-1 border-t border-white/10">
             {mode !== 'icon' && (
               <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Viewing</p>
             )}
-            <SidePaneButton icon="👤" label="Me" mode={mode}
-              active={viewingName.toLowerCase() === myStaffName.toLowerCase()} onClick={() => pickViewing(myStaffName)} />
-            {staffRoster.filter(n => n.toLowerCase() !== myStaffName.toLowerCase()).map(name => (
-              <SidePaneButton key={name} icon="👤" label={name} mode={mode}
-                active={viewingName.toLowerCase() === name.toLowerCase()} onClick={() => pickViewing(name)} />
-            ))}
-          </div>
-        )}
-
-        {canSeeTeam && (
-          <div className="mt-1 pt-1 border-t border-white/10">
-            {mode !== 'icon' && (
-              <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Team</p>
-            )}
-            {STAFF_TEAM_ITEMS.map(t => (
+            {myStaffName && (<>
+              <SidePaneButton icon="👤" label="Me" mode={mode}
+                active={viewingName.toLowerCase() === myStaffName.toLowerCase()} onClick={() => pickViewing(myStaffName)} />
+              {staffRoster.filter(n => n.toLowerCase() !== myStaffName.toLowerCase()).map(name => (
+                <SidePaneButton key={name} icon="👤" label={name} mode={mode}
+                  active={viewingName.toLowerCase() === name.toLowerCase()} onClick={() => pickViewing(name)} />
+              ))}
+            </>)}
+            {canSeeTeam && STAFF_TEAM_ITEMS.map(t => (
               <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={mode}
                 active={activeView === t.key} onClick={() => pickLossView(t.key, { keepSettingsOpen: true })} />
             ))}
