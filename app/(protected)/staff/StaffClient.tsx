@@ -1608,6 +1608,22 @@ function PayslipBuilder({ payslips, onSaved }: { payslips: Payslip[]; onSaved: (
     setSaved(false)
   }
 
+  // Staff whose payslip DOES get built and saved as normal -- just marked
+  // excluded_from_payment from the start, same flag the monthly Payroll
+  // view's own toggle uses on an already-saved month. Unlike buildExcluded
+  // above, the payslip stays on record, so paying them later just means
+  // switching this back off (here while still building, or from the
+  // monthly view afterward) -- nothing to recreate.
+  const [buildHidden, setBuildHidden] = useState<Set<string>>(new Set())
+  function toggleBuildHidden(name: string) {
+    setBuildHidden(prev => {
+      const next = new Set(prev)
+      if (next.has(name)) next.delete(name); else next.add(name)
+      return next
+    })
+    setSaved(false)
+  }
+
   function toggleBulkStaff(name: string) {
     setBulkSelected(prev => {
       const next = new Set(prev)
@@ -1637,6 +1653,7 @@ function PayslipBuilder({ payslips, onSaved }: { payslips: Payslip[]; onSaved: (
     if (prefilledMonth.current === month && !force) return
     setLoadingHours(true)
     setBuildExcluded(new Set())
+    setBuildHidden(new Set())
     fetch(`/api/staff-times/monthly?month=${month}`)
       .then(r => r.json())
       .then(d => {
@@ -1684,6 +1701,7 @@ function PayslipBuilder({ payslips, onSaved }: { payslips: Payslip[]; onSaved: (
         duty_allowance: n(row.duty_allowance), data_allowance: n(row.data_allowance),
         childcare_allowance: n(row.childcare_allowance), ssnit: n(row.ssnit),
         total_salary: finalTotal,
+        excluded_from_payment: buildHidden.has(name),
       }
     })
     const res = await fetch('/api/payslips', {
@@ -1706,11 +1724,11 @@ function PayslipBuilder({ payslips, onSaved }: { payslips: Payslip[]; onSaved: (
 
   const grandTotal = useMemo(() => {
     return ALL_STAFF_NAMES.reduce((sum, name) => {
-      if (buildExcluded.has(name)) return sum
+      if (buildExcluded.has(name) || buildHidden.has(name)) return sum
       const row = rows[name]
       return row ? sum + computeTotals(row).finalTotal : sum
     }, 0)
-  }, [rows, buildExcluded])
+  }, [rows, buildExcluded, buildHidden])
 
   return (
     <div className="space-y-3">
@@ -1769,13 +1787,20 @@ function PayslipBuilder({ payslips, onSaved }: { payslips: Payslip[]; onSaved: (
         const row = rows[name]
         if (!row) return null
         const excluded = buildExcluded.has(name)
+        const hidden = buildHidden.has(name)
         const { payForHours, payForOt, payForLongevity, computedTotal, finalTotal } = computeTotals(row)
         return (
           <div key={name} className={`bg-white border rounded-xl p-3 space-y-2 ${excluded ? 'border-gray-200 opacity-60' : 'border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${STAFF_COLORS[name] ?? 'bg-gray-100 text-gray-600'}`}>{name}</span>
-              <div className="flex items-center gap-2">
-                <span className={`text-base font-bold ${excluded ? 'text-gray-400 line-through' : 'text-blue-700'}`}>{fmtC(String(finalTotal))}</span>
+              <div className="flex items-center gap-2 flex-wrap justify-end">
+                <span className={`text-base font-bold ${excluded || hidden ? 'text-gray-400 line-through' : 'text-blue-700'}`}>{fmtC(String(finalTotal))}</span>
+                {!excluded && (
+                  <button onClick={() => toggleBuildHidden(name)}
+                    className={`text-[10px] font-semibold px-2 py-1 rounded-lg transition ${hidden ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}>
+                    {hidden ? '↩ Show for Payment' : '🚫 Hide from Payment'}
+                  </button>
+                )}
                 <button onClick={() => toggleBuildExclude(name)}
                   className={`text-[10px] font-semibold px-2 py-1 rounded-lg transition ${excluded ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}>
                   {excluded ? '↩ Add Back' : '✕ Remove'}
@@ -1783,6 +1808,9 @@ function PayslipBuilder({ payslips, onSaved }: { payslips: Payslip[]; onSaved: (
               </div>
             </div>
             {excluded && <p className="text-[10px] text-red-500 font-semibold">Removed from this payroll — no payslip will be saved for {name}.</p>}
+            {!excluded && hidden && (
+              <p className="text-[10px] text-amber-600 font-semibold">Hidden from payment — {name}&apos;s payslip will still be saved, just left out of the payment total until you switch this back on.</p>
+            )}
             <div className="grid grid-cols-2 gap-2">
               <NumField label={`Hours Worked (${hoursByStaff[name] ?? 0}h logged)`} value={row.hours_worked} onChange={v => updateRow(name, 'hours_worked', v)} />
               <NumField label={`Hourly Rate → ₵${payForHours.toFixed(2)}`} value={row.hourly_rate} onChange={v => updateRow(name, 'hourly_rate', v)} />
@@ -1805,9 +1833,11 @@ function PayslipBuilder({ payslips, onSaved }: { payslips: Payslip[]; onSaved: (
         )
       })}
 
-      {buildExcluded.size > 0 && (
+      {(buildExcluded.size > 0 || buildHidden.size > 0) && (
         <p className="text-[11px] text-gray-400 text-center">
-          {ALL_STAFF_NAMES.length - buildExcluded.size} of {ALL_STAFF_NAMES.length} staff will be saved — {[...buildExcluded].join(', ')} removed from this payroll.
+          {ALL_STAFF_NAMES.length - buildExcluded.size} of {ALL_STAFF_NAMES.length} staff will be saved
+          {buildExcluded.size > 0 && <> — {[...buildExcluded].join(', ')} removed from this payroll</>}
+          {buildHidden.size > 0 && <> — {[...buildHidden].join(', ')} hidden from payment</>}.
         </p>
       )}
       <button onClick={saveAll} disabled={saving || loadingHours}
