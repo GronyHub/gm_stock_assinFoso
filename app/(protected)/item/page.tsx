@@ -632,10 +632,16 @@ function ItemHubPageInner() {
   const violationCountByType = (types: string[]) =>
     cashViolations.filter(v => types.includes(v.type)).reduce((s, v) => s + v.count, 0)
   const salesFlagsCount = violationCountByType(['no_cash', 'missing_days', 'cost_gte_sell', 'dup_receipts'])
-  const itemsFlagsCount = violationCountByType(['no_group', 'duplicates', 'not_in_inventory'])
+  const itemsFlagsCount = violationCountByType([
+    'no_group', 'duplicates', 'not_in_inventory', 'neg_soh', 'no_sp', 'no_cp', 'unlinked_named', 'service_violation',
+  ])
   const cabFlagsCount = violationCountByType(['unchecked_cab'])
   const staffTimesFlagsCount = violationCountByType(['no_staff_times'])
   const dressFlagsCount = violationCountByType(['shirt_not_worn', 'shirt_overdue'])
+  const countsFlagsCount = violationCountByType(['daily', '7day', '15day'])
+  const lossByDateFlagsCount = violationCountByType(['gains'])
+  const jingleFlagsCount = violationCountByType(['jingle_overdue'])
+  const equipmentFlagsCount = violationCountByType(['equipment_check_overdue'])
 
   // The morning stock count is the opener's own job -- its badge (on
   // Manage's Opener left-pane item) combines "hasn't confirmed clock-in
@@ -1065,6 +1071,8 @@ function ItemHubPageInner() {
                   badge={v.key === 'sales' ? salesFlagsCount
                     : v.key === 'items' ? itemsFlagsCount
                     : v.key === 'cab' ? cabFlagsCount
+                    : v.key === 'counts' ? countsFlagsCount
+                    : v.key === 'feed' ? lossByDateFlagsCount
                     : undefined}
                   onClick={() => pickLossView(v.key)} />
               ))}
@@ -1078,6 +1086,8 @@ function ItemHubPageInner() {
                 const badge = entry.key === 'opener' ? openerBadgeCount
                   : entry.key === 'closer' ? (globalFlags?.missingClosingReports?.length ?? 0)
                   : entry.key === 'staff_dress' ? dressFlagsCount
+                  : entry.key === 'jingle' ? jingleFlagsCount
+                  : entry.key === 'equipment' ? equipmentFlagsCount
                   : undefined
                 return (
                   <SidePaneButton key={entry.key} icon={entry.icon} label={entry.label} mode={cashDisplayMode}
