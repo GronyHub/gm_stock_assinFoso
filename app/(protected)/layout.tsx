@@ -1,4 +1,5 @@
 import { auth } from '@/lib/auth'
+import sql from '@/lib/db'
 import { redirect } from 'next/navigation'
 import Nav from '@/components/Nav'
 import PushSubscriber from '@/components/PushSubscriber'
@@ -12,6 +13,25 @@ export default async function ProtectedLayout({ children }: { children: React.Re
     redirect('/login')
   }
   if (!session) redirect('/login')
+
+  // The JWT session strategy has no server-side session store to revoke, so
+  // a deactivated account's existing session would otherwise keep working
+  // until the token naturally expires -- authorize() in lib/auth.ts only
+  // stops a NEW login. Re-checking active status here, on every protected
+  // page load, closes that gap: the very next navigation after an owner
+  // deactivates someone bounces them to /login, same as a fresh rejected
+  // login. Fails open (stays logged in) on a DB error rather than locking
+  // everyone out over a transient hiccup.
+  const userId = (session.user as { id?: string })?.id
+  let deactivated = false
+  if (userId) {
+    try {
+      const [row] = await sql`SELECT active FROM app_users WHERE id = ${Number(userId)}`
+      deactivated = row?.active === false
+    } catch { /* fail open */ }
+  }
+  if (deactivated) redirect('/login')
+
   return (
     <div className="min-h-screen flex flex-col">
       <div className="print:hidden">
