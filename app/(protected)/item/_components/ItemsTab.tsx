@@ -5,6 +5,7 @@ import { usePolling } from '@/lib/usePolling'
 import { usePresenceReporter } from '@/lib/usePresenceReporter'
 import AliasesTab from './AliasesTab'
 import AssignWidget from './AssignWidget'
+import PageTasksSection from './PageTasksSection'
 
 // The Aliases pill was split into 4 individual violation types (each with
 // its own count on Joe's Role Bar panel) instead of one combined "Aliases"
@@ -814,6 +815,7 @@ export default function ItemsTab({ items, group, productType, search, violation,
           <span className="text-[9px] font-semibold text-red-700">🚩 Items Flags</span>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
+          <PageTasksSection submenu="Items" />
           {rows.map(r => (
             <div key={r.type} className="bg-white border border-gray-200 rounded-xl p-2.5 space-y-1.5">
               <div className="flex items-center justify-between gap-2">

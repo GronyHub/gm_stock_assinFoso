@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { fmtDate } from '@/lib/fmtDate'
 import SavedFlash from './SavedFlash'
+import PageTasksSection from './PageTasksSection'
 
 type Content = { key: string; body: string; updated_by: string | null; updated_at: string | null }
 
@@ -43,7 +44,7 @@ function RenderedBody({ body }: { body: string }) {
   return <div>{blocks}</div>
 }
 
-export default function ContentPage({ contentKey, title }: { contentKey: string; title: string }) {
+export default function ContentPage({ contentKey, title, submenu }: { contentKey: string; title: string; submenu?: string }) {
   const { data: session } = useSession()
   const role = (session?.user as any)?.role ?? 'staff'
   const username = (session?.user as any)?.username ?? session?.user?.name ?? ''
@@ -106,6 +107,8 @@ export default function ContentPage({ contentKey, title }: { contentKey: string;
           )}
         </div>
       </div>
+
+      {submenu && <PageTasksSection submenu={submenu} />}
 
       {editing ? (
         <div className="bg-white border border-gray-200 rounded-lg p-2 space-y-1.5">

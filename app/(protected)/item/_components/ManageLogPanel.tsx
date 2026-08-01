@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { usePolling } from '@/lib/usePolling'
 import { fmtDate } from '@/lib/fmtDate'
 import SavedFlash from './SavedFlash'
+import PageTasksSection from './PageTasksSection'
 
 type LogEntry = {
   id: number
@@ -115,6 +116,7 @@ export default function ManageLogPanel({ category, label, icon }: { category: st
           </p>
         </div>
       )}
+      <PageTasksSection submenu={label} />
       <div className="bg-white border border-gray-200 rounded-lg px-2.5 py-2 space-y-1.5">
         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{icon} {label}</p>
         <textarea value={notes} onChange={e => setNotes(e.target.value)}

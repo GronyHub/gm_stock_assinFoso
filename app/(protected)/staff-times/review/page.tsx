@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import { fmtDate } from '@/lib/fmtDate'
 import { NoStaffTimesList } from '../../staff/StaffClient'
 import AssignWidget from '../../item/_components/AssignWidget'
+import PageTasksSection from '../../item/_components/PageTasksSection'
 
 type RecentRow = { id?: number; staff_name: string; work_date: string; actual_in: string | null; actual_out: string | null; entered_by: string | null }
 
@@ -159,6 +160,7 @@ export default function FlaggedTimesReviewPage() {
         <p className="text-sm text-gray-500 mt-1">Clock records worth a second look, for review.</p>
       </div>
 
+      <PageTasksSection submenu="Staff" />
       <AssignWidget type="no_staff_times" />
 
       {loading ? (

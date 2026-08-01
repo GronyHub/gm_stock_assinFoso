@@ -26,6 +26,7 @@ import { usePolling } from '@/lib/usePolling'
 import { useViolations } from './_components/useViolations'
 import PaneHomeDaily from './_components/PaneHomeDaily'
 import TasksView, { MyAssignmentsSummary } from './_components/TasksView'
+import PageTasksSection from './_components/PageTasksSection'
 import { COLUMNS, type ColKey } from './_components/lossTabColumns'
 import { useColumnPrefs, ColumnsPickerButton } from './_components/columnPrefs'
 import { MANAGE_LIST_ITEMS, useDynamicManageCategories, type ManageView } from './_components/manageViewData'
@@ -1443,22 +1444,23 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'loss' && lossView === 'pl' && (
           <TabErrorBoundary>
+            <div className="px-4 pt-2"><PageTasksSection submenu="P&L" /></div>
             <ProfitLossTab />
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'vendors' && (
           <TabErrorBoundary>
-            <div className="px-4"><VendorsPage initialSearch={vendorSearchText} /></div>
+            <div className="px-4 pt-2 space-y-2"><PageTasksSection submenu="Vendors" /><VendorsPage initialSearch={vendorSearchText} /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'customers' && (
           <TabErrorBoundary>
-            <div className="px-4"><CustomersPage initialSearch={customerSearchText} /></div>
+            <div className="px-4 pt-2 space-y-2"><PageTasksSection submenu="Customers" /><CustomersPage initialSearch={customerSearchText} /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'receipts' && (
           <TabErrorBoundary>
-            <div className="px-4"><ReceiptsPage /></div>
+            <div className="px-4 pt-2 space-y-2"><PageTasksSection submenu="Receipts" /><ReceiptsPage /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'home' && (
@@ -1468,16 +1470,18 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'loss' && lossView === 'dailySummary' && (
           <TabErrorBoundary>
+            <div className="px-4 pt-2"><PageTasksSection submenu="Daily" /></div>
             <DailySummaryTab />
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'purchaseOrders' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-4"><PurchaseOrdersPage /></div>
+            <div className="px-4 pt-4 space-y-2"><PageTasksSection submenu="Purchase Orders" /><PurchaseOrdersPage /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'item360' && (
           <TabErrorBoundary>
+            <div className="px-4 pt-2"><PageTasksSection submenu="Item 360" /></div>
             <Item360Tab items={items} jumpToItemId={item360JumpId} onJumpDone={() => setItem360JumpId(null)} />
           </TabErrorBoundary>
         )}
@@ -1555,9 +1559,12 @@ function ItemHubPageInner() {
               // without leaving this tab) -- a stale identity could
               // otherwise leak into TimesTab/PayslipsTab's own local
               // state across accounts.
-              <StaffContent key={myStaffName} view={lossView as StaffView}
-                viewingName={viewingName} role={role} username={username}
-                canSeeTeam={canSeeTeam} canSeeUsers={canSeeUsers} canSeeRoles={canManage} />
+              <>
+                {lossView === 'staffTimes' && <div className="px-4 pt-2"><PageTasksSection submenu={myStaffName} /></div>}
+                <StaffContent key={myStaffName} view={lossView as StaffView}
+                  viewingName={viewingName} role={role} username={username}
+                  canSeeTeam={canSeeTeam} canSeeUsers={canSeeUsers} canSeeRoles={canManage} />
+              </>
             ) : (
               <p className="py-10 text-center text-gray-400 text-sm px-4">No staff profile is set up for your account.</p>
             )}
@@ -1577,7 +1584,12 @@ function ItemHubPageInner() {
             </div>
           </TabErrorBoundary>
         )}
-        {!showAnalytics && addForm !== 'expense' && outerTab === 'loss' && lossView === 'expenses' && <ExpensesTab search={search} />}
+        {!showAnalytics && addForm !== 'expense' && outerTab === 'loss' && lossView === 'expenses' && (
+          <>
+            <div className="px-3 pt-2"><PageTasksSection submenu="Expenses" /></div>
+            <ExpensesTab search={search} />
+          </>
+        )}
         {showAnalytics && outerTab === 'loss' && lossView === 'expenses' && (
           <TabErrorBoundary><div className="px-3 pt-3"><ExpensesAnalyticsSection /></div></TabErrorBoundary>
         )}
@@ -1597,12 +1609,12 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'aliasWide' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-4"><AliasWidePage /></div>
+            <div className="px-4 pt-4 space-y-2"><PageTasksSection submenu="Alias Wide Table" /><AliasWidePage /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'serviceMatches' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-4"><ServiceMatchesPage /></div>
+            <div className="px-4 pt-4 space-y-2"><PageTasksSection submenu="Service Matches" /><ServiceMatchesPage /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'nameConflicts' && (
@@ -1658,7 +1670,10 @@ function ItemHubPageInner() {
           <TabErrorBoundary><div className="px-3 pt-3"><BillsAnalyticsSection /></div></TabErrorBoundary>
         )}
         {!showAnalytics && addForm !== 'bill' && outerTab === 'loss' && lossView === 'bills' && (
-          <BillsTab items={items} groupFilter={group} search={search} />
+          <>
+            <div className="px-3 pt-2"><PageTasksSection submenu="Bills" /></div>
+            <BillsTab items={items} groupFilter={group} search={search} />
+          </>
         )}
         {outerTab === 'loss' && lossView === 'counts' && (
           <CountsTab items={items} groupFilter={group} search={search}
@@ -1684,14 +1699,19 @@ function ItemHubPageInner() {
                 </button>
               </div>
             )}
+            {!violation && <div className="px-3 pt-2"><PageTasksSection submenu="Loss by Date" /></div>}
             <LossFeedTab search={search} kind={(violation === 'gains' || feedShowGains) ? 'gain' : 'loss'} />
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'lossByItem' && (
-          <TabErrorBoundary><LossByItemTab search={search} /></TabErrorBoundary>
+          <TabErrorBoundary>
+            <div className="px-3 pt-2"><PageTasksSection submenu="Loss by Item" /></div>
+            <LossByItemTab search={search} />
+          </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'lossByTarget' && (
           <TabErrorBoundary>
+            <div className="px-3 pt-2"><PageTasksSection submenu="Loss by Target" /></div>
             <div className="py-20 text-center text-gray-400 text-xs">Coming soon.</div>
           </TabErrorBoundary>
         )}

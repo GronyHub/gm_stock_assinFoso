@@ -4,6 +4,7 @@ import ClosingReportLogView from './ClosingReportLogView'
 import ManageLogPanel from './ManageLogPanel'
 import ContentPage from './ContentPage'
 import DressCodeFlagsPanel from './DressCodeFlagsPanel'
+import PageTasksSection from './PageTasksSection'
 import AdvertStatusPanel from './AdvertStatusPanel'
 import AssessmentPanel from './AssessmentPanel'
 import DynamicCategoryPage from './DynamicCategoryPage'
@@ -99,24 +100,31 @@ export default function GronyManageContent({
     {view === 'closer' && (
       <CloserView missingClosingReportsCount={missingClosingReportsCount} onOpenStaff={onOpenStaff} />
     )}
-    {view === 'rota' && <div className="px-2"><RotaTab canManage={canManage} /></div>}
-    {view === 'audio' && <ContentPage contentKey="advert_audio_roadside" title="Advert 1 — Audio (for Roadside)" />}
-    {view === 'audio_status' && <AdvertStatusPanel />}
+    {view === 'rota' && <div className="px-2 space-y-2 pt-2"><PageTasksSection submenu="Rota" /><RotaTab canManage={canManage} /></div>}
+    {view === 'audio' && <ContentPage contentKey="advert_audio_roadside" title="Advert 1 — Audio (for Roadside)" submenu="Audio" />}
+    {view === 'audio_status' && (<>
+      <div className="px-2 pt-2"><PageTasksSection submenu="Advert Status" /></div>
+      <AdvertStatusPanel />
+    </>)}
     {view === 'jingle' && <ManageLogPanel category="audio_jingle" label="Jingle Log" icon="🎵" />}
     {view === 'equipment' && <ManageLogPanel category="audio_equipment_check" label="Equipment Check" icon="🔊" />}
-    {view === 'photoshop' && <ContentPage contentKey="advert_photo_photoshop" title="Advert 2 — Photo (Photoshop Files)" />}
-    {view === 'whatsapp' && <ContentPage contentKey="advert_photo_whatsapp" title="Advert 3 — Photo (WhatsApp Advert)" />}
-    {view === 'cuttings' && <ContentPage contentKey="advert_photo_cuttings" title="Advert 4 — Photo (Cuttings)" />}
-    {view === 'video' && <ContentPage contentKey="advert_video" title="Advert 5 — Video Advert" />}
-    {view === 'advert_log' && <ClosingReportLogView field="advert_played" label="Advert" icon="📢" />}
+    {view === 'photoshop' && <ContentPage contentKey="advert_photo_photoshop" title="Advert 2 — Photo (Photoshop Files)" submenu="Photoshop" />}
+    {view === 'whatsapp' && <ContentPage contentKey="advert_photo_whatsapp" title="Advert 3 — Photo (WhatsApp Advert)" submenu="WhatsApp" />}
+    {view === 'cuttings' && <ContentPage contentKey="advert_photo_cuttings" title="Advert 4 — Photo (Cuttings)" submenu="Cuttings" />}
+    {view === 'video' && <ContentPage contentKey="advert_video" title="Advert 5 — Video Advert" submenu="Video" />}
+    {view === 'advert_log' && (<>
+      <div className="px-2 pt-2"><PageTasksSection submenu="Advert Daily Log" /></div>
+      <ClosingReportLogView field="advert_played" label="Advert" icon="📢" />
+    </>)}
     {view === 'staff_dress' && (<>
+      <div className="px-2 pt-2"><PageTasksSection submenu="Dress Code" /></div>
       <DressCodeFlagsPanel />
       <ClosingReportLogView field="no_tshirt_staff" label="Dress Code" icon="👕" />
     </>)}
-    {view === 'tutorial' && <ContentPage contentKey="training_tutorial" title="📖 App Tutorial" />}
-    {view === 'training_laws' && <ContentPage contentKey="training_laws" title="⚖️ Company Laws" />}
-    {view === 'assessment' && <AssessmentPanel />}
-    {view === 'logs' && <div className="px-2"><LogsPage /></div>}
+    {view === 'tutorial' && <ContentPage contentKey="training_tutorial" title="📖 App Tutorial" submenu="Tutorial" />}
+    {view === 'training_laws' && <ContentPage contentKey="training_laws" title="⚖️ Company Laws" submenu="Company Laws" />}
+    {view === 'assessment' && (<div className="px-2 pt-2"><PageTasksSection submenu="Assessment" /><AssessmentPanel /></div>)}
+    {view === 'logs' && <div className="px-2 space-y-2 pt-2"><PageTasksSection submenu="Logs" /><LogsPage /></div>}
     {logCategory && <ManageLogPanel category={logCategory.key} label={logCategory.label} icon={logCategory.icon} />}
   </>)
 }
