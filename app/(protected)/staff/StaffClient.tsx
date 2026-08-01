@@ -6,7 +6,6 @@ import { fmtDate, fmtOrdinalDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
 import CloserQuestionnaire, { ClosingAnswers } from '@/components/CloserQuestionnaire'
 import BinoChecklist, { BinoChecklistAnswers } from '@/components/BinoChecklist'
-import ClosingReportsList from '@/components/ClosingReportsList'
 import ManageLogPanel from '../item/_components/ManageLogPanel'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell,
@@ -231,7 +230,6 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
   const [closerPrompt, setCloserPrompt] = useState<{ time: string; present: string[] } | null>(null)
   const [opener, setOpener] = useState<string | null>(null)
   const [closer, setCloser] = useState<string | null>(null)
-  const [showReports, setShowReports] = useState(false)
   const [showLog, setShowLog] = useState(false)
   const [showAnalytics, setShowAnalytics] = useState(false)
   const [confirmingCount, setConfirmingCount] = useState(false)
@@ -483,19 +481,11 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
         </div>
       )}
 
-      {/* Closing Reports / Times Log / Analytics -- moved up next to the flag
-          so they're immediately reachable instead of buried below the full
-          history grid. All three stay collapsed by default. */}
+      {/* Times Log / Analytics -- moved up next to the flag so they're
+          immediately reachable instead of buried below the full history
+          grid. Closing Reports lives on the Closer page (Grony Manage)
+          instead now. Both stay collapsed by default. */}
       <div className="space-y-2">
-        <div>
-          <button onClick={() => setShowReports(v => !v)}
-            className="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl px-3 py-2">
-            <span className="text-xs font-semibold text-gray-700">🌙 Closing Reports</span>
-            <span className="text-gray-400 text-xs">{showReports ? '▲ Hide' : '▼ Show'}</span>
-          </button>
-          {showReports && <div className="mt-2"><ClosingReportsList /></div>}
-        </div>
-
         {/* Times log — a shared record for anything worth writing down about
             time-keeping (a bad habit spotted, a system change, work done on
             this feature, etc.) that isn't tied to any one date's clock event. */}
