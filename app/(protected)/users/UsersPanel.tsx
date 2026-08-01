@@ -181,6 +181,12 @@ export default function UsersPanel({ users, setUsers, roles }: {
         </button>
       </div>
 
+      <p className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 leading-relaxed">
+        There&apos;s no invitation email -- the password you type in &quot;New User&quot; is their real login straight away.
+        Share that username and password with them directly (WhatsApp, in person, etc.) and they can sign in immediately.
+        The app doesn&apos;t track last login yet, so there&apos;s currently no way to confirm from here whether they&apos;ve actually signed in.
+      </p>
+
       {/* Add new user form */}
       {showAdd && (
         <div className="bg-white border border-blue-300 rounded-xl p-4 space-y-3">
