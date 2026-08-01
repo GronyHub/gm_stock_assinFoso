@@ -1178,10 +1178,15 @@ function ItemHubPageInner() {
                 over the whole screen -- see SettingsPane.tsx below. Sign out
                 stays here, part of the scrollable list (pinned to the footer
                 before) so the footer stays just the paired shortcut rows
-                above. */}
+                above. Not marked `active` even while open -- the settings
+                pane appearing right next to this one already shows that;
+                highlighting this row too just reads as two things selected
+                at once (this row AND whatever lossView is still showing,
+                e.g. Times), since "settings is open" and "this content is
+                showing" are independent, not mutually exclusive states. */}
             <div className="mt-1 pt-1 border-t border-white/30">
               {canOpenSettings && (
-                <SidePaneButton icon="⚙️" label="Settings" mode={cashDisplayMode} active={settingsOpen}
+                <SidePaneButton icon="⚙️" label="Settings" mode={cashDisplayMode} active={false}
                   onClick={() => setSettingsOpen(v => !v)} />
               )}
               <SidePaneButton icon="🚪" label="Sign out" mode={cashDisplayMode} active={false}
