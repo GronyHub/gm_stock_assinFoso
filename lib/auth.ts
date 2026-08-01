@@ -15,8 +15,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.username || !credentials?.password) return null
         const login = credentials.username as string
+        await sql`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE`.catch(() => {})
         const rows = await sql`
-          SELECT id, username, display_name, role, password_hash
+          SELECT id, username, display_name, role, password_hash, active
           FROM app_users
           WHERE username = ${login} OR email = ${login}
         `
@@ -24,6 +25,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const user = rows[0]
         const valid = await bcrypt.compare(credentials.password as string, user.password_hash)
         if (!valid) return null
+        // A resigned/deactivated staff member's credentials stop working the
+        // moment an owner-level account deactivates them (see /api/users/[id]
+        // PATCH) -- same "wrong username/email or password" message as any
+        // other failed login, so account status isn't leaked to whoever's typing.
+        if (user.active === false) return null
         return { id: String(user.id), name: user.display_name, username: user.username, role: user.role }
       },
     }),

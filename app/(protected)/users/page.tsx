@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
+import { fmtDate } from '@/lib/fmtDate'
 
 type User = {
   id: number
@@ -9,6 +10,8 @@ type User = {
   email: string | null
   role: string
   created_at: string
+  active: boolean
+  resigned_at: string | null
 }
 
 type Role = { key: string; label: string }
@@ -18,9 +21,14 @@ const labelCls = 'text-xs text-gray-500 font-medium mb-1 block'
 
 const EMPTY_NEW = { username: '', display_name: '', email: '', role: 'staff', password: '', confirm: '' }
 
+function todayStr() {
+  return new Date().toISOString().slice(0, 10)
+}
+
 export default function UsersPage() {
   const { data: session } = useSession()
   const myRole = (session?.user as any)?.role
+  const myId = String((session?.user as any)?.id ?? '')
   const [users, setUsers] = useState<User[]>([])
   const [roles, setRoles] = useState<Role[]>([])
   const [loading, setLoading] = useState(true)
@@ -33,8 +41,13 @@ export default function UsersPage() {
   const [adding, setAdding] = useState(false)
   const [addError, setAddError] = useState('')
 
+  const [deactivatingId, setDeactivatingId] = useState<number | null>(null)
+  const [resignDate, setResignDate] = useState(todayStr())
+  const [statusSaving, setStatusSaving] = useState(false)
+  const [statusError, setStatusError] = useState('')
+
   useEffect(() => {
-    fetch('/api/users').then(r => r.json()).then(data => { setUsers(data); setLoading(false) })
+    fetch('/api/users').then(r => r.json()).then(data => { setUsers(Array.isArray(data) ? data : []); setLoading(false) })
     fetch('/api/roles').then(r => r.json()).then(data => setRoles(Array.isArray(data) ? data : [])).catch(() => {})
   }, [])
 
@@ -65,7 +78,7 @@ export default function UsersPage() {
     setSaving(false)
     if (res.ok) {
       const updated = await res.json()
-      setUsers(prev => prev.map(x => x.id === u.id ? updated : x))
+      setUsers(prev => prev.map(x => x.id === u.id ? { ...x, ...updated } : x))
       setEditId(null)
     } else {
       const d = await res.json()
@@ -92,12 +105,51 @@ export default function UsersPage() {
     setAdding(false)
     if (res.ok) {
       const created = await res.json()
-      setUsers(prev => [...prev, created])
+      setUsers(prev => [...prev, { ...created, active: true, resigned_at: null }])
       setNewForm({ ...EMPTY_NEW })
       setShowAdd(false)
     } else {
       const d = await res.json()
       setAddError(d.error ?? 'Could not create user')
+    }
+  }
+
+  function startDeactivate(u: User) {
+    setDeactivatingId(u.id)
+    setResignDate(todayStr())
+    setStatusError('')
+  }
+
+  async function confirmDeactivate(u: User) {
+    setStatusSaving(true); setStatusError('')
+    const res = await fetch(`/api/users/${u.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: false, resigned_at: resignDate }),
+    })
+    setStatusSaving(false)
+    if (res.ok) {
+      const updated = await res.json()
+      setUsers(prev => prev.map(x => x.id === u.id ? { ...x, ...updated } : x))
+      setDeactivatingId(null)
+    } else {
+      const d = await res.json().catch(() => ({}))
+      setStatusError(d.error ?? 'Could not deactivate')
+    }
+  }
+
+  async function reactivate(u: User) {
+    setStatusSaving(true); setStatusError('')
+    const res = await fetch(`/api/users/${u.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: true }),
+    })
+    setStatusSaving(false)
+    if (res.ok) {
+      const updated = await res.json()
+      setUsers(prev => prev.map(x => x.id === u.id ? { ...x, ...updated } : x))
+    } else {
+      const d = await res.json().catch(() => ({}))
+      setStatusError(d.error ?? 'Could not reactivate')
     }
   }
 
@@ -108,6 +160,9 @@ export default function UsersPage() {
   }
 
   if (loading) return <div className="py-20 text-center text-gray-400">Loading...</div>
+
+  const activeUsers = users.filter(u => u.active !== false)
+  const resignedUsers = users.filter(u => u.active === false)
 
   return (
     <div className="py-4 space-y-4">
@@ -170,11 +225,15 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* User list */}
+      {statusError && <p className="text-red-500 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2">{statusError}</p>}
+
+      {/* Active user list */}
       <div className="space-y-2">
-        {users.map(u => {
+        {activeUsers.map(u => {
         // Joe's owner-level access does not extend to editing the owner's own account
         const protectedFromMe = myRole !== 'owner' && (u.role === 'owner' || u.username?.toLowerCase() === 'grony')
+        const isSelf = myId === String(u.id)
+        const canDeactivate = !protectedFromMe && u.role !== 'owner' && u.username?.toLowerCase() !== 'grony' && !isSelf
         return (
           <div key={u.id} className="bg-white border border-gray-200 rounded-xl p-4">
             {editId === u.id ? (
@@ -219,6 +278,26 @@ export default function UsersPage() {
                     className="px-4 py-3 rounded-xl bg-gray-100 text-gray-600 text-sm font-semibold">Cancel</button>
                 </div>
               </div>
+            ) : deactivatingId === u.id ? (
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-gray-700">Deactivate {u.display_name}?</p>
+                <p className="text-xs text-gray-500">
+                  Blocks @{u.username}&apos;s login immediately. Their payslips, times, and violations all stay on record —
+                  they&apos;ll show up under Resigned Staff below, and can be reactivated later if needed.
+                </p>
+                <div>
+                  <label className={labelCls}>Resignation Date</label>
+                  <input type="date" value={resignDate} onChange={e => setResignDate(e.target.value)} className={inputCls} />
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => confirmDeactivate(u)} disabled={statusSaving}
+                    className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-3 transition">
+                    {statusSaving ? 'Deactivating...' : 'Confirm Deactivate'}
+                  </button>
+                  <button onClick={() => setDeactivatingId(null)}
+                    className="px-4 py-3 rounded-xl bg-gray-100 text-gray-600 text-sm font-semibold">Cancel</button>
+                </div>
+              </div>
             ) : (
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -236,10 +315,18 @@ export default function UsersPage() {
                 {protectedFromMe ? (
                   <span className="shrink-0 text-xs text-gray-400 font-semibold px-3 py-1.5">Owner only</span>
                 ) : (
-                  <button onClick={() => startEdit(u)}
-                    className="shrink-0 text-xs text-blue-600 font-semibold px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 transition">
-                    Edit
-                  </button>
+                  <div className="shrink-0 flex flex-col items-end gap-1.5">
+                    <button onClick={() => startEdit(u)}
+                      className="text-xs text-blue-600 font-semibold px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 transition">
+                      Edit
+                    </button>
+                    {canDeactivate && (
+                      <button onClick={() => startDeactivate(u)}
+                        className="text-xs text-red-600 font-semibold px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 transition">
+                        Deactivate
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             )}
@@ -247,6 +334,36 @@ export default function UsersPage() {
         )
         })}
       </div>
+
+      {/* Resigned Staff -- deactivated accounts, kept separate from the
+          active list above but never deleted. Their payslips/times/
+          violations are untouched; Reactivate just flips them back on. */}
+      {resignedUsers.length > 0 && (
+        <div className="space-y-2 pt-2">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Resigned Staff</p>
+          {resignedUsers.map(u => {
+            const protectedFromMe = myRole !== 'owner' && (u.role === 'owner' || u.username?.toLowerCase() === 'grony')
+            return (
+              <div key={u.id} className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center justify-between gap-3 opacity-80">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-gray-700">{u.display_name}</p>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-200 text-gray-600">resigned</span>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-0.5">@{u.username}</p>
+                  {u.resigned_at && <p className="text-xs text-gray-400 mt-0.5">Resigned {fmtDate(u.resigned_at)}</p>}
+                </div>
+                {!protectedFromMe && (
+                  <button onClick={() => reactivate(u)} disabled={statusSaving}
+                    className="shrink-0 text-xs text-green-700 font-semibold px-3 py-1.5 rounded-lg bg-green-50 hover:bg-green-100 disabled:opacity-40 transition">
+                    Reactivate
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
