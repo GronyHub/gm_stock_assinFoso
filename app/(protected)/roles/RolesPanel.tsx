@@ -166,7 +166,7 @@ export default function RolesPanel({ roles, setRoles, users }: {
           <table className="text-sm border-separate border-spacing-0">
             <thead>
               <tr>
-                <th className="sticky left-0 z-10 bg-white text-left font-semibold text-gray-500 text-xs px-3 py-2.5 border-b border-gray-200 whitespace-nowrap">
+                <th className="sticky left-0 z-10 bg-white w-32 max-w-[8rem] text-left font-semibold text-gray-500 text-xs px-3 py-2.5 border-b border-gray-200 whitespace-nowrap">
                   Permission
                 </th>
                 {activeUsers.map(u => (
@@ -179,7 +179,7 @@ export default function RolesPanel({ roles, setRoles, users }: {
             <tbody>
               {FEATURE_KEYS.map((feature, i) => (
                 <tr key={feature} className={i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
-                  <td className="sticky left-0 z-10 bg-inherit text-gray-700 text-xs px-3 py-2.5 border-b border-gray-100 whitespace-nowrap">
+                  <td className="sticky left-0 z-10 bg-inherit w-32 max-w-[8rem] text-gray-700 text-xs px-3 py-2.5 border-b border-gray-100">
                     {FEATURE_LABELS[feature]}
                   </td>
                   {activeUsers.map(u => {
