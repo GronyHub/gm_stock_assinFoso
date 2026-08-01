@@ -711,13 +711,17 @@ function ItemHubPageInner() {
     // instead of wherever Today's own state actually was.
     if (outerTab !== 'loss') params.set('tab', outerTab); else params.delete('tab')
     if (outerTab === 'loss' && lossView !== 'items') params.set('view', lossView); else params.delete('view')
+    // Settings is a full-screen overlay, not a tab -- still gets its own
+    // history entry the same way, so the back button closes it instead of
+    // leaving the app (see the popstate sync effect below).
+    if (settingsOpen) params.set('settings', '1'); else params.delete('settings')
     const qs = params.toString()
     const target = qs ? `/item?${qs}` : '/item'
     const current = window.location.pathname + window.location.search
     if (target === current) return
     router.push(target, { scroll: false })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [outerTab, lossView])
+  }, [outerTab, lossView, settingsOpen])
 
   // A refresh should land back on the same search instead of resetting it --
   // replace (not push) since typing shouldn't create a history entry per
@@ -746,6 +750,8 @@ function ItemHubPageInner() {
       if (nextView !== lossView) setLossView(nextView)
       if (urlExtraView && urlExtraView !== itemsExtraView) setItemsExtraView(urlExtraView)
     }
+    const urlSettingsOpen = searchParams.get('settings') === '1'
+    if (urlSettingsOpen !== settingsOpen) setSettingsOpen(urlSettingsOpen)
     // Read (and re-read) on every searchParams change, not just first mount --
     // unlike outerTab/lossView above, a plain useState initializer would only
     // ever see this on a fresh page load, never on a same-page router.push
