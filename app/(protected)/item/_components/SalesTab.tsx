@@ -6,7 +6,7 @@ import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
 import { useColumnPrefs, ColumnsPickerButton, type ColumnDef } from './columnPrefs'
 import AssignWidget from './AssignWidget'
-import PageTasksSection from './PageTasksSection'
+import DynamicTasksSection from './DynamicTasksSection'
 
 type Item = { id: number; item_name: string; cf_group: string | null }
 
@@ -623,7 +623,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
           <span className="text-[9px] font-semibold text-red-700">🚩 Sales Flags</span>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
-          <PageTasksSection submenu="Sales" />
+          <DynamicTasksSection scopeKey="Sales" />
           {rows.map(r => (
             <div key={r.type} className="bg-white border border-gray-200 rounded-xl p-2.5 space-y-1.5">
               <p className="text-[10px] text-gray-400">

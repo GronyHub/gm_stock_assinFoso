@@ -81,11 +81,11 @@ function dueCell(v: Violation, deadline: string | undefined, threshold: number):
   return { label: `${fmtOrdinalDate(expiry)} · ${days}`, atRisk }
 }
 
-// Editing an existing custom task reuses the same fields as creating one
-// (CustomTasksSection) -- title, which submenu bar it lives under, which
-// view (if any) its Fix button opens, notes, due date -- pre-filled from
-// the task being edited. Kept as its own top-level component (not defined
-// inline in the row map) so it isn't recreated every render.
+// Editing an existing custom task uses the same fields as creating one --
+// title, which submenu bar it lives under, which view (if any) its Fix
+// button opens, notes, due date -- pre-filled from the task being edited.
+// Kept as its own top-level component (not defined inline in the row map)
+// so it isn't recreated every render.
 function TaskEditForm({ task, submenuOptions, onSave, onCancel }: {
   task: CustomTask
   submenuOptions: string[]

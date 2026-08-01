@@ -55,6 +55,33 @@ export default function LossFeedTab({ search, kind = 'loss' }: { search: string;
 
   const totalAmt = useMemo(() => filtered.reduce((s, e) => s + e.loss_amt, 0), [filtered])
 
+  // All-Time/Yesterday/This Week/Month/Year period totals -- used to live
+  // pinned into the old Cash Tasks page's "Loss by Date" group; moved here
+  // (loss feed only, not gains) now that Tasks is gone, since this is the
+  // page that actually owns the loss data these summarize. Computed from
+  // every fetched event regardless of the search box, same as before.
+  const periodSummary = useMemo(() => {
+    if (isGain) return null
+    const fmtLocal = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const today0 = new Date(); today0.setHours(0, 0, 0, 0)
+    const y = new Date(today0); y.setDate(y.getDate() - 1)
+    const weekStart = new Date(today0); weekStart.setDate(weekStart.getDate() - ((today0.getDay() + 6) % 7))
+    const monthStart = `${today0.getFullYear()}-${String(today0.getMonth() + 1).padStart(2, '0')}-01`
+    const yearStart = `${today0.getFullYear()}-01-01`
+    const yesterday = fmtLocal(y), ws = fmtLocal(weekStart)
+    const agg = (pred: (d: string) => boolean) => {
+      const list = events.filter(e => pred(e.date))
+      return { n: list.length, amt: parseFloat(list.reduce((s, e) => s + (Number(e.loss_amt) || 0), 0).toFixed(2)) }
+    }
+    return [
+      { label: 'All-Time', period: agg(() => true) },
+      { label: 'Yesterday', period: agg(d => d === yesterday) },
+      { label: 'This Week', period: agg(d => d >= ws) },
+      { label: 'This Month', period: agg(d => d >= monthStart) },
+      { label: 'This Year', period: agg(d => d >= yearStart) },
+    ]
+  }, [events, isGain])
+
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
 
   const sign = isGain ? '+' : '-'
@@ -62,6 +89,16 @@ export default function LossFeedTab({ search, kind = 'loss' }: { search: string;
 
   return (
     <div className="flex flex-col h-full min-h-0">
+      {periodSummary && (
+        <div className="grid grid-cols-5 gap-1 px-3 pt-2 shrink-0">
+          {periodSummary.map(r => (
+            <div key={r.label} className="bg-white border border-gray-200 rounded-lg px-1.5 py-1 text-center">
+              <p className="text-[8px] text-gray-400 truncate">{r.label}</p>
+              <p className={`text-[10px] font-bold ${r.period.n > 0 ? 'text-red-600' : 'text-green-600'}`}>₵{fmtN(r.period.amt)}</p>
+            </div>
+          ))}
+        </div>
+      )}
       <div className={`flex items-center justify-between px-3 py-1.5 border-b shrink-0 ${isGain ? 'bg-amber-50 border-amber-100' : 'bg-red-50 border-red-100'}`}>
         <p className={`text-[10px] font-bold ${isGain ? 'text-amber-800' : 'text-red-800'}`}>
           {isGain

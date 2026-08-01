@@ -25,8 +25,8 @@ class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boole
 import { usePolling } from '@/lib/usePolling'
 import { useViolations } from './_components/useViolations'
 import PaneHomeDaily from './_components/PaneHomeDaily'
-import TasksView, { MyAssignmentsSummary } from './_components/TasksView'
-import PageTasksSection from './_components/PageTasksSection'
+import { MyAssignmentsSummary } from './_components/MyAssignmentsSummary'
+import DynamicTasksSection from './_components/DynamicTasksSection'
 import { COLUMNS, type ColKey } from './_components/lossTabColumns'
 import { useColumnPrefs, ColumnsPickerButton } from './_components/columnPrefs'
 import { MANAGE_LIST_ITEMS, useDynamicManageCategories, type ManageView } from './_components/manageViewData'
@@ -98,7 +98,7 @@ type OuterTab = 'today' | 'loss' | 'uk' | 'ch'
 // CHView is unioned in too even though C&H is its own separate top-level
 // tab, not part of the Grony Cash merge -- it just reuses this same shared
 // state/pane machinery rather than needing its own parallel copy.
-type LossView = 'home' | 'tasks' | 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'lossByItem' | 'lossByTarget' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts' | 'dailySummary'
+type LossView = 'home' | 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'lossByItem' | 'lossByTarget' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts' | 'dailySummary'
   | 'purchaseOrders' | 'item360'
   // Settings' own two non-navigation rows (Manage Categories, View Portal
   // As) become real content destinations too now that Settings is its own
@@ -148,7 +148,7 @@ const OLD_TAB_TO_VIEW: Partial<Record<string, LossView>> = {
 // Manage/Staff view belongs here too -- none of them ever had a Cash-style
 // groups/search bar of their own.
 const REPORT_VIEWS = new Set<LossView>([
-  'home', 'tasks', 'pl', 'cab', 'vendors', 'customers', 'receipts', 'dailySummary',
+  'home', 'pl', 'cab', 'vendors', 'customers', 'receipts', 'dailySummary',
   'purchaseOrders', 'item360', 'manageCategories', 'viewPortalAs', 'reorderLists',
   ...MANAGE_VIEW_KEYS, ...STAFF_VIEW_KEYS, ...CH_VIEW_KEYS,
 ])
@@ -171,14 +171,13 @@ const REPORT_VIEWS = new Set<LossView>([
 //
 // Tasks used to live on the bottom Role Bar (Joe's tab), bundled together
 // with Grony Manage's own violations (the "former Bino bucket" -- staff
-// times, adverts, jingle, equipment checks). That bar is gone now -- Tasks
-// is a left-pane item for whichever section it actually belongs to instead,
-// so Cash only ever shows Cash's own outstanding items (see
-// cashTasksViolations below); Manage's own Tasks row (key 'manageTasks',
-// see manageViewData.ts) gets the same treatment further down this same
-// merged pane.
+// times, adverts, jingle, equipment checks), then later got its own
+// dedicated left-pane item per section (Cash's 'tasks', Manage's
+// 'manageTasks'). Both are gone now too -- every flag type and custom task
+// has its own page-level home (see e.g. ItemsTab/SalesTab's combined flags
+// views, DynamicTasksSection usages throughout), so there's no longer a
+// separate all-in-one Tasks list to maintain in parallel with those.
 const CASH_ITEMS: { key: LossView; label: string; icon: string }[] = [
-  { key: 'tasks',    label: 'Tasks',    icon: '✅' },
   { key: 'items',    label: 'Items',    icon: '📦' },
   { key: 'sales',    label: 'Sales',    icon: '🧾' },
   { key: 'bills',    label: 'Bills',    icon: '📃' },
@@ -334,15 +333,6 @@ const LOSSVIEW_PILL_KEYS: Partial<Record<LossView, string[]>> = {
   sales: ['no_cash', 'missing_days', 'cost_price', 'dup_receipt'],
   cab: ['unchecked_cab'],
 }
-
-// The "former Bino bucket" -- everything in cashViolations that isn't
-// actually a Cash concern. Used to split one merged Tasks list back into
-// Cash's own Tasks and Manage's own Tasks now that each top-level tab has
-// its own left-pane Tasks item instead of one shared Role Bar tab covering
-// both. no_staff_times lands here too (not in its own Staff Tasks list --
-// there isn't one) since Manage is the closest operational home for it, and
-// clicking it still jumps to the Staff tab same as it always has.
-const MANAGE_VIOLATION_TYPES = new Set(['no_staff_times', 'no_advert', 'jingle_overdue', 'equipment_check_overdue', 'shirt_not_worn', 'shirt_overdue'])
 
 const VALID_TABS: OuterTab[] = ['today', 'loss', 'uk', 'ch']
 
@@ -630,16 +620,12 @@ function ItemHubPageInner() {
     }
   }, [items, globalFlags, pendingCounts, serviceViolationCount, prezohoSalesCount, prezohoBillsCount, aliasFlaggedCount, aliasAmbiguousCount, gainsCount])
 
-  // Backs Cash's and Manage's own Tasks, and Manage's Opener/Closer --
+  // Backs every page's own combined flags view, and Manage's Opener/Closer --
   // computed once regardless of which outer tab is showing.
   const {
     cashViolations, openerViolations, openerViolationCount,
     assignments, deadlines, assignedBy, assignedOn, vSettings,
   } = useViolations(violationCounts)
-  const cashTasksViolations = cashViolations.filter(v => !MANAGE_VIOLATION_TYPES.has(v.type))
-  const manageTasksViolations = cashViolations.filter(v => MANAGE_VIOLATION_TYPES.has(v.type))
-  const cashTasksCount = cashTasksViolations.reduce((s, v) => s + v.count, 0)
-  const manageTasksCount = manageTasksViolations.reduce((s, v) => s + v.count, 0)
   // Per-page flag badges (red count on the pane row itself) -- matches
   // exactly what each page's own combined 🚩 flags view covers, so the
   // number on the button is never out of step with what you'd see there.
@@ -967,29 +953,6 @@ function ItemHubPageInner() {
     { label: 'Logs', action: () => pickLossView('logs') },
   ]
 
-  // Just the one destination now -- your own Staff page. Picking a
-  // different staff member's individual records isn't a top-level
-  // destination any more; Joe/Grony do that from the pane's own Viewing
-  // picker / Team section instead (see StaffContent).
-  const staffSubmenus: { label: string; action: () => void }[] = myStaffName
-    ? [{ label: myStaffName, action: () => pickLossView('staffTimes') }]
-    : []
-
-  // Feeds the Tasks panel's blue bars (RolePanel -> RoleFlagsTable) -- one
-  // bar per submenu here, tagged with which section it belongs to. These
-  // three sections all live inside the one merged pane now, but the
-  // grouping labels are still worth keeping -- they describe what each row
-  // actually is, not which top-level tab it's on. The old account
-  // (hamburger) menu used to feed its own 'Account' section here too --
-  // Users, UK, View Portal As, Sign Out -- but every one of those now lives
-  // somewhere with its own real navigation (Users/View Portal As/Sign Out
-  // on the merged pane, UK as its own top-level tab), so there's nothing
-  // left to bucket under 'Account' any more.
-  const taskSubmenus: { label: string; section: string; action: () => void }[] = [
-    ...cashSubmenus.map(s => ({ ...s, section: 'Grony Cash' })),
-    ...manageSubmenus.map(s => ({ ...s, section: 'Grony Manage' })),
-    ...staffSubmenus.map(s => ({ ...s, section: 'Staff' })),
-  ]
 
   // Every tab/sub-tab/menu/page the global search can jump to directly --
   // matched and ranked ahead of the data categories below (Items/
@@ -1006,8 +969,6 @@ function ItemHubPageInner() {
     ...(canSeeCH ? [{ label: 'C&H', action: () => changeTab('ch') }] : []),
     ...cashSubmenus,
     ...manageSubmenus,
-    { label: 'Cash Tasks', action: () => pickLossView('tasks') },
-    { label: 'Manage Tasks', action: () => pickLossView('manageTasks') },
     { label: 'Opener', action: () => pickLossView('opener') },
     { label: 'Closer', action: () => pickLossView('closer') },
   ]
@@ -1101,8 +1062,7 @@ function ItemHubPageInner() {
             {canSeeCash && applyPaneOrder(CASH_ITEMS, paneOrder.cash).filter(v => v.key !== 'pl' || canSeePL).map(v => (
                 <SidePaneButton key={v.key} icon={v.icon} label={v.label} mode={cashDisplayMode}
                   active={paneActive(lossView === v.key)}
-                  badge={v.key === 'tasks' ? cashTasksCount
-                    : v.key === 'sales' ? salesFlagsCount
+                  badge={v.key === 'sales' ? salesFlagsCount
                     : v.key === 'items' ? itemsFlagsCount
                     : v.key === 'cab' ? cabFlagsCount
                     : undefined}
@@ -1115,8 +1075,7 @@ function ItemHubPageInner() {
                 <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Manage</p>
               )}
               {applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage).map(entry => {
-                const badge = entry.key === 'manageTasks' ? manageTasksCount
-                  : entry.key === 'opener' ? openerBadgeCount
+                const badge = entry.key === 'opener' ? openerBadgeCount
                   : entry.key === 'closer' ? (globalFlags?.missingClosingReports?.length ?? 0)
                   : entry.key === 'staff_dress' ? dressFlagsCount
                   : undefined
@@ -1430,37 +1389,25 @@ function ItemHubPageInner() {
         {addForm === 'bill'    && outerTab === 'loss' && lossView === 'bills'    && <div className="px-4"><NewBillForm    onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'expense' && outerTab === 'loss' && lossView === 'expenses' && <div className="px-4"><NewExpenseForm onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'item'    && outerTab === 'loss' && lossView === 'items'    && <div className="px-4"><NewItemForm    onSuccess={() => { setAddForm(null); loadItems() }} /></div>}
-        {outerTab === 'loss' && lossView === 'tasks' && (
-          <TabErrorBoundary>
-            <TasksView
-              violations={cashTasksViolations}
-              allSubmenus={cashSubmenus.map(s => ({ ...s, section: 'Grony Cash' }))}
-              assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
-              isOwnTask={submenu => cashSubmenus.some(s => s.label === submenu)}
-              items={items} onItemsChanged={setItems}
-              showLossSummary onFixLossFeed={() => goToViolation('__loss_feed')}
-            />
-          </TabErrorBoundary>
-        )}
         {outerTab === 'loss' && lossView === 'pl' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-2"><PageTasksSection submenu="P&L" /></div>
+            <div className="px-4 pt-2"><DynamicTasksSection scopeKey="P&L" /></div>
             <ProfitLossTab />
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'vendors' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-2 space-y-2"><PageTasksSection submenu="Vendors" /><VendorsPage initialSearch={vendorSearchText} /></div>
+            <div className="px-4 pt-2 space-y-2"><DynamicTasksSection scopeKey="Vendors" /><VendorsPage initialSearch={vendorSearchText} /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'customers' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-2 space-y-2"><PageTasksSection submenu="Customers" /><CustomersPage initialSearch={customerSearchText} /></div>
+            <div className="px-4 pt-2 space-y-2"><DynamicTasksSection scopeKey="Customers" /><CustomersPage initialSearch={customerSearchText} /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'receipts' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-2 space-y-2"><PageTasksSection submenu="Receipts" /><ReceiptsPage /></div>
+            <div className="px-4 pt-2 space-y-2"><DynamicTasksSection scopeKey="Receipts" /><ReceiptsPage /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'home' && (
@@ -1470,18 +1417,18 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'loss' && lossView === 'dailySummary' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-2"><PageTasksSection submenu="Daily" /></div>
+            <div className="px-4 pt-2"><DynamicTasksSection scopeKey="Daily" /></div>
             <DailySummaryTab />
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'purchaseOrders' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-4 space-y-2"><PageTasksSection submenu="Purchase Orders" /><PurchaseOrdersPage /></div>
+            <div className="px-4 pt-4 space-y-2"><DynamicTasksSection scopeKey="Purchase Orders" /><PurchaseOrdersPage /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'item360' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-2"><PageTasksSection submenu="Item 360" /></div>
+            <div className="px-4 pt-2"><DynamicTasksSection scopeKey="Item 360" /></div>
             <Item360Tab items={items} jumpToItemId={item360JumpId} onJumpDone={() => setItem360JumpId(null)} />
           </TabErrorBoundary>
         )}
@@ -1544,9 +1491,9 @@ function ItemHubPageInner() {
             <GronyManageContent view={lossView as ManageView}
               activeDynamic={dynamicCategories.find(c => c.id === activeDynamicId)}
               canManage={canManage}
-              violations={manageTasksViolations} openerViolations={openerViolations}
+              openerViolations={openerViolations}
               assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
-              manageSubmenus={manageSubmenus} onGoToViolation={goToViolation} onPickView={pickLossView}
+              onGoToViolation={goToViolation}
               missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
               onOpenStaff={() => pickLossView('staffTimes')} />
           </TabErrorBoundary>
@@ -1560,7 +1507,7 @@ function ItemHubPageInner() {
               // otherwise leak into TimesTab/PayslipsTab's own local
               // state across accounts.
               <>
-                {lossView === 'staffTimes' && <div className="px-4 pt-2"><PageTasksSection submenu={myStaffName} /></div>}
+                {lossView === 'staffTimes' && <div className="px-4 pt-2"><DynamicTasksSection scopeKey={myStaffName} /></div>}
                 <StaffContent key={myStaffName} view={lossView as StaffView}
                   viewingName={viewingName} role={role} username={username}
                   canSeeTeam={canSeeTeam} canSeeUsers={canSeeUsers} canSeeRoles={canManage} />
@@ -1586,7 +1533,7 @@ function ItemHubPageInner() {
         )}
         {!showAnalytics && addForm !== 'expense' && outerTab === 'loss' && lossView === 'expenses' && (
           <>
-            <div className="px-3 pt-2"><PageTasksSection submenu="Expenses" /></div>
+            <div className="px-3 pt-2"><DynamicTasksSection scopeKey="Expenses" /></div>
             <ExpensesTab search={search} />
           </>
         )}
@@ -1609,12 +1556,12 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'aliasWide' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-4 space-y-2"><PageTasksSection submenu="Alias Wide Table" /><AliasWidePage /></div>
+            <div className="px-4 pt-4 space-y-2"><DynamicTasksSection scopeKey="Alias Wide Table" /><AliasWidePage /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'serviceMatches' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-4 space-y-2"><PageTasksSection submenu="Service Matches" /><ServiceMatchesPage /></div>
+            <div className="px-4 pt-4 space-y-2"><DynamicTasksSection scopeKey="Service Matches" /><ServiceMatchesPage /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'nameConflicts' && (
@@ -1671,7 +1618,7 @@ function ItemHubPageInner() {
         )}
         {!showAnalytics && addForm !== 'bill' && outerTab === 'loss' && lossView === 'bills' && (
           <>
-            <div className="px-3 pt-2"><PageTasksSection submenu="Bills" /></div>
+            <div className="px-3 pt-2"><DynamicTasksSection scopeKey="Bills" /></div>
             <BillsTab items={items} groupFilter={group} search={search} />
           </>
         )}
@@ -1699,19 +1646,19 @@ function ItemHubPageInner() {
                 </button>
               </div>
             )}
-            {!violation && <div className="px-3 pt-2"><PageTasksSection submenu="Loss by Date" /></div>}
+            {!violation && <div className="px-3 pt-2"><DynamicTasksSection scopeKey="Loss by Date" /></div>}
             <LossFeedTab search={search} kind={(violation === 'gains' || feedShowGains) ? 'gain' : 'loss'} />
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'lossByItem' && (
           <TabErrorBoundary>
-            <div className="px-3 pt-2"><PageTasksSection submenu="Loss by Item" /></div>
+            <div className="px-3 pt-2"><DynamicTasksSection scopeKey="Loss by Item" /></div>
             <LossByItemTab search={search} />
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'lossByTarget' && (
           <TabErrorBoundary>
-            <div className="px-3 pt-2"><PageTasksSection submenu="Loss by Target" /></div>
+            <div className="px-3 pt-2"><DynamicTasksSection scopeKey="Loss by Target" /></div>
             <div className="py-20 text-center text-gray-400 text-xs">Coming soon.</div>
           </TabErrorBoundary>
         )}

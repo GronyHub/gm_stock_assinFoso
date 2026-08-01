@@ -8,7 +8,7 @@ import { isOwnerLevel } from '@/lib/roles'
 import HistoryPanel from './HistoryPanel'
 import { AnalyticsToggle } from './analyticsShared'
 import { useColumnPrefs, ColumnsPickerButton, type ColumnDef } from './columnPrefs'
-import PageTasksSection from './PageTasksSection'
+import DynamicTasksSection from './DynamicTasksSection'
 const CountsAnalyticsSection = dynamic(() => import('./CountsAnalyticsSection'), { ssr: false })
 
 // Date and Item stay sticky/always-visible (first two columns), and the
@@ -585,7 +585,7 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
           <span className="text-[9px] font-semibold text-red-700">🚩 Counts Flags</span>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
-          <PageTasksSection submenu="Counts" />
+          <DynamicTasksSection scopeKey="Counts" />
           {rows.map(r => (
             <div key={r.type} className="bg-white border border-gray-200 rounded-xl p-2.5 flex items-center justify-between gap-2">
               <p className="text-[10px] text-gray-500">

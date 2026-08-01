@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react'
 // GronyManageContent's actual content components (ContentPage, TasksView,
 // etc.) just to render the list of buttons.
 export type ManageView =
-  | 'manageTasks' | 'opener' | 'closer'
+  | 'opener' | 'closer'
   | 'rota'
   | 'audio' | 'audio_status' | 'jingle' | 'equipment' | 'photoshop' | 'whatsapp' | 'cuttings' | 'video' | 'advert_log'
   | 'staff_dress'
@@ -32,7 +32,6 @@ export const LOG_CATEGORIES: { key: ManageView; label: string; icon: string }[] 
 // nested groups. Home/Daily aren't here -- they're the merged pane's shared
 // footer now (see PaneHomeDaily in page.tsx), not Manage-specific rows.
 export const MANAGE_LIST_ITEMS: { key: ManageView; label: string; icon?: string }[] = [
-  { key: 'manageTasks', label: 'Tasks', icon: '✅' },
   { key: 'opener', label: 'Opener', icon: '🌅' },
   { key: 'closer', label: 'Closer', icon: '🌙' },
   { key: 'audio', label: 'Audio', icon: '🎙️' },
