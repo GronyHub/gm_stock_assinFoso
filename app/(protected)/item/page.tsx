@@ -114,7 +114,7 @@ const OLD_LOSSVIEW_TO_EXTRA: Partial<Record<string, ItemsExtraView>> = {
 // StaffContent) a given lossView renders.
 const MANAGE_VIEW_KEYS = new Set<LossView>(MANAGE_LIST_ITEMS.map(i => i.key))
 const STAFF_VIEW_KEYS = new Set<LossView>([
-  ...STAFF_PERSONAL_ITEMS.map(i => i.key), 'staffProfile', ...STAFF_TEAM_ITEMS.map(i => i.key), 'users',
+  ...STAFF_PERSONAL_ITEMS.map(i => i.key), 'staffProfile', ...STAFF_TEAM_ITEMS.map(i => i.key), 'users', 'roles',
 ])
 // C&H's own rows -- same purpose as the two sets above, but for the
 // separate C&H tab's own pane content (see chViewData.ts).
