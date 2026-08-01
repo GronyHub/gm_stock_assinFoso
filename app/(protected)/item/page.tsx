@@ -661,6 +661,7 @@ function ItemHubPageInner() {
     setViolation(null)
     setAddForm(null)
     setShowAnalytics(false)
+    setSettingsOpen(false)
     if (t !== 'loss') setProductType('all')
     if (t === 'loss') setLossView('items')
     if (t === 'ch') setLossView(CH_ITEMS[0].key)
@@ -674,13 +675,19 @@ function ItemHubPageInner() {
   // this jumps straight to a specific row regardless of which outer tab is
   // currently showing, so callers don't need their own changeTab-then-
   // override two-step any more.
-  function pickLossView(view: LossView) {
+  function pickLossView(view: LossView, opts?: { keepSettingsOpen?: boolean }) {
     setOuterTab('loss')
     setLossView(view)
     setActiveDynamicId(null)
     setViolation(null)
     setAddForm(null)
     setShowAnalytics(false)
+    // Settings destinations (Team/Users/Manage Categories/View Portal As,
+    // reached through SettingsPane) pass keepSettingsOpen so browsing among
+    // them doesn't keep closing the pane you're browsing from -- everything
+    // else calling this is a main-pane row, which should always drop
+    // Settings the moment you jump away from it.
+    if (!opts?.keepSettingsOpen) setSettingsOpen(false)
   }
 
   // Joe/Grony's "Viewing" picker -- switches whose personal rows show.
@@ -993,8 +1000,8 @@ function ItemHubPageInner() {
         <SidePaneContainer mode={cashDisplayMode}
             footer={<>
               <PaneHomeDaily mode={cashDisplayMode}
-                onHome={() => { setLossView('home'); setUnreadAnnouncements(0) }}
-                onDaily={() => setLossView('dailySummary')}
+                onHome={() => { setLossView('home'); setUnreadAnnouncements(0); setSettingsOpen(false) }}
+                onDaily={() => { setLossView('dailySummary'); setSettingsOpen(false) }}
                 homeActive={paneActive(lossView === 'home')} dailyActive={paneActive(lossView === 'dailySummary')}
                 unreadAnnouncements={unreadAnnouncements} />
               {/* Formerly the top tab row -- Biz (Grony Cash) is just
@@ -1073,7 +1080,7 @@ function ItemHubPageInner() {
                   {dynamicCategories.map(c => (
                     <div key={c.id} className={`flex items-stretch ${paneActive(activeDynamicId === c.id) ? 'bg-white' : ''}`}>
                       <SidePaneButton icon="🗂️" label={c.label} mode={cashDisplayMode} className="flex-1 min-w-0"
-                        active={paneActive(activeDynamicId === c.id)} onClick={() => setActiveDynamicId(c.id)} />
+                        active={paneActive(activeDynamicId === c.id)} onClick={() => { setActiveDynamicId(c.id); setSettingsOpen(false) }} />
                       {canAddCategory && (
                         <button onClick={() => removeCategory(c.id, c.label)} title="Delete category"
                           className={`shrink-0 px-1.5 pt-2 font-bold text-xs ${paneActive(activeDynamicId === c.id) ? 'text-gray-300 hover:text-red-500' : 'text-blue-200 hover:text-red-300'}`}>×</button>
@@ -1128,7 +1135,7 @@ function ItemHubPageInner() {
               )}
               {UK_PEOPLE.map(p => (
                 <SidePaneButton key={p} icon="👤" label={p} mode={cashDisplayMode}
-                  active={paneActive(uk.person === p)} onClick={() => uk.pickPerson(p)} />
+                  active={paneActive(uk.person === p)} onClick={() => { uk.pickPerson(p); setSettingsOpen(false) }} />
               ))}
 
               <div className="mt-1 pt-1 border-t border-white/30">
@@ -1143,7 +1150,7 @@ function ItemHubPageInner() {
                         className="flex-1 min-w-0 text-[10px] m-1 bg-white border border-blue-300 rounded px-1.5 py-1 outline-none text-gray-900" />
                     ) : (
                       <SidePaneButton icon="📋" label={s.name} mode={cashDisplayMode} className="flex-1 min-w-0"
-                        active={paneActive(uk.selectedSubmenuId === s.id)} onClick={() => uk.pickSubmenu(s.id)} />
+                        active={paneActive(uk.selectedSubmenuId === s.id)} onClick={() => { uk.pickSubmenu(s.id); setSettingsOpen(false) }} />
                     )}
                     {uk.editingSubmenuId === s.id ? (
                       <button onClick={() => uk.saveSubmenuName(s.id)} title="Save"

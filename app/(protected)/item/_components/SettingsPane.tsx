@@ -21,7 +21,7 @@ type Props = {
   myStaffName: string | undefined
   staffRoster: string[]
   pickViewing: (name: string) => void
-  pickLossView: (view: SettingsDestination) => void
+  pickLossView: (view: SettingsDestination, opts?: { keepSettingsOpen?: boolean }) => void
   canSeeTeam: boolean
   canSeeUsers: boolean
   canAddCategory: boolean
@@ -61,7 +61,7 @@ export default function SettingsPane({
             )}
             {STAFF_TEAM_ITEMS.map(t => (
               <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={mode}
-                active={activeView === t.key} onClick={() => pickLossView(t.key)} />
+                active={activeView === t.key} onClick={() => pickLossView(t.key, { keepSettingsOpen: true })} />
             ))}
           </div>
         )}
@@ -73,15 +73,15 @@ export default function SettingsPane({
             )}
             {(canSeeUsers || canManageRoles) && (
               <SidePaneButton icon="🔐" label={canSeeUsers && canManageRoles ? 'Users & Roles' : canManageRoles ? 'Roles & Permissions' : 'Users'}
-                mode={mode} active={activeView === 'users' || activeView === 'roles'} onClick={() => pickLossView('users')} />
+                mode={mode} active={activeView === 'users' || activeView === 'roles'} onClick={() => pickLossView('users', { keepSettingsOpen: true })} />
             )}
             {canAddCategory && (
               <SidePaneButton icon="🗂️" label="Manage Categories" mode={mode}
-                active={activeView === 'manageCategories'} onClick={() => pickLossView('manageCategories')} />
+                active={activeView === 'manageCategories'} onClick={() => pickLossView('manageCategories', { keepSettingsOpen: true })} />
             )}
             {canViewPortalAs && (
               <SidePaneButton icon="👁" label="View Portal As" mode={mode}
-                active={activeView === 'viewPortalAs'} onClick={() => pickLossView('viewPortalAs')} />
+                active={activeView === 'viewPortalAs'} onClick={() => pickLossView('viewPortalAs', { keepSettingsOpen: true })} />
             )}
           </div>
         )}
