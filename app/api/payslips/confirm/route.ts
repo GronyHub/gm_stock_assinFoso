@@ -34,7 +34,15 @@ export async function POST(req: NextRequest) {
       }, { status: 400 })
     }
 
-    const totals = await sql`SELECT COALESCE(SUM(total_salary), 0) AS total FROM payslips WHERE pay_month = ${pay_month}`
+    await sql`ALTER TABLE payslips ADD COLUMN IF NOT EXISTS excluded_from_payment BOOLEAN NOT NULL DEFAULT FALSE`.catch(() => {})
+
+    // Staff marked excluded_from_payment (see /api/payslips/exclude) keep
+    // their generated payslip on record but don't count toward this
+    // month's Salaries expense total.
+    const totals = await sql`
+      SELECT COALESCE(SUM(total_salary), 0) AS total FROM payslips
+      WHERE pay_month = ${pay_month} AND excluded_from_payment = false
+    `
     const total = parseFloat(totals[0].total)
     if (!total || total <= 0) {
       return NextResponse.json({ error: 'No payslips found for this month — save them first' }, { status: 400 })

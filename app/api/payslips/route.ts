@@ -18,13 +18,15 @@ export async function GET() {
     joe: 'Joe', bino: 'Bino', james: 'James', rawlings: 'Rawlings',
   }
 
+  await sql`ALTER TABLE payslips ADD COLUMN IF NOT EXISTS excluded_from_payment BOOLEAN NOT NULL DEFAULT FALSE`.catch(() => {})
+
   let rows
   if (canSeeAll) {
     rows = await sql`
       SELECT id, staff_name, pay_month::text AS pay_month, payment_period,
              hours_worked, pay_for_hours, overtime_hours, pay_for_overtime,
              longevity_days, pay_for_longevity, duty_allowance, data_allowance,
-             childcare_allowance, ssnit, total_salary
+             childcare_allowance, ssnit, total_salary, excluded_from_payment
       FROM payslips
       ORDER BY pay_month DESC, staff_name
     `
@@ -35,7 +37,7 @@ export async function GET() {
       SELECT id, staff_name, pay_month::text AS pay_month, payment_period,
              hours_worked, pay_for_hours, overtime_hours, pay_for_overtime,
              longevity_days, pay_for_longevity, duty_allowance, data_allowance,
-             childcare_allowance, ssnit, total_salary
+             childcare_allowance, ssnit, total_salary, excluded_from_payment
       FROM payslips
       WHERE LOWER(staff_name) = LOWER(${staffName})
       ORDER BY pay_month DESC

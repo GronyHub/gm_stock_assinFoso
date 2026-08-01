@@ -187,6 +187,7 @@ type Payslip = {
   pay_for_overtime: string | null; longevity_days: string | null; pay_for_longevity: string | null
   duty_allowance: string | null; data_allowance: string | null; ssnit: string | null
   childcare_allowance: string | null; total_salary: string | null
+  excluded_from_payment?: boolean
 }
 
 type PaymentConfirmation = { pay_month: string; confirmed_by: string; confirmed_at: string; total_amount: string }
@@ -1074,6 +1075,27 @@ export function PayslipsTab({ role, username, viewingStaff }: { role: string; us
     }
   }
 
+  const [excludeError, setExcludeError] = useState('')
+
+  // Keeps the generated payslip on record (numbers untouched) but leaves it
+  // out of Confirm Payment's total for the month -- for a staff member who
+  // shouldn't actually be paid this time. Only possible before that month
+  // has been confirmed (see /api/payslips/exclude).
+  async function toggleExclude(payslip: Payslip) {
+    setExcludeError('')
+    const next = !payslip.excluded_from_payment
+    setPayslips(prev => prev.map(p => p.id === payslip.id ? { ...p, excluded_from_payment: next } : p))
+    const res = await fetch('/api/payslips/exclude', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: payslip.id, excluded: next }),
+    })
+    if (!res.ok) {
+      setPayslips(prev => prev.map(p => p.id === payslip.id ? { ...p, excluded_from_payment: !next } : p))
+      const d = await res.json().catch(() => ({}))
+      setExcludeError(d.error || 'Could not update. Please try again.')
+    }
+  }
+
   const months = useMemo(() =>
     [...new Set(payslips.map(p => p.pay_month))].sort(), [payslips])
 
@@ -1177,7 +1199,7 @@ export function PayslipsTab({ role, username, viewingStaff }: { role: string; us
                   <div className="bg-white border border-gray-200 rounded-xl p-3 space-y-2">
                     {confirmError && <p className="text-xs text-red-500 font-medium">{confirmError}</p>}
                     <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <p className="text-[11px] text-gray-500">Once every staff member has been paid for {monthLabelFull(selectedMonth)}, confirm payment to record the total as a Salaries expense.</p>
+                      <p className="text-[11px] text-gray-500">Once every staff member has been paid for {monthLabelFull(selectedMonth)}, confirm payment to record the total as a Salaries expense. Anyone marked &quot;Not paying this month&quot; below is left out of the total.</p>
                       <button onClick={confirmPayment} disabled={confirming}
                         className="shrink-0 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-xs font-bold rounded-lg px-4 py-2 transition">
                         {confirming ? 'Confirming…' : '✓ Confirm Payment'}
@@ -1187,43 +1209,55 @@ export function PayslipsTab({ role, username, viewingStaff }: { role: string; us
                 )
               )}
 
+              {excludeError && <p className="text-xs text-red-500 font-medium">{excludeError}</p>}
+
               {/* Summary cards */}
               <div className="grid grid-cols-2 gap-2">
                 {monthlyData.map((p, i) => {
                   const name = ALL_STAFF_NAMES[i]
                   const color = STAFF_COLORS[name] ?? 'bg-gray-100 text-gray-600'
+                  const excluded = !!p?.excluded_from_payment
                   return (
-                    <button key={name}
-                      onClick={() => setExpandedId(expandedId === i ? null : i)}
-                      className={`text-left rounded-xl border p-3 transition ${expandedId === i ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
-                      <div className="flex items-center justify-between">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${color}`}>{name}</span>
-                        <span className="text-sm font-bold text-green-700">{fmtC(p?.total_salary)}</span>
-                      </div>
-                      {p && (
-                        <div className="mt-1.5 text-[10px] text-gray-500 space-y-0.5">
-                          <div className="flex justify-between"><span>Hours</span><span className="font-medium text-gray-700">{p.hours_worked ? parseFloat(p.hours_worked).toFixed(1)+'h' : '—'}</span></div>
-                          <div className="flex justify-between"><span>Pay</span><span className="font-medium text-gray-700">{fmtC(p.pay_for_hours)}</span></div>
-                          {p.overtime_hours && parseFloat(p.overtime_hours) > 0 && (
-                            <div className="flex justify-between"><span>OT</span><span className="font-medium text-orange-600">{fmtC(p.pay_for_overtime)}</span></div>
-                          )}
-                          <div className="flex justify-between"><span>Longevity</span><span className="font-medium text-gray-700">{p.longevity_days ? `${p.longevity_days}d / ${fmtC(p.pay_for_longevity)}` : '—'}</span></div>
-                          <div className="flex justify-between"><span>Duty + Data</span><span className="font-medium text-gray-700">{fmtC(p.duty_allowance)} + {fmtC(p.data_allowance)}</span></div>
-                          {p.childcare_allowance && parseFloat(p.childcare_allowance) > 0 && (
-                            <div className="flex justify-between"><span>Childcare</span><span className="font-medium text-pink-600">{fmtC(p.childcare_allowance)}</span></div>
-                          )}
+                    <div key={name}
+                      className={`text-left rounded-xl border p-3 transition ${expandedId === i ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'} ${excluded ? 'opacity-60' : ''}`}>
+                      <button onClick={() => setExpandedId(expandedId === i ? null : i)} className="w-full text-left">
+                        <div className="flex items-center justify-between">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${color}`}>{name}</span>
+                          <span className={`text-sm font-bold ${excluded ? 'text-gray-400 line-through' : 'text-green-700'}`}>{fmtC(p?.total_salary)}</span>
                         </div>
+                        {p && (
+                          <div className="mt-1.5 text-[10px] text-gray-500 space-y-0.5">
+                            <div className="flex justify-between"><span>Hours</span><span className="font-medium text-gray-700">{p.hours_worked ? parseFloat(p.hours_worked).toFixed(1)+'h' : '—'}</span></div>
+                            <div className="flex justify-between"><span>Pay</span><span className="font-medium text-gray-700">{fmtC(p.pay_for_hours)}</span></div>
+                            {p.overtime_hours && parseFloat(p.overtime_hours) > 0 && (
+                              <div className="flex justify-between"><span>OT</span><span className="font-medium text-orange-600">{fmtC(p.pay_for_overtime)}</span></div>
+                            )}
+                            <div className="flex justify-between"><span>Longevity</span><span className="font-medium text-gray-700">{p.longevity_days ? `${p.longevity_days}d / ${fmtC(p.pay_for_longevity)}` : '—'}</span></div>
+                            <div className="flex justify-between"><span>Duty + Data</span><span className="font-medium text-gray-700">{fmtC(p.duty_allowance)} + {fmtC(p.data_allowance)}</span></div>
+                            {p.childcare_allowance && parseFloat(p.childcare_allowance) > 0 && (
+                              <div className="flex justify-between"><span>Childcare</span><span className="font-medium text-pink-600">{fmtC(p.childcare_allowance)}</span></div>
+                            )}
+                          </div>
+                        )}
+                      </button>
+                      {excluded && <p className="mt-1.5 text-[9px] text-red-500 font-semibold">🚫 Not paying this month</p>}
+                      {canBuild && p && !currentConfirmation && (
+                        <button onClick={() => toggleExclude(p)}
+                          className={`mt-2 w-full text-[10px] font-semibold px-2 py-1 rounded-lg transition ${excluded ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}>
+                          {excluded ? '↩ Include in Payment' : '🚫 Exclude from Payment'}
+                        </button>
                       )}
-                    </button>
+                    </div>
                   )
                 })}
               </div>
 
-              {/* Grand total */}
+              {/* Grand total -- excludes anyone marked "not paying" this
+                  month, matching what Confirm Payment will actually total. */}
               <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 flex justify-between items-center">
                 <span className="text-sm font-bold text-gray-700">Total Salaries & Wages</span>
                 <span className="text-lg font-bold text-green-700">
-                  {fmtC(String(monthlyData.reduce((s, p) => s + (p ? parseFloat(p.total_salary ?? '0') : 0), 0).toFixed(2)))}
+                  {fmtC(String(monthlyData.reduce((s, p) => s + (p && !p.excluded_from_payment ? parseFloat(p.total_salary ?? '0') : 0), 0).toFixed(2)))}
                 </span>
               </div>
 
@@ -1244,24 +1278,32 @@ export function PayslipsTab({ role, username, viewingStaff }: { role: string; us
                       {ALL_STAFF_NAMES.map((name, i) => {
                         const p = monthlyData[i]
                         const color = STAFF_COLORS[name] ?? 'bg-gray-100 text-gray-600'
+                        const excluded = !!p?.excluded_from_payment
                         return (
-                          <tr key={name} className="hover:bg-gray-50">
+                          <tr key={name} className={`hover:bg-gray-50 ${excluded ? 'opacity-60' : ''}`}>
                             <td className="px-3 py-1.5">
                               <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${color}`}>{name}</span>
+                              {excluded && <span className="ml-1 text-[8px] font-bold text-red-500">🚫 not paying</span>}
                             </td>
                             {PAY_COLS.map(c => (
-                              <td key={c.key} className={`text-center px-1 py-1.5 tabular-nums ${c.key === 'total_salary' ? 'font-bold text-green-700' : 'text-gray-600'}`}>
+                              <td key={c.key}
+                                className={`text-center px-1 py-1.5 tabular-nums ${c.key === 'total_salary' ? 'font-bold text-green-700' : 'text-gray-600'} ${excluded && c.key === 'total_salary' ? 'line-through !text-gray-400' : ''}`}>
                                 {p ? c.fmt((p as any)[c.key]) : '—'}
                               </td>
                             ))}
                           </tr>
                         )
                       })}
-                      {/* Totals row */}
+                      {/* Totals row -- total_salary excludes anyone marked
+                          "not paying" this month, same as the Grand Total above. */}
                       <tr className="bg-gray-100 border-t-2 border-gray-300">
                         <td className="px-3 py-1.5 text-[9px] font-bold text-gray-700">TOTAL</td>
                         {PAY_COLS.map(c => {
-                          const sum = monthlyData.reduce((s, p) => s + (p ? parseFloat((p as any)[c.key] ?? '0') || 0 : 0), 0)
+                          const sum = monthlyData.reduce((s, p) => {
+                            if (!p) return s
+                            if (c.key === 'total_salary' && p.excluded_from_payment) return s
+                            return s + (parseFloat((p as any)[c.key] ?? '0') || 0)
+                          }, 0)
                           return (
                             <td key={c.key} className={`text-center px-1 py-1.5 tabular-nums font-bold ${c.key === 'total_salary' ? 'text-green-700' : 'text-gray-600'}`}>
                               {sum > 0 ? (c.key.includes('hours') || c.key === 'longevity_days' || c.key === 'overtime_hours' ? sum.toFixed(1) : `₵${sum.toFixed(2)}`) : '—'}
