@@ -350,8 +350,12 @@ export default function ItemsTab({ items, group, productType, search, violation,
   const [linkingAllUnlinked, setLinkingAllUnlinked] = useState(false)
   const [lossSummary, setLossSummary] = useState<any[] | null>(null)
   const [lossSummaryLoading, setLossSummaryLoading] = useState(false)
+  // One flag icon in the normal toolbar opens a single combined view of
+  // Items' own violation types (no_group, duplicates, not_in_inventory),
+  // each with its own AssignWidget.
+  const [showFlagsSummary, setShowFlagsSummary] = useState(false)
 
-  const needsFlags = violation === 'no_group' || violation === 'duplicates' || violation === 'unlinked_named'
+  const needsFlags = showFlagsSummary || violation === 'no_group' || violation === 'duplicates' || violation === 'unlinked_named'
   const needsNameRes = violation === 'inv_done' || violation === 'inv_todo'
   const needsLossSummary = violation === 'service_violation'
 
@@ -639,7 +643,6 @@ export default function ItemsTab({ items, group, productType, search, violation,
         <p className="text-[10px] text-gray-400 px-2 mb-1">
           {flagsLoading || !flags ? 'Loading…' : `${flags.noGroup.length} item${flags.noGroup.length !== 1 ? 's' : ''} with no group`}
         </p>
-        <div className="px-2 mb-1"><AssignWidget type="no_group" /></div>
         {!flagsLoading && flags && (flags.noGroup.length === 0
           ? <p className="py-4 text-center text-gray-400 text-[10px]">All items have a group.</p>
           : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
@@ -682,7 +685,6 @@ export default function ItemsTab({ items, group, productType, search, violation,
             </button>
           )}
         </div>
-        <div className="px-2 mb-1"><AssignWidget type="duplicates" /></div>
         {!flagsLoading && flags && (activeDups.length === 0
           ? <p className="py-4 text-center text-gray-400 text-[10px]">No duplicate item names found.</p>
           : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
@@ -747,12 +749,47 @@ export default function ItemsTab({ items, group, productType, search, violation,
 
   if (lossLoading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
 
+  // ── COMBINED FLAGS VIEW ── one flag icon covering all of Items' own
+  // violation types together, each with its own assign/deadline control.
+  if (showFlagsSummary) {
+    const rows = [
+      { type: 'no_group', count: flags?.noGroup?.length, label: 'item(s) with no group assigned' },
+      { type: 'duplicates', count: flags?.duplicates?.length, label: 'possible duplicate item pair(s)' },
+      { type: 'not_in_inventory', count: flags?.notInInventory?.length, label: 'item name(s) not found in inventory' },
+    ]
+    return (
+      <div className="flex flex-col h-full min-h-0">
+        <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0">
+          <button onClick={() => setShowFlagsSummary(false)}
+            className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-red-600 text-white transition">
+            ← Back
+          </button>
+          <span className="text-[9px] font-semibold text-red-700">🚩 Items Flags</span>
+        </div>
+        <div className="flex-1 overflow-y-auto p-2 space-y-2">
+          {rows.map(r => (
+            <div key={r.type} className="bg-white border border-gray-200 rounded-xl p-2.5 space-y-1.5">
+              <p className="text-[10px] text-gray-400">
+                {flagsLoading || !flags ? 'Loading…' : `${r.count ?? 0} ${r.label}`}
+              </p>
+              <AssignWidget type={r.type} />
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex h-full min-h-0">
       {/* LEFT: compact item cards */}
       <div ref={leftPaneRef} className="w-1/3 border-r-4 border-blue-600 overflow-y-auto min-h-0">
-        <div className="px-2 py-1 border-b border-gray-100 bg-gray-50 sticky top-0 z-10">
+        <div className="px-2 py-1 border-b border-gray-100 bg-gray-50 sticky top-0 z-10 flex items-center justify-between">
           <span className="text-[9px] text-gray-400">{filteredItems.length} items</span>
+          <button onClick={() => setShowFlagsSummary(true)} title="Item flags -- assign who's responsible for each"
+            className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-700 transition">
+            🚩
+          </button>
         </div>
         {filteredItems.map(item => {
           const soh = Number(item.calculated_soh)

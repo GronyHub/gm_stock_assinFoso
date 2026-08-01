@@ -104,12 +104,65 @@ async function getInstances(violationType: string): Promise<{ label: string; ins
       `
       return { label: 'Duplicate WIC/GMC receipts', instances: rows.map((r: any) => ({ key: `${r.receipt_date}-${r.customer_type}`, date: r.receipt_date, details: `${r.customer_type} on ${r.receipt_date}: ${r.receipt_count} receipts (${r.receipt_numbers})` })) }
     }
+    // These three have no natural "since when" date the way the others do
+    // (a missing group or a duplicate pair isn't stamped with a date it
+    // first appeared) -- `date` is left blank, which only matters for the
+    // rolling threshold_days fallback below; with no deadline set, that
+    // comparison never fires for these, so they're only ever auto-
+    // penalized once someone sets an explicit deadline on the assignment.
+    case 'no_group': {
+      const rows = await sql`
+        SELECT id, canonical_name AS item_name
+        FROM items
+        WHERE (cf_group IS NULL OR TRIM(cf_group) = '') AND LOWER(status) = 'active'
+      `
+      return { label: 'Item with no group assigned', instances: rows.map((r: any) => ({ key: String(r.id), date: '', details: r.item_name })) }
+    }
+    case 'duplicates': {
+      let rows: any[]
+      try {
+        rows = await sql`
+          SELECT a.id AS id1, a.canonical_name AS name1, b.id AS id2, b.canonical_name AS name2
+          FROM items a
+          JOIN items b ON a.id < b.id
+            AND (LOWER(TRIM(a.canonical_name)) = LOWER(TRIM(b.canonical_name)) OR SIMILARITY(LOWER(a.canonical_name), LOWER(b.canonical_name)) > 0.65)
+          WHERE LOWER(a.status) = 'active' AND LOWER(b.status) = 'active'
+            AND NOT EXISTS (SELECT 1 FROM dismissed_duplicates dd WHERE dd.item_id1 = LEAST(a.id, b.id) AND dd.item_id2 = GREATEST(a.id, b.id))
+        `
+      } catch {
+        rows = await sql`
+          SELECT a.id AS id1, a.canonical_name AS name1, b.id AS id2, b.canonical_name AS name2
+          FROM items a
+          JOIN items b ON a.id < b.id AND LOWER(TRIM(a.canonical_name)) = LOWER(TRIM(b.canonical_name))
+          WHERE LOWER(a.status) = 'active' AND LOWER(b.status) = 'active'
+            AND NOT EXISTS (SELECT 1 FROM dismissed_duplicates dd WHERE dd.item_id1 = LEAST(a.id, b.id) AND dd.item_id2 = GREATEST(a.id, b.id))
+        `
+      }
+      return { label: 'Possible duplicate item pair', instances: rows.map((r: any) => ({ key: `${r.id1}-${r.id2}`, date: '', details: `${r.name1} / ${r.name2}` })) }
+    }
+    case 'not_in_inventory': {
+      const rows = await sql`
+        SELECT item_name, source FROM (
+          SELECT DISTINCT COALESCE(resolved_name, raw_item_name) AS item_name, 'Sales Receipt' AS source
+          FROM sales_receipt_lines
+          WHERE NOT EXISTS (SELECT 1 FROM items i WHERE LOWER(i.canonical_name) = LOWER(COALESCE(resolved_name, raw_item_name)))
+          UNION
+          SELECT DISTINCT item_name, 'Stock Count' AS source
+          FROM stock_counts sc
+          WHERE NOT EXISTS (SELECT 1 FROM items i WHERE LOWER(i.canonical_name) = LOWER(sc.item_name))
+        ) t
+      `
+      return { label: 'Item name not found in inventory', instances: rows.map((r: any) => ({ key: `${r.item_name}|${r.source}`, date: '', details: `${r.item_name} (${r.source})` })) }
+    }
     default:
       return { label: violationType, instances: [] }
   }
 }
 
-const AUTO_TYPES = ['missing_days', 'no_cash', 'cost_gte_sell', 'no_staff_times', 'unchecked_cab', 'dup_receipts']
+const AUTO_TYPES = [
+  'missing_days', 'no_cash', 'cost_gte_sell', 'no_staff_times', 'unchecked_cab', 'dup_receipts',
+  'no_group', 'duplicates', 'not_in_inventory',
+]
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')

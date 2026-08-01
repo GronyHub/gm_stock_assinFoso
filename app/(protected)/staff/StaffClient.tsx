@@ -94,7 +94,7 @@ const SEVERITY_COLORS: Record<string, string> = {
 // Rota isn't here -- it's a shared weekly schedule across everyone at once,
 // so it lives under Grony Manage's own submenu instead (see RotaTab's
 // export below), not as one of this per-person/all-staff tab set.
-const TABS = ['Times', 'Payslips', 'Profiles', 'Violations', 'Role', 'Analytics', 'Assignments'] as const
+const TABS = ['Times', 'Payslips', 'Profiles', 'Violations', 'Role', 'Analytics'] as const
 type Tab = (typeof TABS)[number]
 
 const TAB_ICONS: Record<Tab, React.ReactNode> = {
@@ -126,11 +126,6 @@ const TAB_ICONS: Record<Tab, React.ReactNode> = {
   Analytics: (
     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
       <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
-    </svg>
-  ),
-  Assignments: (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-      <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
     </svg>
   ),
 }
@@ -1906,13 +1901,30 @@ export function ViolationsTab({ role, username, viewingStaff }: { role: string; 
   const [form, setForm] = useState({ staff_name: viewName ?? STAFF[0], violation: '', details: '', severity: 'minor', points: '5' })
   const [saving, setSaving] = useState(false)
   const [staffFilter, setStaffFilter] = useState(viewName ?? 'All')
+  // Auto-Penalty Settings used to live on the old standalone Assignments
+  // screen -- moved here since it's about how penalty points get applied
+  // automatically, which is exactly what this screen is now about.
+  const [penaltySettings, setPenaltySettings] = useState<Record<string, string>>({})
+  const [savingSettings, setSavingSettings] = useState(false)
 
   useEffect(() => {
     fetch('/api/staff/violations').then(r => r.ok ? r.json() : null).catch(() => null).then(v => {
       setViolations(Array.isArray(v) ? v : [])
       setLoading(false)
     })
-  }, [])
+    if (!viewingStaff) {
+      fetch('/api/violations/assignments').then(r => r.json()).then(d => setPenaltySettings(d.settings ?? {})).catch(() => {})
+    }
+  }, [viewingStaff])
+
+  async function saveSettings() {
+    setSavingSettings(true)
+    await fetch('/api/violations/assignments', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ settings: penaltySettings }),
+    }).catch(() => {})
+    setSavingSettings(false)
+  }
 
   async function submit() {
     if (!form.violation.trim()) return
@@ -1955,6 +1967,39 @@ export function ViolationsTab({ role, username, viewingStaff }: { role: string; 
   // respectively -- this used to be one of three switchable sub-views.
   return (
         <div className="space-y-4">
+          {!viewingStaff && (
+          <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+            <p className="text-sm font-semibold text-gray-700">Auto-Penalty Settings</p>
+            <p className="text-[11px] text-gray-400">
+              Once an assigned violation has been outstanding this many days, the assigned staff member is
+              automatically penalized the points below. Checked daily. If an assignment has its own deadline
+              set (see its own page&apos;s Assigned control), that fixed date is used instead of this rolling threshold.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] text-gray-500 mb-0.5 block">Threshold (days)</label>
+                <input type="number" min="1" disabled={!canManage}
+                  value={penaltySettings.threshold_days ?? '3'}
+                  onChange={e => setPenaltySettings(s => ({ ...s, threshold_days: e.target.value }))}
+                  className="w-full bg-gray-100 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400" />
+              </div>
+              <div>
+                <label className="text-[10px] text-gray-500 mb-0.5 block">Points per violation</label>
+                <input type="number" min="1" disabled={!canManage}
+                  value={penaltySettings.points_per_violation ?? '5'}
+                  onChange={e => setPenaltySettings(s => ({ ...s, points_per_violation: e.target.value }))}
+                  className="w-full bg-gray-100 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400" />
+              </div>
+            </div>
+            {canManage && (
+              <button onClick={saveSettings} disabled={savingSettings}
+                className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl px-4 py-2 transition">
+                {savingSettings ? 'Saving…' : 'Save Settings'}
+              </button>
+            )}
+          </div>
+          )}
+
           {!viewingStaff && (
           <div className="bg-white border border-gray-200 rounded-xl p-3">
             <p className="text-xs font-semibold text-gray-500 mb-2">Penalty Points Leaderboard</p>
@@ -2874,167 +2919,6 @@ export function AnalyticsTab({ viewingStaff }: { viewingStaff?: string } = {}) {
   )
 }
 
-// ── ASSIGNMENTS TAB ──────────────────────────────────────────────────────────
-
-const VIOLATION_TYPES: { type: string; label: string; auto: boolean }[] = [
-  { type: 'missing_days', label: 'Sales Receipts not entered', auto: true },
-  { type: 'no_cash', label: 'Walk-in receipts missing cash counted', auto: true },
-  { type: 'cost_gte_sell', label: 'Cost Price ≥ Selling Price', auto: true },
-  { type: 'no_staff_times', label: 'Days with no staff times recorded', auto: true },
-  { type: 'unchecked_cab', label: 'Weeks with no Cash at Bank confirmation', auto: true },
-  { type: 'no_group', label: 'Items with no group assigned', auto: false },
-  { type: 'duplicates', label: 'Possible duplicate item pairs', auto: false },
-  { type: 'not_in_inventory', label: 'Item names not found in inventory', auto: false },
-  { type: 'dup_receipts', label: 'Days with duplicate WIC/GMC receipts', auto: true },
-]
-
-export function AssignmentsTab({ role, username, viewingStaff }: { role: string; username: string; viewingStaff?: string }) {
-  const [assignments, setAssignments] = useState<Record<string, string>>({})
-  const [deadlines, setDeadlines] = useState<Record<string, string>>({})
-  const [settings, setSettings] = useState<Record<string, string>>({})
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState<string | null>(null)
-  const [error, setError] = useState('')
-  const canManage = ['owner', 'manager'].includes(role) || username === 'joe'
-
-  function load() {
-    fetch('/api/violations/assignments')
-      .then(r => r.json())
-      .then(d => { setAssignments(d.assignments ?? {}); setDeadlines(d.deadlines ?? {}); setSettings(d.settings ?? {}); setLoading(false) })
-      .catch(() => setLoading(false))
-  }
-
-  useEffect(() => { load() }, [])
-
-  async function assign(type: string, staff: string) {
-    setSaving(type); setError('')
-    const label = VIOLATION_TYPES.find(v => v.type === type)?.label ?? type
-    const res = await fetch('/api/violations/assignments', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ violation_type: type, staff_name: staff || null, violation_label: label, deadline: deadlines[type] || null }),
-    })
-    setSaving(null)
-    if (res.ok) {
-      setAssignments(prev => ({ ...prev, [type]: staff }))
-    } else {
-      const d = await res.json().catch(() => ({}))
-      setError(d.error || 'Could not save assignment. Please try again.')
-    }
-  }
-
-  async function setDeadline(type: string, deadline: string) {
-    const staff = assignments[type]
-    if (!staff) { setError('Assign a staff member before setting a deadline.'); return }
-    setSaving(type); setError('')
-    const label = VIOLATION_TYPES.find(v => v.type === type)?.label ?? type
-    const res = await fetch('/api/violations/assignments', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ violation_type: type, staff_name: staff, violation_label: label, deadline: deadline || null }),
-    })
-    setSaving(null)
-    if (res.ok) {
-      setDeadlines(prev => ({ ...prev, [type]: deadline }))
-    } else {
-      const d = await res.json().catch(() => ({}))
-      setError(d.error || 'Could not save deadline. Please try again.')
-    }
-  }
-
-  async function saveSettings() {
-    setSaving('__settings__'); setError('')
-    const res = await fetch('/api/violations/assignments', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ settings }),
-    })
-    setSaving(null)
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}))
-      setError(d.error || 'Could not save settings. Please try again.')
-    }
-  }
-
-  if (loading) return <div className="py-10 text-center text-gray-400">Loading…</div>
-
-  // A per-person page shows only what's currently assigned to them -- a
-  // read-only-feeling "what they're responsible for" summary rather than
-  // the full shop-wide assignment table. Auto-Penalty Settings is a global
-  // setting, not this person's, so it's hidden entirely here.
-  const visibleTypes = viewingStaff
-    ? VIOLATION_TYPES.filter(v => (assignments[v.type] ?? '').toLowerCase() === viewingStaff.toLowerCase())
-    : VIOLATION_TYPES
-
-  return (
-    <div className="space-y-4">
-      {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
-      {!viewingStaff && (
-      <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
-        <p className="text-sm font-semibold text-gray-700">Auto-Penalty Settings</p>
-        <p className="text-[11px] text-gray-400">
-          Once an assigned violation has been outstanding this many days, the assigned staff member is
-          automatically penalized the points below. Checked daily. If an assignment has its own deadline
-          set, that fixed date is used instead of this rolling threshold.
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className={labelCls}>Threshold (days)</label>
-            <input type="number" min="1" disabled={!canManage}
-              value={settings.threshold_days ?? '3'}
-              onChange={e => setSettings(s => ({ ...s, threshold_days: e.target.value }))}
-              className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>Points per violation</label>
-            <input type="number" min="1" disabled={!canManage}
-              value={settings.points_per_violation ?? '5'}
-              onChange={e => setSettings(s => ({ ...s, points_per_violation: e.target.value }))}
-              className={inputCls} />
-          </div>
-        </div>
-        {canManage && (
-          <button onClick={saveSettings} disabled={saving === '__settings__'}
-            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl px-4 py-2 transition">
-            {saving === '__settings__' ? 'Saving…' : 'Save Settings'}
-          </button>
-        )}
-      </div>
-      )}
-
-      {viewingStaff && visibleTypes.length === 0 && (
-        <p className="py-10 text-center text-gray-400 text-sm">Nothing is currently assigned to {viewingStaff}.</p>
-      )}
-
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
-        {visibleTypes.map(v => {
-          const assignedStaff = assignments[v.type] ?? ''
-          return (
-            <div key={v.type} className="flex items-center justify-between gap-3 px-4 py-3 flex-wrap">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm text-gray-800">{v.label}</p>
-                {!v.auto && <p className="text-[10px] text-gray-400">No auto-penalty — no fixed date to measure against.</p>}
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <input type="date" value={deadlines[v.type] ?? ''}
-                  disabled={!canManage || !assignedStaff || saving === v.type}
-                  onChange={e => setDeadline(v.type, e.target.value)}
-                  title="Deadline — overdue triggers auto-penalty"
-                  className="bg-gray-100 border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-60" />
-                <select value={assignedStaff} disabled={!canManage || saving === v.type}
-                  onChange={e => assign(v.type, e.target.value)}
-                  className="bg-gray-100 border border-gray-200 rounded-lg px-2 py-1.5 text-sm capitalize outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-60">
-                  <option value="">Unassigned</option>
-                  {STAFF.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-                </select>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      {!canManage && <p className="text-[11px] text-gray-400 text-center">Only the owner or manager can change assignments.</p>}
-    </div>
-  )
-}
-
 // ── MAIN ──────────────────────────────────────────────────────────────────────
 
 function StaffClientInner({ role, username, embedded, openAddSignal }: { role: string; username: string; embedded?: boolean; openAddSignal?: number }) {
@@ -3081,7 +2965,6 @@ function StaffClientInner({ role, username, embedded, openAddSignal }: { role: s
       {tab === 'Violations' && <ViolationsTab role={role} username={username} />}
       {tab === 'Role' && <RoleTab role={role} username={username} />}
       {tab === 'Analytics' && <AnalyticsTab />}
-      {tab === 'Assignments' && <AssignmentsTab role={role} username={username} />}
     </div>
   )
 }

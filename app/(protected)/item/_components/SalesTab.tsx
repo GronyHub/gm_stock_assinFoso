@@ -295,9 +295,13 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
   const [newItemQuery, setNewItemQuery] = useState('')
   const [flags, setFlags] = useState<any | null>(null)
   const [flagsLoading, setFlagsLoading] = useState(false)
+  // One flag icon in the normal toolbar opens a single combined view of all
+  // 4 of Sales' own violation types (each with its own AssignWidget) rather
+  // than needing to visit each violation's own full-page view separately.
+  const [showFlagsSummary, setShowFlagsSummary] = useState(false)
   const colPrefs = useColumnPrefs<ColKey>('salesTable', SALES_COLUMNS)
 
-  const needsFlags = violation === 'no_cash' || violation === 'missing_days' || violation === 'cost_price' || violation === 'dup_receipt'
+  const needsFlags = showFlagsSummary || violation === 'no_cash' || violation === 'missing_days' || violation === 'cost_price' || violation === 'dup_receipt'
 
   useEffect(() => {
     if (needsFlags && !flags && !flagsLoading) {
@@ -520,7 +524,6 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
         <p className="text-[10px] text-gray-400 px-2 mb-1">
           {flagsLoading || !flags ? 'Loading…' : `${flags.noCash.length} receipt${flags.noCash.length !== 1 ? 's' : ''} missing cash counted`}
         </p>
-        <div className="px-2 mb-1"><AssignWidget type="no_cash" /></div>
         {!flagsLoading && flags && (flags.noCash.length === 0
           ? <p className="py-4 text-center text-gray-400 text-[10px]">All walk-in receipts have cash counted.</p>
           : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
@@ -541,7 +544,6 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
         <p className="text-[10px] text-gray-400 px-2 mb-1">
           {flagsLoading || !flags ? 'Loading…' : `${flags.missingDays.length} day${flags.missingDays.length !== 1 ? 's' : ''} with no sales receipts`}
         </p>
-        <div className="px-2 mb-1"><AssignWidget type="missing_days" /></div>
         {!flagsLoading && flags && (flags.missingDays.length === 0
           ? <p className="py-4 text-center text-gray-400 text-[10px]">No missing days found.</p>
           : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
@@ -562,7 +564,6 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
         <p className="text-[10px] text-gray-400 px-2 mb-1">
           {flagsLoading || !flags ? 'Loading…' : `${flags.costGteSell.length} line${flags.costGteSell.length !== 1 ? 's' : ''} where cost price ≥ selling price`}
         </p>
-        <div className="px-2 mb-1"><AssignWidget type="cost_gte_sell" /></div>
         {!flagsLoading && flags && (flags.costGteSell.length === 0
           ? <p className="py-4 text-center text-gray-400 text-[10px]">No items sold at or below cost price.</p>
           : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
@@ -583,7 +584,6 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
         <p className="text-[10px] text-gray-400 px-2 mb-1">
           {flagsLoading || !flags ? 'Loading…' : `${flags.dupReceipts.length} day${flags.dupReceipts.length !== 1 ? 's' : ''} with more than one receipt of the same customer type`}
         </p>
-        <div className="px-2 mb-1"><AssignWidget type="dup_receipts" /></div>
         {!flagsLoading && flags && (flags.dupReceipts.length === 0
           ? <p className="py-4 text-center text-gray-400 text-[10px]">No duplicate WIC/GMC receipts found.</p>
           : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
@@ -599,6 +599,38 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
               ))}
             </div>
         )}
+      </div>
+    )
+  }
+
+  // ── COMBINED FLAGS VIEW ── one flag icon covering all 4 of Sales' own
+  // violation types together, each with its own assign/deadline control.
+  if (showFlagsSummary) {
+    const rows = [
+      { type: 'no_cash', count: flags?.noCash?.length, label: 'receipt(s) missing cash counted' },
+      { type: 'missing_days', count: flags?.missingDays?.length, label: 'day(s) with no sales receipts' },
+      { type: 'cost_gte_sell', count: flags?.costGteSell?.length, label: 'line(s) where cost price ≥ selling price' },
+      { type: 'dup_receipts', count: flags?.dupReceipts?.length, label: 'day(s) with duplicate WIC/GMC receipts' },
+    ]
+    return (
+      <div className="flex flex-col h-full min-h-0">
+        <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0">
+          <button onClick={() => setShowFlagsSummary(false)}
+            className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-red-600 text-white transition">
+            ← Back
+          </button>
+          <span className="text-[9px] font-semibold text-red-700">🚩 Sales Flags</span>
+        </div>
+        <div className="flex-1 overflow-y-auto p-2 space-y-2">
+          {rows.map(r => (
+            <div key={r.type} className="bg-white border border-gray-200 rounded-xl p-2.5 space-y-1.5">
+              <p className="text-[10px] text-gray-400">
+                {flagsLoading || !flags ? 'Loading…' : `${r.count ?? 0} ${r.label}`}
+              </p>
+              <AssignWidget type={r.type} />
+            </div>
+          ))}
+        </div>
       </div>
     )
   }
@@ -628,6 +660,10 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
     <div className="flex flex-col h-full min-h-0">
     <div className="flex items-center justify-between px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
       <div className="flex items-center gap-1.5">
+        <button onClick={() => setShowFlagsSummary(true)} title="Sales flags -- assign who's responsible for each"
+          className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-700 transition">
+          🚩
+        </button>
         <button onClick={() => setShowHistory(true)}
           className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700 transition">
           History

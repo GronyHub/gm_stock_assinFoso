@@ -1,7 +1,7 @@
 'use client'
 import dynamic from 'next/dynamic'
 import {
-  TimesTab, PayslipsTab, TeamProfilesTab, ViolationsTab, AnalyticsTab, AssignmentsTab, ALL_STAFF_NAMES,
+  TimesTab, PayslipsTab, TeamProfilesTab, ViolationsTab, AnalyticsTab, ALL_STAFF_NAMES,
 } from '../../staff/StaffClient'
 import ProfileTab from './ProfileTab'
 import type { StaffView } from './staffViewData'
@@ -44,7 +44,6 @@ export default function StaffContent({
     {view === 'staffPayslips' && <PayslipsTab role={role} username={username} viewingStaff={viewingName} />}
     {view === 'staffViolations' && <ViolationsTab role={role} username={username} viewingStaff={viewingName} />}
     {view === 'staffAnalytics' && <AnalyticsTab viewingStaff={viewingName} />}
-    {view === 'staffAssignments' && <AssignmentsTab role={role} username={username} viewingStaff={viewingName} />}
     {view === 'staffProfile' && isSelf && <ProfileTab />}
     {canSeeTeam && view === 'teamPayslips' && <PayslipsTab role={role} username={username} />}
     {canSeeTeam && view === 'teamProfiles' && <TeamProfilesTab />}

@@ -1,8 +1,12 @@
 // Staff's left-pane row data, split out from StaffPersonTab.tsx so
 // item/page.tsx can build the merged Grony Cash pane without importing (and
 // bundling) StaffContent's actual tab components just to know these labels.
+// Assignments (who's responsible for which recurring violation type) used
+// to be its own personal/team tab here -- moved to a small AssignWidget on
+// each violation type's own home page (Sales, Items, CAB, Staff Times)
+// instead, plus a personalized summary in Tasks (see TasksView.tsx).
 export type StaffView =
-  | 'staffTimes' | 'staffPayslips' | 'staffViolations' | 'staffAnalytics' | 'staffAssignments' | 'staffProfile'
+  | 'staffTimes' | 'staffPayslips' | 'staffViolations' | 'staffAnalytics' | 'staffProfile'
   | 'teamPayslips' | 'teamProfiles' | 'allStaff' | 'users' | 'roles'
 
 export const STAFF_PERSONAL_ITEMS: { key: StaffView; label: string; icon: string }[] = [
@@ -10,7 +14,6 @@ export const STAFF_PERSONAL_ITEMS: { key: StaffView; label: string; icon: string
   { key: 'staffPayslips', label: 'Payslips', icon: '💵' },
   { key: 'staffViolations', label: 'Violations', icon: '⚠️' },
   { key: 'staffAnalytics', label: 'Ana', icon: '📊' },
-  { key: 'staffAssignments', label: 'Assignments', icon: '📋' },
 ]
 
 // Rota isn't repeated here -- it's the same RotaTab already listed once
