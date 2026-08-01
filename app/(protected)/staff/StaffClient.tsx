@@ -220,6 +220,28 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
   const displayStaff = viewName ? [viewName] : STAFF
   const isOwnPage = !viewingStaff || viewName === username.toLowerCase()
 
+  // Deactivated (resigned/suspended/etc, see Users page) staff drop out of
+  // the shared history grid below -- their times aren't deleted, just moved
+  // into the separate "Inactive Staff Times" section further down, so the
+  // active roster's columns don't keep showing someone who no longer works
+  // here. Only applies to the shared !viewName view -- a per-person page
+  // (e.g. an admin deliberately looking at one resigned staff member's own
+  // records) still shows that one person regardless of status.
+  const [inactiveStaff, setInactiveStaff] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    fetch('/api/staff/status').then(r => r.ok ? r.json() : [])
+      .then(rows => {
+        const inactive = new Set(
+          (Array.isArray(rows) ? rows : []).filter((r: { username: string; active: boolean }) => r.active === false).map((r: { username: string }) => r.username)
+        )
+        setInactiveStaff(inactive)
+      })
+      .catch(() => {})
+  }, [])
+  const activeDisplayStaff = viewName ? displayStaff : STAFF.filter(s => !inactiveStaff.has(s))
+  const inactiveRosterStaff = viewName ? [] : STAFF.filter(s => inactiveStaff.has(s))
+  const [showInactiveTimes, setShowInactiveTimes] = useState(false)
+
   const [mine, setMine] = useState<Mine>(null)
   const [recent, setRecent] = useState<RecentRow[]>([])
   const [allRecords, setAllRecords] = useState<RecentRow[]>([])
@@ -465,6 +487,123 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
     setSavingEdit(false)
     setEditDate(null)
     load()
+  }
+
+  // Extracted so the same grid (with all its edit/delete interactions) can
+  // render twice -- once for the active roster, once for whichever staff
+  // are deactivated (see the "Inactive Staff Times" section below).
+  function historyTable(staffList: string[]) {
+    const historyGrouped = groupByDate(allRecords)
+    return (
+      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <table className="w-full text-[11px] table-fixed">
+          <colgroup>
+            <col style={{width:'22%'}} />
+            {staffList.map(s => <col key={s} />)}
+          </colgroup>
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th className="text-left px-1.5 py-2 text-gray-500 font-semibold">Date</th>
+              {staffList.map(s => (
+                <th key={s} className="text-center px-0.5 py-2 text-gray-500 font-semibold capitalize">{s}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {historyGrouped.length === 0 && (
+              <tr><td colSpan={staffList.length + 1} className="py-8 text-center text-gray-400">No records yet.</td></tr>
+            )}
+            {historyGrouped.map(([date, map], i) => {
+              const monthKey = date.slice(0, 7)
+              const prevMonthKey = historyGrouped[i - 1]?.[0]?.slice(0, 7)
+              const isMonthStart = prevMonthKey !== monthKey
+              return (
+                <Fragment key={date}>
+                  {isMonthStart && (
+                    <tr className="bg-gray-100 border-t-2 border-b-2 border-gray-300">
+                      <td className="px-1.5 py-2 text-[10px] font-bold text-gray-600 leading-tight">{monthKeyLabel(monthKey)}<br/>Total</td>
+                      {staffList.map(s => {
+                        const mins = allRecords
+                          .filter(r => r.staff_name === s && r.work_date.startsWith(monthKey) && r.actual_in && r.actual_out)
+                          .reduce((sum, r) => {
+                            const tin = parseTimeMins(r.actual_in), tout = parseTimeMins(r.actual_out)
+                            if (tin == null || tout == null) return sum
+                            return sum + (tout >= tin ? tout - tin : (tout + 1440) - tin)
+                          }, 0)
+                        return (
+                          <td key={s} className="text-center px-0.5 py-2 text-[10px] font-bold text-gray-700">
+                            {mins ? minsToHrs(mins) : '—'}
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  )}
+                  <tr className="hover:bg-gray-50">
+                    <td className="px-1.5 py-1.5 text-gray-600 leading-tight">{fmtShortDate(date)}</td>
+                    {staffList.map(s => {
+                      const record = allRecords.find(r => r.staff_name === s && r.work_date === date)
+                      const cellData = map[s]
+                      const isMine = s === username
+                      // adminEditRow?.id === record?.id would be true whenever
+                      // BOTH are undefined (no row open, no record that day),
+                      // wrongly putting every empty cell into edit mode -- the
+                      // `!= null` guard requires a real edit target first.
+                      const isEditing = isAdmin && adminEditRow != null && adminEditRow.id === record?.id
+                      const cellContent = (
+                        <div className="flex flex-col items-center leading-tight">
+                          <span className="text-green-700">{cellData?.in ?? <span className="text-gray-300">—</span>}{cellData?.in && <SourceDot source={cellData.inSource} />}</span>
+                          <span className="text-orange-600">{cellData?.out ?? <span className="text-gray-300">—</span>}{cellData?.out && <SourceDot source={cellData.outSource} />}</span>
+                          {dayDurationLabel(cellData?.in, cellData?.out) && (
+                            <span className="text-[9px] text-gray-400">{dayDurationLabel(cellData?.in, cellData?.out)}</span>
+                          )}
+                        </div>
+                      )
+                      return (
+                        <td key={s} className="px-0.5 py-1 text-center">
+                          {isEditing ? (
+                            <div className="flex flex-col gap-0.5">
+                              <input value={adminEditIn} onChange={e => setAdminEditIn(e.target.value)}
+                                placeholder="in"
+                                className="w-full text-[9px] border border-blue-300 rounded px-1 py-0.5 text-center outline-none" />
+                              <input value={adminEditOut} onChange={e => setAdminEditOut(e.target.value)}
+                                placeholder="out"
+                                className="w-full text-[9px] border border-blue-300 rounded px-1 py-0.5 text-center outline-none" />
+                              <div className="flex gap-0.5">
+                                <button onClick={adminSaveEdit} disabled={adminEditSaving}
+                                  className="flex-1 text-[8px] font-bold bg-green-600 text-white rounded py-0.5 disabled:opacity-40">
+                                  {adminEditSaving ? '…' : '✓'}
+                                </button>
+                                <button onClick={() => record && adminDelete(record)} title="Delete"
+                                  className="text-[8px] font-bold bg-red-50 text-red-500 rounded py-0.5 px-1">✕</button>
+                                <button onClick={() => setAdminEditRow(null)}
+                                  className="flex-1 text-[8px] font-bold bg-gray-100 text-gray-600 rounded py-0.5">—</button>
+                              </div>
+                            </div>
+                          ) : isAdmin && record ? (
+                            <button
+                              onClick={() => { setAdminEditRow(record); setAdminEditIn(record.actual_in ?? ''); setAdminEditOut(record.actual_out ?? '') }}
+                              className="w-full rounded-lg hover:bg-blue-50 py-0.5 transition">
+                              {cellContent}
+                            </button>
+                          ) : !isAdmin && isMine ? (
+                            <button onClick={() => openEdit(date, map)}
+                              className="w-full rounded-lg hover:bg-blue-50 py-0.5 transition">
+                              {cellContent}
+                            </button>
+                          ) : (
+                            cellContent
+                          )}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                </Fragment>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    )
   }
 
   if (loading) return <div className="py-10 text-center text-gray-400">Loading…</div>
@@ -767,119 +906,24 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
           Only the *interaction* differs by who's looking: admins can edit
           any cell (with delete), everyone else can only edit their own
           column, and the rest is read-only. */}
-      {(() => {
-        const historyGrouped = groupByDate(allRecords)
-        return (
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-            <table className="w-full text-[11px] table-fixed">
-              <colgroup>
-                <col style={{width:'22%'}} />
-                {displayStaff.map(s => <col key={s} />)}
-              </colgroup>
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="text-left px-1.5 py-2 text-gray-500 font-semibold">Date</th>
-                  {displayStaff.map(s => (
-                    <th key={s} className="text-center px-0.5 py-2 text-gray-500 font-semibold capitalize">{s}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {historyGrouped.length === 0 && (
-                  <tr><td colSpan={displayStaff.length + 1} className="py-8 text-center text-gray-400">No records yet.</td></tr>
-                )}
-                {historyGrouped.map(([date, map], i) => {
-                  const monthKey = date.slice(0, 7)
-                  const prevMonthKey = historyGrouped[i - 1]?.[0]?.slice(0, 7)
-                  const isMonthStart = prevMonthKey !== monthKey
-                  return (
-                    <Fragment key={date}>
-                      {isMonthStart && (
-                        <tr className="bg-gray-100 border-t-2 border-b-2 border-gray-300">
-                          <td className="px-1.5 py-2 text-[10px] font-bold text-gray-600 leading-tight">{monthKeyLabel(monthKey)}<br/>Total</td>
-                          {displayStaff.map(s => {
-                            const mins = allRecords
-                              .filter(r => r.staff_name === s && r.work_date.startsWith(monthKey) && r.actual_in && r.actual_out)
-                              .reduce((sum, r) => {
-                                const tin = parseTimeMins(r.actual_in), tout = parseTimeMins(r.actual_out)
-                                if (tin == null || tout == null) return sum
-                                return sum + (tout >= tin ? tout - tin : (tout + 1440) - tin)
-                              }, 0)
-                            return (
-                              <td key={s} className="text-center px-0.5 py-2 text-[10px] font-bold text-gray-700">
-                                {mins ? minsToHrs(mins) : '—'}
-                              </td>
-                            )
-                          })}
-                        </tr>
-                      )}
-                      <tr className="hover:bg-gray-50">
-                        <td className="px-1.5 py-1.5 text-gray-600 leading-tight">{fmtShortDate(date)}</td>
-                        {displayStaff.map(s => {
-                          const record = allRecords.find(r => r.staff_name === s && r.work_date === date)
-                          const cellData = map[s]
-                          const isMine = s === username
-                          // adminEditRow?.id === record?.id would be true whenever
-                          // BOTH are undefined (no row open, no record that day),
-                          // wrongly putting every empty cell into edit mode -- the
-                          // `!= null` guard requires a real edit target first.
-                          const isEditing = isAdmin && adminEditRow != null && adminEditRow.id === record?.id
-                          const cellContent = (
-                            <div className="flex flex-col items-center leading-tight">
-                              <span className="text-green-700">{cellData?.in ?? <span className="text-gray-300">—</span>}{cellData?.in && <SourceDot source={cellData.inSource} />}</span>
-                              <span className="text-orange-600">{cellData?.out ?? <span className="text-gray-300">—</span>}{cellData?.out && <SourceDot source={cellData.outSource} />}</span>
-                              {dayDurationLabel(cellData?.in, cellData?.out) && (
-                                <span className="text-[9px] text-gray-400">{dayDurationLabel(cellData?.in, cellData?.out)}</span>
-                              )}
-                            </div>
-                          )
-                          return (
-                            <td key={s} className="px-0.5 py-1 text-center">
-                              {isEditing ? (
-                                <div className="flex flex-col gap-0.5">
-                                  <input value={adminEditIn} onChange={e => setAdminEditIn(e.target.value)}
-                                    placeholder="in"
-                                    className="w-full text-[9px] border border-blue-300 rounded px-1 py-0.5 text-center outline-none" />
-                                  <input value={adminEditOut} onChange={e => setAdminEditOut(e.target.value)}
-                                    placeholder="out"
-                                    className="w-full text-[9px] border border-blue-300 rounded px-1 py-0.5 text-center outline-none" />
-                                  <div className="flex gap-0.5">
-                                    <button onClick={adminSaveEdit} disabled={adminEditSaving}
-                                      className="flex-1 text-[8px] font-bold bg-green-600 text-white rounded py-0.5 disabled:opacity-40">
-                                      {adminEditSaving ? '…' : '✓'}
-                                    </button>
-                                    <button onClick={() => record && adminDelete(record)} title="Delete"
-                                      className="text-[8px] font-bold bg-red-50 text-red-500 rounded py-0.5 px-1">✕</button>
-                                    <button onClick={() => setAdminEditRow(null)}
-                                      className="flex-1 text-[8px] font-bold bg-gray-100 text-gray-600 rounded py-0.5">—</button>
-                                  </div>
-                                </div>
-                              ) : isAdmin && record ? (
-                                <button
-                                  onClick={() => { setAdminEditRow(record); setAdminEditIn(record.actual_in ?? ''); setAdminEditOut(record.actual_out ?? '') }}
-                                  className="w-full rounded-lg hover:bg-blue-50 py-0.5 transition">
-                                  {cellContent}
-                                </button>
-                              ) : !isAdmin && isMine ? (
-                                <button onClick={() => openEdit(date, map)}
-                                  className="w-full rounded-lg hover:bg-blue-50 py-0.5 transition">
-                                  {cellContent}
-                                </button>
-                              ) : (
-                                cellContent
-                              )}
-                            </td>
-                          )
-                        })}
-                      </tr>
-                    </Fragment>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )
-      })()}
+      {historyTable(activeDisplayStaff)}
+
+      {/* Inactive Staff Times -- deactivated staff (resigned/suspended/etc,
+          see Users page) drop out of the grid above, but their clock
+          history isn't deleted -- it's kept here instead, same grid,
+          same admin edit/delete rights, just its own collapsed section
+          so the active roster's table isn't cluttered with someone who
+          no longer works here. */}
+      {inactiveRosterStaff.length > 0 && (
+        <div>
+          <button onClick={() => setShowInactiveTimes(v => !v)}
+            className="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl px-3 py-2">
+            <span className="text-xs font-semibold text-gray-700">🚫 Inactive Staff Times</span>
+            <span className="text-gray-400 text-xs">{showInactiveTimes ? '▲ Hide' : '▼ Show'}</span>
+          </button>
+          {showInactiveTimes && <div className="mt-2">{historyTable(inactiveRosterStaff)}</div>}
+        </div>
+      )}
 
       {/* Edit my time modal */}
       {editDate && (
