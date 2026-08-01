@@ -36,6 +36,7 @@ import type { ViolationView } from '../staff/StaffClient'
 import { SidePaneContainer, SidePaneToggle, SidePaneButton, useSidePaneDisplayMode } from './_components/SidePane'
 import SettingsPane from './_components/SettingsPane'
 import SavedFlash from './_components/SavedFlash'
+import { applyPaneOrder, type PaneOrderMap } from './_components/paneOrder'
 import dynamic from 'next/dynamic'
 const loading = (h: string) => <div className={`py-10 text-center text-gray-400 text-sm`}>{h}</div>
 const ItemsTab       = dynamic(() => import('./_components/ItemsTab'),        { ssr: false, loading: () => loading('Loading…') })
@@ -72,6 +73,7 @@ const Item360Tab = dynamic(() => import('./_components/Item360Tab'),          { 
 const StaffContent = dynamic(() => import('./_components/StaffPersonTab'),    { ssr: false, loading: () => loading('Loading…') })
 const UKTab = dynamic(() => import('./_components/UKTab'), { ssr: false, loading: () => loading('Loading…') })
 const CHTab = dynamic(() => import('./_components/CHTab'), { ssr: false, loading: () => loading('Loading…') })
+const ReorderListsPanel = dynamic(() => import('./_components/ReorderListsPanel'), { ssr: false, loading: () => loading('Loading…') })
 
 // Every real staff member, including Grony -- the third top-level tab shows
 // whichever one of these matches the logged-in username, and that person's
@@ -102,7 +104,7 @@ type LossView = 'home' | 'tasks' | 'items' | 'sales' | 'bills' | 'counts' | 'fee
   // As) become real content destinations too now that Settings is its own
   // side-by-side pane instead of a full-screen takeover -- see
   // SettingsPane.tsx and the settingsOpen block below.
-  | 'manageCategories' | 'viewPortalAs'
+  | 'manageCategories' | 'viewPortalAs' | 'reorderLists'
   | ManageView | StaffView | CHView
 // Alias Wide Table and Service Matches used to be their own lossViews --
 // they're now reached from inside Items itself (see ItemsExtraView below),
@@ -147,7 +149,7 @@ const OLD_TAB_TO_VIEW: Partial<Record<string, LossView>> = {
 // groups/search bar of their own.
 const REPORT_VIEWS = new Set<LossView>([
   'home', 'tasks', 'pl', 'cab', 'vendors', 'customers', 'receipts', 'dailySummary',
-  'purchaseOrders', 'item360', 'manageCategories', 'viewPortalAs',
+  'purchaseOrders', 'item360', 'manageCategories', 'viewPortalAs', 'reorderLists',
   ...MANAGE_VIEW_KEYS, ...STAFF_VIEW_KEYS, ...CH_VIEW_KEYS,
 ])
 
@@ -846,6 +848,13 @@ function ItemHubPageInner() {
   useEffect(() => {
     fetch('/api/user-permissions').then(r => r.ok ? r.json() : {}).then(d => { setRolePermissions(d); setPermsLoaded(true) }).catch(() => setPermsLoaded(true))
   }, [])
+  // Custom Cash/Manage row order (Settings > Reorder Lists) -- shared with
+  // ReorderListsPanel via props so a move there is reflected in this same
+  // pane immediately, not just after a refresh.
+  const [paneOrder, setPaneOrder] = useState<PaneOrderMap>({})
+  useEffect(() => {
+    fetch('/api/pane-order').then(r => r.ok ? r.json() : {}).then(setPaneOrder).catch(() => {})
+  }, [])
   // Cash/Manage default to granted for almost everyone (see
   // DEFAULT_ON_FEATURES) -- until the real map has loaded, assume that
   // rather than briefly hiding the whole Grony Cash/Manage pane for every
@@ -1077,7 +1086,7 @@ function ItemHubPageInner() {
                 relationship to any of these, so the list is just empty
                 (toggle + View/Sign out only) while on either of them. */}
             {outerTab === 'loss' && (<>
-            {canSeeCash && CASH_ITEMS.filter(v => v.key !== 'pl' || canSeePL).map(v => (
+            {canSeeCash && applyPaneOrder(CASH_ITEMS, paneOrder.cash).filter(v => v.key !== 'pl' || canSeePL).map(v => (
                 <SidePaneButton key={v.key} icon={v.icon} label={v.label} mode={cashDisplayMode}
                   active={paneActive(lossView === v.key)} badge={v.key === 'tasks' ? cashTasksCount : undefined}
                   onClick={() => pickLossView(v.key)} />
@@ -1088,7 +1097,7 @@ function ItemHubPageInner() {
               {cashDisplayMode !== 'icon' && (
                 <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Manage</p>
               )}
-              {MANAGE_LIST_ITEMS.map(entry => {
+              {applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage).map(entry => {
                 const badge = entry.key === 'manageTasks' ? manageTasksCount
                   : entry.key === 'opener' ? openerBadgeCount
                   : entry.key === 'closer' ? (globalFlags?.missingClosingReports?.length ?? 0)
@@ -1498,6 +1507,13 @@ function ItemHubPageInner() {
             <div className="px-4 pt-4 max-w-sm space-y-3">
               <h1 className="text-lg font-bold text-gray-900">View Portal As</h1>
               <ViewPortalAsButton extraAllowed={canViewPortalAs} />
+            </div>
+          </TabErrorBoundary>
+        )}
+        {outerTab === 'loss' && lossView === 'reorderLists' && (
+          <TabErrorBoundary>
+            <div className="px-4 pt-4 max-w-sm">
+              <ReorderListsPanel cashItems={CASH_ITEMS} manageItems={MANAGE_LIST_ITEMS} paneOrder={paneOrder} setPaneOrder={setPaneOrder} />
             </div>
           </TabErrorBoundary>
         )}
