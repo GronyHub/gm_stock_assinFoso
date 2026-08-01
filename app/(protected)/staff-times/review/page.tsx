@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { fmtDate } from '@/lib/fmtDate'
 import { NoStaffTimesList } from '../../staff/StaffClient'
+import AssignWidget from '../../item/_components/AssignWidget'
 
 type RecentRow = { id?: number; staff_name: string; work_date: string; actual_in: string | null; actual_out: string | null; entered_by: string | null }
 
@@ -157,6 +158,8 @@ export default function FlaggedTimesReviewPage() {
         <h1 className="text-xl font-bold">🚩 Flagged Times</h1>
         <p className="text-sm text-gray-500 mt-1">Clock records worth a second look, for review.</p>
       </div>
+
+      <AssignWidget type="no_staff_times" />
 
       {loading ? (
         <p className="text-center text-gray-400 py-10">Loading…</p>

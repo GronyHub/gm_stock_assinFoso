@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, Fragment } from 'react'
 import { useSession } from 'next-auth/react'
 import { fmtDate } from '@/lib/fmtDate'
 import { CATEGORIES, CAT_ICON, CAT_COLOR, CHILDREN_SUBCATEGORIES, type PersonalEntry } from './PersonalTab'
+import AssignWidget from './AssignWidget'
 
 type Row = {
   entry_date: string
@@ -493,6 +494,7 @@ export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: numb
         <StatCard label="Last Confirmed" value={latestConfirmed ? fmtn(latestConfirmed.cab_total) : '—'} sub={latestConfirmed ? fmtDate(String(latestConfirmed.entry_date).slice(0,10)) : 'No confirmations yet'} tone="green" />
         <StatCard label="Unconfirmed Weeks" value={flagsLoading ? '…' : String(unconfirmedCount)} tone={unconfirmedCount > 0 ? 'red' : 'green'} />
       </div>
+      <div className="px-2 pb-2 shrink-0"><AssignWidget type="unchecked_cab" /></div>
 
       <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0">
         <button onClick={() => setShowWeekly(false)}

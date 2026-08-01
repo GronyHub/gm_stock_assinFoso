@@ -4,6 +4,7 @@ import { fmtDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
 import { usePresenceReporter } from '@/lib/usePresenceReporter'
 import AliasesTab from './AliasesTab'
+import AssignWidget from './AssignWidget'
 
 // The Aliases pill was split into 4 individual violation types (each with
 // its own count on Joe's Role Bar panel) instead of one combined "Aliases"
@@ -638,6 +639,7 @@ export default function ItemsTab({ items, group, productType, search, violation,
         <p className="text-[10px] text-gray-400 px-2 mb-1">
           {flagsLoading || !flags ? 'Loading…' : `${flags.noGroup.length} item${flags.noGroup.length !== 1 ? 's' : ''} with no group`}
         </p>
+        <div className="px-2 mb-1"><AssignWidget type="no_group" /></div>
         {!flagsLoading && flags && (flags.noGroup.length === 0
           ? <p className="py-4 text-center text-gray-400 text-[10px]">All items have a group.</p>
           : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
@@ -680,6 +682,7 @@ export default function ItemsTab({ items, group, productType, search, violation,
             </button>
           )}
         </div>
+        <div className="px-2 mb-1"><AssignWidget type="duplicates" /></div>
         {!flagsLoading && flags && (activeDups.length === 0
           ? <p className="py-4 text-center text-gray-400 text-[10px]">No duplicate item names found.</p>
           : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">

@@ -5,6 +5,7 @@ import { fmtDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
 import { useColumnPrefs, ColumnsPickerButton, type ColumnDef } from './columnPrefs'
+import AssignWidget from './AssignWidget'
 
 type Item = { id: number; item_name: string; cf_group: string | null }
 
@@ -519,6 +520,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
         <p className="text-[10px] text-gray-400 px-2 mb-1">
           {flagsLoading || !flags ? 'Loading…' : `${flags.noCash.length} receipt${flags.noCash.length !== 1 ? 's' : ''} missing cash counted`}
         </p>
+        <div className="px-2 mb-1"><AssignWidget type="no_cash" /></div>
         {!flagsLoading && flags && (flags.noCash.length === 0
           ? <p className="py-4 text-center text-gray-400 text-[10px]">All walk-in receipts have cash counted.</p>
           : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
@@ -539,6 +541,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
         <p className="text-[10px] text-gray-400 px-2 mb-1">
           {flagsLoading || !flags ? 'Loading…' : `${flags.missingDays.length} day${flags.missingDays.length !== 1 ? 's' : ''} with no sales receipts`}
         </p>
+        <div className="px-2 mb-1"><AssignWidget type="missing_days" /></div>
         {!flagsLoading && flags && (flags.missingDays.length === 0
           ? <p className="py-4 text-center text-gray-400 text-[10px]">No missing days found.</p>
           : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
@@ -559,6 +562,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
         <p className="text-[10px] text-gray-400 px-2 mb-1">
           {flagsLoading || !flags ? 'Loading…' : `${flags.costGteSell.length} line${flags.costGteSell.length !== 1 ? 's' : ''} where cost price ≥ selling price`}
         </p>
+        <div className="px-2 mb-1"><AssignWidget type="cost_gte_sell" /></div>
         {!flagsLoading && flags && (flags.costGteSell.length === 0
           ? <p className="py-4 text-center text-gray-400 text-[10px]">No items sold at or below cost price.</p>
           : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
@@ -579,6 +583,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
         <p className="text-[10px] text-gray-400 px-2 mb-1">
           {flagsLoading || !flags ? 'Loading…' : `${flags.dupReceipts.length} day${flags.dupReceipts.length !== 1 ? 's' : ''} with more than one receipt of the same customer type`}
         </p>
+        <div className="px-2 mb-1"><AssignWidget type="dup_receipts" /></div>
         {!flagsLoading && flags && (flags.dupReceipts.length === 0
           ? <p className="py-4 text-center text-gray-400 text-[10px]">No duplicate WIC/GMC receipts found.</p>
           : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
