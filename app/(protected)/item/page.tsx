@@ -32,7 +32,6 @@ import { MANAGE_LIST_ITEMS, useDynamicManageCategories, type ManageView } from '
 import { STAFF_PERSONAL_ITEMS, STAFF_TEAM_ITEMS, type StaffView } from './_components/staffViewData'
 import { CH_ITEMS, type CHView } from './_components/chViewData'
 import { useUKData, UK_PEOPLE } from './_components/ukViewData'
-import type { ViolationView } from '../staff/StaffClient'
 import { SidePaneContainer, SidePaneToggle, SidePaneButton, useSidePaneDisplayMode } from './_components/SidePane'
 import SettingsPane from './_components/SettingsPane'
 import SavedFlash from './_components/SavedFlash'
@@ -440,8 +439,6 @@ function ItemHubPageInner() {
   // apply to. Only Joe/Grony ever change this away from their own name;
   // everyone else always views themself (see viewingName below).
   const [viewingNameOverride, setViewingNameOverride] = useState<string | undefined>(undefined)
-  const [vtab, setVtab] = useState<ViolationView>('Disciplinary')
-  const [teamVtab, setTeamVtab] = useState<ViolationView>('Disciplinary')
 
   // UK's people + per-person submenus + selected submenu's columns/rows --
   // shared between the merged pane (people picker, submenu list with add/
@@ -1534,14 +1531,12 @@ function ItemHubPageInner() {
             {myStaffName ? (
               // key forces a full remount whenever the logged-in identity
               // changes (e.g. an admin switching "View as" between staff
-              // without leaving this tab) -- StaffContent's own vtab/
-              // teamVtab state lives up here now, but a stale identity could
-              // still otherwise leak into TimesTab/PayslipsTab's own local
+              // without leaving this tab) -- a stale identity could
+              // otherwise leak into TimesTab/PayslipsTab's own local
               // state across accounts.
               <StaffContent key={myStaffName} view={lossView as StaffView}
                 viewingName={viewingName} role={role} username={username}
-                canSeeTeam={canSeeTeam} canSeeUsers={canSeeUsers} canSeeRoles={canManage}
-                vtab={vtab} setVtab={setVtab} teamVtab={teamVtab} setTeamVtab={setTeamVtab} />
+                canSeeTeam={canSeeTeam} canSeeUsers={canSeeUsers} canSeeRoles={canManage} />
             ) : (
               <p className="py-10 text-center text-gray-400 text-sm px-4">No staff profile is set up for your account.</p>
             )}

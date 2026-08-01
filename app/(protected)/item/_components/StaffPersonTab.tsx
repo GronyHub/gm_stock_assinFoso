@@ -3,7 +3,6 @@ import dynamic from 'next/dynamic'
 import {
   TimesTab, PayslipsTab, ViolationsTab, AnalyticsTab, AssignmentsTab, ALL_STAFF_NAMES,
 } from '../../staff/StaffClient'
-import type { ViolationView } from '../../staff/StaffClient'
 import ProfileTab from './ProfileTab'
 import type { StaffView } from './staffViewData'
 
@@ -31,26 +30,24 @@ const AccessPage = dynamic(() => import('./AccessPage'), {
 // independently now (Roles & Permissions screen) instead of one blanket
 // isBuilder flag, so a role can be granted Team without also getting Users.
 export default function StaffContent({
-  view, viewingName, role, username, canSeeTeam, canSeeUsers, canSeeRoles, vtab, setVtab, teamVtab, setTeamVtab, openAddSignal,
+  view, viewingName, role, username, canSeeTeam, canSeeUsers, canSeeRoles, openAddSignal,
 }: {
   view: StaffView
   viewingName: string
   role: string; username: string
   canSeeTeam: boolean; canSeeUsers: boolean; canSeeRoles: boolean
-  vtab: ViolationView; setVtab: (v: ViolationView) => void
-  teamVtab: ViolationView; setTeamVtab: (v: ViolationView) => void
   openAddSignal?: number
 }) {
   const isSelf = viewingName.toLowerCase() === username.toLowerCase()
   return (<>
     {view === 'staffTimes' && <TimesTab username={username} role={role} openAddSignal={isSelf ? openAddSignal : undefined} />}
     {view === 'staffPayslips' && <PayslipsTab role={role} username={username} viewingStaff={viewingName} />}
-    {view === 'staffViolations' && <ViolationsTab role={role} username={username} vtab={vtab} setVtab={setVtab} viewingStaff={viewingName} />}
+    {view === 'staffViolations' && <ViolationsTab role={role} username={username} viewingStaff={viewingName} />}
     {view === 'staffAnalytics' && <AnalyticsTab viewingStaff={viewingName} />}
     {view === 'staffAssignments' && <AssignmentsTab role={role} username={username} viewingStaff={viewingName} />}
     {view === 'staffProfile' && isSelf && <ProfileTab />}
     {canSeeTeam && view === 'teamPayslips' && <PayslipsTab role={role} username={username} />}
-    {canSeeTeam && view === 'allStaff' && <ViolationsTab role={role} username={username} vtab={teamVtab} setVtab={setTeamVtab} />}
+    {canSeeTeam && view === 'allStaff' && <ViolationsTab role={role} username={username} />}
     {(canSeeUsers || canSeeRoles) && (view === 'users' || view === 'roles') && (
       <AccessPage initialTab={view === 'roles' ? 'roles' : 'users'} canSeeUsers={canSeeUsers} canSeeRoles={canSeeRoles} />
     )}

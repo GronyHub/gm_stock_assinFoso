@@ -1894,43 +1894,12 @@ function PayslipBuilder({ payslips, onSaved }: { payslips: Payslip[]; onSaved: (
 
 // ── VIOLATIONS TAB ────────────────────────────────────────────────────────────
 
-const VIOLATION_VIEWS = ['Disciplinary', 'Payslips', 'Times'] as const
-export type ViolationView = (typeof VIOLATION_VIEWS)[number]
-
-const VIOLATION_ICONS: Record<ViolationView, React.ReactNode> = {
-  Disciplinary: (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-    </svg>
-  ),
-  Payslips: (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-    </svg>
-  ),
-  Times: (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-    </svg>
-  ),
-}
-
-export function ViolationsTab({ role, username, vtab, setVtab, viewingStaff }: { role: string; username: string; vtab: ViolationView; setVtab: (v: ViolationView) => void; viewingStaff?: string }) {
-  const PAYSLIP_MONTHS = ['2026-04', '2026-05']
-  const PAYSLIP_MONTH_LABELS: Record<string, string> = { '2026-04': 'April 2026', '2026-05': 'May 2026' }
-
-  // Payslips/Times are shop-wide admin checklists (who's missing what),
-  // not this one person's records -- a per-person page only ever shows
-  // Disciplinary, locked to their own history.
-  const vview = viewingStaff ? 'Disciplinary' : vtab
-  const setVview = setVtab
+export function ViolationsTab({ role, username, viewingStaff }: { role: string; username: string; viewingStaff?: string }) {
   // STAFF (and every staff_name this writes) is lowercase -- normalize here
   // so a caller can pass either casing without silently forking a person's
   // records into two different-cased staff_name values.
   const viewName = viewingStaff?.toLowerCase()
   const [violations, setViolations] = useState<Violation[]>([])
-  const [noTimesDays, setNoTimesDays] = useState<string[]>([])
-  const [missingPayslips, setMissingPayslips] = useState<{ staff: string; month: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ staff_name: viewName ?? STAFF[0], violation: '', details: '', severity: 'minor', points: '5' })
@@ -1938,24 +1907,8 @@ export function ViolationsTab({ role, username, vtab, setVtab, viewingStaff }: {
   const [staffFilter, setStaffFilter] = useState(viewName ?? 'All')
 
   useEffect(() => {
-    const safe = (p: Promise<Response>) => p.then(r => r.ok ? r.json() : null).catch(() => null)
-    Promise.all([
-      safe(fetch('/api/staff/violations')),
-      safe(fetch('/api/flags')),
-      safe(fetch('/api/payslips')),
-    ]).then(([v, flags, payslips]) => {
+    fetch('/api/staff/violations').then(r => r.ok ? r.json() : null).catch(() => null).then(v => {
       setViolations(Array.isArray(v) ? v : [])
-      setNoTimesDays((flags?.noStaffTimes ?? []).map((r: any) => r.missing_date))
-      const existing = new Set(
-        (Array.isArray(payslips) ? payslips : []).map((p: any) => `${p.staff_name}|${p.pay_month?.slice(0, 7)}`)
-      )
-      const missing: { staff: string; month: string }[] = []
-      for (const month of PAYSLIP_MONTHS) {
-        for (const s of STAFF) {
-          if (!existing.has(`${s}|${month}`)) missing.push({ staff: s, month })
-        }
-      }
-      setMissingPayslips(missing)
       setLoading(false)
     })
   }, [])
@@ -1994,42 +1947,12 @@ export function ViolationsTab({ role, username, vtab, setVtab, viewingStaff }: {
     return STAFF.map(s => ({ staff: s, points: totals[s] ?? 0 })).sort((a, b) => b.points - a.points)
   }, [violations])
 
-  const vviewCounts: Record<ViolationView, number> = {
-    Disciplinary: violations.length,
-    Payslips: missingPayslips.length,
-    Times: noTimesDays.length,
-  }
-
   if (loading) return <div className="py-10 text-center text-gray-400">Loading…</div>
 
+  // Disciplinary is the only thing left here now that Payslips/Times moved
+  // to Staff Payments (Manage) and the Times tab's own flag page,
+  // respectively -- this used to be one of three switchable sub-views.
   return (
-    <div className="space-y-4">
-      {/* ── sub-menu row (hidden when locked to one person's Disciplinary record) ── */}
-      {!viewingStaff && (
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {VIOLATION_VIEWS.map(v => {
-          const count = vviewCounts[v]
-          const active = vview === v
-          return (
-            <button key={v} onClick={() => setVview(v)} title={`${count} ${v.toLowerCase()}`}
-              className={`relative shrink-0 flex flex-col items-center gap-0.5 px-4 py-2 rounded-xl text-[10px] font-semibold transition
-                ${active ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
-              {VIOLATION_ICONS[v]}
-              {v}
-              {count > 0 && (
-                <span className={`absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold flex items-center justify-center
-                  ${active ? 'bg-white text-red-600' : 'bg-red-500 text-white'}`}>
-                  {count}
-                </span>
-              )}
-            </button>
-          )
-        })}
-      </div>
-      )}
-
-      {/* ── Disciplinary ── */}
-      {vview === 'Disciplinary' && (
         <div className="space-y-4">
           {!viewingStaff && (
           <div className="bg-white border border-gray-200 rounded-xl p-3">
@@ -2145,57 +2068,6 @@ export function ViolationsTab({ role, username, vtab, setVtab, viewingStaff }: {
             ))
           }
         </div>
-      )}
-
-      {/* ── Missing Payslips ── */}
-      {vview === 'Payslips' && (
-        <div className="space-y-3">
-          <p className="text-[11px] text-gray-400">
-            Joe must provide payslips for all staff for April 2026 and May 2026.
-          </p>
-          {missingPayslips.length === 0 ? (
-            <p className="py-10 text-center text-gray-400 text-sm">All payslips are in. ✓</p>
-          ) : (
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
-              {PAYSLIP_MONTHS.map(month => {
-                const staffMissing = missingPayslips.filter(p => p.month === month).map(p => p.staff)
-                if (staffMissing.length === 0) return (
-                  <div key={month} className="flex items-center justify-between px-4 py-3">
-                    <span className="text-sm font-semibold text-gray-700">{PAYSLIP_MONTH_LABELS[month]}</span>
-                    <span className="text-xs text-green-600 font-semibold">Complete ✓</span>
-                  </div>
-                )
-                return (
-                  <div key={month} className="px-4 py-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold text-gray-700">{PAYSLIP_MONTH_LABELS[month]}</span>
-                      <span className="text-[10px] text-orange-600 font-semibold">{staffMissing.length} missing</span>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {staffMissing.map(s => (
-                        <span key={s} className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STAFF_COLORS[s.charAt(0).toUpperCase()+s.slice(1)] ?? 'bg-gray-100 text-gray-600'}`}>
-                          {s.charAt(0).toUpperCase()+s.slice(1)}
-                        </span>
-                      ))}
-                    </div>
-                    <p className="text-[11px] text-gray-400">Assigned to: <span className="font-semibold text-blue-600">Joe</span></p>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Missing Staff Times ── */}
-      {vview === 'Times' && (
-        <div className="space-y-3">
-          <p className="text-[11px] text-gray-400">Days that have a sales receipt but no staff time was entered.</p>
-          <NoStaffTimesList dates={noTimesDays} role={role} username={username}
-            onFixed={d => setNoTimesDays(prev => prev.filter(x => x !== d))} />
-        </div>
-      )}
-    </div>
   )
 }
 
@@ -3170,25 +3042,12 @@ function StaffClientInner({ role, username, embedded, openAddSignal }: { role: s
   const pathname = usePathname()
 
   const initialTab = searchParams.get('tab')
-  const initialVtab = searchParams.get('vtab')
   const [tab, setTabState] = useState<Tab>(TABS.includes(initialTab as Tab) ? (initialTab as Tab) : 'Times')
-  const [vtab, setVtabState] = useState<ViolationView>(
-    VIOLATION_VIEWS.includes(initialVtab as ViolationView) ? (initialVtab as ViolationView) : 'Disciplinary'
-  )
 
   const setTab = useCallback((t: Tab) => {
     setTabState(t)
     const p = new URLSearchParams(searchParams.toString())
     p.set('tab', t)
-    if (t !== 'Violations') p.delete('vtab')
-    router.replace(`${pathname}?${p.toString()}`, { scroll: false })
-  }, [searchParams, router, pathname])
-
-  const setVtab = useCallback((v: ViolationView) => {
-    setVtabState(v)
-    const p = new URLSearchParams(searchParams.toString())
-    p.set('tab', 'Violations')
-    p.set('vtab', v)
     router.replace(`${pathname}?${p.toString()}`, { scroll: false })
   }, [searchParams, router, pathname])
 
@@ -3217,7 +3076,7 @@ function StaffClientInner({ role, username, embedded, openAddSignal }: { role: s
 
       {tab === 'Times' && <TimesTab username={username} role={role} openAddSignal={openAddSignal} />}
       {tab === 'Payslips' && <PayslipsTab role={role} username={username} />}
-      {tab === 'Violations' && <ViolationsTab role={role} username={username} vtab={vtab} setVtab={setVtab} />}
+      {tab === 'Violations' && <ViolationsTab role={role} username={username} />}
       {tab === 'Role' && <RoleTab role={role} username={username} />}
       {tab === 'Analytics' && <AnalyticsTab />}
       {tab === 'Assignments' && <AssignmentsTab role={role} username={username} />}

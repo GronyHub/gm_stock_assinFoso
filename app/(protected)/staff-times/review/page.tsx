@@ -1,7 +1,9 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 import { fmtDate } from '@/lib/fmtDate'
+import { NoStaffTimesList } from '../../staff/StaffClient'
 
 type RecentRow = { id?: number; staff_name: string; work_date: string; actual_in: string | null; actual_out: string | null; entered_by: string | null }
 
@@ -91,12 +93,19 @@ function TimesTable({ rows, emptyText }: { rows: RecentRow[]; emptyText: string 
 }
 
 export default function FlaggedTimesReviewPage() {
+  const { data: session } = useSession()
+  const role = (session?.user as any)?.role ?? 'staff'
+  const username = (session?.user as any)?.username ?? session?.user?.name ?? ''
   const [longShifts, setLongShifts] = useState<(RecentRow & { mins: number })[] | null>(null)
   const [incomplete, setIncomplete] = useState<RecentRow[] | null>(null)
   const [pmClockIns, setPmClockIns] = useState<RecentRow[] | null>(null)
   const [amClockOuts, setAmClockOuts] = useState<RecentRow[] | null>(null)
+  const [noStaffTimes, setNoStaffTimes] = useState<string[] | null>(null)
 
   useEffect(() => {
+    fetch('/api/flags').then(r => r.ok ? r.json() : null).then(d => {
+      setNoStaffTimes((d?.noStaffTimes ?? []).map((r: { missing_date: string }) => r.missing_date))
+    }).catch(() => setNoStaffTimes([]))
     fetch('/api/staff-times/all').then(r => r.ok ? r.json() : []).then(d => {
       const all: RecentRow[] = Array.isArray(d) ? d : []
       const today = ghanaToday()
@@ -137,7 +146,7 @@ export default function FlaggedTimesReviewPage() {
     }).catch(() => { setLongShifts([]); setIncomplete([]); setPmClockIns([]); setAmClockOuts([]) })
   }, [])
 
-  const loading = longShifts === null || incomplete === null || pmClockIns === null || amClockOuts === null
+  const loading = longShifts === null || incomplete === null || pmClockIns === null || amClockOuts === null || noStaffTimes === null
 
   return (
     <div className="py-4 space-y-6">
@@ -179,6 +188,15 @@ export default function FlaggedTimesReviewPage() {
               Over {FLAG_HOURS} Hours {longShifts.length > 0 && <span className="text-gray-400 font-normal">({longShifts.length})</span>}
             </h2>
             <LongShiftsTable rows={longShifts} />
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="text-sm font-semibold text-gray-700">
+              No Staff Times Recorded {noStaffTimes.length > 0 && <span className="text-gray-400 font-normal">({noStaffTimes.length})</span>}
+            </h2>
+            <p className="text-xs text-gray-400">Days that have a sales receipt but no staff time was entered.</p>
+            <NoStaffTimesList dates={noStaffTimes} role={role} username={username}
+              onFixed={d => setNoStaffTimes(prev => prev ? prev.filter(x => x !== d) : prev)} />
           </div>
         </>
       )}

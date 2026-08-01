@@ -3,21 +3,23 @@ import { useState, useEffect } from 'react'
 import ManageLogPanel from './ManageLogPanel'
 import ContentPage from './ContentPage'
 import DynamicTasksSection from './DynamicTasksSection'
+import PayslipFlagsPanel from './PayslipFlagsPanel'
 import SavedFlash from './SavedFlash'
 
-type ContentType = 'log' | 'notes' | 'tasks'
+type ContentType = 'log' | 'notes' | 'tasks' | 'payslip_flags'
 type CategoryTab = { id: number; category_id: number; label: string; content_type: ContentType }
 
 const CONTENT_TYPE_OPTIONS: { value: ContentType; label: string }[] = [
   { value: 'log', label: 'Log (notes + photo)' },
   { value: 'notes', label: 'Notes (free text)' },
   { value: 'tasks', label: 'Tasks (to-do list)' },
+  { value: 'payslip_flags', label: 'Payslip Flags (missing payslips)' },
 ]
 
 // A user-added Grony Manage category's own page -- its content is entirely
 // whatever tabs have been added to it (see manage-category-tabs), each
-// backed by one of three reusable content types instead of bespoke code.
-// Read access is open to everyone; adding/removing a tab is owner-level
+// backed by one of a small set of reusable content types instead of
+// bespoke code. Read access is open to everyone; adding/removing a tab is owner-level
 // only, same gating as adding the category itself.
 export default function DynamicCategoryPage({ categoryId, categoryLabel, canManage }: {
   categoryId: number; categoryLabel: string; canManage: boolean
@@ -126,6 +128,7 @@ export default function DynamicCategoryPage({ categoryId, categoryLabel, canMana
             {activeTab.content_type === 'log' && <ManageLogPanel category={`dyn_${activeTab.id}`} label={activeTab.label} icon="📋" />}
             {activeTab.content_type === 'notes' && <ContentPage contentKey={`dyn_${activeTab.id}`} title={activeTab.label} />}
             {activeTab.content_type === 'tasks' && <DynamicTasksSection scopeKey={`dyn_${activeTab.id}`} />}
+            {activeTab.content_type === 'payslip_flags' && <PayslipFlagsPanel />}
             {canManage && (
               <div className="px-3 pb-4">
                 <button onClick={() => removeTab(activeTab.id)} className="text-[10px] text-red-400 hover:text-red-600 font-semibold">

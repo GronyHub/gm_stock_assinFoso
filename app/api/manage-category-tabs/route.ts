@@ -6,9 +6,10 @@ import { NextRequest, NextResponse } from 'next/server'
 // The internal tabs inside a user-added Grony Manage category (see
 // manage-categories) -- each one is built from one of a small set of
 // reusable content types rather than bespoke code:
-//   'log'   -- a dated notes+photo checklist (ManageLogPanel)
-//   'notes' -- a free-text reference page (ContentPage)
-//   'tasks' -- a simple to-do list scoped to this tab (DynamicTasksSection)
+//   'log'            -- a dated notes+photo checklist (ManageLogPanel)
+//   'notes'          -- a free-text reference page (ContentPage)
+//   'tasks'          -- a simple to-do list scoped to this tab (DynamicTasksSection)
+//   'payslip_flags'  -- missing-payslip checklist (PayslipFlagsPanel)
 // Anyone can read; only owner-level can add/remove a tab, matching
 // manage-categories' own gating.
 async function ensureTable() {
@@ -24,7 +25,7 @@ async function ensureTable() {
   `.catch(() => {})
 }
 
-const VALID_TYPES = new Set(['log', 'notes', 'tasks'])
+const VALID_TYPES = new Set(['log', 'notes', 'tasks', 'payslip_flags'])
 
 export async function GET(req: NextRequest) {
   await ensureTable()
