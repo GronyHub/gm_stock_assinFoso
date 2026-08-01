@@ -51,16 +51,23 @@ export function paneWidthClass(mode: DisplayMode) {
   return WIDTH[mode]
 }
 
-export function SidePaneToggle({ mode, onChange }: { mode: DisplayMode; onChange: (mode: DisplayMode) => void }) {
+// `label` names who's logged in (small, above the toggle row) -- kept
+// inside this same sticky header rather than a separate element so it
+// stays visible while the list below scrolls, instead of scrolling away
+// with the very first thing in the pane.
+export function SidePaneToggle({ mode, onChange, label }: { mode: DisplayMode; onChange: (mode: DisplayMode) => void; label?: string }) {
   return (
-    <div className="flex items-stretch gap-0.5 p-1 border-b border-white/30 bg-[#00072d] sticky top-0 z-10">
-      {(['icon', 'both', 'text'] as DisplayMode[]).map(m => (
-        <button key={m} onClick={() => onChange(m)} title={MODE_LABEL[m]}
-          className={`flex-1 flex items-center justify-center py-1 rounded text-[11px] transition
-            ${mode === m ? 'bg-white text-[#00072d]' : 'bg-white/10 text-blue-100 hover:bg-white/20'}`}>
-          {GLYPH[m]}
-        </button>
-      ))}
+    <div className="border-b border-white/30 bg-[#00072d] sticky top-0 z-10">
+      {label && <p className="px-1.5 pt-1 text-[9px] font-semibold text-blue-200 truncate">{label}</p>}
+      <div className="flex items-stretch gap-0.5 p-1">
+        {(['icon', 'both', 'text'] as DisplayMode[]).map(m => (
+          <button key={m} onClick={() => onChange(m)} title={MODE_LABEL[m]}
+            className={`flex-1 flex items-center justify-center py-1 rounded text-[11px] transition
+              ${mode === m ? 'bg-white text-[#00072d]' : 'bg-white/10 text-blue-100 hover:bg-white/20'}`}>
+            {GLYPH[m]}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }

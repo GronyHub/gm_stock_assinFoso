@@ -1070,7 +1070,7 @@ function ItemHubPageInner() {
                 </div>
               )}
             </>}>
-            <SidePaneToggle mode={cashDisplayMode} onChange={changeCashDisplayMode} />
+            <SidePaneToggle mode={cashDisplayMode} onChange={changeCashDisplayMode} label={session?.user?.name ?? username} />
 
             {/* Cash/Manage/Staff's own rows only make sense while actually
                 on that tab -- UK and C&H are separate areas with no
