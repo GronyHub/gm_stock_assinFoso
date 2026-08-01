@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { isOwnerLevel } from '@/lib/roles'
-import { FEATURE_KEYS, FEATURE_LABELS, type FeatureKey } from '@/lib/permissionsShared'
+import { FEATURE_KEYS, FEATURE_LABELS, JOE_OVERRIDABLE_FEATURES, type FeatureKey } from '@/lib/permissionsShared'
 
 export type Role = { key: string; label: string; created_at: string }
 export type RoleUser = { id: number; username: string; display_name: string; role: string; active?: boolean }
@@ -183,7 +183,12 @@ export default function RolesPanel({ roles, setRoles, users }: {
                     {FEATURE_LABELS[feature]}
                   </td>
                   {activeUsers.map(u => {
-                    if (isOwnerLevel(u as { role?: string; username?: string })) {
+                    // Joe is owner-level everywhere else, but a small set of
+                    // features (see JOE_OVERRIDABLE_FEATURES) are real,
+                    // togglable checkboxes for him too instead of a fixed
+                    // checkmark -- true owner (Grony) is never affected.
+                    const joeOverridden = u.username.toLowerCase() === 'joe' && JOE_OVERRIDABLE_FEATURES.has(feature)
+                    if (!joeOverridden && isOwnerLevel(u as { role?: string; username?: string })) {
                       return (
                         <td key={u.id} title="Always has full access" className="text-center px-3 py-2.5 border-b border-l border-gray-100 text-green-600">
                           ✓

@@ -35,23 +35,34 @@ export const DEFAULT_ON_FEATURES = new Set<FeatureKey>(['cash', 'manage'])
 
 export type RolePermissionsMap = Record<string, Record<string, boolean>>
 
+// The one deliberate exception to the "never takes anything away from
+// Joe/Grony" rule below -- Joe is still owner-level everywhere else (~25
+// other places keep checking isOwnerLevel directly and are untouched by
+// this), but the UK tab specifically is a real per-person checkbox for him
+// too, toggled from the Roles & Permissions screen like any regular staff
+// feature. True owner (role="owner", i.e. Grony) is never affected: the
+// override below only fires for the username="joe" half of isOwnerLevel.
+export const JOE_OVERRIDABLE_FEATURES = new Set<FeatureKey>(['uk'])
+
 // Additive on top of the app's existing owner-level check (role=owner or
 // username=joe, see lib/roles.ts) -- that stays exactly as-is everywhere
 // else it's already used (payslips, quizzes, staff violations, stock
 // counts, and ~25 other places), so this never takes anything away from
-// Joe/Grony. It only adds a second way IN: any individual staff member can
-// be granted one of these 8 specific features from the Roles & Permissions
-// screen without needing full owner-level access. permissionsMap is keyed
-// by username (see getUserPermissionsMap in lib/permissions.ts), not role --
-// each person is toggled independently, seeded from their role's defaults.
+// Joe/Grony except for JOE_OVERRIDABLE_FEATURES above. It otherwise only
+// adds a second way IN: any individual staff member can be granted one of
+// these 8 specific features from the Roles & Permissions screen without
+// needing full owner-level access. permissionsMap is keyed by username
+// (see getUserPermissionsMap in lib/permissions.ts), not role -- each
+// person is toggled independently, seeded from their role's defaults.
 export function hasFeature(
   user: { role?: string | null; username?: string | null; name?: string | null } | null | undefined,
   feature: FeatureKey,
   permissionsMap: RolePermissionsMap,
 ): boolean {
   if (!user) return false
-  if (isOwnerLevel(user as { role?: string; username?: string; name?: string | null })) return true
   const username = (user.username ?? user.name ?? '').toLowerCase()
+  const joeOverridden = username === 'joe' && JOE_OVERRIDABLE_FEATURES.has(feature)
+  if (!joeOverridden && isOwnerLevel(user as { role?: string; username?: string; name?: string | null })) return true
   if (!username) return false
   return !!permissionsMap[username]?.[feature]
 }
