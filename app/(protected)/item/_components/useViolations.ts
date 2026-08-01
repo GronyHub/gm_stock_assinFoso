@@ -21,6 +21,7 @@ export const SHORT_LABEL: Record<string, string> = {
   unchecked_cab: 'Cash at Bank',
   no_group: 'Item Groups',
   duplicates: 'Duplicate Items',
+  not_in_inventory: 'Items Not In Inventory',
   alias_prezoho_sales: 'Pre-Zoho Sales Aliases',
   alias_prezoho_bills: 'Pre-Zoho Bills Aliases',
   alias_flagged: 'Flagged Aliases',
@@ -53,7 +54,7 @@ export const DEFAULT_ASSIGNEE = 'Joe'
 const OPENER_TYPES = new Set(['daily'])
 
 const ALL_ERROR_TYPES = [
-  'neg_soh', 'no_sp', 'no_cp', 'no_group', 'duplicates',
+  'neg_soh', 'no_sp', 'no_cp', 'no_group', 'duplicates', 'not_in_inventory',
   'alias_prezoho_sales', 'alias_prezoho_bills', 'alias_flagged', 'alias_ambiguous',
   'unlinked_named', 'service_violation', 'gains', 'daily', '7day', '15day',
   'no_cash', 'missing_days', 'cost_gte_sell', 'dup_receipts',
@@ -86,7 +87,7 @@ export type Violation = { type: string; label: string; count: number; days: numb
 // section, so there's no generic "Grony Manage" bucket to fall back to
 // anymore.
 export const SUBMENU_HOME: Record<string, string> = {
-  neg_soh: 'Items', no_sp: 'Items', no_cp: 'Items', no_group: 'Items',
+  neg_soh: 'Items', no_sp: 'Items', no_cp: 'Items', no_group: 'Items', not_in_inventory: 'Items',
   duplicates: 'Items', unlinked_named: 'Items', service_violation: 'Items',
   alias_prezoho_sales: 'Items', alias_prezoho_bills: 'Items', alias_flagged: 'Items', alias_ambiguous: 'Items',
   daily: 'Counts', '7day': 'Counts', '15day': 'Counts',
@@ -165,6 +166,11 @@ export function useViolations(counts?: Record<string, number>) {
       type: 'duplicates',
       label: 'possible duplicate item pair' + (flags.duplicates.length !== 1 ? 's' : ''),
       count: flags.duplicates.length, days: null,
+    })
+    if (flags.notInInventory?.length) list.push({
+      type: 'not_in_inventory',
+      label: 'item name' + (flags.notInInventory.length !== 1 ? 's' : '') + ' not found in inventory',
+      count: flags.notInInventory.length, days: null,
     })
     {
       const c = counts ?? {}

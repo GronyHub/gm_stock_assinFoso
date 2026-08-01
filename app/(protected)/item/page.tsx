@@ -635,6 +635,15 @@ function ItemHubPageInner() {
   const manageTasksViolations = cashViolations.filter(v => MANAGE_VIOLATION_TYPES.has(v.type))
   const cashTasksCount = cashTasksViolations.reduce((s, v) => s + v.count, 0)
   const manageTasksCount = manageTasksViolations.reduce((s, v) => s + v.count, 0)
+  // Per-page flag badges (red count on the pane row itself) -- matches
+  // exactly what each page's own combined 🚩 flags view covers, so the
+  // number on the button is never out of step with what you'd see there.
+  const violationCountByType = (types: string[]) =>
+    cashViolations.filter(v => types.includes(v.type)).reduce((s, v) => s + v.count, 0)
+  const salesFlagsCount = violationCountByType(['no_cash', 'missing_days', 'cost_gte_sell', 'dup_receipts'])
+  const itemsFlagsCount = violationCountByType(['no_group', 'duplicates', 'not_in_inventory'])
+  const cabFlagsCount = violationCountByType(['unchecked_cab'])
+  const staffTimesFlagsCount = violationCountByType(['no_staff_times'])
 
   // The morning stock count is the opener's own job -- its badge (on
   // Manage's Opener left-pane item) combines "hasn't confirmed clock-in
@@ -1085,7 +1094,12 @@ function ItemHubPageInner() {
             {outerTab === 'loss' && (<>
             {canSeeCash && applyPaneOrder(CASH_ITEMS, paneOrder.cash).filter(v => v.key !== 'pl' || canSeePL).map(v => (
                 <SidePaneButton key={v.key} icon={v.icon} label={v.label} mode={cashDisplayMode}
-                  active={paneActive(lossView === v.key)} badge={v.key === 'tasks' ? cashTasksCount : undefined}
+                  active={paneActive(lossView === v.key)}
+                  badge={v.key === 'tasks' ? cashTasksCount
+                    : v.key === 'sales' ? salesFlagsCount
+                    : v.key === 'items' ? itemsFlagsCount
+                    : v.key === 'cab' ? cabFlagsCount
+                    : undefined}
                   onClick={() => pickLossView(v.key)} />
               ))}
 
@@ -1136,7 +1150,8 @@ function ItemHubPageInner() {
                 )}
                 {STAFF_PERSONAL_ITEMS.map(t => (
                   <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode}
-                    active={paneActive(lossView === t.key)} onClick={() => pickLossView(t.key)} />
+                    active={paneActive(lossView === t.key)} badge={t.key === 'staffTimes' ? staffTimesFlagsCount : undefined}
+                    onClick={() => pickLossView(t.key)} />
                 ))}
                 {viewingName.toLowerCase() === username.toLowerCase() && (
                   <SidePaneButton icon="👤" label="Profile" mode={cashDisplayMode} active={paneActive(lossView === 'staffProfile')}
