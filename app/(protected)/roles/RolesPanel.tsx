@@ -156,7 +156,14 @@ export default function RolesPanel({ roles, setRoles, users }: {
           Check a box to grant that person a feature, uncheck to remove it. New hires start with whatever their role already grants.
         </p>
         <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-          <table className="text-sm border-collapse">
+          {/* border-separate, not border-collapse -- position: sticky on a
+              <td>/<th> is unreliable in collapsed-border tables (the sticky
+              column can end up sized too narrow for its own content, so a
+              long permission label visibly overflows into the columns next
+              to it instead of the table just being exactly as wide as it
+              needs). Explicit opaque row backgrounds (no /60 alpha) so the
+              sticky column fully covers whatever scrolls underneath it. */}
+          <table className="text-sm border-separate border-spacing-0">
             <thead>
               <tr>
                 <th className="sticky left-0 z-10 bg-white text-left font-semibold text-gray-500 text-xs px-3 py-2.5 border-b border-gray-200 whitespace-nowrap">
@@ -170,8 +177,8 @@ export default function RolesPanel({ roles, setRoles, users }: {
               </tr>
             </thead>
             <tbody>
-              {FEATURE_KEYS.map(feature => (
-                <tr key={feature} className="even:bg-gray-50/60">
+              {FEATURE_KEYS.map((feature, i) => (
+                <tr key={feature} className={i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
                   <td className="sticky left-0 z-10 bg-inherit text-gray-700 text-xs px-3 py-2.5 border-b border-gray-100 whitespace-nowrap">
                     {FEATURE_LABELS[feature]}
                   </td>
