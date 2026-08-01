@@ -94,7 +94,7 @@ const SEVERITY_COLORS: Record<string, string> = {
 // Rota isn't here -- it's a shared weekly schedule across everyone at once,
 // so it lives under Grony Manage's own submenu instead (see RotaTab's
 // export below), not as one of this per-person/all-staff tab set.
-const TABS = ['Times', 'Payslips', 'Violations', 'Role', 'Analytics', 'Assignments'] as const
+const TABS = ['Times', 'Payslips', 'Profiles', 'Violations', 'Role', 'Analytics', 'Assignments'] as const
 type Tab = (typeof TABS)[number]
 
 const TAB_ICONS: Record<Tab, React.ReactNode> = {
@@ -106,6 +106,11 @@ const TAB_ICONS: Record<Tab, React.ReactNode> = {
   Payslips: (
     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
       <rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="17" x2="13" y2="17"/>
+    </svg>
+  ),
+  Profiles: (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+      <rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M5 17c0-1.66 1.79-3 4-3s4 1.34 4 3"/><line x1="14" y1="10" x2="19" y2="10"/><line x1="14" y1="13" x2="19" y2="13"/>
     </svg>
   ),
   Violations: (
@@ -1001,7 +1006,7 @@ const PAY_COLS = [
 
 export const ALL_STAFF_NAMES = ['Joe', 'Bino', 'James', 'Rawlings', 'Grony']
 
-type PayView = 'monthly' | 'staff' | 'profiles' | 'build'
+type PayView = 'monthly' | 'staff' | 'build'
 
 type PayFlag = { staff: string; month: string; issue: string; severity: 'warn' | 'error' }
 
@@ -1054,17 +1059,13 @@ function detectPayFlags(payslips: Payslip[]): PayFlag[] {
 export function PayslipsTab({ role, username, viewingStaff }: { role: string; username: string; viewingStaff?: string }) {
   const canBuild = role === 'owner' || username === 'joe'
   const [payslips, setPayslips] = useState<Payslip[]>([])
-  const [profiles, setProfiles] = useState<StaffProfile[]>([])
   const [loading, setLoading] = useState(true)
   // A per-person page locks straight into the "By Staff" history for that
-  // one name -- the By Month/Build/Profiles/Flags views are payslip-admin
-  // tools, not part of "this person's own records".
+  // one name -- the By Month/Build/Flags views are payslip-admin tools,
+  // not part of "this person's own records".
   const [view, setView] = useState<PayView>(viewingStaff ? 'staff' : 'monthly')
   const [selectedMonth, setSelectedMonth] = useState<string>('')
   const [selectedStaff, setSelectedStaff] = useState<string>(viewingStaff ?? 'Joe')
-  const [editProfile, setEditProfile] = useState<StaffProfile | null>(null)
-  const [editForm, setEditForm] = useState<Partial<StaffProfile>>({})
-  const [savingProfile, setSavingProfile] = useState(false)
   const [expandedId, setExpandedId] = useState<number | null>(null)
 
   const [confirmations, setConfirmations] = useState<PaymentConfirmation[]>([])
@@ -1072,13 +1073,9 @@ export function PayslipsTab({ role, username, viewingStaff }: { role: string; us
   const [confirmError, setConfirmError] = useState('')
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/payslips').then(r => r.json()).catch(() => []),
-      fetch('/api/staff/profiles').then(r => r.json()).catch(() => []),
-    ]).then(([p, pr]) => {
+    fetch('/api/payslips').then(r => r.json()).catch(() => []).then(p => {
       const ps = Array.isArray(p) ? p : []
       setPayslips(ps)
-      setProfiles(Array.isArray(pr) ? pr : [])
       // default to most recent month
       const months = [...new Set(ps.map((x: Payslip) => x.pay_month))].sort()
       if (months.length) setSelectedMonth(months[months.length - 1])
@@ -1155,21 +1152,6 @@ export function PayslipsTab({ role, username, viewingStaff }: { role: string; us
     months.map(m => payslips.find(p => p.staff_name === selectedStaff && p.pay_month === m) ?? null),
     [payslips, months, selectedStaff])
 
-  async function saveProfile() {
-    if (!editProfile) return
-    setSavingProfile(true)
-    const res = await fetch('/api/staff/profiles', {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ staff_name: editProfile.staff_name, ...editForm }),
-    })
-    if (res.ok) {
-      const updated = await res.json()
-      setProfiles(prev => prev.map(p => p.staff_name === updated.staff_name ? updated : p))
-      setEditProfile(null)
-    }
-    setSavingProfile(false)
-  }
-
   if (loading) return <div className="py-10 text-center text-gray-400">Loading…</div>
 
   const viewBtn = (v: PayView, label: string) => (
@@ -1188,7 +1170,6 @@ export function PayslipsTab({ role, username, viewingStaff }: { role: string; us
           {viewBtn('monthly',  '📅 By Month')}
           {viewBtn('staff',    '👤 By Staff')}
           {canBuild && viewBtn('build', '🧮 Build')}
-          {viewBtn('profiles', '🪪 Profiles')}
           {payFlags.length > 0 && viewBtn('flags' as any, `⚠️ Flags (${payFlags.length})`)}
         </div>
       )}
@@ -1383,23 +1364,6 @@ export function PayslipsTab({ role, username, viewingStaff }: { role: string; us
             </div>
           )}
 
-          {/* Profile quick-view */}
-          {(() => {
-            const prof = profiles.find(p => p.staff_name === selectedStaff)
-            if (!prof) return null
-            return (
-              <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                <div><span className="text-gray-400">Full name: </span><span className="font-medium">{prof.full_name ?? '—'}</span></div>
-                <div><span className="text-gray-400">Started: </span><span className="font-medium">{prof.start_date ?? '—'}</span></div>
-                <div><span className="text-gray-400">Ghana Card: </span><span className="font-medium">{prof.ghana_card ?? '—'}</span></div>
-                <div><span className="text-gray-400">SSNIT: </span><span className="font-medium">{prof.ssnit_number ?? '—'}</span></div>
-                <div><span className="text-gray-400">Phone: </span><span className="font-medium">{prof.phone ?? '—'}</span></div>
-                <div><span className="text-gray-400">MoMo: </span><span className="font-medium">{prof.momo_number ?? '—'}</span></div>
-                <div className="col-span-2"><span className="text-gray-400">Bank: </span><span className="font-medium">{prof.bank_name ? `${prof.bank_name} · ${prof.bank_account ?? ''}` : '—'}</span></div>
-              </div>
-            )
-          })()}
-
           {/* Monthly history table */}
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
@@ -1450,75 +1414,112 @@ export function PayslipsTab({ role, username, viewingStaff }: { role: string; us
         <PayslipBuilder payslips={payslips} onSaved={refreshPayslips} />
       )}
 
-      {/* ── PROFILES VIEW ─────────────────────────────────────────────────────── */}
-      {view === 'profiles' && (
-        <div className="space-y-3">
-          {editProfile && (
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-bold text-blue-800">{editProfile.staff_name} — Edit Profile</p>
-                <button onClick={() => setEditProfile(null)} className="text-gray-400 text-lg">×</button>
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                {[
-                  ['full_name',     'Full Name'],
-                  ['start_date',    'Start Date (YYYY-MM-DD)'],
-                  ['date_of_birth', 'Date of Birth (YYYY-MM-DD)'],
-                  ['ghana_card',    'Ghana Card No.'],
-                  ['ssnit_number',  'SSNIT Number'],
-                  ['phone',         'Phone'],
-                  ['momo_number',   'MoMo Number'],
-                  ['bank_name',     'Bank Name'],
-                  ['bank_account',  'Bank Account No.'],
-                  ['address',       'Address'],
-                ].map(([field, label]) => (
-                  <div key={field} className={field === 'address' ? 'col-span-2' : ''}>
-                    <label className="text-[10px] text-gray-500 mb-0.5 block">{label}</label>
-                    <input
-                      value={(editForm as any)[field] ?? ''}
-                      onChange={e => setEditForm(f => ({ ...f, [field]: e.target.value }))}
-                      placeholder={label}
-                      className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-400"
-                    />
-                  </div>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <button onClick={saveProfile} disabled={savingProfile}
-                  className="flex-1 bg-blue-600 text-white text-xs font-bold rounded-lg py-2 disabled:opacity-40">
-                  {savingProfile ? 'Saving…' : 'Save Profile'}
-                </button>
-                <button onClick={() => setEditProfile(null)} className="px-4 py-2 bg-gray-100 text-gray-600 text-xs font-semibold rounded-lg">Cancel</button>
-              </div>
-            </div>
-          )}
+    </div>
+  )
+}
 
-          {profiles.map(prof => (
-            <div key={prof.staff_name} className="bg-white border border-gray-200 rounded-xl p-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${STAFF_COLORS[prof.staff_name] ?? 'bg-gray-100 text-gray-600'}`}>
-                    {prof.staff_name}
-                  </span>
-                  {prof.full_name && <span className="text-sm font-semibold text-gray-800">{prof.full_name}</span>}
-                </div>
-                <button onClick={() => { setEditProfile(prof); setEditForm({ ...prof }) }}
-                  className="text-xs font-semibold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg hover:bg-blue-100">Edit</button>
+// ── TEAM PROFILES ─────────────────────────────────────────────────────────────
+// Used to be one of Team Payslips' own views ("🪪 Profiles") -- pulled out
+// into its own screen since staff bio/bank details have nothing to do with
+// pay records specifically, just with staff generally.
+
+export function TeamProfilesTab() {
+  const [profiles, setProfiles] = useState<StaffProfile[]>([])
+  const [loading, setLoading] = useState(true)
+  const [editProfile, setEditProfile] = useState<StaffProfile | null>(null)
+  const [editForm, setEditForm] = useState<Partial<StaffProfile>>({})
+  const [savingProfile, setSavingProfile] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/staff/profiles').then(r => r.json()).catch(() => []).then(d => {
+      setProfiles(Array.isArray(d) ? d : [])
+      setLoading(false)
+    })
+  }, [])
+
+  async function saveProfile() {
+    if (!editProfile) return
+    setSavingProfile(true)
+    const res = await fetch('/api/staff/profiles', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ staff_name: editProfile.staff_name, ...editForm }),
+    })
+    if (res.ok) {
+      const updated = await res.json()
+      setProfiles(prev => prev.map(p => p.staff_name === updated.staff_name ? updated : p))
+      setEditProfile(null)
+    }
+    setSavingProfile(false)
+  }
+
+  if (loading) return <div className="py-10 text-center text-gray-400">Loading…</div>
+
+  return (
+    <div className="space-y-3">
+      {editProfile && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-bold text-blue-800">{editProfile.staff_name} — Edit Profile</p>
+            <button onClick={() => setEditProfile(null)} className="text-gray-400 text-lg">×</button>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            {[
+              ['full_name',     'Full Name'],
+              ['start_date',    'Start Date (YYYY-MM-DD)'],
+              ['date_of_birth', 'Date of Birth (YYYY-MM-DD)'],
+              ['ghana_card',    'Ghana Card No.'],
+              ['ssnit_number',  'SSNIT Number'],
+              ['phone',         'Phone'],
+              ['momo_number',   'MoMo Number'],
+              ['bank_name',     'Bank Name'],
+              ['bank_account',  'Bank Account No.'],
+              ['address',       'Address'],
+            ].map(([field, label]) => (
+              <div key={field} className={field === 'address' ? 'col-span-2' : ''}>
+                <label className="text-[10px] text-gray-500 mb-0.5 block">{label}</label>
+                <input
+                  value={(editForm as any)[field] ?? ''}
+                  onChange={e => setEditForm(f => ({ ...f, [field]: e.target.value }))}
+                  placeholder={label}
+                  className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-400"
+                />
               </div>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs border-t border-gray-100 pt-2">
-                <div><span className="text-gray-400">Started: </span><span className="font-medium text-gray-800">{prof.start_date ?? <span className="text-red-400">Not set</span>}</span></div>
-                <div><span className="text-gray-400">DOB: </span><span className="font-medium text-gray-800">{prof.date_of_birth ?? '—'}</span></div>
-                <div><span className="text-gray-400">Ghana Card: </span><span className="font-medium text-gray-800">{prof.ghana_card ?? <span className="text-orange-400">Missing</span>}</span></div>
-                <div><span className="text-gray-400">SSNIT: </span><span className="font-medium text-gray-800">{prof.ssnit_number ?? <span className="text-orange-400">Missing</span>}</span></div>
-                <div><span className="text-gray-400">Phone: </span><span className="font-medium text-gray-800">{prof.phone ?? '—'}</span></div>
-                <div><span className="text-gray-400">MoMo: </span><span className="font-medium text-gray-800">{prof.momo_number ?? '—'}</span></div>
-                <div className="col-span-2"><span className="text-gray-400">Bank: </span><span className="font-medium text-gray-800">{prof.bank_name ? `${prof.bank_name} · ${prof.bank_account ?? ''}` : '—'}</span></div>
-                <div className="col-span-2"><span className="text-gray-400">Address: </span><span className="font-medium text-gray-800">{prof.address ?? '—'}</span></div>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <button onClick={saveProfile} disabled={savingProfile}
+              className="flex-1 bg-blue-600 text-white text-xs font-bold rounded-lg py-2 disabled:opacity-40">
+              {savingProfile ? 'Saving…' : 'Save Profile'}
+            </button>
+            <button onClick={() => setEditProfile(null)} className="px-4 py-2 bg-gray-100 text-gray-600 text-xs font-semibold rounded-lg">Cancel</button>
+          </div>
         </div>
       )}
+
+      {profiles.map(prof => (
+        <div key={prof.staff_name} className="bg-white border border-gray-200 rounded-xl p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${STAFF_COLORS[prof.staff_name] ?? 'bg-gray-100 text-gray-600'}`}>
+                {prof.staff_name}
+              </span>
+              {prof.full_name && <span className="text-sm font-semibold text-gray-800">{prof.full_name}</span>}
+            </div>
+            <button onClick={() => { setEditProfile(prof); setEditForm({ ...prof }) }}
+              className="text-xs font-semibold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg hover:bg-blue-100">Edit</button>
+          </div>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs border-t border-gray-100 pt-2">
+            <div><span className="text-gray-400">Started: </span><span className="font-medium text-gray-800">{prof.start_date ?? <span className="text-red-400">Not set</span>}</span></div>
+            <div><span className="text-gray-400">DOB: </span><span className="font-medium text-gray-800">{prof.date_of_birth ?? '—'}</span></div>
+            <div><span className="text-gray-400">Ghana Card: </span><span className="font-medium text-gray-800">{prof.ghana_card ?? <span className="text-orange-400">Missing</span>}</span></div>
+            <div><span className="text-gray-400">SSNIT: </span><span className="font-medium text-gray-800">{prof.ssnit_number ?? <span className="text-orange-400">Missing</span>}</span></div>
+            <div><span className="text-gray-400">Phone: </span><span className="font-medium text-gray-800">{prof.phone ?? '—'}</span></div>
+            <div><span className="text-gray-400">MoMo: </span><span className="font-medium text-gray-800">{prof.momo_number ?? '—'}</span></div>
+            <div className="col-span-2"><span className="text-gray-400">Bank: </span><span className="font-medium text-gray-800">{prof.bank_name ? `${prof.bank_name} · ${prof.bank_account ?? ''}` : '—'}</span></div>
+            <div className="col-span-2"><span className="text-gray-400">Address: </span><span className="font-medium text-gray-800">{prof.address ?? '—'}</span></div>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -3076,6 +3077,7 @@ function StaffClientInner({ role, username, embedded, openAddSignal }: { role: s
 
       {tab === 'Times' && <TimesTab username={username} role={role} openAddSignal={openAddSignal} />}
       {tab === 'Payslips' && <PayslipsTab role={role} username={username} />}
+      {tab === 'Profiles' && <TeamProfilesTab />}
       {tab === 'Violations' && <ViolationsTab role={role} username={username} />}
       {tab === 'Role' && <RoleTab role={role} username={username} />}
       {tab === 'Analytics' && <AnalyticsTab />}
