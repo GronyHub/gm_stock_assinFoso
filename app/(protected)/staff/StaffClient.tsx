@@ -168,7 +168,6 @@ type RecentRow = {
   id?: number; staff_name: string; work_date: string; actual_in: string | null; actual_out: string | null
   entered_by: string | null; in_source?: string | null; out_source?: string | null
 }
-type TodayRow = { staff_name: string; actual_in: string | null; actual_out: string | null; in_source?: string | null; out_source?: string | null }
 type Mine = { actual_in: string | null; actual_out: string | null; opening_count_confirmed?: boolean; in_source?: string | null; out_source?: string | null } | null
 
 // A dot next to a clock time shows how it got there: green for the actual
@@ -220,7 +219,6 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
   const displayStaff = viewName ? [viewName] : STAFF
   const isOwnPage = !viewingStaff || viewName === username.toLowerCase()
 
-  const [today, setToday] = useState<TodayRow[]>([])
   const [mine, setMine] = useState<Mine>(null)
   const [recent, setRecent] = useState<RecentRow[]>([])
   const [allRecords, setAllRecords] = useState<RecentRow[]>([])
@@ -235,6 +233,7 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
   const [closer, setCloser] = useState<string | null>(null)
   const [showReports, setShowReports] = useState(false)
   const [showLog, setShowLog] = useState(false)
+  const [showAnalytics, setShowAnalytics] = useState(false)
   const [confirmingCount, setConfirmingCount] = useState(false)
   const [confirmCountErr, setConfirmCountErr] = useState('')
   const [binoChecklistOpen, setBinoChecklistOpen] = useState(false)
@@ -278,7 +277,6 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
     const p1 = fetch('/api/staff-times/today').then(r => r.ok ? r.json() : { today: [], mine: null, recent: [] })
     const p2 = fetch('/api/staff-times/all').then(r => r.ok ? r.json() : [])
     Promise.all([p1, p2]).then(([d, all]) => {
-      setToday(Array.isArray(d.today) ? d.today : [])
       setMine(d.mine ?? null)
       setRecent(Array.isArray(d.recent) ? d.recent : [])
       setOpener(d.opener ?? null)
@@ -485,6 +483,73 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
         </div>
       )}
 
+      {/* Closing Reports / Times Log / Analytics -- moved up next to the flag
+          so they're immediately reachable instead of buried below the full
+          history grid. All three stay collapsed by default. */}
+      <div className="space-y-2">
+        <div>
+          <button onClick={() => setShowReports(v => !v)}
+            className="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl px-3 py-2">
+            <span className="text-xs font-semibold text-gray-700">🌙 Closing Reports</span>
+            <span className="text-gray-400 text-xs">{showReports ? '▲ Hide' : '▼ Show'}</span>
+          </button>
+          {showReports && <div className="mt-2"><ClosingReportsList /></div>}
+        </div>
+
+        {/* Times log — a shared record for anything worth writing down about
+            time-keeping (a bad habit spotted, a system change, work done on
+            this feature, etc.) that isn't tied to any one date's clock event. */}
+        <div>
+          <button onClick={() => setShowLog(v => !v)}
+            className="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl px-3 py-2">
+            <span className="text-xs font-semibold text-gray-700">📝 Times Log</span>
+            <span className="text-gray-400 text-xs">{showLog ? '▲ Hide' : '▼ Show'}</span>
+          </button>
+          {showLog && (
+            <div className="mt-2 bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <ManageLogPanel category="staff_times_log" label="Times Log" icon="📝" />
+            </div>
+          )}
+        </div>
+
+        <div>
+          <button onClick={() => setShowAnalytics(v => !v)}
+            className="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl px-3 py-2">
+            <span className="text-xs font-semibold text-gray-700">📊 Analytics</span>
+            <span className="text-gray-400 text-xs">{showAnalytics ? '▲ Hide' : '▼ Show'}</span>
+          </button>
+          {showAnalytics && (
+            <div className="mt-2 space-y-3">
+              {displayStaff.map(name => {
+                const rows = recent.filter(r => r.staff_name === name)
+                const fullDays = rows.filter(r => r.actual_in && r.actual_out)
+                const durations = fullDays.map(r => {
+                  const i = parseTimeMins(r.actual_in), o = parseTimeMins(r.actual_out)
+                  if (i == null || o == null) return null
+                  return o >= i ? o - i : (o + 1440) - i
+                }).filter((v): v is number => v !== null)
+                const totalMins = durations.reduce((a, b) => a + b, 0)
+                const avgMins = durations.length ? totalMins / durations.length : null
+                const allInMins = rows.map(r => parseTimeMins(r.actual_in)).filter((v): v is number => v !== null)
+                const avgIn = allInMins.length ? allInMins.reduce((a, b) => a + b, 0) / allInMins.length : null
+
+                return (
+                  <div key={name} className="bg-white border border-gray-200 rounded-xl p-3">
+                    <p className="font-bold text-gray-900 capitalize text-sm mb-2">{name}</p>
+                    <div className="grid grid-cols-4 gap-3 text-xs">
+                      <div><p className="text-gray-400">Days Present</p><p className="font-semibold">{rows.filter(r => r.actual_in).length}</p></div>
+                      <div><p className="text-gray-400">Total Hours</p><p className="font-semibold">{totalMins ? minsToHrs(totalMins) : '—'}</p></div>
+                      <div><p className="text-gray-400">Avg/Day</p><p className="font-semibold">{avgMins ? minsToHrs(avgMins) : '—'}</p></div>
+                      <div><p className="text-gray-400">Avg Arrival</p><p className="font-semibold">{avgIn != null ? minsTo12h(avgIn) : '—'}</p></div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
       {showAddForm && isAdmin && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
           <p className="text-sm font-semibold text-blue-700">New Time Entry</p>
@@ -621,31 +686,17 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
       </div>
       </>)}
 
-      {/* Today's times for all staff (or just this one, on a per-person page) */}
-      {(viewName ? today.filter(r => r.staff_name.toLowerCase() === viewName) : today).length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="px-3 py-1.5 bg-gray-50 border-b border-gray-200">
-            <span className="text-xs font-semibold text-gray-600">{viewName ? 'Today' : 'Today — All Staff'}</span>
-          </div>
-          <div className="divide-y divide-gray-100">
-            {(viewName ? today.filter(r => r.staff_name.toLowerCase() === viewName) : today).map(r => (
-              <div key={r.staff_name} className="flex items-center justify-between px-3 py-1.5 text-sm">
-                <span className="font-medium text-gray-800 capitalize">
-                  {r.staff_name}
-                  {opener === r.staff_name && <span title="Opener" className="ml-1">🌅</span>}
-                  {closer === r.staff_name && <span title="Closer" className="ml-1">🌙</span>}
-                </span>
-                <span className="text-green-700">{r.actual_in ?? '—'}<SourceDot source={r.in_source} /></span>
-                <div className="flex flex-col items-end leading-tight">
-                  <span className="text-orange-600">{r.actual_out ?? '—'}<SourceDot source={r.out_source} /></span>
-                  {dayDurationLabel(r.actual_in, r.actual_out) && (
-                    <span className="text-[10px] text-gray-400">{dayDurationLabel(r.actual_in, r.actual_out)}</span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      {/* Today's Opener/Closer -- used to be a full "Today -- All Staff" list
+          of everyone's times, but that duplicated today's own row in the
+          history grid below (same in/out, now with dots and a total too).
+          The one thing it had that the grid doesn't is who's Opener/Closer
+          today, so that's kept as a single compact line instead. */}
+      {(opener || closer) && (
+        <p className="text-xs text-gray-500 px-1">
+          {opener && <>🌅 Opener: <span className="font-semibold capitalize">{opener}</span></>}
+          {opener && closer && <span className="mx-1.5">·</span>}
+          {closer && <>🌙 Closer: <span className="font-semibold capitalize">{closer}</span></>}
+        </p>
       )}
 
       {/* Upcoming Schedule -- read-only preview of the rota for the next 7
@@ -849,61 +900,6 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
         </div>
       )}
 
-      {/* Closing reports — end-of-day answers from the Closer */}
-      <div>
-        <button onClick={() => setShowReports(v => !v)}
-          className="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-3">
-          <span className="text-sm font-semibold text-gray-700">🌙 Closing Reports</span>
-          <span className="text-gray-400 text-xs">{showReports ? '▲ Hide' : '▼ Show'}</span>
-        </button>
-        {showReports && <div className="mt-2"><ClosingReportsList /></div>}
-      </div>
-
-      {/* Times log — a shared record for anything worth writing down about
-          time-keeping (a bad habit spotted, a system change, work done on
-          this feature, etc.) that isn't tied to any one date's clock event. */}
-      <div>
-        <button onClick={() => setShowLog(v => !v)}
-          className="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-3">
-          <span className="text-sm font-semibold text-gray-700">📝 Times Log</span>
-          <span className="text-gray-400 text-xs">{showLog ? '▲ Hide' : '▼ Show'}</span>
-        </button>
-        {showLog && (
-          <div className="mt-2 bg-white border border-gray-200 rounded-xl overflow-hidden">
-            <ManageLogPanel category="staff_times_log" label="Times Log" icon="📝" />
-          </div>
-        )}
-      </div>
-
-      {/* Analytics */}
-      <p className="text-sm font-semibold text-gray-700">Analytics</p>
-      <div className="space-y-3">
-        {displayStaff.map(name => {
-          const rows = recent.filter(r => r.staff_name === name)
-          const fullDays = rows.filter(r => r.actual_in && r.actual_out)
-          const durations = fullDays.map(r => {
-            const i = parseTimeMins(r.actual_in), o = parseTimeMins(r.actual_out)
-            if (i == null || o == null) return null
-            return o >= i ? o - i : (o + 1440) - i
-          }).filter((v): v is number => v !== null)
-          const totalMins = durations.reduce((a, b) => a + b, 0)
-          const avgMins = durations.length ? totalMins / durations.length : null
-          const allInMins = rows.map(r => parseTimeMins(r.actual_in)).filter((v): v is number => v !== null)
-          const avgIn = allInMins.length ? allInMins.reduce((a, b) => a + b, 0) / allInMins.length : null
-
-          return (
-            <div key={name} className="bg-white border border-gray-200 rounded-xl p-3">
-              <p className="font-bold text-gray-900 capitalize text-sm mb-2">{name}</p>
-              <div className="grid grid-cols-4 gap-3 text-xs">
-                <div><p className="text-gray-400">Days Present</p><p className="font-semibold">{rows.filter(r => r.actual_in).length}</p></div>
-                <div><p className="text-gray-400">Total Hours</p><p className="font-semibold">{totalMins ? minsToHrs(totalMins) : '—'}</p></div>
-                <div><p className="text-gray-400">Avg/Day</p><p className="font-semibold">{avgMins ? minsToHrs(avgMins) : '—'}</p></div>
-                <div><p className="text-gray-400">Avg Arrival</p><p className="font-semibold">{avgIn != null ? minsTo12h(avgIn) : '—'}</p></div>
-              </div>
-            </div>
-          )
-        })}
-      </div>
     </div>
   )
 }
