@@ -30,9 +30,11 @@ export type RolePermissionsMap = Record<string, Record<string, boolean>>
 // username=joe, see lib/roles.ts) -- that stays exactly as-is everywhere
 // else it's already used (payslips, quizzes, staff violations, stock
 // counts, and ~25 other places), so this never takes anything away from
-// Joe/Grony. It only adds a second way IN: any role (manager, staff, or a
-// custom one) can be granted one of these 8 specific features from the
-// Roles screen without needing full owner-level access.
+// Joe/Grony. It only adds a second way IN: any individual staff member can
+// be granted one of these 8 specific features from the Roles & Permissions
+// screen without needing full owner-level access. permissionsMap is keyed
+// by username (see getUserPermissionsMap in lib/permissions.ts), not role --
+// each person is toggled independently, seeded from their role's defaults.
 export function hasFeature(
   user: { role?: string | null; username?: string | null; name?: string | null } | null | undefined,
   feature: FeatureKey,
@@ -40,6 +42,7 @@ export function hasFeature(
 ): boolean {
   if (!user) return false
   if (isOwnerLevel(user as { role?: string; username?: string; name?: string | null })) return true
-  if (!user.role) return false
-  return !!permissionsMap[user.role]?.[feature]
+  const username = (user.username ?? user.name ?? '').toLowerCase()
+  if (!username) return false
+  return !!permissionsMap[username]?.[feature]
 }

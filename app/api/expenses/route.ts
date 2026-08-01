@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { isConfidentialExpense } from '@/lib/roles'
-import { hasFeature, getRolePermissionsMap } from '@/lib/permissions'
+import { hasFeature, getUserPermissionsMap } from '@/lib/permissions'
 import { logActivity } from '@/lib/logger'
 import { ensureExpensePropertyColumns } from '@/lib/expenseProperties'
 import { NextRequest, NextResponse } from 'next/server'
@@ -14,7 +14,7 @@ function redact(rows: any[], canSeeAmounts: boolean) {
 export async function GET() {
   const session = await auth()
   if (!session) return NextResponse.json([], { status: 401 })
-  const canSeeAmounts = hasFeature(session.user as any, 'confidential_expenses', await getRolePermissionsMap())
+  const canSeeAmounts = hasFeature(session.user as any, 'confidential_expenses', await getUserPermissionsMap())
 
   await ensureExpensePropertyColumns()
 
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
   if (!expense_date || !expense_account || !amount) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
-  if (isConfidentialExpense(expense_account) && !hasFeature(session.user as any, 'confidential_expenses', await getRolePermissionsMap())) {
+  if (isConfidentialExpense(expense_account) && !hasFeature(session.user as any, 'confidential_expenses', await getUserPermissionsMap())) {
     return NextResponse.json({ error: 'You do not have access to record a Salaries expense' }, { status: 403 })
   }
 

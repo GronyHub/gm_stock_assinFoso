@@ -840,7 +840,7 @@ function ItemHubPageInner() {
   // change would.
   const [rolePermissions, setRolePermissions] = useState<RolePermissionsMap>({})
   useEffect(() => {
-    fetch('/api/role-permissions').then(r => r.ok ? r.json() : {}).then(setRolePermissions).catch(() => {})
+    fetch('/api/user-permissions').then(r => r.ok ? r.json() : {}).then(setRolePermissions).catch(() => {})
   }, [])
   const perm = (feature: FeatureKey) => hasFeature({ role, username }, feature, rolePermissions)
   const canSeePL = perm('pl')

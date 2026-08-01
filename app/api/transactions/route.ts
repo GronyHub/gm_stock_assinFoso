@@ -1,14 +1,14 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { isConfidentialExpense } from '@/lib/roles'
-import { hasFeature, getRolePermissionsMap } from '@/lib/permissions'
+import { hasFeature, getUserPermissionsMap } from '@/lib/permissions'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
   try {
     const session = await auth()
     if (!session) return NextResponse.json([], { status: 401 })
-    const canSeeAmounts = hasFeature(session.user as any, 'confidential_expenses', await getRolePermissionsMap())
+    const canSeeAmounts = hasFeature(session.user as any, 'confidential_expenses', await getUserPermissionsMap())
 
     const results: any[] = []
 

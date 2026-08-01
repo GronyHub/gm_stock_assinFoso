@@ -32,7 +32,7 @@ export default function AccessPage({ initialTab, canSeeUsers, canSeeRoles }: {
 
   if (loading) return <div className="py-20 text-center text-gray-400">Loading...</div>
 
-  const roleUsers: RoleUser[] = users.map(u => ({ id: u.id, username: u.username, display_name: u.display_name, role: u.role }))
+  const roleUsers: RoleUser[] = users.map(u => ({ id: u.id, username: u.username, display_name: u.display_name, role: u.role, active: u.active }))
 
   return (
     <div className="space-y-2">
