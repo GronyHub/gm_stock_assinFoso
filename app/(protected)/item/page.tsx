@@ -34,6 +34,8 @@ import { CH_ITEMS, type CHView } from './_components/chViewData'
 import { useUKData, UK_PEOPLE } from './_components/ukViewData'
 import type { ViolationView } from '../staff/StaffClient'
 import { SidePaneContainer, SidePaneToggle, SidePaneButton, useSidePaneDisplayMode } from './_components/SidePane'
+import SettingsPane from './_components/SettingsPane'
+import SavedFlash from './_components/SavedFlash'
 import dynamic from 'next/dynamic'
 const loading = (h: string) => <div className={`py-10 text-center text-gray-400 text-sm`}>{h}</div>
 const ItemsTab       = dynamic(() => import('./_components/ItemsTab'),        { ssr: false, loading: () => loading('Loading…') })
@@ -65,7 +67,7 @@ const PurchaseOrdersPage  = dynamic(() => import('../purchase-orders/page'),    
 const AliasWidePage       = dynamic(() => import('../aliases/wide/page'),           { ssr: false, loading: () => loading('Loading…') })
 const ServiceMatchesPage  = dynamic(() => import('../matches/wide/page'),           { ssr: false, loading: () => loading('Loading…') })
 const AliasesTab          = dynamic(() => import('./_components/AliasesTab'),       { ssr: false, loading: () => loading('Loading…') })
-const SettingsPanel       = dynamic(() => import('./_components/SettingsPanel'),    { ssr: false, loading: () => loading('Loading…') })
+const ViewPortalAsButton  = dynamic(() => import('@/components/ViewPortalAsButton'), { ssr: false })
 const Item360Tab = dynamic(() => import('./_components/Item360Tab'),          { ssr: false, loading: () => loading('Loading…') })
 const StaffContent = dynamic(() => import('./_components/StaffPersonTab'),    { ssr: false, loading: () => loading('Loading…') })
 const UKTab = dynamic(() => import('./_components/UKTab'), { ssr: false, loading: () => loading('Loading…') })
@@ -96,6 +98,11 @@ type OuterTab = 'today' | 'loss' | 'uk' | 'ch'
 // state/pane machinery rather than needing its own parallel copy.
 type LossView = 'home' | 'tasks' | 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'lossByItem' | 'lossByTarget' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts' | 'dailySummary'
   | 'purchaseOrders' | 'item360'
+  // Settings' own two non-navigation rows (Manage Categories, View Portal
+  // As) become real content destinations too now that Settings is its own
+  // side-by-side pane instead of a full-screen takeover -- see
+  // SettingsPane.tsx and the settingsOpen block below.
+  | 'manageCategories' | 'viewPortalAs'
   | ManageView | StaffView | CHView
 // Alias Wide Table and Service Matches used to be their own lossViews --
 // they're now reached from inside Items itself (see ItemsExtraView below),
@@ -140,7 +147,7 @@ const OLD_TAB_TO_VIEW: Partial<Record<string, LossView>> = {
 // groups/search bar of their own.
 const REPORT_VIEWS = new Set<LossView>([
   'home', 'tasks', 'pl', 'cab', 'vendors', 'customers', 'receipts', 'dailySummary',
-  'purchaseOrders', 'item360',
+  'purchaseOrders', 'item360', 'manageCategories', 'viewPortalAs',
   ...MANAGE_VIEW_KEYS, ...STAFF_VIEW_KEYS, ...CH_VIEW_KEYS,
 ])
 
@@ -973,19 +980,6 @@ function ItemHubPageInner() {
           either: it renders regardless of outerTab, so Today/UK/C&H all get
           it alongside their own content instead of losing all navigation
           the moment you leave Grony Cash. */}
-      {settingsOpen ? (
-        <SettingsPanel
-          onClose={() => setSettingsOpen(false)}
-          viewingName={viewingName} myStaffName={myStaffName} staffRoster={STAFF_ROSTER}
-          pickViewing={pickViewing} pickLossView={pickLossView}
-          canSeeTeam={canSeeTeam} canSeeUsers={canSeeUsers} canAddCategory={canAddCategory}
-          canViewPortalAs={canViewPortalAs} canManageRoles={canManage}
-          dynamicCategories={dynamicCategories}
-          showAddCategory={showAddCategory} setShowAddCategory={setShowAddCategory}
-          newCategoryLabel={newCategoryLabel} setNewCategoryLabel={setNewCategoryLabel}
-          savingCategory={savingCategory} justAddedCategory={justAddedCategory} addCategory={addCategory}
-        />
-      ) : (
       <div className="flex-1 min-h-0 flex overflow-hidden">
         <SidePaneContainer mode={cashDisplayMode}
             footer={<>
@@ -1179,20 +1173,30 @@ function ItemHubPageInner() {
               </div>
             </>)}
 
-            {/* Settings (Viewing/Team/Users/Add Category/View Portal As, all
-                moved out to their own screen -- see SettingsPanel.tsx) /
-                Sign out -- part of the scrollable list now (were pinned to
-                the footer before) so the footer stays just the paired
-                shortcut rows above. */}
+            {/* Settings (Viewing/Team/Users/Add Category/View Portal As) now
+                opens as a second pane alongside this one instead of taking
+                over the whole screen -- see SettingsPane.tsx below. Sign out
+                stays here, part of the scrollable list (pinned to the footer
+                before) so the footer stays just the paired shortcut rows
+                above. */}
             <div className="mt-1 pt-1 border-t border-white/30">
               {canOpenSettings && (
-                <SidePaneButton icon="⚙️" label="Settings" mode={cashDisplayMode} active={false}
-                  onClick={() => setSettingsOpen(true)} />
+                <SidePaneButton icon="⚙️" label="Settings" mode={cashDisplayMode} active={settingsOpen}
+                  onClick={() => setSettingsOpen(v => !v)} />
               )}
               <SidePaneButton icon="🚪" label="Sign out" mode={cashDisplayMode} active={false}
                 onClick={() => signOut({ callbackUrl: '/login' })} />
             </div>
         </SidePaneContainer>
+
+        {settingsOpen && canOpenSettings && (
+          <SettingsPane mode={cashDisplayMode} activeView={lossView}
+            viewingName={viewingName} myStaffName={myStaffName} staffRoster={STAFF_ROSTER}
+            pickViewing={pickViewing} pickLossView={pickLossView}
+            canSeeTeam={canSeeTeam} canSeeUsers={canSeeUsers} canAddCategory={canAddCategory}
+            canViewPortalAs={canViewPortalAs} canManageRoles={canManage}
+          />
+        )}
 
         <div className="relative flex-1 min-w-0 min-h-0 flex flex-col">
           {outerTab === 'loss' && (
@@ -1400,6 +1404,53 @@ function ItemHubPageInner() {
             <Item360Tab items={items} jumpToItemId={item360JumpId} onJumpDone={() => setItem360JumpId(null)} />
           </TabErrorBoundary>
         )}
+        {/* Settings' own two non-navigation rows (see SettingsPane.tsx) --
+            now real content destinations like everything else in Settings,
+            rather than inline widgets crammed into the narrow pane itself. */}
+        {outerTab === 'loss' && lossView === 'manageCategories' && (
+          <TabErrorBoundary>
+            <div className="px-4 pt-4 max-w-sm space-y-3">
+              <h1 className="text-lg font-bold text-gray-900">Manage Categories</h1>
+              {dynamicCategories.length > 0 && (
+                <ul className="text-sm text-gray-600 space-y-1">
+                  {dynamicCategories.map(c => <li key={c.id}>🗂️ {c.label}</li>)}
+                </ul>
+              )}
+              {showAddCategory ? (
+                <form onSubmit={addCategory} className="space-y-2">
+                  <input autoFocus value={newCategoryLabel} onChange={e => setNewCategoryLabel(e.target.value)}
+                    placeholder="Name *"
+                    className="w-full text-sm bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400" />
+                  <div className="flex items-center gap-2">
+                    <button type="submit" disabled={savingCategory || !newCategoryLabel.trim()}
+                      className="flex-1 text-sm font-semibold px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 transition">
+                      {savingCategory ? '…' : 'Add'}
+                    </button>
+                    <button type="button" onClick={() => { setShowAddCategory(false); setNewCategoryLabel('') }}
+                      className="text-sm font-semibold px-3 py-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition">
+                      ✕
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <button onClick={() => setShowAddCategory(true)}
+                  className="w-full flex items-center gap-2 text-sm font-semibold text-gray-800 bg-gray-50 hover:bg-gray-100 rounded-lg px-3 py-2.5 transition text-left">
+                  <span>➕</span><span>Add Category</span>
+                </button>
+              )}
+              {justAddedCategory && <SavedFlash show />}
+              <p className="text-xs text-gray-400">Delete an existing category from its row in Manage -- the × there uses this same permission.</p>
+            </div>
+          </TabErrorBoundary>
+        )}
+        {outerTab === 'loss' && lossView === 'viewPortalAs' && (
+          <TabErrorBoundary>
+            <div className="px-4 pt-4 max-w-sm space-y-3">
+              <h1 className="text-lg font-bold text-gray-900">View Portal As</h1>
+              <ViewPortalAsButton extraAllowed={canViewPortalAs} />
+            </div>
+          </TabErrorBoundary>
+        )}
         {outerTab === 'loss' && (MANAGE_VIEW_KEYS.has(lossView) || activeDynamicId !== null) && (
           <TabErrorBoundary>
             <GronyManageContent view={lossView as ManageView}
@@ -1550,7 +1601,6 @@ function ItemHubPageInner() {
           </div>
         </div>
       </div>
-      )}
 
       {/* Global search overlay -- click outside/× closes it; each result
           jumps straight to the right tab (and, for Sales/Bills/Customers/
