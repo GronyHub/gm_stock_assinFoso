@@ -341,7 +341,7 @@ const LOSSVIEW_PILL_KEYS: Partial<Record<LossView, string[]>> = {
 // both. no_staff_times lands here too (not in its own Staff Tasks list --
 // there isn't one) since Manage is the closest operational home for it, and
 // clicking it still jumps to the Staff tab same as it always has.
-const MANAGE_VIOLATION_TYPES = new Set(['no_staff_times', 'no_advert', 'jingle_overdue', 'equipment_check_overdue'])
+const MANAGE_VIOLATION_TYPES = new Set(['no_staff_times', 'no_advert', 'jingle_overdue', 'equipment_check_overdue', 'shirt_not_worn', 'shirt_overdue'])
 
 const VALID_TABS: OuterTab[] = ['today', 'loss', 'uk', 'ch']
 
@@ -644,6 +644,7 @@ function ItemHubPageInner() {
   const itemsFlagsCount = violationCountByType(['no_group', 'duplicates', 'not_in_inventory'])
   const cabFlagsCount = violationCountByType(['unchecked_cab'])
   const staffTimesFlagsCount = violationCountByType(['no_staff_times'])
+  const dressFlagsCount = violationCountByType(['shirt_not_worn', 'shirt_overdue'])
 
   // The morning stock count is the opener's own job -- its badge (on
   // Manage's Opener left-pane item) combines "hasn't confirmed clock-in
@@ -1112,6 +1113,7 @@ function ItemHubPageInner() {
                 const badge = entry.key === 'manageTasks' ? manageTasksCount
                   : entry.key === 'opener' ? openerBadgeCount
                   : entry.key === 'closer' ? (globalFlags?.missingClosingReports?.length ?? 0)
+                  : entry.key === 'staff_dress' ? dressFlagsCount
                   : undefined
                 return (
                   <SidePaneButton key={entry.key} icon={entry.icon} label={entry.label} mode={cashDisplayMode}

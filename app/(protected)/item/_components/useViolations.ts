@@ -39,6 +39,8 @@ export const SHORT_LABEL: Record<string, string> = {
   no_advert: 'Items Missing Audio Adverts',
   jingle_overdue: 'Monthly Jingle',
   equipment_check_overdue: 'Equipment Check (Mon/Thu)',
+  shirt_not_worn: 'Dress Code (Not Worn)',
+  shirt_overdue: 'Dress Code (T-Shirt Overdue)',
 }
 
 // Cash tasks default to Joe, shown in the Joe panel's loss summaries.
@@ -59,6 +61,7 @@ const ALL_ERROR_TYPES = [
   'unlinked_named', 'service_violation', 'gains', 'daily', '7day', '15day',
   'no_cash', 'missing_days', 'cost_gte_sell', 'dup_receipts',
   'unchecked_cab', 'no_staff_times', 'no_advert', 'jingle_overdue', 'equipment_check_overdue',
+  'shirt_not_worn', 'shirt_overdue',
 ]
 
 // This widget's violation "type" strings are the historical keys used by the
@@ -96,6 +99,7 @@ export const SUBMENU_HOME: Record<string, string> = {
   unchecked_cab: 'CAB',
   no_staff_times: 'Staff',
   no_advert: 'Advert', jingle_overdue: 'Advert', equipment_check_overdue: 'Advert',
+  shirt_not_worn: 'Dress Code', shirt_overdue: 'Dress Code',
 }
 
 // Shared by the Grony Cash panel (Item hub) and Grony Manage panel (Home) --
@@ -215,6 +219,16 @@ export function useViolations(counts?: Record<string, number>) {
       type: 'equipment_check_overdue',
       label: 'Monday/Thursday equipment check not confirmed',
       count: flags.equipmentCheckOverdue.length, days: null,
+    })
+    if (flags.shirtNotWorn?.length) list.push({
+      type: 'shirt_not_worn',
+      label: 'day' + (flags.shirtNotWorn.length !== 1 ? 's' : '') + ' where a staff t-shirt owner didn\'t wear it',
+      count: flags.shirtNotWorn.length, days: oldestDays(flags.shirtNotWorn, 'work_date'),
+    })
+    if (flags.shirtOverdue?.length) list.push({
+      type: 'shirt_overdue',
+      label: 'staff member' + (flags.shirtOverdue.length !== 1 ? 's' : '') + ' overdue for their company t-shirt',
+      count: flags.shirtOverdue.length, days: oldestDays(flags.shirtOverdue, 'due_date'),
     })
     const c = counts ?? {}
     const s = (n: number) => n !== 1 ? 's' : ''

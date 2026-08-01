@@ -9,6 +9,16 @@ import { NextRequest, NextResponse } from 'next/server'
 const OPENER_VIOLATION_TYPE = 'opener_daily_count'
 const OPENER_VIOLATION_LABEL = 'Missed daily opener counts'
 
+// Dress code -- self-attributed to the named staff member directly, not a
+// fixed assignee, so it gets its own pass below (same reasoning as Opener
+// accountability). shirt_not_worn accumulates over a rolling window instead
+// of a single "since when" date, since a past day's lapse doesn't go stale
+// the way an unresolved data gap does -- reasoned defaults, easy to retune.
+const SHIRT_NOT_WORN_TYPE = 'shirt_not_worn'
+const SHIRT_OVERDUE_TYPE = 'shirt_overdue'
+const SHIRT_WINDOW_DAYS = 30
+const SHIRT_THRESHOLD = 3
+
 function daysSince(dateStr: string): number {
   const d = new Date(dateStr + 'T00:00:00')
   const today = new Date(); today.setHours(0, 0, 0, 0)
@@ -298,6 +308,92 @@ export async function GET(req: NextRequest) {
       }
     } catch (e) {
       console.error('opener penalty check failed:', e)
+    }
+
+    // Dress code accountability: t-shirt owners the Closer logged as not
+    // wearing it, and staff still without one past their given due date.
+    try {
+      await sql`ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS has_company_tshirt BOOLEAN NOT NULL DEFAULT FALSE`.catch(() => {})
+      await sql`ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS tshirt_due_date DATE`.catch(() => {})
+
+      const [closingRows, profileRows] = await Promise.all([
+        sql`
+          SELECT work_date::text AS work_date, no_tshirt_staff
+          FROM closing_reports
+          WHERE no_tshirt_staff IS NOT NULL AND TRIM(no_tshirt_staff) <> ''
+          ORDER BY work_date
+        `,
+        sql`SELECT staff_name, has_company_tshirt, tshirt_due_date::text AS tshirt_due_date FROM staff_profiles`,
+      ])
+
+      const tshirtOwners = new Set(
+        (profileRows as any[]).filter(p => p.has_company_tshirt).map(p => p.staff_name.toLowerCase())
+      )
+      const occurrencesByStaff = new Map<string, string[]>()
+      for (const r of closingRows as { work_date: string; no_tshirt_staff: string }[]) {
+        const names = (r.no_tshirt_staff || '').split(',').map(s => s.trim()).filter(Boolean)
+        for (const name of names) {
+          if (!tshirtOwners.has(name.toLowerCase())) continue
+          if (!occurrencesByStaff.has(name)) occurrencesByStaff.set(name, [])
+          occurrencesByStaff.get(name)!.push(r.work_date)
+        }
+      }
+
+      for (const [staffName, dates] of occurrencesByStaff) {
+        const sorted = [...dates].sort()
+        for (const date of sorted) {
+          const windowStart = new Date(date + 'T00:00:00')
+          windowStart.setDate(windowStart.getDate() - (SHIRT_WINDOW_DAYS - 1))
+          const windowStartStr = windowStart.toISOString().slice(0, 10)
+          const countInWindow = sorted.filter(d => d >= windowStartStr && d <= date).length
+          if (countInWindow < SHIRT_THRESHOLD) continue
+
+          const instanceKey = `${staffName}|${date}`
+          const [already] = await sql`
+            SELECT 1 FROM auto_penalty_log WHERE violation_type = ${SHIRT_NOT_WORN_TYPE} AND instance_key = ${instanceKey}
+          `
+          if (already) continue
+
+          const details = `${date}: did not wear company t-shirt (${countInWindow} lapses in the last ${SHIRT_WINDOW_DAYS} days)`
+          await sql`
+            INSERT INTO staff_violations (staff_name, violation, details, severity, points, recorded_by)
+            VALUES (${staffName}, 'Dress code — t-shirt not worn', ${details}, 'major', ${points}, 'system-auto')
+          `
+          await sql`
+            INSERT INTO auto_penalty_log (violation_type, instance_key, staff_name)
+            VALUES (${SHIRT_NOT_WORN_TYPE}, ${instanceKey}, ${staffName})
+          `
+          await logActivity('system-auto', 'auto-penalized', `${staffName} — Dress code (${details})`)
+          created++
+          summary.push(`${staffName}: Dress code — t-shirt not worn (${details})`)
+        }
+      }
+
+      const todayStr = new Date().toISOString().slice(0, 10)
+      for (const p of profileRows as { staff_name: string; has_company_tshirt: boolean; tshirt_due_date: string | null }[]) {
+        if (p.has_company_tshirt || !p.tshirt_due_date || p.tshirt_due_date >= todayStr) continue
+
+        const instanceKey = `${p.staff_name}|${p.tshirt_due_date}`
+        const [already] = await sql`
+          SELECT 1 FROM auto_penalty_log WHERE violation_type = ${SHIRT_OVERDUE_TYPE} AND instance_key = ${instanceKey}
+        `
+        if (already) continue
+
+        const details = `T-shirt still not given, was due ${p.tshirt_due_date}`
+        await sql`
+          INSERT INTO staff_violations (staff_name, violation, details, severity, points, recorded_by)
+          VALUES (${p.staff_name}, 'Dress code — t-shirt overdue', ${details}, 'major', ${points}, 'system-auto')
+        `
+        await sql`
+          INSERT INTO auto_penalty_log (violation_type, instance_key, staff_name)
+          VALUES (${SHIRT_OVERDUE_TYPE}, ${instanceKey}, ${p.staff_name})
+        `
+        await logActivity('system-auto', 'auto-penalized', `${p.staff_name} — Dress code overdue (${details})`)
+        created++
+        summary.push(`${p.staff_name}: Dress code — t-shirt overdue (${details})`)
+      }
+    } catch (e) {
+      console.error('dress code penalty check failed:', e)
     }
 
     return NextResponse.json({ ok: true, created, summary })

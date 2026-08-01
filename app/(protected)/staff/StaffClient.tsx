@@ -964,6 +964,7 @@ type StaffProfile = {
   date_of_birth: string | null; ghana_card: string | null; ssnit_number: string | null
   phone: string | null; address: string | null; bank_name: string | null
   bank_account: string | null; momo_number: string | null
+  has_company_tshirt: boolean; tshirt_due_date: string | null
 }
 
 function fmtC(v: string | null | undefined) {
@@ -1480,6 +1481,25 @@ export function TeamProfilesTab() {
                 />
               </div>
             ))}
+            <div className="flex items-center gap-2 pt-1">
+              <input
+                type="checkbox"
+                id="edit-has-tshirt"
+                checked={!!editForm.has_company_tshirt}
+                onChange={e => setEditForm(f => ({ ...f, has_company_tshirt: e.target.checked }))}
+                className="w-3.5 h-3.5"
+              />
+              <label htmlFor="edit-has-tshirt" className="text-[11px] text-gray-600">Has company t-shirt</label>
+            </div>
+            <div>
+              <label className="text-[10px] text-gray-500 mb-0.5 block">T-shirt Due Date (if not yet given)</label>
+              <input
+                type="date"
+                value={editForm.tshirt_due_date ?? ''}
+                onChange={e => setEditForm(f => ({ ...f, tshirt_due_date: e.target.value }))}
+                className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-400"
+              />
+            </div>
           </div>
           <div className="flex gap-2">
             <button onClick={saveProfile} disabled={savingProfile}
@@ -1512,6 +1532,14 @@ export function TeamProfilesTab() {
             <div><span className="text-gray-400">MoMo: </span><span className="font-medium text-gray-800">{prof.momo_number ?? '—'}</span></div>
             <div className="col-span-2"><span className="text-gray-400">Bank: </span><span className="font-medium text-gray-800">{prof.bank_name ? `${prof.bank_name} · ${prof.bank_account ?? ''}` : '—'}</span></div>
             <div className="col-span-2"><span className="text-gray-400">Address: </span><span className="font-medium text-gray-800">{prof.address ?? '—'}</span></div>
+            <div className="col-span-2">
+              <span className="text-gray-400">Company T-Shirt: </span>
+              {prof.has_company_tshirt
+                ? <span className="font-medium text-green-600">Has one</span>
+                : prof.tshirt_due_date
+                  ? <span className="font-medium text-orange-500">Not yet — due {prof.tshirt_due_date}</span>
+                  : <span className="font-medium text-orange-400">Not yet — no due date set</span>}
+            </div>
           </div>
         </div>
       ))}

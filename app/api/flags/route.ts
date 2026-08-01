@@ -345,9 +345,44 @@ export async function GET() {
     ORDER BY missing_date DESC
   `)
 
+  // 15/16. Dress code -- staff who own a company t-shirt but were named by the
+  // Closer as not wearing it (per work day), and staff who don't yet own one
+  // past their given deadline. Matched in JS against the comma-joined
+  // no_tshirt_staff field, same parsing ClosingReportLogView already uses.
+  await sql`ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS has_company_tshirt BOOLEAN NOT NULL DEFAULT FALSE`.catch(() => {})
+  await sql`ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS tshirt_due_date DATE`.catch(() => {})
+
+  const [closingTshirtRows, tshirtProfiles] = await Promise.all([
+    safeQuery(() => sql`
+      SELECT work_date::text AS work_date, no_tshirt_staff
+      FROM closing_reports
+      WHERE no_tshirt_staff IS NOT NULL AND TRIM(no_tshirt_staff) <> ''
+      ORDER BY work_date DESC
+    `),
+    safeQuery(() => sql`
+      SELECT staff_name, has_company_tshirt, tshirt_due_date::text AS tshirt_due_date
+      FROM staff_profiles
+    `),
+  ])
+
+  const tshirtOwners = new Set(
+    tshirtProfiles.filter((p: any) => p.has_company_tshirt).map((p: any) => p.staff_name.toLowerCase())
+  )
+  const shirtNotWorn = closingTshirtRows.flatMap((r: any) =>
+    (r.no_tshirt_staff || '').split(',').map((s: string) => s.trim()).filter(Boolean)
+      .filter((name: string) => tshirtOwners.has(name.toLowerCase()))
+      .map((name: string) => ({ staff_name: name, work_date: r.work_date }))
+  )
+
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const shirtOverdue = tshirtProfiles
+    .filter((p: any) => !p.has_company_tshirt && p.tshirt_due_date && p.tshirt_due_date < todayStr)
+    .map((p: any) => ({ staff_name: p.staff_name, due_date: p.tshirt_due_date }))
+
   return NextResponse.json({
     noCash, missingDays, duplicates: filteredDups, costGteSell, notInInventory, noGroup, noStaffTimes,
     uncheckedCab, dupReceipts, unlinkedNamed, groupNames: groupNames.map((r: any) => r.group_name),
     noAdvert, jingleOverdue, equipmentCheckOverdue, missingClosingReports,
+    shirtNotWorn, shirtOverdue,
   })
 }

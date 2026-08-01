@@ -3,6 +3,7 @@ import dynamic from 'next/dynamic'
 import ClosingReportLogView from './ClosingReportLogView'
 import ManageLogPanel from './ManageLogPanel'
 import ContentPage from './ContentPage'
+import DressCodeFlagsPanel from './DressCodeFlagsPanel'
 import AdvertStatusPanel from './AdvertStatusPanel'
 import AssessmentPanel from './AssessmentPanel'
 import DynamicCategoryPage from './DynamicCategoryPage'
@@ -108,7 +109,10 @@ export default function GronyManageContent({
     {view === 'cuttings' && <ContentPage contentKey="advert_photo_cuttings" title="Advert 4 — Photo (Cuttings)" />}
     {view === 'video' && <ContentPage contentKey="advert_video" title="Advert 5 — Video Advert" />}
     {view === 'advert_log' && <ClosingReportLogView field="advert_played" label="Advert" icon="📢" />}
-    {view === 'staff_dress' && <ClosingReportLogView field="no_tshirt_staff" label="Dress Code" icon="👕" />}
+    {view === 'staff_dress' && (<>
+      <DressCodeFlagsPanel />
+      <ClosingReportLogView field="no_tshirt_staff" label="Dress Code" icon="👕" />
+    </>)}
     {view === 'tutorial' && <ContentPage contentKey="training_tutorial" title="📖 App Tutorial" />}
     {view === 'training_laws' && <ContentPage contentKey="training_laws" title="⚖️ Company Laws" />}
     {view === 'assessment' && <AssessmentPanel />}
