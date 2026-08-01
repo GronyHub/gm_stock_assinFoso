@@ -8,7 +8,11 @@ import { ASSIGNABLE_VIOLATIONS } from './violationAssignments'
 // A personalized "what's mine" summary, separate from the full shared
 // violations table below (which shows everything to everyone) -- only
 // renders once there's something assigned to whoever's actually looking.
-function MyAssignmentsSummary({ assignments, deadlines }: { assignments: Record<string, string>; deadlines: Record<string, string> }) {
+// Exported so it can also sit on the Home/Today tab now that Cash/Manage
+// Tasks (which used to host it) are gone -- every type it covers has its
+// own page-level flag section now, so this is purely a cross-page personal
+// digest rather than a way to act on anything itself.
+export function MyAssignmentsSummary({ assignments, deadlines }: { assignments: Record<string, string>; deadlines: Record<string, string> }) {
   const { data: session } = useSession()
   const username = ((session?.user as any)?.username ?? session?.user?.name ?? '').toLowerCase()
   const mine = username ? ASSIGNABLE_VIOLATIONS.filter(v => (assignments[v.type] ?? '').toLowerCase() === username) : []

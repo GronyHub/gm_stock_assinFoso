@@ -13,10 +13,27 @@ type LogEntry = {
   created_at: string
 }
 
+// Most recent required equipment-check day (every Monday and Thursday) on
+// or before today, as YYYY-MM-DD -- mirrors the same rule in
+// /api/flags/route.ts (kept separate since that file is server-only).
+function lastRequiredEquipmentCheckDate(): string {
+  const today = new Date()
+  const day = today.getDay()
+  const sinceMonday = (day + 6) % 7
+  const sinceThursday = (day + 3) % 7
+  const daysSince = Math.min(sinceMonday, sinceThursday)
+  const due = new Date(today)
+  due.setDate(due.getDate() - daysSince)
+  return due.toISOString().slice(0, 10)
+}
+
 // One reusable panel for every Grony Manage category that has no existing
 // data behind it (Arrangement, Cleanliness, Future, Customer Display, Staff
 // Display, Training, Repair Works, Quality Assurance) -- a simple dated log
-// staff add notes/photos to, viewable as history over time.
+// staff add notes/photos to, viewable as history over time. audio_jingle and
+// audio_equipment_check use the same log but also carry an overdue flag
+// (Jingle: nothing logged yet this month; Equipment: last logged entry is
+// older than the most recent required Mon/Thu check).
 export default function ManageLogPanel({ category, label, icon }: { category: string; label: string; icon: string }) {
   const [entries, setEntries] = useState<LogEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -83,8 +100,21 @@ export default function ManageLogPanel({ category, label, icon }: { category: st
     setEntries(prev => prev.filter(e => e.id !== id))
   }
 
+  const monthStartStr = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10)
+  const jingleOverdue = category === 'audio_jingle' && !loading && !entries.some(e => e.log_date >= monthStartStr)
+  const equipmentOverdue = category === 'audio_equipment_check' && !loading
+    && (entries.length === 0 || entries[0].log_date < lastRequiredEquipmentCheckDate())
+
   return (
     <div className="py-2 px-2 space-y-2">
+      {(jingleOverdue || equipmentOverdue) && (
+        <div className="bg-red-50 border border-red-200 rounded-lg px-2.5 py-2 flex items-center gap-2">
+          <span className="text-red-600 text-xs">🚩</span>
+          <p className="text-[11px] text-red-700 font-semibold">
+            {jingleOverdue ? 'No new jingle recorded yet this month.' : 'Equipment check not confirmed for the most recent Monday/Thursday.'}
+          </p>
+        </div>
+      )}
       <div className="bg-white border border-gray-200 rounded-lg px-2.5 py-2 space-y-1.5">
         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{icon} {label}</p>
         <textarea value={notes} onChange={e => setNotes(e.target.value)}

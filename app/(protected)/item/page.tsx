@@ -25,7 +25,7 @@ class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boole
 import { usePolling } from '@/lib/usePolling'
 import { useViolations } from './_components/useViolations'
 import PaneHomeDaily from './_components/PaneHomeDaily'
-import TasksView from './_components/TasksView'
+import TasksView, { MyAssignmentsSummary } from './_components/TasksView'
 import { COLUMNS, type ColKey } from './_components/lossTabColumns'
 import { useColumnPrefs, ColumnsPickerButton } from './_components/columnPrefs'
 import { MANAGE_LIST_ITEMS, useDynamicManageCategories, type ManageView } from './_components/manageViewData'
@@ -394,6 +394,10 @@ function ItemHubPageInner() {
   // its first run since only tab/view/q are ever written back to the URL.
   const [jumpToReceiptDate, setJumpToReceiptDate] = useState<string | null>(searchParams.get('jumpDate'))
   const [jumpToReceiptItemName, setJumpToReceiptItemName] = useState<string | null>(searchParams.get('jumpItem'))
+  // Loss by Date's own Losses/Gains toggle -- used to only switch to the
+  // gains feed via the (now-removed) Tasks page's 'gains' violation deep-
+  // link, so this is now the only way to reach it.
+  const [feedShowGains, setFeedShowGains] = useState(false)
   // Every "tap an item" spot in the app (Items list rows, Sales/Bills item
   // links, the old standalone /stock/[id] route's former callers) now lands
   // here instead -- ?jumpItemId= opens Item 360 straight to that item's
@@ -1567,7 +1571,8 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'today' && !(addForm === 'sale' || addForm === 'bill' || addForm === 'expense') && (
           <TabErrorBoundary>
-            <div className="h-full overflow-y-auto px-4">
+            <div className="h-full overflow-y-auto px-4 space-y-2 pt-2">
+              <MyAssignmentsSummary assignments={assignments} deadlines={deadlines} />
               <TodayContent />
             </div>
           </TabErrorBoundary>
@@ -1662,10 +1667,24 @@ function ItemHubPageInner() {
         {/* The gains pill (see LOSSVIEW_PILL_KEYS['feed']) always lands here
             via VIOLATION_HOME['gains'] = 'feed' -- it's a violation to fix,
             not a way of browsing losses, so this view shows the gain feed
-            instead of the loss feed while it's active. */}
+            instead of the loss feed while it's active. The Losses/Gains
+            toggle below covers reaching the gain feed on its own too, now
+            that the 'gains' violation deep-link's only source (Tasks) is gone. */}
         {outerTab === 'loss' && lossView === 'feed' && (
           <TabErrorBoundary>
-            <LossFeedTab search={search} kind={violation === 'gains' ? 'gain' : 'loss'} />
+            {!violation && (
+              <div className="flex justify-end gap-1 px-3 pt-2">
+                <button onClick={() => setFeedShowGains(false)}
+                  className={`text-[9px] font-semibold px-2 py-1 rounded transition ${!feedShowGains ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                  Losses
+                </button>
+                <button onClick={() => setFeedShowGains(true)}
+                  className={`text-[9px] font-semibold px-2 py-1 rounded transition ${feedShowGains ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                  🚩 Gains
+                </button>
+              </div>
+            )}
+            <LossFeedTab search={search} kind={(violation === 'gains' || feedShowGains) ? 'gain' : 'loss'} />
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'lossByItem' && (

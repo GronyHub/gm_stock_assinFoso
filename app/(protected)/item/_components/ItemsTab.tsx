@@ -350,14 +350,23 @@ export default function ItemsTab({ items, group, productType, search, violation,
   const [linkingAllUnlinked, setLinkingAllUnlinked] = useState(false)
   const [lossSummary, setLossSummary] = useState<any[] | null>(null)
   const [lossSummaryLoading, setLossSummaryLoading] = useState(false)
-  // One flag icon in the normal toolbar opens a single combined view of
-  // Items' own violation types (no_group, duplicates, not_in_inventory),
-  // each with its own AssignWidget.
-  const [showFlagsSummary, setShowFlagsSummary] = useState(false)
+  // One flag icon in the normal toolbar opens a single combined view of all
+  // of Items' own violation types. The 3 assignable ones (no_group,
+  // duplicates, not_in_inventory) get an AssignWidget; the other 5
+  // (neg_soh, no_sp, no_cp, unlinked_named, service_violation) aren't in
+  // the assignable/auto-penalty system, so they're informational-only rows
+  // with a "View" button into their existing full list. That full list is
+  // driven by `violation`, an external prop -- when opened from inside this
+  // combined view instead (no external `violation` set), `flagsSummary`
+  // stands in for it so the same list views work either way.
+  const [flagsSummary, setFlagsSummary] = useState<null
+    | 'summary' | 'no_group' | 'duplicates' | 'not_in_inventory'
+    | 'neg_soh' | 'no_sp' | 'no_cp' | 'unlinked_named' | 'service_violation'>(null)
+  const effectiveViolation = violation ?? (flagsSummary && flagsSummary !== 'summary' ? flagsSummary : null)
 
-  const needsFlags = showFlagsSummary || violation === 'no_group' || violation === 'duplicates' || violation === 'unlinked_named'
+  const needsFlags = flagsSummary !== null || effectiveViolation === 'no_group' || effectiveViolation === 'duplicates' || effectiveViolation === 'unlinked_named'
   const needsNameRes = violation === 'inv_done' || violation === 'inv_todo'
-  const needsLossSummary = violation === 'service_violation'
+  const needsLossSummary = flagsSummary !== null || effectiveViolation === 'service_violation'
 
   useEffect(() => {
     fetch('/api/losses/all').then(r => r.json()).then(lossData => {
@@ -423,11 +432,11 @@ export default function ItemsTab({ items, group, productType, search, violation,
         : i.product_type !== 'service'
       return matchGroup && matchType && i.item_name.toLowerCase().includes(q)
     })
-    if (violation === 'neg_soh') list = list.filter(i => Number(i.calculated_soh) < 0 && i.product_type !== 'service')
-    if (violation === 'no_sp') list = list.filter(i => !i.selling_rate || parseFloat(i.selling_rate) === 0)
-    if (violation === 'no_cp') list = list.filter(i => !i.purchase_rate || parseFloat(i.purchase_rate) === 0)
+    if (effectiveViolation === 'neg_soh') list = list.filter(i => Number(i.calculated_soh) < 0 && i.product_type !== 'service')
+    if (effectiveViolation === 'no_sp') list = list.filter(i => !i.selling_rate || parseFloat(i.selling_rate) === 0)
+    if (effectiveViolation === 'no_cp') list = list.filter(i => !i.purchase_rate || parseFloat(i.purchase_rate) === 0)
     return list
-  }, [items, group, productType, search, violation])
+  }, [items, group, productType, search, effectiveViolation])
 
   useEffect(() => {
     const rightPane = rightPaneRef.current
@@ -533,10 +542,16 @@ export default function ItemsTab({ items, group, productType, search, violation,
   }
 
   // Flat table for simple filter violations
-  if (violation === 'neg_soh' || violation === 'no_sp' || violation === 'no_cp') {
-    const violatedItems = filteredItems  // already filtered by violation in useMemo
+  if (effectiveViolation === 'neg_soh' || effectiveViolation === 'no_sp' || effectiveViolation === 'no_cp') {
+    const violatedItems = filteredItems  // already filtered by effectiveViolation in useMemo
     return (
       <div className="flex flex-col h-full min-h-0">
+        {!violation && (
+          <button onClick={() => setFlagsSummary('summary')}
+            className="shrink-0 self-start mx-2 mt-1 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-red-600 text-white transition">
+            ← Back to Flags
+          </button>
+        )}
         <p className="shrink-0 text-[10px] text-gray-400 px-2 py-1">{violatedItems.length} item{violatedItems.length !== 1 ? 's' : ''}</p>
         <div className="flex-1 min-h-0 overflow-y-auto">
           <table className="w-full table-fixed border-collapse text-[8px]">
@@ -610,9 +625,15 @@ export default function ItemsTab({ items, group, productType, search, violation,
     )
   }
 
-  if (violation === 'service_violation') {
+  if (effectiveViolation === 'service_violation') {
     return (
       <div className="flex-1 overflow-y-auto min-h-0 py-2 h-full">
+        {!violation && (
+          <button onClick={() => setFlagsSummary('summary')}
+            className="mx-2 mb-1 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-red-600 text-white transition">
+            ← Back to Flags
+          </button>
+        )}
         <p className="text-[10px] text-gray-400 px-2 mb-1">
           {lossSummaryLoading || !lossSummary
             ? 'Loading…'
@@ -637,9 +658,15 @@ export default function ItemsTab({ items, group, productType, search, violation,
     )
   }
 
-  if (violation === 'no_group') {
+  if (effectiveViolation === 'no_group') {
     return (
       <div className="flex-1 overflow-y-auto min-h-0 py-2 h-full">
+        {!violation && (
+          <button onClick={() => setFlagsSummary('summary')}
+            className="mx-2 mb-1 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-red-600 text-white transition">
+            ← Back to Flags
+          </button>
+        )}
         <p className="text-[10px] text-gray-400 px-2 mb-1">
           {flagsLoading || !flags ? 'Loading…' : `${flags.noGroup.length} item${flags.noGroup.length !== 1 ? 's' : ''} with no group`}
         </p>
@@ -657,9 +684,15 @@ export default function ItemsTab({ items, group, productType, search, violation,
     )
   }
 
-  if (violation === 'duplicates') {
+  if (effectiveViolation === 'duplicates') {
     return (
       <div className="flex-1 overflow-y-auto min-h-0 py-2 h-full">
+        {!violation && (
+          <button onClick={() => setFlagsSummary('summary')}
+            className="mx-2 mb-1 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-red-600 text-white transition">
+            ← Back to Flags
+          </button>
+        )}
         <div className="flex items-center justify-between px-2 mb-1 gap-2">
           <p className="text-[10px] text-gray-400">
             {flagsLoading || !flags ? 'Loading…' : `${activeDups.length} possible duplicate pair${activeDups.length !== 1 ? 's' : ''}`}
@@ -700,9 +733,15 @@ export default function ItemsTab({ items, group, productType, search, violation,
     )
   }
 
-  if (violation === 'unlinked_named') {
+  if (effectiveViolation === 'unlinked_named') {
     return (
       <div className="flex-1 overflow-y-auto min-h-0 py-2 h-full">
+        {!violation && (
+          <button onClick={() => setFlagsSummary('summary')}
+            className="mx-2 mb-1 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-red-600 text-white transition">
+            ← Back to Flags
+          </button>
+        )}
         <div className="flex items-center justify-between px-2 mb-1 gap-2">
           <p className="text-[10px] text-gray-400">
             {flagsLoading || !flags ? 'Loading…' : `${flags.unlinkedNamed.length} unlinked item name${flags.unlinkedNamed.length !== 1 ? 's' : ''}`}
@@ -750,17 +789,25 @@ export default function ItemsTab({ items, group, productType, search, violation,
   if (lossLoading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
 
   // ── COMBINED FLAGS VIEW ── one flag icon covering all of Items' own
-  // violation types together, each with its own assign/deadline control.
-  if (showFlagsSummary) {
-    const rows = [
-      { type: 'no_group', count: flags?.noGroup?.length, label: 'item(s) with no group assigned' },
-      { type: 'duplicates', count: flags?.duplicates?.length, label: 'possible duplicate item pair(s)' },
-      { type: 'not_in_inventory', count: flags?.notInInventory?.length, label: 'item name(s) not found in inventory' },
+  // violation types together. The 3 assignable ones get an AssignWidget;
+  // the other 5 are informational-only with a "View" button into their
+  // existing full list (see effectiveViolation above).
+  if (flagsSummary === 'summary') {
+    type ItemsFlagType = 'no_group' | 'duplicates' | 'not_in_inventory' | 'neg_soh' | 'no_sp' | 'no_cp' | 'unlinked_named' | 'service_violation'
+    const rows: { type: ItemsFlagType; count: number; label: string; assignable: boolean; viewable: boolean; loading: boolean }[] = [
+      { type: 'no_group', count: flags?.noGroup?.length ?? 0, label: 'item(s) with no group assigned', assignable: true, viewable: true, loading: flagsLoading || !flags },
+      { type: 'duplicates', count: flags?.duplicates?.length ?? 0, label: 'possible duplicate item pair(s)', assignable: true, viewable: true, loading: flagsLoading || !flags },
+      { type: 'not_in_inventory', count: flags?.notInInventory?.length ?? 0, label: 'item name(s) not found in inventory', assignable: true, viewable: false, loading: flagsLoading || !flags },
+      { type: 'neg_soh', count: items.filter(i => Number(i.calculated_soh) < 0 && i.product_type !== 'service').length, label: 'item(s) with negative stock on hand', assignable: false, viewable: true, loading: false },
+      { type: 'no_sp', count: items.filter(i => !i.selling_rate || parseFloat(i.selling_rate) === 0).length, label: 'item(s) with no selling price', assignable: false, viewable: true, loading: false },
+      { type: 'no_cp', count: items.filter(i => !i.purchase_rate || parseFloat(i.purchase_rate) === 0).length, label: 'item(s) with no cost price', assignable: false, viewable: true, loading: false },
+      { type: 'unlinked_named', count: flags?.unlinkedNamed?.length ?? 0, label: 'sale name(s) not linked to their item', assignable: false, viewable: true, loading: flagsLoading || !flags },
+      { type: 'service_violation', count: serviceViolations.length, label: 'service item(s) with count/GMC/bill activity', assignable: false, viewable: true, loading: lossSummaryLoading || !lossSummary },
     ]
     return (
       <div className="flex flex-col h-full min-h-0">
         <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0">
-          <button onClick={() => setShowFlagsSummary(false)}
+          <button onClick={() => setFlagsSummary(null)}
             className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-red-600 text-white transition">
             ← Back
           </button>
@@ -769,10 +816,18 @@ export default function ItemsTab({ items, group, productType, search, violation,
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
           {rows.map(r => (
             <div key={r.type} className="bg-white border border-gray-200 rounded-xl p-2.5 space-y-1.5">
-              <p className="text-[10px] text-gray-400">
-                {flagsLoading || !flags ? 'Loading…' : `${r.count ?? 0} ${r.label}`}
-              </p>
-              <AssignWidget type={r.type} />
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[10px] text-gray-400">
+                  {r.loading ? 'Loading…' : `${r.count} ${r.label}`}
+                </p>
+                {r.viewable && (
+                  <button onClick={() => setFlagsSummary(r.type)}
+                    className="shrink-0 text-[9px] font-semibold px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition">
+                    View
+                  </button>
+                )}
+              </div>
+              {r.assignable && <AssignWidget type={r.type} />}
             </div>
           ))}
         </div>
@@ -786,7 +841,7 @@ export default function ItemsTab({ items, group, productType, search, violation,
       <div ref={leftPaneRef} className="w-1/3 border-r-4 border-blue-600 overflow-y-auto min-h-0">
         <div className="px-2 py-1 border-b border-gray-100 bg-gray-50 sticky top-0 z-10 flex items-center justify-between">
           <span className="text-[9px] text-gray-400">{filteredItems.length} items</span>
-          <button onClick={() => setShowFlagsSummary(true)} title="Item flags -- assign who's responsible for each"
+          <button onClick={() => setFlagsSummary('summary')} title="Item flags -- assign who's responsible for each"
             className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-700 transition">
             🚩
           </button>
