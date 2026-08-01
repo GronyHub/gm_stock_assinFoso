@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
-import { FEATURE_KEYS } from '@/lib/permissions'
+import { FEATURE_KEYS, DEFAULT_ON_FEATURES } from '@/lib/permissions'
 import { NextRequest, NextResponse } from 'next/server'
 
 // Any authenticated user can read the role list (needed to render their own
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
 
   const [row] = await sql`INSERT INTO roles (key, label) VALUES (${key}, ${label.trim()}) RETURNING key, label, created_at`
   for (const feature of FEATURE_KEYS) {
-    await sql`INSERT INTO role_permissions (role_key, feature_key, allowed) VALUES (${key}, ${feature}, false)`
+    await sql`INSERT INTO role_permissions (role_key, feature_key, allowed) VALUES (${key}, ${feature}, ${DEFAULT_ON_FEATURES.has(feature)})`
   }
   return NextResponse.json(row, { status: 201 })
 }

@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useMemo, Component, Suspense, type ReactNode } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
-import { hasFeature, type FeatureKey, type RolePermissionsMap } from '@/lib/permissionsShared'
+import { hasFeature, DEFAULT_ON_FEATURES, type FeatureKey, type RolePermissionsMap } from '@/lib/permissionsShared'
 
 class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boolean; message: string }> {
   state = { error: false, message: '' }
@@ -193,6 +193,9 @@ const CASH_ITEMS: { key: LossView; label: string; icon: string }[] = [
   { key: 'purchaseOrders',   label: 'Purchase Orders',   icon: '🛒' },
   { key: 'item360', label: 'Item 360', icon: '🔍' },
 ]
+// Used to bounce someone off a Cash view the moment their permissions load
+// and turn out not to include it (see the canSeeCash effect below).
+const CASH_VIEW_KEYS = new Set<LossView>(CASH_ITEMS.map(v => v.key))
 
 type Item = {
   id: number
@@ -839,10 +842,34 @@ function ItemHubPageInner() {
   // there take effect on this user's next load, same as any other role
   // change would.
   const [rolePermissions, setRolePermissions] = useState<RolePermissionsMap>({})
+  const [permsLoaded, setPermsLoaded] = useState(false)
   useEffect(() => {
-    fetch('/api/user-permissions').then(r => r.ok ? r.json() : {}).then(setRolePermissions).catch(() => {})
+    fetch('/api/user-permissions').then(r => r.ok ? r.json() : {}).then(d => { setRolePermissions(d); setPermsLoaded(true) }).catch(() => setPermsLoaded(true))
   }, [])
-  const perm = (feature: FeatureKey) => hasFeature({ role, username }, feature, rolePermissions)
+  // Cash/Manage default to granted for almost everyone (see
+  // DEFAULT_ON_FEATURES) -- until the real map has loaded, assume that
+  // rather than briefly hiding the whole Grony Cash/Manage pane for every
+  // single staff member on every page load while the fetch is in flight.
+  const perm = (feature: FeatureKey) =>
+    !permsLoaded && DEFAULT_ON_FEATURES.has(feature) ? true : hasFeature({ role, username }, feature, rolePermissions)
+  const canSeeCash = perm('cash')
+  const canSeeManage = perm('manage')
+  // Hiding the Cash/Manage rows in the pane (below) doesn't retract a view
+  // someone's already sitting on -- a default landing on 'items', or a
+  // direct ?view= link, would otherwise keep showing Cash content forever
+  // with no button left to navigate away from it. Bounces to whichever of
+  // Manage/Staff Times/Home is still available the moment permissions
+  // finish loading and turn out not to include the tab currently showing.
+  useEffect(() => {
+    if (!permsLoaded || outerTab !== 'loss') return
+    if (!canSeeCash && CASH_VIEW_KEYS.has(lossView)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      pickLossView(canSeeManage ? MANAGE_LIST_ITEMS[0].key : (myStaffName ? 'staffTimes' : 'home'))
+    } else if (!canSeeManage && (MANAGE_VIEW_KEYS.has(lossView) || activeDynamicId !== null)) {
+      pickLossView(canSeeCash ? 'items' : (myStaffName ? 'staffTimes' : 'home'))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [permsLoaded, canSeeCash, canSeeManage, lossView, outerTab])
   const canSeePL = perm('pl')
   const canSeeTeam = perm('team')
   const canSeeUsers = perm('users')
@@ -1050,12 +1077,13 @@ function ItemHubPageInner() {
                 relationship to any of these, so the list is just empty
                 (toggle + View/Sign out only) while on either of them. */}
             {outerTab === 'loss' && (<>
-            {CASH_ITEMS.filter(v => v.key !== 'pl' || canSeePL).map(v => (
+            {canSeeCash && CASH_ITEMS.filter(v => v.key !== 'pl' || canSeePL).map(v => (
                 <SidePaneButton key={v.key} icon={v.icon} label={v.label} mode={cashDisplayMode}
                   active={paneActive(lossView === v.key)} badge={v.key === 'tasks' ? cashTasksCount : undefined}
                   onClick={() => pickLossView(v.key)} />
               ))}
 
+            {canSeeManage && (
             <div className="mt-1 pt-1 border-t border-white/30">
               {cashDisplayMode !== 'icon' && (
                 <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Manage</p>
@@ -1091,6 +1119,7 @@ function ItemHubPageInner() {
               )}
 
             </div>
+            )}
 
             {myStaffName && (
               <div className="mt-1 pt-1 border-t border-white/30">

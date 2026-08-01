@@ -9,11 +9,13 @@ import { isOwnerLevel } from './roles'
 // from lib/permissions.ts directly, or the bundler pulls lib/db.ts in with
 // it and crashes every client on load.
 export const FEATURE_KEYS = [
-  'team', 'users', 'add_category', 'view_portal_as', 'uk', 'ch', 'pl', 'confidential_expenses',
+  'cash', 'manage', 'team', 'users', 'add_category', 'view_portal_as', 'uk', 'ch', 'pl', 'confidential_expenses',
 ] as const
 export type FeatureKey = typeof FEATURE_KEYS[number]
 
 export const FEATURE_LABELS: Record<FeatureKey, string> = {
+  cash: 'Grony Cash (Items, Sales, Bills, etc.)',
+  manage: 'Grony Manage (Tasks, Opener, Closer, Audio, etc.)',
   team: 'Team (Team Payslips, All Staff)',
   users: 'Users (manage accounts)',
   add_category: 'Add/delete Manage categories',
@@ -23,6 +25,13 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   pl: 'P&L',
   confidential_expenses: 'Confidential expenses (e.g. Salaries)',
 }
+
+// Every other feature here is an opt-in extra (off until someone's
+// specifically granted it). Cash and Manage are the opposite -- they're
+// the app's core, everyone had them before this permission even existed,
+// so they need to stay on by default and only switch off for whoever's
+// explicitly unchecked (see getUserPermissionsMap in lib/permissions.ts).
+export const DEFAULT_ON_FEATURES = new Set<FeatureKey>(['cash', 'manage'])
 
 export type RolePermissionsMap = Record<string, Record<string, boolean>>
 

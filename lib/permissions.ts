@@ -7,7 +7,7 @@ import sql from './db'
 // (FEATURE_KEYS/FEATURE_LABELS/hasFeature) without pulling in the DB
 // client. API routes (server-only) can keep importing from here.
 export * from './permissionsShared'
-import type { RolePermissionsMap } from './permissionsShared'
+import { FEATURE_KEYS, DEFAULT_ON_FEATURES, type RolePermissionsMap } from './permissionsShared'
 
 // Per-user grants (Roles & Permissions screen is keyed by person, not role,
 // so each staff member can be toggled individually) layered on top of their
@@ -41,7 +41,15 @@ export async function getUserPermissionsMap(): Promise<RolePermissionsMap> {
   }
   const map: RolePermissionsMap = {}
   for (const u of users) {
-    map[u.username.toLowerCase()] = { ...roleDefaults[u.role], ...overridesByUserId[u.id] }
+    const effective: Record<string, boolean> = {}
+    for (const feature of FEATURE_KEYS) {
+      const override = overridesByUserId[u.id]?.[feature]
+      const roleValue = roleDefaults[u.role]?.[feature]
+      effective[feature] = override !== undefined ? override
+        : roleValue !== undefined ? roleValue
+        : DEFAULT_ON_FEATURES.has(feature)
+    }
+    map[u.username.toLowerCase()] = effective
   }
   return map
 }
