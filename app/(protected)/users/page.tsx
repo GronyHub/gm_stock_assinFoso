@@ -12,6 +12,7 @@ type User = {
   created_at: string
   active: boolean
   resigned_at: string | null
+  deactivation_reason: string | null
 }
 
 type Role = { key: string; label: string }
@@ -20,6 +21,8 @@ const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded-xl px-3 py-2
 const labelCls = 'text-xs text-gray-500 font-medium mb-1 block'
 
 const EMPTY_NEW = { username: '', display_name: '', email: '', role: 'staff', password: '', confirm: '' }
+
+const DEACTIVATION_REASONS = ['Resigned', 'Terminated', 'Suspended', 'Absconded', 'End of Contract', 'Other'] as const
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10)
@@ -43,6 +46,8 @@ export default function UsersPage() {
 
   const [deactivatingId, setDeactivatingId] = useState<number | null>(null)
   const [resignDate, setResignDate] = useState(todayStr())
+  const [reasonChoice, setReasonChoice] = useState<string>(DEACTIVATION_REASONS[0])
+  const [reasonOther, setReasonOther] = useState('')
   const [statusSaving, setStatusSaving] = useState(false)
   const [statusError, setStatusError] = useState('')
 
@@ -105,7 +110,7 @@ export default function UsersPage() {
     setAdding(false)
     if (res.ok) {
       const created = await res.json()
-      setUsers(prev => [...prev, { ...created, active: true, resigned_at: null }])
+      setUsers(prev => [...prev, { ...created, active: true, resigned_at: null, deactivation_reason: null }])
       setNewForm({ ...EMPTY_NEW })
       setShowAdd(false)
     } else {
@@ -117,14 +122,17 @@ export default function UsersPage() {
   function startDeactivate(u: User) {
     setDeactivatingId(u.id)
     setResignDate(todayStr())
+    setReasonChoice(DEACTIVATION_REASONS[0])
+    setReasonOther('')
     setStatusError('')
   }
 
   async function confirmDeactivate(u: User) {
+    const reason = reasonChoice === 'Other' ? (reasonOther.trim() || 'Other') : reasonChoice
     setStatusSaving(true); setStatusError('')
     const res = await fetch(`/api/users/${u.id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ active: false, resigned_at: resignDate }),
+      body: JSON.stringify({ active: false, resigned_at: resignDate, reason }),
     })
     setStatusSaving(false)
     if (res.ok) {
@@ -225,7 +233,7 @@ export default function UsersPage() {
         </div>
       )}
 
-      {statusError && <p className="text-red-500 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2">{statusError}</p>}
+      {statusError && deactivatingId === null && <p className="text-red-500 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2">{statusError}</p>}
 
       {/* Active user list */}
       <div className="space-y-2">
@@ -283,12 +291,28 @@ export default function UsersPage() {
                 <p className="text-sm font-semibold text-gray-700">Deactivate {u.display_name}?</p>
                 <p className="text-xs text-gray-500">
                   Blocks @{u.username}&apos;s login immediately. Their payslips, times, and violations all stay on record —
-                  they&apos;ll show up under Resigned Staff below, and can be reactivated later if needed.
+                  they&apos;ll show up under Inactive Staff below, and can be reactivated later if needed.
                 </p>
                 <div>
-                  <label className={labelCls}>Resignation Date</label>
+                  <label className={labelCls}>Reason</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {DEACTIVATION_REASONS.map(r => (
+                      <button key={r} type="button" onClick={() => setReasonChoice(r)}
+                        className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition ${reasonChoice === r ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+                  {reasonChoice === 'Other' && (
+                    <input value={reasonOther} onChange={e => setReasonOther(e.target.value)}
+                      placeholder="Describe the reason" className={inputCls + ' mt-2'} />
+                  )}
+                </div>
+                <div>
+                  <label className={labelCls}>{reasonChoice === 'Suspended' ? 'Suspension Date' : 'Effective Date'}</label>
                   <input type="date" value={resignDate} onChange={e => setResignDate(e.target.value)} className={inputCls} />
                 </div>
+                {statusError && <p className="text-red-500 text-sm">{statusError}</p>}
                 <div className="flex gap-2">
                   <button onClick={() => confirmDeactivate(u)} disabled={statusSaving}
                     className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-3 transition">
@@ -335,12 +359,12 @@ export default function UsersPage() {
         })}
       </div>
 
-      {/* Resigned Staff -- deactivated accounts, kept separate from the
+      {/* Inactive Staff -- deactivated accounts, kept separate from the
           active list above but never deleted. Their payslips/times/
           violations are untouched; Reactivate just flips them back on. */}
       {resignedUsers.length > 0 && (
         <div className="space-y-2 pt-2">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Resigned Staff</p>
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Inactive Staff</p>
           {resignedUsers.map(u => {
             const protectedFromMe = myRole !== 'owner' && (u.role === 'owner' || u.username?.toLowerCase() === 'grony')
             return (
@@ -348,10 +372,10 @@ export default function UsersPage() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="font-semibold text-gray-700">{u.display_name}</p>
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-200 text-gray-600">resigned</span>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-200 text-gray-600">{u.deactivation_reason ?? 'Resigned'}</span>
                   </div>
                   <p className="text-xs text-gray-400 mt-0.5">@{u.username}</p>
-                  {u.resigned_at && <p className="text-xs text-gray-400 mt-0.5">Resigned {fmtDate(u.resigned_at)}</p>}
+                  {u.resigned_at && <p className="text-xs text-gray-400 mt-0.5">Since {fmtDate(u.resigned_at)}</p>}
                 </div>
                 {!protectedFromMe && (
                   <button onClick={() => reactivate(u)} disabled={statusSaving}

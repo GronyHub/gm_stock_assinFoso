@@ -65,7 +65,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     return NextResponse.json({ error: 'You can’t deactivate your own account' }, { status: 400 })
   }
 
-  const { active, resigned_at } = await req.json() as { active: boolean; resigned_at?: string | null }
+  const { active, resigned_at, reason } = await req.json() as { active: boolean; resigned_at?: string | null; reason?: string | null }
   if (typeof active !== 'boolean') return NextResponse.json({ error: 'active is required' }, { status: 400 })
 
   const [target] = await sql`SELECT username, role FROM app_users WHERE id = ${userId}`
@@ -76,20 +76,22 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 
   await sql`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE`.catch(() => {})
   await sql`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS resigned_at DATE`.catch(() => {})
+  await sql`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS deactivation_reason TEXT`.catch(() => {})
 
   const effectiveResignedAt = active ? null : (resigned_at || new Date().toISOString().slice(0, 10))
+  const effectiveReason = active ? null : (reason?.trim() || 'Resigned')
 
   const [row] = await sql`
-    UPDATE app_users SET active = ${active}, resigned_at = ${effectiveResignedAt}
+    UPDATE app_users SET active = ${active}, resigned_at = ${effectiveResignedAt}, deactivation_reason = ${effectiveReason}
     WHERE id = ${userId}
-    RETURNING id, username, display_name, email, role, active, resigned_at::text
+    RETURNING id, username, display_name, email, role, active, resigned_at::text, deactivation_reason
   `
 
   const actor = sessionUser?.username ?? sessionUser?.name ?? 'Unknown'
   await logActivity(
     actor,
     active ? 'reactivated staff account' : 'deactivated staff account',
-    active ? target.username : `${target.username} — resigned ${effectiveResignedAt}`
+    active ? target.username : `${target.username} — ${effectiveReason} (${effectiveResignedAt})`
   )
 
   return NextResponse.json(row)

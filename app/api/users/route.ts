@@ -9,8 +9,9 @@ export async function GET() {
   if (!isOwnerLevel(session?.user as any)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   await sql`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE`.catch(() => {})
   await sql`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS resigned_at DATE`.catch(() => {})
+  await sql`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS deactivation_reason TEXT`.catch(() => {})
   const rows = await sql`
-    SELECT id, username, display_name, email, role, created_at, active, resigned_at::text
+    SELECT id, username, display_name, email, role, created_at, active, resigned_at::text, deactivation_reason
     FROM app_users ORDER BY id
   `
   return NextResponse.json(rows)
