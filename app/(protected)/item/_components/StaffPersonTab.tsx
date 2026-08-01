@@ -9,14 +9,13 @@ import type { StaffView } from './staffViewData'
 
 export { ALL_STAFF_NAMES }
 
-// Users lives at /users as its own page/route, but pulled in and rendered
-// inline here (like VendorsPage/CustomersPage are inside Grony Cash) so
-// picking it from Joe/Grony's Team section keeps this tab's shell up
-// instead of navigating away.
-const UsersPage = dynamic(() => import('../../users/page'), {
-  ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div>,
-})
-const RolesPage = dynamic(() => import('../../roles/page'), {
+// Users and Roles & Permissions each still live at /users and /roles as
+// their own standalone routes too, but pulled in and rendered inline here
+// (like VendorsPage/CustomersPage are inside Grony Cash) so picking either
+// from Joe/Grony's Team section keeps this tab's shell up instead of
+// navigating away. AccessPage merges the two behind one tab switcher,
+// sharing a single users+roles fetch between them.
+const AccessPage = dynamic(() => import('./AccessPage'), {
   ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div>,
 })
 
@@ -52,7 +51,8 @@ export default function StaffContent({
     {view === 'staffProfile' && isSelf && <ProfileTab />}
     {canSeeTeam && view === 'teamPayslips' && <PayslipsTab role={role} username={username} />}
     {canSeeTeam && view === 'allStaff' && <ViolationsTab role={role} username={username} vtab={teamVtab} setVtab={setTeamVtab} />}
-    {canSeeUsers && view === 'users' && <UsersPage />}
-    {canSeeRoles && view === 'roles' && <RolesPage />}
+    {(canSeeUsers || canSeeRoles) && (view === 'users' || view === 'roles') && (
+      <AccessPage initialTab={view === 'roles' ? 'roles' : 'users'} canSeeUsers={canSeeUsers} canSeeRoles={canSeeRoles} />
+    )}
   </>)
 }

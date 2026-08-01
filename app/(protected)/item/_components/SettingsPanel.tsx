@@ -89,16 +89,14 @@ export default function SettingsPanel({
         {(canSeeUsers || canManageRoles) && (
           <div className="space-y-1.5">
             <p className={sectionLabelCls}>Access</p>
-            {canSeeUsers && (
-              <button onClick={() => goAndClose('users')} className={rowCls}>
-                <span>🔑</span><span>Users</span>
-              </button>
-            )}
-            {canManageRoles && (
-              <button onClick={() => goAndClose('roles')} className={rowCls}>
-                <span>🛡️</span><span>Roles &amp; Permissions</span>
-              </button>
-            )}
+            {/* Users and Roles & Permissions merged into one screen behind
+                a tab switcher (see AccessPage.tsx) -- one row in here now
+                instead of two, since editing someone's role and tuning what
+                that role can do are one connected task, not two pages to
+                jump between. */}
+            <button onClick={() => goAndClose('users')} className={rowCls}>
+              <span>🔐</span><span>{canSeeUsers && canManageRoles ? 'Users & Roles' : canManageRoles ? 'Roles & Permissions' : 'Users'}</span>
+            </button>
           </div>
         )}
 
