@@ -379,7 +379,7 @@ export default function ExpensesTab({ search }: Props) {
   }
 
   useEffect(() => { loadExpenses() }, [])
-  usePolling(loadExpenses, 5000, editId === null)
+  usePolling(loadExpenses, 20000, editId === null)
 
 
   const accountOptions = useMemo(() =>

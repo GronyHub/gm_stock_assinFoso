@@ -486,7 +486,7 @@ function ItemHubPageInner() {
   }
 
   useEffect(() => { loadItems() }, [])
-  usePolling(loadItems, 5000)
+  usePolling(loadItems, 20000)
 
   // Group filter options -- deliberately NOT derived from `items` above.
   // The Items table (LossTab) is built from item_stock_summary, which can

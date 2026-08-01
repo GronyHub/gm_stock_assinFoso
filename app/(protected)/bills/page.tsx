@@ -67,7 +67,7 @@ export default function BillsPage() {
   }
 
   useEffect(() => { loadBills() }, [])
-  usePolling(loadBills, 5000, editingId === null)
+  usePolling(loadBills, 20000, editingId === null)
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()

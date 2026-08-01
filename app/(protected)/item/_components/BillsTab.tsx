@@ -108,7 +108,7 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
   }
 
   useEffect(() => { loadBills() }, [])
-  usePolling(loadBills, 5000, editingBillId === null)
+  usePolling(loadBills, 20000, editingBillId === null)
 
   const billsById = useMemo(() => {
     const m: Record<number, Bill> = {}

@@ -310,7 +310,7 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
   }
 
   useEffect(() => { load() }, [])
-  usePolling(load, 5000, !pickingTime && editDate === null)
+  usePolling(load, 20000, !pickingTime && editDate === null)
 
   // Upcoming Schedule -- a read-only preview of the next 7 days' rota
   // (built/edited in the Build tab, see RotaTab) shown right inside Times,

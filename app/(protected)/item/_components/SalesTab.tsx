@@ -333,7 +333,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
   }
 
   useEffect(() => { loadReceipts() }, [])
-  usePolling(loadReceipts, 5000, editingId === null)
+  usePolling(loadReceipts, 20000, editingId === null)
 
   const groupItemNames = useMemo(() => {
     if (!groupFilter || groupFilter === 'All') return null
