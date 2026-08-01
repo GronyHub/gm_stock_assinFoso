@@ -1593,6 +1593,21 @@ function PayslipBuilder({ payslips, onSaved }: { payslips: Payslip[]; onSaved: (
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set(ALL_STAFF_NAMES))
   const [bulkValues, setBulkValues] = useState<Partial<BuildRow>>({})
 
+  // Staff left out of THIS build run entirely -- no payslip row gets
+  // created/saved for them at all when Save Payslips runs, unlike the
+  // per-staff exclude toggle on an already-saved month (which keeps the
+  // payslip but leaves it out of the payment total). Resets on month change
+  // since it's specific to whichever batch is currently being built.
+  const [buildExcluded, setBuildExcluded] = useState<Set<string>>(new Set())
+  function toggleBuildExclude(name: string) {
+    setBuildExcluded(prev => {
+      const next = new Set(prev)
+      if (next.has(name)) next.delete(name); else next.add(name)
+      return next
+    })
+    setSaved(false)
+  }
+
   function toggleBulkStaff(name: string) {
     setBulkSelected(prev => {
       const next = new Set(prev)
@@ -1621,6 +1636,7 @@ function PayslipBuilder({ payslips, onSaved }: { payslips: Payslip[]; onSaved: (
   function loadHoursAndPrefill(month: string, force = false) {
     if (prefilledMonth.current === month && !force) return
     setLoadingHours(true)
+    setBuildExcluded(new Set())
     fetch(`/api/staff-times/monthly?month=${month}`)
       .then(r => r.json())
       .then(d => {
@@ -1657,7 +1673,7 @@ function PayslipBuilder({ payslips, onSaved }: { payslips: Payslip[]; onSaved: (
     setSaving(true); setError(''); setSaved(false)
     const pay_month = lastDayOfMonth(buildMonth)
     const payment_period = paymentPeriodLabel(buildMonth)
-    const entries = ALL_STAFF_NAMES.map(name => {
+    const entries = ALL_STAFF_NAMES.filter(name => !buildExcluded.has(name)).map(name => {
       const row = rows[name]
       const { payForHours, payForOt, payForLongevity, finalTotal } = computeTotals(row)
       return {
@@ -1690,10 +1706,11 @@ function PayslipBuilder({ payslips, onSaved }: { payslips: Payslip[]; onSaved: (
 
   const grandTotal = useMemo(() => {
     return ALL_STAFF_NAMES.reduce((sum, name) => {
+      if (buildExcluded.has(name)) return sum
       const row = rows[name]
       return row ? sum + computeTotals(row).finalTotal : sum
     }, 0)
-  }, [rows])
+  }, [rows, buildExcluded])
 
   return (
     <div className="space-y-3">
@@ -1751,13 +1768,21 @@ function PayslipBuilder({ payslips, onSaved }: { payslips: Payslip[]; onSaved: (
       {ALL_STAFF_NAMES.map(name => {
         const row = rows[name]
         if (!row) return null
+        const excluded = buildExcluded.has(name)
         const { payForHours, payForOt, payForLongevity, computedTotal, finalTotal } = computeTotals(row)
         return (
-          <div key={name} className="bg-white border border-gray-200 rounded-xl p-3 space-y-2">
+          <div key={name} className={`bg-white border rounded-xl p-3 space-y-2 ${excluded ? 'border-gray-200 opacity-60' : 'border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${STAFF_COLORS[name] ?? 'bg-gray-100 text-gray-600'}`}>{name}</span>
-              <span className="text-base font-bold text-blue-700">{fmtC(String(finalTotal))}</span>
+              <div className="flex items-center gap-2">
+                <span className={`text-base font-bold ${excluded ? 'text-gray-400 line-through' : 'text-blue-700'}`}>{fmtC(String(finalTotal))}</span>
+                <button onClick={() => toggleBuildExclude(name)}
+                  className={`text-[10px] font-semibold px-2 py-1 rounded-lg transition ${excluded ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}>
+                  {excluded ? '↩ Add Back' : '✕ Remove'}
+                </button>
+              </div>
             </div>
+            {excluded && <p className="text-[10px] text-red-500 font-semibold">Removed from this payroll — no payslip will be saved for {name}.</p>}
             <div className="grid grid-cols-2 gap-2">
               <NumField label={`Hours Worked (${hoursByStaff[name] ?? 0}h logged)`} value={row.hours_worked} onChange={v => updateRow(name, 'hours_worked', v)} />
               <NumField label={`Hourly Rate → ₵${payForHours.toFixed(2)}`} value={row.hourly_rate} onChange={v => updateRow(name, 'hourly_rate', v)} />
@@ -1780,6 +1805,11 @@ function PayslipBuilder({ payslips, onSaved }: { payslips: Payslip[]; onSaved: (
         )
       })}
 
+      {buildExcluded.size > 0 && (
+        <p className="text-[11px] text-gray-400 text-center">
+          {ALL_STAFF_NAMES.length - buildExcluded.size} of {ALL_STAFF_NAMES.length} staff will be saved — {[...buildExcluded].join(', ')} removed from this payroll.
+        </p>
+      )}
       <button onClick={saveAll} disabled={saving || loadingHours}
         className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-bold rounded-xl py-3 transition">
         {saving ? 'Saving…' : `Save Payslips for ${monthNameOf(buildMonth)}`}
