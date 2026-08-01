@@ -28,6 +28,23 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10)
 }
 
+// Plain password inputs give no way to catch a typo before saving -- this
+// adds a per-field reveal toggle so what you typed can be checked (and
+// written down somewhere) before it's hashed and unrecoverable.
+function PasswordField({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+  const [show, setShow] = useState(false)
+  return (
+    <div className="relative">
+      <input type={show ? 'text' : 'password'} value={value} onChange={e => onChange(e.target.value)}
+        placeholder={placeholder} className={inputCls + ' pr-10'} />
+      <button type="button" onClick={() => setShow(v => !v)} tabIndex={-1}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+        {show ? '🙈' : '👁'}
+      </button>
+    </div>
+  )
+}
+
 // The account-management half of what used to be the standalone /users page
 // -- pulled out into its own prop-driven component so the merged Access
 // screen (AccessPage.tsx) can share one users+roles fetch with the Roles
@@ -217,13 +234,11 @@ export default function UsersPanel({ users, setUsers, roles }: {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelCls}>Password *</label>
-              <input type="password" value={newForm.password} onChange={e => setNewForm(f => ({ ...f, password: e.target.value }))}
-                placeholder="Min 6 chars" className={inputCls} />
+              <PasswordField value={newForm.password} onChange={v => setNewForm(f => ({ ...f, password: v }))} placeholder="Min 6 chars" />
             </div>
             <div>
               <label className={labelCls}>Confirm Password *</label>
-              <input type="password" value={newForm.confirm} onChange={e => setNewForm(f => ({ ...f, confirm: e.target.value }))}
-                placeholder="Repeat" className={inputCls} />
+              <PasswordField value={newForm.confirm} onChange={v => setNewForm(f => ({ ...f, confirm: v }))} placeholder="Repeat" />
             </div>
           </div>
           {addError && <p className="text-red-500 text-sm">{addError}</p>}
@@ -272,13 +287,11 @@ export default function UsersPanel({ users, setUsers, roles }: {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className={labelCls}>New Password</label>
-                    <input type="password" value={editForm.password} onChange={e => setEditForm(f => ({ ...f, password: e.target.value }))}
-                      placeholder="Leave blank to keep" className={inputCls} />
+                    <PasswordField value={editForm.password} onChange={v => setEditForm(f => ({ ...f, password: v }))} placeholder="Leave blank to keep" />
                   </div>
                   <div>
                     <label className={labelCls}>Confirm Password</label>
-                    <input type="password" value={editForm.confirm} onChange={e => setEditForm(f => ({ ...f, confirm: e.target.value }))}
-                      placeholder="Repeat" className={inputCls} />
+                    <PasswordField value={editForm.confirm} onChange={v => setEditForm(f => ({ ...f, confirm: v }))} placeholder="Repeat" />
                   </div>
                 </div>
                 {editError && <p className="text-red-500 text-sm">{editError}</p>}
