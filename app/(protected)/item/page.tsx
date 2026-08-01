@@ -970,6 +970,15 @@ function ItemHubPageInner() {
         .slice(0, 6)
     : []
 
+  // While the Settings pane is open, the main pane defers to it visually --
+  // only the Settings row itself should read as selected, not whatever
+  // content view happens to still be showing underneath (e.g. Rota, Biz).
+  // Wraps every main-pane `active` check below instead of just hiding
+  // Settings' own highlight (the previous fix), which left OTHER rows lit
+  // up at the same time as Settings -- still two things selected at once,
+  // just the wrong two.
+  const paneActive = (cond: boolean) => cond && !settingsOpen
+
   return (
     <div className="-mx-4 -mt-4 -mb-6 flex flex-col h-[100dvh] md:h-[calc(100dvh-56px)]">
 
@@ -986,7 +995,7 @@ function ItemHubPageInner() {
               <PaneHomeDaily mode={cashDisplayMode}
                 onHome={() => { setLossView('home'); setUnreadAnnouncements(0) }}
                 onDaily={() => setLossView('dailySummary')}
-                homeActive={lossView === 'home'} dailyActive={lossView === 'dailySummary'}
+                homeActive={paneActive(lossView === 'home')} dailyActive={paneActive(lossView === 'dailySummary')}
                 unreadAnnouncements={unreadAnnouncements} />
               {/* Formerly the top tab row -- Biz (Grony Cash) is just
                   another footer button now, paired side by side with
@@ -1001,7 +1010,7 @@ function ItemHubPageInner() {
               <div className="border-t border-white/30 flex items-stretch shrink-0">
                 {(canSeeUK || canSeeCH) && (<>
                   <SidePaneButton icon="💰" label="Biz" mode={cashDisplayMode}
-                    active={outerTab === 'loss'} onClick={() => changeTab('loss')} className="flex-1 min-w-0" />
+                    active={paneActive(outerTab === 'loss')} onClick={() => changeTab('loss')} className="flex-1 min-w-0" />
                   <div className="w-px bg-white/10 shrink-0" />
                 </>)}
                 <SidePaneButton icon="🔍" label="Search" mode={cashDisplayMode}
@@ -1017,12 +1026,12 @@ function ItemHubPageInner() {
                 <div className="border-t border-white/30 flex items-stretch shrink-0">
                   {canSeeUK && (
                     <SidePaneButton icon="🇬🇧" label="UK" mode={cashDisplayMode}
-                      active={outerTab === 'uk'} onClick={() => changeTab('uk')} className="flex-1 min-w-0" />
+                      active={paneActive(outerTab === 'uk')} onClick={() => changeTab('uk')} className="flex-1 min-w-0" />
                   )}
                   {canSeeUK && canSeeCH && <div className="w-px bg-white/10 shrink-0" />}
                   {canSeeCH && (
                     <SidePaneButton icon="🏢" label="C&H" mode={cashDisplayMode}
-                      active={outerTab === 'ch'} onClick={() => changeTab('ch')} className="flex-1 min-w-0" />
+                      active={paneActive(outerTab === 'ch')} onClick={() => changeTab('ch')} className="flex-1 min-w-0" />
                   )}
                 </div>
               )}
@@ -1036,7 +1045,7 @@ function ItemHubPageInner() {
             {outerTab === 'loss' && (<>
             {CASH_ITEMS.filter(v => v.key !== 'pl' || canSeePL).map(v => (
                 <SidePaneButton key={v.key} icon={v.icon} label={v.label} mode={cashDisplayMode}
-                  active={lossView === v.key} badge={v.key === 'tasks' ? cashTasksCount : undefined}
+                  active={paneActive(lossView === v.key)} badge={v.key === 'tasks' ? cashTasksCount : undefined}
                   onClick={() => pickLossView(v.key)} />
               ))}
 
@@ -1051,7 +1060,7 @@ function ItemHubPageInner() {
                   : undefined
                 return (
                   <SidePaneButton key={entry.key} icon={entry.icon} label={entry.label} mode={cashDisplayMode}
-                    active={!activeDynamicId && lossView === entry.key} badge={badge}
+                    active={paneActive(!activeDynamicId && lossView === entry.key)} badge={badge}
                     onClick={() => pickLossView(entry.key)} />
                 )
               })}
@@ -1062,12 +1071,12 @@ function ItemHubPageInner() {
                     <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Added by you</p>
                   )}
                   {dynamicCategories.map(c => (
-                    <div key={c.id} className={`flex items-stretch ${activeDynamicId === c.id ? 'bg-white' : ''}`}>
+                    <div key={c.id} className={`flex items-stretch ${paneActive(activeDynamicId === c.id) ? 'bg-white' : ''}`}>
                       <SidePaneButton icon="🗂️" label={c.label} mode={cashDisplayMode} className="flex-1 min-w-0"
-                        active={activeDynamicId === c.id} onClick={() => setActiveDynamicId(c.id)} />
+                        active={paneActive(activeDynamicId === c.id)} onClick={() => setActiveDynamicId(c.id)} />
                       {canAddCategory && (
                         <button onClick={() => removeCategory(c.id, c.label)} title="Delete category"
-                          className={`shrink-0 px-1.5 pt-2 font-bold text-xs ${activeDynamicId === c.id ? 'text-gray-300 hover:text-red-500' : 'text-blue-200 hover:text-red-300'}`}>×</button>
+                          className={`shrink-0 px-1.5 pt-2 font-bold text-xs ${paneActive(activeDynamicId === c.id) ? 'text-gray-300 hover:text-red-500' : 'text-blue-200 hover:text-red-300'}`}>×</button>
                       )}
                     </div>
                   ))}
@@ -1085,10 +1094,10 @@ function ItemHubPageInner() {
                 )}
                 {STAFF_PERSONAL_ITEMS.map(t => (
                   <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode}
-                    active={lossView === t.key} onClick={() => pickLossView(t.key)} />
+                    active={paneActive(lossView === t.key)} onClick={() => pickLossView(t.key)} />
                 ))}
                 {viewingName.toLowerCase() === username.toLowerCase() && (
-                  <SidePaneButton icon="👤" label="Profile" mode={cashDisplayMode} active={lossView === 'staffProfile'}
+                  <SidePaneButton icon="👤" label="Profile" mode={cashDisplayMode} active={paneActive(lossView === 'staffProfile')}
                     onClick={() => pickLossView('staffProfile')} />
                 )}
               </div>
@@ -1101,7 +1110,7 @@ function ItemHubPageInner() {
             {outerTab === 'ch' && (<>
               {CH_ITEMS.map(item => (
                 <SidePaneButton key={item.key} icon={item.icon} label={item.label} mode={cashDisplayMode}
-                  active={lossView === item.key} onClick={() => pickLossView(item.key)} />
+                  active={paneActive(lossView === item.key)} onClick={() => pickLossView(item.key)} />
               ))}
             </>)}
 
@@ -1119,7 +1128,7 @@ function ItemHubPageInner() {
               )}
               {UK_PEOPLE.map(p => (
                 <SidePaneButton key={p} icon="👤" label={p} mode={cashDisplayMode}
-                  active={uk.person === p} onClick={() => uk.pickPerson(p)} />
+                  active={paneActive(uk.person === p)} onClick={() => uk.pickPerson(p)} />
               ))}
 
               <div className="mt-1 pt-1 border-t border-white/30">
@@ -1127,24 +1136,24 @@ function ItemHubPageInner() {
                   <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">{`${uk.person}'s Submenus`}</p>
                 )}
                 {uk.submenus.map(s => (
-                  <div key={s.id} className={`flex items-stretch ${uk.selectedSubmenuId === s.id ? 'bg-white' : ''}`}>
+                  <div key={s.id} className={`flex items-stretch ${paneActive(uk.selectedSubmenuId === s.id) ? 'bg-white' : ''}`}>
                     {uk.editingSubmenuId === s.id ? (
                       <input autoFocus value={uk.editSubmenuName} onChange={e => uk.setEditSubmenuName(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && uk.saveSubmenuName(s.id)}
                         className="flex-1 min-w-0 text-[10px] m-1 bg-white border border-blue-300 rounded px-1.5 py-1 outline-none text-gray-900" />
                     ) : (
                       <SidePaneButton icon="📋" label={s.name} mode={cashDisplayMode} className="flex-1 min-w-0"
-                        active={uk.selectedSubmenuId === s.id} onClick={() => uk.pickSubmenu(s.id)} />
+                        active={paneActive(uk.selectedSubmenuId === s.id)} onClick={() => uk.pickSubmenu(s.id)} />
                     )}
                     {uk.editingSubmenuId === s.id ? (
                       <button onClick={() => uk.saveSubmenuName(s.id)} title="Save"
                         className="shrink-0 px-1.5 font-bold text-xs text-white">✓</button>
                     ) : (
                       <button onClick={() => { uk.setEditingSubmenuId(s.id); uk.setEditSubmenuName(s.name) }} title="Rename"
-                        className={`shrink-0 px-1 text-xs ${uk.selectedSubmenuId === s.id ? 'text-gray-300 hover:text-blue-600' : 'text-blue-200 hover:text-white'}`}>✎</button>
+                        className={`shrink-0 px-1 text-xs ${paneActive(uk.selectedSubmenuId === s.id) ? 'text-gray-300 hover:text-blue-600' : 'text-blue-200 hover:text-white'}`}>✎</button>
                     )}
                     <button onClick={() => uk.deleteSubmenu(s.id)} title="Delete submenu"
-                      className={`shrink-0 px-1.5 pt-2 font-bold text-xs ${uk.selectedSubmenuId === s.id ? 'text-gray-300 hover:text-red-500' : 'text-blue-200 hover:text-red-300'}`}>×</button>
+                      className={`shrink-0 px-1.5 pt-2 font-bold text-xs ${paneActive(uk.selectedSubmenuId === s.id) ? 'text-gray-300 hover:text-red-500' : 'text-blue-200 hover:text-red-300'}`}>×</button>
                   </div>
                 ))}
 
@@ -1186,7 +1195,7 @@ function ItemHubPageInner() {
                 showing" are independent, not mutually exclusive states. */}
             <div className="mt-1 pt-1 border-t border-white/30">
               {canOpenSettings && (
-                <SidePaneButton icon="⚙️" label="Settings" mode={cashDisplayMode} active={false}
+                <SidePaneButton icon="⚙️" label="Settings" mode={cashDisplayMode} active={settingsOpen}
                   onClick={() => setSettingsOpen(v => !v)} />
               )}
               <SidePaneButton icon="🚪" label="Sign out" mode={cashDisplayMode} active={false}
