@@ -2,10 +2,13 @@ import sql from '@/lib/db'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
-  const [def] = await sql`SELECT pg_get_viewdef('item_stock_summary'::regclass, true) AS def`.catch(() => [{ def: null }])
-  const items = await sql`
-    SELECT id, canonical_name, opening_stock, opening_stock_value, stock_on_hand, status
-    FROM items WHERE id IN (81, 82, 276, 371, 278)
+  const ids = [76, 81, 82, 267, 276, 371]
+  const mainList = await sql`
+    SELECT s.item_id AS id, COALESCE(i.canonical_name, s.item_name) AS canonical_name, i.status, i.track_inventory, s.calculated_soh
+    FROM item_stock_summary s LEFT JOIN items i ON i.id = s.item_id
+    WHERE s.item_id = ANY(${ids})
   `
-  return NextResponse.json({ viewDef: def?.def, items })
+  const notInMainList = ids.filter(id => !(mainList as { id: number }[]).some(r => r.id === id))
+  const trackInventory = await sql`SELECT id, canonical_name, track_inventory, status FROM items WHERE id = ANY(${ids})`
+  return NextResponse.json({ stillInMainList: mainList, notInMainList, trackInventory })
 }
