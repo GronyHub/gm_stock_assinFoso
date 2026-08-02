@@ -4,7 +4,7 @@ import ClosingReportLogView from './ClosingReportLogView'
 import ManageLogPanel from './ManageLogPanel'
 import ContentPage from './ContentPage'
 import DressCodeFlagsPanel from './DressCodeFlagsPanel'
-import DynamicTasksSection from './DynamicTasksSection'
+import PageToolIcons from './PageToolIcons'
 import AdvertStatusPanel from './AdvertStatusPanel'
 import AssessmentPanel from './AssessmentPanel'
 import DynamicCategoryPage from './DynamicCategoryPage'
@@ -67,10 +67,10 @@ export default function GronyManageContent({
     {view === 'closer' && (
       <CloserView missingClosingReportsCount={missingClosingReportsCount} onOpenStaff={onOpenStaff} />
     )}
-    {view === 'rota' && <div className="px-2 space-y-2 pt-2"><DynamicTasksSection scopeKey="Rota" /><RotaTab canManage={canManage} /></div>}
+    {view === 'rota' && <div className="px-2 space-y-2 pt-2"><PageToolIcons scopeKey="Rota" /><RotaTab canManage={canManage} /></div>}
     {view === 'audio' && <ContentPage contentKey="advert_audio_roadside" title="Advert 1 — Audio (for Roadside)" submenu="Audio" />}
     {view === 'audio_status' && (<>
-      <div className="px-2 pt-2"><DynamicTasksSection scopeKey="Advert Status" /></div>
+      <div className="px-2 pt-2"><PageToolIcons scopeKey="Advert Status" /></div>
       <AdvertStatusPanel />
     </>)}
     {view === 'jingle' && <ManageLogPanel category="audio_jingle" label="Jingle Log" icon="🎵" />}
@@ -80,18 +80,18 @@ export default function GronyManageContent({
     {view === 'cuttings' && <ContentPage contentKey="advert_photo_cuttings" title="Advert 4 — Photo (Cuttings)" submenu="Cuttings" />}
     {view === 'video' && <ContentPage contentKey="advert_video" title="Advert 5 — Video Advert" submenu="Video" />}
     {view === 'advert_log' && (<>
-      <div className="px-2 pt-2"><DynamicTasksSection scopeKey="Advert Daily Log" /></div>
+      <div className="px-2 pt-2"><PageToolIcons scopeKey="Advert Daily Log" /></div>
       <ClosingReportLogView field="advert_played" label="Advert" icon="📢" />
     </>)}
     {view === 'staff_dress' && (<>
-      <div className="px-2 pt-2"><DynamicTasksSection scopeKey="Dress Code" /></div>
+      <div className="px-2 pt-2"><PageToolIcons scopeKey="Dress Code" /></div>
       <DressCodeFlagsPanel />
       <ClosingReportLogView field="no_tshirt_staff" label="Dress Code" icon="👕" />
     </>)}
     {view === 'tutorial' && <ContentPage contentKey="training_tutorial" title="📖 App Tutorial" submenu="Tutorial" />}
     {view === 'training_laws' && <ContentPage contentKey="training_laws" title="⚖️ Company Laws" submenu="Company Laws" />}
-    {view === 'assessment' && (<div className="px-2 pt-2"><DynamicTasksSection scopeKey="Assessment" /><AssessmentPanel /></div>)}
-    {view === 'logs' && <div className="px-2 space-y-2 pt-2"><DynamicTasksSection scopeKey="Logs" /><LogsPage /></div>}
+    {view === 'assessment' && (<div className="px-2 pt-2"><PageToolIcons scopeKey="Assessment" /><AssessmentPanel /></div>)}
+    {view === 'logs' && <div className="px-2 space-y-2 pt-2"><PageToolIcons scopeKey="Logs" /><LogsPage /></div>}
     {view === 'properties' && <PropertiesPage />}
     {logCategory && <ManageLogPanel category={logCategory.key} label={logCategory.label} icon={logCategory.icon} />}
   </>)

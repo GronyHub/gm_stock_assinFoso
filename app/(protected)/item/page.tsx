@@ -26,7 +26,7 @@ import { usePolling } from '@/lib/usePolling'
 import { useViolations } from './_components/useViolations'
 import PaneHomeDaily from './_components/PaneHomeDaily'
 import { MyAssignmentsSummary } from './_components/MyAssignmentsSummary'
-import DynamicTasksSection from './_components/DynamicTasksSection'
+import PageToolIcons from './_components/PageToolIcons'
 import { COLUMNS, type ColKey } from './_components/lossTabColumns'
 import { useColumnPrefs, ColumnsPickerButton } from './_components/columnPrefs'
 import { MANAGE_LIST_ITEMS, useDynamicManageCategories, type ManageView } from './_components/manageViewData'
@@ -1493,23 +1493,23 @@ function ItemHubPageInner() {
         {addForm === 'item'    && outerTab === 'loss' && lossView === 'items'    && <div className="px-4"><NewItemForm    onSuccess={() => { setAddForm(null); loadItems() }} /></div>}
         {outerTab === 'loss' && lossView === 'pl' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-2"><DynamicTasksSection scopeKey="P&L" /></div>
+            <div className="px-4 pt-2"><PageToolIcons scopeKey="P&L" /></div>
             <ProfitLossTab />
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'vendors' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-2 space-y-2"><DynamicTasksSection scopeKey="Vendors" /><VendorsPage initialSearch={vendorSearchText} /></div>
+            <div className="px-4 pt-2 space-y-2"><PageToolIcons scopeKey="Vendors" /><VendorsPage initialSearch={vendorSearchText} /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'customers' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-2 space-y-2"><DynamicTasksSection scopeKey="Customers" /><CustomersPage initialSearch={customerSearchText} /></div>
+            <div className="px-4 pt-2 space-y-2"><PageToolIcons scopeKey="Customers" /><CustomersPage initialSearch={customerSearchText} /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'receipts' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-2 space-y-2"><DynamicTasksSection scopeKey="Receipts" /><ReceiptsPage /></div>
+            <div className="px-4 pt-2 space-y-2"><PageToolIcons scopeKey="Receipts" /><ReceiptsPage /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'home' && (
@@ -1519,18 +1519,18 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'loss' && lossView === 'dailySummary' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-2"><DynamicTasksSection scopeKey="Daily" /></div>
+            <div className="px-4 pt-2"><PageToolIcons scopeKey="Daily" /></div>
             <DailySummaryTab />
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'purchaseOrders' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-4 space-y-2"><DynamicTasksSection scopeKey="Purchase Orders" /><PurchaseOrdersPage /></div>
+            <div className="px-4 pt-4 space-y-2"><PageToolIcons scopeKey="Purchase Orders" /><PurchaseOrdersPage /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'item360' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-2"><DynamicTasksSection scopeKey="Item 360" /></div>
+            <div className="px-4 pt-2"><PageToolIcons scopeKey="Item 360" /></div>
             <Item360Tab items={items} jumpToItemId={item360JumpId} onJumpDone={() => setItem360JumpId(null)} />
           </TabErrorBoundary>
         )}
@@ -1609,7 +1609,7 @@ function ItemHubPageInner() {
               // otherwise leak into TimesTab/PayslipsTab's own local
               // state across accounts.
               <>
-                {lossView === 'staffTimes' && <div className="px-4 pt-2"><DynamicTasksSection scopeKey={myStaffName} /></div>}
+                {lossView === 'staffTimes' && <div className="px-4 pt-2"><PageToolIcons scopeKey={myStaffName} /></div>}
                 <StaffContent key={myStaffName} view={lossView as StaffView}
                   viewingName={viewingName} role={role} username={username}
                   canSeeTeam={canSeeTeam} canSeeUsers={canSeeUsers} canSeeRoles={canManage} />
@@ -1635,7 +1635,7 @@ function ItemHubPageInner() {
         )}
         {!showAnalytics && addForm !== 'expense' && outerTab === 'loss' && lossView === 'expenses' && (
           <>
-            <div className="px-3 pt-2"><DynamicTasksSection scopeKey="Expenses" /></div>
+            <div className="px-3 pt-2"><PageToolIcons scopeKey="Expenses" /></div>
             <ExpensesTab search={search} />
           </>
         )}
@@ -1658,12 +1658,12 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'aliasWide' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-4 space-y-2"><DynamicTasksSection scopeKey="Alias Wide Table" /><AliasWidePage /></div>
+            <div className="px-4 pt-4 space-y-2"><PageToolIcons scopeKey="Alias Wide Table" /><AliasWidePage /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'serviceMatches' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-4 space-y-2"><DynamicTasksSection scopeKey="Service Matches" /><ServiceMatchesPage /></div>
+            <div className="px-4 pt-4 space-y-2"><PageToolIcons scopeKey="Service Matches" /><ServiceMatchesPage /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'nameConflicts' && (
@@ -1748,19 +1748,19 @@ function ItemHubPageInner() {
                 </button>
               </div>
             )}
-            {!violation && <div className="px-3 pt-2"><DynamicTasksSection scopeKey="Loss by Date" /></div>}
+            {!violation && <div className="px-3 pt-2"><PageToolIcons scopeKey="Loss by Date" /></div>}
             <LossFeedTab search={search} kind={(violation === 'gains' || feedShowGains) ? 'gain' : 'loss'} />
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'lossByItem' && (
           <TabErrorBoundary>
-            <div className="px-3 pt-2"><DynamicTasksSection scopeKey="Loss by Item" /></div>
+            <div className="px-3 pt-2"><PageToolIcons scopeKey="Loss by Item" /></div>
             <LossByItemTab search={search} />
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'lossByTarget' && (
           <TabErrorBoundary>
-            <div className="px-3 pt-2"><DynamicTasksSection scopeKey="Loss by Target" /></div>
+            <div className="px-3 pt-2"><PageToolIcons scopeKey="Loss by Target" /></div>
             <div className="py-20 text-center text-gray-400 text-xs">Coming soon.</div>
           </TabErrorBoundary>
         )}
