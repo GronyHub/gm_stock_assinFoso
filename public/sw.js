@@ -28,7 +28,16 @@ self.addEventListener('notificationclick', event => {
 // directly -- letting the SW re-fetch a top-level navigation that chains
 // through a redirect (e.g. / -> /item -> login) is what was causing repeated
 // "This page couldn't load" failures on some mobile Chrome versions.
+//
+// Non-GET requests are left alone too -- re-issuing event.request for a
+// request with a streaming body (FormData/File, as every attachment/media
+// upload sends) doesn't reliably replay that body through respondWith on
+// mobile Chrome, and fails client-side as a bare "Failed to fetch" with no
+// server-side error to explain it. Plain JSON-bodied POST/PUT calls (every
+// other write in the app) happened to survive that replay, which is why
+// this only ever showed up on file uploads.
 self.addEventListener('fetch', event => {
   if (event.request.mode === 'navigate') return
+  if (event.request.method !== 'GET') return
   event.respondWith(fetch(event.request))
 })
