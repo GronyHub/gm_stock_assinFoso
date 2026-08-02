@@ -634,6 +634,7 @@ function ItemHubPageInner() {
   const salesFlagsCount = violationCountByType(['no_cash', 'missing_days', 'cost_gte_sell', 'dup_receipts'])
   const itemsFlagsCount = violationCountByType([
     'no_group', 'duplicates', 'not_in_inventory', 'neg_soh', 'no_sp', 'no_cp', 'unlinked_named', 'service_violation',
+    'alias_prezoho_sales', 'alias_prezoho_bills', 'alias_flagged', 'alias_ambiguous',
   ])
   const cabFlagsCount = violationCountByType(['unchecked_cab'])
   const staffTimesFlagsCount = violationCountByType(['no_staff_times'])
@@ -642,6 +643,7 @@ function ItemHubPageInner() {
   const lossByDateFlagsCount = violationCountByType(['gains'])
   const jingleFlagsCount = violationCountByType(['jingle_overdue'])
   const equipmentFlagsCount = violationCountByType(['equipment_check_overdue'])
+  const advertStatusFlagsCount = violationCountByType(['no_advert'])
 
   // The morning stock count is the opener's own job -- its badge (on
   // Manage's Opener left-pane item) combines "hasn't confirmed clock-in
@@ -1088,6 +1090,7 @@ function ItemHubPageInner() {
                   : entry.key === 'staff_dress' ? dressFlagsCount
                   : entry.key === 'jingle' ? jingleFlagsCount
                   : entry.key === 'equipment' ? equipmentFlagsCount
+                  : entry.key === 'audio_status' ? advertStatusFlagsCount
                   : undefined
                 return (
                   <SidePaneButton key={entry.key} icon={entry.icon} label={entry.label} mode={cashDisplayMode}
