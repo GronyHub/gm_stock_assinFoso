@@ -5,6 +5,7 @@ import { fmtDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, ColResizeHandle, type ColumnDef } from './columnPrefs'
+import { useAttachments, AttachmentPicker, type Attachment } from './attachmentsShared'
 import AssignWidget from './AssignWidget'
 import DynamicTasksSection from './DynamicTasksSection'
 
@@ -19,6 +20,7 @@ type Receipt = {
   cash_counted: string | null
   wnw: string | null
   entered_by: string | null
+  attachments: Attachment[] | null
 }
 
 type Line = {
@@ -304,6 +306,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
   // than needing to visit each violation's own full-page view separately.
   const [showFlagsSummary, setShowFlagsSummary] = useState(false)
   const colPrefs = useColumnPrefs<ColKey>('salesTable', SALES_COLUMNS)
+  const attachments = useAttachments()
 
   const needsFlags = showFlagsSummary || violation === 'no_cash' || violation === 'missing_days' || violation === 'cost_price' || violation === 'dup_receipt'
 
@@ -419,6 +422,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
       nameTouched: false,
     })))
     setNewItemQuery('')
+    attachments.reset(r.attachments ?? [])
     setEditingId(r.id)
   }
 
@@ -485,6 +489,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
 
   async function saveEdit() {
     if (editingId == null) return
+    if (attachments.isUploading) { setEditError('Still uploading the attached form, please wait…'); return }
     setSaving(true)
     setEditError('')
     const headerRes = await fetch(`/api/sales/${editingId}`, {
@@ -493,6 +498,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
         receipt_date: editForm.receipt_date || undefined,
         customer_name: editForm.customer_name || null,
         cash_counted: editForm.cash_counted ? parseFloat(editForm.cash_counted) : null,
+        attachments: attachments.saved,
       }),
     })
     const linesRes = await fetch(`/api/sales/${editingId}/lines`, {
@@ -791,6 +797,13 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
                       onChange={e => setEditForm(f => ({ ...f, cash_counted: e.target.value }))}
                       placeholder="0" className={inputCls} />
                   </div>
+                  <div>
+                    {/* Attach (or add to) the written form -- so a receipt
+                        entered before this feature existed can still be
+                        caught up here instead of needing a new receipt. */}
+                    <p className="text-[9px] text-gray-400 mb-0.5">Attached Form</p>
+                    <AttachmentPicker items={attachments.items} onAdd={attachments.addFiles} onRemove={attachments.remove} disabled={saving} />
+                  </div>
                   <table className="w-full border-collapse text-[10px]">
                     <thead>
                       <tr className="bg-gray-100 border-b border-gray-200">
@@ -920,6 +933,14 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
                   <span className={`font-extrabold truncate ${isDayHead ? 'text-white text-base' : 'text-gray-700 text-sm'}`}>
                     {fmtCust(r.customer_name)}
                   </span>
+                  {/* Shows only once the form's actually attached, so a
+                      glance down the list finds the ones still missing one. */}
+                  {r.attachments && r.attachments.length > 0 && (
+                    <span title={`${r.attachments.length} form${r.attachments.length !== 1 ? 's' : ''} attached`}
+                      className={`shrink-0 text-[10px] leading-none ${isDayHead ? 'text-blue-100' : 'text-gray-400'}`}>
+                      📎
+                    </span>
+                  )}
                 </span>
               </td>
               {colPrefs.shownColumns.map(c => {

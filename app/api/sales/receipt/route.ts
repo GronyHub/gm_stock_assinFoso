@@ -4,13 +4,15 @@ import { logActivity } from '@/lib/logger'
 import { createItemFromTypedName } from '@/lib/createItem'
 import { impossibleUsageWarnings } from '@/lib/usageCheck'
 import { negativeStockViolations } from '@/lib/stockGuard'
+import { ensureSalesAttachmentsColumn, normalizeAttachments } from '@/lib/salesAttachments'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { date, cashCounted, lines, total: directTotal, customerName, customerId } = await req.json()
+  const { date, cashCounted, lines, total: directTotal, customerName, customerId, attachments } = await req.json()
+  const attachmentsList = normalizeAttachments(attachments)
   if (!date) return NextResponse.json({ error: 'Missing date' }, { status: 400 })
   const hasLines = Array.isArray(lines) && lines.length > 0
   if (!hasLines && directTotal == null) return NextResponse.json({ error: 'Provide lines or total' }, { status: 400 })
@@ -44,6 +46,8 @@ export async function POST(req: NextRequest) {
   const customerType = customer === 'Grony Multimedia as Customer' ? 'GMC' : 'WIC'
 
   try {
+    await ensureSalesAttachmentsColumn()
+
     // Block any entry that would drive an item's stock below zero.
     if (hasLines) {
       const deltas = new Map<number, number>()
@@ -71,15 +75,15 @@ export async function POST(req: NextRequest) {
     let receipt
     try {
       [receipt] = await sql`
-        INSERT INTO sales_receipts (receipt_number, receipt_date, customer_id, customer_name, total, cash_counted, source, entered_by)
-        VALUES (${receiptNumber}, ${date}, ${customerIdVal}, ${customer}, ${total}, ${cashCounted ?? null}, 'app', ${enteredBy})
+        INSERT INTO sales_receipts (receipt_number, receipt_date, customer_id, customer_name, total, cash_counted, source, entered_by, attachments)
+        VALUES (${receiptNumber}, ${date}, ${customerIdVal}, ${customer}, ${total}, ${cashCounted ?? null}, 'app', ${enteredBy}, ${JSON.stringify(attachmentsList)}::jsonb)
         RETURNING id
       `
     } catch (e) {
       console.error('sales_receipts insert with customer_id/entered_by failed, retrying without them:', e)
       ;[receipt] = await sql`
-        INSERT INTO sales_receipts (receipt_number, receipt_date, customer_name, total, cash_counted, source)
-        VALUES (${receiptNumber}, ${date}, ${customer}, ${total}, ${cashCounted ?? null}, 'app')
+        INSERT INTO sales_receipts (receipt_number, receipt_date, customer_name, total, cash_counted, source, attachments)
+        VALUES (${receiptNumber}, ${date}, ${customer}, ${total}, ${cashCounted ?? null}, 'app', ${JSON.stringify(attachmentsList)}::jsonb)
         RETURNING id
       `
     }

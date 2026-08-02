@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { usePresenceReporter } from '@/lib/usePresenceReporter'
+import { useAttachments, AttachmentPicker } from '../../item/_components/attachmentsShared'
 
 type Item = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number }
 type CartLine = { item: Item; qty: number; price: number }
@@ -29,6 +30,7 @@ export default function NewReceiptPage({ onSuccess }: { onSuccess?: () => void }
   const [error, setError] = useState('')
   const [warnings, setWarnings] = useState<string[]>([])
   const router = useRouter()
+  const attachments = useAttachments()
 
   useEffect(() => { setDate(new Date().toISOString().slice(0, 10)) }, [])
 
@@ -126,6 +128,7 @@ export default function NewReceiptPage({ onSuccess }: { onSuccess?: () => void }
 
   async function handleSubmit() {
     if (!cart.length) return
+    if (attachments.isUploading) { setError('Still uploading the attached form, please wait…'); return }
     setSaving(true)
     setError('')
     try {
@@ -138,6 +141,7 @@ export default function NewReceiptPage({ onSuccess }: { onSuccess?: () => void }
           customerName,
           customerId: saleType === 'WIC' ? customerId : null,
           cashCounted: cashCounted ? Number(cashCounted) : null,
+          attachments: attachments.saved,
           lines: cart.map(l => ({
             itemId: l.item.id,
             itemName: l.item.name,
@@ -308,6 +312,14 @@ placeholder={loadingItems ? 'Loading…' : `Search ${allItems.length} items…`}
           ) : (
             <p className="text-[9px] text-purple-600 font-semibold">Internal use — recorded as &quot;Grony Multimedia as Customer&quot;</p>
           )}
+        </div>
+
+        {/* Attach the written form -- snap a photo or upload a scan from
+            the phone/Drive, so it doesn't have to be attached separately
+            after the fact via Edit Receipt. */}
+        <div className="px-2 py-1.5 bg-white border-b border-gray-200">
+          <p className="text-[9px] text-gray-400 mb-1">Attach Form (optional)</p>
+          <AttachmentPicker items={attachments.items} onAdd={attachments.addFiles} onRemove={attachments.remove} disabled={saving} />
         </div>
 
         {/* Cart items */}
