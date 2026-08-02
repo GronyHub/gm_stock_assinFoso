@@ -2,7 +2,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { fmtDate } from '@/lib/fmtDate'
-import { useColumnPrefs, ColumnsPickerButton, type ColumnDef } from './columnPrefs'
+import { useColumnPrefs, ColumnsPickerButton, ColResizeHandle, type ColumnDef } from './columnPrefs'
+
+const LOSS_FEED_COL_DEFAULTS: Record<string, number> = { date: 80, item: 200, expected: 70, counted: 70, lossQty: 70, lossAmt: 90 }
 
 // Date + Item stay sticky/always-visible; these four are the only ones the
 // picker can hide/reorder/rename. Labels flip between Loss/Gain wording
@@ -116,16 +118,33 @@ export default function LossFeedTab({ search, kind = 'loss' }: { search: string;
             {isGain ? 'No gains on record — all clean. 🎉' : 'No losses recorded. 🎉'}
           </p>
         ) : (
-          <table className="w-full border-collapse text-[10px]">
+          <table className="border-collapse text-[10px]" style={{
+            tableLayout: 'fixed',
+            width: colPrefs.getWidth('date', LOSS_FEED_COL_DEFAULTS.date) + colPrefs.getWidth('item', LOSS_FEED_COL_DEFAULTS.item)
+              + colPrefs.shownColumns.reduce((s, c) => s + colPrefs.getWidth(c.key, LOSS_FEED_COL_DEFAULTS[c.key] ?? 80), 0),
+          }}>
+            <colgroup>
+              <col style={{ width: colPrefs.getWidth('date', LOSS_FEED_COL_DEFAULTS.date) }} />
+              <col style={{ width: colPrefs.getWidth('item', LOSS_FEED_COL_DEFAULTS.item) }} />
+              {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: colPrefs.getWidth(c.key, LOSS_FEED_COL_DEFAULTS[c.key] ?? 80) }} />)}
+            </colgroup>
             <thead className="sticky top-0 z-10">
               <tr className={`${isGain ? 'bg-amber-500' : 'bg-red-600'} text-white font-bold`}>
-                <th className="text-left px-1.5 py-1 whitespace-nowrap">DATE</th>
-                <th className="text-left px-1.5 py-1">ITEM</th>
-                {colPrefs.shownColumns.map(c => {
+                <th className="relative overflow-hidden text-left px-1.5 py-1 border-r border-white/20">
+                  <span className="block truncate">DATE</span>
+                  <ColResizeHandle onResize={d => colPrefs.resizeWidth('date', d, LOSS_FEED_COL_DEFAULTS.date)} onReset={() => colPrefs.resetWidth('date')} />
+                </th>
+                <th className="relative overflow-hidden text-left px-1.5 py-1 border-r border-white/20">
+                  <span className="block truncate">ITEM</span>
+                  <ColResizeHandle onResize={d => colPrefs.resizeWidth('item', d, LOSS_FEED_COL_DEFAULTS.item)} onReset={() => colPrefs.resetWidth('item')} />
+                </th>
+                {colPrefs.shownColumns.map((c, i) => {
                   const meta = colByKey.get(c.key)!
                   return (
-                    <th key={c.key} className={c.key === 'lossAmt' ? 'text-right px-1.5 py-1' : 'text-center px-1 py-1'} title={meta.title}>
-                      {c.label}
+                    <th key={c.key} title={meta.title}
+                      className={`relative overflow-hidden px-1 py-1 ${c.key === 'lossAmt' ? 'text-right px-1.5' : 'text-center'} ${i === colPrefs.shownColumns.length - 1 ? '' : 'border-r border-white/20'}`}>
+                      <span className="block truncate">{c.label}</span>
+                      <ColResizeHandle onResize={d => colPrefs.resizeWidth(c.key, d, LOSS_FEED_COL_DEFAULTS[c.key] ?? 80)} onReset={() => colPrefs.resetWidth(c.key)} />
                     </th>
                   )
                 })}
@@ -136,11 +155,11 @@ export default function LossFeedTab({ search, kind = 'loss' }: { search: string;
                 const newDay = i === 0 || filtered[i - 1].date !== e.date
                 return (
                   <tr key={`${e.item_id}-${e.date}`} className={`${newDay ? 'border-t-2 border-gray-300' : ''} bg-white ${isGain ? 'hover:bg-amber-50/50' : 'hover:bg-red-50/50'}`}>
-                    <td className="px-1.5 py-1 font-bold text-gray-600 whitespace-nowrap">
+                    <td className="px-1.5 py-1 font-bold text-gray-600 truncate">
                       {newDay ? fmtDate(e.date) : <span className="text-gray-300">〃</span>}
                     </td>
-                    <td className="px-1.5 py-1 font-semibold text-gray-900">
-                      <Link href={`/item?tab=loss&view=item360&jumpItemId=${e.item_id}`} className="text-blue-600 hover:underline">{e.item_name}</Link>
+                    <td className="px-1.5 py-1 font-semibold text-gray-900 overflow-hidden">
+                      <Link href={`/item?tab=loss&view=item360&jumpItemId=${e.item_id}`} className="block truncate text-blue-600 hover:underline">{e.item_name}</Link>
                     </td>
                     {colPrefs.shownColumns.map(c => {
                       if (c.key === 'expected') return <td key={c.key} className="px-1 py-1 text-center text-gray-500">{fmtN(e.expected)}</td>

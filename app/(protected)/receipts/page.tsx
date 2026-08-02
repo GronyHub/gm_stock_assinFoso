@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
-import { useColumnPrefs, ColumnsPickerButton, type ColumnDef } from '../item/_components/columnPrefs'
+import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from '../item/_components/columnPrefs'
 
 type Line = {
   id: number
@@ -64,6 +64,9 @@ const RECEIPT_COLUMNS: ReceiptColumn[] = [
   { key: 'total', label: 'Total', align: 'right', tdClass: 'font-bold text-gray-900', render: r => c(r.total) },
 ]
 const RECEIPT_COL_BY_KEY = new Map(RECEIPT_COLUMNS.map(col => [col.key, col]))
+const RECEIPTS_COL_DEFAULTS: Record<string, number> = {
+  number: 130, type: 80, customer: 150, phone: 120, location: 130, date: 110, items: 70, total: 100,
+}
 
 type DraftLine = { item: string; qty: string; price: string; unit: string; dimensions: string }
 const emptyLine = (): DraftLine => ({ item: '', qty: '1', price: '', unit: '', dimensions: '' })
@@ -492,14 +495,23 @@ export default function ReceiptsPage() {
         {filtered.length === 0 ? (
           <p className="py-10 text-center text-gray-400 text-sm">No receipts found.</p>
         ) : (
-          <table className="w-full border-collapse text-xs">
+          <table className="border-collapse text-xs" style={{
+            tableLayout: 'fixed',
+            width: colPrefs.getWidth('number', RECEIPTS_COL_DEFAULTS.number)
+              + colPrefs.shownColumns.reduce((s, c) => s + colPrefs.getWidth(c.key, RECEIPTS_COL_DEFAULTS[c.key] ?? 100), 0),
+          }}>
+            <colgroup>
+              <col style={{ width: colPrefs.getWidth('number', RECEIPTS_COL_DEFAULTS.number) }} />
+              {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: colPrefs.getWidth(c.key, RECEIPTS_COL_DEFAULTS[c.key] ?? 100) }} />)}
+            </colgroup>
             <thead>
               <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
-                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Number</th>
-                {colPrefs.shownColumns.map(col => (
-                  <th key={col.key} className={`${RECEIPT_COL_BY_KEY.get(col.key)!.align === 'right' ? 'text-right' : 'text-left'} px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap`}>
+                <ResizableTh onResize={d => colPrefs.resizeWidth('number', d, RECEIPTS_COL_DEFAULTS.number)} onReset={() => colPrefs.resetWidth('number')}>Number</ResizableTh>
+                {colPrefs.shownColumns.map((col, i) => (
+                  <ResizableTh key={col.key} align={RECEIPT_COL_BY_KEY.get(col.key)!.align} noDivider={i === colPrefs.shownColumns.length - 1}
+                    onResize={d => colPrefs.resizeWidth(col.key, d, RECEIPTS_COL_DEFAULTS[col.key] ?? 100)} onReset={() => colPrefs.resetWidth(col.key)}>
                     {col.label}
-                  </th>
+                  </ResizableTh>
                 ))}
               </tr>
             </thead>
@@ -507,11 +519,11 @@ export default function ReceiptsPage() {
               {filtered.map((r, i) => (
                 <tr key={r.id} onClick={() => setSelected(r === selected ? null : r)}
                   className={`cursor-pointer transition ${selected?.id === r.id ? 'bg-blue-50' : i % 2 === 1 ? 'bg-gray-50/60 hover:bg-blue-50/40' : 'hover:bg-blue-50/40'}`}>
-                  <td className="px-3 py-2 font-semibold text-gray-900 whitespace-nowrap">{r.invoice_number}</td>
+                  <td className="px-3 py-2 font-semibold text-gray-900 truncate">{r.invoice_number}</td>
                   {colPrefs.shownColumns.map(col => {
                     const meta = RECEIPT_COL_BY_KEY.get(col.key)!
                     return (
-                      <td key={col.key} className={`px-3 py-2 whitespace-nowrap ${meta.align === 'right' ? 'text-right' : ''} ${meta.tdClass}`}>
+                      <td key={col.key} className={`px-3 py-2 truncate ${meta.align === 'right' ? 'text-right' : ''} ${meta.tdClass}`}>
                         {meta.render(r)}
                       </td>
                     )

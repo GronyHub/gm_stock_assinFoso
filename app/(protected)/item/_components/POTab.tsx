@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { usePolling } from '@/lib/usePolling'
-import { useColumnPrefs, ColumnsPickerButton, type ColumnDef } from './columnPrefs'
+import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from './columnPrefs'
 
 type POLine = {
   id: number
@@ -102,6 +102,7 @@ const PO_COLUMNS: ColumnDef<ColKey>[] = [
   { key: 'vendor', label: 'VENDOR' },
   { key: 'status', label: 'STATUS' },
 ]
+const PO_COL_DEFAULTS: Record<string, number> = { date: 64, vendor: 90, status: 90 }
 
 type Props = { search: string }
 
@@ -312,13 +313,25 @@ export default function POTab({ search }: Props) {
         </div>
       </div>
       <div className="flex flex-1 min-h-0">
-        <div className="w-1/2 border-r border-gray-200 overflow-y-auto min-h-0">
-          <table className="w-full border-collapse text-[10px]">
+        <div className="w-1/2 border-r border-gray-200 overflow-auto min-h-0">
+          <table className="border-collapse text-[10px]" style={{
+            tableLayout: 'fixed',
+            width: colPrefs.getWidth('date', PO_COL_DEFAULTS.date) + colPrefs.shownColumns.reduce((s, c) => s + colPrefs.getWidth(c.key, PO_COL_DEFAULTS[c.key] ?? 90), 0),
+          }}>
+            <colgroup>
+              <col style={{ width: colPrefs.getWidth('date', PO_COL_DEFAULTS.date) }} />
+              {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: colPrefs.getWidth(c.key, PO_COL_DEFAULTS[c.key] ?? 90) }} />)}
+            </colgroup>
             <thead className="sticky top-0 bg-gray-100 z-10">
               <tr>
-                <th className="text-left px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">PO</th>
-                {colPrefs.shownColumns.map(c => (
-                  <th key={c.key} className={`${c.key === 'status' ? 'text-right' : 'text-left'} px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200`}>{c.label}</th>
+                <ResizableTh onResize={d => colPrefs.resizeWidth('date', d, PO_COL_DEFAULTS.date)} onReset={() => colPrefs.resetWidth('date')}
+                  className="text-gray-500">PO</ResizableTh>
+                {colPrefs.shownColumns.map((c, i) => (
+                  <ResizableTh key={c.key} align={c.key === 'status' ? 'right' : 'left'} noDivider={i === colPrefs.shownColumns.length - 1}
+                    className="text-gray-500"
+                    onResize={d => colPrefs.resizeWidth(c.key, d, PO_COL_DEFAULTS[c.key] ?? 90)} onReset={() => colPrefs.resetWidth(c.key)}>
+                    {c.label}
+                  </ResizableTh>
                 ))}
               </tr>
             </thead>
@@ -326,11 +339,11 @@ export default function POTab({ search }: Props) {
               {filtered.map(p => (
                 <tr key={p.id} onClick={() => select(p)}
                   className={`cursor-pointer border-b border-gray-100 transition ${selectedId === p.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-                  <td className="px-0.5 py-0.5 text-gray-700 whitespace-nowrap">{fmtShort(p.order_date)}</td>
+                  <td className="px-0.5 py-0.5 text-gray-700 truncate">{fmtShort(p.order_date)}</td>
                   {colPrefs.shownColumns.map(c => c.key === 'vendor' ? (
-                    <td key={c.key} className="px-0.5 py-0.5 text-gray-700 truncate max-w-[70px]">{p.vendor_name ?? '—'}</td>
+                    <td key={c.key} className="px-0.5 py-0.5 text-gray-700 truncate">{p.vendor_name ?? '—'}</td>
                   ) : (
-                    <td key={c.key} className="px-0.5 py-0.5">
+                    <td key={c.key} className="px-0.5 py-0.5 overflow-hidden">
                       <div className="flex flex-col items-end gap-0.5">
                         <StatusBadge status={p.status} />
                         {p.status !== 'draft' && p.status !== 'cancelled' && <ProgressBadge lines={p.lines} />}

@@ -19,6 +19,15 @@ export type ColumnPrefs<K extends string> = {
   moveCol: (key: K, dir: -1 | 1) => void
   renameColumn: (key: K, label: string) => void
   resetVisible: () => void
+  // Drag-to-resize widths, in pixels -- keyed by plain string rather than K
+  // so a table can also register widths for fixed columns that aren't part
+  // of the show/hide/reorder system (e.g. a sticky ITEM or DATE column).
+  // Only takes effect where the table itself renders with `tableLayout:
+  // fixed` and a matching <colgroup> reading these same widths (see
+  // ResizableTh/ColResizeHandle below, and CountsTab.tsx for the pattern).
+  getWidth: (key: string, fallback: number) => number
+  resizeWidth: (key: string, deltaPx: number, fallback: number) => void
+  resetWidth: (key: string) => void
 }
 
 export function useColumnPrefs<K extends string>(storageKey: string, columns: ColumnDef<K>[]): ColumnPrefs<K> {
@@ -96,44 +105,51 @@ export function useColumnPrefs<K extends string>(storageKey: string, columns: Co
     setVisibleCols(new Set())
   }
 
+  const [widths, setWidths] = useState<Record<string, number>>(() => {
+    if (typeof window === 'undefined') return {}
+    try {
+      const saved = JSON.parse(localStorage.getItem(`${storageKey}ColWidths`) ?? 'null')
+      if (saved && typeof saved === 'object') return saved
+    } catch { /* ignore malformed storage */ }
+    return {}
+  })
+  useEffect(() => {
+    localStorage.setItem(`${storageKey}ColWidths`, JSON.stringify(widths))
+  }, [widths, storageKey])
+
+  function getWidth(key: string, fallback: number): number {
+    return widths[key] ?? fallback
+  }
+  function resizeWidth(key: string, deltaPx: number, fallback: number) {
+    setWidths(prev => ({ ...prev, [key]: Math.max(36, Math.round((prev[key] ?? fallback) + deltaPx)) }))
+  }
+  function resetWidth(key: string) {
+    setWidths(prev => {
+      if (!(key in prev)) return prev
+      const next = { ...prev }
+      delete next[key]
+      return next
+    })
+  }
+
   const shownColumns = colOrder.map(k => byKey.get(k)).filter((c): c is ColumnDef<K> => !!c && visibleCols.has(c.key))
     .map(c => columnLabels[c.key] ? { ...c, label: columnLabels[c.key]! } : c)
 
-  return { columns, visibleCols, colOrder, columnLabels, shownColumns, toggleCol, moveCol, renameColumn, resetVisible }
-}
-
-// Drag-to-resize column widths -- separate from useColumnPrefs above
-// (visibility/order/labels) since not every table that uses those needs
-// resizing too. Widths are in pixels, persisted per table via their own
-// localStorage key. Only takes effect where the caller renders its table
-// with `tableLayout: fixed` and a matching <colgroup> (see CountsTab.tsx).
-export function useResizableWidths(storageKey: string, defaults: Record<string, number>) {
-  const [widths, setWidths] = useState<Record<string, number>>(() => {
-    if (typeof window === 'undefined') return defaults
-    try {
-      const saved = JSON.parse(localStorage.getItem(storageKey) ?? 'null')
-      if (saved && typeof saved === 'object') return { ...defaults, ...saved }
-    } catch { /* ignore malformed storage */ }
-    return defaults
-  })
-  useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify(widths))
-  }, [widths, storageKey])
-
-  function resize(key: string, deltaPx: number) {
-    setWidths(prev => ({ ...prev, [key]: Math.max(36, Math.round((prev[key] ?? defaults[key] ?? 80) + deltaPx)) }))
+  return {
+    columns, visibleCols, colOrder, columnLabels, shownColumns,
+    toggleCol, moveCol, renameColumn, resetVisible,
+    getWidth, resizeWidth, resetWidth,
   }
-  function resetOne(key: string) {
-    setWidths(prev => ({ ...prev, [key]: defaults[key] }))
-  }
-  return { widths, resize, resetOne }
 }
 
 // A thin draggable strip pinned to a header cell's right edge -- the cell
 // itself needs `relative` positioning for this to sit correctly. Pointer
 // Events (not mouse events) so a drag keeps tracking even once the pointer
 // leaves this 8px-wide handle, and the same code path handles touch too.
-// Double-click resets that one column back to its default width.
+// Double-click resets that one column back to its default width. Some
+// header cells (e.g. a sortable column) have their own onClick on the <th>
+// itself -- click/dblclick are stopped from bubbling so ending a drag or
+// double-clicking to reset never also fires that cell's own click handler.
 export function ColResizeHandle({ onResize, onReset }: { onResize: (deltaPx: number) => void; onReset?: () => void }) {
   const lastX = useRef(0)
   return (
@@ -149,10 +165,35 @@ export function ColResizeHandle({ onResize, onReset }: { onResize: (deltaPx: num
         const delta = e.clientX - lastX.current
         if (delta !== 0) { onResize(delta); lastX.current = e.clientX }
       }}
-      onDoubleClick={onReset}
+      onClick={e => e.stopPropagation()}
+      onDoubleClick={e => { e.stopPropagation(); onReset?.() }}
       title="Drag to resize, double-click to reset"
       className="absolute top-0 right-0 z-10 h-full w-2 -mr-1 cursor-col-resize touch-none select-none hover:bg-blue-400/40 active:bg-blue-500/60"
     />
+  )
+}
+
+// Standard header cell for any resizable table -- bakes in the truncated
+// label, a right-edge divider line (always visible, not just on hover, so
+// there's a visual cue for where to grab), and the drag handle, so every
+// table wires resizing the same consistent way instead of repeating this
+// per table. Actual sizing comes from the table's own <colgroup> (matching
+// widths via the same ColumnPrefs.getWidth calls) -- this component is
+// purely presentational.
+export function ResizableTh({ onResize, onReset, align = 'left', noDivider = false, className = '', children }: {
+  onResize: (deltaPx: number) => void
+  onReset: () => void
+  align?: 'left' | 'center' | 'right'
+  noDivider?: boolean
+  className?: string
+  children?: React.ReactNode
+}) {
+  const alignCls = align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left'
+  return (
+    <th className={`relative overflow-hidden px-2.5 py-2 font-bold text-gray-500 uppercase tracking-wide border-b border-gray-200 ${noDivider ? '' : 'border-r'} ${alignCls} ${className}`}>
+      <span className="block truncate">{children}</span>
+      <ColResizeHandle onResize={onResize} onReset={onReset} />
+    </th>
   )
 }
 

@@ -1610,7 +1610,8 @@ function ItemHubPageInner() {
           ) : (
             <TabErrorBoundary>
               <LossTab onOpenItem={() => {}} search={search} group={group} productType={productType}
-                visibleCols={itemsColPrefs.visibleCols} colOrder={itemsColPrefs.colOrder} columnLabels={itemsColPrefs.columnLabels} />
+                visibleCols={itemsColPrefs.visibleCols} colOrder={itemsColPrefs.colOrder} columnLabels={itemsColPrefs.columnLabels}
+                getWidth={itemsColPrefs.getWidth} resizeWidth={itemsColPrefs.resizeWidth} resetWidth={itemsColPrefs.resetWidth} />
             </TabErrorBoundary>
           )
         )}

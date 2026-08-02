@@ -3,7 +3,7 @@ import { useState, useEffect, type ReactNode } from 'react'
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
-import { useColumnPrefs, ColumnsPickerButton, type ColumnDef } from './columnPrefs'
+import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from './columnPrefs'
 
 const SHORT_MON = ['Ja','Fe','Mr','Ap','My','Ju','Jl','Au','Se','Oc','No','De']
 const DAYS = ['Su','Mo','Tu','We','Th','Fr','Sa']
@@ -55,6 +55,7 @@ const PL_COLUMNS: PLColumn[] = [
   },
 ]
 const PL_COL_BY_KEY = new Map(PL_COLUMNS.map(c => [c.key, c]))
+const PL_COL_DEFAULTS: Record<string, number> = { date: 100, cc: 90, bills: 90, expenses: 90, cashOut: 110, dailyLoss: 90, pl: 90 }
 
 function StatCard({ label, value, tone }: { label: string; value: string; tone: keyof typeof TONE_CLS }) {
   return (
@@ -102,21 +103,31 @@ export default function ProfitLossTab() {
         </div>
         <p className="text-[10px] text-gray-400 mb-2">CC − (Cash Out + Daily Loss), one row per day. Cash Out = Bills + Expenses.</p>
         <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-          <table className="w-full border-collapse text-xs">
+          <table className="table-fixed border-collapse text-xs" style={{
+            width: colPrefs.getWidth('date', PL_COL_DEFAULTS.date)
+              + colPrefs.shownColumns.reduce((s, c) => s + colPrefs.getWidth(c.key, PL_COL_DEFAULTS[c.key] ?? 90), 0),
+          }}>
+            <colgroup>
+              <col style={{ width: colPrefs.getWidth('date', PL_COL_DEFAULTS.date) }} />
+              {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: colPrefs.getWidth(c.key, PL_COL_DEFAULTS[c.key] ?? 90) }} />)}
+            </colgroup>
             <thead>
               <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
-                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Date</th>
-                {colPrefs.shownColumns.map(c => (
-                  <th key={c.key} className="text-right px-3 py-2 font-bold border-b border-gray-200">{c.label}</th>
+                <ResizableTh onResize={d => colPrefs.resizeWidth('date', d, PL_COL_DEFAULTS.date)} onReset={() => colPrefs.resetWidth('date')}>Date</ResizableTh>
+                {colPrefs.shownColumns.map((c, i) => (
+                  <ResizableTh key={c.key} align="right" noDivider={i === colPrefs.shownColumns.length - 1}
+                    onResize={d => colPrefs.resizeWidth(c.key, d, PL_COL_DEFAULTS[c.key] ?? 90)} onReset={() => colPrefs.resetWidth(c.key)}>
+                    {c.label}
+                  </ResizableTh>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {daily.map((d, i) => (
                 <tr key={d.date} className={i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
-                  <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{dayLabel(d.date)}</td>
+                  <td className="px-3 py-2 text-gray-600 whitespace-nowrap truncate">{dayLabel(d.date)}</td>
                   {colPrefs.shownColumns.map(c => (
-                    <td key={c.key} className="px-3 py-2 text-right">{PL_COL_BY_KEY.get(c.key)!.render(d)}</td>
+                    <td key={c.key} className="px-3 py-2 text-right truncate">{PL_COL_BY_KEY.get(c.key)!.render(d)}</td>
                   ))}
                 </tr>
               ))}

@@ -7,7 +7,7 @@ import { usePolling } from '@/lib/usePolling'
 import { isOwnerLevel } from '@/lib/roles'
 import HistoryPanel from './HistoryPanel'
 import { AnalyticsToggle } from './analyticsShared'
-import { useColumnPrefs, ColumnsPickerButton, useResizableWidths, ColResizeHandle, type ColumnDef } from './columnPrefs'
+import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from './columnPrefs'
 import DynamicTasksSection from './DynamicTasksSection'
 const CountsAnalyticsSection = dynamic(() => import('./CountsAnalyticsSection'), { ssr: false })
 
@@ -23,11 +23,11 @@ const COUNTS_COLUMNS: ColumnDef<ColKey>[] = [
   { key: 'notes', label: 'NOTES' },
 ]
 
-// Pixel widths for every column of the list table below, draggable via
-// ColResizeHandle -- keyed by the same names as ColKey plus the two fixed
-// columns (date/item) and the trailing actions column, none of which are
-// part of ColKey since they're never hidden/reordered.
-const DEFAULT_COUNTS_COL_WIDTHS: Record<string, number> = {
+// Default pixel widths for every column of the list table below, draggable
+// via colPrefs.getWidth/resizeWidth -- keyed by the same names as ColKey
+// plus the two fixed columns (date/item) and the trailing actions column,
+// none of which are part of ColKey since they're never hidden/reordered.
+const COUNTS_COL_DEFAULTS: Record<string, number> = {
   date: 78, item: 180, group: 96, qty: 64, by: 76, src: 64, notes: 160, actions: 92,
 }
 
@@ -415,7 +415,6 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
   const [pairingPrompt, setPairingPrompt] = useState<PairingPrompt | null>(null)
   const promptPairing = (itemName: string, packs: PackRef[], retry: () => void) => setPairingPrompt({ itemName, packs, retry })
   const colPrefs = useColumnPrefs<ColKey>('countsTable', COUNTS_COLUMNS)
-  const { widths: colWidths, resize: resizeCol, resetOne: resetColWidth } = useResizableWidths('countsTableColWidths', DEFAULT_COUNTS_COL_WIDTHS)
 
   function loadRecords() {
     fetch('/api/stock/counts').then(r => r.json()).then(d => { setRecords(d); setLoading(false) })
@@ -678,33 +677,27 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
         <div className="overflow-x-auto">
         <table className="border-collapse text-[10px]" style={{
           tableLayout: 'fixed',
-          width: colWidths.date + colWidths.item + colPrefs.shownColumns.reduce((s, c) => s + (colWidths[c.key] ?? 80), 0) + colWidths.actions,
+          width: colPrefs.getWidth('date', COUNTS_COL_DEFAULTS.date) + colPrefs.getWidth('item', COUNTS_COL_DEFAULTS.item)
+            + colPrefs.shownColumns.reduce((s, c) => s + colPrefs.getWidth(c.key, COUNTS_COL_DEFAULTS[c.key] ?? 80), 0)
+            + colPrefs.getWidth('actions', COUNTS_COL_DEFAULTS.actions),
         }}>
           <colgroup>
-            <col style={{ width: colWidths.date }} />
-            <col style={{ width: colWidths.item }} />
-            {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: colWidths[c.key] ?? 80 }} />)}
-            <col style={{ width: colWidths.actions }} />
+            <col style={{ width: colPrefs.getWidth('date', COUNTS_COL_DEFAULTS.date) }} />
+            <col style={{ width: colPrefs.getWidth('item', COUNTS_COL_DEFAULTS.item) }} />
+            {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: colPrefs.getWidth(c.key, COUNTS_COL_DEFAULTS[c.key] ?? 80) }} />)}
+            <col style={{ width: colPrefs.getWidth('actions', COUNTS_COL_DEFAULTS.actions) }} />
           </colgroup>
           <thead className="sticky top-0 bg-gray-50 z-10">
             <tr>
-              <th className="relative text-left px-2.5 py-2 font-bold text-gray-500 uppercase tracking-wide border-b border-r border-gray-200 overflow-hidden">
-                <span className="block truncate">Date</span>
-                <ColResizeHandle onResize={d => resizeCol('date', d)} onReset={() => resetColWidth('date')} />
-              </th>
-              <th className="relative text-left px-2.5 py-2 font-bold text-gray-500 uppercase tracking-wide border-b border-r border-gray-200 overflow-hidden">
-                <span className="block truncate">Item</span>
-                <ColResizeHandle onResize={d => resizeCol('item', d)} onReset={() => resetColWidth('item')} />
-              </th>
+              <ResizableTh onResize={d => colPrefs.resizeWidth('date', d, COUNTS_COL_DEFAULTS.date)} onReset={() => colPrefs.resetWidth('date')}>Date</ResizableTh>
+              <ResizableTh onResize={d => colPrefs.resizeWidth('item', d, COUNTS_COL_DEFAULTS.item)} onReset={() => colPrefs.resetWidth('item')}>Item</ResizableTh>
               {colPrefs.shownColumns.map(c => (
-                <th key={c.key} className={`relative px-2.5 py-2 font-bold text-gray-500 uppercase tracking-wide border-b border-r border-gray-200 overflow-hidden ${c.key === 'qty' ? 'text-center' : 'text-left'}`}>
-                  <span className="block truncate">{c.label}</span>
-                  <ColResizeHandle onResize={d => resizeCol(c.key, d)} onReset={() => resetColWidth(c.key)} />
-                </th>
+                <ResizableTh key={c.key} align={c.key === 'qty' ? 'center' : 'left'}
+                  onResize={d => colPrefs.resizeWidth(c.key, d, COUNTS_COL_DEFAULTS[c.key] ?? 80)} onReset={() => colPrefs.resetWidth(c.key)}>
+                  {c.label}
+                </ResizableTh>
               ))}
-              <th className="relative px-2.5 py-2 border-b border-gray-200 overflow-hidden">
-                <ColResizeHandle onResize={d => resizeCol('actions', d)} onReset={() => resetColWidth('actions')} />
-              </th>
+              <ResizableTh noDivider onResize={d => colPrefs.resizeWidth('actions', d, COUNTS_COL_DEFAULTS.actions)} onReset={() => colPrefs.resetWidth('actions')} />
             </tr>
           </thead>
           <tbody>

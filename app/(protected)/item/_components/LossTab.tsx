@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useMemo, useRef, Fragment, type ReactNode, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
+import { useState, useEffect, useMemo, useRef, Fragment, type ReactNode, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 import { fmtDate } from '@/lib/fmtDate'
 import type { ItemDayRow as DayRow, CountRevision } from '@/lib/itemDayRows'
@@ -8,6 +8,7 @@ import {
   type PackCycle, type PackChainRow,
 } from '@/lib/packChain'
 import { COL_BY_KEY, type ColKey, type SortCol } from './lossTabColumns'
+import { ColResizeHandle } from './columnPrefs'
 
 /* ── types ── */
 export type SummaryRow = {
@@ -640,21 +641,23 @@ function rowSortVal(row: SummaryRow, col: SortCol): number | string {
 
 /* ── compact th with sort indicator ── */
 const thBase = 'px-2 py-2 font-bold cursor-pointer select-none whitespace-nowrap border-b border-gray-200 text-[10px] uppercase tracking-wide'
-function SortTh({ label, col, sort, onSort, cls = '', style, extra }: {
+function SortTh({ label, col, sort, onSort, cls = '', style, onResize, onResetWidth, noDivider = false }: {
   label: ReactNode; col: SortCol
   sort: { col: SortCol; dir: SortDir }
   onSort: (col: SortCol) => void
   cls?: string
   style?: CSSProperties
-  extra?: ReactNode
+  onResize?: (deltaPx: number) => void
+  onResetWidth?: () => void
+  noDivider?: boolean
 }) {
   const active = sort.col === col
   const arrow = active ? (sort.dir === 'desc' ? '↓' : '↑') : ''
   return (
     <th onClick={() => onSort(col)} style={style}
-      className={`${thBase} ${cls} ${active ? 'text-blue-600' : 'text-gray-400 hover:text-gray-700'}`}>
-      {label}{arrow && <span className="ml-0.5 text-[9px]">{arrow}</span>}
-      {extra}
+      className={`relative overflow-hidden ${thBase} ${noDivider ? '' : 'border-r'} ${cls} ${active ? 'text-blue-600' : 'text-gray-400 hover:text-gray-700'}`}>
+      <span className="block truncate">{label}{arrow && <span className="ml-0.5 text-[9px]">{arrow}</span>}</span>
+      {onResize && <ColResizeHandle onResize={onResize} onReset={onResetWidth} />}
     </th>
   )
 }
@@ -1676,7 +1679,7 @@ function renderCell(key: ColKey, row: SummaryRow) {
 }
 
 /* ── main LossTab ── */
-export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 'All', productType = 'all', visibleCols, colOrder, columnLabels = {} }: {
+export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 'All', productType = 'all', visibleCols, colOrder, columnLabels = {}, getWidth, resizeWidth, resetWidth }: {
   onOpenItem: (itemId: number) => void
   search?: string
   group?: string | null
@@ -1689,6 +1692,10 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   // Custom display labels from that same picker -- purely cosmetic, applied
   // over COLUMNS' default label below.
   columnLabels?: Partial<Record<ColKey, string>>
+  // Column widths -- also lifted up, same colPrefs instance the picker uses.
+  getWidth: (key: string, fallback: number) => number
+  resizeWidth: (key: string, deltaPx: number, fallback: number) => void
+  resetWidth: (key: string) => void
 }) {
   const router = useRouter()
   const [rows, setRows] = useState<SummaryRow[]>([])
@@ -1710,31 +1717,8 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
 
   // Item column width -- user-resizable via the drag handle on its header,
   // remembered across visits since everyone's own item names run different
-  // lengths.
-  const [itemColWidth, setItemColWidth] = useState<number>(() => {
-    if (typeof window === 'undefined') return 84
-    const saved = Number(localStorage.getItem('lossTabItemColWidth'))
-    return saved >= 60 && saved <= 400 ? saved : 84
-  })
-  useEffect(() => {
-    localStorage.setItem('lossTabItemColWidth', String(itemColWidth))
-  }, [itemColWidth])
-
-  function startResize(e: ReactPointerEvent) {
-    e.stopPropagation()
-    e.preventDefault()
-    const startX = e.clientX
-    const startWidth = itemColWidth
-    function onMove(ev: PointerEvent) {
-      setItemColWidth(Math.min(400, Math.max(60, startWidth + (ev.clientX - startX))))
-    }
-    function onUp() {
-      document.removeEventListener('pointermove', onMove)
-      document.removeEventListener('pointerup', onUp)
-    }
-    document.addEventListener('pointermove', onMove)
-    document.addEventListener('pointerup', onUp)
-  }
+  // lengths. Lifted colPrefs (same instance the "Columns" picker uses).
+  const itemColWidth = getWidth('item', 84)
 
   function loadSummary() {
     return fetch('/api/losses/summary').then(r => r.json())
@@ -1787,7 +1771,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   const colgroup = (
     <colgroup>
       <col style={{width: itemColWidth}} />
-      {shownColumns.map(c => <col key={c.key} style={{width: c.width}} />)}
+      {shownColumns.map(c => <col key={c.key} style={{width: getWidth(c.key, c.width)}} />)}
     </colgroup>
   )
 
@@ -1821,14 +1805,13 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
           <thead className="sticky top-0 z-20">
             <tr className="bg-gray-50">
               <SortTh label="Item" col="item_name" sort={sort} onSort={handleSort}
-                cls="text-left pl-2 pr-2 sticky left-0 z-30 bg-gray-50 truncate"
+                cls="text-left pl-2 pr-2 sticky left-0 z-30 bg-gray-50"
                 style={{ width: itemColWidth, maxWidth: itemColWidth }}
-                extra={
-                  <div onPointerDown={startResize} onClick={e => e.stopPropagation()}
-                    className="absolute top-0 right-0 h-full w-2 cursor-col-resize touch-none hover:bg-blue-300/50 active:bg-blue-400/60" />
-                } />
-              {shownColumns.map(c => (
-                <SortTh key={c.key} label={c.label} col={c.key} {...thProps} cls="text-center" />
+                onResize={d => resizeWidth('item', d, 84)} onResetWidth={() => resetWidth('item')} />
+              {shownColumns.map((c, i) => (
+                <SortTh key={c.key} label={c.label} col={c.key} {...thProps} cls="text-center"
+                  noDivider={i === shownColumns.length - 1}
+                  onResize={d => resizeWidth(c.key, d, c.width)} onResetWidth={() => resetWidth(c.key)} />
               ))}
             </tr>
           </thead>

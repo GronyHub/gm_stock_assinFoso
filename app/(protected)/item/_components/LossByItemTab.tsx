@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { AnalyticsToggle } from './analyticsShared'
-import { useColumnPrefs, ColumnsPickerButton, type ColumnDef } from './columnPrefs'
+import { useColumnPrefs, ColumnsPickerButton, ColResizeHandle, type ColumnDef } from './columnPrefs'
 const LossAnalyticsSection = dynamic(() => import('./LossAnalyticsSection'), { ssr: false })
 
 type Row = { item_id: number; item_name: string; lgAmt: number; lossCount: number }
@@ -17,6 +17,7 @@ const COLUMNS: ColumnDef<ColKey>[] = [
   { key: 'lossCount', label: 'Loss No.', width: 90 },
   { key: 'lgAmt',     label: 'Loss Amt.', width: 90 },
 ]
+const LOSS_BY_ITEM_COL_DEFAULTS: Record<string, number> = { item: 200, lossCount: 90, lgAmt: 90 }
 
 function fmtAmt(v: number) {
   if (v === 0) return '—'
@@ -24,17 +25,19 @@ function fmtAmt(v: number) {
   return (v > 0 ? '+' : '-') + s
 }
 
-function Th({ label, col, cls = '', sort, onSort }: {
+function Th({ label, col, cls = '', sort, onSort, onResize, onResetWidth, noDivider = false }: {
   label: string; col: SortCol; cls?: string
   sort: { col: SortCol; dir: SortDir }; onSort: (col: SortCol) => void
+  onResize: (deltaPx: number) => void; onResetWidth: () => void; noDivider?: boolean
 }) {
   const active = sort.col === col
   const arrow = active ? (sort.dir === 'desc' ? '↓' : '↑') : ''
   return (
     <th onClick={() => onSort(col)}
-      className={`px-2 py-2 font-bold cursor-pointer select-none whitespace-nowrap text-[10px] uppercase tracking-wide border-b border-gray-200
-        ${cls} ${active ? 'text-blue-600' : 'text-gray-400 hover:text-gray-700'}`}>
+      className={`relative overflow-hidden px-2 py-2 font-bold cursor-pointer select-none whitespace-nowrap text-[10px] uppercase tracking-wide border-b border-gray-200
+        ${noDivider ? '' : 'border-r'} ${cls} ${active ? 'text-blue-600' : 'text-gray-400 hover:text-gray-700'}`}>
       {label}{arrow && <span className="ml-0.5 text-[9px]">{arrow}</span>}
+      <ColResizeHandle onResize={onResize} onReset={onResetWidth} />
     </th>
   )
 }
@@ -94,16 +97,22 @@ export default function LossByItemTab({ search }: { search: string }) {
         <AnalyticsToggle showing={showAnalytics} onToggle={() => setShowAnalytics(true)} />
       </div>
       <div className="flex-1 min-h-0 overflow-auto rounded-xl border border-gray-200 bg-white">
-        <table className="w-full table-fixed border-collapse text-[11px]">
+        <table className="table-fixed border-collapse text-[11px]" style={{
+          width: colPrefs.getWidth('item', LOSS_BY_ITEM_COL_DEFAULTS.item)
+            + colPrefs.shownColumns.reduce((s, c) => s + colPrefs.getWidth(c.key, c.width ?? 90), 0),
+        }}>
           <colgroup>
-            <col />
-            {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: c.width }} />)}
+            <col style={{ width: colPrefs.getWidth('item', LOSS_BY_ITEM_COL_DEFAULTS.item) }} />
+            {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: colPrefs.getWidth(c.key, c.width ?? 90) }} />)}
           </colgroup>
           <thead className="sticky top-0 z-10">
             <tr className="bg-gray-50">
-              <Th label="Item" col="item_name" cls="text-left pl-2" sort={sort} onSort={handleSort} />
-              {colPrefs.shownColumns.map(c => (
-                <Th key={c.key} label={c.label} col={c.key} cls="text-center" sort={sort} onSort={handleSort} />
+              <Th label="Item" col="item_name" cls="text-left pl-2" sort={sort} onSort={handleSort}
+                onResize={d => colPrefs.resizeWidth('item', d, LOSS_BY_ITEM_COL_DEFAULTS.item)} onResetWidth={() => colPrefs.resetWidth('item')} />
+              {colPrefs.shownColumns.map((c, i) => (
+                <Th key={c.key} label={c.label} col={c.key} cls="text-center" sort={sort} onSort={handleSort}
+                  noDivider={i === colPrefs.shownColumns.length - 1}
+                  onResize={d => colPrefs.resizeWidth(c.key, d, c.width ?? 90)} onResetWidth={() => colPrefs.resetWidth(c.key)} />
               ))}
             </tr>
           </thead>

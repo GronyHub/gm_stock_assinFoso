@@ -2,7 +2,7 @@
 import { Fragment, useState, useEffect, useMemo, useRef } from 'react'
 import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
-import { useColumnPrefs, ColumnsPickerButton, type ColumnDef, type ColumnPrefs } from './columnPrefs'
+import { useColumnPrefs, ColumnsPickerButton, ResizableTh, ColResizeHandle, type ColumnDef, type ColumnPrefs } from './columnPrefs'
 
 type Expense = {
   id: number
@@ -70,6 +70,9 @@ const EXPENSE_COLUMNS: ColumnDef<ColKey>[] = [
   { key: 'source',      label: 'Source' },
   { key: 'by',          label: 'By' },
 ]
+const EXPENSES_COL_DEFAULTS: Record<string, number> = {
+  date: 92, amt: 90, account: 120, description: 160, vendor: 120, source: 90, by: 80,
+}
 
 type TableProps = {
   rows: Expense[]
@@ -106,8 +109,9 @@ const EMPTY_FORM = {
 // Clicking the header opens a dropdown of every distinct value in that
 // column -- picking one filters the table down to just that value; "All"
 // clears it. The header itself turns blue while a filter is active.
-function FilterHeaderCell({ label, options, value, onChange }: {
+function FilterHeaderCell({ label, options, value, onChange, onResize, onResetWidth }: {
   label: string; options: string[]; value: string | null; onChange: (v: string | null) => void
+  onResize: (deltaPx: number) => void; onResetWidth: () => void
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLTableCellElement>(null)
@@ -121,7 +125,7 @@ function FilterHeaderCell({ label, options, value, onChange }: {
   }, [])
 
   return (
-    <th className={`${TH} relative`} ref={ref}>
+    <th className={`${TH} relative overflow-hidden border-r`} ref={ref}>
       <button onClick={() => setOpen(o => !o)}
         className={`flex items-center gap-0.5 ${value ? 'text-blue-600' : ''}`}>
         <span className="truncate max-w-[80px]">{value ?? label}</span>
@@ -141,6 +145,7 @@ function FilterHeaderCell({ label, options, value, onChange }: {
           ))}
         </div>
       )}
+      <ColResizeHandle onResize={onResize} onReset={onResetWidth} />
     </th>
   )
 }
@@ -151,28 +156,38 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
   const visibleKeys = colPrefs.colOrder.filter(k => colPrefs.visibleCols.has(k)
     && !(k === 'account' && hideAccount) && !(k === 'vendor' && hideVendor))
 
-  function headerCellFor(key: ColKey) {
+  function headerCellFor(key: ColKey, isLast: boolean) {
     const label = colPrefs.columnLabels[key] ?? EXPENSE_COLUMNS.find(c => c.key === key)!.label
-    if (key === 'account') return <FilterHeaderCell key={key} label={label} options={accounts} value={accountFilter} onChange={onAccountFilter} />
-    if (key === 'vendor') return <FilterHeaderCell key={key} label={label} options={vendors} value={vendorFilter} onChange={onVendorFilter} />
-    return <th key={key} className={TH}>{label}</th>
+    const onResize = (d: number) => colPrefs.resizeWidth(key, d, EXPENSES_COL_DEFAULTS[key] ?? 100)
+    const onReset = () => colPrefs.resetWidth(key)
+    if (key === 'account') return <FilterHeaderCell key={key} label={label} options={accounts} value={accountFilter} onChange={onAccountFilter} onResize={onResize} onResetWidth={onReset} />
+    if (key === 'vendor') return <FilterHeaderCell key={key} label={label} options={vendors} value={vendorFilter} onChange={onVendorFilter} onResize={onResize} onResetWidth={onReset} />
+    return <ResizableTh key={key} noDivider={isLast} onResize={onResize} onReset={onReset}>{label}</ResizableTh>
   }
   function bodyCellFor(key: ColKey, e: Expense) {
-    if (key === 'account') return <td key={key} className={`${TD} text-gray-900 font-semibold`}>{e.expense_account}</td>
-    if (key === 'description') return <td key={key} className={`${TD} text-gray-700`}>{e.description ?? '—'}</td>
-    if (key === 'vendor') return <td key={key} className={`${TD} text-gray-500`}>{e.vendor_name ?? '—'}</td>
-    if (key === 'source') return <td key={key} className={`${TD} text-gray-400`}>{e.source_sheet ?? e.source ?? '—'}</td>
-    return <td key={key} className={`${TD} text-blue-500`}>{e.entered_by ?? '—'}</td>
+    if (key === 'account') return <td key={key} className={`${TD} text-gray-900 font-semibold truncate`}>{e.expense_account}</td>
+    if (key === 'description') return <td key={key} className={`${TD} text-gray-700 truncate`}>{e.description ?? '—'}</td>
+    if (key === 'vendor') return <td key={key} className={`${TD} text-gray-500 truncate`}>{e.vendor_name ?? '—'}</td>
+    if (key === 'source') return <td key={key} className={`${TD} text-gray-400 truncate`}>{e.source_sheet ?? e.source ?? '—'}</td>
+    return <td key={key} className={`${TD} text-blue-500 truncate`}>{e.entered_by ?? '—'}</td>
   }
+
+  const tableWidth = colPrefs.getWidth('date', EXPENSES_COL_DEFAULTS.date) + colPrefs.getWidth('amt', EXPENSES_COL_DEFAULTS.amt)
+    + visibleKeys.reduce((s, k) => s + colPrefs.getWidth(k, EXPENSES_COL_DEFAULTS[k] ?? 100), 0)
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-    <table className="w-full border-collapse text-xs">
+    <table className="border-collapse text-xs" style={{ tableLayout: 'fixed', width: tableWidth }}>
+      <colgroup>
+        <col style={{ width: colPrefs.getWidth('date', EXPENSES_COL_DEFAULTS.date) }} />
+        <col style={{ width: colPrefs.getWidth('amt', EXPENSES_COL_DEFAULTS.amt) }} />
+        {visibleKeys.map(k => <col key={k} style={{ width: colPrefs.getWidth(k, EXPENSES_COL_DEFAULTS[k] ?? 100) }} />)}
+      </colgroup>
       <thead className="sticky top-0 z-10">
         <tr className="bg-gray-50">
-          <th className={`${TH} whitespace-nowrap`}>Date</th>
-          <th className={`${TH} text-right`}>Amt</th>
-          {visibleKeys.map(headerCellFor)}
+          <ResizableTh onResize={d => colPrefs.resizeWidth('date', d, EXPENSES_COL_DEFAULTS.date)} onReset={() => colPrefs.resetWidth('date')}>Date</ResizableTh>
+          <ResizableTh align="right" onResize={d => colPrefs.resizeWidth('amt', d, EXPENSES_COL_DEFAULTS.amt)} onReset={() => colPrefs.resetWidth('amt')}>Amt</ResizableTh>
+          {visibleKeys.map((key, i) => headerCellFor(key, i === visibleKeys.length - 1))}
         </tr>
       </thead>
       <tbody className="divide-y divide-gray-100">

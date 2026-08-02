@@ -3,7 +3,7 @@ import { Fragment, useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
-import { useColumnPrefs, ColumnsPickerButton, type ColumnDef } from './columnPrefs'
+import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from './columnPrefs'
 
 type Item = { id: number; item_name: string; cf_group: string | null }
 
@@ -15,6 +15,7 @@ const COLUMNS: ColumnDef<ColKey>[] = [
   { key: 'unitPrice', label: 'COST PRICE' },
   { key: 'itemTotal', label: 'TOTAL' },
 ]
+const BILLS_COL_DEFAULTS: Record<string, number> = { item: 200, quantity: 70, unitPrice: 100, itemTotal: 100 }
 
 type Bill = {
   id: number
@@ -274,12 +275,25 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
         </div>
       </div>
       <div className="flex-1 overflow-y-auto min-h-0">
-        <table className="w-full border-collapse text-[10px]">
+        <div className="overflow-x-auto">
+        <table className="border-collapse text-[10px]" style={{
+          tableLayout: 'fixed',
+          width: colPrefs.getWidth('item', BILLS_COL_DEFAULTS.item)
+            + colPrefs.shownColumns.reduce((s, c) => s + colPrefs.getWidth(c.key, BILLS_COL_DEFAULTS[c.key] ?? 80), 0),
+        }}>
+          <colgroup>
+            <col style={{ width: colPrefs.getWidth('item', BILLS_COL_DEFAULTS.item) }} />
+            {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: colPrefs.getWidth(c.key, BILLS_COL_DEFAULTS[c.key] ?? 80) }} />)}
+          </colgroup>
           <thead className="sticky top-0 bg-gray-100 z-10">
             <tr>
-              <th className="text-left px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">ITEM</th>
-              {colPrefs.shownColumns.map(c => (
-                <th key={c.key} className="text-right px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200">{c.label}</th>
+              <ResizableTh onResize={d => colPrefs.resizeWidth('item', d, BILLS_COL_DEFAULTS.item)} onReset={() => colPrefs.resetWidth('item')}
+                className="text-[11px]">ITEM</ResizableTh>
+              {colPrefs.shownColumns.map((c, i) => (
+                <ResizableTh key={c.key} align="right" noDivider={i === colPrefs.shownColumns.length - 1} className="text-[11px]"
+                  onResize={d => colPrefs.resizeWidth(c.key, d, BILLS_COL_DEFAULTS[c.key] ?? 80)} onReset={() => colPrefs.resetWidth(c.key)}>
+                  {c.label}
+                </ResizableTh>
               ))}
             </tr>
           </thead>
@@ -338,24 +352,24 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
                   {g.rows.map(row => (
                     <tr key={row.key} id={`billrow-${row.billId}`}
                       className={`border-b border-gray-100 text-[13px] font-bold ${row.unresolved ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
-                      <td className="px-1 py-1 text-gray-900">
+                      <td className="px-1 py-1 text-gray-900 overflow-hidden">
                         {row.itemId ? (
-                          <Link href={`/item?tab=loss&view=item360&jumpItemId=${row.itemId}`} className="text-blue-600 hover:underline">
+                          <Link href={`/item?tab=loss&view=item360&jumpItemId=${row.itemId}`} className="block truncate text-blue-600 hover:underline">
                             {row.itemName}
                           </Link>
                         ) : (
-                          <span className="text-red-600">{row.itemName}</span>
+                          <span className="block truncate text-red-600">{row.itemName}</span>
                         )}
                       </td>
                       {colPrefs.shownColumns.map(c => {
                         if (c.key === 'quantity') return (
-                          <td key={c.key} className="px-1 py-1 text-right text-gray-700">{row.quantity ? parseFloat(row.quantity) : '—'}</td>
+                          <td key={c.key} className="px-1 py-1 text-right text-gray-700 truncate">{row.quantity ? parseFloat(row.quantity) : '—'}</td>
                         )
                         if (c.key === 'unitPrice') return (
-                          <td key={c.key} className="px-1 py-1 text-right text-gray-700">{fmt(row.unitPrice)}</td>
+                          <td key={c.key} className="px-1 py-1 text-right text-gray-700 truncate">{fmt(row.unitPrice)}</td>
                         )
                         return (
-                          <td key={c.key} className="px-1 py-1 text-right font-semibold text-gray-900">{fmt(row.itemTotal)}</td>
+                          <td key={c.key} className="px-1 py-1 text-right font-semibold text-gray-900 truncate">{fmt(row.itemTotal)}</td>
                         )
                       })}
                     </tr>
@@ -366,6 +380,7 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
           </tbody>
         </table>
         {filtered.length === 0 && <p className="text-[10px] text-gray-400 text-center py-10">No bills</p>}
+        </div>
       </div>
     </div>
   )

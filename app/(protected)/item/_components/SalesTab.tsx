@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { fmtDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
-import { useColumnPrefs, ColumnsPickerButton, type ColumnDef } from './columnPrefs'
+import { useColumnPrefs, ColumnsPickerButton, ResizableTh, ColResizeHandle, type ColumnDef } from './columnPrefs'
 import AssignWidget from './AssignWidget'
 import DynamicTasksSection from './DynamicTasksSection'
 
@@ -76,18 +76,21 @@ const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 te
 // Item stays sticky/always-visible (first column); these five are the only
 // ones the picker can hide/reorder/rename. CC/WNW only ever get filled in
 // on a receipt's own bar row (blank on its item lines); QTY/SP/TOTAL are
-// the reverse -- blank on the bar, filled on each line. Widths are the
-// same percentages the fixed 6-column layout used; table-layout:fixed
-// scales them proportionally when fewer columns are shown, so they don't
-// need to be renormalized to sum to 100 by hand.
+// the reverse -- blank on the bar, filled on each line. Widths below are
+// pixel defaults now (drag-resizable via colPrefs.getWidth/resizeWidth),
+// not the percentages this used to be -- table-layout:fixed no longer
+// scales them to fill 100% width, so each column keeps exactly the width
+// it's given (own or dragged) and the table scrolls horizontally instead
+// of stretching, same as every other resizable table in the app.
 type ColKey = 'cc' | 'wnw' | 'qty' | 'sp' | 'total'
 const SALES_COLUMNS: ColumnDef<ColKey>[] = [
-  { key: 'cc',    label: 'CC',    width: 13 },
-  { key: 'wnw',   label: 'WNW',   width: 13 },
-  { key: 'qty',   label: 'QTY',   width: 10 },
-  { key: 'sp',    label: 'SP',    width: 10 },
-  { key: 'total', label: 'TOTAL', width: 14 },
+  { key: 'cc',    label: 'CC',    width: 100 },
+  { key: 'wnw',   label: 'WNW',   width: 100 },
+  { key: 'qty',   label: 'QTY',   width: 70 },
+  { key: 'sp',    label: 'SP',    width: 70 },
+  { key: 'total', label: 'TOTAL', width: 100 },
 ]
+const SALES_ITEM_COL_DEFAULT = 220
 
 const NO_WORK_REASONS = [
   'No work — Public Holiday','No work — Christmas Day','No work — Good Friday',
@@ -701,26 +704,37 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
           column's width is only settled after the browser has measured
           every row (bar rows vs. item-name rows differ a lot), and that
           left the sticky ITEM column and the CC column next to it
-          disagreeing by a few px, clipping CC's leading characters. */}
-      <table className="w-full table-fixed border-collapse text-[10px]">
+          disagreeing by a few px, clipping CC's leading characters. Widths
+          are drag-resizable (colPrefs.getWidth/resizeWidth) -- the same
+          overflow-auto container above already handles horizontal scroll
+          for whatever the columns add up to, so no extra scroll wrapper is
+          needed (and none was added: nesting one here would break the
+          sticky thead/ITEM column, per the note on that container). */}
+      <table className="table-fixed border-collapse text-[10px]" style={{
+        width: colPrefs.getWidth('item', SALES_ITEM_COL_DEFAULT)
+          + colPrefs.shownColumns.reduce((s, c) => s + colPrefs.getWidth(c.key, c.width ?? 80), 0),
+      }}>
         <colgroup>
-          <col style={{ width: '40%' }} />
-          {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: `${c.width}%` }} />)}
+          <col style={{ width: colPrefs.getWidth('item', SALES_ITEM_COL_DEFAULT) }} />
+          {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: colPrefs.getWidth(c.key, c.width ?? 80) }} />)}
         </colgroup>
         <thead className="sticky top-0 bg-gray-100 z-10">
           <tr>
-            <th className="text-left px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200 sticky left-0 z-20 bg-gray-100">ITEM</th>
+            <th className="relative overflow-hidden text-left px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-r border-gray-200 sticky left-0 z-20 bg-gray-100">
+              <span className="block truncate">ITEM</span>
+              <ColResizeHandle onResize={d => colPrefs.resizeWidth('item', d, SALES_ITEM_COL_DEFAULT)} onReset={() => colPrefs.resetWidth('item')} />
+            </th>
             {/* CC/WNW are real columns (not text docked inside the ITEM
                 header) so the header label and every row's value share the
                 same table column and can't drift out of alignment. Only the
                 bar row ever fills them in -- line rows below leave them blank. */}
-            {colPrefs.shownColumns.map(c => (
-              <th key={c.key}
-                className={c.key === 'cc' || c.key === 'wnw'
-                  ? 'text-left px-1 py-1 pl-3 text-[11px] font-bold text-gray-500 border-b border-gray-200 whitespace-nowrap'
-                  : 'text-right px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200'}>
+            {colPrefs.shownColumns.map((c, i) => (
+              <ResizableTh key={c.key} noDivider={i === colPrefs.shownColumns.length - 1}
+                align={c.key === 'cc' || c.key === 'wnw' ? 'left' : 'right'}
+                className={`text-[11px] ${c.key === 'cc' || c.key === 'wnw' ? 'pl-3 whitespace-nowrap' : ''}`}
+                onResize={d => colPrefs.resizeWidth(c.key, d, c.width ?? 80)} onReset={() => colPrefs.resetWidth(c.key)}>
                 {c.label}
-              </th>
+              </ResizableTh>
             ))}
           </tr>
         </thead>

@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import LocationField from '@/components/LocationField'
-import { useColumnPrefs, ColumnsPickerButton, type ColumnDef } from '../item/_components/columnPrefs'
+import { useColumnPrefs, ColumnsPickerButton, ResizableTh, ColResizeHandle, type ColumnDef } from '../item/_components/columnPrefs'
 
 type Customer = {
   id: number
@@ -55,6 +55,9 @@ const CUSTOMER_COLUMNS: CustomerColumn[] = [
   { key: 'receiptCount', label: 'Receipts', align: 'right', tdClass: 'text-gray-500', render: v => v.receipt_count },
 ]
 const CUSTOMER_COL_BY_KEY = new Map(CUSTOMER_COLUMNS.map(col => [col.key, col]))
+const CUSTOMERS_COL_DEFAULTS: Record<string, number> = {
+  name: 150, company: 150, phone: 120, email: 180, location: 130, status: 90, sales: 100, outstanding: 110, receiptCount: 80,
+}
 
 function NewCustomerForm({ onCreated, onCancel }: { onCreated: (c: Customer) => void; onCancel: () => void }) {
   const [displayName, setDisplayName] = useState('')
@@ -373,14 +376,26 @@ export default function CustomersPage({ openAddSignal, initialSearch }: { openAd
         {filtered.length === 0 ? (
           <p className="py-10 text-center text-gray-400 text-sm">No customers found.</p>
         ) : (
-          <table className="w-full border-collapse text-xs">
+          <table className="border-collapse text-xs" style={{
+            tableLayout: 'fixed',
+            width: colPrefs.getWidth('name', CUSTOMERS_COL_DEFAULTS.name)
+              + colPrefs.shownColumns.reduce((s, c) => s + colPrefs.getWidth(c.key, CUSTOMERS_COL_DEFAULTS[c.key] ?? 100), 0),
+          }}>
+            <colgroup>
+              <col style={{ width: colPrefs.getWidth('name', CUSTOMERS_COL_DEFAULTS.name) }} />
+              {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: colPrefs.getWidth(c.key, CUSTOMERS_COL_DEFAULTS[c.key] ?? 100) }} />)}
+            </colgroup>
             <thead>
               <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
-                <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap sticky left-0 z-10 bg-gray-50">Name</th>
-                {colPrefs.shownColumns.map(col => (
-                  <th key={col.key} className={`${CUSTOMER_COL_BY_KEY.get(col.key)!.align === 'right' ? 'text-right' : 'text-left'} px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap`}>
+                <th className="relative overflow-hidden text-left px-3 py-2 font-bold border-b border-r border-gray-200 sticky left-0 z-10 bg-gray-50">
+                  <span className="block truncate">Name</span>
+                  <ColResizeHandle onResize={d => colPrefs.resizeWidth('name', d, CUSTOMERS_COL_DEFAULTS.name)} onReset={() => colPrefs.resetWidth('name')} />
+                </th>
+                {colPrefs.shownColumns.map((col, i) => (
+                  <ResizableTh key={col.key} align={CUSTOMER_COL_BY_KEY.get(col.key)!.align} noDivider={i === colPrefs.shownColumns.length - 1}
+                    onResize={d => colPrefs.resizeWidth(col.key, d, CUSTOMERS_COL_DEFAULTS[col.key] ?? 100)} onReset={() => colPrefs.resetWidth(col.key)}>
                     {col.label}
-                  </th>
+                  </ResizableTh>
                 ))}
               </tr>
             </thead>
@@ -388,7 +403,7 @@ export default function CustomersPage({ openAddSignal, initialSearch }: { openAd
               {filtered.map((v, i) => (
                 <tr key={v.id} onClick={() => { setSelected(v === selected ? null : v); setEditingCustomer(false) }}
                   className={`cursor-pointer transition ${selected?.id === v.id ? 'bg-blue-50' : i % 2 === 1 ? 'bg-gray-50/60 hover:bg-blue-50/40' : 'hover:bg-blue-50/40'}`}>
-                  <td className="px-3 py-2 font-semibold text-gray-900 whitespace-nowrap sticky left-0 z-[1] bg-inherit">
+                  <td className="px-3 py-2 font-semibold text-gray-900 truncate sticky left-0 z-[1] bg-inherit">
                     {v.is_internal && (
                       <span className="mr-1 text-[9px] bg-purple-100 text-purple-700 font-bold px-1.5 py-0.5 rounded-full align-middle">INT</span>
                     )}
@@ -397,7 +412,7 @@ export default function CustomersPage({ openAddSignal, initialSearch }: { openAd
                   {colPrefs.shownColumns.map(col => {
                     const meta = CUSTOMER_COL_BY_KEY.get(col.key)!
                     return (
-                      <td key={col.key} className={`px-3 py-2 whitespace-nowrap ${meta.align === 'right' ? 'text-right' : ''} ${meta.tdClass}`}>
+                      <td key={col.key} className={`px-3 py-2 truncate ${meta.align === 'right' ? 'text-right' : ''} ${meta.tdClass}`}>
                         {meta.render(v)}
                       </td>
                     )
