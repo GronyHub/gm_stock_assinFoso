@@ -9,6 +9,15 @@ import { NextRequest, NextResponse } from 'next/server'
 // rows (canonical/sr_variant/etc, from different import sources) share the
 // same text -- the reviewer only needs to see the conflict once.
 export async function GET() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS dismissed_alias_reviews (
+      review_type TEXT NOT NULL,
+      review_key TEXT NOT NULL,
+      dismissed_by TEXT,
+      dismissed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (review_type, review_key)
+    )
+  `.catch(() => {})
   const rows = await sql`
     SELECT DISTINCT ON (LOWER(TRIM(a.alias_name)), i.id)
       a.id AS alias_id, a.alias_name, a.alias_type, a.source AS alias_source,
@@ -17,6 +26,10 @@ export async function GET() {
     FROM item_aliases a
     JOIN items i ON LOWER(TRIM(i.canonical_name)) = LOWER(TRIM(a.alias_name)) AND i.id != a.item_id
     JOIN items ai ON ai.id = a.item_id
+    WHERE NOT EXISTS (
+      SELECT 1 FROM dismissed_alias_reviews d
+      WHERE d.review_type = 'name_conflict' AND d.review_key = a.id::text
+    )
     ORDER BY LOWER(TRIM(a.alias_name)), i.id, a.id
   `
   return NextResponse.json(rows)

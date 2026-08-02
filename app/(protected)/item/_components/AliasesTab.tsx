@@ -252,10 +252,21 @@ function FlaggedPanel({ items }: { items: Item[] }) {
   useEffect(() => {
     setLoading(true)
     fetch('/api/aliases/audit').then(r => r.json()).then(d => { setRows(Array.isArray(d) ? d : []); setLoading(false) })
+    fetch('/api/aliases/dismissed').then(r => r.json()).then(d => {
+      if (Array.isArray(d?.flagged)) setDismissed(new Set(d.flagged))
+    }).catch(() => {})
   }, [])
 
   const key = (r: AuditRow) => `${r.source}::${r.raw_name}::${r.item_id}`
   const display = rows.filter(r => !dismissed.has(key(r)))
+
+  function dismiss(k: string) {
+    setDismissed(s => new Set(s).add(k))
+    fetch('/api/aliases/dismissed', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ review_type: 'flagged', review_key: k }),
+    }).catch(() => {})
+  }
 
   const reassignTargets = useMemo(() => {
     const q = reassignSearch.toLowerCase()
@@ -281,7 +292,7 @@ function FlaggedPanel({ items }: { items: Item[] }) {
       }
       return
     }
-    setDismissed(s => new Set(s).add(key(reassigning)))
+    dismiss(key(reassigning))
     setReassigning(null); setReassignSearch('')
   }
 
@@ -331,7 +342,7 @@ function FlaggedPanel({ items }: { items: Item[] }) {
                 <p className="text-[9px] text-gray-400 mt-0.5">Currently matched to: {reassigning.canonical_name} ({reassigning.cnt} lines)</p>
               </div>
               <div className="px-2 py-1.5 border-b border-gray-100 shrink-0">
-                <button onClick={() => setDismissed(s => new Set(s).add(key(reassigning)))}
+                <button onClick={() => dismiss(key(reassigning))}
                   className="w-full text-[10px] font-semibold text-gray-600 bg-gray-100 rounded py-1.5 hover:bg-gray-200 transition">
                   Keep as-is (dismiss)
                 </button>
@@ -377,9 +388,20 @@ function AmbiguousPanel() {
       setGroups(Array.isArray(d) ? d : [])
       setLoading(false)
     })
+    fetch('/api/aliases/dismissed').then(r => r.json()).then(d => {
+      if (Array.isArray(d?.ambiguous)) setDismissed(new Set(d.ambiguous))
+    }).catch(() => {})
   }, [])
 
   const display = groups.filter(g => !dismissed.has(g.norm_name))
+
+  function dismiss(normName: string) {
+    setDismissed(s => new Set(s).add(normName))
+    fetch('/api/aliases/dismissed', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ review_type: 'ambiguous', review_key: normName }),
+    }).catch(() => {})
+  }
 
   async function keep(group: AmbiguousGroup, keepItemId: number | null) {
     setResolving(keepItemId ?? -1)
@@ -455,7 +477,7 @@ function AmbiguousPanel() {
                 </div>
               )}
               <div className="px-2 py-1.5 border-b border-gray-100 shrink-0">
-                <button onClick={() => { setDismissed(s => new Set(s).add(selected.norm_name)); setSelected(null) }}
+                <button onClick={() => { dismiss(selected.norm_name); setSelected(null) }}
                   className="w-full text-[10px] font-semibold text-gray-600 bg-gray-100 rounded py-1.5 hover:bg-gray-200 transition">
                   Skip for now
                 </button>
@@ -499,9 +521,20 @@ function NameConflictsPanel() {
       setRows(Array.isArray(d) ? d : [])
       setLoading(false)
     })
+    fetch('/api/aliases/dismissed').then(r => r.json()).then(d => {
+      if (Array.isArray(d?.name_conflict)) setDismissed(new Set(d.name_conflict.map(Number)))
+    }).catch(() => {})
   }, [])
 
   const display = rows.filter(r => !dismissed.has(r.alias_id))
+
+  function dismiss(aliasId: number) {
+    setDismissed(s => new Set(s).add(aliasId))
+    fetch('/api/aliases/dismissed', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ review_type: 'name_conflict', review_key: aliasId }),
+    }).catch(() => {})
+  }
 
   async function deleteAlias(row: LeakRow) {
     setDeleting(true)
@@ -583,7 +616,7 @@ function NameConflictsPanel() {
                 </p>
               </div>
               <div className="px-2 py-1.5 border-b border-gray-100 shrink-0">
-                <button onClick={() => { setDismissed(s => new Set(s).add(selected.alias_id)); setSelected(null) }}
+                <button onClick={() => { dismiss(selected.alias_id); setSelected(null) }}
                   className="w-full text-[10px] font-semibold text-gray-600 bg-gray-100 rounded py-1.5 hover:bg-gray-200 transition">
                   Keep as-is (dismiss)
                 </button>

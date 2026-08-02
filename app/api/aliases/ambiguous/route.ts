@@ -10,6 +10,16 @@ export async function GET() {
   const session = await auth()
   if (!session) return NextResponse.json([], { status: 401 })
 
+  await sql`
+    CREATE TABLE IF NOT EXISTS dismissed_alias_reviews (
+      review_type TEXT NOT NULL,
+      review_key TEXT NOT NULL,
+      dismissed_by TEXT,
+      dismissed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (review_type, review_key)
+    )
+  `.catch(() => {})
+
   const aliasRows = await sql`
     WITH ambiguous_names AS (
       SELECT LOWER(TRIM(alias_name)) AS norm_name
@@ -22,6 +32,10 @@ export async function GET() {
     FROM item_aliases a
     JOIN items i ON i.id = a.item_id
     JOIN ambiguous_names an ON an.norm_name = LOWER(TRIM(a.alias_name))
+    WHERE NOT EXISTS (
+      SELECT 1 FROM dismissed_alias_reviews d
+      WHERE d.review_type = 'ambiguous' AND d.review_key = an.norm_name
+    )
     ORDER BY an.norm_name, a.item_id
   ` as { alias_id: number; norm_name: string; alias_name: string; item_id: number; canonical_name: string; alias_type: string; source: string }[]
 

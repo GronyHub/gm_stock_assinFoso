@@ -35,5 +35,17 @@ export async function GET() {
     .map(r => ({ ...r, warning: aliasMismatchWarning(r.raw_name, r.canonical_name) }))
     .filter((r): r is typeof r & { warning: string } => r.warning !== null)
 
-  return NextResponse.json(flagged)
+  const dismissedRows = await sql`
+    CREATE TABLE IF NOT EXISTS dismissed_alias_reviews (
+      review_type TEXT NOT NULL,
+      review_key TEXT NOT NULL,
+      dismissed_by TEXT,
+      dismissed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (review_type, review_key)
+    )
+  `.catch(() => null).then(() => sql`SELECT review_key FROM dismissed_alias_reviews WHERE review_type = 'flagged'`)
+  const dismissedKeys = new Set((dismissedRows as { review_key: string }[]).map(r => r.review_key))
+  const visible = flagged.filter(r => !dismissedKeys.has(`${r.source}::${r.raw_name}::${r.item_id}`))
+
+  return NextResponse.json(visible)
 }
