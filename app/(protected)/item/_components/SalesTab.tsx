@@ -7,8 +7,6 @@ import HistoryPanel from './HistoryPanel'
 import { useColumnPrefs, ColumnsPickerButton, type ColumnDef } from './columnPrefs'
 import { useAttachments, AttachmentPicker, type Attachment } from './attachmentsShared'
 import BulkAttachForms from './BulkAttachForms'
-import AssignWidget from './AssignWidget'
-import DynamicTasksSection from './DynamicTasksSection'
 
 type Item = { id: number; item_name: string; cf_group: string | null }
 
@@ -303,18 +301,10 @@ type Props = {
   jumpToDate?: string | null
   jumpToItemName?: string | null
   onJumpDone?: () => void
-  // Combined 🚩 flags view -- lifted up to item/page.tsx so its trigger can
-  // sit on the green bar next to New (matching Items' icon+count) instead
-  // of a separate button inside this component's own gray toolbar row.
-  // Optional: ViolationFixPanel renders SalesTab standalone for a single
-  // violation's inline fix view and never needs this toggle at all.
-  showFlagsSummary?: boolean
-  setShowFlagsSummary?: (v: boolean) => void
 }
 
 export default function SalesTab({
   items, groupFilter, search, violation, jumpToDate, jumpToItemName, onJumpDone,
-  showFlagsSummary = false, setShowFlagsSummary = () => {},
 }: Props) {
   const [receipts, setReceipts] = useState<Receipt[]>([])
   const [loading, setLoading] = useState(true)
@@ -357,7 +347,7 @@ export default function SalesTab({
   const colPrefs = useColumnPrefs<ColKey>('salesTable', SALES_COLUMNS)
   const attachments = useAttachments()
 
-  const needsFlags = showFlagsSummary || violation === 'no_cash' || violation === 'missing_days' || violation === 'cost_price' || violation === 'dup_receipt'
+  const needsFlags = violation === 'no_cash' || violation === 'missing_days' || violation === 'cost_price' || violation === 'dup_receipt' || violation === 'no_attachment'
 
   useEffect(() => {
     if (needsFlags && !flags && !flagsLoading) {
@@ -724,40 +714,6 @@ export default function SalesTab({
               </div>
             ))
         )}
-      </div>
-    )
-  }
-
-  // ── COMBINED FLAGS VIEW ── one flag icon covering all 5 of Sales' own
-  // violation types together, each with its own assign/deadline control.
-  if (showFlagsSummary) {
-    const rows = [
-      { type: 'no_cash', count: flags?.noCash?.length, label: 'receipt(s) missing cash counted' },
-      { type: 'missing_days', count: flags?.missingDays?.length, label: 'day(s) with no sales receipts' },
-      { type: 'cost_gte_sell', count: flags?.costGteSell?.length, label: 'line(s) where cost price ≥ selling price' },
-      { type: 'dup_receipts', count: flags?.dupReceipts?.length, label: 'day(s) with duplicate WIC/GMC receipts' },
-      { type: 'no_attachment', count: flags?.noAttachment?.length, label: 'walk-in receipt(s) with no form attached' },
-    ]
-    return (
-      <div className="flex flex-col h-full min-h-0">
-        <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0">
-          <button onClick={() => setShowFlagsSummary(false)}
-            className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-red-600 text-white transition">
-            ← Back
-          </button>
-          <span className="text-[9px] font-semibold text-red-700">🚩 Sales Flags</span>
-        </div>
-        <div className="flex-1 overflow-y-auto p-2 space-y-2">
-          <DynamicTasksSection scopeKey="Sales" />
-          {rows.map(r => (
-            <div key={r.type} className="bg-white border border-gray-200 rounded-xl p-2.5 space-y-1.5">
-              <p className="text-[10px] text-gray-400">
-                {flagsLoading || !flags ? 'Loading…' : `${r.count ?? 0} ${r.label}`}
-              </p>
-              <AssignWidget type={r.type} />
-            </div>
-          ))}
-        </div>
       </div>
     )
   }
