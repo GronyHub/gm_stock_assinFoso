@@ -49,6 +49,43 @@ async function compressIfNeeded(file: File): Promise<File> {
   }
 }
 
+async function uploadAttempt(file: File): Promise<Attachment> {
+  const toSend = await compressIfNeeded(file)
+  const fd = new FormData()
+  fd.append('file', toSend)
+  const res = await fetch('/api/sales/upload', { method: 'POST', body: fd })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error ?? 'Upload failed')
+  return { url: data.url, type: data.contentType, name: data.name ?? file.name }
+}
+
+// Shared by both the New Sale/Edit Receipt picker (useAttachments below)
+// and BulkAttachForms' own batch upload -- a file picked from Google Drive
+// (or another cloud provider) isn't actually on the device yet when the
+// picker hands it to the page; the OS is still fetching its bytes in the
+// background, and the very first read can fail transiently while that
+// finishes. One quiet retry, after giving it a moment, clears this up
+// without the caller needing to notice or re-pick the file themselves.
+export async function uploadAttachment(file: File): Promise<Attachment> {
+  try {
+    return await uploadAttempt(file)
+  } catch {
+    await new Promise(r => setTimeout(r, 1200))
+    try {
+      return await uploadAttempt(file)
+    } catch (e) {
+      // A bare "Failed to fetch" surviving both attempts is the browser
+      // aborting the request itself rather than a server-side rejection --
+      // give a reason a non-developer can actually act on instead of the
+      // raw browser wording.
+      const message = e instanceof Error && e.message !== 'Failed to fetch'
+        ? e.message
+        : 'Could not reach the server. If this file is from Google Drive or another cloud app, try saving it to your phone first and uploading that copy instead.'
+      throw new Error(message)
+    }
+  }
+}
+
 export function useAttachments(initial: Attachment[] = []) {
   const [items, setItems] = useState<PendingAttachment[]>(initial.map(toPending))
 
@@ -59,44 +96,16 @@ export function useAttachments(initial: Attachment[] = []) {
     setItems(next.map(toPending))
   }
 
-  async function uploadAttempt(file: File) {
-    const toSend = await compressIfNeeded(file)
-    const fd = new FormData()
-    fd.append('file', toSend)
-    const res = await fetch('/api/sales/upload', { method: 'POST', body: fd })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.error ?? 'Upload failed')
-    return data
-  }
-
   async function uploadOne(file: File) {
     const localUrl = URL.createObjectURL(file)
     setItems(prev => [...prev, { url: '', type: file.type, name: file.name, localUrl, uploading: true }])
     try {
-      let data
-      try {
-        data = await uploadAttempt(file)
-      } catch {
-        // A file picked from Google Drive (or another cloud provider) isn't
-        // actually on the device yet -- the OS is still fetching its bytes
-        // in the background when the picker hands it to the page, and the
-        // very first read can fail transiently while that finishes. One
-        // quiet retry, after giving it a moment, clears this up without the
-        // user needing to notice or re-pick the file themselves.
-        await new Promise(r => setTimeout(r, 1200))
-        data = await uploadAttempt(file)
-      }
+      const data = await uploadAttachment(file)
       setItems(prev => prev.map(m => m.localUrl === localUrl
-        ? { ...m, uploading: false, url: data.url, type: data.contentType, name: data.name ?? m.name }
+        ? { ...m, uploading: false, url: data.url, type: data.type, name: data.name }
         : m))
     } catch (e) {
-      // A bare "Failed to fetch" surviving both attempts is the browser
-      // aborting the request itself rather than a server-side rejection --
-      // give a reason a non-developer can actually act on instead of the
-      // raw browser wording.
-      const message = e instanceof Error && e.message !== 'Failed to fetch'
-        ? e.message
-        : 'Could not reach the server. If this file is from Google Drive or another cloud app, try saving it to your phone first and uploading that copy instead.'
+      const message = e instanceof Error ? e.message : 'Upload failed'
       setItems(prev => prev.map(m => m.localUrl === localUrl ? { ...m, uploading: false, error: message } : m))
     }
   }

@@ -1,6 +1,6 @@
 'use client'
 import { useRef, useState } from 'react'
-import type { Attachment } from './attachmentsShared'
+import { uploadAttachment, type Attachment } from './attachmentsShared'
 
 type Receipt = { id: number; receipt_date: string; customer_name: string | null; attachments: Attachment[] | null }
 
@@ -100,14 +100,14 @@ export default function BulkAttachForms({ receipts, onDone, onClose }: {
     }
     setRows(prev => prev.map(r => r.id === row.id ? { ...r, status: 'uploading' } : r))
     try {
-      const fd = new FormData()
-      fd.append('file', row.file)
-      const uploadRes = await fetch('/api/sales/upload', { method: 'POST', body: fd })
-      const uploaded = await uploadRes.json()
-      if (!uploadRes.ok) throw new Error(uploaded.error ?? 'Upload failed')
+      // Shared with the single-attachment picker -- compresses large
+      // images and quietly retries once, since a file straight off Google
+      // Drive (as this batch tool's files usually are) can fail its first
+      // upload attempt while the OS is still fetching its bytes.
+      const uploaded = await uploadAttachment(row.file)
 
       const existing = mergedAttachments.current.get(receipt.id) ?? receipt.attachments ?? []
-      const nextAttachments = [...existing, { url: uploaded.url, type: uploaded.contentType, name: uploaded.name }]
+      const nextAttachments = [...existing, uploaded]
       const headerRes = await fetch(`/api/sales/${receipt.id}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ attachments: nextAttachments }),
