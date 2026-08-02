@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { fmtDate } from '@/lib/fmtDate'
 import SavedFlash from './SavedFlash'
-import DynamicTasksSection from './DynamicTasksSection'
+import PageToolIcons from './PageToolIcons'
 
 type Content = { key: string; body: string; updated_by: string | null; updated_at: string | null }
 
@@ -108,7 +108,7 @@ export default function ContentPage({ contentKey, title, submenu }: { contentKey
         </div>
       </div>
 
-      {submenu && <DynamicTasksSection scopeKey={submenu} />}
+      {submenu && <PageToolIcons scopeKey={submenu} />}
 
       {editing ? (
         <div className="bg-white border border-gray-200 rounded-lg p-2 space-y-1.5">

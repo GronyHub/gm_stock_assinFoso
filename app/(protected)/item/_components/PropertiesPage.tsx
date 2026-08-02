@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
 import { usePolling } from '@/lib/usePolling'
+import PageToolIcons from './PageToolIcons'
 
 type Property = {
   id: number
@@ -119,7 +120,8 @@ export default function PropertiesPage() {
           </button>
         ))}
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
-          className="ml-auto text-[10px] bg-white border border-gray-200 rounded px-2 py-1 outline-none w-32" />
+          className="text-[10px] bg-white border border-gray-200 rounded px-2 py-1 outline-none w-32" />
+        <div className="ml-auto"><PageToolIcons scopeKey="Properties" /></div>
       </div>
       <div className="flex-1 overflow-y-auto min-h-0 p-2 space-y-2">
         {filtered.length === 0 ? (
