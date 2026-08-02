@@ -1415,8 +1415,9 @@ function ItemHubPageInner() {
                           className={`shrink-0 flex items-center gap-0.5 text-xs font-semibold pl-1.5 pr-2 py-1 rounded-lg transition
                             ${active ? 'bg-red-600 text-white' : 'text-white hover:bg-white/10'}`}>
                           <span className="relative leading-none">
-                            🚩
-                            <span className="absolute -bottom-1 -right-1 text-[7px] font-black leading-none bg-white text-red-700 rounded-sm px-[1.5px]">{letter}</span>
+                            {count > 0 ? '🚩' : '🏳️'}
+                            <span className={`absolute -bottom-1 -right-1 text-[7px] font-black leading-none rounded-sm px-[1.5px]
+                              ${count > 0 ? 'bg-white text-red-700' : 'bg-red-700 text-white'}`}>{letter}</span>
                           </span>
                           <span className="ml-1">{count > 0 ? count : ''}</span>
                         </button>
