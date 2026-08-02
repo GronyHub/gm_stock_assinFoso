@@ -1,6 +1,31 @@
 import sql from '@/lib/db'
 import { NextResponse } from 'next/server'
 
+export async function POST() {
+  // Do bills/invoices store their own independent `total`, or is it derived
+  // live from their lines? Determines whether removing a line needs a
+  // matching total adjustment.
+  const billTotals = await sql`
+    SELECT b.id, b.total AS bill_total, COALESCE(SUM(bl.item_total), 0) AS lines_sum
+    FROM bills b LEFT JOIN bill_lines bl ON bl.bill_id = b.id
+    WHERE b.id IN (86, 212, 197) GROUP BY b.id, b.total
+  `
+  const invoiceTotals = await sql`
+    SELECT iv.id, iv.total AS invoice_total, COALESCE(SUM(il.item_total), 0) AS lines_sum
+    FROM invoices iv LEFT JOIN invoice_lines il ON il.invoice_id = iv.id
+    WHERE iv.id IN (SELECT invoice_id FROM invoice_lines WHERE id IN (218, 219, 220) UNION SELECT 118)
+    GROUP BY iv.id, iv.total
+  `
+  // The two "Delivery" invoices from earlier tonight -- were their totals
+  // left stale after I deleted their lines?
+  const deletedDeliveryInvoices = await sql`
+    SELECT iv.id, iv.total AS invoice_total, COALESCE(SUM(il.item_total), 0) AS lines_sum
+    FROM invoices iv LEFT JOIN invoice_lines il ON il.invoice_id = iv.id
+    WHERE iv.id IN (51, 63) GROUP BY iv.id, iv.total
+  `
+  return NextResponse.json({ billTotals, invoiceTotals, deletedDeliveryInvoices })
+}
+
 export async function GET() {
   const billLinesDetail = await sql`
     SELECT bl.id, bl.bill_id, bl.raw_item_name, bl.item_total, bl.quantity, bl.unit_price,
