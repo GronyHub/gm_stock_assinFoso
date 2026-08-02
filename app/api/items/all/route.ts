@@ -11,9 +11,9 @@ export async function GET() {
              COALESCE(s.calculated_soh, 0) AS soh,
              COALESCE(i.selling_rate, 0) AS selling_price,
              COALESCE(i.purchase_rate, 0) AS cost_price
-      FROM items i
+      FROM active_items i
       LEFT JOIN item_stock_summary s ON s.item_id = i.id
-      WHERE i.status IS NULL OR LOWER(i.status) NOT IN ('inactive','service')
+      WHERE LOWER(COALESCE(i.status, '')) != 'service'
       ORDER BY i.canonical_name
     `
     return NextResponse.json(rows)

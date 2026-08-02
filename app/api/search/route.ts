@@ -20,8 +20,8 @@ export async function GET(req: NextRequest) {
   const [items, customers, vendors, sales, bills, announcements] = await Promise.all([
     sql`
       SELECT id, canonical_name AS name, cf_group
-      FROM items
-      WHERE canonical_name ILIKE ${like} AND (status IS NULL OR LOWER(status) != 'inactive')
+      FROM active_items
+      WHERE canonical_name ILIKE ${like}
       ORDER BY canonical_name LIMIT 6
     `.catch(() => []),
     sql`

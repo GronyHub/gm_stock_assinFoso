@@ -19,9 +19,8 @@ export async function GET() {
         COALESCE(i.product_type, 'goods') AS product_type,
         COALESCE(s.has_advert, false) AS has_advert,
         s.notes, s.updated_by, s.updated_at
-      FROM items i
+      FROM active_items i
       LEFT JOIN item_audio_advert_status s ON s.item_id = i.id
-      WHERE i.status IS NULL OR LOWER(i.status) != 'inactive'
       ORDER BY has_advert ASC, i.cf_group NULLS LAST, i.canonical_name
     `
     return NextResponse.json(rows)

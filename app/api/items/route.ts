@@ -15,9 +15,8 @@ export async function GET() {
         i.converts_to_item_id,
         COALESCE(i.product_type, 'goods') AS product_type,
         COALESCE(s.calculated_soh, 0) AS calculated_soh
-      FROM items i
+      FROM active_items i
       LEFT JOIN item_stock_summary s ON s.item_id = i.id
-      WHERE i.status IS NULL OR LOWER(i.status) != 'inactive'
       ORDER BY cf_group NULLS LAST, i.canonical_name
     `
     return NextResponse.json(rows)
@@ -34,7 +33,7 @@ export async function GET() {
         i.unit_name,
         'goods' AS product_type,
         COALESCE(s.calculated_soh, 0) AS calculated_soh
-      FROM items i
+      FROM active_items i
       LEFT JOIN item_stock_summary s ON s.item_id = i.id
       ORDER BY cf_group NULLS LAST, i.canonical_name
     `

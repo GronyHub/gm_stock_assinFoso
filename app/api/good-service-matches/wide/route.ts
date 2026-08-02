@@ -16,8 +16,7 @@ export async function GET() {
   const [items, pairs] = await Promise.all([
     sql`
       SELECT id AS item_id, canonical_name, cf_group, COALESCE(product_type, 'goods') AS product_type
-      FROM items
-      WHERE status IS NULL OR LOWER(status) NOT IN ('inactive')
+      FROM active_items
       ORDER BY cf_group NULLS LAST, canonical_name
     `,
     sql`SELECT id, good_name, service_name FROM good_service_matches`,
