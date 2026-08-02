@@ -1,6 +1,19 @@
 import sql from '@/lib/db'
 import { NextResponse } from 'next/server'
 
+export async function POST() {
+  // Did deleting "A4 SHEETS MAMBO" (id 388) earlier tonight remove the only
+  // candidate for the unresolved invoice_line "A4 SHEET MAMBO"?
+  const mamboCandidates = await sql`
+    SELECT id, canonical_name, status FROM items WHERE canonical_name ILIKE '%mambo%'
+  `
+  const deleteLog = await sql`
+    SELECT id, staff_name, action, details, created_at FROM activity_logs
+    WHERE details ILIKE '%mambo%' ORDER BY created_at
+  `
+  return NextResponse.json({ mamboCandidates, deleteLog })
+}
+
 export async function GET() {
   const invoiceLinesCols = await sql`
     SELECT column_name FROM information_schema.columns WHERE table_name = 'invoice_lines'
