@@ -33,7 +33,20 @@ export async function POST(req: NextRequest) {
     // Private-only store, same as announcements -- read back through our own
     // authenticated proxy route (app/api/sales/media) rather than a direct
     // public CDN URL.
-    const blob = await put(filename, file, { access: 'private' })
+    //
+    // Raced against a timeout: if the store is unreachable or the token is
+    // misconfigured, put() can hang rather than reject quickly, and the
+    // platform killing the function once ITS OWN timeout is hit tends to
+    // sever the connection uncleanly -- the browser then reports a bare
+    // "Failed to fetch" with no server-side error to show for it, instead
+    // of the clear message this catch block is meant to produce.
+    const blob = await Promise.race([
+      put(filename, file, { access: 'private' }),
+      // Shorter than Vercel's own default function timeout, so this wins
+      // the race and returns a clean, readable error instead of the
+      // platform severing the connection first.
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Upload service timed out, please try again.')), 8000)),
+    ])
     const url = `/api/sales/media?p=${encodeURIComponent(blob.pathname)}`
     // blob.contentType is derived from the filename's extension, which is
     // more reliable than file.type when the browser/OS sent an empty or
