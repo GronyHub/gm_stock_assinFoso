@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 
-type Tab = 'prezoho-sales' | 'prezoho-bills' | 'flagged' | 'ambiguous' | 'name-conflicts'
+type Tab = 'prezoho-sales' | 'prezoho-bills' | 'prezoho-receipts' | 'flagged' | 'ambiguous' | 'name-conflicts'
 type UnresolvedRow = { name: string; cnt: number; confirmed: boolean }
 type Item = { id: number; canonical_name: string; cf_group: string | null }
 type AuditRow = { raw_name: string; item_id: number; canonical_name: string; source: string; cnt: number; warning: string }
@@ -14,14 +14,15 @@ type LeakRow = {
   conflicting_item_id: number; conflicting_item_name: string; conflicting_item_status: string | null
 }
 
-const ALL_TAB_IDS: Tab[] = ['prezoho-sales', 'prezoho-bills', 'flagged', 'ambiguous', 'name-conflicts']
+const ALL_TAB_IDS: Tab[] = ['prezoho-sales', 'prezoho-bills', 'prezoho-receipts', 'flagged', 'ambiguous', 'name-conflicts']
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'prezoho-sales',   label: 'Pre-Zoho Sales' },
-  { id: 'prezoho-bills',   label: 'Pre-Zoho Bills' },
-  { id: 'flagged',         label: '⚠ Flagged' },
-  { id: 'ambiguous',       label: '⚠ Ambiguous' },
-  { id: 'name-conflicts',  label: '⚠ Name Conflicts' },
+  { id: 'prezoho-sales',    label: 'Pre-Zoho Sales' },
+  { id: 'prezoho-bills',    label: 'Pre-Zoho Bills' },
+  { id: 'prezoho-receipts', label: 'Pre-Zoho Receipts' },
+  { id: 'flagged',          label: '⚠ Flagged' },
+  { id: 'ambiguous',        label: '⚠ Ambiguous' },
+  { id: 'name-conflicts',   label: '⚠ Name Conflicts' },
 ]
 
 const CATEGORY_HINTS: Record<string, string> = {
@@ -57,8 +58,10 @@ function getHint(name: string, tab: Tab) {
 }
 
 function PreZohoPanel({ tab, items }: { tab: Tab; items: Item[] }) {
-  const endpoint = tab === 'prezoho-bills' ? '/api/aliases/unresolved-bills' : '/api/aliases/unresolved'
-  const source   = tab === 'prezoho-bills' ? 'bills' : 'sales'
+  const endpoint = tab === 'prezoho-bills' ? '/api/aliases/unresolved-bills'
+    : tab === 'prezoho-receipts' ? '/api/aliases/unresolved-receipts'
+    : '/api/aliases/unresolved'
+  const source   = tab === 'prezoho-bills' ? 'bills' : tab === 'prezoho-receipts' ? 'invoices' : 'sales'
 
   const [rows, setRows]         = useState<UnresolvedRow[]>([])
   const [loading, setLoading]   = useState(true)
@@ -664,7 +667,11 @@ export default function AliasesTab({ defaultTab }: Props) {
     setResweeping(false)
     if (!res.ok) { setResweepResult('Failed — try again'); return }
     const d = await res.json()
-    const parts = [`${d.salesLinesUpdated} sales line${d.salesLinesUpdated === 1 ? '' : 's'}`, `${d.billLinesUpdated} bill line${d.billLinesUpdated === 1 ? '' : 's'}`]
+    const parts = [
+      `${d.salesLinesUpdated} sales line${d.salesLinesUpdated === 1 ? '' : 's'}`,
+      `${d.billLinesUpdated} bill line${d.billLinesUpdated === 1 ? '' : 's'}`,
+      `${d.invoiceLinesUpdated} receipt line${d.invoiceLinesUpdated === 1 ? '' : 's'}`,
+    ]
     let msg = `Re-swept: ${parts.join(', ')} updated`
     if (d.ambiguousNamesSkipped?.length) msg += ` · ${d.ambiguousNamesSkipped.length} ambiguous name${d.ambiguousNamesSkipped.length === 1 ? '' : 's'} skipped`
     setResweepResult(msg)

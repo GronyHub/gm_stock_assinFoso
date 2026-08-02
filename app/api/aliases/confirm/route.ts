@@ -4,7 +4,7 @@ import { aliasMismatchWarning } from '@/lib/aliasSanity'
 import { NextResponse } from 'next/server'
 
 // POST { alias_name, item_id, alias_type?, source?, force? }
-// source: 'sales' (default) | 'bills'
+// source: 'sales' (default) | 'bills' | 'invoices'
 // force: bypass the singles/pack sanity warning after the caller has seen it
 export async function POST(req: Request) {
   const session = await auth()
@@ -29,6 +29,13 @@ export async function POST(req: Request) {
   if (source === 'bills') {
     await sql`
       UPDATE bill_lines
+      SET item_id = ${item_id}, resolved_name = ${target.canonical_name}, unresolved = false
+      WHERE (item_id IS NULL OR unresolved = true)
+        AND LOWER(TRIM(raw_item_name)) = LOWER(TRIM(${alias_name}))
+    `
+  } else if (source === 'invoices') {
+    await sql`
+      UPDATE invoice_lines
       SET item_id = ${item_id}, resolved_name = ${target.canonical_name}, unresolved = false
       WHERE (item_id IS NULL OR unresolved = true)
         AND LOWER(TRIM(raw_item_name)) = LOWER(TRIM(${alias_name}))

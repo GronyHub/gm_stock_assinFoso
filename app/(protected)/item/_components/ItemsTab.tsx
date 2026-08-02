@@ -14,6 +14,7 @@ import DynamicTasksSection from './DynamicTasksSection'
 const ALIAS_VIOLATION_TAB: Record<string, string> = {
   alias_prezoho_sales: 'prezoho-sales',
   alias_prezoho_bills: 'prezoho-bills',
+  alias_prezoho_receipts: 'prezoho-receipts',
   alias_flagged: 'flagged',
   alias_ambiguous: 'ambiguous',
 }

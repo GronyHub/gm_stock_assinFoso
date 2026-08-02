@@ -246,6 +246,10 @@ const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCategory; d
     description: "A pre-Zoho bill used an item name that did not exactly match anything in the item list, so the system flagged it as unresolved instead of guessing. Confirm the correct match so it counts toward the right item's reports going forward.",
   },
   {
+    key: 'alias_prezoho_receipts', label: 'Pre-Zoho Receipts', category: 'loss',
+    description: "A receipt (invoice) line used an item name that did not exactly match anything in the item list, so the system flagged it as unresolved instead of guessing. Confirm the correct match so it counts toward the right item's reports going forward.",
+  },
+  {
     key: 'alias_flagged', label: 'Flagged', category: 'loss',
     description: 'An alias is currently resolving lines to an item whose name contradicts it (e.g. a singles name matched to a pack item). Review each one and reassign it to the correct item, or dismiss it if the match is actually fine.',
   },
@@ -321,7 +325,7 @@ const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCategory; d
 const VIOLATION_HOME: Partial<Record<string, LossView>> = {
   neg_soh: 'items', no_sp: 'items', no_cp: 'items', no_group: 'items',
   duplicates: 'items', unlinked_named: 'items', service_violation: 'items',
-  alias_prezoho_sales: 'items', alias_prezoho_bills: 'items', alias_flagged: 'items', alias_ambiguous: 'items',
+  alias_prezoho_sales: 'items', alias_prezoho_bills: 'items', alias_prezoho_receipts: 'items', alias_flagged: 'items', alias_ambiguous: 'items',
   daily: 'counts', '7day': 'counts', '15day': 'counts',
   gains: 'feed',
   no_cash: 'sales', missing_days: 'sales', cost_price: 'sales', dup_receipt: 'sales', no_attachment: 'sales',
@@ -335,7 +339,7 @@ const VIOLATION_HOME: Partial<Record<string, LossView>> = {
 const LOSSVIEW_PILL_KEYS: Partial<Record<LossView, string[]>> = {
   items: [
     'neg_soh', 'no_sp', 'no_cp', 'no_group', 'duplicates', 'unlinked_named', 'service_violation',
-    'alias_prezoho_sales', 'alias_prezoho_bills', 'alias_flagged', 'alias_ambiguous',
+    'alias_prezoho_sales', 'alias_prezoho_bills', 'alias_prezoho_receipts', 'alias_flagged', 'alias_ambiguous',
   ],
   counts: ['daily', '7day', '15day'],
   feed: ['gains'],
@@ -369,6 +373,7 @@ const ITEMS_FLAG_TYPES: { key: string; letter: string; label: string }[] = [
   { key: 'service_violation', letter: 'V', label: 'Service Violations' },
   { key: 'alias_prezoho_sales', letter: 'A', label: 'Pre-Zoho Sales Aliases' },
   { key: 'alias_prezoho_bills', letter: 'B', label: 'Pre-Zoho Bills Aliases' },
+  { key: 'alias_prezoho_receipts', letter: 'R', label: 'Pre-Zoho Receipts Aliases' },
   { key: 'alias_flagged', letter: 'F', label: 'Flagged Aliases' },
   { key: 'alias_ambiguous', letter: 'M', label: 'Ambiguous Aliases' },
 ]
@@ -588,6 +593,7 @@ function ItemHubPageInner() {
   const [serviceViolationCount, setServiceViolationCount] = useState(0)
   const [prezohoSalesCount, setPrezohoSalesCount] = useState(0)
   const [prezohoBillsCount, setPrezohoBillsCount] = useState(0)
+  const [prezohoReceiptsCount, setPrezohoReceiptsCount] = useState(0)
   const [aliasFlaggedCount, setAliasFlaggedCount] = useState(0)
   const [unreadAnnouncements, setUnreadAnnouncements] = useState(0)
   const [aliasAmbiguousCount, setAliasAmbiguousCount] = useState(0)
@@ -619,12 +625,14 @@ function ItemHubPageInner() {
     Promise.all([
       fetch('/api/aliases/unresolved').then(r => r.json()).catch(() => []),
       fetch('/api/aliases/unresolved-bills').then(r => r.json()).catch(() => []),
+      fetch('/api/aliases/unresolved-receipts').then(r => r.json()).catch(() => []),
       fetch('/api/aliases/audit').then(r => r.json()).catch(() => []),
       fetch('/api/aliases/ambiguous').then(r => r.json()).catch(() => []),
-    ]).then(([salesRows, billRows, auditRows, ambiguousRows]) => {
+    ]).then(([salesRows, billRows, receiptRows, auditRows, ambiguousRows]) => {
       const pending = (arr: any) => Array.isArray(arr) ? arr.filter((r: any) => !r.confirmed).length : 0
       setPrezohoSalesCount(pending(salesRows))
       setPrezohoBillsCount(pending(billRows))
+      setPrezohoReceiptsCount(pending(receiptRows))
       setAliasFlaggedCount(Array.isArray(auditRows) ? auditRows.length : 0)
       setAliasAmbiguousCount(Array.isArray(ambiguousRows) ? ambiguousRows.length : 0)
     }).catch(() => {})
@@ -653,6 +661,7 @@ function ItemHubPageInner() {
       unlinked_named: f?.unlinkedNamed?.length ?? 0,
       alias_prezoho_sales: prezohoSalesCount,
       alias_prezoho_bills: prezohoBillsCount,
+      alias_prezoho_receipts: prezohoReceiptsCount,
       alias_flagged: aliasFlaggedCount,
       alias_ambiguous: aliasAmbiguousCount,
       no_cash: f?.noCash?.length ?? 0,
@@ -669,7 +678,7 @@ function ItemHubPageInner() {
       unchecked_cab: f?.uncheckedCab?.length ?? 0,
       no_staff_times: f?.noStaffTimes?.length ?? 0,
     }
-  }, [items, globalFlags, pendingCounts, serviceViolationCount, prezohoSalesCount, prezohoBillsCount, aliasFlaggedCount, aliasAmbiguousCount, gainsCount])
+  }, [items, globalFlags, pendingCounts, serviceViolationCount, prezohoSalesCount, prezohoBillsCount, prezohoReceiptsCount, aliasFlaggedCount, aliasAmbiguousCount, gainsCount])
 
   // Backs every page's own combined flags view, and Manage's Opener/Closer --
   // computed once regardless of which outer tab is showing.
@@ -685,7 +694,7 @@ function ItemHubPageInner() {
   const salesFlagsCount = violationCountByType(['no_cash', 'missing_days', 'cost_gte_sell', 'dup_receipts', 'no_attachment'])
   const itemsFlagsCount = violationCountByType([
     'no_group', 'duplicates', 'not_in_inventory', 'neg_soh', 'no_sp', 'no_cp', 'unlinked_named', 'service_violation',
-    'alias_prezoho_sales', 'alias_prezoho_bills', 'alias_flagged', 'alias_ambiguous',
+    'alias_prezoho_sales', 'alias_prezoho_bills', 'alias_prezoho_receipts', 'alias_flagged', 'alias_ambiguous',
   ])
   const billsFlagsCount = violationCountByType(['no_vendor'])
   const cabFlagsCount = violationCountByType(['unchecked_cab'])

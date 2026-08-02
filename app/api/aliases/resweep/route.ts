@@ -45,10 +45,21 @@ export async function POST() {
       AND (b.item_id IS DISTINCT FROM a.item_id OR b.unresolved = true)
     RETURNING b.id
   `
+  const invoicesUpdated = await sql`
+    UPDATE invoice_lines v
+    SET item_id = a.item_id, resolved_name = i.canonical_name, unresolved = false
+    FROM item_aliases a
+    JOIN items i ON i.id = a.item_id
+    WHERE LOWER(TRIM(v.raw_item_name)) = LOWER(TRIM(a.alias_name))
+      AND LOWER(TRIM(a.alias_name)) <> ALL(${ambiguousNames})
+      AND (v.item_id IS DISTINCT FROM a.item_id OR v.unresolved = true)
+    RETURNING v.id
+  `
 
   return NextResponse.json({
     salesLinesUpdated: salesUpdated.length,
     billLinesUpdated: billsUpdated.length,
+    invoiceLinesUpdated: invoicesUpdated.length,
     ambiguousNamesSkipped: ambiguousNames,
   })
 }
