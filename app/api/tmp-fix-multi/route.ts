@@ -8,6 +8,21 @@ export async function GET() {
   return NextResponse.json({ billLineCounts })
 }
 
+export async function PATCH() {
+  const remainingUnresolvedBills = await sql`
+    SELECT raw_item_name, COUNT(*)::int AS cnt FROM bill_lines
+    WHERE item_id IS NULL OR unresolved = true GROUP BY raw_item_name
+  `
+  const remainingUnresolvedReceipts = await sql`
+    SELECT raw_item_name, COUNT(*)::int AS cnt FROM invoice_lines
+    WHERE item_id IS NULL OR unresolved = true GROUP BY raw_item_name
+  `
+  const [inv51] = await sql`SELECT iv.total, COALESCE(SUM(il.item_total),0) AS lines_sum FROM invoices iv LEFT JOIN invoice_lines il ON il.invoice_id = iv.id WHERE iv.id = 51 GROUP BY iv.total`
+  const [inv63] = await sql`SELECT iv.total, COALESCE(SUM(il.item_total),0) AS lines_sum FROM invoices iv LEFT JOIN invoice_lines il ON il.invoice_id = iv.id WHERE iv.id = 63 GROUP BY iv.total`
+  const [colored] = await sql`SELECT id, canonical_name, cf_group, status FROM items WHERE id = 429`
+  return NextResponse.json({ remainingUnresolvedBills, remainingUnresolvedReceipts, invoice51: inv51, invoice63: inv63, colored })
+}
+
 export async function POST() {
   const results: Record<string, unknown> = {}
 
