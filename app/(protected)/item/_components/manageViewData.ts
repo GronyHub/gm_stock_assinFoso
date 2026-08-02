@@ -14,7 +14,7 @@ export type ManageView =
   | 'arrangement' | 'cleanliness' | 'future' | 'customer_display'
   | 'staff_display' | 'repair_works' | 'quality_assurance'
   | 'tutorial' | 'training_laws' | 'assessment'
-  | 'logs'
+  | 'logs' | 'properties'
 
 // Simple dated log/checklist categories -- no existing data behind them, so
 // each gets a ManageLogPanel (notes + optional photo, viewable as history).
@@ -50,6 +50,7 @@ export const MANAGE_LIST_ITEMS: { key: ManageView; label: string; icon?: string 
   { key: 'assessment', label: 'Assessment', icon: '📝' },
   { key: 'rota', label: 'Rota', icon: '🗓️' },
   { key: 'logs', label: 'Logs', icon: '📜' },
+  { key: 'properties', label: 'Properties', icon: '🏷️' },
 ]
 
 export type DynamicCategory = { id: number; label: string }

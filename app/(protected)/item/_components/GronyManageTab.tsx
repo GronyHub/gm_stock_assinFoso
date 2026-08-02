@@ -8,6 +8,7 @@ import DynamicTasksSection from './DynamicTasksSection'
 import AdvertStatusPanel from './AdvertStatusPanel'
 import AssessmentPanel from './AssessmentPanel'
 import DynamicCategoryPage from './DynamicCategoryPage'
+import PropertiesPage from './PropertiesPage'
 import OpenerView from './OpenerView'
 import CloserView from './CloserView'
 import type { Violation } from './useViolations'
@@ -91,6 +92,7 @@ export default function GronyManageContent({
     {view === 'training_laws' && <ContentPage contentKey="training_laws" title="⚖️ Company Laws" submenu="Company Laws" />}
     {view === 'assessment' && (<div className="px-2 pt-2"><DynamicTasksSection scopeKey="Assessment" /><AssessmentPanel /></div>)}
     {view === 'logs' && <div className="px-2 space-y-2 pt-2"><DynamicTasksSection scopeKey="Logs" /><LogsPage /></div>}
+    {view === 'properties' && <PropertiesPage />}
     {logCategory && <ManageLogPanel category={logCategory.key} label={logCategory.label} icon={logCategory.icon} />}
   </>)
 }

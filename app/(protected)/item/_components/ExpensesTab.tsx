@@ -24,14 +24,6 @@ type Expense = {
   source_sheet: string | null
 }
 
-type PropertyFields = Pick<Expense, 'availability' | 'working' | 'location' | 'not_working_reason' | 'not_available_reason'>
-
-const PROPERTY_LOCATIONS = Array.from({ length: 10 }, (_, i) => `Grony ${i + 1}`)
-const NOT_WORKING_REASONS = ['Faulty - Needs Repair', 'Condemned - Beyond Repairs']
-const NOT_AVAILABLE_REASONS = ['Spoilt and thrown away', 'Stolen', "At Grony's House"]
-
-type ExpTab = 'all' | 'properties' | 'at_shop' | 'away'
-
 const MONTHS = ['Ja','Fe','Mr','Ap','My','Ju','Jl','Au','Se','Oc','No','De']
 const DAYS   = ['Su','Mo','Tu','We','Th','Fr','Sa']
 
@@ -54,6 +46,32 @@ function fmtTotal(expenses: Expense[]) {
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
 
 const ACCOUNTS = ['Office Expenses','Rent','Utilities','Salaries','Transport','Repairs','Supplies','Other']
+
+// Cheap edit-distance check for the "similar account names" flag -- catches
+// near-duplicates like "Office Expense" vs "Office Expenses" without
+// needing a DB round trip, since the full account list is already loaded.
+function levenshtein(a: string, b: string): number {
+  const m = a.length, n = b.length
+  const dp: number[] = Array.from({ length: n + 1 }, (_, j) => j)
+  for (let i = 1; i <= m; i++) {
+    let prev = dp[0]
+    dp[0] = i
+    for (let j = 1; j <= n; j++) {
+      const tmp = dp[j]
+      dp[j] = a[i - 1] === b[j - 1] ? prev : 1 + Math.min(prev, dp[j], dp[j - 1])
+      prev = tmp
+    }
+  }
+  return dp[n]
+}
+
+// A description mentioning more than one item (a comma, "&", " and ", or
+// "etc") suggests several purchases got lumped into a single expense line
+// instead of each getting its own row.
+function looksBundled(description: string | null): boolean {
+  if (!description) return false
+  return /[,&]|\band\b|\betc\b/i.test(description)
+}
 
 const TH = 'text-left px-3 py-2 font-bold text-gray-400 text-[10px] uppercase tracking-wide border-b border-gray-200'
 const TD = 'px-3 py-2'
@@ -89,7 +107,6 @@ type TableProps = {
   onDeleteStart: (id: number) => void
   onDeleteConfirm: (id: number) => void
   onDeleteCancel: () => void
-  onPropertyFields: (e: Expense, updates: Partial<PropertyFields>) => void
   colPrefs: ColumnPrefs<ColKey>
   hideAccount?: boolean
   hideVendor?: boolean
@@ -151,7 +168,7 @@ function FilterHeaderCell({ label, options, value, onChange, onResize, onResetWi
 }
 
 function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, saving, form, onEdit, onCloseEdit,
-  onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, onPropertyFields, colPrefs, hideAccount, hideVendor,
+  onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, colPrefs, hideAccount, hideVendor,
   accounts, vendors, accountFilter, vendorFilter, onAccountFilter, onVendorFilter }: TableProps) {
   const visibleKeys = colPrefs.colOrder.filter(k => colPrefs.visibleCols.has(k)
     && !(k === 'account' && hideAccount) && !(k === 'vendor' && hideVendor))
@@ -256,76 +273,9 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
                     </div>
                   </div>
                   {e.is_property && (
-                    <div className="mt-1 space-y-1.5">
-                      <div>
-                        <p className="text-[9px] text-gray-400 mb-0.5">Availability</p>
-                        <div className="flex items-center gap-3">
-                          <label className="flex items-center gap-1 cursor-pointer">
-                            <input type="radio" name={`availability-${e.id}`} checked={e.availability === 'available'}
-                              onChange={() => onPropertyFields(e, { availability: 'available', working: null, location: null, not_working_reason: null, not_available_reason: null })}
-                              className="w-3 h-3 accent-blue-600" />
-                            <span className="text-[10px] text-gray-700">Available</span>
-                          </label>
-                          <label className="flex items-center gap-1 cursor-pointer">
-                            <input type="radio" name={`availability-${e.id}`} checked={e.availability === 'not_available'}
-                              onChange={() => onPropertyFields(e, { availability: 'not_available', working: null, location: null, not_working_reason: null, not_available_reason: null })}
-                              className="w-3 h-3 accent-blue-600" />
-                            <span className="text-[10px] text-gray-700">Not Available</span>
-                          </label>
-                        </div>
-                      </div>
-
-                      {e.availability === 'available' && (
-                        <>
-                          <div>
-                            <p className="text-[9px] text-gray-400 mb-0.5">Condition</p>
-                            <div className="flex items-center gap-3">
-                              <label className="flex items-center gap-1 cursor-pointer">
-                                <input type="radio" name={`working-${e.id}`} checked={e.working === 'working'}
-                                  onChange={() => onPropertyFields(e, { working: 'working', not_working_reason: null })}
-                                  className="w-3 h-3 accent-blue-600" />
-                                <span className="text-[10px] text-gray-700">Working</span>
-                              </label>
-                              <label className="flex items-center gap-1 cursor-pointer">
-                                <input type="radio" name={`working-${e.id}`} checked={e.working === 'not_working'}
-                                  onChange={() => onPropertyFields(e, { working: 'not_working' })}
-                                  className="w-3 h-3 accent-blue-600" />
-                                <span className="text-[10px] text-gray-700">Not Working</span>
-                              </label>
-                            </div>
-                          </div>
-                          <div>
-                            <p className="text-[9px] text-gray-400 mb-0.5">Location</p>
-                            <select value={e.location ?? ''} onChange={ev => onPropertyFields(e, { location: ev.target.value })}
-                              className={`${inputCls} w-auto`}>
-                              <option value="" disabled>Select…</option>
-                              {PROPERTY_LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
-                            </select>
-                          </div>
-                          {e.working === 'not_working' && (
-                            <div>
-                              <p className="text-[9px] text-gray-400 mb-0.5">Reason</p>
-                              <select value={e.not_working_reason ?? ''} onChange={ev => onPropertyFields(e, { not_working_reason: ev.target.value })}
-                                className={`${inputCls} w-auto`}>
-                                <option value="" disabled>Select…</option>
-                                {NOT_WORKING_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
-                              </select>
-                            </div>
-                          )}
-                        </>
-                      )}
-
-                      {e.availability === 'not_available' && (
-                        <div>
-                          <p className="text-[9px] text-gray-400 mb-0.5">Reason / Location</p>
-                          <select value={e.not_available_reason ?? ''} onChange={ev => onPropertyFields(e, { not_available_reason: ev.target.value })}
-                            className={`${inputCls} w-auto`}>
-                            <option value="" disabled>Select…</option>
-                            {NOT_AVAILABLE_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
-                          </select>
-                        </div>
-                      )}
-                    </div>
+                    <p className="mt-1 text-[9px] text-blue-600 bg-blue-50 rounded px-2 py-1">
+                      Manage this property&apos;s availability/condition on the Properties page (Grony Manage).
+                    </p>
                   )}
                   <div className="flex items-center gap-1 mt-2">
                     <button onClick={onSaveEdit} disabled={saving}
@@ -369,7 +319,6 @@ type Props = { search: string }
 export default function ExpensesTab({ search }: Props) {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<ExpTab>('all')
   const [groupBy, setGroupBy] = useState<'none' | 'account' | 'vendor'>('none')
   const [showHistory, setShowHistory] = useState(false)
   const [highlightId, setHighlightId] = useState<number | null>(null)
@@ -384,6 +333,10 @@ export default function ExpensesTab({ search }: Props) {
   // drops that side of the is_property split from the list.
   const [showProperties, setShowProperties] = useState(true)
   const [showNonProperties, setShowNonProperties] = useState(true)
+  // 'similar' narrows to expenses whose account name is part of a
+  // near-duplicate pair; 'bundled' to descriptions that read like more than
+  // one purchase; 'no_vendor' to expenses missing a vendor name.
+  const [activeFlag, setActiveFlag] = useState<'similar' | 'bundled' | 'no_vendor' | null>(null)
   const colPrefs = useColumnPrefs<ColKey>('expensesTable', EXPENSE_COLUMNS)
 
   function loadExpenses() {
@@ -404,11 +357,31 @@ export default function ExpensesTab({ search }: Props) {
     Array.from(new Set(expenses.map(e => e.vendor_name).filter((v): v is string => !!v))).sort()
   , [expenses])
 
+  // Account names close enough to each other (but not identical) that they
+  // probably mean the same account entered two different ways.
+  const similarAccountNames = useMemo(() => {
+    const flagged = new Set<string>()
+    for (let i = 0; i < accountOptions.length; i++) {
+      for (let j = i + 1; j < accountOptions.length; j++) {
+        const a = accountOptions[i], b = accountOptions[j]
+        if (a.toLowerCase() === b.toLowerCase()) continue
+        if (levenshtein(a.toLowerCase(), b.toLowerCase()) <= 2) { flagged.add(a); flagged.add(b) }
+      }
+    }
+    return flagged
+  }, [accountOptions])
+
+  const flagCounts = useMemo(() => ({
+    similar: expenses.filter(e => similarAccountNames.has(e.expense_account)).length,
+    bundled: expenses.filter(e => looksBundled(e.description)).length,
+    no_vendor: expenses.filter(e => !e.vendor_name).length,
+  }), [expenses, similarAccountNames])
+
   const filtered = useMemo(() => {
     let list = expenses
-    if (tab === 'properties') list = list.filter(e => e.is_property)
-    if (tab === 'at_shop')    list = list.filter(e => e.is_property && e.availability === 'available')
-    if (tab === 'away')       list = list.filter(e => e.is_property && e.availability === 'not_available')
+    if (activeFlag === 'similar') list = list.filter(e => similarAccountNames.has(e.expense_account))
+    else if (activeFlag === 'bundled') list = list.filter(e => looksBundled(e.description))
+    else if (activeFlag === 'no_vendor') list = list.filter(e => !e.vendor_name)
     if (accountFilter) list = list.filter(e => e.expense_account === accountFilter)
     if (vendorFilter)  list = list.filter(e => e.vendor_name === vendorFilter)
     if (!showProperties || !showNonProperties) {
@@ -423,7 +396,7 @@ export default function ExpensesTab({ search }: Props) {
       (e.source_sheet ?? '').toLowerCase().includes(q) ||
       (e.source ?? '').toLowerCase().includes(q)
     )
-  }, [expenses, tab, search, accountFilter, vendorFilter, showProperties, showNonProperties])
+  }, [expenses, search, accountFilter, vendorFilter, showProperties, showNonProperties, activeFlag, similarAccountNames])
 
   const grouped = useMemo(() => {
     if (groupBy === 'none') return []
@@ -485,22 +458,6 @@ export default function ExpensesTab({ search }: Props) {
     }
   }
 
-  async function patchPropertyFields(expense: Expense, updates: Partial<PropertyFields>) {
-    const merged: PropertyFields = {
-      availability: expense.availability, working: expense.working, location: expense.location,
-      not_working_reason: expense.not_working_reason, not_available_reason: expense.not_available_reason,
-      ...updates,
-    }
-    const res = await fetch(`/api/expenses/${expense.id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        availability: merged.availability, working: merged.working, location: merged.location,
-        notWorkingReason: merged.not_working_reason, notAvailableReason: merged.not_available_reason,
-      }),
-    })
-    if (res.ok) setExpenses(prev => prev.map(e => e.id === expense.id ? { ...e, ...merged } : e))
-  }
-
   const tableProps = {
     highlightId, editId, confirmDeleteId, deleting, saving, form,
     onEdit: openEdit,
@@ -510,7 +467,6 @@ export default function ExpensesTab({ search }: Props) {
     onDeleteStart: (id: number) => setConfirmDeleteId(id),
     onDeleteConfirm: deleteExpense,
     onDeleteCancel: () => setConfirmDeleteId(null),
-    onPropertyFields: patchPropertyFields,
     colPrefs,
     accounts: accountOptions,
     vendors: vendorOptions,
@@ -522,21 +478,31 @@ export default function ExpensesTab({ search }: Props) {
 
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
 
-  const expTabs: { key: ExpTab; label: string }[] = [
-    { key: 'all', label: 'All' }, { key: 'properties', label: 'Props' },
-    { key: 'at_shop', label: 'Available' }, { key: 'away', label: 'Not Available' },
+  const flagButtons: { key: 'similar' | 'bundled' | 'no_vendor'; letter: string; label: string }[] = [
+    { key: 'similar', letter: 'S', label: 'Similar Account Names' },
+    { key: 'bundled', letter: 'B', label: 'Description Looks Bundled' },
+    { key: 'no_vendor', letter: 'V', label: 'No Vendor Name' },
   ]
 
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0 flex-wrap">
-        {expTabs.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition
-              ${tab === t.key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
-            {t.label}
-          </button>
-        ))}
+        {flagButtons.map(({ key, letter, label }) => {
+          const count = flagCounts[key]
+          const active = activeFlag === key
+          return (
+            <button key={key} title={label} onClick={() => setActiveFlag(f => f === key ? null : key)}
+              className={`shrink-0 flex items-center gap-1 text-[9px] font-semibold pl-1 pr-1.5 py-0.5 rounded transition
+                ${active ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-700'}`}>
+              <span className="relative leading-none">
+                {count > 0 ? '🚩' : '🏳️'}
+                <span className={`absolute -bottom-1 -right-1 text-[6px] font-black leading-none rounded-sm px-[1px]
+                  ${count > 0 ? 'bg-white text-red-700' : 'bg-red-700 text-white'}`}>{letter}</span>
+              </span>
+              <span>{count > 0 ? count : ''}</span>
+            </button>
+          )
+        })}
         <div className="w-px h-3 bg-gray-300 shrink-0" />
         <button onClick={() => setGroupBy(g => g === 'account' ? 'none' : 'account')}
           className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition
