@@ -2,6 +2,7 @@ import sql from '@/lib/db'
 import { ensureAdvertStatusTable } from '@/lib/advertStatus'
 import { ensureManageLogs } from '@/lib/manageLogs'
 import { ensureClosingReports } from '@/lib/closingReports'
+import { ensureSalesAttachmentsColumn } from '@/lib/salesAttachments'
 import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -95,6 +96,8 @@ function shouldKeepPair(n1: string, n2: string): boolean {
 }
 
 export async function GET() {
+  await ensureSalesAttachmentsColumn()
+
   const [
     noCash,
     missingDays,
@@ -106,6 +109,7 @@ export async function GET() {
     uncheckedCab,
     dupReceipts,
     unlinkedNamed,
+    noAttachment,
   ] = await Promise.all([
 
     // 1. Walk-in customers with no cash counted
@@ -291,6 +295,18 @@ export async function GET() {
       GROUP BY COALESCE(srl.resolved_name, srl.raw_item_name), i.id
       ORDER BY item_name
     `),
+
+    // 11. Walk-in receipts with no form photo/scan attached -- "W" here
+    // matches the app's own client-side rule (fmtCust): anything that
+    // isn't literally the GMC customer name counts as Walk-In, not just
+    // NULL/"walk in customer" like the older #1 noCash check above.
+    safeQuery(() => sql`
+      SELECT id, receipt_number, receipt_date::text AS receipt_date, customer_name
+      FROM sales_receipts
+      WHERE customer_name IS DISTINCT FROM 'Grony Multimedia as Customer'
+        AND (attachments IS NULL OR jsonb_array_length(attachments) = 0)
+      ORDER BY receipt_date DESC
+    `),
   ])
 
   const filteredDups = duplicates.filter((r: any) => shouldKeepPair(r.name1, r.name2))
@@ -383,6 +399,6 @@ export async function GET() {
     noCash, missingDays, duplicates: filteredDups, costGteSell, notInInventory, noGroup, noStaffTimes,
     uncheckedCab, dupReceipts, unlinkedNamed, groupNames: groupNames.map((r: any) => r.group_name),
     noAdvert, jingleOverdue, equipmentCheckOverdue, missingClosingReports,
-    shirtNotWorn, shirtOverdue,
+    shirtNotWorn, shirtOverdue, noAttachment,
   })
 }

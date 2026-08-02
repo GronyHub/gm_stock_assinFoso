@@ -144,6 +144,40 @@ function NoCashFix({ r, onFixed }: { r: any; onFixed: (id: number) => void }) {
   )
 }
 
+type NoAttachmentRow = { id: number; receipt_number: string; receipt_date: string; customer_name: string | null }
+
+function NoAttachmentFix({ r, onFixed }: { r: NoAttachmentRow; onFixed: (id: number) => void }) {
+  const attachments = useAttachments()
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  async function save() {
+    if (attachments.isUploading) { setError('Still uploading, please wait…'); return }
+    if (attachments.hasError) { setError('An attachment failed to upload — remove it or try again.'); return }
+    if (attachments.saved.length === 0) return
+    setSaving(true)
+    setError('')
+    const res = await fetch(`/api/sales/${r.id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ attachments: attachments.saved }),
+    })
+    setSaving(false)
+    if (res.ok) onFixed(r.id)
+    else setError('Could not save. Please try again.')
+  }
+
+  return (
+    <FixRow label={r.receipt_number} sub={fmtDate(r.receipt_date)}>
+      <AttachmentPicker items={attachments.items} onAdd={attachments.addFiles} onRemove={attachments.remove} disabled={saving} />
+      {error && <p className="text-[9px] text-red-500 font-medium">{error}</p>}
+      <button onClick={save} disabled={saving || attachments.saved.length === 0}
+        className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
+        {saving ? 'Saving…' : 'Save Attachment'}
+      </button>
+    </FixRow>
+  )
+}
+
 function MissingDayFix({ date, onFixed }: { date: string; onFixed: (d: string) => void }) {
   const [total, setTotal] = useState('')
   const [cash, setCash] = useState('')
@@ -644,7 +678,51 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
     )
   }
 
-  // ── COMBINED FLAGS VIEW ── one flag icon covering all 4 of Sales' own
+  if (violation === 'no_attachment') {
+    const rows: NoAttachmentRow[] = flags?.noAttachment ?? []
+    // Organized by month (most recent first) rather than one flat list --
+    // a backlog spanning several months is much easier to work through a
+    // month at a time than scrolling one long list of individual days.
+    const grouped = new Map<string, NoAttachmentRow[]>()
+    for (const r of rows) {
+      const key = r.receipt_date ? r.receipt_date.slice(0, 7) : 'Unknown'
+      if (!grouped.has(key)) grouped.set(key, [])
+      grouped.get(key)!.push(r)
+    }
+    const monthKeys = Array.from(grouped.keys()).sort((a, b) => b.localeCompare(a))
+    const monthLabel = (key: string) => {
+      if (key === 'Unknown') return 'Unknown Date'
+      const [y, m] = key.split('-').map(Number)
+      return `${MONTH_NAMES[m - 1]} ${y}`
+    }
+    return (
+      <div className="overflow-y-auto h-full py-2">
+        <p className="text-[10px] text-gray-400 px-2 mb-1">
+          {flagsLoading || !flags ? 'Loading…' : `${rows.length} walk-in receipt${rows.length !== 1 ? 's' : ''} with no form attached`}
+        </p>
+        {!flagsLoading && flags && (rows.length === 0
+          ? <p className="py-4 text-center text-gray-400 text-[10px]">Every walk-in receipt has a form attached.</p>
+          : monthKeys.map(key => (
+              <div key={key} className="mb-2">
+                <p className="px-2 py-1 text-[9px] font-bold text-gray-500 uppercase tracking-wide bg-gray-100">
+                  {monthLabel(key)} ({grouped.get(key)!.length})
+                </p>
+                <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
+                  {grouped.get(key)!.map(r => (
+                    <NoAttachmentFix key={r.id} r={r} onFixed={id =>
+                      setFlags((f: { noAttachment: NoAttachmentRow[] } | null) =>
+                        f ? { ...f, noAttachment: f.noAttachment.filter(x => x.id !== id) } : f)
+                    } />
+                  ))}
+                </div>
+              </div>
+            ))
+        )}
+      </div>
+    )
+  }
+
+  // ── COMBINED FLAGS VIEW ── one flag icon covering all 5 of Sales' own
   // violation types together, each with its own assign/deadline control.
   if (showFlagsSummary) {
     const rows = [
@@ -652,6 +730,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
       { type: 'missing_days', count: flags?.missingDays?.length, label: 'day(s) with no sales receipts' },
       { type: 'cost_gte_sell', count: flags?.costGteSell?.length, label: 'line(s) where cost price ≥ selling price' },
       { type: 'dup_receipts', count: flags?.dupReceipts?.length, label: 'day(s) with duplicate WIC/GMC receipts' },
+      { type: 'no_attachment', count: flags?.noAttachment?.length, label: 'walk-in receipt(s) with no form attached' },
     ]
     return (
       <div className="flex flex-col h-full min-h-0">

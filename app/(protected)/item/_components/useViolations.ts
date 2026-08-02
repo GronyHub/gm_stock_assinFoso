@@ -27,6 +27,7 @@ export const SHORT_LABEL: Record<string, string> = {
   alias_flagged: 'Flagged Aliases',
   alias_ambiguous: 'Ambiguous Aliases',
   dup_receipts: 'Duplicate Receipts',
+  no_attachment: 'Missing Attachments',
   daily: 'Daily Counts',
   '7day': '7-Day Counts',
   '15day': '15-Day Counts',
@@ -59,7 +60,7 @@ const ALL_ERROR_TYPES = [
   'neg_soh', 'no_sp', 'no_cp', 'no_group', 'duplicates', 'not_in_inventory',
   'alias_prezoho_sales', 'alias_prezoho_bills', 'alias_flagged', 'alias_ambiguous',
   'unlinked_named', 'service_violation', 'gains', 'daily', '7day', '15day',
-  'no_cash', 'missing_days', 'cost_gte_sell', 'dup_receipts',
+  'no_cash', 'missing_days', 'cost_gte_sell', 'dup_receipts', 'no_attachment',
   'unchecked_cab', 'no_staff_times', 'no_advert', 'jingle_overdue', 'equipment_check_overdue',
   'shirt_not_worn', 'shirt_overdue',
 ]
@@ -95,7 +96,7 @@ export const SUBMENU_HOME: Record<string, string> = {
   alias_prezoho_sales: 'Items', alias_prezoho_bills: 'Items', alias_flagged: 'Items', alias_ambiguous: 'Items',
   daily: 'Counts', '7day': 'Counts', '15day': 'Counts',
   gains: 'Loss by Date',
-  no_cash: 'Sales', missing_days: 'Sales', cost_price: 'Sales', dup_receipt: 'Sales',
+  no_cash: 'Sales', missing_days: 'Sales', cost_price: 'Sales', dup_receipt: 'Sales', no_attachment: 'Sales',
   unchecked_cab: 'CAB',
   no_staff_times: 'Staff',
   no_advert: 'Advert', jingle_overdue: 'Advert', equipment_check_overdue: 'Advert',
@@ -204,6 +205,11 @@ export function useViolations(counts?: Record<string, number>) {
       type: 'dup_receipts',
       label: 'day' + (flags.dupReceipts.length !== 1 ? 's' : '') + ' with duplicate WIC/GMC receipts',
       count: flags.dupReceipts.length, days: oldestDays(flags.dupReceipts, 'receipt_date'),
+    })
+    if (flags.noAttachment?.length) list.push({
+      type: 'no_attachment',
+      label: 'walk-in receipt' + (flags.noAttachment.length !== 1 ? 's' : '') + ' with no form attached',
+      count: flags.noAttachment.length, days: oldestDays(flags.noAttachment, 'receipt_date'),
     })
     if (flags.noAdvert?.length) list.push({
       type: 'no_advert',

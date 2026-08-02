@@ -295,6 +295,10 @@ const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCategory; d
     description: 'More than one sales receipt exists for the same day and the same customer type (WIC or GMC). This usually means one was created by mistake -- review both and merge or delete the extra one.',
   },
   {
+    key: 'no_attachment', label: 'No Attachment', category: 'sales',
+    description: 'A walk-in receipt for this day has no photo or scan of the written form attached. Attach it from that receipt\'s Edit Receipt form, or use Bulk Attach Forms to catch up a whole month at once.',
+  },
+  {
     key: 'unchecked_cab', label: 'Unchecked CAB', category: 'cab',
     description: 'A week has passed without anyone confirming the Cash at Bank entry, so nobody has verified that the bank balance matches what the shop expects. Review that week and confirm it.',
   },
@@ -317,7 +321,7 @@ const VIOLATION_HOME: Partial<Record<string, LossView>> = {
   alias_prezoho_sales: 'items', alias_prezoho_bills: 'items', alias_flagged: 'items', alias_ambiguous: 'items',
   daily: 'counts', '7day': 'counts', '15day': 'counts',
   gains: 'feed',
-  no_cash: 'sales', missing_days: 'sales', cost_price: 'sales', dup_receipt: 'sales',
+  no_cash: 'sales', missing_days: 'sales', cost_price: 'sales', dup_receipt: 'sales', no_attachment: 'sales',
   unchecked_cab: 'cab',
 }
 
@@ -331,7 +335,7 @@ const LOSSVIEW_PILL_KEYS: Partial<Record<LossView, string[]>> = {
   ],
   counts: ['daily', '7day', '15day'],
   feed: ['gains'],
-  sales: ['no_cash', 'missing_days', 'cost_price', 'dup_receipt'],
+  sales: ['no_cash', 'missing_days', 'cost_price', 'dup_receipt', 'no_attachment'],
   cab: ['unchecked_cab'],
 }
 
@@ -611,6 +615,7 @@ function ItemHubPageInner() {
       missing_days: f?.missingDays?.length ?? 0,
       cost_price: f?.costGteSell?.length ?? 0,
       dup_receipt: f?.dupReceipts?.length ?? 0,
+      no_attachment: f?.noAttachment?.length ?? 0,
       daily: pendingCounts.daily,
       '7day': pendingCounts.gmcWeekly,
       '15day': pendingCounts.overdue,
@@ -632,7 +637,7 @@ function ItemHubPageInner() {
   // number on the button is never out of step with what you'd see there.
   const violationCountByType = (types: string[]) =>
     cashViolations.filter(v => types.includes(v.type)).reduce((s, v) => s + v.count, 0)
-  const salesFlagsCount = violationCountByType(['no_cash', 'missing_days', 'cost_gte_sell', 'dup_receipts'])
+  const salesFlagsCount = violationCountByType(['no_cash', 'missing_days', 'cost_gte_sell', 'dup_receipts', 'no_attachment'])
   const itemsFlagsCount = violationCountByType([
     'no_group', 'duplicates', 'not_in_inventory', 'neg_soh', 'no_sp', 'no_cp', 'unlinked_named', 'service_violation',
     'alias_prezoho_sales', 'alias_prezoho_bills', 'alias_flagged', 'alias_ambiguous',
