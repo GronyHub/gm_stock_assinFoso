@@ -664,45 +664,46 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
         <ManualCountForm items={items} onClose={() => setShowManual(false)} onLoss={promptLoss} onPairing={promptPairing}
           onSaved={() => { loadRecords(); loadDaily() }} />
       )}
-      {!showAnalytics && <div className="flex-1 overflow-y-auto min-h-0">
-        <table className="w-full border-collapse text-[10px] border border-black">
-          <thead className="sticky top-0 bg-gray-100 z-10">
+      {!showAnalytics && <div className="flex-1 overflow-y-auto min-h-0 px-2 pb-2">
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <table className="w-full border-collapse text-[10px]">
+          <thead className="sticky top-0 bg-gray-50 z-10">
             <tr>
-              <th className="text-left px-1 py-1 font-semibold text-gray-700 border border-black whitespace-nowrap">DATE</th>
-              <th className="text-left px-1 py-1 font-semibold text-gray-700 border border-black">ITEM</th>
+              <th className="text-left px-2.5 py-2 font-bold text-gray-500 uppercase tracking-wide border-b border-gray-200 whitespace-nowrap">Date</th>
+              <th className="text-left px-2.5 py-2 font-bold text-gray-500 uppercase tracking-wide border-b border-gray-200">Item</th>
               {colPrefs.shownColumns.map(c => (
-                <th key={c.key} className={`${c.key === 'qty' ? 'text-center' : 'text-left'} px-1 py-1 font-semibold text-gray-700 border border-black`}>{c.label}</th>
+                <th key={c.key} className={`${c.key === 'qty' ? 'text-center' : 'text-left'} px-2.5 py-2 font-bold text-gray-500 uppercase tracking-wide border-b border-gray-200`}>{c.label}</th>
               ))}
-              <th className="px-1 py-1 border border-black" />
+              <th className="px-2.5 py-2 border-b border-gray-200" />
             </tr>
           </thead>
           <tbody>
-            {filtered.map(r => (
+            {filtered.map((r, i) => (
               <>
                 <tr key={r.id} id={`count-${r.id}`}
-                  className={`hover:bg-gray-50 transition-colors ${highlightId === r.id ? 'bg-yellow-100' : ''}`}>
-                  <td className="px-1 py-1 text-gray-600 whitespace-nowrap border border-black">{fmtShort(r.count_date)}</td>
-                  <td className="px-1 py-1 text-gray-900 font-semibold border border-black">
+                  className={`transition-colors ${highlightId === r.id ? 'bg-yellow-50' : i % 2 === 1 ? 'bg-gray-50/60' : 'bg-white'} hover:bg-blue-50/40`}>
+                  <td className="px-2.5 py-1.5 text-gray-500 whitespace-nowrap border-b border-gray-100">{fmtShort(r.count_date)}</td>
+                  <td className="px-2.5 py-1.5 text-gray-900 font-semibold border-b border-gray-100">
                     {r.item_id ? (
                       <Link href={`/item?tab=loss&view=item360&jumpItemId=${r.item_id}`} className="text-blue-600 hover:underline">{r.item_name}</Link>
                     ) : r.item_name}
                   </td>
                   {colPrefs.shownColumns.map(c => {
-                    if (c.key === 'group') return <td key={c.key} className="px-1 py-1 text-gray-500 border border-black">{r.cf_group ?? '—'}</td>
-                    if (c.key === 'qty') return <td key={c.key} className="px-1 py-1 text-center font-bold text-gray-900 border border-black">{Number(r.quantity_counted)}</td>
-                    if (c.key === 'by') return <td key={c.key} className="px-1 py-1 text-blue-500 border border-black">{r.counted_by ?? '—'}</td>
-                    if (c.key === 'src') return <td key={c.key} className="px-1 py-1 text-gray-500 border border-black">{r.source ?? '—'}</td>
-                    return <td key={c.key} className="px-1 py-1 text-gray-500 italic border border-black">{r.notes ?? '—'}</td>
+                    if (c.key === 'group') return <td key={c.key} className="px-2.5 py-1.5 text-gray-500 border-b border-gray-100">{r.cf_group ?? '—'}</td>
+                    if (c.key === 'qty') return <td key={c.key} className="px-2.5 py-1.5 text-center font-bold text-gray-900 border-b border-gray-100">{Number(r.quantity_counted)}</td>
+                    if (c.key === 'by') return <td key={c.key} className="px-2.5 py-1.5 text-blue-600 font-medium border-b border-gray-100">{r.counted_by ?? '—'}</td>
+                    if (c.key === 'src') return <td key={c.key} className="px-2.5 py-1.5 text-gray-500 border-b border-gray-100">{r.source ?? '—'}</td>
+                    return <td key={c.key} className="px-2.5 py-1.5 text-gray-500 italic border-b border-gray-100">{r.notes ?? '—'}</td>
                   })}
-                  <td className="px-1 py-1 border border-black">
-                    <div className="flex gap-0.5 justify-end whitespace-nowrap">
+                  <td className="px-2.5 py-1.5 border-b border-gray-100">
+                    <div className="flex gap-1 justify-end whitespace-nowrap">
                       <button onClick={() => editingId === r.id ? setEditingId(null) : startEdit(r)}
-                        className="text-[9px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded hover:bg-blue-100">
+                        className="text-[9px] text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded-full hover:bg-blue-100 transition">
                         {editingId === r.id ? 'Close' : 'Edit'}
                       </button>
                       {canDelete && (
                         <button onClick={() => deleteCount(r)}
-                          className="text-[9px] text-red-500 font-semibold bg-red-50 px-1.5 py-0.5 rounded hover:bg-red-100">
+                          className="text-[9px] text-red-600 font-semibold bg-red-50 px-2 py-0.5 rounded-full hover:bg-red-100 transition">
                           Del
                         </button>
                       )}
@@ -710,8 +711,8 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
                   </td>
                 </tr>
                 {editingId === r.id && (
-                  <tr key={`edit-${r.id}`} className="bg-blue-50/40 border-b border-blue-200">
-                    <td colSpan={3 + colPrefs.shownColumns.length} className="px-2 py-2">
+                  <tr key={`edit-${r.id}`} className="bg-blue-50/50">
+                    <td colSpan={3 + colPrefs.shownColumns.length} className="px-3 py-2.5 border-b border-gray-100">
                       <div className="flex items-end gap-2 flex-wrap">
                         <div>
                           <p className="text-[9px] text-gray-400 mb-0.5">Qty Counted</p>
@@ -723,13 +724,13 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
                           <input value={editNotes} onChange={e => setEditNotes(e.target.value)}
                             placeholder="Optional" className={inputCls + ' w-40'} />
                         </div>
-                        <div className="flex gap-1">
+                        <div className="flex gap-1.5">
                           <button onClick={() => saveEdit()} disabled={saving}
-                            className="bg-green-600 text-white text-[10px] font-bold rounded px-3 py-1 disabled:opacity-40">
+                            className="bg-green-600 hover:bg-green-500 text-white text-[10px] font-bold rounded-lg px-3 py-1.5 disabled:opacity-40 transition">
                             {saving ? 'Saving…' : 'Save'}
                           </button>
                           <button onClick={() => setEditingId(null)}
-                            className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
+                            className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-[10px] font-semibold rounded-lg transition">Cancel</button>
                         </div>
                       </div>
                     </td>
@@ -740,6 +741,7 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
           </tbody>
         </table>
         {filtered.length === 0 && <p className="text-[10px] text-gray-400 text-center py-10">No records</p>}
+        </div>
       </div>}
     </div>
   )
