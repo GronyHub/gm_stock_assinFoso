@@ -65,6 +65,7 @@ export default function BulkAttachForms({ receipts, onDone, onClose }: {
   // the first one's result instead of the stale prop snapshot -- without
   // mutating the `receipts` prop itself.
   const mergedAttachments = useRef<Map<number, Attachment[]>>(new Map())
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   function dateFor(day: number) {
     return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
@@ -155,13 +156,22 @@ export default function BulkAttachForms({ receipts, onDone, onClose }: {
             <input type="number" value={year} onChange={e => setYear(Number(e.target.value))}
               className="w-20 text-xs bg-gray-100 border border-gray-200 rounded-lg px-2 py-1.5 outline-none" />
           </div>
-          <label className="block">
-            <span className="inline-block bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg px-3 py-1.5 cursor-pointer transition">
-              + Choose Files
-            </span>
-            <input type="file" accept="image/*,application/pdf" multiple className="hidden"
-              onChange={e => { addFiles(e.target.files); e.target.value = '' }} />
-          </label>
+          {/* A ref + button-click trigger, not a label wrapping a hidden
+              input -- the label pattern doesn't reliably open the picker on
+              some mobile browsers, where this one (already proven working
+              in the single-attachment picker) does. */}
+          <button type="button" onClick={() => fileInputRef.current?.click()}
+            className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg px-3 py-1.5 transition">
+            + Choose Files
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,application/pdf"
+            multiple
+            className="hidden"
+            onChange={e => { addFiles(e.target.files); e.target.value = '' }}
+          />
 
           {rows.length > 0 && (
             <div className="space-y-1 border-t border-gray-100 pt-2">
