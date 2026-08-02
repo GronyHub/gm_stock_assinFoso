@@ -303,9 +303,19 @@ type Props = {
   jumpToDate?: string | null
   jumpToItemName?: string | null
   onJumpDone?: () => void
+  // Combined 🚩 flags view -- lifted up to item/page.tsx so its trigger can
+  // sit on the green bar next to New (matching Items' icon+count) instead
+  // of a separate button inside this component's own gray toolbar row.
+  // Optional: ViolationFixPanel renders SalesTab standalone for a single
+  // violation's inline fix view and never needs this toggle at all.
+  showFlagsSummary?: boolean
+  setShowFlagsSummary?: (v: boolean) => void
 }
 
-export default function SalesTab({ items, groupFilter, search, violation, jumpToDate, jumpToItemName, onJumpDone }: Props) {
+export default function SalesTab({
+  items, groupFilter, search, violation, jumpToDate, jumpToItemName, onJumpDone,
+  showFlagsSummary = false, setShowFlagsSummary = () => {},
+}: Props) {
   const [receipts, setReceipts] = useState<Receipt[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -340,10 +350,6 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
   const [newItemQuery, setNewItemQuery] = useState('')
   const [flags, setFlags] = useState<any | null>(null)
   const [flagsLoading, setFlagsLoading] = useState(false)
-  // One flag icon in the normal toolbar opens a single combined view of all
-  // 4 of Sales' own violation types (each with its own AssignWidget) rather
-  // than needing to visit each violation's own full-page view separately.
-  const [showFlagsSummary, setShowFlagsSummary] = useState(false)
   // Catches up a whole folder of form photos/scans at once (e.g. after the
   // fact for a month entered before attachments existed) instead of
   // opening Edit Receipt per day -- see BulkAttachForms.
@@ -781,10 +787,6 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
     <div className="flex flex-col h-full min-h-0">
     <div className="flex items-center justify-between px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
       <div className="flex items-center gap-1.5">
-        <button onClick={() => setShowFlagsSummary(true)} title="Sales flags -- assign who's responsible for each"
-          className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-700 transition">
-          🚩
-        </button>
         <button onClick={() => setShowHistory(true)}
           className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700 transition">
           History
