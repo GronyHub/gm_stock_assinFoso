@@ -1398,7 +1398,7 @@ function ItemHubPageInner() {
                       <button onClick={() => setItemsExtraView(v => v === 'flags' ? 'none' : 'flags')}
                         className={`shrink-0 flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg transition
                           ${itemsExtraView === 'flags' ? 'bg-red-600 text-white' : 'text-white hover:bg-white/10'}`}>
-                        🚩 {itemsFlagsCount > 0 ? itemsFlagsCount : ''}
+                        {itemsFlagsCount > 0 ? '🚩' : '🏳️'} {itemsFlagsCount > 0 ? itemsFlagsCount : ''}
                       </button>
                     )}
 
