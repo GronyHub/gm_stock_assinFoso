@@ -339,6 +339,17 @@ const LOSSVIEW_PILL_KEYS: Partial<Record<LossView, string[]>> = {
   cab: ['unchecked_cab'],
 }
 
+// Sales' 5 flag categories, in the order shown on the green bar -- letter is
+// the small identifier drawn beside the flag icon (see the sales button
+// block below), label is its tooltip.
+const SALES_FLAG_TYPES: { key: string; letter: string; label: string }[] = [
+  { key: 'no_cash', letter: 'C', label: 'No Cash Counted' },
+  { key: 'missing_days', letter: 'M', label: 'Missing Receipts' },
+  { key: 'cost_price', letter: 'P', label: 'Cost ≥ Selling Price' },
+  { key: 'dup_receipt', letter: 'D', label: 'Duplicate Receipts' },
+  { key: 'no_attachment', letter: 'A', label: 'No Attachment' },
+]
+
 const VALID_TABS: OuterTab[] = ['today', 'loss', 'uk', 'ch']
 
 function ItemHubPageInner() {
@@ -483,7 +494,6 @@ function ItemHubPageInner() {
   // above) so its trigger can sit on the green bar next to New, matching
   // Items' flag icon + count instead of a separate button inside Sales'
   // own gray toolbar row.
-  const [salesShowFlags, setSalesShowFlags] = useState(false)
 
   const [items, setItems]           = useState<Item[]>([])
   const [itemsLoading, setItemsLoading] = useState(true)
@@ -1392,17 +1402,26 @@ function ItemHubPageInner() {
                       </button>
                     )}
 
-                    {/* Sales' own combined 🚩 flags view -- used to be a
-                        separate button inside Sales' own gray toolbar row
-                        with no visible count; lifted up here to match Items'
-                        icon+count-on-the-green-bar treatment exactly. */}
-                    {lossView === 'sales' && (
-                      <button onClick={() => setSalesShowFlags(v => !v)}
-                        className={`shrink-0 flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg transition
-                          ${salesShowFlags ? 'bg-red-600 text-white' : 'text-white hover:bg-white/10'}`}>
-                        🚩 {salesFlagsCount > 0 ? salesFlagsCount : ''}
-                      </button>
-                    )}
+                    {/* Sales' 5 flag categories -- one small button each, a
+                        letter beside the flag identifying which category, and
+                        that category's own count. Clicking jumps straight to
+                        that category's fix view via goToViolation (not a
+                        combined assignee-summary panel). */}
+                    {lossView === 'sales' && SALES_FLAG_TYPES.map(({ key, letter, label }) => {
+                      const count = violationCounts[key] ?? 0
+                      const active = violation === key
+                      return (
+                        <button key={key} onClick={() => goToViolation(key)} title={label}
+                          className={`shrink-0 flex items-center gap-0.5 text-xs font-semibold pl-1.5 pr-2 py-1 rounded-lg transition
+                            ${active ? 'bg-red-600 text-white' : 'text-white hover:bg-white/10'}`}>
+                          <span className="relative leading-none">
+                            🚩
+                            <span className="absolute -bottom-1 -right-1 text-[7px] font-black leading-none bg-white text-red-700 rounded-sm px-[1.5px]">{letter}</span>
+                          </span>
+                          <span className="ml-1">{count > 0 ? count : ''}</span>
+                        </button>
+                      )
+                    })}
 
                     {/* Analytics toggle -- swaps this submenu's normal list for the
                         charts/trends that used to live under the removed "Data"
@@ -1667,8 +1686,7 @@ function ItemHubPageInner() {
           <SalesTab items={items} groupFilter={group} search={search}
             violation={pillKeys?.includes(violation ?? '') ? violation : null}
             jumpToDate={jumpToReceiptDate} jumpToItemName={jumpToReceiptItemName}
-            onJumpDone={() => { setJumpToReceiptDate(null); setJumpToReceiptItemName(null) }}
-            showFlagsSummary={salesShowFlags} setShowFlagsSummary={setSalesShowFlags} />
+            onJumpDone={() => { setJumpToReceiptDate(null); setJumpToReceiptItemName(null) }} />
         )}
         {showAnalytics && outerTab === 'loss' && lossView === 'bills' && (
           <TabErrorBoundary><div className="px-3 pt-3"><BillsAnalyticsSection /></div></TabErrorBoundary>
