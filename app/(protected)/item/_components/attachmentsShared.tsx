@@ -123,6 +123,15 @@ export function AttachmentPicker({ items, onAdd, onRemove, disabled }: {
           ))}
         </div>
       )}
+      {/* A failed upload's thumbnail still renders (from the local blob
+          URL) with only a small red corner badge -- easy to miss, and
+          without this the caller would otherwise just silently drop it on
+          save. Spelled out here so it can't go unnoticed. */}
+      {items.filter(m => m.error).map(m => (
+        <p key={`err-${m.localUrl}`} className="text-[9px] text-red-600 font-medium">
+          &quot;{m.name}&quot; failed to attach — {m.error}
+        </p>
+      ))}
     </div>
   )
 }

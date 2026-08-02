@@ -129,6 +129,7 @@ export default function NewReceiptPage({ onSuccess }: { onSuccess?: () => void }
   async function handleSubmit() {
     if (!cart.length) return
     if (attachments.isUploading) { setError('Still uploading the attached form, please wait…'); return }
+    if (attachments.hasError) { setError('An attachment failed to upload — remove it or try again before saving.'); return }
     setSaving(true)
     setError('')
     try {

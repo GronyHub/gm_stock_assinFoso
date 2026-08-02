@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { put } from '@vercel/blob'
 
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'application/pdf']
+const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif', 'application/pdf'])
+const ALLOWED_EXT = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif', 'pdf'])
 const MAX_SIZE = 20 * 1024 * 1024 // 20 MB -- a photo or scan of a paper form, not a video
 
 export async function POST(req: NextRequest) {
@@ -12,7 +13,13 @@ export async function POST(req: NextRequest) {
   const formData = await req.formData()
   const file = formData.get('file') as File | null
   if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 })
-  if (!ALLOWED_TYPES.includes(file.type)) {
+
+  const ext = (file.name.split('.').pop() ?? '').toLowerCase()
+  // Android's file/Drive picker often hands back an empty or generic
+  // application/octet-stream MIME type instead of the real one -- fall back
+  // to the filename's extension rather than rejecting a perfectly good
+  // photo or PDF the browser just didn't label properly.
+  if (!ALLOWED_MIME.has(file.type) && !ALLOWED_EXT.has(ext)) {
     return NextResponse.json({ error: 'Unsupported file type -- attach a photo or PDF of the form.' }, { status: 400 })
   }
   if (file.size > MAX_SIZE) {
@@ -20,8 +27,7 @@ export async function POST(req: NextRequest) {
   }
 
   const author = (session.user as { username?: string | null }).username ?? session.user.name ?? 'user'
-  const ext = file.name.split('.').pop() ?? 'bin'
-  const filename = `sales/${author}-${Date.now()}.${ext}`
+  const filename = `sales/${author}-${Date.now()}.${ext || 'bin'}`
 
   try {
     // Private-only store, same as announcements -- read back through our own
@@ -29,7 +35,10 @@ export async function POST(req: NextRequest) {
     // public CDN URL.
     const blob = await put(filename, file, { access: 'private' })
     const url = `/api/sales/media?p=${encodeURIComponent(blob.pathname)}`
-    return NextResponse.json({ url, contentType: file.type, name: file.name })
+    // blob.contentType is derived from the filename's extension, which is
+    // more reliable than file.type when the browser/OS sent an empty or
+    // generic one (see the Android fallback above).
+    return NextResponse.json({ url, contentType: blob.contentType || file.type, name: file.name })
   } catch (e) {
     console.error('sales upload error:', e)
     const detail = e instanceof Error ? e.message : String(e)

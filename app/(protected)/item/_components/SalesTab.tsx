@@ -490,6 +490,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
   async function saveEdit() {
     if (editingId == null) return
     if (attachments.isUploading) { setEditError('Still uploading the attached form, please wait…'); return }
+    if (attachments.hasError) { setEditError('An attachment failed to upload — remove it or try again before saving.'); return }
     setSaving(true)
     setEditError('')
     const headerRes = await fetch(`/api/sales/${editingId}`, {

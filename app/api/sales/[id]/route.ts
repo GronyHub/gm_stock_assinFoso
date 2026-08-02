@@ -26,25 +26,32 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const { receipt_date, customer_name, invoice_amount, cash_counted, attachments } = await req.json()
-  await ensureSalesAttachmentsColumn()
   // undefined (key omitted, e.g. NoCashFix's minimal PUT) leaves attachments
   // untouched via COALESCE; an explicit [] (every attachment removed) still
   // updates, since JSON.stringify([]) is the truthy string '[]', not null.
   const attachmentsJson = attachments !== undefined ? JSON.stringify(normalizeAttachments(attachments)) : null
 
-  const [row] = await sql`
-    UPDATE sales_receipts SET
-      receipt_date  = COALESCE(${receipt_date  ?? null}::date, receipt_date),
-      customer_name = COALESCE(${customer_name ?? null}, customer_name),
-      total         = COALESCE(${invoice_amount ?? null}, total),
-      cash_counted  = ${cash_counted ?? null},
-      attachments   = COALESCE(${attachmentsJson}::jsonb, attachments)
-    WHERE id = ${Number(id)}
-    RETURNING id, receipt_date::date AS receipt_date, customer_name, total AS invoice_amount, cash_counted,
-              (cash_counted - total) AS wnw, COALESCE(attachments, '[]'::jsonb) AS attachments
-  `
-  if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  return NextResponse.json(row)
+  try {
+    await ensureSalesAttachmentsColumn()
+
+    const [row] = await sql`
+      UPDATE sales_receipts SET
+        receipt_date  = COALESCE(${receipt_date  ?? null}::date, receipt_date),
+        customer_name = COALESCE(${customer_name ?? null}, customer_name),
+        total         = COALESCE(${invoice_amount ?? null}, total),
+        cash_counted  = ${cash_counted ?? null},
+        attachments   = COALESCE(${attachmentsJson}::jsonb, attachments)
+      WHERE id = ${Number(id)}
+      RETURNING id, receipt_date::date AS receipt_date, customer_name, total AS invoice_amount, cash_counted,
+                (cash_counted - total) AS wnw, COALESCE(attachments, '[]'::jsonb) AS attachments
+    `
+    if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    return NextResponse.json(row)
+  } catch (e) {
+    console.error('sales receipt PUT error:', e)
+    const detail = e instanceof Error ? e.message : String(e)
+    return NextResponse.json({ error: `Could not save changes: ${detail}` }, { status: 500 })
+  }
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
