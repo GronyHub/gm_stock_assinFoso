@@ -3,6 +3,11 @@ import { NextResponse } from 'next/server'
 
 const ITEM_ID = 121 // 26A Toner Cartridge
 
+export async function GET() {
+  const aliases = await sql`SELECT alias_name, alias_type, source FROM item_aliases WHERE item_id = ${ITEM_ID}`
+  return NextResponse.json({ aliases })
+}
+
 export async function POST() {
   const [before] = await sql`SELECT canonical_name FROM items WHERE id = ${ITEM_ID}`
   const originalName = before.canonical_name
