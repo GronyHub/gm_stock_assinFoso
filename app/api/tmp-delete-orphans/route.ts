@@ -5,16 +5,14 @@ const IDS = [381, 388, 378]
 
 export async function GET() {
   const out: Record<string, unknown> = {}
-  for (const id of IDS) {
+  for (const id of [378]) {
     const [item] = await sql`SELECT id, canonical_name, status FROM items WHERE id = ${id}`
-    const [[sales], [bills], [counts], [dependents], [aliases]] = await Promise.all([
-      sql`SELECT COUNT(*)::int AS n FROM sales_receipt_lines WHERE item_id = ${id}`,
-      sql`SELECT COUNT(*)::int AS n FROM bill_lines WHERE item_id = ${id}`,
-      sql`SELECT COUNT(*)::int AS n FROM stock_counts WHERE item_id = ${id}`,
-      sql`SELECT COUNT(*)::int AS n FROM items WHERE converts_to_item_id = ${id}`,
-      sql`SELECT COUNT(*)::int AS n FROM item_aliases WHERE item_id = ${id}`,
-    ])
-    out[id] = { item, sales: sales.n, bills: bills.n, counts: counts.n, dependents: dependents.n, aliases: aliases.n }
+    const rows = await sql`
+      SELECT il.id, il.invoice_id, il.item_id, il.quantity, il.item_total, iv.invoice_date::text, iv.customer_name
+      FROM invoice_lines il LEFT JOIN invoices iv ON iv.id = il.invoice_id
+      WHERE il.item_id = ${id} ORDER BY iv.invoice_date
+    `
+    out[id] = { item, invoiceLines: rows }
   }
   return NextResponse.json(out)
 }
