@@ -18,12 +18,25 @@ type Customer = {
   credit_limit: string | null
   notes: string | null
   is_internal: boolean
+  whatsapp_group_added: boolean
+  last_visited: string | null
+  service_goods: string | null
+  created_at: string
   receipt_count: number
   receipt_total: string
   receipt_balance: string
   invoice_count: number
   invoice_total: string
   invoice_outstanding: string
+}
+
+function fmtDateShort(d: string | null) {
+  if (!d) return '—'
+  return new Date(d.slice(0, 10) + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function sevenDaysAgo() {
+  return Date.now() - 7 * 86400000
 }
 
 function c(v: string | null | undefined) {
@@ -36,7 +49,7 @@ const labelCls = 'text-[10px] font-semibold text-gray-400 uppercase tracking-wid
 
 // Name stays sticky/always-visible (first column); these are the only ones
 // the picker can hide/reorder/rename.
-type ColKey = 'company' | 'phone' | 'email' | 'location' | 'status' | 'sales' | 'outstanding' | 'receiptCount'
+type ColKey = 'company' | 'phone' | 'email' | 'location' | 'status' | 'lastVisited' | 'serviceGoods' | 'whatsapp' | 'sales' | 'outstanding' | 'receiptCount'
 type CustomerColumn = ColumnDef<ColKey> & { align: 'left' | 'right'; tdClass: string; render: (v: Customer) => ReactNode }
 const CUSTOMER_COLUMNS: CustomerColumn[] = [
   { key: 'company',  label: 'Company', align: 'left', tdClass: 'text-gray-600', render: v => v.company_name ?? '—' },
@@ -48,6 +61,13 @@ const CUSTOMER_COLUMNS: CustomerColumn[] = [
         {v.status ?? '—'}
       </span>
     ) },
+  { key: 'lastVisited', label: 'Last Visited', align: 'left', tdClass: 'text-gray-600', render: v => fmtDateShort(v.last_visited) },
+  { key: 'serviceGoods', label: 'Service/Goods', align: 'left', tdClass: 'text-gray-600', render: v => v.service_goods ?? '—' },
+  { key: 'whatsapp', label: 'WhatsApp Grp', align: 'left', tdClass: '', render: v => (
+      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${v.whatsapp_group_added ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-500'}`}>
+        {v.whatsapp_group_added ? '✓ Added' : '✗ Not Added'}
+      </span>
+    ) },
   { key: 'sales', label: 'Sales Amount', align: 'right', tdClass: 'font-semibold', render: v =>
       parseFloat(v.receipt_total) > 0 ? <span className="text-gray-900">{c(v.receipt_total)}</span> : <span className="text-gray-300">—</span> },
   { key: 'outstanding', label: 'Outstanding', align: 'right', tdClass: 'font-semibold', render: v =>
@@ -56,7 +76,8 @@ const CUSTOMER_COLUMNS: CustomerColumn[] = [
 ]
 const CUSTOMER_COL_BY_KEY = new Map(CUSTOMER_COLUMNS.map(col => [col.key, col]))
 const CUSTOMERS_COL_DEFAULTS: Record<string, number> = {
-  name: 150, company: 150, phone: 120, email: 180, location: 130, status: 90, sales: 100, outstanding: 110, receiptCount: 80,
+  name: 150, company: 150, phone: 120, email: 180, location: 130, status: 90,
+  lastVisited: 110, serviceGoods: 140, whatsapp: 100, sales: 100, outstanding: 110, receiptCount: 80,
 }
 
 function NewCustomerForm({ onCreated, onCancel }: { onCreated: (c: Customer) => void; onCancel: () => void }) {
@@ -66,6 +87,9 @@ function NewCustomerForm({ onCreated, onCancel }: { onCreated: (c: Customer) => 
   const [email, setEmail] = useState('')
   const [location, setLocation] = useState('')
   const [notes, setNotes] = useState('')
+  const [lastVisited, setLastVisited] = useState('')
+  const [serviceGoods, setServiceGoods] = useState('')
+  const [whatsappAdded, setWhatsappAdded] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -83,6 +107,9 @@ function NewCustomerForm({ onCreated, onCancel }: { onCreated: (c: Customer) => 
         email: email.trim() || null,
         location: location.trim() || null,
         notes: notes.trim() || null,
+        last_visited: lastVisited || null,
+        service_goods: serviceGoods.trim() || null,
+        whatsapp_group_added: whatsappAdded,
       }),
     })
     setSaving(false)
@@ -121,6 +148,22 @@ function NewCustomerForm({ onCreated, onCancel }: { onCreated: (c: Customer) => 
         </div>
       </div>
       <LocationField value={location} onChange={setLocation} />
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className={labelCls}>Last Visited</label>
+          <input type="date" value={lastVisited} onChange={e => setLastVisited(e.target.value)} className={inputCls} />
+        </div>
+        <div>
+          <label className={labelCls}>Service/Goods</label>
+          <input value={serviceGoods} onChange={e => setServiceGoods(e.target.value)}
+            placeholder="e.g. Printing, Photocopies" className={inputCls} />
+        </div>
+      </div>
+      <label className="flex items-center gap-1.5 cursor-pointer select-none">
+        <input type="checkbox" checked={whatsappAdded} onChange={() => setWhatsappAdded(v => !v)}
+          className="w-3.5 h-3.5 accent-blue-600" />
+        <span className="text-xs font-semibold text-gray-700">Added to Group Whatsapp Page</span>
+      </label>
       <div>
         <label className={labelCls}>Notes (optional)</label>
         <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className={inputCls} />
@@ -145,6 +188,9 @@ function EditCustomerForm({ customer, onSaved, onCancel }: { customer: Customer;
   const [email, setEmail] = useState(customer.email ?? '')
   const [location, setLocation] = useState(customer.location ?? '')
   const [notes, setNotes] = useState(customer.notes ?? '')
+  const [lastVisited, setLastVisited] = useState(customer.last_visited?.slice(0, 10) ?? '')
+  const [serviceGoods, setServiceGoods] = useState(customer.service_goods ?? '')
+  const [whatsappAdded, setWhatsappAdded] = useState(customer.whatsapp_group_added)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -159,6 +205,9 @@ function EditCustomerForm({ customer, onSaved, onCancel }: { customer: Customer;
         email: email.trim() || null,
         location: location.trim() || null,
         notes: notes.trim() || null,
+        last_visited: lastVisited || null,
+        service_goods: serviceGoods.trim() || null,
+        whatsapp_group_added: whatsappAdded,
       }),
     })
     setSaving(false)
@@ -188,6 +237,22 @@ function EditCustomerForm({ customer, onSaved, onCancel }: { customer: Customer;
         </div>
       </div>
       <LocationField value={location} onChange={setLocation} />
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className={labelCls}>Last Visited</label>
+          <input type="date" value={lastVisited} onChange={e => setLastVisited(e.target.value)} className={inputCls} />
+        </div>
+        <div>
+          <label className={labelCls}>Service/Goods</label>
+          <input value={serviceGoods} onChange={e => setServiceGoods(e.target.value)}
+            placeholder="e.g. Printing, Photocopies" className={inputCls} />
+        </div>
+      </div>
+      <label className="flex items-center gap-1.5 cursor-pointer select-none">
+        <input type="checkbox" checked={whatsappAdded} onChange={() => setWhatsappAdded(v => !v)}
+          className="w-3.5 h-3.5 accent-blue-600" />
+        <span className="text-xs font-semibold text-gray-700">Added to Group Whatsapp Page</span>
+      </label>
       <div>
         <label className={labelCls}>Notes (optional)</label>
         <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className={inputCls} />
@@ -206,6 +271,18 @@ function EditCustomerForm({ customer, onSaved, onCancel }: { customer: Customer;
   )
 }
 
+// Flag categories, letter shown beside the flag icon (see the button row
+// below) -- 'new_week' is a shop-wide threshold, not a per-customer problem,
+// so it's excluded from FLAG_TYPES and shown as its own banner instead.
+type FlagKey = 'location' | 'phone' | 'email' | 'whatsapp'
+const FLAG_TYPES: { key: FlagKey; letter: string; label: string }[] = [
+  { key: 'location', letter: 'L', label: 'No Location' },
+  { key: 'phone', letter: 'C', label: 'No Contact Number' },
+  { key: 'email', letter: 'E', label: 'No Email Address' },
+  { key: 'whatsapp', letter: 'W', label: 'Not Added to Group Whatsapp' },
+]
+const NEW_CUSTOMERS_PER_WEEK_TARGET = 10
+
 export default function CustomersPage({ openAddSignal, initialSearch }: { openAddSignal?: number; initialSearch?: string } = {}) {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
@@ -213,6 +290,7 @@ export default function CustomersPage({ openAddSignal, initialSearch }: { openAd
   const [selected, setSelected] = useState<Customer | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState(false)
+  const [activeFlag, setActiveFlag] = useState<FlagKey | null>(null)
   const colPrefs = useColumnPrefs<ColKey>('customersTable', CUSTOMER_COLUMNS)
 
   // Driven by the RoleBar "+" shortcut menu.
@@ -236,8 +314,28 @@ export default function CustomersPage({ openAddSignal, initialSearch }: { openAd
       .catch(() => setLoading(false))
   }, [])
 
+  const flagCounts = useMemo(() => ({
+    location: customers.filter(x => !x.location).length,
+    phone: customers.filter(x => !x.phone).length,
+    email: customers.filter(x => !x.email).length,
+    whatsapp: customers.filter(x => !x.whatsapp_group_added).length,
+  }), [customers])
+
+  // Rolling 7-day window ending today -- there's no reliable historical
+  // signup date (created_at was only just added, see ensureColumns), so
+  // this only ever looks at the trailing week, not every week since data
+  // started.
+  const newThisWeek = useMemo(() => {
+    const cutoff = sevenDaysAgo()
+    return customers.filter(x => x.created_at && new Date(x.created_at).getTime() >= cutoff).length
+  }, [customers])
+
   const filtered = useMemo(() => {
     let v = customers
+    if (activeFlag === 'location') v = v.filter(x => !x.location)
+    else if (activeFlag === 'phone') v = v.filter(x => !x.phone)
+    else if (activeFlag === 'email') v = v.filter(x => !x.email)
+    else if (activeFlag === 'whatsapp') v = v.filter(x => !x.whatsapp_group_added)
     if (search.trim()) {
       const q = search.toLowerCase()
       v = v.filter(x =>
@@ -248,7 +346,7 @@ export default function CustomersPage({ openAddSignal, initialSearch }: { openAd
       )
     }
     return v
-  }, [customers, search])
+  }, [customers, activeFlag, search])
 
   const totals = useMemo(() => ({
     customers:   customers.length,
@@ -281,6 +379,44 @@ export default function CustomersPage({ openAddSignal, initialSearch }: { openAd
           onCreated={created => { setCustomers(prev => [created, ...prev]); setShowForm(false) }}
         />
       )}
+
+      {/* Flags -- one small button per category (🚩/🏳️ + letter + count),
+          clicking narrows the table below to just that category's flagged
+          customers. "New customers this week" is a shop-wide threshold, not
+          a per-customer problem, so it's a plain banner instead of a filter. */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        {FLAG_TYPES.map(({ key, letter, label }) => {
+          const count = flagCounts[key]
+          const active = activeFlag === key
+          return (
+            <button key={key} title={label} onClick={() => setActiveFlag(f => f === key ? null : key)}
+              className={`shrink-0 flex items-center gap-1 text-[10px] font-semibold pl-1.5 pr-2 py-1 rounded-lg transition
+                ${active ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-700'}`}>
+              <span className="relative leading-none">
+                {count > 0 ? '🚩' : '🏳️'}
+                <span className={`absolute -bottom-1 -right-1 text-[6px] font-black leading-none rounded-sm px-[1px]
+                  ${count > 0 ? 'bg-white text-red-700' : 'bg-red-700 text-white'}`}>{letter}</span>
+              </span>
+              <span>{count > 0 ? count : ''}</span>
+            </button>
+          )
+        })}
+        <span className={`shrink-0 flex items-center gap-1 text-[10px] font-semibold pl-1.5 pr-2 py-1 rounded-lg
+          ${newThisWeek < NEW_CUSTOMERS_PER_WEEK_TARGET ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}
+          title="New customers added in the last 7 days">
+          <span className="relative leading-none">
+            {newThisWeek < NEW_CUSTOMERS_PER_WEEK_TARGET ? '🚩' : '🏳️'}
+            <span className={`absolute -bottom-1 -right-1 text-[6px] font-black leading-none rounded-sm px-[1px]
+              ${newThisWeek < NEW_CUSTOMERS_PER_WEEK_TARGET ? 'bg-white text-red-700' : 'bg-green-700 text-white'}`}>N</span>
+          </span>
+          <span>{newThisWeek}/{NEW_CUSTOMERS_PER_WEEK_TARGET} this week</span>
+        </span>
+        {activeFlag && (
+          <button onClick={() => setActiveFlag(null)} className="text-[10px] font-semibold text-blue-600 hover:text-blue-700">
+            Clear filter
+          </button>
+        )}
+      </div>
 
       {/* Summary line -- one plain row instead of four boxed cards */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400">
@@ -343,6 +479,9 @@ export default function CustomersPage({ openAddSignal, initialSearch }: { openAd
                 <div><span className="text-gray-400">Location: </span><span className="font-medium">{selected.location ?? '—'}</span></div>
                 <div><span className="text-gray-400">Terms: </span><span className="font-medium">{selected.payment_terms_label ?? '—'}</span></div>
                 <div><span className="text-gray-400">Credit: </span><span className="font-medium">{c(selected.credit_limit)}</span></div>
+                <div><span className="text-gray-400">Last Visited: </span><span className="font-medium">{fmtDateShort(selected.last_visited)}</span></div>
+                <div><span className="text-gray-400">Service/Goods: </span><span className="font-medium">{selected.service_goods ?? '—'}</span></div>
+                <div><span className="text-gray-400">WhatsApp Grp: </span><span className={`font-medium ${selected.whatsapp_group_added ? 'text-green-700' : 'text-red-600'}`}>{selected.whatsapp_group_added ? '✓ Added' : '✗ Not Added'}</span></div>
               </div>
 
               <div className="grid grid-cols-2 gap-2 border-t border-gray-100 pt-3">

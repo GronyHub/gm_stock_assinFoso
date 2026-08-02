@@ -14,10 +14,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const {
     company_name, first_name, last_name, email, phone, location, notes,
     payment_terms_label, credit_limit,
+    whatsapp_group_added, last_visited, service_goods,
   } = await req.json()
 
   try {
     await sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS location TEXT`.catch(() => {})
+    await sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS whatsapp_group_added BOOLEAN NOT NULL DEFAULT FALSE`.catch(() => {})
+    await sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS last_visited DATE`.catch(() => {})
+    await sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS service_goods TEXT`.catch(() => {})
+    await sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now()`.catch(() => {})
 
     const [customer] = await sql`
       UPDATE customers SET
@@ -29,10 +34,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         location              = CASE WHEN ${location !== undefined} THEN ${location || null} ELSE location END,
         notes                 = CASE WHEN ${notes !== undefined} THEN ${notes || null} ELSE notes END,
         payment_terms_label   = CASE WHEN ${payment_terms_label !== undefined} THEN ${payment_terms_label || null} ELSE payment_terms_label END,
-        credit_limit          = CASE WHEN ${credit_limit !== undefined} THEN ${credit_limit || null} ELSE credit_limit END
+        credit_limit          = CASE WHEN ${credit_limit !== undefined} THEN ${credit_limit || null} ELSE credit_limit END,
+        whatsapp_group_added  = CASE WHEN ${whatsapp_group_added !== undefined} THEN ${whatsapp_group_added ?? false} ELSE whatsapp_group_added END,
+        last_visited          = CASE WHEN ${last_visited !== undefined} THEN ${last_visited || null} ELSE last_visited END,
+        service_goods         = CASE WHEN ${service_goods !== undefined} THEN ${service_goods || null} ELSE service_goods END
       WHERE id = ${Number(id)}
       RETURNING id, display_name, company_name, first_name, last_name, email, phone, location,
-        status, payment_terms_label, opening_balance, credit_limit, notes, is_internal
+        status, payment_terms_label, opening_balance, credit_limit, notes, is_internal,
+        whatsapp_group_added, last_visited::text AS last_visited, service_goods, created_at::text AS created_at
     `
     if (!customer) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
