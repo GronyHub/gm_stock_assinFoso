@@ -14,6 +14,41 @@ function toPending(a: Attachment): PendingAttachment {
   return { ...a, localUrl: a.url, uploading: false }
 }
 
+const MAX_DIMENSION = 1800
+const JPEG_QUALITY = 0.82
+const SKIP_COMPRESSION_UNDER = 3 * 1024 * 1024 // already small enough, don't bother re-encoding
+
+// A phone camera photo of a paper form can easily run 8-15MB at full
+// resolution -- comfortably over the request-body limit Vercel's serverless
+// functions enforce, which drops the connection before our upload route
+// ever runs (surfaces client-side as a bare "Failed to fetch", no server
+// error to show). Downscaling/re-encoding here keeps the form perfectly
+// legible while landing well under that ceiling. PDFs and already-small
+// images pass through untouched; any decode failure (e.g. an unsupported
+// format) just falls back to uploading the original file as-is.
+async function compressIfNeeded(file: File): Promise<File> {
+  if (!file.type.startsWith('image/') || file.type === 'image/gif' || file.size <= SKIP_COMPRESSION_UNDER) return file
+  try {
+    const bitmap = await createImageBitmap(file)
+    const scale = Math.min(1, MAX_DIMENSION / Math.max(bitmap.width, bitmap.height))
+    const w = Math.round(bitmap.width * scale)
+    const h = Math.round(bitmap.height * scale)
+    const canvas = document.createElement('canvas')
+    canvas.width = w
+    canvas.height = h
+    const ctx = canvas.getContext('2d')
+    if (!ctx) { bitmap.close(); return file }
+    ctx.drawImage(bitmap, 0, 0, w, h)
+    bitmap.close()
+    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', JPEG_QUALITY))
+    if (!blob) return file
+    const newName = file.name.replace(/\.\w+$/, '') + '.jpg'
+    return new File([blob], newName, { type: 'image/jpeg' })
+  } catch {
+    return file
+  }
+}
+
 export function useAttachments(initial: Attachment[] = []) {
   const [items, setItems] = useState<PendingAttachment[]>(initial.map(toPending))
 
@@ -27,9 +62,10 @@ export function useAttachments(initial: Attachment[] = []) {
   async function uploadOne(file: File) {
     const localUrl = URL.createObjectURL(file)
     setItems(prev => [...prev, { url: '', type: file.type, name: file.name, localUrl, uploading: true }])
-    const fd = new FormData()
-    fd.append('file', file)
     try {
+      const toSend = await compressIfNeeded(file)
+      const fd = new FormData()
+      fd.append('file', toSend)
       const res = await fetch('/api/sales/upload', { method: 'POST', body: fd })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Upload failed')
@@ -37,7 +73,13 @@ export function useAttachments(initial: Attachment[] = []) {
         ? { ...m, uploading: false, url: data.url, type: data.contentType, name: data.name ?? m.name }
         : m))
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Upload failed'
+      // A bare "Failed to fetch" is the browser aborting the request itself
+      // (e.g. the file was too large for the connection to complete) rather
+      // than a server-side rejection -- give a reason a non-developer can
+      // actually act on instead of the raw browser wording.
+      const message = e instanceof Error && e.message !== 'Failed to fetch'
+        ? e.message
+        : 'Could not reach the server -- the file may be too large, or check your connection.'
       setItems(prev => prev.map(m => m.localUrl === localUrl ? { ...m, uploading: false, error: message } : m))
     }
   }
