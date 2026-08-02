@@ -135,13 +135,83 @@ function NewVendorForm({ onCreated, onCancel }: { onCreated: (v: Vendor) => void
   )
 }
 
+function EditVendorForm({ vendor, onSaved, onCancel }: { vendor: Vendor; onSaved: (v: Vendor) => void; onCancel: () => void }) {
+  const [companyName, setCompanyName] = useState(vendor.company_name ?? '')
+  const [phone, setPhone] = useState(vendor.phone ?? '')
+  const [email, setEmail] = useState(vendor.email ?? '')
+  const [location, setLocation] = useState(vendor.location ?? '')
+  const [notes, setNotes] = useState(vendor.notes ?? '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function submit() {
+    setError(null)
+    setSaving(true)
+    const res = await fetch(`/api/vendors/${vendor.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        company_name: companyName.trim() || null,
+        phone: phone.trim() || null,
+        email: email.trim() || null,
+        location: location.trim() || null,
+        notes: notes.trim() || null,
+      }),
+    })
+    setSaving(false)
+    if (res.ok) {
+      onSaved(await res.json())
+    } else {
+      const d = await res.json().catch(() => null)
+      setError(d?.error ?? 'Could not save changes.')
+    }
+  }
+
+  return (
+    <div className="space-y-3 border-t border-gray-100 pt-3">
+      <p className="text-xs font-bold text-blue-600">Edit Vendor</p>
+      <div>
+        <label className={labelCls}>Company (optional)</label>
+        <input value={companyName} onChange={e => setCompanyName(e.target.value)} className={inputCls} />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className={labelCls}>Phone</label>
+          <input value={phone} onChange={e => setPhone(e.target.value)} className={inputCls} />
+        </div>
+        <div>
+          <label className={labelCls}>Email</label>
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} className={inputCls} />
+        </div>
+      </div>
+      <LocationField value={location} onChange={setLocation} />
+      <div>
+        <label className={labelCls}>Notes (optional)</label>
+        <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className={inputCls} />
+      </div>
+
+      {error && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-2.5 py-1.5">{error}</p>}
+
+      <div className="flex gap-2">
+        <button onClick={submit} disabled={saving}
+          className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2.5 transition">
+          {saving ? 'Saving…' : 'Save Changes'}
+        </button>
+        <button onClick={onCancel} disabled={saving} className="px-4 py-2.5 bg-gray-100 text-gray-600 text-sm font-semibold rounded-xl">Cancel</button>
+      </div>
+    </div>
+  )
+}
+
 export default function VendorsPage({ openAddSignal, initialSearch }: { openAddSignal?: number; initialSearch?: string } = {}) {
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState(initialSearch ?? '')
-  const [filter, setFilter] = useState<'all' | 'external' | 'internal' | 'outstanding'>('all')
   const [selected, setSelected] = useState<Vendor | null>(null)
+  const [editingVendor, setEditingVendor] = useState(false)
   const [showForm, setShowForm] = useState(false)
+  // Vendors missing a contact number or location -- clicking narrows the
+  // table below to just those, same flag language as Customers.
+  const [showFlagged, setShowFlagged] = useState(false)
   const colPrefs = useColumnPrefs<ColKey>('vendorsTable', VENDOR_COLUMNS)
 
   // Driven by the RoleBar "+" shortcut menu.
@@ -165,11 +235,11 @@ export default function VendorsPage({ openAddSignal, initialSearch }: { openAddS
       .catch(() => setLoading(false))
   }, [])
 
+  const noContactCount = useMemo(() => vendors.filter(x => !x.phone || !x.location).length, [vendors])
+
   const filtered = useMemo(() => {
     let v = vendors
-    if (filter === 'external')    v = v.filter(x => !x.is_internal)
-    if (filter === 'internal')    v = v.filter(x =>  x.is_internal)
-    if (filter === 'outstanding') v = v.filter(x => parseFloat(x.outstanding) > 0)
+    if (showFlagged) v = v.filter(x => !x.phone || !x.location)
     if (search.trim()) {
       const q = search.toLowerCase()
       v = v.filter(x =>
@@ -179,7 +249,7 @@ export default function VendorsPage({ openAddSignal, initialSearch }: { openAddS
       )
     }
     return v
-  }, [vendors, filter, search])
+  }, [vendors, showFlagged, search])
 
   const totals = useMemo(() => ({
     bills:       vendors.reduce((s, v) => s + v.bill_count, 0),
@@ -228,22 +298,25 @@ export default function VendorsPage({ openAddSignal, initialSearch }: { openAddS
         ))}
       </div>
 
-      {/* Search + filter */}
+      {/* Search + flag -- the old external/internal/outstanding tabs are
+          gone, "all" (i.e. no filter) already showed every vendor, so the
+          full list is just always shown here now. */}
       <div className="space-y-2">
         <input
           value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Search vendors…"
           className="w-full bg-gray-100 border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-400"
         />
-        <div className="flex gap-1.5 overflow-x-auto pb-0.5">
-          {(['all','external','internal','outstanding'] as const).map(f => (
-            <button key={f} onClick={() => setFilter(f)}
-              className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition
-                ${filter === f ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-              {f}
-            </button>
-          ))}
-        </div>
+        <button onClick={() => setShowFlagged(v => !v)} title="Vendors with no contact number or location"
+          className={`shrink-0 flex items-center gap-1 text-[10px] font-semibold pl-1.5 pr-2 py-1 rounded-lg transition
+            ${showFlagged ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-700'}`}>
+          <span className="relative leading-none">
+            {noContactCount > 0 ? '🚩' : '🏳️'}
+            <span className={`absolute -bottom-1 -right-1 text-[6px] font-black leading-none rounded-sm px-[1px]
+              ${noContactCount > 0 ? 'bg-white text-red-700' : 'bg-red-700 text-white'}`}>C</span>
+          </span>
+          <span>{noContactCount > 0 ? noContactCount : ''}</span>
+        </button>
       </div>
 
       {/* Selected vendor detail */}
@@ -257,37 +330,59 @@ export default function VendorsPage({ openAddSignal, initialSearch }: { openAddS
               {selected.is_internal &&
                 <span className="text-[10px] bg-purple-100 text-purple-700 font-semibold px-2 py-0.5 rounded-full">Internal</span>}
             </div>
-            <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 text-xl font-bold leading-none">×</button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs border-t border-gray-100 pt-3">
-            <div><span className="text-gray-400">Phone: </span><span className="font-medium">{selected.phone ?? '—'}</span></div>
-            <div><span className="text-gray-400">Email: </span><span className="font-medium">{selected.email ?? '—'}</span></div>
-            <div><span className="text-gray-400">Location: </span><span className="font-medium">{selected.location ?? '—'}</span></div>
-            <div><span className="text-gray-400">Terms: </span><span className="font-medium">{selected.payment_terms_label ?? '—'}</span></div>
-            <div><span className="text-gray-400">Status: </span><span className="font-medium">{selected.status ?? '—'}</span></div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 border-t border-gray-100 pt-3">
-            {[
-              { label: 'Bills',       value: String(selected.bill_count),      sub: 'total bills' },
-              { label: 'Billed',      value: c(selected.bill_total),            sub: 'total amount' },
-              { label: 'Paid',        value: c(selected.amount_paid),           sub: `${selected.payment_count} payment(s)` },
-              { label: 'Outstanding', value: c(selected.outstanding),           sub: parseFloat(selected.outstanding) > 0 ? '⚠ unpaid' : 'settled' },
-            ].map(s => (
-              <div key={s.label} className="bg-gray-50 rounded-lg px-3 py-2">
-                <p className="text-[10px] text-gray-400">{s.label}</p>
-                <p className={`text-sm font-bold ${s.label === 'Outstanding' && parseFloat(selected.outstanding) > 0 ? 'text-red-600' : 'text-gray-900'}`}>{s.value}</p>
-                <p className="text-[9px] text-gray-400">{s.sub}</p>
-              </div>
-            ))}
-          </div>
-
-          {selected.notes && (
-            <div className="border-t border-gray-100 pt-2">
-              <p className="text-xs text-gray-400">Notes</p>
-              <p className="text-xs text-gray-700 mt-0.5">{selected.notes}</p>
+            <div className="flex items-center gap-2 shrink-0">
+              {!editingVendor && (
+                <button onClick={() => setEditingVendor(true)}
+                  className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded-lg hover:bg-blue-100">
+                  ✏️ Edit
+                </button>
+              )}
+              <button onClick={() => { setSelected(null); setEditingVendor(false) }}
+                className="text-gray-400 hover:text-gray-600 text-xl font-bold leading-none">×</button>
             </div>
+          </div>
+
+          {editingVendor ? (
+            <EditVendorForm vendor={selected}
+              onCancel={() => setEditingVendor(false)}
+              onSaved={updated => {
+                const merged = { ...selected, ...updated }
+                setSelected(merged)
+                setVendors(prev => prev.map(x => x.id === merged.id ? merged : x))
+                setEditingVendor(false)
+              }} />
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs border-t border-gray-100 pt-3">
+                <div><span className="text-gray-400">Phone: </span><span className="font-medium">{selected.phone ?? '—'}</span></div>
+                <div><span className="text-gray-400">Email: </span><span className="font-medium">{selected.email ?? '—'}</span></div>
+                <div><span className="text-gray-400">Location: </span><span className="font-medium">{selected.location ?? '—'}</span></div>
+                <div><span className="text-gray-400">Terms: </span><span className="font-medium">{selected.payment_terms_label ?? '—'}</span></div>
+                <div><span className="text-gray-400">Status: </span><span className="font-medium">{selected.status ?? '—'}</span></div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 border-t border-gray-100 pt-3">
+                {[
+                  { label: 'Bills',       value: String(selected.bill_count),      sub: 'total bills' },
+                  { label: 'Billed',      value: c(selected.bill_total),            sub: 'total amount' },
+                  { label: 'Paid',        value: c(selected.amount_paid),           sub: `${selected.payment_count} payment(s)` },
+                  { label: 'Outstanding', value: c(selected.outstanding),           sub: parseFloat(selected.outstanding) > 0 ? '⚠ unpaid' : 'settled' },
+                ].map(s => (
+                  <div key={s.label} className="bg-gray-50 rounded-lg px-3 py-2">
+                    <p className="text-[10px] text-gray-400">{s.label}</p>
+                    <p className={`text-sm font-bold ${s.label === 'Outstanding' && parseFloat(selected.outstanding) > 0 ? 'text-red-600' : 'text-gray-900'}`}>{s.value}</p>
+                    <p className="text-[9px] text-gray-400">{s.sub}</p>
+                  </div>
+                ))}
+              </div>
+
+              {selected.notes && (
+                <div className="border-t border-gray-100 pt-2">
+                  <p className="text-xs text-gray-400">Notes</p>
+                  <p className="text-xs text-gray-700 mt-0.5">{selected.notes}</p>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
@@ -319,7 +414,7 @@ export default function VendorsPage({ openAddSignal, initialSearch }: { openAddS
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filtered.map((v, i) => (
-                <tr key={v.id} onClick={() => setSelected(v === selected ? null : v)}
+                <tr key={v.id} onClick={() => { setSelected(v === selected ? null : v); setEditingVendor(false) }}
                   className={`cursor-pointer transition ${selected?.id === v.id ? 'bg-blue-50' : i % 2 === 1 ? 'bg-gray-50/60 hover:bg-blue-50/40' : 'hover:bg-blue-50/40'}`}>
                   <td className="px-3 py-2 font-semibold text-gray-900 truncate">
                     {v.is_internal && (
