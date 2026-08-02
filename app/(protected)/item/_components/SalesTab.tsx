@@ -6,6 +6,7 @@ import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
 import { useColumnPrefs, ColumnsPickerButton, type ColumnDef } from './columnPrefs'
 import { useAttachments, AttachmentPicker, type Attachment } from './attachmentsShared'
+import BulkAttachForms from './BulkAttachForms'
 import AssignWidget from './AssignWidget'
 import DynamicTasksSection from './DynamicTasksSection'
 
@@ -303,6 +304,10 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
   // 4 of Sales' own violation types (each with its own AssignWidget) rather
   // than needing to visit each violation's own full-page view separately.
   const [showFlagsSummary, setShowFlagsSummary] = useState(false)
+  // Catches up a whole folder of form photos/scans at once (e.g. after the
+  // fact for a month entered before attachments existed) instead of
+  // opening Edit Receipt per day -- see BulkAttachForms.
+  const [showBulkAttach, setShowBulkAttach] = useState(false)
   const colPrefs = useColumnPrefs<ColKey>('salesTable', SALES_COLUMNS)
   const attachments = useAttachments()
 
@@ -696,6 +701,10 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
         </label>
       </div>
       <div className="flex items-center gap-1.5">
+        <button onClick={() => setShowBulkAttach(true)} title="Bulk-attach a folder of form photos/scans, matched by date"
+          className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-700 transition">
+          📎+
+        </button>
         <ColumnsPickerButton prefs={colPrefs} />
       </div>
     </div>
@@ -989,6 +998,10 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
       </table>
       {filtered.length === 0 && <p className="text-[10px] text-gray-400 text-center py-10">No receipts</p>}
     </div>
+    {showBulkAttach && (
+      <BulkAttachForms receipts={receipts} onClose={() => setShowBulkAttach(false)}
+        onDone={() => { setShowBulkAttach(false); loadReceipts() }} />
+    )}
     </div>
   )
 }
