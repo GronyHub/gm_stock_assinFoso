@@ -40,7 +40,6 @@ import { applyPaneOrder, type PaneOrderMap } from './_components/paneOrder'
 import dynamic from 'next/dynamic'
 const loading = (h: string) => <div className={`py-10 text-center text-gray-400 text-sm`}>{h}</div>
 const ItemsTab       = dynamic(() => import('./_components/ItemsTab'),        { ssr: false, loading: () => loading('Loading…') })
-const ItemsFlagsPanel = dynamic(() => import('./_components/ItemsFlagsPanel'), { ssr: false, loading: () => loading('Loading…') })
 const SalesTab       = dynamic(() => import('./_components/SalesTab'),        { ssr: false, loading: () => loading('Loading…') })
 const BillsTab       = dynamic(() => import('./_components/BillsTab'),        { ssr: false, loading: () => loading('Loading…') })
 const CountsTab      = dynamic(() => import('./_components/CountsTab'),       { ssr: false, loading: () => loading('Loading…') })
@@ -111,7 +110,7 @@ type LossView = 'home' | 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'loss
 // they're now reached from inside Items itself (see ItemsExtraView below),
 // so an old '?view=aliasWide'/'serviceMatches' link still needs a home to
 // land on instead of a blank pane.
-type ItemsExtraView = 'none' | 'aliasWide' | 'serviceMatches' | 'nameConflicts' | 'flags'
+type ItemsExtraView = 'none' | 'aliasWide' | 'serviceMatches' | 'nameConflicts'
 const OLD_LOSSVIEW_TO_EXTRA: Partial<Record<string, ItemsExtraView>> = {
   aliasWide: 'aliasWide', serviceMatches: 'serviceMatches',
 }
@@ -348,6 +347,24 @@ const SALES_FLAG_TYPES: { key: string; letter: string; label: string }[] = [
   { key: 'cost_price', letter: 'P', label: 'Cost ≥ Selling Price' },
   { key: 'dup_receipt', letter: 'D', label: 'Duplicate Receipts' },
   { key: 'no_attachment', letter: 'A', label: 'No Attachment' },
+]
+
+// Items' 11 flag categories -- same treatment as Sales. `not_in_inventory`
+// (a 12th type ItemsFlagsPanel used to show) has no dedicated fix view of
+// its own to jump to, so it's left off this bar; it's still assignable via
+// Joe/Bino's Role Bar panel like the rest of ASSIGNABLE_VIOLATIONS.
+const ITEMS_FLAG_TYPES: { key: string; letter: string; label: string }[] = [
+  { key: 'neg_soh', letter: 'N', label: 'Negative Stock Items' },
+  { key: 'no_sp', letter: 'S', label: 'Missing Selling Prices' },
+  { key: 'no_cp', letter: 'C', label: 'Missing Cost Prices' },
+  { key: 'no_group', letter: 'G', label: 'Item Groups' },
+  { key: 'duplicates', letter: 'D', label: 'Duplicate Items' },
+  { key: 'unlinked_named', letter: 'U', label: 'Unlinked Sales' },
+  { key: 'service_violation', letter: 'V', label: 'Service Violations' },
+  { key: 'alias_prezoho_sales', letter: 'A', label: 'Pre-Zoho Sales Aliases' },
+  { key: 'alias_prezoho_bills', letter: 'B', label: 'Pre-Zoho Bills Aliases' },
+  { key: 'alias_flagged', letter: 'F', label: 'Flagged Aliases' },
+  { key: 'alias_ambiguous', letter: 'M', label: 'Ambiguous Aliases' },
 ]
 
 const VALID_TABS: OuterTab[] = ['today', 'loss', 'uk', 'ch']
@@ -1388,19 +1405,29 @@ function ItemHubPageInner() {
                       ]} />
                     )}
 
-                    {/* Items' own combined 🚩 flags view + task checklist --
-                        Counts gets the same toggle inside its own component;
-                        Items' used to (via ItemsTab) until LossTab replaced it
-                        as the default table and that toggle never got carried
-                        over, leaving Items' flags reachable only via a "Fix
-                        now" deep link from elsewhere. */}
-                    {lossView === 'items' && (
-                      <button onClick={() => setItemsExtraView(v => v === 'flags' ? 'none' : 'flags')}
-                        className={`shrink-0 flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg transition
-                          ${itemsExtraView === 'flags' ? 'bg-red-600 text-white' : 'text-white hover:bg-white/10'}`}>
-                        {itemsFlagsCount > 0 ? '🚩' : '🏳️'} {itemsFlagsCount > 0 ? itemsFlagsCount : ''}
-                      </button>
-                    )}
+                    {/* Items' 11 flag categories -- same treatment as Sales:
+                        one small button each, a letter beside the flag
+                        identifying which category, and that category's own
+                        count. Clicking jumps straight to that category's fix
+                        view via goToViolation. (not_in_inventory has no fix
+                        view of its own, so it isn't one of these buttons --
+                        see ITEMS_FLAG_TYPES.) */}
+                    {lossView === 'items' && ITEMS_FLAG_TYPES.map(({ key, letter, label }) => {
+                      const count = violationCounts[key] ?? 0
+                      const active = violation === key
+                      return (
+                        <button key={key} onClick={() => goToViolation(key)} title={label}
+                          className={`shrink-0 flex items-center gap-0.5 text-xs font-semibold pl-1.5 pr-2 py-1 rounded-lg transition
+                            ${active ? 'bg-red-600 text-white' : 'text-white hover:bg-white/10'}`}>
+                          <span className="relative leading-none">
+                            {count > 0 ? '🚩' : '🏳️'}
+                            <span className={`absolute -bottom-1 -right-1 text-[7px] font-black leading-none rounded-sm px-[1.5px]
+                              ${count > 0 ? 'bg-white text-red-700' : 'bg-red-700 text-white'}`}>{letter}</span>
+                          </span>
+                          <span className="ml-1">{count > 0 ? count : ''}</span>
+                        </button>
+                      )
+                    })}
 
                     {/* Sales' 5 flag categories -- one small button each, a
                         letter beside the flag identifying which category, and
@@ -1637,11 +1664,6 @@ function ItemHubPageInner() {
         {outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'nameConflicts' && (
           <TabErrorBoundary>
             <div className="h-full min-h-0 flex flex-col"><AliasesTab defaultTab="name-conflicts" /></div>
-          </TabErrorBoundary>
-        )}
-        {outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'flags' && (
-          <TabErrorBoundary>
-            <ItemsFlagsPanel items={items} onGoToViolation={key => { setItemsExtraView('none'); goToViolation(key) }} onClose={() => setItemsExtraView('none')} />
           </TabErrorBoundary>
         )}
         {showAnalytics && outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'none' && (
