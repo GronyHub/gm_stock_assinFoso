@@ -158,12 +158,19 @@ export function AttachmentPicker({ items, onAdd, onRemove, disabled }: {
         <div className="flex flex-wrap gap-1.5">
           {items.map(m => (
             <div key={m.localUrl} className="relative w-11 h-11 rounded-md overflow-hidden border border-gray-200 bg-gray-100 shrink-0">
-              {m.type === 'application/pdf' ? (
-                <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-500 text-[8px] font-bold">PDF</div>
-              ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={m.localUrl} alt={m.name} className="w-full h-full object-cover" />
-              )}
+              {/* Opens in a new tab -- localUrl is the local blob preview
+                  while still uploading, or the saved server URL once done,
+                  so this works the same either way. The remove button below
+                  is a sibling, not nested inside, so it stays clickable on
+                  its own without needing to stop this link's click. */}
+              <a href={m.localUrl} target="_blank" rel="noopener noreferrer" className="block w-full h-full">
+                {m.type === 'application/pdf' ? (
+                  <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-500 text-[8px] font-bold">PDF</div>
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={m.localUrl} alt={m.name} className="w-full h-full object-cover" />
+                )}
+              </a>
               {m.uploading && (
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                   <span className="text-white text-[8px] font-semibold">…</span>

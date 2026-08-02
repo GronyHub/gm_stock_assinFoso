@@ -935,12 +935,17 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
                     {fmtCust(r.customer_name)}
                   </span>
                   {/* Shows only once the form's actually attached, so a
-                      glance down the list finds the ones still missing one. */}
+                      glance down the list finds the ones still missing one --
+                      tapping it opens the form itself (first attachment, if
+                      more than one) in a new tab rather than only marking
+                      that one exists. */}
                   {r.attachments && r.attachments.length > 0 && (
-                    <span title={`${r.attachments.length} form${r.attachments.length !== 1 ? 's' : ''} attached`}
-                      className={`shrink-0 text-[10px] leading-none ${isDayHead ? 'text-blue-100' : 'text-gray-400'}`}>
+                    <a href={r.attachments[0].url} target="_blank" rel="noopener noreferrer"
+                      onClick={e => e.stopPropagation()}
+                      title={`${r.attachments.length} form${r.attachments.length !== 1 ? 's' : ''} attached — tap to view`}
+                      className={`shrink-0 text-[10px] leading-none ${isDayHead ? 'text-blue-100 hover:text-white' : 'text-gray-400 hover:text-gray-700'}`}>
                       📎
-                    </span>
+                    </a>
                   )}
                 </span>
               </td>
