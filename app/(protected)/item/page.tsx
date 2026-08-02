@@ -479,6 +479,11 @@ function ItemHubPageInner() {
   // which own the same toggle themselves, see LossByItemTab/CountsTab)
   // are where the removed "Data" tab's eight sections got redistributed to.
   const [showAnalytics, setShowAnalytics] = useState(false)
+  // Sales' own combined 🚩 flags view -- lifted up here (like itemsExtraView
+  // above) so its trigger can sit on the green bar next to New, matching
+  // Items' flag icon + count instead of a separate button inside Sales'
+  // own gray toolbar row.
+  const [salesShowFlags, setSalesShowFlags] = useState(false)
 
   const [items, setItems]           = useState<Item[]>([])
   const [itemsLoading, setItemsLoading] = useState(true)
@@ -1374,16 +1379,28 @@ function ItemHubPageInner() {
                     )}
 
                     {/* Items' own combined 🚩 flags view + task checklist --
-                        Sales/Counts get the same toggle inside their own
-                        components; Items' used to (via ItemsTab) until LossTab
-                        replaced it as the default table and that toggle never
-                        got carried over, leaving Items' flags reachable only
-                        via a "Fix now" deep link from elsewhere. */}
+                        Counts gets the same toggle inside its own component;
+                        Items' used to (via ItemsTab) until LossTab replaced it
+                        as the default table and that toggle never got carried
+                        over, leaving Items' flags reachable only via a "Fix
+                        now" deep link from elsewhere. */}
                     {lossView === 'items' && (
                       <button onClick={() => setItemsExtraView(v => v === 'flags' ? 'none' : 'flags')}
                         className={`shrink-0 flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg transition
                           ${itemsExtraView === 'flags' ? 'bg-red-600 text-white' : 'text-white hover:bg-white/10'}`}>
                         🚩 {itemsFlagsCount > 0 ? itemsFlagsCount : ''}
+                      </button>
+                    )}
+
+                    {/* Sales' own combined 🚩 flags view -- used to be a
+                        separate button inside Sales' own gray toolbar row
+                        with no visible count; lifted up here to match Items'
+                        icon+count-on-the-green-bar treatment exactly. */}
+                    {lossView === 'sales' && (
+                      <button onClick={() => setSalesShowFlags(v => !v)}
+                        className={`shrink-0 flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg transition
+                          ${salesShowFlags ? 'bg-red-600 text-white' : 'text-white hover:bg-white/10'}`}>
+                        🚩 {salesFlagsCount > 0 ? salesFlagsCount : ''}
                       </button>
                     )}
 
@@ -1650,7 +1667,8 @@ function ItemHubPageInner() {
           <SalesTab items={items} groupFilter={group} search={search}
             violation={pillKeys?.includes(violation ?? '') ? violation : null}
             jumpToDate={jumpToReceiptDate} jumpToItemName={jumpToReceiptItemName}
-            onJumpDone={() => { setJumpToReceiptDate(null); setJumpToReceiptItemName(null) }} />
+            onJumpDone={() => { setJumpToReceiptDate(null); setJumpToReceiptItemName(null) }}
+            showFlagsSummary={salesShowFlags} setShowFlagsSummary={setSalesShowFlags} />
         )}
         {showAnalytics && outerTab === 'loss' && lossView === 'bills' && (
           <TabErrorBoundary><div className="px-3 pt-3"><BillsAnalyticsSection /></div></TabErrorBoundary>
