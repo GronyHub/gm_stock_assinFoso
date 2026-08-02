@@ -10,6 +10,16 @@ async function snapshot(ids: number[]) {
   `
 }
 
+export async function GET() {
+  const ids = [117, 205, 379, 273]
+  const mainList = await sql`
+    SELECT s.item_id AS id, COALESCE(i.canonical_name, s.item_name) AS canonical_name
+    FROM item_stock_summary s LEFT JOIN items i ON i.id = s.item_id
+    WHERE s.item_id = ANY(${ids})
+  `
+  return NextResponse.json({ stillLeaking: mainList })
+}
+
 export async function POST() {
   const results: unknown[] = []
 
