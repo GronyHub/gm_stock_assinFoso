@@ -56,7 +56,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const has = (k: string) => Object.prototype.hasOwnProperty.call(body, k)
 
   const [current] = await sql`
-    SELECT cf_group, selling_rate, purchase_rate, units_per_pack, unit_name, converts_to_item_id
+    SELECT canonical_name, cf_group, selling_rate, purchase_rate, units_per_pack, unit_name, converts_to_item_id
     FROM items WHERE id = ${itemId}
   `
   if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -84,7 +84,16 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   `
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  if (item_name) {
+  if (item_name && item_name !== current.canonical_name) {
+    // Keep the old name resolvable -- a future sale/bill line still typed
+    // with the old spelling should still auto-match this item instead of
+    // landing in Unresolved. Same thing mergeItems.ts already does when a
+    // merge renames the winner.
+    await sql`
+      INSERT INTO item_aliases (item_id, alias_name, alias_type, source)
+      VALUES (${itemId}, ${current.canonical_name}, 'canonical', 'rename')
+      ON CONFLICT (item_id, alias_name, alias_type) DO NOTHING
+    `
     await sql`UPDATE sales_receipt_lines SET resolved_name = ${item_name} WHERE item_id = ${itemId}`
     await sql`UPDATE bill_lines SET resolved_name = ${item_name} WHERE item_id = ${itemId}`
     await sql`UPDATE stock_counts SET item_name = ${item_name} WHERE item_id = ${itemId}`
