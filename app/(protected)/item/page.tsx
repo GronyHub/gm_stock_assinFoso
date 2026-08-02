@@ -40,6 +40,7 @@ import { applyPaneOrder, type PaneOrderMap } from './_components/paneOrder'
 import dynamic from 'next/dynamic'
 const loading = (h: string) => <div className={`py-10 text-center text-gray-400 text-sm`}>{h}</div>
 const ItemsTab       = dynamic(() => import('./_components/ItemsTab'),        { ssr: false, loading: () => loading('Loading…') })
+const ItemsFlagsPanel = dynamic(() => import('./_components/ItemsFlagsPanel'), { ssr: false, loading: () => loading('Loading…') })
 const SalesTab       = dynamic(() => import('./_components/SalesTab'),        { ssr: false, loading: () => loading('Loading…') })
 const BillsTab       = dynamic(() => import('./_components/BillsTab'),        { ssr: false, loading: () => loading('Loading…') })
 const CountsTab      = dynamic(() => import('./_components/CountsTab'),       { ssr: false, loading: () => loading('Loading…') })
@@ -110,7 +111,7 @@ type LossView = 'home' | 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'loss
 // they're now reached from inside Items itself (see ItemsExtraView below),
 // so an old '?view=aliasWide'/'serviceMatches' link still needs a home to
 // land on instead of a blank pane.
-type ItemsExtraView = 'none' | 'aliasWide' | 'serviceMatches' | 'nameConflicts'
+type ItemsExtraView = 'none' | 'aliasWide' | 'serviceMatches' | 'nameConflicts' | 'flags'
 const OLD_LOSSVIEW_TO_EXTRA: Partial<Record<string, ItemsExtraView>> = {
   aliasWide: 'aliasWide', serviceMatches: 'serviceMatches',
 }
@@ -1367,6 +1368,20 @@ function ItemHubPageInner() {
                       ]} />
                     )}
 
+                    {/* Items' own combined 🚩 flags view + task checklist --
+                        Sales/Counts get the same toggle inside their own
+                        components; Items' used to (via ItemsTab) until LossTab
+                        replaced it as the default table and that toggle never
+                        got carried over, leaving Items' flags reachable only
+                        via a "Fix now" deep link from elsewhere. */}
+                    {lossView === 'items' && (
+                      <button onClick={() => setItemsExtraView(v => v === 'flags' ? 'none' : 'flags')}
+                        className={`shrink-0 flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg transition
+                          ${itemsExtraView === 'flags' ? 'bg-red-600 text-white' : 'text-white hover:bg-white/10'}`}>
+                        🚩 {itemsFlagsCount > 0 ? itemsFlagsCount : ''}
+                      </button>
+                    )}
+
                     {/* Analytics toggle -- swaps this submenu's normal list for the
                         charts/trends that used to live under the removed "Data"
                         tab. Items also carries Violations' charts (no single tab of
@@ -1580,6 +1595,11 @@ function ItemHubPageInner() {
         {outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'nameConflicts' && (
           <TabErrorBoundary>
             <div className="h-full min-h-0 flex flex-col"><AliasesTab defaultTab="name-conflicts" /></div>
+          </TabErrorBoundary>
+        )}
+        {outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'flags' && (
+          <TabErrorBoundary>
+            <ItemsFlagsPanel items={items} onGoToViolation={key => { setItemsExtraView('none'); goToViolation(key) }} onClose={() => setItemsExtraView('none')} />
           </TabErrorBoundary>
         )}
         {showAnalytics && outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'none' && (
