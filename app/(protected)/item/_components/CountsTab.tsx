@@ -688,16 +688,16 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
           </colgroup>
           <thead className="sticky top-0 bg-gray-50 z-10">
             <tr>
-              <th className="relative text-left px-2.5 py-2 font-bold text-gray-500 uppercase tracking-wide border-b border-gray-200 overflow-hidden">
+              <th className="relative text-left px-2.5 py-2 font-bold text-gray-500 uppercase tracking-wide border-b border-r border-gray-200 overflow-hidden">
                 <span className="block truncate">Date</span>
                 <ColResizeHandle onResize={d => resizeCol('date', d)} onReset={() => resetColWidth('date')} />
               </th>
-              <th className="relative text-left px-2.5 py-2 font-bold text-gray-500 uppercase tracking-wide border-b border-gray-200 overflow-hidden">
+              <th className="relative text-left px-2.5 py-2 font-bold text-gray-500 uppercase tracking-wide border-b border-r border-gray-200 overflow-hidden">
                 <span className="block truncate">Item</span>
                 <ColResizeHandle onResize={d => resizeCol('item', d)} onReset={() => resetColWidth('item')} />
               </th>
               {colPrefs.shownColumns.map(c => (
-                <th key={c.key} className={`relative px-2.5 py-2 font-bold text-gray-500 uppercase tracking-wide border-b border-gray-200 overflow-hidden ${c.key === 'qty' ? 'text-center' : 'text-left'}`}>
+                <th key={c.key} className={`relative px-2.5 py-2 font-bold text-gray-500 uppercase tracking-wide border-b border-r border-gray-200 overflow-hidden ${c.key === 'qty' ? 'text-center' : 'text-left'}`}>
                   <span className="block truncate">{c.label}</span>
                   <ColResizeHandle onResize={d => resizeCol(c.key, d)} onReset={() => resetColWidth(c.key)} />
                 </th>
