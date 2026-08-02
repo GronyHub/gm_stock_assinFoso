@@ -7,7 +7,7 @@ import { usePolling } from '@/lib/usePolling'
 import { isOwnerLevel } from '@/lib/roles'
 import HistoryPanel from './HistoryPanel'
 import { AnalyticsToggle } from './analyticsShared'
-import { useColumnPrefs, ColumnsPickerButton, type ColumnDef } from './columnPrefs'
+import { useColumnPrefs, ColumnsPickerButton, useResizableWidths, ColResizeHandle, type ColumnDef } from './columnPrefs'
 import DynamicTasksSection from './DynamicTasksSection'
 const CountsAnalyticsSection = dynamic(() => import('./CountsAnalyticsSection'), { ssr: false })
 
@@ -22,6 +22,14 @@ const COUNTS_COLUMNS: ColumnDef<ColKey>[] = [
   { key: 'src',   label: 'SRC' },
   { key: 'notes', label: 'NOTES' },
 ]
+
+// Pixel widths for every column of the list table below, draggable via
+// ColResizeHandle -- keyed by the same names as ColKey plus the two fixed
+// columns (date/item) and the trailing actions column, none of which are
+// part of ColKey since they're never hidden/reordered.
+const DEFAULT_COUNTS_COL_WIDTHS: Record<string, number> = {
+  date: 78, item: 180, group: 96, qty: 64, by: 76, src: 64, notes: 160, actions: 92,
+}
 
 type Item = { id: number; item_name: string; cf_group: string | null; product_type?: string | null }
 
@@ -407,6 +415,7 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
   const [pairingPrompt, setPairingPrompt] = useState<PairingPrompt | null>(null)
   const promptPairing = (itemName: string, packs: PackRef[], retry: () => void) => setPairingPrompt({ itemName, packs, retry })
   const colPrefs = useColumnPrefs<ColKey>('countsTable', COUNTS_COLUMNS)
+  const { widths: colWidths, resize: resizeCol, resetOne: resetColWidth } = useResizableWidths('countsTableColWidths', DEFAULT_COUNTS_COL_WIDTHS)
 
   function loadRecords() {
     fetch('/api/stock/counts').then(r => r.json()).then(d => { setRecords(d); setLoading(false) })
@@ -666,15 +675,36 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
       )}
       {!showAnalytics && <div className="flex-1 overflow-y-auto min-h-0 px-2 pb-2">
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <table className="w-full border-collapse text-[10px]">
+        <div className="overflow-x-auto">
+        <table className="border-collapse text-[10px]" style={{
+          tableLayout: 'fixed',
+          width: colWidths.date + colWidths.item + colPrefs.shownColumns.reduce((s, c) => s + (colWidths[c.key] ?? 80), 0) + colWidths.actions,
+        }}>
+          <colgroup>
+            <col style={{ width: colWidths.date }} />
+            <col style={{ width: colWidths.item }} />
+            {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: colWidths[c.key] ?? 80 }} />)}
+            <col style={{ width: colWidths.actions }} />
+          </colgroup>
           <thead className="sticky top-0 bg-gray-50 z-10">
             <tr>
-              <th className="text-left px-2.5 py-2 font-bold text-gray-500 uppercase tracking-wide border-b border-gray-200 whitespace-nowrap">Date</th>
-              <th className="text-left px-2.5 py-2 font-bold text-gray-500 uppercase tracking-wide border-b border-gray-200">Item</th>
+              <th className="relative text-left px-2.5 py-2 font-bold text-gray-500 uppercase tracking-wide border-b border-gray-200 overflow-hidden">
+                <span className="block truncate">Date</span>
+                <ColResizeHandle onResize={d => resizeCol('date', d)} onReset={() => resetColWidth('date')} />
+              </th>
+              <th className="relative text-left px-2.5 py-2 font-bold text-gray-500 uppercase tracking-wide border-b border-gray-200 overflow-hidden">
+                <span className="block truncate">Item</span>
+                <ColResizeHandle onResize={d => resizeCol('item', d)} onReset={() => resetColWidth('item')} />
+              </th>
               {colPrefs.shownColumns.map(c => (
-                <th key={c.key} className={`${c.key === 'qty' ? 'text-center' : 'text-left'} px-2.5 py-2 font-bold text-gray-500 uppercase tracking-wide border-b border-gray-200`}>{c.label}</th>
+                <th key={c.key} className={`relative px-2.5 py-2 font-bold text-gray-500 uppercase tracking-wide border-b border-gray-200 overflow-hidden ${c.key === 'qty' ? 'text-center' : 'text-left'}`}>
+                  <span className="block truncate">{c.label}</span>
+                  <ColResizeHandle onResize={d => resizeCol(c.key, d)} onReset={() => resetColWidth(c.key)} />
+                </th>
               ))}
-              <th className="px-2.5 py-2 border-b border-gray-200" />
+              <th className="relative px-2.5 py-2 border-b border-gray-200 overflow-hidden">
+                <ColResizeHandle onResize={d => resizeCol('actions', d)} onReset={() => resetColWidth('actions')} />
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -682,20 +712,20 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
               <>
                 <tr key={r.id} id={`count-${r.id}`}
                   className={`transition-colors ${highlightId === r.id ? 'bg-yellow-50' : i % 2 === 1 ? 'bg-gray-50/60' : 'bg-white'} hover:bg-blue-50/40`}>
-                  <td className="px-2.5 py-1.5 text-gray-500 whitespace-nowrap border-b border-gray-100">{fmtShort(r.count_date)}</td>
-                  <td className="px-2.5 py-1.5 text-gray-900 font-semibold border-b border-gray-100">
+                  <td className="px-2.5 py-1.5 text-gray-500 truncate border-b border-gray-100">{fmtShort(r.count_date)}</td>
+                  <td className="px-2.5 py-1.5 text-gray-900 font-semibold border-b border-gray-100 overflow-hidden">
                     {r.item_id ? (
-                      <Link href={`/item?tab=loss&view=item360&jumpItemId=${r.item_id}`} className="text-blue-600 hover:underline">{r.item_name}</Link>
-                    ) : r.item_name}
+                      <Link href={`/item?tab=loss&view=item360&jumpItemId=${r.item_id}`} className="block truncate text-blue-600 hover:underline">{r.item_name}</Link>
+                    ) : <span className="block truncate">{r.item_name}</span>}
                   </td>
                   {colPrefs.shownColumns.map(c => {
-                    if (c.key === 'group') return <td key={c.key} className="px-2.5 py-1.5 text-gray-500 border-b border-gray-100">{r.cf_group ?? '—'}</td>
-                    if (c.key === 'qty') return <td key={c.key} className="px-2.5 py-1.5 text-center font-bold text-gray-900 border-b border-gray-100">{Number(r.quantity_counted)}</td>
-                    if (c.key === 'by') return <td key={c.key} className="px-2.5 py-1.5 text-blue-600 font-medium border-b border-gray-100">{r.counted_by ?? '—'}</td>
-                    if (c.key === 'src') return <td key={c.key} className="px-2.5 py-1.5 text-gray-500 border-b border-gray-100">{r.source ?? '—'}</td>
-                    return <td key={c.key} className="px-2.5 py-1.5 text-gray-500 italic border-b border-gray-100">{r.notes ?? '—'}</td>
+                    if (c.key === 'group') return <td key={c.key} className="px-2.5 py-1.5 text-gray-500 truncate border-b border-gray-100">{r.cf_group ?? '—'}</td>
+                    if (c.key === 'qty') return <td key={c.key} className="px-2.5 py-1.5 text-center font-bold text-gray-900 truncate border-b border-gray-100">{Number(r.quantity_counted)}</td>
+                    if (c.key === 'by') return <td key={c.key} className="px-2.5 py-1.5 text-blue-600 font-medium truncate border-b border-gray-100">{r.counted_by ?? '—'}</td>
+                    if (c.key === 'src') return <td key={c.key} className="px-2.5 py-1.5 text-gray-500 truncate border-b border-gray-100">{r.source ?? '—'}</td>
+                    return <td key={c.key} className="px-2.5 py-1.5 text-gray-500 italic truncate border-b border-gray-100">{r.notes ?? '—'}</td>
                   })}
-                  <td className="px-2.5 py-1.5 border-b border-gray-100">
+                  <td className="px-2.5 py-1.5 border-b border-gray-100 overflow-hidden">
                     <div className="flex gap-1 justify-end whitespace-nowrap">
                       <button onClick={() => editingId === r.id ? setEditingId(null) : startEdit(r)}
                         className="text-[9px] text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded-full hover:bg-blue-100 transition">
@@ -741,6 +771,7 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
           </tbody>
         </table>
         {filtered.length === 0 && <p className="text-[10px] text-gray-400 text-center py-10">No records</p>}
+        </div>
         </div>
       </div>}
     </div>

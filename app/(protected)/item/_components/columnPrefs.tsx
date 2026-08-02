@@ -102,6 +102,60 @@ export function useColumnPrefs<K extends string>(storageKey: string, columns: Co
   return { columns, visibleCols, colOrder, columnLabels, shownColumns, toggleCol, moveCol, renameColumn, resetVisible }
 }
 
+// Drag-to-resize column widths -- separate from useColumnPrefs above
+// (visibility/order/labels) since not every table that uses those needs
+// resizing too. Widths are in pixels, persisted per table via their own
+// localStorage key. Only takes effect where the caller renders its table
+// with `tableLayout: fixed` and a matching <colgroup> (see CountsTab.tsx).
+export function useResizableWidths(storageKey: string, defaults: Record<string, number>) {
+  const [widths, setWidths] = useState<Record<string, number>>(() => {
+    if (typeof window === 'undefined') return defaults
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey) ?? 'null')
+      if (saved && typeof saved === 'object') return { ...defaults, ...saved }
+    } catch { /* ignore malformed storage */ }
+    return defaults
+  })
+  useEffect(() => {
+    localStorage.setItem(storageKey, JSON.stringify(widths))
+  }, [widths, storageKey])
+
+  function resize(key: string, deltaPx: number) {
+    setWidths(prev => ({ ...prev, [key]: Math.max(36, Math.round((prev[key] ?? defaults[key] ?? 80) + deltaPx)) }))
+  }
+  function resetOne(key: string) {
+    setWidths(prev => ({ ...prev, [key]: defaults[key] }))
+  }
+  return { widths, resize, resetOne }
+}
+
+// A thin draggable strip pinned to a header cell's right edge -- the cell
+// itself needs `relative` positioning for this to sit correctly. Pointer
+// Events (not mouse events) so a drag keeps tracking even once the pointer
+// leaves this 8px-wide handle, and the same code path handles touch too.
+// Double-click resets that one column back to its default width.
+export function ColResizeHandle({ onResize, onReset }: { onResize: (deltaPx: number) => void; onReset?: () => void }) {
+  const lastX = useRef(0)
+  return (
+    <span
+      onPointerDown={e => {
+        e.preventDefault()
+        e.stopPropagation()
+        lastX.current = e.clientX
+        ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+      }}
+      onPointerMove={e => {
+        if (e.buttons !== 1) return
+        const delta = e.clientX - lastX.current
+        if (delta !== 0) { onResize(delta); lastX.current = e.clientX }
+      }}
+      onDoubleClick={onReset}
+      title="Drag to resize, double-click to reset"
+      className="absolute top-0 right-0 z-10 h-full w-2 -mr-1 cursor-col-resize touch-none select-none hover:bg-blue-400/40 active:bg-blue-500/60"
+    />
+  )
+}
+
 export type ExtraToggle = { key: string; label: string; active: boolean; onToggle: () => void }
 
 // `dark` is for the one instance sitting directly on Grony Cash's own deep
