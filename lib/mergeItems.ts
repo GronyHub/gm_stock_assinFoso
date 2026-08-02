@@ -90,7 +90,11 @@ export async function mergeItems(loserId: number, winnerId: number, finalName?: 
   `.catch(() => {})
   await sql`DELETE FROM pack_tradeoffs WHERE item_id = ${loserId}`.catch(() => {})
 
-  await sql`UPDATE items SET status = 'Inactive' WHERE id = ${loserId}`
+  // track_inventory=true alone is enough for item_stock_summary (and so the
+  // main Items table) to keep showing a row regardless of status -- without
+  // clearing it too, a merged-away loser can keep leaking into the main
+  // list forever even though its data correctly moved to the winner.
+  await sql`UPDATE items SET status = 'Inactive', track_inventory = false WHERE id = ${loserId}`
 
   const trimmedFinalName = typeof finalName === 'string' ? finalName.trim() : ''
   let finalMergedName = winner.canonical_name
