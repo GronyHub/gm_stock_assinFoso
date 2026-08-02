@@ -39,6 +39,7 @@ type EditLine = { id: number | null; itemId: number | null; item_name: string; q
 
 const MONTHS = ['Ja','Fe','Mr','Ap','My','Ju','Jl','Au','Se','Oc','No','De']
 const DAYS   = ['Su','Mo','Tu','We','Th','Fr','Sa']
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
 function fmtShort(dateStr: string) {
   const d = new Date(dateStr)
@@ -287,6 +288,11 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
   // unchecking one drops every bar of that customer type from the list.
   const [showW, setShowW] = useState(true)
   const [showG, setShowG] = useState(true)
+  // Narrows the list to one month/year (either alone, or combined) --
+  // independent of the text search box above, which still searches within
+  // whatever this narrows down to.
+  const [monthFilter, setMonthFilter] = useState<number | null>(null)
+  const [yearFilter, setYearFilter] = useState<number | null>(null)
   const [linesMap, setLinesMap] = useState<Record<number, Line[]>>({})
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState({ receipt_date: '', customer_name: '', cash_counted: '' })
@@ -349,10 +355,31 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
     return new Set(items.filter(i => (i.cf_group ?? 'Ungrouped') === groupFilter).map(i => i.item_name))
   }, [items, groupFilter])
 
+  // Years derived from the data itself (not a hardcoded range), so the
+  // dropdown only ever offers years that actually have receipts.
+  const availableYears = useMemo(() => {
+    const years = new Set<number>()
+    for (const r of receipts) {
+      const y = r.receipt_date ? Number(r.receipt_date.slice(0, 4)) : NaN
+      if (!isNaN(y)) years.add(y)
+    }
+    return Array.from(years).sort((a, b) => b - a)
+  }, [receipts])
+
   const filtered = useMemo(() => {
     let list = receipts
     if (!showW || !showG) {
       list = list.filter(r => fmtCust(r.customer_name) === 'W' ? showW : showG)
+    }
+    if (monthFilter || yearFilter) {
+      list = list.filter(r => {
+        const d = r.receipt_date?.slice(0, 10)
+        if (!d) return false
+        const [y, m] = d.split('-').map(Number)
+        if (yearFilter && y !== yearFilter) return false
+        if (monthFilter && m !== monthFilter) return false
+        return true
+      })
     }
     if (groupItemNames) {
       list = list.filter(r => (linesMap[r.id] ?? []).some(l => groupItemNames.has(l.item_name)))
@@ -375,7 +402,7 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
       return rank(a) - rank(b)
     })
     return list
-  }, [receipts, linesMap, groupItemNames, search, showW, showG])
+  }, [receipts, linesMap, groupItemNames, search, showW, showG, monthFilter, yearFilter])
 
   function toggleExpanded(id: number) {
     setExpandedIds(prev => {
@@ -707,6 +734,28 @@ export default function SalesTab({ items, groupFilter, search, violation, jumpTo
         </button>
         <ColumnsPickerButton prefs={colPrefs} />
       </div>
+    </div>
+    {/* Own row, separate from the toggles above -- narrows the list by
+        month/year independently of the W/G/search filters, which still
+        apply within whatever this narrows down to. */}
+    <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
+      <span className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide">Period</span>
+      <select value={monthFilter ?? ''} onChange={e => setMonthFilter(e.target.value ? Number(e.target.value) : null)}
+        className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1.5 py-0.5 outline-none">
+        <option value="">All Months</option>
+        {MONTH_NAMES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+      </select>
+      <select value={yearFilter ?? ''} onChange={e => setYearFilter(e.target.value ? Number(e.target.value) : null)}
+        className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1.5 py-0.5 outline-none">
+        <option value="">All Years</option>
+        {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+      </select>
+      {(monthFilter !== null || yearFilter !== null) && (
+        <button onClick={() => { setMonthFilter(null); setYearFilter(null) }}
+          className="text-[9px] font-semibold text-blue-600 hover:text-blue-700">
+          Clear
+        </button>
+      )}
     </div>
     {/* overflow-auto (not just -y) so this single element handles both
         scroll directions -- nesting a separate overflow-x-auto div inside
