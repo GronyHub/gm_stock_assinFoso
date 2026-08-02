@@ -46,11 +46,10 @@ function fmtDate(iso: string) {
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-400'
 const labelCls = 'text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5 block'
 
-// Number stays sticky/always-visible (first column); these are the only
-// ones the picker can hide/reorder/rename.
-type ColKey = 'type' | 'customer' | 'phone' | 'location' | 'date' | 'items' | 'total'
+type ColKey = 'number' | 'type' | 'customer' | 'phone' | 'location' | 'date' | 'items' | 'total'
 type ReceiptColumn = ColumnDef<ColKey> & { align: 'left' | 'right'; tdClass: string; render: (r: Receipt) => ReactNode }
 const RECEIPT_COLUMNS: ReceiptColumn[] = [
+  { key: 'number', label: 'Number', align: 'left', tdClass: 'font-semibold text-gray-900', render: r => r.invoice_number },
   { key: 'type', label: 'Type', align: 'left', tdClass: '', render: r =>
       r.document_type === 'Invoice'
         ? <span className="text-[9px] font-bold uppercase tracking-wide text-blue-700 bg-blue-50 rounded px-1.5 py-0.5">Invoice</span>
@@ -497,16 +496,13 @@ export default function ReceiptsPage() {
         ) : (
           <table className="border-collapse text-xs" style={{
             tableLayout: 'fixed',
-            width: colPrefs.getWidth('number', RECEIPTS_COL_DEFAULTS.number)
-              + colPrefs.shownColumns.reduce((s, c) => s + colPrefs.getWidth(c.key, RECEIPTS_COL_DEFAULTS[c.key] ?? 100), 0),
+            width: colPrefs.shownColumns.reduce((s, c) => s + colPrefs.getWidth(c.key, RECEIPTS_COL_DEFAULTS[c.key] ?? 100), 0),
           }}>
             <colgroup>
-              <col style={{ width: colPrefs.getWidth('number', RECEIPTS_COL_DEFAULTS.number) }} />
               {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: colPrefs.getWidth(c.key, RECEIPTS_COL_DEFAULTS[c.key] ?? 100) }} />)}
             </colgroup>
             <thead>
               <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
-                <ResizableTh onResize={d => colPrefs.resizeWidth('number', d, RECEIPTS_COL_DEFAULTS.number)} onReset={() => colPrefs.resetWidth('number')}>Number</ResizableTh>
                 {colPrefs.shownColumns.map((col, i) => (
                   <ResizableTh key={col.key} align={RECEIPT_COL_BY_KEY.get(col.key)!.align} noDivider={i === colPrefs.shownColumns.length - 1}
                     onResize={d => colPrefs.resizeWidth(col.key, d, RECEIPTS_COL_DEFAULTS[col.key] ?? 100)} onReset={() => colPrefs.resetWidth(col.key)}>
@@ -519,7 +515,6 @@ export default function ReceiptsPage() {
               {filtered.map((r, i) => (
                 <tr key={r.id} onClick={() => setSelected(r === selected ? null : r)}
                   className={`cursor-pointer transition ${selected?.id === r.id ? 'bg-blue-50' : i % 2 === 1 ? 'bg-gray-50/60 hover:bg-blue-50/40' : 'hover:bg-blue-50/40'}`}>
-                  <td className="px-3 py-2 font-semibold text-gray-900 truncate">{r.invoice_number}</td>
                   {colPrefs.shownColumns.map(col => {
                     const meta = RECEIPT_COL_BY_KEY.get(col.key)!
                     return (
