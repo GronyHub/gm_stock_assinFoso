@@ -39,7 +39,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         receipt_date  = COALESCE(${receipt_date  ?? null}::date, receipt_date),
         customer_name = COALESCE(${customer_name ?? null}, customer_name),
         total         = COALESCE(${invoice_amount ?? null}, total),
-        cash_counted  = ${cash_counted ?? null},
+        cash_counted  = COALESCE(${cash_counted ?? null}, cash_counted),
         attachments   = COALESCE(${attachmentsJson}::jsonb, attachments)
       WHERE id = ${Number(id)}
       RETURNING id, receipt_date::date AS receipt_date, customer_name, total AS invoice_amount, cash_counted,
