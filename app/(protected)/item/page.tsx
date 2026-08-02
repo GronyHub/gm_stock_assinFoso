@@ -210,7 +210,7 @@ type Item = {
   calculated_soh: number
 }
 
-type ErrorCategory = 'loss' | 'sales' | 'cab' | 'staff'
+type ErrorCategory = 'loss' | 'sales' | 'bills' | 'cab' | 'staff'
 
 // Every violation type in the app, in one place -- each one now surfaces as
 // a pill directly on the Grony Cash submenu it actually belongs to (see
@@ -298,6 +298,10 @@ const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCategory; d
     description: 'A walk-in receipt for this day has no photo or scan of the written form attached. Attach it from that receipt\'s Edit Receipt form, or use Bulk Attach Forms to catch up a whole month at once.',
   },
   {
+    key: 'no_vendor', label: 'No Vendor', category: 'bills',
+    description: 'This bill has no vendor recorded, so it is unclear who it was purchased from. Open the bill and enter the vendor it was actually bought from.',
+  },
+  {
     key: 'unchecked_cab', label: 'Unchecked CAB', category: 'cab',
     description: 'A week has passed without anyone confirming the Cash at Bank entry, so nobody has verified that the bank balance matches what the shop expects. Review that week and confirm it.',
   },
@@ -321,6 +325,7 @@ const VIOLATION_HOME: Partial<Record<string, LossView>> = {
   daily: 'counts', '7day': 'counts', '15day': 'counts',
   gains: 'feed',
   no_cash: 'sales', missing_days: 'sales', cost_price: 'sales', dup_receipt: 'sales', no_attachment: 'sales',
+  no_vendor: 'bills',
   unchecked_cab: 'cab',
 }
 
@@ -335,6 +340,7 @@ const LOSSVIEW_PILL_KEYS: Partial<Record<LossView, string[]>> = {
   counts: ['daily', '7day', '15day'],
   feed: ['gains'],
   sales: ['no_cash', 'missing_days', 'cost_price', 'dup_receipt', 'no_attachment'],
+  bills: ['no_vendor'],
   cab: ['unchecked_cab'],
 }
 
@@ -365,6 +371,12 @@ const ITEMS_FLAG_TYPES: { key: string; letter: string; label: string }[] = [
   { key: 'alias_prezoho_bills', letter: 'B', label: 'Pre-Zoho Bills Aliases' },
   { key: 'alias_flagged', letter: 'F', label: 'Flagged Aliases' },
   { key: 'alias_ambiguous', letter: 'M', label: 'Ambiguous Aliases' },
+]
+
+// Bills' one flag category so far -- same treatment as Sales/Items, kept as
+// a list of one so adding a second category later is just another entry.
+const BILLS_FLAG_TYPES: { key: string; letter: string; label: string }[] = [
+  { key: 'no_vendor', letter: 'V', label: 'No Vendor Recorded' },
 ]
 
 const VALID_TABS: OuterTab[] = ['today', 'loss', 'uk', 'ch']
@@ -648,6 +660,7 @@ function ItemHubPageInner() {
       cost_price: f?.costGteSell?.length ?? 0,
       dup_receipt: f?.dupReceipts?.length ?? 0,
       no_attachment: f?.noAttachment?.length ?? 0,
+      no_vendor: f?.noVendorBills?.length ?? 0,
       daily: pendingCounts.daily,
       '7day': pendingCounts.gmcWeekly,
       '15day': pendingCounts.overdue,
@@ -674,6 +687,7 @@ function ItemHubPageInner() {
     'no_group', 'duplicates', 'not_in_inventory', 'neg_soh', 'no_sp', 'no_cp', 'unlinked_named', 'service_violation',
     'alias_prezoho_sales', 'alias_prezoho_bills', 'alias_flagged', 'alias_ambiguous',
   ])
+  const billsFlagsCount = violationCountByType(['no_vendor'])
   const cabFlagsCount = violationCountByType(['unchecked_cab'])
   const staffTimesFlagsCount = violationCountByType(['no_staff_times'])
   const dressFlagsCount = violationCountByType(['shirt_not_worn', 'shirt_overdue'])
@@ -1110,6 +1124,7 @@ function ItemHubPageInner() {
                   active={paneActive(lossView === v.key)}
                   badge={v.key === 'sales' ? salesFlagsCount
                     : v.key === 'items' ? itemsFlagsCount
+                    : v.key === 'bills' ? billsFlagsCount
                     : v.key === 'cab' ? cabFlagsCount
                     : v.key === 'counts' ? countsFlagsCount
                     : v.key === 'feed' ? lossByDateFlagsCount
@@ -1430,14 +1445,15 @@ function ItemHubPageInner() {
                   </div>
                 )}
 
-                {/* Items'/Sales' own flag categories -- a dedicated wrapping
-                    row so a long list (Items has 11) drops to further lines
-                    instead of overflowing off-screen or fighting the Columns/
-                    Analytics/New row above for width. Small + compact so as
-                    many as possible sit on one line before wrapping. */}
-                {!showAnalytics && (lossView === 'items' || lossView === 'sales') && (
+                {/* Items'/Sales'/Bills' own flag categories -- a dedicated
+                    wrapping row so a long list (Items has 11) drops to
+                    further lines instead of overflowing off-screen or
+                    fighting the Columns/Analytics/New row above for width.
+                    Small + compact so as many as possible sit on one line
+                    before wrapping. */}
+                {!showAnalytics && (lossView === 'items' || lossView === 'sales' || lossView === 'bills') && (
                   <div className="flex flex-wrap items-center gap-1">
-                    {(lossView === 'items' ? ITEMS_FLAG_TYPES : SALES_FLAG_TYPES).map(({ key, letter, label }) => {
+                    {(lossView === 'items' ? ITEMS_FLAG_TYPES : lossView === 'sales' ? SALES_FLAG_TYPES : BILLS_FLAG_TYPES).map(({ key, letter, label }) => {
                       const count = violationCounts[key] ?? 0
                       const active = violation === key
                       return (
@@ -1695,10 +1711,8 @@ function ItemHubPageInner() {
           <TabErrorBoundary><div className="px-3 pt-3"><BillsAnalyticsSection /></div></TabErrorBoundary>
         )}
         {!showAnalytics && addForm !== 'bill' && outerTab === 'loss' && lossView === 'bills' && (
-          <>
-            <div className="px-3 pt-2"><DynamicTasksSection scopeKey="Bills" /></div>
-            <BillsTab items={items} groupFilter={group} search={search} />
-          </>
+          <BillsTab items={items} groupFilter={group} search={search}
+            violation={pillKeys?.includes(violation ?? '') ? violation : null} />
         )}
         {outerTab === 'loss' && lossView === 'counts' && (
           <CountsTab items={items} groupFilter={group} search={search}

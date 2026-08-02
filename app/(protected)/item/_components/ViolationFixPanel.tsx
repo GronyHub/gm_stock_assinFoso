@@ -1,6 +1,7 @@
 'use client'
 import ItemsTab from './ItemsTab'
 import SalesTab from './SalesTab'
+import BillsTab from './BillsTab'
 import CountsTab from './CountsTab'
 import LossFeedTab from './LossFeedTab'
 import CABTab from './CABTab'
@@ -25,6 +26,7 @@ const ITEMS_TYPES = new Set([
   'alias_prezoho_sales', 'alias_prezoho_bills', 'alias_flagged', 'alias_ambiguous',
 ])
 const SALES_TYPES = new Set(['no_cash', 'missing_days', 'cost_price', 'dup_receipt', 'no_attachment'])
+const BILLS_TYPES = new Set(['no_vendor'])
 const COUNTS_TYPES = new Set(['daily', '7day', '15day'])
 
 type Props = {
@@ -42,6 +44,9 @@ export default function ViolationFixPanel({ type, items, onItemsChanged }: Props
   }
   if (SALES_TYPES.has(type)) {
     return <SalesTab items={items} groupFilter={null} search="" violation={type} />
+  }
+  if (BILLS_TYPES.has(type)) {
+    return <BillsTab items={items} groupFilter={null} search="" violation={type} />
   }
   if (COUNTS_TYPES.has(type)) {
     return <CountsTab items={items} groupFilter={null} search="" violation={type} />

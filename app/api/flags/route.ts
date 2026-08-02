@@ -110,6 +110,7 @@ export async function GET() {
     dupReceipts,
     unlinkedNamed,
     noAttachment,
+    noVendorBills,
   ] = await Promise.all([
 
     // 1. Walk-in customers with no cash counted
@@ -307,6 +308,14 @@ export async function GET() {
         AND (attachments IS NULL OR jsonb_array_length(attachments) = 0)
       ORDER BY receipt_date DESC
     `),
+
+    // 12. Bills with no vendor recorded
+    safeQuery(() => sql`
+      SELECT id, bill_number, bill_date::text AS bill_date, total
+      FROM bills
+      WHERE vendor_name IS NULL OR TRIM(vendor_name) = ''
+      ORDER BY bill_date DESC
+    `),
   ])
 
   const filteredDups = duplicates.filter((r: any) => shouldKeepPair(r.name1, r.name2))
@@ -399,6 +408,6 @@ export async function GET() {
     noCash, missingDays, duplicates: filteredDups, costGteSell, notInInventory, noGroup, noStaffTimes,
     uncheckedCab, dupReceipts, unlinkedNamed, groupNames: groupNames.map((r: any) => r.group_name),
     noAdvert, jingleOverdue, equipmentCheckOverdue, missingClosingReports,
-    shirtNotWorn, shirtOverdue, noAttachment,
+    shirtNotWorn, shirtOverdue, noAttachment, noVendorBills,
   })
 }

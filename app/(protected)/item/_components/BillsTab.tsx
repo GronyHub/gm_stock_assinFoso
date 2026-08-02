@@ -12,7 +12,7 @@ type Item = { id: number; item_name: string; cf_group: string | null }
 type ColKey = 'quantity' | 'unitPrice' | 'itemTotal'
 const COLUMNS: ColumnDef<ColKey>[] = [
   { key: 'quantity',  label: 'QTY' },
-  { key: 'unitPrice', label: 'COST PRICE' },
+  { key: 'unitPrice', label: 'CP' },
   { key: 'itemTotal', label: 'TOTAL' },
 ]
 const BILLS_COL_DEFAULTS: Record<string, number> = { item: 200, quantity: 70, unitPrice: 100, itemTotal: 100 }
@@ -58,6 +58,7 @@ type FlatRow = {
 
 const MONTHS = ['Ja','Fe','Mr','Ap','My','Ju','Jl','Au','Se','Oc','No','De']
 const DAYS   = ['Su','Mo','Tu','We','Th','Fr','Sa']
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
 function fmtShort(dateStr: string) {
   const d = new Date(dateStr)
@@ -72,13 +73,56 @@ function fmt(val: string | null) {
 
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
 
+type NoVendorRow = { id: number; bill_number: string; bill_date: string; total: string }
+
+// Fix view for the "no_vendor" flag -- one row per bill missing a vendor,
+// with an inline input to set it (same PUT /api/bills/[id] the group bar's
+// ✏️ edit form already uses).
+function NoVendorFix({ b, onFixed }: { b: NoVendorRow; onFixed: (id: number) => void }) {
+  const [vendor, setVendor] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  async function save() {
+    if (!vendor.trim()) { setError('Enter a vendor name.'); return }
+    setSaving(true)
+    setError('')
+    const res = await fetch(`/api/bills/${b.id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vendor_name: vendor.trim() }),
+    })
+    setSaving(false)
+    if (res.ok) onFixed(b.id)
+    else setError('Could not save. Try again.')
+  }
+
+  return (
+    <div className="px-2 py-2 space-y-1.5">
+      <div className="flex items-center gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] font-semibold text-gray-700 truncate">{b.bill_number} · {fmtShort(b.bill_date)}</p>
+          <p className="text-[9px] text-gray-400">₵{fmt(b.total)}</p>
+        </div>
+        <input value={vendor} onChange={e => setVendor(e.target.value)} placeholder="Vendor name" autoComplete="off"
+          className="w-32 bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] outline-none focus:ring-1 focus:ring-blue-400" />
+        <button onClick={save} disabled={saving}
+          className="shrink-0 text-[9px] font-bold px-2 py-1 rounded bg-green-600 text-white disabled:opacity-40">
+          {saving ? '…' : 'Save'}
+        </button>
+      </div>
+      {error && <p className="text-[9px] text-red-600">{error}</p>}
+    </div>
+  )
+}
+
 type Props = {
   items: Item[]
   groupFilter: string | null
   search: string
+  violation?: string | null
 }
 
-export default function BillsTab({ items, groupFilter, search }: Props) {
+export default function BillsTab({ items, groupFilter, search, violation = null }: Props) {
   const [bills, setBills] = useState<Bill[]>([])
   const [loading, setLoading] = useState(true)
   const [showHistory, setShowHistory] = useState(false)
@@ -88,7 +132,27 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
   const [editingBillId, setEditingBillId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState({ bill_date: '', vendor_name: '' })
   const [saving, setSaving] = useState(false)
+  // Collapses every group down to just its header bar (Date/Vendor/Total) --
+  // the item lines beneath stay hidden until toggled back on, same pattern
+  // as Sales' Bars Only.
+  const [barsOnly, setBarsOnly] = useState(false)
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  // Narrows the list to one vendor and/or one month/year, independent of the
+  // text search box above (which still searches within whatever this
+  // narrows down to).
+  const [vendorFilter, setVendorFilter] = useState<string | null>(null)
+  const [monthFilter, setMonthFilter] = useState<number | null>(null)
+  const [yearFilter, setYearFilter] = useState<number | null>(null)
+  // null doubles as "loading" -- no separate loading flag needed since
+  // there's nothing to distinguish "not fetched yet" from "fetching".
+  const [flags, setFlags] = useState<{ noVendorBills: NoVendorRow[] } | null>(null)
   const colPrefs = useColumnPrefs<ColKey>('billsTab', COLUMNS)
+
+  useEffect(() => {
+    if (violation === 'no_vendor' && !flags) {
+      fetch('/api/flags').then(r => r.ok ? r.json() : null).then(d => { if (d) setFlags(d) })
+    }
+  }, [violation, flags])
 
   function loadBills() {
     Promise.all([
@@ -166,10 +230,40 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
     return new Set(items.filter(i => (i.cf_group ?? 'Ungrouped') === groupFilter).map(i => i.item_name))
   }, [items, groupFilter])
 
+  // Vendor names and years derived from the data itself (not a hardcoded
+  // list), so the dropdowns only ever offer options that actually occur.
+  const availableVendors = useMemo(() => {
+    const names = new Set<string>()
+    for (const b of bills) if (b.vendor_name) names.add(b.vendor_name)
+    return Array.from(names).sort()
+  }, [bills])
+
+  const availableYears = useMemo(() => {
+    const years = new Set<number>()
+    for (const b of bills) {
+      const y = b.bill_date ? Number(b.bill_date.slice(0, 4)) : NaN
+      if (!isNaN(y)) years.add(y)
+    }
+    return Array.from(years).sort((a, b) => b - a)
+  }, [bills])
+
   const filtered = useMemo(() => {
     let list = flatRows
     if (groupItemNames) {
       list = list.filter(r => groupItemNames.has(r.itemName))
+    }
+    if (vendorFilter) {
+      list = list.filter(r => r.vendorName === vendorFilter)
+    }
+    if (monthFilter || yearFilter) {
+      list = list.filter(r => {
+        const d = r.billDate?.slice(0, 10)
+        if (!d) return false
+        const [y, m] = d.split('-').map(Number)
+        if (yearFilter && y !== yearFilter) return false
+        if (monthFilter && m !== monthFilter) return false
+        return true
+      })
     }
     if (search) {
       const q = search.toLowerCase()
@@ -180,7 +274,7 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
       )
     }
     return list
-  }, [flatRows, groupItemNames, search])
+  }, [flatRows, groupItemNames, vendorFilter, monthFilter, yearFilter, search])
 
   // One group per (date, vendor) block -- a bar (Date/Vendor/Total) above
   // its item lines, same pattern as Sales' receipt bar. isDayHead marks the
@@ -218,6 +312,14 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
     setEditingBillId(billId)
   }
 
+  function toggleExpanded(key: string) {
+    setExpandedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key); else next.add(key)
+      return next
+    })
+  }
+
   async function saveEdit(billId: number) {
     setSaving(true)
     const res = await fetch(`/api/bills/${billId}`, {
@@ -233,6 +335,28 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
   }
 
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
+
+  if (violation === 'no_vendor') {
+    const rows = flags?.noVendorBills ?? []
+    return (
+      <div className="overflow-y-auto h-full py-2">
+        <p className="text-[10px] text-gray-400 px-2 mb-1">
+          {!flags ? 'Loading…' : `${rows.length} bill${rows.length !== 1 ? 's' : ''} with no vendor recorded`}
+        </p>
+        {flags && (rows.length === 0
+          ? <p className="py-4 text-center text-gray-400 text-[10px]">Every bill has a vendor recorded.</p>
+          : (
+            <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
+              {rows.map(b => (
+                <NoVendorFix key={b.id} b={b} onFixed={id =>
+                  setFlags(f => f ? { ...f, noVendorBills: f.noVendorBills.filter(x => x.id !== id) } : f)
+                } />
+              ))}
+            </div>
+          ))}
+      </div>
+    )
+  }
 
   if (showHistory) return (
     <div className="flex flex-col h-full min-h-0">
@@ -266,13 +390,47 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center justify-between px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
-        <button onClick={() => setShowHistory(true)}
-          className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700 transition">
-          History
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button onClick={() => setShowHistory(true)}
+            className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700 transition">
+            History
+          </button>
+          <label title="Show only the date/vendor bars, hiding each bill's item lines"
+            className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
+            <input type="checkbox" checked={barsOnly} onChange={() => setBarsOnly(b => !b)}
+              className="w-3 h-3 accent-blue-600" />
+            Bars Only
+          </label>
+        </div>
         <div className="flex items-center gap-1.5">
           <ColumnsPickerButton prefs={colPrefs} />
         </div>
+      </div>
+      {/* Own row, separate from the toggle above -- narrows the list by
+          vendor and/or month/year independently of the search box, which
+          still applies within whatever this narrows down to. */}
+      <div className="flex items-center flex-wrap gap-1.5 px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
+        <select value={vendorFilter ?? ''} onChange={e => setVendorFilter(e.target.value || null)}
+          className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1.5 py-0.5 outline-none max-w-[120px]">
+          <option value="">All Vendors</option>
+          {availableVendors.map(v => <option key={v} value={v}>{v}</option>)}
+        </select>
+        <select value={monthFilter ?? ''} onChange={e => setMonthFilter(e.target.value ? Number(e.target.value) : null)}
+          className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1.5 py-0.5 outline-none">
+          <option value="">All Months</option>
+          {MONTH_NAMES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+        </select>
+        <select value={yearFilter ?? ''} onChange={e => setYearFilter(e.target.value ? Number(e.target.value) : null)}
+          className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1.5 py-0.5 outline-none">
+          <option value="">All Years</option>
+          {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+        </select>
+        {(vendorFilter !== null || monthFilter !== null || yearFilter !== null) && (
+          <button onClick={() => { setVendorFilter(null); setMonthFilter(null); setYearFilter(null) }}
+            className="text-[9px] font-semibold text-blue-600 hover:text-blue-700">
+            Clear
+          </button>
+        )}
       </div>
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="overflow-x-auto">
@@ -329,13 +487,14 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
               }
               return (
                 <Fragment key={g.key}>
-                  <tr className={g.isDayHead ? 'bg-blue-600' : 'bg-gray-50'}>
+                  <tr onClick={() => toggleExpanded(g.key)} title="Show/hide this group's items"
+                    className={`cursor-pointer ${g.isDayHead ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-50 hover:bg-gray-100'}`}>
                     <td colSpan={1 + colPrefs.shownColumns.length} className={`relative ${g.isDayHead ? 'px-1.5 py-2' : 'px-1 py-1'}`}>
                       <div className="flex items-center gap-2">
                         <span className={`whitespace-nowrap ${g.isDayHead ? 'text-white font-semibold' : 'text-gray-600 font-medium'}`}>
                           {fmtShort(g.billDate)}
                         </span>
-                        <button onClick={() => toggleEdit(g.editBillId)} title="Edit this bill"
+                        <button onClick={e => { e.stopPropagation(); toggleEdit(g.editBillId) }} title="Edit this bill"
                           className={`leading-none ${g.isDayHead ? 'text-blue-100 hover:text-white' : 'text-gray-400 hover:text-gray-700'}`}>
                           ✏️
                         </button>
@@ -349,7 +508,7 @@ export default function BillsTab({ items, groupFilter, search }: Props) {
                       </div>
                     </td>
                   </tr>
-                  {g.rows.map(row => (
+                  {(!barsOnly || expandedIds.has(g.key)) && g.rows.map(row => (
                     <tr key={row.key} id={`billrow-${row.billId}`}
                       className={`border-b border-gray-100 text-[13px] font-bold ${row.unresolved ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
                       <td className="px-1 py-1 text-gray-900 overflow-hidden">
