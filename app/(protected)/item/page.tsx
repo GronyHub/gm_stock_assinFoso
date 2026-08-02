@@ -1405,52 +1405,6 @@ function ItemHubPageInner() {
                       ]} />
                     )}
 
-                    {/* Items' 11 flag categories -- same treatment as Sales:
-                        one small button each, a letter beside the flag
-                        identifying which category, and that category's own
-                        count. Clicking jumps straight to that category's fix
-                        view via goToViolation. (not_in_inventory has no fix
-                        view of its own, so it isn't one of these buttons --
-                        see ITEMS_FLAG_TYPES.) */}
-                    {lossView === 'items' && ITEMS_FLAG_TYPES.map(({ key, letter, label }) => {
-                      const count = violationCounts[key] ?? 0
-                      const active = violation === key
-                      return (
-                        <button key={key} onClick={() => goToViolation(key)} title={label}
-                          className={`shrink-0 flex items-center gap-0.5 text-xs font-semibold pl-1.5 pr-2 py-1 rounded-lg transition
-                            ${active ? 'bg-red-600 text-white' : 'text-white hover:bg-white/10'}`}>
-                          <span className="relative leading-none">
-                            {count > 0 ? '🚩' : '🏳️'}
-                            <span className={`absolute -bottom-1 -right-1 text-[7px] font-black leading-none rounded-sm px-[1.5px]
-                              ${count > 0 ? 'bg-white text-red-700' : 'bg-red-700 text-white'}`}>{letter}</span>
-                          </span>
-                          <span className="ml-1">{count > 0 ? count : ''}</span>
-                        </button>
-                      )
-                    })}
-
-                    {/* Sales' 5 flag categories -- one small button each, a
-                        letter beside the flag identifying which category, and
-                        that category's own count. Clicking jumps straight to
-                        that category's fix view via goToViolation (not a
-                        combined assignee-summary panel). */}
-                    {lossView === 'sales' && SALES_FLAG_TYPES.map(({ key, letter, label }) => {
-                      const count = violationCounts[key] ?? 0
-                      const active = violation === key
-                      return (
-                        <button key={key} onClick={() => goToViolation(key)} title={label}
-                          className={`shrink-0 flex items-center gap-0.5 text-xs font-semibold pl-1.5 pr-2 py-1 rounded-lg transition
-                            ${active ? 'bg-red-600 text-white' : 'text-white hover:bg-white/10'}`}>
-                          <span className="relative leading-none">
-                            {count > 0 ? '🚩' : '🏳️'}
-                            <span className={`absolute -bottom-1 -right-1 text-[7px] font-black leading-none rounded-sm px-[1.5px]
-                              ${count > 0 ? 'bg-white text-red-700' : 'bg-red-700 text-white'}`}>{letter}</span>
-                          </span>
-                          <span className="ml-1">{count > 0 ? count : ''}</span>
-                        </button>
-                      )
-                    })}
-
                     {/* Analytics toggle -- swaps this submenu's normal list for the
                         charts/trends that used to live under the removed "Data"
                         tab. Items also carries Violations' charts (no single tab of
@@ -1473,6 +1427,32 @@ function ItemHubPageInner() {
                         </button>
                       )
                     })()}
+                  </div>
+                )}
+
+                {/* Items'/Sales' own flag categories -- a dedicated wrapping
+                    row so a long list (Items has 11) drops to further lines
+                    instead of overflowing off-screen or fighting the Columns/
+                    Analytics/New row above for width. Small + compact so as
+                    many as possible sit on one line before wrapping. */}
+                {!showAnalytics && (lossView === 'items' || lossView === 'sales') && (
+                  <div className="flex flex-wrap items-center gap-1">
+                    {(lossView === 'items' ? ITEMS_FLAG_TYPES : SALES_FLAG_TYPES).map(({ key, letter, label }) => {
+                      const count = violationCounts[key] ?? 0
+                      const active = violation === key
+                      return (
+                        <button key={key} onClick={() => goToViolation(key)} title={label}
+                          className={`shrink-0 flex items-center gap-0.5 text-[9px] font-semibold pl-1 pr-1.5 py-0.5 rounded transition
+                            ${active ? 'bg-red-600 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}>
+                          <span className="relative leading-none">
+                            {count > 0 ? '🚩' : '🏳️'}
+                            <span className={`absolute -bottom-1 -right-1 text-[6px] font-black leading-none rounded-sm px-[1px]
+                              ${count > 0 ? 'bg-white text-red-700' : 'bg-red-700 text-white'}`}>{letter}</span>
+                          </span>
+                          <span className="ml-0.5">{count > 0 ? count : ''}</span>
+                        </button>
+                      )
+                    })}
                   </div>
                 )}
               </div>

@@ -608,7 +608,7 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
     <div className="flex flex-col h-full min-h-0">
       {lossPrompt && <LossDialog prompt={lossPrompt} onClose={() => setLossPrompt(null)} onFixRecords={onFixRecords} />}
       {pairingPrompt && <PairingDialog prompt={pairingPrompt} onClose={() => setPairingPrompt(null)} />}
-      <div className="flex items-center justify-end gap-1.5 px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
+      <div className="flex flex-wrap items-center justify-end gap-1.5 px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
         <AnalyticsToggle showing={showAnalytics} onToggle={() => setShowAnalytics(a => !a)} />
         {!showAnalytics && <>
         {COUNTS_FLAG_TYPES.map(({ key, letter, label }) => {
