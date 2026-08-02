@@ -65,7 +65,7 @@ export async function GET() {
 
   try {
     out.bill_lines_2026_07_30 = await sql`
-      SELECT bl.id, bl.bill_id, bl.item_id, bl.raw_item_name, bl.resolved_name, bl.quantity, bl.rate,
+      SELECT bl.id, bl.bill_id, bl.item_id, bl.raw_item_name, bl.resolved_name, bl.quantity, bl.unit_price, bl.item_total,
              i.canonical_name, i.cf_group, i.status
       FROM bill_lines bl
       JOIN bills b ON b.id = bl.bill_id
@@ -74,6 +74,32 @@ export async function GET() {
       ORDER BY bl.bill_id, bl.id
     `
   } catch (e) { out.bill_lines_error = String(e) }
+
+  try {
+    out.role_permissions_uk = await sql`SELECT role_key, feature_key, allowed FROM role_permissions WHERE feature_key = 'uk'`
+  } catch (e) { out.role_permissions_error = String(e) }
+
+  // SOH for both A4 SHEETS DOUBLE A items, same view the app itself reads from
+  try {
+    out.a4_soh = await sql`
+      SELECT i.id, i.canonical_name, i.status, s.calculated_soh
+      FROM items i LEFT JOIN item_stock_summary s ON s.item_id = i.id
+      WHERE i.id IN (4, 382)
+    `
+  } catch (e) { out.a4_soh_error = String(e) }
+
+  // How many bill/sales lines currently point at each of the two items
+  try {
+    out.a4_line_counts = await sql`
+      SELECT 4 AS item_id,
+        (SELECT COUNT(*)::int FROM bill_lines WHERE item_id = 4) AS bill_lines,
+        (SELECT COUNT(*)::int FROM sales_receipt_lines WHERE item_id = 4) AS sales_lines
+      UNION ALL
+      SELECT 382,
+        (SELECT COUNT(*)::int FROM bill_lines WHERE item_id = 382),
+        (SELECT COUNT(*)::int FROM sales_receipt_lines WHERE item_id = 382)
+    `
+  } catch (e) { out.a4_line_counts_error = String(e) }
 
   return NextResponse.json(out)
 }
