@@ -1722,7 +1722,8 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'loss' && lossView === 'counts' && (
           <CountsTab items={items} groupFilter={group} search={search}
-            violation={pillKeys?.includes(violation ?? '') ? violation : null} onFixRecords={goFixRecords} />
+            violation={pillKeys?.includes(violation ?? '') ? violation : null} onFixRecords={goFixRecords}
+            onGoToViolation={goToViolation} />
         )}
         {/* The gains pill (see LOSSVIEW_PILL_KEYS['feed']) always lands here
             via VIOLATION_HOME['gains'] = 'feed' -- it's a violation to fix,

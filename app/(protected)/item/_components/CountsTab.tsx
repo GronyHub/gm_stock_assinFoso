@@ -8,7 +8,6 @@ import { isOwnerLevel } from '@/lib/roles'
 import HistoryPanel from './HistoryPanel'
 import { AnalyticsToggle } from './analyticsShared'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from './columnPrefs'
-import DynamicTasksSection from './DynamicTasksSection'
 const CountsAnalyticsSection = dynamic(() => import('./CountsAnalyticsSection'), { ssr: false })
 
 // Date and Item stay sticky/always-visible (first two columns), and the
@@ -382,9 +381,22 @@ type Props = {
   search: string
   violation: string | null
   onFixRecords?: (view: 'sales' | 'bills' | 'counts') => void
+  // Jumps straight to a violation's own fix view (here: daily/7day/15day) --
+  // same goToViolation used by Sales/Items' own flag buttons, passed down
+  // since Counts isn't part of their shared green-bar toolbar (it carries
+  // its own toolbar row instead, see the flag buttons below).
+  onGoToViolation?: (key: string) => void
 }
 
-export default function CountsTab({ items, groupFilter, search, violation, onFixRecords }: Props) {
+// Counts' 3 flag categories -- same treatment as Sales/Items' own flag
+// buttons, just rendered in Counts' own toolbar instead of the shared bar.
+const COUNTS_FLAG_TYPES: { key: 'daily' | '7day' | '15day'; letter: string; label: string }[] = [
+  { key: 'daily', letter: 'D', label: 'Daily Counts' },
+  { key: '7day', letter: '7', label: '7-Day Counts' },
+  { key: '15day', letter: '15', label: '15-Day Counts' },
+]
+
+export default function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoToViolation }: Props) {
   const { data: session } = useSession()
   const canDelete = isOwnerLevel(session?.user as any)
   const [records, setRecords] = useState<CountRecord[]>([])
@@ -404,12 +416,6 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
   // section -- shown here since CountsTab is the shared component behind
   // both the Grony Cash lossView and the standalone /counts page.
   const [showAnalytics, setShowAnalytics] = useState(false)
-  // One flag icon in the normal toolbar opens a combined summary of Counts'
-  // own violation types (daily/7day/15day), each linking into its existing
-  // full list view -- these aren't in the assignable/auto-penalty system,
-  // so no AssignWidget here, just visibility.
-  const [flagsSummary, setFlagsSummary] = useState<null | 'summary' | 'daily' | '7day' | '15day'>(null)
-  const effectiveViolation = violation ?? (flagsSummary && flagsSummary !== 'summary' ? flagsSummary : null)
   const [lossPrompt, setLossPrompt] = useState<LossPrompt | null>(null)
   const promptLoss = (d: any, retry: (extra: LossExtra) => void) => setLossPrompt({ d, retry })
   const [pairingPrompt, setPairingPrompt] = useState<PairingPrompt | null>(null)
@@ -516,21 +522,13 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
 
   // Daily/15-Day violation views
-  if (effectiveViolation === 'daily' || effectiveViolation === '7day' || effectiveViolation === '15day') {
-    const countItems = effectiveViolation === 'daily' ? filteredDaily : effectiveViolation === '7day' ? filteredGmcWeekly : filteredOverdue
-    const label = effectiveViolation === 'daily' ? 'daily' : effectiveViolation === '7day' ? '7-day GMC' : '15-day overdue'
+  if (violation === 'daily' || violation === '7day' || violation === '15day') {
+    const countItems = violation === 'daily' ? filteredDaily : violation === '7day' ? filteredGmcWeekly : filteredOverdue
+    const label = violation === 'daily' ? 'daily' : violation === '7day' ? '7-day GMC' : '15-day overdue'
     return (
       <div className="overflow-y-auto h-full py-2">
         {lossPrompt && <LossDialog prompt={lossPrompt} onClose={() => setLossPrompt(null)} onFixRecords={onFixRecords} />}
         {pairingPrompt && <PairingDialog prompt={pairingPrompt} onClose={() => setPairingPrompt(null)} />}
-        {!violation && (
-          <div className="flex px-2 pb-1">
-            <button onClick={() => setFlagsSummary('summary')}
-              className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-red-600 text-white transition">
-              ← Back to Flags
-            </button>
-          </div>
-        )}
         <div className="flex justify-end px-2 pb-1">
           <button onClick={() => setShowManual(v => !v)}
             className="text-[9px] font-semibold px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-500 transition">
@@ -563,49 +561,14 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
               {countItems.map(item => (
                 <CountRow key={item.item_id} item={item} onLoss={promptLoss} onPairing={promptPairing}
                   onSaved={id => {
-                    if (effectiveViolation === 'daily') setDailyItems(prev => prev.filter(i => i.item_id !== id))
-                    else if (effectiveViolation === '7day') setGmcWeeklyItems(prev => prev.filter(i => i.item_id !== id))
+                    if (violation === 'daily') setDailyItems(prev => prev.filter(i => i.item_id !== id))
+                    else if (violation === '7day') setGmcWeeklyItems(prev => prev.filter(i => i.item_id !== id))
                     else setOverdueItems(prev => prev.filter(i => i.item_id !== id))
                   }} />
               ))}
             </tbody>
           </table>
         )}
-      </div>
-    )
-  }
-
-  // ── COMBINED FLAGS VIEW ── one flag icon covering Counts' own violation
-  // types together, each linking into its existing full list view.
-  if (!violation && flagsSummary === 'summary') {
-    const rows = [
-      { type: 'daily' as const, count: filteredDaily.length, label: 'item(s) not yet counted today' },
-      { type: '7day' as const, count: filteredGmcWeekly.length, label: 'GMC item(s) overdue for the 7-day count' },
-      { type: '15day' as const, count: filteredOverdue.length, label: 'item(s) overdue for the 15-day count' },
-    ]
-    return (
-      <div className="flex flex-col h-full min-h-0">
-        <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0">
-          <button onClick={() => setFlagsSummary(null)}
-            className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-red-600 text-white transition">
-            ← Back
-          </button>
-          <span className="text-[9px] font-semibold text-red-700">🚩 Counts Flags</span>
-        </div>
-        <div className="flex-1 overflow-y-auto p-2 space-y-2">
-          <DynamicTasksSection scopeKey="Counts" />
-          {rows.map(r => (
-            <div key={r.type} className="bg-white border border-gray-200 rounded-xl p-2.5 flex items-center justify-between gap-2">
-              <p className="text-[10px] text-gray-500">
-                {dailyLoading ? 'Loading…' : `${r.count} ${r.label}`}
-              </p>
-              <button onClick={() => setFlagsSummary(r.type)}
-                className="shrink-0 text-[9px] font-semibold px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition">
-                View
-              </button>
-            </div>
-          ))}
-        </div>
       </div>
     )
   }
@@ -648,10 +611,22 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
       <div className="flex items-center justify-end gap-1.5 px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
         <AnalyticsToggle showing={showAnalytics} onToggle={() => setShowAnalytics(a => !a)} />
         {!showAnalytics && <>
-        <button onClick={() => setFlagsSummary('summary')} title="Counts flags"
-          className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-700 transition">
-          🚩
-        </button>
+        {COUNTS_FLAG_TYPES.map(({ key, letter, label }) => {
+          const count = key === 'daily' ? filteredDaily.length : key === '7day' ? filteredGmcWeekly.length : filteredOverdue.length
+          const active = violation === key
+          return (
+            <button key={key} onClick={() => onGoToViolation?.(key)} title={label}
+              className={`shrink-0 flex items-center gap-0.5 text-[9px] font-semibold pl-1 pr-1.5 py-0.5 rounded transition
+                ${active ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-700'}`}>
+              <span className="relative leading-none">
+                {count > 0 ? '🚩' : '🏳️'}
+                <span className={`absolute -bottom-1 -right-1 text-[6px] font-black leading-none rounded-sm px-[1px]
+                  ${count > 0 ? 'bg-white text-red-700' : 'bg-red-700 text-white'}`}>{letter}</span>
+              </span>
+              <span className="ml-0.5">{count > 0 ? count : ''}</span>
+            </button>
+          )
+        })}
         <button onClick={() => setShowManual(v => !v)}
           className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-600 text-white hover:bg-blue-500 transition">
           {showManual ? '× Close' : '+ Manual Count'}

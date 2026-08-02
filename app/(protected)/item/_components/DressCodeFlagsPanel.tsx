@@ -33,9 +33,31 @@ export default function DressCodeFlagsPanel() {
     byStaff.get(r.staff_name)!.push(r.work_date)
   }
 
+  // Same 🚩/🏳️ + letter + count treatment as Sales/Items/Counts' flag
+  // buttons -- both sections already show together on this page (no
+  // separate fix view to jump to), so clicking just scrolls to it.
+  const flagButtons: { id: string; letter: string; label: string; count: number }[] = [
+    { id: 'dress-not-worn', letter: 'W', label: 'Dress Code (Not Worn)', count: byStaff.size },
+    { id: 'dress-overdue', letter: 'O', label: 'Dress Code (T-Shirt Overdue)', count: overdue.length },
+  ]
+
   return (
     <div className="p-3 space-y-4">
-      <div className="space-y-2">
+      <div className="flex items-center gap-1.5">
+        {flagButtons.map(({ id, letter, label, count }) => (
+          <button key={id} title={label}
+            onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            className="shrink-0 flex items-center gap-0.5 text-[9px] font-semibold pl-1 pr-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-700 transition">
+            <span className="relative leading-none">
+              {count > 0 ? '🚩' : '🏳️'}
+              <span className={`absolute -bottom-1 -right-1 text-[6px] font-black leading-none rounded-sm px-[1px]
+                ${count > 0 ? 'bg-white text-red-700' : 'bg-red-700 text-white'}`}>{letter}</span>
+            </span>
+            <span className="ml-0.5">{count > 0 ? count : ''}</span>
+          </button>
+        ))}
+      </div>
+      <div id="dress-not-worn" className="space-y-2">
         <p className="text-xs text-gray-400">
           Staff who own a company t-shirt but were logged by the Closer as not wearing it. Penalty points build up automatically once someone racks up repeat lapses.
         </p>
@@ -60,7 +82,7 @@ export default function DressCodeFlagsPanel() {
         )}
       </div>
 
-      <div className="space-y-2">
+      <div id="dress-overdue" className="space-y-2">
         <p className="text-xs text-gray-400">Staff who don&apos;t yet own a company t-shirt, past their given due date.</p>
         {overdue.length === 0 ? (
           <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-green-600 font-semibold">Nothing flagged ✓</div>
