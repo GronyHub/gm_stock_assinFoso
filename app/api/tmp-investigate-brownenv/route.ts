@@ -22,7 +22,7 @@ export async function GET() {
 
     const stockCounts = ids.length
       ? await sql`
-          SELECT id, item_id, item_name, count_date, qty, created_at
+          SELECT id, item_id, item_name, count_date, quantity_counted, notes, source, counted_by
           FROM stock_counts WHERE item_id = ANY(${ids})
           ORDER BY item_id, count_date DESC
         `
