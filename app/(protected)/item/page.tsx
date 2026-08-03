@@ -488,6 +488,12 @@ function ItemHubPageInner() {
     sales?: { id: number; receipt_number: string | null; customer_name: string | null; receipt_date: string }[]
     bills?: { id: number; bill_number: string | null; vendor_name: string | null; bill_date: string }[]
     announcements?: { id: number; body: string; author: string; created_at: string }[]
+    // Only ever populated for accounts with UK/C&H access -- the API route
+    // itself decides that server-side (same Roles & Permissions features
+    // gating the Biz/UK/C&H icons), not just this UI hiding them.
+    ukSubmenus?: { id: number; person: string; name: string }[]
+    ukEntries?: { row_id: number; submenu_id: number; person: string; submenu_name: string; column_name: string; value: string }[]
+    chLogs?: { id: number; category: string; category_label: string; notes: string; log_date: string; logged_by: string }[]
   } | null>(null)
   // Fed into CustomersPage/VendorsPage as initialSearch when a result from
   // one of those categories is picked -- those pages own their own search
@@ -1897,6 +1903,7 @@ function ItemHubPageInner() {
                 const r = globalSearchResults
                 const totalCount = (r.items?.length ?? 0) + (r.customers?.length ?? 0) + (r.vendors?.length ?? 0)
                   + (r.sales?.length ?? 0) + (r.bills?.length ?? 0) + (r.announcements?.length ?? 0)
+                  + (r.ukSubmenus?.length ?? 0) + (r.ukEntries?.length ?? 0) + (r.chLogs?.length ?? 0)
                 if (totalCount === 0 && navMatches.length === 0) return <p className="p-4 text-center text-xs text-gray-400">No matches</p>
                 return (<>
                   {!!r.items?.length && (
@@ -1971,6 +1978,48 @@ function ItemHubPageInner() {
                           className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
                           {a.body || '(no text)'}
                           <span className="text-gray-400 text-xs ml-1.5">· {a.author}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {/* UK/C&H only ever arrive here for accounts the API route
+                      itself decided can see them -- see /api/search's
+                      canSeeUK/canSeeCH gating. */}
+                  {!!r.ukSubmenus?.length && (
+                    <div>
+                      <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">UK</p>
+                      {r.ukSubmenus.map(s => (
+                        <button key={s.id}
+                          onClick={() => { changeTab('uk'); uk.pickPerson(s.person as typeof uk.person); uk.pickSubmenu(s.id); closeGlobalSearch() }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
+                          {s.name}
+                          <span className="text-gray-400 text-xs ml-1.5">· {s.person}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {!!r.ukEntries?.length && (
+                    <div>
+                      <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">UK entries</p>
+                      {r.ukEntries.map(e => (
+                        <button key={`${e.row_id}-${e.column_name}`}
+                          onClick={() => { changeTab('uk'); uk.pickPerson(e.person as typeof uk.person); uk.pickSubmenu(e.submenu_id); closeGlobalSearch() }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
+                          {e.value}
+                          <span className="text-gray-400 text-xs ml-1.5">· {e.submenu_name} · {e.column_name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {!!r.chLogs?.length && (
+                    <div>
+                      <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">C&amp;H</p>
+                      {r.chLogs.map(l => (
+                        <button key={l.id}
+                          onClick={() => { changeTab('ch'); setLossView(l.category as LossView); closeGlobalSearch() }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
+                          {l.notes}
+                          <span className="text-gray-400 text-xs ml-1.5">· {l.category_label} · {l.log_date}</span>
                         </button>
                       ))}
                     </div>
