@@ -1072,77 +1072,46 @@ function ItemHubPageInner() {
   const viewingName = viewingNameOverride ?? myStaffName ?? ''
   const viewingSelf = viewingName.toLowerCase() === (myStaffName ?? '').toLowerCase()
 
-  // Every real submenu under Grony Cash, Grony Manage, and the account
-  // (person icon) menu -- three separate, tagged lists rather than one
-  // flat one, since both the global search's "Go to" section AND the
-  // Tasks panel's blue bars (see RoleFlagsTable's allSubmenus prop) need
-  // this same set. Keeping it in exactly one place is the point: add a
-  // submenu here and it shows up in both places on its own, instead of
-  // two separately-maintained lists drifting apart (which is what
-  // happened to "Daily Loss" vs "Loss" before this).
-  const cashSubmenus: { label: string; action: () => void }[] = [
-    { label: 'Items', action: () => pickLossView('items') },
-    { label: 'Sales', action: () => pickLossView('sales') },
-    { label: 'Bills', action: () => pickLossView('bills') },
-    { label: 'Loss by Date', action: () => pickLossView('feed') },
-    { label: 'Loss by Item', action: () => pickLossView('lossByItem') },
-    { label: 'Loss by Target', action: () => pickLossView('lossByTarget') },
-    { label: 'Expenses', action: () => pickLossView('expenses') },
-    ...(canSeePL ? [{ label: 'P&L', action: () => pickLossView('pl') }] : []),
-    { label: 'CAB', action: () => pickLossView('cab') },
-    { label: 'Vendors', action: () => pickLossView('vendors') },
-    { label: 'Customers', action: () => pickLossView('customers') },
-    { label: 'Receipts', action: () => pickLossView('receipts') },
-    { label: 'Daily', action: () => pickLossView('dailySummary') },
-    { label: 'Counts', action: () => pickLossView('counts') },
-    { label: 'Purchase Orders', action: () => pickLossView('purchaseOrders') },
-    { label: 'Alias Wide Table', action: () => { pickLossView('items'); setItemsExtraView('aliasWide') } },
-    { label: 'Service Matches', action: () => { pickLossView('items'); setItemsExtraView('serviceMatches') } },
-    { label: 'Item 360', action: () => pickLossView('item360') },
-  ]
-  const manageSubmenus: { label: string; action: () => void }[] = [
-    { label: 'Rota', action: () => pickLossView('rota') },
-    { label: 'Audio', action: () => pickLossView('audio') },
-    { label: 'Advert Status', action: () => pickLossView('audio_status') },
-    { label: 'Jingle Log', action: () => pickLossView('jingle') },
-    { label: 'Equipment Check', action: () => pickLossView('equipment') },
-    { label: 'Photoshop', action: () => pickLossView('photoshop') },
-    { label: 'WhatsApp', action: () => pickLossView('whatsapp') },
-    { label: 'Cuttings', action: () => pickLossView('cuttings') },
-    { label: 'Video', action: () => pickLossView('video') },
-    { label: 'Advert Daily Log', action: () => pickLossView('advert_log') },
-    { label: 'Dress Code', action: () => pickLossView('staff_dress') },
-    { label: 'Arrangement', action: () => pickLossView('arrangement') },
-    { label: 'Cleanliness', action: () => pickLossView('cleanliness') },
-    { label: 'Future', action: () => pickLossView('future') },
-    { label: 'Customer Display', action: () => pickLossView('customer_display') },
-    { label: 'Staff Display', action: () => pickLossView('staff_display') },
-    { label: 'Repair Works', action: () => pickLossView('repair_works') },
-    { label: 'Quality Assurance', action: () => pickLossView('quality_assurance') },
-    { label: 'Tutorial', action: () => pickLossView('tutorial') },
-    { label: 'Company Laws', action: () => pickLossView('training_laws') },
-    { label: 'Assessment', action: () => pickLossView('assessment') },
-    { label: 'Logs', action: () => pickLossView('logs') },
-  ]
-
-
   // Every tab/sub-tab/menu/page the global search can jump to directly --
   // matched and ranked ahead of the data categories below (Items/
   // Customers/etc.) so typing e.g. "sales" lands on the Sales tab itself
   // rather than making you scroll past item/customer/vendor name matches
   // first. Recomputed each render rather than memoized -- it's a small
   // array of cheap closures, not worth the dependency-list upkeep.
+  //
+  // Built directly off the same canonical lists (CASH_ITEMS/
+  // MANAGE_LIST_ITEMS/STAFF_PERSONAL_ITEMS/STAFF_TEAM_ITEMS/CH_ITEMS) and
+  // the same permission gates that decide what actually shows in the pane
+  // -- this used to be three separately hand-typed label/action lists that
+  // drifted out of sync with the real pane contents (new Manage categories
+  // like Staff Meeting, all of Team's rows, every C&H category, and the
+  // Settings-only pages were never added here), which is exactly why most
+  // pages weren't turning up in search. Deriving from the source arrays
+  // means anything added there is searchable with zero extra upkeep here.
   const navDestinations: { label: string; action: () => void }[] = [
     { label: 'Home', action: () => changeTab('today') },
-    { label: 'Grony Cash', action: () => pickLossView('items') },
-    { label: 'Grony Manage', action: () => pickLossView('audio') },
-    ...(myStaffName ? [{ label: myStaffName, action: () => pickLossView('staffTimes') }] : []),
+    ...(canSeeCash ? [
+      ...CASH_ITEMS.filter(v => v.key !== 'pl' || canSeePL).map(v => ({ label: v.label, action: () => pickLossView(v.key) })),
+      { label: 'Daily', action: () => pickLossView('dailySummary') },
+      { label: 'Alias Wide Table', action: () => { pickLossView('items'); setItemsExtraView('aliasWide') } },
+      { label: 'Service Matches', action: () => { pickLossView('items'); setItemsExtraView('serviceMatches') } },
+    ] : []),
+    ...(canSeeManage ? MANAGE_LIST_ITEMS.map(v => ({ label: v.label, action: () => pickLossView(v.key) })) : []),
+    ...(myStaffName ? [
+      ...STAFF_PERSONAL_ITEMS.filter(t => viewingSelf || (t.key !== 'staffPayslips' && t.key !== 'staffViolations'))
+        .map(t => ({ label: t.label, action: () => pickLossView(t.key) })),
+      { label: 'Profile', action: () => pickLossView('staffProfile') },
+    ] : []),
+    ...(canSeeTeam ? STAFF_TEAM_ITEMS.map(t => ({ label: t.label, action: () => pickLossView(t.key) })) : []),
+    ...(canSeeUsers || canManage ? [{ label: 'Users & Roles', action: () => pickLossView('users') }] : []),
+    ...(canAddCategory ? [{ label: 'Manage Categories', action: () => pickLossView('manageCategories') }] : []),
+    ...(canViewPortalAs ? [{ label: 'View Portal As', action: () => pickLossView('viewPortalAs') }] : []),
+    ...(canManage ? [{ label: 'Reorder Lists', action: () => pickLossView('reorderLists') }] : []),
     ...(canSeeUK ? [{ label: 'UK', action: () => changeTab('uk') }] : []),
-    ...(canSeeCH ? [{ label: 'C&H', action: () => changeTab('ch') }] : []),
-    ...cashSubmenus,
-    ...manageSubmenus,
-    { label: 'Opener', action: () => pickLossView('opener') },
-    { label: 'Closer', action: () => pickLossView('closer') },
+    ...(canSeeCH ? [
+      { label: 'C&H', action: () => changeTab('ch') },
+      ...CH_ITEMS.map(item => ({ label: item.label, action: () => { changeTab('ch'); setLossView(item.key as LossView) } })),
+    ] : []),
   ]
   const navQuery = globalSearchQuery.trim().toLowerCase()
   const navMatches = navQuery
