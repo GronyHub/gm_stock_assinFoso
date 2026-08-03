@@ -197,7 +197,7 @@ export default function FlaggedTimesReviewPage() {
 
           <div className="space-y-2">
             <h2 className="text-sm font-semibold text-gray-700">
-              No Staff Times Recorded {noStaffTimes.length > 0 && <span className="text-gray-400 font-normal">({noStaffTimes.length})</span>}
+              No Team Times Recorded {noStaffTimes.length > 0 && <span className="text-gray-400 font-normal">({noStaffTimes.length})</span>}
             </h2>
             <p className="text-xs text-gray-400">Days that have a sales receipt but no staff time was entered.</p>
             <NoStaffTimesList dates={noStaffTimes} role={role} username={username}

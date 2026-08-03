@@ -218,7 +218,7 @@ type Item = {
   calculated_soh: number
 }
 
-type ErrorCategory = 'loss' | 'sales' | 'bills' | 'cab' | 'staff'
+type ErrorCategory = 'loss' | 'sales' | 'bills' | 'cab' | 'team'
 
 // Every violation type in the app, in one place -- each one now surfaces as
 // a pill directly on the Grony Cash submenu it actually belongs to (see
@@ -322,7 +322,7 @@ const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCategory; d
     description: 'A week has passed without anyone confirming the Cash at Bank entry, so nobody has verified that the bank balance matches what the shop expects. Review that week and confirm it.',
   },
   {
-    key: 'no_staff_times', label: 'No Staff Times', category: 'staff',
+    key: 'no_staff_times', label: 'No Team Times', category: 'team',
     description: 'This day has sales recorded but no staff clock-in/out times were entered, so there is no record of who was actually working. Add the missing staff times for that day.',
   },
 ]

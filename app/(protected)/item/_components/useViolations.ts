@@ -17,7 +17,7 @@ export const SHORT_LABEL: Record<string, string> = {
   missing_days: 'Sales Receipts',
   no_cash: 'Cash Counts',
   cost_gte_sell: 'Cost Prices',
-  no_staff_times: 'Staff Times',
+  no_staff_times: 'Team Times',
   unchecked_cab: 'Cash at Bank',
   no_group: 'Item Groups',
   duplicates: 'Duplicate Items',
@@ -103,7 +103,7 @@ export const SUBMENU_HOME: Record<string, string> = {
   no_vendor: 'Bills',
   high_wnw: 'Sales',
   unchecked_cab: 'CAB',
-  no_staff_times: 'Staff',
+  no_staff_times: 'Team',
   no_advert: 'Advert', jingle_overdue: 'Advert', equipment_check_overdue: 'Advert',
   shirt_not_worn: 'Dress Code', shirt_overdue: 'Dress Code',
 }
@@ -159,7 +159,7 @@ export function useViolations(counts?: Record<string, number>) {
     })
     if (flags.noStaffTimes?.length) list.push({
       type: 'no_staff_times',
-      label: 'day' + (flags.noStaffTimes.length !== 1 ? 's' : '') + ' with no staff times recorded',
+      label: 'day' + (flags.noStaffTimes.length !== 1 ? 's' : '') + ' with no team times recorded',
       count: flags.noStaffTimes.length, days: oldestDays(flags.noStaffTimes, 'missing_date'),
     })
     if (flags.uncheckedCab?.length) list.push({
