@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { fmtDate } from '@/lib/fmtDate'
 import HistoryPanel from '../item/_components/HistoryPanel'
@@ -201,13 +202,28 @@ function AttendanceHistory() {
   )
 }
 
-export default function StaffTimesPage() {
+function StaffTimesPageInner() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const { data: session } = useSession()
   const role = (session?.user as any)?.role
   const username = ((session?.user as any)?.username ?? session?.user?.name ?? '').toLowerCase()
   const isAdmin = role === 'owner' || role === 'admin' || username === 'rawlings' || username === 'grony' || username === 'joe'
 
-  const [tab, setTab] = useState<Tab>('Time In')
+  const rawInitialTab = searchParams.get('tab')
+  const [tab, setTab] = useState<Tab>(
+    (TABS as readonly string[]).includes(rawInitialTab ?? '') ? (rawInitialTab as Tab) : 'Time In'
+  )
+
+  // A refresh (or the back button) should land back on whichever tab you
+  // were looking at instead of always resetting to Time In.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (tab !== 'Time In') params.set('tab', tab); else params.delete('tab')
+    const qs = params.toString()
+    router.replace(qs ? `/staff-times?${qs}` : '/staff-times', { scroll: false })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab])
   const [mine, setMine] = useState<Mine | null>(null)
   const [today, setToday] = useState<StaffRow[]>([])
   const [all, setAll] = useState<RecentRow[]>([])
@@ -584,5 +600,13 @@ export default function StaffTimesPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function StaffTimesPage() {
+  return (
+    <Suspense fallback={<div className="py-10 text-center text-gray-400 text-sm">Loading…</div>}>
+      <StaffTimesPageInner />
+    </Suspense>
   )
 }
