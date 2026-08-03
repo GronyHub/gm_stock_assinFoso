@@ -1659,7 +1659,10 @@ function ItemHubPageInner() {
               onGoToViolation={goToViolation}
               missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
               onOpenStaff={() => pickLossView('staffTimes')}
-              staffRoster={STAFF_ROSTER} routablePages={routablePages} />
+              staffRoster={STAFF_ROSTER} routablePages={routablePages}
+              openerBadgeCount={openerBadgeCount} dressFlagsCount={dressFlagsCount}
+              jingleFlagsCount={jingleFlagsCount} equipmentFlagsCount={equipmentFlagsCount}
+              advertStatusFlagsCount={advertStatusFlagsCount} />
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && STAFF_VIEW_KEYS.has(lossView) && (
@@ -1671,7 +1674,7 @@ function ItemHubPageInner() {
               // otherwise leak into TimesTab/PayslipsTab's own local
               // state across accounts.
               <>
-                {lossView === 'staffTimes' && <div className="px-4 pt-2"><PageToolIcons scopeKey={myStaffName} /></div>}
+                {lossView === 'staffTimes' && <div className="px-4 pt-2"><PageToolIcons scopeKey={myStaffName} flagsCount={staffTimesFlagsCount} /></div>}
                 <StaffContent key={myStaffName} view={lossView as StaffView}
                   viewingName={viewingName} role={role} username={username}
                   canSeeTeam={canSeeTeam} canSeeUsers={canSeeUsers} canSeeRoles={canManage} />
@@ -1704,7 +1707,7 @@ function ItemHubPageInner() {
         {showAnalytics && outerTab === 'loss' && lossView === 'expenses' && (
           <TabErrorBoundary><div className="px-3 pt-3"><ExpensesAnalyticsSection /></div></TabErrorBoundary>
         )}
-        {outerTab === 'loss' && lossView === 'cab' && <CABTab />}
+        {outerTab === 'loss' && lossView === 'cab' && <CABTab flagsCount={cabFlagsCount} />}
         {/* Items pill selected -> ItemsTab's filtered fix view; otherwise the
             submenu's normal content (LossTab). Same swap pattern for
             Sales/Counts/Feed below -- each of those already knows how to
@@ -1772,24 +1775,27 @@ function ItemHubPageInner() {
         {showAnalytics && outerTab === 'loss' && lossView === 'sales' && (
           <TabErrorBoundary><div className="px-3 pt-3"><SalesAnalyticsSection /></div></TabErrorBoundary>
         )}
-        {!showAnalytics && addForm !== 'sale' && addForm !== 'live' && addForm !== 'liveLog' && outerTab === 'loss' && lossView === 'sales' && (
+        {!showAnalytics && addForm !== 'sale' && addForm !== 'live' && addForm !== 'liveLog' && outerTab === 'loss' && lossView === 'sales' && (<>
+          {!violation && <div className="px-3 pt-2"><PageToolIcons scopeKey="Sales" flagsCount={salesFlagsCount} /></div>}
           <SalesTab items={items} groupFilter={group} search={search}
             violation={pillKeys?.includes(violation ?? '') ? violation : null}
             jumpToDate={jumpToReceiptDate} jumpToItemName={jumpToReceiptItemName}
             onJumpDone={() => { setJumpToReceiptDate(null); setJumpToReceiptItemName(null) }} />
-        )}
+        </>)}
         {showAnalytics && outerTab === 'loss' && lossView === 'bills' && (
           <TabErrorBoundary><div className="px-3 pt-3"><BillsAnalyticsSection /></div></TabErrorBoundary>
         )}
-        {!showAnalytics && addForm !== 'bill' && outerTab === 'loss' && lossView === 'bills' && (
+        {!showAnalytics && addForm !== 'bill' && outerTab === 'loss' && lossView === 'bills' && (<>
+          {!violation && <div className="px-3 pt-2"><PageToolIcons scopeKey="Bills" flagsCount={billsFlagsCount} /></div>}
           <BillsTab items={items} groupFilter={group} search={search}
             violation={pillKeys?.includes(violation ?? '') ? violation : null} />
-        )}
-        {outerTab === 'loss' && lossView === 'counts' && (
+        </>)}
+        {outerTab === 'loss' && lossView === 'counts' && (<>
+          {!violation && <div className="px-3 pt-2"><PageToolIcons scopeKey="Counts" flagsCount={countsFlagsCount} /></div>}
           <CountsTab items={items} groupFilter={group} search={search}
             violation={pillKeys?.includes(violation ?? '') ? violation : null} onFixRecords={goFixRecords}
             onGoToViolation={goToViolation} />
-        )}
+        </>)}
         {/* The gains pill (see LOSSVIEW_PILL_KEYS['feed']) always lands here
             via VIOLATION_HOME['gains'] = 'feed' -- it's a violation to fix,
             not a way of browsing losses, so this view shows the gain feed
@@ -1810,7 +1816,7 @@ function ItemHubPageInner() {
                 </button>
               </div>
             )}
-            {!violation && <div className="px-3 pt-2"><PageToolIcons scopeKey="Loss by Date" /></div>}
+            {!violation && <div className="px-3 pt-2"><PageToolIcons scopeKey="Loss by Date" flagsCount={lossByDateFlagsCount} /></div>}
             <LossFeedTab search={search} kind={(violation === 'gains' || feedShowGains) ? 'gain' : 'loss'} />
           </TabErrorBoundary>
         )}
