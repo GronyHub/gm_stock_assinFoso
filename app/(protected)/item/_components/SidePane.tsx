@@ -96,7 +96,15 @@ export function SidePaneButton({ icon, label, active, mode, onClick, badge, clas
           ? <span className="text-base leading-none">{icon ?? '•'}</span>
           : <span className="leading-none">{icon}</span>
       )}
-      {mode !== 'icon' && <span className="line-clamp-2">{label}</span>}
+      {/* `items-center` on the flex-col button above sizes children to
+          their own content instead of stretching them, so without an
+          explicit w-full a label that's one long word (no spaces to wrap
+          at -- exactly what free-typed submenu names often are) sizes
+          wider than the button, gets centered, and has both ends clipped
+          by line-clamp's overflow:hidden -- showing only its middle/tail
+          ("Urgent" as "rgent"). w-full forces the real width so
+          break-words can actually wrap it instead. */}
+      {mode !== 'icon' && <span className="w-full break-words line-clamp-2">{label}</span>}
       {!!badge && badge > 0 && (
         <span className="absolute top-0.5 right-0.5 flex items-center justify-center min-w-[14px] h-[14px] px-0.5 text-[8px] font-bold leading-none rounded-full bg-red-600 text-white">
           {badge > 99 ? '99+' : badge}
