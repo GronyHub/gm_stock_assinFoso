@@ -30,6 +30,7 @@ export const SHORT_LABEL: Record<string, string> = {
   dup_receipts: 'Duplicate Receipts',
   no_attachment: 'Missing Attachments',
   no_vendor: 'Bills Missing Vendor',
+  high_wnw: 'WNW Over ₵200',
   daily: 'Daily Counts',
   '7day': '7-Day Counts',
   '15day': '15-Day Counts',
@@ -62,7 +63,7 @@ const ALL_ERROR_TYPES = [
   'neg_soh', 'no_sp', 'no_cp', 'no_group', 'duplicates', 'not_in_inventory',
   'alias_prezoho_sales', 'alias_prezoho_bills', 'alias_prezoho_receipts', 'alias_flagged', 'alias_ambiguous',
   'unlinked_named', 'service_violation', 'gains', 'daily', '7day', '15day',
-  'no_cash', 'missing_days', 'cost_gte_sell', 'dup_receipts', 'no_attachment', 'no_vendor',
+  'no_cash', 'missing_days', 'cost_gte_sell', 'dup_receipts', 'no_attachment', 'no_vendor', 'high_wnw',
   'unchecked_cab', 'no_staff_times', 'no_advert', 'jingle_overdue', 'equipment_check_overdue',
   'shirt_not_worn', 'shirt_overdue',
 ]
@@ -100,6 +101,7 @@ export const SUBMENU_HOME: Record<string, string> = {
   gains: 'Loss by Date',
   no_cash: 'Sales', missing_days: 'Sales', cost_price: 'Sales', dup_receipt: 'Sales', no_attachment: 'Sales',
   no_vendor: 'Bills',
+  high_wnw: 'Sales',
   unchecked_cab: 'CAB',
   no_staff_times: 'Staff',
   no_advert: 'Advert', jingle_overdue: 'Advert', equipment_check_overdue: 'Advert',
@@ -223,6 +225,11 @@ export function useViolations(counts?: Record<string, number>) {
       type: 'no_vendor',
       label: 'bill' + (flags.noVendorBills.length !== 1 ? 's' : '') + ' with no vendor recorded',
       count: flags.noVendorBills.length, days: oldestDays(flags.noVendorBills, 'bill_date'),
+    })
+    if (flags.highWnw?.length) list.push({
+      type: 'high_wnw',
+      label: 'receipt' + (flags.highWnw.length !== 1 ? 's' : '') + ' with WNW over ₵200',
+      count: flags.highWnw.length, days: oldestDays(flags.highWnw, 'receipt_date'),
     })
     if (flags.noAdvert?.length) list.push({
       type: 'no_advert',

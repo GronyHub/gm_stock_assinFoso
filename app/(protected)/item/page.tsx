@@ -302,6 +302,10 @@ const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCategory; d
     description: 'A walk-in receipt for this day has no photo or scan of the written form attached. Attach it from that receipt\'s Edit Receipt form, or use Bulk Attach Forms to catch up a whole month at once.',
   },
   {
+    key: 'high_wnw', label: 'High WNW', category: 'sales',
+    description: 'This receipt\'s cash counted exceeds its recorded total by more than ₵200 -- an unusually large excess. Recount the cash, and check whether a sale was made but never itemized on the receipt.',
+  },
+  {
     key: 'no_vendor', label: 'No Vendor', category: 'bills',
     description: 'This bill has no vendor recorded, so it is unclear who it was purchased from. Open the bill and enter the vendor it was actually bought from.',
   },
@@ -328,7 +332,7 @@ const VIOLATION_HOME: Partial<Record<string, LossView>> = {
   alias_prezoho_sales: 'items', alias_prezoho_bills: 'items', alias_prezoho_receipts: 'items', alias_flagged: 'items', alias_ambiguous: 'items',
   daily: 'counts', '7day': 'counts', '15day': 'counts',
   gains: 'feed',
-  no_cash: 'sales', missing_days: 'sales', cost_price: 'sales', dup_receipt: 'sales', no_attachment: 'sales',
+  no_cash: 'sales', missing_days: 'sales', cost_price: 'sales', dup_receipt: 'sales', no_attachment: 'sales', high_wnw: 'sales',
   no_vendor: 'bills',
   unchecked_cab: 'cab',
 }
@@ -343,12 +347,12 @@ const LOSSVIEW_PILL_KEYS: Partial<Record<LossView, string[]>> = {
   ],
   counts: ['daily', '7day', '15day'],
   feed: ['gains'],
-  sales: ['no_cash', 'missing_days', 'cost_price', 'dup_receipt', 'no_attachment'],
+  sales: ['no_cash', 'missing_days', 'cost_price', 'dup_receipt', 'no_attachment', 'high_wnw'],
   bills: ['no_vendor'],
   cab: ['unchecked_cab'],
 }
 
-// Sales' 5 flag categories, in the order shown on the green bar -- letter is
+// Sales' 6 flag categories, in the order shown on the green bar -- letter is
 // the small identifier drawn beside the flag icon (see the sales button
 // block below), label is its tooltip.
 const SALES_FLAG_TYPES: { key: string; letter: string; label: string }[] = [
@@ -357,6 +361,7 @@ const SALES_FLAG_TYPES: { key: string; letter: string; label: string }[] = [
   { key: 'cost_price', letter: 'P', label: 'Cost ≥ Selling Price' },
   { key: 'dup_receipt', letter: 'D', label: 'Duplicate Receipts' },
   { key: 'no_attachment', letter: 'A', label: 'No Attachment' },
+  { key: 'high_wnw', letter: 'H', label: 'WNW Over ₵200' },
 ]
 
 // Items' 11 flag categories -- same treatment as Sales. `not_in_inventory`
@@ -669,6 +674,7 @@ function ItemHubPageInner() {
       cost_price: f?.costGteSell?.length ?? 0,
       dup_receipt: f?.dupReceipts?.length ?? 0,
       no_attachment: f?.noAttachment?.length ?? 0,
+      high_wnw: f?.highWnw?.length ?? 0,
       no_vendor: f?.noVendorBills?.length ?? 0,
       daily: pendingCounts.daily,
       '7day': pendingCounts.gmcWeekly,
@@ -691,7 +697,7 @@ function ItemHubPageInner() {
   // number on the button is never out of step with what you'd see there.
   const violationCountByType = (types: string[]) =>
     cashViolations.filter(v => types.includes(v.type)).reduce((s, v) => s + v.count, 0)
-  const salesFlagsCount = violationCountByType(['no_cash', 'missing_days', 'cost_gte_sell', 'dup_receipts', 'no_attachment'])
+  const salesFlagsCount = violationCountByType(['no_cash', 'missing_days', 'cost_gte_sell', 'dup_receipts', 'no_attachment', 'high_wnw'])
   const itemsFlagsCount = violationCountByType([
     'no_group', 'duplicates', 'not_in_inventory', 'neg_soh', 'no_sp', 'no_cp', 'unlinked_named', 'service_violation',
     'alias_prezoho_sales', 'alias_prezoho_bills', 'alias_prezoho_receipts', 'alias_flagged', 'alias_ambiguous',

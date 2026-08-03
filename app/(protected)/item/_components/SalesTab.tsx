@@ -142,6 +142,38 @@ function NoCashFix({ r, onFixed }: { r: any; onFixed: (id: number) => void }) {
   )
 }
 
+type HighWnwRow = {
+  id: number; receipt_number: string; receipt_date: string; customer_name: string | null
+  cash_counted: string; invoice_amount: string; wnw: string
+}
+
+function HighWnwFix({ r, onFixed }: { r: HighWnwRow; onFixed: (id: number) => void }) {
+  const [cash, setCash] = useState('')
+  const [saving, setSaving] = useState(false)
+  async function save() {
+    if (!cash) return
+    setSaving(true)
+    await fetch(`/api/sales/${r.id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cash_counted: Number(cash) }),
+    })
+    setSaving(false)
+    onFixed(r.id)
+  }
+  return (
+    <FixRow label={r.receipt_number}
+      sub={`${fmtDate(r.receipt_date)} · CC ₵${Number(r.cash_counted).toFixed(2)} · Total ₵${Number(r.invoice_amount).toFixed(2)} · WNW +₵${Number(r.wnw).toFixed(2)}`}>
+      <p className="text-[9px] text-gray-400">Recount the cash, or check whether a sale was made but never itemized on this receipt.</p>
+      <input type="number" min="0" step="0.01" inputMode="decimal" placeholder="Corrected cash counted (₵)"
+        value={cash} onChange={e => setCash(e.target.value)} className={inputCls} />
+      <button onClick={save} disabled={!cash || saving}
+        className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
+        {saving ? 'Saving…' : 'Save Cash Counted'}
+      </button>
+    </FixRow>
+  )
+}
+
 type NoAttachmentRow = { id: number; receipt_number: string; receipt_date: string; customer_name: string | null }
 
 function NoAttachmentFix({ r, onFixed }: { r: NoAttachmentRow; onFixed: (id: number) => void }) {
@@ -347,7 +379,7 @@ export default function SalesTab({
   const colPrefs = useColumnPrefs<ColKey>('salesTable', SALES_COLUMNS)
   const attachments = useAttachments()
 
-  const needsFlags = violation === 'no_cash' || violation === 'missing_days' || violation === 'cost_price' || violation === 'dup_receipt' || violation === 'no_attachment'
+  const needsFlags = violation === 'no_cash' || violation === 'missing_days' || violation === 'cost_price' || violation === 'dup_receipt' || violation === 'no_attachment' || violation === 'high_wnw'
 
   useEffect(() => {
     if (needsFlags && !flags && !flagsLoading) {
@@ -667,6 +699,27 @@ export default function SalesTab({
                   <p className="text-[9px] text-gray-400 mt-0.5">{r.receipt_numbers}</p>
                   <p className="text-[9px] text-gray-400 mt-0.5">Merge the items from the extra receipt(s) into one via Edit, then delete the rest.</p>
                 </div>
+              ))}
+            </div>
+        )}
+      </div>
+    )
+  }
+
+  if (violation === 'high_wnw') {
+    const rows: HighWnwRow[] = flags?.highWnw ?? []
+    return (
+      <div className="overflow-y-auto h-full py-2">
+        <p className="text-[10px] text-gray-400 px-2 mb-1">
+          {flagsLoading || !flags ? 'Loading…' : `${rows.length} receipt${rows.length !== 1 ? 's' : ''} with WNW over ₵200`}
+        </p>
+        {!flagsLoading && flags && (rows.length === 0
+          ? <p className="py-4 text-center text-gray-400 text-[10px]">No receipts with an unusually high WNW.</p>
+          : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
+              {rows.map(r => (
+                <HighWnwFix key={r.id} r={r} onFixed={id =>
+                  setFlags((f: { highWnw: HighWnwRow[] } | null) => f ? { ...f, highWnw: f.highWnw.filter(x => x.id !== id) } : f)
+                } />
               ))}
             </div>
         )}

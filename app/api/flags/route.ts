@@ -111,6 +111,7 @@ export async function GET() {
     unlinkedNamed,
     noAttachment,
     noVendorBills,
+    highWnw,
   ] = await Promise.all([
 
     // 1. Walk-in customers with no cash counted
@@ -316,6 +317,17 @@ export async function GET() {
       WHERE vendor_name IS NULL OR TRIM(vendor_name) = ''
       ORDER BY bill_date DESC
     `),
+
+    // 13. Receipts where cash counted exceeds the recorded total by more
+    // than ₵200 -- an unusually large excess worth a second look (recount,
+    // or a sale that never got itemized).
+    safeQuery(() => sql`
+      SELECT id, receipt_number, receipt_date::text AS receipt_date, customer_name,
+             cash_counted, total AS invoice_amount, (cash_counted - total) AS wnw
+      FROM sales_receipts
+      WHERE cash_counted IS NOT NULL AND (cash_counted - total) > 200
+      ORDER BY receipt_date DESC
+    `),
   ])
 
   const filteredDups = duplicates.filter((r: any) => shouldKeepPair(r.name1, r.name2))
@@ -408,6 +420,6 @@ export async function GET() {
     noCash, missingDays, duplicates: filteredDups, costGteSell, notInInventory, noGroup, noStaffTimes,
     uncheckedCab, dupReceipts, unlinkedNamed, groupNames: groupNames.map((r: any) => r.group_name),
     noAdvert, jingleOverdue, equipmentCheckOverdue, missingClosingReports,
-    shirtNotWorn, shirtOverdue, noAttachment, noVendorBills,
+    shirtNotWorn, shirtOverdue, noAttachment, noVendorBills, highWnw,
   })
 }
