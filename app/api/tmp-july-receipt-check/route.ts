@@ -16,11 +16,15 @@ export async function GET() {
       GROUP BY 1
       ORDER BY 1
     `
+    // Scoped to the Drive folder's actual coverage (earliest subfolder is
+    // 2025 OCTOBER) -- older gaps have no photo to attach regardless, so
+    // there's no point listing them here.
     const missingDetail = await sql`
       SELECT id, receipt_number, receipt_date::date AS receipt_date, customer_name
       FROM sales_receipts
       WHERE (customer_name IS NULL OR customer_name ILIKE '%walk%' OR customer_name ILIKE '%wic%')
         AND COALESCE(jsonb_array_length(attachments), 0) = 0
+        AND receipt_date >= '2025-10-01'
       ORDER BY receipt_date
     `
     return NextResponse.json({ summary, missingDetail })
