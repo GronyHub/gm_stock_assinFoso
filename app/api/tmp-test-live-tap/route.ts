@@ -24,11 +24,19 @@ async function doTap(itemId: number, quantity: number, staffName: string) {
   if (!receipt) {
     createdReceipt = true
     const receiptNumber = `APP-${date.replace(/-/g, '')}-${Date.now().toString().slice(-4)}`
-    ;[receipt] = await sql`
-      INSERT INTO sales_receipts (receipt_number, receipt_date, customer_name, total, source, entered_by)
-      VALUES (${receiptNumber}, ${date}, NULL, 0, 'live_sale', ${staffName})
-      RETURNING id
-    `
+    try {
+      [receipt] = await sql`
+        INSERT INTO sales_receipts (receipt_number, receipt_date, customer_name, total, source, entered_by)
+        VALUES (${receiptNumber}, ${date}, NULL, 0, 'live_sale', ${staffName})
+        RETURNING id
+      `
+    } catch {
+      ;[receipt] = await sql`
+        INSERT INTO sales_receipts (receipt_number, receipt_date, customer_name, total, source)
+        VALUES (${receiptNumber}, ${date}, NULL, 0, 'live_sale')
+        RETURNING id
+      `
+    }
   }
 
   let [line] = await sql`
