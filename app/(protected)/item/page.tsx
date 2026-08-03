@@ -1052,8 +1052,10 @@ function ItemHubPageInner() {
   const canSeeCH = isOwnerOrJoe || perm('ch')
   // Settings is worth opening if there's anything at all inside it --
   // Roles & Permissions itself stays canManage-only regardless (root config
-  // shouldn't be grantable through the system it configures).
-  const canOpenSettings = canManage || canSeeTeam || canSeeUsers || canAddCategory || canViewPortalAs
+  // shouldn't be grantable through the system it configures). Team no
+  // longer counts here -- it moved out into its own main-pane section (see
+  // below), so canSeeTeam alone no longer needs a reason to open Settings.
+  const canOpenSettings = canManage || canSeeUsers || canAddCategory || canViewPortalAs
   // Drives the merged pane's own-name section AND which staff page it
   // opens -- "just like the user profile icon", it's always your own name,
   // not a generic "Staff" label or a pick-a-person screen. Falls back to
@@ -1185,7 +1187,12 @@ function ItemHubPageInner() {
                 relationship to any of these, so the list is just empty
                 (toggle + View/Sign out only) while on either of them. */}
             {outerTab === 'loss' && (<>
-            {canSeeCash && applyPaneOrder(CASH_ITEMS, paneOrder.cash).filter(v => v.key !== 'pl' || canSeePL).map(v => (
+            {canSeeCash && (
+            <div>
+              {cashDisplayMode !== 'icon' && (
+                <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Cash</p>
+              )}
+              {applyPaneOrder(CASH_ITEMS, paneOrder.cash).filter(v => v.key !== 'pl' || canSeePL).map(v => (
               <div key={v.key}>
                 <SidePaneButton icon={v.icon} label={v.label} mode={cashDisplayMode}
                   active={paneActive(lossView === v.key)}
@@ -1219,6 +1226,8 @@ function ItemHubPageInner() {
                 )}
               </div>
               ))}
+            </div>
+            )}
 
             {canSeeManage && (
             <div className="mt-1 pt-1 border-t border-white/30">
@@ -1261,11 +1270,29 @@ function ItemHubPageInner() {
             </div>
             )}
 
+            {/* Team -- everyone's records, as opposed to Personal's just-
+                your-own. Used to live tucked inside Settings' "Viewing"
+                section; pulled out into its own labeled block here so the
+                four kinds of thing in this pane (Cash/Manage/Team/Personal)
+                read as four distinct sections instead of two of them being
+                hidden behind a gear icon. */}
+            {canSeeTeam && (
+              <div className="mt-1 pt-1 border-t border-white/30">
+                {cashDisplayMode !== 'icon' && (
+                  <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Team</p>
+                )}
+                {STAFF_TEAM_ITEMS.map(t => (
+                  <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode}
+                    active={paneActive(lossView === t.key)} onClick={() => pickLossView(t.key)} />
+                ))}
+              </div>
+            )}
+
             {myStaffName && (
               <div className="mt-1 pt-1 border-t border-white/30">
                 {cashDisplayMode !== 'icon' && (
                   <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">
-                    {viewingSelf ? 'My Staff' : `Viewing: ${viewingName}`}
+                    {viewingSelf ? 'Personal' : `Personal · Viewing: ${viewingName}`}
                   </p>
                 )}
                 {/* Payslips/Violations drop out of this list while viewing
@@ -1354,7 +1381,7 @@ function ItemHubPageInner() {
           <SettingsPane mode={cashDisplayMode} activeView={lossView}
             viewingName={viewingName} myStaffName={myStaffName} staffRoster={STAFF_ROSTER}
             pickViewing={pickViewing} pickLossView={pickLossView}
-            canSeeTeam={canSeeTeam} canSeeUsers={canSeeUsers} canAddCategory={canAddCategory}
+            canSeeUsers={canSeeUsers} canAddCategory={canAddCategory}
             canViewPortalAs={canViewPortalAs} canManageRoles={canManage}
           />
         )}
