@@ -10,8 +10,13 @@ import { useSession } from 'next-auth/react'
 // functions below stay in place since they're the mechanism for making
 // that kind of change directly when asked, and row data entry is
 // unaffected.
-export type UKPerson = 'Grony' | 'Mina' | 'Prisca'
-export const UK_PEOPLE: UKPerson[] = ['Grony', 'Mina', 'Prisca']
+// Fiifi/Kuukua/Ebo/Odoye's submenus (Health, Education, ... below) are
+// seeded server-side the first time any /api/uk/* route runs -- see
+// ensureChildLogSubmenus in lib/ukTables.ts. The person names here have to
+// match those seeded rows exactly, since `person` is a plain string column,
+// not a foreign key into anything.
+export type UKPerson = 'Grony' | 'Mina' | 'Prisca' | 'Fiifi' | 'Kuukua' | 'Ebo' | 'Odoye'
+export const UK_PEOPLE: UKPerson[] = ['Grony', 'Mina', 'Prisca', 'Fiifi', 'Kuukua', 'Ebo', 'Odoye']
 
 export type UKSubmenu = { id: number; person: string; name: string; sort_order: number; created_at: string }
 export type UKColumn = { id: number; submenu_id: number; name: string; sort_order: number; created_at: string }
