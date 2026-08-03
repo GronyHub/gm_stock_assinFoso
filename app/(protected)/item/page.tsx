@@ -200,6 +200,11 @@ const CASH_ITEMS: { key: LossView; label: string; icon: string }[] = [
 // Used to bounce someone off a Cash view the moment their permissions load
 // and turn out not to include it (see the canSeeCash effect below).
 const CASH_VIEW_KEYS = new Set<LossView>(CASH_ITEMS.map(v => v.key))
+// Feeds the green bar's search placeholder ("Search Items", "Search
+// Sales", ...) so it reads as this page's own filter box, distinct from
+// the unrelated global search (magnifying glass icon, bottom of the
+// content area) that looks across Biz/UK/C&H by name/number.
+const CASH_LABEL = new Map(CASH_ITEMS.map(v => [v.key, v.label]))
 
 type Item = {
   id: number
@@ -1426,7 +1431,7 @@ function ItemHubPageInner() {
                   <div className="relative min-w-0 flex-1" ref={searchRef}>
                     <input value={search} onChange={e => setSearch(e.target.value)}
                       onFocus={() => setSearchOpen(true)}
-                      placeholder="Search…" autoComplete="off"
+                      placeholder={`Search ${CASH_LABEL.get(lossView) ?? ''}`} autoComplete="off"
                       className="w-full text-xs bg-white border border-green-900 rounded-lg pl-2 pr-6 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
                     {search && (
                       <button onClick={() => { setSearch(''); setSearchOpen(false) }} title="Clear search"
