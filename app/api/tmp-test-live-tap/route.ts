@@ -97,42 +97,55 @@ async function doUndo(tapId: number) {
 export async function POST() {
   const results: Record<string, unknown> = {}
   const STAFF = 'diagnostic-test'
+  let serviceTap: Awaited<ReturnType<typeof doTap>> | undefined
+  let goodsTap: Awaited<ReturnType<typeof doTap>> | undefined
 
-  // Test 1: service item, quantity 20 (the exact scenario the user asked to check)
-  const serviceTap = await doTap(331, 20, STAFF)
-  results.serviceTapResult = serviceTap
+  try {
+    serviceTap = await doTap(331, 20, STAFF)
+    results.serviceTapResult = serviceTap
 
-  // Test 2: goods item, quantity 3 (second line on the same receipt)
-  const goodsTap = await doTap(5, 3, STAFF)
-  results.goodsTapResult = goodsTap
+    goodsTap = await doTap(5, 3, STAFF)
+    results.goodsTapResult = goodsTap
 
-  // Snapshot receipt state with both taps applied, before undoing
-  const [receiptWithBoth] = await sql`SELECT id, receipt_number, total FROM sales_receipts WHERE id = ${serviceTap.receiptId}`
-  const linesWithBoth = await sql`SELECT id, item_id, quantity, item_total FROM sales_receipt_lines WHERE receipt_id = ${serviceTap.receiptId} ORDER BY id`
-  results.receiptAfterBothTaps = { receipt: receiptWithBoth, lines: linesWithBoth }
+    const [receiptWithBoth] = await sql`SELECT id, receipt_number, total FROM sales_receipts WHERE id = ${serviceTap.receiptId}`
+    const linesWithBoth = await sql`SELECT id, item_id, quantity, item_total FROM sales_receipt_lines WHERE receipt_id = ${serviceTap.receiptId} ORDER BY id`
+    results.receiptAfterBothTaps = { receipt: receiptWithBoth, lines: linesWithBoth }
 
-  // Undo both
-  const undoService = await doUndo(serviceTap.tap.id)
-  const undoGoods = await doUndo(goodsTap.tap.id)
-  results.undoServiceResult = undoService
-  results.undoGoodsResult = undoGoods
+    const undoService = await doUndo(serviceTap.tap.id)
+    const undoGoods = await doUndo(goodsTap.tap.id)
+    results.undoServiceResult = undoService
+    results.undoGoodsResult = undoGoods
 
-  // Final state after both undos
-  const [receiptAfter] = await sql`SELECT id, receipt_number, total FROM sales_receipts WHERE id = ${serviceTap.receiptId}`
-  const linesAfter = await sql`SELECT id FROM sales_receipt_lines WHERE receipt_id = ${serviceTap.receiptId}`
-  results.receiptAfterUndos = { receipt: receiptAfter, remainingLines: linesAfter }
+    const [receiptAfter] = await sql`SELECT id, receipt_number, total FROM sales_receipts WHERE id = ${serviceTap.receiptId}`
+    const linesAfter = await sql`SELECT id FROM sales_receipt_lines WHERE receipt_id = ${serviceTap.receiptId}`
+    results.receiptAfterUndos = { receipt: receiptAfter, remainingLines: linesAfter }
 
-  // Cleanup: if the test created a brand-new receipt for today and it now
-  // has zero lines, remove the phantom empty receipt entirely -- it didn't
-  // exist before this test ran. Also hard-delete the two test tap rows
-  // (not real staff activity) so they don't clutter the real Log.
-  let receiptCleanedUp = false
-  if (serviceTap.createdReceipt && linesAfter.length === 0) {
-    await sql`DELETE FROM sales_receipts WHERE id = ${serviceTap.receiptId}`
-    receiptCleanedUp = true
+    let receiptCleanedUp = false
+    if (serviceTap.createdReceipt && linesAfter.length === 0) {
+      await sql`DELETE FROM sales_receipts WHERE id = ${serviceTap.receiptId}`
+      receiptCleanedUp = true
+    }
+    await sql`DELETE FROM live_sale_taps WHERE id = ANY(${[serviceTap.tap.id, goodsTap.tap.id]})`
+    results.cleanup = { receiptCleanedUp, tapsDeleted: [serviceTap.tap.id, goodsTap.tap.id] }
+  } catch (e) {
+    results.error = e instanceof Error ? e.message : String(e)
+    results.stack = e instanceof Error ? e.stack : undefined
+    results.partialState = { serviceTap, goodsTap }
   }
-  await sql`DELETE FROM live_sale_taps WHERE id = ANY(${[serviceTap.tap.id, goodsTap.tap.id]})`
-  results.cleanup = { receiptCleanedUp, tapsDeleted: [serviceTap.tap.id, goodsTap.tap.id] }
 
   return NextResponse.json(results)
+}
+
+export async function GET() {
+  // Recovery/inspection helper -- see what's actually sitting in the DB
+  // right now if the POST test errored partway through.
+  const taps = await sql`SELECT * FROM live_sale_taps WHERE staff_name = 'diagnostic-test'`
+  const receipts = await sql`
+    SELECT id, receipt_number, total FROM sales_receipts
+    WHERE receipt_date::date = ${todayStr()} AND customer_name IS DISTINCT FROM 'Grony Multimedia as Customer'
+  `
+  const lines = receipts.length
+    ? await sql`SELECT * FROM sales_receipt_lines WHERE receipt_id = ANY(${receipts.map((r: any) => r.id)})`
+    : []
+  return NextResponse.json({ diagnosticTaps: taps, todaysReceipts: receipts, todaysLines: lines })
 }
