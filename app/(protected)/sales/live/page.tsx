@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { usePresenceReporter } from '@/lib/usePresenceReporter'
+import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from '../../item/_components/columnPrefs'
 
 type GridItem = {
   id: number
@@ -40,6 +41,21 @@ const SERVICE_QTY = [10, 12, 15, 18, 20]
 function qtyPresetsFor(item: GridItem) {
   return item.product_type === 'service' ? SERVICE_QTY : GOODS_QTY
 }
+
+// Log table columns -- same show/hide/reorder/resize picker every other
+// table in the app uses (see columnPrefs.tsx), so staff can drop columns
+// they don't care about and widen the ones they do instead of being stuck
+// with a fixed layout.
+type LogColKey = 'item' | 'time' | 'sp' | 'qty' | 'total' | 'staff'
+const LOG_COLUMNS: ColumnDef<LogColKey>[] = [
+  { key: 'item',  label: 'Item' },
+  { key: 'time',  label: 'Time' },
+  { key: 'sp',    label: 'SP' },
+  { key: 'qty',   label: 'Qty' },
+  { key: 'total', label: 'Total' },
+  { key: 'staff', label: 'Staff' },
+]
+const LOG_COL_DEFAULTS: Record<string, number> = { item: 160, time: 70, sp: 56, qty: 44, total: 70, staff: 90, actions: 56 }
 
 function defaultSort(list: GridItem[], tapCounts: Map<number, number>) {
   return [...list].sort((a, b) => {
@@ -86,6 +102,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
   const [pendingItemId, setPendingItemId] = useState<number | null>(null)
   const [undoingId, setUndoingId] = useState<number | null>(null)
   const [arranging, setArranging] = useState(false)
+  const logColPrefs = useColumnPrefs<LogColKey>('liveSaleLog', LOG_COLUMNS)
   // Persisted on this device (not the server) -- it's a per-terminal
   // convenience for whoever's tapping on this phone, not shared business
   // data, so a plain localStorage array of item ids is enough.
@@ -260,7 +277,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
       </div>
       {showLog ? (
         <div className="px-2 pt-2">
-          <div className="flex flex-wrap gap-1.5 mb-2">
+          <div className="flex flex-wrap items-center gap-1.5 mb-2">
             <button
               type="button"
               onClick={() => setStaffFilter(null)}
@@ -278,6 +295,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                 {name}
               </button>
             ))}
+            <ColumnsPickerButton prefs={logColPrefs} />
           </div>
 
           {loadingTaps ? (
@@ -286,16 +304,28 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
             <p className="text-sm text-gray-400">No taps yet today.</p>
           ) : (
             <div className="overflow-x-auto border border-gray-200 rounded-lg">
-              <table className="w-full text-[10px] border-collapse">
+              <table className="border-collapse text-[10px]" style={{
+                tableLayout: 'fixed',
+                width: logColPrefs.shownColumns.reduce((s, c) => s + logColPrefs.getWidth(c.key, LOG_COL_DEFAULTS[c.key] ?? 80), 0)
+                  + logColPrefs.getWidth('actions', LOG_COL_DEFAULTS.actions),
+              }}>
+                <colgroup>
+                  {logColPrefs.shownColumns.map((c) => <col key={c.key} style={{ width: logColPrefs.getWidth(c.key, LOG_COL_DEFAULTS[c.key] ?? 80) }} />)}
+                  <col style={{ width: logColPrefs.getWidth('actions', LOG_COL_DEFAULTS.actions) }} />
+                </colgroup>
                 <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="text-left px-2 py-1 font-bold text-gray-500 whitespace-nowrap">Item</th>
-                    <th className="text-left px-2 py-1 font-bold text-gray-500 whitespace-nowrap">Time</th>
-                    <th className="text-right px-2 py-1 font-bold text-gray-500 whitespace-nowrap">SP</th>
-                    <th className="text-right px-2 py-1 font-bold text-gray-500 whitespace-nowrap">Qty</th>
-                    <th className="text-right px-2 py-1 font-bold text-gray-500 whitespace-nowrap">Total</th>
-                    <th className="text-left px-2 py-1 font-bold text-gray-500 whitespace-nowrap">Staff</th>
-                    <th className="px-2 py-1"></th>
+                  <tr className="bg-gray-50">
+                    {logColPrefs.shownColumns.map((c) => (
+                      <ResizableTh key={c.key} align={c.key === 'sp' || c.key === 'qty' || c.key === 'total' ? 'right' : 'left'}
+                        className="text-[9px]"
+                        onResize={(d) => logColPrefs.resizeWidth(c.key, d, LOG_COL_DEFAULTS[c.key] ?? 80)}
+                        onReset={() => logColPrefs.resetWidth(c.key)}>
+                        {c.label}
+                      </ResizableTh>
+                    ))}
+                    <ResizableTh noDivider className="text-[9px]"
+                      onResize={(d) => logColPrefs.resizeWidth('actions', d, LOG_COL_DEFAULTS.actions)}
+                      onReset={() => logColPrefs.resetWidth('actions')} />
                   </tr>
                 </thead>
                 <tbody>
@@ -304,14 +334,18 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                       key={t.id}
                       className={`border-b border-gray-50 last:border-0 ${t.undone ? 'bg-gray-50 text-gray-400 line-through' : 'bg-white'}`}
                     >
-                      <td className="px-2 py-1 font-semibold" style={{ wordBreak: 'break-word' }}>{t.item_name}</td>
-                      <td className="px-2 py-1 whitespace-nowrap text-gray-500">
-                        {new Date(t.tapped_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                      </td>
-                      <td className="px-2 py-1 text-right whitespace-nowrap">{money(Number(t.price))}</td>
-                      <td className="px-2 py-1 text-right whitespace-nowrap">{t.quantity}</td>
-                      <td className="px-2 py-1 text-right whitespace-nowrap font-bold text-blue-600">{money(Number(t.price) * t.quantity)}</td>
-                      <td className="px-2 py-1 whitespace-nowrap">{t.staff_name}</td>
+                      {logColPrefs.shownColumns.map((c) => (
+                        <td key={c.key}
+                          className={`px-2 py-1 overflow-hidden text-ellipsis whitespace-nowrap ${c.key === 'item' ? 'font-semibold' : ''} ${c.key === 'sp' || c.key === 'qty' || c.key === 'total' ? 'text-right' : ''} ${c.key === 'total' ? 'font-bold text-blue-600' : ''}`}
+                        >
+                          {c.key === 'item' && t.item_name}
+                          {c.key === 'time' && new Date(t.tapped_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          {c.key === 'sp' && money(Number(t.price))}
+                          {c.key === 'qty' && t.quantity}
+                          {c.key === 'total' && money(Number(t.price) * t.quantity)}
+                          {c.key === 'staff' && t.staff_name}
+                        </td>
+                      ))}
                       <td className="px-2 py-1 whitespace-nowrap">
                         {!t.undone && (
                           <button
