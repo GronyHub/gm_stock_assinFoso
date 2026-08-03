@@ -787,6 +787,21 @@ function ItemHubPageInner() {
     if (!opts?.keepSettingsOpen) setSettingsOpen(false)
   }
 
+  // C&H's own rows used to route through pickLossView above, which
+  // unconditionally forces outerTab to 'loss' -- built for Cash/Manage/Staff
+  // rows only, so reusing it here was flipping the pane back to Biz's blue
+  // (and its rows) the instant you tapped any C&H row, instead of staying on
+  // C&H's own green. CHTab's content is driven entirely by lossView (see
+  // `outerTab === 'ch'` below), so outerTab never needs to move here.
+  function pickCHView(view: CHView) {
+    setLossView(view)
+    setActiveDynamicId(null)
+    setViolation(null)
+    setAddForm(null)
+    setShowAnalytics(false)
+    setSettingsOpen(false)
+  }
+
   // Joe/Grony's "Viewing" picker -- switches whose personal rows show.
   // Profile only ever means "my own login", so switching away from it while
   // it's showing has nowhere sensible to land -- falls back to Times
@@ -827,6 +842,10 @@ function ItemHubPageInner() {
     // ?view= entry, or leaving/refreshing on one of them silently drops
     // you back on the plain item list instead of where you actually were.
     else if (outerTab === 'loss' && lossView === 'items' && itemsExtraView !== 'none') params.set('view', itemsExtraView)
+    // C&H's own rows are picked via pickCHView, which -- unlike pickLossView
+    // -- never touches outerTab, so this needs its own branch to still land
+    // the selected row (e.g. 'ch_kuukua') in the URL for refresh/back.
+    else if (outerTab === 'ch') params.set('view', lossView)
     else params.delete('view')
     // Settings is a full-screen overlay, not a tab -- still gets its own
     // history entry the same way, so the back button closes it instead of
@@ -881,6 +900,10 @@ function ItemHubPageInner() {
       // itemsExtraView never fires here since lossView stays 'items' the
       // whole time, so it has to be cleared explicitly instead.
       else if (!urlExtraView && itemsExtraView !== 'none') setItemsExtraView('none')
+    } else if (nextTab === 'ch') {
+      const rawUrlView = searchParams.get('view')
+      const nextView: LossView = (rawUrlView && CH_VIEW_KEYS.has(rawUrlView as LossView) ? rawUrlView : CH_ITEMS[0].key) as LossView
+      if (nextView !== lossView) setLossView(nextView)
     }
     const urlSettingsOpen = searchParams.get('settings') === '1'
     if (urlSettingsOpen !== settingsOpen) setSettingsOpen(urlSettingsOpen)
@@ -1297,7 +1320,7 @@ function ItemHubPageInner() {
             {outerTab === 'ch' && (<>
               {CH_ITEMS.map(item => (
                 <SidePaneButton key={item.key} icon={item.icon} label={item.label} mode={cashDisplayMode}
-                  active={paneActive(lossView === item.key)} onClick={() => pickLossView(item.key)} />
+                  active={paneActive(lossView === item.key)} onClick={() => pickCHView(item.key)} />
               ))}
             </>)}
 
