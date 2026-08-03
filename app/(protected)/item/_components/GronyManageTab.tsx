@@ -39,7 +39,6 @@ export default function GronyManageContent({
   view, activeDynamic, canManage,
   openerViolations, assignments, deadlines, assignedBy, assignedOn, vSettings,
   onGoToViolation, missingClosingReportsCount, onOpenStaff, staffRoster, routablePages,
-  openerBadgeCount, dressFlagsCount, jingleFlagsCount, equipmentFlagsCount, advertStatusFlagsCount,
 }: {
   view: ManageView
   activeDynamic?: DynamicCategory
@@ -55,11 +54,6 @@ export default function GronyManageContent({
   onOpenStaff: () => void
   staffRoster: string[]
   routablePages: string[]
-  openerBadgeCount: number
-  dressFlagsCount: number
-  jingleFlagsCount: number
-  equipmentFlagsCount: number
-  advertStatusFlagsCount: number
 }) {
   const logCategory = LOG_CATEGORIES.find(c => c.key === view)
 
@@ -69,23 +63,23 @@ export default function GronyManageContent({
 
   return (<>
     {view === 'opener' && (<>
-      <div className="px-2 pt-2"><PageToolIcons scopeKey="Opener" flagsCount={openerBadgeCount} /></div>
+      <div className="px-2 pt-2"><PageToolIcons scopeKey="Opener" /></div>
       <OpenerView violations={openerViolations}
         assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
         onGoToViolation={onGoToViolation} />
     </>)}
     {view === 'closer' && (<>
-      <div className="px-2 pt-2"><PageToolIcons scopeKey="Closer" flagsCount={missingClosingReportsCount} /></div>
+      <div className="px-2 pt-2"><PageToolIcons scopeKey="Closer" /></div>
       <CloserView missingClosingReportsCount={missingClosingReportsCount} onOpenStaff={onOpenStaff} />
     </>)}
     {view === 'rota' && <div className="px-2 space-y-2 pt-2"><PageToolIcons scopeKey="Rota" /><RotaTab canManage={canManage} /></div>}
     {view === 'audio' && <ContentPage contentKey="advert_audio_roadside" title="Advert 1 — Audio (for Roadside)" submenu="Audio" />}
     {view === 'audio_status' && (<>
-      <div className="px-2 pt-2"><PageToolIcons scopeKey="Advert Status" flagsCount={advertStatusFlagsCount} /></div>
+      <div className="px-2 pt-2"><PageToolIcons scopeKey="Advert Status" /></div>
       <AdvertStatusPanel />
     </>)}
-    {view === 'jingle' && <ManageLogPanel category="audio_jingle" label="Jingle Log" icon="🎵" flagsCount={jingleFlagsCount} />}
-    {view === 'equipment' && <ManageLogPanel category="audio_equipment_check" label="Equipment Check" icon="🔊" flagsCount={equipmentFlagsCount} />}
+    {view === 'jingle' && <ManageLogPanel category="audio_jingle" label="Jingle Log" icon="🎵" />}
+    {view === 'equipment' && <ManageLogPanel category="audio_equipment_check" label="Equipment Check" icon="🔊" />}
     {view === 'photoshop' && <ContentPage contentKey="advert_photo_photoshop" title="Advert 2 — Photo (Photoshop Files)" submenu="Photoshop" />}
     {view === 'whatsapp' && <ContentPage contentKey="advert_photo_whatsapp" title="Advert 3 — Photo (WhatsApp Advert)" submenu="WhatsApp" />}
     {view === 'cuttings' && <ContentPage contentKey="advert_photo_cuttings" title="Advert 4 — Photo (Cuttings)" submenu="Cuttings" />}
@@ -95,7 +89,7 @@ export default function GronyManageContent({
       <ClosingReportLogView field="advert_played" label="Advert" icon="📢" />
     </>)}
     {view === 'staff_dress' && (<>
-      <div className="px-2 pt-2"><PageToolIcons scopeKey="Dress Code" flagsCount={dressFlagsCount} /></div>
+      <div className="px-2 pt-2"><PageToolIcons scopeKey="Dress Code" /></div>
       <DressCodeFlagsPanel />
       <ClosingReportLogView field="no_tshirt_staff" label="Dress Code" icon="👕" />
     </>)}
