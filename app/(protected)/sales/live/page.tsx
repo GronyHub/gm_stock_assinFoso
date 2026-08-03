@@ -295,7 +295,13 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                 {name}
               </button>
             ))}
-            <ColumnsPickerButton prefs={logColPrefs} />
+            {/* ml-auto pushes this to the row's right edge -- anchored any
+                closer to the left, the dropdown (which opens from its own
+                right edge, extending leftward) ran out of room on a phone
+                and got clipped by the left pane. */}
+            <div className="ml-auto">
+              <ColumnsPickerButton prefs={logColPrefs} />
+            </div>
           </div>
 
           {loadingTaps ? (
