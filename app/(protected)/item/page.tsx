@@ -1080,9 +1080,9 @@ function ItemHubPageInner() {
   // would just create a task nobody can find.
   const routablePages: string[] = [
     ...(canSeeCash ? CASH_ITEMS.map(v => v.label) : []),
-    ...(canSeeManage ? MANAGE_LIST_ITEMS.filter(v => v.key !== 'staff_meeting').map(v => v.label) : []),
+    ...(canSeeManage ? MANAGE_LIST_ITEMS.map(v => v.label) : []),
     ...(myStaffName ? ['Payslips', 'Violations', 'Analytics'] : []),
-    ...(canSeeTeam ? ['Team Profiles'] : []),
+    ...(canSeeTeam ? STAFF_TEAM_ITEMS.filter(t => t.key !== 'staff_meeting').map(t => t.label) : []),
     ...(canSeeUK ? ['UK'] : []),
     ...(canSeeCH ? CH_ITEMS.map(v => v.label) : []),
   ]
@@ -1237,7 +1237,6 @@ function ItemHubPageInner() {
               {applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage).map(entry => {
                 const badge = entry.key === 'opener' ? openerBadgeCount
                   : entry.key === 'closer' ? (globalFlags?.missingClosingReports?.length ?? 0)
-                  : entry.key === 'staff_dress' ? dressFlagsCount
                   : entry.key === 'jingle' ? jingleFlagsCount
                   : entry.key === 'equipment' ? equipmentFlagsCount
                   : entry.key === 'audio_status' ? advertStatusFlagsCount
@@ -1283,7 +1282,9 @@ function ItemHubPageInner() {
                 )}
                 {STAFF_TEAM_ITEMS.map(t => (
                   <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode}
-                    active={paneActive(lossView === t.key)} onClick={() => pickLossView(t.key)} />
+                    active={paneActive(lossView === t.key)}
+                    badge={t.key === 'staff_dress' ? dressFlagsCount : undefined}
+                    onClick={() => pickLossView(t.key)} />
                 ))}
               </div>
             )}
@@ -1685,8 +1686,7 @@ function ItemHubPageInner() {
               assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
               onGoToViolation={goToViolation}
               missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
-              onOpenStaff={() => pickLossView('staffTimes')}
-              staffRoster={STAFF_ROSTER} routablePages={routablePages} />
+              onOpenStaff={() => pickLossView('staffTimes')} />
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && STAFF_VIEW_KEYS.has(lossView) && (
@@ -1701,7 +1701,8 @@ function ItemHubPageInner() {
                 {lossView === 'staffTimes' && <div className="px-4 pt-2"><PageToolIcons scopeKey={myStaffName} /></div>}
                 <StaffContent key={myStaffName} view={lossView as StaffView}
                   viewingName={viewingName} role={role} username={username}
-                  canSeeTeam={canSeeTeam} canSeeUsers={canSeeUsers} canSeeRoles={canManage} />
+                  canSeeTeam={canSeeTeam} canSeeUsers={canSeeUsers} canSeeRoles={canManage} canManage={canManage}
+                  staffRoster={STAFF_ROSTER} routablePages={routablePages} />
               </>
             ) : (
               <p className="py-10 text-center text-gray-400 text-sm px-4">No staff profile is set up for your account.</p>
