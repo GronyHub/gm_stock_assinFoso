@@ -155,22 +155,19 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
 
   return (
     <div className="relative pb-24">
-      <div className="flex items-start justify-between gap-2 mb-3">
-        <div>
-          <h2 className="text-lg font-bold">⚡ Live Sale</h2>
-          <p className="text-xs text-gray-500">Walk-in only · every tap saves instantly to today&apos;s WIC receipt</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {onClose && (
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-gray-100 hover:bg-gray-200 border border-gray-300"
-            >
-              ×
-            </button>
-          )}
-        </div>
+      <div className="flex items-center justify-between gap-2 mb-1.5">
+        <h2 className="min-w-0 text-xs font-bold leading-tight truncate">
+          ⚡ Live Sale <span className="font-normal text-gray-400">· tap to record</span>
+        </h2>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 px-2 py-0.5 rounded-lg text-xs font-semibold bg-gray-100 hover:bg-gray-200 border border-gray-300"
+          >
+            ×
+          </button>
+        )}
       </div>
 
       {showLog ? (
