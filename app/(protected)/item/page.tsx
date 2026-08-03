@@ -1136,7 +1136,8 @@ function ItemHubPageInner() {
                 (toggle + View/Sign out only) while on either of them. */}
             {outerTab === 'loss' && (<>
             {canSeeCash && applyPaneOrder(CASH_ITEMS, paneOrder.cash).filter(v => v.key !== 'pl' || canSeePL).map(v => (
-                <SidePaneButton key={v.key} icon={v.icon} label={v.label} mode={cashDisplayMode}
+              <div key={v.key}>
+                <SidePaneButton icon={v.icon} label={v.label} mode={cashDisplayMode}
                   active={paneActive(lossView === v.key)}
                   badge={v.key === 'sales' ? salesFlagsCount
                     : v.key === 'items' ? itemsFlagsCount
@@ -1146,6 +1147,22 @@ function ItemHubPageInner() {
                     : v.key === 'feed' ? lossByDateFlagsCount
                     : undefined}
                   onClick={() => pickLossView(v.key)} />
+                {/* Sales' two add-forms get their own one-tap rows right under
+                    Sales -- staff opening a sale (especially Live Sale, built
+                    for speed under pressure) shouldn't have to land on the
+                    Sales list first and then hunt for the New/Live buttons in
+                    the toolbar above the table. */}
+                {v.key === 'sales' && (
+                  <div className="pl-2 border-l-2 border-white/10 ml-2">
+                    <SidePaneButton icon="🧾" label="New Sale" mode={cashDisplayMode}
+                      active={paneActive(lossView === 'sales' && addForm === 'sale')}
+                      onClick={() => { pickLossView('sales'); setAddForm('sale') }} />
+                    <SidePaneButton icon="⚡" label="Live Sale" mode={cashDisplayMode}
+                      active={paneActive(lossView === 'sales' && addForm === 'live')}
+                      onClick={() => { pickLossView('sales'); setAddForm('live') }} />
+                  </div>
+                )}
+              </div>
               ))}
 
             {canSeeManage && (
