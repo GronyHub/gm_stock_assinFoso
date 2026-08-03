@@ -83,10 +83,8 @@ export async function GET() {
         lc.quantity_counted AS last_count_qty,
         COALESCE(ps.qty_purchased, 0::numeric) AS purchases_since_count,
         COALESCE(ss.qty_sold, 0::numeric) AS sales_since_count,
-        COALESCE(cs.qty_converted, 0::numeric) AS conversions_since_count,
         COALESCE(ap.total_purchased, 0::numeric) AS total_purchased,
         COALESCE(as2.total_sold, 0::numeric) AS total_sold,
-        COALESCE(ac.total_converted, 0::numeric) AS total_converted_in,
         COALESCE(lc.quantity_counted, COALESCE(i.opening_stock, 0::numeric))
           + COALESCE(ps.qty_purchased, 0::numeric) - COALESCE(ss.qty_sold, 0::numeric)
           + COALESCE(cs.qty_converted, 0::numeric) AS calculated_soh,
@@ -98,7 +96,9 @@ export async function GET() {
           ELSE NULL::numeric
         END AS calculated_loss,
         i.track_inventory,
-        i.source
+        i.source,
+        COALESCE(cs.qty_converted, 0::numeric) AS conversions_since_count,
+        COALESCE(ac.total_converted, 0::numeric) AS total_converted_in
       FROM items i
         LEFT JOIN latest_count lc ON lc.item_id = i.id
         LEFT JOIN sales_since ss ON ss.item_id = i.id
