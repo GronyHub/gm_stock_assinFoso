@@ -28,6 +28,34 @@ function money(n: number) {
 }
 
 const PRIORITY_GROUP = 'Printing Press Services'
+const ORDER_KEY = 'liveSaleOrder'
+
+function defaultSort(list: GridItem[], tapCounts: Map<number, number>) {
+  return [...list].sort((a, b) => {
+    const ca = tapCounts.get(a.id) ?? 0
+    const cb = tapCounts.get(b.id) ?? 0
+    if (ca !== cb) return cb - ca
+    // Today's actual taps still win (a hot item floats up regardless of
+    // group), but before anything's been tapped the list should still
+    // open with the group that gets used most -- Printing Press Services.
+    const pa = a.group === PRIORITY_GROUP ? 0 : 1
+    const pb = b.group === PRIORITY_GROUP ? 0 : 1
+    if (pa !== pb) return pa - pb
+    return a.name.localeCompare(b.name)
+  })
+}
+
+// Staff-arranged order wins over the automatic sort for whichever items
+// have been explicitly placed -- anything not yet touched just falls in
+// afterwards using the normal hot-item/group/alphabetical order, so a
+// newly stocked item still shows up without needing to be arranged first.
+function applyManualOrder(list: GridItem[], order: number[]) {
+  if (order.length === 0) return list
+  const rank = new Map(order.map((id, i) => [id, i]))
+  const ranked = list.filter((it) => rank.has(it.id)).sort((a, b) => rank.get(a.id)! - rank.get(b.id)!)
+  const rest = list.filter((it) => !rank.has(it.id))
+  return [...ranked, ...rest]
+}
 
 export default function LiveSalePage({ onClose, initialShowLog, search, groupFilter }: {
   onClose?: () => void; initialShowLog?: boolean; search?: string; groupFilter?: string | null
@@ -46,6 +74,30 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
   const [lastTap, setLastTap] = useState<Tap | null>(null)
   const [pendingItemId, setPendingItemId] = useState<number | null>(null)
   const [undoingId, setUndoingId] = useState<number | null>(null)
+  const [arranging, setArranging] = useState(false)
+  // Persisted on this device (not the server) -- it's a per-terminal
+  // convenience for whoever's tapping on this phone, not shared business
+  // data, so a plain localStorage array of item ids is enough.
+  const [manualOrder, setManualOrder] = useState<number[]>(() => {
+    if (typeof window === 'undefined') return []
+    try {
+      const raw = window.localStorage.getItem(ORDER_KEY)
+      const parsed = raw ? JSON.parse(raw) : []
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  })
+
+  function persistOrder(order: number[]) {
+    setManualOrder(order)
+    try {
+      window.localStorage.setItem(ORDER_KEY, JSON.stringify(order))
+    } catch {
+      // best-effort -- a full/unavailable localStorage just means the
+      // arrangement won't stick, not that tapping should break
+    }
+  }
 
   useEffect(() => {
     fetch('/api/items/all')
@@ -78,27 +130,37 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
     return counts
   }, [taps])
 
+  // The full arranged order (unfiltered) is what move/top actions operate
+  // on and persist, so a move made while a group/search filter is active
+  // still lands in the right place once the filter is cleared.
+  const fullOrderedItems = useMemo(
+    () => applyManualOrder(defaultSort(items, tapCounts), manualOrder),
+    [items, tapCounts, manualOrder]
+  )
+
   // Search and group filtering come from the green bar above (item/page.tsx's
   // `search`/`group` state) instead of a local search box + chip row -- one
   // filter for the page instead of two that could disagree.
   const gridItems = useMemo(() => {
     const q = (search ?? '').trim().toLowerCase()
-    let list = items
+    let list = fullOrderedItems
     if (groupFilter) list = list.filter((it) => (it.group ?? 'Ungrouped') === groupFilter)
     if (q) list = list.filter((it) => it.name.toLowerCase().includes(q))
-    return [...list].sort((a, b) => {
-      const ca = tapCounts.get(a.id) ?? 0
-      const cb = tapCounts.get(b.id) ?? 0
-      if (ca !== cb) return cb - ca
-      // Today's actual taps still win (a hot item floats up regardless of
-      // group), but before anything's been tapped the list should still
-      // open with the group that gets used most -- Printing Press Services.
-      const pa = a.group === PRIORITY_GROUP ? 0 : 1
-      const pb = b.group === PRIORITY_GROUP ? 0 : 1
-      if (pa !== pb) return pa - pb
-      return a.name.localeCompare(b.name)
-    })
-  }, [items, groupFilter, search, tapCounts])
+    return list
+  }, [fullOrderedItems, groupFilter, search])
+
+  function moveToTop(id: number) {
+    persistOrder([id, ...fullOrderedItems.filter((it) => it.id !== id).map((it) => it.id)])
+  }
+
+  function moveBy(id: number, delta: number) {
+    const ids = fullOrderedItems.map((it) => it.id)
+    const i = ids.indexOf(id)
+    const j = i + delta
+    if (i < 0 || j < 0 || j >= ids.length) return
+    ;[ids[i], ids[j]] = [ids[j], ids[i]]
+    persistOrder(ids)
+  }
 
   const staffNames = useMemo(() => {
     const set = new Set<string>()
@@ -159,15 +221,28 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
         <h2 className="min-w-0 text-xs font-bold leading-tight truncate">
           ⚡ Live Sale <span className="font-normal text-gray-400">· tap to record</span>
         </h2>
-        {onClose && (
-          <button
-            type="button"
-            onClick={onClose}
-            className="shrink-0 px-2 py-0.5 rounded-lg text-xs font-semibold bg-gray-100 hover:bg-gray-200 border border-gray-300"
-          >
-            ×
-          </button>
-        )}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {!showLog && (
+            <button
+              type="button"
+              onClick={() => setArranging((v) => !v)}
+              title="Arrange the item list"
+              className={`px-2 py-0.5 rounded-lg text-xs font-semibold border transition
+                ${arranging ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300'}`}
+            >
+              {arranging ? 'Done' : '↕ Arrange'}
+            </button>
+          )}
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="shrink-0 px-2 py-0.5 rounded-lg text-xs font-semibold bg-gray-100 hover:bg-gray-200 border border-gray-300"
+            >
+              ×
+            </button>
+          )}
+        </div>
       </div>
       {showLog ? (
         <div className="px-2 pt-2">
@@ -229,8 +304,56 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
             <p className="text-sm text-gray-400">Loading items…</p>
           ) : (
             <div>
-              {gridItems.map((it) => {
+              {gridItems.map((it, idx) => {
                 const count = tapCounts.get(it.id) ?? 0
+                const number = (
+                  <span className="shrink-0 w-4 text-right text-[9px] font-bold text-gray-400">{idx + 1}</span>
+                )
+                const label = (
+                  <p className="flex-1 min-w-0 text-[10px] font-semibold text-gray-900 leading-tight" style={{ wordBreak: 'break-word' }}>
+                    {it.name} <span className="text-blue-600 font-bold">({money(Number(it.selling_price) || 0)})</span>
+                  </p>
+                )
+
+                if (arranging) {
+                  return (
+                    <div
+                      key={it.id}
+                      className="w-full flex items-center gap-1 px-2 py-1.5 border-b border-gray-50 bg-white"
+                    >
+                      {number}
+                      {label}
+                      <button
+                        type="button"
+                        onClick={() => moveBy(it.id, -1)}
+                        disabled={idx === 0}
+                        title="Move up"
+                        className="shrink-0 w-5 h-5 rounded bg-gray-100 text-gray-600 text-[10px] font-bold flex items-center justify-center hover:bg-gray-200 disabled:opacity-30"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveBy(it.id, 1)}
+                        disabled={idx === gridItems.length - 1}
+                        title="Move down"
+                        className="shrink-0 w-5 h-5 rounded bg-gray-100 text-gray-600 text-[10px] font-bold flex items-center justify-center hover:bg-gray-200 disabled:opacity-30"
+                      >
+                        ↓
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveToTop(it.id)}
+                        disabled={idx === 0}
+                        title="Move to top"
+                        className="shrink-0 px-1.5 h-5 rounded bg-blue-50 text-blue-700 text-[9px] font-bold flex items-center justify-center hover:bg-blue-100 disabled:opacity-30"
+                      >
+                        ⤒ Top
+                      </button>
+                    </div>
+                  )
+                }
+
                 return (
                   <button
                     key={it.id}
@@ -239,9 +362,8 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                     disabled={pendingItemId === it.id}
                     className="w-full flex items-center gap-1 text-left px-2 py-1.5 border-b border-gray-50 bg-white hover:bg-blue-50 active:bg-blue-100 transition disabled:opacity-50"
                   >
-                    <p className="flex-1 min-w-0 text-[10px] font-semibold text-gray-900 leading-tight" style={{ wordBreak: 'break-word' }}>
-                      {it.name} <span className="text-blue-600 font-bold">({money(Number(it.selling_price) || 0)})</span>
-                    </p>
+                    {number}
+                    {label}
                     {count > 0 && (
                       <span className="shrink-0 min-w-[0.9rem] h-[0.9rem] px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold flex items-center justify-center">
                         {count}
