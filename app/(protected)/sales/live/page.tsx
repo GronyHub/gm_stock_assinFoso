@@ -27,7 +27,7 @@ function money(n: number) {
   return `₵${n.toFixed(2)}`
 }
 
-export default function LiveSalePage({ onClose }: { onClose?: () => void } = {}) {
+export default function LiveSalePage({ onClose, initialShowLog }: { onClose?: () => void; initialShowLog?: boolean } = {}) {
   usePresenceReporter('live-tapping a sale')
 
   const [items, setItems] = useState<GridItem[]>([])
@@ -36,7 +36,7 @@ export default function LiveSalePage({ onClose }: { onClose?: () => void } = {})
   const [activeGroup, setActiveGroup] = useState<string | null>(null)
   const [taps, setTaps] = useState<Tap[]>([])
   const [loadingTaps, setLoadingTaps] = useState(true)
-  const [showLog, setShowLog] = useState(false)
+  const [showLog, setShowLog] = useState(!!initialShowLog)
   const [staffFilter, setStaffFilter] = useState<string | null>(null)
   const [lastTap, setLastTap] = useState<Tap | null>(null)
   const [pendingItemId, setPendingItemId] = useState<number | null>(null)

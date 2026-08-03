@@ -433,7 +433,7 @@ function ItemHubPageInner() {
   // View Portal As) lives behind this one Settings screen now instead of
   // sitting inline in the pane -- see SettingsPanel.tsx.
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [addForm, setAddForm]             = useState<'item' | 'sale' | 'live' | 'bill' | 'expense' | null>(null)
+  const [addForm, setAddForm]             = useState<'item' | 'sale' | 'live' | 'liveLog' | 'bill' | 'expense' | null>(null)
   const [jumpToItemId, setJumpToItemId]   = useState<number | null>(null)
   // Seeded from ?jumpDate=/?jumpItem= -- Item 360's Detail table (and its
   // "click a date" links) lands here via /item?tab=loss&view=sales&jumpDate=
@@ -1160,6 +1160,11 @@ function ItemHubPageInner() {
                     <SidePaneButton icon="⚡" label="Live Sale" mode={cashDisplayMode}
                       active={paneActive(lossView === 'sales' && addForm === 'live')}
                       onClick={() => { pickLossView('sales'); setAddForm('live') }} />
+                    <div className="pl-2 border-l-2 border-white/10 ml-2">
+                      <SidePaneButton icon="📋" label="Log" mode={cashDisplayMode}
+                        active={paneActive(lossView === 'sales' && addForm === 'liveLog')}
+                        onClick={() => { pickLossView('sales'); setAddForm('liveLog') }} />
+                    </div>
                   </div>
                 )}
               </div>
@@ -1466,10 +1471,10 @@ function ItemHubPageInner() {
 
                     {/* Live Sale button — Sales submenu only, sits next to New for fast walk-in tapping */}
                     {!showAnalytics && lossView === 'sales' && (
-                      <button onClick={() => setAddForm(addForm === 'live' ? null : 'live')}
+                      <button onClick={() => setAddForm(addForm === 'live' || addForm === 'liveLog' ? null : 'live')}
                         className={`shrink-0 ml-auto text-xs font-semibold px-3 py-1 rounded-lg transition
-                          ${addForm === 'live' ? 'bg-amber-700 text-white' : 'bg-amber-500 text-white hover:bg-amber-600'}`}>
-                        {addForm === 'live' ? '×' : '⚡ Live'}
+                          ${addForm === 'live' || addForm === 'liveLog' ? 'bg-amber-700 text-white' : 'bg-amber-500 text-white hover:bg-amber-600'}`}>
+                        {addForm === 'live' || addForm === 'liveLog' ? '×' : '⚡ Live'}
                       </button>
                     )}
 
@@ -1479,8 +1484,8 @@ function ItemHubPageInner() {
                       return (
                         <button onClick={() => setAddForm(addForm === formKey ? null : formKey)}
                           className={`shrink-0 ${lossView === 'sales' ? '' : 'ml-auto'} text-xs font-semibold px-3 py-1 rounded-lg transition
-                            ${addForm && addForm !== 'live' ? 'bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
-                          {addForm && addForm !== 'live' ? '×' : 'New'}
+                            ${addForm && addForm !== 'live' && addForm !== 'liveLog' ? 'bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
+                          {addForm && addForm !== 'live' && addForm !== 'liveLog' ? '×' : 'New'}
                         </button>
                       )
                     })()}
@@ -1521,7 +1526,8 @@ function ItemHubPageInner() {
           {/* ── Content ── */}
           <div className="relative flex-1 min-h-0 overflow-y-auto">
         {addForm === 'sale'    && outerTab === 'loss' && lossView === 'sales'    && <div className="px-4"><NewSaleForm    onSuccess={() => setAddForm(null)} /></div>}
-        {addForm === 'live'    && outerTab === 'loss' && lossView === 'sales'    && <div className="px-4"><LiveSaleForm   onClose={() => setAddForm(null)} /></div>}
+        {(addForm === 'live' || addForm === 'liveLog') && outerTab === 'loss' && lossView === 'sales' &&
+          <div className="px-4"><LiveSaleForm key={addForm} onClose={() => setAddForm(null)} initialShowLog={addForm === 'liveLog'} /></div>}
         {addForm === 'bill'    && outerTab === 'loss' && lossView === 'bills'    && <div className="px-4"><NewBillForm    onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'expense' && outerTab === 'loss' && lossView === 'expenses' && <div className="px-4"><NewExpenseForm onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'item'    && outerTab === 'loss' && lossView === 'items'    && <div className="px-4"><NewItemForm    onSuccess={() => { setAddForm(null); loadItems() }} /></div>}
@@ -1744,7 +1750,7 @@ function ItemHubPageInner() {
         {showAnalytics && outerTab === 'loss' && lossView === 'sales' && (
           <TabErrorBoundary><div className="px-3 pt-3"><SalesAnalyticsSection /></div></TabErrorBoundary>
         )}
-        {!showAnalytics && addForm !== 'sale' && addForm !== 'live' && outerTab === 'loss' && lossView === 'sales' && (
+        {!showAnalytics && addForm !== 'sale' && addForm !== 'live' && addForm !== 'liveLog' && outerTab === 'loss' && lossView === 'sales' && (
           <SalesTab items={items} groupFilter={group} search={search}
             violation={pillKeys?.includes(violation ?? '') ? violation : null}
             jumpToDate={jumpToReceiptDate} jumpToItemName={jumpToReceiptItemName}
