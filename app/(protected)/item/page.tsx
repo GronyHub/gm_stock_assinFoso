@@ -395,6 +395,15 @@ const BILLS_FLAG_TYPES: { key: string; letter: string; label: string }[] = [
 const VALID_TABS: OuterTab[] = ['today', 'loss', 'uk', 'ch']
 const VALID_ADD_FORMS = ['item', 'sale', 'live', 'liveLog', 'bill', 'expense'] as const
 
+// Biz (Today + Grony Cash), UK, and C&H are three separate areas that should
+// never visually blur into each other -- each gets its own deep, near-black
+// shade for its button and left pane, matching how dark the existing Biz
+// blue already is. Today counts as Biz (there's no fourth color) since it's
+// just Biz's own home row, not a separate section.
+const PANE_ACCENT: Record<OuterTab, string> = {
+  today: '#00072d', loss: '#00072d', uk: '#450a0a', ch: '#052e16',
+}
+
 function ItemHubPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -1114,6 +1123,7 @@ function ItemHubPageInner() {
   // up at the same time as Settings -- still two things selected at once,
   // just the wrong two.
   const paneActive = (cond: boolean) => cond && !settingsOpen
+  const paneAccent = PANE_ACCENT[outerTab]
 
   // New Sale / Live Sale / Log take over the whole content area with their
   // own thing to do (build a cart, tap items, review a log) -- the
@@ -1132,7 +1142,7 @@ function ItemHubPageInner() {
           it alongside their own content instead of losing all navigation
           the moment you leave Grony Cash. */}
       <div className="flex-1 min-h-0 flex overflow-hidden">
-        <SidePaneContainer mode={cashDisplayMode}
+        <SidePaneContainer mode={cashDisplayMode} accent={paneAccent}
             footer={<>
               <PaneHomeDaily mode={cashDisplayMode}
                 onHome={() => { setLossView('home'); setUnreadAnnouncements(0); setSettingsOpen(false) }}
@@ -1167,12 +1177,12 @@ function ItemHubPageInner() {
               {(canSeeUK || canSeeCH) && (
                 <div className="border-t border-white/30 flex items-stretch shrink-0">
                   {canSeeUK && (
-                    <SidePaneButton icon="🇬🇧" label="UK" mode={cashDisplayMode}
+                    <SidePaneButton icon="🇬🇧" label="UK" mode={cashDisplayMode} tint={PANE_ACCENT.uk}
                       active={paneActive(outerTab === 'uk')} onClick={() => changeTab('uk')} className="flex-1 min-w-0" />
                   )}
                   {canSeeUK && canSeeCH && <div className="w-px bg-white/10 shrink-0" />}
                   {canSeeCH && (
-                    <SidePaneButton icon="🏢" label="C&H" mode={cashDisplayMode}
+                    <SidePaneButton icon="🏢" label="C&H" mode={cashDisplayMode} tint={PANE_ACCENT.ch}
                       active={paneActive(outerTab === 'ch')} onClick={() => changeTab('ch')} className="flex-1 min-w-0" />
                   )}
                 </div>
@@ -1342,7 +1352,7 @@ function ItemHubPageInner() {
                         className="w-full text-[10px] bg-white border border-blue-300 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
                       <div className="flex items-center gap-1">
                         <button type="submit" disabled={!uk.newSubmenuName.trim()}
-                          className="flex-1 text-[10px] font-semibold px-1.5 py-1 rounded bg-white text-[#00072d] hover:bg-blue-50 disabled:opacity-40 transition">
+                          className="flex-1 text-[10px] font-semibold px-1.5 py-1 rounded bg-white text-[var(--pane-accent)] hover:bg-blue-50 disabled:opacity-40 transition">
                           Add
                         </button>
                         <button type="button" onClick={() => { uk.setShowAddSubmenu(false); uk.setNewSubmenuName('') }}
