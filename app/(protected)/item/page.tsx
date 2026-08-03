@@ -1659,10 +1659,7 @@ function ItemHubPageInner() {
               onGoToViolation={goToViolation}
               missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
               onOpenStaff={() => pickLossView('staffTimes')}
-              staffRoster={STAFF_ROSTER} routablePages={routablePages}
-              openerBadgeCount={openerBadgeCount} dressFlagsCount={dressFlagsCount}
-              jingleFlagsCount={jingleFlagsCount} equipmentFlagsCount={equipmentFlagsCount}
-              advertStatusFlagsCount={advertStatusFlagsCount} />
+              staffRoster={STAFF_ROSTER} routablePages={routablePages} />
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && STAFF_VIEW_KEYS.has(lossView) && (
@@ -1674,7 +1671,7 @@ function ItemHubPageInner() {
               // otherwise leak into TimesTab/PayslipsTab's own local
               // state across accounts.
               <>
-                {lossView === 'staffTimes' && <div className="px-4 pt-2"><PageToolIcons scopeKey={myStaffName} flagsCount={staffTimesFlagsCount} /></div>}
+                {lossView === 'staffTimes' && <div className="px-4 pt-2"><PageToolIcons scopeKey={myStaffName} /></div>}
                 <StaffContent key={myStaffName} view={lossView as StaffView}
                   viewingName={viewingName} role={role} username={username}
                   canSeeTeam={canSeeTeam} canSeeUsers={canSeeUsers} canSeeRoles={canManage} />
@@ -1707,7 +1704,7 @@ function ItemHubPageInner() {
         {showAnalytics && outerTab === 'loss' && lossView === 'expenses' && (
           <TabErrorBoundary><div className="px-3 pt-3"><ExpensesAnalyticsSection /></div></TabErrorBoundary>
         )}
-        {outerTab === 'loss' && lossView === 'cab' && <CABTab flagsCount={cabFlagsCount} />}
+        {outerTab === 'loss' && lossView === 'cab' && <CABTab />}
         {/* Items pill selected -> ItemsTab's filtered fix view; otherwise the
             submenu's normal content (LossTab). Same swap pattern for
             Sales/Counts/Feed below -- each of those already knows how to
@@ -1776,7 +1773,7 @@ function ItemHubPageInner() {
           <TabErrorBoundary><div className="px-3 pt-3"><SalesAnalyticsSection /></div></TabErrorBoundary>
         )}
         {!showAnalytics && addForm !== 'sale' && addForm !== 'live' && addForm !== 'liveLog' && outerTab === 'loss' && lossView === 'sales' && (<>
-          {!violation && <div className="px-3 pt-2"><PageToolIcons scopeKey="Sales" flagsCount={salesFlagsCount} /></div>}
+          {!violation && <div className="px-3 pt-2"><PageToolIcons scopeKey="Sales" /></div>}
           <SalesTab items={items} groupFilter={group} search={search}
             violation={pillKeys?.includes(violation ?? '') ? violation : null}
             jumpToDate={jumpToReceiptDate} jumpToItemName={jumpToReceiptItemName}
@@ -1786,12 +1783,12 @@ function ItemHubPageInner() {
           <TabErrorBoundary><div className="px-3 pt-3"><BillsAnalyticsSection /></div></TabErrorBoundary>
         )}
         {!showAnalytics && addForm !== 'bill' && outerTab === 'loss' && lossView === 'bills' && (<>
-          {!violation && <div className="px-3 pt-2"><PageToolIcons scopeKey="Bills" flagsCount={billsFlagsCount} /></div>}
+          {!violation && <div className="px-3 pt-2"><PageToolIcons scopeKey="Bills" /></div>}
           <BillsTab items={items} groupFilter={group} search={search}
             violation={pillKeys?.includes(violation ?? '') ? violation : null} />
         </>)}
         {outerTab === 'loss' && lossView === 'counts' && (<>
-          {!violation && <div className="px-3 pt-2"><PageToolIcons scopeKey="Counts" flagsCount={countsFlagsCount} /></div>}
+          {!violation && <div className="px-3 pt-2"><PageToolIcons scopeKey="Counts" /></div>}
           <CountsTab items={items} groupFilter={group} search={search}
             violation={pillKeys?.includes(violation ?? '') ? violation : null} onFixRecords={goFixRecords}
             onGoToViolation={goToViolation} />
@@ -1816,7 +1813,7 @@ function ItemHubPageInner() {
                 </button>
               </div>
             )}
-            {!violation && <div className="px-3 pt-2"><PageToolIcons scopeKey="Loss by Date" flagsCount={lossByDateFlagsCount} /></div>}
+            {!violation && <div className="px-3 pt-2"><PageToolIcons scopeKey="Loss by Date" /></div>}
             <LossFeedTab search={search} kind={(violation === 'gains' || feedShowGains) ? 'gain' : 'loss'} />
           </TabErrorBoundary>
         )}

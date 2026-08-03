@@ -816,7 +816,7 @@ export default function ItemsTab({ items, group, productType, search, violation,
           <span className="text-[9px] font-semibold text-red-700">🚩 Items Flags</span>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
-          <PageToolIcons scopeKey="Items" flagsCount={rows.reduce((s, r) => s + r.count, 0)} />
+          <PageToolIcons scopeKey="Items" />
           {rows.map(r => (
             <div key={r.type} className="bg-white border border-gray-200 rounded-xl p-2.5 space-y-1.5">
               <div className="flex items-center justify-between gap-2">
