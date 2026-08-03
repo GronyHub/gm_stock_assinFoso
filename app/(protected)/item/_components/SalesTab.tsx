@@ -739,6 +739,22 @@ export default function SalesTab({
     </div>
   )
 
+  // CC/WNW only ever show a value on a receipt's own bar row -- every item
+  // line leaves them blank, wasting the width of two whole columns next to
+  // a wrapping item name. When they're the leading columns (the default
+  // order), let the item name's cell span across them too instead of
+  // rendering two empty <td>s, so the name gets to use that space before
+  // wrapping. Only counts a *leading* run of them -- if a column between
+  // ITEM and CC/WNW is reordered in front, extending stops there instead
+  // of guessing past it.
+  const lineItemBlankCols = new Set<ColKey>(['cc', 'wnw'])
+  let lineItemLeadingBlanks = 0
+  for (const c of colPrefs.shownColumns) {
+    if (lineItemBlankCols.has(c.key)) lineItemLeadingBlanks++
+    else break
+  }
+  const lineItemTrailingColumns = colPrefs.shownColumns.slice(lineItemLeadingBlanks)
+
   return (
     <div className="flex flex-col h-full min-h-0">
     <div className="flex items-center justify-between px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
@@ -1054,7 +1070,7 @@ export default function SalesTab({
             {editingId !== r.id && (!barsOnly || expandedIds.has(r.id)) && rows.map(line => (
               <tr key={line ? line.id : `${r.id}-empty`}
                 className={`border-b border-gray-100 text-[13px] font-bold ${selectedId === r.id ? 'bg-blue-50/40' : 'hover:bg-gray-50'}`}>
-                <td className="px-1 py-1 text-gray-900 align-top sticky left-0 z-[5] bg-inherit">
+                <td colSpan={1 + lineItemLeadingBlanks} className="px-1 py-1 text-gray-900 align-top sticky left-0 z-[5] bg-inherit">
                   {line ? (
                     line.item_id ? (
                       <Link href={`/item?tab=loss&view=item360&jumpItemId=${line.item_id}`} className="text-blue-600 hover:underline">
@@ -1063,7 +1079,7 @@ export default function SalesTab({
                     ) : line.item_name
                   ) : <span className="text-gray-400 italic">No items</span>}
                 </td>
-                {colPrefs.shownColumns.map(c => {
+                {lineItemTrailingColumns.map(c => {
                   if (c.key === 'qty') return (
                     <td key={c.key} className="px-1 py-1 text-right text-gray-700 align-top">{line ? (line.quantity ? parseFloat(line.quantity) : '—') : ''}</td>
                   )
