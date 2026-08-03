@@ -27,6 +27,8 @@ function money(n: number) {
   return `₵${n.toFixed(2)}`
 }
 
+const PRIORITY_GROUP = 'Printing Press Services'
+
 export default function LiveSalePage({ onClose, initialShowLog, search, groupFilter }: {
   onClose?: () => void; initialShowLog?: boolean; search?: string; groupFilter?: string | null
 } = {}) {
@@ -88,6 +90,12 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
       const ca = tapCounts.get(a.id) ?? 0
       const cb = tapCounts.get(b.id) ?? 0
       if (ca !== cb) return cb - ca
+      // Today's actual taps still win (a hot item floats up regardless of
+      // group), but before anything's been tapped the list should still
+      // open with the group that gets used most -- Printing Press Services.
+      const pa = a.group === PRIORITY_GROUP ? 0 : 1
+      const pb = b.group === PRIORITY_GROUP ? 0 : 1
+      if (pa !== pb) return pa - pb
       return a.name.localeCompare(b.name)
     })
   }, [items, groupFilter, search, tapCounts])
@@ -224,7 +232,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
           {loadingItems ? (
             <p className="text-sm text-gray-400">Loading items…</p>
           ) : (
-            <div className="border border-gray-200 rounded-lg overflow-hidden">
+            <div>
               {gridItems.map((it) => {
                 const count = tapCounts.get(it.id) ?? 0
                 return (
@@ -233,20 +241,20 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                     type="button"
                     onClick={() => tap(it)}
                     disabled={pendingItemId === it.id}
-                    className="w-full flex items-center gap-2 text-left px-3 py-2.5 border-b border-gray-100 last:border-0 bg-white hover:bg-blue-50 active:bg-blue-100 transition disabled:opacity-50"
+                    className="w-full flex items-center gap-1 text-left px-2 py-1.5 border-b border-gray-50 bg-white hover:bg-blue-50 active:bg-blue-100 transition disabled:opacity-50"
                   >
-                    <p className="flex-1 min-w-0 text-sm font-semibold text-gray-900 leading-tight" style={{ wordBreak: 'break-word' }}>
+                    <p className="flex-1 min-w-0 text-[10px] font-semibold text-gray-900 leading-tight" style={{ wordBreak: 'break-word' }}>
                       {it.name} <span className="text-blue-600 font-bold">({money(Number(it.selling_price) || 0)})</span>
                     </p>
                     {count > 0 && (
-                      <span className="shrink-0 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
+                      <span className="shrink-0 min-w-[0.9rem] h-[0.9rem] px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold flex items-center justify-center">
                         {count}
                       </span>
                     )}
                   </button>
                 )
               })}
-              {gridItems.length === 0 && <p className="text-sm text-gray-400 text-center py-6">No items match.</p>}
+              {gridItems.length === 0 && <p className="text-[10px] text-gray-400 text-center py-6">No items match.</p>}
             </div>
           )}
         </div>
