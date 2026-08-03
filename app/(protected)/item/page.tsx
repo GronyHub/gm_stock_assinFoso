@@ -1071,6 +1071,12 @@ function ItemHubPageInner() {
   // just the wrong two.
   const paneActive = (cond: boolean) => cond && !settingsOpen
 
+  // New Sale / Live Sale / Log take over the whole content area with their
+  // own thing to do (build a cart, tap items, review a log) -- the
+  // Analytics toggle and flag badges above them belong to the Sales list
+  // view they're not showing, so they're just clutter here.
+  const salesFormOpen = lossView === 'sales' && (addForm === 'sale' || addForm === 'live' || addForm === 'liveLog')
+
   return (
     <div className="-mx-4 -mt-4 -mb-6 flex flex-col h-[100dvh] md:h-[calc(100dvh-56px)]">
 
@@ -1437,7 +1443,7 @@ function ItemHubPageInner() {
                   </div>
                 </div>
 
-                {['items', 'sales', 'bills', 'expenses'].includes(lossView) && (
+                {['items', 'sales', 'bills', 'expenses'].includes(lossView) && !salesFormOpen && (
                   <div className="flex items-center gap-1.5">
 
                     {/* Columns picker -- Items submenu only, next to New since it's
@@ -1491,7 +1497,7 @@ function ItemHubPageInner() {
                     fighting the Columns/Analytics/New row above for width.
                     Small + compact so as many as possible sit on one line
                     before wrapping. */}
-                {!showAnalytics && (lossView === 'items' || lossView === 'sales' || lossView === 'bills') && (
+                {!showAnalytics && !salesFormOpen && (lossView === 'items' || lossView === 'sales' || lossView === 'bills') && (
                   <div className="flex flex-wrap items-center gap-1">
                     {(lossView === 'items' ? ITEMS_FLAG_TYPES : lossView === 'sales' ? SALES_FLAG_TYPES : BILLS_FLAG_TYPES).map(({ key, letter, label }) => {
                       const count = violationCounts[key] ?? 0
