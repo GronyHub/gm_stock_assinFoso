@@ -285,30 +285,49 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
           ) : visibleTaps.length === 0 ? (
             <p className="text-sm text-gray-400">No taps yet today.</p>
           ) : (
-            <div className="space-y-1">
-              {visibleTaps.map((t) => (
-                <div
-                  key={t.id}
-                  className={`flex items-center justify-between gap-2 px-3 py-2 rounded-lg border text-sm ${t.undone ? 'bg-gray-50 border-gray-200 text-gray-400' : 'bg-white border-gray-200'}`}
-                >
-                  <div className={`min-w-0 ${t.undone ? 'line-through' : ''}`}>
-                    <div className="font-semibold truncate">{t.item_name} × {t.quantity} · {money(Number(t.price) * t.quantity)}</div>
-                    <div className="text-xs text-gray-500">
-                      {t.staff_name} · {new Date(t.tapped_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                    </div>
-                  </div>
-                  {!t.undone && (
-                    <button
-                      type="button"
-                      onClick={() => undo(t.id)}
-                      disabled={undoingId === t.id}
-                      className="shrink-0 px-2 py-1 rounded-md text-xs font-semibold bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 disabled:opacity-50"
+            <div className="overflow-x-auto border border-gray-200 rounded-lg">
+              <table className="w-full text-[10px] border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    <th className="text-left px-2 py-1 font-bold text-gray-500 whitespace-nowrap">Item</th>
+                    <th className="text-left px-2 py-1 font-bold text-gray-500 whitespace-nowrap">Time</th>
+                    <th className="text-right px-2 py-1 font-bold text-gray-500 whitespace-nowrap">SP</th>
+                    <th className="text-right px-2 py-1 font-bold text-gray-500 whitespace-nowrap">Qty</th>
+                    <th className="text-right px-2 py-1 font-bold text-gray-500 whitespace-nowrap">Total</th>
+                    <th className="text-left px-2 py-1 font-bold text-gray-500 whitespace-nowrap">Staff</th>
+                    <th className="px-2 py-1"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleTaps.map((t) => (
+                    <tr
+                      key={t.id}
+                      className={`border-b border-gray-50 last:border-0 ${t.undone ? 'bg-gray-50 text-gray-400 line-through' : 'bg-white'}`}
                     >
-                      Undo
-                    </button>
-                  )}
-                </div>
-              ))}
+                      <td className="px-2 py-1 font-semibold" style={{ wordBreak: 'break-word' }}>{t.item_name}</td>
+                      <td className="px-2 py-1 whitespace-nowrap text-gray-500">
+                        {new Date(t.tapped_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                      </td>
+                      <td className="px-2 py-1 text-right whitespace-nowrap">{money(Number(t.price))}</td>
+                      <td className="px-2 py-1 text-right whitespace-nowrap">{t.quantity}</td>
+                      <td className="px-2 py-1 text-right whitespace-nowrap font-bold text-blue-600">{money(Number(t.price) * t.quantity)}</td>
+                      <td className="px-2 py-1 whitespace-nowrap">{t.staff_name}</td>
+                      <td className="px-2 py-1 whitespace-nowrap">
+                        {!t.undone && (
+                          <button
+                            type="button"
+                            onClick={() => undo(t.id)}
+                            disabled={undoingId === t.id}
+                            className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 disabled:opacity-50"
+                          >
+                            Undo
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
