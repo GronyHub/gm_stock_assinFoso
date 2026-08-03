@@ -12,7 +12,7 @@ export type ManageView =
   | 'audio' | 'audio_status' | 'jingle' | 'equipment' | 'photoshop' | 'whatsapp' | 'cuttings' | 'video' | 'advert_log'
   | 'staff_dress'
   | 'arrangement' | 'cleanliness' | 'future' | 'customer_display'
-  | 'staff_display' | 'repair_works' | 'quality_assurance'
+  | 'staff_display' | 'repair_works' | 'quality_assurance' | 'staff_meeting'
   | 'tutorial' | 'training_laws' | 'assessment'
   | 'logs' | 'properties'
 
@@ -26,6 +26,7 @@ export const LOG_CATEGORIES: { key: ManageView; label: string; icon: string }[] 
   { key: 'staff_display',    label: 'Staff Display',     icon: '📌' },
   { key: 'repair_works',     label: 'Repair Works',      icon: '🔧' },
   { key: 'quality_assurance', label: 'Quality Assurance', icon: '✅' },
+  { key: 'staff_meeting',    label: 'Staff Meeting',     icon: '🗣️' },
 ]
 
 // The Manage section's fixed contents, top to bottom -- one flat list, no
