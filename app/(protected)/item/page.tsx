@@ -1469,23 +1469,16 @@ function ItemHubPageInner() {
                       📊 {showAnalytics ? 'List' : 'Ana'}
                     </button>
 
-                    {/* Live Sale button — Sales submenu only, sits next to New for fast walk-in tapping */}
-                    {!showAnalytics && lossView === 'sales' && (
-                      <button onClick={() => setAddForm(addForm === 'live' || addForm === 'liveLog' ? null : 'live')}
-                        className={`shrink-0 ml-auto text-xs font-semibold px-3 py-1 rounded-lg transition
-                          ${addForm === 'live' || addForm === 'liveLog' ? 'bg-amber-700 text-white' : 'bg-amber-500 text-white hover:bg-amber-600'}`}>
-                        {addForm === 'live' || addForm === 'liveLog' ? '×' : '⚡ Live'}
-                      </button>
-                    )}
-
-                    {/* New button — Items/Sales/Bills/Expenses/PO submenus only; report-style and Counts submenus have no add-form */}
-                    {!showAnalytics && (() => {
-                      const formKey = lossView === 'items' ? 'item' : lossView === 'sales' ? 'sale' : lossView === 'bills' ? 'bill' : 'expense'
+                    {/* New button — Items/Bills/Expenses/PO submenus only; Sales' New/Live/Log
+                        moved to their own rows under Sales in the left pane, and report-style
+                        and Counts submenus have no add-form, so neither shows a button here. */}
+                    {!showAnalytics && lossView !== 'sales' && (() => {
+                      const formKey = lossView === 'items' ? 'item' : lossView === 'bills' ? 'bill' : 'expense'
                       return (
                         <button onClick={() => setAddForm(addForm === formKey ? null : formKey)}
-                          className={`shrink-0 ${lossView === 'sales' ? '' : 'ml-auto'} text-xs font-semibold px-3 py-1 rounded-lg transition
-                            ${addForm && addForm !== 'live' && addForm !== 'liveLog' ? 'bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
-                          {addForm && addForm !== 'live' && addForm !== 'liveLog' ? '×' : 'New'}
+                          className={`shrink-0 ml-auto text-xs font-semibold px-3 py-1 rounded-lg transition
+                            ${addForm ? 'bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
+                          {addForm ? '×' : 'New'}
                         </button>
                       )
                     })()}
@@ -1525,7 +1518,15 @@ function ItemHubPageInner() {
 
           {/* ── Content ── */}
           <div className="relative flex-1 min-h-0 overflow-y-auto">
-        {addForm === 'sale'    && outerTab === 'loss' && lossView === 'sales'    && <div className="px-4"><NewSaleForm    onSuccess={() => setAddForm(null)} /></div>}
+        {addForm === 'sale'    && outerTab === 'loss' && lossView === 'sales'    && (
+          <div className="px-4">
+            <div className="flex justify-end">
+              <button onClick={() => setAddForm(null)}
+                className="text-xs font-semibold px-3 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 border border-gray-300">×</button>
+            </div>
+            <NewSaleForm onSuccess={() => setAddForm(null)} groupFilter={group} />
+          </div>
+        )}
         {(addForm === 'live' || addForm === 'liveLog') && outerTab === 'loss' && lossView === 'sales' &&
           <div className="px-4"><LiveSaleForm key={addForm} onClose={() => setAddForm(null)} initialShowLog={addForm === 'liveLog'} /></div>}
         {addForm === 'bill'    && outerTab === 'loss' && lossView === 'bills'    && <div className="px-4"><NewBillForm    onSuccess={() => setAddForm(null)} /></div>}

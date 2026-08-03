@@ -36,7 +36,10 @@ export default function LiveSalePage({ onClose, initialShowLog }: { onClose?: ()
   const [activeGroup, setActiveGroup] = useState<string | null>(null)
   const [taps, setTaps] = useState<Tap[]>([])
   const [loadingTaps, setLoadingTaps] = useState(true)
-  const [showLog, setShowLog] = useState(!!initialShowLog)
+  // Grid vs. log is now picked from the left pane (Sales > Live Sale vs.
+  // Sales > Live Sale > Log), which remounts this page with a different
+  // initialShowLog rather than toggling in place -- no local state needed.
+  const showLog = !!initialShowLog
   const [staffFilter, setStaffFilter] = useState<string | null>(null)
   const [lastTap, setLastTap] = useState<Tap | null>(null)
   const [pendingItemId, setPendingItemId] = useState<number | null>(null)
@@ -155,13 +158,6 @@ export default function LiveSalePage({ onClose, initialShowLog }: { onClose?: ()
           <p className="text-xs text-gray-500">Walk-in only · every tap saves instantly to today&apos;s WIC receipt</p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowLog((v) => !v)}
-            className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-gray-100 hover:bg-gray-200 border border-gray-300"
-          >
-            📋 Log{taps.filter((t) => !t.undone).length > 0 ? ` (${taps.filter((t) => !t.undone).length})` : ''}
-          </button>
           {onClose && (
             <button
               type="button"

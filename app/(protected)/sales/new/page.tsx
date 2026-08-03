@@ -8,7 +8,7 @@ type Item = { id: number; name: string; group: string | null; soh: number; selli
 type CartLine = { item: Item; qty: number; price: number }
 type Customer = { id: number; display_name: string }
 
-export default function NewReceiptPage({ onSuccess }: { onSuccess?: () => void } = {}) {
+export default function NewReceiptPage({ onSuccess, groupFilter }: { onSuccess?: () => void; groupFilter?: string | null } = {}) {
   usePresenceReporter('entering a sale')
   const [date, setDate] = useState('')
   const [saleType, setSaleType] = useState<'WIC' | 'GMC'>('WIC')
@@ -23,7 +23,6 @@ export default function NewReceiptPage({ onSuccess }: { onSuccess?: () => void }
   const [allItems, setAllItems] = useState<Item[]>([])
   const [loadingItems, setLoadingItems] = useState(true)
   const [search, setSearch] = useState('')
-  const [activeGroup, setActiveGroup] = useState<string | null>(null)
   const [cart, setCart] = useState<CartLine[]>([])
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState('')
@@ -87,17 +86,17 @@ export default function NewReceiptPage({ onSuccess }: { onSuccess?: () => void }
     }
   }
 
-  // Groups derived from items
-  const groups = ['All', ...Array.from(new Set(allItems.map(i => i.group ?? 'Other'))).sort()]
-
-  // Items shown in catalogue panel
+  // Items shown in catalogue panel -- group filtering comes from the green
+  // "All Groups" bar above (item/page.tsx's `group` state, passed down as
+  // groupFilter) instead of its own chip row, so there's one group filter
+  // for the whole page instead of two that could disagree.
   const catalogueItems = (() => {
     if (search.trim()) {
       const q = search.toLowerCase()
       return allItems.filter(i => i.name.toLowerCase().includes(q) || (i.group ?? '').toLowerCase().includes(q))
     }
-    if (activeGroup && activeGroup !== 'All') {
-      return allItems.filter(i => (i.group ?? 'Other') === activeGroup)
+    if (groupFilter) {
+      return allItems.filter(i => (i.group ?? 'Ungrouped') === groupFilter)
     }
     return allItems
   })()
@@ -199,23 +198,11 @@ export default function NewReceiptPage({ onSuccess }: { onSuccess?: () => void }
           <p className="text-[9px] font-bold text-gray-400 uppercase mb-1">Item Catalogue</p>
           <input
             value={search}
-            onChange={e => { setSearch(e.target.value); setActiveGroup(null) }}
+            onChange={e => setSearch(e.target.value)}
 placeholder={loadingItems ? 'Loading…' : `Search ${allItems.length} items…`}
             disabled={loadingItems}
             className="w-full text-[11px] text-gray-900 placeholder-gray-300 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400"
           />
-        </div>
-
-        {/* Group chips */}
-        <div className="flex flex-wrap gap-1 px-2 py-1.5 border-b border-gray-100 overflow-x-auto">
-          {groups.map(g => (
-            <button key={g} type="button"
-              onClick={() => { setActiveGroup(g === activeGroup ? null : g); setSearch('') }}
-              className={`shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded-full transition
-                ${activeGroup === g ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-              {g}
-            </button>
-          ))}
         </div>
 
         {/* Item list */}
