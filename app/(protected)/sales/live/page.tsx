@@ -27,13 +27,13 @@ function money(n: number) {
   return `₵${n.toFixed(2)}`
 }
 
-export default function LiveSalePage({ onClose, initialShowLog }: { onClose?: () => void; initialShowLog?: boolean } = {}) {
+export default function LiveSalePage({ onClose, initialShowLog, search, groupFilter }: {
+  onClose?: () => void; initialShowLog?: boolean; search?: string; groupFilter?: string | null
+} = {}) {
   usePresenceReporter('live-tapping a sale')
 
   const [items, setItems] = useState<GridItem[]>([])
   const [loadingItems, setLoadingItems] = useState(true)
-  const [search, setSearch] = useState('')
-  const [activeGroup, setActiveGroup] = useState<string | null>(null)
   const [taps, setTaps] = useState<Tap[]>([])
   const [loadingTaps, setLoadingTaps] = useState(true)
   // Grid vs. log is now picked from the left pane (Sales > Live Sale vs.
@@ -76,18 +76,13 @@ export default function LiveSalePage({ onClose, initialShowLog }: { onClose?: ()
     return counts
   }, [taps])
 
-  const groups = useMemo(() => {
-    const set = new Set<string>()
-    for (const it of items) {
-      if (it.group) set.add(it.group)
-    }
-    return Array.from(set).sort()
-  }, [items])
-
+  // Search and group filtering come from the green bar above (item/page.tsx's
+  // `search`/`group` state) instead of a local search box + chip row -- one
+  // filter for the page instead of two that could disagree.
   const gridItems = useMemo(() => {
-    const q = search.trim().toLowerCase()
+    const q = (search ?? '').trim().toLowerCase()
     let list = items
-    if (activeGroup) list = list.filter((it) => it.group === activeGroup)
+    if (groupFilter) list = list.filter((it) => (it.group ?? 'Ungrouped') === groupFilter)
     if (q) list = list.filter((it) => it.name.toLowerCase().includes(q))
     return [...list].sort((a, b) => {
       const ca = tapCounts.get(a.id) ?? 0
@@ -95,7 +90,7 @@ export default function LiveSalePage({ onClose, initialShowLog }: { onClose?: ()
       if (ca !== cb) return cb - ca
       return a.name.localeCompare(b.name)
     })
-  }, [items, activeGroup, search, tapCounts])
+  }, [items, groupFilter, search, tapCounts])
 
   const staffNames = useMemo(() => {
     const set = new Set<string>()
@@ -226,41 +221,10 @@ export default function LiveSalePage({ onClose, initialShowLog }: { onClose?: ()
         </div>
       ) : (
         <div>
-          <div className="flex flex-col sm:flex-row gap-2 mb-2">
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search item…"
-              className="flex-1 px-3 py-2 rounded-lg border border-gray-300 text-sm"
-            />
-          </div>
-          {groups.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mb-3">
-              <button
-                type="button"
-                onClick={() => setActiveGroup(null)}
-                className={`px-2 py-1 rounded-full text-xs font-semibold border ${!activeGroup ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300'}`}
-              >
-                All
-              </button>
-              {groups.map((g) => (
-                <button
-                  key={g}
-                  type="button"
-                  onClick={() => setActiveGroup(g)}
-                  className={`px-2 py-1 rounded-full text-xs font-semibold border ${activeGroup === g ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300'}`}
-                >
-                  {g}
-                </button>
-              ))}
-            </div>
-          )}
-
           {loadingItems ? (
             <p className="text-sm text-gray-400">Loading items…</p>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
               {gridItems.map((it) => {
                 const count = tapCounts.get(it.id) ?? 0
                 return (
@@ -269,19 +233,20 @@ export default function LiveSalePage({ onClose, initialShowLog }: { onClose?: ()
                     type="button"
                     onClick={() => tap(it)}
                     disabled={pendingItemId === it.id}
-                    className="relative text-left px-3 py-4 rounded-xl border border-gray-300 bg-white shadow-sm hover:border-blue-400 active:scale-95 transition disabled:opacity-50"
+                    className="w-full flex items-center gap-2 text-left px-3 py-2.5 border-b border-gray-100 last:border-0 bg-white hover:bg-blue-50 active:bg-blue-100 transition disabled:opacity-50"
                   >
+                    <p className="flex-1 min-w-0 text-sm font-semibold text-gray-900 leading-tight" style={{ wordBreak: 'break-word' }}>
+                      {it.name} <span className="text-blue-600 font-bold">({money(Number(it.selling_price) || 0)})</span>
+                    </p>
                     {count > 0 && (
-                      <span className="absolute top-1.5 right-1.5 min-w-[1.25rem] h-5 px-1 rounded-full bg-blue-600 text-white text-[11px] font-bold flex items-center justify-center">
+                      <span className="shrink-0 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
                         {count}
                       </span>
                     )}
-                    <div className="text-sm font-semibold pr-6 line-clamp-2">{it.name}</div>
-                    <div className="text-xs text-gray-500 mt-1">{money(Number(it.selling_price) || 0)}</div>
                   </button>
                 )
               })}
-              {gridItems.length === 0 && <p className="col-span-full text-sm text-gray-400">No items match.</p>}
+              {gridItems.length === 0 && <p className="text-sm text-gray-400 text-center py-6">No items match.</p>}
             </div>
           )}
         </div>
