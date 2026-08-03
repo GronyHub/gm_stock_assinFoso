@@ -112,8 +112,10 @@ type LossView = 'home' | 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'loss
 // so an old '?view=aliasWide'/'serviceMatches' link still needs a home to
 // land on instead of a blank pane.
 type ItemsExtraView = 'none' | 'aliasWide' | 'serviceMatches' | 'nameConflicts'
+// Doubles as the current itemsExtraView->?view= mapping (see the URL-sync
+// effect below) and as backward-compat for old '?view=aliasWide' links.
 const OLD_LOSSVIEW_TO_EXTRA: Partial<Record<string, ItemsExtraView>> = {
-  aliasWide: 'aliasWide', serviceMatches: 'serviceMatches',
+  aliasWide: 'aliasWide', serviceMatches: 'serviceMatches', nameConflicts: 'nameConflicts',
 }
 
 // Every row that used to belong to Grony Manage's or Staff's own separate
@@ -391,6 +393,7 @@ const BILLS_FLAG_TYPES: { key: string; letter: string; label: string }[] = [
 ]
 
 const VALID_TABS: OuterTab[] = ['today', 'loss', 'uk', 'ch']
+const VALID_ADD_FORMS = ['item', 'sale', 'live', 'liveLog', 'bill', 'expense'] as const
 
 function ItemHubPageInner() {
   const router = useRouter()
@@ -409,8 +412,11 @@ function ItemHubPageInner() {
   const [outerTab, setOuterTab] = useState<OuterTab>(
     initialTab && VALID_TABS.includes(initialTab) ? initialTab : 'loss'
   )
-  const [group, setGroup]               = useState<string | null>(null)
-  const [productType, setProductType]   = useState<'all' | 'goods' | 'services'>('all')
+  const [group, setGroup]               = useState<string | null>(searchParams.get('group'))
+  const rawInitialProductType = searchParams.get('type')
+  const [productType, setProductType]   = useState<'all' | 'goods' | 'services'>(
+    rawInitialProductType === 'goods' || rawInitialProductType === 'services' ? rawInitialProductType : 'all'
+  )
   const rawInitialView = searchParams.get('view')
   const initialExtraView = rawInitialView ? OLD_LOSSVIEW_TO_EXTRA[rawInitialView] : undefined
   const initialView = (initialExtraView ? 'items' : rawInitialView) as LossView | null
@@ -433,7 +439,10 @@ function ItemHubPageInner() {
   // View Portal As) lives behind this one Settings screen now instead of
   // sitting inline in the pane -- see SettingsPanel.tsx.
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [addForm, setAddForm]             = useState<'item' | 'sale' | 'live' | 'liveLog' | 'bill' | 'expense' | null>(null)
+  const rawInitialForm = searchParams.get('form')
+  const [addForm, setAddForm]             = useState<'item' | 'sale' | 'live' | 'liveLog' | 'bill' | 'expense' | null>(
+    (VALID_ADD_FORMS as readonly string[]).includes(rawInitialForm ?? '') ? (rawInitialForm as typeof VALID_ADD_FORMS[number]) : null
+  )
   const [jumpToItemId, setJumpToItemId]   = useState<number | null>(null)
   // Seeded from ?jumpDate=/?jumpItem= -- Item 360's Detail table (and its
   // "click a date" links) lands here via /item?tab=loss&view=sales&jumpDate=
@@ -529,7 +538,7 @@ function ItemHubPageInner() {
   // view instead of the normal list -- these four (plus Loss and Counts,
   // which own the same toggle themselves, see LossByItemTab/CountsTab)
   // are where the removed "Data" tab's eight sections got redistributed to.
-  const [showAnalytics, setShowAnalytics] = useState(false)
+  const [showAnalytics, setShowAnalytics] = useState(searchParams.get('analytics') === '1')
   // Sales' own combined 🚩 flags view -- lifted up here (like itemsExtraView
   // above) so its trigger can sit on the green bar next to New, matching
   // Items' flag icon + count instead of a separate button inside Sales'
@@ -803,18 +812,34 @@ function ItemHubPageInner() {
     // to stay explicit, or a bare /item on refresh would land back on Loss
     // instead of wherever Today's own state actually was.
     if (outerTab !== 'loss') params.set('tab', outerTab); else params.delete('tab')
-    if (outerTab === 'loss' && lossView !== 'items') params.set('view', lossView); else params.delete('view')
+    if (outerTab === 'loss' && lossView !== 'items') params.set('view', lossView)
+    // Alias Wide Table/Service Matches/Name Conflicts are sub-views of
+    // Items itself (lossView stays 'items') -- they still need their own
+    // ?view= entry, or leaving/refreshing on one of them silently drops
+    // you back on the plain item list instead of where you actually were.
+    else if (outerTab === 'loss' && lossView === 'items' && itemsExtraView !== 'none') params.set('view', itemsExtraView)
+    else params.delete('view')
     // Settings is a full-screen overlay, not a tab -- still gets its own
     // history entry the same way, so the back button closes it instead of
     // leaving the app (see the popstate sync effect below).
     if (settingsOpen) params.set('settings', '1'); else params.delete('settings')
+    // Filters/toggles that change what's actually on screen without
+    // changing which tab/sub-view you're on -- same "real screen, own
+    // history entry" treatment as tab/view above, so back/refresh land you
+    // on the exact filtered state you were looking at instead of it quietly
+    // resetting to the unfiltered default.
+    if (group) params.set('group', group); else params.delete('group')
+    if (productType !== 'all') params.set('type', productType); else params.delete('type')
+    if (violation) params.set('violation', violation); else params.delete('violation')
+    if (showAnalytics) params.set('analytics', '1'); else params.delete('analytics')
+    if (addForm) params.set('form', addForm); else params.delete('form')
     const qs = params.toString()
     const target = qs ? `/item?${qs}` : '/item'
     const current = window.location.pathname + window.location.search
     if (target === current) return
     router.push(target, { scroll: false })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [outerTab, lossView, settingsOpen])
+  }, [outerTab, lossView, settingsOpen, itemsExtraView, group, productType, violation, showAnalytics, addForm])
 
   // A refresh should land back on the same search instead of resetting it --
   // replace (not push) since typing shouldn't create a history entry per
@@ -842,9 +867,28 @@ function ItemHubPageInner() {
       const nextView: LossView = (urlExtraView ? 'items' : rawUrlView) as LossView ?? 'items'
       if (nextView !== lossView) setLossView(nextView)
       if (urlExtraView && urlExtraView !== itemsExtraView) setItemsExtraView(urlExtraView)
+      // Backing out of an extra view (e.g. Alias Wide Table) without also
+      // changing lossView -- the [lossView] effect that normally resets
+      // itemsExtraView never fires here since lossView stays 'items' the
+      // whole time, so it has to be cleared explicitly instead.
+      else if (!urlExtraView && itemsExtraView !== 'none') setItemsExtraView('none')
     }
     const urlSettingsOpen = searchParams.get('settings') === '1'
     if (urlSettingsOpen !== settingsOpen) setSettingsOpen(urlSettingsOpen)
+
+    const urlGroup = searchParams.get('group')
+    if (urlGroup !== group) setGroup(urlGroup)
+    const rawUrlType = searchParams.get('type')
+    const urlType: 'all' | 'goods' | 'services' = rawUrlType === 'goods' || rawUrlType === 'services' ? rawUrlType : 'all'
+    if (urlType !== productType) setProductType(urlType)
+    const urlViolation = searchParams.get('violation')
+    if (urlViolation !== violation) setViolation(urlViolation)
+    const urlAnalytics = searchParams.get('analytics') === '1'
+    if (urlAnalytics !== showAnalytics) setShowAnalytics(urlAnalytics)
+    const rawUrlForm = searchParams.get('form')
+    const urlForm = (VALID_ADD_FORMS as readonly string[]).includes(rawUrlForm ?? '')
+      ? (rawUrlForm as typeof VALID_ADD_FORMS[number]) : null
+    if (urlForm !== addForm) setAddForm(urlForm)
     // Read (and re-read) on every searchParams change, not just first mount --
     // unlike outerTab/lossView above, a plain useState initializer would only
     // ever see this on a fresh page load, never on a same-page router.push
