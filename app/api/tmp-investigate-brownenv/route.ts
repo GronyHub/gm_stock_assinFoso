@@ -64,7 +64,62 @@ export async function GET() {
       WHERE raw_item_name ILIKE '%brown%env%' OR resolved_name ILIKE '%brown%env%'
     `
 
-    return NextResponse.json({ items, stockSummary, aliases, stockCounts, saleLines, billLines, looseMentions })
+    // "Sing." (Singles) in the name matches this app's pack->singles
+    // conversion pattern (see pack_tradeoffs/converts_to_item_id) -- pull
+    // both directions of that relationship for every candidate item: what
+    // it converts INTO, and any PACK item that converts into it, plus that
+    // partner's own summary/counts, since a pack/singles pairing gap is a
+    // recurring, already-documented cause of SOH not matching a physical
+    // count for exactly this kind of item.
+    const convertsTo = ids.length
+      ? await sql`
+          SELECT id, canonical_name, converts_to_item_id
+          FROM items WHERE id = ANY(${ids}) AND converts_to_item_id IS NOT NULL
+        `
+      : []
+    const convertsFrom = ids.length
+      ? await sql`
+          SELECT id, canonical_name, converts_to_item_id
+          FROM items WHERE converts_to_item_id = ANY(${ids})
+        `
+      : []
+    const partnerIds = Array.from(new Set([
+      ...(convertsTo as { converts_to_item_id: number }[]).map(r => r.converts_to_item_id),
+      ...(convertsFrom as { id: number }[]).map(r => r.id),
+    ].filter(Boolean)))
+    const partnerSummary = partnerIds.length
+      ? await sql`
+          SELECT i.id, i.canonical_name, s.calculated_soh
+          FROM items i LEFT JOIN item_stock_summary s ON s.item_id = i.id
+          WHERE i.id = ANY(${partnerIds})
+        `
+      : []
+    const partnerRecentCounts = partnerIds.length
+      ? await sql`
+          SELECT id, item_id, item_name, count_date, quantity_counted, source, counted_by
+          FROM stock_counts WHERE item_id = ANY(${partnerIds})
+          ORDER BY item_id, count_date DESC LIMIT 20
+        `
+      : []
+
+    // Anything a count was silently changed/dropped for on this item --
+    // e.g. during the July 19 reactivate+merge of this exact item's
+    // duplicate rows (see mergeItems.ts, which keeps the winner's count and
+    // discards the loser's on any date both had one).
+    const countRevisions = ids.length
+      ? await sql`
+          SELECT * FROM stock_count_revisions WHERE item_id = ANY(${ids}) ORDER BY changed_at DESC
+        `.catch(() => [])
+      : []
+
+    const tradeoffs = ids.length
+      ? await sql`SELECT * FROM pack_tradeoffs WHERE item_id = ANY(${ids}) ORDER BY row_date DESC`.catch(() => [])
+      : []
+
+    return NextResponse.json({
+      items, stockSummary, aliases, stockCounts, saleLines, billLines, looseMentions,
+      convertsTo, convertsFrom, partnerSummary, partnerRecentCounts, countRevisions, tradeoffs,
+    })
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 })
   }
