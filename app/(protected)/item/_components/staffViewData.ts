@@ -7,7 +7,7 @@
 // instead, plus a personalized summary in Tasks (see TasksView.tsx).
 export type StaffView =
   | 'staffTimes' | 'staffPayslips' | 'staffViolations' | 'staffAnalytics' | 'staffProfile'
-  | 'teamPayslips' | 'teamProfiles' | 'allStaff' | 'users' | 'roles'
+  | 'teamTimes' | 'teamPayslips' | 'teamProfiles' | 'allStaff' | 'users' | 'roles'
   | 'staff_meeting' | 'staff_display' | 'rota' | 'assessment' | 'tutorial' | 'training_laws' | 'logs' | 'staff_dress'
 
 export const STAFF_PERSONAL_ITEMS: { key: StaffView; label: string; icon: string }[] = [
@@ -29,6 +29,7 @@ export const STAFF_PERSONAL_ITEMS: { key: StaffView; label: string; icon: string
 // so they now live behind the same canSeeTeam gate as the rest of this
 // list instead of Manage's canSeeManage.
 export const STAFF_TEAM_ITEMS: { key: StaffView; label: string; icon: string }[] = [
+  { key: 'teamTimes', label: 'Team Times', icon: '🕐' },
   { key: 'teamPayslips', label: 'Team Payslips', icon: '💵' },
   { key: 'teamProfiles', label: 'Team Profiles', icon: '🪪' },
   { key: 'allStaff', label: 'Team Penalty Points', icon: '🏢' },

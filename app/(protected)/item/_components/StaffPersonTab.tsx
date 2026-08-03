@@ -39,7 +39,12 @@ const LogsPage = dynamic(() => import('../../logs/page'), {
 // picker. Payslips/Violations ignore it now (they no longer show up in the
 // pane at all while viewing someone else -- see item/page.tsx's
 // viewingSelf) since Team Payslips/Team Violations already have their own
-// per-staff picker; Profile still only ever means "my own login".
+// per-staff picker; Profile still only ever means "my own login". Team
+// Times renders the same TimesTab component with no viewingStaff at all
+// (not even your own) -- that's the mode it already supports for showing
+// every active staff member's clock history side by side in one grid, the
+// same shared view the pre-Personal/Team split /staff route's own Times
+// tab always showed everyone.
 // `canSeeTeam`/`canSeeUsers`/`canSeeRoles` each gate their own view
 // independently now (Roles & Permissions screen) instead of one blanket
 // isBuilder flag, so a role can be granted Team without also getting Users.
@@ -69,6 +74,7 @@ export default function StaffContent({
     {view === 'staffViolations' && <ViolationsTab role={role} username={username} viewingStaff={viewingName} />}
     {view === 'staffAnalytics' && <AnalyticsTab viewingStaff={viewingName} />}
     {view === 'staffProfile' && isSelf && <ProfileTab />}
+    {canSeeTeam && view === 'teamTimes' && <TimesTab username={username} role={role} />}
     {canSeeTeam && view === 'teamPayslips' && <PayslipsTab role={role} username={username} />}
     {canSeeTeam && view === 'teamProfiles' && <TeamProfilesTab />}
     {canSeeTeam && view === 'allStaff' && <ViolationsTab role={role} username={username} />}
