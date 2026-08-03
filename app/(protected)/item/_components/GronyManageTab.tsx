@@ -11,6 +11,7 @@ import DynamicCategoryPage from './DynamicCategoryPage'
 import PropertiesPage from './PropertiesPage'
 import OpenerView from './OpenerView'
 import CloserView from './CloserView'
+import StaffMeetingPanel from './StaffMeetingPanel'
 import type { Violation } from './useViolations'
 import { LOG_CATEGORIES, type ManageView, type DynamicCategory } from './manageViewData'
 
@@ -37,7 +38,7 @@ const LogsPage = dynamic(() => import('../../logs/page'), {
 export default function GronyManageContent({
   view, activeDynamic, canManage,
   openerViolations, assignments, deadlines, assignedBy, assignedOn, vSettings,
-  onGoToViolation, missingClosingReportsCount, onOpenStaff,
+  onGoToViolation, missingClosingReportsCount, onOpenStaff, staffRoster, routablePages,
 }: {
   view: ManageView
   activeDynamic?: DynamicCategory
@@ -51,6 +52,8 @@ export default function GronyManageContent({
   onGoToViolation: (key: string) => void
   missingClosingReportsCount: number
   onOpenStaff: () => void
+  staffRoster: string[]
+  routablePages: string[]
 }) {
   const logCategory = LOG_CATEGORIES.find(c => c.key === view)
 
@@ -93,6 +96,7 @@ export default function GronyManageContent({
     {view === 'assessment' && (<div className="px-2 pt-2"><PageToolIcons scopeKey="Assessment" /><AssessmentPanel /></div>)}
     {view === 'logs' && <div className="px-2 space-y-2 pt-2"><PageToolIcons scopeKey="Logs" /><LogsPage /></div>}
     {view === 'properties' && <PropertiesPage />}
+    {view === 'staff_meeting' && <StaffMeetingPanel staffRoster={staffRoster} routablePages={routablePages} />}
     {logCategory && <ManageLogPanel category={logCategory.key} label={logCategory.label} icon={logCategory.icon} />}
   </>)
 }

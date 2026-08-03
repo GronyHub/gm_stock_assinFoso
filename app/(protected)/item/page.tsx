@@ -200,6 +200,11 @@ const CASH_ITEMS: { key: LossView; label: string; icon: string }[] = [
 // Used to bounce someone off a Cash view the moment their permissions load
 // and turn out not to include it (see the canSeeCash effect below).
 const CASH_VIEW_KEYS = new Set<LossView>(CASH_ITEMS.map(v => v.key))
+// Feeds the green bar's search placeholder ("Search Items", "Search
+// Sales", ...) so it reads as this page's own filter box, distinct from
+// the unrelated global search (magnifying glass icon, bottom of the
+// content area) that looks across Biz/UK/C&H by name/number.
+const CASH_LABEL = new Map(CASH_ITEMS.map(v => [v.key, v.label]))
 
 type Item = {
   id: number
@@ -809,12 +814,15 @@ function ItemHubPageInner() {
   }
 
   // Joe/Grony's "Viewing" picker -- switches whose personal rows show.
-  // Profile only ever means "my own login", so switching away from it while
-  // it's showing has nowhere sensible to land -- falls back to Times
-  // instead of leaving the content area blank.
+  // Profile only ever means "my own login", and Payslips/Violations no
+  // longer redirect at all (see viewingSelf above) -- so switching away
+  // from yourself while on any of those three has nowhere sensible to
+  // land and falls back to Times instead of leaving the content area
+  // showing a page that's about to disappear from the pane.
   function pickViewing(name: string) {
     setViewingNameOverride(name)
-    if (lossView === 'staffProfile' && name.toLowerCase() !== (myStaffName ?? '').toLowerCase()) {
+    const staysOnSelfOnly = lossView === 'staffProfile' || lossView === 'staffPayslips' || lossView === 'staffViolations'
+    if (staysOnSelfOnly && name.toLowerCase() !== (myStaffName ?? '').toLowerCase()) {
       setLossView('staffTimes')
     }
   }
@@ -1053,64 +1061,29 @@ function ItemHubPageInner() {
   // shouldn't be one in practice, but the section still needs to degrade
   // gracefully instead of showing a stranger's personal records).
   const myStaffName = STAFF_ROSTER.find(n => n.toLowerCase() === username.toLowerCase())
-  // Whose personal rows (Times/Payslips/etc.) currently show -- always your
-  // own name unless you're Joe/Grony and have switched it via the pane's
-  // Viewing picker.
+  // Whose personal rows (Times/Ana) currently show -- always your own name
+  // unless you're Joe/Grony and have switched it via the pane's Viewing
+  // picker. Payslips/Violations/Profile don't redirect with it any more --
+  // Payslips and Violations already have their own per-staff picker inside
+  // Team Payslips/Team Violations, and Profile only ever meant "my own
+  // login" to begin with -- so viewingSelf below hides those rows entirely
+  // instead of showing them stuck on your own data while the header claims
+  // you're viewing someone else.
   const viewingName = viewingNameOverride ?? myStaffName ?? ''
+  const viewingSelf = viewingName.toLowerCase() === (myStaffName ?? '').toLowerCase()
 
-  // Every real submenu under Grony Cash, Grony Manage, and the account
-  // (person icon) menu -- three separate, tagged lists rather than one
-  // flat one, since both the global search's "Go to" section AND the
-  // Tasks panel's blue bars (see RoleFlagsTable's allSubmenus prop) need
-  // this same set. Keeping it in exactly one place is the point: add a
-  // submenu here and it shows up in both places on its own, instead of
-  // two separately-maintained lists drifting apart (which is what
-  // happened to "Daily Loss" vs "Loss" before this).
-  const cashSubmenus: { label: string; action: () => void }[] = [
-    { label: 'Items', action: () => pickLossView('items') },
-    { label: 'Sales', action: () => pickLossView('sales') },
-    { label: 'Bills', action: () => pickLossView('bills') },
-    { label: 'Loss by Date', action: () => pickLossView('feed') },
-    { label: 'Loss by Item', action: () => pickLossView('lossByItem') },
-    { label: 'Loss by Target', action: () => pickLossView('lossByTarget') },
-    { label: 'Expenses', action: () => pickLossView('expenses') },
-    ...(canSeePL ? [{ label: 'P&L', action: () => pickLossView('pl') }] : []),
-    { label: 'CAB', action: () => pickLossView('cab') },
-    { label: 'Vendors', action: () => pickLossView('vendors') },
-    { label: 'Customers', action: () => pickLossView('customers') },
-    { label: 'Receipts', action: () => pickLossView('receipts') },
-    { label: 'Daily', action: () => pickLossView('dailySummary') },
-    { label: 'Counts', action: () => pickLossView('counts') },
-    { label: 'Purchase Orders', action: () => pickLossView('purchaseOrders') },
-    { label: 'Alias Wide Table', action: () => { pickLossView('items'); setItemsExtraView('aliasWide') } },
-    { label: 'Service Matches', action: () => { pickLossView('items'); setItemsExtraView('serviceMatches') } },
-    { label: 'Item 360', action: () => pickLossView('item360') },
+  // Pages a Staff Meeting note's "discuss on another page" widget can route
+  // a follow-up to (see StaffMeetingPanel) -- same permission gates as
+  // navDestinations below, since routing to a page you can't otherwise see
+  // would just create a task nobody can find.
+  const routablePages: string[] = [
+    ...(canSeeCash ? CASH_ITEMS.map(v => v.label) : []),
+    ...(canSeeManage ? MANAGE_LIST_ITEMS.filter(v => v.key !== 'staff_meeting').map(v => v.label) : []),
+    ...(myStaffName ? ['Payslips', 'Violations', 'Analytics'] : []),
+    ...(canSeeTeam ? ['Team Profiles'] : []),
+    ...(canSeeUK ? ['UK'] : []),
+    ...(canSeeCH ? CH_ITEMS.map(v => v.label) : []),
   ]
-  const manageSubmenus: { label: string; action: () => void }[] = [
-    { label: 'Rota', action: () => pickLossView('rota') },
-    { label: 'Audio', action: () => pickLossView('audio') },
-    { label: 'Advert Status', action: () => pickLossView('audio_status') },
-    { label: 'Jingle Log', action: () => pickLossView('jingle') },
-    { label: 'Equipment Check', action: () => pickLossView('equipment') },
-    { label: 'Photoshop', action: () => pickLossView('photoshop') },
-    { label: 'WhatsApp', action: () => pickLossView('whatsapp') },
-    { label: 'Cuttings', action: () => pickLossView('cuttings') },
-    { label: 'Video', action: () => pickLossView('video') },
-    { label: 'Advert Daily Log', action: () => pickLossView('advert_log') },
-    { label: 'Dress Code', action: () => pickLossView('staff_dress') },
-    { label: 'Arrangement', action: () => pickLossView('arrangement') },
-    { label: 'Cleanliness', action: () => pickLossView('cleanliness') },
-    { label: 'Future', action: () => pickLossView('future') },
-    { label: 'Customer Display', action: () => pickLossView('customer_display') },
-    { label: 'Staff Display', action: () => pickLossView('staff_display') },
-    { label: 'Repair Works', action: () => pickLossView('repair_works') },
-    { label: 'Quality Assurance', action: () => pickLossView('quality_assurance') },
-    { label: 'Tutorial', action: () => pickLossView('tutorial') },
-    { label: 'Company Laws', action: () => pickLossView('training_laws') },
-    { label: 'Assessment', action: () => pickLossView('assessment') },
-    { label: 'Logs', action: () => pickLossView('logs') },
-  ]
-
 
   // Every tab/sub-tab/menu/page the global search can jump to directly --
   // matched and ranked ahead of the data categories below (Items/
@@ -1118,17 +1091,40 @@ function ItemHubPageInner() {
   // rather than making you scroll past item/customer/vendor name matches
   // first. Recomputed each render rather than memoized -- it's a small
   // array of cheap closures, not worth the dependency-list upkeep.
+  //
+  // Built directly off the same canonical lists (CASH_ITEMS/
+  // MANAGE_LIST_ITEMS/STAFF_PERSONAL_ITEMS/STAFF_TEAM_ITEMS/CH_ITEMS) and
+  // the same permission gates that decide what actually shows in the pane
+  // -- this used to be three separately hand-typed label/action lists that
+  // drifted out of sync with the real pane contents (new Manage categories
+  // like Staff Meeting, all of Team's rows, every C&H category, and the
+  // Settings-only pages were never added here), which is exactly why most
+  // pages weren't turning up in search. Deriving from the source arrays
+  // means anything added there is searchable with zero extra upkeep here.
   const navDestinations: { label: string; action: () => void }[] = [
     { label: 'Home', action: () => changeTab('today') },
-    { label: 'Grony Cash', action: () => pickLossView('items') },
-    { label: 'Grony Manage', action: () => pickLossView('audio') },
-    ...(myStaffName ? [{ label: myStaffName, action: () => pickLossView('staffTimes') }] : []),
+    ...(canSeeCash ? [
+      ...CASH_ITEMS.filter(v => v.key !== 'pl' || canSeePL).map(v => ({ label: v.label, action: () => pickLossView(v.key) })),
+      { label: 'Daily', action: () => pickLossView('dailySummary') },
+      { label: 'Alias Wide Table', action: () => { pickLossView('items'); setItemsExtraView('aliasWide') } },
+      { label: 'Service Matches', action: () => { pickLossView('items'); setItemsExtraView('serviceMatches') } },
+    ] : []),
+    ...(canSeeManage ? MANAGE_LIST_ITEMS.map(v => ({ label: v.label, action: () => pickLossView(v.key) })) : []),
+    ...(myStaffName ? [
+      ...STAFF_PERSONAL_ITEMS.filter(t => viewingSelf || (t.key !== 'staffPayslips' && t.key !== 'staffViolations'))
+        .map(t => ({ label: t.label, action: () => pickLossView(t.key) })),
+      { label: 'Profile', action: () => pickLossView('staffProfile') },
+    ] : []),
+    ...(canSeeTeam ? STAFF_TEAM_ITEMS.map(t => ({ label: t.label, action: () => pickLossView(t.key) })) : []),
+    ...(canSeeUsers || canManage ? [{ label: 'Users & Roles', action: () => pickLossView('users') }] : []),
+    ...(canAddCategory ? [{ label: 'Manage Categories', action: () => pickLossView('manageCategories') }] : []),
+    ...(canViewPortalAs ? [{ label: 'View Portal As', action: () => pickLossView('viewPortalAs') }] : []),
+    ...(canManage ? [{ label: 'Reorder Lists', action: () => pickLossView('reorderLists') }] : []),
     ...(canSeeUK ? [{ label: 'UK', action: () => changeTab('uk') }] : []),
-    ...(canSeeCH ? [{ label: 'C&H', action: () => changeTab('ch') }] : []),
-    ...cashSubmenus,
-    ...manageSubmenus,
-    { label: 'Opener', action: () => pickLossView('opener') },
-    { label: 'Closer', action: () => pickLossView('closer') },
+    ...(canSeeCH ? [
+      { label: 'C&H', action: () => changeTab('ch') },
+      ...CH_ITEMS.map(item => ({ label: item.label, action: () => { changeTab('ch'); setLossView(item.key as LossView) } })),
+    ] : []),
   ]
   const navQuery = globalSearchQuery.trim().toLowerCase()
   const navMatches = navQuery
@@ -1269,10 +1265,18 @@ function ItemHubPageInner() {
               <div className="mt-1 pt-1 border-t border-white/30">
                 {cashDisplayMode !== 'icon' && (
                   <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">
-                    {viewingName.toLowerCase() === myStaffName.toLowerCase() ? 'My Staff' : `Viewing: ${viewingName}`}
+                    {viewingSelf ? 'My Staff' : `Viewing: ${viewingName}`}
                   </p>
                 )}
-                {STAFF_PERSONAL_ITEMS.map(t => (
+                {/* Payslips/Violations drop out of this list while viewing
+                    someone else -- they no longer redirect with Viewing (see
+                    viewingSelf's comment above), so showing them here would
+                    either silently keep displaying your own data under
+                    someone else's name, or need their own separate
+                    "actually not viewing that person" explanation. Team
+                    Payslips/Team Violations already have their own per-staff
+                    picker for exactly this case. */}
+                {STAFF_PERSONAL_ITEMS.filter(t => viewingSelf || (t.key !== 'staffPayslips' && t.key !== 'staffViolations')).map(t => (
                   <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode}
                     active={paneActive(lossView === t.key)} badge={t.key === 'staffTimes' ? staffTimesFlagsCount : undefined}
                     onClick={() => pickLossView(t.key)} />
@@ -1426,7 +1430,7 @@ function ItemHubPageInner() {
                   <div className="relative min-w-0 flex-1" ref={searchRef}>
                     <input value={search} onChange={e => setSearch(e.target.value)}
                       onFocus={() => setSearchOpen(true)}
-                      placeholder="Search…" autoComplete="off"
+                      placeholder={`Search ${CASH_LABEL.get(lossView) ?? ''}`} autoComplete="off"
                       className="w-full text-xs bg-white border border-green-900 rounded-lg pl-2 pr-6 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
                     {search && (
                       <button onClick={() => { setSearch(''); setSearchOpen(false) }} title="Clear search"
@@ -1654,7 +1658,8 @@ function ItemHubPageInner() {
               assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
               onGoToViolation={goToViolation}
               missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
-              onOpenStaff={() => pickLossView('staffTimes')} />
+              onOpenStaff={() => pickLossView('staffTimes')}
+              staffRoster={STAFF_ROSTER} routablePages={routablePages} />
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && STAFF_VIEW_KEYS.has(lossView) && (

@@ -8,6 +8,7 @@ import CloserQuestionnaire, { ClosingAnswers } from '@/components/CloserQuestion
 import BinoChecklist, { BinoChecklistAnswers } from '@/components/BinoChecklist'
 import ManageLogPanel from '../item/_components/ManageLogPanel'
 import ContentPage from '../item/_components/ContentPage'
+import PageToolIcons from '../item/_components/PageToolIcons'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell,
 } from 'recharts'
@@ -1160,6 +1161,7 @@ export function PayslipsTab({ role, username, viewingStaff }: { role: string; us
 
   return (
     <div className="space-y-4">
+      <PageToolIcons scopeKey="Payslips" />
       {/* View selector */}
       {!viewingStaff && (
         <div className="flex gap-2 overflow-x-auto pb-1">
@@ -1452,6 +1454,7 @@ export function TeamProfilesTab() {
 
   return (
     <div className="space-y-3">
+      <PageToolIcons scopeKey="Team Profiles" />
       {editProfile && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">
@@ -1995,6 +1998,7 @@ export function ViolationsTab({ role, username, viewingStaff }: { role: string; 
   // respectively -- this used to be one of three switchable sub-views.
   return (
         <div className="space-y-4">
+          <PageToolIcons scopeKey="Violations" />
           {!viewingStaff && (
           <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
             <p className="text-sm font-semibold text-gray-700">Auto-Penalty Settings</p>
@@ -2840,6 +2844,7 @@ export function AnalyticsTab({ viewingStaff }: { viewingStaff?: string } = {}) {
 
   return (
     <div className="space-y-5">
+      <PageToolIcons scopeKey="Analytics" />
       {/* Staff filter chips -- locked/hidden on a per-person page */}
       {!viewingStaff && (
         <div className="flex gap-1.5 flex-wrap">

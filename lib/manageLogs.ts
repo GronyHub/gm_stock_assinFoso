@@ -15,4 +15,12 @@ export async function ensureManageLogs() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `.catch(() => {})
+  // Staff Meeting-only columns (who attended, what time it ran) -- null for
+  // every other category's entries, which never send them.
+  await sql`
+    ALTER TABLE manage_logs
+      ADD COLUMN IF NOT EXISTS attendees TEXT[],
+      ADD COLUMN IF NOT EXISTS start_time TIME,
+      ADD COLUMN IF NOT EXISTS end_time TIME
+  `.catch(() => {})
 }
