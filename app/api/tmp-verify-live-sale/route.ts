@@ -5,6 +5,13 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10)
 }
 
+export async function PATCH() {
+  const salesReceiptsCols = await sql`
+    SELECT column_name FROM information_schema.columns WHERE table_name = 'sales_receipts'
+  `
+  return NextResponse.json({ salesReceiptsCols })
+}
+
 export async function GET() {
   const out: Record<string, unknown> = {}
 
