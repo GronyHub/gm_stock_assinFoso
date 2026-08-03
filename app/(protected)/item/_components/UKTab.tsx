@@ -3,19 +3,17 @@ import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import type { useUKData } from './ukViewData'
 
-const chipCls = (active: boolean) =>
-  `text-xs font-semibold px-3 py-1.5 rounded-lg transition
-   ${active ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`
-
 // A cell holding a URL renders as a clickable link instead of a text box --
 // no per-column "type" needed, the value itself decides.
 const isUrlLike = (v: string) => /^https?:\/\//i.test(v.trim()) || /^www\./i.test(v.trim())
 const toHref = (v: string) => /^https?:\/\//i.test(v.trim()) ? v.trim() : `https://${v.trim()}`
 
 // Just the right-pane content for whichever submenu is selected -- the
-// people picker and that person's submenu list (with add/rename/delete)
-// now live in item/page.tsx's merged pane instead (see ukViewData.ts's
-// useUKData hook, called once there and passed down as `uk`).
+// people picker and that person's submenu list now live in item/page.tsx's
+// merged pane instead (see ukViewData.ts's useUKData hook, called once
+// there and passed down as `uk`). Columns are fixed from the UI's side
+// (no self-service add/rename/delete); row data entry below still works
+// normally.
 export default function UKTab({ uk }: { uk: ReturnType<typeof useUKData> }) {
   const { data: session } = useSession()
   const username = ((session?.user as any)?.username ?? session?.user?.name ?? '').toLowerCase()
@@ -40,35 +38,12 @@ export default function UKTab({ uk }: { uk: ReturnType<typeof useUKData> }) {
     <div className="space-y-4 pb-10 px-3 pt-3">
       <div className="space-y-1.5">
         <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Columns · {selectedSubmenu.name}</p>
+        {/* Rename/delete and "+ New Column" removed -- columns are fixed
+            from the UI's side now, same treatment as the submenu list. */}
         <div className="flex flex-wrap gap-1.5">
           {uk.columns.map(c => (
-            <div key={c.id} className="flex items-center gap-1 bg-gray-100 rounded-lg pr-1">
-              {uk.editingColumnId === c.id ? (
-                <input autoFocus value={uk.editColumnName} onChange={e => uk.setEditColumnName(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && uk.saveColumnName(c.id)}
-                  className="text-xs bg-white border border-blue-300 rounded px-2 py-1 outline-none w-28" />
-              ) : (
-                <span className="text-xs font-semibold text-gray-700 px-3 py-1.5">{c.name}</span>
-              )}
-              {uk.editingColumnId === c.id ? (
-                <button onClick={() => uk.saveColumnName(c.id)} className="text-[10px] font-semibold text-blue-600 px-1">Save</button>
-              ) : (
-                <button onClick={() => { uk.setEditingColumnId(c.id); uk.setEditColumnName(c.name) }} className="text-gray-400 hover:text-gray-600 px-0.5" title="Rename">✎</button>
-              )}
-              <button onClick={() => uk.deleteColumn(c.id)} className="text-gray-300 hover:text-red-500 px-0.5" title="Delete column">×</button>
-            </div>
+            <span key={c.id} className="text-xs font-semibold text-gray-700 bg-gray-100 rounded-lg px-3 py-1.5">{c.name}</span>
           ))}
-          {uk.showAddColumn ? (
-            <div className="flex items-center gap-1">
-              <input autoFocus value={uk.newColumnName} onChange={e => uk.setNewColumnName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && uk.addColumn()}
-                placeholder="Column name" className="text-xs bg-white border border-blue-300 rounded-lg px-2 py-1.5 outline-none w-32" />
-              <button onClick={uk.addColumn} className="text-xs font-semibold px-2 py-1.5 rounded-lg bg-blue-600 text-white">Add</button>
-              <button onClick={() => { uk.setShowAddColumn(false); uk.setNewColumnName('') }} className="text-xs px-2 py-1.5 rounded-lg bg-gray-100 text-gray-500">✕</button>
-            </div>
-          ) : (
-            <button onClick={() => uk.setShowAddColumn(true)} className={chipCls(false)}>+ New Column</button>
-          )}
         </div>
 
         {uk.columns.length > 0 && (

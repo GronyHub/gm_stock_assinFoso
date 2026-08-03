@@ -14,8 +14,14 @@ const MODE_LABEL: Record<DisplayMode, string> = { icon: 'Icons only', both: 'Ico
 // Narrower on phones than on tablet/desktop (sm: 640px+) -- a fixed width
 // regardless of screen size meant the pane ate the same chunk out of a
 // 360px phone as a 1200px desktop, squeezing the content pane's tables
-// (often 5-6 columns wide) down to almost nothing on mobile.
-const WIDTH: Record<DisplayMode, string> = { icon: 'w-14', both: 'w-14 sm:w-20', text: 'w-14 sm:w-24' }
+// (often 5-6 columns wide) down to almost nothing on mobile. Icon-only
+// stays at that same minimal width on every screen since it never renders
+// text at all, but text/both need real room to fit a word -- at the old
+// shared mobile width (56px, same as icon-only) an ordinary label like
+// "Urgent" or "Ghana" had nowhere to go but one character per line once
+// SidePaneButton's label span was fixed to wrap inside its box instead of
+// overflowing it.
+const WIDTH: Record<DisplayMode, string> = { icon: 'w-14', both: 'w-16 sm:w-20', text: 'w-20 sm:w-24' }
 
 // A module-level store (not per-component state) so every left pane on
 // screen at once -- Grony Manage's, and Staff's several nested ones --

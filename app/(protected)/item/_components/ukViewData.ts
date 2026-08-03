@@ -4,9 +4,12 @@ import { useSession } from 'next-auth/react'
 
 // UK's own state -- lives here (not inside UKTab.tsx) so item/page.tsx can
 // call the hook once and feed both the pane (people + that person's
-// submenus, with add/rename/delete) and the content area (the selected
-// submenu's columns + row data) from the same source, same split as
-// Manage's dynamic categories (see manageViewData.ts).
+// submenus) and the content area (the selected submenu's columns + row
+// data) from the same source. Submenu/column names are fixed from the
+// UI's side -- no self-service add/rename/delete -- but the CRUD
+// functions below stay in place since they're the mechanism for making
+// that kind of change directly when asked, and row data entry is
+// unaffected.
 export type UKPerson = 'Grony' | 'Mina' | 'Prisca'
 export const UK_PEOPLE: UKPerson[] = ['Grony', 'Mina', 'Prisca']
 
