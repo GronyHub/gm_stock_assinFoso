@@ -1149,44 +1149,17 @@ function ItemHubPageInner() {
                 onDaily={() => { setLossView('dailySummary'); setSettingsOpen(false) }}
                 homeActive={paneActive(lossView === 'home')} dailyActive={paneActive(lossView === 'dailySummary')}
                 unreadAnnouncements={unreadAnnouncements} />
-              {/* Formerly the top tab row -- Biz (Grony Cash) is just
-                  another footer button now, paired side by side with
-                  Search the same way Home/Daily are paired above. Biz only
-                  shows for accounts that also reach UK and/or C&H below --
-                  someone permitted to use only Grony Cash has nothing to
-                  switch to, so the button would be a no-op; Search always
-                  shows regardless, since it looks across the whole app
-                  (items, customers, vendors, sales, bills, announcements),
-                  unlike the per-view search bars already on most tabs
-                  below, which only filter what's already on screen. */}
+              {/* Biz/UK/C&H moved out of this footer entirely -- they now
+                  live as small icons at the bottom of the content area (the
+                  right side) instead, see below. Search stays here, full
+                  width, since it looks across the whole app (items,
+                  customers, vendors, sales, bills, announcements), unlike
+                  the per-view search bars already on most tabs below, which
+                  only filter what's already on screen. */}
               <div className="border-t border-white/30 flex items-stretch shrink-0">
-                {(canSeeUK || canSeeCH) && (<>
-                  <SidePaneButton icon="💰" label="Biz" mode={cashDisplayMode}
-                    active={paneActive(outerTab === 'loss')} onClick={() => changeTab('loss')} className="flex-1 min-w-0" />
-                  <div className="w-px bg-white/10 shrink-0" />
-                </>)}
                 <SidePaneButton icon="🔍" label="Search" mode={cashDisplayMode}
                   active={false} onClick={() => setGlobalSearchOpen(true)} className="flex-1 min-w-0" />
               </div>
-              {/* UK/C&H visibility now comes from Roles & Permissions (see
-                  canSeeUK/canSeeCH) -- Grony/owner-level always has both,
-                  same floor as before, but another role can be granted one
-                  or the other independently. Paired side by side when both
-                  show, otherwise whichever one applies just takes the full
-                  row. */}
-              {(canSeeUK || canSeeCH) && (
-                <div className="border-t border-white/30 flex items-stretch shrink-0">
-                  {canSeeUK && (
-                    <SidePaneButton icon="🇬🇧" label="UK" mode={cashDisplayMode} tint={PANE_ACCENT.uk}
-                      active={paneActive(outerTab === 'uk')} onClick={() => changeTab('uk')} className="flex-1 min-w-0" />
-                  )}
-                  {canSeeUK && canSeeCH && <div className="w-px bg-white/10 shrink-0" />}
-                  {canSeeCH && (
-                    <SidePaneButton icon="🏢" label="C&H" mode={cashDisplayMode} tint={PANE_ACCENT.ch}
-                      active={paneActive(outerTab === 'ch')} onClick={() => changeTab('ch')} className="flex-1 min-w-0" />
-                  )}
-                </div>
-              )}
             </>}>
             <SidePaneToggle mode={cashDisplayMode} onChange={changeCashDisplayMode} label={session?.user?.name ?? username} />
 
@@ -1828,6 +1801,39 @@ function ItemHubPageInner() {
           </TabErrorBoundary>
         )}
           </div>
+          {/* Biz/UK/C&H now live here instead of the left pane's footer --
+              small icons, spaced far apart, pinned outside the scrollable
+              area so they're always reachable without hunting through the
+              narrow left column. Same visibility rule as before: someone
+              permitted to see only Grony Cash has nothing to switch to, so
+              the whole row (Biz included) only shows once UK and/or C&H
+              access exists. */}
+          {(canSeeUK || canSeeCH) && (
+            <div className="shrink-0 flex items-center justify-evenly py-2 bg-white border-t border-gray-200">
+              <button onClick={() => changeTab('loss')} title="Biz"
+                style={{ color: PANE_ACCENT.loss }}
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-lg border-2 transition
+                  ${outerTab === 'loss' ? 'border-current' : 'border-transparent opacity-40 hover:opacity-70'}`}>
+                💰
+              </button>
+              {canSeeUK && (
+                <button onClick={() => changeTab('uk')} title="UK"
+                  style={{ color: PANE_ACCENT.uk }}
+                  className={`w-9 h-9 rounded-full flex items-center justify-center text-lg border-2 transition
+                    ${outerTab === 'uk' ? 'border-current' : 'border-transparent opacity-40 hover:opacity-70'}`}>
+                  🇬🇧
+                </button>
+              )}
+              {canSeeCH && (
+                <button onClick={() => changeTab('ch')} title="C&H"
+                  style={{ color: PANE_ACCENT.ch }}
+                  className={`w-9 h-9 rounded-full flex items-center justify-center text-lg border-2 transition
+                    ${outerTab === 'ch' ? 'border-current' : 'border-transparent opacity-40 hover:opacity-70'}`}>
+                  🏢
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
