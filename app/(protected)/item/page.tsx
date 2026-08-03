@@ -488,6 +488,12 @@ function ItemHubPageInner() {
     sales?: { id: number; receipt_number: string | null; customer_name: string | null; receipt_date: string }[]
     bills?: { id: number; bill_number: string | null; vendor_name: string | null; bill_date: string }[]
     announcements?: { id: number; body: string; author: string; created_at: string }[]
+    // Only ever populated for accounts with UK/C&H access -- the API route
+    // itself decides that server-side (same Roles & Permissions features
+    // gating the Biz/UK/C&H icons), not just this UI hiding them.
+    ukSubmenus?: { id: number; person: string; name: string }[]
+    ukEntries?: { row_id: number; submenu_id: number; person: string; submenu_name: string; column_name: string; value: string }[]
+    chLogs?: { id: number; category: string; category_label: string; notes: string; log_date: string; logged_by: string }[]
   } | null>(null)
   // Fed into CustomersPage/VendorsPage as initialSearch when a result from
   // one of those categories is picked -- those pages own their own search
@@ -1172,44 +1178,9 @@ function ItemHubPageInner() {
                 onDaily={() => { setLossView('dailySummary'); setSettingsOpen(false) }}
                 homeActive={paneActive(lossView === 'home')} dailyActive={paneActive(lossView === 'dailySummary')}
                 unreadAnnouncements={unreadAnnouncements} />
-              {/* Formerly the top tab row -- Biz (Grony Cash) is just
-                  another footer button now, paired side by side with
-                  Search the same way Home/Daily are paired above. Biz only
-                  shows for accounts that also reach UK and/or C&H below --
-                  someone permitted to use only Grony Cash has nothing to
-                  switch to, so the button would be a no-op; Search always
-                  shows regardless, since it looks across the whole app
-                  (items, customers, vendors, sales, bills, announcements),
-                  unlike the per-view search bars already on most tabs
-                  below, which only filter what's already on screen. */}
-              <div className="border-t border-white/30 flex items-stretch shrink-0">
-                {(canSeeUK || canSeeCH) && (<>
-                  <SidePaneButton icon="💰" label="Biz" mode={cashDisplayMode}
-                    active={paneActive(outerTab === 'loss')} onClick={() => changeTab('loss')} className="flex-1 min-w-0" />
-                  <div className="w-px bg-white/10 shrink-0" />
-                </>)}
-                <SidePaneButton icon="🔍" label="Search" mode={cashDisplayMode}
-                  active={false} onClick={() => setGlobalSearchOpen(true)} className="flex-1 min-w-0" />
-              </div>
-              {/* UK/C&H visibility now comes from Roles & Permissions (see
-                  canSeeUK/canSeeCH) -- Grony/owner-level always has both,
-                  same floor as before, but another role can be granted one
-                  or the other independently. Paired side by side when both
-                  show, otherwise whichever one applies just takes the full
-                  row. */}
-              {(canSeeUK || canSeeCH) && (
-                <div className="border-t border-white/30 flex items-stretch shrink-0">
-                  {canSeeUK && (
-                    <SidePaneButton icon="🇬🇧" label="UK" mode={cashDisplayMode} tint={PANE_ACCENT.uk}
-                      active={paneActive(outerTab === 'uk')} onClick={() => changeTab('uk')} className="flex-1 min-w-0" />
-                  )}
-                  {canSeeUK && canSeeCH && <div className="w-px bg-white/10 shrink-0" />}
-                  {canSeeCH && (
-                    <SidePaneButton icon="🏢" label="C&H" mode={cashDisplayMode} tint={PANE_ACCENT.ch}
-                      active={paneActive(outerTab === 'ch')} onClick={() => changeTab('ch')} className="flex-1 min-w-0" />
-                  )}
-                </div>
-              )}
+              {/* Biz/UK/C&H/Search all moved out of this footer -- they now
+                  live as small icons at the bottom of the content area (the
+                  right side) instead, see below. */}
             </>}>
             <SidePaneToggle mode={cashDisplayMode} onChange={changeCashDisplayMode} label={session?.user?.name ?? username} />
 
@@ -1851,6 +1822,46 @@ function ItemHubPageInner() {
           </TabErrorBoundary>
         )}
           </div>
+          {/* Biz/UK/C&H/Search now live here instead of the left pane's
+              footer -- small icons, spaced far apart, pinned outside the
+              scrollable area so they're always reachable without hunting
+              through the narrow left column. Search always shows (it looks
+              across the whole app -- items, customers, vendors, sales,
+              bills, announcements -- unlike the per-view search bars
+              already on most tabs, which only filter what's on screen).
+              Biz/UK/C&H keep the old rule: someone permitted to see only
+              Grony Cash has nothing to switch to, so those three only show
+              once UK and/or C&H access exists. */}
+          <div className="shrink-0 flex items-center justify-evenly py-2 bg-white border-t border-gray-200">
+            {(canSeeUK || canSeeCH) && (
+              <button onClick={() => changeTab('loss')} title="Biz"
+                style={{ color: PANE_ACCENT.loss }}
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-lg border-2 transition
+                  ${outerTab === 'loss' ? 'border-current' : 'border-transparent opacity-40 hover:opacity-70'}`}>
+                💰
+              </button>
+            )}
+            {canSeeUK && (
+              <button onClick={() => changeTab('uk')} title="UK"
+                style={{ color: PANE_ACCENT.uk }}
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-lg border-2 transition
+                  ${outerTab === 'uk' ? 'border-current' : 'border-transparent opacity-40 hover:opacity-70'}`}>
+                🇬🇧
+              </button>
+            )}
+            {canSeeCH && (
+              <button onClick={() => changeTab('ch')} title="C&H"
+                style={{ color: PANE_ACCENT.ch }}
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-lg border-2 transition
+                  ${outerTab === 'ch' ? 'border-current' : 'border-transparent opacity-40 hover:opacity-70'}`}>
+                🏢
+              </button>
+            )}
+            <button onClick={() => setGlobalSearchOpen(true)} title="Search"
+              className="w-9 h-9 rounded-full flex items-center justify-center text-lg border-2 border-transparent text-gray-500 opacity-70 hover:opacity-100 transition">
+              🔍
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1892,6 +1903,7 @@ function ItemHubPageInner() {
                 const r = globalSearchResults
                 const totalCount = (r.items?.length ?? 0) + (r.customers?.length ?? 0) + (r.vendors?.length ?? 0)
                   + (r.sales?.length ?? 0) + (r.bills?.length ?? 0) + (r.announcements?.length ?? 0)
+                  + (r.ukSubmenus?.length ?? 0) + (r.ukEntries?.length ?? 0) + (r.chLogs?.length ?? 0)
                 if (totalCount === 0 && navMatches.length === 0) return <p className="p-4 text-center text-xs text-gray-400">No matches</p>
                 return (<>
                   {!!r.items?.length && (
@@ -1966,6 +1978,48 @@ function ItemHubPageInner() {
                           className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
                           {a.body || '(no text)'}
                           <span className="text-gray-400 text-xs ml-1.5">· {a.author}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {/* UK/C&H only ever arrive here for accounts the API route
+                      itself decided can see them -- see /api/search's
+                      canSeeUK/canSeeCH gating. */}
+                  {!!r.ukSubmenus?.length && (
+                    <div>
+                      <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">UK</p>
+                      {r.ukSubmenus.map(s => (
+                        <button key={s.id}
+                          onClick={() => { changeTab('uk'); uk.pickPerson(s.person as typeof uk.person); uk.pickSubmenu(s.id); closeGlobalSearch() }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
+                          {s.name}
+                          <span className="text-gray-400 text-xs ml-1.5">· {s.person}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {!!r.ukEntries?.length && (
+                    <div>
+                      <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">UK entries</p>
+                      {r.ukEntries.map(e => (
+                        <button key={`${e.row_id}-${e.column_name}`}
+                          onClick={() => { changeTab('uk'); uk.pickPerson(e.person as typeof uk.person); uk.pickSubmenu(e.submenu_id); closeGlobalSearch() }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
+                          {e.value}
+                          <span className="text-gray-400 text-xs ml-1.5">· {e.submenu_name} · {e.column_name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {!!r.chLogs?.length && (
+                    <div>
+                      <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">C&amp;H</p>
+                      {r.chLogs.map(l => (
+                        <button key={l.id}
+                          onClick={() => { changeTab('ch'); setLossView(l.category as LossView); closeGlobalSearch() }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
+                          {l.notes}
+                          <span className="text-gray-400 text-xs ml-1.5">· {l.category_label} · {l.log_date}</span>
                         </button>
                       ))}
                     </div>
