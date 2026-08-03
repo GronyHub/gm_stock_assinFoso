@@ -155,7 +155,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
 
   return (
     <div className="relative pb-24">
-      <div className="flex items-center justify-between gap-2 mb-1.5">
+      <div className="flex items-center justify-between gap-2 pb-1 border-b border-gray-200">
         <h2 className="min-w-0 text-xs font-bold leading-tight truncate">
           ⚡ Live Sale <span className="font-normal text-gray-400">· tap to record</span>
         </h2>
@@ -169,7 +169,6 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
           </button>
         )}
       </div>
-
       {showLog ? (
         <div>
           <div className="flex flex-wrap gap-1.5 mb-2">
