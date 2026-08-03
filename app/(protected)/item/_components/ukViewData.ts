@@ -103,6 +103,8 @@ export function useUKData() {
     }).catch(() => {})
   }
   async function deleteSubmenu(id: number) {
+    const s = submenus.find(x => x.id === id)
+    if (!confirm(`Delete "${s?.name ?? 'this submenu'}" and everything in it?`)) return
     setSubmenus(prev => prev.filter(s => s.id !== id))
     if (selectedSubmenuId === id) setSelectedSubmenuIdState(null)
     await fetch(`/api/uk/submenus/${id}`, { method: 'DELETE' }).catch(() => {})
@@ -129,6 +131,8 @@ export function useUKData() {
     }).catch(() => {})
   }
   async function deleteColumn(id: number) {
+    const c = columns.find(x => x.id === id)
+    if (!confirm(`Delete column "${c?.name ?? 'this column'}"? This removes it and its data from every row.`)) return
     setColumns(prev => prev.filter(c => c.id !== id))
     await fetch(`/api/uk/columns/${id}`, { method: 'DELETE' }).catch(() => {})
   }
@@ -151,6 +155,7 @@ export function useUKData() {
     }).catch(() => {})
   }
   async function deleteRow(id: number) {
+    if (!confirm('Delete this row?')) return
     setRows(prev => prev.filter(r => r.id !== id))
     await fetch(`/api/uk/rows/${id}`, { method: 'DELETE' }).catch(() => {})
   }

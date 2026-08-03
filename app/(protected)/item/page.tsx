@@ -1332,7 +1332,7 @@ function ItemHubPageInner() {
                   onClick={() => setSettingsOpen(v => !v)} />
               )}
               <SidePaneButton icon="🚪" label="Sign out" mode={cashDisplayMode} active={false}
-                onClick={() => signOut({ callbackUrl: '/login' })} />
+                onClick={() => { if (confirm('Sign out?')) signOut({ callbackUrl: '/login' }) }} />
             </div>
         </SidePaneContainer>
 

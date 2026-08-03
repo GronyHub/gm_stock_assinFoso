@@ -49,7 +49,8 @@ export default function DynamicTasksSection({ scopeKey }: { scopeKey: string }) 
     }).catch(() => {})
   }
 
-  async function remove(id: number) {
+  async function remove(id: number, title: string) {
+    if (!confirm(`Delete task "${title}"?`)) return
     setTasks(prev => prev.filter(x => x.id !== id))
     await fetch(`/api/tasks/${id}`, { method: 'DELETE' }).catch(() => {})
   }
@@ -101,7 +102,7 @@ export default function DynamicTasksSection({ scopeKey }: { scopeKey: string }) 
                 {t.notes && <p className="text-[10px] text-gray-400">{t.notes}</p>}
                 {t.due_date && <p className="text-[9px] text-gray-400">Due {fmtDate(t.due_date)}</p>}
               </div>
-              <button onClick={() => remove(t.id)} className="shrink-0 text-gray-300 hover:text-red-500 font-bold leading-none">×</button>
+              <button onClick={() => remove(t.id, t.title)} className="shrink-0 text-gray-300 hover:text-red-500 font-bold leading-none">×</button>
             </div>
           ))}
         </div>

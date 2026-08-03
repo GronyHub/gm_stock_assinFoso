@@ -14,7 +14,7 @@ export default function Nav({ user }: { user: NavUser }) {
         </Link>
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-500">{user.name}</span>
-          <button onClick={() => signOut({ callbackUrl: '/login' })}
+          <button onClick={() => { if (confirm('Sign out?')) signOut({ callbackUrl: '/login' }) }}
             className="text-sm text-gray-600 hover:text-gray-900 transition">Sign out</button>
         </div>
       </div>
