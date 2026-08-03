@@ -16,7 +16,12 @@ export async function ensureLiveSaleTapsTable() {
       tapped_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       undone BOOLEAN NOT NULL DEFAULT FALSE,
       receipt_id INTEGER,
-      receipt_line_id INTEGER
+      receipt_line_id INTEGER,
+      quantity INTEGER NOT NULL DEFAULT 1
     )
   `.catch(() => {})
+  // Quantity-preset buttons (e.g. tapping "20" for a batch of passport
+  // photos) came after the table already existed in some environments --
+  // this backfills it on those without touching any existing row's data.
+  await sql`ALTER TABLE live_sale_taps ADD COLUMN IF NOT EXISTS quantity INTEGER NOT NULL DEFAULT 1`.catch(() => {})
 }

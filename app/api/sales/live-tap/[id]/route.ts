@@ -22,10 +22,13 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
     await sql`UPDATE live_sale_taps SET undone = true WHERE id = ${tap.id}`
 
+    const qty = Number(tap.quantity) || 1
+    const lineAmount = Number(tap.price) * qty
+
     if (tap.receipt_line_id) {
       const [line] = await sql`
         UPDATE sales_receipt_lines
-        SET quantity = quantity::numeric - 1, item_total = item_total::numeric - ${tap.price}
+        SET quantity = quantity::numeric - ${qty}, item_total = item_total::numeric - ${lineAmount}
         WHERE id = ${tap.receipt_line_id}
         RETURNING id, quantity
       `
@@ -41,7 +44,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     }
 
     const actor = session.user?.name || (session.user as { username?: string })?.username || 'Unknown'
-    await logActivity(actor, 'undid live sale tap', `${tap.item_name} · ₵${Number(tap.price).toFixed(2)} (tapped by ${tap.staff_name})`)
+    await logActivity(actor, 'undid live sale tap', `${tap.item_name} × ${qty} · ₵${lineAmount.toFixed(2)} (tapped by ${tap.staff_name})`)
 
     return NextResponse.json({ ok: true })
   } catch (e) {

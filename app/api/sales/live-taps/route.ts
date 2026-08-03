@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
 
   await ensureLiveSaleTapsTable()
   const rows = await sql`
-    SELECT id, item_id, item_name, price, staff_name, tapped_at, undone, receipt_id
+    SELECT id, item_id, item_name, price, staff_name, tapped_at, undone, receipt_id, quantity
     FROM live_sale_taps
     WHERE tapped_at::date = ${date}
     ORDER BY tapped_at DESC

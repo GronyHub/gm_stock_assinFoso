@@ -28,8 +28,9 @@ export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { itemId } = await req.json()
+  const { itemId, quantity } = await req.json()
   if (!itemId) return NextResponse.json({ error: 'Missing itemId' }, { status: 400 })
+  const qty = Math.max(1, Math.floor(Number(quantity) || 1))
 
   const staffName = session.user?.name || (session.user as { username?: string })?.username || 'Unknown'
   const date = todayStr()
@@ -40,6 +41,7 @@ export async function POST(req: NextRequest) {
     const [item] = await sql`SELECT id, canonical_name, selling_rate FROM items WHERE id = ${Number(itemId)}`
     if (!item) return NextResponse.json({ error: 'Item not found' }, { status: 404 })
     const price = Number(item.selling_rate) || 0
+    const lineAmount = price * qty
 
     let [receipt] = await sql`
       SELECT id FROM sales_receipts
@@ -56,7 +58,7 @@ export async function POST(req: NextRequest) {
 
     let [line] = await sql`
       UPDATE sales_receipt_lines
-      SET quantity = quantity::numeric + 1, item_total = item_total::numeric + ${price}
+      SET quantity = quantity::numeric + ${qty}, item_total = item_total::numeric + ${lineAmount}
       WHERE receipt_id = ${receipt.id} AND item_id = ${item.id}
       RETURNING id, quantity, item_total
     `
@@ -64,7 +66,7 @@ export async function POST(req: NextRequest) {
       ;[line] = await sql`
         INSERT INTO sales_receipt_lines
           (receipt_id, item_id, raw_item_name, resolved_name, quantity, item_price, item_total, unresolved, source)
-        VALUES (${receipt.id}, ${item.id}, ${item.canonical_name}, ${item.canonical_name}, 1, ${price}, ${price}, false, 'live_sale')
+        VALUES (${receipt.id}, ${item.id}, ${item.canonical_name}, ${item.canonical_name}, ${qty}, ${price}, ${lineAmount}, false, 'live_sale')
         RETURNING id, quantity, item_total
       `
     }
@@ -75,12 +77,12 @@ export async function POST(req: NextRequest) {
     `
 
     const [tap] = await sql`
-      INSERT INTO live_sale_taps (item_id, item_name, price, staff_name, receipt_id, receipt_line_id)
-      VALUES (${item.id}, ${item.canonical_name}, ${price}, ${staffName}, ${receipt.id}, ${line.id})
-      RETURNING id, item_id, item_name, price, staff_name, tapped_at, undone
+      INSERT INTO live_sale_taps (item_id, item_name, price, staff_name, receipt_id, receipt_line_id, quantity)
+      VALUES (${item.id}, ${item.canonical_name}, ${price}, ${staffName}, ${receipt.id}, ${line.id}, ${qty})
+      RETURNING id, item_id, item_name, price, staff_name, tapped_at, undone, quantity
     `
 
-    await logActivity(staffName, 'live sale tap', `${item.canonical_name} · ₵${price.toFixed(2)}`)
+    await logActivity(staffName, 'live sale tap', `${item.canonical_name} × ${qty} · ₵${lineAmount.toFixed(2)}`)
 
     return NextResponse.json({ tap, lineQuantity: line.quantity, lineTotal: line.item_total })
   } catch (e) {

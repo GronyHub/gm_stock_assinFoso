@@ -10,6 +10,7 @@ type GridItem = {
   soh: number | null
   selling_price: number | null
   cost_price: number | null
+  product_type: string | null
 }
 
 type Tap = {
@@ -21,6 +22,7 @@ type Tap = {
   tapped_at: string
   undone: boolean
   receipt_id?: number
+  quantity: number
 }
 
 function money(n: number) {
@@ -29,6 +31,15 @@ function money(n: number) {
 
 const PRIORITY_GROUP = 'Printing Press Services'
 const ORDER_KEY = 'liveSaleOrder'
+
+// Quantity buttons are the actual tap targets now -- goods are usually
+// bought a handful at a time, while photo/print services (passport
+// photos being the classic case) get ordered in the batch sizes below.
+const GOODS_QTY = [1, 2, 3, 4, 5]
+const SERVICE_QTY = [10, 12, 15, 18, 20]
+function qtyPresetsFor(item: GridItem) {
+  return item.product_type === 'service' ? SERVICE_QTY : GOODS_QTY
+}
 
 function defaultSort(list: GridItem[], tapCounts: Map<number, number>) {
   return [...list].sort((a, b) => {
@@ -121,11 +132,14 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
     return () => clearTimeout(t)
   }, [lastTap])
 
+  // Sum of units tapped today, not number of tap events -- a single "20"
+  // tap for a passport-photo batch should outweigh five single "1" taps
+  // of something else by the same margin it does in real demand.
   const tapCounts = useMemo(() => {
     const counts = new Map<number, number>()
     for (const t of taps) {
       if (t.undone) continue
-      counts.set(t.item_id, (counts.get(t.item_id) ?? 0) + 1)
+      counts.set(t.item_id, (counts.get(t.item_id) ?? 0) + (Number(t.quantity) || 1))
     }
     return counts
   }, [taps])
@@ -173,14 +187,14 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
     return taps.filter((t) => t.staff_name === staffFilter)
   }, [taps, staffFilter])
 
-  async function tap(item: GridItem) {
+  async function tap(item: GridItem, quantity: number) {
     if (pendingItemId) return
     setPendingItemId(item.id)
     try {
       const res = await fetch('/api/sales/live-tap', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ itemId: item.id }),
+        body: JSON.stringify({ itemId: item.id, quantity }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -278,7 +292,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                   className={`flex items-center justify-between gap-2 px-3 py-2 rounded-lg border text-sm ${t.undone ? 'bg-gray-50 border-gray-200 text-gray-400' : 'bg-white border-gray-200'}`}
                 >
                   <div className={`min-w-0 ${t.undone ? 'line-through' : ''}`}>
-                    <div className="font-semibold truncate">{t.item_name} · {money(Number(t.price))}</div>
+                    <div className="font-semibold truncate">{t.item_name} × {t.quantity} · {money(Number(t.price) * t.quantity)}</div>
                     <div className="text-xs text-gray-500">
                       {t.staff_name} · {new Date(t.tapped_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                     </div>
@@ -354,22 +368,33 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                   )
                 }
 
+                const pending = pendingItemId === it.id
                 return (
-                  <button
-                    key={it.id}
-                    type="button"
-                    onClick={() => tap(it)}
-                    disabled={pendingItemId === it.id}
-                    className="w-full flex items-center gap-1 text-left px-2 py-1.5 border-b border-gray-50 bg-white hover:bg-blue-50 active:bg-blue-100 transition disabled:opacity-50"
-                  >
-                    {number}
-                    {label}
-                    {count > 0 && (
-                      <span className="shrink-0 min-w-[0.9rem] h-[0.9rem] px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold flex items-center justify-center">
-                        {count}
-                      </span>
-                    )}
-                  </button>
+                  <div key={it.id} className="w-full px-2 py-1.5 border-b border-gray-50 bg-white">
+                    <div className="flex items-center gap-1">
+                      {number}
+                      {label}
+                      {count > 0 && (
+                        <span className="shrink-0 min-w-[0.9rem] h-[0.9rem] px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold flex items-center justify-center">
+                          {count}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 mt-1 pl-5">
+                      {qtyPresetsFor(it).map((q) => (
+                        <button
+                          key={q}
+                          type="button"
+                          onClick={() => tap(it, q)}
+                          disabled={pending}
+                          title={`Record ${q}`}
+                          className="min-w-[1.4rem] h-5 px-1 rounded bg-blue-50 text-blue-700 text-[10px] font-bold flex items-center justify-center hover:bg-blue-100 active:bg-blue-200 active:scale-95 transition disabled:opacity-40"
+                        >
+                          {q}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 )
               })}
               {gridItems.length === 0 && <p className="text-[10px] text-gray-400 text-center py-6">No items match.</p>}
@@ -380,7 +405,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
 
       {lastTap && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2.5 rounded-full bg-green-600 text-white shadow-lg text-sm font-semibold">
-          <span>✓ {lastTap.item_name} · {money(Number(lastTap.price))}</span>
+          <span>✓ {lastTap.item_name} × {lastTap.quantity} · {money(Number(lastTap.price) * lastTap.quantity)}</span>
           <button
             type="button"
             onClick={() => undo(lastTap.id)}
