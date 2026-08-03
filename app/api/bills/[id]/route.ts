@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
+import { isOwnerLevel } from '@/lib/roles'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -38,4 +39,26 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
   await logActivity(actor, 'edited bill', `Bill #${id}${row.vendor_name ? ` — ${row.vendor_name}` : ''}`)
   return NextResponse.json(row)
+}
+
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!isOwnerLevel(session.user as any)) {
+    return NextResponse.json({ error: 'Only Grony or Joe can delete a bill' }, { status: 403 })
+  }
+
+  const { id } = await params
+  const billId = Number(id)
+
+  const [bill] = await sql`SELECT id, bill_number, vendor_name FROM bills WHERE id = ${billId}`
+  if (!bill) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  await sql`DELETE FROM bill_lines WHERE bill_id = ${billId}`
+  await sql`DELETE FROM bills WHERE id = ${billId}`
+
+  const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
+  await logActivity(actor, 'deleted bill', `Bill #${billId}${bill.vendor_name ? ` — ${bill.vendor_name}` : ''}`)
+
+  return NextResponse.json({ ok: true })
 }

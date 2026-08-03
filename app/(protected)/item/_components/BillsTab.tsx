@@ -1,6 +1,8 @@
 'use client'
 import { Fragment, useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
+import { isOwnerLevel } from '@/lib/roles'
 import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from './columnPrefs'
@@ -123,6 +125,8 @@ type Props = {
 }
 
 export default function BillsTab({ items, groupFilter, search, violation = null }: Props) {
+  const { data: session } = useSession()
+  const isOwnerLevelUser = isOwnerLevel(session?.user as any)
   const [bills, setBills] = useState<Bill[]>([])
   const [loading, setLoading] = useState(true)
   const [showHistory, setShowHistory] = useState(false)
@@ -334,6 +338,21 @@ export default function BillsTab({ items, groupFilter, search, violation = null 
     }
   }
 
+  async function deleteBill(billId: number) {
+    const b = billsById[billId]
+    if (!confirm(`Delete bill ${b?.bill_number ?? `#${billId}`}${b?.vendor_name ? ` — ${b.vendor_name}` : ''}? This removes it and all its line items permanently.`)) return
+    setSaving(true)
+    const res = await fetch(`/api/bills/${billId}`, { method: 'DELETE' })
+    setSaving(false)
+    if (res.ok) {
+      setBills(prev => prev.filter(b => b.id !== billId))
+      setEditingBillId(null)
+    } else {
+      const body = await res.json().catch(() => ({}))
+      alert(body.error || 'Could not delete bill')
+    }
+  }
+
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
 
   if (violation === 'no_vendor') {
@@ -480,6 +499,10 @@ export default function BillsTab({ items, groupFilter, search, violation = null 
                         </button>
                         <button onClick={() => setEditingBillId(null)}
                           className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
+                        {isOwnerLevelUser && (
+                          <button onClick={() => deleteBill(g.editBillId)} disabled={saving}
+                            className="px-3 py-1 bg-red-600 text-white text-[10px] font-semibold rounded disabled:opacity-40">Delete</button>
+                        )}
                       </div>
                     </td>
                   </tr>
