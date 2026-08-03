@@ -18,6 +18,11 @@ export type ManageView =
 
 // Simple dated log/checklist categories -- no existing data behind them, so
 // each gets a ManageLogPanel (notes + optional photo, viewable as history).
+// Staff Meeting used to be one of these but outgrew the generic panel (it
+// needs attendees/times/@mentions/page-routing) -- it gets its own
+// StaffMeetingPanel now, wired up explicitly in GronyManageTab.tsx instead
+// of through this list's catch-all, though it still shares the same
+// manage_logs table/category underneath.
 export const LOG_CATEGORIES: { key: ManageView; label: string; icon: string }[] = [
   { key: 'arrangement',      label: 'Arrangement',       icon: '🪑' },
   { key: 'cleanliness',      label: 'Cleanliness',       icon: '🧹' },
@@ -26,7 +31,6 @@ export const LOG_CATEGORIES: { key: ManageView; label: string; icon: string }[] 
   { key: 'staff_display',    label: 'Staff Display',     icon: '📌' },
   { key: 'repair_works',     label: 'Repair Works',      icon: '🔧' },
   { key: 'quality_assurance', label: 'Quality Assurance', icon: '✅' },
-  { key: 'staff_meeting',    label: 'Staff Meeting',     icon: '🗣️' },
 ]
 
 // The Manage section's fixed contents, top to bottom -- one flat list, no
@@ -46,6 +50,7 @@ export const MANAGE_LIST_ITEMS: { key: ManageView; label: string; icon?: string 
   { key: 'advert_log', label: 'Daily Log', icon: '📢' },
   { key: 'staff_dress', label: 'Dress Code', icon: '👕' },
   ...LOG_CATEGORIES.map(c => ({ key: c.key, label: c.label, icon: c.icon })),
+  { key: 'staff_meeting', label: 'Staff Meeting', icon: '🗣️' },
   { key: 'tutorial', label: 'Tutorial', icon: '📖' },
   { key: 'training_laws', label: 'Company Laws', icon: '⚖️' },
   { key: 'assessment', label: 'Assessment', icon: '📝' },

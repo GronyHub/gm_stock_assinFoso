@@ -1072,6 +1072,19 @@ function ItemHubPageInner() {
   const viewingName = viewingNameOverride ?? myStaffName ?? ''
   const viewingSelf = viewingName.toLowerCase() === (myStaffName ?? '').toLowerCase()
 
+  // Pages a Staff Meeting note's "discuss on another page" widget can route
+  // a follow-up to (see StaffMeetingPanel) -- same permission gates as
+  // navDestinations below, since routing to a page you can't otherwise see
+  // would just create a task nobody can find.
+  const routablePages: string[] = [
+    ...(canSeeCash ? CASH_ITEMS.map(v => v.label) : []),
+    ...(canSeeManage ? MANAGE_LIST_ITEMS.filter(v => v.key !== 'staff_meeting').map(v => v.label) : []),
+    ...(myStaffName ? ['Payslips', 'Violations', 'Analytics'] : []),
+    ...(canSeeTeam ? ['Team Profiles'] : []),
+    ...(canSeeUK ? ['UK'] : []),
+    ...(canSeeCH ? CH_ITEMS.map(v => v.label) : []),
+  ]
+
   // Every tab/sub-tab/menu/page the global search can jump to directly --
   // matched and ranked ahead of the data categories below (Items/
   // Customers/etc.) so typing e.g. "sales" lands on the Sales tab itself
@@ -1645,7 +1658,8 @@ function ItemHubPageInner() {
               assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
               onGoToViolation={goToViolation}
               missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
-              onOpenStaff={() => pickLossView('staffTimes')} />
+              onOpenStaff={() => pickLossView('staffTimes')}
+              staffRoster={STAFF_ROSTER} routablePages={routablePages} />
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && STAFF_VIEW_KEYS.has(lossView) && (

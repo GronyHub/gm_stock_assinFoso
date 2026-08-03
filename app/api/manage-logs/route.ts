@@ -23,7 +23,8 @@ export async function GET(req: NextRequest) {
   try {
     await ensureManageLogs()
     const rows = await sql`
-      SELECT id, category, log_date::text, notes, photo_url, logged_by, created_at
+      SELECT id, category, log_date::text, notes, photo_url, logged_by, created_at,
+        attendees, start_time::text, end_time::text
       FROM manage_logs
       WHERE category = ${category}
       ORDER BY log_date DESC, created_at DESC
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { category, notes, photo_url } = await req.json()
+  const { category, notes, photo_url, attendees, start_time, end_time } = await req.json()
   if (!category || typeof category !== 'string') {
     return NextResponse.json({ error: 'Missing category' }, { status: 400 })
   }
@@ -53,9 +54,11 @@ export async function POST(req: NextRequest) {
   try {
     await ensureManageLogs()
     const [row] = await sql`
-      INSERT INTO manage_logs (category, notes, photo_url, logged_by)
-      VALUES (${category}, ${notes || null}, ${photo_url || null}, ${loggedBy})
-      RETURNING id, category, log_date::text, notes, photo_url, logged_by, created_at
+      INSERT INTO manage_logs (category, notes, photo_url, logged_by, attendees, start_time, end_time)
+      VALUES (${category}, ${notes || null}, ${photo_url || null}, ${loggedBy},
+        ${Array.isArray(attendees) && attendees.length ? attendees : null}, ${start_time || null}, ${end_time || null})
+      RETURNING id, category, log_date::text, notes, photo_url, logged_by, created_at,
+        attendees, start_time::text, end_time::text
     `
     await logActivity(loggedBy, `logged ${category.replace(/_/g, ' ')}`, notes || '(photo only)')
     return NextResponse.json(row)
