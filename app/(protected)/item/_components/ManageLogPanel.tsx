@@ -35,7 +35,7 @@ function lastRequiredEquipmentCheckDate(): string {
 // audio_equipment_check use the same log but also carry an overdue flag
 // (Jingle: nothing logged yet this month; Equipment: last logged entry is
 // older than the most recent required Mon/Thu check).
-export default function ManageLogPanel({ category, label, icon }: { category: string; label: string; icon: string }) {
+export default function ManageLogPanel({ category, label, icon, flagsCount }: { category: string; label: string; icon: string; flagsCount?: number }) {
   const [entries, setEntries] = useState<LogEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [notes, setNotes] = useState('')
@@ -116,7 +116,7 @@ export default function ManageLogPanel({ category, label, icon }: { category: st
           </p>
         </div>
       )}
-      <PageToolIcons scopeKey={label} />
+      <PageToolIcons scopeKey={label} flagsCount={flagsCount} />
       <div className="bg-white border border-gray-200 rounded-lg px-2.5 py-2 space-y-1.5">
         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{icon} {label}</p>
         <textarea value={notes} onChange={e => setNotes(e.target.value)}

@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
+import PageToolIcons from './PageToolIcons'
 import type { useUKData } from './ukViewData'
 
 // A cell holding a URL renders as a clickable link instead of a text box --
@@ -36,6 +37,7 @@ export default function UKTab({ uk }: { uk: ReturnType<typeof useUKData> }) {
 
   return (
     <div className="space-y-4 pb-10 px-3 pt-3">
+      <PageToolIcons scopeKey={`${selectedSubmenu.person} ${selectedSubmenu.name}`} />
       <div className="space-y-1.5">
         <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Columns · {selectedSubmenu.name}</p>
         {/* Rename/delete and "+ New Column" removed -- columns are fixed
