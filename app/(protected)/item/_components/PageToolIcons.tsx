@@ -8,18 +8,19 @@ type PanelKind = 'law' | 'flags' | 'notes' | 'tasks'
 const TITLES: Record<PanelKind, string> = { law: '⚖️ Law', flags: '🚩 Flags', notes: '📝 Notes', tasks: '✅ Tasks' }
 
 // Four icons every real page carries: Law (the fixed rule for this page,
-// rarely edited), Flags (existing violation/overdue counts -- real
-// business logic computed by whoever renders this page, passed in as
-// `flagsCount` rather than invented here), Notes (a day-to-day scratchpad,
-// split out from Law even though both are freeform text -- see
-// PageLawsNote), and Tasks (the checklist this used to be paired with
-// alone). Each icon badges its own count the same way the pane's own
-// SidePaneButton does. Law/Notes/Tasks counts are fetched here directly
-// (same scope_key/submenu namespace as page_notes/custom_tasks) since
-// every page gets this bar and none of them otherwise know these numbers;
-// Flags is the one exception, since it's page-specific business logic that
-// already exists elsewhere and shouldn't be recomputed twice.
-export default function PageToolIcons({ scopeKey, flagsCount }: { scopeKey: string; flagsCount?: number }) {
+// rarely edited), Flags, Notes (a day-to-day scratchpad, split out from Law
+// even though both are freeform text -- see PageLawsNote), and Tasks (the
+// checklist this used to be paired with alone). Law/Notes/Tasks badge their
+// own count the same way the pane's own SidePaneButton does, fetched here
+// directly (same scope_key/submenu namespace as page_notes/custom_tasks)
+// since every page gets this bar and none of them otherwise know these
+// numbers. Flags never gets a duplicate count here -- every page that has
+// one already surfaces it either as a badge on its own row in the pane, or
+// as an inline banner/list on the page itself (see e.g. ManageLogPanel's
+// jingle/equipment overdue banner, DressCodeFlagsPanel, Items' own flags
+// list) -- so the icon is just a fixed visual home for opening that same
+// information, not a second number to keep in sync with the first.
+export default function PageToolIcons({ scopeKey }: { scopeKey: string }) {
   const [open, setOpen] = useState<PanelKind | null>(null)
   const [taskCount, setTaskCount] = useState(0)
   const [hasLaw, setHasLaw] = useState(false)
@@ -45,7 +46,7 @@ export default function PageToolIcons({ scopeKey, flagsCount }: { scopeKey: stri
 
   const icons: { kind: PanelKind; icon: string; count?: number }[] = [
     { kind: 'law', icon: '⚖️', count: hasLaw ? 1 : 0 },
-    { kind: 'flags', icon: '🚩', count: flagsCount },
+    { kind: 'flags', icon: '🚩' },
     { kind: 'notes', icon: '📝', count: hasNotes ? 1 : 0 },
     { kind: 'tasks', icon: '✅', count: taskCount },
   ]
@@ -78,9 +79,7 @@ export default function PageToolIcons({ scopeKey, flagsCount }: { scopeKey: stri
               {open === 'notes' && <PageLawsNote scopeKey={scopeKey} kind="note" />}
               {open === 'flags' && (
                 <div className="py-6 text-center text-sm text-gray-500 px-3">
-                  {flagsCount && flagsCount > 0
-                    ? <p>🚩 {flagsCount} flag{flagsCount === 1 ? '' : 's'} currently open on this page -- see the flagged rows on the page itself.</p>
-                    : <p>No flags right now.</p>}
+                  <p>Flags for this page show up on its own row in the pane, or right on the page itself -- nothing separate to check here.</p>
                 </div>
               )}
             </div>
