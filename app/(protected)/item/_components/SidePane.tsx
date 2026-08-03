@@ -63,13 +63,13 @@ export function paneWidthClass(mode: DisplayMode) {
 // with the very first thing in the pane.
 export function SidePaneToggle({ mode, onChange, label }: { mode: DisplayMode; onChange: (mode: DisplayMode) => void; label?: string }) {
   return (
-    <div className="border-b border-white/30 bg-[#00072d] sticky top-0 z-10">
+    <div className="border-b border-white/30 bg-[var(--pane-accent)] sticky top-0 z-10">
       {label && <p className="px-1.5 pt-1 text-[9px] font-semibold text-blue-200 truncate">{label}</p>}
       <div className="flex items-stretch gap-0.5 p-1">
         {(['icon', 'both', 'text'] as DisplayMode[]).map(m => (
           <button key={m} onClick={() => onChange(m)} title={MODE_LABEL[m]}
             className={`flex-1 flex items-center justify-center py-1 rounded text-[11px] transition
-              ${mode === m ? 'bg-white text-[#00072d]' : 'bg-white/10 text-blue-100 hover:bg-white/20'}`}>
+              ${mode === m ? 'bg-white text-[var(--pane-accent)]' : 'bg-white/10 text-blue-100 hover:bg-white/20'}`}>
             {GLYPH[m]}
           </button>
         ))}
@@ -90,13 +90,19 @@ export function SidePaneToggle({ mode, onChange, label }: { mode: DisplayMode; o
 // (e.g. an inline SVG) for spots that need a real icon instead -- Home/Daily
 // used their own hand-drawn SVGs when they were floating buttons, and kept
 // them here rather than switching to an emoji.
-export function SidePaneButton({ icon, label, active, mode, onClick, badge, className = 'w-full' }: {
-  icon?: string | React.ReactNode; label: string; active: boolean; mode: DisplayMode; onClick: () => void; badge?: number; className?: string
+// `tint` marks a button as its own always-on-color identity rather than
+// following the pane's current accent (e.g. the UK/C&H nav buttons, which
+// stay deep red/green even while sitting in the Biz-blue pane so they're
+// recognizable before you've clicked into them) -- see the UK/C&H buttons
+// in item/page.tsx for the only current callers.
+export function SidePaneButton({ icon, label, active, mode, onClick, badge, className = 'w-full', tint }: {
+  icon?: string | React.ReactNode; label: string; active: boolean; mode: DisplayMode; onClick: () => void; badge?: number; className?: string; tint?: string
 }) {
   return (
     <button onClick={onClick} title={label} aria-label={label}
+      style={tint ? { backgroundColor: active ? '#fff' : tint, color: active ? tint : '#fff' } : undefined}
       className={`relative flex flex-col items-center justify-center gap-0.5 px-1 py-2 text-[10px] font-medium leading-tight text-center transition
-        ${active ? 'bg-white text-[#00072d] font-semibold' : 'text-white hover:bg-white/10'} ${className}`}>
+        ${tint ? 'font-semibold' : active ? 'bg-white text-[var(--pane-accent)] font-semibold' : 'text-white hover:bg-white/10'} ${className}`}>
       {mode !== 'text' && (
         typeof icon === 'string' || icon === undefined
           ? <span className="text-base leading-none">{icon ?? '•'}</span>
@@ -127,9 +133,18 @@ export function SidePaneButton({ icon, label, active, mode, onClick, badge, clas
 // Solid blue fill + white text (see SidePaneButton) so the pane reads as a
 // clearly distinct region from the plain white content pane next to it,
 // rather than the two blurring together.
-export function SidePaneContainer({ mode, footer, children }: { mode: DisplayMode; footer?: React.ReactNode; children: React.ReactNode }) {
+// `accent` is the pane's current section color (Biz blue by default, or
+// UK/C&H's deep red/green while active) -- set as a CSS variable here so
+// every SidePaneButton and SidePaneToggle nested inside (including ones
+// reached through `footer`) can pick it up via `var(--pane-accent)` without
+// each of their ~18 call sites needing their own accent prop threaded
+// through individually.
+export function SidePaneContainer({ mode, footer, children, accent = '#00072d' }: {
+  mode: DisplayMode; footer?: React.ReactNode; children: React.ReactNode; accent?: string
+}) {
   return (
-    <div className={`${paneWidthClass(mode)} shrink-0 border-r border-white/10 bg-[#00072d] flex flex-col min-h-0`}>
+    <div style={{ '--pane-accent': accent } as React.CSSProperties}
+      className={`${paneWidthClass(mode)} shrink-0 border-r border-white/10 bg-[var(--pane-accent)] flex flex-col min-h-0`}>
       <div className="flex-1 min-h-0 overflow-y-auto">
         {children}
       </div>
