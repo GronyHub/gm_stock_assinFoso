@@ -814,12 +814,15 @@ function ItemHubPageInner() {
   }
 
   // Joe/Grony's "Viewing" picker -- switches whose personal rows show.
-  // Profile only ever means "my own login", so switching away from it while
-  // it's showing has nowhere sensible to land -- falls back to Times
-  // instead of leaving the content area blank.
+  // Profile only ever means "my own login", and Payslips/Violations no
+  // longer redirect at all (see viewingSelf above) -- so switching away
+  // from yourself while on any of those three has nowhere sensible to
+  // land and falls back to Times instead of leaving the content area
+  // showing a page that's about to disappear from the pane.
   function pickViewing(name: string) {
     setViewingNameOverride(name)
-    if (lossView === 'staffProfile' && name.toLowerCase() !== (myStaffName ?? '').toLowerCase()) {
+    const staysOnSelfOnly = lossView === 'staffProfile' || lossView === 'staffPayslips' || lossView === 'staffViolations'
+    if (staysOnSelfOnly && name.toLowerCase() !== (myStaffName ?? '').toLowerCase()) {
       setLossView('staffTimes')
     }
   }
@@ -1058,10 +1061,16 @@ function ItemHubPageInner() {
   // shouldn't be one in practice, but the section still needs to degrade
   // gracefully instead of showing a stranger's personal records).
   const myStaffName = STAFF_ROSTER.find(n => n.toLowerCase() === username.toLowerCase())
-  // Whose personal rows (Times/Payslips/etc.) currently show -- always your
-  // own name unless you're Joe/Grony and have switched it via the pane's
-  // Viewing picker.
+  // Whose personal rows (Times/Ana) currently show -- always your own name
+  // unless you're Joe/Grony and have switched it via the pane's Viewing
+  // picker. Payslips/Violations/Profile don't redirect with it any more --
+  // Payslips and Violations already have their own per-staff picker inside
+  // Team Payslips/Team Violations, and Profile only ever meant "my own
+  // login" to begin with -- so viewingSelf below hides those rows entirely
+  // instead of showing them stuck on your own data while the header claims
+  // you're viewing someone else.
   const viewingName = viewingNameOverride ?? myStaffName ?? ''
+  const viewingSelf = viewingName.toLowerCase() === (myStaffName ?? '').toLowerCase()
 
   // Every real submenu under Grony Cash, Grony Manage, and the account
   // (person icon) menu -- three separate, tagged lists rather than one
@@ -1274,10 +1283,18 @@ function ItemHubPageInner() {
               <div className="mt-1 pt-1 border-t border-white/30">
                 {cashDisplayMode !== 'icon' && (
                   <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">
-                    {viewingName.toLowerCase() === myStaffName.toLowerCase() ? 'My Staff' : `Viewing: ${viewingName}`}
+                    {viewingSelf ? 'My Staff' : `Viewing: ${viewingName}`}
                   </p>
                 )}
-                {STAFF_PERSONAL_ITEMS.map(t => (
+                {/* Payslips/Violations drop out of this list while viewing
+                    someone else -- they no longer redirect with Viewing (see
+                    viewingSelf's comment above), so showing them here would
+                    either silently keep displaying your own data under
+                    someone else's name, or need their own separate
+                    "actually not viewing that person" explanation. Team
+                    Payslips/Team Violations already have their own per-staff
+                    picker for exactly this case. */}
+                {STAFF_PERSONAL_ITEMS.filter(t => viewingSelf || (t.key !== 'staffPayslips' && t.key !== 'staffViolations')).map(t => (
                   <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode}
                     active={paneActive(lossView === t.key)} badge={t.key === 'staffTimes' ? staffTimesFlagsCount : undefined}
                     onClick={() => pickLossView(t.key)} />
