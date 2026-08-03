@@ -64,7 +64,7 @@ function StatCard({ label, value, sub, tone }: { label: string; value: string; s
   )
 }
 
-export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: number } = {}) {
+export default function CABTab({ openConfirmSignal, flagsCount }: { openConfirmSignal?: number; flagsCount?: number } = {}) {
   const { data: session } = useSession()
   const role = (session?.user as any)?.role ?? 'staff'
   const username = ((session?.user as any)?.username ?? session?.user?.name ?? '').toLowerCase()
@@ -495,7 +495,7 @@ export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: numb
         <StatCard label="Last Confirmed" value={latestConfirmed ? fmtn(latestConfirmed.cab_total) : '—'} sub={latestConfirmed ? fmtDate(String(latestConfirmed.entry_date).slice(0,10)) : 'No confirmations yet'} tone="green" />
         <StatCard label="Unconfirmed Weeks" value={flagsLoading ? '…' : String(unconfirmedCount)} tone={unconfirmedCount > 0 ? 'red' : 'green'} />
       </div>
-      <div className="px-2 pb-2 shrink-0 space-y-1.5"><PageToolIcons scopeKey="CAB" /><AssignWidget type="unchecked_cab" /></div>
+      <div className="px-2 pb-2 shrink-0 space-y-1.5"><PageToolIcons scopeKey="CAB" flagsCount={flagsCount} /><AssignWidget type="unchecked_cab" /></div>
 
       <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0">
         <button onClick={() => setShowWeekly(false)}
