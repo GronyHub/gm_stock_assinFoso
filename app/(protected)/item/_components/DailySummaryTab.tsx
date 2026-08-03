@@ -343,8 +343,8 @@ export default function DailySummaryTab() {
             {data.grossMarginIncomplete && ' Some items sold today have no cost price on record, so this figure is understated.'}
           </p>
 
-          {/* Staff */}
-          <Section title="Staff Present & Times">
+          {/* Team -- everyone's clock times for the day, not one person's */}
+          <Section title="Team Present & Times">
             {data.staff.length === 0 ? (
               <p className="text-[11px] text-gray-400">No staff times recorded for this day.</p>
             ) : (

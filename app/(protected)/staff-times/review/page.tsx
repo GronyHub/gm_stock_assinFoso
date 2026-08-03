@@ -160,7 +160,7 @@ export default function FlaggedTimesReviewPage() {
         <p className="text-sm text-gray-500 mt-1">Clock records worth a second look, for review.</p>
       </div>
 
-      <PageToolIcons scopeKey="Staff" />
+      <PageToolIcons scopeKey="Team" />
       <AssignWidget type="no_staff_times" />
 
       {loading ? (

@@ -411,7 +411,7 @@ function StaffTimesPageInner() {
 
           {/* Today's snapshot */}
           <div>
-            <p className="text-sm font-semibold text-gray-700 mb-2">Today — All Staff</p>
+            <p className="text-sm font-semibold text-gray-700 mb-2">Today — Team</p>
             <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
