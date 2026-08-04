@@ -33,11 +33,16 @@ function money(n: number) {
 const PRIORITY_GROUP = 'Printing Press Services'
 const ORDER_KEY = 'liveSaleOrder'
 
-// Quantity buttons are the actual tap targets now -- goods are usually
-// bought a handful at a time, while photo/print services (passport
-// photos being the classic case) get ordered in the batch sizes below.
+// The buttons record these quantities same as before -- goods are usually
+// bought a handful at a time, while photo/print services (passport photos
+// being the classic case) get ordered in the batch sizes below -- but they're
+// now LABELED by the total price that quantity comes to, not the bare
+// quantity number, since that's what a customer actually hands over and
+// what staff are matching against. 1 is always in the list (added to
+// SERVICE_QTY, already there for goods) so the item's own single-unit
+// selling price always appears as one of the buttons.
 const GOODS_QTY = [1, 2, 3, 4, 5]
-const SERVICE_QTY = [10, 12, 15, 18, 20]
+const SERVICE_QTY = [1, 10, 12, 15, 18, 20]
 function qtyPresetsFor(item: GridItem) {
   return item.product_type === 'service' ? SERVICE_QTY : GOODS_QTY
 }
@@ -439,19 +444,22 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-1 mt-1 pl-5">
-                      {qtyPresetsFor(it).map((q) => (
-                        <button
-                          key={q}
-                          type="button"
-                          onClick={() => tap(it, q)}
-                          disabled={pending}
-                          title={`Record ${q}`}
-                          className="min-w-[1.4rem] h-5 px-1 rounded bg-blue-50 text-blue-700 text-[10px] font-bold flex items-center justify-center hover:bg-blue-100 active:bg-blue-200 active:scale-95 transition disabled:opacity-40"
-                        >
-                          {q}
-                        </button>
-                      ))}
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1 pl-5">
+                      {qtyPresetsFor(it).map((q) => {
+                        const total = (Number(it.selling_price) || 0) * q
+                        return (
+                          <button
+                            key={q}
+                            type="button"
+                            onClick={() => tap(it, q)}
+                            disabled={pending}
+                            title={`${q} unit${q > 1 ? 's' : ''} · ${money(total)}`}
+                            className="min-w-[2.8rem] h-7 px-2 rounded-lg bg-blue-50 text-blue-700 text-[11px] font-bold flex items-center justify-center hover:bg-blue-100 active:bg-blue-200 active:scale-95 transition disabled:opacity-40"
+                          >
+                            {money(total)}
+                          </button>
+                        )
+                      })}
                     </div>
                   </div>
                 )
