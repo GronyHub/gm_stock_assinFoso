@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 
 // UK's own state -- lives here (not inside UKTab.tsx) so item/page.tsx can
@@ -47,10 +47,27 @@ export function useUKData() {
   const [editingColumnId, setEditingColumnId] = useState<number | null>(null)
   const [editColumnName, setEditColumnName] = useState('')
 
+  // C&H's `ch` instance mounts defaulted to 'Grony' (see useState below),
+  // then gets corrected to the right child a moment later -- either by
+  // pickCHView on a click, or by item/page.tsx's URL-restore effect on a
+  // refresh/back-forward/bookmarked link. That correction fires a second
+  // fetch, but the FIRST one (for 'Grony') is still in flight and has no
+  // reason to know it's now stale -- if it happens to resolve after the
+  // correct one, its response overwrites the right data with Grony's own
+  // submenus and nothing ever re-fetches to undo it. personRef always holds
+  // the most-recently-requested person, so a response that no longer
+  // matches it (a newer request having since superseded it) is just dropped
+  // instead of applied.
+  const personRef = useRef(person)
+  useEffect(() => { personRef.current = person }, [person])
+
   function loadSubmenus(p: UKPerson) {
     fetch(`/api/uk/submenus?person=${encodeURIComponent(p)}`)
       .then(r => r.ok ? r.json() : [])
-      .then(d => setSubmenus(Array.isArray(d) ? d : []))
+      .then(d => {
+        if (personRef.current !== p) return
+        setSubmenus(Array.isArray(d) ? d : [])
+      })
       .catch(() => {})
   }
   useEffect(() => {
