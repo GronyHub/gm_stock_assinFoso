@@ -30,6 +30,15 @@ function money(n: number) {
   return `₵${n.toFixed(2)}`
 }
 
+// Preset-button labels only -- no ₵ sign (obvious from context, sitting
+// right under the item's own priced name) and no trailing .00, so more
+// buttons fit on one line. Rounds to 2dp first to clear floating-point
+// noise (e.g. 3 x 0.7), then lets JS's own number->string conversion drop
+// whatever trailing zeros/decimal point aren't needed.
+function compactAmount(n: number) {
+  return `${Math.round(n * 100) / 100}`
+}
+
 const PRIORITY_GROUP = 'Printing Press Services'
 const ORDER_KEY = 'liveSaleOrder'
 
@@ -454,9 +463,9 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                             onClick={() => tap(it, q)}
                             disabled={pending}
                             title={`${q} unit${q > 1 ? 's' : ''} · ${money(total)}`}
-                            className="min-w-[2.8rem] h-7 px-2 rounded-lg bg-blue-50 text-blue-700 text-[11px] font-bold flex items-center justify-center hover:bg-blue-100 active:bg-blue-200 active:scale-95 transition disabled:opacity-40"
+                            className="min-w-[2rem] h-7 px-1.5 rounded-lg bg-blue-50 text-blue-700 text-[11px] font-bold flex items-center justify-center hover:bg-blue-100 active:bg-blue-200 active:scale-95 transition disabled:opacity-40"
                           >
-                            {money(total)}
+                            {compactAmount(total)}
                           </button>
                         )
                       })}
