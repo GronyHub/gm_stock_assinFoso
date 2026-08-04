@@ -10,13 +10,18 @@ import { useSession } from 'next-auth/react'
 // functions below stay in place since they're the mechanism for making
 // that kind of change directly when asked, and row data entry is
 // unaffected.
-// Fiifi/Kuukua/Ebo/Odoye's submenus (Health, Education, ... below) are
-// seeded server-side the first time any /api/uk/* route runs -- see
-// ensureChildLogSubmenus in lib/ukTables.ts. The person names here have to
-// match those seeded rows exactly, since `person` is a plain string column,
-// not a foreign key into anything.
+// Fiifi/Kuukua/Ebo/Odoye moved to C&H (see CH_CHILD_PERSON in
+// chViewData.ts) -- UK_PEOPLE (the actual people picker UK's own pane
+// shows) drops them, but the UKPerson type keeps all seven, since
+// item/page.tsx runs a second useUKData() instance for C&H's own child
+// pages, driven by CH_CHILD_PERSON instead of this list, calling
+// `pickPerson` with one of these same four names. Their submenus (Health,
+// Education, ... below) are seeded server-side the first time any
+// /api/uk/* route runs -- see ensureChildLogSubmenus in lib/ukTables.ts.
+// The person names here have to match those seeded rows exactly, since
+// `person` is a plain string column, not a foreign key into anything.
 export type UKPerson = 'Grony' | 'Mina' | 'Prisca' | 'Fiifi' | 'Kuukua' | 'Ebo' | 'Odoye'
-export const UK_PEOPLE: UKPerson[] = ['Grony', 'Mina', 'Prisca', 'Fiifi', 'Kuukua', 'Ebo', 'Odoye']
+export const UK_PEOPLE: UKPerson[] = ['Grony', 'Mina', 'Prisca']
 
 export type UKSubmenu = { id: number; person: string; name: string; sort_order: number; created_at: string }
 export type UKColumn = { id: number; submenu_id: number; name: string; sort_order: number; created_at: string }
