@@ -12,6 +12,7 @@ export type ManageView =
   | 'arrangement' | 'cleanliness' | 'future' | 'customer_display'
   | 'repair_works' | 'quality_assurance'
   | 'properties'
+  | 'unfortunate_events' | 'security_chk' | 'app_info'
 
 // Simple dated log/checklist categories -- no existing data behind them, so
 // each gets a ManageLogPanel (notes + optional photo, viewable as history).
@@ -45,51 +46,46 @@ export const MANAGE_LIST_ITEMS: { key: ManageView; label: string; icon?: string 
   { key: 'advert_log', label: 'Daily Log', icon: '📢' },
   ...LOG_CATEGORIES.map(c => ({ key: c.key, label: c.label, icon: c.icon })),
   { key: 'properties', label: 'Properties', icon: '🏷️' },
+  { key: 'unfortunate_events', label: 'Unfortunate Events', icon: '🚨' },
+  { key: 'security_chk', label: 'Security chk', icon: '🔒' },
+  { key: 'app_info', label: 'App info', icon: 'ℹ️' },
 ]
 
 export type DynamicCategory = { id: number; label: string }
 
-// Icon + fixed left-pane order for each of Manage's "Added by you" categories
-// -- these used to be freely add/removable from the pane itself (see git
-// history for the old add/remove UI); now they're a hardcoded, curated set
-// like MANAGE_LIST_ITEMS' own rows; a new one means asking to have it added
-// here, not typing a name into a form. The underlying manage_categories row
-// (and its manage_category_tabs content, still fetched by real numeric id --
-// see useDynamicManageCategories/DynamicCategoryPage) is untouched by this;
-// only the pane's UI for picking one changed. A label with no icon entry
-// falls back to a generic folder icon and sorts after every known one,
-// rather than silently vanishing, in case a category exists that isn't
-// listed here yet.
-export const KNOWN_CATEGORY_ICONS: Record<string, string> = {
-  'Unfortunate Events': '🚨',
-  'Security chk': '🔒',
-  'Staff Payments': '💳',
-  'App info': 'ℹ️',
-}
-const KNOWN_CATEGORY_ORDER = Object.keys(KNOWN_CATEGORY_ICONS)
-
-export function orderDynamicCategories(categories: DynamicCategory[]): DynamicCategory[] {
-  return [
-    ...KNOWN_CATEGORY_ORDER.map(label => categories.find(c => c.label === label)).filter((c): c is DynamicCategory => !!c),
-    ...categories.filter(c => !KNOWN_CATEGORY_ORDER.includes(c.label)),
-  ]
+// The categories that used to live in their own free-form "Added by you"
+// pane section (add/remove a category, pick one, see its tabs -- see git
+// history) are now just more fixed rows, split between MANAGE_LIST_ITEMS
+// above and STAFF_TEAM_ITEMS (Team Payments, see staffViewData.ts) --
+// there's no "Added by you" section left at all. A new one means asking to
+// have it added as a fixed row, not typing a name into a form.
+//
+// Each one's actual content -- its manage_category_tabs (logs/notes/tasks,
+// still freely add/removable within the category, see DynamicCategoryPage)
+// -- is still keyed by the category's real numeric id underneath, not by
+// its fixed pane key, so FIXED_CATEGORY_LABELS below maps each fixed key to
+// the real manage_categories.label useFixedCategoryIds fetches and resolves
+// an id for at runtime. Team Payments' label is still literally "Staff
+// Payments" in the database -- only the pane button/page title were
+// renamed, not the underlying row, so no data migration was needed for it
+// to move into Team.
+export const FIXED_CATEGORY_LABELS: Record<string, string> = {
+  unfortunate_events: 'Unfortunate Events',
+  security_chk: 'Security chk',
+  app_info: 'App info',
+  team_payments: 'Staff Payments',
 }
 
-// Owns the fetch lifecycle for Manage's categories -- shared between the
-// merged pane (listing them) and GronyManageContent (rendering the active
-// one via DynamicCategoryPage). Read-only now -- adding/removing a category
-// itself is no longer done from the app (see KNOWN_CATEGORY_ICONS above);
-// each category's own tabs (its actual content) are still freely
-// add/removable as before, that's unrelated (see DynamicCategoryPage).
-export function useDynamicManageCategories() {
-  const [dynamicCategories, setDynamicCategories] = useState<DynamicCategory[]>([])
-  const [activeDynamicId, setActiveDynamicId] = useState<number | null>(null)
-
+// Resolves each of FIXED_CATEGORY_LABELS' real manage_categories.id once on
+// mount -- shared between GronyManageContent and StaffContent, whichever of
+// them needs to render one of these four via DynamicCategoryPage.
+export function useFixedCategoryIds(): Record<string, number> {
+  const [byLabel, setByLabel] = useState<Record<string, number>>({})
   useEffect(() => {
     fetch('/api/manage-categories').then(r => r.ok ? r.json() : []).then(d => {
-      setDynamicCategories(Array.isArray(d) ? d : [])
+      const rows: DynamicCategory[] = Array.isArray(d) ? d : []
+      setByLabel(Object.fromEntries(rows.map(r => [r.label, r.id])))
     }).catch(() => {})
   }, [])
-
-  return { dynamicCategories, activeDynamicId, setActiveDynamicId }
+  return byLabel
 }

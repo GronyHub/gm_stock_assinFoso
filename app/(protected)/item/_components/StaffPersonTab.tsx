@@ -11,6 +11,8 @@ import DressCodeFlagsPanel from './DressCodeFlagsPanel'
 import ClosingReportLogView from './ClosingReportLogView'
 import AssessmentPanel from './AssessmentPanel'
 import StaffMeetingPanel from './StaffMeetingPanel'
+import DynamicCategoryPage from './DynamicCategoryPage'
+import { FIXED_CATEGORY_LABELS } from './manageViewData'
 import type { StaffView } from './staffViewData'
 
 export { ALL_STAFF_NAMES }
@@ -65,9 +67,17 @@ const LogsPage = dynamic(() => import('../../logs/page'), {
 // SettingsPane.tsx), not the main pane's Team section, since they carry
 // every staff member's pay amounts and bank details and shouldn't come
 // along for free just from granting someone the general Team permission.
+//
+// Team Payments is a different thing entirely -- the ex-"Added by you"
+// category still literally named "Staff Payments" in the database (see
+// FIXED_CATEGORY_LABELS in manageViewData.ts), just renamed in the pane and
+// gated by the general canSeeTeam like the rest of this section instead of
+// canManage. `categoryIds` resolves its (and Manage's own three ex-"Added
+// by you" categories') real numeric id at runtime -- see
+// useFixedCategoryIds.
 export default function StaffContent({
   view, viewingName, role, username, canSeeTeam, canSeeUsers, canSeeRoles, canManage,
-  staffRoster, routablePages,
+  staffRoster, routablePages, categoryIds,
 }: {
   view: StaffView
   viewingName: string
@@ -75,12 +85,16 @@ export default function StaffContent({
   canSeeTeam: boolean; canSeeUsers: boolean; canSeeRoles: boolean; canManage: boolean
   staffRoster: string[]
   routablePages: string[]
+  categoryIds: Record<string, number>
 }) {
   const isSelf = viewingName.toLowerCase() === username.toLowerCase()
   return (<>
     {view === 'staffPayslips' && <PayslipsTab role={role} username={username} viewingStaff={viewingName} />}
     {view === 'staffProfile' && isSelf && <ProfileTab />}
     {canSeeTeam && view === 'teamTimes' && <TimesTab username={username} role={role} />}
+    {canSeeTeam && view === 'team_payments' && (
+      <DynamicCategoryPage categoryId={categoryIds[FIXED_CATEGORY_LABELS.team_payments]} categoryLabel="Team Payments" canManage={canManage} />
+    )}
     {canManage && view === 'teamPayslips' && <PayslipsTab role={role} username={username} />}
     {canManage && view === 'teamProfiles' && <TeamProfilesTab />}
     {canSeeTeam && view === 'allStaff' && <ViolationsTab role={role} username={username} />}

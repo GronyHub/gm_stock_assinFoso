@@ -16,13 +16,18 @@ const CONTENT_TYPE_OPTIONS: { value: ContentType; label: string }[] = [
   { value: 'payslip_flags', label: 'Payslip Flags (missing payslips)' },
 ]
 
-// A user-added Grony Manage category's own page -- its content is entirely
-// whatever tabs have been added to it (see manage-category-tabs), each
-// backed by one of a small set of reusable content types instead of
-// bespoke code. Read access is open to everyone; adding/removing a tab is owner-level
-// only, same gating as adding the category itself.
+// A Grony Manage category's own page -- its content is entirely whatever
+// tabs have been added to it (see manage-category-tabs), each backed by one
+// of a small set of reusable content types instead of bespoke code. Read
+// access is open to everyone; adding/removing a tab is owner-level only.
+//
+// categoryId is optional because every caller now resolves it at runtime
+// from a fixed label via useFixedCategoryIds (see manageViewData.ts) rather
+// than passing a literal number -- it's undefined for the one render before
+// that fetch resolves, during which this just shows a loading state instead
+// of fetching `category_id=undefined`.
 export default function DynamicCategoryPage({ categoryId, categoryLabel, canManage }: {
-  categoryId: number; categoryLabel: string; canManage: boolean
+  categoryId: number | undefined; categoryLabel: string; canManage: boolean
 }) {
   const [tabs, setTabs] = useState<CategoryTab[]>([])
   const [loading, setLoading] = useState(true)
@@ -34,6 +39,7 @@ export default function DynamicCategoryPage({ categoryId, categoryLabel, canMana
   const [justAdded, setJustAdded] = useState(false)
 
   function load() {
+    if (categoryId === undefined) return
     fetch(`/api/manage-category-tabs?category_id=${categoryId}`).then(r => r.ok ? r.json() : []).then(d => {
       const list: CategoryTab[] = Array.isArray(d) ? d : []
       setTabs(list)
@@ -45,7 +51,7 @@ export default function DynamicCategoryPage({ categoryId, categoryLabel, canMana
 
   async function addTab(e: React.FormEvent) {
     e.preventDefault()
-    if (!newLabel.trim() || saving) return
+    if (!newLabel.trim() || saving || categoryId === undefined) return
     setSaving(true)
     const res = await fetch('/api/manage-category-tabs', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
