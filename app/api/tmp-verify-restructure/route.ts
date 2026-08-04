@@ -43,7 +43,7 @@ export async function GET() {
       SELECT id, title, submenu, done FROM custom_tasks WHERE submenu = ANY(${oldLabels})
     `
     const pageNotesUnderOldNames = await sql`
-      SELECT id, scope_key, kind FROM page_notes WHERE scope_key = ANY(${oldLabels})
+      SELECT scope_key, kind, notes, updated_at FROM page_notes WHERE scope_key = ANY(${oldLabels})
     `
 
     const rolePermAddCategory = await sql`SELECT * FROM role_permissions WHERE feature_key = 'add_category'`
