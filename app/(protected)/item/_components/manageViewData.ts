@@ -29,16 +29,33 @@ export const LOG_CATEGORIES: { key: ManageView; label: string; icon: string }[] 
   { key: 'quality_assurance', label: 'Quality Assurance', icon: '✅' },
 ]
 
+// Group -> sub-header label for whichever of MANAGE_LIST_ITEMS' rows below
+// carry that `group` tag -- see buildPaneRuns in paneOrder.ts for how a
+// group's rows get pulled into one labeled run without needing to actually
+// sit next to each other in the underlying (reorderable) list.
+export const MANAGE_GROUP_LABELS: Record<string, string> = {
+  advert: 'Advert',
+  grony_1_to_10: 'Grony 1 to 10 checks',
+}
+
+// Which of LOG_CATEGORIES' rows belong to the "Grony 1 to 10 checks" group
+// once spread into MANAGE_LIST_ITEMS below -- kept separate from
+// LOG_CATEGORIES itself since that array is also used unmodified for
+// GronyManageContent's log-category catch-all (see LOG_CATEGORIES.find
+// there), which has no use for a `group` tag.
+const LOG_CATEGORY_GROUPS: Partial<Record<ManageView, string>> = {
+  arrangement: 'grony_1_to_10',
+  customer_display: 'grony_1_to_10',
+  repair_works: 'grony_1_to_10',
+}
+
 // The Manage section's fixed contents, top to bottom -- one flat list (still
-// one reorderable sequence for ReorderListsPanel), except the 'advert' group
-// tag below, which gets its own "Advert" sub-header wherever its items land
-// in that sequence (see item/page.tsx's pane render -- the header is drawn
-// before the first item tagged 'advert' it encounters, not by physically
-// grouping them, so reordering one advert row away from the others doesn't
-// break anything, it just means the header sits above wherever the first
-// one now is). Home/Daily aren't here -- they're the merged pane's shared
-// footer now (see PaneHomeDaily in page.tsx), not Manage-specific rows.
-export const MANAGE_LIST_ITEMS: { key: ManageView; label: string; icon?: string; group?: 'advert' }[] = [
+// one reorderable sequence for ReorderListsPanel); `group` just draws a
+// shared sub-header above whichever rows carry the same tag (see
+// MANAGE_GROUP_LABELS/buildPaneRuns) without changing how reordering works.
+// Home/Daily aren't here -- they're the merged pane's shared footer now
+// (see PaneHomeDaily in page.tsx), not Manage-specific rows.
+export const MANAGE_LIST_ITEMS: { key: ManageView; label: string; icon?: string; group?: string }[] = [
   { key: 'opener', label: 'Opener', icon: '🌅' },
   { key: 'closer', label: 'Closer', icon: '🌙' },
   { key: 'audio', label: 'Audio', icon: '🎙️', group: 'advert' },
@@ -50,10 +67,10 @@ export const MANAGE_LIST_ITEMS: { key: ManageView; label: string; icon?: string;
   { key: 'cuttings', label: 'Cuttings', icon: '✂️', group: 'advert' },
   { key: 'video', label: 'Video', icon: '🎬', group: 'advert' },
   { key: 'advert_log', label: 'Daily Log', icon: '📢', group: 'advert' },
-  ...LOG_CATEGORIES.map(c => ({ key: c.key, label: c.label, icon: c.icon })),
-  { key: 'properties', label: 'Properties', icon: '🏷️' },
+  ...LOG_CATEGORIES.map(c => ({ key: c.key, label: c.label, icon: c.icon, group: LOG_CATEGORY_GROUPS[c.key] })),
+  { key: 'properties', label: 'Properties', icon: '🏷️', group: 'grony_1_to_10' },
   { key: 'unfortunate_events', label: 'Unfortunate Events', icon: '🚨' },
-  { key: 'security_chk', label: 'Security chk', icon: '🔒' },
+  { key: 'security_chk', label: 'Security chk', icon: '🔒', group: 'grony_1_to_10' },
   { key: 'app_info', label: 'App info', icon: 'ℹ️' },
 ]
 

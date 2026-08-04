@@ -29,13 +29,13 @@ import { MyAssignmentsSummary } from './_components/MyAssignmentsSummary'
 import PageToolIcons from './_components/PageToolIcons'
 import { COLUMNS, type ColKey } from './_components/lossTabColumns'
 import { useColumnPrefs, ColumnsPickerButton } from './_components/columnPrefs'
-import { MANAGE_LIST_ITEMS, useFixedCategoryIds, type ManageView } from './_components/manageViewData'
-import { STAFF_PERSONAL_ITEMS, STAFF_TEAM_ITEMS, STAFF_ADMIN_TEAM_ITEMS, type StaffView } from './_components/staffViewData'
+import { MANAGE_LIST_ITEMS, MANAGE_GROUP_LABELS, useFixedCategoryIds, type ManageView } from './_components/manageViewData'
+import { STAFF_PERSONAL_ITEMS, STAFF_TEAM_ITEMS, STAFF_ADMIN_TEAM_ITEMS, STAFF_GROUP_LABELS, type StaffView } from './_components/staffViewData'
 import { CH_ITEMS, type CHView } from './_components/chViewData'
 import { useUKData, UK_PEOPLE } from './_components/ukViewData'
 import { SidePaneContainer, SidePaneToggle, SidePaneButton, useSidePaneDisplayMode } from './_components/SidePane'
 import SettingsPane from './_components/SettingsPane'
-import { applyPaneOrder, type PaneOrderMap } from './_components/paneOrder'
+import { applyPaneOrder, buildPaneRuns, type PaneOrderMap } from './_components/paneOrder'
 import dynamic from 'next/dynamic'
 const loading = (h: string) => <div className={`py-10 text-center text-gray-400 text-sm`}>{h}</div>
 const ItemsTab       = dynamic(() => import('./_components/ItemsTab'),        { ssr: false, loading: () => loading('Loading…') })
@@ -1230,30 +1230,26 @@ function ItemHubPageInner() {
               {cashDisplayMode !== 'icon' && (
                 <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Manage</p>
               )}
-              {applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage).map((entry, i, ordered) => {
-                const badge = entry.key === 'opener' ? openerBadgeCount
-                  : entry.key === 'closer' ? (globalFlags?.missingClosingReports?.length ?? 0)
-                  : entry.key === 'jingle' ? jingleFlagsCount
-                  : entry.key === 'equipment' ? equipmentFlagsCount
-                  : entry.key === 'audio_status' ? advertStatusFlagsCount
-                  : undefined
-                // Drawn once, right before the first 'advert'-tagged row this
-                // sequence hits -- not a physical regrouping, so reordering
-                // one of these away from the rest (see ReorderListsPanel)
-                // just moves the header along with wherever the first one
-                // now sits instead of breaking.
-                const isFirstAdvert = entry.group === 'advert' && ordered[i - 1]?.group !== 'advert'
-                return (
-                  <Fragment key={entry.key}>
-                    {isFirstAdvert && cashDisplayMode !== 'icon' && (
-                      <p className="px-2 pt-2 pb-0.5 text-[8px] font-bold text-blue-200/70 uppercase tracking-wide">Advert</p>
-                    )}
-                    <SidePaneButton icon={entry.icon} label={entry.label} mode={cashDisplayMode}
-                      active={paneActive(lossView === entry.key)} badge={badge}
-                      onClick={() => pickLossView(entry.key)} />
-                  </Fragment>
-                )
-              })}
+              {buildPaneRuns(applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage)).map(run => (
+                <Fragment key={run.group ?? run.items[0].key}>
+                  {run.group && cashDisplayMode !== 'icon' && (
+                    <p className="px-2 pt-2 pb-0.5 text-[8px] font-bold text-blue-200/70 uppercase tracking-wide">{MANAGE_GROUP_LABELS[run.group]}</p>
+                  )}
+                  {run.items.map(entry => {
+                    const badge = entry.key === 'opener' ? openerBadgeCount
+                      : entry.key === 'closer' ? (globalFlags?.missingClosingReports?.length ?? 0)
+                      : entry.key === 'jingle' ? jingleFlagsCount
+                      : entry.key === 'equipment' ? equipmentFlagsCount
+                      : entry.key === 'audio_status' ? advertStatusFlagsCount
+                      : undefined
+                    return (
+                      <SidePaneButton key={entry.key} icon={entry.icon} label={entry.label} mode={cashDisplayMode}
+                        active={paneActive(lossView === entry.key)} badge={badge}
+                        onClick={() => pickLossView(entry.key)} />
+                    )
+                  })}
+                </Fragment>
+              ))}
             </div>
             )}
 
@@ -1268,11 +1264,18 @@ function ItemHubPageInner() {
                 {cashDisplayMode !== 'icon' && (
                   <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Team</p>
                 )}
-                {STAFF_TEAM_ITEMS.map(t => (
-                  <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode}
-                    active={paneActive(lossView === t.key)}
-                    badge={t.key === 'staff_dress' ? dressFlagsCount : t.key === 'teamTimes' ? staffTimesFlagsCount : undefined}
-                    onClick={() => pickLossView(t.key)} />
+                {buildPaneRuns(STAFF_TEAM_ITEMS).map(run => (
+                  <Fragment key={run.group ?? run.items[0].key}>
+                    {run.group && cashDisplayMode !== 'icon' && (
+                      <p className="px-2 pt-2 pb-0.5 text-[8px] font-bold text-blue-200/70 uppercase tracking-wide">{STAFF_GROUP_LABELS[run.group]}</p>
+                    )}
+                    {run.items.map(t => (
+                      <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode}
+                        active={paneActive(lossView === t.key)}
+                        badge={t.key === 'staff_dress' ? dressFlagsCount : t.key === 'teamTimes' ? staffTimesFlagsCount : undefined}
+                        onClick={() => pickLossView(t.key)} />
+                    ))}
+                  </Fragment>
                 ))}
               </div>
             )}

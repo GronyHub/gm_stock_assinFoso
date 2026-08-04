@@ -38,16 +38,27 @@ export const STAFF_PERSONAL_ITEMS: { key: StaffView; label: string; icon: string
 // pay amounts and personal bio/bank details for the whole staff, so they're
 // restricted to owner-level (Grony/Joe) only and tucked into Settings
 // instead of sitting in this shared section.
-export const STAFF_TEAM_ITEMS: { key: StaffView; label: string; icon: string }[] = [
+//
+// Tutorial/Company Laws/Assessment share a "Training" sub-header (see
+// STAFF_GROUP_LABELS/buildPaneRuns in paneOrder.ts) -- all three are
+// literally the old Training sub-tab's own rows (Assessment's quizzes live
+// under /api/training/quizzes), flattened into this flat list with no
+// grouping of their own when Manage/Staff got merged into one pane, which
+// is what made the page hard to find again later.
+export const STAFF_GROUP_LABELS: Record<string, string> = {
+  training: 'Training',
+}
+
+export const STAFF_TEAM_ITEMS: { key: StaffView; label: string; icon: string; group?: string }[] = [
   { key: 'teamTimes', label: 'Team Times', icon: '🕐' },
   { key: 'team_payments', label: 'Team Payments', icon: '💳' },
   { key: 'allStaff', label: 'Team Penalty Points', icon: '🏢' },
   { key: 'staff_dress', label: 'Dress Code', icon: '👕' },
   { key: 'staff_display', label: 'Staff Display', icon: '📌' },
   { key: 'staff_meeting', label: 'Staff Meeting', icon: '🗣️' },
-  { key: 'tutorial', label: 'Tutorial', icon: '📖' },
-  { key: 'training_laws', label: 'Company Laws', icon: '⚖️' },
-  { key: 'assessment', label: 'Assessment', icon: '📝' },
+  { key: 'tutorial', label: 'Tutorial', icon: '📖', group: 'training' },
+  { key: 'training_laws', label: 'Company Laws', icon: '⚖️', group: 'training' },
+  { key: 'assessment', label: 'Assessment', icon: '📝', group: 'training' },
   { key: 'rota', label: 'Rota', icon: '🗓️' },
   { key: 'logs', label: 'Logs', icon: '📜' },
 ]
