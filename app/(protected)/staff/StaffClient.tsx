@@ -909,7 +909,7 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
           column, and the rest is read-only. */}
       {historyTable(activeDisplayStaff)}
 
-      {/* Inactive Staff Times -- deactivated staff (resigned/suspended/etc,
+      {/* Inactive Team Times -- deactivated staff (resigned/suspended/etc,
           see Users page) drop out of the grid above, but their clock
           history isn't deleted -- it's kept here instead, same grid,
           same admin edit/delete rights, just its own collapsed section
@@ -919,7 +919,7 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
         <div>
           <button onClick={() => setShowInactiveTimes(v => !v)}
             className="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl px-3 py-2">
-            <span className="text-xs font-semibold text-gray-700">🚫 Inactive Staff Times</span>
+            <span className="text-xs font-semibold text-gray-700">🚫 Inactive Team Times</span>
             <span className="text-gray-400 text-xs">{showInactiveTimes ? '▲ Hide' : '▼ Show'}</span>
           </button>
           {showInactiveTimes && <div className="mt-2">{historyTable(inactiveRosterStaff)}</div>}
@@ -2171,14 +2171,14 @@ function FixRow({ label, sub, children }: { label: string; sub?: string; childre
 }
 
 // Shared between the Staff → Violations → Times view and the Errors tab's
-// "No Staff Times" violation, so both stay in sync with one implementation.
+// "No Team Times" violation, so both stay in sync with one implementation.
 export function NoStaffTimesList({ dates, role, username, onFixed }: { dates: string[]; role: string; username: string; onFixed: (d: string) => void }) {
   const isAdmin = role === 'owner' || role === 'admin' || username === 'rawlings' || username === 'grony' || username === 'joe'
-  if (dates.length === 0) return <p className="py-10 text-center text-gray-400 text-sm">All sales days have staff times recorded.</p>
+  if (dates.length === 0) return <p className="py-10 text-center text-gray-400 text-sm">All sales days have team times recorded.</p>
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
       {dates.map(date => (
-        <FixRow key={date} label={fmtDate(date)} sub="No staff times recorded">
+        <FixRow key={date} label={fmtDate(date)} sub="No team times recorded">
           {isAdmin ? (
             <NoTimesFix date={date} onFixed={onFixed} />
           ) : (

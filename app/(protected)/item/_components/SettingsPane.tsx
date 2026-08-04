@@ -1,6 +1,6 @@
 'use client'
 import { SidePaneButton, type DisplayMode } from './SidePane'
-import { STAFF_TEAM_ITEMS, type StaffView } from './staffViewData'
+import type { StaffView } from './staffViewData'
 
 // Everything only Joe/Grony (or a role granted one of these) can do, in one
 // place -- previously these sat inline in the main pane at all times
@@ -22,7 +22,6 @@ type Props = {
   staffRoster: string[]
   pickViewing: (name: string) => void
   pickLossView: (view: SettingsDestination, opts?: { keepSettingsOpen?: boolean }) => void
-  canSeeTeam: boolean
   canSeeUsers: boolean
   canAddCategory: boolean
   canViewPortalAs: boolean
@@ -31,7 +30,7 @@ type Props = {
 
 export default function SettingsPane({
   mode, activeView, viewingName, myStaffName, staffRoster, pickViewing, pickLossView,
-  canSeeTeam, canSeeUsers, canAddCategory, canViewPortalAs, canManageRoles,
+  canSeeUsers, canAddCategory, canViewPortalAs, canManageRoles,
 }: Props) {
   return (
     <div className={`${mode === 'icon' ? 'w-14' : mode === 'text' ? 'w-14 sm:w-32' : 'w-14 sm:w-28'} shrink-0 border-r border-white/10 bg-[#00072d] flex flex-col min-h-0`}>
@@ -40,26 +39,19 @@ export default function SettingsPane({
           <p className="px-2 pt-2 pb-1 text-[10px] font-bold text-white uppercase tracking-wide">⚙️ Settings</p>
         )}
 
-        {/* Viewing and Team used to be two separate sections, but they're
-            really the same question -- "whose data am I looking at" --
-            just with Team Payslips/All Staff answering it with "everyone"
-            instead of one specific name. One list, not two. */}
-        {(myStaffName || canSeeTeam) && (
+        {/* Team moved out into its own labeled section in the main pane
+            (alongside Cash/Manage/Personal) instead of hiding behind this
+            gear icon -- this is now just the name switcher for Personal. */}
+        {myStaffName && (
           <div className="mt-1 pt-1 border-t border-white/10">
             {mode !== 'icon' && (
               <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Viewing</p>
             )}
-            {myStaffName && (<>
-              <SidePaneButton icon="👤" label="Me" mode={mode}
-                active={viewingName.toLowerCase() === myStaffName.toLowerCase()} onClick={() => pickViewing(myStaffName)} />
-              {staffRoster.filter(n => n.toLowerCase() !== myStaffName.toLowerCase()).map(name => (
-                <SidePaneButton key={name} icon="👤" label={name} mode={mode}
-                  active={viewingName.toLowerCase() === name.toLowerCase()} onClick={() => pickViewing(name)} />
-              ))}
-            </>)}
-            {canSeeTeam && STAFF_TEAM_ITEMS.map(t => (
-              <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={mode}
-                active={activeView === t.key} onClick={() => pickLossView(t.key, { keepSettingsOpen: true })} />
+            <SidePaneButton icon="👤" label="Me" mode={mode}
+              active={viewingName.toLowerCase() === myStaffName.toLowerCase()} onClick={() => pickViewing(myStaffName)} />
+            {staffRoster.filter(n => n.toLowerCase() !== myStaffName.toLowerCase()).map(name => (
+              <SidePaneButton key={name} icon="👤" label={name} mode={mode}
+                active={viewingName.toLowerCase() === name.toLowerCase()} onClick={() => pickViewing(name)} />
             ))}
           </div>
         )}

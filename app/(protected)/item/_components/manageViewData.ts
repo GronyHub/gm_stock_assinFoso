@@ -8,27 +8,22 @@ import { useState, useEffect } from 'react'
 // etc.) just to render the list of buttons.
 export type ManageView =
   | 'opener' | 'closer'
-  | 'rota'
   | 'audio' | 'audio_status' | 'jingle' | 'equipment' | 'photoshop' | 'whatsapp' | 'cuttings' | 'video' | 'advert_log'
-  | 'staff_dress'
   | 'arrangement' | 'cleanliness' | 'future' | 'customer_display'
-  | 'staff_display' | 'repair_works' | 'quality_assurance' | 'staff_meeting'
-  | 'tutorial' | 'training_laws' | 'assessment'
-  | 'logs' | 'properties'
+  | 'repair_works' | 'quality_assurance'
+  | 'properties'
 
 // Simple dated log/checklist categories -- no existing data behind them, so
 // each gets a ManageLogPanel (notes + optional photo, viewable as history).
-// Staff Meeting used to be one of these but outgrew the generic panel (it
-// needs attendees/times/@mentions/page-routing) -- it gets its own
-// StaffMeetingPanel now, wired up explicitly in GronyManageTab.tsx instead
-// of through this list's catch-all, though it still shares the same
-// manage_logs table/category underneath.
+// Staff Display used to be one of these too, but moved to the Team section
+// (see STAFF_TEAM_ITEMS in staffViewData.ts) since it's about staff, not
+// shop operations -- it's still rendered with a plain ManageLogPanel there,
+// just wired up explicitly instead of through this list's catch-all.
 export const LOG_CATEGORIES: { key: ManageView; label: string; icon: string }[] = [
   { key: 'arrangement',      label: 'Arrangement',       icon: '🪑' },
   { key: 'cleanliness',      label: 'Cleanliness',       icon: '🧹' },
   { key: 'future',           label: 'Future',            icon: '🔭' },
   { key: 'customer_display', label: 'Customer Display',  icon: '🖼️' },
-  { key: 'staff_display',    label: 'Staff Display',     icon: '📌' },
   { key: 'repair_works',     label: 'Repair Works',      icon: '🔧' },
   { key: 'quality_assurance', label: 'Quality Assurance', icon: '✅' },
 ]
@@ -48,14 +43,7 @@ export const MANAGE_LIST_ITEMS: { key: ManageView; label: string; icon?: string 
   { key: 'cuttings', label: 'Cuttings', icon: '✂️' },
   { key: 'video', label: 'Video', icon: '🎬' },
   { key: 'advert_log', label: 'Daily Log', icon: '📢' },
-  { key: 'staff_dress', label: 'Dress Code', icon: '👕' },
   ...LOG_CATEGORIES.map(c => ({ key: c.key, label: c.label, icon: c.icon })),
-  { key: 'staff_meeting', label: 'Staff Meeting', icon: '🗣️' },
-  { key: 'tutorial', label: 'Tutorial', icon: '📖' },
-  { key: 'training_laws', label: 'Company Laws', icon: '⚖️' },
-  { key: 'assessment', label: 'Assessment', icon: '📝' },
-  { key: 'rota', label: 'Rota', icon: '🗓️' },
-  { key: 'logs', label: 'Logs', icon: '📜' },
   { key: 'properties', label: 'Properties', icon: '🏷️' },
 ]
 

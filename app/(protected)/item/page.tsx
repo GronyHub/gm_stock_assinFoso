@@ -218,7 +218,7 @@ type Item = {
   calculated_soh: number
 }
 
-type ErrorCategory = 'loss' | 'sales' | 'bills' | 'cab' | 'staff'
+type ErrorCategory = 'loss' | 'sales' | 'bills' | 'cab' | 'team'
 
 // Every violation type in the app, in one place -- each one now surfaces as
 // a pill directly on the Grony Cash submenu it actually belongs to (see
@@ -322,7 +322,7 @@ const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCategory; d
     description: 'A week has passed without anyone confirming the Cash at Bank entry, so nobody has verified that the bank balance matches what the shop expects. Review that week and confirm it.',
   },
   {
-    key: 'no_staff_times', label: 'No Staff Times', category: 'staff',
+    key: 'no_staff_times', label: 'No Team Times', category: 'team',
     description: 'This day has sales recorded but no staff clock-in/out times were entered, so there is no record of who was actually working. Add the missing staff times for that day.',
   },
 ]
@@ -1052,8 +1052,10 @@ function ItemHubPageInner() {
   const canSeeCH = isOwnerOrJoe || perm('ch')
   // Settings is worth opening if there's anything at all inside it --
   // Roles & Permissions itself stays canManage-only regardless (root config
-  // shouldn't be grantable through the system it configures).
-  const canOpenSettings = canManage || canSeeTeam || canSeeUsers || canAddCategory || canViewPortalAs
+  // shouldn't be grantable through the system it configures). Team no
+  // longer counts here -- it moved out into its own main-pane section (see
+  // below), so canSeeTeam alone no longer needs a reason to open Settings.
+  const canOpenSettings = canManage || canSeeUsers || canAddCategory || canViewPortalAs
   // Drives the merged pane's own-name section AND which staff page it
   // opens -- "just like the user profile icon", it's always your own name,
   // not a generic "Staff" label or a pick-a-person screen. Falls back to
@@ -1078,9 +1080,9 @@ function ItemHubPageInner() {
   // would just create a task nobody can find.
   const routablePages: string[] = [
     ...(canSeeCash ? CASH_ITEMS.map(v => v.label) : []),
-    ...(canSeeManage ? MANAGE_LIST_ITEMS.filter(v => v.key !== 'staff_meeting').map(v => v.label) : []),
+    ...(canSeeManage ? MANAGE_LIST_ITEMS.map(v => v.label) : []),
     ...(myStaffName ? ['Payslips', 'Violations', 'Analytics'] : []),
-    ...(canSeeTeam ? ['Team Profiles'] : []),
+    ...(canSeeTeam ? STAFF_TEAM_ITEMS.filter(t => t.key !== 'staff_meeting').map(t => t.label) : []),
     ...(canSeeUK ? ['UK'] : []),
     ...(canSeeCH ? CH_ITEMS.map(v => v.label) : []),
   ]
@@ -1185,7 +1187,12 @@ function ItemHubPageInner() {
                 relationship to any of these, so the list is just empty
                 (toggle + View/Sign out only) while on either of them. */}
             {outerTab === 'loss' && (<>
-            {canSeeCash && applyPaneOrder(CASH_ITEMS, paneOrder.cash).filter(v => v.key !== 'pl' || canSeePL).map(v => (
+            {canSeeCash && (
+            <div>
+              {cashDisplayMode !== 'icon' && (
+                <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Cash</p>
+              )}
+              {applyPaneOrder(CASH_ITEMS, paneOrder.cash).filter(v => v.key !== 'pl' || canSeePL).map(v => (
               <div key={v.key}>
                 <SidePaneButton icon={v.icon} label={v.label} mode={cashDisplayMode}
                   active={paneActive(lossView === v.key)}
@@ -1219,6 +1226,8 @@ function ItemHubPageInner() {
                 )}
               </div>
               ))}
+            </div>
+            )}
 
             {canSeeManage && (
             <div className="mt-1 pt-1 border-t border-white/30">
@@ -1228,7 +1237,6 @@ function ItemHubPageInner() {
               {applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage).map(entry => {
                 const badge = entry.key === 'opener' ? openerBadgeCount
                   : entry.key === 'closer' ? (globalFlags?.missingClosingReports?.length ?? 0)
-                  : entry.key === 'staff_dress' ? dressFlagsCount
                   : entry.key === 'jingle' ? jingleFlagsCount
                   : entry.key === 'equipment' ? equipmentFlagsCount
                   : entry.key === 'audio_status' ? advertStatusFlagsCount
@@ -1261,11 +1269,31 @@ function ItemHubPageInner() {
             </div>
             )}
 
+            {/* Team -- everyone's records, as opposed to Personal's just-
+                your-own. Used to live tucked inside Settings' "Viewing"
+                section; pulled out into its own labeled block here so the
+                four kinds of thing in this pane (Cash/Manage/Team/Personal)
+                read as four distinct sections instead of two of them being
+                hidden behind a gear icon. */}
+            {canSeeTeam && (
+              <div className="mt-1 pt-1 border-t border-white/30">
+                {cashDisplayMode !== 'icon' && (
+                  <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Team</p>
+                )}
+                {STAFF_TEAM_ITEMS.map(t => (
+                  <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode}
+                    active={paneActive(lossView === t.key)}
+                    badge={t.key === 'staff_dress' ? dressFlagsCount : undefined}
+                    onClick={() => pickLossView(t.key)} />
+                ))}
+              </div>
+            )}
+
             {myStaffName && (
               <div className="mt-1 pt-1 border-t border-white/30">
                 {cashDisplayMode !== 'icon' && (
                   <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">
-                    {viewingSelf ? 'My Staff' : `Viewing: ${viewingName}`}
+                    {viewingSelf ? 'Personal' : `Personal · Viewing: ${viewingName}`}
                   </p>
                 )}
                 {/* Payslips/Violations drop out of this list while viewing
@@ -1354,7 +1382,7 @@ function ItemHubPageInner() {
           <SettingsPane mode={cashDisplayMode} activeView={lossView}
             viewingName={viewingName} myStaffName={myStaffName} staffRoster={STAFF_ROSTER}
             pickViewing={pickViewing} pickLossView={pickLossView}
-            canSeeTeam={canSeeTeam} canSeeUsers={canSeeUsers} canAddCategory={canAddCategory}
+            canSeeUsers={canSeeUsers} canAddCategory={canAddCategory}
             canViewPortalAs={canViewPortalAs} canManageRoles={canManage}
           />
         )}
@@ -1658,8 +1686,7 @@ function ItemHubPageInner() {
               assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
               onGoToViolation={goToViolation}
               missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
-              onOpenStaff={() => pickLossView('staffTimes')}
-              staffRoster={STAFF_ROSTER} routablePages={routablePages} />
+              onOpenStaff={() => pickLossView('staffTimes')} />
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && STAFF_VIEW_KEYS.has(lossView) && (
@@ -1674,7 +1701,8 @@ function ItemHubPageInner() {
                 {lossView === 'staffTimes' && <div className="px-4 pt-2"><PageToolIcons scopeKey={myStaffName} /></div>}
                 <StaffContent key={myStaffName} view={lossView as StaffView}
                   viewingName={viewingName} role={role} username={username}
-                  canSeeTeam={canSeeTeam} canSeeUsers={canSeeUsers} canSeeRoles={canManage} />
+                  canSeeTeam={canSeeTeam} canSeeUsers={canSeeUsers} canSeeRoles={canManage} canManage={canManage}
+                  staffRoster={STAFF_ROSTER} routablePages={routablePages} />
               </>
             ) : (
               <p className="py-10 text-center text-gray-400 text-sm px-4">No staff profile is set up for your account.</p>

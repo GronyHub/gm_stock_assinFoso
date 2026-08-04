@@ -41,7 +41,7 @@ export async function GET() {
       { key: 'daily_count', label: 'Daily Count Pending', category: 'Counts', count: Array.isArray(daily) ? daily.length : 0 },
       { key: '15day_count', label: '15-Day Count Overdue', category: 'Counts', count: Array.isArray(overdue) ? overdue.length : 0 },
       { key: 'unchecked_cab', label: 'Unchecked Cash at Bank', category: 'Cash', count: flags?.uncheckedCab?.length ?? 0 },
-      { key: 'no_staff_times', label: 'No Staff Times', category: 'Staff', count: flags?.noStaffTimes?.length ?? 0 },
+      { key: 'no_staff_times', label: 'No Team Times', category: 'Team', count: flags?.noStaffTimes?.length ?? 0 },
     ]
 
     return NextResponse.json({ violations })

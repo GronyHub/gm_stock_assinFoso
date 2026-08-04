@@ -18,7 +18,7 @@ export function fc(v: number) { return `₵${v.toLocaleString('en-GH', { maximum
 
 export const PIE_COLORS = ['#3b82f6','#a855f7','#22c55e','#f97316','#ef4444','#06b6d4','#eab308','#ec4899','#64748b','#84cc16']
 export const CATEGORY_COLORS: Record<string, string> = {
-  Items: '#3b82f6', Sales: '#f97316', Counts: '#6366f1', Cash: '#06b6d4', Staff: '#a855f7',
+  Items: '#3b82f6', Sales: '#f97316', Counts: '#6366f1', Cash: '#06b6d4', Team: '#a855f7',
 }
 
 export function Card({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {

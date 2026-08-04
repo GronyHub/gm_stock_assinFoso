@@ -1,34 +1,17 @@
 'use client'
-import dynamic from 'next/dynamic'
 import ClosingReportLogView from './ClosingReportLogView'
 import ManageLogPanel from './ManageLogPanel'
 import ContentPage from './ContentPage'
-import DressCodeFlagsPanel from './DressCodeFlagsPanel'
 import PageToolIcons from './PageToolIcons'
 import AdvertStatusPanel from './AdvertStatusPanel'
-import AssessmentPanel from './AssessmentPanel'
 import DynamicCategoryPage from './DynamicCategoryPage'
 import PropertiesPage from './PropertiesPage'
 import OpenerView from './OpenerView'
 import CloserView from './CloserView'
-import StaffMeetingPanel from './StaffMeetingPanel'
 import type { Violation } from './useViolations'
 import { LOG_CATEGORIES, type ManageView, type DynamicCategory } from './manageViewData'
 
 export type { ManageView }
-
-// Staff (Times/Payslips/Violations/Analytics/Assignments) and Home/Daily
-// live outside this component now -- see item/page.tsx's merged pane. Rota
-// stays here since it's a shared weekly schedule across everyone, not one
-// person's record.
-const RotaTab = dynamic(() => import('../../staff/StaffClient').then(m => ({ default: m.RotaTab })), {
-  ssr: false,
-  loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div>,
-})
-const LogsPage = dynamic(() => import('../../logs/page'), {
-  ssr: false,
-  loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div>,
-})
 
 // Just the right-pane content for whichever Manage view is active -- the
 // left-pane list (fixed items + dynamic categories + Add Category) now
@@ -38,7 +21,7 @@ const LogsPage = dynamic(() => import('../../logs/page'), {
 export default function GronyManageContent({
   view, activeDynamic, canManage,
   openerViolations, assignments, deadlines, assignedBy, assignedOn, vSettings,
-  onGoToViolation, missingClosingReportsCount, onOpenStaff, staffRoster, routablePages,
+  onGoToViolation, missingClosingReportsCount, onOpenStaff,
 }: {
   view: ManageView
   activeDynamic?: DynamicCategory
@@ -52,8 +35,6 @@ export default function GronyManageContent({
   onGoToViolation: (key: string) => void
   missingClosingReportsCount: number
   onOpenStaff: () => void
-  staffRoster: string[]
-  routablePages: string[]
 }) {
   const logCategory = LOG_CATEGORIES.find(c => c.key === view)
 
@@ -72,7 +53,6 @@ export default function GronyManageContent({
       <div className="px-2 pt-2"><PageToolIcons scopeKey="Closer" /></div>
       <CloserView missingClosingReportsCount={missingClosingReportsCount} onOpenStaff={onOpenStaff} />
     </>)}
-    {view === 'rota' && <div className="px-2 space-y-2 pt-2"><PageToolIcons scopeKey="Rota" /><RotaTab canManage={canManage} /></div>}
     {view === 'audio' && <ContentPage contentKey="advert_audio_roadside" title="Advert 1 — Audio (for Roadside)" submenu="Audio" />}
     {view === 'audio_status' && (<>
       <div className="px-2 pt-2"><PageToolIcons scopeKey="Advert Status" /></div>
@@ -88,17 +68,7 @@ export default function GronyManageContent({
       <div className="px-2 pt-2"><PageToolIcons scopeKey="Advert Daily Log" /></div>
       <ClosingReportLogView field="advert_played" label="Advert" icon="📢" />
     </>)}
-    {view === 'staff_dress' && (<>
-      <div className="px-2 pt-2"><PageToolIcons scopeKey="Dress Code" /></div>
-      <DressCodeFlagsPanel />
-      <ClosingReportLogView field="no_tshirt_staff" label="Dress Code" icon="👕" />
-    </>)}
-    {view === 'tutorial' && <ContentPage contentKey="training_tutorial" title="📖 App Tutorial" submenu="Tutorial" />}
-    {view === 'training_laws' && <ContentPage contentKey="training_laws" title="⚖️ Company Laws" submenu="Company Laws" />}
-    {view === 'assessment' && (<div className="px-2 pt-2"><PageToolIcons scopeKey="Assessment" /><AssessmentPanel /></div>)}
-    {view === 'logs' && <div className="px-2 space-y-2 pt-2"><PageToolIcons scopeKey="Logs" /><LogsPage /></div>}
     {view === 'properties' && <PropertiesPage />}
-    {view === 'staff_meeting' && <StaffMeetingPanel staffRoster={staffRoster} routablePages={routablePages} />}
     {logCategory && <ManageLogPanel category={logCategory.key} label={logCategory.label} icon={logCategory.icon} />}
   </>)
 }

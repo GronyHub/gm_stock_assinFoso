@@ -9,7 +9,7 @@ export const ASSIGNABLE_VIOLATIONS: { type: string; label: string; auto: boolean
   { type: 'missing_days', label: 'Sales Receipts not entered', auto: true },
   { type: 'no_cash', label: 'Walk-in receipts missing cash counted', auto: true },
   { type: 'cost_gte_sell', label: 'Cost Price ≥ Selling Price', auto: true },
-  { type: 'no_staff_times', label: 'Days with no staff times recorded', auto: true },
+  { type: 'no_staff_times', label: 'Days with no team times recorded', auto: true },
   { type: 'unchecked_cab', label: 'Weeks with no Cash at Bank confirmation', auto: true },
   { type: 'no_group', label: 'Items with no group assigned', auto: false },
   { type: 'duplicates', label: 'Possible duplicate item pairs', auto: false },
