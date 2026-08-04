@@ -30,7 +30,7 @@ import PageToolIcons from './_components/PageToolIcons'
 import { COLUMNS, type ColKey } from './_components/lossTabColumns'
 import { useColumnPrefs, ColumnsPickerButton } from './_components/columnPrefs'
 import { MANAGE_LIST_ITEMS, useDynamicManageCategories, type ManageView } from './_components/manageViewData'
-import { STAFF_PERSONAL_ITEMS, STAFF_TEAM_ITEMS, type StaffView } from './_components/staffViewData'
+import { STAFF_PERSONAL_ITEMS, STAFF_TEAM_ITEMS, STAFF_ADMIN_TEAM_ITEMS, type StaffView } from './_components/staffViewData'
 import { CH_ITEMS, type CHView } from './_components/chViewData'
 import { useUKData, UK_PEOPLE } from './_components/ukViewData'
 import { SidePaneContainer, SidePaneToggle, SidePaneButton, useSidePaneDisplayMode } from './_components/SidePane'
@@ -126,7 +126,8 @@ const OLD_LOSSVIEW_TO_EXTRA: Partial<Record<string, ItemsExtraView>> = {
 // StaffContent) a given lossView renders.
 const MANAGE_VIEW_KEYS = new Set<LossView>(MANAGE_LIST_ITEMS.map(i => i.key))
 const STAFF_VIEW_KEYS = new Set<LossView>([
-  ...STAFF_PERSONAL_ITEMS.map(i => i.key), 'staffProfile', ...STAFF_TEAM_ITEMS.map(i => i.key), 'users', 'roles',
+  ...STAFF_PERSONAL_ITEMS.map(i => i.key), 'staffProfile', ...STAFF_TEAM_ITEMS.map(i => i.key),
+  ...STAFF_ADMIN_TEAM_ITEMS.map(i => i.key), 'users', 'roles',
 ])
 // C&H's own rows -- same purpose as the two sets above, but for the
 // separate C&H tab's own pane content (see chViewData.ts).
@@ -142,7 +143,7 @@ const CH_VIEW_KEYS = new Set<LossView>(CH_ITEMS.map(i => i.key))
 // area's own former default view, since both folded into this same tab.
 const OLD_TAB_TO_VIEW: Partial<Record<string, LossView>> = {
   pl: 'pl', expenses: 'expenses', cab: 'cab', dailySummary: 'dailySummary', data: 'items',
-  manage: 'audio', staff: 'staffTimes',
+  manage: 'audio', staff: 'staffPayslips',
 }
 
 // Self-contained submenus -- either their own dashboard, or a standalone
@@ -814,16 +815,18 @@ function ItemHubPageInner() {
   }
 
   // Joe/Grony's "Viewing" picker -- switches whose personal rows show.
-  // Profile only ever means "my own login", and Payslips/Violations no
-  // longer redirect at all (see viewingSelf above) -- so switching away
-  // from yourself while on any of those three has nowhere sensible to
-  // land and falls back to Times instead of leaving the content area
-  // showing a page that's about to disappear from the pane.
+  // Profile only ever means "my own login", and Payslips no longer
+  // redirects at all (see viewingSelf above) -- so switching away from
+  // yourself while on either of those has nowhere sensible to land (Personal
+  // is just Payslips/Profile now, both self-only) and falls back to
+  // Payslips, which still renders the newly-viewed person's own payslip
+  // history even though its own pane row is hidden while viewing someone
+  // else.
   function pickViewing(name: string) {
     setViewingNameOverride(name)
-    const staysOnSelfOnly = lossView === 'staffProfile' || lossView === 'staffPayslips' || lossView === 'staffViolations'
+    const staysOnSelfOnly = lossView === 'staffProfile' || lossView === 'staffPayslips'
     if (staysOnSelfOnly && name.toLowerCase() !== (myStaffName ?? '').toLowerCase()) {
-      setLossView('staffTimes')
+      setLossView('staffPayslips')
     }
   }
 
@@ -966,9 +969,9 @@ function ItemHubPageInner() {
     if (key === 'jingle_overdue') { pickLossView('jingle'); return }
     if (key === 'equipment_check_overdue') { pickLossView('equipment'); return }
     // No Staff Times is about a missing day, not one person, so it just
-    // lands on Staff's Times row -- shared and unfiltered, it already shows
-    // every staff member's clock records.
-    if (key === 'no_staff_times') { pickLossView('staffTimes'); return }
+    // lands on Team Times -- shared and unfiltered, it already shows every
+    // staff member's clock records.
+    if (key === 'no_staff_times') { pickLossView('teamTimes'); return }
     const targetView = VIOLATION_HOME[key]
     if (!targetView) return
     pickLossView(targetView)
@@ -1031,15 +1034,15 @@ function ItemHubPageInner() {
   // someone's already sitting on -- a default landing on 'items', or a
   // direct ?view= link, would otherwise keep showing Cash content forever
   // with no button left to navigate away from it. Bounces to whichever of
-  // Manage/Staff Times/Home is still available the moment permissions
+  // Manage/Staff Payslips/Home is still available the moment permissions
   // finish loading and turn out not to include the tab currently showing.
   useEffect(() => {
     if (!permsLoaded || outerTab !== 'loss') return
     if (!canSeeCash && CASH_VIEW_KEYS.has(lossView)) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      pickLossView(canSeeManage ? MANAGE_LIST_ITEMS[0].key : (myStaffName ? 'staffTimes' : 'home'))
+      pickLossView(canSeeManage ? MANAGE_LIST_ITEMS[0].key : (myStaffName ? 'staffPayslips' : 'home'))
     } else if (!canSeeManage && (MANAGE_VIEW_KEYS.has(lossView) || activeDynamicId !== null)) {
-      pickLossView(canSeeCash ? 'items' : (myStaffName ? 'staffTimes' : 'home'))
+      pickLossView(canSeeCash ? 'items' : (myStaffName ? 'staffPayslips' : 'home'))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [permsLoaded, canSeeCash, canSeeManage, lossView, outerTab])
@@ -1113,11 +1116,12 @@ function ItemHubPageInner() {
     ] : []),
     ...(canSeeManage ? MANAGE_LIST_ITEMS.map(v => ({ label: v.label, action: () => pickLossView(v.key) })) : []),
     ...(myStaffName ? [
-      ...STAFF_PERSONAL_ITEMS.filter(t => viewingSelf || (t.key !== 'staffPayslips' && t.key !== 'staffViolations'))
+      ...STAFF_PERSONAL_ITEMS.filter(t => viewingSelf || t.key !== 'staffPayslips')
         .map(t => ({ label: t.label, action: () => pickLossView(t.key) })),
       { label: 'Profile', action: () => pickLossView('staffProfile') },
     ] : []),
     ...(canSeeTeam ? STAFF_TEAM_ITEMS.map(t => ({ label: t.label, action: () => pickLossView(t.key) })) : []),
+    ...(canManage ? STAFF_ADMIN_TEAM_ITEMS.map(t => ({ label: t.label, action: () => pickLossView(t.key) })) : []),
     ...(canSeeUsers || canManage ? [{ label: 'Users & Roles', action: () => pickLossView('users') }] : []),
     ...(canAddCategory ? [{ label: 'Manage Categories', action: () => pickLossView('manageCategories') }] : []),
     ...(canViewPortalAs ? [{ label: 'View Portal As', action: () => pickLossView('viewPortalAs') }] : []),
@@ -1283,7 +1287,7 @@ function ItemHubPageInner() {
                 {STAFF_TEAM_ITEMS.map(t => (
                   <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode}
                     active={paneActive(lossView === t.key)}
-                    badge={t.key === 'staff_dress' ? dressFlagsCount : undefined}
+                    badge={t.key === 'staff_dress' ? dressFlagsCount : t.key === 'teamTimes' ? staffTimesFlagsCount : undefined}
                     onClick={() => pickLossView(t.key)} />
                 ))}
               </div>
@@ -1296,17 +1300,17 @@ function ItemHubPageInner() {
                     {viewingSelf ? 'Personal' : `Personal · Viewing: ${viewingName}`}
                   </p>
                 )}
-                {/* Payslips/Violations drop out of this list while viewing
-                    someone else -- they no longer redirect with Viewing (see
-                    viewingSelf's comment above), so showing them here would
+                {/* Payslips drops out of this list while viewing someone
+                    else -- it no longer redirects with Viewing (see
+                    viewingSelf's comment above), so showing it here would
                     either silently keep displaying your own data under
-                    someone else's name, or need their own separate
-                    "actually not viewing that person" explanation. Team
-                    Payslips/Team Violations already have their own per-staff
-                    picker for exactly this case. */}
-                {STAFF_PERSONAL_ITEMS.filter(t => viewingSelf || (t.key !== 'staffPayslips' && t.key !== 'staffViolations')).map(t => (
+                    someone else's name, or need its own separate "actually
+                    not viewing that person" explanation. Team Payslips
+                    already has its own per-staff picker for exactly this
+                    case. */}
+                {STAFF_PERSONAL_ITEMS.filter(t => viewingSelf || t.key !== 'staffPayslips').map(t => (
                   <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode}
-                    active={paneActive(lossView === t.key)} badge={t.key === 'staffTimes' ? staffTimesFlagsCount : undefined}
+                    active={paneActive(lossView === t.key)}
                     onClick={() => pickLossView(t.key)} />
                 ))}
                 {viewingName.toLowerCase() === username.toLowerCase() && (
@@ -1383,7 +1387,7 @@ function ItemHubPageInner() {
             viewingName={viewingName} myStaffName={myStaffName} staffRoster={STAFF_ROSTER}
             pickViewing={pickViewing} pickLossView={pickLossView}
             canSeeUsers={canSeeUsers} canAddCategory={canAddCategory}
-            canViewPortalAs={canViewPortalAs} canManageRoles={canManage}
+            canViewPortalAs={canViewPortalAs} canManageRoles={canManage} canManage={canManage}
           />
         )}
 
@@ -1686,7 +1690,7 @@ function ItemHubPageInner() {
               assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
               onGoToViolation={goToViolation}
               missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
-              onOpenStaff={() => pickLossView('staffTimes')} />
+              onOpenStaff={() => pickLossView('teamTimes')} />
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && STAFF_VIEW_KEYS.has(lossView) && (
@@ -1698,7 +1702,6 @@ function ItemHubPageInner() {
               // otherwise leak into TimesTab/PayslipsTab's own local
               // state across accounts.
               <>
-                {lossView === 'staffTimes' && <div className="px-4 pt-2"><PageToolIcons scopeKey={myStaffName} /></div>}
                 <StaffContent key={myStaffName} view={lossView as StaffView}
                   viewingName={viewingName} role={role} username={username}
                   canSeeTeam={canSeeTeam} canSeeUsers={canSeeUsers} canSeeRoles={canManage} canManage={canManage}
