@@ -38,6 +38,13 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
+// Ghana has no DST and sits at GMT/UTC+0 year-round, so this is always
+// correct Ghana time regardless of what timezone the device itself is set
+// to -- explicit IANA zone rather than relying on the browser's local zone.
+function fmtGhanaTime(d: Date) {
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Africa/Accra' })
+}
+
 // jsPDF's built-in fonts have no ₵ glyph (see DailySummaryTab.tsx) -- plain
 // "GHS " prefix in PDF output only; the on-screen preview uses c() instead.
 function fcPdf(v: string | null | undefined) {
@@ -51,6 +58,11 @@ export default function ReceiptPrintPage() {
   const [receipt, setReceipt] = useState<Receipt | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [downloading, setDownloading] = useState(false)
+  // Captured once, not a live clock -- stamps the document with the moment
+  // it was generated (opened for preview or downloaded), same as a POS
+  // receipt's own "printed at" line, in Ghana time regardless of the
+  // invoice's own date (which has no time of its own -- see fmtGhanaTime).
+  const [generatedAt] = useState(() => new Date())
 
   useEffect(() => {
     fetch(`/api/receipts/${id}`)
@@ -121,9 +133,11 @@ export default function ReceiptPrintPage() {
       doc.setFontSize(9)
       doc.setTextColor(140, 140, 140)
       doc.text(fmtDate(receipt.invoice_date), pageWidth - 14, y0 + 14, { align: 'right' })
+      doc.setFontSize(8)
+      doc.text(`Printed ${fmtGhanaTime(generatedAt)} GMT`, pageWidth - 14, y0 + 19, { align: 'right' })
       doc.setTextColor(0, 0, 0)
 
-      let y = y0 + 26
+      let y = y0 + 30
       doc.setDrawColor(20, 20, 20)
       doc.setLineWidth(0.5)
       doc.line(14, y, pageWidth - 14, y)
@@ -221,6 +235,7 @@ export default function ReceiptPrintPage() {
             <p className="text-lg font-bold uppercase tracking-wide text-gray-900">{docType}</p>
             <p className="text-sm text-gray-600">{receipt.invoice_number}</p>
             <p className="text-xs text-gray-400">{fmtDate(receipt.invoice_date)}</p>
+            <p className="text-[11px] text-gray-400">Printed {fmtGhanaTime(generatedAt)} GMT</p>
           </div>
         </div>
 
