@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef, useMemo, Component, Suspense, type ReactNode } from 'react'
+import { useState, useEffect, useRef, useMemo, Component, Suspense, Fragment, type ReactNode } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { hasFeature, DEFAULT_ON_FEATURES, type FeatureKey, type RolePermissionsMap } from '@/lib/permissionsShared'
@@ -1230,17 +1230,28 @@ function ItemHubPageInner() {
               {cashDisplayMode !== 'icon' && (
                 <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Manage</p>
               )}
-              {applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage).map(entry => {
+              {applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage).map((entry, i, ordered) => {
                 const badge = entry.key === 'opener' ? openerBadgeCount
                   : entry.key === 'closer' ? (globalFlags?.missingClosingReports?.length ?? 0)
                   : entry.key === 'jingle' ? jingleFlagsCount
                   : entry.key === 'equipment' ? equipmentFlagsCount
                   : entry.key === 'audio_status' ? advertStatusFlagsCount
                   : undefined
+                // Drawn once, right before the first 'advert'-tagged row this
+                // sequence hits -- not a physical regrouping, so reordering
+                // one of these away from the rest (see ReorderListsPanel)
+                // just moves the header along with wherever the first one
+                // now sits instead of breaking.
+                const isFirstAdvert = entry.group === 'advert' && ordered[i - 1]?.group !== 'advert'
                 return (
-                  <SidePaneButton key={entry.key} icon={entry.icon} label={entry.label} mode={cashDisplayMode}
-                    active={paneActive(lossView === entry.key)} badge={badge}
-                    onClick={() => pickLossView(entry.key)} />
+                  <Fragment key={entry.key}>
+                    {isFirstAdvert && cashDisplayMode !== 'icon' && (
+                      <p className="px-2 pt-2 pb-0.5 text-[8px] font-bold text-blue-200/70 uppercase tracking-wide">Advert</p>
+                    )}
+                    <SidePaneButton icon={entry.icon} label={entry.label} mode={cashDisplayMode}
+                      active={paneActive(lossView === entry.key)} badge={badge}
+                      onClick={() => pickLossView(entry.key)} />
+                  </Fragment>
                 )
               })}
             </div>

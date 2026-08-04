@@ -29,21 +29,27 @@ export const LOG_CATEGORIES: { key: ManageView; label: string; icon: string }[] 
   { key: 'quality_assurance', label: 'Quality Assurance', icon: '✅' },
 ]
 
-// The Manage section's fixed contents, top to bottom -- one flat list, no
-// nested groups. Home/Daily aren't here -- they're the merged pane's shared
+// The Manage section's fixed contents, top to bottom -- one flat list (still
+// one reorderable sequence for ReorderListsPanel), except the 'advert' group
+// tag below, which gets its own "Advert" sub-header wherever its items land
+// in that sequence (see item/page.tsx's pane render -- the header is drawn
+// before the first item tagged 'advert' it encounters, not by physically
+// grouping them, so reordering one advert row away from the others doesn't
+// break anything, it just means the header sits above wherever the first
+// one now is). Home/Daily aren't here -- they're the merged pane's shared
 // footer now (see PaneHomeDaily in page.tsx), not Manage-specific rows.
-export const MANAGE_LIST_ITEMS: { key: ManageView; label: string; icon?: string }[] = [
+export const MANAGE_LIST_ITEMS: { key: ManageView; label: string; icon?: string; group?: 'advert' }[] = [
   { key: 'opener', label: 'Opener', icon: '🌅' },
   { key: 'closer', label: 'Closer', icon: '🌙' },
-  { key: 'audio', label: 'Audio', icon: '🎙️' },
-  { key: 'audio_status', label: 'Advert Status', icon: '📋' },
-  { key: 'jingle', label: 'Jingle Log', icon: '🎵' },
-  { key: 'equipment', label: 'Equipment Check', icon: '🔊' },
-  { key: 'photoshop', label: 'Photoshop', icon: '🖌️' },
-  { key: 'whatsapp', label: 'WhatsApp', icon: '💬' },
-  { key: 'cuttings', label: 'Cuttings', icon: '✂️' },
-  { key: 'video', label: 'Video', icon: '🎬' },
-  { key: 'advert_log', label: 'Daily Log', icon: '📢' },
+  { key: 'audio', label: 'Audio', icon: '🎙️', group: 'advert' },
+  { key: 'audio_status', label: 'Advert Status', icon: '📋', group: 'advert' },
+  { key: 'jingle', label: 'Jingle Log', icon: '🎵', group: 'advert' },
+  { key: 'equipment', label: 'Equipment Check', icon: '🔊', group: 'advert' },
+  { key: 'photoshop', label: 'Photoshop', icon: '🖌️', group: 'advert' },
+  { key: 'whatsapp', label: 'WhatsApp', icon: '💬', group: 'advert' },
+  { key: 'cuttings', label: 'Cuttings', icon: '✂️', group: 'advert' },
+  { key: 'video', label: 'Video', icon: '🎬', group: 'advert' },
+  { key: 'advert_log', label: 'Daily Log', icon: '📢', group: 'advert' },
   ...LOG_CATEGORIES.map(c => ({ key: c.key, label: c.label, icon: c.icon })),
   { key: 'properties', label: 'Properties', icon: '🏷️' },
   { key: 'unfortunate_events', label: 'Unfortunate Events', icon: '🚨' },
