@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef, useMemo, Component, Suspense, type ReactNode } from 'react'
+import { useState, useEffect, useRef, useMemo, Component, Suspense, Fragment, type ReactNode } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { hasFeature, DEFAULT_ON_FEATURES, type FeatureKey, type RolePermissionsMap } from '@/lib/permissionsShared'
@@ -25,18 +25,18 @@ class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boole
 import { usePolling } from '@/lib/usePolling'
 import { useViolations } from './_components/useViolations'
 import PaneHomeDaily from './_components/PaneHomeDaily'
+import AddShortcutButton, { type ShortcutKey } from './_components/AddShortcutButton'
 import { MyAssignmentsSummary } from './_components/MyAssignmentsSummary'
 import PageToolIcons from './_components/PageToolIcons'
 import { COLUMNS, type ColKey } from './_components/lossTabColumns'
 import { useColumnPrefs, ColumnsPickerButton } from './_components/columnPrefs'
-import { MANAGE_LIST_ITEMS, useDynamicManageCategories, type ManageView } from './_components/manageViewData'
+import { MANAGE_LIST_ITEMS, MANAGE_GROUP_LABELS, useFixedCategoryIds, type ManageView } from './_components/manageViewData'
 import { STAFF_PERSONAL_ITEMS, STAFF_TEAM_ITEMS, STAFF_ADMIN_TEAM_ITEMS, type StaffView } from './_components/staffViewData'
-import { CH_ITEMS, type CHView } from './_components/chViewData'
+import { CH_ITEMS, CH_CHILD_PERSON, CH_PERSON_VIEW, type CHView } from './_components/chViewData'
 import { useUKData, UK_PEOPLE } from './_components/ukViewData'
 import { SidePaneContainer, SidePaneToggle, SidePaneButton, useSidePaneDisplayMode } from './_components/SidePane'
 import SettingsPane from './_components/SettingsPane'
-import SavedFlash from './_components/SavedFlash'
-import { applyPaneOrder, type PaneOrderMap } from './_components/paneOrder'
+import { applyPaneOrder, buildPaneRuns, flattenPaneRuns, type PaneOrderMap } from './_components/paneOrder'
 import dynamic from 'next/dynamic'
 const loading = (h: string) => <div className={`py-10 text-center text-gray-400 text-sm`}>{h}</div>
 const ItemsTab       = dynamic(() => import('./_components/ItemsTab'),        { ssr: false, loading: () => loading('Loading…') })
@@ -101,11 +101,11 @@ type OuterTab = 'today' | 'loss' | 'uk' | 'ch'
 // state/pane machinery rather than needing its own parallel copy.
 type LossView = 'home' | 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'lossByItem' | 'lossByTarget' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts' | 'dailySummary'
   | 'purchaseOrders' | 'item360'
-  // Settings' own two non-navigation rows (Manage Categories, View Portal
-  // As) become real content destinations too now that Settings is its own
-  // side-by-side pane instead of a full-screen takeover -- see
-  // SettingsPane.tsx and the settingsOpen block below.
-  | 'manageCategories' | 'viewPortalAs' | 'reorderLists'
+  // Settings' own non-navigation row (View Portal As) becomes a real content
+  // destination too now that Settings is its own side-by-side pane instead
+  // of a full-screen takeover -- see SettingsPane.tsx and the settingsOpen
+  // block below.
+  | 'viewPortalAs' | 'reorderLists'
   | ManageView | StaffView | CHView
 // Alias Wide Table and Service Matches used to be their own lossViews --
 // they're now reached from inside Items itself (see ItemsExtraView below),
@@ -153,7 +153,7 @@ const OLD_TAB_TO_VIEW: Partial<Record<string, LossView>> = {
 // groups/search bar of their own.
 const REPORT_VIEWS = new Set<LossView>([
   'home', 'pl', 'cab', 'vendors', 'customers', 'receipts', 'dailySummary',
-  'purchaseOrders', 'item360', 'manageCategories', 'viewPortalAs', 'reorderLists',
+  'purchaseOrders', 'item360', 'viewPortalAs', 'reorderLists',
   ...MANAGE_VIEW_KEYS, ...STAFF_VIEW_KEYS, ...CH_VIEW_KEYS,
 ])
 
@@ -458,6 +458,14 @@ function ItemHubPageInner() {
   const [addForm, setAddForm]             = useState<'item' | 'sale' | 'live' | 'liveLog' | 'bill' | 'expense' | null>(
     (VALID_ADD_FORMS as readonly string[]).includes(rawInitialForm ?? '') ? (rawInitialForm as typeof VALID_ADD_FORMS[number]) : null
   )
+  // Bumped by the "+" shortcut menu (see AddShortcutButton) for flows that
+  // live inside an already-mounted tab (CAB Confirm, Staff Time, Customer,
+  // Vendor) -- each target component watches its own signal and reopens its
+  // "new" form.
+  const [cabConfirmSignal, setCabConfirmSignal] = useState(0)
+  const [staffTimeSignal, setStaffTimeSignal]   = useState(0)
+  const [customerSignal, setCustomerSignal]     = useState(0)
+  const [vendorSignal, setVendorSignal]         = useState(0)
   const [jumpToItemId, setJumpToItemId]   = useState<number | null>(null)
   // Seeded from ?jumpDate=/?jumpItem= -- Item 360's Detail table (and its
   // "click a date" links) lands here via /item?tab=loss&view=sales&jumpDate=
@@ -507,14 +515,11 @@ function ItemHubPageInner() {
   const [customerSearchText, setCustomerSearchText] = useState('')
   const [vendorSearchText, setVendorSearchText] = useState('')
 
-  // Manage's user-added categories -- shared between the merged pane
-  // (listing/adding/removing them) and GronyManageContent (rendering the
-  // active one).
-  const {
-    dynamicCategories, activeDynamicId, setActiveDynamicId,
-    showAddCategory, setShowAddCategory, newCategoryLabel, setNewCategoryLabel,
-    savingCategory, justAddedCategory, addCategory, removeCategory,
-  } = useDynamicManageCategories()
+  // Resolves the real numeric id behind each of the four ex-"Added by you"
+  // categories (now fixed rows split across Manage/Team) -- shared between
+  // GronyManageContent and StaffContent, whichever renders one via
+  // DynamicCategoryPage. See FIXED_CATEGORY_LABELS in manageViewData.ts.
+  const fixedCategoryIds = useFixedCategoryIds()
 
   // Staff's "Viewing" picker -- who the personal rows (Times/Payslips/etc.)
   // apply to. Only Joe/Grony ever change this away from their own name;
@@ -526,6 +531,13 @@ function ItemHubPageInner() {
   // rename/delete) and UKTab (rendering the selected submenu's columns +
   // row data).
   const uk = useUKData()
+  // A second, independent instance for C&H's own Fiifi/Kuukua/Ebo/Odoye
+  // pages (moved here from UK, see chViewData.ts's CH_CHILD_PERSON) -- kept
+  // separate from `uk` above so switching tabs never lets one tab's person
+  // selection leak into the other's pane. Driven by pickCHView below
+  // instead of a picker of its own, since these four are already fixed
+  // rows in CH_ITEMS.
+  const ch = useUKData()
 
   useEffect(() => {
     const q = globalSearchQuery.trim()
@@ -787,7 +799,6 @@ function ItemHubPageInner() {
   function pickLossView(view: LossView, opts?: { keepSettingsOpen?: boolean }) {
     setOuterTab('loss')
     setLossView(view)
-    setActiveDynamicId(null)
     setViolation(null)
     setAddForm(null)
     setShowAnalytics(false)
@@ -807,11 +818,32 @@ function ItemHubPageInner() {
   // `outerTab === 'ch'` below), so outerTab never needs to move here.
   function pickCHView(view: CHView) {
     setLossView(view)
-    setActiveDynamicId(null)
+    // Fiifi/Kuukua/Ebo/Odoye each need `ch` (see above) pointed at their own
+    // name before CHTab/the pane can show their submenus -- every other C&H
+    // row leaves `ch` alone since they don't use it at all.
+    const childPerson = CH_CHILD_PERSON[view]
+    if (childPerson) ch.pickPerson(childPerson)
     setViolation(null)
     setAddForm(null)
     setShowAnalytics(false)
     setSettingsOpen(false)
+  }
+
+  // Global search's UK-submenu/UK-entry results (see below) come back
+  // tagged with a plain `person` string from the shared uk_submenus/
+  // uk_rows tables -- Fiifi/Kuukua/Ebo/Odoye's now open on C&H instead of
+  // UK (see CH_PERSON_VIEW), everyone else still opens on UK as before.
+  function openPersonSubmenu(person: string, submenuId: number) {
+    const chView = CH_PERSON_VIEW[person as keyof typeof CH_PERSON_VIEW]
+    if (chView) {
+      changeTab('ch')
+      pickCHView(chView)
+      ch.pickSubmenu(submenuId)
+    } else {
+      changeTab('uk')
+      uk.pickPerson(person as typeof uk.person)
+      uk.pickSubmenu(submenuId)
+    }
   }
 
   // Joe/Grony's "Viewing" picker -- switches whose personal rows show.
@@ -834,6 +866,31 @@ function ItemHubPageInner() {
   // (Sales / Bills / Counts live as sub-views of the Grony Cash tab).
   function goFixRecords(view: 'sales' | 'bills' | 'counts') {
     pickLossView(view)
+  }
+
+  // The "+" shortcut menu (see AddShortcutButton) -- jumps straight to a
+  // "create new" flow wherever it already lives. Sales/Bills/Item/Expenses
+  // reuse the existing addForm mechanism (pickLossView resets it, so set it
+  // after); the rest reopen via a per-target signal since their forms are
+  // local component state with no addForm equivalent. Staff Time lands on
+  // Team Times, not a per-person page -- Personal has no Times row of its
+  // own anymore (see Team Times' own history), but TimesTab's admin "add
+  // entry" form works the same regardless of whose page it's opened from.
+  function handleShortcut(key: ShortcutKey) {
+    switch (key) {
+      case 'sale':       pickLossView('sales');     setAddForm('sale'); break
+      case 'bill':       pickLossView('bills');     setAddForm('bill'); break
+      case 'item':       pickLossView('items');     setAddForm('item'); break
+      case 'expense':    pickLossView('expenses');  setAddForm('expense'); break
+      case 'cabConfirm': pickLossView('cab');       setCabConfirmSignal(n => n + 1); break
+      case 'customer':   pickLossView('customers'); setCustomerSignal(n => n + 1); break
+      case 'vendor':     pickLossView('vendors');   setVendorSignal(n => n + 1); break
+      case 'staffTime': {
+        pickLossView('teamTimes')
+        setStaffTimeSignal(n => n + 1)
+        break
+      }
+    }
   }
 
   // Tab/sub-view changes push a new history entry each -- real "pages" the
@@ -1041,7 +1098,7 @@ function ItemHubPageInner() {
     if (!canSeeCash && CASH_VIEW_KEYS.has(lossView)) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       pickLossView(canSeeManage ? MANAGE_LIST_ITEMS[0].key : (myStaffName ? 'staffPayslips' : 'home'))
-    } else if (!canSeeManage && (MANAGE_VIEW_KEYS.has(lossView) || activeDynamicId !== null)) {
+    } else if (!canSeeManage && MANAGE_VIEW_KEYS.has(lossView)) {
       pickLossView(canSeeCash ? 'items' : (myStaffName ? 'staffPayslips' : 'home'))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1049,7 +1106,6 @@ function ItemHubPageInner() {
   const canSeePL = perm('pl')
   const canSeeTeam = perm('team')
   const canSeeUsers = perm('users')
-  const canAddCategory = perm('add_category')
   const canViewPortalAs = perm('view_portal_as')
   const canSeeUK = isGrony || perm('uk')
   const canSeeCH = isOwnerOrJoe || perm('ch')
@@ -1058,7 +1114,7 @@ function ItemHubPageInner() {
   // shouldn't be grantable through the system it configures). Team no
   // longer counts here -- it moved out into its own main-pane section (see
   // below), so canSeeTeam alone no longer needs a reason to open Settings.
-  const canOpenSettings = canManage || canSeeUsers || canAddCategory || canViewPortalAs
+  const canOpenSettings = canManage || canSeeUsers || canViewPortalAs
   // Drives the merged pane's own-name section AND which staff page it
   // opens -- "just like the user profile icon", it's always your own name,
   // not a generic "Staff" label or a pick-a-person screen. Falls back to
@@ -1077,7 +1133,7 @@ function ItemHubPageInner() {
   const viewingName = viewingNameOverride ?? myStaffName ?? ''
   const viewingSelf = viewingName.toLowerCase() === (myStaffName ?? '').toLowerCase()
 
-  // Pages a Staff Meeting note's "discuss on another page" widget can route
+  // Pages a Team Meeting note's "discuss on another page" widget can route
   // a follow-up to (see StaffMeetingPanel) -- same permission gates as
   // navDestinations below, since routing to a page you can't otherwise see
   // would just create a task nobody can find.
@@ -1102,7 +1158,7 @@ function ItemHubPageInner() {
   // the same permission gates that decide what actually shows in the pane
   // -- this used to be three separately hand-typed label/action lists that
   // drifted out of sync with the real pane contents (new Manage categories
-  // like Staff Meeting, all of Team's rows, every C&H category, and the
+  // like Team Meeting, all of Team's rows, every C&H category, and the
   // Settings-only pages were never added here), which is exactly why most
   // pages weren't turning up in search. Deriving from the source arrays
   // means anything added there is searchable with zero extra upkeep here.
@@ -1123,7 +1179,6 @@ function ItemHubPageInner() {
     ...(canSeeTeam ? STAFF_TEAM_ITEMS.map(t => ({ label: t.label, action: () => pickLossView(t.key) })) : []),
     ...(canManage ? STAFF_ADMIN_TEAM_ITEMS.map(t => ({ label: t.label, action: () => pickLossView(t.key) })) : []),
     ...(canSeeUsers || canManage ? [{ label: 'Users & Roles', action: () => pickLossView('users') }] : []),
-    ...(canAddCategory ? [{ label: 'Manage Categories', action: () => pickLossView('manageCategories') }] : []),
     ...(canViewPortalAs ? [{ label: 'View Portal As', action: () => pickLossView('viewPortalAs') }] : []),
     ...(canManage ? [{ label: 'Reorder Lists', action: () => pickLossView('reorderLists') }] : []),
     ...(canSeeUK ? [{ label: 'UK', action: () => changeTab('uk') }] : []),
@@ -1196,10 +1251,10 @@ function ItemHubPageInner() {
               {cashDisplayMode !== 'icon' && (
                 <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Cash</p>
               )}
-              {applyPaneOrder(CASH_ITEMS, paneOrder.cash).filter(v => v.key !== 'pl' || canSeePL).map(v => (
+              {applyPaneOrder(CASH_ITEMS, paneOrder.cash).filter(v => v.key !== 'pl' || canSeePL).map((v, i) => (
               <div key={v.key}>
                 <SidePaneButton icon={v.icon} label={v.label} mode={cashDisplayMode}
-                  active={paneActive(lossView === v.key)}
+                  active={paneActive(lossView === v.key)} divider={i > 0}
                   badge={v.key === 'sales' ? salesFlagsCount
                     : v.key === 'items' ? itemsFlagsCount
                     : v.key === 'bills' ? billsFlagsCount
@@ -1218,7 +1273,7 @@ function ItemHubPageInner() {
                     <SidePaneButton icon="🧾" label="New Sale" mode={cashDisplayMode}
                       active={paneActive(lossView === 'sales' && addForm === 'sale')}
                       onClick={() => { pickLossView('sales'); setAddForm('sale') }} />
-                    <SidePaneButton icon="⚡" label="Live Sale" mode={cashDisplayMode}
+                    <SidePaneButton icon="⚡" label="Live Sale" mode={cashDisplayMode} divider
                       active={paneActive(lossView === 'sales' && addForm === 'live')}
                       onClick={() => { pickLossView('sales'); setAddForm('live') }} />
                     <div className="pl-2 border-l-2 border-white/10 ml-2">
@@ -1238,7 +1293,7 @@ function ItemHubPageInner() {
               {cashDisplayMode !== 'icon' && (
                 <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Manage</p>
               )}
-              {applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage).map(entry => {
+              {flattenPaneRuns(buildPaneRuns(applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage)), MANAGE_GROUP_LABELS).map(({ item: entry, header, divider }) => {
                 const badge = entry.key === 'opener' ? openerBadgeCount
                   : entry.key === 'closer' ? (globalFlags?.missingClosingReports?.length ?? 0)
                   : entry.key === 'jingle' ? jingleFlagsCount
@@ -1246,30 +1301,16 @@ function ItemHubPageInner() {
                   : entry.key === 'audio_status' ? advertStatusFlagsCount
                   : undefined
                 return (
-                  <SidePaneButton key={entry.key} icon={entry.icon} label={entry.label} mode={cashDisplayMode}
-                    active={paneActive(!activeDynamicId && lossView === entry.key)} badge={badge}
-                    onClick={() => pickLossView(entry.key)} />
+                  <Fragment key={entry.key}>
+                    {header && cashDisplayMode !== 'icon' && (
+                      <p className="px-2 pt-2 pb-0.5 text-[8px] font-bold text-blue-200/70 uppercase tracking-wide">{header}</p>
+                    )}
+                    <SidePaneButton icon={entry.icon} label={entry.label} mode={cashDisplayMode} divider={divider}
+                      active={paneActive(lossView === entry.key)} badge={badge}
+                      onClick={() => pickLossView(entry.key)} />
+                  </Fragment>
                 )
               })}
-
-              {dynamicCategories.length > 0 && (
-                <div className="mt-1 pt-1 border-t border-white/30">
-                  {cashDisplayMode !== 'icon' && (
-                    <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Added by you</p>
-                  )}
-                  {dynamicCategories.map(c => (
-                    <div key={c.id} className={`flex items-stretch ${paneActive(activeDynamicId === c.id) ? 'bg-white' : ''}`}>
-                      <SidePaneButton icon="🗂️" label={c.label} mode={cashDisplayMode} className="flex-1 min-w-0"
-                        active={paneActive(activeDynamicId === c.id)} onClick={() => { setActiveDynamicId(c.id); setSettingsOpen(false) }} />
-                      {canAddCategory && (
-                        <button onClick={() => removeCategory(c.id, c.label)} title="Delete category"
-                          className={`shrink-0 px-1.5 pt-2 font-bold text-xs ${paneActive(activeDynamicId === c.id) ? 'text-gray-300 hover:text-red-500' : 'text-blue-200 hover:text-red-300'}`}>×</button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
             </div>
             )}
 
@@ -1284,8 +1325,8 @@ function ItemHubPageInner() {
                 {cashDisplayMode !== 'icon' && (
                   <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Team</p>
                 )}
-                {STAFF_TEAM_ITEMS.map(t => (
-                  <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode}
+                {STAFF_TEAM_ITEMS.map((t, i) => (
+                  <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode} divider={i > 0}
                     active={paneActive(lossView === t.key)}
                     badge={t.key === 'staff_dress' ? dressFlagsCount : t.key === 'teamTimes' ? staffTimesFlagsCount : undefined}
                     onClick={() => pickLossView(t.key)} />
@@ -1308,26 +1349,48 @@ function ItemHubPageInner() {
                     not viewing that person" explanation. Team Payslips
                     already has its own per-staff picker for exactly this
                     case. */}
-                {STAFF_PERSONAL_ITEMS.filter(t => viewingSelf || t.key !== 'staffPayslips').map(t => (
-                  <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode}
-                    active={paneActive(lossView === t.key)}
-                    onClick={() => pickLossView(t.key)} />
-                ))}
-                {viewingName.toLowerCase() === username.toLowerCase() && (
-                  <SidePaneButton icon="👤" label="Profile" mode={cashDisplayMode} active={paneActive(lossView === 'staffProfile')}
-                    onClick={() => pickLossView('staffProfile')} />
-                )}
+                {(() => {
+                  const personalItems = STAFF_PERSONAL_ITEMS.filter(t => viewingSelf || t.key !== 'staffPayslips')
+                  return (<>
+                    {personalItems.map((t, i) => (
+                      <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode} divider={i > 0}
+                        active={paneActive(lossView === t.key)}
+                        onClick={() => pickLossView(t.key)} />
+                    ))}
+                    {viewingName.toLowerCase() === username.toLowerCase() && (
+                      <SidePaneButton icon="👤" label="Profile" mode={cashDisplayMode} active={paneActive(lossView === 'staffProfile')}
+                        divider={personalItems.length > 0}
+                        onClick={() => pickLossView('staffProfile')} />
+                    )}
+                  </>)
+                })()}
               </div>
             )}
             </>)}
 
             {/* C&H's own rows -- a separate area with no relationship to
                 Cash/Manage/Staff, so it gets its own (much shorter) list
-                here instead of any of theirs. */}
+                here instead of any of theirs. Fiifi/Kuukua/Ebo/Odoye (moved
+                here from UK) get a nested "X's Submenus" list underneath
+                once selected, exactly like UK's own person rows below --
+                driven by the `ch` useUKData() instance instead of `uk`. */}
             {outerTab === 'ch' && (<>
-              {CH_ITEMS.map(item => (
-                <SidePaneButton key={item.key} icon={item.icon} label={item.label} mode={cashDisplayMode}
-                  active={paneActive(lossView === item.key)} onClick={() => pickCHView(item.key)} />
+              {CH_ITEMS.map((item, i) => (
+                <div key={item.key}>
+                  <SidePaneButton icon={item.icon} label={item.label} mode={cashDisplayMode} divider={i > 0}
+                    active={paneActive(lossView === item.key)} onClick={() => pickCHView(item.key)} />
+                  {CH_CHILD_PERSON[item.key] && lossView === item.key && (
+                    <div className="mt-1 pt-1 border-t border-white/30">
+                      {cashDisplayMode !== 'icon' && (
+                        <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">{`${item.label}'s Submenus`}</p>
+                      )}
+                      {ch.submenus.map((s, j) => (
+                        <SidePaneButton key={s.id} icon="📋" label={s.name} mode={cashDisplayMode} divider={j > 0}
+                          active={paneActive(ch.selectedSubmenuId === s.id)} onClick={() => ch.pickSubmenu(s.id)} />
+                      ))}
+                    </div>
+                  )}
+                </div>
               ))}
             </>)}
 
@@ -1342,8 +1405,8 @@ function ItemHubPageInner() {
               {cashDisplayMode !== 'icon' && (
                 <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">People</p>
               )}
-              {UK_PEOPLE.map(p => (
-                <SidePaneButton key={p} icon="👤" label={p} mode={cashDisplayMode}
+              {UK_PEOPLE.map((p, i) => (
+                <SidePaneButton key={p} icon="👤" label={p} mode={cashDisplayMode} divider={i > 0}
                   active={paneActive(uk.person === p)} onClick={() => { uk.pickPerson(p); setSettingsOpen(false) }} />
               ))}
 
@@ -1354,8 +1417,8 @@ function ItemHubPageInner() {
                 {/* Rename/delete and "Add Submenu" removed -- this list is
                     fixed from the UI's side now; changes go through direct
                     edits instead of a self-service control here. */}
-                {uk.submenus.map(s => (
-                  <SidePaneButton key={s.id} icon="📋" label={s.name} mode={cashDisplayMode}
+                {uk.submenus.map((s, i) => (
+                  <SidePaneButton key={s.id} icon="📋" label={s.name} mode={cashDisplayMode} divider={i > 0}
                     active={paneActive(uk.selectedSubmenuId === s.id)} onClick={() => { uk.pickSubmenu(s.id); setSettingsOpen(false) }} />
                 ))}
               </div>
@@ -1377,7 +1440,7 @@ function ItemHubPageInner() {
                 <SidePaneButton icon="⚙️" label="Settings" mode={cashDisplayMode} active={settingsOpen}
                   onClick={() => setSettingsOpen(v => !v)} />
               )}
-              <SidePaneButton icon="🚪" label="Sign out" mode={cashDisplayMode} active={false}
+              <SidePaneButton icon="🚪" label="Sign out" mode={cashDisplayMode} active={false} divider={canOpenSettings}
                 onClick={() => { if (confirm('Sign out?')) signOut({ callbackUrl: '/login' }) }} />
             </div>
         </SidePaneContainer>
@@ -1386,7 +1449,7 @@ function ItemHubPageInner() {
           <SettingsPane mode={cashDisplayMode} activeView={lossView}
             viewingName={viewingName} myStaffName={myStaffName} staffRoster={STAFF_ROSTER}
             pickViewing={pickViewing} pickLossView={pickLossView}
-            canSeeUsers={canSeeUsers} canAddCategory={canAddCategory}
+            canSeeUsers={canSeeUsers}
             canViewPortalAs={canViewPortalAs} canManageRoles={canManage} canManage={canManage}
           />
         )}
@@ -1592,12 +1655,12 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'loss' && lossView === 'vendors' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-2 space-y-2"><PageToolIcons scopeKey="Vendors" /><VendorsPage initialSearch={vendorSearchText} /></div>
+            <div className="px-4 pt-2 space-y-2"><PageToolIcons scopeKey="Vendors" /><VendorsPage openAddSignal={vendorSignal} initialSearch={vendorSearchText} /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'customers' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-2 space-y-2"><PageToolIcons scopeKey="Customers" /><CustomersPage initialSearch={customerSearchText} /></div>
+            <div className="px-4 pt-2 space-y-2"><PageToolIcons scopeKey="Customers" /><CustomersPage openAddSignal={customerSignal} initialSearch={customerSearchText} /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'receipts' && (
@@ -1627,45 +1690,9 @@ function ItemHubPageInner() {
             <Item360Tab items={items} jumpToItemId={item360JumpId} onJumpDone={() => setItem360JumpId(null)} />
           </TabErrorBoundary>
         )}
-        {/* Settings' own two non-navigation rows (see SettingsPane.tsx) --
-            now real content destinations like everything else in Settings,
-            rather than inline widgets crammed into the narrow pane itself. */}
-        {outerTab === 'loss' && lossView === 'manageCategories' && (
-          <TabErrorBoundary>
-            <div className="px-4 pt-4 max-w-sm space-y-3">
-              <h1 className="text-lg font-bold text-gray-900">Manage Categories</h1>
-              {dynamicCategories.length > 0 && (
-                <ul className="text-sm text-gray-600 space-y-1">
-                  {dynamicCategories.map(c => <li key={c.id}>🗂️ {c.label}</li>)}
-                </ul>
-              )}
-              {showAddCategory ? (
-                <form onSubmit={addCategory} className="space-y-2">
-                  <input autoFocus value={newCategoryLabel} onChange={e => setNewCategoryLabel(e.target.value)}
-                    placeholder="Name *"
-                    className="w-full text-sm bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400" />
-                  <div className="flex items-center gap-2">
-                    <button type="submit" disabled={savingCategory || !newCategoryLabel.trim()}
-                      className="flex-1 text-sm font-semibold px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 transition">
-                      {savingCategory ? '…' : 'Add'}
-                    </button>
-                    <button type="button" onClick={() => { setShowAddCategory(false); setNewCategoryLabel('') }}
-                      className="text-sm font-semibold px-3 py-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition">
-                      ✕
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <button onClick={() => setShowAddCategory(true)}
-                  className="w-full flex items-center gap-2 text-sm font-semibold text-gray-800 bg-gray-50 hover:bg-gray-100 rounded-lg px-3 py-2.5 transition text-left">
-                  <span>➕</span><span>Add Category</span>
-                </button>
-              )}
-              {justAddedCategory && <SavedFlash show />}
-              <p className="text-xs text-gray-400">Delete an existing category from its row in Manage -- the × there uses this same permission.</p>
-            </div>
-          </TabErrorBoundary>
-        )}
+        {/* Settings' own non-navigation row (see SettingsPane.tsx) -- now a
+            real content destination like everything else in Settings,
+            rather than an inline widget crammed into the narrow pane itself. */}
         {outerTab === 'loss' && lossView === 'viewPortalAs' && (
           <TabErrorBoundary>
             <div className="px-4 pt-4 max-w-sm space-y-3">
@@ -1681,11 +1708,10 @@ function ItemHubPageInner() {
             </div>
           </TabErrorBoundary>
         )}
-        {outerTab === 'loss' && (MANAGE_VIEW_KEYS.has(lossView) || activeDynamicId !== null) && (
+        {outerTab === 'loss' && MANAGE_VIEW_KEYS.has(lossView) && (
           <TabErrorBoundary>
             <GronyManageContent view={lossView as ManageView}
-              activeDynamic={dynamicCategories.find(c => c.id === activeDynamicId)}
-              canManage={canManage}
+              canManage={canManage} categoryIds={fixedCategoryIds}
               openerViolations={openerViolations}
               assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
               onGoToViolation={goToViolation}
@@ -1705,7 +1731,8 @@ function ItemHubPageInner() {
                 <StaffContent key={myStaffName} view={lossView as StaffView}
                   viewingName={viewingName} role={role} username={username}
                   canSeeTeam={canSeeTeam} canSeeUsers={canSeeUsers} canSeeRoles={canManage} canManage={canManage}
-                  staffRoster={STAFF_ROSTER} routablePages={routablePages} />
+                  staffRoster={STAFF_ROSTER} routablePages={routablePages} categoryIds={fixedCategoryIds}
+                  openAddSignal={staffTimeSignal} />
               </>
             ) : (
               <p className="py-10 text-center text-gray-400 text-sm px-4">No staff profile is set up for your account.</p>
@@ -1716,7 +1743,7 @@ function ItemHubPageInner() {
           <TabErrorBoundary><UKTab uk={uk} /></TabErrorBoundary>
         )}
         {outerTab === 'ch' && (
-          <TabErrorBoundary><CHTab view={lossView as CHView} /></TabErrorBoundary>
+          <TabErrorBoundary><CHTab view={lossView as CHView} childData={ch} /></TabErrorBoundary>
         )}
         {outerTab === 'today' && !(addForm === 'sale' || addForm === 'bill' || addForm === 'expense') && (
           <TabErrorBoundary>
@@ -1735,7 +1762,7 @@ function ItemHubPageInner() {
         {showAnalytics && outerTab === 'loss' && lossView === 'expenses' && (
           <TabErrorBoundary><div className="px-3 pt-3"><ExpensesAnalyticsSection /></div></TabErrorBoundary>
         )}
-        {outerTab === 'loss' && lossView === 'cab' && <CABTab />}
+        {outerTab === 'loss' && lossView === 'cab' && <CABTab openConfirmSignal={cabConfirmSignal} />}
         {/* Items pill selected -> ItemsTab's filtered fix view; otherwise the
             submenu's normal content (LossTab). Same swap pattern for
             Sales/Counts/Feed below -- each of those already knows how to
@@ -1870,7 +1897,9 @@ function ItemHubPageInner() {
               already on most tabs, which only filter what's on screen).
               Biz/UK/C&H keep the old rule: someone permitted to see only
               Grony Cash has nothing to switch to, so those three only show
-              once UK and/or C&H access exists. */}
+              once UK and/or C&H access exists. The "+" shortcut menu (see
+              AddShortcutButton/handleShortcut) rejoins this row too --
+              always shown, same as when it was its own floating button. */}
           <div className="shrink-0 flex items-center justify-evenly py-2 bg-white border-t border-gray-200">
             {(canSeeUK || canSeeCH) && (
               <button onClick={() => changeTab('loss')} title="Biz"
@@ -1900,6 +1929,7 @@ function ItemHubPageInner() {
               className="w-9 h-9 rounded-full flex items-center justify-center text-lg border-2 border-transparent text-gray-500 opacity-70 hover:opacity-100 transition">
               🔍
             </button>
+            <AddShortcutButton onShortcut={handleShortcut} />
           </div>
         </div>
       </div>
@@ -2023,13 +2053,19 @@ function ItemHubPageInner() {
                   )}
                   {/* UK/C&H only ever arrive here for accounts the API route
                       itself decided can see them -- see /api/search's
-                      canSeeUK/canSeeCH gating. */}
-                  {!!r.ukSubmenus?.length && (
+                      canSeeUK/canSeeCH gating. Fiifi/Kuukua/Ebo/Odoye's own
+                      rows come back tagged with the same plain `person`
+                      string as everyone else's (they're the same
+                      uk_submenus/uk_rows tables, see chViewData.ts's
+                      CH_PERSON_VIEW) -- split out here so they list (and
+                      open) under C&H instead of UK, matching where they
+                      actually live now. */}
+                  {!!r.ukSubmenus?.filter(s => !(s.person in CH_PERSON_VIEW)).length && (
                     <div>
                       <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">UK</p>
-                      {r.ukSubmenus.map(s => (
+                      {r.ukSubmenus.filter(s => !(s.person in CH_PERSON_VIEW)).map(s => (
                         <button key={s.id}
-                          onClick={() => { changeTab('uk'); uk.pickPerson(s.person as typeof uk.person); uk.pickSubmenu(s.id); closeGlobalSearch() }}
+                          onClick={() => { openPersonSubmenu(s.person, s.id); closeGlobalSearch() }}
                           className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
                           {s.name}
                           <span className="text-gray-400 text-xs ml-1.5">· {s.person}</span>
@@ -2037,12 +2073,38 @@ function ItemHubPageInner() {
                       ))}
                     </div>
                   )}
-                  {!!r.ukEntries?.length && (
+                  {!!r.ukEntries?.filter(e => !(e.person in CH_PERSON_VIEW)).length && (
                     <div>
                       <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">UK entries</p>
-                      {r.ukEntries.map(e => (
+                      {r.ukEntries.filter(e => !(e.person in CH_PERSON_VIEW)).map(e => (
                         <button key={`${e.row_id}-${e.column_name}`}
-                          onClick={() => { changeTab('uk'); uk.pickPerson(e.person as typeof uk.person); uk.pickSubmenu(e.submenu_id); closeGlobalSearch() }}
+                          onClick={() => { openPersonSubmenu(e.person, e.submenu_id); closeGlobalSearch() }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
+                          {e.value}
+                          <span className="text-gray-400 text-xs ml-1.5">· {e.submenu_name} · {e.column_name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {!!r.ukSubmenus?.filter(s => s.person in CH_PERSON_VIEW).length && (
+                    <div>
+                      <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">C&amp;H</p>
+                      {r.ukSubmenus.filter(s => s.person in CH_PERSON_VIEW).map(s => (
+                        <button key={s.id}
+                          onClick={() => { openPersonSubmenu(s.person, s.id); closeGlobalSearch() }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
+                          {s.name}
+                          <span className="text-gray-400 text-xs ml-1.5">· {s.person}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {!!r.ukEntries?.filter(e => e.person in CH_PERSON_VIEW).length && (
+                    <div>
+                      <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">C&amp;H entries</p>
+                      {r.ukEntries.filter(e => e.person in CH_PERSON_VIEW).map(e => (
+                        <button key={`${e.row_id}-${e.column_name}`}
+                          onClick={() => { openPersonSubmenu(e.person, e.submenu_id); closeGlobalSearch() }}
                           className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
                           {e.value}
                           <span className="text-gray-400 text-xs ml-1.5">· {e.submenu_name} · {e.column_name}</span>

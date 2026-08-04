@@ -95,13 +95,21 @@ export function SidePaneToggle({ mode, onChange, label }: { mode: DisplayMode; o
 // stay deep red/green even while sitting in the Biz-blue pane so they're
 // recognizable before you've clicked into them) -- see the UK/C&H buttons
 // in item/page.tsx for the only current callers.
-export function SidePaneButton({ icon, label, active, mode, onClick, badge, className = 'w-full', tint }: {
-  icon?: string | React.ReactNode; label: string; active: boolean; mode: DisplayMode; onClick: () => void; badge?: number; className?: string; tint?: string
+// `divider` draws a thin top-edge line separating this button from
+// whichever one sits directly above it -- pass true for every button
+// except the first one under a given section/group header (the header
+// itself already marks that break, an extra line right under it would be
+// redundant) or the very first button in the pane. Every caller looping
+// over a list is expected to compute this itself (e.g. `i > 0`) rather than
+// this component guessing position from context it doesn't have.
+export function SidePaneButton({ icon, label, active, mode, onClick, badge, className = 'w-full', tint, divider }: {
+  icon?: string | React.ReactNode; label: string; active: boolean; mode: DisplayMode; onClick: () => void; badge?: number; className?: string; tint?: string; divider?: boolean
 }) {
   return (
     <button onClick={onClick} title={label} aria-label={label}
       style={tint ? { backgroundColor: active ? '#fff' : tint, color: active ? tint : '#fff' } : undefined}
       className={`relative flex flex-col items-center justify-center gap-0.5 px-1 py-2 text-[10px] font-medium leading-tight text-center transition
+        ${divider ? 'border-t border-white/35' : ''}
         ${tint ? 'font-semibold' : active ? 'bg-white text-[var(--pane-accent)] font-semibold' : 'text-white hover:bg-white/10'} ${className}`}>
       {mode !== 'text' && (
         typeof icon === 'string' || icon === undefined

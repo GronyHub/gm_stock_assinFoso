@@ -9,23 +9,23 @@ import PropertiesPage from './PropertiesPage'
 import OpenerView from './OpenerView'
 import CloserView from './CloserView'
 import type { Violation } from './useViolations'
-import { LOG_CATEGORIES, type ManageView, type DynamicCategory } from './manageViewData'
+import { LOG_CATEGORIES, FIXED_CATEGORY_LABELS, type ManageView } from './manageViewData'
 
 export type { ManageView }
 
 // Just the right-pane content for whichever Manage view is active -- the
-// left-pane list (fixed items + dynamic categories + Add Category) now
-// lives in item/page.tsx's single merged pane, alongside Cash's and Staff's
-// own rows, all driven by one shared `lossView` state (see MANAGE_LIST_ITEMS
-// in manageViewData.ts for the row data this switches on).
+// left-pane list (fixed items, including the ex-"Added by you" categories)
+// now lives in item/page.tsx's single merged pane, alongside Cash's and
+// Staff's own rows, all driven by one shared `lossView` state (see
+// MANAGE_LIST_ITEMS in manageViewData.ts for the row data this switches on).
 export default function GronyManageContent({
-  view, activeDynamic, canManage,
+  view, canManage, categoryIds,
   openerViolations, assignments, deadlines, assignedBy, assignedOn, vSettings,
   onGoToViolation, missingClosingReportsCount, onOpenStaff,
 }: {
   view: ManageView
-  activeDynamic?: DynamicCategory
   canManage: boolean
+  categoryIds: Record<string, number>
   openerViolations: Violation[]
   assignments: Record<string, string>
   deadlines: Record<string, string>
@@ -37,10 +37,6 @@ export default function GronyManageContent({
   onOpenStaff: () => void
 }) {
   const logCategory = LOG_CATEGORIES.find(c => c.key === view)
-
-  if (activeDynamic) {
-    return <DynamicCategoryPage categoryId={activeDynamic.id} categoryLabel={activeDynamic.label} canManage={canManage} />
-  }
 
   return (<>
     {view === 'opener' && (<>
@@ -69,6 +65,15 @@ export default function GronyManageContent({
       <ClosingReportLogView field="advert_played" label="Advert" icon="📢" />
     </>)}
     {view === 'properties' && <PropertiesPage />}
+    {view === 'unfortunate_events' && (
+      <DynamicCategoryPage categoryId={categoryIds[FIXED_CATEGORY_LABELS.unfortunate_events]} categoryLabel="Unfortunate Events" canManage={canManage} />
+    )}
+    {view === 'security_chk' && (
+      <DynamicCategoryPage categoryId={categoryIds[FIXED_CATEGORY_LABELS.security_chk]} categoryLabel="Security chk" canManage={canManage} />
+    )}
+    {view === 'app_info' && (
+      <DynamicCategoryPage categoryId={categoryIds[FIXED_CATEGORY_LABELS.app_info]} categoryLabel="App info" canManage={canManage} />
+    )}
     {logCategory && <ManageLogPanel category={logCategory.key} label={logCategory.label} icon={logCategory.icon} />}
   </>)
 }

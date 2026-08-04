@@ -9,7 +9,7 @@ import { isOwnerLevel } from './roles'
 // from lib/permissions.ts directly, or the bundler pulls lib/db.ts in with
 // it and crashes every client on load.
 export const FEATURE_KEYS = [
-  'cash', 'manage', 'team', 'users', 'add_category', 'view_portal_as', 'uk', 'ch', 'pl', 'confidential_expenses',
+  'cash', 'manage', 'team', 'users', 'view_portal_as', 'uk', 'ch', 'pl', 'confidential_expenses',
 ] as const
 export type FeatureKey = typeof FEATURE_KEYS[number]
 
@@ -18,7 +18,6 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   manage: 'Grony Manage (Tasks, Opener, Closer, Audio, etc.)',
   team: 'Team (Team Payslips, All Staff)',
   users: 'Users (manage accounts)',
-  add_category: 'Add/delete Manage categories',
   view_portal_as: 'View Portal As (impersonation)',
   uk: 'UK tab',
   ch: 'C&H tab',
