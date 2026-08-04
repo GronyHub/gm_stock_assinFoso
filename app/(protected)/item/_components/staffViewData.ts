@@ -7,7 +7,7 @@
 // instead, plus a personalized summary in Tasks (see TasksView.tsx).
 export type StaffView =
   | 'staffPayslips' | 'staffProfile'
-  | 'teamTimes' | 'team_payments' | 'allStaff' | 'users' | 'roles'
+  | 'teamTimes' | 'team_payments' | 'allStaff' | 'team_behaviour' | 'users' | 'roles'
   | 'staff_meeting' | 'staff_display' | 'rota' | 'assessment' | 'tutorial' | 'training_laws' | 'logs' | 'staff_dress'
   | 'teamPayslips' | 'teamProfiles'
 
@@ -53,6 +53,7 @@ export const STAFF_TEAM_ITEMS: { key: StaffView; label: string; icon: string; gr
   { key: 'teamTimes', label: 'Team Times', icon: '🕐' },
   { key: 'team_payments', label: 'Team Payments', icon: '💳' },
   { key: 'allStaff', label: 'Team Penalty Points', icon: '🏢' },
+  { key: 'team_behaviour', label: 'Team Behaviour', icon: '🚦' },
   { key: 'staff_dress', label: 'Dress Code', icon: '👕' },
   { key: 'staff_display', label: 'Staff Display', icon: '📌' },
   { key: 'staff_meeting', label: 'Staff Meeting', icon: '🗣️' },

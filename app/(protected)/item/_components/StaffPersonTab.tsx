@@ -77,6 +77,15 @@ const LogsPage = dynamic(() => import('../../logs/page'), {
 // canManage. `categoryIds` resolves its (and Manage's own three ex-"Added
 // by you" categories') real numeric id at runtime -- see
 // useFixedCategoryIds.
+//
+// Team Behaviour is two stacked, independent panels rather than one of the
+// dynamic-category system's multi-tab pages -- a ContentPage (the laws/
+// standards staff are held to, free-text and owner-editable, same as
+// Company Laws) above a ManageLogPanel (dated notes on an actual incident
+// and whatever corrective action was taken, same free-text-log shape as
+// every other simple Manage category). Each renders its own PageToolIcons,
+// so Team Behaviour Laws and Behaviour Incidents get separate task buckets
+// rather than sharing one.
 export default function StaffContent({
   view, viewingName, role, username, canSeeTeam, canSeeUsers, canSeeRoles, canManage,
   staffRoster, routablePages, categoryIds, openAddSignal,
@@ -101,6 +110,10 @@ export default function StaffContent({
     {canManage && view === 'teamPayslips' && <PayslipsTab role={role} username={username} />}
     {canManage && view === 'teamProfiles' && <TeamProfilesTab />}
     {canSeeTeam && view === 'allStaff' && <ViolationsTab role={role} username={username} />}
+    {canSeeTeam && view === 'team_behaviour' && (<>
+      <ContentPage contentKey="team_behaviour_laws" title="🚦 Staff Behaviour Laws" submenu="Team Behaviour" />
+      <ManageLogPanel category="team_behaviour_log" label="Behaviour Incidents" icon="🚦" />
+    </>)}
     {canSeeTeam && view === 'rota' && <div className="px-2 space-y-2 pt-2"><PageToolIcons scopeKey="Rota" /><RotaTab canManage={canManage} /></div>}
     {canSeeTeam && view === 'staff_dress' && (<>
       <div className="px-2 pt-2"><PageToolIcons scopeKey="Dress Code" /></div>
