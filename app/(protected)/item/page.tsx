@@ -32,7 +32,7 @@ import { COLUMNS, type ColKey } from './_components/lossTabColumns'
 import { useColumnPrefs, ColumnsPickerButton } from './_components/columnPrefs'
 import { MANAGE_LIST_ITEMS, MANAGE_GROUP_LABELS, useFixedCategoryIds, type ManageView } from './_components/manageViewData'
 import { STAFF_PERSONAL_ITEMS, STAFF_TEAM_ITEMS, STAFF_ADMIN_TEAM_ITEMS, STAFF_GROUP_LABELS, type StaffView } from './_components/staffViewData'
-import { CH_ITEMS, type CHView } from './_components/chViewData'
+import { CH_ITEMS, CH_CHILD_PERSON, CH_PERSON_VIEW, type CHView } from './_components/chViewData'
 import { useUKData, UK_PEOPLE } from './_components/ukViewData'
 import { SidePaneContainer, SidePaneToggle, SidePaneButton, useSidePaneDisplayMode } from './_components/SidePane'
 import SettingsPane from './_components/SettingsPane'
@@ -531,6 +531,13 @@ function ItemHubPageInner() {
   // rename/delete) and UKTab (rendering the selected submenu's columns +
   // row data).
   const uk = useUKData()
+  // A second, independent instance for C&H's own Fiifi/Kuukua/Ebo/Odoye
+  // pages (moved here from UK, see chViewData.ts's CH_CHILD_PERSON) -- kept
+  // separate from `uk` above so switching tabs never lets one tab's person
+  // selection leak into the other's pane. Driven by pickCHView below
+  // instead of a picker of its own, since these four are already fixed
+  // rows in CH_ITEMS.
+  const ch = useUKData()
 
   useEffect(() => {
     const q = globalSearchQuery.trim()
@@ -811,10 +818,32 @@ function ItemHubPageInner() {
   // `outerTab === 'ch'` below), so outerTab never needs to move here.
   function pickCHView(view: CHView) {
     setLossView(view)
+    // Fiifi/Kuukua/Ebo/Odoye each need `ch` (see above) pointed at their own
+    // name before CHTab/the pane can show their submenus -- every other C&H
+    // row leaves `ch` alone since they don't use it at all.
+    const childPerson = CH_CHILD_PERSON[view]
+    if (childPerson) ch.pickPerson(childPerson)
     setViolation(null)
     setAddForm(null)
     setShowAnalytics(false)
     setSettingsOpen(false)
+  }
+
+  // Global search's UK-submenu/UK-entry results (see below) come back
+  // tagged with a plain `person` string from the shared uk_submenus/
+  // uk_rows tables -- Fiifi/Kuukua/Ebo/Odoye's now open on C&H instead of
+  // UK (see CH_PERSON_VIEW), everyone else still opens on UK as before.
+  function openPersonSubmenu(person: string, submenuId: number) {
+    const chView = CH_PERSON_VIEW[person as keyof typeof CH_PERSON_VIEW]
+    if (chView) {
+      changeTab('ch')
+      pickCHView(chView)
+      ch.pickSubmenu(submenuId)
+    } else {
+      changeTab('uk')
+      uk.pickPerson(person as typeof uk.person)
+      uk.pickSubmenu(submenuId)
+    }
   }
 
   // Joe/Grony's "Viewing" picker -- switches whose personal rows show.
@@ -1346,11 +1375,27 @@ function ItemHubPageInner() {
 
             {/* C&H's own rows -- a separate area with no relationship to
                 Cash/Manage/Staff, so it gets its own (much shorter) list
-                here instead of any of theirs. */}
+                here instead of any of theirs. Fiifi/Kuukua/Ebo/Odoye (moved
+                here from UK) get a nested "X's Submenus" list underneath
+                once selected, exactly like UK's own person rows below --
+                driven by the `ch` useUKData() instance instead of `uk`. */}
             {outerTab === 'ch' && (<>
               {CH_ITEMS.map((item, i) => (
-                <SidePaneButton key={item.key} icon={item.icon} label={item.label} mode={cashDisplayMode} divider={i > 0}
-                  active={paneActive(lossView === item.key)} onClick={() => pickCHView(item.key)} />
+                <div key={item.key}>
+                  <SidePaneButton icon={item.icon} label={item.label} mode={cashDisplayMode} divider={i > 0}
+                    active={paneActive(lossView === item.key)} onClick={() => pickCHView(item.key)} />
+                  {CH_CHILD_PERSON[item.key] && lossView === item.key && (
+                    <div className="mt-1 pt-1 border-t border-white/30">
+                      {cashDisplayMode !== 'icon' && (
+                        <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">{`${item.label}'s Submenus`}</p>
+                      )}
+                      {ch.submenus.map((s, j) => (
+                        <SidePaneButton key={s.id} icon="📋" label={s.name} mode={cashDisplayMode} divider={j > 0}
+                          active={paneActive(ch.selectedSubmenuId === s.id)} onClick={() => ch.pickSubmenu(s.id)} />
+                      ))}
+                    </div>
+                  )}
+                </div>
               ))}
             </>)}
 
@@ -1703,7 +1748,7 @@ function ItemHubPageInner() {
           <TabErrorBoundary><UKTab uk={uk} /></TabErrorBoundary>
         )}
         {outerTab === 'ch' && (
-          <TabErrorBoundary><CHTab view={lossView as CHView} /></TabErrorBoundary>
+          <TabErrorBoundary><CHTab view={lossView as CHView} childData={ch} /></TabErrorBoundary>
         )}
         {outerTab === 'today' && !(addForm === 'sale' || addForm === 'bill' || addForm === 'expense') && (
           <TabErrorBoundary>
@@ -2013,13 +2058,19 @@ function ItemHubPageInner() {
                   )}
                   {/* UK/C&H only ever arrive here for accounts the API route
                       itself decided can see them -- see /api/search's
-                      canSeeUK/canSeeCH gating. */}
-                  {!!r.ukSubmenus?.length && (
+                      canSeeUK/canSeeCH gating. Fiifi/Kuukua/Ebo/Odoye's own
+                      rows come back tagged with the same plain `person`
+                      string as everyone else's (they're the same
+                      uk_submenus/uk_rows tables, see chViewData.ts's
+                      CH_PERSON_VIEW) -- split out here so they list (and
+                      open) under C&H instead of UK, matching where they
+                      actually live now. */}
+                  {!!r.ukSubmenus?.filter(s => !(s.person in CH_PERSON_VIEW)).length && (
                     <div>
                       <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">UK</p>
-                      {r.ukSubmenus.map(s => (
+                      {r.ukSubmenus.filter(s => !(s.person in CH_PERSON_VIEW)).map(s => (
                         <button key={s.id}
-                          onClick={() => { changeTab('uk'); uk.pickPerson(s.person as typeof uk.person); uk.pickSubmenu(s.id); closeGlobalSearch() }}
+                          onClick={() => { openPersonSubmenu(s.person, s.id); closeGlobalSearch() }}
                           className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
                           {s.name}
                           <span className="text-gray-400 text-xs ml-1.5">· {s.person}</span>
@@ -2027,12 +2078,38 @@ function ItemHubPageInner() {
                       ))}
                     </div>
                   )}
-                  {!!r.ukEntries?.length && (
+                  {!!r.ukEntries?.filter(e => !(e.person in CH_PERSON_VIEW)).length && (
                     <div>
                       <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">UK entries</p>
-                      {r.ukEntries.map(e => (
+                      {r.ukEntries.filter(e => !(e.person in CH_PERSON_VIEW)).map(e => (
                         <button key={`${e.row_id}-${e.column_name}`}
-                          onClick={() => { changeTab('uk'); uk.pickPerson(e.person as typeof uk.person); uk.pickSubmenu(e.submenu_id); closeGlobalSearch() }}
+                          onClick={() => { openPersonSubmenu(e.person, e.submenu_id); closeGlobalSearch() }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
+                          {e.value}
+                          <span className="text-gray-400 text-xs ml-1.5">· {e.submenu_name} · {e.column_name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {!!r.ukSubmenus?.filter(s => s.person in CH_PERSON_VIEW).length && (
+                    <div>
+                      <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">C&amp;H</p>
+                      {r.ukSubmenus.filter(s => s.person in CH_PERSON_VIEW).map(s => (
+                        <button key={s.id}
+                          onClick={() => { openPersonSubmenu(s.person, s.id); closeGlobalSearch() }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
+                          {s.name}
+                          <span className="text-gray-400 text-xs ml-1.5">· {s.person}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {!!r.ukEntries?.filter(e => e.person in CH_PERSON_VIEW).length && (
+                    <div>
+                      <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">C&amp;H entries</p>
+                      {r.ukEntries.filter(e => e.person in CH_PERSON_VIEW).map(e => (
+                        <button key={`${e.row_id}-${e.column_name}`}
+                          onClick={() => { openPersonSubmenu(e.person, e.submenu_id); closeGlobalSearch() }}
                           className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
                           {e.value}
                           <span className="text-gray-400 text-xs ml-1.5">· {e.submenu_name} · {e.column_name}</span>
