@@ -978,6 +978,16 @@ function ItemHubPageInner() {
       const rawUrlView = searchParams.get('view')
       const nextView: LossView = (rawUrlView && CH_VIEW_KEYS.has(rawUrlView as LossView) ? rawUrlView : CH_ITEMS[0].key) as LossView
       if (nextView !== lossView) setLossView(nextView)
+      // Landing on a child's page any way other than clicking it in the pane
+      // (refresh, back/forward, a bookmarked/shared link) skips pickCHView,
+      // so `ch` -- a fresh useUKData() instance defaulting to person 'Grony'
+      // -- never gets pointed at the right child. Left unguarded this leaked
+      // Grony's own UK submenus under whichever child's page was open. Kept
+      // separate from the `nextView !== lossView` check above since `ch`
+      // needs re-syncing here even when lossView was already correct (e.g.
+      // a fresh mount where `ch` itself is what's stale, not lossView).
+      const childPerson = CH_CHILD_PERSON[nextView as CHView]
+      if (childPerson && ch.person !== childPerson) ch.pickPerson(childPerson)
     }
     const urlSettingsOpen = searchParams.get('settings') === '1'
     if (urlSettingsOpen !== settingsOpen) setSettingsOpen(urlSettingsOpen)
