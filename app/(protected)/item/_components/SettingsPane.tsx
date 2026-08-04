@@ -1,6 +1,6 @@
 'use client'
 import { SidePaneButton, type DisplayMode } from './SidePane'
-import type { StaffView } from './staffViewData'
+import { STAFF_ADMIN_TEAM_ITEMS, type StaffView } from './staffViewData'
 
 // Everything only Joe/Grony (or a role granted one of these) can do, in one
 // place -- previously these sat inline in the main pane at all times
@@ -26,11 +26,12 @@ type Props = {
   canAddCategory: boolean
   canViewPortalAs: boolean
   canManageRoles: boolean
+  canManage: boolean
 }
 
 export default function SettingsPane({
   mode, activeView, viewingName, myStaffName, staffRoster, pickViewing, pickLossView,
-  canSeeUsers, canAddCategory, canViewPortalAs, canManageRoles,
+  canSeeUsers, canAddCategory, canViewPortalAs, canManageRoles, canManage,
 }: Props) {
   return (
     <div className={`${mode === 'icon' ? 'w-14' : mode === 'text' ? 'w-14 sm:w-32' : 'w-14 sm:w-28'} shrink-0 border-r border-white/10 bg-[#00072d] flex flex-col min-h-0`}>
@@ -52,6 +53,24 @@ export default function SettingsPane({
             {staffRoster.filter(n => n.toLowerCase() !== myStaffName.toLowerCase()).map(name => (
               <SidePaneButton key={name} icon="👤" label={name} mode={mode}
                 active={viewingName.toLowerCase() === name.toLowerCase()} onClick={() => pickViewing(name)} />
+            ))}
+          </div>
+        )}
+
+        {/* Team Payslips/Team Profiles specifically -- unlike the rest of
+            Team (still in the main pane, gated by the general canSeeTeam
+            permission), these two carry every staff member's pay amounts
+            and bank/bio details, so they stay owner-level-only (Grony/Joe)
+            here instead of coming along for free whenever someone (e.g.
+            Bino/James) is granted Team access. */}
+        {canManage && (
+          <div className="mt-1 pt-1 border-t border-white/10">
+            {mode !== 'icon' && (
+              <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Team</p>
+            )}
+            {STAFF_ADMIN_TEAM_ITEMS.map(t => (
+              <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={mode}
+                active={activeView === t.key} onClick={() => pickLossView(t.key, { keepSettingsOpen: true })} />
             ))}
           </div>
         )}
