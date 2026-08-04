@@ -1,8 +1,29 @@
 import sql from '@/lib/db'
-import { put } from '@vercel/blob'
+import { put, head } from '@vercel/blob'
 import { NextRequest, NextResponse } from 'next/server'
 
 type Attachment = { url: string; type: string; name: string }
+
+// Read-only check: given a receiptId, confirms its stored attachment blobs
+// actually resolve in the store (size/contentType), not just that the DB
+// row has a URL string in it.
+export async function GET(req: NextRequest) {
+  const id = req.nextUrl.searchParams.get('receiptId')
+  if (!id) return NextResponse.json({ error: 'Missing receiptId' }, { status: 400 })
+  const [receipt] = await sql`SELECT id, receipt_number, receipt_date::date AS receipt_date, attachments FROM sales_receipts WHERE id = ${Number(id)}`
+  if (!receipt) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  const attachments: Attachment[] = Array.isArray(receipt.attachments) ? receipt.attachments : []
+  const checks = await Promise.all(attachments.map(async a => {
+    const pathname = new URL(a.url, 'https://x').searchParams.get('p') ?? ''
+    try {
+      const meta = await head(pathname)
+      return { name: a.name, pathname, size: meta.size, contentType: meta.contentType, ok: true }
+    } catch (e) {
+      return { name: a.name, pathname, ok: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  }))
+  return NextResponse.json({ receiptId: receipt.id, receiptNumber: receipt.receipt_number, receiptDate: receipt.receipt_date, attachmentCount: attachments.length, checks })
+}
 
 // Mirrors /api/sales/upload's own blob-store call exactly (same access
 // level, same URL scheme) so attachments created this way are
