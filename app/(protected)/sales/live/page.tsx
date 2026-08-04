@@ -473,31 +473,38 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                 const pending = pendingItemId === it.id
                 return (
                   <div key={it.id} className="w-full px-2 py-1.5 border-b border-gray-50 bg-white">
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-start gap-1.5">
                       {number}
-                      {label}
-                      {count > 0 && (
-                        <span className="shrink-0 min-w-[0.9rem] h-[0.9rem] px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold flex items-center justify-center">
-                          {count}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-1.5 mt-1 pl-5">
-                      {qtyPresetsFor(it).map((q) => {
-                        const total = (Number(it.selling_price) || 0) * q
-                        return (
-                          <button
-                            key={q}
-                            type="button"
-                            onClick={() => tap(it, q)}
-                            disabled={pending}
-                            title={`${q} unit${q > 1 ? 's' : ''} · ${money(total)}`}
-                            className="min-w-[2rem] h-7 px-1.5 rounded-lg bg-blue-50 text-blue-700 text-[11px] font-bold flex items-center justify-center hover:bg-blue-100 active:bg-blue-200 active:scale-95 transition disabled:opacity-40"
-                          >
-                            {compactAmount(total)}
-                          </button>
-                        )
-                      })}
+                      {/* Buttons sit to the left of the name now, in the
+                          space that used to just be the number index --
+                          wraps onto a second line within its own column
+                          if the item has more presets than fit next to a
+                          long name, instead of forcing the name down. */}
+                      <div className="shrink-0 flex flex-wrap items-center gap-1 max-w-[45%]">
+                        {qtyPresetsFor(it).map((q) => {
+                          const total = (Number(it.selling_price) || 0) * q
+                          return (
+                            <button
+                              key={q}
+                              type="button"
+                              onClick={() => tap(it, q)}
+                              disabled={pending}
+                              title={`${q} unit${q > 1 ? 's' : ''} · ${money(total)}`}
+                              className="min-w-[2rem] h-7 px-1.5 rounded-lg bg-blue-50 text-blue-700 text-[11px] font-bold flex items-center justify-center hover:bg-blue-100 active:bg-blue-200 active:scale-95 transition disabled:opacity-40"
+                            >
+                              {compactAmount(total)}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      <div className="flex-1 min-w-0 flex items-center gap-1">
+                        {label}
+                        {count > 0 && (
+                          <span className="shrink-0 min-w-[0.9rem] h-[0.9rem] px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold flex items-center justify-center">
+                            {count}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )
