@@ -1,6 +1,23 @@
 import sql from '@/lib/db'
 import { NextResponse } from 'next/server'
 
+// One-shot fix for the single stranded page_notes row found under the old
+// 'Staff Meeting' scope key -- re-points it at the renamed 'Team Meeting'
+// scope so it's visible again under the new pane label. Idempotent: a
+// second call finds nothing left to move.
+export async function POST() {
+  try {
+    const moved = await sql`
+      UPDATE page_notes SET scope_key = 'Team Meeting'
+      WHERE scope_key = 'Staff Meeting'
+      RETURNING scope_key, kind
+    `
+    return NextResponse.json({ ok: true, moved })
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 })
+  }
+}
+
 export async function GET() {
   try {
     const fixedCategories = await sql`
