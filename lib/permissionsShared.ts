@@ -16,7 +16,7 @@ export type FeatureKey = typeof FEATURE_KEYS[number]
 export const FEATURE_LABELS: Record<FeatureKey, string> = {
   cash: 'Grony Cash (Items, Sales, Bills, etc.)',
   manage: 'Grony Manage (Tasks, Opener, Closer, Audio, etc.)',
-  team: 'Team (Team Payslips, All Staff)',
+  team: 'Team (Times, Payments, Penalty Points, etc.)',
   users: 'Users (manage accounts)',
   view_portal_as: 'View Portal As (impersonation)',
   uk: 'UK tab',

@@ -179,7 +179,10 @@ export default function RolesPanel({ roles, setRoles, users }: {
             <tbody>
               {FEATURE_KEYS.map((feature, i) => (
                 <tr key={feature} className={i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
-                  <td className="sticky left-0 z-10 bg-inherit w-32 max-w-[8rem] text-gray-700 text-xs px-3 py-2.5 border-b border-gray-100">
+                  <td className="sticky left-0 z-10 bg-inherit w-32 max-w-[8rem] text-gray-700 text-xs px-3 py-2.5 border-b border-gray-100"
+                    title={feature === 'team'
+                      ? 'Does not include Private Team Payslips or Private Team Profiles -- those stay owner-only (Grony/Joe) regardless of this permission.'
+                      : undefined}>
                     {FEATURE_LABELS[feature]}
                   </td>
                   {activeUsers.map(u => {
