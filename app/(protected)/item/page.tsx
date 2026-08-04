@@ -35,7 +35,7 @@ import { CH_ITEMS, type CHView } from './_components/chViewData'
 import { useUKData, UK_PEOPLE } from './_components/ukViewData'
 import { SidePaneContainer, SidePaneToggle, SidePaneButton, useSidePaneDisplayMode } from './_components/SidePane'
 import SettingsPane from './_components/SettingsPane'
-import { applyPaneOrder, buildPaneRuns, type PaneOrderMap } from './_components/paneOrder'
+import { applyPaneOrder, buildPaneRuns, flattenPaneRuns, type PaneOrderMap } from './_components/paneOrder'
 import dynamic from 'next/dynamic'
 const loading = (h: string) => <div className={`py-10 text-center text-gray-400 text-sm`}>{h}</div>
 const ItemsTab       = dynamic(() => import('./_components/ItemsTab'),        { ssr: false, loading: () => loading('Loading…') })
@@ -1188,10 +1188,10 @@ function ItemHubPageInner() {
               {cashDisplayMode !== 'icon' && (
                 <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Cash</p>
               )}
-              {applyPaneOrder(CASH_ITEMS, paneOrder.cash).filter(v => v.key !== 'pl' || canSeePL).map(v => (
+              {applyPaneOrder(CASH_ITEMS, paneOrder.cash).filter(v => v.key !== 'pl' || canSeePL).map((v, i) => (
               <div key={v.key}>
                 <SidePaneButton icon={v.icon} label={v.label} mode={cashDisplayMode}
-                  active={paneActive(lossView === v.key)}
+                  active={paneActive(lossView === v.key)} divider={i > 0}
                   badge={v.key === 'sales' ? salesFlagsCount
                     : v.key === 'items' ? itemsFlagsCount
                     : v.key === 'bills' ? billsFlagsCount
@@ -1210,7 +1210,7 @@ function ItemHubPageInner() {
                     <SidePaneButton icon="🧾" label="New Sale" mode={cashDisplayMode}
                       active={paneActive(lossView === 'sales' && addForm === 'sale')}
                       onClick={() => { pickLossView('sales'); setAddForm('sale') }} />
-                    <SidePaneButton icon="⚡" label="Live Sale" mode={cashDisplayMode}
+                    <SidePaneButton icon="⚡" label="Live Sale" mode={cashDisplayMode} divider
                       active={paneActive(lossView === 'sales' && addForm === 'live')}
                       onClick={() => { pickLossView('sales'); setAddForm('live') }} />
                     <div className="pl-2 border-l-2 border-white/10 ml-2">
@@ -1230,26 +1230,24 @@ function ItemHubPageInner() {
               {cashDisplayMode !== 'icon' && (
                 <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Manage</p>
               )}
-              {buildPaneRuns(applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage)).map(run => (
-                <Fragment key={run.group ?? run.items[0].key}>
-                  {run.group && cashDisplayMode !== 'icon' && (
-                    <p className="px-2 pt-2 pb-0.5 text-[8px] font-bold text-blue-200/70 uppercase tracking-wide">{MANAGE_GROUP_LABELS[run.group]}</p>
-                  )}
-                  {run.items.map(entry => {
-                    const badge = entry.key === 'opener' ? openerBadgeCount
-                      : entry.key === 'closer' ? (globalFlags?.missingClosingReports?.length ?? 0)
-                      : entry.key === 'jingle' ? jingleFlagsCount
-                      : entry.key === 'equipment' ? equipmentFlagsCount
-                      : entry.key === 'audio_status' ? advertStatusFlagsCount
-                      : undefined
-                    return (
-                      <SidePaneButton key={entry.key} icon={entry.icon} label={entry.label} mode={cashDisplayMode}
-                        active={paneActive(lossView === entry.key)} badge={badge}
-                        onClick={() => pickLossView(entry.key)} />
-                    )
-                  })}
-                </Fragment>
-              ))}
+              {flattenPaneRuns(buildPaneRuns(applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage)), MANAGE_GROUP_LABELS).map(({ item: entry, header, divider }) => {
+                const badge = entry.key === 'opener' ? openerBadgeCount
+                  : entry.key === 'closer' ? (globalFlags?.missingClosingReports?.length ?? 0)
+                  : entry.key === 'jingle' ? jingleFlagsCount
+                  : entry.key === 'equipment' ? equipmentFlagsCount
+                  : entry.key === 'audio_status' ? advertStatusFlagsCount
+                  : undefined
+                return (
+                  <Fragment key={entry.key}>
+                    {header && cashDisplayMode !== 'icon' && (
+                      <p className="px-2 pt-2 pb-0.5 text-[8px] font-bold text-blue-200/70 uppercase tracking-wide">{header}</p>
+                    )}
+                    <SidePaneButton icon={entry.icon} label={entry.label} mode={cashDisplayMode} divider={divider}
+                      active={paneActive(lossView === entry.key)} badge={badge}
+                      onClick={() => pickLossView(entry.key)} />
+                  </Fragment>
+                )
+              })}
             </div>
             )}
 
@@ -1264,17 +1262,15 @@ function ItemHubPageInner() {
                 {cashDisplayMode !== 'icon' && (
                   <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Team</p>
                 )}
-                {buildPaneRuns(STAFF_TEAM_ITEMS).map(run => (
-                  <Fragment key={run.group ?? run.items[0].key}>
-                    {run.group && cashDisplayMode !== 'icon' && (
-                      <p className="px-2 pt-2 pb-0.5 text-[8px] font-bold text-blue-200/70 uppercase tracking-wide">{STAFF_GROUP_LABELS[run.group]}</p>
+                {flattenPaneRuns(buildPaneRuns(STAFF_TEAM_ITEMS), STAFF_GROUP_LABELS).map(({ item: t, header, divider }) => (
+                  <Fragment key={t.key}>
+                    {header && cashDisplayMode !== 'icon' && (
+                      <p className="px-2 pt-2 pb-0.5 text-[8px] font-bold text-blue-200/70 uppercase tracking-wide">{header}</p>
                     )}
-                    {run.items.map(t => (
-                      <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode}
-                        active={paneActive(lossView === t.key)}
-                        badge={t.key === 'staff_dress' ? dressFlagsCount : t.key === 'teamTimes' ? staffTimesFlagsCount : undefined}
-                        onClick={() => pickLossView(t.key)} />
-                    ))}
+                    <SidePaneButton icon={t.icon} label={t.label} mode={cashDisplayMode} divider={divider}
+                      active={paneActive(lossView === t.key)}
+                      badge={t.key === 'staff_dress' ? dressFlagsCount : t.key === 'teamTimes' ? staffTimesFlagsCount : undefined}
+                      onClick={() => pickLossView(t.key)} />
                   </Fragment>
                 ))}
               </div>
@@ -1295,15 +1291,21 @@ function ItemHubPageInner() {
                     not viewing that person" explanation. Team Payslips
                     already has its own per-staff picker for exactly this
                     case. */}
-                {STAFF_PERSONAL_ITEMS.filter(t => viewingSelf || t.key !== 'staffPayslips').map(t => (
-                  <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode}
-                    active={paneActive(lossView === t.key)}
-                    onClick={() => pickLossView(t.key)} />
-                ))}
-                {viewingName.toLowerCase() === username.toLowerCase() && (
-                  <SidePaneButton icon="👤" label="Profile" mode={cashDisplayMode} active={paneActive(lossView === 'staffProfile')}
-                    onClick={() => pickLossView('staffProfile')} />
-                )}
+                {(() => {
+                  const personalItems = STAFF_PERSONAL_ITEMS.filter(t => viewingSelf || t.key !== 'staffPayslips')
+                  return (<>
+                    {personalItems.map((t, i) => (
+                      <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode} divider={i > 0}
+                        active={paneActive(lossView === t.key)}
+                        onClick={() => pickLossView(t.key)} />
+                    ))}
+                    {viewingName.toLowerCase() === username.toLowerCase() && (
+                      <SidePaneButton icon="👤" label="Profile" mode={cashDisplayMode} active={paneActive(lossView === 'staffProfile')}
+                        divider={personalItems.length > 0}
+                        onClick={() => pickLossView('staffProfile')} />
+                    )}
+                  </>)
+                })()}
               </div>
             )}
             </>)}
@@ -1312,8 +1314,8 @@ function ItemHubPageInner() {
                 Cash/Manage/Staff, so it gets its own (much shorter) list
                 here instead of any of theirs. */}
             {outerTab === 'ch' && (<>
-              {CH_ITEMS.map(item => (
-                <SidePaneButton key={item.key} icon={item.icon} label={item.label} mode={cashDisplayMode}
+              {CH_ITEMS.map((item, i) => (
+                <SidePaneButton key={item.key} icon={item.icon} label={item.label} mode={cashDisplayMode} divider={i > 0}
                   active={paneActive(lossView === item.key)} onClick={() => pickCHView(item.key)} />
               ))}
             </>)}
@@ -1329,8 +1331,8 @@ function ItemHubPageInner() {
               {cashDisplayMode !== 'icon' && (
                 <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">People</p>
               )}
-              {UK_PEOPLE.map(p => (
-                <SidePaneButton key={p} icon="👤" label={p} mode={cashDisplayMode}
+              {UK_PEOPLE.map((p, i) => (
+                <SidePaneButton key={p} icon="👤" label={p} mode={cashDisplayMode} divider={i > 0}
                   active={paneActive(uk.person === p)} onClick={() => { uk.pickPerson(p); setSettingsOpen(false) }} />
               ))}
 
@@ -1341,8 +1343,8 @@ function ItemHubPageInner() {
                 {/* Rename/delete and "Add Submenu" removed -- this list is
                     fixed from the UI's side now; changes go through direct
                     edits instead of a self-service control here. */}
-                {uk.submenus.map(s => (
-                  <SidePaneButton key={s.id} icon="📋" label={s.name} mode={cashDisplayMode}
+                {uk.submenus.map((s, i) => (
+                  <SidePaneButton key={s.id} icon="📋" label={s.name} mode={cashDisplayMode} divider={i > 0}
                     active={paneActive(uk.selectedSubmenuId === s.id)} onClick={() => { uk.pickSubmenu(s.id); setSettingsOpen(false) }} />
                 ))}
               </div>
@@ -1364,7 +1366,7 @@ function ItemHubPageInner() {
                 <SidePaneButton icon="⚙️" label="Settings" mode={cashDisplayMode} active={settingsOpen}
                   onClick={() => setSettingsOpen(v => !v)} />
               )}
-              <SidePaneButton icon="🚪" label="Sign out" mode={cashDisplayMode} active={false}
+              <SidePaneButton icon="🚪" label="Sign out" mode={cashDisplayMode} active={false} divider={canOpenSettings}
                 onClick={() => { if (confirm('Sign out?')) signOut({ callbackUrl: '/login' }) }} />
             </div>
         </SidePaneContainer>

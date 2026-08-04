@@ -40,3 +40,26 @@ export function buildPaneRuns<T extends { key: string; group?: string }>(items: 
   }
   return runs
 }
+
+export type PaneFlatRow<T> = { item: T; header?: string; divider: boolean }
+
+// Flattens buildPaneRuns' output into one render-ready sequence -- each row
+// knows whether to draw a group header above it and whether to draw a
+// divider line above it (see SidePaneButton's `divider` prop). A header
+// counts as the break between it and whatever came before, so the first
+// row of a headered run never also gets a divider; neither does the very
+// first row of the whole list (nothing above it needs separating from).
+// Every other row gets one, so every button reads as visually distinct from
+// its neighbor even when several sit under the same header, or none at all.
+export function flattenPaneRuns<T>(runs: PaneRun<T>[], groupLabels: Record<string, string>): PaneFlatRow<T>[] {
+  const rows: PaneFlatRow<T>[] = []
+  let isFirstRow = true
+  for (const run of runs) {
+    run.items.forEach((item, idx) => {
+      const header = idx === 0 && run.group ? groupLabels[run.group] : undefined
+      rows.push({ item, header, divider: !isFirstRow && !header })
+      isFirstRow = false
+    })
+  }
+  return rows
+}

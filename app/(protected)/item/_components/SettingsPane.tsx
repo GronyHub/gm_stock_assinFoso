@@ -50,7 +50,7 @@ export default function SettingsPane({
             <SidePaneButton icon="👤" label="Me" mode={mode}
               active={viewingName.toLowerCase() === myStaffName.toLowerCase()} onClick={() => pickViewing(myStaffName)} />
             {staffRoster.filter(n => n.toLowerCase() !== myStaffName.toLowerCase()).map(name => (
-              <SidePaneButton key={name} icon="👤" label={name} mode={mode}
+              <SidePaneButton key={name} icon="👤" label={name} mode={mode} divider
                 active={viewingName.toLowerCase() === name.toLowerCase()} onClick={() => pickViewing(name)} />
             ))}
           </div>
@@ -67,8 +67,8 @@ export default function SettingsPane({
             {mode !== 'icon' && (
               <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Team</p>
             )}
-            {STAFF_ADMIN_TEAM_ITEMS.map(t => (
-              <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={mode}
+            {STAFF_ADMIN_TEAM_ITEMS.map((t, i) => (
+              <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={mode} divider={i > 0}
                 active={activeView === t.key} onClick={() => pickLossView(t.key, { keepSettingsOpen: true })} />
             ))}
           </div>
@@ -84,11 +84,11 @@ export default function SettingsPane({
                 mode={mode} active={activeView === 'users' || activeView === 'roles'} onClick={() => pickLossView('users', { keepSettingsOpen: true })} />
             )}
             {canViewPortalAs && (
-              <SidePaneButton icon="👁" label="View Portal As" mode={mode}
+              <SidePaneButton icon="👁" label="View Portal As" mode={mode} divider={canSeeUsers || canManageRoles}
                 active={activeView === 'viewPortalAs'} onClick={() => pickLossView('viewPortalAs', { keepSettingsOpen: true })} />
             )}
             {canManageRoles && (
-              <SidePaneButton icon="↕️" label="Reorder Lists" mode={mode}
+              <SidePaneButton icon="↕️" label="Reorder Lists" mode={mode} divider={canSeeUsers || canManageRoles || canViewPortalAs}
                 active={activeView === 'reorderLists'} onClick={() => pickLossView('reorderLists', { keepSettingsOpen: true })} />
             )}
           </div>
