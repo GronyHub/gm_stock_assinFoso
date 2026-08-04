@@ -30,6 +30,13 @@ function money(n: number) {
   return `₵${n.toFixed(2)}`
 }
 
+// Same trailing-.00 trim as compactAmount below, but keeps the ₵ sign --
+// used for the item row's own selling price, which reads fine short (e.g.
+// "₵50") without needing money()'s always-2dp precision.
+function moneyCompact(n: number) {
+  return `₵${Math.round(n * 100) / 100}`
+}
+
 // Preset-button labels only -- no ₵ sign (obvious from context, sitting
 // right under the item's own priced name) and no trailing .00, so more
 // buttons fit on one line. Rounds to 2dp first to clear floating-point
@@ -116,6 +123,17 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
   const [pendingItemId, setPendingItemId] = useState<number | null>(null)
   const [undoingId, setUndoingId] = useState<number | null>(null)
   const [arranging, setArranging] = useState(false)
+  // Large-screen mode -- overlays the whole viewport (fixed inset-0, above
+  // everything else) instead of sitting inside the normal pane/content
+  // layout, so the grid gets the full screen to tap into instead of
+  // sharing it with the left pane. A plain CSS overlay rather than the
+  // real Fullscreen API -- iOS Safari on phones doesn't support
+  // requestFullscreen() on ordinary elements (only <video>), and this is
+  // used mostly on phones, so the API route would just silently fail for
+  // a lot of staff. Not persisted -- always starts normal-sized so
+  // reopening Live Sale doesn't strand someone in an overlay they don't
+  // remember turning on.
+  const [expanded, setExpanded] = useState(false)
   const logColPrefs = useColumnPrefs<LogColKey>('liveSaleLog', LOG_COLUMNS)
   // Persisted on this device (not the server) -- it's a per-terminal
   // convenience for whoever's tapping on this phone, not shared business
@@ -261,7 +279,9 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
   }
 
   return (
-    <div className="relative pb-24">
+    <div className={expanded
+      ? 'fixed inset-0 z-50 bg-white overflow-y-auto pb-24'
+      : 'relative pb-24'}>
       <div className="flex items-center justify-between gap-2 px-2 pt-1 pb-1 border-b border-gray-200">
         <h2 className="min-w-0 text-xs font-bold leading-tight truncate">
           ⚡ Live Sale <span className="font-normal text-gray-400">· tap to record</span>
@@ -278,6 +298,15 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
               {arranging ? 'Done' : '↕ Arrange'}
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            title={expanded ? 'Exit large screen' : 'Large screen'}
+            className={`shrink-0 w-6 h-6 rounded-lg text-xs font-semibold border flex items-center justify-center transition
+              ${expanded ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300'}`}
+          >
+            {expanded ? '⤡' : '⤢'}
+          </button>
           {onClose && (
             <button
               type="button"
@@ -398,7 +427,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                 )
                 const label = (
                   <p className="flex-1 min-w-0 text-[10px] font-semibold text-gray-900 leading-tight" style={{ wordBreak: 'break-word' }}>
-                    {it.name} <span className="text-blue-600 font-bold">({money(Number(it.selling_price) || 0)})</span>
+                    {it.name} <span className="text-blue-600 font-bold">({moneyCompact(Number(it.selling_price) || 0)})</span>
                   </p>
                 )
 
