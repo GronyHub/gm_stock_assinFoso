@@ -25,6 +25,7 @@ class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boole
 import { usePolling } from '@/lib/usePolling'
 import { useViolations } from './_components/useViolations'
 import PaneHomeDaily from './_components/PaneHomeDaily'
+import AddShortcutButton, { type ShortcutKey } from './_components/AddShortcutButton'
 import { MyAssignmentsSummary } from './_components/MyAssignmentsSummary'
 import PageToolIcons from './_components/PageToolIcons'
 import { COLUMNS, type ColKey } from './_components/lossTabColumns'
@@ -457,6 +458,14 @@ function ItemHubPageInner() {
   const [addForm, setAddForm]             = useState<'item' | 'sale' | 'live' | 'liveLog' | 'bill' | 'expense' | null>(
     (VALID_ADD_FORMS as readonly string[]).includes(rawInitialForm ?? '') ? (rawInitialForm as typeof VALID_ADD_FORMS[number]) : null
   )
+  // Bumped by the "+" shortcut menu (see AddShortcutButton) for flows that
+  // live inside an already-mounted tab (CAB Confirm, Staff Time, Customer,
+  // Vendor) -- each target component watches its own signal and reopens its
+  // "new" form.
+  const [cabConfirmSignal, setCabConfirmSignal] = useState(0)
+  const [staffTimeSignal, setStaffTimeSignal]   = useState(0)
+  const [customerSignal, setCustomerSignal]     = useState(0)
+  const [vendorSignal, setVendorSignal]         = useState(0)
   const [jumpToItemId, setJumpToItemId]   = useState<number | null>(null)
   // Seeded from ?jumpDate=/?jumpItem= -- Item 360's Detail table (and its
   // "click a date" links) lands here via /item?tab=loss&view=sales&jumpDate=
@@ -828,6 +837,31 @@ function ItemHubPageInner() {
   // (Sales / Bills / Counts live as sub-views of the Grony Cash tab).
   function goFixRecords(view: 'sales' | 'bills' | 'counts') {
     pickLossView(view)
+  }
+
+  // The "+" shortcut menu (see AddShortcutButton) -- jumps straight to a
+  // "create new" flow wherever it already lives. Sales/Bills/Item/Expenses
+  // reuse the existing addForm mechanism (pickLossView resets it, so set it
+  // after); the rest reopen via a per-target signal since their forms are
+  // local component state with no addForm equivalent. Staff Time lands on
+  // Team Times, not a per-person page -- Personal has no Times row of its
+  // own anymore (see Team Times' own history), but TimesTab's admin "add
+  // entry" form works the same regardless of whose page it's opened from.
+  function handleShortcut(key: ShortcutKey) {
+    switch (key) {
+      case 'sale':       pickLossView('sales');     setAddForm('sale'); break
+      case 'bill':       pickLossView('bills');     setAddForm('bill'); break
+      case 'item':       pickLossView('items');     setAddForm('item'); break
+      case 'expense':    pickLossView('expenses');  setAddForm('expense'); break
+      case 'cabConfirm': pickLossView('cab');       setCabConfirmSignal(n => n + 1); break
+      case 'customer':   pickLossView('customers'); setCustomerSignal(n => n + 1); break
+      case 'vendor':     pickLossView('vendors');   setVendorSignal(n => n + 1); break
+      case 'staffTime': {
+        pickLossView('teamTimes')
+        setStaffTimeSignal(n => n + 1)
+        break
+      }
+    }
   }
 
   // Tab/sub-view changes push a new history entry each -- real "pages" the
@@ -1581,12 +1615,12 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'loss' && lossView === 'vendors' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-2 space-y-2"><PageToolIcons scopeKey="Vendors" /><VendorsPage initialSearch={vendorSearchText} /></div>
+            <div className="px-4 pt-2 space-y-2"><PageToolIcons scopeKey="Vendors" /><VendorsPage openAddSignal={vendorSignal} initialSearch={vendorSearchText} /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'customers' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-2 space-y-2"><PageToolIcons scopeKey="Customers" /><CustomersPage initialSearch={customerSearchText} /></div>
+            <div className="px-4 pt-2 space-y-2"><PageToolIcons scopeKey="Customers" /><CustomersPage openAddSignal={customerSignal} initialSearch={customerSearchText} /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'receipts' && (
@@ -1657,7 +1691,8 @@ function ItemHubPageInner() {
                 <StaffContent key={myStaffName} view={lossView as StaffView}
                   viewingName={viewingName} role={role} username={username}
                   canSeeTeam={canSeeTeam} canSeeUsers={canSeeUsers} canSeeRoles={canManage} canManage={canManage}
-                  staffRoster={STAFF_ROSTER} routablePages={routablePages} categoryIds={fixedCategoryIds} />
+                  staffRoster={STAFF_ROSTER} routablePages={routablePages} categoryIds={fixedCategoryIds}
+                  openAddSignal={staffTimeSignal} />
               </>
             ) : (
               <p className="py-10 text-center text-gray-400 text-sm px-4">No staff profile is set up for your account.</p>
@@ -1687,7 +1722,7 @@ function ItemHubPageInner() {
         {showAnalytics && outerTab === 'loss' && lossView === 'expenses' && (
           <TabErrorBoundary><div className="px-3 pt-3"><ExpensesAnalyticsSection /></div></TabErrorBoundary>
         )}
-        {outerTab === 'loss' && lossView === 'cab' && <CABTab />}
+        {outerTab === 'loss' && lossView === 'cab' && <CABTab openConfirmSignal={cabConfirmSignal} />}
         {/* Items pill selected -> ItemsTab's filtered fix view; otherwise the
             submenu's normal content (LossTab). Same swap pattern for
             Sales/Counts/Feed below -- each of those already knows how to
@@ -1822,7 +1857,9 @@ function ItemHubPageInner() {
               already on most tabs, which only filter what's on screen).
               Biz/UK/C&H keep the old rule: someone permitted to see only
               Grony Cash has nothing to switch to, so those three only show
-              once UK and/or C&H access exists. */}
+              once UK and/or C&H access exists. The "+" shortcut menu (see
+              AddShortcutButton/handleShortcut) rejoins this row too --
+              always shown, same as when it was its own floating button. */}
           <div className="shrink-0 flex items-center justify-evenly py-2 bg-white border-t border-gray-200">
             {(canSeeUK || canSeeCH) && (
               <button onClick={() => changeTab('loss')} title="Biz"
@@ -1852,6 +1889,7 @@ function ItemHubPageInner() {
               className="w-9 h-9 rounded-full flex items-center justify-center text-lg border-2 border-transparent text-gray-500 opacity-70 hover:opacity-100 transition">
               🔍
             </button>
+            <AddShortcutButton onShortcut={handleShortcut} />
           </div>
         </div>
       </div>

@@ -50,7 +50,9 @@ const LogsPage = dynamic(() => import('../../logs/page'), {
 // side by side in one grid, the same shared view the pre-Personal/Team
 // split /staff route's own Times tab always showed everyone -- including
 // the clock-in button itself, so this is still how anyone with Team access
-// clocks in and out.
+// clocks in and out. `openAddSignal` is the "+" shortcut menu's Staff Time
+// entry (see item/page.tsx's handleShortcut) -- TimesTab's own admin "add
+// entry" form opens on it regardless of whose page it's opened from.
 // `canSeeTeam`/`canSeeUsers`/`canSeeRoles` each gate their own view
 // independently now (Roles & Permissions screen) instead of one blanket
 // isBuilder flag, so a role can be granted Team without also getting Users.
@@ -77,7 +79,7 @@ const LogsPage = dynamic(() => import('../../logs/page'), {
 // useFixedCategoryIds.
 export default function StaffContent({
   view, viewingName, role, username, canSeeTeam, canSeeUsers, canSeeRoles, canManage,
-  staffRoster, routablePages, categoryIds,
+  staffRoster, routablePages, categoryIds, openAddSignal,
 }: {
   view: StaffView
   viewingName: string
@@ -86,12 +88,13 @@ export default function StaffContent({
   staffRoster: string[]
   routablePages: string[]
   categoryIds: Record<string, number>
+  openAddSignal?: number
 }) {
   const isSelf = viewingName.toLowerCase() === username.toLowerCase()
   return (<>
     {view === 'staffPayslips' && <PayslipsTab role={role} username={username} viewingStaff={viewingName} />}
     {view === 'staffProfile' && isSelf && <ProfileTab />}
-    {canSeeTeam && view === 'teamTimes' && <TimesTab username={username} role={role} />}
+    {canSeeTeam && view === 'teamTimes' && <TimesTab username={username} role={role} openAddSignal={openAddSignal} />}
     {canSeeTeam && view === 'team_payments' && (
       <DynamicCategoryPage categoryId={categoryIds[FIXED_CATEGORY_LABELS.team_payments]} categoryLabel="Team Payments" canManage={canManage} />
     )}
