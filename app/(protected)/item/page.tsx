@@ -31,7 +31,7 @@ import PageToolIcons from './_components/PageToolIcons'
 import { COLUMNS, type ColKey } from './_components/lossTabColumns'
 import { useColumnPrefs, ColumnsPickerButton } from './_components/columnPrefs'
 import { MANAGE_LIST_ITEMS, MANAGE_GROUP_LABELS, useFixedCategoryIds, type ManageView } from './_components/manageViewData'
-import { STAFF_PERSONAL_ITEMS, STAFF_TEAM_ITEMS, STAFF_ADMIN_TEAM_ITEMS, STAFF_GROUP_LABELS, type StaffView } from './_components/staffViewData'
+import { STAFF_PERSONAL_ITEMS, STAFF_TEAM_ITEMS, STAFF_ADMIN_TEAM_ITEMS, type StaffView } from './_components/staffViewData'
 import { CH_ITEMS, CH_CHILD_PERSON, CH_PERSON_VIEW, type CHView } from './_components/chViewData'
 import { useUKData, UK_PEOPLE } from './_components/ukViewData'
 import { SidePaneContainer, SidePaneToggle, SidePaneButton, useSidePaneDisplayMode } from './_components/SidePane'
@@ -1133,7 +1133,7 @@ function ItemHubPageInner() {
   const viewingName = viewingNameOverride ?? myStaffName ?? ''
   const viewingSelf = viewingName.toLowerCase() === (myStaffName ?? '').toLowerCase()
 
-  // Pages a Staff Meeting note's "discuss on another page" widget can route
+  // Pages a Team Meeting note's "discuss on another page" widget can route
   // a follow-up to (see StaffMeetingPanel) -- same permission gates as
   // navDestinations below, since routing to a page you can't otherwise see
   // would just create a task nobody can find.
@@ -1158,7 +1158,7 @@ function ItemHubPageInner() {
   // the same permission gates that decide what actually shows in the pane
   // -- this used to be three separately hand-typed label/action lists that
   // drifted out of sync with the real pane contents (new Manage categories
-  // like Staff Meeting, all of Team's rows, every C&H category, and the
+  // like Team Meeting, all of Team's rows, every C&H category, and the
   // Settings-only pages were never added here), which is exactly why most
   // pages weren't turning up in search. Deriving from the source arrays
   // means anything added there is searchable with zero extra upkeep here.
@@ -1325,16 +1325,11 @@ function ItemHubPageInner() {
                 {cashDisplayMode !== 'icon' && (
                   <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Team</p>
                 )}
-                {flattenPaneRuns(buildPaneRuns(STAFF_TEAM_ITEMS), STAFF_GROUP_LABELS).map(({ item: t, header, divider }) => (
-                  <Fragment key={t.key}>
-                    {header && cashDisplayMode !== 'icon' && (
-                      <p className="px-2 pt-2 pb-0.5 text-[8px] font-bold text-blue-200/70 uppercase tracking-wide">{header}</p>
-                    )}
-                    <SidePaneButton icon={t.icon} label={t.label} mode={cashDisplayMode} divider={divider}
-                      active={paneActive(lossView === t.key)}
-                      badge={t.key === 'staff_dress' ? dressFlagsCount : t.key === 'teamTimes' ? staffTimesFlagsCount : undefined}
-                      onClick={() => pickLossView(t.key)} />
-                  </Fragment>
+                {STAFF_TEAM_ITEMS.map((t, i) => (
+                  <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode} divider={i > 0}
+                    active={paneActive(lossView === t.key)}
+                    badge={t.key === 'staff_dress' ? dressFlagsCount : t.key === 'teamTimes' ? staffTimesFlagsCount : undefined}
+                    onClick={() => pickLossView(t.key)} />
                 ))}
               </div>
             )}
