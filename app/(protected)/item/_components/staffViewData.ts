@@ -68,6 +68,6 @@ export const STAFF_TEAM_ITEMS: { key: StaffView; label: string; icon: string }[]
 // canSeeTeam so granting someone the general Team permission (Bino/James)
 // doesn't also hand them every staff member's pay/bank details.
 export const STAFF_ADMIN_TEAM_ITEMS: { key: StaffView; label: string; icon: string }[] = [
-  { key: 'teamPayslips', label: 'Team Payslips', icon: '💵' },
-  { key: 'teamProfiles', label: 'Team Profiles', icon: '🪪' },
+  { key: 'teamPayslips', label: 'Private Team Payslips', icon: '💵' },
+  { key: 'teamProfiles', label: 'Private Team Profiles', icon: '🪪' },
 ]
