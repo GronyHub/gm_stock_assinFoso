@@ -29,7 +29,7 @@ import { MyAssignmentsSummary } from './_components/MyAssignmentsSummary'
 import PageToolIcons from './_components/PageToolIcons'
 import { COLUMNS, type ColKey } from './_components/lossTabColumns'
 import { useColumnPrefs, ColumnsPickerButton } from './_components/columnPrefs'
-import { MANAGE_LIST_ITEMS, useDynamicManageCategories, orderDynamicCategories, KNOWN_CATEGORY_ICONS, type ManageView } from './_components/manageViewData'
+import { MANAGE_LIST_ITEMS, useFixedCategoryIds, type ManageView } from './_components/manageViewData'
 import { STAFF_PERSONAL_ITEMS, STAFF_TEAM_ITEMS, STAFF_ADMIN_TEAM_ITEMS, type StaffView } from './_components/staffViewData'
 import { CH_ITEMS, type CHView } from './_components/chViewData'
 import { useUKData, UK_PEOPLE } from './_components/ukViewData'
@@ -506,9 +506,11 @@ function ItemHubPageInner() {
   const [customerSearchText, setCustomerSearchText] = useState('')
   const [vendorSearchText, setVendorSearchText] = useState('')
 
-  // Manage's categories -- shared between the merged pane (listing them,
-  // read-only) and GronyManageContent (rendering the active one).
-  const { dynamicCategories, activeDynamicId, setActiveDynamicId } = useDynamicManageCategories()
+  // Resolves the real numeric id behind each of the four ex-"Added by you"
+  // categories (now fixed rows split across Manage/Team) -- shared between
+  // GronyManageContent and StaffContent, whichever renders one via
+  // DynamicCategoryPage. See FIXED_CATEGORY_LABELS in manageViewData.ts.
+  const fixedCategoryIds = useFixedCategoryIds()
 
   // Staff's "Viewing" picker -- who the personal rows (Times/Payslips/etc.)
   // apply to. Only Joe/Grony ever change this away from their own name;
@@ -781,7 +783,6 @@ function ItemHubPageInner() {
   function pickLossView(view: LossView, opts?: { keepSettingsOpen?: boolean }) {
     setOuterTab('loss')
     setLossView(view)
-    setActiveDynamicId(null)
     setViolation(null)
     setAddForm(null)
     setShowAnalytics(false)
@@ -801,7 +802,6 @@ function ItemHubPageInner() {
   // `outerTab === 'ch'` below), so outerTab never needs to move here.
   function pickCHView(view: CHView) {
     setLossView(view)
-    setActiveDynamicId(null)
     setViolation(null)
     setAddForm(null)
     setShowAnalytics(false)
@@ -1035,7 +1035,7 @@ function ItemHubPageInner() {
     if (!canSeeCash && CASH_VIEW_KEYS.has(lossView)) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       pickLossView(canSeeManage ? MANAGE_LIST_ITEMS[0].key : (myStaffName ? 'staffPayslips' : 'home'))
-    } else if (!canSeeManage && (MANAGE_VIEW_KEYS.has(lossView) || activeDynamicId !== null)) {
+    } else if (!canSeeManage && MANAGE_VIEW_KEYS.has(lossView)) {
       pickLossView(canSeeCash ? 'items' : (myStaffName ? 'staffPayslips' : 'home'))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1239,23 +1239,10 @@ function ItemHubPageInner() {
                   : undefined
                 return (
                   <SidePaneButton key={entry.key} icon={entry.icon} label={entry.label} mode={cashDisplayMode}
-                    active={paneActive(!activeDynamicId && lossView === entry.key)} badge={badge}
+                    active={paneActive(lossView === entry.key)} badge={badge}
                     onClick={() => pickLossView(entry.key)} />
                 )
               })}
-
-              {dynamicCategories.length > 0 && (
-                <div className="mt-1 pt-1 border-t border-white/30">
-                  {cashDisplayMode !== 'icon' && (
-                    <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Added by you</p>
-                  )}
-                  {orderDynamicCategories(dynamicCategories).map(c => (
-                    <SidePaneButton key={c.id} icon={KNOWN_CATEGORY_ICONS[c.label] ?? '🗂️'} label={c.label} mode={cashDisplayMode}
-                      active={paneActive(activeDynamicId === c.id)} onClick={() => { setActiveDynamicId(c.id); setSettingsOpen(false) }} />
-                  ))}
-                </div>
-              )}
-
             </div>
             )}
 
@@ -1631,11 +1618,10 @@ function ItemHubPageInner() {
             </div>
           </TabErrorBoundary>
         )}
-        {outerTab === 'loss' && (MANAGE_VIEW_KEYS.has(lossView) || activeDynamicId !== null) && (
+        {outerTab === 'loss' && MANAGE_VIEW_KEYS.has(lossView) && (
           <TabErrorBoundary>
             <GronyManageContent view={lossView as ManageView}
-              activeDynamic={dynamicCategories.find(c => c.id === activeDynamicId)}
-              canManage={canManage}
+              canManage={canManage} categoryIds={fixedCategoryIds}
               openerViolations={openerViolations}
               assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
               onGoToViolation={goToViolation}
@@ -1655,7 +1641,7 @@ function ItemHubPageInner() {
                 <StaffContent key={myStaffName} view={lossView as StaffView}
                   viewingName={viewingName} role={role} username={username}
                   canSeeTeam={canSeeTeam} canSeeUsers={canSeeUsers} canSeeRoles={canManage} canManage={canManage}
-                  staffRoster={STAFF_ROSTER} routablePages={routablePages} />
+                  staffRoster={STAFF_ROSTER} routablePages={routablePages} categoryIds={fixedCategoryIds} />
               </>
             ) : (
               <p className="py-10 text-center text-gray-400 text-sm px-4">No staff profile is set up for your account.</p>
