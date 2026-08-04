@@ -29,13 +29,12 @@ import { MyAssignmentsSummary } from './_components/MyAssignmentsSummary'
 import PageToolIcons from './_components/PageToolIcons'
 import { COLUMNS, type ColKey } from './_components/lossTabColumns'
 import { useColumnPrefs, ColumnsPickerButton } from './_components/columnPrefs'
-import { MANAGE_LIST_ITEMS, useDynamicManageCategories, type ManageView } from './_components/manageViewData'
+import { MANAGE_LIST_ITEMS, useDynamicManageCategories, orderDynamicCategories, KNOWN_CATEGORY_ICONS, type ManageView } from './_components/manageViewData'
 import { STAFF_PERSONAL_ITEMS, STAFF_TEAM_ITEMS, STAFF_ADMIN_TEAM_ITEMS, type StaffView } from './_components/staffViewData'
 import { CH_ITEMS, type CHView } from './_components/chViewData'
 import { useUKData, UK_PEOPLE } from './_components/ukViewData'
 import { SidePaneContainer, SidePaneToggle, SidePaneButton, useSidePaneDisplayMode } from './_components/SidePane'
 import SettingsPane from './_components/SettingsPane'
-import SavedFlash from './_components/SavedFlash'
 import { applyPaneOrder, type PaneOrderMap } from './_components/paneOrder'
 import dynamic from 'next/dynamic'
 const loading = (h: string) => <div className={`py-10 text-center text-gray-400 text-sm`}>{h}</div>
@@ -101,11 +100,11 @@ type OuterTab = 'today' | 'loss' | 'uk' | 'ch'
 // state/pane machinery rather than needing its own parallel copy.
 type LossView = 'home' | 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'lossByItem' | 'lossByTarget' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts' | 'dailySummary'
   | 'purchaseOrders' | 'item360'
-  // Settings' own two non-navigation rows (Manage Categories, View Portal
-  // As) become real content destinations too now that Settings is its own
-  // side-by-side pane instead of a full-screen takeover -- see
-  // SettingsPane.tsx and the settingsOpen block below.
-  | 'manageCategories' | 'viewPortalAs' | 'reorderLists'
+  // Settings' own non-navigation row (View Portal As) becomes a real content
+  // destination too now that Settings is its own side-by-side pane instead
+  // of a full-screen takeover -- see SettingsPane.tsx and the settingsOpen
+  // block below.
+  | 'viewPortalAs' | 'reorderLists'
   | ManageView | StaffView | CHView
 // Alias Wide Table and Service Matches used to be their own lossViews --
 // they're now reached from inside Items itself (see ItemsExtraView below),
@@ -153,7 +152,7 @@ const OLD_TAB_TO_VIEW: Partial<Record<string, LossView>> = {
 // groups/search bar of their own.
 const REPORT_VIEWS = new Set<LossView>([
   'home', 'pl', 'cab', 'vendors', 'customers', 'receipts', 'dailySummary',
-  'purchaseOrders', 'item360', 'manageCategories', 'viewPortalAs', 'reorderLists',
+  'purchaseOrders', 'item360', 'viewPortalAs', 'reorderLists',
   ...MANAGE_VIEW_KEYS, ...STAFF_VIEW_KEYS, ...CH_VIEW_KEYS,
 ])
 
@@ -507,14 +506,9 @@ function ItemHubPageInner() {
   const [customerSearchText, setCustomerSearchText] = useState('')
   const [vendorSearchText, setVendorSearchText] = useState('')
 
-  // Manage's user-added categories -- shared between the merged pane
-  // (listing/adding/removing them) and GronyManageContent (rendering the
-  // active one).
-  const {
-    dynamicCategories, activeDynamicId, setActiveDynamicId,
-    showAddCategory, setShowAddCategory, newCategoryLabel, setNewCategoryLabel,
-    savingCategory, justAddedCategory, addCategory, removeCategory,
-  } = useDynamicManageCategories()
+  // Manage's categories -- shared between the merged pane (listing them,
+  // read-only) and GronyManageContent (rendering the active one).
+  const { dynamicCategories, activeDynamicId, setActiveDynamicId } = useDynamicManageCategories()
 
   // Staff's "Viewing" picker -- who the personal rows (Times/Payslips/etc.)
   // apply to. Only Joe/Grony ever change this away from their own name;
@@ -1049,7 +1043,6 @@ function ItemHubPageInner() {
   const canSeePL = perm('pl')
   const canSeeTeam = perm('team')
   const canSeeUsers = perm('users')
-  const canAddCategory = perm('add_category')
   const canViewPortalAs = perm('view_portal_as')
   const canSeeUK = isGrony || perm('uk')
   const canSeeCH = isOwnerOrJoe || perm('ch')
@@ -1058,7 +1051,7 @@ function ItemHubPageInner() {
   // shouldn't be grantable through the system it configures). Team no
   // longer counts here -- it moved out into its own main-pane section (see
   // below), so canSeeTeam alone no longer needs a reason to open Settings.
-  const canOpenSettings = canManage || canSeeUsers || canAddCategory || canViewPortalAs
+  const canOpenSettings = canManage || canSeeUsers || canViewPortalAs
   // Drives the merged pane's own-name section AND which staff page it
   // opens -- "just like the user profile icon", it's always your own name,
   // not a generic "Staff" label or a pick-a-person screen. Falls back to
@@ -1123,7 +1116,6 @@ function ItemHubPageInner() {
     ...(canSeeTeam ? STAFF_TEAM_ITEMS.map(t => ({ label: t.label, action: () => pickLossView(t.key) })) : []),
     ...(canManage ? STAFF_ADMIN_TEAM_ITEMS.map(t => ({ label: t.label, action: () => pickLossView(t.key) })) : []),
     ...(canSeeUsers || canManage ? [{ label: 'Users & Roles', action: () => pickLossView('users') }] : []),
-    ...(canAddCategory ? [{ label: 'Manage Categories', action: () => pickLossView('manageCategories') }] : []),
     ...(canViewPortalAs ? [{ label: 'View Portal As', action: () => pickLossView('viewPortalAs') }] : []),
     ...(canManage ? [{ label: 'Reorder Lists', action: () => pickLossView('reorderLists') }] : []),
     ...(canSeeUK ? [{ label: 'UK', action: () => changeTab('uk') }] : []),
@@ -1257,15 +1249,9 @@ function ItemHubPageInner() {
                   {cashDisplayMode !== 'icon' && (
                     <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Added by you</p>
                   )}
-                  {dynamicCategories.map(c => (
-                    <div key={c.id} className={`flex items-stretch ${paneActive(activeDynamicId === c.id) ? 'bg-white' : ''}`}>
-                      <SidePaneButton icon="🗂️" label={c.label} mode={cashDisplayMode} className="flex-1 min-w-0"
-                        active={paneActive(activeDynamicId === c.id)} onClick={() => { setActiveDynamicId(c.id); setSettingsOpen(false) }} />
-                      {canAddCategory && (
-                        <button onClick={() => removeCategory(c.id, c.label)} title="Delete category"
-                          className={`shrink-0 px-1.5 pt-2 font-bold text-xs ${paneActive(activeDynamicId === c.id) ? 'text-gray-300 hover:text-red-500' : 'text-blue-200 hover:text-red-300'}`}>×</button>
-                      )}
-                    </div>
+                  {orderDynamicCategories(dynamicCategories).map(c => (
+                    <SidePaneButton key={c.id} icon={KNOWN_CATEGORY_ICONS[c.label] ?? '🗂️'} label={c.label} mode={cashDisplayMode}
+                      active={paneActive(activeDynamicId === c.id)} onClick={() => { setActiveDynamicId(c.id); setSettingsOpen(false) }} />
                   ))}
                 </div>
               )}
@@ -1386,7 +1372,7 @@ function ItemHubPageInner() {
           <SettingsPane mode={cashDisplayMode} activeView={lossView}
             viewingName={viewingName} myStaffName={myStaffName} staffRoster={STAFF_ROSTER}
             pickViewing={pickViewing} pickLossView={pickLossView}
-            canSeeUsers={canSeeUsers} canAddCategory={canAddCategory}
+            canSeeUsers={canSeeUsers}
             canViewPortalAs={canViewPortalAs} canManageRoles={canManage} canManage={canManage}
           />
         )}
@@ -1627,45 +1613,9 @@ function ItemHubPageInner() {
             <Item360Tab items={items} jumpToItemId={item360JumpId} onJumpDone={() => setItem360JumpId(null)} />
           </TabErrorBoundary>
         )}
-        {/* Settings' own two non-navigation rows (see SettingsPane.tsx) --
-            now real content destinations like everything else in Settings,
-            rather than inline widgets crammed into the narrow pane itself. */}
-        {outerTab === 'loss' && lossView === 'manageCategories' && (
-          <TabErrorBoundary>
-            <div className="px-4 pt-4 max-w-sm space-y-3">
-              <h1 className="text-lg font-bold text-gray-900">Manage Categories</h1>
-              {dynamicCategories.length > 0 && (
-                <ul className="text-sm text-gray-600 space-y-1">
-                  {dynamicCategories.map(c => <li key={c.id}>🗂️ {c.label}</li>)}
-                </ul>
-              )}
-              {showAddCategory ? (
-                <form onSubmit={addCategory} className="space-y-2">
-                  <input autoFocus value={newCategoryLabel} onChange={e => setNewCategoryLabel(e.target.value)}
-                    placeholder="Name *"
-                    className="w-full text-sm bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400" />
-                  <div className="flex items-center gap-2">
-                    <button type="submit" disabled={savingCategory || !newCategoryLabel.trim()}
-                      className="flex-1 text-sm font-semibold px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 transition">
-                      {savingCategory ? '…' : 'Add'}
-                    </button>
-                    <button type="button" onClick={() => { setShowAddCategory(false); setNewCategoryLabel('') }}
-                      className="text-sm font-semibold px-3 py-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition">
-                      ✕
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <button onClick={() => setShowAddCategory(true)}
-                  className="w-full flex items-center gap-2 text-sm font-semibold text-gray-800 bg-gray-50 hover:bg-gray-100 rounded-lg px-3 py-2.5 transition text-left">
-                  <span>➕</span><span>Add Category</span>
-                </button>
-              )}
-              {justAddedCategory && <SavedFlash show />}
-              <p className="text-xs text-gray-400">Delete an existing category from its row in Manage -- the × there uses this same permission.</p>
-            </div>
-          </TabErrorBoundary>
-        )}
+        {/* Settings' own non-navigation row (see SettingsPane.tsx) -- now a
+            real content destination like everything else in Settings,
+            rather than an inline widget crammed into the narrow pane itself. */}
         {outerTab === 'loss' && lossView === 'viewPortalAs' && (
           <TabErrorBoundary>
             <div className="px-4 pt-4 max-w-sm space-y-3">

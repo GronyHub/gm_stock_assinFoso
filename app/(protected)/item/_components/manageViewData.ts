@@ -49,53 +49,47 @@ export const MANAGE_LIST_ITEMS: { key: ManageView; label: string; icon?: string 
 
 export type DynamicCategory = { id: number; label: string }
 
-// Owns the fetch/add/remove lifecycle for Manage's user-added categories --
-// shared between the merged pane (listing them + the add-category form) and
-// GronyManageContent (rendering the active one via DynamicCategoryPage).
+// Icon + fixed left-pane order for each of Manage's "Added by you" categories
+// -- these used to be freely add/removable from the pane itself (see git
+// history for the old add/remove UI); now they're a hardcoded, curated set
+// like MANAGE_LIST_ITEMS' own rows; a new one means asking to have it added
+// here, not typing a name into a form. The underlying manage_categories row
+// (and its manage_category_tabs content, still fetched by real numeric id --
+// see useDynamicManageCategories/DynamicCategoryPage) is untouched by this;
+// only the pane's UI for picking one changed. A label with no icon entry
+// falls back to a generic folder icon and sorts after every known one,
+// rather than silently vanishing, in case a category exists that isn't
+// listed here yet.
+export const KNOWN_CATEGORY_ICONS: Record<string, string> = {
+  'Unfortunate Events': '🚨',
+  'Security chk': '🔒',
+  'Staff Payments': '💳',
+  'App info': 'ℹ️',
+}
+const KNOWN_CATEGORY_ORDER = Object.keys(KNOWN_CATEGORY_ICONS)
+
+export function orderDynamicCategories(categories: DynamicCategory[]): DynamicCategory[] {
+  return [
+    ...KNOWN_CATEGORY_ORDER.map(label => categories.find(c => c.label === label)).filter((c): c is DynamicCategory => !!c),
+    ...categories.filter(c => !KNOWN_CATEGORY_ORDER.includes(c.label)),
+  ]
+}
+
+// Owns the fetch lifecycle for Manage's categories -- shared between the
+// merged pane (listing them) and GronyManageContent (rendering the active
+// one via DynamicCategoryPage). Read-only now -- adding/removing a category
+// itself is no longer done from the app (see KNOWN_CATEGORY_ICONS above);
+// each category's own tabs (its actual content) are still freely
+// add/removable as before, that's unrelated (see DynamicCategoryPage).
 export function useDynamicManageCategories() {
   const [dynamicCategories, setDynamicCategories] = useState<DynamicCategory[]>([])
   const [activeDynamicId, setActiveDynamicId] = useState<number | null>(null)
-  const [showAddCategory, setShowAddCategory] = useState(false)
-  const [newCategoryLabel, setNewCategoryLabel] = useState('')
-  const [savingCategory, setSavingCategory] = useState(false)
-  const [justAddedCategory, setJustAddedCategory] = useState(false)
 
-  function loadDynamicCategories() {
+  useEffect(() => {
     fetch('/api/manage-categories').then(r => r.ok ? r.json() : []).then(d => {
       setDynamicCategories(Array.isArray(d) ? d : [])
     }).catch(() => {})
-  }
-  useEffect(() => { loadDynamicCategories() }, [])
+  }, [])
 
-  async function addCategory(e: React.FormEvent) {
-    e.preventDefault()
-    if (!newCategoryLabel.trim() || savingCategory) return
-    setSavingCategory(true)
-    const res = await fetch('/api/manage-categories', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ label: newCategoryLabel.trim() }),
-    })
-    setSavingCategory(false)
-    if (res.ok) {
-      const row = await res.json()
-      setNewCategoryLabel(''); setShowAddCategory(false)
-      loadDynamicCategories()
-      setActiveDynamicId(row.id)
-      setJustAddedCategory(true)
-      setTimeout(() => setJustAddedCategory(false), 2500)
-    }
-  }
-
-  async function removeCategory(id: number, label: string) {
-    if (!confirm(`Delete "${label}" and everything in it?`)) return
-    await fetch(`/api/manage-categories?id=${id}`, { method: 'DELETE' }).catch(() => {})
-    if (activeDynamicId === id) setActiveDynamicId(null)
-    loadDynamicCategories()
-  }
-
-  return {
-    dynamicCategories, activeDynamicId, setActiveDynamicId,
-    showAddCategory, setShowAddCategory, newCategoryLabel, setNewCategoryLabel,
-    savingCategory, justAddedCategory, addCategory, removeCategory,
-  }
+  return { dynamicCategories, activeDynamicId, setActiveDynamicId }
 }
