@@ -129,6 +129,11 @@ export default function NewReceiptPage({ onSuccess, groupFilter }: { onSuccess?:
     if (!cart.length) return
     if (attachments.isUploading) { setError('Still uploading the attached form, please wait…'); return }
     if (attachments.hasError) { setError('An attachment failed to upload — remove it or try again before saving.'); return }
+    if (saleType === 'WIC' && customerId == null) {
+      setError('Pick an existing customer or add a new one before saving.')
+      setCustomerDropdownOpen(true)
+      return
+    }
     setSaving(true)
     setError('')
     try {
@@ -269,11 +274,11 @@ placeholder={loadingItems ? 'Loading…' : `Search ${allItems.length} items…`}
           </div>
           {saleType === 'WIC' ? (
             <div className="relative" ref={customerBoxRef}>
-              <p className="text-[9px] text-gray-400">Customer (optional — leave blank for a walk-in)</p>
+              <p className="text-[9px] text-gray-400">Customer — pick an existing one or add a new one</p>
               <input value={customer}
                 onChange={e => { setCustomer(e.target.value); setCustomerId(null); setCustomerDropdownOpen(true) }}
                 onFocus={() => setCustomerDropdownOpen(true)}
-                placeholder="Search or type a walk-in name"
+                placeholder="Search or type a customer name"
                 className="w-full text-[10px] text-gray-900 bg-gray-50 border border-gray-200 rounded px-1 py-0.5 outline-none placeholder-gray-300" />
               {customerId != null && (
                 <p className="text-[8px] text-green-600 font-semibold mt-0.5">✓ Linked to saved customer</p>
