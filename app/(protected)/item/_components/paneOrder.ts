@@ -24,8 +24,11 @@ export type PaneRun<T> = { group?: string; items: T[] }
 // the sequence (relative order within the group still follows the sequence
 // -- reordering one grouped row above another, see ReorderListsPanel, moves
 // it within the run). Used to draw one sub-header per group (see
-// MANAGE_GROUP_LABELS/STAFF_GROUP_LABELS) without needing the underlying
-// list to actually keep a group's rows contiguous.
+// MANAGE_GROUP_LABELS in manageViewData.ts) without needing the underlying
+// list to actually keep a group's rows contiguous. Manage still uses this
+// (Advert, Grony 1 to 10 checks); Team merged its one group (Training) back
+// into a flat list, so it doesn't need buildPaneRuns/flattenPaneRuns at all
+// any more -- see STAFF_TEAM_ITEMS in staffViewData.ts.
 export function buildPaneRuns<T extends { key: string; group?: string }>(items: T[]): PaneRun<T>[] {
   const runs: PaneRun<T>[] = []
   const seenGroups = new Set<string>()

@@ -74,8 +74,9 @@ function MentionButtons({ notes, roster }: { notes: string; roster: string[] }) 
   )
 }
 
-// Staff Meeting's own richer log -- reuses the same manage_logs table/
-// category as every other Grony Manage log ('staff_meeting'), but with
+// Team Meeting's own richer log -- reuses the same manage_logs table/
+// category as every other Grony Manage log ('staff_meeting', kept as-is
+// since it's the persisted DB key, not a display label), but with
 // attendees/start-end time on top of notes+photo, an @-mention picker that
 // turns "@Name: ..." into a one-tap task on that person's own page, and a
 // separate "discuss on another page" widget that does the same thing for a
@@ -209,10 +210,10 @@ export default function StaffMeetingPanel({ staffRoster, routablePages }: { staf
 
   return (
     <div className="py-2 px-2 space-y-2">
-      <PageToolIcons scopeKey="Staff Meeting" />
+      <PageToolIcons scopeKey="Team Meeting" />
 
       <div className="bg-white border border-gray-200 rounded-lg px-2.5 py-2 space-y-1.5">
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">🗣️ Staff Meeting</p>
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">🗣️ Team Meeting</p>
 
         <div>
           <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Present</p>

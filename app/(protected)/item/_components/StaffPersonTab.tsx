@@ -57,12 +57,19 @@ const LogsPage = dynamic(() => import('../../logs/page'), {
 // independently now (Roles & Permissions screen) instead of one blanket
 // isBuilder flag, so a role can be granted Team without also getting Users.
 //
-// Rota/Dress Code/Staff Display/Staff Meeting/Tutorial/Company Laws/
-// Assessment/Logs moved here from Manage's own content (GronyManageTab) --
-// they're all about staff/the team as a whole, so they're gated by
-// canSeeTeam like the rest of this component instead of canSeeManage.
-// `canManage` and `staffRoster`/`routablePages` are only needed for Rota's
-// write actions and Staff Meeting's "discuss on page" picker respectively.
+// Team Rota/Team Dress Code/Team Display/Team Meeting/Team Tutorial/Team
+// Company Laws Agreement/Team Assessment/Team Logs moved here from
+// Manage's own content (GronyManageTab) -- they're all about staff/the
+// team as a whole, so they're gated by canSeeTeam like the rest of this
+// component instead of canSeeManage. Every "Staff ..." label became
+// "Team ..." (and every page-title/PageToolIcons scope alongside it, not
+// just the pane button -- a couple of existing custom tasks may need
+// re-finding under the new scope name as a result) -- Tutorial/Company
+// Laws Agreement/Assessment also lost their separate "Training" sub-header,
+// merging into this same flat list since they're no less "about the team"
+// than anything else here. `canManage` and `staffRoster`/`routablePages`
+// are only needed for Team Rota's write actions and Team Meeting's
+// "discuss on page" picker respectively.
 //
 // Team Payslips/Team Profiles are gated by `canManage` (owner-level only --
 // Grony/Joe), not `canSeeTeam` -- they're reached from Settings now (see
@@ -111,21 +118,21 @@ export default function StaffContent({
     {canManage && view === 'teamProfiles' && <TeamProfilesTab />}
     {canSeeTeam && view === 'allStaff' && <ViolationsTab role={role} username={username} />}
     {canSeeTeam && view === 'team_behaviour' && (<>
-      <ContentPage contentKey="team_behaviour_laws" title="🚦 Staff Behaviour Laws" submenu="Team Behaviour" />
+      <ContentPage contentKey="team_behaviour_laws" title="🚦 Team Behaviour Laws" submenu="Team Behaviour" />
       <ManageLogPanel category="team_behaviour_log" label="Behaviour Incidents" icon="🚦" />
     </>)}
-    {canSeeTeam && view === 'rota' && <div className="px-2 space-y-2 pt-2"><PageToolIcons scopeKey="Rota" /><RotaTab canManage={canManage} /></div>}
+    {canSeeTeam && view === 'rota' && <div className="px-2 space-y-2 pt-2"><PageToolIcons scopeKey="Team Rota" /><RotaTab canManage={canManage} /></div>}
     {canSeeTeam && view === 'staff_dress' && (<>
-      <div className="px-2 pt-2"><PageToolIcons scopeKey="Dress Code" /></div>
+      <div className="px-2 pt-2"><PageToolIcons scopeKey="Team Dress Code" /></div>
       <DressCodeFlagsPanel />
-      <ClosingReportLogView field="no_tshirt_staff" label="Dress Code" icon="👕" />
+      <ClosingReportLogView field="no_tshirt_staff" label="Team Dress Code" icon="👕" />
     </>)}
-    {canSeeTeam && view === 'staff_display' && <ManageLogPanel category="staff_display" label="Staff Display" icon="📌" />}
+    {canSeeTeam && view === 'staff_display' && <ManageLogPanel category="staff_display" label="Team Display" icon="📌" />}
     {canSeeTeam && view === 'staff_meeting' && <StaffMeetingPanel staffRoster={staffRoster} routablePages={routablePages} />}
-    {canSeeTeam && view === 'tutorial' && <ContentPage contentKey="training_tutorial" title="📖 App Tutorial" submenu="Tutorial" />}
-    {canSeeTeam && view === 'training_laws' && <ContentPage contentKey="training_laws" title="⚖️ Company Laws" submenu="Company Laws" />}
-    {canSeeTeam && view === 'assessment' && (<div className="px-2 pt-2"><PageToolIcons scopeKey="Assessment" /><AssessmentPanel /></div>)}
-    {canSeeTeam && view === 'logs' && <div className="px-2 space-y-2 pt-2"><PageToolIcons scopeKey="Logs" /><LogsPage /></div>}
+    {canSeeTeam && view === 'tutorial' && <ContentPage contentKey="training_tutorial" title="📖 Team Tutorial" submenu="Team Tutorial" />}
+    {canSeeTeam && view === 'training_laws' && <ContentPage contentKey="training_laws" title="⚖️ Team Company Laws Agreement" submenu="Team Company Laws Agreement" />}
+    {canSeeTeam && view === 'assessment' && (<div className="px-2 pt-2"><PageToolIcons scopeKey="Team Assessment" /><AssessmentPanel /></div>)}
+    {canSeeTeam && view === 'logs' && <div className="px-2 space-y-2 pt-2"><PageToolIcons scopeKey="Team Logs" /><LogsPage /></div>}
     {(canSeeUsers || canSeeRoles) && (view === 'users' || view === 'roles') && (
       <AccessPage initialTab={view === 'roles' ? 'roles' : 'users'} canSeeUsers={canSeeUsers} canSeeRoles={canSeeRoles} />
     )}
