@@ -121,6 +121,10 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
   const [staffFilter, setStaffFilter] = useState<string | null>(null)
   const [lastTap, setLastTap] = useState<Tap | null>(null)
   const [pendingItemId, setPendingItemId] = useState<number | null>(null)
+  // Which specific preset was tapped -- pendingItemId alone can't tell the
+  // pressed button apart from its siblings on the same row, which is why
+  // all of them dimmed together instead of just the one actually pressed.
+  const [pendingQty, setPendingQty] = useState<number | null>(null)
   const [undoingId, setUndoingId] = useState<number | null>(null)
   const [arranging, setArranging] = useState(false)
   // Large-screen mode -- overlays the whole viewport (fixed inset-0, above
@@ -239,6 +243,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
   async function tap(item: GridItem, quantity: number) {
     if (pendingItemId) return
     setPendingItemId(item.id)
+    setPendingQty(quantity)
     try {
       const res = await fetch('/api/sales/live-tap', {
         method: 'POST',
@@ -256,6 +261,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
       alert('Could not record tap')
     } finally {
       setPendingItemId(null)
+      setPendingQty(null)
     }
   }
 
@@ -475,28 +481,6 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                   <div key={it.id} className="w-full px-2 py-1.5 border-b border-gray-50 bg-white">
                     <div className="flex items-start gap-1.5">
                       {number}
-                      {/* Buttons sit to the left of the name now, in the
-                          space that used to just be the number index --
-                          wraps onto a second line within its own column
-                          if the item has more presets than fit next to a
-                          long name, instead of forcing the name down. */}
-                      <div className="shrink-0 flex flex-wrap items-center gap-1 max-w-[45%]">
-                        {qtyPresetsFor(it).map((q) => {
-                          const total = (Number(it.selling_price) || 0) * q
-                          return (
-                            <button
-                              key={q}
-                              type="button"
-                              onClick={() => tap(it, q)}
-                              disabled={pending}
-                              title={`${q} unit${q > 1 ? 's' : ''} · ${money(total)}`}
-                              className="min-w-[2rem] h-7 px-1.5 rounded-lg bg-blue-50 text-blue-700 text-[11px] font-bold flex items-center justify-center hover:bg-blue-100 active:bg-blue-200 active:scale-95 transition disabled:opacity-40"
-                            >
-                              {compactAmount(total)}
-                            </button>
-                          )
-                        })}
-                      </div>
                       <div className="flex-1 min-w-0 flex items-center gap-1">
                         {label}
                         {count > 0 && (
@@ -504,6 +488,33 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                             {count}
                           </span>
                         )}
+                      </div>
+                      {/* Buttons on the right -- wraps onto a second line
+                          within its own column if there are more presets
+                          than fit next to the name, instead of pushing the
+                          name over. The pressed one turns solid while its
+                          request is in flight so it reads as "that's the
+                          one I hit," instead of every button in the row
+                          dimming the same way together. */}
+                      <div className="shrink-0 flex flex-wrap items-center justify-end gap-1 max-w-[45%]">
+                        {qtyPresetsFor(it).map((q) => {
+                          const total = (Number(it.selling_price) || 0) * q
+                          const pressed = pending && pendingQty === q
+                          return (
+                            <button
+                              key={q}
+                              type="button"
+                              onClick={() => tap(it, q)}
+                              disabled={pending}
+                              title={`${q} unit${q > 1 ? 's' : ''} · ${money(total)}`}
+                              className={pressed
+                                ? 'min-w-[2rem] h-7 px-1.5 rounded-lg bg-blue-600 text-white text-[11px] font-bold flex items-center justify-center transition disabled:opacity-100'
+                                : 'min-w-[2rem] h-7 px-1.5 rounded-lg bg-blue-50 text-blue-700 text-[11px] font-bold flex items-center justify-center hover:bg-blue-100 active:bg-blue-200 active:scale-95 transition disabled:opacity-40'}
+                            >
+                              {compactAmount(total)}
+                            </button>
+                          )
+                        })}
                       </div>
                     </div>
                   </div>
