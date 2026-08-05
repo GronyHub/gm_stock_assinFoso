@@ -111,6 +111,7 @@ export async function GET() {
     unlinkedNamed,
     noAttachment,
     noVendorBills,
+    noItemsBills,
     highWnw,
   ] = await Promise.all([
 
@@ -318,6 +319,19 @@ export async function GET() {
       ORDER BY bill_date DESC
     `),
 
+    // 12b. Bills with a real total but no bill_lines resolving to an actual
+    // item -- either zero lines at all, or a placeholder line (e.g. a raw
+    // name like "Goods from X = 5390") that was never linked to one. Mostly
+    // historical pre-Zoho BIZIMS bills entered as a total with no itemized
+    // breakdown.
+    safeQuery(() => sql`
+      SELECT id, bill_number, vendor_name, bill_date::text AS bill_date, total
+      FROM bills b
+      WHERE COALESCE(b.total, 0) > 0
+        AND NOT EXISTS (SELECT 1 FROM bill_lines bl WHERE bl.bill_id = b.id AND bl.item_id IS NOT NULL)
+      ORDER BY bill_date DESC
+    `),
+
     // 13. Receipts where cash counted exceeds the recorded total by more
     // than ₵200 -- an unusually large excess worth a second look (recount,
     // or a sale that never got itemized).
@@ -420,6 +434,6 @@ export async function GET() {
     noCash, missingDays, duplicates: filteredDups, costGteSell, notInInventory, noGroup, noStaffTimes,
     uncheckedCab, dupReceipts, unlinkedNamed, groupNames: groupNames.map((r: any) => r.group_name),
     noAdvert, jingleOverdue, equipmentCheckOverdue, missingClosingReports,
-    shirtNotWorn, shirtOverdue, noAttachment, noVendorBills, highWnw,
+    shirtNotWorn, shirtOverdue, noAttachment, noVendorBills, noItemsBills, highWnw,
   })
 }

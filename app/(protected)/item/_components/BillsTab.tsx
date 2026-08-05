@@ -76,6 +76,7 @@ function fmt(val: string | null) {
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
 
 type NoVendorRow = { id: number; bill_number: string; bill_date: string; total: string }
+type NoItemsRow = { id: number; bill_number: string; vendor_name: string | null; bill_date: string; total: string }
 
 // Fix view for the "no_vendor" flag -- one row per bill missing a vendor,
 // with an inline input to set it (same PUT /api/bills/[id] the group bar's
@@ -149,11 +150,11 @@ export default function BillsTab({ items, groupFilter, search, violation = null 
   const [yearFilter, setYearFilter] = useState<number | null>(null)
   // null doubles as "loading" -- no separate loading flag needed since
   // there's nothing to distinguish "not fetched yet" from "fetching".
-  const [flags, setFlags] = useState<{ noVendorBills: NoVendorRow[] } | null>(null)
+  const [flags, setFlags] = useState<{ noVendorBills: NoVendorRow[]; noItemsBills: NoItemsRow[] } | null>(null)
   const colPrefs = useColumnPrefs<ColKey>('billsTab', COLUMNS)
 
   useEffect(() => {
-    if (violation === 'no_vendor' && !flags) {
+    if ((violation === 'no_vendor' || violation === 'no_items_bills') && !flags) {
       fetch('/api/flags').then(r => r.ok ? r.json() : null).then(d => { if (d) setFlags(d) })
     }
   }, [violation, flags])
@@ -370,6 +371,35 @@ export default function BillsTab({ items, groupFilter, search, violation = null 
                 <NoVendorFix key={b.id} b={b} onFixed={id =>
                   setFlags(f => f ? { ...f, noVendorBills: f.noVendorBills.filter(x => x.id !== id) } : f)
                 } />
+              ))}
+            </div>
+          ))}
+      </div>
+    )
+  }
+
+  if (violation === 'no_items_bills') {
+    const rows = flags?.noItemsBills ?? []
+    return (
+      <div className="overflow-y-auto h-full py-2">
+        <p className="text-[10px] text-gray-400 px-2 mb-1">
+          {!flags ? 'Loading…' : `${rows.length} bill${rows.length !== 1 ? 's' : ''} with a total but no item list`}
+        </p>
+        <p className="text-[9px] text-gray-400 px-2 mb-2">
+          Mostly historical bills entered as a lump total with no line-by-line breakdown -- there is no fix form here since adding items after the fact is not supported yet; this is a review list.
+        </p>
+        {flags && (rows.length === 0
+          ? <p className="py-4 text-center text-gray-400 text-[10px]">Every bill with a total has an item list.</p>
+          : (
+            <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
+              {rows.map(b => (
+                <div key={b.id} className="px-2 py-2 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold text-gray-700 truncate">{b.bill_number} · {fmtShort(b.bill_date)}</p>
+                    <p className="text-[9px] text-gray-400">{b.vendor_name ?? 'No vendor'}</p>
+                  </div>
+                  <p className="text-[10px] font-bold text-gray-700 shrink-0">₵{fmt(b.total)}</p>
+                </div>
               ))}
             </div>
           ))}
