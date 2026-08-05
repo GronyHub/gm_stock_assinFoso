@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { isOwnerLevel } from '@/lib/roles'
+import { ensureBillAttachmentsColumn, normalizeAttachments } from '@/lib/billAttachments'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -25,16 +26,23 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
-  const { bill_date, vendor_name, status } = await req.json()
+  const { bill_date, vendor_name, status, attachments } = await req.json()
+  // undefined (key omitted) leaves attachments untouched via COALESCE; an
+  // explicit [] (every attachment removed) still updates, since
+  // JSON.stringify([]) is the truthy string '[]', not null.
+  const attachmentsJson = attachments !== undefined ? JSON.stringify(normalizeAttachments(attachments)) : null
 
+  await ensureBillAttachmentsColumn()
   const [row] = await sql`
     UPDATE bills
     SET
       bill_date = COALESCE(${bill_date ?? null}, bill_date),
       vendor_name = COALESCE(${vendor_name ?? null}, vendor_name),
-      status = COALESCE(${status ?? null}, status)
+      status = COALESCE(${status ?? null}, status),
+      attachments = COALESCE(${attachmentsJson}::jsonb, attachments)
     WHERE id = ${Number(id)}
-    RETURNING id, bill_number, bill_date::date AS bill_date, vendor_name, total, status, entered_by
+    RETURNING id, bill_number, bill_date::date AS bill_date, vendor_name, total, status, entered_by,
+              COALESCE(attachments, '[]'::jsonb) AS attachments
   `
   const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
   await logActivity(actor, 'edited bill', `Bill #${id}${row.vendor_name ? ` — ${row.vendor_name}` : ''}`)

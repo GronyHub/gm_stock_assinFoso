@@ -32,6 +32,8 @@ export const SHORT_LABEL: Record<string, string> = {
   no_attachment: 'Missing Attachments',
   no_vendor: 'Bills Missing Vendor',
   no_items_bills: 'Bills With No Item List',
+  bill_total_mismatch: 'Bills With Total Mismatch',
+  bill_no_attachment: 'Bills Missing Attachment',
   high_wnw: 'WNW Over ₵200',
   daily: 'Daily Counts',
   '7day': '7-Day Counts',
@@ -65,7 +67,7 @@ const ALL_ERROR_TYPES = [
   'neg_soh', 'no_sp', 'no_cp', 'no_group', 'duplicates', 'not_in_inventory',
   'alias_prezoho_sales', 'alias_prezoho_bills', 'alias_prezoho_receipts', 'alias_flagged', 'alias_ambiguous', 'alias_name_conflicts',
   'unlinked_named', 'service_violation', 'gains', 'daily', '7day', '15day',
-  'no_cash', 'missing_days', 'cost_gte_sell', 'dup_receipts', 'no_attachment', 'no_vendor', 'no_items_bills', 'high_wnw',
+  'no_cash', 'missing_days', 'cost_gte_sell', 'dup_receipts', 'no_attachment', 'no_vendor', 'no_items_bills', 'bill_total_mismatch', 'bill_no_attachment', 'high_wnw',
   'unchecked_cab', 'no_staff_times', 'no_advert', 'jingle_overdue', 'equipment_check_overdue',
   'shirt_not_worn', 'shirt_overdue',
 ]
@@ -102,7 +104,7 @@ export const SUBMENU_HOME: Record<string, string> = {
   daily: 'Counts', '7day': 'Counts', '15day': 'Counts',
   gains: 'Loss by Date',
   no_cash: 'Sales', missing_days: 'Sales', cost_price: 'Sales', dup_receipt: 'Sales', no_attachment: 'Sales',
-  no_vendor: 'Bills', no_items_bills: 'Bills',
+  no_vendor: 'Bills', no_items_bills: 'Bills', bill_total_mismatch: 'Bills', bill_no_attachment: 'Bills',
   high_wnw: 'Sales',
   unchecked_cab: 'CAB',
   no_staff_times: 'Team',
@@ -237,6 +239,16 @@ export function useViolations(counts?: Record<string, number>) {
       type: 'no_items_bills',
       label: 'bill' + (flags.noItemsBills.length !== 1 ? 's' : '') + ' with a total but no item list',
       count: flags.noItemsBills.length, days: oldestDays(flags.noItemsBills, 'bill_date'),
+    })
+    if (flags.billTotalMismatch?.length) list.push({
+      type: 'bill_total_mismatch',
+      label: 'bill' + (flags.billTotalMismatch.length !== 1 ? 's' : '') + ' whose items don\'t add up to the total',
+      count: flags.billTotalMismatch.length, days: oldestDays(flags.billTotalMismatch, 'bill_date'),
+    })
+    if (flags.billNoAttachment?.length) list.push({
+      type: 'bill_no_attachment',
+      label: 'bill' + (flags.billNoAttachment.length !== 1 ? 's' : '') + ' with no receipt attached',
+      count: flags.billNoAttachment.length, days: oldestDays(flags.billNoAttachment, 'bill_date'),
     })
     if (flags.highWnw?.length) list.push({
       type: 'high_wnw',

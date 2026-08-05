@@ -6,6 +6,7 @@ import { isOwnerLevel } from '@/lib/roles'
 import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from './columnPrefs'
+import { useAttachments, AttachmentPicker, type Attachment } from './attachmentsShared'
 
 type Item = { id: number; item_name: string; cf_group: string | null }
 
@@ -27,6 +28,7 @@ type Bill = {
   total: string
   status: string
   entered_by: string | null
+  attachments: Attachment[]
 }
 
 type BillLine = {
@@ -75,8 +77,12 @@ function fmt(val: string | null) {
 
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
 
+const BILLS_FLAG_VIOLATIONS = new Set(['no_vendor', 'no_items_bills', 'bill_total_mismatch', 'bill_no_attachment'])
+
 type NoVendorRow = { id: number; bill_number: string; bill_date: string; total: string }
 type NoItemsRow = { id: number; bill_number: string; vendor_name: string | null; bill_date: string; total: string }
+type MismatchRow = { id: number; bill_number: string; vendor_name: string | null; bill_date: string; total: string; lines_total: string }
+type NoAttachmentRow = { id: number; bill_number: string; vendor_name: string | null; bill_date: string; total: string }
 
 // Fix view for the "no_vendor" flag -- one row per bill missing a vendor,
 // with an inline input to set it (same PUT /api/bills/[id] the group bar's
@@ -118,6 +124,46 @@ function NoVendorFix({ b, onFixed }: { b: NoVendorRow; onFixed: (id: number) => 
   )
 }
 
+// Fix view for the "bill_no_attachment" flag -- one row per bill with no
+// receipt/scan attached, with an inline upload button (same shared
+// AttachmentPicker/useAttachments Sales already uses, pointed at
+// /api/bills/upload instead).
+function NoAttachmentFix({ b, onFixed }: { b: NoAttachmentRow; onFixed: (id: number) => void }) {
+  const att = useAttachments([], '/api/bills/upload')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  async function save() {
+    if (att.saved.length === 0) { setError('Attach at least one file first.'); return }
+    setSaving(true)
+    setError('')
+    const res = await fetch(`/api/bills/${b.id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ attachments: att.saved }),
+    })
+    setSaving(false)
+    if (res.ok) onFixed(b.id)
+    else setError('Could not save. Try again.')
+  }
+
+  return (
+    <div className="px-2 py-2 space-y-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold text-gray-700 truncate">{b.bill_number} · {fmtShort(b.bill_date)}</p>
+          <p className="text-[9px] text-gray-400">{b.vendor_name ?? 'No vendor'} · ₵{fmt(b.total)}</p>
+        </div>
+      </div>
+      <AttachmentPicker items={att.items} onAdd={att.addFiles} onRemove={att.remove} disabled={saving} />
+      <button onClick={save} disabled={saving || att.isUploading || att.saved.length === 0}
+        className="text-[9px] font-bold px-2 py-1 rounded bg-green-600 text-white disabled:opacity-40">
+        {saving ? 'Saving…' : 'Save'}
+      </button>
+      {error && <p className="text-[9px] text-red-600">{error}</p>}
+    </div>
+  )
+}
+
 type Props = {
   items: Item[]
   groupFilter: string | null
@@ -136,6 +182,7 @@ export default function BillsTab({ items, groupFilter, search, violation = null 
   // rather than by clicking any line -- keyed by bill id directly.
   const [editingBillId, setEditingBillId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState({ bill_date: '', vendor_name: '' })
+  const editAttachments = useAttachments([], '/api/bills/upload')
   const [saving, setSaving] = useState(false)
   // Collapses every group down to just its header bar (Date/Vendor/Total) --
   // the item lines beneath stay hidden until toggled back on, same pattern
@@ -150,11 +197,14 @@ export default function BillsTab({ items, groupFilter, search, violation = null 
   const [yearFilter, setYearFilter] = useState<number | null>(null)
   // null doubles as "loading" -- no separate loading flag needed since
   // there's nothing to distinguish "not fetched yet" from "fetching".
-  const [flags, setFlags] = useState<{ noVendorBills: NoVendorRow[]; noItemsBills: NoItemsRow[] } | null>(null)
+  const [flags, setFlags] = useState<{
+    noVendorBills: NoVendorRow[]; noItemsBills: NoItemsRow[]
+    billTotalMismatch: MismatchRow[]; billNoAttachment: NoAttachmentRow[]
+  } | null>(null)
   const colPrefs = useColumnPrefs<ColKey>('billsTab', COLUMNS)
 
   useEffect(() => {
-    if ((violation === 'no_vendor' || violation === 'no_items_bills') && !flags) {
+    if (violation && BILLS_FLAG_VIOLATIONS.has(violation) && !flags) {
       fetch('/api/flags').then(r => r.ok ? r.json() : null).then(d => { if (d) setFlags(d) })
     }
   }, [violation, flags])
@@ -314,6 +364,7 @@ export default function BillsTab({ items, groupFilter, search, violation = null 
     if (editingBillId === billId) { setEditingBillId(null); return }
     const b = billsById[billId]
     setEditForm({ bill_date: b?.bill_date?.slice(0, 10) ?? '', vendor_name: b?.vendor_name ?? '' })
+    editAttachments.reset(b?.attachments ?? [])
     setEditingBillId(billId)
   }
 
@@ -329,7 +380,10 @@ export default function BillsTab({ items, groupFilter, search, violation = null 
     setSaving(true)
     const res = await fetch(`/api/bills/${billId}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bill_date: editForm.bill_date || undefined, vendor_name: editForm.vendor_name || null }),
+      body: JSON.stringify({
+        bill_date: editForm.bill_date || undefined, vendor_name: editForm.vendor_name || null,
+        attachments: editAttachments.saved,
+      }),
     })
     setSaving(false)
     if (res.ok) {
@@ -400,6 +454,63 @@ export default function BillsTab({ items, groupFilter, search, violation = null 
                   </div>
                   <p className="text-[10px] font-bold text-gray-700 shrink-0">₵{fmt(b.total)}</p>
                 </div>
+              ))}
+            </div>
+          ))}
+      </div>
+    )
+  }
+
+  if (violation === 'bill_total_mismatch') {
+    const rows = flags?.billTotalMismatch ?? []
+    return (
+      <div className="overflow-y-auto h-full py-2">
+        <p className="text-[10px] text-gray-400 px-2 mb-1">
+          {!flags ? 'Loading…' : `${rows.length} bill${rows.length !== 1 ? 's' : ''} whose items don't add up to the total`}
+        </p>
+        <p className="text-[9px] text-gray-400 px-2 mb-2">
+          Check the bill against the actual receipt -- a missing line, a wrong price/qty, or a total typed wrong could each explain the gap.
+        </p>
+        {flags && (rows.length === 0
+          ? <p className="py-4 text-center text-gray-400 text-[10px]">Every bill&apos;s items add up to its total.</p>
+          : (
+            <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
+              {rows.map(b => {
+                const diff = parseFloat(b.total) - parseFloat(b.lines_total)
+                return (
+                  <div key={b.id} className="px-2 py-2 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-semibold text-gray-700 truncate">{b.bill_number} · {fmtShort(b.bill_date)}</p>
+                      <p className="text-[9px] text-gray-400">{b.vendor_name ?? 'No vendor'}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-[10px] font-bold text-gray-700">Total ₵{fmt(b.total)} · Items ₵{fmt(b.lines_total)}</p>
+                      <p className="text-[9px] font-semibold text-red-600">{diff > 0 ? `₵${fmt(diff.toFixed(2))} short` : `₵${fmt((-diff).toFixed(2))} over`}</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ))}
+      </div>
+    )
+  }
+
+  if (violation === 'bill_no_attachment') {
+    const rows = flags?.billNoAttachment ?? []
+    return (
+      <div className="overflow-y-auto h-full py-2">
+        <p className="text-[10px] text-gray-400 px-2 mb-1">
+          {!flags ? 'Loading…' : `${rows.length} bill${rows.length !== 1 ? 's' : ''} with no receipt attached`}
+        </p>
+        {flags && (rows.length === 0
+          ? <p className="py-4 text-center text-gray-400 text-[10px]">Every bill has a receipt attached.</p>
+          : (
+            <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
+              {rows.map(b => (
+                <NoAttachmentFix key={b.id} b={b} onFixed={id =>
+                  setFlags(f => f ? { ...f, billNoAttachment: f.billNoAttachment.filter(x => x.id !== id) } : f)
+                } />
               ))}
             </div>
           ))}
@@ -521,6 +632,11 @@ export default function BillsTab({ items, groupFilter, search, violation = null 
                         <p className="text-[9px] text-gray-400 mb-0.5">Vendor</p>
                         <input value={editForm.vendor_name} autoComplete="off"
                           onChange={e => setEditForm(f => ({ ...f, vendor_name: e.target.value }))} className={inputCls} />
+                      </div>
+                      <div>
+                        <p className="text-[9px] text-gray-400 mb-0.5">Receipt</p>
+                        <AttachmentPicker items={editAttachments.items} onAdd={editAttachments.addFiles}
+                          onRemove={editAttachments.remove} disabled={saving} />
                       </div>
                       <div className="flex gap-1">
                         <button onClick={() => saveEdit(g.editBillId)} disabled={saving}

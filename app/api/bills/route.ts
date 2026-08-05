@@ -1,19 +1,23 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
+import { ensureBillAttachmentsColumn } from '@/lib/billAttachments'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET() {
+  await ensureBillAttachmentsColumn()
   try {
     const rows = await sql`
-      SELECT id, bill_number, bill_date::date AS bill_date, vendor_name, total, status, entered_by
+      SELECT id, bill_number, bill_date::date AS bill_date, vendor_name, total, status, entered_by,
+             COALESCE(attachments, '[]'::jsonb) AS attachments
       FROM bills
       ORDER BY bill_date DESC, id DESC
     `
     return NextResponse.json(rows)
   } catch {
     const rows = await sql`
-      SELECT id, bill_number, bill_date::date AS bill_date, vendor_name, total, status, NULL AS entered_by
+      SELECT id, bill_number, bill_date::date AS bill_date, vendor_name, total, status, NULL AS entered_by,
+             COALESCE(attachments, '[]'::jsonb) AS attachments
       FROM bills
       ORDER BY bill_date DESC, id DESC
     `

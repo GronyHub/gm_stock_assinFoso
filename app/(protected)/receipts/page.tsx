@@ -160,8 +160,17 @@ function NewReceiptForm({ onCreated, onCancel }: { onCreated: (r: Receipt) => vo
 
   async function submit() {
     setError(null)
-    if (!invoiceNumber.trim() || !customerName.trim()) {
-      setError('Receipt number and customer name are required.')
+    if (!invoiceNumber.trim()) {
+      setError('Receipt number is required.')
+      return
+    }
+    // A typed name alone isn't enough -- either pick an existing customer
+    // from the dropdown or use "+ Add as a new customer" so it actually
+    // gets saved and linked (customerId set), rather than leaving this
+    // receipt referencing a name with no real customer record behind it.
+    if (customerId == null) {
+      setError('Pick an existing customer or add a new one before saving.')
+      setCustomerDropdownOpen(true)
       return
     }
     const validLines = lines.filter(l => l.item.trim() && Number(l.qty) > 0)
@@ -237,7 +246,7 @@ function NewReceiptForm({ onCreated, onCancel }: { onCreated: (r: Receipt) => vo
       </div>
 
       <div className="relative" ref={customerBoxRef}>
-        <label className={labelCls}>Customer Name</label>
+        <label className={labelCls}>Customer — pick an existing one or add a new one</label>
         <input value={customerName}
           onChange={e => { setCustomerName(e.target.value); setCustomerId(null); setCustomerDropdownOpen(true) }}
           onFocus={() => setCustomerDropdownOpen(true)}

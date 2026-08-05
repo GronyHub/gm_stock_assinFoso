@@ -49,11 +49,11 @@ async function compressIfNeeded(file: File): Promise<File> {
   }
 }
 
-async function uploadAttempt(file: File): Promise<Attachment> {
+async function uploadAttempt(file: File, endpoint: string): Promise<Attachment> {
   const toSend = await compressIfNeeded(file)
   const fd = new FormData()
   fd.append('file', toSend)
-  const res = await fetch('/api/sales/upload', { method: 'POST', body: fd })
+  const res = await fetch(endpoint, { method: 'POST', body: fd })
   const data = await res.json()
   if (!res.ok) throw new Error(data.error ?? 'Upload failed')
   return { url: data.url, type: data.contentType, name: data.name ?? file.name }
@@ -66,13 +66,13 @@ async function uploadAttempt(file: File): Promise<Attachment> {
 // background, and the very first read can fail transiently while that
 // finishes. One quiet retry, after giving it a moment, clears this up
 // without the caller needing to notice or re-pick the file themselves.
-export async function uploadAttachment(file: File): Promise<Attachment> {
+export async function uploadAttachment(file: File, endpoint: string = '/api/sales/upload'): Promise<Attachment> {
   try {
-    return await uploadAttempt(file)
+    return await uploadAttempt(file, endpoint)
   } catch {
     await new Promise(r => setTimeout(r, 1200))
     try {
-      return await uploadAttempt(file)
+      return await uploadAttempt(file, endpoint)
     } catch (e) {
       // A bare "Failed to fetch" surviving both attempts is the browser
       // aborting the request itself rather than a server-side rejection --
@@ -86,7 +86,7 @@ export async function uploadAttachment(file: File): Promise<Attachment> {
   }
 }
 
-export function useAttachments(initial: Attachment[] = []) {
+export function useAttachments(initial: Attachment[] = [], endpoint: string = '/api/sales/upload') {
   const [items, setItems] = useState<PendingAttachment[]>(initial.map(toPending))
 
   // Re-seeds the list -- called from an "edit" entry point (e.g. startEdit
@@ -100,7 +100,7 @@ export function useAttachments(initial: Attachment[] = []) {
     const localUrl = URL.createObjectURL(file)
     setItems(prev => [...prev, { url: '', type: file.type, name: file.name, localUrl, uploading: true }])
     try {
-      const data = await uploadAttachment(file)
+      const data = await uploadAttachment(file, endpoint)
       setItems(prev => prev.map(m => m.localUrl === localUrl
         ? { ...m, uploading: false, url: data.url, type: data.type, name: data.name }
         : m))

@@ -3,6 +3,7 @@ import { ensureAdvertStatusTable } from '@/lib/advertStatus'
 import { ensureManageLogs } from '@/lib/manageLogs'
 import { ensureClosingReports } from '@/lib/closingReports'
 import { ensureSalesAttachmentsColumn } from '@/lib/salesAttachments'
+import { ensureBillAttachmentsColumn } from '@/lib/billAttachments'
 import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -97,6 +98,7 @@ function shouldKeepPair(n1: string, n2: string): boolean {
 
 export async function GET() {
   await ensureSalesAttachmentsColumn()
+  await ensureBillAttachmentsColumn()
 
   const [
     noCash,
@@ -112,6 +114,8 @@ export async function GET() {
     noAttachment,
     noVendorBills,
     noItemsBills,
+    billTotalMismatch,
+    billNoAttachment,
     highWnw,
   ] = await Promise.all([
 
@@ -332,6 +336,30 @@ export async function GET() {
       ORDER BY bill_date DESC
     `),
 
+    // 12c. Bills whose resolved line-item total doesn't match the bill's
+    // own recorded total -- a real discrepancy (a missing line, a wrong
+    // price/qty, or a total that was typed wrong). Bills with no resolved
+    // lines at all are already covered by the "No Items" flag above, so
+    // those are excluded here to avoid double-flagging the same bill under
+    // two different names. A small tolerance (₵1) absorbs rounding.
+    safeQuery(() => sql`
+      SELECT b.id, b.bill_number, b.vendor_name, b.bill_date::text AS bill_date, b.total,
+        (SELECT COALESCE(SUM(bl.item_total), 0) FROM bill_lines bl WHERE bl.bill_id = b.id AND bl.item_id IS NOT NULL) AS lines_total
+      FROM bills b
+      WHERE EXISTS (SELECT 1 FROM bill_lines bl WHERE bl.bill_id = b.id AND bl.item_id IS NOT NULL)
+        AND ABS(COALESCE(b.total, 0) - (SELECT COALESCE(SUM(bl.item_total), 0) FROM bill_lines bl WHERE bl.bill_id = b.id AND bl.item_id IS NOT NULL)) > 1
+      ORDER BY bill_date DESC
+    `),
+
+    // 12d. Bills with a real total but no receipt/scan attached.
+    safeQuery(() => sql`
+      SELECT id, bill_number, vendor_name, bill_date::text AS bill_date, total
+      FROM bills
+      WHERE COALESCE(total, 0) > 0
+        AND (attachments IS NULL OR jsonb_array_length(attachments) = 0)
+      ORDER BY bill_date DESC
+    `),
+
     // 13. Receipts where cash counted exceeds the recorded total by more
     // than ₵200 -- an unusually large excess worth a second look (recount,
     // or a sale that never got itemized).
@@ -434,6 +462,6 @@ export async function GET() {
     noCash, missingDays, duplicates: filteredDups, costGteSell, notInInventory, noGroup, noStaffTimes,
     uncheckedCab, dupReceipts, unlinkedNamed, groupNames: groupNames.map((r: any) => r.group_name),
     noAdvert, jingleOverdue, equipmentCheckOverdue, missingClosingReports,
-    shirtNotWorn, shirtOverdue, noAttachment, noVendorBills, noItemsBills, highWnw,
+    shirtNotWorn, shirtOverdue, noAttachment, noVendorBills, noItemsBills, billTotalMismatch, billNoAttachment, highWnw,
   })
 }

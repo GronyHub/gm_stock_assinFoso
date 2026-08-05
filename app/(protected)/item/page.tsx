@@ -330,6 +330,14 @@ const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCategory; d
     description: "This bill has a total amount but no item list -- either no lines at all, or a placeholder line (like 'Goods from X = amount') that was never linked to a real item. Mostly historical pre-Zoho bills entered as a lump total with no breakdown. These are excluded from the Pre-Zoho Bills alias review, since there's no real item name here to match.",
   },
   {
+    key: 'bill_total_mismatch', label: 'Total Mismatch', category: 'bills',
+    description: "This bill's item lines don't add up to its recorded total -- a missing line, a wrong price or quantity, or a total that was typed wrong. Check the bill against the actual receipt and correct whichever side is wrong.",
+  },
+  {
+    key: 'bill_no_attachment', label: 'No Attachment', category: 'bills',
+    description: 'This bill has no receipt or scan attached, so there is nothing to check its entered details against later. Attach a photo or scan of the actual receipt.',
+  },
+  {
     key: 'unchecked_cab', label: 'Unchecked CAB', category: 'cab',
     description: 'A week has passed without anyone confirming the Cash at Bank entry, so nobody has verified that the bank balance matches what the shop expects. Review that week and confirm it.',
   },
@@ -354,7 +362,7 @@ const VIOLATION_HOME: Partial<Record<string, LossView>> = {
   daily: 'counts', '7day': 'counts', '15day': 'counts',
   gains: 'feed',
   no_cash: 'sales', missing_days: 'sales', cost_price: 'sales', dup_receipt: 'sales', no_attachment: 'sales', high_wnw: 'sales',
-  no_vendor: 'bills', no_items_bills: 'bills',
+  no_vendor: 'bills', no_items_bills: 'bills', bill_total_mismatch: 'bills', bill_no_attachment: 'bills',
   unchecked_cab: 'cab',
 }
 
@@ -369,7 +377,7 @@ const LOSSVIEW_PILL_KEYS: Partial<Record<LossView, string[]>> = {
   counts: ['daily', '7day', '15day'],
   feed: ['gains'],
   sales: ['no_cash', 'missing_days', 'cost_price', 'dup_receipt', 'no_attachment', 'high_wnw'],
-  bills: ['no_vendor', 'no_items_bills'],
+  bills: ['no_vendor', 'no_items_bills', 'bill_total_mismatch', 'bill_no_attachment'],
   cab: ['unchecked_cab'],
 }
 
@@ -409,6 +417,8 @@ const ITEMS_FLAG_TYPES: { key: string; letter: string; label: string }[] = [
 const BILLS_FLAG_TYPES: { key: string; letter: string; label: string }[] = [
   { key: 'no_vendor', letter: 'V', label: 'No Vendor Recorded' },
   { key: 'no_items_bills', letter: 'I', label: 'No Item List' },
+  { key: 'bill_total_mismatch', letter: 'T', label: 'Total Mismatch' },
+  { key: 'bill_no_attachment', letter: 'A', label: 'No Attachment' },
 ]
 
 const VALID_TABS: OuterTab[] = ['today', 'loss', 'uk', 'ch']
@@ -764,6 +774,8 @@ function ItemHubPageInner() {
       high_wnw: f?.highWnw?.length ?? 0,
       no_vendor: f?.noVendorBills?.length ?? 0,
       no_items_bills: f?.noItemsBills?.length ?? 0,
+      bill_total_mismatch: f?.billTotalMismatch?.length ?? 0,
+      bill_no_attachment: f?.billNoAttachment?.length ?? 0,
       daily: pendingCounts.daily,
       '7day': pendingCounts.gmcWeekly,
       '15day': pendingCounts.overdue,
@@ -790,7 +802,7 @@ function ItemHubPageInner() {
     'no_group', 'duplicates', 'not_in_inventory', 'neg_soh', 'no_sp', 'no_cp', 'unlinked_named', 'service_violation',
     'alias_prezoho_sales', 'alias_prezoho_bills', 'alias_prezoho_receipts', 'alias_flagged', 'alias_ambiguous',
   ]) + nameConflictsCount
-  const billsFlagsCount = violationCountByType(['no_vendor', 'no_items_bills'])
+  const billsFlagsCount = violationCountByType(['no_vendor', 'no_items_bills', 'bill_total_mismatch', 'bill_no_attachment'])
   const cabFlagsCount = violationCountByType(['unchecked_cab'])
   const staffTimesFlagsCount = violationCountByType(['no_staff_times'])
   const dressFlagsCount = violationCountByType(['shirt_not_worn', 'shirt_overdue'])
