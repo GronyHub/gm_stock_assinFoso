@@ -8,6 +8,18 @@ import type { UKColumn, UKRow, UKSubmenu } from './ukViewData'
 const isUrlLike = (v: string) => /^https?:\/\//i.test(v.trim()) || /^www\./i.test(v.trim())
 const toHref = (v: string) => /^https?:\/\//i.test(v.trim()) ? v.trim() : `https://${v.trim()}`
 
+// Cells used to be a single-line <input> -- longer notes (multi-part to-dos,
+// addresses, anything past the visible width) just scrolled off-screen with
+// no visual sign there was more, unless you happened to click in and arrow
+// past the edge. Growing the textarea's own height to fit its content on
+// every keystroke (and on first render) means the whole value is always on
+// screen, wrapped, instead of hidden past an invisible edge.
+function autoGrow(el: HTMLTextAreaElement | null) {
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = `${el.scrollHeight}px`
+}
+
 // The editable columns+rows table for one selected submenu -- split out of
 // UKTab.tsx so CHTab.tsx can render the exact same table for Fiifi/Kuukua/
 // Ebo/Odoye's submenus (moved there from UK, see chViewData.ts's
@@ -59,18 +71,19 @@ export default function SubmenuTable({ submenu, columns, rows, editCell, saveCel
                       const key = `${r.id}-${c.id}`
                       const showAsLink = isUrlLike(val) && editingCellKey !== key
                       return (
-                        <td key={c.id} className="px-1 py-1">
+                        <td key={c.id} className="px-1 py-1 align-top">
                           {showAsLink ? (
                             <div className="flex items-center gap-1 px-2 py-1.5">
                               <a href={toHref(val)} target="_blank" rel="noopener noreferrer"
-                                className="text-xs text-blue-600 underline truncate max-w-[140px]">{val}</a>
+                                className="text-xs text-blue-600 underline break-all">{val}</a>
                               <button onClick={() => setEditingCellKey(key)} className="text-gray-300 hover:text-gray-600 shrink-0" title="Edit">✎</button>
                             </div>
                           ) : (
-                            <input value={val} autoFocus={editingCellKey === key}
-                              onChange={e => editCell(r.id, c.id, e.target.value)}
+                            <textarea value={val} autoFocus={editingCellKey === key} rows={1}
+                              ref={autoGrow}
+                              onChange={e => { editCell(r.id, c.id, e.target.value); autoGrow(e.target) }}
                               onBlur={e => { saveCell(r.id, c.id, e.target.value); setEditingCellKey(null) }}
-                              className="w-full min-w-[80px] text-xs px-2 py-1.5 rounded-lg border border-transparent hover:border-gray-200 focus:border-blue-300 outline-none" />
+                              className="w-full min-w-[80px] text-xs px-2 py-1.5 rounded-lg border border-transparent hover:border-gray-200 focus:border-blue-300 outline-none resize-none overflow-hidden whitespace-pre-wrap break-words" />
                           )}
                         </td>
                       )
