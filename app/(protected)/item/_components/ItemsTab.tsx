@@ -12,6 +12,7 @@ import PageToolIcons from './PageToolIcons'
 // row -- this maps a "Fix now" click on any of the four back to which
 // AliasesTab sub-tab it should open on.
 const ALIAS_VIOLATION_TAB: Record<string, string> = {
+  alias_prezoho: 'prezoho-sales',
   alias_prezoho_sales: 'prezoho-sales',
   alias_prezoho_bills: 'prezoho-bills',
   alias_prezoho_receipts: 'prezoho-receipts',

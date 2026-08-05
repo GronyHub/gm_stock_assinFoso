@@ -247,6 +247,10 @@ const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCategory; d
     description: 'These look like the same product entered twice under slightly different names, which splits one item into two separate sales and stock records. Review each pair and merge or rename them into a single canonical item.',
   },
   {
+    key: 'alias_prezoho', label: 'Unresolved Names', category: 'loss',
+    description: "A pre-Zoho sale, bill, or receipt used an item name that did not exactly match anything in the item list, so the system flagged it as unresolved instead of guessing. Combines the Sales/Bills/Receipts sources into one count -- switch between them with the tabs at the top of this panel. Confirm the correct match so it counts toward the right item's reports going forward.",
+  },
+  {
     key: 'alias_prezoho_sales', label: 'Pre-Zoho Sales', category: 'loss',
     description: "A pre-Zoho sales receipt used an item name that did not exactly match anything in the item list, so the system flagged it as unresolved instead of guessing. Confirm the correct match so it counts toward the right item's reports going forward.",
   },
@@ -342,6 +346,7 @@ const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCategory; d
 const VIOLATION_HOME: Partial<Record<string, LossView>> = {
   neg_soh: 'items', no_sp: 'items', no_cp: 'items', no_group: 'items',
   duplicates: 'items', unlinked_named: 'items', service_violation: 'items',
+  alias_prezoho: 'items',
   alias_prezoho_sales: 'items', alias_prezoho_bills: 'items', alias_prezoho_receipts: 'items', alias_flagged: 'items', alias_ambiguous: 'items',
   daily: 'counts', '7day': 'counts', '15day': 'counts',
   gains: 'feed',
@@ -356,7 +361,7 @@ const VIOLATION_HOME: Partial<Record<string, LossView>> = {
 const LOSSVIEW_PILL_KEYS: Partial<Record<LossView, string[]>> = {
   items: [
     'neg_soh', 'no_sp', 'no_cp', 'no_group', 'duplicates', 'unlinked_named', 'service_violation',
-    'alias_prezoho_sales', 'alias_prezoho_bills', 'alias_prezoho_receipts', 'alias_flagged', 'alias_ambiguous',
+    'alias_prezoho', 'alias_prezoho_sales', 'alias_prezoho_bills', 'alias_prezoho_receipts', 'alias_flagged', 'alias_ambiguous',
   ],
   counts: ['daily', '7day', '15day'],
   feed: ['gains'],
@@ -389,9 +394,7 @@ const ITEMS_FLAG_TYPES: { key: string; letter: string; label: string }[] = [
   { key: 'duplicates', letter: 'D', label: 'Duplicate Items' },
   { key: 'unlinked_named', letter: 'U', label: 'Unlinked Sales' },
   { key: 'service_violation', letter: 'V', label: 'Service Violations' },
-  { key: 'alias_prezoho_sales', letter: 'A', label: 'Pre-Zoho Sales Aliases' },
-  { key: 'alias_prezoho_bills', letter: 'B', label: 'Pre-Zoho Bills Aliases' },
-  { key: 'alias_prezoho_receipts', letter: 'R', label: 'Pre-Zoho Receipts Aliases' },
+  { key: 'alias_prezoho', letter: 'A', label: 'Unresolved Names (Sales/Bills/Receipts)' },
   { key: 'alias_flagged', letter: 'F', label: 'Flagged Aliases' },
   { key: 'alias_ambiguous', letter: 'M', label: 'Ambiguous Aliases' },
 ]
@@ -717,6 +720,7 @@ function ItemHubPageInner() {
       no_group: f?.noGroup?.length ?? 0,
       duplicates: f?.duplicates?.length ?? 0,
       unlinked_named: f?.unlinkedNamed?.length ?? 0,
+      alias_prezoho: prezohoSalesCount + prezohoBillsCount + prezohoReceiptsCount,
       alias_prezoho_sales: prezohoSalesCount,
       alias_prezoho_bills: prezohoBillsCount,
       alias_prezoho_receipts: prezohoReceiptsCount,
