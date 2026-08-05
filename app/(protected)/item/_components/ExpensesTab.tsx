@@ -2,6 +2,7 @@
 import { Fragment, useState, useEffect, useMemo, useRef } from 'react'
 import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
+import ExpenseOrdersPanel from './ExpenseOrdersPanel'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, ColResizeHandle, type ColumnDef, type ColumnPrefs } from './columnPrefs'
 
 type Expense = {
@@ -321,6 +322,7 @@ export default function ExpensesTab({ search }: Props) {
   const [loading, setLoading] = useState(true)
   const [groupBy, setGroupBy] = useState<'none' | 'account' | 'vendor'>('none')
   const [showHistory, setShowHistory] = useState(false)
+  const [showOrders, setShowOrders] = useState(false)
   const [highlightId, setHighlightId] = useState<number | null>(null)
   const [editId, setEditId] = useState<number | null>(null)
   const [form, setForm] = useState({ ...EMPTY_FORM })
@@ -526,7 +528,12 @@ export default function ExpensesTab({ search }: Props) {
           Non-Properties
         </label>
         <div className="w-px h-3 bg-gray-300 shrink-0" />
-        <button onClick={() => setShowHistory(h => !h)}
+        <button onClick={() => { setShowOrders(o => !o); setShowHistory(false) }}
+          className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition
+            ${showOrders ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
+          Expense Orders
+        </button>
+        <button onClick={() => { setShowHistory(h => !h); setShowOrders(false) }}
           className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition
             ${showHistory ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
           History
@@ -534,6 +541,8 @@ export default function ExpensesTab({ search }: Props) {
         <span className="ml-auto text-[9px] text-gray-400">{filtered.length} records</span>
         <ColumnsPickerButton prefs={colPrefs} />
       </div>
+
+      {showOrders && <div className="flex-1 overflow-y-auto min-h-0"><ExpenseOrdersPanel /></div>}
 
       {showHistory && <HistoryPanel keywords={['expense']} onEntryClick={log => {
         // "added expense": "account · ₵200 on 2024-01-15"
@@ -554,7 +563,7 @@ export default function ExpensesTab({ search }: Props) {
         }
       }} />}
 
-      {!showHistory && <div className="flex-1 overflow-y-auto min-h-0 p-2">
+      {!showHistory && !showOrders && <div className="flex-1 overflow-y-auto min-h-0 p-2">
         {groupBy !== 'none' ? (
           grouped.length === 0
             ? <p className="text-xs text-gray-400 text-center py-10">No expenses</p>

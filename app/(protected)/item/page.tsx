@@ -1775,7 +1775,7 @@ function ItemHubPageInner() {
           </TabErrorBoundary>
         )}
         {outerTab === 'uk' && (
-          <TabErrorBoundary><UKTab uk={uk} /></TabErrorBoundary>
+          <TabErrorBoundary><UKTab /></TabErrorBoundary>
         )}
         {outerTab === 'ch' && (
           <TabErrorBoundary><CHTab view={lossView as CHView} childData={ch} /></TabErrorBoundary>
