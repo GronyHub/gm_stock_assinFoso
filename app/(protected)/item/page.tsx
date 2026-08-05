@@ -1473,6 +1473,37 @@ function ItemHubPageInner() {
                   each other for width, squeezing Search down to nothing on a phone. */}
               {showControls && (
                 <div className="flex flex-col gap-1.5 px-2 py-1.5">
+                {/* Top row: this page's Law/Notes/Tasks icons + its own
+                    individual flag pills, both above Groups/Search now
+                    instead of the pills sitting below Columns/Analytics/New
+                    and Law/Notes/Tasks not being reachable from this list at
+                    all. Pills are sorted by count descending each render --
+                    whichever violation is worst right now leads, instead of
+                    a fixed N/S/C/G/... order that doesn't reflect what
+                    actually needs attention. */}
+                {(lossView === 'items' || lossView === 'sales' || lossView === 'bills') && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <PageToolIcons scopeKey={CASH_LABEL.get(lossView) ?? lossView} />
+                    {[...(lossView === 'items' ? ITEMS_FLAG_TYPES : lossView === 'sales' ? SALES_FLAG_TYPES : BILLS_FLAG_TYPES)]
+                      .sort((a, b) => (violationCounts[b.key] ?? 0) - (violationCounts[a.key] ?? 0))
+                      .map(({ key, letter, label }) => {
+                        const count = violationCounts[key] ?? 0
+                        const active = violation === key
+                        return (
+                          <button key={key} onClick={() => goToViolation(key)} title={label}
+                            className={`shrink-0 flex items-center gap-0.5 text-[9px] font-semibold pl-1 pr-1.5 py-0.5 rounded transition
+                              ${active ? 'bg-red-600 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}>
+                            <span className="relative leading-none">
+                              {count > 0 ? '🚩' : '🏳️'}
+                              <span className={`absolute -bottom-1 -right-1 text-[6px] font-black leading-none rounded-sm px-[1px]
+                                ${count > 0 ? 'bg-white text-red-700' : 'bg-red-700 text-white'}`}>{letter}</span>
+                            </span>
+                            <span className="ml-0.5">{count > 0 ? count : ''}</span>
+                          </button>
+                        )
+                      })}
+                  </div>
+                )}
                 <div className="flex items-center gap-1.5">
 
                   {/* Groups dropdown */}
@@ -1607,33 +1638,6 @@ function ItemHubPageInner() {
                         </button>
                       )
                     })()}
-                  </div>
-                )}
-
-                {/* Items'/Sales'/Bills' own flag categories -- a dedicated
-                    wrapping row so a long list (Items has 11) drops to
-                    further lines instead of overflowing off-screen or
-                    fighting the Columns/Analytics/New row above for width.
-                    Small + compact so as many as possible sit on one line
-                    before wrapping. */}
-                {!showAnalytics && !salesFormOpen && (lossView === 'items' || lossView === 'sales' || lossView === 'bills') && (
-                  <div className="flex flex-wrap items-center gap-1">
-                    {(lossView === 'items' ? ITEMS_FLAG_TYPES : lossView === 'sales' ? SALES_FLAG_TYPES : BILLS_FLAG_TYPES).map(({ key, letter, label }) => {
-                      const count = violationCounts[key] ?? 0
-                      const active = violation === key
-                      return (
-                        <button key={key} onClick={() => goToViolation(key)} title={label}
-                          className={`shrink-0 flex items-center gap-0.5 text-[9px] font-semibold pl-1 pr-1.5 py-0.5 rounded transition
-                            ${active ? 'bg-red-600 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}>
-                          <span className="relative leading-none">
-                            {count > 0 ? '🚩' : '🏳️'}
-                            <span className={`absolute -bottom-1 -right-1 text-[6px] font-black leading-none rounded-sm px-[1px]
-                              ${count > 0 ? 'bg-white text-red-700' : 'bg-red-700 text-white'}`}>{letter}</span>
-                          </span>
-                          <span className="ml-0.5">{count > 0 ? count : ''}</span>
-                        </button>
-                      )
-                    })}
                   </div>
                 )}
               </div>
