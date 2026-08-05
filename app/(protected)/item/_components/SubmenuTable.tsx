@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import PageToolIcons from './PageToolIcons'
+import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from './columnPrefs'
 import type { UKColumn, UKRow, UKSubmenu } from './ukViewData'
 
 type UkFile = { id: number; submenu_id: number; file_url: string; file_name: string; content_type: string | null; uploaded_by: string | null; uploaded_at: string }
@@ -98,15 +99,16 @@ function autoGrow(el: HTMLTextAreaElement | null) {
   el.style.height = `${el.scrollHeight}px`
 }
 
-// The editable columns+rows table for one selected submenu -- split out of
-// UKTab.tsx so CHTab.tsx can render the exact same table for Fiifi/Kuukua/
-// Ebo/Odoye's submenus (moved there from UK, see chViewData.ts's
-// CH_CHILD_PERSON) without duplicating this markup. Both read from the same
-// uk_submenus/uk_columns/uk_rows tables via useUKData, just scoped to a
-// different fixed person list. Columns are fixed from the UI's side (no
-// self-service add/rename/delete); row data entry below still works
-// normally.
-export default function SubmenuTable({ submenu, columns, rows, editCell, saveCell, deleteRow, addRow }: {
+const GRID_DEFAULT_WIDTH = 160
+const GRID_DELETE_COL_WIDTH = 32
+
+// The actual columns+rows grid -- pulled out from SubmenuTable and keyed by
+// submenu.id in the parent below, since useColumnPrefs only reads its
+// column-list argument once (at mount) and doesn't resync if it changes
+// later. Switching submenus needs a fresh instance (its own width/order/
+// visibility storage, keyed per submenu id) rather than one that keeps
+// stale state from whichever submenu was open before.
+function SubmenuGrid({ submenu, columns, rows, editCell, saveCell, deleteRow, addRow }: {
   submenu: UKSubmenu
   columns: UKColumn[]
   rows: UKRow[]
@@ -116,70 +118,103 @@ export default function SubmenuTable({ submenu, columns, rows, editCell, saveCel
   addRow: () => void
 }) {
   const [editingCellKey, setEditingCellKey] = useState<string | null>(null)
+  const byId = new Map(columns.map(c => [String(c.id), c]))
+  const colDefs: ColumnDef<string>[] = columns.map(c => ({ key: String(c.id), label: c.name }))
+  const prefs = useColumnPrefs<string>(`ukSubmenu-${submenu.id}`, colDefs)
+  const shown = prefs.shownColumns.map(sc => byId.get(sc.key)).filter((c): c is UKColumn => !!c)
 
+  if (columns.length === 0) return null
+
+  const tableWidth = shown.reduce((s, c) => s + prefs.getWidth(String(c.id), GRID_DEFAULT_WIDTH), 0) + GRID_DELETE_COL_WIDTH
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Columns · {submenu.name}</p>
+        <ColumnsPickerButton prefs={prefs} />
+      </div>
+      <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+        <table className="border-collapse text-xs" style={{ tableLayout: 'fixed', width: tableWidth }}>
+          <colgroup>
+            {shown.map(c => <col key={c.id} style={{ width: prefs.getWidth(String(c.id), GRID_DEFAULT_WIDTH) }} />)}
+            <col style={{ width: GRID_DELETE_COL_WIDTH }} />
+          </colgroup>
+          <thead className="sticky top-0 bg-gray-50 z-10">
+            <tr>
+              {shown.map(c => (
+                <ResizableTh key={c.id}
+                  onResize={d => prefs.resizeWidth(String(c.id), d, GRID_DEFAULT_WIDTH)}
+                  onReset={() => prefs.resetWidth(String(c.id))}>
+                  {prefs.columnLabels[String(c.id)] ?? c.name}
+                </ResizableTh>
+              ))}
+              <th className="border-b border-gray-200" />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, ri) => (
+              <tr key={r.id} className={`border-b border-gray-100 last:border-0 ${ri % 2 === 1 ? 'bg-gray-50/60' : 'bg-white'}`}>
+                {shown.map(c => {
+                  const val = r.values[c.id] ?? ''
+                  const key = `${r.id}-${c.id}`
+                  const showAsLink = isUrlLike(val) && editingCellKey !== key
+                  return (
+                    <td key={c.id} className="px-1 py-1 align-top">
+                      {showAsLink ? (
+                        <div className="flex items-center gap-1 px-2 py-1.5">
+                          <a href={toHref(val)} target="_blank" rel="noopener noreferrer"
+                            className="text-xs text-blue-600 underline break-all">{val}</a>
+                          <button onClick={() => setEditingCellKey(key)} className="text-gray-300 hover:text-gray-600 shrink-0" title="Edit">✎</button>
+                        </div>
+                      ) : (
+                        <textarea value={val} autoFocus={editingCellKey === key} rows={1}
+                          ref={autoGrow}
+                          onChange={e => { editCell(r.id, c.id, e.target.value); autoGrow(e.target) }}
+                          onBlur={e => { saveCell(r.id, c.id, e.target.value); setEditingCellKey(null) }}
+                          className="w-full min-w-[80px] text-xs px-2 py-1.5 rounded-lg border border-transparent hover:border-gray-200 focus:border-blue-300 outline-none resize-none overflow-hidden whitespace-pre-wrap break-words" />
+                      )}
+                    </td>
+                  )
+                })}
+                <td className="px-1 text-center">
+                  <button onClick={() => deleteRow(r.id)} className="text-gray-300 hover:text-red-500 px-1" title="Delete row">×</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <button onClick={addRow} className="w-full text-left px-3 py-2 text-xs font-semibold text-blue-600 hover:bg-gray-50 border-t border-gray-100">
+          + New Row
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// The editable columns+rows table for one selected submenu -- split out of
+// UKTab.tsx so CHTab.tsx can render the exact same table for Fiifi/Kuukua/
+// Ebo/Odoye's submenus (moved there from UK, see chViewData.ts's
+// CH_CHILD_PERSON) without duplicating this markup. Both read from the same
+// uk_submenus/uk_columns/uk_rows tables via useUKData, just scoped to a
+// different fixed person list. Column identity (add/rename/delete against
+// the DB) is fixed from the UI's side (see UKSettingsPanel for adding one);
+// show/hide, reorder, local rename, and width are all self-service per
+// column here, same as every other table in the app.
+export default function SubmenuTable({ submenu, columns, rows, editCell, saveCell, deleteRow, addRow }: {
+  submenu: UKSubmenu
+  columns: UKColumn[]
+  rows: UKRow[]
+  editCell: (rowId: number, columnId: number, value: string) => void
+  saveCell: (rowId: number, columnId: number, value: string) => void
+  deleteRow: (id: number) => void
+  addRow: () => void
+}) {
   return (
     <div className="space-y-4 pb-10 px-3 pt-3">
       <PageToolIcons scopeKey={`${submenu.person} ${submenu.name}`} />
       <SubmenuFiles submenuId={submenu.id} />
-      <div className="space-y-1.5">
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Columns · {submenu.name}</p>
-        <div className="flex flex-wrap gap-1.5">
-          {columns.map(c => (
-            <span key={c.id} className="text-xs font-semibold text-gray-700 bg-gray-100 rounded-lg px-3 py-1.5">{c.name}</span>
-          ))}
-        </div>
-
-        {columns.length > 0 && (
-          <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-            <table className="w-full border-collapse text-xs">
-              <thead>
-                <tr className="bg-gray-50">
-                  {columns.map(c => (
-                    <th key={c.id} className="text-left px-3 py-2 font-bold text-gray-400 text-[10px] uppercase tracking-wide border-b border-gray-200 whitespace-nowrap">
-                      {c.name}
-                    </th>
-                  ))}
-                  <th className="border-b border-gray-200 w-8" />
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map(r => (
-                  <tr key={r.id} className="border-b border-gray-100 last:border-0">
-                    {columns.map(c => {
-                      const val = r.values[c.id] ?? ''
-                      const key = `${r.id}-${c.id}`
-                      const showAsLink = isUrlLike(val) && editingCellKey !== key
-                      return (
-                        <td key={c.id} className="px-1 py-1 align-top">
-                          {showAsLink ? (
-                            <div className="flex items-center gap-1 px-2 py-1.5">
-                              <a href={toHref(val)} target="_blank" rel="noopener noreferrer"
-                                className="text-xs text-blue-600 underline break-all">{val}</a>
-                              <button onClick={() => setEditingCellKey(key)} className="text-gray-300 hover:text-gray-600 shrink-0" title="Edit">✎</button>
-                            </div>
-                          ) : (
-                            <textarea value={val} autoFocus={editingCellKey === key} rows={1}
-                              ref={autoGrow}
-                              onChange={e => { editCell(r.id, c.id, e.target.value); autoGrow(e.target) }}
-                              onBlur={e => { saveCell(r.id, c.id, e.target.value); setEditingCellKey(null) }}
-                              className="w-full min-w-[80px] text-xs px-2 py-1.5 rounded-lg border border-transparent hover:border-gray-200 focus:border-blue-300 outline-none resize-none overflow-hidden whitespace-pre-wrap break-words" />
-                          )}
-                        </td>
-                      )
-                    })}
-                    <td className="px-1">
-                      <button onClick={() => deleteRow(r.id)} className="text-gray-300 hover:text-red-500 px-1" title="Delete row">×</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <button onClick={addRow} className="w-full text-left px-3 py-2 text-xs font-semibold text-blue-600 hover:bg-gray-50 border-t border-gray-100">
-              + New Row
-            </button>
-          </div>
-        )}
-      </div>
+      <SubmenuGrid key={submenu.id} submenu={submenu} columns={columns} rows={rows}
+        editCell={editCell} saveCell={saveCell} deleteRow={deleteRow} addRow={addRow} />
     </div>
   )
 }
