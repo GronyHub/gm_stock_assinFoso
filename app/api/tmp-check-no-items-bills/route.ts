@@ -13,5 +13,9 @@ export async function GET() {
       AND NOT EXISTS (SELECT 1 FROM bill_lines bl WHERE bl.bill_id = b.id AND bl.item_id IS NOT NULL)
     ORDER BY b.bill_date DESC
   `
-  return NextResponse.json({ count: rows.length, rows })
+  const humbleLines = await sql`
+    SELECT bl.id, bl.bill_id, bl.raw_item_name, bl.resolved_name, bl.item_id, bl.unresolved, bl.quantity, bl.unit_price, bl.item_total
+    FROM bill_lines bl WHERE bl.bill_id = 247
+  `
+  return NextResponse.json({ count: rows.length, rows, humbleLines })
 }
