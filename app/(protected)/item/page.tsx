@@ -544,11 +544,14 @@ function ItemHubPageInner() {
   // everyone else always views themself (see viewingName below).
   const [viewingNameOverride, setViewingNameOverride] = useState<string | undefined>(undefined)
 
-  // UK's pane now lists every person's every submenu flat, in one go (see
-  // below), instead of a People list you click through to reveal a nested
-  // Submenus list -- UKTab shows all of them at once too, so a click here
-  // just scrolls the content area to that submenu's own table rather than
-  // "selecting" anything.
+  // UK's people + per-person submenus + selected submenu's columns/rows --
+  // shared between the merged pane (a flat "every person's every submenu"
+  // list, see below) and UKTab (rendering the selected submenu's columns +
+  // row data). The pane's own list is fetched independently of `uk.submenus`
+  // (which only ever holds whichever one person's submenus were most
+  // recently picked) so every person shows at once without needing `uk`'s
+  // own person state to cycle through all three first.
+  const uk = useUKData()
   const [ukAllSubmenus, setUkAllSubmenus] = useState<{ id: number; person: string; name: string }[]>([])
   useEffect(() => {
     if (outerTab !== 'uk') return
@@ -560,9 +563,6 @@ function ItemHubPageInner() {
       ))
     }).catch(() => {})
   }, [outerTab])
-  function scrollToUkSubmenu(submenuId: number) {
-    document.getElementById(`uk-submenu-${submenuId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
   // A second, independent instance for C&H's own Fiifi/Kuukua/Ebo/Odoye
   // pages (moved here from UK, see chViewData.ts's CH_CHILD_PERSON) -- kept
   // separate from `uk` above so switching tabs never lets one tab's person
@@ -875,10 +875,8 @@ function ItemHubPageInner() {
       ch.pickSubmenu(submenuId)
     } else {
       changeTab('uk')
-      // UKTab renders every submenu at once now -- just scroll to this
-      // one's own table instead of "selecting" it. The tab switch above
-      // needs a tick to mount UKTab before the target element exists.
-      setTimeout(() => scrollToUkSubmenu(submenuId), 100)
+      uk.pickPerson(person as typeof uk.person)
+      uk.pickSubmenu(submenuId)
     }
   }
 
@@ -1443,10 +1441,11 @@ function ItemHubPageInner() {
             {/* UK's own rows -- every person's every submenu, flat, in one
                 list (e.g. "Grony NVQ Level 3", "Grony Urgent", "Mina Level
                 3") instead of a People list you click through to reveal a
-                nested Submenus list. UKTab renders every submenu's table at
-                once now too, so a click here just scrolls the content area
-                to that one instead of "selecting" it -- there's nothing
-                left to select. Submenu names/columns are still fixed from
+                nested Submenus list. Each click still opens just that one
+                submenu's own page on the right (via uk.pickPerson +
+                uk.pickSubmenu, exactly as the old two-click version did) --
+                only the pane's own navigation got flattened, not the
+                content area. Submenu names/columns are still fixed from
                 the UI's side (no self-service add/rename/delete). */}
             {outerTab === 'uk' && (<>
               {cashDisplayMode !== 'icon' && (
@@ -1454,7 +1453,8 @@ function ItemHubPageInner() {
               )}
               {ukAllSubmenus.map((s, i) => (
                 <SidePaneButton key={s.id} icon="📋" label={`${s.person} ${s.name}`} mode={cashDisplayMode} divider={i > 0}
-                  active={false} onClick={() => scrollToUkSubmenu(s.id)} />
+                  active={paneActive(uk.selectedSubmenuId === s.id)}
+                  onClick={() => { uk.pickPerson(s.person as typeof uk.person); uk.pickSubmenu(s.id); setSettingsOpen(false) }} />
               ))}
             </>)}
 
@@ -1779,7 +1779,7 @@ function ItemHubPageInner() {
           </TabErrorBoundary>
         )}
         {outerTab === 'uk' && (
-          <TabErrorBoundary><UKTab /></TabErrorBoundary>
+          <TabErrorBoundary><UKTab uk={uk} /></TabErrorBoundary>
         )}
         {outerTab === 'ch' && (
           <TabErrorBoundary><CHTab view={lossView as CHView} childData={ch} /></TabErrorBoundary>
