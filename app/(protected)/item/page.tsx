@@ -544,11 +544,25 @@ function ItemHubPageInner() {
   // everyone else always views themself (see viewingName below).
   const [viewingNameOverride, setViewingNameOverride] = useState<string | undefined>(undefined)
 
-  // UK's people + per-person submenus + selected submenu's columns/rows --
-  // shared between the merged pane (people picker, submenu list with add/
-  // rename/delete) and UKTab (rendering the selected submenu's columns +
-  // row data).
-  const uk = useUKData()
+  // UK's pane now lists every person's every submenu flat, in one go (see
+  // below), instead of a People list you click through to reveal a nested
+  // Submenus list -- UKTab shows all of them at once too, so a click here
+  // just scrolls the content area to that submenu's own table rather than
+  // "selecting" anything.
+  const [ukAllSubmenus, setUkAllSubmenus] = useState<{ id: number; person: string; name: string }[]>([])
+  useEffect(() => {
+    if (outerTab !== 'uk') return
+    Promise.all(UK_PEOPLE.map(p =>
+      fetch(`/api/uk/submenus?person=${encodeURIComponent(p)}`).then(r => r.ok ? r.json() : [])
+    )).then(lists => {
+      setUkAllSubmenus(lists.flatMap((list: { id: number; name: string }[], i: number) =>
+        list.map(s => ({ id: s.id, person: UK_PEOPLE[i], name: s.name }))
+      ))
+    }).catch(() => {})
+  }, [outerTab])
+  function scrollToUkSubmenu(submenuId: number) {
+    document.getElementById(`uk-submenu-${submenuId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
   // A second, independent instance for C&H's own Fiifi/Kuukua/Ebo/Odoye
   // pages (moved here from UK, see chViewData.ts's CH_CHILD_PERSON) -- kept
   // separate from `uk` above so switching tabs never lets one tab's person
@@ -861,8 +875,10 @@ function ItemHubPageInner() {
       ch.pickSubmenu(submenuId)
     } else {
       changeTab('uk')
-      uk.pickPerson(person as typeof uk.person)
-      uk.pickSubmenu(submenuId)
+      // UKTab renders every submenu at once now -- just scroll to this
+      // one's own table instead of "selecting" it. The tab switch above
+      // needs a tick to mount UKTab before the target element exists.
+      setTimeout(() => scrollToUkSubmenu(submenuId), 100)
     }
   }
 
@@ -1424,34 +1440,22 @@ function ItemHubPageInner() {
               ))}
             </>)}
 
-            {/* UK's own rows -- people, then whichever person is picked's
-                own submenus. Submenu names/columns are fixed from the UI's
-                side (no self-service add/rename/delete) -- see ukViewData.ts.
-                Selecting a submenu is what drives UKTab's own content (its
-                columns + row data) on the right -- these ids are dynamic,
-                not a fixed set of view keys, so they're kept in useUKData's
-                own state rather than folded into lossView. */}
+            {/* UK's own rows -- every person's every submenu, flat, in one
+                list (e.g. "Grony NVQ Level 3", "Grony Urgent", "Mina Level
+                3") instead of a People list you click through to reveal a
+                nested Submenus list. UKTab renders every submenu's table at
+                once now too, so a click here just scrolls the content area
+                to that one instead of "selecting" it -- there's nothing
+                left to select. Submenu names/columns are still fixed from
+                the UI's side (no self-service add/rename/delete). */}
             {outerTab === 'uk' && (<>
               {cashDisplayMode !== 'icon' && (
-                <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">People</p>
+                <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Menus &amp; Submenus</p>
               )}
-              {UK_PEOPLE.map((p, i) => (
-                <SidePaneButton key={p} icon="👤" label={p} mode={cashDisplayMode} divider={i > 0}
-                  active={paneActive(uk.person === p)} onClick={() => { uk.pickPerson(p); setSettingsOpen(false) }} />
+              {ukAllSubmenus.map((s, i) => (
+                <SidePaneButton key={s.id} icon="📋" label={`${s.person} ${s.name}`} mode={cashDisplayMode} divider={i > 0}
+                  active={false} onClick={() => scrollToUkSubmenu(s.id)} />
               ))}
-
-              <div className="mt-1 pt-1 border-t border-white/30">
-                {cashDisplayMode !== 'icon' && (
-                  <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">{`${uk.person}'s Submenus`}</p>
-                )}
-                {/* Rename/delete and "Add Submenu" removed -- this list is
-                    fixed from the UI's side now; changes go through direct
-                    edits instead of a self-service control here. */}
-                {uk.submenus.map((s, i) => (
-                  <SidePaneButton key={s.id} icon="📋" label={s.name} mode={cashDisplayMode} divider={i > 0}
-                    active={paneActive(uk.selectedSubmenuId === s.id)} onClick={() => { uk.pickSubmenu(s.id); setSettingsOpen(false) }} />
-                ))}
-              </div>
             </>)}
 
             {/* Settings (Viewing/Team/Users/Add Category/View Portal As) now

@@ -121,11 +121,13 @@ export default function UKTab() {
               {submenus.map(s => {
                 const d = dataBySubmenu[s.id] ?? { columns: [], rows: [] }
                 return (
-                  <SubmenuTable key={s.id} submenu={s} columns={d.columns} rows={d.rows}
-                    editCell={(rowId, colId, val) => editCell(s.id, rowId, colId, val)}
-                    saveCell={saveCell}
-                    deleteRow={id => deleteRow(s.id, id)}
-                    addRow={() => addRow(s.id)} />
+                  <div key={s.id} id={`uk-submenu-${s.id}`} className="scroll-mt-10">
+                    <SubmenuTable submenu={s} columns={d.columns} rows={d.rows}
+                      editCell={(rowId, colId, val) => editCell(s.id, rowId, colId, val)}
+                      saveCell={saveCell}
+                      deleteRow={id => deleteRow(s.id, id)}
+                      addRow={() => addRow(s.id)} />
+                  </div>
                 )
               })}
             </div>
