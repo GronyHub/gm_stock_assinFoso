@@ -490,12 +490,13 @@ export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: numb
 
   return (
     <div className="flex flex-col h-full min-h-0">
+      <div className="px-2 pt-2 shrink-0"><PageToolIcons scopeKey="CAB" /></div>
       <div className="grid grid-cols-3 gap-1.5 px-2 py-2 shrink-0">
         <StatCard label="Running Balance" value={fmtn(latest?.running_cash_at_bank)} sub={latest ? fmtDate(String(latest.entry_date).slice(0,10)) : undefined} tone="blue" />
         <StatCard label="Last Confirmed" value={latestConfirmed ? fmtn(latestConfirmed.cab_total) : '—'} sub={latestConfirmed ? fmtDate(String(latestConfirmed.entry_date).slice(0,10)) : 'No confirmations yet'} tone="green" />
         <StatCard label="Unconfirmed Weeks" value={flagsLoading ? '…' : String(unconfirmedCount)} tone={unconfirmedCount > 0 ? 'red' : 'green'} />
       </div>
-      <div className="px-2 pb-2 shrink-0 space-y-1.5"><PageToolIcons scopeKey="CAB" /><AssignWidget type="unchecked_cab" /></div>
+      <div className="px-2 pb-2 shrink-0"><AssignWidget type="unchecked_cab" /></div>
 
       <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0">
         <button onClick={() => setShowWeekly(false)}

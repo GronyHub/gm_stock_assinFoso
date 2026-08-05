@@ -1873,7 +1873,6 @@ function ItemHubPageInner() {
           <TabErrorBoundary><div className="px-3 pt-3"><SalesAnalyticsSection /></div></TabErrorBoundary>
         )}
         {!showAnalytics && addForm !== 'sale' && addForm !== 'live' && addForm !== 'liveLog' && outerTab === 'loss' && lossView === 'sales' && (<>
-          {!violation && <div className="px-3 pt-2"><PageToolIcons scopeKey="Sales" /></div>}
           <SalesTab items={items} groupFilter={group} search={search}
             violation={pillKeys?.includes(violation ?? '') ? violation : null}
             jumpToDate={jumpToReceiptDate} jumpToItemName={jumpToReceiptItemName}
@@ -1883,7 +1882,6 @@ function ItemHubPageInner() {
           <TabErrorBoundary><div className="px-3 pt-3"><BillsAnalyticsSection /></div></TabErrorBoundary>
         )}
         {!showAnalytics && addForm !== 'bill' && outerTab === 'loss' && lossView === 'bills' && (<>
-          {!violation && <div className="px-3 pt-2"><PageToolIcons scopeKey="Bills" /></div>}
           <BillsTab items={items} groupFilter={group} search={search}
             violation={pillKeys?.includes(violation ?? '') ? violation : null} />
         </>)}

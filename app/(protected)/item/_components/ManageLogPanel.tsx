@@ -108,6 +108,7 @@ export default function ManageLogPanel({ category, label, icon }: { category: st
 
   return (
     <div className="py-2 px-2 space-y-2">
+      <PageToolIcons scopeKey={label} />
       {(jingleOverdue || equipmentOverdue) && (
         <div className="bg-red-50 border border-red-200 rounded-lg px-2.5 py-2 flex items-center gap-2">
           <span className="text-red-600 text-xs">🚩</span>
@@ -116,7 +117,6 @@ export default function ManageLogPanel({ category, label, icon }: { category: st
           </p>
         </div>
       )}
-      <PageToolIcons scopeKey={label} />
       <div className="bg-white border border-gray-200 rounded-lg px-2.5 py-2 space-y-1.5">
         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{icon} {label}</p>
         <textarea value={notes} onChange={e => setNotes(e.target.value)}

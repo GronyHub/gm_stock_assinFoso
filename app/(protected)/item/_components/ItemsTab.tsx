@@ -808,6 +808,7 @@ export default function ItemsTab({ items, group, productType, search, violation,
     ]
     return (
       <div className="flex flex-col h-full min-h-0">
+        <div className="px-2 pt-2 shrink-0"><PageToolIcons scopeKey="Items" /></div>
         <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0">
           <button onClick={() => setFlagsSummary(null)}
             className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-red-600 text-white transition">
@@ -816,7 +817,6 @@ export default function ItemsTab({ items, group, productType, search, violation,
           <span className="text-[9px] font-semibold text-red-700">🚩 Items Flags</span>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
-          <PageToolIcons scopeKey="Items" />
           {rows.map(r => (
             <div key={r.type} className="bg-white border border-gray-200 rounded-xl p-2.5 space-y-1.5">
               <div className="flex items-center justify-between gap-2">

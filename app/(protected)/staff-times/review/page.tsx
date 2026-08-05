@@ -152,6 +152,7 @@ export default function FlaggedTimesReviewPage() {
 
   return (
     <div className="py-4 space-y-6">
+      <PageToolIcons scopeKey="Team" />
       <div className="flex items-center gap-2">
         <Link href="/staff" className="text-sm text-blue-600 font-semibold">← Staff</Link>
       </div>
@@ -160,7 +161,6 @@ export default function FlaggedTimesReviewPage() {
         <p className="text-sm text-gray-500 mt-1">Clock records worth a second look, for review.</p>
       </div>
 
-      <PageToolIcons scopeKey="Team" />
       <AssignWidget type="no_staff_times" />
 
       {loading ? (

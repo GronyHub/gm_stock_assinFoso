@@ -96,6 +96,8 @@ export default function ContentPage({ contentKey, title, submenu }: { contentKey
 
   return (
     <div className="py-2 px-2 space-y-2">
+      {submenu && <PageToolIcons scopeKey={submenu} />}
+
       <div className="flex items-center justify-between">
         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{title}</p>
         <div className="flex items-center gap-2">
@@ -107,8 +109,6 @@ export default function ContentPage({ contentKey, title, submenu }: { contentKey
           )}
         </div>
       </div>
-
-      {submenu && <PageToolIcons scopeKey={submenu} />}
 
       {editing ? (
         <div className="bg-white border border-gray-200 rounded-lg p-2 space-y-1.5">

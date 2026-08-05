@@ -111,6 +111,7 @@ export default function PropertiesPage() {
 
   return (
     <div className="flex flex-col h-full min-h-0">
+      <div className="px-2 pt-2 shrink-0"><PageToolIcons scopeKey="Properties" /></div>
       <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0 flex-wrap">
         {tabs.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
@@ -121,7 +122,6 @@ export default function PropertiesPage() {
         ))}
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
           className="text-[10px] bg-white border border-gray-200 rounded px-2 py-1 outline-none w-32" />
-        <div className="ml-auto"><PageToolIcons scopeKey="Properties" /></div>
       </div>
       <div className="flex-1 overflow-y-auto min-h-0 p-2 space-y-2">
         {filtered.length === 0 ? (
