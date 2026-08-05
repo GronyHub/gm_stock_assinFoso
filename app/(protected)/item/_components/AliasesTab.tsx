@@ -370,30 +370,24 @@ function AmbiguousPanel() {
 // name -- the alias points sales/bills toward one item, while a second item
 // sitting right there under that exact name never gets picked. Review-only:
 // nothing here is auto-resolved, since the right fix differs per row (the
-// alias may be simply wrong, or the conflicting item may itself be the real
-// duplicate that needs merging/deleting elsewhere).
-function NameConflictsPanel() {
+// alias may be simply wrong and need remapping to the right item, or the
+// conflicting item may itself be the real duplicate that needs deleting/
+// merging elsewhere, or the alias may just be fine as-is).
+function NameConflictsPanel({ items }: { items: Item[] }) {
   const [rows, setRows] = useState<LeakRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [dismissed, setDismissed] = useState<Set<number>>(new Set())
-  const [selected, setSelected] = useState<LeakRow | null>(null)
-  const [deleting, setDeleting] = useState(false)
-  const [lastResult, setLastResult] = useState<string | null>(null)
+  const [picked, setPicked] = useState<Record<number, Item | null>>({})
+  const [busy, setBusy] = useState<number | null>(null)
 
   useEffect(() => {
     fetch('/api/aliases/leaks').then(r => r.json()).then(d => {
       setRows(Array.isArray(d) ? d : [])
       setLoading(false)
     })
-    fetch('/api/aliases/dismissed').then(r => r.json()).then(d => {
-      if (Array.isArray(d?.name_conflict)) setDismissed(new Set(d.name_conflict.map(Number)))
-    }).catch(() => {})
   }, [])
 
-  const display = rows.filter(r => !dismissed.has(r.alias_id))
-
   function dismiss(aliasId: number) {
-    setDismissed(s => new Set(s).add(aliasId))
+    setRows(prev => prev.filter(r => r.alias_id !== aliasId))
     fetch('/api/aliases/dismissed', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ review_type: 'name_conflict', review_key: aliasId }),
@@ -401,102 +395,99 @@ function NameConflictsPanel() {
   }
 
   async function deleteAlias(row: LeakRow) {
-    setDeleting(true)
+    setBusy(row.alias_id)
     const res = await fetch('/api/aliases/leaks', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ alias_id: row.alias_id }),
     })
-    setDeleting(false)
-    if (!res.ok) { setLastResult('Failed — try again'); return }
-    setLastResult(`Deleted alias "${row.alias_name}" → ${row.aliased_to_item_name}`)
+    setBusy(null)
+    if (!res.ok) return
     setRows(prev => prev.filter(r => r.alias_id !== row.alias_id))
-    setSelected(null)
+  }
+
+  // Points the alias at whichever item was picked (usually the conflicting
+  // item itself, since that's the one it should have meant) instead of its
+  // current target -- also backfills any sales/bill lines already resolved
+  // under the old (wrong) target so they move to the right item too.
+  async function remap(row: LeakRow, force = false) {
+    const item = picked[row.alias_id]
+    if (!item) return
+    setBusy(row.alias_id)
+    const res = await fetch(`/api/aliases/${row.alias_id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ item_id: item.id, force }),
+    })
+    setBusy(null)
+    if (!res.ok) {
+      const d = await res.json().catch(() => null)
+      if (res.status === 409 && d?.requires_confirmation) {
+        if (window.confirm(`${d.warning}\n\nRemap anyway?`)) return remap(row, true)
+      }
+      return
+    }
+    setRows(prev => prev.filter(r => r.alias_id !== row.alias_id))
   }
 
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <div className="shrink-0 px-2 py-1 border-b border-gray-200 bg-white">
-        <span className="text-[9px] text-red-600 font-bold">{display.length} name conflict{display.length === 1 ? '' : 's'}</span>
+      <div className="shrink-0 px-2 py-1.5 border-b border-gray-200 bg-white">
+        <span className="text-[9px] text-red-600 font-bold">{rows.length} name conflict{rows.length === 1 ? '' : 's'}</span>
         <span className="text-[9px] text-gray-400 ml-2">alias text also exists as a separate item&apos;s own canonical name</span>
       </div>
-      {lastResult && (
-        <p className="shrink-0 text-[9px] text-gray-500 bg-gray-50 border-b border-gray-200 px-2 py-1">{lastResult}</p>
-      )}
-      <div className="flex flex-1 min-h-0">
-        <div className="w-1/2 border-r border-gray-200 overflow-y-auto min-h-0">
-          {display.length === 0 ? (
-            <p className="text-[10px] text-gray-400 text-center py-10">No name conflicts found. 🎉</p>
-          ) : (
-            <table className="w-full border-collapse text-[10px]">
-              <thead className="sticky top-0 bg-gray-100 z-10">
-                <tr>
-                  <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">ALIAS</th>
-                  <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">POINTS TO</th>
-                  <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">STATUS</th>
+      <div className="flex-1 overflow-y-auto min-h-0">
+        {rows.length === 0 ? (
+          <p className="py-10 text-center text-gray-400 text-[10px]">No name conflicts found. 🎉</p>
+        ) : (
+          <table className="w-full border-collapse text-[10px]">
+            <thead className="sticky top-0 bg-gray-100 z-10">
+              <tr>
+                <th className="text-left px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">ALIAS</th>
+                <th className="text-left px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">CURRENTLY POINTS TO</th>
+                <th className="text-left px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">CONFLICTS WITH</th>
+                <th className="text-left px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">REMAP TO</th>
+                <th className="px-2 py-1 border-b border-gray-200"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(r => (
+                <tr key={r.alias_id} className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="px-2 py-1 text-gray-900 max-w-[110px] truncate">{r.alias_name}</td>
+                  <td className="px-2 py-1 text-blue-600 max-w-[100px] truncate">{r.aliased_to_item_name}</td>
+                  <td className="px-2 py-1 max-w-[110px]">
+                    <p className="text-gray-900 truncate">{r.conflicting_item_name}</p>
+                    <span className={`text-[8px] font-bold px-1 py-0.5 rounded ${
+                      r.conflicting_item_status === 'Active' ? 'bg-red-100 text-red-700'
+                      : r.conflicting_item_status ? 'bg-gray-100 text-gray-500' : 'bg-orange-100 text-orange-700'}`}>
+                      {r.conflicting_item_status ?? 'no status'}
+                    </span>
+                  </td>
+                  <td className="px-2 py-1">
+                    <InlineItemPicker items={items} value={picked[r.alias_id] ?? null}
+                      onChange={item => setPicked(p => ({ ...p, [r.alias_id]: item }))} />
+                  </td>
+                  <td className="px-2 py-1">
+                    <div className="flex gap-1">
+                      <button onClick={() => remap(r)} disabled={!picked[r.alias_id] || busy === r.alias_id}
+                        className="text-[9px] font-bold text-white bg-green-600 hover:bg-green-500 disabled:opacity-40 rounded px-2 py-1 transition">
+                        {busy === r.alias_id ? '…' : 'Remap'}
+                      </button>
+                      <button onClick={() => deleteAlias(r)} disabled={busy === r.alias_id}
+                        className="text-[9px] font-bold text-white bg-red-600 hover:bg-red-500 disabled:opacity-40 rounded px-2 py-1 transition">
+                        Delete
+                      </button>
+                      <button onClick={() => dismiss(r.alias_id)}
+                        className="text-[9px] font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded px-2 py-1 transition">
+                        Dismiss
+                      </button>
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {display.map(r => (
-                  <tr key={r.alias_id} onClick={() => setSelected(r)}
-                    className={`cursor-pointer border-b border-gray-100 transition ${selected?.alias_id === r.alias_id ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
-                    <td className="px-1 py-0.5"><p className="text-gray-900 truncate max-w-[110px]">{r.alias_name}</p></td>
-                    <td className="px-1 py-0.5"><p className="text-blue-600 truncate max-w-[90px]">{r.aliased_to_item_name}</p></td>
-                    <td className="px-1 py-0.5">
-                      <span className={`text-[9px] font-bold px-1 py-0.5 rounded ${
-                        r.conflicting_item_status === 'Active' ? 'bg-red-100 text-red-700'
-                        : r.conflicting_item_status ? 'bg-gray-100 text-gray-500' : 'bg-orange-100 text-orange-700'}`}>
-                        {r.conflicting_item_status ?? 'no status'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-        <div className="w-1/2 overflow-y-auto min-h-0 flex flex-col">
-          {!selected ? (
-            <p className="text-[10px] text-gray-400 text-center py-10">Select a conflict to review</p>
-          ) : (
-            <div className="flex flex-col h-full">
-              <div className="px-2 py-1.5 bg-red-50 border-b border-red-200 shrink-0">
-                <p className="text-[9px] text-red-500 font-semibold uppercase">Name Conflict</p>
-                <p className="text-[10px] font-bold text-gray-900 break-words">{selected.alias_name}</p>
-                <p className="text-[9px] text-gray-600 mt-1">
-                  This alias ({selected.alias_type}, {selected.alias_source}) currently resolves matching sales/bill lines to:
-                </p>
-                <p className="text-[10px] font-semibold text-blue-700">{selected.aliased_to_item_name} (id {selected.aliased_to_item_id})</p>
-                <p className="text-[9px] text-gray-600 mt-1">
-                  But that exact text is also the canonical name of a separate item:
-                </p>
-                <p className="text-[10px] font-semibold text-gray-900">
-                  {selected.conflicting_item_name} (id {selected.conflicting_item_id})
-                  <span className={`ml-1 text-[9px] font-bold px-1 py-0.5 rounded ${
-                    selected.conflicting_item_status === 'Active' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'}`}>
-                    {selected.conflicting_item_status ?? 'no status'}
-                  </span>
-                </p>
-              </div>
-              <div className="px-2 py-1.5 border-b border-gray-100 shrink-0">
-                <button onClick={() => { dismiss(selected.alias_id); setSelected(null) }}
-                  className="w-full text-[10px] font-semibold text-gray-600 bg-gray-100 rounded py-1.5 hover:bg-gray-200 transition">
-                  Keep as-is (dismiss)
-                </button>
-              </div>
-              <div className="px-2 py-1.5 shrink-0">
-                <button onClick={() => deleteAlias(selected)} disabled={deleting}
-                  className="w-full text-[10px] font-bold text-white bg-red-600 hover:bg-red-500 rounded py-1.5 transition disabled:opacity-40">
-                  {deleting ? 'Deleting…' : `Delete this alias`}
-                </button>
-                <p className="text-[9px] text-gray-400 mt-1">
-                  Removes the alias row only -- neither item is touched, and no sales/bill lines are moved.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   )
@@ -565,7 +556,7 @@ export default function AliasesTab({ tab }: Props) {
         : tab === 'ambiguous'
         ? <AmbiguousPanel key={refreshKey} />
         : tab === 'name-conflicts'
-        ? <NameConflictsPanel key={refreshKey} />
+        ? <NameConflictsPanel key={refreshKey} items={items} />
         : <PreZohoPanel key={`${tab}-${refreshKey}`} tab={tab} items={items} />
       }
     </div>
