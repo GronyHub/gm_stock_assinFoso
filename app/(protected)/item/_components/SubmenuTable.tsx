@@ -82,10 +82,39 @@ function SubmenuFiles({ submenuId }: { submenuId: number }) {
   )
 }
 
-// A cell holding a URL renders as a clickable link instead of a text box --
-// no per-column "type" needed, the value itself decides.
-const isUrlLike = (v: string) => /^https?:\/\//i.test(v.trim()) || /^www\./i.test(v.trim())
-const toHref = (v: string) => /^https?:\/\//i.test(v.trim()) ? v.trim() : `https://${v.trim()}`
+// A cell holding a link renders with that link clickable instead of as a
+// plain text box -- no per-column "type" needed, the value itself decides.
+// Used to only fire when the ENTIRE cell was just a URL (nothing else in
+// it), which missed the far more common case of a link pasted in the
+// middle of a longer note (e.g. "please use this link: https://... thank
+// you") -- this scans the whole value for any http(s)/www match anywhere
+// in it instead.
+const URL_PATTERN = /(https?:\/\/[^\s<>"')\]]+|www\.[^\s<>"')\]]+)/gi
+const containsUrl = (v: string) => { URL_PATTERN.lastIndex = 0; return URL_PATTERN.test(v) }
+const toHref = (v: string) => /^https?:\/\//i.test(v) ? v : `https://${v}`
+
+// Splits a cell's text into plain-text and link segments so it can render
+// with only the URL portions clickable, everything else as normal text --
+// trailing sentence punctuation right after a URL (a period ending the
+// sentence, a closing paren, etc.) is peeled off the link itself so it
+// doesn't get swallowed into the href.
+function linkifySegments(text: string): { text: string; url?: string }[] {
+  const segments: { text: string; url?: string }[] = []
+  let lastIndex = 0
+  URL_PATTERN.lastIndex = 0
+  let match: RegExpExecArray | null
+  while ((match = URL_PATTERN.exec(text)) !== null) {
+    if (match.index > lastIndex) segments.push({ text: text.slice(lastIndex, match.index) })
+    let url = match[0]
+    const trailing = url.match(/[.,;:!?)\]]+$/)?.[0] ?? ''
+    if (trailing) url = url.slice(0, -trailing.length)
+    segments.push({ text: url, url })
+    if (trailing) segments.push({ text: trailing })
+    lastIndex = match.index + match[0].length
+  }
+  if (lastIndex < text.length) segments.push({ text: text.slice(lastIndex) })
+  return segments
+}
 
 // Cells used to be a single-line <input> -- longer notes (multi-part to-dos,
 // addresses, anything past the visible width) just scrolled off-screen with
@@ -157,13 +186,17 @@ function SubmenuGrid({ submenu, columns, rows, editCell, saveCell, deleteRow, ad
                 {shown.map(c => {
                   const val = r.values[c.id] ?? ''
                   const key = `${r.id}-${c.id}`
-                  const showAsLink = isUrlLike(val) && editingCellKey !== key
+                  const showAsLink = val.trim() !== '' && containsUrl(val) && editingCellKey !== key
                   return (
                     <td key={c.id} className="px-1 py-1 align-top">
                       {showAsLink ? (
-                        <div className="flex items-center gap-1 px-2 py-1.5">
-                          <a href={toHref(val)} target="_blank" rel="noopener noreferrer"
-                            className="text-xs text-blue-600 underline break-all">{val}</a>
+                        <div className="flex items-start gap-1 px-2 py-1.5">
+                          <p className="flex-1 min-w-0 text-xs whitespace-pre-wrap break-words">
+                            {linkifySegments(val).map((seg, i) => seg.url ? (
+                              <a key={i} href={toHref(seg.url)} target="_blank" rel="noopener noreferrer"
+                                className="text-blue-600 underline break-all">{seg.text}</a>
+                            ) : <span key={i}>{seg.text}</span>)}
+                          </p>
                           <button onClick={() => setEditingCellKey(key)} className="text-gray-300 hover:text-gray-600 shrink-0" title="Edit">✎</button>
                         </div>
                       ) : (
