@@ -448,6 +448,12 @@ function ItemHubPageInner() {
   }, [lossView])
   const [search, setSearch]             = useState(searchParams.get('q') ?? '')
   const [violation, setViolation]       = useState<string | null>(searchParams.get('violation'))
+  // The flag's explanation used to always show under its red title -- now
+  // tucked behind its own ℹ️ tap target instead. Tracks WHICH violation
+  // it's open for (rather than a plain boolean reset via an effect) so
+  // switching to a different flag closes it for free -- the stored key
+  // just stops matching the new `violation`, no extra state sync needed.
+  const [infoOpenFor, setInfoOpenFor] = useState<string | null>(null)
   const [groupOpen, setGroupOpen]       = useState(false)
   const [searchOpen, setSearchOpen]     = useState(false)
   // Everything only Joe/Grony can do (Viewing, Team, Users, Add Category,
@@ -1788,18 +1794,28 @@ function ItemHubPageInner() {
         {outerTab === 'loss' && violation && pillKeys?.includes(violation) && (
           <>
             {/* The flag's own name, bold and red -- names the rule being
-                broken (e.g. "NO VENDOR") before the longer explanation
-                below says why it matters, so it reads like a heading for
-                this filtered list instead of starting straight into prose. */}
-            <p className="mx-3 mt-2 text-sm font-extrabold text-red-600 uppercase tracking-wide">
-              {ERROR_VIOLATIONS.find(v => v.key === violation)?.label}
-            </p>
-            <div className="mx-3 mt-1 mb-1 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 flex gap-2">
-              <span className="text-sm shrink-0">ℹ️</span>
-              <p className="text-[11px] text-blue-800 leading-snug">
-                {ERROR_VIOLATIONS.find(v => v.key === violation)?.description}
+                broken (e.g. "NO VENDOR") before the longer explanation,
+                so it reads like a heading for this filtered list instead
+                of starting straight into prose. The explanation itself is
+                tucked behind the ℹ️ next to it now -- tap to show, instead
+                of always taking up space on the page. */}
+            <div className="mx-3 mt-2 flex items-center gap-1.5">
+              <p className="text-sm font-extrabold text-red-600 uppercase tracking-wide">
+                {ERROR_VIOLATIONS.find(v => v.key === violation)?.label}
               </p>
+              <button onClick={() => setInfoOpenFor(v => v === violation ? null : violation)} title="Why this flag exists"
+                className="shrink-0 text-sm leading-none w-5 h-5 rounded-full bg-blue-100 hover:bg-blue-200 flex items-center justify-center transition">
+                ℹ️
+              </button>
             </div>
+            {infoOpenFor === violation && (
+              <div className="mx-3 mt-1 mb-1 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 flex gap-2">
+                <span className="text-sm shrink-0">ℹ️</span>
+                <p className="text-[11px] text-blue-800 leading-snug">
+                  {ERROR_VIOLATIONS.find(v => v.key === violation)?.description}
+                </p>
+              </div>
+            )}
           </>
         )}
         {outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'aliasWide' && (
