@@ -2,19 +2,22 @@
 import { useState, useEffect, useCallback } from 'react'
 import DynamicTasksSection from './DynamicTasksSection'
 import PageLawsNote from './PageLawsNote'
+import PageLawsList from './PageLawsList'
 
 type PanelKind = 'law' | 'flags' | 'notes' | 'tasks'
 
 const TITLES: Record<PanelKind, string> = { law: '⚖️ Law', flags: '🚩 Flags', notes: '📝 Notes', tasks: '✅ Tasks' }
 
-// Four icons every real page carries: Law (the fixed rule for this page,
-// rarely edited), Flags, Notes (a day-to-day scratchpad, split out from Law
-// even though both are freeform text -- see PageLawsNote), and Tasks (the
-// checklist this used to be paired with alone). Law/Notes/Tasks badge their
-// own count the same way the pane's own SidePaneButton does, fetched here
-// directly (same scope_key/submenu namespace as page_notes/custom_tasks)
-// since every page gets this bar and none of them otherwise know these
-// numbers. Flags never gets a duplicate count here -- every page that has
+// Four icons every real page carries: Law (a real list of this page's own
+// fixed rules -- see PageLawsList/page_laws -- badged with how many laws
+// it has, not just whether one exists), Flags, Notes (a day-to-day
+// scratchpad, still one freeform textarea -- see PageLawsNote), and Tasks
+// (the checklist this used to be paired with alone). Law/Notes/Tasks badge
+// their own count the same way the pane's own SidePaneButton does, fetched
+// here directly (same scope_key/submenu namespace as page_laws/page_notes/
+// custom_tasks) since every page gets this bar and none of them otherwise
+// know these numbers. Flags never gets a duplicate count here -- every page
+// that has
 // one already surfaces it either as a badge on its own row in the pane, or
 // as an inline banner/list on the page itself (see e.g. ManageLogPanel's
 // jingle/equipment overdue banner, DressCodeFlagsPanel, Items' own flags
@@ -23,7 +26,7 @@ const TITLES: Record<PanelKind, string> = { law: '⚖️ Law', flags: '🚩 Flag
 export default function PageToolIcons({ scopeKey }: { scopeKey: string }) {
   const [open, setOpen] = useState<PanelKind | null>(null)
   const [taskCount, setTaskCount] = useState(0)
-  const [hasLaw, setHasLaw] = useState(false)
+  const [lawCount, setLawCount] = useState(0)
   const [hasNotes, setHasNotes] = useState(false)
 
   const loadCounts = useCallback(() => {
@@ -31,8 +34,8 @@ export default function PageToolIcons({ scopeKey }: { scopeKey: string }) {
       const list = Array.isArray(all) ? all as { submenu?: string; done?: boolean }[] : []
       setTaskCount(list.filter(t => t.submenu === scopeKey && !t.done).length)
     }).catch(() => {})
-    fetch(`/api/page-notes?scopeKey=${encodeURIComponent(scopeKey)}&kind=law`).then(r => r.ok ? r.json() : null)
-      .then(d => setHasLaw(!!d?.notes?.trim())).catch(() => {})
+    fetch(`/api/page-laws?scopeKey=${encodeURIComponent(scopeKey)}`).then(r => r.ok ? r.json() : [])
+      .then(d => setLawCount(Array.isArray(d) ? d.length : 0)).catch(() => {})
     fetch(`/api/page-notes?scopeKey=${encodeURIComponent(scopeKey)}&kind=note`).then(r => r.ok ? r.json() : null)
       .then(d => setHasNotes(!!d?.notes?.trim())).catch(() => {})
   }, [scopeKey])
@@ -45,7 +48,7 @@ export default function PageToolIcons({ scopeKey }: { scopeKey: string }) {
   }
 
   const icons: { kind: PanelKind; icon: string; count?: number }[] = [
-    { kind: 'law', icon: '⚖️', count: hasLaw ? 1 : 0 },
+    { kind: 'law', icon: '⚖️', count: lawCount },
     { kind: 'flags', icon: '🚩' },
     { kind: 'notes', icon: '📝', count: hasNotes ? 1 : 0 },
     { kind: 'tasks', icon: '✅', count: taskCount },
@@ -75,7 +78,7 @@ export default function PageToolIcons({ scopeKey }: { scopeKey: string }) {
             </div>
             <div className="p-2">
               {open === 'tasks' && <DynamicTasksSection scopeKey={scopeKey} />}
-              {open === 'law' && <PageLawsNote scopeKey={scopeKey} kind="law" />}
+              {open === 'law' && <PageLawsList scopeKey={scopeKey} onChange={loadCounts} />}
               {open === 'notes' && <PageLawsNote scopeKey={scopeKey} kind="note" />}
               {open === 'flags' && (
                 <div className="py-6 text-center text-sm text-gray-500 px-3">
