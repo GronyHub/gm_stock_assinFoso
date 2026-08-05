@@ -1786,12 +1786,21 @@ function ItemHubPageInner() {
             render its own filtered view when handed a matching violation
             key (SalesTab/CountsTab), or via the kind prop (LossFeedTab). */}
         {outerTab === 'loss' && violation && pillKeys?.includes(violation) && (
-          <div className="mx-3 mt-2 mb-1 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 flex gap-2">
-            <span className="text-sm shrink-0">ℹ️</span>
-            <p className="text-[11px] text-blue-800 leading-snug">
-              {ERROR_VIOLATIONS.find(v => v.key === violation)?.description}
+          <>
+            {/* The flag's own name, bold and red -- names the rule being
+                broken (e.g. "NO VENDOR") before the longer explanation
+                below says why it matters, so it reads like a heading for
+                this filtered list instead of starting straight into prose. */}
+            <p className="mx-3 mt-2 text-sm font-extrabold text-red-600 uppercase tracking-wide">
+              {ERROR_VIOLATIONS.find(v => v.key === violation)?.label}
             </p>
-          </div>
+            <div className="mx-3 mt-1 mb-1 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 flex gap-2">
+              <span className="text-sm shrink-0">ℹ️</span>
+              <p className="text-[11px] text-blue-800 leading-snug">
+                {ERROR_VIOLATIONS.find(v => v.key === violation)?.description}
+              </p>
+            </div>
+          </>
         )}
         {outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'aliasWide' && (
           <TabErrorBoundary>
