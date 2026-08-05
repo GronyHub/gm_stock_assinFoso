@@ -1,4 +1,5 @@
 import sql from '@/lib/db'
+import { aliasMismatchWarning } from '@/lib/aliasSanity'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
@@ -6,7 +7,7 @@ export async function GET() {
     unresolvedBills,
     unresolvedSales,
     unresolvedReceipts,
-    flaggedAudit,
+    auditRows,
     ambiguousGroups,
     leaks,
     noVendorBills,
@@ -41,10 +42,24 @@ export async function GET() {
       GROUP BY raw_item_name
       ORDER BY COUNT(*) DESC
     `.catch(() => []),
-    // Mirrors /api/aliases/audit's row count (flagged) -- best-effort, this
-    // endpoint's logic is JS-side (aliasMismatchWarning), so just count
-    // resolved lines with a resolved alias source for a sanity figure.
-    sql`SELECT COUNT(*)::int AS cnt FROM item_aliases`,
+    // Exact query from /api/aliases/audit (pre-filter, filtered below)
+    sql`
+      SELECT raw_name, item_id, canonical_name, source, SUM(cnt)::int AS cnt FROM (
+        SELECT srl.raw_item_name AS raw_name, srl.item_id, i.canonical_name, 'sales' AS source, COUNT(*)::int AS cnt
+        FROM sales_receipt_lines srl
+        JOIN items i ON i.id = srl.item_id
+        WHERE srl.raw_item_name IS NOT NULL AND TRIM(srl.raw_item_name) <> ''
+        GROUP BY srl.raw_item_name, srl.item_id, i.canonical_name
+        UNION ALL
+        SELECT bl.raw_item_name, bl.item_id, i.canonical_name, 'bills', COUNT(*)::int
+        FROM bill_lines bl
+        JOIN items i ON i.id = bl.item_id
+        WHERE bl.raw_item_name IS NOT NULL AND TRIM(bl.raw_item_name) <> ''
+        GROUP BY bl.raw_item_name, bl.item_id, i.canonical_name
+      ) combined
+      GROUP BY raw_name, item_id, canonical_name, source
+      ORDER BY cnt DESC
+    `,
     sql`
       SELECT LOWER(TRIM(alias_name)) AS norm_name, COUNT(DISTINCT item_id)::int AS distinct_items
       FROM item_aliases
@@ -65,11 +80,18 @@ export async function GET() {
     `,
   ])
 
+  const flagged = (auditRows as { raw_name: string; item_id: number; canonical_name: string; source: string; cnt: number }[])
+    .map(r => ({ ...r, warning: aliasMismatchWarning(r.raw_name, r.canonical_name) }))
+    .filter((r): r is typeof r & { warning: string } => r.warning !== null)
+  const dismissedFlagged = await sql`SELECT review_key FROM dismissed_alias_reviews WHERE review_type = 'flagged'`.catch(() => [])
+  const dismissedFlaggedKeys = new Set((dismissedFlagged as { review_key: string }[]).map(r => r.review_key))
+  const visibleFlagged = flagged.filter(r => !dismissedFlaggedKeys.has(`${r.source}::${r.raw_name}::${r.item_id}`))
+
   return NextResponse.json({
     unresolvedBills: { count: unresolvedBills.length, rows: unresolvedBills },
     unresolvedSales: { count: unresolvedSales.length },
-    unresolvedReceipts: { count: unresolvedReceipts.length },
-    itemAliasesTotal: flaggedAudit[0]?.cnt,
+    unresolvedReceipts: { count: unresolvedReceipts.length, rows: unresolvedReceipts },
+    flagged: { count: visibleFlagged.length, rows: visibleFlagged },
     ambiguousGroups: { count: ambiguousGroups.length, rows: ambiguousGroups },
     nameConflicts: { count: leaks.length, rows: leaks },
     noVendorBills: { count: noVendorBills.length },
