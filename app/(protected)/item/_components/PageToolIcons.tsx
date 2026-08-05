@@ -4,25 +4,27 @@ import DynamicTasksSection from './DynamicTasksSection'
 import PageLawsNote from './PageLawsNote'
 import PageLawsList from './PageLawsList'
 
-type PanelKind = 'law' | 'flags' | 'notes' | 'tasks'
+type PanelKind = 'law' | 'notes' | 'tasks'
 
-const TITLES: Record<PanelKind, string> = { law: '⚖️ Law', flags: '🚩 Flags', notes: '📝 Notes', tasks: '✅ Tasks' }
+const TITLES: Record<PanelKind, string> = { law: '⚖️ Law', notes: '📝 Notes', tasks: '✅ Tasks' }
 
-// Four icons every real page carries: Law (a real list of this page's own
+// Three icons every real page carries: Law (a real list of this page's own
 // fixed rules -- see PageLawsList/page_laws -- badged with how many laws
-// it has, not just whether one exists), Flags, Notes (a day-to-day
-// scratchpad, still one freeform textarea -- see PageLawsNote), and Tasks
-// (the checklist this used to be paired with alone). Law/Notes/Tasks badge
-// their own count the same way the pane's own SidePaneButton does, fetched
-// here directly (same scope_key/submenu namespace as page_laws/page_notes/
-// custom_tasks) since every page gets this bar and none of them otherwise
-// know these numbers. Flags never gets a duplicate count here -- every page
-// that has
-// one already surfaces it either as a badge on its own row in the pane, or
-// as an inline banner/list on the page itself (see e.g. ManageLogPanel's
-// jingle/equipment overdue banner, DressCodeFlagsPanel, Items' own flags
-// list) -- so the icon is just a fixed visual home for opening that same
-// information, not a second number to keep in sync with the first.
+// it has, not just whether one exists), Notes (a day-to-day scratchpad,
+// still one freeform textarea -- see PageLawsNote), and Tasks (the
+// checklist this used to be paired with alone). Each badges its own count
+// the same way the pane's own SidePaneButton does, fetched here directly
+// (same scope_key/submenu namespace as page_laws/page_notes/custom_tasks)
+// since every page gets this bar and none of them otherwise know these
+// numbers.
+//
+// There used to be a fourth, generic Flags icon here too -- removed. Every
+// real flag/violation type already has its own dedicated button elsewhere
+// (Items/Sales/Bills' per-category flag letters, ManageLogPanel's
+// jingle/equipment overdue banner, DressCodeFlagsPanel, etc.) that jumps
+// straight to that specific violation list. This bar's Flags icon never
+// did that -- it had no count of its own and just opened a static message
+// pointing back at those real ones, so it was a placeholder, not a flag.
 export default function PageToolIcons({ scopeKey }: { scopeKey: string }) {
   const [open, setOpen] = useState<PanelKind | null>(null)
   const [taskCount, setTaskCount] = useState(0)
@@ -49,7 +51,6 @@ export default function PageToolIcons({ scopeKey }: { scopeKey: string }) {
 
   const icons: { kind: PanelKind; icon: string; count?: number }[] = [
     { kind: 'law', icon: '⚖️', count: lawCount },
-    { kind: 'flags', icon: '🚩' },
     { kind: 'notes', icon: '📝', count: hasNotes ? 1 : 0 },
     { kind: 'tasks', icon: '✅', count: taskCount },
   ]
@@ -80,11 +81,6 @@ export default function PageToolIcons({ scopeKey }: { scopeKey: string }) {
               {open === 'tasks' && <DynamicTasksSection scopeKey={scopeKey} />}
               {open === 'law' && <PageLawsList scopeKey={scopeKey} onChange={loadCounts} />}
               {open === 'notes' && <PageLawsNote scopeKey={scopeKey} kind="note" />}
-              {open === 'flags' && (
-                <div className="py-6 text-center text-sm text-gray-500 px-3">
-                  <p>Flags for this page show up on its own row in the pane, or right on the page itself -- nothing separate to check here.</p>
-                </div>
-              )}
             </div>
           </div>
         </div>
