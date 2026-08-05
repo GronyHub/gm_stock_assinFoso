@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 
 export async function GET() {
   const items = await sql`
-    SELECT id, canonical_name, status, selling_rate, purchase_rate, cf_group, product_type, created_at
+    SELECT id, canonical_name, status, selling_rate, purchase_rate, cf_group, product_type
     FROM items WHERE id IN (196, 372)
   `
 
