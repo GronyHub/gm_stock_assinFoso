@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { usePolling } from '@/lib/usePolling'
+import { Linkify } from '@/lib/linkify'
 
 type ExpenseOrder = {
   id: number
@@ -191,17 +192,29 @@ export default function ExpenseOrdersPanel() {
                   </div>
                 </div>
               ) : (
-                <button onClick={() => openEdit(o)} className="w-full text-left px-2.5 py-2 hover:bg-gray-50 transition">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-[11px] font-bold text-gray-900 truncate">{o.expense_name}</p>
-                    {fmtPrice(o.price) != null && <p className="shrink-0 text-[11px] font-bold text-gray-700">₵{fmtPrice(o.price)}</p>}
-                  </div>
-                  <p className="text-[9px] text-gray-400">
-                    {o.vendor_name ? o.vendor_name : 'No vendor decided'}
-                    {o.entered_by ? ` · added by ${o.entered_by}` : ''}
-                  </p>
-                  {o.notes && <p className="mt-1 text-[10px] text-gray-600 whitespace-pre-wrap line-clamp-2">{o.notes}</p>}
-                </button>
+                <div className="w-full">
+                  {/* Notes rendered outside the button below -- a link
+                      inside a <button> is invalid HTML and unreliable to
+                      click (the button swallows the click first in some
+                      browsers), so only the name/vendor/price row (no
+                      links ever expected there) is the clickable-to-edit
+                      surface. */}
+                  <button onClick={() => openEdit(o)} className="w-full text-left px-2.5 pt-2 hover:bg-gray-50 transition">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-[11px] font-bold text-gray-900 truncate">{o.expense_name}</p>
+                      {fmtPrice(o.price) != null && <p className="shrink-0 text-[11px] font-bold text-gray-700">₵{fmtPrice(o.price)}</p>}
+                    </div>
+                    <p className="text-[9px] text-gray-400">
+                      {o.vendor_name ? o.vendor_name : 'No vendor decided'}
+                      {o.entered_by ? ` · added by ${o.entered_by}` : ''}
+                    </p>
+                  </button>
+                  {o.notes && (
+                    <div onClick={() => openEdit(o)} className="px-2.5 pb-2 pt-1 cursor-pointer hover:bg-gray-50 transition">
+                      <Linkify text={o.notes} as="p" className="text-[10px] text-gray-600 whitespace-pre-wrap line-clamp-2" />
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           ))}

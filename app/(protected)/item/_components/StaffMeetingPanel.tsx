@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { usePolling } from '@/lib/usePolling'
 import { fmtDate } from '@/lib/fmtDate'
+import { Linkify } from '@/lib/linkify'
 import SavedFlash from './SavedFlash'
 import PageToolIcons from './PageToolIcons'
 
@@ -314,7 +315,7 @@ export default function StaffMeetingPanel({ staffRoster, routablePages }: { staf
                   {!!e.attendees?.length && (
                     <p className="text-[9px] text-gray-500">Present: {e.attendees.join(', ')}</p>
                   )}
-                  {e.notes && <p className="text-[11px] text-gray-800 whitespace-pre-wrap leading-snug">{e.notes}</p>}
+                  {e.notes && <Linkify text={e.notes} as="p" className="text-[11px] text-gray-800 whitespace-pre-wrap leading-snug" />}
                 </div>
                 {confirmDeleteId === e.id ? (
                   <div className="flex items-center gap-1 shrink-0">

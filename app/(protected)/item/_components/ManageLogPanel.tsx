@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { usePolling } from '@/lib/usePolling'
 import { fmtDate } from '@/lib/fmtDate'
+import { Linkify } from '@/lib/linkify'
 import SavedFlash from './SavedFlash'
 import PageToolIcons from './PageToolIcons'
 
@@ -158,7 +159,7 @@ export default function ManageLogPanel({ category, label, icon }: { category: st
               )}
               <div className="min-w-0 flex-1">
                 <p className="text-[9px] text-gray-400">{fmtDate(e.log_date)} · <span className="capitalize">{e.logged_by}</span></p>
-                {e.notes && <p className="text-[11px] text-gray-800 whitespace-pre-wrap leading-snug">{e.notes}</p>}
+                {e.notes && <Linkify text={e.notes} as="p" className="text-[11px] text-gray-800 whitespace-pre-wrap leading-snug" />}
               </div>
               {confirmDeleteId === e.id ? (
                 <div className="flex items-center gap-1 shrink-0">

@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { usePolling } from '@/lib/usePolling'
+import { Linkify } from '@/lib/linkify'
 
 // ─── Announcements ────────────────────────────────────────────────────────────
 type MediaItem = { url: string; type: string }
@@ -156,7 +157,7 @@ function PostRow({ p, showDateHeader, canDelete, onLongPressStart, onLongPressEn
               {p.reply_to_body && <>: {p.reply_to_body.slice(0, 60)}{p.reply_to_body.length > 60 ? '…' : ''}</>}
             </div>
           )}
-          {p.body && <p className="text-xs text-gray-800 whitespace-pre-wrap leading-snug">{p.body}</p>}
+          {p.body && <Linkify text={p.body} as="p" className="text-xs text-gray-800 whitespace-pre-wrap leading-snug" />}
           <MediaGrid items={p.media_urls ?? []} />
         </div>
       )}
