@@ -94,6 +94,20 @@ export async function ensureUkTables() {
       PRIMARY KEY (row_id, column_id)
     )
   `.catch(() => {})
+  // Files attached to a submenu (e.g. Grony Investment's documents) --
+  // separate from the columns/rows spreadsheet, since these are uploaded
+  // files rather than typed values.
+  await sql`
+    CREATE TABLE IF NOT EXISTS uk_submenu_files (
+      id SERIAL PRIMARY KEY,
+      submenu_id INT NOT NULL REFERENCES uk_submenus(id) ON DELETE CASCADE,
+      file_url TEXT NOT NULL,
+      file_name TEXT NOT NULL,
+      content_type TEXT,
+      uploaded_by TEXT,
+      uploaded_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `.catch(() => {})
   await ensureChildLogSubmenus()
   await ensureChildLogColumns()
 }

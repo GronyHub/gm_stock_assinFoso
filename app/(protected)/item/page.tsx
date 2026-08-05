@@ -36,6 +36,7 @@ import { CH_ITEMS, CH_CHILD_PERSON, CH_PERSON_VIEW, type CHView } from './_compo
 import { useUKData, UK_PEOPLE } from './_components/ukViewData'
 import { SidePaneContainer, SidePaneToggle, SidePaneButton, useSidePaneDisplayMode } from './_components/SidePane'
 import SettingsPane from './_components/SettingsPane'
+import UKSettingsPanel from './_components/UKSettingsPanel'
 import { applyPaneOrder, buildPaneRuns, flattenPaneRuns, type PaneOrderMap } from './_components/paneOrder'
 import dynamic from 'next/dynamic'
 const loading = (h: string) => <div className={`py-10 text-center text-gray-400 text-sm`}>{h}</div>
@@ -553,6 +554,13 @@ function ItemHubPageInner() {
   // own person state to cycle through all three first.
   const uk = useUKData()
   const [ukAllSubmenus, setUkAllSubmenus] = useState<{ id: number; person: string; name: string }[]>([])
+  // General Section -- items with no person of their own (e.g. "198
+  // Casewick"), listed separately from the per-person flat list below
+  // rather than mixed into it. Uses person = 'General' under the hood
+  // (just another string value in the same uk_submenus.person column, not
+  // a real UKPerson), so it's fetched on its own rather than via UK_PEOPLE.
+  const [ukGeneralSubmenus, setUkGeneralSubmenus] = useState<{ id: number; name: string }[]>([])
+  const [ukPaneRefresh, setUkPaneRefresh] = useState(0)
   useEffect(() => {
     if (outerTab !== 'uk') return
     Promise.all(UK_PEOPLE.map(p =>
@@ -562,7 +570,10 @@ function ItemHubPageInner() {
         list.map(s => ({ id: s.id, person: UK_PEOPLE[i], name: s.name }))
       ))
     }).catch(() => {})
-  }, [outerTab])
+    fetch('/api/uk/submenus?person=General').then(r => r.ok ? r.json() : [])
+      .then(d => setUkGeneralSubmenus(Array.isArray(d) ? d : []))
+      .catch(() => {})
+  }, [outerTab, ukPaneRefresh])
   // A second, independent instance for C&H's own Fiifi/Kuukua/Ebo/Odoye
   // pages (moved here from UK, see chViewData.ts's CH_CHILD_PERSON) -- kept
   // separate from `uk` above so switching tabs never lets one tab's person
@@ -1159,6 +1170,9 @@ function ItemHubPageInner() {
   // longer counts here -- it moved out into its own main-pane section (see
   // below), so canSeeTeam alone no longer needs a reason to open Settings.
   const canOpenSettings = canManage || canSeeUsers || canViewPortalAs
+  // UK's own Settings is gated to isGrony, not canOpenSettings -- see the
+  // Settings-panel-swap render below.
+  const canOpenThisSettings = outerTab === 'uk' ? isGrony : canOpenSettings
   // Drives the merged pane's own-name section AND which staff page it
   // opens -- "just like the user profile icon", it's always your own name,
   // not a generic "Staff" label or a pick-a-person screen. Falls back to
@@ -1456,6 +1470,19 @@ function ItemHubPageInner() {
                   active={paneActive(uk.selectedSubmenuId === s.id)}
                   onClick={() => { uk.pickPerson(s.person as typeof uk.person); uk.pickSubmenu(s.id); setSettingsOpen(false) }} />
               ))}
+
+              {ukGeneralSubmenus.length > 0 && (
+                <div className="mt-1 pt-1 border-t border-white/30">
+                  {cashDisplayMode !== 'icon' && (
+                    <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">General Section</p>
+                  )}
+                  {ukGeneralSubmenus.map((s, i) => (
+                    <SidePaneButton key={s.id} icon="📁" label={s.name} mode={cashDisplayMode} divider={i > 0}
+                      active={paneActive(uk.selectedSubmenuId === s.id)}
+                      onClick={() => { uk.pickPerson('General' as typeof uk.person); uk.pickSubmenu(s.id); setSettingsOpen(false) }} />
+                  ))}
+                </div>
+              )}
             </>)}
 
             {/* Settings (Viewing/Team/Users/Add Category/View Portal As) now
@@ -1470,16 +1497,25 @@ function ItemHubPageInner() {
                 e.g. Times), since "settings is open" and "this content is
                 showing" are independent, not mutually exclusive states. */}
             <div className="mt-1 pt-1 border-t border-white/30">
-              {canOpenSettings && (
+              {canOpenThisSettings && (
                 <SidePaneButton icon="⚙️" label="Settings" mode={cashDisplayMode} active={settingsOpen}
                   onClick={() => setSettingsOpen(v => !v)} />
               )}
-              <SidePaneButton icon="🚪" label="Sign out" mode={cashDisplayMode} active={false} divider={canOpenSettings}
+              <SidePaneButton icon="🚪" label="Sign out" mode={cashDisplayMode} active={false} divider={canOpenThisSettings}
                 onClick={() => { if (confirm('Sign out?')) signOut({ callbackUrl: '/login' }) }} />
             </div>
         </SidePaneContainer>
 
-        {settingsOpen && canOpenSettings && (
+        {/* UK's own Settings (add a menu / add a column) is a completely
+            separate panel from Biz's SettingsPane (Viewing/Team/Users/
+            Portal-As) -- gated to isGrony specifically, matching UKTab's
+            own data gate, rather than canOpenSettings' broader Biz-role
+            checks (which say nothing about who's allowed to see or edit UK
+            data at all). */}
+        {settingsOpen && outerTab === 'uk' && isGrony && (
+          <UKSettingsPanel onChanged={() => setUkPaneRefresh(k => k + 1)} />
+        )}
+        {settingsOpen && outerTab !== 'uk' && canOpenSettings && (
           <SettingsPane mode={cashDisplayMode} activeView={lossView}
             viewingName={viewingName} myStaffName={myStaffName} staffRoster={STAFF_ROSTER}
             pickViewing={pickViewing} pickLossView={pickLossView}
