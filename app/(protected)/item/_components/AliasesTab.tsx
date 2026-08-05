@@ -23,36 +23,45 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'name-conflicts',   label: '⚠ Name Conflicts' },
 ]
 
-const CATEGORY_HINTS: Record<string, string> = {
-  '12A dRUMS':'Drum unit','26A HP DRUMS':'Drum unit','55A HP DRUMS':'Drum unit',
-  '80A/ 05A HP DRUMS':'Drum unit','1730 CANON BLADE':'Canon item','1730 CANON DRUMS':'Canon item',
-  '1750i CANON TONER CART.':'Canon item','5045 drum':'Drum unit','C-EXV33':'Canon item',
-  '131A Colour Cartridge Black':'Colour cartridge','131A Colour Cartridge Cyan':'Colour cartridge',
-  '131A Colour Cartridge Magenta':'Colour cartridge','131A Colour Cartridge Yellow':'Colour cartridge',
-  'EPSON TANK 6 COLOURS':'Epson item','HP 78A':'HP item',
-  'Colour Printing =':'Service','Cardboard Printing':'Service','PV-Photo Framing':'Service',
-  'LAMINATION ID':'Service','LAMINATION A3 SINGLES':'Service',
-  "I.C-Online Registration (don't record anything here)":'Service','Tenancy Agreement':'Service',
-  'ACER  LAPTOP CHARGER':'Not in system','Lenovo Big Pin':'Not in system',
-  'MEMORY 4GB':'Not in system','MEMORY 8GB':'Not in system','PINK CARDBOARD':'Not in system',
-  'PVC Rubber Cover (green)':'Not in system','DV4 LAPTOP BATTERIES':'Not in system',
-  'Toshiba battery':'Not in system','HDTV CABLE':'Not in system','SX TONER REFILL':'Not in system',
-  'V3 CABLES':'Not in system','Push Pins':'Not in system','A4 SHEETS PACKS':'Ambiguous',
-}
+// Compact item search dropdown for inline use inside a table cell -- lets a
+// whole flag's review stay one flat table (list + fix action together) with
+// no separate detail pane to click into for each row.
+function InlineItemPicker({ items, value, onChange }: { items: Item[]; value: Item | null; onChange: (item: Item | null) => void }) {
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
 
-const DELIVERY_RE = /^(delivery|momo charge|bank charge|goods (from|ordered|charge)|bengid|gentle order|lucky order|christina order|data appcom ghana|sent to dispatch)/i
+  const matches = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    const list = q ? items.filter(i => i.canonical_name.toLowerCase().includes(q) || (i.cf_group ?? '').toLowerCase().includes(q)) : items
+    return list.slice(0, 20)
+  }, [items, query])
 
-const CAT_COLOR: Record<string, string> = {
-  'Drum unit':'bg-purple-100 text-purple-700','Canon item':'bg-orange-100 text-orange-700',
-  'Colour cartridge':'bg-pink-100 text-pink-700','Epson item':'bg-yellow-100 text-yellow-700',
-  'HP item':'bg-blue-100 text-blue-700','Service':'bg-teal-100 text-teal-700',
-  'Not in system':'bg-red-100 text-red-600','Ambiguous':'bg-gray-100 text-gray-600',
-  'Delivery/Charge':'bg-gray-200 text-gray-500',
-}
-
-function getHint(name: string, tab: Tab) {
-  if (tab === 'prezoho-bills' && DELIVERY_RE.test(name.trim())) return 'Delivery/Charge'
-  return CATEGORY_HINTS[name] ?? ''
+  if (value) {
+    return (
+      <div className="flex items-center gap-1">
+        <span className="text-[10px] font-semibold text-blue-700 truncate max-w-[130px]">{value.canonical_name}</span>
+        <button onClick={() => onChange(null)} title="Change" className="text-[10px] text-gray-400 hover:text-red-500 leading-none">×</button>
+      </div>
+    )
+  }
+  return (
+    <div className="relative">
+      <input value={query} onChange={e => { setQuery(e.target.value); setOpen(true) }}
+        onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)}
+        placeholder="Search item…"
+        className="w-32 text-[10px] bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
+      {open && (
+        <div className="absolute z-20 top-full left-0 mt-0.5 w-48 max-h-40 overflow-y-auto bg-white border border-gray-200 rounded shadow-lg">
+          {matches.length === 0 ? <p className="text-[9px] text-gray-400 px-2 py-1.5">No matches</p> : matches.map(item => (
+            <div key={item.id} onMouseDown={() => { onChange(item); setQuery(''); setOpen(false) }}
+              className="px-2 py-1 text-[10px] text-gray-900 hover:bg-blue-50 cursor-pointer truncate">
+              {item.canonical_name}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function PreZohoPanel({ tab, items }: { tab: Tab; items: Item[] }) {
@@ -63,175 +72,85 @@ function PreZohoPanel({ tab, items }: { tab: Tab; items: Item[] }) {
 
   const [rows, setRows]         = useState<UnresolvedRow[]>([])
   const [loading, setLoading]   = useState(true)
-  const [selected, setSelected] = useState<UnresolvedRow | null>(null)
-  const [itemSearch, setItemSearch] = useState('')
-  const [chosenItem, setChosenItem] = useState<Item | null>(null)
-  const [saving, setSaving]     = useState(false)
-  const [statusMap, setStatusMap] = useState<Record<string, 'done' | 'skipped'>>({})
-  const [showAll, setShowAll]   = useState(false)
+  const [picked, setPicked]     = useState<Record<string, Item | null>>({})
+  const [saving, setSaving]     = useState<string | null>(null)
   const [nameSearch, setNameSearch] = useState('')
-  const [catFilter, setCatFilter] = useState<string | null>(null)
 
   useEffect(() => {
     setLoading(true)
     fetch(endpoint).then(r => r.json()).then(d => {
       const data = Array.isArray(d) ? d : []
-      setRows(data)
-      const map: Record<string, 'done' | 'skipped'> = {}
-      for (const r of data) if (r.confirmed) map[r.name] = 'done'
-      setStatusMap(map)
+      setRows(data.filter((r: UnresolvedRow) => !r.confirmed))
       setLoading(false)
     })
-  }, [tab])
+  }, [tab, endpoint])
 
   const display = useMemo(() => {
-    let list = rows
-    if (!showAll) list = list.filter(r => !statusMap[r.name])
-    if (nameSearch) list = list.filter(r => r.name.toLowerCase().includes(nameSearch.toLowerCase()))
-    if (catFilter) list = list.filter(r => getHint(r.name, tab) === catFilter)
-    return list
-  }, [rows, statusMap, showAll, nameSearch, catFilter])
+    if (!nameSearch) return rows
+    return rows.filter(r => r.name.toLowerCase().includes(nameSearch.toLowerCase()))
+  }, [rows, nameSearch])
 
-  const filteredItems = useMemo(() => {
-    const q = itemSearch.toLowerCase()
-    if (!q) return items.slice(0, 40)
-    return items.filter(i => i.canonical_name.toLowerCase().includes(q) || (i.cf_group ?? '').toLowerCase().includes(q)).slice(0, 40)
-  }, [items, itemSearch])
-
-  function selectRow(r: UnresolvedRow) { setSelected(r); setItemSearch(''); setChosenItem(null) }
-
-  async function confirmMatch(force = false) {
-    if (!selected || !chosenItem) return
-    setSaving(true)
+  async function confirmMatch(row: UnresolvedRow, force = false) {
+    const item = picked[row.name]
+    if (!item) return
+    setSaving(row.name)
     const res = await fetch('/api/aliases/confirm', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ alias_name: selected.name, item_id: chosenItem.id, source, force }),
+      body: JSON.stringify({ alias_name: row.name, item_id: item.id, source, force }),
     })
-    setSaving(false)
+    setSaving(null)
     if (!res.ok) {
       const d = await res.json().catch(() => null)
       if (res.status === 409 && d?.requires_confirmation) {
-        if (window.confirm(`${d.warning}\n\nMatch anyway?`)) confirmMatch(true)
+        if (window.confirm(`${d.warning}\n\nMatch anyway?`)) return confirmMatch(row, true)
       }
       return
     }
-    setStatusMap(m => ({ ...m, [selected.name]: 'done' }))
-    const next = display.find(r => r.name !== selected.name && !statusMap[r.name])
-    setSelected(next ?? null); setChosenItem(null); setItemSearch('')
+    setRows(prev => prev.filter(r => r.name !== row.name))
   }
-
-  function skip() {
-    if (!selected) return
-    setStatusMap(m => ({ ...m, [selected.name]: 'skipped' }))
-    const next = display.find(r => r.name !== selected.name && !statusMap[r.name])
-    setSelected(next ?? null); setChosenItem(null); setItemSearch('')
-  }
-
-  const pending = rows.filter(r => !statusMap[r.name]).length
-  const done    = rows.filter(r => statusMap[r.name] === 'done').length
-  const skipped = rows.filter(r => statusMap[r.name] === 'skipped').length
 
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <div className="shrink-0 px-2 py-1 border-b border-gray-200 bg-white space-y-1">
-        <div className="flex items-center gap-2">
-          <span className="text-[9px] text-orange-500 font-bold">{pending} pending</span>
-          <span className="text-[9px] text-green-600 font-bold">{done} done</span>
-          <span className="text-[9px] text-gray-400">{skipped} skipped</span>
-          <div className="flex-1" />
-          <button onClick={() => setShowAll(v => !v)}
-            className={`text-[9px] font-semibold px-2 py-0.5 rounded transition ${showAll ? 'bg-gray-200 text-gray-700' : 'bg-orange-100 text-orange-600'}`}>
-            {showAll ? 'All' : 'Pending'}
-          </button>
-        </div>
+      <div className="shrink-0 px-2 py-1.5 border-b border-gray-200 bg-white flex items-center gap-2">
+        <span className="text-[9px] text-orange-500 font-bold">{display.length} pending</span>
         <input value={nameSearch} onChange={e => setNameSearch(e.target.value)} placeholder="Search…"
-          className="w-full text-[10px] bg-gray-50 border border-gray-200 rounded px-2 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
-        <div className="flex gap-1 overflow-x-auto pb-0.5">
-          {['All', ...Object.keys(CAT_COLOR)].map(cat => {
-            const isAll = cat === 'All'; const active = isAll ? !catFilter : catFilter === cat
-            return (
-              <button key={cat} onClick={() => setCatFilter(isAll ? null : (catFilter === cat ? null : cat))}
-                className={`shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded-full transition
-                  ${active ? (isAll ? 'bg-blue-600 text-white' : (CAT_COLOR[cat] ?? 'bg-gray-200')) : 'bg-gray-100 text-gray-500'}`}>
-                {cat}
-              </button>
-            )
-          })}
-        </div>
+          className="text-[10px] bg-gray-50 border border-gray-200 rounded px-2 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 w-36" />
       </div>
-      <div className="flex flex-1 min-h-0">
-        <div className="w-1/2 border-r border-gray-200 overflow-y-auto min-h-0">
+      <div className="flex-1 overflow-y-auto min-h-0">
+        {display.length === 0 ? (
+          <p className="py-10 text-center text-gray-400 text-[10px]">Nothing pending. 🎉</p>
+        ) : (
           <table className="w-full border-collapse text-[10px]">
             <thead className="sticky top-0 bg-gray-100 z-10">
               <tr>
-                <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">RAW NAME</th>
-                <th className="text-right px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">CNT</th>
-                <th className="text-right px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">ST</th>
+                <th className="text-left px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">RAW NAME</th>
+                <th className="text-right px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">CNT</th>
+                <th className="text-left px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">MAP TO ITEM</th>
+                <th className="px-2 py-1 border-b border-gray-200"></th>
               </tr>
             </thead>
             <tbody>
-              {display.map(r => {
-                const st = statusMap[r.name]; const hint = getHint(r.name, tab)
-                return (
-                  <tr key={r.name} onClick={() => selectRow(r)}
-                    className={`cursor-pointer border-b border-gray-100 transition ${selected?.name === r.name ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-                    <td className="px-1 py-0.5">
-                      <p className="text-gray-900 truncate max-w-[120px]">{r.name}</p>
-                      {hint && <span className={`text-[8px] font-semibold px-1 rounded ${CAT_COLOR[hint] ?? 'bg-gray-100 text-gray-500'}`}>{hint}</span>}
-                    </td>
-                    <td className="px-1 py-0.5 text-right text-gray-500">{r.cnt}</td>
-                    <td className="px-1 py-0.5 text-right">
-                      {st === 'done' && <span className="text-green-600 font-bold">✓</span>}
-                      {st === 'skipped' && <span className="text-gray-400">—</span>}
-                      {!st && <span className="text-orange-400">·</span>}
-                    </td>
-                  </tr>
-                )
-              })}
+              {display.map(r => (
+                <tr key={r.name} className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="px-2 py-1 text-gray-900 max-w-[160px] truncate">{r.name}</td>
+                  <td className="px-2 py-1 text-right text-gray-500">{r.cnt}</td>
+                  <td className="px-2 py-1">
+                    <InlineItemPicker items={items} value={picked[r.name] ?? null}
+                      onChange={item => setPicked(p => ({ ...p, [r.name]: item }))} />
+                  </td>
+                  <td className="px-2 py-1">
+                    <button onClick={() => confirmMatch(r)} disabled={!picked[r.name] || saving === r.name}
+                      className="text-[9px] font-bold text-white bg-green-600 hover:bg-green-500 disabled:opacity-40 rounded px-2 py-1 transition">
+                      {saving === r.name ? '…' : '✓ Confirm'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
-        </div>
-        <div className="w-1/2 overflow-y-auto min-h-0 flex flex-col">
-          {!selected ? <p className="text-[10px] text-gray-400 text-center py-10">Select a name to map</p> : (
-            <div className="flex flex-col h-full">
-              <div className="px-2 py-1.5 bg-gray-50 border-b border-gray-200 shrink-0">
-                <p className="text-[9px] text-gray-400 uppercase font-semibold">Raw name · {selected.cnt} lines</p>
-                <p className="text-[11px] font-bold text-gray-900 break-words">{selected.name}</p>
-              </div>
-              {chosenItem && (
-                <div className="px-2 py-1.5 bg-blue-50 border-b border-blue-100 shrink-0">
-                  <p className="text-[9px] text-blue-400 uppercase font-semibold">Maps to</p>
-                  <p className="text-[10px] font-bold text-blue-900">{chosenItem.canonical_name}</p>
-                </div>
-              )}
-              <div className="px-2 py-1.5 border-b border-gray-100 flex gap-1 shrink-0">
-                <button onClick={() => confirmMatch()} disabled={!chosenItem || saving}
-                  className="flex-1 bg-green-600 text-white text-[10px] font-bold rounded py-1.5 disabled:opacity-40 hover:bg-green-500 transition">
-                  {saving ? 'Saving…' : '✓ Confirm'}
-                </button>
-                <button onClick={skip}
-                  className="px-3 py-1.5 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded hover:bg-gray-200 transition">
-                  Skip
-                </button>
-              </div>
-              <div className="px-2 py-1.5 border-b border-gray-100 shrink-0">
-                <input value={itemSearch} onChange={e => setItemSearch(e.target.value)} placeholder="Search canonical items…"
-                  className="w-full text-[10px] bg-gray-50 border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
-              </div>
-              <div className="flex-1 overflow-y-auto min-h-0">
-                {filteredItems.map(item => (
-                  <div key={item.id} onClick={() => setChosenItem(item)}
-                    className={`px-2 py-1 border-b border-gray-50 cursor-pointer transition ${chosenItem?.id === item.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-                    <p className="text-[10px] font-semibold text-gray-900">{item.canonical_name}</p>
-                    {item.cf_group && <p className="text-[9px] text-gray-400">{item.cf_group}</p>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+        )}
       </div>
     </div>
   )
@@ -245,126 +164,97 @@ function PreZohoPanel({ tab, items }: { tab: Tab; items: Item[] }) {
 function FlaggedPanel({ items }: { items: Item[] }) {
   const [rows, setRows] = useState<AuditRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set())
-  const [reassigning, setReassigning] = useState<AuditRow | null>(null)
-  const [reassignSearch, setReassignSearch] = useState('')
-  const [saving, setSaving] = useState(false)
+  const [picked, setPicked] = useState<Record<string, Item | null>>({})
+  const [saving, setSaving] = useState<string | null>(null)
 
   useEffect(() => {
-    setLoading(true)
     fetch('/api/aliases/audit').then(r => r.json()).then(d => { setRows(Array.isArray(d) ? d : []); setLoading(false) })
-    fetch('/api/aliases/dismissed').then(r => r.json()).then(d => {
-      if (Array.isArray(d?.flagged)) setDismissed(new Set(d.flagged))
-    }).catch(() => {})
   }, [])
 
   const key = (r: AuditRow) => `${r.source}::${r.raw_name}::${r.item_id}`
-  const display = rows.filter(r => !dismissed.has(key(r)))
 
-  function dismiss(k: string) {
-    setDismissed(s => new Set(s).add(k))
+  function dismiss(r: AuditRow) {
+    const k = key(r)
+    setRows(prev => prev.filter(x => key(x) !== k))
     fetch('/api/aliases/dismissed', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ review_type: 'flagged', review_key: k }),
     }).catch(() => {})
   }
 
-  const reassignTargets = useMemo(() => {
-    const q = reassignSearch.toLowerCase()
-    if (!q) return items.filter(i => i.id !== reassigning?.item_id).slice(0, 40)
-    return items.filter(i => i.id !== reassigning?.item_id &&
-      (i.canonical_name.toLowerCase().includes(q) || (i.cf_group ?? '').toLowerCase().includes(q))
-    ).slice(0, 40)
-  }, [items, reassignSearch, reassigning])
-
-  async function doFix(target: Item, force = false) {
-    if (!reassigning) return
-    setSaving(true)
-    const srcKey = reassigning.source === 'bills' ? 'zoho_bills' : 'zoho_sales'
+  async function reassign(r: AuditRow, force = false) {
+    const k = key(r)
+    const item = picked[k]
+    if (!item) return
+    setSaving(k)
+    const srcKey = r.source === 'bills' ? 'zoho_bills' : 'zoho_sales'
     const res = await fetch('/api/aliases/correct', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ raw_name: reassigning.raw_name, item_id: target.id, source: srcKey, force }),
+      body: JSON.stringify({ raw_name: r.raw_name, item_id: item.id, source: srcKey, force }),
     })
-    setSaving(false)
+    setSaving(null)
     if (!res.ok) {
       const d = await res.json().catch(() => null)
       if (res.status === 409 && d?.requires_confirmation) {
-        if (window.confirm(`${d.warning}\n\nMatch anyway?`)) doFix(target, true)
+        if (window.confirm(`${d.warning}\n\nMatch anyway?`)) return reassign(r, true)
       }
       return
     }
-    dismiss(key(reassigning))
-    setReassigning(null); setReassignSearch('')
+    setRows(prev => prev.filter(x => key(x) !== k))
   }
 
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <div className="shrink-0 px-2 py-1 border-b border-gray-200 bg-white">
-        <span className="text-[9px] text-red-600 font-bold">{display.length} flagged mismatch{display.length === 1 ? '' : 'es'}</span>
+      <div className="shrink-0 px-2 py-1.5 border-b border-gray-200 bg-white">
+        <span className="text-[9px] text-red-600 font-bold">{rows.length} flagged mismatch{rows.length === 1 ? '' : 'es'}</span>
         <span className="text-[9px] text-gray-400 ml-2">raw name contradicts the item it&apos;s matched to (singles vs. pack)</span>
       </div>
-      <div className="flex flex-1 min-h-0">
-        <div className="w-1/2 border-r border-gray-200 overflow-y-auto min-h-0">
-          {display.length === 0 ? (
-            <p className="text-[10px] text-gray-400 text-center py-10">No flagged mismatches found. 🎉</p>
-          ) : (
-            <table className="w-full border-collapse text-[10px]">
-              <thead className="sticky top-0 bg-gray-100 z-10">
-                <tr>
-                  <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">RAW NAME</th>
-                  <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">MATCHED TO</th>
-                  <th className="text-right px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">CNT</th>
-                </tr>
-              </thead>
-              <tbody>
-                {display.map(r => (
-                  <tr key={key(r)} onClick={() => { setReassigning(r); setReassignSearch('') }}
-                    className={`cursor-pointer border-b border-gray-100 transition ${reassigning && key(reassigning) === key(r) ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
-                    <td className="px-1 py-0.5"><p className="text-gray-900 truncate max-w-[100px]">{r.raw_name}</p></td>
-                    <td className="px-1 py-0.5"><p className="text-red-600 truncate max-w-[100px]">{r.canonical_name}</p></td>
-                    <td className="px-1 py-0.5 text-right text-gray-500">{r.cnt}</td>
+      <div className="flex-1 overflow-y-auto min-h-0">
+        {rows.length === 0 ? (
+          <p className="py-10 text-center text-gray-400 text-[10px]">No flagged mismatches found. 🎉</p>
+        ) : (
+          <table className="w-full border-collapse text-[10px]">
+            <thead className="sticky top-0 bg-gray-100 z-10">
+              <tr>
+                <th className="text-left px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">RAW NAME</th>
+                <th className="text-left px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">CURRENTLY MATCHED TO</th>
+                <th className="text-right px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">CNT</th>
+                <th className="text-left px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">REASSIGN TO</th>
+                <th className="px-2 py-1 border-b border-gray-200"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(r => {
+                const k = key(r)
+                return (
+                  <tr key={k} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="px-2 py-1 text-gray-900 max-w-[120px] truncate">{r.raw_name}</td>
+                    <td className="px-2 py-1 text-red-600 max-w-[120px] truncate">{r.canonical_name}</td>
+                    <td className="px-2 py-1 text-right text-gray-500">{r.cnt}</td>
+                    <td className="px-2 py-1">
+                      <InlineItemPicker items={items} value={picked[k] ?? null}
+                        onChange={item => setPicked(p => ({ ...p, [k]: item }))} />
+                    </td>
+                    <td className="px-2 py-1">
+                      <div className="flex gap-1">
+                        <button onClick={() => reassign(r)} disabled={!picked[k] || saving === k}
+                          className="text-[9px] font-bold text-white bg-green-600 hover:bg-green-500 disabled:opacity-40 rounded px-2 py-1 transition">
+                          {saving === k ? '…' : 'Reassign'}
+                        </button>
+                        <button onClick={() => dismiss(r)}
+                          className="text-[9px] font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded px-2 py-1 transition">
+                          Dismiss
+                        </button>
+                      </div>
+                    </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-        <div className="w-1/2 overflow-y-auto min-h-0 flex flex-col">
-          {!reassigning ? (
-            <p className="text-[10px] text-gray-400 text-center py-10">Select a flagged row to fix or dismiss</p>
-          ) : (
-            <div className="flex flex-col h-full">
-              <div className="px-2 py-1.5 bg-red-50 border-b border-red-200 shrink-0">
-                <p className="text-[9px] text-red-500 font-semibold uppercase">Flagged</p>
-                <p className="text-[10px] font-bold text-gray-900 break-words">{reassigning.raw_name}</p>
-                <p className="text-[9px] text-red-700 mt-0.5">{reassigning.warning}</p>
-                <p className="text-[9px] text-gray-400 mt-0.5">Currently matched to: {reassigning.canonical_name} ({reassigning.cnt} lines)</p>
-              </div>
-              <div className="px-2 py-1.5 border-b border-gray-100 shrink-0">
-                <button onClick={() => dismiss(key(reassigning))}
-                  className="w-full text-[10px] font-semibold text-gray-600 bg-gray-100 rounded py-1.5 hover:bg-gray-200 transition">
-                  Keep as-is (dismiss)
-                </button>
-              </div>
-              <div className="px-2 py-1.5 border-b border-gray-100 shrink-0">
-                <input value={reassignSearch} onChange={e => setReassignSearch(e.target.value)}
-                  placeholder="Search the correct item…" autoFocus
-                  className="w-full text-[10px] bg-gray-50 border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-red-400 text-gray-900" />
-              </div>
-              <div className="flex-1 overflow-y-auto min-h-0">
-                {reassignTargets.map(item => (
-                  <div key={item.id} onClick={() => !saving && doFix(item)}
-                    className="px-2 py-1.5 border-b border-gray-100 cursor-pointer hover:bg-red-50 transition">
-                    <p className="text-[10px] font-semibold text-gray-900">{item.canonical_name}</p>
-                    {item.cf_group && <p className="text-[9px] text-gray-400">{item.cf_group}</p>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   )
@@ -378,34 +268,27 @@ function FlaggedPanel({ items }: { items: Item[] }) {
 function AmbiguousPanel() {
   const [groups, setGroups] = useState<AmbiguousGroup[]>([])
   const [loading, setLoading] = useState(true)
-  const [selected, setSelected] = useState<AmbiguousGroup | null>(null)
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set())
-  const [resolving, setResolving] = useState<number | null>(null)
+  const [resolving, setResolving] = useState<string | null>(null)
   const [lastResult, setLastResult] = useState<string | null>(null)
 
   useEffect(() => {
-    setLoading(true)
     fetch('/api/aliases/ambiguous').then(r => r.json()).then(d => {
       setGroups(Array.isArray(d) ? d : [])
       setLoading(false)
     })
-    fetch('/api/aliases/dismissed').then(r => r.json()).then(d => {
-      if (Array.isArray(d?.ambiguous)) setDismissed(new Set(d.ambiguous))
-    }).catch(() => {})
   }, [])
 
-  const display = groups.filter(g => !dismissed.has(g.norm_name))
-
-  function dismiss(normName: string) {
-    setDismissed(s => new Set(s).add(normName))
+  function dismiss(group: AmbiguousGroup) {
+    setGroups(prev => prev.filter(g => g.norm_name !== group.norm_name))
     fetch('/api/aliases/dismissed', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ review_type: 'ambiguous', review_key: normName }),
+      body: JSON.stringify({ review_type: 'ambiguous', review_key: group.norm_name }),
     }).catch(() => {})
   }
 
   async function keep(group: AmbiguousGroup, keepItemId: number | null) {
-    setResolving(keepItemId ?? -1)
+    const busyKey = `${group.norm_name}::${keepItemId ?? 'delete'}`
+    setResolving(busyKey)
     setLastResult(null)
     const res = await fetch('/api/aliases/ambiguous/resolve', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -420,84 +303,64 @@ function AmbiguousPanel() {
         : `Deleted ${d.deletedCount} unused alias row${d.deletedCount === 1 ? '' : 's'}`
     )
     setGroups(prev => prev.filter(g => g.norm_name !== group.norm_name))
-    setSelected(null)
   }
 
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <div className="shrink-0 px-2 py-1 border-b border-gray-200 bg-white">
-        <span className="text-[9px] text-red-600 font-bold">{display.length} ambiguous name{display.length === 1 ? '' : 's'}</span>
+      <div className="shrink-0 px-2 py-1.5 border-b border-gray-200 bg-white">
+        <span className="text-[9px] text-red-600 font-bold">{groups.length} ambiguous name{groups.length === 1 ? '' : 's'}</span>
         <span className="text-[9px] text-gray-400 ml-2">same raw text maps to more than one item -- resweep skips these</span>
       </div>
       {lastResult && (
         <p className="shrink-0 text-[9px] text-gray-500 bg-gray-50 border-b border-gray-200 px-2 py-1">{lastResult}</p>
       )}
-      <div className="flex flex-1 min-h-0">
-        <div className="w-1/2 border-r border-gray-200 overflow-y-auto min-h-0">
-          {display.length === 0 ? (
-            <p className="text-[10px] text-gray-400 text-center py-10">No ambiguous aliases found. 🎉</p>
-          ) : (
-            <table className="w-full border-collapse text-[10px]">
-              <thead className="sticky top-0 bg-gray-100 z-10">
-                <tr>
-                  <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">ALIAS NAME</th>
-                  <th className="text-right px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">ITEMS</th>
-                </tr>
-              </thead>
-              <tbody>
-                {display.map(g => (
-                  <tr key={g.norm_name} onClick={() => setSelected(g)}
-                    className={`cursor-pointer border-b border-gray-100 transition ${selected?.norm_name === g.norm_name ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
-                    <td className="px-1 py-0.5"><p className="text-gray-900 truncate max-w-[150px]">{g.candidates[0]?.alias_name}</p></td>
-                    <td className="px-1 py-0.5 text-right text-gray-400">{g.candidates.length}</td>
+      <div className="flex-1 overflow-y-auto min-h-0">
+        {groups.length === 0 ? (
+          <p className="py-10 text-center text-gray-400 text-[10px]">No ambiguous aliases found. 🎉</p>
+        ) : (
+          <table className="w-full border-collapse text-[10px]">
+            <thead className="sticky top-0 bg-gray-100 z-10">
+              <tr>
+                <th className="text-left px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">ALIAS NAME</th>
+                <th className="text-left px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">CANDIDATE ITEM</th>
+                <th className="text-right px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">LINES</th>
+                <th className="px-2 py-1 border-b border-gray-200"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {groups.flatMap(g => {
+                const allZero = g.candidates.every(c => c.line_count === 0)
+                return g.candidates.map(c => (
+                  <tr key={c.alias_id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="px-2 py-1 text-gray-900 max-w-[130px] truncate">{g.candidates[0]?.alias_name}</td>
+                    <td className="px-2 py-1 text-gray-700 max-w-[130px] truncate">{c.canonical_name}</td>
+                    <td className="px-2 py-1 text-right text-gray-500">{c.line_count}</td>
+                    <td className="px-2 py-1">
+                      <div className="flex gap-1 justify-end">
+                        <button onClick={() => keep(g, c.item_id)} disabled={resolving !== null}
+                          className="text-[9px] font-bold text-white bg-green-600 hover:bg-green-500 disabled:opacity-40 rounded px-2 py-1 transition">
+                          {resolving === `${g.norm_name}::${c.item_id}` ? '…' : 'Keep this'}
+                        </button>
+                        {allZero && (
+                          <button onClick={() => keep(g, null)} disabled={resolving !== null}
+                            className="text-[9px] font-bold text-white bg-orange-500 hover:bg-orange-600 disabled:opacity-40 rounded px-2 py-1 transition">
+                            {resolving === `${g.norm_name}::delete` ? '…' : 'Delete all'}
+                          </button>
+                        )}
+                        <button onClick={() => dismiss(g)}
+                          className="text-[9px] font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded px-2 py-1 transition">
+                          Dismiss
+                        </button>
+                      </div>
+                    </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-        <div className="w-1/2 overflow-y-auto min-h-0 flex flex-col">
-          {!selected ? (
-            <p className="text-[10px] text-gray-400 text-center py-10">Select a name to resolve</p>
-          ) : (
-            <div className="flex flex-col h-full">
-              <div className="px-2 py-1.5 bg-red-50 border-b border-red-200 shrink-0">
-                <p className="text-[9px] text-red-500 font-semibold uppercase">Ambiguous</p>
-                <p className="text-[10px] font-bold text-gray-900 break-words">{selected.candidates[0]?.alias_name}</p>
-                <p className="text-[9px] text-gray-400 mt-0.5">Pick which item this name really means -- lines currently resolved to the other candidate(s) move here too, and the losing aliases are removed</p>
-              </div>
-              {selected.candidates.every(c => c.line_count === 0) && (
-                <div className="px-2 py-1.5 bg-orange-50 border-b border-orange-200 shrink-0">
-                  <p className="text-[9px] text-orange-600 mb-1">No candidate has any lines resolved to it — likely just orphaned old data.</p>
-                  <button onClick={() => keep(selected, null)} disabled={resolving !== null}
-                    className="w-full text-[10px] font-bold text-white bg-orange-500 hover:bg-orange-600 rounded py-1.5 transition disabled:opacity-40">
-                    {resolving === -1 ? 'Deleting…' : 'Delete entirely — not used anywhere'}
-                  </button>
-                </div>
-              )}
-              <div className="px-2 py-1.5 border-b border-gray-100 shrink-0">
-                <button onClick={() => { dismiss(selected.norm_name); setSelected(null) }}
-                  className="w-full text-[10px] font-semibold text-gray-600 bg-gray-100 rounded py-1.5 hover:bg-gray-200 transition">
-                  Skip for now
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto min-h-0">
-                {selected.candidates.map(c => (
-                  <div key={c.alias_id} className="px-2 py-1.5 border-b border-gray-100">
-                    <p className="text-[10px] font-semibold text-gray-900">{c.canonical_name}</p>
-                    <p className="text-[9px] text-gray-400">{c.line_count} line{c.line_count === 1 ? '' : 's'} currently resolved here · {c.alias_type} · {c.source}</p>
-                    <button onClick={() => keep(selected, c.item_id)} disabled={resolving !== null}
-                      className="mt-1 text-[9px] font-bold text-white bg-green-600 hover:bg-green-500 px-2 py-0.5 rounded transition disabled:opacity-40">
-                      {resolving === c.item_id ? 'Keeping…' : `Keep this one →`}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+                ))
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   )
