@@ -1480,9 +1480,12 @@ function ItemHubPageInner() {
                     all. Pills are sorted by count descending each render --
                     whichever violation is worst right now leads, instead of
                     a fixed N/S/C/G/... order that doesn't reflect what
-                    actually needs attention. */}
+                    actually needs attention. Kept to one line -- scrolls
+                    horizontally instead of wrapping once there are more
+                    pills than fit, so this row never pushes Groups/Search
+                    further down the screen. */}
                 {(lossView === 'items' || lossView === 'sales' || lossView === 'bills') && (
-                  <div className="flex flex-wrap items-center gap-1.5">
+                  <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
                     <PageToolIcons scopeKey={CASH_LABEL.get(lossView) ?? lossView} />
                     {[...(lossView === 'items' ? ITEMS_FLAG_TYPES : lossView === 'sales' ? SALES_FLAG_TYPES : BILLS_FLAG_TYPES)]
                       .sort((a, b) => (violationCounts[b.key] ?? 0) - (violationCounts[a.key] ?? 0))
