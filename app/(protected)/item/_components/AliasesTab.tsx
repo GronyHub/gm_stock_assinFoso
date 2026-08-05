@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 
-type Tab = 'prezoho-sales' | 'prezoho-bills' | 'prezoho-receipts' | 'flagged' | 'ambiguous' | 'name-conflicts'
+export type Tab = 'prezoho-sales' | 'prezoho-bills' | 'prezoho-receipts' | 'flagged' | 'ambiguous' | 'name-conflicts'
 type UnresolvedRow = { name: string; cnt: number; confirmed: boolean }
 type Item = { id: number; canonical_name: string; cf_group: string | null }
 type AuditRow = { raw_name: string; item_id: number; canonical_name: string; source: string; cnt: number; warning: string }
@@ -13,8 +13,6 @@ type LeakRow = {
   aliased_to_item_id: number; aliased_to_item_name: string
   conflicting_item_id: number; conflicting_item_name: string; conflicting_item_status: string | null
 }
-
-const ALL_TAB_IDS: Tab[] = ['prezoho-sales', 'prezoho-bills', 'prezoho-receipts', 'flagged', 'ambiguous', 'name-conflicts']
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'prezoho-sales',    label: 'Pre-Zoho Sales' },
@@ -641,15 +639,14 @@ function NameConflictsPanel() {
   )
 }
 
-type Props = { defaultTab?: string | null }
+type Props = { tab: Tab }
 
-export default function AliasesTab({ defaultTab }: Props) {
-  const validTab = (defaultTab as Tab | undefined)
-  const [tab, setTab] = useState<Tab>(
-    validTab && ALL_TAB_IDS.includes(validTab)
-      ? validTab
-      : 'prezoho-sales'
-  )
+// Each flag pill on the Items page now points straight at one of these --
+// no tab bar to jump to a different flag from in here. The 6 checks (Pre-
+// Zoho Sales/Bills/Receipts, Flagged, Ambiguous, Name Conflicts) are all
+// genuinely different data-integrity checks, not duplicates of each other,
+// so each keeps its own dedicated page instead of sharing one tabbed screen.
+export default function AliasesTab({ tab }: Props) {
   const [items, setItems] = useState<Item[]>([])
   const [resweeping, setResweeping] = useState(false)
   const [resweepResult, setResweepResult] = useState<string | null>(null)
@@ -678,17 +675,13 @@ export default function AliasesTab({ defaultTab }: Props) {
     setRefreshKey(k => k + 1)
   }
 
-  useEffect(() => {
-    if (defaultTab && ALL_TAB_IDS.includes(defaultTab as Tab)) {
-      setTab(defaultTab as Tab)
-    }
-  }, [defaultTab])
+  const tabLabel = TABS.find(t => t.id === tab)?.label ?? tab
 
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="shrink-0 border-b border-gray-200 bg-white px-2 py-1.5 space-y-1">
         <div className="flex items-center justify-between gap-1">
-          <p className="text-[10px] font-bold text-gray-700">Alias Review</p>
+          <p className="text-[10px] font-bold text-gray-700">{tabLabel}</p>
           <div className="flex items-center gap-1">
             <button onClick={resweep} disabled={resweeping}
               title="Re-apply every existing alias against current sales/bill lines"
@@ -703,17 +696,6 @@ export default function AliasesTab({ defaultTab }: Props) {
         {resweepResult && (
           <p className="text-[9px] text-gray-500 bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5">{resweepResult}</p>
         )}
-        <div className="flex gap-1 overflow-x-auto">
-          {TABS.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              className={`shrink-0 text-[9px] font-bold px-2 py-0.5 rounded-full transition
-                ${tab === t.id
-                  ? ((t.id === 'flagged' || t.id === 'ambiguous' || t.id === 'name-conflicts') ? 'bg-red-600 text-white' : 'bg-blue-600 text-white')
-                  : 'bg-gray-100 text-gray-500'}`}>
-              {t.label}
-            </button>
-          ))}
-        </div>
       </div>
       {tab === 'flagged'
         ? <FlaggedPanel key={refreshKey} items={items} />

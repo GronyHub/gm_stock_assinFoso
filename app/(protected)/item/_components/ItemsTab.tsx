@@ -3,21 +3,21 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { fmtDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
 import { usePresenceReporter } from '@/lib/usePresenceReporter'
-import AliasesTab from './AliasesTab'
+import AliasesTab, { type Tab as AliasTab } from './AliasesTab'
 import AssignWidget from './AssignWidget'
 import PageToolIcons from './PageToolIcons'
 
-// The Aliases pill was split into 4 individual violation types (each with
-// its own count on Joe's Role Bar panel) instead of one combined "Aliases"
-// row -- this maps a "Fix now" click on any of the four back to which
-// AliasesTab sub-tab it should open on.
-const ALIAS_VIOLATION_TAB: Record<string, string> = {
-  alias_prezoho: 'prezoho-sales',
+// Each of these 6 checks is its own flag pill on the Items page, and each
+// opens AliasesTab straight onto its own dedicated page -- no tab bar to
+// jump to a different one from in here, since they check genuinely
+// different things (see AliasesTab's own comment for what each one means).
+const ALIAS_VIOLATION_TAB: Record<string, AliasTab> = {
   alias_prezoho_sales: 'prezoho-sales',
   alias_prezoho_bills: 'prezoho-bills',
   alias_prezoho_receipts: 'prezoho-receipts',
   alias_flagged: 'flagged',
   alias_ambiguous: 'ambiguous',
+  alias_name_conflicts: 'name-conflicts',
 }
 
 type Item = {
@@ -784,7 +784,7 @@ export default function ItemsTab({ items, group, productType, search, violation,
   if (aliasDefaultTab) {
     return (
       <div className="h-full min-h-0 flex flex-col">
-        <AliasesTab defaultTab={aliasDefaultTab} />
+        <AliasesTab tab={aliasDefaultTab} />
       </div>
     )
   }

@@ -68,7 +68,6 @@ const ReceiptsPage   = dynamic(() => import('../receipts/page'),              { 
 const PurchaseOrdersPage  = dynamic(() => import('../purchase-orders/page'),        { ssr: false, loading: () => loading('Loading…') })
 const AliasWidePage       = dynamic(() => import('../aliases/wide/page'),           { ssr: false, loading: () => loading('Loading…') })
 const ServiceMatchesPage  = dynamic(() => import('../matches/wide/page'),           { ssr: false, loading: () => loading('Loading…') })
-const AliasesTab          = dynamic(() => import('./_components/AliasesTab'),       { ssr: false, loading: () => loading('Loading…') })
 const ViewPortalAsButton  = dynamic(() => import('@/components/ViewPortalAsButton'), { ssr: false })
 const Item360Tab = dynamic(() => import('./_components/Item360Tab'),          { ssr: false, loading: () => loading('Loading…') })
 const StaffContent = dynamic(() => import('./_components/StaffPersonTab'),    { ssr: false, loading: () => loading('Loading…') })
@@ -111,11 +110,14 @@ type LossView = 'home' | 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'loss
 // they're now reached from inside Items itself (see ItemsExtraView below),
 // so an old '?view=aliasWide'/'serviceMatches' link still needs a home to
 // land on instead of a blank pane.
-type ItemsExtraView = 'none' | 'aliasWide' | 'serviceMatches' | 'nameConflicts'
+type ItemsExtraView = 'none' | 'aliasWide' | 'serviceMatches'
 // Doubles as the current itemsExtraView->?view= mapping (see the URL-sync
 // effect below) and as backward-compat for old '?view=aliasWide' links.
+// Name Conflicts used to live here too -- it's now its own flag pill (see
+// ERROR_VIOLATIONS/alias_name_conflicts) instead of a menu item, so an old
+// '?view=nameConflicts' link just falls through to the normal Items view.
 const OLD_LOSSVIEW_TO_EXTRA: Partial<Record<string, ItemsExtraView>> = {
-  aliasWide: 'aliasWide', serviceMatches: 'serviceMatches', nameConflicts: 'nameConflicts',
+  aliasWide: 'aliasWide', serviceMatches: 'serviceMatches',
 }
 
 // Every row that used to belong to Grony Manage's or Staff's own separate
@@ -247,10 +249,6 @@ const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCategory; d
     description: 'These look like the same product entered twice under slightly different names, which splits one item into two separate sales and stock records. Review each pair and merge or rename them into a single canonical item.',
   },
   {
-    key: 'alias_prezoho', label: 'Unresolved Names', category: 'loss',
-    description: "A pre-Zoho sale, bill, or receipt used an item name that did not exactly match anything in the item list, so the system flagged it as unresolved instead of guessing. Combines the Sales/Bills/Receipts sources into one count -- switch between them with the tabs at the top of this panel. Confirm the correct match so it counts toward the right item's reports going forward.",
-  },
-  {
     key: 'alias_prezoho_sales', label: 'Pre-Zoho Sales', category: 'loss',
     description: "A pre-Zoho sales receipt used an item name that did not exactly match anything in the item list, so the system flagged it as unresolved instead of guessing. Confirm the correct match so it counts toward the right item's reports going forward.",
   },
@@ -269,6 +267,10 @@ const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCategory; d
   {
     key: 'alias_ambiguous', label: 'Ambiguous', category: 'loss',
     description: 'The same raw item name maps to more than one item in the alias table, so the automatic alias sweep skips it rather than guessing. Pick which item the name really means so future sales/bills resolve to it correctly.',
+  },
+  {
+    key: 'alias_name_conflicts', label: 'Name Conflicts', category: 'loss',
+    description: "An alias's text is identical to a different item's own canonical name -- sales/bills resolve correctly to whatever the alias points at, but a separate real item sitting under that exact name never gets matched by it. Review each one: the alias may simply be wrong, or the conflicting item may itself be a duplicate that needs merging elsewhere.",
   },
   {
     key: 'unlinked_named', label: 'Unlinked', category: 'loss',
@@ -346,8 +348,8 @@ const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCategory; d
 const VIOLATION_HOME: Partial<Record<string, LossView>> = {
   neg_soh: 'items', no_sp: 'items', no_cp: 'items', no_group: 'items',
   duplicates: 'items', unlinked_named: 'items', service_violation: 'items',
-  alias_prezoho: 'items',
   alias_prezoho_sales: 'items', alias_prezoho_bills: 'items', alias_prezoho_receipts: 'items', alias_flagged: 'items', alias_ambiguous: 'items',
+  alias_name_conflicts: 'items',
   daily: 'counts', '7day': 'counts', '15day': 'counts',
   gains: 'feed',
   no_cash: 'sales', missing_days: 'sales', cost_price: 'sales', dup_receipt: 'sales', no_attachment: 'sales', high_wnw: 'sales',
@@ -361,7 +363,7 @@ const VIOLATION_HOME: Partial<Record<string, LossView>> = {
 const LOSSVIEW_PILL_KEYS: Partial<Record<LossView, string[]>> = {
   items: [
     'neg_soh', 'no_sp', 'no_cp', 'no_group', 'duplicates', 'unlinked_named', 'service_violation',
-    'alias_prezoho', 'alias_prezoho_sales', 'alias_prezoho_bills', 'alias_prezoho_receipts', 'alias_flagged', 'alias_ambiguous',
+    'alias_prezoho_sales', 'alias_prezoho_bills', 'alias_prezoho_receipts', 'alias_flagged', 'alias_ambiguous', 'alias_name_conflicts',
   ],
   counts: ['daily', '7day', '15day'],
   feed: ['gains'],
@@ -394,9 +396,12 @@ const ITEMS_FLAG_TYPES: { key: string; letter: string; label: string }[] = [
   { key: 'duplicates', letter: 'D', label: 'Duplicate Items' },
   { key: 'unlinked_named', letter: 'U', label: 'Unlinked Sales' },
   { key: 'service_violation', letter: 'V', label: 'Service Violations' },
-  { key: 'alias_prezoho', letter: 'A', label: 'Unresolved Names (Sales/Bills/Receipts)' },
+  { key: 'alias_prezoho_sales', letter: 'A', label: 'Pre-Zoho Sales Aliases' },
+  { key: 'alias_prezoho_bills', letter: 'B', label: 'Pre-Zoho Bills Aliases' },
+  { key: 'alias_prezoho_receipts', letter: 'R', label: 'Pre-Zoho Receipts Aliases' },
   { key: 'alias_flagged', letter: 'F', label: 'Flagged Aliases' },
   { key: 'alias_ambiguous', letter: 'M', label: 'Ambiguous Aliases' },
+  { key: 'alias_name_conflicts', letter: 'X', label: 'Name Conflicts' },
 ]
 
 // Bills' flag categories -- same treatment as Sales/Items.
@@ -720,12 +725,12 @@ function ItemHubPageInner() {
       no_group: f?.noGroup?.length ?? 0,
       duplicates: f?.duplicates?.length ?? 0,
       unlinked_named: f?.unlinkedNamed?.length ?? 0,
-      alias_prezoho: prezohoSalesCount + prezohoBillsCount + prezohoReceiptsCount,
       alias_prezoho_sales: prezohoSalesCount,
       alias_prezoho_bills: prezohoBillsCount,
       alias_prezoho_receipts: prezohoReceiptsCount,
       alias_flagged: aliasFlaggedCount,
       alias_ambiguous: aliasAmbiguousCount,
+      alias_name_conflicts: nameConflictsCount,
       no_cash: f?.noCash?.length ?? 0,
       missing_days: f?.missingDays?.length ?? 0,
       cost_price: f?.costGteSell?.length ?? 0,
@@ -742,7 +747,7 @@ function ItemHubPageInner() {
       unchecked_cab: f?.uncheckedCab?.length ?? 0,
       no_staff_times: f?.noStaffTimes?.length ?? 0,
     }
-  }, [items, globalFlags, pendingCounts, serviceViolationCount, prezohoSalesCount, prezohoBillsCount, prezohoReceiptsCount, aliasFlaggedCount, aliasAmbiguousCount, gainsCount])
+  }, [items, globalFlags, pendingCounts, serviceViolationCount, prezohoSalesCount, prezohoBillsCount, prezohoReceiptsCount, aliasFlaggedCount, aliasAmbiguousCount, nameConflictsCount, gainsCount])
 
   // Backs every page's own combined flags view, and Manage's Opener/Closer --
   // computed once regardless of which outer tab is showing.
@@ -759,7 +764,7 @@ function ItemHubPageInner() {
   const itemsFlagsCount = violationCountByType([
     'no_group', 'duplicates', 'not_in_inventory', 'neg_soh', 'no_sp', 'no_cp', 'unlinked_named', 'service_violation',
     'alias_prezoho_sales', 'alias_prezoho_bills', 'alias_prezoho_receipts', 'alias_flagged', 'alias_ambiguous',
-  ])
+  ]) + nameConflictsCount
   const billsFlagsCount = violationCountByType(['no_vendor', 'no_items_bills'])
   const cabFlagsCount = violationCountByType(['unchecked_cab'])
   const staffTimesFlagsCount = violationCountByType(['no_staff_times'])
@@ -1627,8 +1632,6 @@ function ItemHubPageInner() {
                           onToggle: () => setItemsExtraView(v => v === 'aliasWide' ? 'none' : 'aliasWide') },
                         { key: 'serviceMatches', label: 'Service Matches', active: itemsExtraView === 'serviceMatches',
                           onToggle: () => setItemsExtraView(v => v === 'serviceMatches' ? 'none' : 'serviceMatches') },
-                        { key: 'nameConflicts', label: `⚠ Name Conflicts (${nameConflictsCount})`, active: itemsExtraView === 'nameConflicts',
-                          onToggle: () => setItemsExtraView(v => v === 'nameConflicts' ? 'none' : 'nameConflicts') },
                       ]} />
                     )}
 
@@ -1835,11 +1838,6 @@ function ItemHubPageInner() {
         {outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'serviceMatches' && (
           <TabErrorBoundary>
             <div className="px-4 pt-4 space-y-2"><PageToolIcons scopeKey="Service Matches" /><ServiceMatchesPage /></div>
-          </TabErrorBoundary>
-        )}
-        {outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'nameConflicts' && (
-          <TabErrorBoundary>
-            <div className="h-full min-h-0 flex flex-col"><AliasesTab defaultTab="name-conflicts" /></div>
           </TabErrorBoundary>
         )}
         {showAnalytics && outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'none' && (

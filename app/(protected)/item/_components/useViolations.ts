@@ -27,6 +27,7 @@ export const SHORT_LABEL: Record<string, string> = {
   alias_prezoho_receipts: 'Pre-Zoho Receipts Aliases',
   alias_flagged: 'Flagged Aliases',
   alias_ambiguous: 'Ambiguous Aliases',
+  alias_name_conflicts: 'Name Conflicts',
   dup_receipts: 'Duplicate Receipts',
   no_attachment: 'Missing Attachments',
   no_vendor: 'Bills Missing Vendor',
@@ -62,7 +63,7 @@ const OPENER_TYPES = new Set(['daily'])
 
 const ALL_ERROR_TYPES = [
   'neg_soh', 'no_sp', 'no_cp', 'no_group', 'duplicates', 'not_in_inventory',
-  'alias_prezoho_sales', 'alias_prezoho_bills', 'alias_prezoho_receipts', 'alias_flagged', 'alias_ambiguous',
+  'alias_prezoho_sales', 'alias_prezoho_bills', 'alias_prezoho_receipts', 'alias_flagged', 'alias_ambiguous', 'alias_name_conflicts',
   'unlinked_named', 'service_violation', 'gains', 'daily', '7day', '15day',
   'no_cash', 'missing_days', 'cost_gte_sell', 'dup_receipts', 'no_attachment', 'no_vendor', 'no_items_bills', 'high_wnw',
   'unchecked_cab', 'no_staff_times', 'no_advert', 'jingle_overdue', 'equipment_check_overdue',
@@ -97,7 +98,7 @@ export type Violation = { type: string; label: string; count: number; days: numb
 export const SUBMENU_HOME: Record<string, string> = {
   neg_soh: 'Items', no_sp: 'Items', no_cp: 'Items', no_group: 'Items', not_in_inventory: 'Items',
   duplicates: 'Items', unlinked_named: 'Items', service_violation: 'Items',
-  alias_prezoho_sales: 'Items', alias_prezoho_bills: 'Items', alias_prezoho_receipts: 'Items', alias_flagged: 'Items', alias_ambiguous: 'Items',
+  alias_prezoho_sales: 'Items', alias_prezoho_bills: 'Items', alias_prezoho_receipts: 'Items', alias_flagged: 'Items', alias_ambiguous: 'Items', alias_name_conflicts: 'Items',
   daily: 'Counts', '7day': 'Counts', '15day': 'Counts',
   gains: 'Loss by Date',
   no_cash: 'Sales', missing_days: 'Sales', cost_price: 'Sales', dup_receipt: 'Sales', no_attachment: 'Sales',
@@ -210,6 +211,11 @@ export function useViolations(counts?: Record<string, number>) {
         type: 'alias_ambiguous',
         label: `alias name${s(c['alias_ambiguous'])} mapping to more than one item`,
         count: c['alias_ambiguous'], days: null,
+      })
+      if (c['alias_name_conflicts'] > 0) list.push({
+        type: 'alias_name_conflicts',
+        label: `alias${s(c['alias_name_conflicts'])} conflicting with a different item's own name`,
+        count: c['alias_name_conflicts'], days: null,
       })
     }
     if (flags.dupReceipts?.length) list.push({
