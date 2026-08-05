@@ -3,6 +3,12 @@ import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 
 export type Tab = 'prezoho-sales' | 'prezoho-bills' | 'prezoho-receipts' | 'flagged' | 'ambiguous' | 'name-conflicts'
+
+function fmtRate(v: string | null): string {
+  if (v == null) return '—'
+  const n = parseFloat(v)
+  return isNaN(n) || n === 0 ? '—' : `₵${n.toLocaleString('en-GH', { maximumFractionDigits: 0 })}`
+}
 type UnresolvedRow = { name: string; cnt: number; confirmed: boolean }
 type Item = { id: number; canonical_name: string; cf_group: string | null }
 type AuditRow = { raw_name: string; item_id: number; canonical_name: string; source: string; cnt: number; warning: string }
@@ -10,8 +16,9 @@ type AmbiguousCandidate = { alias_id: number; alias_name: string; item_id: numbe
 type AmbiguousGroup = { norm_name: string; candidates: AmbiguousCandidate[] }
 type LeakRow = {
   alias_id: number; alias_name: string; alias_type: string; alias_source: string
-  aliased_to_item_id: number; aliased_to_item_name: string
+  aliased_to_item_id: number; aliased_to_item_name: string; aliased_to_sp: string | null; aliased_to_cp: string | null
   conflicting_item_id: number; conflicting_item_name: string; conflicting_item_status: string | null
+  conflicting_sp: string | null; conflicting_cp: string | null
 }
 
 const TABS: { id: Tab; label: string }[] = [
@@ -454,9 +461,13 @@ function NameConflictsPanel({ items }: { items: Item[] }) {
               {rows.map(r => (
                 <tr key={r.alias_id} className="border-b border-gray-100 hover:bg-gray-50">
                   <td className="px-2 py-1 text-gray-900 max-w-[110px] truncate">{r.alias_name}</td>
-                  <td className="px-2 py-1 text-blue-600 max-w-[100px] truncate">{r.aliased_to_item_name}</td>
+                  <td className="px-2 py-1 text-blue-600 max-w-[100px]">
+                    <p className="truncate">{r.aliased_to_item_name}</p>
+                    <p className="text-[8px] text-gray-400">SP {fmtRate(r.aliased_to_sp)} · CP {fmtRate(r.aliased_to_cp)}</p>
+                  </td>
                   <td className="px-2 py-1 max-w-[110px]">
                     <p className="text-gray-900 truncate">{r.conflicting_item_name}</p>
+                    <p className="text-[8px] text-gray-400">SP {fmtRate(r.conflicting_sp)} · CP {fmtRate(r.conflicting_cp)}</p>
                     <span className={`text-[8px] font-bold px-1 py-0.5 rounded ${
                       r.conflicting_item_status === 'Active' ? 'bg-red-100 text-red-700'
                       : r.conflicting_item_status ? 'bg-gray-100 text-gray-500' : 'bg-orange-100 text-orange-700'}`}>

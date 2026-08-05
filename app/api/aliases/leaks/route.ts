@@ -22,7 +22,9 @@ export async function GET() {
     SELECT DISTINCT ON (LOWER(TRIM(a.alias_name)), i.id)
       a.id AS alias_id, a.alias_name, a.alias_type, a.source AS alias_source,
       a.item_id AS aliased_to_item_id, ai.canonical_name AS aliased_to_item_name,
-      i.id AS conflicting_item_id, i.canonical_name AS conflicting_item_name, i.status AS conflicting_item_status
+      ai.selling_rate AS aliased_to_sp, ai.purchase_rate AS aliased_to_cp,
+      i.id AS conflicting_item_id, i.canonical_name AS conflicting_item_name, i.status AS conflicting_item_status,
+      i.selling_rate AS conflicting_sp, i.purchase_rate AS conflicting_cp
     FROM item_aliases a
     JOIN items i ON LOWER(TRIM(i.canonical_name)) = LOWER(TRIM(a.alias_name)) AND i.id != a.item_id
     JOIN items ai ON ai.id = a.item_id
