@@ -100,7 +100,7 @@ function Badge({ n }: { n: number }) {
   return <span className="ml-1 bg-red-100 text-red-600 text-[9px] font-bold px-1 py-0.5 rounded-full">{n}</span>
 }
 
-function FixRow({ label, sub, children }: { label: string; sub?: string; children: React.ReactNode }) {
+function FixRow({ label, sub, children }: { label: React.ReactNode; sub?: React.ReactNode; children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   return (
     <div>
@@ -119,7 +119,7 @@ function FixRow({ label, sub, children }: { label: string; sub?: string; childre
   )
 }
 
-function DuplicateFix({ r, onFixed }: { r: any; onFixed: (id1: number, id2: number) => void }) {
+function DuplicateFix({ r, onFixed, onOpenItem360 }: { r: any; onFixed: (id1: number, id2: number) => void; onOpenItem360?: (itemId: number) => void }) {
   const [saving, setSaving] = useState(false)
   const [merging, setMerging] = useState<number | null>(null)
   const busy = saving || merging !== null
@@ -144,8 +144,19 @@ function DuplicateFix({ r, onFixed }: { r: any; onFixed: (id1: number, id2: numb
     onFixed(r.id1, r.id2)
   }
 
+  // Names alone are often too similar to tell apart -- each one links
+  // straight to its Item 360 page so it can actually be identified.
+  function nameLink(id: number, name: string) {
+    if (!onOpenItem360) return name
+    return (
+      <button onClick={() => onOpenItem360(id)} title="Open Item 360" className="text-blue-600 hover:underline underline-offset-2">
+        {name}
+      </button>
+    )
+  }
+
   return (
-    <FixRow label={r.name1} sub={`vs. ${r.name2}`}>
+    <FixRow label={nameLink(r.id1, r.name1)} sub={<>vs. {nameLink(r.id2, r.name2)}</>}>
       <p className="text-[10px] text-gray-500">Same item? Pick the name to keep — the other merges into it.</p>
       <div className="grid grid-cols-2 gap-1.5">
         <button onClick={() => mergeSame(r.id1, r.id2)} disabled={busy}
@@ -322,9 +333,10 @@ type Props = {
   onCloseAdd?: () => void
   jumpToItemId?: number | null
   onJumpDone?: () => void
+  onOpenItem360?: (itemId: number) => void
 }
 
-export default function ItemsTab({ items, group, productType, search, violation, onItemsChanged, showAdd = false, onCloseAdd, jumpToItemId, onJumpDone }: Props) {
+export default function ItemsTab({ items, group, productType, search, violation, onItemsChanged, showAdd = false, onCloseAdd, jumpToItemId, onJumpDone, onOpenItem360 }: Props) {
   const [lossMap, setLossMap] = useState<Record<number, DayRow[]>>({})
   const [lossLoading, setLossLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -725,7 +737,7 @@ export default function ItemsTab({ items, group, productType, search, violation,
           ? <p className="py-4 text-center text-gray-400 text-[10px]">No duplicate item names found.</p>
           : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
               {activeDups.map((r: any) => (
-                <DuplicateFix key={`${r.id1}-${r.id2}`} r={r} onFixed={(id1, id2) => {
+                <DuplicateFix key={`${r.id1}-${r.id2}`} r={r} onOpenItem360={onOpenItem360} onFixed={(id1, id2) => {
                   const lo = Math.min(id1, id2), hi = Math.max(id1, id2)
                   setDismissed(prev => new Set(prev).add(`${lo}-${hi}`))
                 }} />

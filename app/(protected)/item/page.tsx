@@ -1865,6 +1865,7 @@ function ItemHubPageInner() {
                     onCloseAdd={() => {}}
                     jumpToItemId={jumpToItemId}
                     onJumpDone={() => setJumpToItemId(null)}
+                    onOpenItem360={id => { pickLossView('item360'); setItem360JumpId(id) }}
                   />
                 </TabErrorBoundary>
               )
