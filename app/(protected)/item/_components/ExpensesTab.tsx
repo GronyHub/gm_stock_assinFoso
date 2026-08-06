@@ -315,9 +315,9 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
   )
 }
 
-type Props = { search: string }
+type Props = { search: string; openOrdersSignal?: number }
 
-export default function ExpensesTab({ search }: Props) {
+export default function ExpensesTab({ search, openOrdersSignal }: Props) {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [groupBy, setGroupBy] = useState<'none' | 'account' | 'vendor'>('none')
@@ -350,6 +350,14 @@ export default function ExpensesTab({ search }: Props) {
 
   useEffect(() => { loadExpenses() }, [])
   usePolling(loadExpenses, 20000, editId === null)
+
+  // Driven by the left pane's own "Expense Orders" shortcut row (see
+  // item/page.tsx) -- same one-tap-open pattern as CustomersPage's
+  // openAddSignal.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (openOrdersSignal) { setShowOrders(true); setShowHistory(false) }
+  }, [openOrdersSignal])
 
 
   const accountOptions = useMemo(() =>

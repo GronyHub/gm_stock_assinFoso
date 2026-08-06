@@ -497,6 +497,7 @@ function ItemHubPageInner() {
   const [staffTimeSignal, setStaffTimeSignal]   = useState(0)
   const [customerSignal, setCustomerSignal]     = useState(0)
   const [vendorSignal, setVendorSignal]         = useState(0)
+  const [expenseOrdersSignal, setExpenseOrdersSignal] = useState(0)
   const [jumpToItemId, setJumpToItemId]   = useState<number | null>(null)
   // Seeded from ?jumpDate=/?jumpItem= -- Item 360's Detail table (and its
   // "click a date" links) lands here via /item?tab=loss&view=sales&jumpDate=
@@ -1387,6 +1388,16 @@ function ItemHubPageInner() {
                       onClick={() => { pickLossView('item360'); setItem360JumpId(375) }} />
                   </div>
                 )}
+                {/* Same one-tap pattern as New Customer above -- reuses the
+                    same "Expense Orders" toggle already sitting in
+                    ExpensesTab's own toolbar, just wired to open from here
+                    too via expenseOrdersSignal. */}
+                {v.key === 'expenses' && (
+                  <div className="pl-2 border-l-2 border-white/10 ml-2">
+                    <SidePaneButton icon="🧾" label="Expense Orders" mode={cashDisplayMode} active={false}
+                      onClick={() => { pickLossView('expenses'); setExpenseOrdersSignal(n => n + 1) }} />
+                  </div>
+                )}
                 {/* Services' own group buttons, right under its pane row --
                     one per distinct cf_group in use (see serviceGroups
                     above), each opening straight to that group's item list. */}
@@ -1914,7 +1925,7 @@ function ItemHubPageInner() {
         {!showAnalytics && addForm !== 'expense' && outerTab === 'loss' && lossView === 'expenses' && (
           <>
             <div className="px-3 pt-2"><PageToolIcons scopeKey="Expenses" /></div>
-            <ExpensesTab search={search} />
+            <ExpensesTab search={search} openOrdersSignal={expenseOrdersSignal} />
           </>
         )}
         {showAnalytics && outerTab === 'loss' && lossView === 'expenses' && (
