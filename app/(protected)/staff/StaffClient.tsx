@@ -612,10 +612,19 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
   return (
     <div className="space-y-2.5">
       <div className="flex justify-between items-center">
-        <button onClick={() => setShowLaws(v => !v)} title="Company Laws — Time"
-          className="text-sm leading-none px-2 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 transition">
-          ⚖️
-        </button>
+        <div className="flex items-center gap-1.5">
+          {/* Standalone Notes/Tasks -- this page predates PageToolIcons and
+              already had its own bespoke Law button/panel below (reading
+              from content_pages via ContentPage, not page_laws), with real
+              existing content -- left in place rather than migrated, so
+              this only adds what was actually missing (Notes/Tasks) instead
+              of risking orphaning that data. */}
+          <PageToolIcons scopeKey="Team Times" />
+          <button onClick={() => setShowLaws(v => !v)} title="Company Laws — Time"
+            className="text-sm leading-none px-2 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 transition">
+            ⚖️
+          </button>
+        </div>
         {isAdmin && (
           <div className="flex items-center gap-2">
             <Link href="/staff-times/review" title="Review flagged times"

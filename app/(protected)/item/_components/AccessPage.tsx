@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import UsersPanel, { type User, type Role } from '../../users/UsersPanel'
 import RolesPanel, { type RoleUser } from '../../roles/RolesPanel'
+import PageToolIcons from './PageToolIcons'
 
 // Users and Roles & Permissions used to be two separate pages you had to
 // navigate between for one connected task -- assign someone a role here,
@@ -36,6 +37,7 @@ export default function AccessPage({ initialTab, canSeeUsers, canSeeRoles }: {
 
   return (
     <div className="space-y-2">
+      <PageToolIcons scopeKey={tab === 'roles' ? 'Roles' : 'Users'} />
       {canSeeUsers && canSeeRoles && (
         <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
           <button onClick={() => setTab('users')}

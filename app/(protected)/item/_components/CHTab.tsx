@@ -77,11 +77,16 @@ export default function CHTab({ view, childData }: { view: CHView; childData: Re
 
   return (
     <div className="space-y-1">
-      <div className="px-2 pt-2">
-        <h1 className="text-lg font-bold text-gray-900">C&amp;H</h1>
-        <p className="text-[10px] text-gray-400">Private · Grony &amp; Joe only</p>
-      </div>
-      <ManageLogPanel category={item.key} label={item.label} icon={item.icon} />
+      {/* Passed through as headerExtra (rendered right after ManageLogPanel's
+          own PageToolIcons) rather than sitting above the whole panel --
+          PageToolIcons needs to be the first thing on screen, same as every
+          other page, not buried below this title block. */}
+      <ManageLogPanel category={item.key} label={item.label} icon={item.icon} headerExtra={
+        <div className="px-0">
+          <h1 className="text-lg font-bold text-gray-900">C&amp;H</h1>
+          <p className="text-[10px] text-gray-400">Private · Grony &amp; Joe only</p>
+        </div>
+      } />
     </div>
   )
 }

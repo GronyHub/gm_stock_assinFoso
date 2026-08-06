@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
+import PageToolIcons from './PageToolIcons'
 
 type Profile = {
   id: number; username: string; display_name: string; email: string | null; phone: string | null; role: string
@@ -106,6 +107,7 @@ export default function ProfileTab() {
 
   return (
     <div className="max-w-md mx-auto space-y-4">
+      <PageToolIcons scopeKey="Profile" />
       <div className="bg-white border border-gray-200 rounded-xl p-4">
         <p className="text-xs text-gray-400 mb-1">Username</p>
         <p className="font-semibold text-gray-800">@{profile?.username}</p>

@@ -5,6 +5,7 @@ import ContentPage from './ContentPage'
 import DynamicTasksSection from './DynamicTasksSection'
 import PayslipFlagsPanel from './PayslipFlagsPanel'
 import SavedFlash from './SavedFlash'
+import PageToolIcons from './PageToolIcons'
 
 type ContentType = 'log' | 'notes' | 'tasks' | 'payslip_flags'
 type CategoryTab = { id: number; category_id: number; label: string; content_type: ContentType }
@@ -80,6 +81,7 @@ export default function DynamicCategoryPage({ categoryId, categoryLabel, canMana
 
   return (
     <div className="flex flex-col h-full min-h-0">
+      <div className="px-2 pt-2 shrink-0"><PageToolIcons scopeKey={categoryLabel} /></div>
       {tabs.length > 0 && (
         <div className="flex items-center gap-1 px-2 py-0.5 bg-white border-b border-gray-100 overflow-x-auto shrink-0">
           {tabs.map(t => (

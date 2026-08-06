@@ -1929,6 +1929,7 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'loss' && lossView === 'home' && (
           <TabErrorBoundary>
+            <div className="px-4 pt-2"><PageToolIcons scopeKey="Home" /></div>
             <div className="px-4"><TodayContent /></div>
           </TabErrorBoundary>
         )}
@@ -1980,6 +1981,7 @@ function ItemHubPageInner() {
         {outerTab === 'loss' && lossView === 'viewPortalAs' && (
           <TabErrorBoundary>
             <div className="px-4 pt-4 max-w-sm space-y-3">
+              <PageToolIcons scopeKey="View Portal As" />
               <h1 className="text-lg font-bold text-gray-900">View Portal As</h1>
               <ViewPortalAsButton extraAllowed={canViewPortalAs} />
             </div>
@@ -1987,7 +1989,8 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'loss' && lossView === 'reorderLists' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-4 max-w-sm">
+            <div className="px-4 pt-4 max-w-sm space-y-2">
+              <PageToolIcons scopeKey="Reorder Lists" />
               <ReorderListsPanel cashItems={CASH_ITEMS} manageItems={MANAGE_LIST_ITEMS} paneOrder={paneOrder} setPaneOrder={setPaneOrder} />
             </div>
           </TabErrorBoundary>
@@ -2154,6 +2157,7 @@ function ItemHubPageInner() {
             that the 'gains' violation deep-link's only source (Tasks) is gone. */}
         {outerTab === 'loss' && lossView === 'feed' && (
           <TabErrorBoundary>
+            {!violation && <div className="px-3 pt-2"><PageToolIcons scopeKey="Loss by Date" /></div>}
             {!violation && (
               <div className="flex justify-end gap-1 px-3 pt-2">
                 <button onClick={() => setFeedShowGains(false)}
@@ -2166,7 +2170,6 @@ function ItemHubPageInner() {
                 </button>
               </div>
             )}
-            {!violation && <div className="px-3 pt-2"><PageToolIcons scopeKey="Loss by Date" /></div>}
             <LossFeedTab search={search} kind={(violation === 'gains' || feedShowGains) ? 'gain' : 'loss'} />
           </TabErrorBoundary>
         )}
