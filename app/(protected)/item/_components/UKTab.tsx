@@ -29,8 +29,27 @@ export default function UKTab({ uk }: { uk: ReturnType<typeof useUKData> }) {
     return <p className="py-20 text-center text-gray-400 text-xs px-4">Pick a submenu from the left to see its columns.</p>
   }
 
+  // uk.columns/uk.rows update asynchronously after picking a submenu --
+  // useUKData's loadColumns/loadRows don't clear the previous submenu's
+  // data before fetching the new one, so for one render they can still
+  // hold the OLD submenu's rows while `selectedSubmenu` has already moved
+  // on to the new one. SubmenuTable's column-width/order state
+  // (useColumnPrefs) only seeds itself once, on mount, from whatever
+  // columns it's handed right then -- if that first render gets the stale
+  // previous submenu's columns, the real ones arriving a beat later don't
+  // match any of the ids it already locked in, and the table silently
+  // collapses to nothing but the delete-row column. Checking submenu_id
+  // here (not just length) avoids ever handing it mismatched data in the
+  // first place, rather than trying to make that state resync after the
+  // fact.
+  const columnsMatch = uk.columns.every(c => c.submenu_id === selectedSubmenu.id)
+  const rowsMatch = uk.rows.every(r => r.submenu_id === selectedSubmenu.id)
+  if (!columnsMatch || !rowsMatch) {
+    return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
+  }
+
   return (
-    <SubmenuTable submenu={selectedSubmenu} columns={uk.columns} rows={uk.rows}
+    <SubmenuTable key={selectedSubmenu.id} submenu={selectedSubmenu} columns={uk.columns} rows={uk.rows}
       editCell={uk.editCell} saveCell={uk.saveCell} deleteRow={uk.deleteRow} addRow={uk.addRow} />
   )
 }

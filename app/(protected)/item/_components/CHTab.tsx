@@ -52,8 +52,18 @@ export default function CHTab({ view, childData }: { view: CHView; childData: Re
     if (!selectedSubmenu) {
       return <p className="py-20 text-center text-gray-400 text-xs px-4">Pick a submenu from the left to see its columns.</p>
     }
+    // Same stale-data guard as UKTab.tsx -- childData.columns/rows can still
+    // hold the previously-selected child's data for one render after
+    // picking a new submenu, before their fetch resolves. See UKTab.tsx's
+    // comment for why handing that straight to SubmenuTable silently
+    // collapses its column widths.
+    const columnsMatch = childData.columns.every(c => c.submenu_id === selectedSubmenu.id)
+    const rowsMatch = childData.rows.every(r => r.submenu_id === selectedSubmenu.id)
+    if (!columnsMatch || !rowsMatch) {
+      return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
+    }
     return (
-      <SubmenuTable submenu={selectedSubmenu} columns={childData.columns} rows={childData.rows}
+      <SubmenuTable key={selectedSubmenu.id} submenu={selectedSubmenu} columns={childData.columns} rows={childData.rows}
         editCell={childData.editCell} saveCell={childData.saveCell} deleteRow={childData.deleteRow} addRow={childData.addRow} />
     )
   }
