@@ -4,8 +4,8 @@ import { NextResponse } from 'next/server'
 export async function GET() {
   try {
     const rows = await sql`
-      SELECT id, item_name, status, cf_group FROM items
-      WHERE item_name ILIKE '%A4%' AND item_name ILIKE '%single%'
+      SELECT id, canonical_name, status, cf_group FROM items
+      WHERE canonical_name ILIKE '%A4%' AND canonical_name ILIKE '%single%'
       ORDER BY id
     `
     return NextResponse.json({ tmpFindA4Single: rows })
