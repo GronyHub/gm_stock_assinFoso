@@ -85,9 +85,12 @@ export function SidePaneToggle({ mode, onChange, label }: { mode: DisplayMode; o
 // tooltip. `className` controls sizing: default `w-full` for
 // a standalone list; pass `flex-1 min-w-0` when placed in a row alongside
 // another control (e.g. a trailing delete button, or a sibling footer
-// button -- see Home/Daily in item/page.tsx). `badge` overlays a small
-// count in the corner (e.g. Grony Cash's flag counts) -- shown in every mode
-// including icon-only, since that's exactly when a count matters most.
+// button -- see Home/Daily in item/page.tsx). `badge` (red, top-left) overlays
+// a flag/violation count; `taskBadge` (green, top-right) overlays that same
+// page's own open task count (see DynamicTasksSection/custom_tasks) -- both
+// shown in every mode including icon-only, since that's exactly when a count
+// matters most. Opposite corners so a page with both flags and open tasks
+// shows both counts at once instead of one clobbering the other.
 // `icon` takes a plain emoji string for the common case, or a ReactNode
 // (e.g. an inline SVG) for spots that need a real icon instead -- Home/Daily
 // used their own hand-drawn SVGs when they were floating buttons, and kept
@@ -104,8 +107,8 @@ export function SidePaneToggle({ mode, onChange, label }: { mode: DisplayMode; o
 // redundant) or the very first button in the pane. Every caller looping
 // over a list is expected to compute this itself (e.g. `i > 0`) rather than
 // this component guessing position from context it doesn't have.
-export function SidePaneButton({ icon, label, active, mode, onClick, badge, className = 'w-full', tint, divider }: {
-  icon?: string | React.ReactNode; label: string; active: boolean; mode: DisplayMode; onClick: () => void; badge?: number; className?: string; tint?: string; divider?: boolean
+export function SidePaneButton({ icon, label, active, mode, onClick, badge, taskBadge, className = 'w-full', tint, divider }: {
+  icon?: string | React.ReactNode; label: string; active: boolean; mode: DisplayMode; onClick: () => void; badge?: number; taskBadge?: number; className?: string; tint?: string; divider?: boolean
 }) {
   return (
     <button onClick={onClick} title={label} aria-label={label}
@@ -128,8 +131,13 @@ export function SidePaneButton({ icon, label, active, mode, onClick, badge, clas
           other single-line label on the page does. */}
       {mode !== 'icon' && <span className="w-full truncate">{label}</span>}
       {!!badge && badge > 0 && (
-        <span className="absolute top-0.5 right-0.5 flex items-center justify-center min-w-[14px] h-[14px] px-0.5 text-[8px] font-bold leading-none rounded-full bg-red-600 text-white">
+        <span className="absolute top-0.5 left-0.5 flex items-center justify-center min-w-[14px] h-[14px] px-0.5 text-[8px] font-bold leading-none rounded-full bg-red-600 text-white">
           {badge > 99 ? '99+' : badge}
+        </span>
+      )}
+      {!!taskBadge && taskBadge > 0 && (
+        <span className="absolute top-0.5 right-0.5 flex items-center justify-center min-w-[14px] h-[14px] px-0.5 text-[8px] font-bold leading-none rounded-full bg-green-600 text-white">
+          {taskBadge > 99 ? '99+' : taskBadge}
         </span>
       )}
     </button>

@@ -852,6 +852,49 @@ function ItemHubPageInner() {
   }, [])
   const openerBadgeCount = (openerToday.opener && !openerToday.openerConfirmed ? 1 : 0) + openerViolationCount
 
+  // Per-page green task-count badges (opposite corner from the red flags
+  // badge above) -- one fetch of every custom_tasks row, grouped by its own
+  // `submenu` column (the same scopeKey each page's own PageToolIcons/
+  // DynamicTasksSection instance already uses), instead of every pane row
+  // running its own fetch the way PageToolIcons does for its single page.
+  const [taskCounts, setTaskCounts] = useState<Record<string, number>>({})
+  useEffect(() => {
+    let cancelled = false
+    function load() {
+      fetch('/api/tasks').then(r => r.ok ? r.json() : []).then((all: unknown) => {
+        if (cancelled) return
+        const list = Array.isArray(all) ? all as { submenu?: string | null; done?: boolean }[] : []
+        const counts: Record<string, number> = {}
+        for (const t of list) {
+          if (t.done || !t.submenu) continue
+          counts[t.submenu] = (counts[t.submenu] ?? 0) + 1
+        }
+        setTaskCounts(counts)
+      }).catch(() => {})
+    }
+    load()
+    const id = setInterval(load, 20000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [])
+  const taskCountFor = (scopeKey: string) => taskCounts[scopeKey] ?? 0
+  // A few pane rows' PageToolIcons scopeKey differs from their own pane
+  // label (either because the label was later shortened for the pane -- see
+  // 'Loss by Tgt'/'Purchase Ord' -- or because the content page hardcodes
+  // its own scopeKey independent of CASH_LABEL) -- see each page's own
+  // <PageToolIcons scopeKey=.../> call for the authoritative string.
+  const CASH_TASK_SCOPE_OVERRIDES: Partial<Record<LossView, string>> = {
+    purchaseOrders: 'Purchase Orders',
+    lossByTarget: 'Loss by Target',
+  }
+  const cashTaskScopeKey = (key: LossView) => CASH_TASK_SCOPE_OVERRIDES[key] ?? CASH_LABEL.get(key) ?? key
+  // Same idea for Manage -- every LOG_CATEGORIES-backed row's scopeKey
+  // already equals its own label (ManageLogPanel is called with
+  // scopeKey={label} directly), except Daily Log's own content page, which
+  // hardcodes "Advert Daily Log" instead of reusing its shorter pane label.
+  const MANAGE_TASK_SCOPE_OVERRIDES: Partial<Record<ManageView, string>> = {
+    advert_log: 'Advert Daily Log',
+  }
+
   useEffect(() => {
     function handler(e: MouseEvent) {
       if (groupRef.current && !groupRef.current.contains(e.target as Node)) setGroupOpen(false)
@@ -1359,6 +1402,7 @@ function ItemHubPageInner() {
                     : v.key === 'counts' ? countsFlagsCount
                     : v.key === 'feed' ? lossByDateFlagsCount
                     : undefined}
+                  taskBadge={taskCountFor(cashTaskScopeKey(v.key))}
                   onClick={() => pickLossView(v.key)} />
                 {/* Sales' two add-forms get their own one-tap rows right under
                     Sales -- staff opening a sale (especially Live Sale, built
@@ -1369,13 +1413,16 @@ function ItemHubPageInner() {
                   <div className="pl-2 border-l-2 border-white/10 ml-2">
                     <SidePaneButton icon="🧾" label="New Sale" mode={cashDisplayMode}
                       active={paneActive(lossView === 'sales' && addForm === 'sale')}
+                      taskBadge={taskCountFor('New Sale')}
                       onClick={() => { pickLossView('sales'); setAddForm('sale') }} />
                     <SidePaneButton icon="⚡" label="Live Sale" mode={cashDisplayMode} divider
                       active={paneActive(lossView === 'sales' && addForm === 'live')}
+                      taskBadge={taskCountFor('Live Sale')}
                       onClick={() => { pickLossView('sales'); setAddForm('live') }} />
                     <div className="pl-2 border-l-2 border-white/10 ml-2">
                       <SidePaneButton icon="📋" label="Log" mode={cashDisplayMode}
                         active={paneActive(lossView === 'sales' && addForm === 'liveLog')}
+                        taskBadge={taskCountFor('Sale Log')}
                         onClick={() => { pickLossView('sales'); setAddForm('liveLog') }} />
                     </div>
                   </div>
@@ -1389,6 +1436,7 @@ function ItemHubPageInner() {
                   <div className="pl-2 border-l-2 border-white/10 ml-2">
                     <SidePaneButton icon="👤" label="New Customer" mode={cashDisplayMode}
                       active={paneActive(lossView === 'newCustomer')}
+                      taskBadge={taskCountFor('New Customer')}
                       onClick={() => pickLossView('newCustomer')} />
                   </div>
                 )}
@@ -1403,6 +1451,7 @@ function ItemHubPageInner() {
                   <div className="pl-2 border-l-2 border-white/10 ml-2">
                     <SidePaneButton icon="🔍" label="A4 sheet sng audit" mode={cashDisplayMode}
                       active={paneActive(lossView === 'item360' && item360JumpId === 375)}
+                      taskBadge={taskCountFor('Item 360')}
                       onClick={() => { pickLossView('item360'); setItem360JumpId(375) }} />
                   </div>
                 )}
@@ -1413,6 +1462,7 @@ function ItemHubPageInner() {
                 {v.key === 'expenses' && (
                   <div className="pl-2 border-l-2 border-white/10 ml-2">
                     <SidePaneButton icon="🧾" label="Expense Orders" mode={cashDisplayMode} active={false}
+                      taskBadge={taskCountFor('Expenses')}
                       onClick={() => { pickLossView('expenses'); setExpenseOrdersSignal(n => n + 1) }} />
                     {/* Properties used to be a single row buried in Manage's
                         "Grony 1 to 10 checks" group, with an Available/Not
@@ -1423,8 +1473,10 @@ function ItemHubPageInner() {
                         reachable directly from the pane instead of landing
                         on "All" and having to switch tabs by hand. */}
                     <SidePaneButton icon="🏷️" label="Properties at Shop" mode={cashDisplayMode} divider active={false}
+                      taskBadge={taskCountFor('Properties')}
                       onClick={() => { pickLossView('properties'); setPropertiesInitialTab('available') }} />
                     <SidePaneButton icon="📦" label="Properties not at Shop" mode={cashDisplayMode} active={false}
+                      taskBadge={taskCountFor('Properties')}
                       onClick={() => { pickLossView('properties'); setPropertiesInitialTab('away') }} />
                   </div>
                 )}
@@ -1435,6 +1487,7 @@ function ItemHubPageInner() {
                   <div className="pl-2 border-l-2 border-white/10 ml-2">
                     {serviceGroups.map((g, gi) => (
                       <SidePaneButton key={g} icon="🏷️" label={g} mode={cashDisplayMode} divider={gi > 0}
+                        taskBadge={taskCountFor(`Services — ${g}`)}
                         active={paneActive(lossView === 'services' && selectedServiceGroup === g)}
                         onClick={() => { pickLossView('services'); setSelectedServiceGroup(g) }} />
                     ))}
@@ -1464,6 +1517,7 @@ function ItemHubPageInner() {
                     )}
                     <SidePaneButton icon={entry.icon} label={entry.label} mode={cashDisplayMode} divider={divider}
                       active={paneActive(lossView === entry.key)} badge={badge}
+                      taskBadge={taskCountFor(MANAGE_TASK_SCOPE_OVERRIDES[entry.key] ?? entry.label)}
                       onClick={() => pickLossView(entry.key)} />
                   </Fragment>
                 )
@@ -1486,6 +1540,7 @@ function ItemHubPageInner() {
                   <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode} divider={i > 0}
                     active={paneActive(lossView === t.key)}
                     badge={t.key === 'staff_dress' ? dressFlagsCount : t.key === 'teamTimes' ? staffTimesFlagsCount : undefined}
+                    taskBadge={taskCountFor(t.label)}
                     onClick={() => pickLossView(t.key)} />
                 ))}
               </div>
@@ -1567,6 +1622,7 @@ function ItemHubPageInner() {
               {ukAllSubmenus.map((s, i) => (
                 <SidePaneButton key={s.id} icon="📋" label={`${s.person} ${s.name}`} mode={cashDisplayMode} divider={i > 0}
                   active={paneActive(uk.selectedSubmenuId === s.id)}
+                  taskBadge={taskCountFor(`${s.person} ${s.name}`)}
                   onClick={() => { uk.pickPerson(s.person as typeof uk.person); uk.pickSubmenu(s.id); setSettingsOpen(false) }} />
               ))}
 
@@ -1578,6 +1634,7 @@ function ItemHubPageInner() {
                   {ukGeneralSubmenus.map((s, i) => (
                     <SidePaneButton key={s.id} icon="📁" label={s.name} mode={cashDisplayMode} divider={i > 0}
                       active={paneActive(uk.selectedSubmenuId === s.id)}
+                      taskBadge={taskCountFor(`General ${s.name}`)}
                       onClick={() => { uk.pickPerson('General' as typeof uk.person); uk.pickSubmenu(s.id); setSettingsOpen(false) }} />
                   ))}
                 </div>
