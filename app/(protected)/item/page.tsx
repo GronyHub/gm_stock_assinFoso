@@ -838,6 +838,15 @@ function ItemHubPageInner() {
   const jingleFlagsCount = violationCountByType(['jingle_overdue'])
   const equipmentFlagsCount = violationCountByType(['equipment_check_overdue'])
   const advertStatusFlagsCount = violationCountByType(['no_advert'])
+  // These three pages' own flags (Expenses' similar-account/bundled-
+  // description/no-vendor, Customers' and Vendors' missing-contact-info)
+  // never went through the centralized violations system above -- they're
+  // local to each page's own component, reported up here via
+  // onFlagCountChange so the pane row can badge them too instead of always
+  // reading 0.
+  const [expensesFlagsCount, setExpensesFlagsCount] = useState(0)
+  const [customersFlagsCount, setCustomersFlagsCount] = useState(0)
+  const [vendorsFlagsCount, setVendorsFlagsCount] = useState(0)
 
   // The morning stock count is the opener's own job -- its badge (on
   // Manage's Opener left-pane item) combines "hasn't confirmed clock-in
@@ -1401,6 +1410,9 @@ function ItemHubPageInner() {
                     : v.key === 'cab' ? cabFlagsCount
                     : v.key === 'counts' ? countsFlagsCount
                     : v.key === 'feed' ? lossByDateFlagsCount
+                    : v.key === 'expenses' ? expensesFlagsCount
+                    : v.key === 'customers' ? customersFlagsCount
+                    : v.key === 'vendors' ? vendorsFlagsCount
                     : undefined}
                   taskBadge={taskCountFor(cashTaskScopeKey(v.key))}
                   onClick={() => pickLossView(v.key)} />
@@ -1887,12 +1899,12 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'loss' && lossView === 'vendors' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-2 space-y-2"><PageToolIcons scopeKey="Vendors" /><VendorsPage openAddSignal={vendorSignal} initialSearch={vendorSearchText} /></div>
+            <div className="px-4 pt-2 space-y-2"><PageToolIcons scopeKey="Vendors" /><VendorsPage openAddSignal={vendorSignal} initialSearch={vendorSearchText} onFlagCountChange={setVendorsFlagsCount} /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'customers' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-2 space-y-2"><PageToolIcons scopeKey="Customers" /><CustomersPage initialSearch={customerSearchText} /></div>
+            <div className="px-4 pt-2 space-y-2"><PageToolIcons scopeKey="Customers" /><CustomersPage initialSearch={customerSearchText} onFlagCountChange={setCustomersFlagsCount} /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'newCustomer' && (
@@ -2026,7 +2038,7 @@ function ItemHubPageInner() {
         {!showAnalytics && addForm !== 'expense' && outerTab === 'loss' && lossView === 'expenses' && (
           <>
             <div className="px-3 pt-2"><PageToolIcons scopeKey="Expenses" /></div>
-            <ExpensesTab search={search} openOrdersSignal={expenseOrdersSignal} />
+            <ExpensesTab search={search} openOrdersSignal={expenseOrdersSignal} onFlagCountChange={setExpensesFlagsCount} />
           </>
         )}
         {showAnalytics && outerTab === 'loss' && lossView === 'expenses' && (

@@ -202,7 +202,7 @@ function EditVendorForm({ vendor, onSaved, onCancel }: { vendor: Vendor; onSaved
   )
 }
 
-export default function VendorsPage({ openAddSignal, initialSearch }: { openAddSignal?: number; initialSearch?: string } = {}) {
+export default function VendorsPage({ openAddSignal, initialSearch, onFlagCountChange }: { openAddSignal?: number; initialSearch?: string; onFlagCountChange?: (n: number) => void } = {}) {
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState(initialSearch ?? '')
@@ -236,6 +236,13 @@ export default function VendorsPage({ openAddSignal, initialSearch }: { openAddS
   }, [])
 
   const noContactCount = useMemo(() => vendors.filter(x => !x.phone || !x.location).length, [vendors])
+  // Reports this page's own flag total up to item/page.tsx's pane badge --
+  // this never went through the centralized violations system other pages'
+  // pane badges read from, so the Vendors pane row never showed it until
+  // this existed.
+  useEffect(() => {
+    onFlagCountChange?.(noContactCount)
+  }, [noContactCount, onFlagCountChange])
 
   const filtered = useMemo(() => {
     let v = vendors

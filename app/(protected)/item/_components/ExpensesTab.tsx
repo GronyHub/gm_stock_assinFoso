@@ -315,9 +315,9 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
   )
 }
 
-type Props = { search: string; openOrdersSignal?: number }
+type Props = { search: string; openOrdersSignal?: number; onFlagCountChange?: (n: number) => void }
 
-export default function ExpensesTab({ search, openOrdersSignal }: Props) {
+export default function ExpensesTab({ search, openOrdersSignal, onFlagCountChange }: Props) {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [groupBy, setGroupBy] = useState<'none' | 'account' | 'vendor'>('none')
@@ -386,6 +386,13 @@ export default function ExpensesTab({ search, openOrdersSignal }: Props) {
     bundled: expenses.filter(e => looksBundled(e.description)).length,
     no_vendor: expenses.filter(e => !e.vendor_name).length,
   }), [expenses, similarAccountNames])
+  // Reports this page's own flag total up to item/page.tsx's pane badge --
+  // these three are local to Expenses (never went through the centralized
+  // violations system other pages' pane badges read from), so the count on
+  // the Expenses pane row never showed them until this existed.
+  useEffect(() => {
+    onFlagCountChange?.(flagCounts.similar + flagCounts.bundled + flagCounts.no_vendor)
+  }, [flagCounts, onFlagCountChange])
 
   const filtered = useMemo(() => {
     let list = expenses

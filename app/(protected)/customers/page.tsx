@@ -181,7 +181,7 @@ const FLAG_TYPES: { key: FlagKey; letter: string; label: string }[] = [
 ]
 const NEW_CUSTOMERS_PER_WEEK_TARGET = 10
 
-export default function CustomersPage({ initialSearch }: { initialSearch?: string } = {}) {
+export default function CustomersPage({ initialSearch, onFlagCountChange }: { initialSearch?: string; onFlagCountChange?: (n: number) => void } = {}) {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState(initialSearch ?? '')
@@ -211,6 +211,13 @@ export default function CustomersPage({ initialSearch }: { initialSearch?: strin
     email: customers.filter(x => !x.email).length,
     whatsapp: customers.filter(x => !x.whatsapp_group_added).length,
   }), [customers])
+  // Reports this page's own flag total up to item/page.tsx's pane badge --
+  // these four never went through the centralized violations system other
+  // pages' pane badges read from, so the Customers pane row never showed
+  // them until this existed.
+  useEffect(() => {
+    onFlagCountChange?.(flagCounts.location + flagCounts.phone + flagCounts.email + flagCounts.whatsapp)
+  }, [flagCounts, onFlagCountChange])
 
   // Rolling 7-day window ending today -- there's no reliable historical
   // signup date (created_at was only just added, see ensureColumns), so
