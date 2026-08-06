@@ -3,6 +3,7 @@ import { Fragment, useState, useEffect, useMemo, useRef } from 'react'
 import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
 import ExpenseOrdersPanel from './ExpenseOrdersPanel'
+import PageToolIcons from './PageToolIcons'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, ColResizeHandle, type ColumnDef, type ColumnPrefs } from './columnPrefs'
 
 type Expense = {
@@ -503,6 +504,11 @@ export default function ExpensesTab({ search, openOrdersSignal, onFlagCountChang
 
   return (
     <div className="flex flex-col h-full min-h-0">
+      {/* Expense Orders gets its own Law/Notes/Tasks/Flags scope, separate
+          from Expenses' own -- rendered here (inside the toggle) rather than
+          once, unconditionally, above this component in item/page.tsx,
+          since page.tsx has no visibility into showOrders. */}
+      <div className="px-2 pt-2"><PageToolIcons scopeKey={showOrders ? 'Expense Orders' : 'Expenses'} /></div>
       <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0 flex-wrap">
         {flagButtons.map(({ key, letter, label }) => {
           const count = flagCounts[key]

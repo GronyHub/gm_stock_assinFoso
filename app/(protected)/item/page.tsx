@@ -1470,11 +1470,14 @@ function ItemHubPageInner() {
                 {/* Same one-tap pattern as New Customer above -- reuses the
                     same "Expense Orders" toggle already sitting in
                     ExpensesTab's own toolbar, just wired to open from here
-                    too via expenseOrdersSignal. */}
+                    too via expenseOrdersSignal. Its own "Expense Orders"
+                    PageToolIcons scope (separate from "Expenses") lives
+                    inside ExpensesTab itself, keyed off that same
+                    showOrders toggle -- see ExpensesTab.tsx. */}
                 {v.key === 'expenses' && (
                   <div className="pl-2 border-l-2 border-white/10 ml-2">
                     <SidePaneButton icon="🧾" label="Expense Orders" mode={cashDisplayMode} active={false}
-                      taskBadge={taskCountFor('Expenses')}
+                      taskBadge={taskCountFor('Expense Orders')}
                       onClick={() => { pickLossView('expenses'); setExpenseOrdersSignal(n => n + 1) }} />
                     {/* Properties used to be a single row buried in Manage's
                         "Grony 1 to 10 checks" group, with an Available/Not
@@ -1712,7 +1715,7 @@ function ItemHubPageInner() {
                     horizontally instead of wrapping once there are more
                     pills than fit, so this row never pushes Groups/Search
                     further down the screen. */}
-                {(lossView === 'items' || lossView === 'sales' || lossView === 'bills') && (
+                {(lossView === 'items' || lossView === 'sales' || lossView === 'bills') && !salesFormOpen && (
                   <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
                     <PageToolIcons scopeKey={CASH_LABEL.get(lossView) ?? lossView} />
                     {[...(lossView === 'items' ? ITEMS_FLAG_TYPES : lossView === 'sales' ? SALES_FLAG_TYPES : BILLS_FLAG_TYPES)]
@@ -2036,10 +2039,7 @@ function ItemHubPageInner() {
           </TabErrorBoundary>
         )}
         {!showAnalytics && addForm !== 'expense' && outerTab === 'loss' && lossView === 'expenses' && (
-          <>
-            <div className="px-3 pt-2"><PageToolIcons scopeKey="Expenses" /></div>
-            <ExpensesTab search={search} openOrdersSignal={expenseOrdersSignal} onFlagCountChange={setExpensesFlagsCount} />
-          </>
+          <ExpensesTab search={search} openOrdersSignal={expenseOrdersSignal} onFlagCountChange={setExpensesFlagsCount} />
         )}
         {showAnalytics && outerTab === 'loss' && lossView === 'expenses' && (
           <TabErrorBoundary><div className="px-3 pt-3"><ExpensesAnalyticsSection /></div></TabErrorBoundary>
