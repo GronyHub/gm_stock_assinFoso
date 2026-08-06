@@ -100,7 +100,7 @@ type OuterTab = 'today' | 'loss' | 'uk' | 'ch'
 // tab, not part of the Grony Cash merge -- it just reuses this same shared
 // state/pane machinery rather than needing its own parallel copy.
 type LossView = 'home' | 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'lossByItem' | 'lossByTarget' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts' | 'dailySummary'
-  | 'purchaseOrders' | 'item360'
+  | 'purchaseOrders' | 'item360' | 'services'
   // Settings' own non-navigation row (View Portal As) becomes a real content
   // destination too now that Settings is its own side-by-side pane instead
   // of a full-screen takeover -- see SettingsPane.tsx and the settingsOpen
@@ -156,7 +156,7 @@ const OLD_TAB_TO_VIEW: Partial<Record<string, LossView>> = {
 // groups/search bar of their own.
 const REPORT_VIEWS = new Set<LossView>([
   'home', 'pl', 'cab', 'vendors', 'customers', 'receipts', 'dailySummary',
-  'purchaseOrders', 'item360', 'viewPortalAs', 'reorderLists',
+  'purchaseOrders', 'item360', 'viewPortalAs', 'reorderLists', 'services',
   ...MANAGE_VIEW_KEYS, ...STAFF_VIEW_KEYS, ...CH_VIEW_KEYS,
 ])
 
@@ -186,6 +186,7 @@ const REPORT_VIEWS = new Set<LossView>([
 // separate all-in-one Tasks list to maintain in parallel with those.
 const CASH_ITEMS: { key: LossView; label: string; icon: string }[] = [
   { key: 'items',    label: 'Items',    icon: '📦' },
+  { key: 'services', label: 'Services', icon: '🛠️' },
   { key: 'sales',    label: 'Sales',    icon: '🧾' },
   { key: 'bills',    label: 'Bills',    icon: '📃' },
   { key: 'feed',         label: 'Loss by Date',   icon: '📉' },
@@ -632,6 +633,15 @@ function ItemHubPageInner() {
 
   const [items, setItems]           = useState<Item[]>([])
   const [itemsLoading, setItemsLoading] = useState(true)
+  // Services' left-pane rows -- one button per distinct cf_group already in
+  // use across the item catalog (goods and services alike; "Services" here
+  // is just this section's name, not a product_type filter), derived
+  // straight from `items` rather than a separate fetch. Clicking one opens
+  // a direct list of that group's items, same shape as UK's flat submenus.
+  const serviceGroups = useMemo(() =>
+    Array.from(new Set(items.map(i => i.cf_group).filter((g): g is string => !!g && g.trim() !== ''))).sort()
+  , [items])
+  const [selectedServiceGroup, setSelectedServiceGroup] = useState<string | null>(null)
 
   function loadItems() {
     fetch('/api/items').then(r => r.json()).then(d => {
@@ -1353,6 +1363,18 @@ function ItemHubPageInner() {
                     </div>
                   </div>
                 )}
+                {/* Services' own group buttons, right under its pane row --
+                    one per distinct cf_group in use (see serviceGroups
+                    above), each opening straight to that group's item list. */}
+                {v.key === 'services' && serviceGroups.length > 0 && (
+                  <div className="pl-2 border-l-2 border-white/10 ml-2">
+                    {serviceGroups.map((g, gi) => (
+                      <SidePaneButton key={g} icon="🏷️" label={g} mode={cashDisplayMode} divider={gi > 0}
+                        active={paneActive(lossView === 'services' && selectedServiceGroup === g)}
+                        onClick={() => { pickLossView('services'); setSelectedServiceGroup(g) }} />
+                    ))}
+                  </div>
+                )}
               </div>
               ))}
             </div>
@@ -1775,6 +1797,51 @@ function ItemHubPageInner() {
           <TabErrorBoundary>
             <div className="px-4 pt-2"><PageToolIcons scopeKey="Item 360" /></div>
             <Item360Tab items={items} jumpToItemId={item360JumpId} onJumpDone={() => setItem360JumpId(null)} />
+          </TabErrorBoundary>
+        )}
+        {outerTab === 'loss' && lossView === 'services' && (
+          <TabErrorBoundary>
+            <div className="px-4 pt-2 pb-10">
+              <PageToolIcons scopeKey={selectedServiceGroup ? `Services — ${selectedServiceGroup}` : 'Services'} />
+              {!selectedServiceGroup ? (
+                <p className="py-20 text-center text-gray-400 text-xs">Pick a group from the left to see its items.</p>
+              ) : (() => {
+                const groupItems = items.filter(i => i.cf_group === selectedServiceGroup)
+                return (
+                  <div className="mt-2 space-y-2">
+                    <p className="text-sm font-bold text-gray-900">{selectedServiceGroup}</p>
+                    <p className="text-[11px] text-gray-400">
+                      {groupItems.length} item{groupItems.length !== 1 ? 's' : ''}
+                    </p>
+                    {groupItems.length === 0 ? (
+                      <p className="py-10 text-center text-gray-400 text-xs">No items in this group.</p>
+                    ) : (
+                      <div className="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100">
+                        {groupItems.map(it => (
+                          <div key={it.id} className="px-3 py-2 flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold text-gray-900 truncate">{it.item_name}</p>
+                              <p className="text-[10px] text-gray-400">
+                                {it.product_type === 'service' ? 'Service' : 'Goods'}
+                                {it.product_type !== 'service' && ` · ${it.calculated_soh} pcs`}
+                              </p>
+                            </div>
+                            <div className="shrink-0 text-right text-[10px]">
+                              <p className="text-blue-600 font-bold">
+                                SP {it.selling_rate ? `₵${parseFloat(it.selling_rate).toLocaleString('en-GH')}` : '—'}
+                              </p>
+                              <p className="text-green-600 font-bold">
+                                CP {it.purchase_rate ? `₵${parseFloat(it.purchase_rate).toLocaleString('en-GH')}` : '—'}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+            </div>
           </TabErrorBoundary>
         )}
         {/* Settings' own non-navigation row (see SettingsPane.tsx) -- now a
