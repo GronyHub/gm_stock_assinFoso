@@ -169,6 +169,20 @@ export function useUKData() {
     setColumns(prev => prev.filter(c => c.id !== id))
     await fetch(`/api/uk/columns/${id}`, { method: 'DELETE' }).catch(() => {})
   }
+  // Switches an EXISTING column between the resizable grid and a full-width
+  // block per row -- not just something a column can be born as (see
+  // addColumn's UKSettingsPanel caller), since text a column was created to
+  // hold can turn out to need more room than expected once real content
+  // (like a long pasted letter) lands in it.
+  async function toggleColumnWide(id: number, isWide: boolean) {
+    const c = columns.find(x => x.id === id)
+    if (!c) return
+    setColumns(prev => prev.map(x => x.id === id ? { ...x, is_wide: isWide } : x))
+    await fetch(`/api/uk/columns/${id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: c.name, is_wide: isWide }),
+    }).catch(() => {})
+  }
 
   async function addRow() {
     if (selectedSubmenuId == null) return
@@ -200,7 +214,7 @@ export function useUKData() {
     addSubmenu, saveSubmenuName, deleteSubmenu,
     newColumnName, setNewColumnName, showAddColumn, setShowAddColumn,
     editingColumnId, setEditingColumnId, editColumnName, setEditColumnName,
-    addColumn, saveColumnName, deleteColumn,
+    addColumn, saveColumnName, deleteColumn, toggleColumnWide,
     addRow, editCell, saveCell, deleteRow,
   }
 }

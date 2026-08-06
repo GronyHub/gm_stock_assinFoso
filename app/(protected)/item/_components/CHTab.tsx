@@ -64,7 +64,8 @@ export default function CHTab({ view, childData }: { view: CHView; childData: Re
     }
     return (
       <SubmenuTable key={selectedSubmenu.id} submenu={selectedSubmenu} columns={childData.columns} rows={childData.rows}
-        editCell={childData.editCell} saveCell={childData.saveCell} deleteRow={childData.deleteRow} addRow={childData.addRow} />
+        editCell={childData.editCell} saveCell={childData.saveCell} deleteRow={childData.deleteRow} addRow={childData.addRow}
+        toggleColumnWide={childData.toggleColumnWide} />
     )
   }
 

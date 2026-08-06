@@ -50,6 +50,7 @@ export default function UKTab({ uk }: { uk: ReturnType<typeof useUKData> }) {
 
   return (
     <SubmenuTable key={selectedSubmenu.id} submenu={selectedSubmenu} columns={uk.columns} rows={uk.rows}
-      editCell={uk.editCell} saveCell={uk.saveCell} deleteRow={uk.deleteRow} addRow={uk.addRow} />
+      editCell={uk.editCell} saveCell={uk.saveCell} deleteRow={uk.deleteRow} addRow={uk.addRow}
+      toggleColumnWide={uk.toggleColumnWide} />
   )
 }
