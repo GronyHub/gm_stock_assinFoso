@@ -24,7 +24,10 @@ export type UKPerson = 'Grony' | 'Mina' | 'Prisca' | 'Fiifi' | 'Kuukua' | 'Ebo' 
 export const UK_PEOPLE: UKPerson[] = ['Grony', 'Mina', 'Prisca']
 
 export type UKSubmenu = { id: number; person: string; name: string; sort_order: number; created_at: string }
-export type UKColumn = { id: number; submenu_id: number; name: string; sort_order: number; created_at: string }
+// is_wide: renders full-width below the table instead of a resizable grid
+// column -- for fields with too much text to fit comfortably in a cell
+// (see SubmenuTable.tsx).
+export type UKColumn = { id: number; submenu_id: number; name: string; sort_order: number; created_at: string; is_wide: boolean }
 export type UKRow = { id: number; submenu_id: number; sort_order: number; created_at: string; values: Record<number, string> }
 
 export function useUKData() {

@@ -12,13 +12,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!session || !isAllowed(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { id } = await params
-  const { name } = await req.json()
+  const { name, is_wide } = await req.json()
   const text = typeof name === 'string' ? name.trim() : ''
   if (!text) return NextResponse.json({ error: 'Name is required' }, { status: 400 })
 
   const [row] = await sql`
-    UPDATE uk_columns SET name = ${text} WHERE id = ${Number(id)}
-    RETURNING id, submenu_id, name, sort_order, created_at
+    UPDATE uk_columns SET name = ${text}, is_wide = COALESCE(${is_wide ?? null}, is_wide) WHERE id = ${Number(id)}
+    RETURNING id, submenu_id, name, sort_order, created_at, is_wide
   `
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json(row)

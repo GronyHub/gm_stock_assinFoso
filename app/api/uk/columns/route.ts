@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   if (!submenuId) return NextResponse.json({ error: 'Missing submenu_id' }, { status: 400 })
 
   const rows = await sql`
-    SELECT id, submenu_id, name, sort_order, created_at
+    SELECT id, submenu_id, name, sort_order, created_at, is_wide
     FROM uk_columns
     WHERE submenu_id = ${Number(submenuId)}
     ORDER BY sort_order ASC, id ASC
@@ -30,15 +30,15 @@ export async function POST(req: NextRequest) {
   if (!session || !isAllowed(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   await ensureUkTables()
 
-  const { submenu_id, name } = await req.json()
+  const { submenu_id, name, is_wide } = await req.json()
   const text = typeof name === 'string' ? name.trim() : ''
   if (!submenu_id || !text) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
 
   const [{ next_order }] = await sql`SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_order FROM uk_columns WHERE submenu_id = ${submenu_id}`
   const [row] = await sql`
-    INSERT INTO uk_columns (submenu_id, name, sort_order)
-    VALUES (${submenu_id}, ${text}, ${next_order})
-    RETURNING id, submenu_id, name, sort_order, created_at
+    INSERT INTO uk_columns (submenu_id, name, sort_order, is_wide)
+    VALUES (${submenu_id}, ${text}, ${next_order}, ${!!is_wide})
+    RETURNING id, submenu_id, name, sort_order, created_at, is_wide
   `
   return NextResponse.json(row, { status: 201 })
 }

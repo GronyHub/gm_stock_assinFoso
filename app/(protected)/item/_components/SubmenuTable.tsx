@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Fragment } from 'react'
 import PageToolIcons from './PageToolIcons'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from './columnPrefs'
 import { containsUrl, Linkify } from '@/lib/linkify'
@@ -123,14 +123,42 @@ function SubmenuGrid({ submenu, columns, rows, editCell, saveCell, deleteRow, ad
   addRow: () => void
 }) {
   const [editingCellKey, setEditingCellKey] = useState<string | null>(null)
-  const byId = new Map(columns.map(c => [String(c.id), c]))
-  const colDefs: ColumnDef<string>[] = columns.map(c => ({ key: String(c.id), label: c.name }))
+  // Wide columns skip the resizable grid entirely -- their value renders as
+  // its own full-width block underneath each row instead, for fields with
+  // too much text to fit comfortably in a narrow cell (options, long
+  // notes). Only narrow columns feed useColumnPrefs/the grid.
+  const narrowColumns = columns.filter(c => !c.is_wide)
+  const wideColumns = columns.filter(c => c.is_wide)
+  const byId = new Map(narrowColumns.map(c => [String(c.id), c]))
+  const colDefs: ColumnDef<string>[] = narrowColumns.map(c => ({ key: String(c.id), label: c.name }))
   const prefs = useColumnPrefs<string>(`ukSubmenu-${submenu.id}`, colDefs)
   const shown = prefs.shownColumns.map(sc => byId.get(sc.key)).filter((c): c is UKColumn => !!c)
 
   if (columns.length === 0) return null
 
   const tableWidth = shown.reduce((s, c) => s + prefs.getWidth(String(c.id), GRID_DEFAULT_WIDTH), 0) + GRID_DELETE_COL_WIDTH
+
+  function renderCell(r: UKRow, c: UKColumn, wide: boolean) {
+    const val = r.values[c.id] ?? ''
+    const key = `${r.id}-${c.id}`
+    const showAsLink = val.trim() !== '' && containsUrl(val) && editingCellKey !== key
+    const textCls = wide ? 'text-sm' : 'text-xs'
+    if (showAsLink) {
+      return (
+        <div className="flex items-start gap-1 px-2 py-1.5">
+          <Linkify text={val} as="p" className={`flex-1 min-w-0 ${textCls} whitespace-pre-wrap break-words`} />
+          <button onClick={() => setEditingCellKey(key)} className="text-gray-300 hover:text-gray-600 shrink-0" title="Edit">✎</button>
+        </div>
+      )
+    }
+    return (
+      <textarea value={val} autoFocus={editingCellKey === key} rows={wide ? 3 : 1}
+        ref={autoGrow}
+        onChange={e => { editCell(r.id, c.id, e.target.value); autoGrow(e.target) }}
+        onBlur={e => { saveCell(r.id, c.id, e.target.value); setEditingCellKey(null) }}
+        className={`w-full min-w-[80px] ${textCls} px-2 py-1.5 rounded-lg border border-transparent hover:border-gray-200 focus:border-blue-300 outline-none resize-none overflow-hidden whitespace-pre-wrap break-words`} />
+    )
+  }
 
   return (
     <div className="space-y-1.5">
@@ -158,32 +186,28 @@ function SubmenuGrid({ submenu, columns, rows, editCell, saveCell, deleteRow, ad
           </thead>
           <tbody>
             {rows.map((r, ri) => (
-              <tr key={r.id} className={`border-b border-gray-100 last:border-0 ${ri % 2 === 1 ? 'bg-gray-50/60' : 'bg-white'}`}>
-                {shown.map(c => {
-                  const val = r.values[c.id] ?? ''
-                  const key = `${r.id}-${c.id}`
-                  const showAsLink = val.trim() !== '' && containsUrl(val) && editingCellKey !== key
-                  return (
-                    <td key={c.id} className="px-1 py-1 align-top">
-                      {showAsLink ? (
-                        <div className="flex items-start gap-1 px-2 py-1.5">
-                          <Linkify text={val} as="p" className="flex-1 min-w-0 text-xs whitespace-pre-wrap break-words" />
-                          <button onClick={() => setEditingCellKey(key)} className="text-gray-300 hover:text-gray-600 shrink-0" title="Edit">✎</button>
+              <Fragment key={r.id}>
+                <tr className={`${wideColumns.length === 0 ? 'border-b border-gray-100 last:border-0' : ''} ${ri % 2 === 1 ? 'bg-gray-50/60' : 'bg-white'}`}>
+                  {shown.map(c => (
+                    <td key={c.id} className="px-1 py-1 align-top">{renderCell(r, c, false)}</td>
+                  ))}
+                  <td className="px-1 text-center align-top">
+                    <button onClick={() => deleteRow(r.id)} className="text-gray-300 hover:text-red-500 px-1" title="Delete row">×</button>
+                  </td>
+                </tr>
+                {wideColumns.length > 0 && (
+                  <tr className={`border-b border-gray-100 last:border-0 ${ri % 2 === 1 ? 'bg-gray-50/60' : 'bg-white'}`}>
+                    <td colSpan={shown.length + 1} className="px-2 pb-2 pt-0 space-y-2">
+                      {wideColumns.map(c => (
+                        <div key={c.id}>
+                          <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-0.5">{c.name}</p>
+                          {renderCell(r, c, true)}
                         </div>
-                      ) : (
-                        <textarea value={val} autoFocus={editingCellKey === key} rows={1}
-                          ref={autoGrow}
-                          onChange={e => { editCell(r.id, c.id, e.target.value); autoGrow(e.target) }}
-                          onBlur={e => { saveCell(r.id, c.id, e.target.value); setEditingCellKey(null) }}
-                          className="w-full min-w-[80px] text-xs px-2 py-1.5 rounded-lg border border-transparent hover:border-gray-200 focus:border-blue-300 outline-none resize-none overflow-hidden whitespace-pre-wrap break-words" />
-                      )}
+                      ))}
                     </td>
-                  )
-                })}
-                <td className="px-1 text-center">
-                  <button onClick={() => deleteRow(r.id)} className="text-gray-300 hover:text-red-500 px-1" title="Delete row">×</button>
-                </td>
-              </tr>
+                  </tr>
+                )}
+              </Fragment>
             ))}
           </tbody>
         </table>

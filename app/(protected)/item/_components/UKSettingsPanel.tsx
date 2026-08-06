@@ -27,6 +27,7 @@ export default function UKSettingsPanel({ onChanged }: { onChanged: () => void }
 
   const [targetSubmenuId, setTargetSubmenuId] = useState<number | ''>('')
   const [newColumnName, setNewColumnName] = useState('')
+  const [newColumnWide, setNewColumnWide] = useState(false)
   const [addingColumn, setAddingColumn] = useState(false)
   const [columnResult, setColumnResult] = useState<string | null>(null)
 
@@ -70,13 +71,14 @@ export default function UKSettingsPanel({ onChanged }: { onChanged: () => void }
     setColumnResult(null)
     const res = await fetch('/api/uk/columns', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ submenu_id: targetSubmenuId, name }),
+      body: JSON.stringify({ submenu_id: targetSubmenuId, name, is_wide: newColumnWide }),
     })
     setAddingColumn(false)
     if (res.ok) {
       const menuLabel = submenus.find(s => s.id === targetSubmenuId)?.label ?? 'that menu'
       setColumnResult(`Added column "${name}" to ${menuLabel}.`)
       setNewColumnName('')
+      setNewColumnWide(false)
     } else {
       setColumnResult('Could not add — try again.')
     }
@@ -110,6 +112,11 @@ export default function UKSettingsPanel({ onChanged }: { onChanged: () => void }
         </select>
         <input value={newColumnName} onChange={e => setNewColumnName(e.target.value)}
           placeholder="Column name" className={inputCls} />
+        <label className="flex items-center gap-1.5 text-[10px] text-gray-600 cursor-pointer select-none">
+          <input type="checkbox" checked={newColumnWide} onChange={e => setNewColumnWide(e.target.checked)}
+            className="w-3.5 h-3.5 accent-blue-600" />
+          Wide field — full-width block below the table, for long text (options, notes, etc.) instead of a narrow cell
+        </label>
         <button onClick={addColumn} disabled={addingColumn || !newColumnName.trim() || targetSubmenuId === ''}
           className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-[11px] font-bold rounded py-1.5 transition">
           {addingColumn ? 'Adding…' : '+ Add Column'}

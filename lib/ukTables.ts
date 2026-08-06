@@ -75,9 +75,15 @@ export async function ensureUkTables() {
       submenu_id INT NOT NULL REFERENCES uk_submenus(id) ON DELETE CASCADE,
       name TEXT NOT NULL,
       sort_order INT NOT NULL DEFAULT 0,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      is_wide BOOLEAN NOT NULL DEFAULT false
     )
   `.catch(() => {})
+  // is_wide: a "wide" column doesn't sit in the resizable grid at all --
+  // its value renders as its own full-width block underneath each row
+  // instead, for fields too long to live comfortably in a narrow cell
+  // (see SubmenuTable.tsx).
+  await sql`ALTER TABLE uk_columns ADD COLUMN IF NOT EXISTS is_wide BOOLEAN NOT NULL DEFAULT false`.catch(() => {})
   await sql`
     CREATE TABLE IF NOT EXISTS uk_rows (
       id SERIAL PRIMARY KEY,
