@@ -80,108 +80,6 @@ const CUSTOMERS_COL_DEFAULTS: Record<string, number> = {
   lastVisited: 110, serviceGoods: 140, whatsapp: 100, sales: 100, outstanding: 110, receiptCount: 80,
 }
 
-function NewCustomerForm({ onCreated, onCancel }: { onCreated: (c: Customer) => void; onCancel: () => void }) {
-  const [displayName, setDisplayName] = useState('')
-  const [companyName, setCompanyName] = useState('')
-  const [phone, setPhone] = useState('')
-  const [email, setEmail] = useState('')
-  const [location, setLocation] = useState('')
-  const [notes, setNotes] = useState('')
-  const [lastVisited, setLastVisited] = useState('')
-  const [serviceGoods, setServiceGoods] = useState('')
-  const [whatsappAdded, setWhatsappAdded] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  async function submit() {
-    setError(null)
-    if (!displayName.trim()) { setError('Customer name is required.'); return }
-
-    setSaving(true)
-    const res = await fetch('/api/customers', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        display_name: displayName.trim(),
-        company_name: companyName.trim() || null,
-        phone: phone.trim() || null,
-        email: email.trim() || null,
-        location: location.trim() || null,
-        notes: notes.trim() || null,
-        last_visited: lastVisited || null,
-        service_goods: serviceGoods.trim() || null,
-        whatsapp_group_added: whatsappAdded,
-      }),
-    })
-    setSaving(false)
-    if (res.ok) {
-      onCreated(await res.json())
-    } else {
-      const d = await res.json().catch(() => null)
-      setError(d?.error ?? 'Could not save customer.')
-    }
-  }
-
-  return (
-    <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="font-bold text-gray-900">New Customer</p>
-        <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 text-xl font-bold leading-none">×</button>
-      </div>
-
-      <div>
-        <label className={labelCls}>Customer Name</label>
-        <input value={displayName} onChange={e => setDisplayName(e.target.value)}
-          placeholder="e.g. Kwame Mensah" className={inputCls} />
-      </div>
-      <div>
-        <label className={labelCls}>Company (optional)</label>
-        <input value={companyName} onChange={e => setCompanyName(e.target.value)} className={inputCls} />
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className={labelCls}>Phone</label>
-          <input value={phone} onChange={e => setPhone(e.target.value)} className={inputCls} />
-        </div>
-        <div>
-          <label className={labelCls}>Email</label>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} className={inputCls} />
-        </div>
-      </div>
-      <LocationField value={location} onChange={setLocation} />
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className={labelCls}>Last Visited</label>
-          <input type="date" value={lastVisited} onChange={e => setLastVisited(e.target.value)} className={inputCls} />
-        </div>
-        <div>
-          <label className={labelCls}>Service/Goods</label>
-          <input value={serviceGoods} onChange={e => setServiceGoods(e.target.value)}
-            placeholder="e.g. Printing, Photocopies" className={inputCls} />
-        </div>
-      </div>
-      <label className="flex items-center gap-1.5 cursor-pointer select-none">
-        <input type="checkbox" checked={whatsappAdded} onChange={() => setWhatsappAdded(v => !v)}
-          className="w-3.5 h-3.5 accent-blue-600" />
-        <span className="text-xs font-semibold text-gray-700">Added to Group Whatsapp Page</span>
-      </label>
-      <div>
-        <label className={labelCls}>Notes (optional)</label>
-        <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className={inputCls} />
-      </div>
-
-      {error && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-2.5 py-1.5">{error}</p>}
-
-      <div className="flex gap-2">
-        <button onClick={submit} disabled={saving}
-          className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2.5 transition">
-          {saving ? 'Saving…' : 'Save Customer'}
-        </button>
-        <button onClick={onCancel} className="px-4 py-2.5 bg-gray-100 text-gray-600 text-sm font-semibold rounded-xl">Cancel</button>
-      </div>
-    </div>
-  )
-}
-
 function EditCustomerForm({ customer, onSaved, onCancel }: { customer: Customer; onSaved: (c: Customer) => void; onCancel: () => void }) {
   const [companyName, setCompanyName] = useState(customer.company_name ?? '')
   const [phone, setPhone] = useState(customer.phone ?? '')
@@ -283,21 +181,14 @@ const FLAG_TYPES: { key: FlagKey; letter: string; label: string }[] = [
 ]
 const NEW_CUSTOMERS_PER_WEEK_TARGET = 10
 
-export default function CustomersPage({ openAddSignal, initialSearch }: { openAddSignal?: number; initialSearch?: string } = {}) {
+export default function CustomersPage({ initialSearch }: { initialSearch?: string } = {}) {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState(initialSearch ?? '')
   const [selected, setSelected] = useState<Customer | null>(null)
-  const [showForm, setShowForm] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState(false)
   const [activeFlag, setActiveFlag] = useState<FlagKey | null>(null)
   const colPrefs = useColumnPrefs<ColKey>('customersTable', CUSTOMER_COLUMNS)
-
-  // Driven by the RoleBar "+" shortcut menu.
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (openAddSignal) setShowForm(true)
-  }, [openAddSignal])
 
   // Driven by the global search (page.tsx) landing here already knowing
   // which customer to show -- also covers re-arriving with a different
@@ -365,20 +256,8 @@ export default function CustomersPage({ openAddSignal, initialSearch }: { openAd
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-400">{customers.length} contacts</span>
           <ColumnsPickerButton prefs={colPrefs} />
-          <button onClick={() => setShowForm(f => !f)}
-            className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition
-              ${showForm ? 'bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
-            {showForm ? '×' : '+ New Customer'}
-          </button>
         </div>
       </div>
-
-      {showForm && (
-        <NewCustomerForm
-          onCancel={() => setShowForm(false)}
-          onCreated={created => { setCustomers(prev => [created, ...prev]); setShowForm(false) }}
-        />
-      )}
 
       {/* Flags -- one small button per category (🚩/🏳️ + letter + count),
           clicking narrows the table below to just that category's flagged

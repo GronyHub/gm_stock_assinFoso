@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { usePresenceReporter } from '@/lib/usePresenceReporter'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from '../../item/_components/columnPrefs'
+import PageToolIcons from '../../item/_components/PageToolIcons'
 
 type GridItem = {
   id: number
@@ -293,6 +294,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
           ⚡ Live Sale <span className="font-normal text-gray-400">· tap to record</span>
         </h2>
         <div className="flex items-center gap-1.5 shrink-0">
+          <PageToolIcons scopeKey={showLog ? 'Sale Log' : 'Live Sale'} />
           {!showLog && (
             <button
               type="button"

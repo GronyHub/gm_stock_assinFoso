@@ -39,6 +39,7 @@ import SettingsPane from './_components/SettingsPane'
 import UKSettingsPanel from './_components/UKSettingsPanel'
 import { applyPaneOrder, buildPaneRuns, flattenPaneRuns, type PaneOrderMap } from './_components/paneOrder'
 import ServicesGroupTable from './_components/ServicesGroupTable'
+import NewCustomerForm from './_components/NewCustomerForm'
 import dynamic from 'next/dynamic'
 const loading = (h: string) => <div className={`py-10 text-center text-gray-400 text-sm`}>{h}</div>
 const ItemsTab       = dynamic(() => import('./_components/ItemsTab'),        { ssr: false, loading: () => loading('Loading…') })
@@ -102,6 +103,12 @@ type OuterTab = 'today' | 'loss' | 'uk' | 'ch'
 // state/pane machinery rather than needing its own parallel copy.
 type LossView = 'home' | 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'lossByItem' | 'lossByTarget' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts' | 'dailySummary'
   | 'purchaseOrders' | 'item360' | 'services'
+  // "New Customer" used to be a toggle-open form living inside the Customers
+  // list page itself (CustomersPage's own showForm state) -- it's now this
+  // own separate LossView/pane row instead, so it gets its own PageToolIcons
+  // scope (Notes/Tasks/Laws/Flags all separate from the Customers list's
+  // own) rather than sharing 'customers'.
+  | 'newCustomer'
   // Settings' own non-navigation row (View Portal As) becomes a real content
   // destination too now that Settings is its own side-by-side pane instead
   // of a full-screen takeover -- see SettingsPane.tsx and the settingsOpen
@@ -162,7 +169,7 @@ const OLD_TAB_TO_VIEW: Partial<Record<string, LossView>> = {
 // Manage/Staff view belongs here too -- none of them ever had a Cash-style
 // groups/search bar of their own.
 const REPORT_VIEWS = new Set<LossView>([
-  'home', 'pl', 'cab', 'vendors', 'customers', 'receipts', 'dailySummary',
+  'home', 'pl', 'cab', 'vendors', 'customers', 'newCustomer', 'receipts', 'dailySummary',
   'purchaseOrders', 'item360', 'viewPortalAs', 'reorderLists', 'services',
   ...MANAGE_VIEW_KEYS, ...STAFF_VIEW_KEYS, ...CH_VIEW_KEYS,
 ])
@@ -204,7 +211,7 @@ const CASH_ITEMS: { key: LossView; label: string; icon: string }[] = [
   { key: 'cab',      label: 'CAB',      icon: '🗂️' },
   { key: 'customers', label: 'Customers', icon: '👥' },
   { key: 'vendors',   label: 'Vendors',   icon: '🏭' },
-  { key: 'receipts',  label: 'Receipts',  icon: '📑' },
+  { key: 'receipts',  label: 'Cust. Receipts',  icon: '📑' },
   { key: 'counts',    label: 'Counts',    icon: '🔢' },
   { key: 'purchaseOrders',   label: 'Purchase Ord',   icon: '🛒' },
   { key: 'item360', label: 'Item 360', icon: '🔍' },
@@ -501,7 +508,6 @@ function ItemHubPageInner() {
   // "new" form.
   const [cabConfirmSignal, setCabConfirmSignal] = useState(0)
   const [staffTimeSignal, setStaffTimeSignal]   = useState(0)
-  const [customerSignal, setCustomerSignal]     = useState(0)
   const [vendorSignal, setVendorSignal]         = useState(0)
   const [expenseOrdersSignal, setExpenseOrdersSignal] = useState(0)
   // Seeds PropertiesPage's own tab -- driven by the left pane's "Properties
@@ -961,7 +967,7 @@ function ItemHubPageInner() {
       case 'item':       pickLossView('items');     setAddForm('item'); break
       case 'expense':    pickLossView('expenses');  setAddForm('expense'); break
       case 'cabConfirm': pickLossView('cab');       setCabConfirmSignal(n => n + 1); break
-      case 'customer':   pickLossView('customers'); setCustomerSignal(n => n + 1); break
+      case 'customer':   pickLossView('newCustomer'); break
       case 'vendor':     pickLossView('vendors');   setVendorSignal(n => n + 1); break
       case 'staffTime': {
         pickLossView('teamTimes')
@@ -1374,13 +1380,16 @@ function ItemHubPageInner() {
                     </div>
                   </div>
                 )}
-                {/* Same one-tap pattern as Sales' New/Live Sale rows above --
-                    reuses the customerSignal already wired to CustomersPage's
-                    openAddSignal prop (see the global "+" shortcut menu). */}
+                {/* New Customer is its own separate page/pane row now (see
+                    the 'newCustomer' LossView above) -- not a signal that
+                    reopens a form embedded in the Customers list page, so
+                    Notes/Tasks/Laws/Flags stay fully separate between the
+                    two instead of sharing the Customers list's own. */}
                 {v.key === 'customers' && (
                   <div className="pl-2 border-l-2 border-white/10 ml-2">
-                    <SidePaneButton icon="👤" label="New Customer" mode={cashDisplayMode} active={false}
-                      onClick={() => { pickLossView('customers'); setCustomerSignal(n => n + 1) }} />
+                    <SidePaneButton icon="👤" label="New Customer" mode={cashDisplayMode}
+                      active={paneActive(lossView === 'newCustomer')}
+                      onClick={() => pickLossView('newCustomer')} />
                   </div>
                 )}
                 {/* One-tap jump straight to a specific item's own Item 360
@@ -1800,7 +1809,8 @@ function ItemHubPageInner() {
           <div className="relative flex-1 min-h-0 overflow-y-auto">
         {addForm === 'sale'    && outerTab === 'loss' && lossView === 'sales'    && (
           <div className="px-4">
-            <div className="flex justify-end">
+            <div className="flex items-center justify-between">
+              <PageToolIcons scopeKey="New Sale" />
               <button onClick={() => setAddForm(null)}
                 className="text-xs font-semibold px-3 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 border border-gray-300">×</button>
             </div>
@@ -1825,7 +1835,19 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'loss' && lossView === 'customers' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-2 space-y-2"><PageToolIcons scopeKey="Customers" /><CustomersPage openAddSignal={customerSignal} initialSearch={customerSearchText} /></div>
+            <div className="px-4 pt-2 space-y-2"><PageToolIcons scopeKey="Customers" /><CustomersPage initialSearch={customerSearchText} /></div>
+          </TabErrorBoundary>
+        )}
+        {outerTab === 'loss' && lossView === 'newCustomer' && (
+          <TabErrorBoundary>
+            <div className="px-4 pt-2">
+              <PageToolIcons scopeKey="New Customer" />
+              <div className="mt-2">
+                <NewCustomerForm
+                  onCreated={() => pickLossView('customers')}
+                  onCancel={() => pickLossView('customers')} />
+              </div>
+            </div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'receipts' && (
