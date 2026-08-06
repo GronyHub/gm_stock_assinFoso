@@ -38,6 +38,7 @@ import { SidePaneContainer, SidePaneToggle, SidePaneButton, useSidePaneDisplayMo
 import SettingsPane from './_components/SettingsPane'
 import UKSettingsPanel from './_components/UKSettingsPanel'
 import { applyPaneOrder, buildPaneRuns, flattenPaneRuns, type PaneOrderMap } from './_components/paneOrder'
+import ServicesGroupTable from './_components/ServicesGroupTable'
 import dynamic from 'next/dynamic'
 const loading = (h: string) => <div className={`py-10 text-center text-gray-400 text-sm`}>{h}</div>
 const ItemsTab       = dynamic(() => import('./_components/ItemsTab'),        { ssr: false, loading: () => loading('Loading…') })
@@ -1839,27 +1840,7 @@ function ItemHubPageInner() {
                     {groupItems.length === 0 ? (
                       <p className="py-10 text-center text-gray-400 text-xs">No items in this group.</p>
                     ) : (
-                      <div className="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100">
-                        {groupItems.map(it => (
-                          <div key={it.id} className="px-3 py-2 flex items-center justify-between gap-2">
-                            <div className="min-w-0">
-                              <p className="text-xs font-semibold text-gray-900 truncate">{it.item_name}</p>
-                              <p className="text-[10px] text-gray-400">
-                                {it.product_type === 'service' ? 'Service' : 'Goods'}
-                                {it.product_type !== 'service' && ` · ${it.calculated_soh} pcs`}
-                              </p>
-                            </div>
-                            <div className="shrink-0 text-right text-[10px]">
-                              <p className="text-blue-600 font-bold">
-                                SP {it.selling_rate ? `₵${parseFloat(it.selling_rate).toLocaleString('en-GH')}` : '—'}
-                              </p>
-                              <p className="text-green-600 font-bold">
-                                CP {it.purchase_rate ? `₵${parseFloat(it.purchase_rate).toLocaleString('en-GH')}` : '—'}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                      <ServicesGroupTable items={groupItems} />
                     )}
                   </div>
                 )
