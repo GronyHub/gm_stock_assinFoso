@@ -27,3 +27,12 @@ export function fmtOrdinalDate(raw: string | null | undefined): string {
   const day = d.getDate()
   return `${day}${ordinal(day)} ${MON_FULL_SHORT[d.getMonth()]} ${d.getFullYear()}`
 }
+
+// Whole days between two timestamps -- used for "took N days to complete"
+// on tasks (created_at vs completed_at). Rounds rather than floors so a task
+// finished a few hours into the next calendar day still reads as "1 day",
+// not "0".
+export function daysBetween(a: string, b: string): number {
+  const ms = new Date(b).getTime() - new Date(a).getTime()
+  return Math.max(0, Math.round(ms / 86400000))
+}
