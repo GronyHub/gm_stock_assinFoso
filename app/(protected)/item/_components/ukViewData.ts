@@ -78,16 +78,36 @@ export function useUKData() {
     loadSubmenus(person)
   }, [person, username])
 
+  // Which submenu the CURRENT `columns`/`rows` state actually belongs to --
+  // tracked explicitly rather than inferred from the data itself, since an
+  // empty `columns`/`rows` array is indistinguishable from "hasn't loaded
+  // yet" using content alone (an empty array vacuously matches any
+  // submenu_id check). UKTab.tsx/CHTab.tsx compare this against the
+  // selected submenu before ever handing columns/rows to SubmenuTable --
+  // see their comments for why stale/not-yet-loaded data collapses the
+  // table's column widths. selectedSubmenuIdRef guards against an
+  // out-of-order response too (a slow fetch for a submenu the user has
+  // since clicked away from resolving after the newer one already has).
+  const [columnsSubmenuId, setColumnsSubmenuId] = useState<number | null>(null)
+  const [rowsSubmenuId, setRowsSubmenuId] = useState<number | null>(null)
+  const selectedSubmenuIdRef = useRef(selectedSubmenuId)
+  useEffect(() => { selectedSubmenuIdRef.current = selectedSubmenuId }, [selectedSubmenuId])
+
   function loadColumns(submenuId: number) {
     fetch(`/api/uk/columns?submenu_id=${submenuId}`)
       .then(r => r.ok ? r.json() : [])
-      .then(d => setColumns(Array.isArray(d) ? d : []))
+      .then(d => {
+        if (selectedSubmenuIdRef.current !== submenuId) return
+        setColumns(Array.isArray(d) ? d : [])
+        setColumnsSubmenuId(submenuId)
+      })
       .catch(() => {})
   }
   useEffect(() => {
     if (selectedSubmenuId == null) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setColumns([])
+      setColumnsSubmenuId(null)
       return
     }
     loadColumns(selectedSubmenuId)
@@ -96,13 +116,18 @@ export function useUKData() {
   function loadRows(submenuId: number) {
     fetch(`/api/uk/rows?submenu_id=${submenuId}`)
       .then(r => r.ok ? r.json() : [])
-      .then(d => setRows(Array.isArray(d) ? d : []))
+      .then(d => {
+        if (selectedSubmenuIdRef.current !== submenuId) return
+        setRows(Array.isArray(d) ? d : [])
+        setRowsSubmenuId(submenuId)
+      })
       .catch(() => {})
   }
   useEffect(() => {
     if (selectedSubmenuId == null) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setRows([])
+      setRowsSubmenuId(null)
       return
     }
     loadRows(selectedSubmenuId)
@@ -209,6 +234,7 @@ export function useUKData() {
 
   return {
     person, pickPerson, submenus, selectedSubmenuId, pickSubmenu, columns, rows,
+    columnsSubmenuId, rowsSubmenuId,
     newSubmenuName, setNewSubmenuName, showAddSubmenu, setShowAddSubmenu,
     editingSubmenuId, setEditingSubmenuId, editSubmenuName, setEditSubmenuName,
     addSubmenu, saveSubmenuName, deleteSubmenu,

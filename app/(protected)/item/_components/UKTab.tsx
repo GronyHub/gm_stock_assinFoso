@@ -38,12 +38,15 @@ export default function UKTab({ uk }: { uk: ReturnType<typeof useUKData> }) {
   // columns it's handed right then -- if that first render gets the stale
   // previous submenu's columns, the real ones arriving a beat later don't
   // match any of the ids it already locked in, and the table silently
-  // collapses to nothing but the delete-row column. Checking submenu_id
-  // here (not just length) avoids ever handing it mismatched data in the
-  // first place, rather than trying to make that state resync after the
-  // fact.
-  const columnsMatch = uk.columns.every(c => c.submenu_id === selectedSubmenu.id)
-  const rowsMatch = uk.rows.every(r => r.submenu_id === selectedSubmenu.id)
+  // collapses to nothing but the delete-row column. Comparing against
+  // columnsSubmenuId/rowsSubmenuId (explicitly set only once a fetch for
+  // that exact submenu has resolved) rather than inferring from the data's
+  // own submenu_id fields -- an empty array vacuously "matches" any
+  // submenu_id check, which let this same collapse through on the very
+  // first submenu picked after a page load, when columns/rows genuinely
+  // start out empty before their first fetch resolves.
+  const columnsMatch = uk.columnsSubmenuId === selectedSubmenu.id
+  const rowsMatch = uk.rowsSubmenuId === selectedSubmenu.id
   if (!columnsMatch || !rowsMatch) {
     return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
   }

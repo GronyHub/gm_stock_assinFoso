@@ -56,9 +56,13 @@ export default function CHTab({ view, childData }: { view: CHView; childData: Re
     // hold the previously-selected child's data for one render after
     // picking a new submenu, before their fetch resolves. See UKTab.tsx's
     // comment for why handing that straight to SubmenuTable silently
-    // collapses its column widths.
-    const columnsMatch = childData.columns.every(c => c.submenu_id === selectedSubmenu.id)
-    const rowsMatch = childData.rows.every(r => r.submenu_id === selectedSubmenu.id)
+    // collapses its column widths, and why this compares against the
+    // explicit columnsSubmenuId/rowsSubmenuId trackers rather than the
+    // data's own submenu_id fields (an empty array vacuously matches any
+    // check, which let the very first submenu picked after a page load
+    // through unguarded).
+    const columnsMatch = childData.columnsSubmenuId === selectedSubmenu.id
+    const rowsMatch = childData.rowsSubmenuId === selectedSubmenu.id
     if (!columnsMatch || !rowsMatch) {
       return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
     }
