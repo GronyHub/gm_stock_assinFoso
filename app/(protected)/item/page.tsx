@@ -1363,6 +1363,15 @@ function ItemHubPageInner() {
                     </div>
                   </div>
                 )}
+                {/* Same one-tap pattern as Sales' New/Live Sale rows above --
+                    reuses the customerSignal already wired to CustomersPage's
+                    openAddSignal prop (see the global "+" shortcut menu). */}
+                {v.key === 'customers' && (
+                  <div className="pl-2 border-l-2 border-white/10 ml-2">
+                    <SidePaneButton icon="👤" label="New Customer" mode={cashDisplayMode} active={false}
+                      onClick={() => { pickLossView('customers'); setCustomerSignal(n => n + 1) }} />
+                  </div>
+                )}
                 {/* Services' own group buttons, right under its pane row --
                     one per distinct cf_group in use (see serviceGroups
                     above), each opening straight to that group's item list. */}
