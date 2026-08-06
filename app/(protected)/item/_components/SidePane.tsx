@@ -79,8 +79,10 @@ export function SidePaneToggle({ mode, onChange, label }: { mode: DisplayMode; o
 }
 
 // One entry in a left pane -- icon on top, label below, either half hidden
-// depending on `mode`, label capped at 2 lines instead of forcing the pane
-// wider for a long name. `className` controls sizing: default `w-full` for
+// depending on `mode`, label capped at a single line (truncated with an
+// ellipsis) instead of wrapping to a second line or forcing the pane wider
+// for a long name -- the full name is still on the button's `title`
+// tooltip. `className` controls sizing: default `w-full` for
 // a standalone list; pass `flex-1 min-w-0` when placed in a row alongside
 // another control (e.g. a trailing delete button, or a sibling footer
 // button -- see Home/Daily in item/page.tsx). `badge` overlays a small
@@ -118,13 +120,13 @@ export function SidePaneButton({ icon, label, active, mode, onClick, badge, clas
       )}
       {/* `items-center` on the flex-col button above sizes children to
           their own content instead of stretching them, so without an
-          explicit w-full a label that's one long word (no spaces to wrap
-          at -- exactly what free-typed submenu names often are) sizes
-          wider than the button, gets centered, and has both ends clipped
-          by line-clamp's overflow:hidden -- showing only its middle/tail
-          ("Urgent" as "rgent"). w-full forces the real width so
-          break-words can actually wrap it instead. */}
-      {mode !== 'icon' && <span className="w-full break-words line-clamp-2">{label}</span>}
+          explicit w-full a label that overflows the button (free-typed
+          submenu names especially) sizes wider than the button and gets
+          centered instead of clipped from its own left edge. w-full forces
+          the real width so truncate's overflow:hidden/ellipsis clips it
+          from the right, at the button's actual edge, the same way every
+          other single-line label on the page does. */}
+      {mode !== 'icon' && <span className="w-full truncate">{label}</span>}
       {!!badge && badge > 0 && (
         <span className="absolute top-0.5 right-0.5 flex items-center justify-center min-w-[14px] h-[14px] px-0.5 text-[8px] font-bold leading-none rounded-full bg-red-600 text-white">
           {badge > 99 ? '99+' : badge}

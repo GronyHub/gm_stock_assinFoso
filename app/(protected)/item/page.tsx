@@ -191,7 +191,7 @@ const CASH_ITEMS: { key: LossView; label: string; icon: string }[] = [
   { key: 'bills',    label: 'Bills',    icon: '📃' },
   { key: 'feed',         label: 'Loss by Date',   icon: '📉' },
   { key: 'lossByItem',   label: 'Loss by Item',   icon: '📊' },
-  { key: 'lossByTarget', label: 'Loss by Target', icon: '🎯' },
+  { key: 'lossByTarget', label: 'Loss by Tgt',    icon: '🎯' },
   { key: 'expenses', label: 'Expenses', icon: '💳' },
   { key: 'pl',       label: 'P&L',      icon: '📈' },
   { key: 'cab',      label: 'CAB',      icon: '🗂️' },
@@ -199,7 +199,7 @@ const CASH_ITEMS: { key: LossView; label: string; icon: string }[] = [
   { key: 'vendors',   label: 'Vendors',   icon: '🏭' },
   { key: 'receipts',  label: 'Receipts',  icon: '📑' },
   { key: 'counts',    label: 'Counts',    icon: '🔢' },
-  { key: 'purchaseOrders',   label: 'Purchase Orders',   icon: '🛒' },
+  { key: 'purchaseOrders',   label: 'Purchase Ord',   icon: '🛒' },
   { key: 'item360', label: 'Item 360', icon: '🔍' },
 ]
 // Used to bounce someone off a Cash view the moment their permissions load
@@ -1370,6 +1370,20 @@ function ItemHubPageInner() {
                   <div className="pl-2 border-l-2 border-white/10 ml-2">
                     <SidePaneButton icon="👤" label="New Customer" mode={cashDisplayMode} active={false}
                       onClick={() => { pickLossView('customers'); setCustomerSignal(n => n + 1) }} />
+                  </div>
+                )}
+                {/* One-tap jump straight to a specific item's own Item 360
+                    page -- id 375 is "A4 Sheet Singles" (see canonical_name
+                    in the items table), a high-traffic item worth a
+                    permanent shortcut instead of searching for it inside
+                    Item 360 every time. Reuses the same item360JumpId state
+                    the global search's item results and Items tab's
+                    Duplicates flag already drive. */}
+                {v.key === 'item360' && (
+                  <div className="pl-2 border-l-2 border-white/10 ml-2">
+                    <SidePaneButton icon="🔍" label="A4 sheet sng audit" mode={cashDisplayMode}
+                      active={paneActive(lossView === 'item360' && item360JumpId === 375)}
+                      onClick={() => { pickLossView('item360'); setItem360JumpId(375) }} />
                   </div>
                 )}
                 {/* Services' own group buttons, right under its pane row --
