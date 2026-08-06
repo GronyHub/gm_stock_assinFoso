@@ -21,7 +21,7 @@ export type { ManageView }
 export default function GronyManageContent({
   view, canManage, categoryIds,
   openerViolations, assignments, deadlines, assignedBy, assignedOn, vSettings,
-  onGoToViolation, missingClosingReportsCount, onOpenStaff,
+  onGoToViolation, missingClosingReportsCount, onOpenStaff, propertiesInitialTab,
 }: {
   view: ManageView
   canManage: boolean
@@ -35,6 +35,7 @@ export default function GronyManageContent({
   onGoToViolation: (key: string) => void
   missingClosingReportsCount: number
   onOpenStaff: () => void
+  propertiesInitialTab?: 'all' | 'available' | 'away' | null
 }) {
   const logCategory = LOG_CATEGORIES.find(c => c.key === view)
 
@@ -64,7 +65,7 @@ export default function GronyManageContent({
       <div className="px-2 pt-2"><PageToolIcons scopeKey="Advert Daily Log" /></div>
       <ClosingReportLogView field="advert_played" label="Advert" icon="📢" />
     </>)}
-    {view === 'properties' && <PropertiesPage />}
+    {view === 'properties' && <PropertiesPage initialTab={propertiesInitialTab} />}
     {view === 'unfortunate_events' && (
       <DynamicCategoryPage categoryId={categoryIds[FIXED_CATEGORY_LABELS.unfortunate_events]} categoryLabel="Unfortunate Events" canManage={canManage} />
     )}

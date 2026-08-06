@@ -46,11 +46,19 @@ type PropTab = 'all' | 'available' | 'away'
 // own toolbar and edit form -- moved here so they get their own dedicated
 // page (and the huge availability/working/location cascade stops crowding
 // Expenses' edit panel for entries that were never a property).
-export default function PropertiesPage() {
+// `initialTab` is driven by the left pane's own "Properties at Shop"/
+// "Properties not at Shop" rows (see item/page.tsx) -- landing here from
+// either seeds straight into that tab instead of always opening on "All".
+export default function PropertiesPage({ initialTab }: { initialTab?: PropTab | null } = {}) {
   const [properties, setProperties] = useState<Property[]>([])
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<PropTab>('all')
+  const [tab, setTab] = useState<PropTab>(initialTab ?? 'all')
   const [search, setSearch] = useState('')
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (initialTab) setTab(initialTab)
+  }, [initialTab])
 
   function load() {
     fetch('/api/expenses')

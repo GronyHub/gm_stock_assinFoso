@@ -90,7 +90,11 @@ export const MANAGE_LIST_ITEMS: { key: ManageView; label: string; icon?: string;
   { key: 'video', label: 'Video', icon: '🎬', group: 'advert' },
   { key: 'advert_log', label: 'Daily Log', icon: '📢', group: 'advert' },
   ...LOG_CATEGORIES.map(c => ({ key: c.key, label: c.label, icon: c.icon, group: LOG_CATEGORY_GROUPS[c.key] })),
-  { key: 'properties', label: 'Properties', icon: '🏷️', group: 'grony_1_to_10' },
+  // 'properties' used to be a row here too -- moved to the Cash pane, right
+  // under Expenses (see item/page.tsx), split into its own "Properties at
+  // Shop"/"Properties not at Shop" rows. Still a real ManageView (see the
+  // type above) and still routed through GronyManageContent -> PropertiesPage
+  // exactly as before -- only its pane placement changed, not its content.
   { key: 'unfortunate_events', label: 'Unfortunate Events', icon: '🚨' },
   { key: 'security_chk', label: 'Security chk', icon: '🔒', group: 'grony_1_to_10' },
   { key: 'app_info', label: 'App info', icon: 'ℹ️' },

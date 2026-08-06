@@ -128,7 +128,13 @@ const OLD_LOSSVIEW_TO_EXTRA: Partial<Record<string, ItemsExtraView>> = {
 // all of them (same as the old report-style Cash views) and to gate which
 // content component (Cash's own blocks vs GronyManageContent vs
 // StaffContent) a given lossView renders.
-const MANAGE_VIEW_KEYS = new Set<LossView>(MANAGE_LIST_ITEMS.map(i => i.key))
+// 'properties' is still routed through GronyManageContent (see
+// GronyManageTab.tsx) even though it's no longer one of MANAGE_LIST_ITEMS'
+// own pane rows -- its two pane entries now live under Expenses instead
+// (see the Cash pane loop below), so it has to be added back in here by
+// hand or this content-routing gate (and REPORT_VIEWS, which spreads this
+// same set) would stop recognizing it.
+const MANAGE_VIEW_KEYS = new Set<LossView>([...MANAGE_LIST_ITEMS.map(i => i.key), 'properties'])
 const STAFF_VIEW_KEYS = new Set<LossView>([
   ...STAFF_PERSONAL_ITEMS.map(i => i.key), 'staffProfile', ...STAFF_TEAM_ITEMS.map(i => i.key),
   ...STAFF_ADMIN_TEAM_ITEMS.map(i => i.key), 'users', 'roles',
@@ -498,6 +504,9 @@ function ItemHubPageInner() {
   const [customerSignal, setCustomerSignal]     = useState(0)
   const [vendorSignal, setVendorSignal]         = useState(0)
   const [expenseOrdersSignal, setExpenseOrdersSignal] = useState(0)
+  // Seeds PropertiesPage's own tab -- driven by the left pane's "Properties
+  // at Shop"/"Properties not at Shop" rows under Expenses (see below).
+  const [propertiesInitialTab, setPropertiesInitialTab] = useState<'available' | 'away' | null>(null)
   const [jumpToItemId, setJumpToItemId]   = useState<number | null>(null)
   // Seeded from ?jumpDate=/?jumpItem= -- Item 360's Detail table (and its
   // "click a date" links) lands here via /item?tab=loss&view=sales&jumpDate=
@@ -1396,6 +1405,18 @@ function ItemHubPageInner() {
                   <div className="pl-2 border-l-2 border-white/10 ml-2">
                     <SidePaneButton icon="🧾" label="Expense Orders" mode={cashDisplayMode} active={false}
                       onClick={() => { pickLossView('expenses'); setExpenseOrdersSignal(n => n + 1) }} />
+                    {/* Properties used to be a single row buried in Manage's
+                        "Grony 1 to 10 checks" group, with an Available/Not
+                        Available toggle inside the page itself -- moved next
+                        to Expenses (an expense marked is_property is what
+                        makes it a "property" at all, see PropertiesPage.tsx)
+                        and split into its own two one-tap rows so each is
+                        reachable directly from the pane instead of landing
+                        on "All" and having to switch tabs by hand. */}
+                    <SidePaneButton icon="🏷️" label="Properties at Shop" mode={cashDisplayMode} divider active={false}
+                      onClick={() => { pickLossView('properties'); setPropertiesInitialTab('available') }} />
+                    <SidePaneButton icon="📦" label="Properties not at Shop" mode={cashDisplayMode} active={false}
+                      onClick={() => { pickLossView('properties'); setPropertiesInitialTab('away') }} />
                   </div>
                 )}
                 {/* Services' own group buttons, right under its pane row --
@@ -1885,7 +1906,8 @@ function ItemHubPageInner() {
               assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
               onGoToViolation={goToViolation}
               missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
-              onOpenStaff={() => pickLossView('teamTimes')} />
+              onOpenStaff={() => pickLossView('teamTimes')}
+              propertiesInitialTab={propertiesInitialTab} />
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && STAFF_VIEW_KEYS.has(lossView) && (
