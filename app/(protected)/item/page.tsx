@@ -198,24 +198,39 @@ const REPORT_VIEWS = new Set<LossView>([
 // has its own page-level home (see e.g. ItemsTab/SalesTab's combined flags
 // views, DynamicTasksSection usages throughout), so there's no longer a
 // separate all-in-one Tasks list to maintain in parallel with those.
-const CASH_ITEMS: { key: LossView; label: string; icon: string }[] = [
+// `group` draws a shared sub-header above whichever rows carry the same
+// tag -- same buildPaneRuns/flattenPaneRuns/CASH_GROUP_LABELS machinery
+// Manage's own pane already used (see MANAGE_GROUP_LABELS in
+// manageViewData.ts), just applied to Cash's rows too now. Properties
+// (nested under Expenses) and New Customer (nested under Customers) stay
+// their own sub-rows, not separate CASH_ITEMS entries -- they're already
+// reachable right under their parent row, which is itself inside these
+// same sections.
+const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: string }[] = [
   { key: 'items',    label: 'Items',    icon: '📦' },
-  { key: 'services', label: 'Services', icon: '🛠️' },
+  { key: 'services', label: 'Services', icon: '🛠️', group: 'services' },
   { key: 'sales',    label: 'Sales',    icon: '🧾' },
   { key: 'bills',    label: 'Bills',    icon: '📃' },
-  { key: 'feed',         label: 'Loss by Date',   icon: '📉' },
-  { key: 'lossByItem',   label: 'Loss by Item',   icon: '📊' },
-  { key: 'lossByTarget', label: 'Loss by Tgt',    icon: '🎯' },
-  { key: 'expenses', label: 'Expenses', icon: '💳' },
+  { key: 'purchaseOrders',   label: 'Purchase Ord',   icon: '🛒' },
+  { key: 'feed',         label: 'Loss by Date',   icon: '📉', group: 'loss' },
+  { key: 'lossByItem',   label: 'Loss by Item',   icon: '📊', group: 'loss' },
+  { key: 'lossByTarget', label: 'Loss by Tgt',    icon: '🎯', group: 'loss' },
+  { key: 'expenses', label: 'Expenses', icon: '💳', group: 'expenses' },
+  { key: 'vendors',   label: 'Vendors',   icon: '🏭', group: 'expenses' },
   { key: 'pl',       label: 'P&L',      icon: '📈' },
   { key: 'cab',      label: 'CAB',      icon: '🗂️' },
-  { key: 'customers', label: 'Customers', icon: '👥' },
-  { key: 'vendors',   label: 'Vendors',   icon: '🏭' },
-  { key: 'receipts',  label: 'Cust. Receipts',  icon: '📑' },
+  { key: 'customers', label: 'Customers', icon: '👥', group: 'customers' },
+  { key: 'receipts',  label: 'Cust. Receipts',  icon: '📑', group: 'customers' },
   { key: 'counts',    label: 'Counts',    icon: '🔢' },
-  { key: 'purchaseOrders',   label: 'Purchase Ord',   icon: '🛒' },
   { key: 'item360', label: 'Item 360', icon: '🔍' },
 ]
+// Group -> sub-header label, same role as MANAGE_GROUP_LABELS.
+const CASH_GROUP_LABELS: Record<string, string> = {
+  services: 'Services',
+  loss: 'Loss',
+  expenses: 'Expenses',
+  customers: 'Customers',
+}
 // Used to bounce someone off a Cash view the moment their permissions load
 // and turn out not to include it (see the canSeeCash effect below).
 const CASH_VIEW_KEYS = new Set<LossView>(CASH_ITEMS.map(v => v.key))
@@ -1421,10 +1436,13 @@ function ItemHubPageInner() {
               {cashDisplayMode !== 'icon' && (
                 <p className="px-2 pt-1 pb-0.5"><span className="text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide rounded px-1.5 py-0.5">Cash</span></p>
               )}
-              {applyPaneOrder(CASH_ITEMS, paneOrder.cash).filter(v => v.key !== 'pl' || canSeePL).map((v, i) => (
-              <div key={v.key}>
+              {flattenPaneRuns(buildPaneRuns(applyPaneOrder(CASH_ITEMS, paneOrder.cash).filter(v => v.key !== 'pl' || canSeePL)), CASH_GROUP_LABELS).map(({ item: v, header, divider }) => (
+              <Fragment key={v.key}>
+                {header && cashDisplayMode !== 'icon' && (
+                  <p className="px-2 pt-2 pb-0.5"><span className="text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide rounded px-1.5 py-0.5">{header}</span></p>
+                )}
                 <SidePaneButton icon={v.icon} label={paneLabel(v.key, v.label)} mode={cashDisplayMode}
-                  active={paneActive(lossView === v.key)} divider={i > 0}
+                  active={paneActive(lossView === v.key)} divider={divider}
                   badge={v.key === 'sales' ? salesFlagsCount
                     : v.key === 'items' ? itemsFlagsCount
                     : v.key === 'bills' ? billsFlagsCount
@@ -1529,7 +1547,7 @@ function ItemHubPageInner() {
                     ))}
                   </div>
                 )}
-              </div>
+              </Fragment>
               ))}
             </div>
             )}
