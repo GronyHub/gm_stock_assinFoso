@@ -1439,12 +1439,21 @@ function ItemHubPageInner() {
               {cashDisplayMode !== 'icon' && (
                 <p className="px-2 pt-1 pb-0.5"><span className="text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide rounded px-1.5 py-0.5">Cash</span></p>
               )}
-              {flattenPaneRuns(buildPaneRuns(applyPaneOrder(CASH_ITEMS, paneOrder.cash).filter(v => v.key !== 'pl' || canSeePL)), CASH_GROUP_LABELS).map(({ item: v, header, divider }) => (
+              {flattenPaneRuns(buildPaneRuns(applyPaneOrder(CASH_ITEMS, paneOrder.cash).filter(v => v.key !== 'pl' || canSeePL)), CASH_GROUP_LABELS).map(({ item: v, header, divider }) => {
+                // A section whose own name is also one of its rows' names
+                // (Sales the section vs. Sales the row, same for Expenses/
+                // Customers/Services) doesn't need a separate, identical-
+                // looking header above that row -- the row's own label
+                // becomes the section heading instead (see chipLabel on
+                // SidePaneButton), still fully clickable.
+                const isSelfTitled = !!header && header === paneLabel(v.key, v.label)
+                return (
               <Fragment key={v.key}>
-                {header && cashDisplayMode !== 'icon' && (
+                {header && cashDisplayMode !== 'icon' && !isSelfTitled && (
                   <p className="px-2 pt-2 pb-0.5"><span className="text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide rounded px-1.5 py-0.5">{header}</span></p>
                 )}
                 <SidePaneButton icon={v.icon} label={paneLabel(v.key, v.label)} mode={cashDisplayMode}
+                  chipLabel={isSelfTitled}
                   active={paneActive(lossView === v.key)} divider={divider}
                   badge={v.key === 'sales' ? salesFlagsCount
                     : v.key === 'items' ? itemsFlagsCount
@@ -1551,7 +1560,8 @@ function ItemHubPageInner() {
                   </div>
                 )}
               </Fragment>
-              ))}
+                )
+              })}
             </div>
             )}
 

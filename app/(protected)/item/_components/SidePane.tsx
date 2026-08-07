@@ -107,8 +107,17 @@ export function SidePaneToggle({ mode, onChange, label }: { mode: DisplayMode; o
 // redundant) or the very first button in the pane. Every caller looping
 // over a list is expected to compute this itself (e.g. `i > 0`) rather than
 // this component guessing position from context it doesn't have.
-export function SidePaneButton({ icon, label, active, mode, onClick, badge, taskBadge, className = 'w-full', tint, divider }: {
-  icon?: string | React.ReactNode; label: string; active: boolean; mode: DisplayMode; onClick: () => void; badge?: number; taskBadge?: number; className?: string; tint?: string; divider?: boolean
+// `chipLabel` -- for a row whose own name IS a section's name too (Sales
+// the row vs. "Sales" the section header above Sales/New Sale/Live Sale/
+// Log, same for Expenses and Customers) -- draws the label in the same
+// yellow-fill/red-text chip style a real section header uses, instead of
+// plain white text, so that row doubles as the section's own heading
+// rather than sitting redundantly under a separate "Sales" label that
+// says the same thing twice. Still a normal, fully clickable button --
+// only the label's own styling changes. See item/page.tsx's Cash pane
+// loop for where the separate header is skipped for exactly these rows.
+export function SidePaneButton({ icon, label, active, mode, onClick, badge, taskBadge, className = 'w-full', tint, divider, chipLabel }: {
+  icon?: string | React.ReactNode; label: string; active: boolean; mode: DisplayMode; onClick: () => void; badge?: number; taskBadge?: number; className?: string; tint?: string; divider?: boolean; chipLabel?: boolean
 }) {
   return (
     <button onClick={onClick} title={label} aria-label={label}
@@ -129,7 +138,11 @@ export function SidePaneButton({ icon, label, active, mode, onClick, badge, task
           the real width so truncate's overflow:hidden/ellipsis clips it
           from the right, at the button's actual edge, the same way every
           other single-line label on the page does. */}
-      {mode !== 'icon' && <span className="w-full truncate">{label}</span>}
+      {mode !== 'icon' && (
+        chipLabel
+          ? <span className="w-full flex justify-center"><span className="max-w-full truncate text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide rounded px-1.5 py-0.5">{label}</span></span>
+          : <span className="w-full truncate">{label}</span>
+      )}
       {/* No background shape on either badge -- a filled circle sitting on
           top of the label was covering some of its lettering, especially in
           `both` mode where icon and label share limited vertical space.
