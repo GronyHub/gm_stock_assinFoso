@@ -1225,6 +1225,16 @@ function ItemHubPageInner() {
   useEffect(() => {
     fetch('/api/pane-order').then(r => r.ok ? r.json() : {}).then(setPaneOrder).catch(() => {})
   }, [])
+  // Same shared-with-everyone pattern as paneOrder above, but for display
+  // labels instead of row order -- see ReorderListsPanel.tsx and
+  // /api/pane-labels. Purely cosmetic: a row's `key` (used for routing,
+  // PageToolIcons scopeKey, and every task/notes/laws/flag lookup) never
+  // changes, so this can't orphan any of that data.
+  const [paneLabels, setPaneLabels] = useState<Record<string, string>>({})
+  useEffect(() => {
+    fetch('/api/pane-labels').then(r => r.ok ? r.json() : {}).then(setPaneLabels).catch(() => {})
+  }, [])
+  const paneLabel = (key: string, fallback: string) => paneLabels[key] ?? fallback
   // Cash/Manage default to granted for almost everyone (see
   // DEFAULT_ON_FEATURES) -- until the real map has loaded, assume that
   // rather than briefly hiding the whole Grony Cash/Manage pane for every
@@ -1402,7 +1412,7 @@ function ItemHubPageInner() {
               )}
               {applyPaneOrder(CASH_ITEMS, paneOrder.cash).filter(v => v.key !== 'pl' || canSeePL).map((v, i) => (
               <div key={v.key}>
-                <SidePaneButton icon={v.icon} label={v.label} mode={cashDisplayMode}
+                <SidePaneButton icon={v.icon} label={paneLabel(v.key, v.label)} mode={cashDisplayMode}
                   active={paneActive(lossView === v.key)} divider={i > 0}
                   badge={v.key === 'sales' ? salesFlagsCount
                     : v.key === 'items' ? itemsFlagsCount
@@ -1530,7 +1540,7 @@ function ItemHubPageInner() {
                     {header && cashDisplayMode !== 'icon' && (
                       <p className="px-2 pt-2 pb-0.5 text-[8px] font-bold text-blue-200/70 uppercase tracking-wide">{header}</p>
                     )}
-                    <SidePaneButton icon={entry.icon} label={entry.label} mode={cashDisplayMode} divider={divider}
+                    <SidePaneButton icon={entry.icon} label={paneLabel(entry.key, entry.label)} mode={cashDisplayMode} divider={divider}
                       active={paneActive(lossView === entry.key)} badge={badge}
                       taskBadge={taskCountFor(MANAGE_TASK_SCOPE_OVERRIDES[entry.key] ?? entry.label)}
                       onClick={() => pickLossView(entry.key)} />
@@ -1552,7 +1562,7 @@ function ItemHubPageInner() {
                   <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Team</p>
                 )}
                 {STAFF_TEAM_ITEMS.map((t, i) => (
-                  <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode} divider={i > 0}
+                  <SidePaneButton key={t.key} icon={t.icon} label={paneLabel(t.key, t.label)} mode={cashDisplayMode} divider={i > 0}
                     active={paneActive(lossView === t.key)}
                     badge={t.key === 'staff_dress' ? dressFlagsCount : t.key === 'teamTimes' ? staffTimesFlagsCount : undefined}
                     taskBadge={taskCountFor(t.label)}
@@ -1991,7 +2001,8 @@ function ItemHubPageInner() {
           <TabErrorBoundary>
             <div className="px-4 pt-4 max-w-sm space-y-2">
               <PageToolIcons scopeKey="Reorder Lists" />
-              <ReorderListsPanel cashItems={CASH_ITEMS} manageItems={MANAGE_LIST_ITEMS} paneOrder={paneOrder} setPaneOrder={setPaneOrder} />
+              <ReorderListsPanel cashItems={CASH_ITEMS} manageItems={MANAGE_LIST_ITEMS} staffItems={STAFF_TEAM_ITEMS}
+                paneOrder={paneOrder} setPaneOrder={setPaneOrder} paneLabels={paneLabels} setPaneLabels={setPaneLabels} />
             </div>
           </TabErrorBoundary>
         )}

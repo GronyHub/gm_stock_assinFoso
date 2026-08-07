@@ -88,7 +88,7 @@ export default function SettingsPane({
                 active={activeView === 'viewPortalAs'} onClick={() => pickLossView('viewPortalAs', { keepSettingsOpen: true })} />
             )}
             {canManageRoles && (
-              <SidePaneButton icon="↕️" label="Reorder Lists" mode={mode} divider={canSeeUsers || canManageRoles || canViewPortalAs}
+              <SidePaneButton icon="↕️" label="Reorder & Rename Lists" mode={mode} divider={canSeeUsers || canManageRoles || canViewPortalAs}
                 active={activeView === 'reorderLists'} onClick={() => pickLossView('reorderLists', { keepSettingsOpen: true })} />
             )}
           </div>
