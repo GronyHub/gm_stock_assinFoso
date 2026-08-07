@@ -201,39 +201,41 @@ const REPORT_VIEWS = new Set<LossView>([
 // views, DynamicTasksSection usages throughout), so there's no longer a
 // separate all-in-one Tasks list to maintain in parallel with those.
 // `group` draws a shared sub-header above whichever rows carry the same
-// tag -- same buildPaneRuns/flattenPaneRuns/CASH_GROUP_LABELS machinery
-// Manage's own pane already used (see MANAGE_GROUP_LABELS in
-// manageViewData.ts), just applied to Cash's rows too now. Properties
-// (nested under Expenses) and New Customer (nested under Customers) stay
-// their own sub-rows, not separate CASH_ITEMS entries -- they're already
-// reachable right under their parent row, which is itself inside these
-// same sections.
+// tag -- same buildPaneRuns/flattenPaneRuns machinery Manage's own pane
+// already used (see MANAGE_GROUP_LABELS in manageViewData.ts), just applied
+// to Cash's rows too now. Unlike Manage's groups, a Cash row's `group` IS
+// its own display text directly (no separate id->label map) -- see
+// /api/pane-groups and ReorderListsPanel.tsx, where an owner-level account
+// can move any row into any section (existing or freshly typed) or back
+// out, and effectiveCashItems() below merges those overrides in at render
+// time. Properties (nested under Expenses) and New Customer (nested under
+// Customers) stay their own sub-rows, not separate CASH_ITEMS entries --
+// they're already reachable right under their parent row, which is itself
+// inside these same sections.
 const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: string }[] = [
   { key: 'items',    label: 'Items',    icon: '📦' },
-  { key: 'services', label: 'Services', icon: '🛠️', group: 'services' },
-  { key: 'sales',    label: 'Sales',    icon: '🧾', group: 'sales' },
+  { key: 'services', label: 'Services', icon: '🛠️', group: 'Services' },
+  { key: 'sales',    label: 'Sales',    icon: '🧾', group: 'Sales' },
   { key: 'bills',    label: 'Bills',    icon: '📃' },
   { key: 'purchaseOrders',   label: 'Purchase Ord',   icon: '🛒' },
-  { key: 'feed',         label: 'Loss by Date',   icon: '📉', group: 'loss' },
-  { key: 'lossByItem',   label: 'Loss by Item',   icon: '📊', group: 'loss' },
-  { key: 'lossByTarget', label: 'Loss by Tgt',    icon: '🎯', group: 'loss' },
-  { key: 'expenses', label: 'Expenses', icon: '💳', group: 'expenses' },
-  { key: 'vendors',   label: 'Vendors',   icon: '🏭', group: 'expenses' },
+  { key: 'feed',         label: 'Loss by Date',   icon: '📉', group: 'Loss' },
+  { key: 'lossByItem',   label: 'Loss by Item',   icon: '📊', group: 'Loss' },
+  { key: 'lossByTarget', label: 'Loss by Tgt',    icon: '🎯', group: 'Loss' },
+  { key: 'expenses', label: 'Expenses', icon: '💳', group: 'Expenses' },
+  { key: 'vendors',   label: 'Vendors',   icon: '🏭', group: 'Expenses' },
   { key: 'pl',       label: 'P&L',      icon: '📈' },
   { key: 'cab',      label: 'CAB',      icon: '🗂️' },
-  { key: 'customers', label: 'Customers', icon: '👥', group: 'customers' },
-  { key: 'receipts',  label: 'Cust. Receipts',  icon: '📑', group: 'customers' },
+  { key: 'customers', label: 'Customers', icon: '👥', group: 'Customers' },
+  { key: 'receipts',  label: 'Cust. Receipts',  icon: '📑', group: 'Customers' },
   { key: 'counts',    label: 'Counts',    icon: '🔢' },
   { key: 'item360', label: 'Item 360', icon: '🔍' },
 ]
-// Group -> sub-header label, same role as MANAGE_GROUP_LABELS.
-const CASH_GROUP_LABELS: Record<string, string> = {
-  services: 'Services',
-  sales: 'Sales',
-  loss: 'Loss',
-  expenses: 'Expenses',
-  customers: 'Customers',
-}
+// flattenPaneRuns needs a group->label lookup to build each run's header
+// text, but a Cash row's group already IS its own label (see CASH_ITEMS'
+// own comment above) -- this just hands any group string straight back
+// instead of needing a real map kept in sync with every possible section
+// name (including ones an owner-level account types fresh in Settings).
+const IDENTITY_GROUP_LABELS: Record<string, string> = new Proxy({}, { get: (_, prop: string) => prop })
 // Used to bounce someone off a Cash view the moment their permissions load
 // and turn out not to include it (see the canSeeCash effect below).
 const CASH_VIEW_KEYS = new Set<LossView>(CASH_ITEMS.map(v => v.key))
@@ -1250,6 +1252,25 @@ function ItemHubPageInner() {
     fetch('/api/pane-labels').then(r => r.ok ? r.json() : {}).then(setPaneLabels).catch(() => {})
   }, [])
   const paneLabel = (key: string, fallback: string) => paneLabels[key] ?? fallback
+  // Same shared-with-everyone pattern again, but for which section a Cash
+  // row sits in -- see /api/pane-groups and ReorderListsPanel.tsx. A row
+  // with no entry here just keeps CASH_ITEMS' own default `group`.
+  // `standalone` (independent of `group_name`) makes a row its own
+  // one-row section named after its own (possibly renamed) label,
+  // border-styled rather than filled so it reads as a manually-marked
+  // indicator rather than a "real" multi-row group like Sales/Expenses/
+  // Customers/Services -- see the Cash pane loop below for how
+  // isSelfTitled/chipLabel/chipBorder end up applied per row.
+  const [paneGroups, setPaneGroups] = useState<Record<string, { group_name: string | null; standalone: boolean }>>({})
+  useEffect(() => {
+    fetch('/api/pane-groups').then(r => r.ok ? r.json() : {}).then(setPaneGroups).catch(() => {})
+  }, [])
+  const effectiveCashItems = CASH_ITEMS.map(item => {
+    const override = paneGroups[item.key]
+    if (!override) return { ...item, standaloneOverride: false }
+    if (override.standalone) return { ...item, group: paneLabel(item.key, item.label), standaloneOverride: true }
+    return { ...item, group: override.group_name ?? undefined, standaloneOverride: false }
+  })
   // Cash/Manage default to granted for almost everyone (see
   // DEFAULT_ON_FEATURES) -- until the real map has loaded, assume that
   // rather than briefly hiding the whole Grony Cash/Manage pane for every
@@ -1439,13 +1460,18 @@ function ItemHubPageInner() {
               {cashDisplayMode !== 'icon' && (
                 <p className="px-2 pt-1 pb-0.5"><span className="text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide rounded px-1.5 py-0.5">Cash</span></p>
               )}
-              {flattenPaneRuns(buildPaneRuns(applyPaneOrder(CASH_ITEMS, paneOrder.cash).filter(v => v.key !== 'pl' || canSeePL)), CASH_GROUP_LABELS).map(({ item: v, header, divider }) => {
+              {flattenPaneRuns(buildPaneRuns(applyPaneOrder(effectiveCashItems, paneOrder.cash).filter(v => v.key !== 'pl' || canSeePL)), IDENTITY_GROUP_LABELS).map(({ item: v, header, divider }) => {
                 // A section whose own name is also one of its rows' names
                 // (Sales the section vs. Sales the row, same for Expenses/
-                // Customers/Services) doesn't need a separate, identical-
-                // looking header above that row -- the row's own label
-                // becomes the section heading instead (see chipLabel on
-                // SidePaneButton), still fully clickable.
+                // Customers/Services -- or any row an owner-level account
+                // has marked "standalone" via Settings) doesn't need a
+                // separate, identical-looking header above that row -- the
+                // row's own label becomes the section heading instead (see
+                // chipLabel/chipBorder on SidePaneButton), still fully
+                // clickable. chipBorder (not filled) marks a manually
+                // standalone-toggled row specifically, so it reads as
+                // distinct from a "real" multi-row group's own self-titled
+                // lead row.
                 const isSelfTitled = !!header && header === paneLabel(v.key, v.label)
                 return (
               <Fragment key={v.key}>
@@ -1453,7 +1479,8 @@ function ItemHubPageInner() {
                   <p className="px-2 pt-2 pb-0.5"><span className="text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide rounded px-1.5 py-0.5">{header}</span></p>
                 )}
                 <SidePaneButton icon={v.icon} label={paneLabel(v.key, v.label)} mode={cashDisplayMode}
-                  chipLabel={isSelfTitled}
+                  chipLabel={isSelfTitled && !v.standaloneOverride}
+                  chipBorder={isSelfTitled && v.standaloneOverride}
                   active={paneActive(lossView === v.key)} divider={divider}
                   badge={v.key === 'sales' ? salesFlagsCount
                     : v.key === 'items' ? itemsFlagsCount
@@ -2046,8 +2073,9 @@ function ItemHubPageInner() {
           <TabErrorBoundary>
             <div className="px-4 pt-4 max-w-sm space-y-2">
               <PageToolIcons scopeKey="Reorder Lists" />
-              <ReorderListsPanel cashItems={CASH_ITEMS} manageItems={MANAGE_LIST_ITEMS} staffItems={STAFF_TEAM_ITEMS}
-                paneOrder={paneOrder} setPaneOrder={setPaneOrder} paneLabels={paneLabels} setPaneLabels={setPaneLabels} />
+              <ReorderListsPanel cashItems={effectiveCashItems} manageItems={MANAGE_LIST_ITEMS} staffItems={STAFF_TEAM_ITEMS}
+                paneOrder={paneOrder} setPaneOrder={setPaneOrder} paneLabels={paneLabels} setPaneLabels={setPaneLabels}
+                paneGroups={paneGroups} setPaneGroups={setPaneGroups} />
             </div>
           </TabErrorBoundary>
         )}
