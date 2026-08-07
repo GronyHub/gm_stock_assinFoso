@@ -113,7 +113,7 @@ export function SidePaneButton({ icon, label, active, mode, onClick, badge, task
   return (
     <button onClick={onClick} title={label} aria-label={label}
       style={tint ? { backgroundColor: active ? '#fff' : tint, color: active ? tint : '#fff' } : undefined}
-      className={`relative flex flex-col items-center justify-center gap-0.5 px-1 py-2 text-[10px] font-medium leading-tight text-center transition
+      className={`relative flex flex-col items-center justify-center gap-0.5 px-1 py-1 text-[10px] font-medium leading-tight text-center transition
         ${divider ? 'border-t border-white/35' : ''}
         ${tint ? 'font-semibold' : active ? 'bg-white text-[var(--pane-accent)] font-semibold' : 'text-white hover:bg-white/10'} ${className}`}>
       {mode !== 'text' && (
