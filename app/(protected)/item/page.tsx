@@ -896,13 +896,10 @@ function ItemHubPageInner() {
     lossByTarget: 'Loss by Target',
   }
   const cashTaskScopeKey = (key: LossView) => CASH_TASK_SCOPE_OVERRIDES[key] ?? CASH_LABEL.get(key) ?? key
-  // Same idea for Manage -- every LOG_CATEGORIES-backed row's scopeKey
-  // already equals its own label (ManageLogPanel is called with
-  // scopeKey={label} directly), except Daily Log's own content page, which
-  // hardcodes "Advert Daily Log" instead of reusing its shorter pane label.
-  const MANAGE_TASK_SCOPE_OVERRIDES: Partial<Record<ManageView, string>> = {
-    advert_log: 'Advert Daily Log',
-  }
+  // Every remaining Manage row's scopeKey already equals its own label
+  // (ManageLogPanel is called with scopeKey={label} directly) -- Daily Log
+  // used to be the one exception (its content page hardcoded "Advert Daily
+  // Log" instead), but that row's been removed from the pane entirely.
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -1556,7 +1553,7 @@ function ItemHubPageInner() {
                     )}
                     <SidePaneButton icon={entry.icon} label={paneLabel(entry.key, entry.label)} mode={cashDisplayMode} divider={divider}
                       active={paneActive(lossView === entry.key)} badge={badge}
-                      taskBadge={taskCountFor(MANAGE_TASK_SCOPE_OVERRIDES[entry.key] ?? entry.label)}
+                      taskBadge={taskCountFor(entry.label)}
                       onClick={() => pickLossView(entry.key)} />
                   </Fragment>
                 )

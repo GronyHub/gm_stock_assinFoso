@@ -1,5 +1,4 @@
 'use client'
-import ClosingReportLogView from './ClosingReportLogView'
 import ManageLogPanel from './ManageLogPanel'
 import ContentPage from './ContentPage'
 import PageToolIcons from './PageToolIcons'
@@ -61,10 +60,6 @@ export default function GronyManageContent({
     {view === 'whatsapp' && <ContentPage contentKey="advert_photo_whatsapp" title="Advert 3 — Photo (WhatsApp Advert)" submenu="WhatsApp" />}
     {view === 'cuttings' && <ContentPage contentKey="advert_photo_cuttings" title="Advert 4 — Photo (Cuttings)" submenu="Cuttings" />}
     {view === 'video' && <ContentPage contentKey="advert_video" title="Advert 5 — Video Advert" submenu="Video" />}
-    {view === 'advert_log' && (<>
-      <div className="px-2 pt-2"><PageToolIcons scopeKey="Advert Daily Log" /></div>
-      <ClosingReportLogView field="advert_played" label="Advert" icon="📢" />
-    </>)}
     {view === 'properties' && <PropertiesPage initialTab={propertiesInitialTab} />}
     {view === 'unfortunate_events' && (
       <DynamicCategoryPage categoryId={categoryIds[FIXED_CATEGORY_LABELS.unfortunate_events]} categoryLabel="Unfortunate Events" canManage={canManage} />
