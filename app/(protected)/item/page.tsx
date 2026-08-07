@@ -1472,7 +1472,14 @@ function ItemHubPageInner() {
                 // standalone-toggled row specifically, so it reads as
                 // distinct from a "real" multi-row group's own self-titled
                 // lead row.
-                const isSelfTitled = !!header && header === paneLabel(v.key, v.label)
+                // Checked per-item (not "is this the group's first/header-
+                // bearing row") so a self-titled row (Expenses, Sales, ...)
+                // keeps its own chip styling even if some other row gets
+                // moved into the same section ahead of it in pane order --
+                // that other row would otherwise "steal" flattenPaneRuns'
+                // one-header-per-run slot, leaving the real self-titled row
+                // looking like a plain button.
+                const isSelfTitled = !!v.group && v.group === paneLabel(v.key, v.label)
                 return (
               <Fragment key={v.key}>
                 {header && cashDisplayMode !== 'icon' && !isSelfTitled && (
@@ -1545,34 +1552,6 @@ function ItemHubPageInner() {
                       onClick={() => { pickLossView('item360'); setItem360JumpId(375) }} />
                   </div>
                 )}
-                {/* Same one-tap pattern as New Customer above -- reuses the
-                    same "Expense Orders" toggle already sitting in
-                    ExpensesTab's own toolbar, just wired to open from here
-                    too via expenseOrdersSignal. Its own "Expense Orders"
-                    PageToolIcons scope (separate from "Expenses") lives
-                    inside ExpensesTab itself, keyed off that same
-                    showOrders toggle -- see ExpensesTab.tsx. */}
-                {v.key === 'expenses' && (
-                  <div>
-                    <SidePaneButton icon="🧾" label="Expense Orders" mode={cashDisplayMode} active={false}
-                      taskBadge={taskCountFor('Expense Orders')}
-                      onClick={() => { pickLossView('expenses'); setExpenseOrdersSignal(n => n + 1) }} />
-                    {/* Properties used to be a single row buried in Manage's
-                        "Grony 1 to 10 checks" group, with an Available/Not
-                        Available toggle inside the page itself -- moved next
-                        to Expenses (an expense marked is_property is what
-                        makes it a "property" at all, see PropertiesPage.tsx)
-                        and split into its own two one-tap rows so each is
-                        reachable directly from the pane instead of landing
-                        on "All" and having to switch tabs by hand. */}
-                    <SidePaneButton icon="🏷️" label="Properties at Shop" mode={cashDisplayMode} divider active={false}
-                      taskBadge={taskCountFor('Properties')}
-                      onClick={() => { pickLossView('properties'); setPropertiesInitialTab('available') }} />
-                    <SidePaneButton icon="📦" label="Properties not at Shop" mode={cashDisplayMode} active={false}
-                      taskBadge={taskCountFor('Properties')}
-                      onClick={() => { pickLossView('properties'); setPropertiesInitialTab('away') }} />
-                  </div>
-                )}
                 {/* Services' own group buttons, right under its pane row --
                     one per distinct cf_group in use (see serviceGroups
                     above), each opening straight to that group's item list. */}
@@ -1589,6 +1568,27 @@ function ItemHubPageInner() {
               </Fragment>
                 )
               })}
+              {/* Expense Orders and Properties used to be nested sub-rows
+                  under Expenses' own pane row -- pulled out to their own
+                  standalone rows here instead (per direct feedback: "remove
+                  the expense orders button from expenses to maintain its
+                  standalone" / "make properties a section on its own"), so
+                  neither one's chip styling reads as tucked inside the
+                  Expenses section anymore. Still reach the exact same
+                  pages/actions as before -- only their position and section
+                  identity in the pane changed. */}
+              <SidePaneButton icon="🧾" label="Expense Orders" mode={cashDisplayMode} active={false} divider chipLabel
+                taskBadge={taskCountFor('Expense Orders')}
+                onClick={() => { pickLossView('expenses'); setExpenseOrdersSignal(n => n + 1) }} />
+              {cashDisplayMode !== 'icon' && (
+                <p className="px-2 pt-2 pb-0.5"><span className="text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide rounded px-1.5 py-0.5">Properties</span></p>
+              )}
+              <SidePaneButton icon="🏷️" label="Properties at Shop" mode={cashDisplayMode} active={false}
+                taskBadge={taskCountFor('Properties')}
+                onClick={() => { pickLossView('properties'); setPropertiesInitialTab('available') }} />
+              <SidePaneButton icon="📦" label="Properties not at Shop" mode={cashDisplayMode} divider active={false}
+                taskBadge={taskCountFor('Properties')}
+                onClick={() => { pickLossView('properties'); setPropertiesInitialTab('away') }} />
             </div>
             )}
 
