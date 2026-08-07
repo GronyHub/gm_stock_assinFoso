@@ -56,7 +56,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const has = (k: string) => Object.prototype.hasOwnProperty.call(body, k)
 
   const [current] = await sql`
-    SELECT canonical_name, cf_group, selling_rate, purchase_rate, units_per_pack, unit_name, converts_to_item_id
+    SELECT canonical_name, cf_group, selling_rate, purchase_rate, units_per_pack, unit_name, converts_to_item_id, product_type
     FROM items WHERE id = ${itemId}
   `
   if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -68,6 +68,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const units_per_pack      = has('units_per_pack') ? body.units_per_pack : current.units_per_pack
   const unit_name           = has('unit_name') ? body.unit_name : current.unit_name
   const converts_to_item_id = has('converts_to_item_id') ? body.converts_to_item_id : current.converts_to_item_id
+  const product_type        = has('product_type') ? (body.product_type === 'service' ? 'service' : 'goods') : current.product_type
 
   const [row] = await sql`
     UPDATE items SET
@@ -78,9 +79,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       purchase_rate       = ${purchase_rate  ?? null},
       units_per_pack      = ${units_per_pack ?? null},
       unit_name           = ${unit_name      ?? null},
-      converts_to_item_id = ${converts_to_item_id ?? null}
+      converts_to_item_id = ${converts_to_item_id ?? null},
+      product_type        = ${product_type   ?? 'goods'}
     WHERE id = ${itemId}
-    RETURNING id, canonical_name AS item_name, cf_group, selling_rate, purchase_rate, units_per_pack, unit_name, converts_to_item_id
+    RETURNING id, canonical_name AS item_name, cf_group, selling_rate, purchase_rate, units_per_pack, unit_name, converts_to_item_id, product_type
   `
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 

@@ -46,7 +46,7 @@ type DayRow = {
 type ComputedRow = DayRow & { expected_soh: number | null; loss: number | null }
 
 const EMPTY_FORM = {
-  item_name: '', cf_group: '', selling_rate: '', purchase_rate: '', units_per_pack: '', unit_name: '',
+  item_name: '', cf_group: '', selling_rate: '', purchase_rate: '', units_per_pack: '', unit_name: '', product_type: 'goods',
 }
 
 type NameRes = {
@@ -310,6 +310,16 @@ function ItemForm({ form, onChange, groups }: { form: typeof EMPTY_FORM; onChang
         <option value="">— No group —</option>
         {groups.map(g => <option key={g} value={g}>{g}</option>)}
       </select>
+      {/* Goods/Service is what routes an item into the Services section's
+          own group tables (see ServicesGroupTable.tsx) vs. tracking stock
+          on hand for it -- changeable here rather than fixed forever at
+          creation, since a real item sometimes turns out to be the wrong
+          one (e.g. a line item added as a good that's actually a labor
+          charge). */}
+      <select value={form.product_type} onChange={set('product_type')} className={inputCls}>
+        <option value="goods">Goods</option>
+        <option value="service">Service</option>
+      </select>
       <div className="grid grid-cols-2 gap-1">
         <input placeholder="Selling rate" type="number" value={form.selling_rate} onChange={set('selling_rate')} className={inputCls} />
         <input placeholder="Cost rate" type="number" value={form.purchase_rate} onChange={set('purchase_rate')} className={inputCls} />
@@ -508,6 +518,7 @@ export default function ItemsTab({ items, group, productType, search, violation,
       purchase_rate: item.purchase_rate ? parseFloat(item.purchase_rate).toString() : '',
       units_per_pack: item.units_per_pack ? parseFloat(item.units_per_pack).toString() : '',
       unit_name: item.unit_name ?? '',
+      product_type: item.product_type === 'service' ? 'service' : 'goods',
     })
     setEditingId(item.id)
   }
@@ -524,6 +535,7 @@ export default function ItemsTab({ items, group, productType, search, violation,
         purchase_rate: editForm.purchase_rate ? parseFloat(editForm.purchase_rate) : null,
         units_per_pack: editForm.units_per_pack ? parseFloat(editForm.units_per_pack) : null,
         unit_name: editForm.unit_name || null,
+        product_type: editForm.product_type === 'service' ? 'service' : 'goods',
       }),
     })
     setSaving(false)
@@ -546,6 +558,7 @@ export default function ItemsTab({ items, group, productType, search, violation,
         purchase_rate: addForm.purchase_rate ? parseFloat(addForm.purchase_rate) : null,
         units_per_pack: addForm.units_per_pack ? parseFloat(addForm.units_per_pack) : null,
         unit_name: addForm.unit_name || null,
+        product_type: addForm.product_type === 'service' ? 'service' : 'goods',
       }),
     })
     setAdding(false)
