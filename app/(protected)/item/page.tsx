@@ -1500,7 +1500,7 @@ function ItemHubPageInner() {
                     Sales list first and then hunt for the New/Live buttons in
                     the toolbar above the table. */}
                 {v.key === 'sales' && (
-                  <div className="pl-2 border-l-2 border-white/10 ml-2">
+                  <div>
                     <SidePaneButton icon="🧾" label="New Sale" mode={cashDisplayMode}
                       active={paneActive(lossView === 'sales' && addForm === 'sale')}
                       taskBadge={taskCountFor('New Sale')}
@@ -1509,7 +1509,7 @@ function ItemHubPageInner() {
                       active={paneActive(lossView === 'sales' && addForm === 'live')}
                       taskBadge={taskCountFor('Live Sale')}
                       onClick={() => { pickLossView('sales'); setAddForm('live') }} />
-                    <div className="pl-2 border-l-2 border-white/10 ml-2">
+                    <div>
                       <SidePaneButton icon="📋" label="Log" mode={cashDisplayMode}
                         active={paneActive(lossView === 'sales' && addForm === 'liveLog')}
                         taskBadge={taskCountFor('Sale Log')}
@@ -1523,7 +1523,7 @@ function ItemHubPageInner() {
                     Notes/Tasks/Laws/Flags stay fully separate between the
                     two instead of sharing the Customers list's own. */}
                 {v.key === 'customers' && (
-                  <div className="pl-2 border-l-2 border-white/10 ml-2">
+                  <div>
                     <SidePaneButton icon="👤" label="New Customer" mode={cashDisplayMode}
                       active={paneActive(lossView === 'newCustomer')}
                       taskBadge={taskCountFor('New Customer')}
@@ -1538,7 +1538,7 @@ function ItemHubPageInner() {
                     the global search's item results and Items tab's
                     Duplicates flag already drive. */}
                 {v.key === 'item360' && (
-                  <div className="pl-2 border-l-2 border-white/10 ml-2">
+                  <div>
                     <SidePaneButton icon="🔍" label="A4 sheet sng audit" mode={cashDisplayMode}
                       active={paneActive(lossView === 'item360' && item360JumpId === 375)}
                       taskBadge={taskCountFor('Item 360')}
@@ -1553,7 +1553,7 @@ function ItemHubPageInner() {
                     inside ExpensesTab itself, keyed off that same
                     showOrders toggle -- see ExpensesTab.tsx. */}
                 {v.key === 'expenses' && (
-                  <div className="pl-2 border-l-2 border-white/10 ml-2">
+                  <div>
                     <SidePaneButton icon="🧾" label="Expense Orders" mode={cashDisplayMode} active={false}
                       taskBadge={taskCountFor('Expense Orders')}
                       onClick={() => { pickLossView('expenses'); setExpenseOrdersSignal(n => n + 1) }} />
@@ -1577,7 +1577,7 @@ function ItemHubPageInner() {
                     one per distinct cf_group in use (see serviceGroups
                     above), each opening straight to that group's item list. */}
                 {v.key === 'services' && serviceGroups.length > 0 && (
-                  <div className="pl-2 border-l-2 border-white/10 ml-2">
+                  <div>
                     {serviceGroups.map((g, gi) => (
                       <SidePaneButton key={g} icon="🏷️" label={g} mode={cashDisplayMode} divider={gi > 0}
                         taskBadge={taskCountFor(`Services — ${g}`)}
