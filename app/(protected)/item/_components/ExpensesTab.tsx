@@ -507,9 +507,11 @@ export default function ExpensesTab({ search, openOrdersSignal, onFlagCountChang
       {/* Expense Orders gets its own Law/Notes/Tasks/Flags scope, separate
           from Expenses' own -- rendered here (inside the toggle) rather than
           once, unconditionally, above this component in item/page.tsx,
-          since page.tsx has no visibility into showOrders. */}
-      <div className="px-2 pt-2"><PageToolIcons scopeKey={showOrders ? 'Expense Orders' : 'Expenses'} /></div>
-      <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0 flex-wrap">
+          since page.tsx has no visibility into showOrders. Flag pills sit in
+          this same row now too, matching Items/Sales/Bills' own top row
+          (icons + pills together) instead of a separate row below. */}
+      <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto px-2 pt-2">
+        <PageToolIcons scopeKey={showOrders ? 'Expense Orders' : 'Expenses'} />
         {flagButtons.map(({ key, letter, label }) => {
           const count = flagCounts[key]
           const active = activeFlag === key
@@ -526,7 +528,8 @@ export default function ExpensesTab({ search, openOrdersSignal, onFlagCountChang
             </button>
           )
         })}
-        <div className="w-px h-3 bg-gray-300 shrink-0" />
+      </div>
+      <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0 flex-wrap">
         <button onClick={() => setGroupBy(g => g === 'account' ? 'none' : 'account')}
           className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition
             ${groupBy === 'account' ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600'}`}>

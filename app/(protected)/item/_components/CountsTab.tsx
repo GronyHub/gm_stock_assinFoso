@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import { usePolling } from '@/lib/usePolling'
 import { isOwnerLevel } from '@/lib/roles'
 import HistoryPanel from './HistoryPanel'
+import PageToolIcons from './PageToolIcons'
 import { AnalyticsToggle } from './analyticsShared'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from './columnPrefs'
 const CountsAnalyticsSection = dynamic(() => import('./CountsAnalyticsSection'), { ssr: false })
@@ -608,25 +609,34 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
     <div className="flex flex-col h-full min-h-0">
       {lossPrompt && <LossDialog prompt={lossPrompt} onClose={() => setLossPrompt(null)} onFixRecords={onFixRecords} />}
       {pairingPrompt && <PairingDialog prompt={pairingPrompt} onClose={() => setPairingPrompt(null)} />}
+      {/* Law/Notes/Tasks + this page's own flag pills, together in one row,
+          same treatment as Items/Sales/Bills -- pulled up out of the mixed
+          view-controls row below (Manual Count/History/Columns/Analytics
+          stay there, those are view controls, not flags). */}
+      {!showAnalytics && (
+        <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto px-2 pt-2">
+          <PageToolIcons scopeKey="Counts" />
+          {COUNTS_FLAG_TYPES.map(({ key, letter, label }) => {
+            const count = key === 'daily' ? filteredDaily.length : key === '7day' ? filteredGmcWeekly.length : filteredOverdue.length
+            const active = violation === key
+            return (
+              <button key={key} onClick={() => onGoToViolation?.(key)} title={label}
+                className={`shrink-0 flex items-center gap-0.5 text-[9px] font-semibold pl-1 pr-1.5 py-0.5 rounded transition
+                  ${active ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-700'}`}>
+                <span className="relative leading-none">
+                  {count > 0 ? '🚩' : '🏳️'}
+                  <span className={`absolute -bottom-1 -right-1 text-[6px] font-black leading-none rounded-sm px-[1px]
+                    ${count > 0 ? 'bg-white text-red-700' : 'bg-red-700 text-white'}`}>{letter}</span>
+                </span>
+                <span className="ml-0.5">{count > 0 ? count : ''}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
       <div className="flex flex-wrap items-center justify-end gap-1.5 px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
         <AnalyticsToggle showing={showAnalytics} onToggle={() => setShowAnalytics(a => !a)} />
         {!showAnalytics && <>
-        {COUNTS_FLAG_TYPES.map(({ key, letter, label }) => {
-          const count = key === 'daily' ? filteredDaily.length : key === '7day' ? filteredGmcWeekly.length : filteredOverdue.length
-          const active = violation === key
-          return (
-            <button key={key} onClick={() => onGoToViolation?.(key)} title={label}
-              className={`shrink-0 flex items-center gap-0.5 text-[9px] font-semibold pl-1 pr-1.5 py-0.5 rounded transition
-                ${active ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-700'}`}>
-              <span className="relative leading-none">
-                {count > 0 ? '🚩' : '🏳️'}
-                <span className={`absolute -bottom-1 -right-1 text-[6px] font-black leading-none rounded-sm px-[1px]
-                  ${count > 0 ? 'bg-white text-red-700' : 'bg-red-700 text-white'}`}>{letter}</span>
-              </span>
-              <span className="ml-0.5">{count > 0 ? count : ''}</span>
-            </button>
-          )
-        })}
         <button onClick={() => setShowManual(v => !v)}
           className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-600 text-white hover:bg-blue-500 transition">
           {showManual ? '× Close' : '+ Manual Count'}

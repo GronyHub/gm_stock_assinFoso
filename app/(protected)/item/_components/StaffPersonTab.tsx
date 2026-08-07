@@ -123,7 +123,6 @@ export default function StaffContent({
     </>)}
     {canSeeTeam && view === 'rota' && <div className="px-2 space-y-2 pt-2"><PageToolIcons scopeKey="Team Rota" /><RotaTab canManage={canManage} /></div>}
     {canSeeTeam && view === 'staff_dress' && (<>
-      <div className="px-2 pt-2"><PageToolIcons scopeKey="Team Dress Code" /></div>
       <DressCodeFlagsPanel />
       <ClosingReportLogView field="no_tshirt_staff" label="Team Dress Code" icon="👕" />
     </>)}

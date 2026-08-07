@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import PageToolIcons from './PageToolIcons'
 
 type ShirtNotWorn = { staff_name: string; work_date: string }
 type ShirtOverdue = { staff_name: string; due_date: string }
@@ -43,7 +44,12 @@ export default function DressCodeFlagsPanel() {
 
   return (
     <div className="p-3 space-y-4">
-      <div className="flex items-center gap-1.5">
+      {/* Law/Notes/Tasks + this page's own flag pills, together in one row
+          -- rendered here (not in StaffPersonTab.tsx above this component)
+          so they share the same row instead of PageToolIcons sitting alone
+          above it. */}
+      <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
+        <PageToolIcons scopeKey="Team Dress Code" />
         {flagButtons.map(({ id, letter, label, count }) => (
           <button key={id} title={label}
             onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}

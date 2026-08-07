@@ -1170,14 +1170,20 @@ export function PayslipsTab({ role, username, viewingStaff }: { role: string; us
 
   return (
     <div className="space-y-4">
-      <PageToolIcons scopeKey="Payslips" />
+      {/* Law/Notes/Tasks + the Flags view-toggle together in one row, same
+          treatment as Items/Sales/Bills -- By Month/By Staff/Build stay in
+          their own row below since those pick a whole different view of the
+          same data, not a flag/violation filter. */}
+      <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
+        <PageToolIcons scopeKey="Payslips" />
+        {!viewingStaff && payFlags.length > 0 && viewBtn('flags' as any, `⚠️ Flags (${payFlags.length})`)}
+      </div>
       {/* View selector */}
       {!viewingStaff && (
         <div className="flex gap-2 overflow-x-auto pb-1">
           {viewBtn('monthly',  '📅 By Month')}
           {viewBtn('staff',    '👤 By Staff')}
           {canBuild && viewBtn('build', '🧮 Build')}
-          {payFlags.length > 0 && viewBtn('flags' as any, `⚠️ Flags (${payFlags.length})`)}
         </div>
       )}
 

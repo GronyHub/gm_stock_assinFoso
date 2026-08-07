@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import LocationField from '@/components/LocationField'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, ColResizeHandle, type ColumnDef } from '../item/_components/columnPrefs'
+import PageToolIcons from '../item/_components/PageToolIcons'
 
 type Customer = {
   id: number
@@ -257,20 +258,15 @@ export default function CustomersPage({ initialSearch, onFlagCountChange }: { in
 
   return (
     <div className="space-y-4 pb-10">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold text-gray-900">Customers</h1>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-400">{customers.length} contacts</span>
-          <ColumnsPickerButton prefs={colPrefs} />
-        </div>
-      </div>
-
-      {/* Flags -- one small button per category (🚩/🏳️ + letter + count),
-          clicking narrows the table below to just that category's flagged
-          customers. "New customers this week" is a shop-wide threshold, not
-          a per-customer problem, so it's a plain banner instead of a filter. */}
-      <div className="flex flex-wrap items-center gap-1.5">
+      {/* Law/Notes/Tasks + this page's own flag pills, together in one row
+          at the very top -- same treatment as Items/Sales/Bills' own green
+          header row. One small button per category (🚩/🏳️ + letter +
+          count), clicking narrows the table below to just that category's
+          flagged customers. "New customers this week" is a shop-wide
+          threshold, not a per-customer problem, so it's a plain banner
+          instead of a filter. */}
+      <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
+        <PageToolIcons scopeKey="Customers" />
         {FLAG_TYPES.map(({ key, letter, label }) => {
           const count = flagCounts[key]
           const active = activeFlag === key
@@ -302,6 +298,15 @@ export default function CustomersPage({ initialSearch, onFlagCountChange }: { in
             Clear filter
           </button>
         )}
+      </div>
+
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-lg font-bold text-gray-900">Customers</h1>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-400">{customers.length} contacts</span>
+          <ColumnsPickerButton prefs={colPrefs} />
+        </div>
       </div>
 
       {/* Summary line -- one plain row instead of four boxed cards */}

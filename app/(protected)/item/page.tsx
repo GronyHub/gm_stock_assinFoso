@@ -1902,12 +1902,12 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'loss' && lossView === 'vendors' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-2 space-y-2"><PageToolIcons scopeKey="Vendors" /><VendorsPage openAddSignal={vendorSignal} initialSearch={vendorSearchText} onFlagCountChange={setVendorsFlagsCount} /></div>
+            <div className="px-4 pt-2 space-y-2"><VendorsPage openAddSignal={vendorSignal} initialSearch={vendorSearchText} onFlagCountChange={setVendorsFlagsCount} /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'customers' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-2 space-y-2"><PageToolIcons scopeKey="Customers" /><CustomersPage initialSearch={customerSearchText} onFlagCountChange={setCustomersFlagsCount} /></div>
+            <div className="px-4 pt-2 space-y-2"><CustomersPage initialSearch={customerSearchText} onFlagCountChange={setCustomersFlagsCount} /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'newCustomer' && (
@@ -2144,7 +2144,6 @@ function ItemHubPageInner() {
             violation={pillKeys?.includes(violation ?? '') ? violation : null} />
         </>)}
         {outerTab === 'loss' && lossView === 'counts' && (<>
-          {!violation && <div className="px-3 pt-2"><PageToolIcons scopeKey="Counts" /></div>}
           <CountsTab items={items} groupFilter={group} search={search}
             violation={pillKeys?.includes(violation ?? '') ? violation : null} onFixRecords={goFixRecords}
             onGoToViolation={goToViolation} />
