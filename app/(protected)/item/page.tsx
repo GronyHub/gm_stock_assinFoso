@@ -211,7 +211,7 @@ const REPORT_VIEWS = new Set<LossView>([
 const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: string }[] = [
   { key: 'items',    label: 'Items',    icon: '📦' },
   { key: 'services', label: 'Services', icon: '🛠️', group: 'services' },
-  { key: 'sales',    label: 'Sales',    icon: '🧾' },
+  { key: 'sales',    label: 'Sales',    icon: '🧾', group: 'sales' },
   { key: 'bills',    label: 'Bills',    icon: '📃' },
   { key: 'purchaseOrders',   label: 'Purchase Ord',   icon: '🛒' },
   { key: 'feed',         label: 'Loss by Date',   icon: '📉', group: 'loss' },
@@ -229,6 +229,7 @@ const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: string }
 // Group -> sub-header label, same role as MANAGE_GROUP_LABELS.
 const CASH_GROUP_LABELS: Record<string, string> = {
   services: 'Services',
+  sales: 'Sales',
   loss: 'Loss',
   expenses: 'Expenses',
   customers: 'Customers',
