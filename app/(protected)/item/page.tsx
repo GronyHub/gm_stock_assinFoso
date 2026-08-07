@@ -1328,6 +1328,20 @@ function ItemHubPageInner() {
       { label: 'Daily', action: () => pickLossView('dailySummary') },
       { label: 'Alias Wide Table', action: () => { pickLossView('items'); setItemsExtraView('aliasWide') } },
       { label: 'Service Matches', action: () => { pickLossView('items'); setItemsExtraView('serviceMatches') } },
+      // The one-tap sub-rows nested under a CASH_ITEMS row (New Sale/Live
+      // Sale/Log under Sales, New Customer under Customers, ...) aren't
+      // their own CASH_ITEMS entries, so the map above never picks them up
+      // -- listed by hand here instead, same as every other page search
+      // already jumps straight to.
+      { label: 'New Sale', action: () => { pickLossView('sales'); setAddForm('sale') } },
+      { label: 'Live Sale', action: () => { pickLossView('sales'); setAddForm('live') } },
+      { label: 'Sale Log', action: () => { pickLossView('sales'); setAddForm('liveLog') } },
+      { label: 'New Customer', action: () => pickLossView('newCustomer') },
+      { label: 'A4 sheet sng audit', action: () => { pickLossView('item360'); setItem360JumpId(375) } },
+      { label: 'Expense Orders', action: () => { pickLossView('expenses'); setExpenseOrdersSignal(n => n + 1) } },
+      { label: 'Properties at Shop', action: () => { pickLossView('properties'); setPropertiesInitialTab('available') } },
+      { label: 'Properties not at Shop', action: () => { pickLossView('properties'); setPropertiesInitialTab('away') } },
+      ...serviceGroups.map(g => ({ label: `Services — ${g}`, action: () => { pickLossView('services'); setSelectedServiceGroup(g) } })),
     ] : []),
     ...(canSeeManage ? MANAGE_LIST_ITEMS.map(v => ({ label: v.label, action: () => pickLossView(v.key) })) : []),
     ...(myStaffName ? [
