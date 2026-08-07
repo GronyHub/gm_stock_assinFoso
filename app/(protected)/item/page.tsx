@@ -40,6 +40,8 @@ import UKSettingsPanel from './_components/UKSettingsPanel'
 import { applyPaneOrder, buildPaneRuns, flattenPaneRuns, type PaneOrderMap } from './_components/paneOrder'
 import ServicesGroupTable from './_components/ServicesGroupTable'
 import NewCustomerForm from './_components/NewCustomerForm'
+import { ToolsPanelProvider } from './_components/ToolsPanelContext'
+import CombinedToolsPanel from './_components/CombinedToolsPanel'
 import dynamic from 'next/dynamic'
 const loading = (h: string) => <div className={`py-10 text-center text-gray-400 text-sm`}>{h}</div>
 const ItemsTab       = dynamic(() => import('./_components/ItemsTab'),        { ssr: false, loading: () => loading('Loading…') })
@@ -1737,6 +1739,7 @@ function ItemHubPageInner() {
         )}
 
         <div className="relative flex-1 min-w-0 min-h-0 flex flex-col">
+          <CombinedToolsPanel />
           {outerTab === 'loss' && (
             <div className="shrink-0 bg-green-800 border-b border-green-900">
               {/* Row 2: groups + violations + search — hidden on report-style submenus.
@@ -2477,7 +2480,9 @@ function ItemHubPageInner() {
 export default function ItemHubPage() {
   return (
     <Suspense fallback={<div className="py-20 text-center text-gray-400 text-xs">Loading…</div>}>
-      <ItemHubPageInner />
+      <ToolsPanelProvider>
+        <ItemHubPageInner />
+      </ToolsPanelProvider>
     </Suspense>
   )
 }

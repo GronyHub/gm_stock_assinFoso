@@ -1,10 +1,11 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import DynamicTasksSection from './DynamicTasksSection'
 import PageLawsNote from './PageLawsNote'
 import PageLawsList from './PageLawsList'
+import { useToolsPanel, type ToolsPanelKind } from './ToolsPanelContext'
 
-type PanelKind = 'law' | 'notes' | 'tasks'
+type PanelKind = ToolsPanelKind
 
 const TITLES: Record<PanelKind, string> = { law: '⚖️ Law', notes: '📝 Notes', tasks: '✅ Tasks' }
 
@@ -25,7 +26,16 @@ const TITLES: Record<PanelKind, string> = { law: '⚖️ Law', notes: '📝 Note
 // straight to that specific violation list. This bar's Flags icon never
 // did that -- it had no count of its own and just opened a static message
 // pointing back at those real ones, so it was a placeholder, not a flag.
+//
+// Clicking an icon used to open a small floating modal, right here, on top
+// of the whole screen (including the left pane). It now hands off to
+// CombinedToolsPanel via ToolsPanelContext instead -- a shared panel
+// rendered once in item/page.tsx's own content area, so it fills the same
+// space every other page's content does and the pane stays visible and
+// usable alongside it. Falls back to the old local modal when no provider
+// is present (the two standalone routes outside item/page.tsx's tree).
 export default function PageToolIcons({ scopeKey }: { scopeKey: string }) {
+  const toolsPanel = useToolsPanel()
   const [open, setOpen] = useState<PanelKind | null>(null)
   const [taskCount, setTaskCount] = useState(0)
   const [lawCount, setLawCount] = useState(0)
@@ -44,6 +54,18 @@ export default function PageToolIcons({ scopeKey }: { scopeKey: string }) {
 
   useEffect(() => { loadCounts() }, [loadCounts])
 
+  // Refetch counts the moment the shared panel closes (or switches to a
+  // different page's scope) after having been open on this one -- covers
+  // the same "just changed something, refresh the badge" need loadCounts'
+  // old onChange/close() callers used to cover locally.
+  const wasOpenForThisScope = useRef(false)
+  useEffect(() => {
+    if (!toolsPanel) return
+    const openForThisScope = toolsPanel.panel?.scopeKey === scopeKey
+    if (wasOpenForThisScope.current && !openForThisScope) loadCounts()
+    wasOpenForThisScope.current = openForThisScope
+  }, [toolsPanel, toolsPanel?.panel, scopeKey, loadCounts])
+
   function close() {
     setOpen(null)
     loadCounts()
@@ -58,7 +80,7 @@ export default function PageToolIcons({ scopeKey }: { scopeKey: string }) {
   return (
     <div className="flex items-center gap-1.5">
       {icons.map(({ kind, icon, count }) => (
-        <button key={kind} onClick={() => setOpen(kind)} title={TITLES[kind]}
+        <button key={kind} onClick={() => toolsPanel ? toolsPanel.openPanel(scopeKey, kind) : setOpen(kind)} title={TITLES[kind]}
           className="relative text-sm leading-none px-1.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 transition">
           {icon}
           {!!count && count > 0 && (
@@ -68,7 +90,7 @@ export default function PageToolIcons({ scopeKey }: { scopeKey: string }) {
           )}
         </button>
       ))}
-      {open && (
+      {!toolsPanel && open && (
         <div className="fixed inset-0 z-[300] bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-4"
           onClick={close}>
           <div className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl max-h-[85dvh] overflow-y-auto"
