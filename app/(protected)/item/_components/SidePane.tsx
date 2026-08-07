@@ -122,7 +122,7 @@ export function SidePaneButton({ icon, label, active, mode, onClick, badge, task
   return (
     <button onClick={onClick} title={label} aria-label={label}
       style={tint ? { backgroundColor: active ? '#fff' : tint, color: active ? tint : '#fff' } : undefined}
-      className={`relative flex flex-col items-center justify-center gap-0.5 px-1 py-1 text-[10px] font-medium leading-tight text-center transition
+      className={`relative flex flex-col items-start justify-center gap-0.5 px-1 py-1 text-[10px] font-medium leading-tight text-left transition
         ${divider ? 'border-t border-white/35' : ''}
         ${tint ? 'font-semibold' : active ? 'bg-white text-[var(--pane-accent)] font-semibold' : 'text-white hover:bg-white/10'} ${className}`}>
       {mode !== 'text' && (
@@ -130,17 +130,20 @@ export function SidePaneButton({ icon, label, active, mode, onClick, badge, task
           ? <span className="text-base leading-none">{icon ?? '•'}</span>
           : <span className="leading-none">{icon}</span>
       )}
-      {/* `items-center` on the flex-col button above sizes children to
+      {/* `items-start` on the flex-col button above sizes children to
           their own content instead of stretching them, so without an
           explicit w-full a label that overflows the button (free-typed
-          submenu names especially) sizes wider than the button and gets
-          centered instead of clipped from its own left edge. w-full forces
+          submenu names especially) sizes wider than the button and hangs
+          off its right edge instead of being clipped there. w-full forces
           the real width so truncate's overflow:hidden/ellipsis clips it
           from the right, at the button's actual edge, the same way every
-          other single-line label on the page does. */}
+          other single-line label on the page does. Left-aligned (not
+          centered) so a long, truncated name shows as many of its own
+          leading characters as will fit, rather than losing some off
+          each side to keep the whole thing centered. */}
       {mode !== 'icon' && (
         chipLabel
-          ? <span className="w-full flex justify-center"><span className="max-w-full truncate text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide rounded px-1.5 py-0.5">{label}</span></span>
+          ? <span className="w-full flex justify-start"><span className="max-w-full truncate text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide rounded px-1.5 py-0.5">{label}</span></span>
           : <span className="w-full truncate">{label}</span>
       )}
       {/* No background shape on either badge -- a filled circle sitting on
