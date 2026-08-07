@@ -1419,7 +1419,7 @@ function ItemHubPageInner() {
             {canSeeCash && (
             <div>
               {cashDisplayMode !== 'icon' && (
-                <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Cash</p>
+                <p className="px-2 pt-1 pb-0.5"><span className="text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide rounded px-1.5 py-0.5">Cash</span></p>
               )}
               {applyPaneOrder(CASH_ITEMS, paneOrder.cash).filter(v => v.key !== 'pl' || canSeePL).map((v, i) => (
               <div key={v.key}>
@@ -1537,7 +1537,7 @@ function ItemHubPageInner() {
             {canSeeManage && (
             <div className="mt-1 pt-1 border-t border-white/30">
               {cashDisplayMode !== 'icon' && (
-                <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Manage</p>
+                <p className="px-2 pt-1 pb-0.5"><span className="text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide rounded px-1.5 py-0.5">Manage</span></p>
               )}
               {flattenPaneRuns(buildPaneRuns(applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage)), MANAGE_GROUP_LABELS).map(({ item: entry, header, divider }) => {
                 const badge = entry.key === 'opener' ? openerBadgeCount
@@ -1549,7 +1549,7 @@ function ItemHubPageInner() {
                 return (
                   <Fragment key={entry.key}>
                     {header && cashDisplayMode !== 'icon' && (
-                      <p className="px-2 pt-2 pb-0.5 text-[8px] font-bold text-blue-200/70 uppercase tracking-wide">{header}</p>
+                      <p className="px-2 pt-2 pb-0.5"><span className="text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide rounded px-1.5 py-0.5">{header}</span></p>
                     )}
                     <SidePaneButton icon={entry.icon} label={paneLabel(entry.key, entry.label)} mode={cashDisplayMode} divider={divider}
                       active={paneActive(lossView === entry.key)} badge={badge}
@@ -1570,7 +1570,7 @@ function ItemHubPageInner() {
             {canSeeTeam && (
               <div className="mt-1 pt-1 border-t border-white/30">
                 {cashDisplayMode !== 'icon' && (
-                  <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Team</p>
+                  <p className="px-2 pt-1 pb-0.5"><span className="text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide rounded px-1.5 py-0.5">Team</span></p>
                 )}
                 {STAFF_TEAM_ITEMS.map((t, i) => (
                   <SidePaneButton key={t.key} icon={t.icon} label={paneLabel(t.key, t.label)} mode={cashDisplayMode} divider={i > 0}
@@ -1585,8 +1585,10 @@ function ItemHubPageInner() {
             {myStaffName && (
               <div className="mt-1 pt-1 border-t border-white/30">
                 {cashDisplayMode !== 'icon' && (
-                  <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">
-                    {viewingSelf ? 'Personal' : `Personal · Viewing: ${viewingName}`}
+                  <p className="px-2 pt-1 pb-0.5">
+                    <span className="text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide rounded px-1.5 py-0.5">
+                      {viewingSelf ? 'Personal' : `Personal · Viewing: ${viewingName}`}
+                    </span>
                   </p>
                 )}
                 {/* Payslips drops out of this list while viewing someone
@@ -1630,7 +1632,7 @@ function ItemHubPageInner() {
                   {CH_CHILD_PERSON[item.key] && lossView === item.key && (
                     <div className="mt-1 pt-1 border-t border-white/30">
                       {cashDisplayMode !== 'icon' && (
-                        <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">{`${item.label}'s Submenus`}</p>
+                        <p className="px-2 pt-1 pb-0.5"><span className="text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide rounded px-1.5 py-0.5">{`${item.label}'s Submenus`}</span></p>
                       )}
                       {ch.submenus.map((s, j) => (
                         <SidePaneButton key={s.id} icon="📋" label={s.name} mode={cashDisplayMode} divider={j > 0}
@@ -1653,7 +1655,7 @@ function ItemHubPageInner() {
                 the UI's side (no self-service add/rename/delete). */}
             {outerTab === 'uk' && (<>
               {cashDisplayMode !== 'icon' && (
-                <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">Menus &amp; Submenus</p>
+                <p className="px-2 pt-1 pb-0.5"><span className="text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide rounded px-1.5 py-0.5">Menus &amp; Submenus</span></p>
               )}
               {ukAllSubmenus.map((s, i) => (
                 <SidePaneButton key={s.id} icon="📋" label={`${s.person} ${s.name}`} mode={cashDisplayMode} divider={i > 0}
@@ -1665,7 +1667,7 @@ function ItemHubPageInner() {
               {ukGeneralSubmenus.length > 0 && (
                 <div className="mt-1 pt-1 border-t border-white/30">
                   {cashDisplayMode !== 'icon' && (
-                    <p className="px-2 pt-1 pb-0.5 text-[8px] font-bold text-blue-200 uppercase tracking-wide">General Section</p>
+                    <p className="px-2 pt-1 pb-0.5"><span className="text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide rounded px-1.5 py-0.5">General Section</span></p>
                   )}
                   {ukGeneralSubmenus.map((s, i) => (
                     <SidePaneButton key={s.id} icon="📁" label={s.name} mode={cashDisplayMode} divider={i > 0}
