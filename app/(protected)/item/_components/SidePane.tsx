@@ -130,13 +130,19 @@ export function SidePaneButton({ icon, label, active, mode, onClick, badge, task
           from the right, at the button's actual edge, the same way every
           other single-line label on the page does. */}
       {mode !== 'icon' && <span className="w-full truncate">{label}</span>}
+      {/* No background shape on either badge -- a filled circle sitting on
+          top of the label was covering some of its lettering, especially in
+          `both` mode where icon and label share limited vertical space.
+          Bare bold number instead, with a white text-shadow (not a solid
+          fill) so it still reads clearly regardless of which pane accent
+          color it's sitting on. */}
       {!!badge && badge > 0 && (
-        <span className="absolute top-0.5 left-0.5 flex items-center justify-center min-w-[14px] h-[14px] px-0.5 text-[8px] font-bold leading-none rounded-full bg-red-600 text-white">
+        <span className="absolute top-0.5 left-0.5 min-w-[14px] text-[9px] font-black leading-none text-red-600 [text-shadow:0_0_2px_white,0_0_2px_white,0_0_2px_white]">
           {badge > 99 ? '99+' : badge}
         </span>
       )}
       {!!taskBadge && taskBadge > 0 && (
-        <span className="absolute top-0.5 right-0.5 flex items-center justify-center min-w-[14px] h-[14px] px-0.5 text-[8px] font-bold leading-none rounded-full bg-green-600 text-white">
+        <span className="absolute top-0.5 right-0.5 min-w-[14px] text-[9px] font-black leading-none text-green-600 [text-shadow:0_0_2px_white,0_0_2px_white,0_0_2px_white]">
           {taskBadge > 99 ? '99+' : taskBadge}
         </span>
       )}
