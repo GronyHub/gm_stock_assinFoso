@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 type Law = { id: number; text: string; created_at: string }
 
@@ -27,6 +27,8 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
   const [taskTitle, setTaskTitle] = useState('')
   const [noteForLaw, setNoteForLaw] = useState<number | null>(null)
   const [noteText, setNoteText] = useState('')
+  const [menuLawId, setMenuLawId] = useState<number | null>(null)
+  const menuTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   function load() {
     fetch(`/api/page-laws?scopeKey=${encodeURIComponent(scopeKey)}`)
@@ -58,6 +60,37 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
   function startEdit(l: Law) {
     setEditingId(l.id)
     setEditText(l.text)
+    setMenuLawId(null)
+  }
+
+  function handleLongPress(lawId: number) {
+    setMenuLawId(menuLawId === lawId ? null : lawId)
+  }
+
+  function handleMouseDown(lawId: number) {
+    menuTimeoutRef.current = setTimeout(() => {
+      setMenuLawId(lawId)
+    }, 500)
+  }
+
+  function handleMouseUp() {
+    if (menuTimeoutRef.current) {
+      clearTimeout(menuTimeoutRef.current)
+      menuTimeoutRef.current = null
+    }
+  }
+
+  function handleTouchStart(lawId: number) {
+    menuTimeoutRef.current = setTimeout(() => {
+      setMenuLawId(lawId)
+    }, 500)
+  }
+
+  function handleTouchEnd() {
+    if (menuTimeoutRef.current) {
+      clearTimeout(menuTimeoutRef.current)
+      menuTimeoutRef.current = null
+    }
   }
 
   async function saveEdit(id: number) {
@@ -117,7 +150,7 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
       ) : (
         <div className={`bg-white ${isItemsLaws ? 'divide-y divide-gray-100' : 'border border-gray-200 rounded-lg divide-y divide-gray-50'}`}>
           {laws.map((l, i) => (
-            <div key={l.id} className={`flex items-start gap-2 ${isItemsLaws ? 'px-4 py-3' : 'px-2.5 py-2'}`}>
+            <div key={l.id} className={`flex items-start gap-2 ${isItemsLaws ? 'px-4 py-3' : 'px-2.5 py-2'}`} onMouseDown={() => handleMouseDown(l.id)} onMouseUp={handleMouseUp} onTouchStart={() => handleTouchStart(l.id)} onTouchEnd={handleTouchEnd}>
               <span className="shrink-0 text-[10px] font-bold text-gray-300 mt-0.5">{i + 1}</span>
               {editingId === l.id ? (
                 <>
@@ -136,6 +169,12 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
                 <>
                   <div className="min-w-0 flex-1">
                     <p className="text-[12px] text-gray-800" style={{ wordBreak: 'break-word' }}>{l.text}</p>
+                    {menuLawId === l.id && (
+                      <div className="flex gap-1 mt-1 text-[10px]">
+                        <button onClick={() => startEdit(l)} title="Edit" className="text-gray-500 hover:text-gray-700 font-semibold">✎ Edit</button>
+                        <button onClick={() => { remove(l.id); setMenuLawId(null) }} className="text-red-500 hover:text-red-700 font-semibold">× Delete</button>
+                      </div>
+                    )}
                     {taskForLaw === l.id ? (
                       <div className="flex gap-1 mt-1">
                         <input autoFocus value={taskTitle} onChange={e => setTaskTitle(e.target.value)} placeholder="Task title…"
@@ -161,8 +200,6 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
                       </div>
                     )}
                   </div>
-                  <button onClick={() => startEdit(l)} title="Edit" className="shrink-0 text-gray-300 hover:text-gray-600">✎</button>
-                  <button onClick={() => remove(l.id)} className="shrink-0 text-gray-300 hover:text-red-500 font-bold leading-none">×</button>
                 </>
               )}
             </div>
