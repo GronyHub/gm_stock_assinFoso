@@ -37,7 +37,10 @@ export default function PageLawsList({
   globalTaskType, setGlobalTaskType,
   globalTaskAssignedTo, setGlobalTaskAssignedTo,
   creatingGlobalNote, setCreatingGlobalNote,
+  globalNoteTopic, setGlobalNoteTopic,
   globalNoteText, setGlobalNoteText,
+  globalNoteDate, setGlobalNoteDate,
+  globalNoteTaggedStaff, setGlobalNoteTaggedStaff,
   hideZeroFlags, setHideZeroFlags,
 }: {
   scopeKey: string
@@ -54,8 +57,14 @@ export default function PageLawsList({
   setGlobalTaskAssignedTo?: (v: string) => void
   creatingGlobalNote?: boolean
   setCreatingGlobalNote?: (v: boolean | ((prev: boolean) => boolean)) => void
+  globalNoteTopic?: string
+  setGlobalNoteTopic?: (v: string) => void
   globalNoteText?: string
   setGlobalNoteText?: (v: string) => void
+  globalNoteDate?: string
+  setGlobalNoteDate?: (v: string) => void
+  globalNoteTaggedStaff?: string[]
+  setGlobalNoteTaggedStaff?: (v: string[] | ((prev: string[]) => string[])) => void
   hideZeroFlags?: boolean
   setHideZeroFlags?: (v: boolean | ((prev: boolean) => boolean)) => void
 }) {
@@ -409,9 +418,20 @@ export default function PageLawsList({
     if (!(globalNoteText ?? '').trim()) return
     await fetch('/api/page-notes', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scopeKey, kind: 'note', notes: (globalNoteText ?? '').trim() }),
+      body: JSON.stringify({
+        scopeKey,
+        kind: 'note',
+        notes: (globalNoteText ?? '').trim(),
+        topic: globalNoteTopic ?? '',
+        noteDate: globalNoteDate ?? '',
+        taggedStaff: globalNoteTaggedStaff ?? [],
+      }),
     }).catch(() => {})
     setGlobalNoteText?.('')
+    setGlobalNoteTopic?.('')
+    const today = new Date()
+    setGlobalNoteDate?.(today.toISOString().split('T')[0])
+    setGlobalNoteTaggedStaff?.([])
     setCreatingGlobalNote?.(false)
     onChange?.()
   }
@@ -771,7 +791,15 @@ export default function PageLawsList({
           )}
           {isItemsLaws && creatingGlobalNote && (
             <div className="px-1 py-1 bg-gray-50 border-t border-gray-200 flex flex-col gap-0.5 text-[8px]">
-              <textarea autoFocus value={globalNoteText ?? ''} onChange={e => setGlobalNoteText?.(e.target.value)} placeholder="Note…" rows={1}
+              <input autoFocus value={globalNoteTopic ?? ''} onChange={e => setGlobalNoteTopic?.(e.target.value)} placeholder="Topic…"
+                className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
+              <div className="flex gap-0.5">
+                <input type="date" value={globalNoteDate ?? ''} onChange={e => setGlobalNoteDate?.(e.target.value)}
+                  className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
+                <input type="text" value={globalNoteTaggedStaff?.join(', ') ?? ''} onChange={e => setGlobalNoteTaggedStaff?.(e.target.value.split(',').map(s => s.trim()).filter(s => s))} placeholder="Tag staff (@name, @name)"
+                  className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
+              </div>
+              <textarea value={globalNoteText ?? ''} onChange={e => setGlobalNoteText?.(e.target.value)} placeholder="Note content… (use @ to tag staff)" rows={2}
                 onKeyDown={e => { if (e.key === 'Escape') setCreatingGlobalNote?.(false) }}
                 className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 resize-none" />
               <div className="flex gap-0.5">
