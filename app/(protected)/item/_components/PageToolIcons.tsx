@@ -81,7 +81,8 @@ export default function PageToolIcons({ scopeKey, flags, onFlagClick }: {
     loadCounts()
   }
 
-  const count = lawCount + taskCount + (hasNotes ? 1 : 0)
+  const flagsCount = flags?.reduce((sum, f) => sum + f.count, 0) ?? 0
+  const count = lawCount + taskCount + (hasNotes ? 1 : 0) + flagsCount
 
   return (
     <div className="flex items-center gap-1.5">
