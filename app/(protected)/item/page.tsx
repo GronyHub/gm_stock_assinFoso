@@ -565,6 +565,13 @@ function ItemHubPageInner() {
     return localStorage.getItem('showItemsLaws') === 'true'
   })
   const [itemsLawsRefresh, setItemsLawsRefresh] = useState(0)
+  const [creatingGlobalTask, setCreatingGlobalTask] = useState(false)
+  const [globalTaskTitle, setGlobalTaskTitle] = useState('')
+  const [globalTaskType, setGlobalTaskType] = useState('General task')
+  const [globalTaskAssignedTo, setGlobalTaskAssignedTo] = useState('')
+  const [creatingGlobalNote, setCreatingGlobalNote] = useState(false)
+  const [globalNoteText, setGlobalNoteText] = useState('')
+  const [hideZeroFlags, setHideZeroFlags] = useState(false)
   const groupRef     = useRef<HTMLDivElement>(null)
   const searchRef    = useRef<HTMLDivElement>(null)
 
@@ -1836,10 +1843,29 @@ function ItemHubPageInner() {
                       }))}
                       onFlagClick={goToViolation} />
                     {lossView === 'items' && (
-                      <button onClick={() => setShowItemsLaws(o => !o)} title="Show laws on this page"
-                        className={`shrink-0 text-sm leading-none px-1.5 py-1 rounded-lg transition ${showItemsLaws ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
-                        ⚖️
-                      </button>
+                      <>
+                        <button onClick={() => setShowItemsLaws(o => !o)} title="Show laws on this page"
+                          className={`shrink-0 text-sm leading-none px-1.5 py-1 rounded-lg transition ${showItemsLaws ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
+                          ⚖️
+                        </button>
+                        {showItemsLaws && (
+                          <>
+                            <button onClick={() => setCreatingGlobalTask(o => !o)} title="Create global task"
+                              className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${creatingGlobalTask ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
+                              + Task
+                            </button>
+                            <button onClick={() => setCreatingGlobalNote(o => !o)} title="Create global note"
+                              className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${creatingGlobalNote ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
+                              + Note
+                            </button>
+                            <label className="shrink-0 flex items-center gap-1 text-white hover:bg-white/10 px-2 py-1 rounded-lg cursor-pointer transition">
+                              <input type="checkbox" checked={hideZeroFlags} onChange={e => setHideZeroFlags(e.target.checked)}
+                                className="w-4 h-4 rounded border-gray-300" />
+                              <span className="text-xs font-semibold leading-none">Hide 0</span>
+                            </label>
+                          </>
+                        )}
+                      </>
                     )}
                   </div>
                 )}
@@ -2227,6 +2253,20 @@ function ItemHubPageInner() {
                       description: ERROR_VIOLATIONS.find(v => v.key === key)?.description,
                       onViewClick: () => goToViolation(key)
                     }))}
+                    creatingGlobalTask={creatingGlobalTask}
+                    setCreatingGlobalTask={setCreatingGlobalTask}
+                    globalTaskTitle={globalTaskTitle}
+                    setGlobalTaskTitle={setGlobalTaskTitle}
+                    globalTaskType={globalTaskType}
+                    setGlobalTaskType={setGlobalTaskType}
+                    globalTaskAssignedTo={globalTaskAssignedTo}
+                    setGlobalTaskAssignedTo={setGlobalTaskAssignedTo}
+                    creatingGlobalNote={creatingGlobalNote}
+                    setCreatingGlobalNote={setCreatingGlobalNote}
+                    globalNoteText={globalNoteText}
+                    setGlobalNoteText={setGlobalNoteText}
+                    hideZeroFlags={hideZeroFlags}
+                    setHideZeroFlags={setHideZeroFlags}
                   />
                 </TabErrorBoundary>
               </div>
