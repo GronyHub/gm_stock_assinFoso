@@ -3,11 +3,20 @@ import { useState, useEffect } from 'react'
 
 type Law = { id: number; text: string; created_at: string }
 
+export type FlagLaw = {
+  key: string
+  label: string
+  description?: string
+  count: number
+  onViewClick?: () => void
+}
+
 // The fixed rules for this page, as a real list -- each one its own row
 // (page_laws table) instead of one freeform textarea, so PageToolIcons can
 // badge the page with how many laws it actually has. Notes (PageLawsNote)
-// stays a single textarea -- only Law changed shape.
-export default function PageLawsList({ scopeKey, onChange }: { scopeKey: string; onChange?: () => void }) {
+// stays a single textarea -- only Law changed shape. Optional flags prop
+// appends flag laws as continuation items after regular editable laws.
+export default function PageLawsList({ scopeKey, onChange, flags }: { scopeKey: string; onChange?: () => void; flags?: FlagLaw[] }) {
   const [laws, setLaws] = useState<Law[]>([])
   const [loading, setLoading] = useState(true)
   const [text, setText] = useState('')
@@ -75,7 +84,7 @@ export default function PageLawsList({ scopeKey, onChange }: { scopeKey: string;
         </button>
       </form>
 
-      {laws.length === 0 ? (
+      {laws.length === 0 && (!flags || flags.length === 0) ? (
         <p className="text-[11px] text-gray-400 text-center py-6">No laws yet.</p>
       ) : (
         <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-50">
@@ -102,6 +111,23 @@ export default function PageLawsList({ scopeKey, onChange }: { scopeKey: string;
                   <button onClick={() => remove(l.id)} className="shrink-0 text-gray-300 hover:text-red-500 font-bold leading-none">×</button>
                 </>
               )}
+            </div>
+          ))}
+          {flags && flags.map((f, i) => (
+            <div key={f.key} className="px-2.5 py-2 flex items-start gap-2 bg-gray-50/50">
+              <span className="shrink-0 text-[10px] font-bold text-gray-300 mt-0.5">{laws.length + i + 1}</span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[12px] text-gray-800">{f.label}</p>
+                {f.description && <p className="text-[10px] text-gray-600 mt-0.5">{f.description}</p>}
+                <div className="flex items-center gap-1.5 mt-1.5">
+                  <span className="text-[10px] bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded">{f.count}</span>
+                  {f.onViewClick && (
+                    <button onClick={f.onViewClick} className="text-[10px] text-blue-600 font-semibold hover:text-blue-700">
+                      View flagged records
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           ))}
         </div>
