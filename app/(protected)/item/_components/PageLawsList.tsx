@@ -56,6 +56,11 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
   const [repliesByItem, setRepliesByItem] = useState<Record<string, any[]>>({})
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
+  const [editingTaskId, setEditingTaskId] = useState<number | null>(null)
+  const [editTaskTitle, setEditTaskTitle] = useState('')
+  const [editTaskType, setEditTaskType] = useState('General task')
+  const [editTaskAssignedTo, setEditTaskAssignedTo] = useState('')
+  const [expandedFlagDesc, setExpandedFlagDesc] = useState<string | null>(null)
 
   function formatDate(dateStr: string) {
     if (!dateStr) return ''
@@ -139,6 +144,31 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
     await fetchReplies(itemType, itemId)
   }
 
+  function startEditTask(task: Task) {
+    setEditingTaskId(task.id)
+    setEditTaskTitle(task.title)
+    setEditTaskType(task.task_type || 'General task')
+    setEditTaskAssignedTo(task.assigned_to || '')
+  }
+
+  async function saveEditTask(lawId?: number, flagKey?: string) {
+    if (!editTaskTitle.trim() || editingTaskId === null) return
+    await fetch(`/api/tasks/${editingTaskId}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: editTaskTitle.trim(),
+        task_type: editTaskType,
+        assigned_to: editTaskAssignedTo || null,
+      }),
+    }).catch(() => {})
+    setEditingTaskId(null)
+    setEditTaskTitle('')
+    setEditTaskType('General task')
+    setEditTaskAssignedTo('')
+    if (lawId !== undefined) await fetchTasksForLaw(lawId)
+    if (flagKey !== undefined) await fetchTasksForFlag(flagKey)
+  }
+
   function load() {
     fetch(`/api/page-laws?scopeKey=${encodeURIComponent(scopeKey)}`)
       .then(r => r.ok ? r.json() : [])
@@ -215,12 +245,13 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
 
   async function addTaskForLaw() {
     if (!taskTitle.trim() || taskForLaw === null) return
+    const lawId = taskForLaw
     await fetch('/api/tasks', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         title: taskTitle.trim(),
         submenu: scopeKey,
-        law_id: taskForLaw,
+        law_id: lawId,
         task_type: taskType,
         assigned_to: taskAssignedTo || null
       }),
@@ -229,7 +260,7 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
     setTaskType('General task')
     setTaskAssignedTo('')
     setTaskForLaw(null)
-    await fetchTasksForLaw(taskForLaw)
+    await fetchTasksForLaw(lawId)
   }
 
   async function addNoteForLaw() {
@@ -244,12 +275,13 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
 
   async function addTaskForFlag() {
     if (!taskTitleForFlag.trim() || taskForFlag === null) return
+    const flagKey = taskForFlag
     await fetch('/api/tasks', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         title: taskTitleForFlag.trim(),
         submenu: scopeKey,
-        flag_key: taskForFlag,
+        flag_key: flagKey,
         task_type: taskTypeForFlag,
         assigned_to: taskAssignedToFlag || null
       }),
@@ -258,7 +290,7 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
     setTaskTypeForFlag('General task')
     setTaskAssignedToFlag('')
     setTaskForFlag(null)
-    await fetchTasksForFlag(taskForFlag)
+    await fetchTasksForFlag(flagKey)
   }
 
   async function addNoteForFlag() {
@@ -363,27 +395,50 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
                           <div className="mt-2 space-y-1.5 text-[10px]">
                             {tasksByLawId[l.id].map(task => (
                               <div key={task.id} className={`p-1.5 rounded border ${task.done ? 'bg-gray-50 border-gray-200' : 'bg-blue-50 border-blue-200'}`}>
-                                <div className="flex items-start gap-1">
-                                  <input type="checkbox" checked={task.done} onChange={() => toggleTaskCompletion(task.id, task.done, l.id)}
-                                    className="mt-0.5 shrink-0" />
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-start justify-between gap-2">
-                                      <p className={`font-semibold ${task.done ? 'line-through text-gray-500' : 'text-gray-800'}`}>{task.title}</p>
-                                      <div className="flex gap-1 shrink-0">
-                                        <button onClick={() => { setReplyingTo(`task-${task.id}`); fetchReplies('task', task.id) }} title="Reply" className="text-blue-500 hover:text-blue-700 text-[9px] font-bold">💬</button>
-                                        <button onClick={() => deleteTask(task.id, l.id)} title="Delete task" className="text-red-500 hover:text-red-700 text-[9px] font-bold">×</button>
-                                      </div>
+                                {editingTaskId === task.id ? (
+                                  <div className="flex flex-col gap-1.5">
+                                    <input autoFocus value={editTaskTitle} onChange={e => setEditTaskTitle(e.target.value)} placeholder="Task title…"
+                                      onKeyDown={e => { if (e.key === 'Enter') saveEditTask(l.id); if (e.key === 'Escape') setEditingTaskId(null) }}
+                                      className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+                                    <select value={editTaskType} onChange={e => setEditTaskType(e.target.value)}
+                                      className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400">
+                                      <option>General task</option>
+                                      <option>App task</option>
+                                    </select>
+                                    <select value={editTaskAssignedTo} onChange={e => setEditTaskAssignedTo(e.target.value)}
+                                      className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400">
+                                      <option value="">Assign to (optional)…</option>
+                                      {ASSIGNABLE_STAFF.map(staff => <option key={staff} value={staff}>{staff}</option>)}
+                                    </select>
+                                    <div className="flex gap-1">
+                                      <button onClick={() => saveEditTask(l.id)} className="flex-1 text-green-600 hover:text-green-700 text-xs font-bold">Save</button>
+                                      <button onClick={() => setEditingTaskId(null)} className="shrink-0 text-gray-400 hover:text-gray-600 text-xs font-bold">×</button>
                                     </div>
-                                    <div className="text-[9px] text-gray-600 mt-0.5 space-y-0.5">
-                                      <p>Type: {task.task_type || 'General task'}</p>
-                                      <p>Assigned {formatDate(task.created_at)} by {task.created_by}</p>
-                                      {task.assigned_to && <p>To: {task.assigned_to}</p>}
-                                      {task.done && task.completed_at && (
-                                        <>
-                                          <p>Completed {formatDate(task.completed_at)} by {task.completed_by}</p>
-                                          <p>Duration: {calculateDuration(task.created_at, task.completed_at)}</p>
-                                        </>
-                                      )}
+                                  </div>
+                                ) : (
+                                  <div className="flex items-start gap-1">
+                                    <input type="checkbox" checked={task.done} onChange={() => toggleTaskCompletion(task.id, task.done, l.id)}
+                                      className="mt-0.5 shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-start justify-between gap-2">
+                                        <p className={`font-semibold ${task.done ? 'line-through text-gray-500' : 'text-gray-800'}`}>{task.title}</p>
+                                        <div className="flex gap-1 shrink-0">
+                                          <button onClick={() => startEditTask(task)} title="Edit task" className="text-gray-500 hover:text-gray-700 text-[9px] font-bold">✎</button>
+                                          <button onClick={() => { setReplyingTo(`task-${task.id}`); fetchReplies('task', task.id) }} title="Reply" className="text-blue-500 hover:text-blue-700 text-[9px] font-bold">💬</button>
+                                          <button onClick={() => deleteTask(task.id, l.id)} title="Delete task" className="text-red-500 hover:text-red-700 text-[9px] font-bold">×</button>
+                                        </div>
+                                      </div>
+                                      <div className="text-[9px] text-gray-600 mt-0.5 space-y-0.5">
+                                        <p>Type: {task.task_type || 'General task'}</p>
+                                        <p>Assigned {formatDate(task.created_at)} by {task.created_by}</p>
+                                        {task.assigned_to && <p>To: {task.assigned_to}</p>}
+                                        {task.done && task.completed_at && (
+                                          <>
+                                            <p>Completed {formatDate(task.completed_at)} by {task.completed_by}</p>
+                                            <p>Duration: {calculateDuration(task.created_at, task.completed_at)}</p>
+                                          </>
+                                        )}
+                                      </div>
                                     </div>
                                     {replyingTo === `task-${task.id}` && (
                                       <div className="mt-2 bg-gray-50 p-2 rounded border border-gray-200 space-y-1.5">
@@ -411,7 +466,7 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
                                       </div>
                                     )}
                                   </div>
-                                </div>
+                                )}
                               </div>
                             ))}
                           </div>
@@ -452,8 +507,17 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
             <div key={f.key} className={`flex items-start gap-2 ${isItemsLaws ? 'px-4 py-3 bg-red-50/30' : 'px-2.5 py-2 bg-gray-50/50'}`}>
               <span className="shrink-0 text-[10px] font-bold text-gray-300 mt-0.5">{laws.length + i + 1}</span>
               <div className="min-w-0 flex-1">
-                <p className="text-[12px] text-gray-800">{f.label}</p>
-                {f.description && <p className="text-[10px] text-gray-600 mt-0.5">{f.description}</p>}
+                <div className="flex items-start gap-2">
+                  <p className="text-[12px] text-gray-800 flex-1">{f.label}</p>
+                  {f.description && (
+                    <button onClick={() => setExpandedFlagDesc(expandedFlagDesc === f.key ? null : f.key)}
+                      title="Show description"
+                      className="text-gray-400 hover:text-gray-600 text-xs font-bold shrink-0">ⓘ</button>
+                  )}
+                </div>
+                {expandedFlagDesc === f.key && f.description && (
+                  <p className="text-[10px] text-gray-600 mt-1.5 mb-2">{f.description}</p>
+                )}
                 <div className="flex items-center gap-1.5 mt-1.5">
                   <span className="text-[10px] bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded">{f.count}</span>
                   {f.onViewClick && (
@@ -502,17 +566,39 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
                       <div className="mt-2 space-y-1.5 text-[10px]">
                         {tasksByFlagKey[f.key].map(task => (
                           <div key={task.id} className={`p-1.5 rounded border ${task.done ? 'bg-gray-50 border-gray-200' : 'bg-blue-50 border-blue-200'}`}>
-                            <div className="flex items-start gap-1">
-                              <input type="checkbox" checked={task.done} onChange={() => toggleTaskCompletion(task.id, task.done, undefined, f.key)}
-                                className="mt-0.5 shrink-0" />
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-start justify-between gap-2">
-                                  <p className={`font-semibold ${task.done ? 'line-through text-gray-500' : 'text-gray-800'}`}>{task.title}</p>
-                                  <div className="flex gap-1 shrink-0">
-                                    <button onClick={() => { setReplyingTo(`task-${task.id}`); fetchReplies('task', task.id) }} title="Reply" className="text-blue-500 hover:text-blue-700 text-[9px] font-bold">💬</button>
-                                    <button onClick={() => deleteTask(task.id, undefined, f.key)} title="Delete task" className="text-red-500 hover:text-red-700 text-[9px] font-bold">×</button>
-                                  </div>
+                            {editingTaskId === task.id ? (
+                              <div className="flex flex-col gap-1.5">
+                                <input autoFocus value={editTaskTitle} onChange={e => setEditTaskTitle(e.target.value)} placeholder="Task title…"
+                                  onKeyDown={e => { if (e.key === 'Enter') saveEditTask(undefined, f.key); if (e.key === 'Escape') setEditingTaskId(null) }}
+                                  className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+                                <select value={editTaskType} onChange={e => setEditTaskType(e.target.value)}
+                                  className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400">
+                                  <option>General task</option>
+                                  <option>App task</option>
+                                </select>
+                                <select value={editTaskAssignedTo} onChange={e => setEditTaskAssignedTo(e.target.value)}
+                                  className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400">
+                                  <option value="">Assign to (optional)…</option>
+                                  {ASSIGNABLE_STAFF.map(staff => <option key={staff} value={staff}>{staff}</option>)}
+                                </select>
+                                <div className="flex gap-1">
+                                  <button onClick={() => saveEditTask(undefined, f.key)} className="flex-1 text-green-600 hover:text-green-700 text-xs font-bold">Save</button>
+                                  <button onClick={() => setEditingTaskId(null)} className="shrink-0 text-gray-400 hover:text-gray-600 text-xs font-bold">×</button>
                                 </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-start gap-1">
+                                <input type="checkbox" checked={task.done} onChange={() => toggleTaskCompletion(task.id, task.done, undefined, f.key)}
+                                  className="mt-0.5 shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <p className={`font-semibold ${task.done ? 'line-through text-gray-500' : 'text-gray-800'}`}>{task.title}</p>
+                                    <div className="flex gap-1 shrink-0">
+                                      <button onClick={() => startEditTask(task)} title="Edit task" className="text-gray-500 hover:text-gray-700 text-[9px] font-bold">✎</button>
+                                      <button onClick={() => { setReplyingTo(`task-${task.id}`); fetchReplies('task', task.id) }} title="Reply" className="text-blue-500 hover:text-blue-700 text-[9px] font-bold">💬</button>
+                                      <button onClick={() => deleteTask(task.id, undefined, f.key)} title="Delete task" className="text-red-500 hover:text-red-700 text-[9px] font-bold">×</button>
+                                    </div>
+                                  </div>
                                 <div className="text-[9px] text-gray-600 mt-0.5 space-y-0.5">
                                   <p>Type: {task.task_type || 'General task'}</p>
                                   <p>Assigned {formatDate(task.created_at)} by {task.created_by}</p>
@@ -551,10 +637,11 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
                                 )}
                               </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   </>
                 )}
               </div>

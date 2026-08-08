@@ -121,6 +121,34 @@ export async function PATCH(req: NextRequest) {
   }
 }
 
+export async function PUT(req: NextRequest) {
+  const session = await auth()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  await ensureTable()
+
+  const pathId = req.nextUrl.pathname.split('/').pop()
+  const id = parseInt(pathId || '0')
+  if (!id) return NextResponse.json({ error: 'Task ID is required' }, { status: 400 })
+
+  const { title, task_type, assigned_to } = await req.json()
+  const titleText = typeof title === 'string' ? title.trim() : ''
+  if (!titleText) return NextResponse.json({ error: 'Title is required' }, { status: 400 })
+
+  try {
+    const [row] = await sql`
+      UPDATE custom_tasks
+      SET title = ${titleText}, task_type = ${task_type || 'General task'}, assigned_to = ${assigned_to || null}
+      WHERE id = ${id}
+      RETURNING id, title, notes, due_date, submenu, view, law_id, flag_key, task_type, assigned_to, done, created_by, created_at, completed_at, completed_by
+    `
+    return NextResponse.json(row)
+  } catch (e) {
+    console.error('tasks PUT error:', e)
+    const detail = e instanceof Error ? e.message : String(e)
+    return NextResponse.json({ error: `Could not update task: ${detail}` }, { status: 500 })
+  }
+}
+
 export async function DELETE(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
