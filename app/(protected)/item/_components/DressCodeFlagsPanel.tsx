@@ -52,18 +52,6 @@ export default function DressCodeFlagsPanel() {
         <PageToolIcons scopeKey="Team Dress Code"
           flags={flagButtons.map(({ id, letter, label, count }) => ({ key: id, letter, label, count }))}
           onFlagClick={id => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />
-        {flagButtons.map(({ id, letter, label, count }) => (
-          <button key={id} title={label}
-            onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-            className="shrink-0 flex items-center gap-0.5 text-[9px] font-semibold pl-1 pr-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-700 transition">
-            <span className="relative leading-none">
-              {count > 0 ? '🚩' : '🏳️'}
-              <span className={`absolute -bottom-1 -right-1 text-[6px] font-black leading-none rounded-sm px-[1px]
-                ${count > 0 ? 'bg-white text-red-700' : 'bg-red-700 text-white'}`}>{letter}</span>
-            </span>
-            <span className="ml-0.5">{count > 0 ? count : ''}</span>
-          </button>
-        ))}
       </div>
       <div id="dress-not-worn" className="space-y-2">
         <p className="text-xs text-gray-400">

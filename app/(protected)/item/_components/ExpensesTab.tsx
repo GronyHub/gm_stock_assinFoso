@@ -493,29 +493,10 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* Flag pills sit in this same row now too, matching Items/Sales/
-          Bills' own top row (icons + pills together) instead of a separate
-          row below. */}
       <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto px-2 pt-2">
         <PageToolIcons scopeKey="Expenses"
           flags={flagButtons.map(({ key, letter, label }) => ({ key, letter, label, count: flagCounts[key] }))}
           onFlagClick={key => setActiveFlag(f => f === key ? null : (key as 'similar' | 'bundled' | 'no_vendor'))} />
-        {flagButtons.map(({ key, letter, label }) => {
-          const count = flagCounts[key]
-          const active = activeFlag === key
-          return (
-            <button key={key} title={label} onClick={() => setActiveFlag(f => f === key ? null : key)}
-              className={`shrink-0 flex items-center gap-1 text-[9px] font-semibold pl-1 pr-1.5 py-0.5 rounded transition
-                ${active ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-700'}`}>
-              <span className="relative leading-none">
-                {count > 0 ? '🚩' : '🏳️'}
-                <span className={`absolute -bottom-1 -right-1 text-[6px] font-black leading-none rounded-sm px-[1px]
-                  ${count > 0 ? 'bg-white text-red-700' : 'bg-red-700 text-white'}`}>{letter}</span>
-              </span>
-              <span>{count > 0 ? count : ''}</span>
-            </button>
-          )
-        })}
       </div>
       <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0 flex-wrap">
         <button onClick={() => setGroupBy(g => g === 'account' ? 'none' : 'account')}

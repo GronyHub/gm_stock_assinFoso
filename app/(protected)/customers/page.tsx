@@ -269,22 +269,6 @@ export default function CustomersPage({ initialSearch, onFlagCountChange }: { in
         <PageToolIcons scopeKey="Customers"
           flags={FLAG_TYPES.map(({ key, letter, label }) => ({ key, letter, label, count: flagCounts[key] }))}
           onFlagClick={key => setActiveFlag(key as FlagKey)} />
-        {FLAG_TYPES.map(({ key, letter, label }) => {
-          const count = flagCounts[key]
-          const active = activeFlag === key
-          return (
-            <button key={key} title={label} onClick={() => setActiveFlag(f => f === key ? null : key)}
-              className={`shrink-0 flex items-center gap-1 text-[10px] font-semibold pl-1.5 pr-2 py-1 rounded-lg transition
-                ${active ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-700'}`}>
-              <span className="relative leading-none">
-                {count > 0 ? '🚩' : '🏳️'}
-                <span className={`absolute -bottom-1 -right-1 text-[6px] font-black leading-none rounded-sm px-[1px]
-                  ${count > 0 ? 'bg-white text-red-700' : 'bg-red-700 text-white'}`}>{letter}</span>
-              </span>
-              <span>{count > 0 ? count : ''}</span>
-            </button>
-          )
-        })}
         <span className={`shrink-0 flex items-center gap-1 text-[10px] font-semibold pl-1.5 pr-2 py-1 rounded-lg
           ${newThisWeek < NEW_CUSTOMERS_PER_WEEK_TARGET ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}
           title="New customers added in the last 7 days">

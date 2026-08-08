@@ -270,24 +270,12 @@ export default function VendorsPage({ openAddSignal, initialSearch, onFlagCountC
 
   return (
     <div className="space-y-4 pb-10">
-      {/* Law/Notes/Tasks + this page's own flag pill, together in one row at
-          the very top -- same treatment as Items/Sales/Bills' own green
-          header row, just in light colors since this page sits on white
-          instead of green. */}
+      {/* Law/Notes/Tasks -- this page's own flag now lives entirely inside
+          that combined window instead of a separate pill here too. */}
       <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
         <PageToolIcons scopeKey="Vendors"
           flags={[{ key: 'no_contact', letter: 'C', label: 'No Contact Number or Location', count: noContactCount }]}
           onFlagClick={() => setShowFlagged(true)} />
-        <button onClick={() => setShowFlagged(v => !v)} title="Vendors with no contact number or location"
-          className={`shrink-0 flex items-center gap-1 text-[10px] font-semibold pl-1.5 pr-2 py-1 rounded-lg transition
-            ${showFlagged ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-700'}`}>
-          <span className="relative leading-none">
-            {noContactCount > 0 ? '🚩' : '🏳️'}
-            <span className={`absolute -bottom-1 -right-1 text-[6px] font-black leading-none rounded-sm px-[1px]
-              ${noContactCount > 0 ? 'bg-white text-red-700' : 'bg-red-700 text-white'}`}>C</span>
-          </span>
-          <span>{noContactCount > 0 ? noContactCount : ''}</span>
-        </button>
       </div>
       {/* Header */}
       <div className="flex items-center justify-between">

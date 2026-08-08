@@ -1825,24 +1825,6 @@ function ItemHubPageInner() {
                         description: ERROR_VIOLATIONS.find(v => v.key === key)?.description,
                       }))}
                       onFlagClick={goToViolation} />
-                    {[...(lossView === 'items' ? ITEMS_FLAG_TYPES : lossView === 'sales' ? SALES_FLAG_TYPES : BILLS_FLAG_TYPES)]
-                      .sort((a, b) => (violationCounts[b.key] ?? 0) - (violationCounts[a.key] ?? 0))
-                      .map(({ key, letter, label }) => {
-                        const count = violationCounts[key] ?? 0
-                        const active = violation === key
-                        return (
-                          <button key={key} onClick={() => goToViolation(key)} title={label}
-                            className={`shrink-0 flex items-center gap-0.5 text-[9px] font-semibold pl-1 pr-1.5 py-0.5 rounded transition
-                              ${active ? 'bg-red-600 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}>
-                            <span className="relative leading-none">
-                              {count > 0 ? '🚩' : '🏳️'}
-                              <span className={`absolute -bottom-1 -right-1 text-[6px] font-black leading-none rounded-sm px-[1px]
-                                ${count > 0 ? 'bg-white text-red-700' : 'bg-red-700 text-white'}`}>{letter}</span>
-                            </span>
-                            <span className="ml-0.5">{count > 0 ? count : ''}</span>
-                          </button>
-                        )
-                      })}
                   </div>
                 )}
                 <div className="flex items-center gap-1.5">

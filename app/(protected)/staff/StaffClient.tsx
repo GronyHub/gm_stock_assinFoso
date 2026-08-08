@@ -1170,15 +1170,12 @@ export function PayslipsTab({ role, username, viewingStaff }: { role: string; us
 
   return (
     <div className="space-y-4">
-      {/* Law/Notes/Tasks + the Flags view-toggle together in one row, same
-          treatment as Items/Sales/Bills -- By Month/By Staff/Build stay in
-          their own row below since those pick a whole different view of the
-          same data, not a flag/violation filter. */}
+      {/* Law/Notes/Tasks -- this page's own flag now lives entirely inside
+          that combined window instead of a separate toggle button here too. */}
       <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
         <PageToolIcons scopeKey="Payslips"
           flags={payFlags.length > 0 ? [{ key: 'payslip_issues', letter: '!', label: 'Payslip Issues', count: payFlags.length }] : []}
           onFlagClick={() => setView('flags' as unknown as PayView)} />
-        {!viewingStaff && payFlags.length > 0 && viewBtn('flags' as any, `⚠️ Flags (${payFlags.length})`)}
       </div>
       {/* View selector */}
       {!viewingStaff && (

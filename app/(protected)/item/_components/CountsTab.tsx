@@ -621,22 +621,6 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
               count: key === 'daily' ? filteredDaily.length : key === '7day' ? filteredGmcWeekly.length : filteredOverdue.length,
             }))}
             onFlagClick={key => onGoToViolation?.(key)} />
-          {COUNTS_FLAG_TYPES.map(({ key, letter, label }) => {
-            const count = key === 'daily' ? filteredDaily.length : key === '7day' ? filteredGmcWeekly.length : filteredOverdue.length
-            const active = violation === key
-            return (
-              <button key={key} onClick={() => onGoToViolation?.(key)} title={label}
-                className={`shrink-0 flex items-center gap-0.5 text-[9px] font-semibold pl-1 pr-1.5 py-0.5 rounded transition
-                  ${active ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-700'}`}>
-                <span className="relative leading-none">
-                  {count > 0 ? '🚩' : '🏳️'}
-                  <span className={`absolute -bottom-1 -right-1 text-[6px] font-black leading-none rounded-sm px-[1px]
-                    ${count > 0 ? 'bg-white text-red-700' : 'bg-red-700 text-white'}`}>{letter}</span>
-                </span>
-                <span className="ml-0.5">{count > 0 ? count : ''}</span>
-              </button>
-            )
-          })}
         </div>
       )}
       <div className="flex flex-wrap items-center justify-end gap-1.5 px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
