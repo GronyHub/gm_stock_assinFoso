@@ -398,42 +398,64 @@ export default function PageLawsList({
 
   async function addGlobalTask() {
     if (!(globalTaskTitle ?? '').trim()) return
-    await fetch('/api/tasks', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title: (globalTaskTitle ?? '').trim(),
-        submenu: scopeKey,
-        task_type: globalTaskType ?? 'General task',
-        assigned_to: globalTaskAssignedTo || null,
-      }),
-    }).catch(() => {})
-    setGlobalTaskTitle?.('')
-    setGlobalTaskType?.('General task')
-    setGlobalTaskAssignedTo?.('')
-    setCreatingGlobalTask?.(false)
-    onChange?.()
+    try {
+      const res = await fetch('/api/tasks', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: (globalTaskTitle ?? '').trim(),
+          submenu: scopeKey,
+          task_type: globalTaskType ?? 'General task',
+          assigned_to: globalTaskAssignedTo || null,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.text()
+        console.error('Failed to create task:', err)
+        alert('Failed to create task. Please try again.')
+        return
+      }
+      setGlobalTaskTitle?.('')
+      setGlobalTaskType?.('General task')
+      setGlobalTaskAssignedTo?.('')
+      setCreatingGlobalTask?.(false)
+      onChange?.()
+    } catch (e) {
+      console.error('Task creation error:', e)
+      alert('Error creating task. Please try again.')
+    }
   }
 
   async function addGlobalNote() {
     if (!(globalNoteText ?? '').trim()) return
-    await fetch('/api/page-notes', {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        scopeKey,
-        kind: 'note',
-        notes: (globalNoteText ?? '').trim(),
-        topic: globalNoteTopic ?? '',
-        noteDate: globalNoteDate ?? '',
-        taggedStaff: globalNoteTaggedStaff ?? [],
-      }),
-    }).catch(() => {})
-    setGlobalNoteText?.('')
-    setGlobalNoteTopic?.('')
-    const today = new Date()
-    setGlobalNoteDate?.(today.toISOString().split('T')[0])
-    setGlobalNoteTaggedStaff?.([])
-    setCreatingGlobalNote?.(false)
-    onChange?.()
+    try {
+      const res = await fetch('/api/page-notes', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scopeKey,
+          kind: 'note',
+          notes: (globalNoteText ?? '').trim(),
+          topic: globalNoteTopic ?? '',
+          noteDate: globalNoteDate ?? '',
+          taggedStaff: globalNoteTaggedStaff ?? [],
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.text()
+        console.error('Failed to create note:', err)
+        alert('Failed to create note. Please try again.')
+        return
+      }
+      setGlobalNoteText?.('')
+      setGlobalNoteTopic?.('')
+      const today = new Date()
+      setGlobalNoteDate?.(today.toISOString().split('T')[0])
+      setGlobalNoteTaggedStaff?.([])
+      setCreatingGlobalNote?.(false)
+      onChange?.()
+    } catch (e) {
+      console.error('Note creation error:', e)
+      alert('Error creating note. Please try again.')
+    }
   }
 
   if (loading) return <div className="py-6 text-center text-gray-400 text-xs">Loading…</div>
