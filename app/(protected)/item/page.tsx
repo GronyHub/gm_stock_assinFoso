@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useMemo, Component, Suspense, Fragment, ty
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { hasFeature, DEFAULT_ON_FEATURES, type FeatureKey, type RolePermissionsMap } from '@/lib/permissionsShared'
+import PageLawsList from './_components/PageLawsList'
 
 class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boolean; message: string }> {
   state = { error: false, message: '' }
@@ -559,6 +560,10 @@ function ItemHubPageInner() {
   // same-page navigations) entirely by the searchParams effect below, since
   // a plain useState initializer only ever sees the URL a page starts on.
   const [item360JumpId, setItem360JumpId] = useState<number | null>(null)
+  const [showItemsLaws, setShowItemsLaws] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return localStorage.getItem('showItemsLaws') === 'true'
+  })
   const groupRef     = useRef<HTMLDivElement>(null)
   const searchRef    = useRef<HTMLDivElement>(null)
 
@@ -937,6 +942,10 @@ function ItemHubPageInner() {
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
+
+  useEffect(() => {
+    localStorage.setItem('showItemsLaws', showItemsLaws.toString())
+  }, [showItemsLaws])
 
   function changeTab(t: OuterTab) {
     setOuterTab(t)
@@ -1825,6 +1834,12 @@ function ItemHubPageInner() {
                         description: ERROR_VIOLATIONS.find(v => v.key === key)?.description,
                       }))}
                       onFlagClick={goToViolation} />
+                    {lossView === 'items' && (
+                      <button onClick={() => setShowItemsLaws(o => !o)} title="Show laws on this page"
+                        className={`shrink-0 text-sm leading-none px-1.5 py-1 rounded-lg transition ${showItemsLaws ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
+                        ⚖️
+                      </button>
+                    )}
                   </div>
                 )}
                 <div className="flex items-center gap-1.5">
@@ -2196,33 +2211,42 @@ function ItemHubPageInner() {
           </TabErrorBoundary>
         )}
         {!showAnalytics && addForm !== 'item' && outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'none' && (
-          violation && pillKeys?.includes(violation) ? (
-            itemsLoading
-              ? <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
-              : (
+          <>
+            {showItemsLaws && (
+              <div className="border-b border-gray-200 bg-white px-3 py-2">
                 <TabErrorBoundary>
-                  <ItemsTab
-                    items={items}
-                    group={group}
-                    productType={productType}
-                    search={search}
-                    violation={violation}
-                    onItemsChanged={setItems}
-                    showAdd={false}
-                    onCloseAdd={() => {}}
-                    jumpToItemId={jumpToItemId}
-                    onJumpDone={() => setJumpToItemId(null)}
-                    onOpenItem360={id => { pickLossView('item360'); setItem360JumpId(id) }}
-                  />
+                  <PageLawsList scopeKey="Items" isItemsLaws={true} />
                 </TabErrorBoundary>
-              )
-          ) : (
-            <TabErrorBoundary>
-              <LossTab onOpenItem={() => {}} search={search} group={group} productType={productType}
-                visibleCols={itemsColPrefs.visibleCols} colOrder={itemsColPrefs.colOrder} columnLabels={itemsColPrefs.columnLabels}
-                getWidth={itemsColPrefs.getWidth} resizeWidth={itemsColPrefs.resizeWidth} resetWidth={itemsColPrefs.resetWidth} />
-            </TabErrorBoundary>
-          )
+              </div>
+            )}
+            {violation && pillKeys?.includes(violation) ? (
+              itemsLoading
+                ? <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
+                : (
+                  <TabErrorBoundary>
+                    <ItemsTab
+                      items={items}
+                      group={group}
+                      productType={productType}
+                      search={search}
+                      violation={violation}
+                      onItemsChanged={setItems}
+                      showAdd={false}
+                      onCloseAdd={() => {}}
+                      jumpToItemId={jumpToItemId}
+                      onJumpDone={() => setJumpToItemId(null)}
+                      onOpenItem360={id => { pickLossView('item360'); setItem360JumpId(id) }}
+                    />
+                  </TabErrorBoundary>
+                )
+            ) : (
+              <TabErrorBoundary>
+                <LossTab onOpenItem={() => {}} search={search} group={group} productType={productType}
+                  visibleCols={itemsColPrefs.visibleCols} colOrder={itemsColPrefs.colOrder} columnLabels={itemsColPrefs.columnLabels}
+                  getWidth={itemsColPrefs.getWidth} resizeWidth={itemsColPrefs.resizeWidth} resetWidth={itemsColPrefs.resetWidth} />
+              </TabErrorBoundary>
+            )}
+          </>
         )}
         {showAnalytics && outerTab === 'loss' && lossView === 'sales' && (
           <TabErrorBoundary><div className="px-3 pt-3"><SalesAnalyticsSection /></div></TabErrorBoundary>
