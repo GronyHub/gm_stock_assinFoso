@@ -570,7 +570,13 @@ function ItemHubPageInner() {
   const [globalTaskType, setGlobalTaskType] = useState('General task')
   const [globalTaskAssignedTo, setGlobalTaskAssignedTo] = useState('')
   const [creatingGlobalNote, setCreatingGlobalNote] = useState(false)
+  const [globalNoteTopic, setGlobalNoteTopic] = useState('')
   const [globalNoteText, setGlobalNoteText] = useState('')
+  const [globalNoteDate, setGlobalNoteDate] = useState(() => {
+    const today = new Date()
+    return today.toISOString().split('T')[0]
+  })
+  const [globalNoteTaggedStaff, setGlobalNoteTaggedStaff] = useState<string[]>([])
   const [hideZeroFlags, setHideZeroFlags] = useState(false)
   const groupRef     = useRef<HTMLDivElement>(null)
   const searchRef    = useRef<HTMLDivElement>(null)
@@ -2263,8 +2269,14 @@ function ItemHubPageInner() {
                     setGlobalTaskAssignedTo={setGlobalTaskAssignedTo}
                     creatingGlobalNote={creatingGlobalNote}
                     setCreatingGlobalNote={setCreatingGlobalNote}
+                    globalNoteTopic={globalNoteTopic}
+                    setGlobalNoteTopic={setGlobalNoteTopic}
                     globalNoteText={globalNoteText}
                     setGlobalNoteText={setGlobalNoteText}
+                    globalNoteDate={globalNoteDate}
+                    setGlobalNoteDate={setGlobalNoteDate}
+                    globalNoteTaggedStaff={globalNoteTaggedStaff}
+                    setGlobalNoteTaggedStaff={setGlobalNoteTaggedStaff}
                     hideZeroFlags={hideZeroFlags}
                     setHideZeroFlags={setHideZeroFlags}
                   />
