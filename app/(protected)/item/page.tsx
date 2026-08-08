@@ -2213,7 +2213,7 @@ function ItemHubPageInner() {
         {!showAnalytics && addForm !== 'item' && outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'none' && (
           <>
             {showItemsLaws && (
-              <div className="border-b border-gray-200 bg-white px-3 py-2">
+              <div className="sticky top-0 z-10 border-b border-gray-200 bg-white px-3 py-2 shadow-sm">
                 <TabErrorBoundary>
                   <PageLawsList
                     scopeKey="Items"
