@@ -53,6 +53,9 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
   const [noteTextForFlag, setNoteTextForFlag] = useState('')
   const [tasksByLawId, setTasksByLawId] = useState<Record<number, Task[]>>({})
   const [tasksByFlagKey, setTasksByFlagKey] = useState<Record<string, Task[]>>({})
+  const [repliesByItem, setRepliesByItem] = useState<Record<string, any[]>>({})
+  const [replyingTo, setReplyingTo] = useState<string | null>(null)
+  const [replyText, setReplyText] = useState('')
 
   function formatDate(dateStr: string) {
     if (!dateStr) return ''
@@ -107,6 +110,33 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
     } catch (e) {
       console.error('fetch tasks error:', e)
     }
+  }
+
+  async function fetchReplies(itemType: string, itemId: number | string) {
+    try {
+      const res = await fetch(`/api/replies?itemType=${itemType}&itemId=${itemId}`)
+      const replies = await res.json()
+      setRepliesByItem(prev => ({ ...prev, [`${itemType}-${itemId}`]: Array.isArray(replies) ? replies : [] }))
+    } catch (e) {
+      console.error('fetch replies error:', e)
+    }
+  }
+
+  async function addReply(itemType: string, itemId: number | string) {
+    if (!replyText.trim()) return
+    await fetch('/api/replies', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemType, itemId, replyText: replyText.trim() }),
+    }).catch(() => {})
+    setReplyText('')
+    setReplyingTo(null)
+    await fetchReplies(itemType, itemId)
+  }
+
+  async function deleteReply(replyId: number, itemType: string, itemId: number | string) {
+    if (!confirm('Delete this reply?')) return
+    await fetch(`/api/replies/${replyId}`, { method: 'DELETE' }).catch(() => {})
+    await fetchReplies(itemType, itemId)
   }
 
   function load() {
@@ -289,6 +319,7 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
                     {menuLawId === l.id && (
                       <div className="flex gap-1 mt-1 text-[10px]">
                         <button onClick={() => startEdit(l)} title="Edit" className="text-gray-500 hover:text-gray-700 font-semibold">✎ Edit</button>
+                        <button onClick={() => { setReplyingTo(`law-${l.id}`); fetchReplies('law', l.id) }} title="Reply" className="text-blue-500 hover:text-blue-700 font-semibold">💬 Reply</button>
                         <button onClick={() => { remove(l.id); setMenuLawId(null) }} className="text-red-500 hover:text-red-700 font-semibold">× Delete</button>
                       </div>
                     )}
@@ -338,7 +369,10 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-start justify-between gap-2">
                                       <p className={`font-semibold ${task.done ? 'line-through text-gray-500' : 'text-gray-800'}`}>{task.title}</p>
-                                      <button onClick={() => deleteTask(task.id, l.id)} title="Delete task" className="shrink-0 text-red-500 hover:text-red-700 text-[9px] font-bold">×</button>
+                                      <div className="flex gap-1 shrink-0">
+                                        <button onClick={() => { setReplyingTo(`task-${task.id}`); fetchReplies('task', task.id) }} title="Reply" className="text-blue-500 hover:text-blue-700 text-[9px] font-bold">💬</button>
+                                        <button onClick={() => deleteTask(task.id, l.id)} title="Delete task" className="text-red-500 hover:text-red-700 text-[9px] font-bold">×</button>
+                                      </div>
                                     </div>
                                     <div className="text-[9px] text-gray-600 mt-0.5 space-y-0.5">
                                       <p>Type: {task.task_type || 'General task'}</p>
@@ -351,8 +385,58 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
                                         </>
                                       )}
                                     </div>
+                                    {replyingTo === `task-${task.id}` && (
+                                      <div className="mt-2 bg-gray-50 p-2 rounded border border-gray-200 space-y-1.5">
+                                        <textarea autoFocus value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Reply…" rows={2}
+                                          onKeyDown={e => { if (e.key === 'Escape') { setReplyingTo(null); setReplyText('') } }}
+                                          className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400 resize-none w-full" />
+                                        <div className="flex gap-1">
+                                          <button onClick={() => addReply('task', task.id)} className="flex-1 text-green-600 hover:text-green-700 text-xs font-bold">Post</button>
+                                          <button onClick={() => { setReplyingTo(null); setReplyText('') }} className="shrink-0 text-gray-400 hover:text-gray-600 text-xs font-bold">×</button>
+                                        </div>
+                                      </div>
+                                    )}
+                                    {repliesByItem[`task-${task.id}`]?.length > 0 && (
+                                      <div className="mt-2 space-y-1 text-[9px] border-l-2 border-gray-200 pl-2">
+                                        {repliesByItem[`task-${task.id}`].map(reply => (
+                                          <div key={reply.id} className="bg-gray-50 p-1.5 rounded">
+                                            <div className="flex items-start justify-between gap-2">
+                                              <p className="font-semibold text-gray-700">{reply.created_by}</p>
+                                              <button onClick={() => deleteReply(reply.id, 'task', task.id)} className="text-red-500 hover:text-red-700 font-bold">×</button>
+                                            </div>
+                                            <p className="text-gray-600 mt-0.5">{reply.reply_text}</p>
+                                            <p className="text-gray-400 mt-0.5">{formatDate(reply.created_at)}</p>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {replyingTo === `law-${l.id}` && (
+                          <div className="mt-2 bg-gray-50 p-2 rounded border border-gray-200 space-y-1.5">
+                            <textarea autoFocus value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Reply…" rows={2}
+                              onKeyDown={e => { if (e.key === 'Escape') { setReplyingTo(null); setReplyText('') } }}
+                              className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400 resize-none w-full" />
+                            <div className="flex gap-1">
+                              <button onClick={() => addReply('law', l.id)} className="flex-1 text-green-600 hover:text-green-700 text-xs font-bold">Post</button>
+                              <button onClick={() => { setReplyingTo(null); setReplyText('') }} className="shrink-0 text-gray-400 hover:text-gray-600 text-xs font-bold">×</button>
+                            </div>
+                          </div>
+                        )}
+                        {repliesByItem[`law-${l.id}`]?.length > 0 && (
+                          <div className="mt-2 space-y-1 text-[9px] border-l-2 border-gray-200 pl-2">
+                            {repliesByItem[`law-${l.id}`].map(reply => (
+                              <div key={reply.id} className="bg-gray-50 p-1.5 rounded">
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className="font-semibold text-gray-700">{reply.created_by}</p>
+                                  <button onClick={() => deleteReply(reply.id, 'law', l.id)} className="text-red-500 hover:text-red-700 font-bold">×</button>
+                                </div>
+                                <p className="text-gray-600 mt-0.5">{reply.reply_text}</p>
+                                <p className="text-gray-400 mt-0.5">{formatDate(reply.created_at)}</p>
                               </div>
                             ))}
                           </div>
@@ -424,7 +508,10 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-start justify-between gap-2">
                                   <p className={`font-semibold ${task.done ? 'line-through text-gray-500' : 'text-gray-800'}`}>{task.title}</p>
-                                  <button onClick={() => deleteTask(task.id, undefined, f.key)} title="Delete task" className="shrink-0 text-red-500 hover:text-red-700 text-[9px] font-bold">×</button>
+                                  <div className="flex gap-1 shrink-0">
+                                    <button onClick={() => { setReplyingTo(`task-${task.id}`); fetchReplies('task', task.id) }} title="Reply" className="text-blue-500 hover:text-blue-700 text-[9px] font-bold">💬</button>
+                                    <button onClick={() => deleteTask(task.id, undefined, f.key)} title="Delete task" className="text-red-500 hover:text-red-700 text-[9px] font-bold">×</button>
+                                  </div>
                                 </div>
                                 <div className="text-[9px] text-gray-600 mt-0.5 space-y-0.5">
                                   <p>Type: {task.task_type || 'General task'}</p>
@@ -437,6 +524,31 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
                                     </>
                                   )}
                                 </div>
+                                {replyingTo === `task-${task.id}` && (
+                                  <div className="mt-2 bg-gray-50 p-2 rounded border border-gray-200 space-y-1.5">
+                                    <textarea autoFocus value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Reply…" rows={2}
+                                      onKeyDown={e => { if (e.key === 'Escape') { setReplyingTo(null); setReplyText('') } }}
+                                      className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400 resize-none w-full" />
+                                    <div className="flex gap-1">
+                                      <button onClick={() => addReply('task', task.id)} className="flex-1 text-green-600 hover:text-green-700 text-xs font-bold">Post</button>
+                                      <button onClick={() => { setReplyingTo(null); setReplyText('') }} className="shrink-0 text-gray-400 hover:text-gray-600 text-xs font-bold">×</button>
+                                    </div>
+                                  </div>
+                                )}
+                                {repliesByItem[`task-${task.id}`]?.length > 0 && (
+                                  <div className="mt-2 space-y-1 text-[9px] border-l-2 border-gray-200 pl-2">
+                                    {repliesByItem[`task-${task.id}`].map(reply => (
+                                      <div key={reply.id} className="bg-gray-50 p-1.5 rounded">
+                                        <div className="flex items-start justify-between gap-2">
+                                          <p className="font-semibold text-gray-700">{reply.created_by}</p>
+                                          <button onClick={() => deleteReply(reply.id, 'task', task.id)} className="text-red-500 hover:text-red-700 font-bold">×</button>
+                                        </div>
+                                        <p className="text-gray-600 mt-0.5">{reply.reply_text}</p>
+                                        <p className="text-gray-400 mt-0.5">{formatDate(reply.created_at)}</p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
