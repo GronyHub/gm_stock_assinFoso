@@ -102,7 +102,18 @@ export default function CombinedToolsPanel() {
               <p className="text-[10px] font-extrabold text-gray-600 uppercase tracking-wide">{s.label}</p>
             </div>
             <div className="bg-white p-2">
-              {s.kind === 'law' && <PageLawsList scopeKey={panel.scopeKey} />}
+              {s.kind === 'law' && (
+                <PageLawsList
+                  scopeKey={panel.scopeKey}
+                  flags={flags.map(f => ({
+                    key: f.key,
+                    label: f.label,
+                    description: f.description,
+                    count: f.count,
+                    onViewClick: () => viewFlag(f),
+                  }))}
+                />
+              )}
               {s.kind === 'tasks' && <DynamicTasksSection scopeKey={panel.scopeKey} />}
               {s.kind === 'notes' && <PageLawsNote scopeKey={panel.scopeKey} kind="note" />}
             </div>
