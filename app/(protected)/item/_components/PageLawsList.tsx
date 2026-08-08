@@ -329,8 +329,8 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
       ) : (
         <div className={`bg-white ${isItemsLaws ? 'divide-y divide-gray-100' : 'border border-gray-200 rounded-lg divide-y divide-gray-50'}`}>
           {laws.map((l, i) => (
-            <div key={l.id} className={`flex items-start gap-2 ${isItemsLaws ? 'px-4 py-3' : 'px-2.5 py-2'}`} onMouseDown={() => handleMouseDown(l.id)} onMouseUp={handleMouseUp} onTouchStart={() => handleTouchStart(l.id)} onTouchEnd={handleTouchEnd}>
-              <span className="shrink-0 text-[10px] font-bold text-gray-300 mt-0.5">{i + 1}</span>
+            <div key={l.id} className={`flex items-center gap-1 ${isItemsLaws ? 'px-1 py-0.5 bg-gray-50/50' : 'px-1 py-0.5 bg-gray-50/50'}`} onMouseDown={() => handleMouseDown(l.id)} onMouseUp={handleMouseUp} onTouchStart={() => handleTouchStart(l.id)} onTouchEnd={handleTouchEnd}>
+              <span className="shrink-0 text-[8px] font-bold text-gray-300">{i + 1}</span>
               {editingId === l.id ? (
                 <>
                   <input autoFocus value={editText} onChange={e => setEditText(e.target.value)}
@@ -338,61 +338,65 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
                       if (e.key === 'Enter') saveEdit(l.id)
                       if (e.key === 'Escape') setEditingId(null)
                     }}
-                    className="min-w-0 flex-1 text-xs bg-gray-100 border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+                    className="min-w-0 flex-1 text-[8px] bg-gray-100 border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
                   <button onClick={() => saveEdit(l.id)} title="Save"
-                    className="shrink-0 text-green-600 hover:text-green-700 px-1 text-xs font-bold">✓</button>
+                    className="shrink-0 text-green-600 hover:text-green-700 px-0.5 text-[8px] font-bold">✓</button>
                   <button onClick={() => setEditingId(null)} title="Cancel"
-                    className="shrink-0 text-gray-400 hover:text-gray-600 px-1 text-xs font-bold">×</button>
+                    className="shrink-0 text-gray-400 hover:text-gray-600 px-0.5 text-[8px] font-bold">×</button>
                 </>
               ) : (
                 <>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[12px] text-gray-800" style={{ wordBreak: 'break-word' }}>{l.text}</p>
+                    <div className="flex items-center gap-1 flex-wrap leading-none">
+                      <p className="text-[9px] text-gray-800">{l.text}</p>
+                      {!taskForLaw && !noteForLaw && (
+                        <>
+                          <button onClick={() => { setTaskForLaw(l.id); fetchTasksForLaw(l.id) }} title="Add task" className="text-blue-500 hover:text-blue-600 font-semibold text-[8px]">✓ Task</button>
+                          <button onClick={() => setNoteForLaw(l.id)} title="Add note" className="text-amber-500 hover:text-amber-600 font-semibold text-[8px]">📝 Note</button>
+                        </>
+                      )}
+                    </div>
                     {menuLawId === l.id && (
-                      <div className="flex gap-1 mt-1 text-[10px]">
-                        <button onClick={() => startEdit(l)} title="Edit" className="text-gray-500 hover:text-gray-700 font-semibold">✎ Edit</button>
-                        <button onClick={() => { setReplyingTo(`law-${l.id}`); fetchReplies('law', l.id) }} title="Reply" className="text-blue-500 hover:text-blue-700 font-semibold">💬 Reply</button>
-                        <button onClick={() => { remove(l.id); setMenuLawId(null) }} className="text-red-500 hover:text-red-700 font-semibold">× Delete</button>
+                      <div className="flex gap-1 text-[8px]">
+                        <button onClick={() => startEdit(l)} title="Edit" className="text-gray-500 hover:text-gray-700 font-semibold">✎</button>
+                        <button onClick={() => { setReplyingTo(`law-${l.id}`); fetchReplies('law', l.id) }} title="Reply" className="text-blue-500 hover:text-blue-700 font-semibold">💬</button>
+                        <button onClick={() => { remove(l.id); setMenuLawId(null) }} className="text-red-500 hover:text-red-700 font-semibold">×</button>
                       </div>
                     )}
                     {taskForLaw === l.id ? (
-                      <div className="flex flex-col gap-1.5 mt-2 bg-blue-50 p-2 rounded border border-blue-200">
-                        <input autoFocus value={taskTitle} onChange={e => setTaskTitle(e.target.value)} placeholder="Task title…"
+                      <div className="flex flex-col gap-0.5 bg-blue-50 p-1 border border-blue-200 leading-none">
+                        <input autoFocus value={taskTitle} onChange={e => setTaskTitle(e.target.value)} placeholder="Task…"
                           onKeyDown={e => { if (e.key === 'Enter') addTaskForLaw(); if (e.key === 'Escape') setTaskForLaw(null) }}
-                          className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+                          className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
                         <select value={taskType} onChange={e => setTaskType(e.target.value)}
-                          className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400">
-                          <option>General task</option>
-                          <option>App task</option>
+                          className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
+                          <option>General</option>
+                          <option>App</option>
                         </select>
                         <select value={taskAssignedTo} onChange={e => setTaskAssignedTo(e.target.value)}
-                          className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400">
-                          <option value="">Assign to (optional)…</option>
+                          className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
+                          <option value="">Assign…</option>
                           {ASSIGNABLE_STAFF.map(staff => <option key={staff} value={staff}>{staff}</option>)}
                         </select>
-                        <div className="flex gap-1">
-                          <button onClick={addTaskForLaw} title="Save" className="flex-1 text-green-600 hover:text-green-700 text-xs font-bold">Create Task</button>
-                          <button onClick={() => setTaskForLaw(null)} title="Cancel" className="shrink-0 text-gray-400 hover:text-gray-600 text-xs font-bold">×</button>
+                        <div className="flex gap-0.5">
+                          <button onClick={addTaskForLaw} className="flex-1 text-green-600 hover:text-green-700 text-[8px] font-bold">Create</button>
+                          <button onClick={() => setTaskForLaw(null)} className="shrink-0 text-gray-400 hover:text-gray-600 text-[8px] font-bold">×</button>
                         </div>
                       </div>
                     ) : noteForLaw === l.id ? (
-                      <div className="flex flex-col gap-1 mt-1">
-                        <textarea autoFocus value={noteText} onChange={e => setNoteText(e.target.value)} placeholder="Note…" rows={2}
+                      <div className="flex flex-col gap-0.5">
+                        <textarea autoFocus value={noteText} onChange={e => setNoteText(e.target.value)} placeholder="Note…" rows={1}
                           onKeyDown={e => { if (e.key === 'Escape') setNoteForLaw(null) }}
-                          className="flex-1 min-w-0 text-[10px] bg-gray-100 border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400 resize-none" />
-                        <div className="flex gap-1">
-                          <button onClick={addNoteForLaw} title="Save" className="flex-1 text-green-600 hover:text-green-700 text-xs font-bold">Save</button>
-                          <button onClick={() => setNoteForLaw(null)} title="Cancel" className="shrink-0 text-gray-400 hover:text-gray-600 text-xs font-bold">×</button>
+                          className="flex-1 min-w-0 text-[8px] bg-gray-100 border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 resize-none" />
+                        <div className="flex gap-0.5">
+                          <button onClick={addNoteForLaw} className="flex-1 text-green-600 hover:text-green-700 text-[8px] font-bold">Save</button>
+                          <button onClick={() => setNoteForLaw(null)} className="shrink-0 text-gray-400 hover:text-gray-600 text-[8px] font-bold">×</button>
                         </div>
                       </div>
                     ) : (
                       <>
-                        <div className="flex gap-1.5 mt-1 text-[10px]">
-                          <button onClick={() => { setTaskForLaw(l.id); fetchTasksForLaw(l.id) }} title="Add task for this law" className="text-blue-500 hover:text-blue-600 font-semibold">✓ Task</button>
-                          <button onClick={() => setNoteForLaw(l.id)} title="Add note for this law" className="text-amber-500 hover:text-amber-600 font-semibold">📝 Note</button>
-                        </div>
                         {tasksByLawId[l.id]?.length > 0 && (
-                          <div className="mt-2 space-y-1.5 text-[10px]">
+                          <div className="space-y-0.5 text-[8px]">
                             {tasksByLawId[l.id].map(task => (
                               <div key={task.id} className={`p-1.5 rounded border ${task.done ? 'bg-gray-50 border-gray-200' : 'bg-blue-50 border-blue-200'}`}>
                                 {editingTaskId === task.id ? (
