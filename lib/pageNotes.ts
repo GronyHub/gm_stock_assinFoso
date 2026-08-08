@@ -17,6 +17,9 @@ export async function ensurePageNotesTable() {
   await sql`ALTER TABLE page_notes ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'law'`.catch(() => {})
   await sql`ALTER TABLE page_notes ADD COLUMN IF NOT EXISTS law_id INTEGER`.catch(() => {})
   await sql`ALTER TABLE page_notes ADD COLUMN IF NOT EXISTS flag_key TEXT`.catch(() => {})
+  await sql`ALTER TABLE page_notes ADD COLUMN IF NOT EXISTS topic TEXT`.catch(() => {})
+  await sql`ALTER TABLE page_notes ADD COLUMN IF NOT EXISTS note_date DATE`.catch(() => {})
+  await sql`ALTER TABLE page_notes ADD COLUMN IF NOT EXISTS tagged_staff JSONB`.catch(() => {})
   // Older deployments had scope_key alone as the primary key (one merged
   // Notes/Laws row per page) -- dropping it lets a page hold both a 'law'
   // row and a 'note' row instead. Both statements are no-ops once already
