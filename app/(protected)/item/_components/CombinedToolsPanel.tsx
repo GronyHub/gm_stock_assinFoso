@@ -44,7 +44,6 @@ export default function CombinedToolsPanel() {
   const lawRef = useRef<HTMLDivElement>(null)
   const tasksRef = useRef<HTMLDivElement>(null)
   const notesRef = useRef<HTMLDivElement>(null)
-  const flagsRef = useRef<HTMLDivElement>(null)
   const refByKind: Record<ToolsPanelKind, React.RefObject<HTMLDivElement | null>> = {
     law: lawRef, tasks: tasksRef, notes: notesRef,
   }
@@ -80,19 +79,6 @@ export default function CombinedToolsPanel() {
             <span className="leading-none">{s.icon}</span>{s.label}
           </button>
         ))}
-        {flags.map(f => (
-          <button key={f.key} title={f.label}
-            onClick={() => flagsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-            className={`shrink-0 flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-lg transition
-              ${f.count > 0 ? 'bg-red-50 text-red-700 hover:bg-red-100' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}>
-            <span className="relative leading-none">
-              {f.count > 0 ? '🚩' : '🏳️'}
-              <span className={`absolute -bottom-1 -right-1 text-[6px] font-black leading-none rounded-sm px-[1px]
-                ${f.count > 0 ? 'bg-white text-red-700' : 'bg-red-700 text-white'}`}>{f.letter}</span>
-            </span>
-            {f.count > 0 ? f.count : ''}
-          </button>
-        ))}
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto p-2.5 space-y-3">
         {SECTIONS.map(s => (
@@ -119,26 +105,6 @@ export default function CombinedToolsPanel() {
             </div>
           </div>
         ))}
-        {flags.length > 0 && (
-          <div ref={flagsRef} className="space-y-2">
-            {flags.map(f => (
-              <div key={f.key} className={`border rounded-2xl overflow-hidden ${f.count > 0 ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'}`}>
-                <div className="flex items-center gap-1.5 px-3 py-1.5">
-                  <span className="text-sm leading-none">{f.count > 0 ? '🚩' : '🏳️'}</span>
-                  <p className="text-[10px] font-extrabold text-gray-600 uppercase tracking-wide flex-1 min-w-0 truncate">{f.label}</p>
-                  <span className={`shrink-0 text-[10px] font-bold ${f.count > 0 ? 'text-red-600' : 'text-gray-400'}`}>{f.count}</span>
-                </div>
-                <div className="bg-white p-2.5 space-y-2">
-                  {f.description && <p className="text-[11px] text-gray-600" style={{ wordBreak: 'break-word' }}>{f.description}</p>}
-                  <button onClick={() => viewFlag(f)}
-                    className="text-[10px] font-semibold px-2.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition">
-                    View flagged records →
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   )
