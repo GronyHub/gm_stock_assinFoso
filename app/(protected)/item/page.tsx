@@ -1271,6 +1271,18 @@ function ItemHubPageInner() {
     if (override.standalone) return { ...item, group: paneLabel(item.key, item.label), standaloneOverride: true }
     return { ...item, group: override.group_name ?? undefined, standaloneOverride: false }
   })
+  // Groups with a self-titled member (Expenses the section vs. Expenses
+  // the row) never need the separate floating header -- that member's own
+  // chip already serves as the heading. Computed as a set of group names,
+  // not per-row, so it holds regardless of which row within the group
+  // happens to sort first (see isSelfTitled below): otherwise a plain
+  // sibling row reordered ahead of the self-titled one would "steal"
+  // flattenPaneRuns' one-header-per-run slot, showing the header floating
+  // above that unrelated row while the real self-titled row's own chip
+  // renders again further down -- the same name appearing to double up.
+  const selfTitledGroups = new Set(
+    effectiveCashItems.filter(i => i.group && i.group === paneLabel(i.key, i.label)).map(i => i.group as string)
+  )
   // Cash/Manage default to granted for almost everyone (see
   // DEFAULT_ON_FEATURES) -- until the real map has loaded, assume that
   // rather than briefly hiding the whole Grony Cash/Manage pane for every
@@ -1482,7 +1494,7 @@ function ItemHubPageInner() {
                 const isSelfTitled = !!v.group && v.group === paneLabel(v.key, v.label)
                 return (
               <Fragment key={v.key}>
-                {header && cashDisplayMode !== 'icon' && !isSelfTitled && (
+                {header && cashDisplayMode !== 'icon' && !selfTitledGroups.has(header) && (
                   <p className="pt-2 pb-0.5"><span className="block w-full text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide px-2 py-1 truncate">{header}</span></p>
                 )}
                 <SidePaneButton icon={v.icon} label={paneLabel(v.key, v.label)} mode={cashDisplayMode}

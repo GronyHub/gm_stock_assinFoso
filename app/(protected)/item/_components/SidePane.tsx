@@ -110,18 +110,22 @@ export function SidePaneToggle({ mode, onChange, label }: { mode: DisplayMode; o
 // `chipLabel` -- for a row whose own name IS a section's name too (Sales
 // the row vs. "Sales" the section header above Sales/New Sale/Live Sale/
 // Log, same for Expenses and Customers) -- draws the label in the same
-// yellow-fill/red-text chip style a real section header uses, instead of
-// plain white text, so that row doubles as the section's own heading
+// full-width yellow-fill/red-text bar a real section header uses, instead
+// of plain white text, so that row doubles as the section's own heading
 // rather than sitting redundantly under a separate "Sales" label that
 // says the same thing twice. Still a normal, fully clickable button --
 // only the label's own styling changes. See item/page.tsx's Cash pane
 // loop for where the separate header is skipped for exactly these rows.
 // `chipBorder` is the same idea for a row an owner-level account has
 // manually marked "standalone" from Settings (see /api/pane-groups) --
-// same red lettering, but a yellow outline instead of a solid fill, so a
-// deliberately-standalone row reads as visually distinct from a "real"
-// multi-row group's own self-titled lead row (chipLabel). Mutually
-// exclusive in practice (callers pass at most one of the two).
+// used to be a bordered-not-filled variant so it read as visually
+// distinct from chipLabel's "real" self-titled rows, but that made
+// Settings-made section heads look like a different, lesser feature from
+// the ones already in the pane by default (direct feedback: "the pages i
+// made as section heads from the settings do not appear in [the] same
+// feature as the ones you did"). Renders identically to chipLabel now --
+// same full-width fill, no visual distinction -- since both mean the same
+// thing to whoever's looking at the pane: "this row is its own section."
 export function SidePaneButton({ icon, label, active, mode, onClick, badge, taskBadge, className = 'w-full', tint, divider, chipLabel, chipBorder }: {
   icon?: string | React.ReactNode; label: string; active: boolean; mode: DisplayMode; onClick: () => void; badge?: number; taskBadge?: number; className?: string; tint?: string; divider?: boolean; chipLabel?: boolean; chipBorder?: boolean
 }) {
@@ -148,10 +152,8 @@ export function SidePaneButton({ icon, label, active, mode, onClick, badge, task
           leading characters as will fit, rather than losing some off
           each side to keep the whole thing centered. */}
       {mode !== 'icon' && (
-        chipLabel
-          ? <span className="w-full flex justify-start"><span className="max-w-full truncate text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide rounded px-1.5 py-0.5">{label}</span></span>
-          : chipBorder
-          ? <span className="w-full flex justify-start"><span className="max-w-full truncate text-[8px] font-extrabold text-red-700 bg-transparent border-2 border-yellow-400 uppercase tracking-wide rounded px-1.5 py-0.5">{label}</span></span>
+        (chipLabel || chipBorder)
+          ? <span className="block -mx-1 truncate text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide px-2 py-1">{label}</span>
           : <span className="w-full truncate">{label}</span>
       )}
       {/* No background shape on either badge -- a filled circle sitting on
