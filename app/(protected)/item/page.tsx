@@ -2215,7 +2215,17 @@ function ItemHubPageInner() {
             {showItemsLaws && (
               <div className="border-b border-gray-200 bg-white px-3 py-2">
                 <TabErrorBoundary>
-                  <PageLawsList scopeKey="Items" isItemsLaws={true} />
+                  <PageLawsList
+                    scopeKey="Items"
+                    isItemsLaws={true}
+                    flags={ITEMS_FLAG_TYPES.map(({ key, label }) => ({
+                      key,
+                      label,
+                      count: violationCounts[key] ?? 0,
+                      description: ERROR_VIOLATIONS.find(v => v.key === key)?.description,
+                      onViewClick: () => goToViolation(key)
+                    }))}
+                  />
                 </TabErrorBoundary>
               </div>
             )}
