@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import DynamicTasksSection from './DynamicTasksSection'
 import PageLawsNote from './PageLawsNote'
 import PageLawsList from './PageLawsList'
-import { useToolsPanel } from './ToolsPanelContext'
+import { useToolsPanel, type ToolsPanelFlag } from './ToolsPanelContext'
 
 // One icon every real page carries -- used to be three (Law/Notes/Tasks),
 // each opening its own separate panel. All three now open the exact same
@@ -31,7 +31,20 @@ import { useToolsPanel } from './ToolsPanelContext'
 // usable alongside it. Falls back to a local modal (with the same three
 // sections stacked inside it) when no provider is present -- the two
 // standalone routes outside item/page.tsx's tree.
-export default function PageToolIcons({ scopeKey }: { scopeKey: string }) {
+export default function PageToolIcons({ scopeKey, flags, onFlagClick }: {
+  scopeKey: string
+  // This page's own violation/flag types, same shape it already builds for
+  // its own pill row (see ITEMS_FLAG_TYPES/SALES_FLAG_TYPES/
+  // BILLS_FLAG_TYPES/ExpensesTab's flagButtons, etc.) -- shown inside the
+  // combined window too now, not just wherever that page already renders
+  // them itself.
+  flags?: ToolsPanelFlag[]
+  // Whatever this specific page needs to do to show a flag's own flagged
+  // records once picked from inside the window (goToViolation for Items/
+  // Sales/Bills, a local activeFlag setter for Expenses, etc.) -- opaque
+  // to PageToolIcons/CombinedToolsPanel, which just call it and close.
+  onFlagClick?: (key: string) => void
+}) {
   const toolsPanel = useToolsPanel()
   const [open, setOpen] = useState(false)
   const [taskCount, setTaskCount] = useState(0)
@@ -72,7 +85,7 @@ export default function PageToolIcons({ scopeKey }: { scopeKey: string }) {
 
   return (
     <div className="flex items-center gap-1.5">
-      <button onClick={() => toolsPanel ? toolsPanel.openPanel(scopeKey, 'law') : setOpen(true)} title="Law, Tasks &amp; Notes"
+      <button onClick={() => toolsPanel ? toolsPanel.openPanel(scopeKey, 'law', flags, onFlagClick) : setOpen(true)} title="Law, Tasks &amp; Notes"
         className="relative text-sm leading-none px-1.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 transition">
         ⚖️
         {count > 0 && (

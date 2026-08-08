@@ -497,7 +497,9 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
           Bills' own top row (icons + pills together) instead of a separate
           row below. */}
       <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto px-2 pt-2">
-        <PageToolIcons scopeKey="Expenses" />
+        <PageToolIcons scopeKey="Expenses"
+          flags={flagButtons.map(({ key, letter, label }) => ({ key, letter, label, count: flagCounts[key] }))}
+          onFlagClick={key => setActiveFlag(f => f === key ? null : (key as 'similar' | 'bundled' | 'no_vendor'))} />
         {flagButtons.map(({ key, letter, label }) => {
           const count = flagCounts[key]
           const active = activeFlag === key
