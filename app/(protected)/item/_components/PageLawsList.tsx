@@ -80,6 +80,15 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
     if (flagKey !== undefined) await fetchTasksForFlag(flagKey)
   }
 
+  async function deleteTask(taskId: number, lawId?: number, flagKey?: string) {
+    if (!confirm('Delete this task?')) return
+    await fetch(`/api/tasks/${taskId}`, {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+    }).catch(() => {})
+    if (lawId !== undefined) await fetchTasksForLaw(lawId)
+    if (flagKey !== undefined) await fetchTasksForFlag(flagKey)
+  }
+
   async function fetchTasksForLaw(lawId: number) {
     try {
       const res = await fetch(`/api/tasks?lawId=${lawId}`)
@@ -327,7 +336,10 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
                                   <input type="checkbox" checked={task.done} onChange={() => toggleTaskCompletion(task.id, task.done, l.id)}
                                     className="mt-0.5 shrink-0" />
                                   <div className="flex-1 min-w-0">
-                                    <p className={`font-semibold ${task.done ? 'line-through text-gray-500' : 'text-gray-800'}`}>{task.title}</p>
+                                    <div className="flex items-start justify-between gap-2">
+                                      <p className={`font-semibold ${task.done ? 'line-through text-gray-500' : 'text-gray-800'}`}>{task.title}</p>
+                                      <button onClick={() => deleteTask(task.id, l.id)} title="Delete task" className="shrink-0 text-red-500 hover:text-red-700 text-[9px] font-bold">×</button>
+                                    </div>
                                     <div className="text-[9px] text-gray-600 mt-0.5 space-y-0.5">
                                       <p>Type: {task.task_type || 'General task'}</p>
                                       <p>Assigned {formatDate(task.created_at)} by {task.created_by}</p>
@@ -410,7 +422,10 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
                               <input type="checkbox" checked={task.done} onChange={() => toggleTaskCompletion(task.id, task.done, undefined, f.key)}
                                 className="mt-0.5 shrink-0" />
                               <div className="flex-1 min-w-0">
-                                <p className={`font-semibold ${task.done ? 'line-through text-gray-500' : 'text-gray-800'}`}>{task.title}</p>
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className={`font-semibold ${task.done ? 'line-through text-gray-500' : 'text-gray-800'}`}>{task.title}</p>
+                                  <button onClick={() => deleteTask(task.id, undefined, f.key)} title="Delete task" className="shrink-0 text-red-500 hover:text-red-700 text-[9px] font-bold">×</button>
+                                </div>
                                 <div className="text-[9px] text-gray-600 mt-0.5 space-y-0.5">
                                   <p>Type: {task.task_type || 'General task'}</p>
                                   <p>Assigned {formatDate(task.created_at)} by {task.created_by}</p>
