@@ -1817,6 +1817,11 @@ function ItemHubPageInner() {
                     horizontally instead of wrapping once there are more
                     pills than fit, so this row never pushes Groups/Search
                     further down the screen. */}
+                {(lossView === 'items' || lossView === 'sales' || lossView === 'bills') && !salesFormOpen && (
+                  <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
+                    <PageToolIcons scopeKey={CASH_LABEL.get(lossView) ?? lossView} onFlagClick={goToViolation} />
+                  </div>
+                )}
                 <div className="flex items-center gap-1.5">
 
                   {/* Groups dropdown */}
