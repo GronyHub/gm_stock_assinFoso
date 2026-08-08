@@ -1,7 +1,21 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import { ASSIGNABLE_STAFF } from './violationAssignments'
 
 type Law = { id: number; text: string; created_at: string }
+
+type Task = {
+  id: number
+  title: string
+  notes?: string
+  done: boolean
+  created_by: string
+  created_at: string
+  assigned_to?: string
+  completed_at?: string
+  completed_by?: string
+  task_type?: string
+}
 
 export type FlagLaw = {
   key: string
@@ -25,6 +39,7 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
   const [editText, setEditText] = useState('')
   const [taskForLaw, setTaskForLaw] = useState<number | null>(null)
   const [taskTitle, setTaskTitle] = useState('')
+  const [taskType, setTaskType] = useState('General task')
   const [taskAssignedTo, setTaskAssignedTo] = useState('')
   const [noteForLaw, setNoteForLaw] = useState<number | null>(null)
   const [noteText, setNoteText] = useState('')
@@ -32,10 +47,12 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
   const menuTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [taskForFlag, setTaskForFlag] = useState<string | null>(null)
   const [taskTitleForFlag, setTaskTitleForFlag] = useState('')
+  const [taskTypeForFlag, setTaskTypeForFlag] = useState('General task')
   const [taskAssignedToFlag, setTaskAssignedToFlag] = useState('')
   const [noteForFlag, setNoteForFlag] = useState<string | null>(null)
   const [noteTextForFlag, setNoteTextForFlag] = useState('')
-  const [createdTasks, setCreatedTasks] = useState<any[]>([])
+  const [tasksByLawId, setTasksByLawId] = useState<Record<number, Task[]>>({})
+  const [tasksByFlagKey, setTasksByFlagKey] = useState<Record<string, Task[]>>({})
 
   function formatDate(dateStr: string) {
     if (!dateStr) return ''
@@ -54,11 +71,33 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
     return `${hours}h`
   }
 
-  async function toggleTaskCompletion(taskId: number, currentDone: boolean) {
-    await fetch(`/api/tasks/${taskId}`, {
+  async function toggleTaskCompletion(taskId: number, currentDone: boolean, lawId?: number, flagKey?: string) {
+    await fetch(`/api/tasks`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: taskId, done: !currentDone }),
     }).catch(() => {})
+    if (lawId !== undefined) await fetchTasksForLaw(lawId)
+    if (flagKey !== undefined) await fetchTasksForFlag(flagKey)
+  }
+
+  async function fetchTasksForLaw(lawId: number) {
+    try {
+      const res = await fetch(`/api/tasks?lawId=${lawId}`)
+      const tasks = await res.json()
+      setTasksByLawId(prev => ({ ...prev, [lawId]: Array.isArray(tasks) ? tasks : [] }))
+    } catch (e) {
+      console.error('fetch tasks error:', e)
+    }
+  }
+
+  async function fetchTasksForFlag(flagKey: string) {
+    try {
+      const res = await fetch(`/api/tasks?flagKey=${encodeURIComponent(flagKey)}`)
+      const tasks = await res.json()
+      setTasksByFlagKey(prev => ({ ...prev, [flagKey]: Array.isArray(tasks) ? tasks : [] }))
+    } catch (e) {
+      console.error('fetch tasks error:', e)
+    }
   }
 
   function load() {
@@ -143,12 +182,15 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
         title: taskTitle.trim(),
         submenu: scopeKey,
         law_id: taskForLaw,
-        assigned_to: taskAssignedTo.trim() || null
+        task_type: taskType,
+        assigned_to: taskAssignedTo || null
       }),
     }).catch(() => {})
     setTaskTitle('')
+    setTaskType('General task')
     setTaskAssignedTo('')
     setTaskForLaw(null)
+    await fetchTasksForLaw(taskForLaw)
   }
 
   async function addNoteForLaw() {
@@ -169,12 +211,15 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
         title: taskTitleForFlag.trim(),
         submenu: scopeKey,
         flag_key: taskForFlag,
-        assigned_to: taskAssignedToFlag.trim() || null
+        task_type: taskTypeForFlag,
+        assigned_to: taskAssignedToFlag || null
       }),
     }).catch(() => {})
     setTaskTitleForFlag('')
+    setTaskTypeForFlag('General task')
     setTaskAssignedToFlag('')
     setTaskForFlag(null)
+    await fetchTasksForFlag(taskForFlag)
   }
 
   async function addNoteForFlag() {
@@ -243,8 +288,16 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
                         <input autoFocus value={taskTitle} onChange={e => setTaskTitle(e.target.value)} placeholder="Task title…"
                           onKeyDown={e => { if (e.key === 'Enter') addTaskForLaw(); if (e.key === 'Escape') setTaskForLaw(null) }}
                           className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
-                        <input value={taskAssignedTo} onChange={e => setTaskAssignedTo(e.target.value)} placeholder="Assign to (optional)…"
-                          className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+                        <select value={taskType} onChange={e => setTaskType(e.target.value)}
+                          className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400">
+                          <option>General task</option>
+                          <option>App task</option>
+                        </select>
+                        <select value={taskAssignedTo} onChange={e => setTaskAssignedTo(e.target.value)}
+                          className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400">
+                          <option value="">Assign to (optional)…</option>
+                          {ASSIGNABLE_STAFF.map(staff => <option key={staff} value={staff}>{staff}</option>)}
+                        </select>
                         <div className="flex gap-1">
                           <button onClick={addTaskForLaw} title="Save" className="flex-1 text-green-600 hover:text-green-700 text-xs font-bold">Create Task</button>
                           <button onClick={() => setTaskForLaw(null)} title="Cancel" className="shrink-0 text-gray-400 hover:text-gray-600 text-xs font-bold">×</button>
@@ -261,10 +314,38 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
                         </div>
                       </div>
                     ) : (
-                      <div className="flex gap-1.5 mt-1 text-[10px]">
-                        <button onClick={() => setTaskForLaw(l.id)} title="Add task for this law" className="text-blue-500 hover:text-blue-600 font-semibold">✓ Task</button>
-                        <button onClick={() => setNoteForLaw(l.id)} title="Add note for this law" className="text-amber-500 hover:text-amber-600 font-semibold">📝 Note</button>
-                      </div>
+                      <>
+                        <div className="flex gap-1.5 mt-1 text-[10px]">
+                          <button onClick={() => { setTaskForLaw(l.id); fetchTasksForLaw(l.id) }} title="Add task for this law" className="text-blue-500 hover:text-blue-600 font-semibold">✓ Task</button>
+                          <button onClick={() => setNoteForLaw(l.id)} title="Add note for this law" className="text-amber-500 hover:text-amber-600 font-semibold">📝 Note</button>
+                        </div>
+                        {tasksByLawId[l.id]?.length > 0 && (
+                          <div className="mt-2 space-y-1.5 text-[10px]">
+                            {tasksByLawId[l.id].map(task => (
+                              <div key={task.id} className={`p-1.5 rounded border ${task.done ? 'bg-gray-50 border-gray-200' : 'bg-blue-50 border-blue-200'}`}>
+                                <div className="flex items-start gap-1">
+                                  <input type="checkbox" checked={task.done} onChange={() => toggleTaskCompletion(task.id, task.done, l.id)}
+                                    className="mt-0.5 shrink-0" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className={`font-semibold ${task.done ? 'line-through text-gray-500' : 'text-gray-800'}`}>{task.title}</p>
+                                    <div className="text-[9px] text-gray-600 mt-0.5 space-y-0.5">
+                                      <p>Type: {task.task_type || 'General task'}</p>
+                                      <p>Assigned {formatDate(task.created_at)} by {task.created_by}</p>
+                                      {task.assigned_to && <p>To: {task.assigned_to}</p>}
+                                      {task.done && task.completed_at && (
+                                        <>
+                                          <p>Completed {formatDate(task.completed_at)} by {task.completed_by}</p>
+                                          <p>Duration: {calculateDuration(task.created_at, task.completed_at)}</p>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </>
@@ -290,8 +371,16 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
                     <input autoFocus value={taskTitleForFlag} onChange={e => setTaskTitleForFlag(e.target.value)} placeholder="Task title…"
                       onKeyDown={e => { if (e.key === 'Enter') addTaskForFlag(); if (e.key === 'Escape') setTaskForFlag(null) }}
                       className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
-                    <input value={taskAssignedToFlag} onChange={e => setTaskAssignedToFlag(e.target.value)} placeholder="Assign to (optional)…"
-                      className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+                    <select value={taskTypeForFlag} onChange={e => setTaskTypeForFlag(e.target.value)}
+                      className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400">
+                      <option>General task</option>
+                      <option>App task</option>
+                    </select>
+                    <select value={taskAssignedToFlag} onChange={e => setTaskAssignedToFlag(e.target.value)}
+                      className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400">
+                      <option value="">Assign to (optional)…</option>
+                      {ASSIGNABLE_STAFF.map(staff => <option key={staff} value={staff}>{staff}</option>)}
+                    </select>
                     <div className="flex gap-1">
                       <button onClick={addTaskForFlag} title="Save" className="flex-1 text-green-600 hover:text-green-700 text-xs font-bold">Create Task</button>
                       <button onClick={() => setTaskForFlag(null)} title="Cancel" className="shrink-0 text-gray-400 hover:text-gray-600 text-xs font-bold">×</button>
@@ -308,10 +397,38 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
                     </div>
                   </div>
                 ) : (
-                  <div className="flex gap-1.5 mt-2 text-[10px]">
-                    <button onClick={() => setTaskForFlag(f.key)} title="Add task for this flag" className="text-blue-500 hover:text-blue-600 font-semibold">✓ Task</button>
-                    <button onClick={() => setNoteForFlag(f.key)} title="Add note for this flag" className="text-amber-500 hover:text-amber-600 font-semibold">📝 Note</button>
-                  </div>
+                  <>
+                    <div className="flex gap-1.5 mt-2 text-[10px]">
+                      <button onClick={() => { setTaskForFlag(f.key); fetchTasksForFlag(f.key) }} title="Add task for this flag" className="text-blue-500 hover:text-blue-600 font-semibold">✓ Task</button>
+                      <button onClick={() => setNoteForFlag(f.key)} title="Add note for this flag" className="text-amber-500 hover:text-amber-600 font-semibold">📝 Note</button>
+                    </div>
+                    {tasksByFlagKey[f.key]?.length > 0 && (
+                      <div className="mt-2 space-y-1.5 text-[10px]">
+                        {tasksByFlagKey[f.key].map(task => (
+                          <div key={task.id} className={`p-1.5 rounded border ${task.done ? 'bg-gray-50 border-gray-200' : 'bg-blue-50 border-blue-200'}`}>
+                            <div className="flex items-start gap-1">
+                              <input type="checkbox" checked={task.done} onChange={() => toggleTaskCompletion(task.id, task.done, undefined, f.key)}
+                                className="mt-0.5 shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className={`font-semibold ${task.done ? 'line-through text-gray-500' : 'text-gray-800'}`}>{task.title}</p>
+                                <div className="text-[9px] text-gray-600 mt-0.5 space-y-0.5">
+                                  <p>Type: {task.task_type || 'General task'}</p>
+                                  <p>Assigned {formatDate(task.created_at)} by {task.created_by}</p>
+                                  {task.assigned_to && <p>To: {task.assigned_to}</p>}
+                                  {task.done && task.completed_at && (
+                                    <>
+                                      <p>Completed {formatDate(task.completed_at)} by {task.completed_by}</p>
+                                      <p>Duration: {calculateDuration(task.created_at, task.completed_at)}</p>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
