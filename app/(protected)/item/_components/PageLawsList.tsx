@@ -23,6 +23,10 @@ export default function PageLawsList({ scopeKey, onChange, flags }: { scopeKey: 
   const [saving, setSaving] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editText, setEditText] = useState('')
+  const [taskForLaw, setTaskForLaw] = useState<number | null>(null)
+  const [taskTitle, setTaskTitle] = useState('')
+  const [noteForLaw, setNoteForLaw] = useState<number | null>(null)
+  const [noteText, setNoteText] = useState('')
 
   function load() {
     fetch(`/api/page-laws?scopeKey=${encodeURIComponent(scopeKey)}`)
@@ -67,6 +71,26 @@ export default function PageLawsList({ scopeKey, onChange, flags }: { scopeKey: 
     }).catch(() => {})
   }
 
+  async function addTaskForLaw() {
+    if (!taskTitle.trim() || taskForLaw === null) return
+    await fetch('/api/tasks', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: taskTitle.trim(), submenu: scopeKey, law_id: taskForLaw }),
+    }).catch(() => {})
+    setTaskTitle('')
+    setTaskForLaw(null)
+  }
+
+  async function addNoteForLaw() {
+    if (noteForLaw === null) return
+    await fetch('/api/page-notes', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scopeKey, kind: 'note', notes: noteText.trim(), law_id: noteForLaw }),
+    }).catch(() => {})
+    setNoteText('')
+    setNoteForLaw(null)
+  }
+
   if (loading) return <div className="py-6 text-center text-gray-400 text-xs">Loading…</div>
 
   return (
@@ -106,7 +130,33 @@ export default function PageLawsList({ scopeKey, onChange, flags }: { scopeKey: 
                 </>
               ) : (
                 <>
-                  <p className="min-w-0 flex-1 text-[12px] text-gray-800" style={{ wordBreak: 'break-word' }}>{l.text}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[12px] text-gray-800" style={{ wordBreak: 'break-word' }}>{l.text}</p>
+                    {taskForLaw === l.id ? (
+                      <div className="flex gap-1 mt-1">
+                        <input autoFocus value={taskTitle} onChange={e => setTaskTitle(e.target.value)} placeholder="Task title…"
+                          onKeyDown={e => { if (e.key === 'Enter') addTaskForLaw(); if (e.key === 'Escape') setTaskForLaw(null) }}
+                          className="flex-1 min-w-0 text-[10px] bg-gray-100 border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+                        <button onClick={addTaskForLaw} title="Save" className="shrink-0 text-green-600 hover:text-green-700 text-xs font-bold">✓</button>
+                        <button onClick={() => setTaskForLaw(null)} title="Cancel" className="shrink-0 text-gray-400 hover:text-gray-600 text-xs font-bold">×</button>
+                      </div>
+                    ) : noteForLaw === l.id ? (
+                      <div className="flex flex-col gap-1 mt-1">
+                        <textarea autoFocus value={noteText} onChange={e => setNoteText(e.target.value)} placeholder="Note…" rows={2}
+                          onKeyDown={e => { if (e.key === 'Escape') setNoteForLaw(null) }}
+                          className="flex-1 min-w-0 text-[10px] bg-gray-100 border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400 resize-none" />
+                        <div className="flex gap-1">
+                          <button onClick={addNoteForLaw} title="Save" className="flex-1 text-green-600 hover:text-green-700 text-xs font-bold">Save</button>
+                          <button onClick={() => setNoteForLaw(null)} title="Cancel" className="shrink-0 text-gray-400 hover:text-gray-600 text-xs font-bold">×</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex gap-1.5 mt-1 text-[10px]">
+                        <button onClick={() => setTaskForLaw(l.id)} title="Add task for this law" className="text-blue-500 hover:text-blue-600 font-semibold">✓ Task</button>
+                        <button onClick={() => setNoteForLaw(l.id)} title="Add note for this law" className="text-amber-500 hover:text-amber-600 font-semibold">📝 Note</button>
+                      </div>
+                    )}
+                  </div>
                   <button onClick={() => startEdit(l)} title="Edit" className="shrink-0 text-gray-300 hover:text-gray-600">✎</button>
                   <button onClick={() => remove(l.id)} className="shrink-0 text-gray-300 hover:text-red-500 font-bold leading-none">×</button>
                 </>
