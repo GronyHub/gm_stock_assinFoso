@@ -172,7 +172,7 @@ export default function ReorderListsPanel({ cashItems, manageItems, staffItems, 
           return (
           <div key={item.key}>
             {header && (
-              <p className="px-1 pt-2 pb-1"><span className="text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide rounded px-1.5 py-0.5">{header}</span></p>
+              <p className="pt-2 pb-1"><span className="block w-full text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide px-2 py-1 truncate">{header}</span></p>
             )}
             <div className="flex flex-col gap-1.5 bg-white border border-gray-200 rounded-lg px-3 py-2">
               <div className="flex items-center gap-2">
