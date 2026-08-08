@@ -66,14 +66,38 @@ export default function CombinedToolsPanel() {
     // TODO: Focus add law input in PageLawsList
   }
 
+  const addGlobalTask = async () => {
+    const title = prompt('Task title:')
+    if (!title?.trim()) return
+    await fetch('/api/tasks', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: title.trim(), submenu: panel.scopeKey }),
+    }).catch(() => {})
+  }
+
+  const addGlobalNote = async () => {
+    const note = prompt('Note:')
+    if (note === null) return
+    await fetch('/api/page-notes', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scopeKey: panel.scopeKey, kind: 'note', notes: note.trim() }),
+    }).catch(() => {})
+  }
+
   return (
     <div className="absolute inset-0 z-40 bg-white flex flex-col">
       <div className="shrink-0 flex items-center justify-between gap-2 px-3 pt-2.5 pb-2 border-b border-gray-100">
         <p className="text-sm font-bold text-gray-900 truncate">{panel.scopeKey === 'Items' ? 'Items Laws' : panel.scopeKey}</p>
         <div className="flex items-center gap-1 shrink-0">
           {panel.scopeKey === 'Items' && (
-            <button onClick={addLaw} title="Add law"
-              className="text-gray-400 hover:text-gray-600 text-lg font-bold leading-none px-1">+</button>
+            <>
+              <button onClick={addLaw} title="Add law"
+                className="text-gray-400 hover:text-gray-600 text-lg font-bold leading-none px-1">+</button>
+              <button onClick={addGlobalTask} title="Add task"
+                className="text-gray-400 hover:text-gray-600 text-xs font-semibold leading-none px-2 py-1">New Task</button>
+              <button onClick={addGlobalNote} title="Add note"
+                className="text-gray-400 hover:text-gray-600 text-xs font-semibold leading-none px-2 py-1">New Note</button>
+            </>
           )}
           <button onClick={ctx.closePanel} title="Close"
             className="text-gray-400 hover:text-gray-600 text-xl font-bold leading-none px-1">×</button>
