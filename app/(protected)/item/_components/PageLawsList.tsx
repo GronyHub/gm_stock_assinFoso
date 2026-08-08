@@ -30,7 +30,35 @@ export type FlagLaw = {
 // badge the page with how many laws it actually has. Notes (PageLawsNote)
 // stays a single textarea -- only Law changed shape. Optional flags prop
 // appends flag laws as continuation items after regular editable laws.
-export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = false }: { scopeKey: string; onChange?: () => void; flags?: FlagLaw[]; isItemsLaws?: boolean }) {
+export default function PageLawsList({
+  scopeKey, onChange, flags, isItemsLaws = false,
+  creatingGlobalTask, setCreatingGlobalTask,
+  globalTaskTitle, setGlobalTaskTitle,
+  globalTaskType, setGlobalTaskType,
+  globalTaskAssignedTo, setGlobalTaskAssignedTo,
+  creatingGlobalNote, setCreatingGlobalNote,
+  globalNoteText, setGlobalNoteText,
+  hideZeroFlags, setHideZeroFlags,
+}: {
+  scopeKey: string
+  onChange?: () => void
+  flags?: FlagLaw[]
+  isItemsLaws?: boolean
+  creatingGlobalTask?: boolean
+  setCreatingGlobalTask?: (v: boolean | ((prev: boolean) => boolean)) => void
+  globalTaskTitle?: string
+  setGlobalTaskTitle?: (v: string) => void
+  globalTaskType?: string
+  setGlobalTaskType?: (v: string) => void
+  globalTaskAssignedTo?: string
+  setGlobalTaskAssignedTo?: (v: string) => void
+  creatingGlobalNote?: boolean
+  setCreatingGlobalNote?: (v: boolean | ((prev: boolean) => boolean)) => void
+  globalNoteText?: string
+  setGlobalNoteText?: (v: string) => void
+  hideZeroFlags?: boolean
+  setHideZeroFlags?: (v: boolean | ((prev: boolean) => boolean)) => void
+}) {
   const [laws, setLaws] = useState<Law[]>([])
   const [loading, setLoading] = useState(true)
   const [text, setText] = useState('')
@@ -63,13 +91,6 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
   const [expandedFlagDesc, setExpandedFlagDesc] = useState<string | null>(null)
   const [menuTaskId, setMenuTaskId] = useState<number | null>(null)
   const taskMenuTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const [creatingGlobalTask, setCreatingGlobalTask] = useState(false)
-  const [globalTaskTitle, setGlobalTaskTitle] = useState('')
-  const [globalTaskType, setGlobalTaskType] = useState('General task')
-  const [globalTaskAssignedTo, setGlobalTaskAssignedTo] = useState('')
-  const [creatingGlobalNote, setCreatingGlobalNote] = useState(false)
-  const [globalNoteText, setGlobalNoteText] = useState('')
-  const [hideZeroFlags, setHideZeroFlags] = useState(false)
 
   function formatDate(dateStr: string) {
     if (!dateStr) return ''
@@ -367,31 +388,31 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
   }
 
   async function addGlobalTask() {
-    if (!globalTaskTitle.trim()) return
+    if (!(globalTaskTitle ?? '').trim()) return
     await fetch('/api/tasks', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        title: globalTaskTitle.trim(),
+        title: (globalTaskTitle ?? '').trim(),
         submenu: scopeKey,
-        task_type: globalTaskType,
+        task_type: globalTaskType ?? 'General task',
         assigned_to: globalTaskAssignedTo || null,
       }),
     }).catch(() => {})
-    setGlobalTaskTitle('')
-    setGlobalTaskType('General task')
-    setGlobalTaskAssignedTo('')
-    setCreatingGlobalTask(false)
+    setGlobalTaskTitle?.('')
+    setGlobalTaskType?.('General task')
+    setGlobalTaskAssignedTo?.('')
+    setCreatingGlobalTask?.(false)
     onChange?.()
   }
 
   async function addGlobalNote() {
-    if (!globalNoteText.trim()) return
+    if (!(globalNoteText ?? '').trim()) return
     await fetch('/api/page-notes', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scopeKey, kind: 'note', notes: globalNoteText.trim() }),
+      body: JSON.stringify({ scopeKey, kind: 'note', notes: (globalNoteText ?? '').trim() }),
     }).catch(() => {})
-    setGlobalNoteText('')
-    setCreatingGlobalNote(false)
+    setGlobalNoteText?.('')
+    setCreatingGlobalNote?.(false)
     onChange?.()
   }
 
@@ -420,21 +441,6 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
         <p className={`text-[11px] text-gray-400 text-center py-6 ${isItemsLaws ? '' : ''}`}>No laws yet.</p>
       ) : (
         <div className={`bg-white ${isItemsLaws ? 'divide-y divide-gray-100' : 'border border-gray-200 rounded-lg divide-y divide-gray-50'}`}>
-          {isItemsLaws && (
-            <div className="px-1 py-0.5 bg-gray-50/50 flex items-center gap-1 justify-between">
-              <div className="flex items-center gap-1">
-                <button onClick={() => setCreatingGlobalTask(true)} className="text-blue-600 hover:text-blue-700 font-semibold text-[8px]">+ Task</button>
-                <button onClick={() => setCreatingGlobalNote(true)} className="text-amber-600 hover:text-amber-700 font-semibold text-[8px]">+ Note</button>
-              </div>
-              {flags && flags.length > 0 && (
-                <label className="flex items-center gap-0.5 cursor-pointer">
-                  <input type="checkbox" checked={hideZeroFlags} onChange={e => setHideZeroFlags(e.target.checked)}
-                    className="w-3 h-3 rounded border-gray-300" />
-                  <span className="text-[8px] text-gray-600 font-semibold">Hide 0</span>
-                </label>
-              )}
-            </div>
-          )}
           {laws.map((l, i) => (
             <div key={l.id} className={`flex items-center gap-1 ${isItemsLaws ? 'px-1 py-0.5 bg-gray-50/50' : 'px-1 py-0.5 bg-gray-50/50'}`} onMouseDown={() => handleMouseDown(l.id)} onMouseUp={handleMouseUp} onTouchStart={() => handleTouchStart(l.id)} onTouchEnd={handleTouchEnd}>
               <span className="shrink-0 text-[8px] font-bold text-gray-300">{i + 1}</span>
@@ -744,33 +750,33 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
           ))}
           {isItemsLaws && creatingGlobalTask && (
             <div className="px-1 py-1 bg-blue-50 border-t border-blue-200 flex flex-col gap-0.5 text-[8px]">
-              <input autoFocus value={globalTaskTitle} onChange={e => setGlobalTaskTitle(e.target.value)} placeholder="Task…"
-                onKeyDown={e => { if (e.key === 'Enter') addGlobalTask(); if (e.key === 'Escape') setCreatingGlobalTask(false) }}
+              <input autoFocus value={globalTaskTitle ?? ''} onChange={e => setGlobalTaskTitle?.(e.target.value)} placeholder="Task…"
+                onKeyDown={e => { if (e.key === 'Enter') addGlobalTask(); if (e.key === 'Escape') setCreatingGlobalTask?.(false) }}
                 className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
-              <select value={globalTaskType} onChange={e => setGlobalTaskType(e.target.value)}
+              <select value={globalTaskType ?? 'General task'} onChange={e => setGlobalTaskType?.(e.target.value)}
                 className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
                 <option>General task</option>
                 <option>App task</option>
               </select>
-              <select value={globalTaskAssignedTo} onChange={e => setGlobalTaskAssignedTo(e.target.value)}
+              <select value={globalTaskAssignedTo ?? ''} onChange={e => setGlobalTaskAssignedTo?.(e.target.value)}
                 className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
                 <option value="">Assign to…</option>
                 {ASSIGNABLE_STAFF.map(staff => <option key={staff} value={staff}>{staff}</option>)}
               </select>
               <div className="flex gap-0.5">
                 <button onClick={addGlobalTask} className="flex-1 text-green-600 hover:text-green-700 font-bold">Create</button>
-                <button onClick={() => setCreatingGlobalTask(false)} className="shrink-0 text-gray-400 hover:text-gray-600 font-bold">×</button>
+                <button onClick={() => setCreatingGlobalTask?.(false)} className="shrink-0 text-gray-400 hover:text-gray-600 font-bold">×</button>
               </div>
             </div>
           )}
           {isItemsLaws && creatingGlobalNote && (
             <div className="px-1 py-1 bg-gray-50 border-t border-gray-200 flex flex-col gap-0.5 text-[8px]">
-              <textarea autoFocus value={globalNoteText} onChange={e => setGlobalNoteText(e.target.value)} placeholder="Note…" rows={1}
-                onKeyDown={e => { if (e.key === 'Escape') setCreatingGlobalNote(false) }}
+              <textarea autoFocus value={globalNoteText ?? ''} onChange={e => setGlobalNoteText?.(e.target.value)} placeholder="Note…" rows={1}
+                onKeyDown={e => { if (e.key === 'Escape') setCreatingGlobalNote?.(false) }}
                 className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 resize-none" />
               <div className="flex gap-0.5">
                 <button onClick={addGlobalNote} className="flex-1 text-green-600 hover:text-green-700 font-bold">Save</button>
-                <button onClick={() => setCreatingGlobalNote(false)} className="shrink-0 text-gray-400 hover:text-gray-600 font-bold">×</button>
+                <button onClick={() => setCreatingGlobalNote?.(false)} className="shrink-0 text-gray-400 hover:text-gray-600 font-bold">×</button>
               </div>
             </div>
           )}
