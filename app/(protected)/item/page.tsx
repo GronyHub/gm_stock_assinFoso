@@ -564,6 +564,7 @@ function ItemHubPageInner() {
     if (typeof window === 'undefined') return false
     return localStorage.getItem('showItemsLaws') === 'true'
   })
+  const [itemsLawsRefresh, setItemsLawsRefresh] = useState(0)
   const groupRef     = useRef<HTMLDivElement>(null)
   const searchRef    = useRef<HTMLDivElement>(null)
 
@@ -2214,10 +2215,11 @@ function ItemHubPageInner() {
           <>
             {showItemsLaws && (
               <div className="sticky top-0 z-10 border-b border-gray-200 bg-white px-3 py-2 shadow-sm">
-                <TabErrorBoundary>
+                <TabErrorBoundary key={itemsLawsRefresh}>
                   <PageLawsList
                     scopeKey="Items"
                     isItemsLaws={true}
+                    onChange={() => setItemsLawsRefresh(r => r + 1)}
                     flags={ITEMS_FLAG_TYPES.map(({ key, label }) => ({
                       key,
                       label,

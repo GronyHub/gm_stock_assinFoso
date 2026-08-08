@@ -88,6 +88,7 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
     }).catch(() => {})
     if (lawId !== undefined) await fetchTasksForLaw(lawId)
     if (flagKey !== undefined) await fetchTasksForFlag(flagKey)
+    onChange?.()
   }
 
   async function deleteTask(taskId: number, lawId?: number, flagKey?: string) {
@@ -97,6 +98,7 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
     }).catch(() => {})
     if (lawId !== undefined) await fetchTasksForLaw(lawId)
     if (flagKey !== undefined) await fetchTasksForFlag(flagKey)
+    onChange?.()
   }
 
   async function fetchTasksForLaw(lawId: number) {
@@ -138,12 +140,14 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
     setReplyText('')
     setReplyingTo(null)
     await fetchReplies(itemType, itemId)
+    onChange?.()
   }
 
   async function deleteReply(replyId: number, itemType: string, itemId: number | string) {
     if (!confirm('Delete this reply?')) return
     await fetch(`/api/replies/${replyId}`, { method: 'DELETE' }).catch(() => {})
     await fetchReplies(itemType, itemId)
+    onChange?.()
   }
 
   function startEditTask(task: Task) {
@@ -169,6 +173,7 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
     setEditTaskAssignedTo('')
     if (lawId !== undefined) await fetchTasksForLaw(lawId)
     if (flagKey !== undefined) await fetchTasksForFlag(flagKey)
+    onChange?.()
   }
 
   function load() {
@@ -308,6 +313,7 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
     setTaskAssignedTo('')
     setTaskForLaw(null)
     await fetchTasksForLaw(lawId)
+    onChange?.()
   }
 
   async function addNoteForLaw() {
@@ -318,6 +324,7 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
     }).catch(() => {})
     setNoteText('')
     setNoteForLaw(null)
+    onChange?.()
   }
 
   async function addTaskForFlag() {
@@ -338,6 +345,7 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
     setTaskAssignedToFlag('')
     setTaskForFlag(null)
     await fetchTasksForFlag(flagKey)
+    onChange?.()
   }
 
   async function addNoteForFlag() {
@@ -348,6 +356,7 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
     }).catch(() => {})
     setNoteTextForFlag('')
     setNoteForFlag(null)
+    onChange?.()
   }
 
   if (loading) return <div className="py-6 text-center text-gray-400 text-xs">Loading…</div>
