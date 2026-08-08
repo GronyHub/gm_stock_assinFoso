@@ -420,6 +420,21 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
         <p className={`text-[11px] text-gray-400 text-center py-6 ${isItemsLaws ? '' : ''}`}>No laws yet.</p>
       ) : (
         <div className={`bg-white ${isItemsLaws ? 'divide-y divide-gray-100' : 'border border-gray-200 rounded-lg divide-y divide-gray-50'}`}>
+          {isItemsLaws && (
+            <div className="px-1 py-0.5 bg-gray-50/50 flex items-center gap-1 justify-between">
+              <div className="flex items-center gap-1">
+                <button onClick={() => setCreatingGlobalTask(true)} className="text-blue-600 hover:text-blue-700 font-semibold text-[8px]">+ Task</button>
+                <button onClick={() => setCreatingGlobalNote(true)} className="text-amber-600 hover:text-amber-700 font-semibold text-[8px]">+ Note</button>
+              </div>
+              {flags && flags.length > 0 && (
+                <label className="flex items-center gap-0.5 cursor-pointer">
+                  <input type="checkbox" checked={hideZeroFlags} onChange={e => setHideZeroFlags(e.target.checked)}
+                    className="w-3 h-3 rounded border-gray-300" />
+                  <span className="text-[8px] text-gray-600 font-semibold">Hide 0</span>
+                </label>
+              )}
+            </div>
+          )}
           {laws.map((l, i) => (
             <div key={l.id} className={`flex items-center gap-1 ${isItemsLaws ? 'px-1 py-0.5 bg-gray-50/50' : 'px-1 py-0.5 bg-gray-50/50'}`} onMouseDown={() => handleMouseDown(l.id)} onMouseUp={handleMouseUp} onTouchStart={() => handleTouchStart(l.id)} onTouchEnd={handleTouchEnd}>
               <span className="shrink-0 text-[8px] font-bold text-gray-300">{i + 1}</span>
@@ -591,15 +606,6 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
               )}
             </div>
           ))}
-          {flags && flags.length > 0 && (
-            <div className="px-1 py-0.5 bg-gray-50/50 border-t border-gray-100 flex items-center gap-1.5">
-              <label className="flex items-center gap-1 cursor-pointer">
-                <input type="checkbox" checked={hideZeroFlags} onChange={e => setHideZeroFlags(e.target.checked)}
-                  className="w-3 h-3 rounded border-gray-300" />
-                <span className="text-[8px] text-gray-600 font-semibold">Hide 0 flags</span>
-              </label>
-            </div>
-          )}
           {flags && flags.filter(f => !hideZeroFlags || f.count > 0).map((f, i) => (
             <div key={f.key} className={`flex items-center gap-1 ${isItemsLaws ? 'px-1 py-0.5 bg-red-50/30' : 'px-1 py-0.5 bg-gray-50/50'}`}>
               <span className="shrink-0 text-[8px] font-bold text-gray-300">{laws.length + i + 1}</span>
@@ -736,47 +742,37 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
               </div>
             </div>
           ))}
-          {isItemsLaws && (
-            <>
-              {!creatingGlobalTask && !creatingGlobalNote && (
-                <div className="px-1 py-1 bg-gray-50/50 border-t border-gray-100 flex gap-1 text-[8px]">
-                  <button onClick={() => setCreatingGlobalTask(true)} className="flex-1 text-blue-600 hover:text-blue-700 font-semibold">+ Global Task</button>
-                  <button onClick={() => setCreatingGlobalNote(true)} className="flex-1 text-amber-600 hover:text-amber-700 font-semibold">+ Global Note</button>
-                </div>
-              )}
-              {creatingGlobalTask && (
-                <div className="px-1 py-1 bg-blue-50 border-t border-blue-200 flex flex-col gap-0.5 text-[8px]">
-                  <input autoFocus value={globalTaskTitle} onChange={e => setGlobalTaskTitle(e.target.value)} placeholder="Task…"
-                    onKeyDown={e => { if (e.key === 'Enter') addGlobalTask(); if (e.key === 'Escape') setCreatingGlobalTask(false) }}
-                    className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
-                  <select value={globalTaskType} onChange={e => setGlobalTaskType(e.target.value)}
-                    className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
-                    <option>General task</option>
-                    <option>App task</option>
-                  </select>
-                  <select value={globalTaskAssignedTo} onChange={e => setGlobalTaskAssignedTo(e.target.value)}
-                    className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
-                    <option value="">Assign to…</option>
-                    {ASSIGNABLE_STAFF.map(staff => <option key={staff} value={staff}>{staff}</option>)}
-                  </select>
-                  <div className="flex gap-0.5">
-                    <button onClick={addGlobalTask} className="flex-1 text-green-600 hover:text-green-700 font-bold">Create</button>
-                    <button onClick={() => setCreatingGlobalTask(false)} className="shrink-0 text-gray-400 hover:text-gray-600 font-bold">×</button>
-                  </div>
-                </div>
-              )}
-              {creatingGlobalNote && (
-                <div className="px-1 py-1 bg-gray-50 border-t border-gray-200 flex flex-col gap-0.5 text-[8px]">
-                  <textarea autoFocus value={globalNoteText} onChange={e => setGlobalNoteText(e.target.value)} placeholder="Note…" rows={1}
-                    onKeyDown={e => { if (e.key === 'Escape') setCreatingGlobalNote(false) }}
-                    className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 resize-none" />
-                  <div className="flex gap-0.5">
-                    <button onClick={addGlobalNote} className="flex-1 text-green-600 hover:text-green-700 font-bold">Save</button>
-                    <button onClick={() => setCreatingGlobalNote(false)} className="shrink-0 text-gray-400 hover:text-gray-600 font-bold">×</button>
-                  </div>
-                </div>
-              )}
-            </>
+          {isItemsLaws && creatingGlobalTask && (
+            <div className="px-1 py-1 bg-blue-50 border-t border-blue-200 flex flex-col gap-0.5 text-[8px]">
+              <input autoFocus value={globalTaskTitle} onChange={e => setGlobalTaskTitle(e.target.value)} placeholder="Task…"
+                onKeyDown={e => { if (e.key === 'Enter') addGlobalTask(); if (e.key === 'Escape') setCreatingGlobalTask(false) }}
+                className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
+              <select value={globalTaskType} onChange={e => setGlobalTaskType(e.target.value)}
+                className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
+                <option>General task</option>
+                <option>App task</option>
+              </select>
+              <select value={globalTaskAssignedTo} onChange={e => setGlobalTaskAssignedTo(e.target.value)}
+                className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
+                <option value="">Assign to…</option>
+                {ASSIGNABLE_STAFF.map(staff => <option key={staff} value={staff}>{staff}</option>)}
+              </select>
+              <div className="flex gap-0.5">
+                <button onClick={addGlobalTask} className="flex-1 text-green-600 hover:text-green-700 font-bold">Create</button>
+                <button onClick={() => setCreatingGlobalTask(false)} className="shrink-0 text-gray-400 hover:text-gray-600 font-bold">×</button>
+              </div>
+            </div>
+          )}
+          {isItemsLaws && creatingGlobalNote && (
+            <div className="px-1 py-1 bg-gray-50 border-t border-gray-200 flex flex-col gap-0.5 text-[8px]">
+              <textarea autoFocus value={globalNoteText} onChange={e => setGlobalNoteText(e.target.value)} placeholder="Note…" rows={1}
+                onKeyDown={e => { if (e.key === 'Escape') setCreatingGlobalNote(false) }}
+                className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 resize-none" />
+              <div className="flex gap-0.5">
+                <button onClick={addGlobalNote} className="flex-1 text-green-600 hover:text-green-700 font-bold">Save</button>
+                <button onClick={() => setCreatingGlobalNote(false)} className="shrink-0 text-gray-400 hover:text-gray-600 font-bold">×</button>
+              </div>
+            </div>
           )}
         </div>
       )}
