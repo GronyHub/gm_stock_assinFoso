@@ -60,6 +60,7 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
   const [editTaskTitle, setEditTaskTitle] = useState('')
   const [editTaskType, setEditTaskType] = useState('General task')
   const [editTaskAssignedTo, setEditTaskAssignedTo] = useState('')
+  const [expandedFlagDesc, setExpandedFlagDesc] = useState<string | null>(null)
 
   function formatDate(dateStr: string) {
     if (!dateStr) return ''
@@ -504,8 +505,17 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
             <div key={f.key} className={`flex items-start gap-2 ${isItemsLaws ? 'px-4 py-3 bg-red-50/30' : 'px-2.5 py-2 bg-gray-50/50'}`}>
               <span className="shrink-0 text-[10px] font-bold text-gray-300 mt-0.5">{laws.length + i + 1}</span>
               <div className="min-w-0 flex-1">
-                <p className="text-[12px] text-gray-800">{f.label}</p>
-                {f.description && <p className="text-[10px] text-gray-600 mt-0.5">{f.description}</p>}
+                <div className="flex items-start gap-2">
+                  <p className="text-[12px] text-gray-800 flex-1">{f.label}</p>
+                  {f.description && (
+                    <button onClick={() => setExpandedFlagDesc(expandedFlagDesc === f.key ? null : f.key)}
+                      title="Show description"
+                      className="text-gray-400 hover:text-gray-600 text-xs font-bold shrink-0">ⓘ</button>
+                  )}
+                </div>
+                {expandedFlagDesc === f.key && f.description && (
+                  <p className="text-[10px] text-gray-600 mt-1.5 mb-2">{f.description}</p>
+                )}
                 <div className="flex items-center gap-1.5 mt-1.5">
                   <span className="text-[10px] bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded">{f.count}</span>
                   {f.onViewClick && (
