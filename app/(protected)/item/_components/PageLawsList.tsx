@@ -16,7 +16,7 @@ export type FlagLaw = {
 // badge the page with how many laws it actually has. Notes (PageLawsNote)
 // stays a single textarea -- only Law changed shape. Optional flags prop
 // appends flag laws as continuation items after regular editable laws.
-export default function PageLawsList({ scopeKey, onChange, flags }: { scopeKey: string; onChange?: () => void; flags?: FlagLaw[] }) {
+export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = false }: { scopeKey: string; onChange?: () => void; flags?: FlagLaw[]; isItemsLaws?: boolean }) {
   const [laws, setLaws] = useState<Law[]>([])
   const [loading, setLoading] = useState(true)
   const [text, setText] = useState('')
@@ -70,26 +70,30 @@ export default function PageLawsList({ scopeKey, onChange, flags }: { scopeKey: 
   if (loading) return <div className="py-6 text-center text-gray-400 text-xs">Loading…</div>
 
   return (
-    <div className="space-y-2">
-      <p className="text-[10px] text-gray-400">
-        The fixed rules for this page -- rarely change, separate from the main Company Laws page.
-      </p>
+    <div className={isItemsLaws ? '' : 'space-y-2'}>
+      {!isItemsLaws && (
+        <>
+          <p className="text-[10px] text-gray-400">
+            The fixed rules for this page -- rarely change, separate from the main Company Laws page.
+          </p>
 
-      <form onSubmit={addLaw} className="flex items-center gap-1.5">
-        <input value={text} onChange={e => setText(e.target.value)} placeholder="Add a law…"
-          className="flex-1 min-w-0 text-xs bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-blue-400" />
-        <button type="submit" disabled={saving || !text.trim()}
-          className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 transition">
-          {saving ? '…' : 'Add'}
-        </button>
-      </form>
+          <form onSubmit={addLaw} className="flex items-center gap-1.5">
+            <input value={text} onChange={e => setText(e.target.value)} placeholder="Add a law…"
+              className="flex-1 min-w-0 text-xs bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-blue-400" />
+            <button type="submit" disabled={saving || !text.trim()}
+              className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 transition">
+              {saving ? '…' : 'Add'}
+            </button>
+          </form>
+        </>
+      )}
 
       {laws.length === 0 && (!flags || flags.length === 0) ? (
-        <p className="text-[11px] text-gray-400 text-center py-6">No laws yet.</p>
+        <p className={`text-[11px] text-gray-400 text-center py-6 ${isItemsLaws ? '' : ''}`}>No laws yet.</p>
       ) : (
-        <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-50">
+        <div className={`bg-white ${isItemsLaws ? 'divide-y divide-gray-100' : 'border border-gray-200 rounded-lg divide-y divide-gray-50'}`}>
           {laws.map((l, i) => (
-            <div key={l.id} className="px-2.5 py-2 flex items-start gap-2">
+            <div key={l.id} className={`flex items-start gap-2 ${isItemsLaws ? 'px-4 py-3' : 'px-2.5 py-2'}`}>
               <span className="shrink-0 text-[10px] font-bold text-gray-300 mt-0.5">{i + 1}</span>
               {editingId === l.id ? (
                 <>
@@ -114,7 +118,7 @@ export default function PageLawsList({ scopeKey, onChange, flags }: { scopeKey: 
             </div>
           ))}
           {flags && flags.map((f, i) => (
-            <div key={f.key} className="px-2.5 py-2 flex items-start gap-2 bg-gray-50/50">
+            <div key={f.key} className={`flex items-start gap-2 ${isItemsLaws ? 'px-4 py-3 bg-red-50/30' : 'px-2.5 py-2 bg-gray-50/50'}`}>
               <span className="shrink-0 text-[10px] font-bold text-gray-300 mt-0.5">{laws.length + i + 1}</span>
               <div className="min-w-0 flex-1">
                 <p className="text-[12px] text-gray-800">{f.label}</p>

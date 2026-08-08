@@ -44,7 +44,6 @@ export default function CombinedToolsPanel() {
   const lawRef = useRef<HTMLDivElement>(null)
   const tasksRef = useRef<HTMLDivElement>(null)
   const notesRef = useRef<HTMLDivElement>(null)
-  const flagsRef = useRef<HTMLDivElement>(null)
   const refByKind: Record<ToolsPanelKind, React.RefObject<HTMLDivElement | null>> = {
     law: lawRef, tasks: tasksRef, notes: notesRef,
   }
@@ -63,77 +62,61 @@ export default function CombinedToolsPanel() {
     ctx!.closePanel()
   }
 
+  const addLaw = () => {
+    // TODO: Focus add law input in PageLawsList
+  }
+
   return (
     <div className="absolute inset-0 z-40 bg-white flex flex-col">
       <div className="shrink-0 flex items-center justify-between gap-2 px-3 pt-2.5 pb-2 border-b border-gray-100">
-        <p className="text-sm font-bold text-gray-900 truncate">{panel.scopeKey}</p>
-        <button onClick={ctx.closePanel} title="Close"
-          className="shrink-0 text-gray-400 hover:text-gray-600 text-xl font-bold leading-none px-1">×</button>
+        <p className="text-sm font-bold text-gray-900 truncate">{panel.scopeKey === 'Items' ? 'Items Laws' : panel.scopeKey}</p>
+        <div className="flex items-center gap-1 shrink-0">
+          {panel.scopeKey === 'Items' && (
+            <button onClick={addLaw} title="Add law"
+              className="text-gray-400 hover:text-gray-600 text-lg font-bold leading-none px-1">+</button>
+          )}
+          <button onClick={ctx.closePanel} title="Close"
+            className="text-gray-400 hover:text-gray-600 text-xl font-bold leading-none px-1">×</button>
+        </div>
       </div>
-      {/* Quick-jump row -- Law/Tasks/Notes plus this page's own flags, all
-          in one scrollable line, each tap scrolling straight to its own
-          section below instead of navigating anywhere. */}
-      <div className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 border-b border-gray-100 overflow-x-auto">
-        {SECTIONS.map(s => (
-          <button key={s.kind} onClick={() => refByKind[s.kind].current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-            className="shrink-0 flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition">
-            <span className="leading-none">{s.icon}</span>{s.label}
-          </button>
-        ))}
-        {flags.map(f => (
-          <button key={f.key} title={f.label}
-            onClick={() => flagsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-            className={`shrink-0 flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-lg transition
-              ${f.count > 0 ? 'bg-red-50 text-red-700 hover:bg-red-100' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}>
-            <span className="relative leading-none">
-              {f.count > 0 ? '🚩' : '🏳️'}
-              <span className={`absolute -bottom-1 -right-1 text-[6px] font-black leading-none rounded-sm px-[1px]
-                ${f.count > 0 ? 'bg-white text-red-700' : 'bg-red-700 text-white'}`}>{f.letter}</span>
-            </span>
-            {f.count > 0 ? f.count : ''}
-          </button>
-        ))}
-      </div>
-      <div className="flex-1 min-h-0 overflow-y-auto p-2.5 space-y-3">
-        {SECTIONS.map(s => (
-          <div key={s.kind} ref={refByKind[s.kind]} className={`border rounded-2xl overflow-hidden ${s.accent}`}>
-            <div className="flex items-center gap-1.5 px-3 py-1.5">
-              <span className="text-sm leading-none">{s.icon}</span>
-              <p className="text-[10px] font-extrabold text-gray-600 uppercase tracking-wide">{s.label}</p>
-            </div>
-            <div className="bg-white p-2">
-              {s.kind === 'law' && (
-                <PageLawsList
-                  scopeKey={panel.scopeKey}
-                  flags={flags.map(f => ({
-                    key: f.key,
-                    label: f.label,
-                    description: f.description,
-                    count: f.count,
-                    onViewClick: () => viewFlag(f),
-                  }))}
-                />
-              )}
-              {s.kind === 'tasks' && <DynamicTasksSection scopeKey={panel.scopeKey} />}
-              {s.kind === 'notes' && <PageLawsNote scopeKey={panel.scopeKey} kind="note" />}
-            </div>
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        {panel.scopeKey === 'Items' ? (
+          <div ref={lawRef} className="bg-white">
+            <PageLawsList
+              scopeKey={panel.scopeKey}
+              flags={flags.map(f => ({
+                key: f.key,
+                label: f.label,
+                description: f.description,
+                count: f.count,
+                onViewClick: () => viewFlag(f),
+              }))}
+              isItemsLaws={true}
+            />
           </div>
-        ))}
-        {flags.length > 0 && (
-          <div ref={flagsRef} className="space-y-2">
-            {flags.map(f => (
-              <div key={f.key} className={`border rounded-2xl overflow-hidden ${f.count > 0 ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'}`}>
+        ) : (
+          <div className="p-2.5 space-y-3">
+            {SECTIONS.map(s => (
+              <div key={s.kind} ref={refByKind[s.kind]} className={`border rounded-2xl overflow-hidden ${s.accent}`}>
                 <div className="flex items-center gap-1.5 px-3 py-1.5">
-                  <span className="text-sm leading-none">{f.count > 0 ? '🚩' : '🏳️'}</span>
-                  <p className="text-[10px] font-extrabold text-gray-600 uppercase tracking-wide flex-1 min-w-0 truncate">{f.label}</p>
-                  <span className={`shrink-0 text-[10px] font-bold ${f.count > 0 ? 'text-red-600' : 'text-gray-400'}`}>{f.count}</span>
+                  <span className="text-sm leading-none">{s.icon}</span>
+                  <p className="text-[10px] font-extrabold text-gray-600 uppercase tracking-wide">{s.label}</p>
                 </div>
-                <div className="bg-white p-2.5 space-y-2">
-                  {f.description && <p className="text-[11px] text-gray-600" style={{ wordBreak: 'break-word' }}>{f.description}</p>}
-                  <button onClick={() => viewFlag(f)}
-                    className="text-[10px] font-semibold px-2.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition">
-                    View flagged records →
-                  </button>
+                <div className="bg-white p-2">
+                  {s.kind === 'law' && (
+                    <PageLawsList
+                      scopeKey={panel.scopeKey}
+                      flags={flags.map(f => ({
+                        key: f.key,
+                        label: f.label,
+                        description: f.description,
+                        count: f.count,
+                        onViewClick: () => viewFlag(f),
+                      }))}
+                    />
+                  )}
+                  {s.kind === 'tasks' && <DynamicTasksSection scopeKey={panel.scopeKey} />}
+                  {s.kind === 'notes' && <PageLawsNote scopeKey={panel.scopeKey} kind="note" />}
                 </div>
               </div>
             ))}
