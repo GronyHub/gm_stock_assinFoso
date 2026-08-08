@@ -81,18 +81,26 @@ export default function CombinedToolsPanel() {
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto">
         {panel.scopeKey === 'Items' ? (
-          <div ref={lawRef} className="bg-white">
-            <PageLawsList
-              scopeKey={panel.scopeKey}
-              flags={flags.map(f => ({
-                key: f.key,
-                label: f.label,
-                description: f.description,
-                count: f.count,
-                onViewClick: () => viewFlag(f),
-              }))}
-              isItemsLaws={true}
-            />
+          <div className="space-y-3 p-2.5">
+            <div ref={lawRef} className="bg-white">
+              <PageLawsList
+                scopeKey={panel.scopeKey}
+                flags={flags.map(f => ({
+                  key: f.key,
+                  label: f.label,
+                  description: f.description,
+                  count: f.count,
+                  onViewClick: () => viewFlag(f),
+                }))}
+                isItemsLaws={true}
+              />
+            </div>
+            <div ref={tasksRef} className="bg-white">
+              <DynamicTasksSection scopeKey={panel.scopeKey} />
+            </div>
+            <div ref={notesRef} className="bg-white">
+              <PageLawsNote scopeKey={panel.scopeKey} kind="note" />
+            </div>
           </div>
         ) : (
           <div className="p-2.5 space-y-3">
