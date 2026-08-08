@@ -1175,7 +1175,9 @@ export function PayslipsTab({ role, username, viewingStaff }: { role: string; us
           their own row below since those pick a whole different view of the
           same data, not a flag/violation filter. */}
       <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
-        <PageToolIcons scopeKey="Payslips" />
+        <PageToolIcons scopeKey="Payslips"
+          flags={payFlags.length > 0 ? [{ key: 'payslip_issues', letter: '!', label: 'Payslip Issues', count: payFlags.length }] : []}
+          onFlagClick={() => setView('flags' as unknown as PayView)} />
         {!viewingStaff && payFlags.length > 0 && viewBtn('flags' as any, `⚠️ Flags (${payFlags.length})`)}
       </div>
       {/* View selector */}

@@ -266,7 +266,9 @@ export default function CustomersPage({ initialSearch, onFlagCountChange }: { in
           threshold, not a per-customer problem, so it's a plain banner
           instead of a filter. */}
       <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
-        <PageToolIcons scopeKey="Customers" />
+        <PageToolIcons scopeKey="Customers"
+          flags={FLAG_TYPES.map(({ key, letter, label }) => ({ key, letter, label, count: flagCounts[key] }))}
+          onFlagClick={key => setActiveFlag(key as FlagKey)} />
         {FLAG_TYPES.map(({ key, letter, label }) => {
           const count = flagCounts[key]
           const active = activeFlag === key

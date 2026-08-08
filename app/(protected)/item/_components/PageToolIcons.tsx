@@ -107,6 +107,26 @@ export default function PageToolIcons({ scopeKey, flags, onFlagClick }: {
               <PageLawsList scopeKey={scopeKey} onChange={loadCounts} />
               <DynamicTasksSection scopeKey={scopeKey} />
               <PageLawsNote scopeKey={scopeKey} kind="note" />
+              {!!flags?.length && (
+                <div className="space-y-2">
+                  {flags.map(f => (
+                    <div key={f.key} className={`border rounded-2xl overflow-hidden ${f.count > 0 ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'}`}>
+                      <div className="flex items-center gap-1.5 px-3 py-1.5">
+                        <span className="text-sm leading-none">{f.count > 0 ? '🚩' : '🏳️'}</span>
+                        <p className="text-[10px] font-extrabold text-gray-600 uppercase tracking-wide flex-1 min-w-0 truncate">{f.label}</p>
+                        <span className={`shrink-0 text-[10px] font-bold ${f.count > 0 ? 'text-red-600' : 'text-gray-400'}`}>{f.count}</span>
+                      </div>
+                      <div className="bg-white p-2.5 space-y-2">
+                        {f.description && <p className="text-[11px] text-gray-600" style={{ wordBreak: 'break-word' }}>{f.description}</p>}
+                        <button onClick={() => { onFlagClick?.(f.key); close() }}
+                          className="text-[10px] font-semibold px-2.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition">
+                          View flagged records →
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

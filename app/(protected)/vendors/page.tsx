@@ -275,7 +275,9 @@ export default function VendorsPage({ openAddSignal, initialSearch, onFlagCountC
           header row, just in light colors since this page sits on white
           instead of green. */}
       <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
-        <PageToolIcons scopeKey="Vendors" />
+        <PageToolIcons scopeKey="Vendors"
+          flags={[{ key: 'no_contact', letter: 'C', label: 'No Contact Number or Location', count: noContactCount }]}
+          onFlagClick={() => setShowFlagged(true)} />
         <button onClick={() => setShowFlagged(v => !v)} title="Vendors with no contact number or location"
           className={`shrink-0 flex items-center gap-1 text-[10px] font-semibold pl-1.5 pr-2 py-1 rounded-lg transition
             ${showFlagged ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-700'}`}>

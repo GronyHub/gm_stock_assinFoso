@@ -49,7 +49,9 @@ export default function DressCodeFlagsPanel() {
           so they share the same row instead of PageToolIcons sitting alone
           above it. */}
       <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
-        <PageToolIcons scopeKey="Team Dress Code" />
+        <PageToolIcons scopeKey="Team Dress Code"
+          flags={flagButtons.map(({ id, letter, label, count }) => ({ key: id, letter, label, count }))}
+          onFlagClick={id => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />
         {flagButtons.map(({ id, letter, label, count }) => (
           <button key={id} title={label}
             onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}

@@ -615,7 +615,12 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
           stay there, those are view controls, not flags). */}
       {!showAnalytics && (
         <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto px-2 pt-2">
-          <PageToolIcons scopeKey="Counts" />
+          <PageToolIcons scopeKey="Counts"
+            flags={COUNTS_FLAG_TYPES.map(({ key, letter, label }) => ({
+              key, letter, label,
+              count: key === 'daily' ? filteredDaily.length : key === '7day' ? filteredGmcWeekly.length : filteredOverdue.length,
+            }))}
+            onFlagClick={key => onGoToViolation?.(key)} />
           {COUNTS_FLAG_TYPES.map(({ key, letter, label }) => {
             const count = key === 'daily' ? filteredDaily.length : key === '7day' ? filteredGmcWeekly.length : filteredOverdue.length
             const active = violation === key
