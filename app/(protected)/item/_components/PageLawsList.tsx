@@ -25,14 +25,41 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
   const [editText, setEditText] = useState('')
   const [taskForLaw, setTaskForLaw] = useState<number | null>(null)
   const [taskTitle, setTaskTitle] = useState('')
+  const [taskAssignedTo, setTaskAssignedTo] = useState('')
   const [noteForLaw, setNoteForLaw] = useState<number | null>(null)
   const [noteText, setNoteText] = useState('')
   const [menuLawId, setMenuLawId] = useState<number | null>(null)
   const menuTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [taskForFlag, setTaskForFlag] = useState<string | null>(null)
   const [taskTitleForFlag, setTaskTitleForFlag] = useState('')
+  const [taskAssignedToFlag, setTaskAssignedToFlag] = useState('')
   const [noteForFlag, setNoteForFlag] = useState<string | null>(null)
   const [noteTextForFlag, setNoteTextForFlag] = useState('')
+  const [createdTasks, setCreatedTasks] = useState<any[]>([])
+
+  function formatDate(dateStr: string) {
+    if (!dateStr) return ''
+    const date = new Date(dateStr)
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })
+  }
+
+  function calculateDuration(createdAt: string, completedAt: string) {
+    if (!createdAt || !completedAt) return ''
+    const created = new Date(createdAt).getTime()
+    const completed = new Date(completedAt).getTime()
+    const ms = completed - created
+    const hours = Math.floor(ms / (1000 * 60 * 60))
+    const days = Math.floor(hours / 24)
+    if (days > 0) return `${days}d ${hours % 24}h`
+    return `${hours}h`
+  }
+
+  async function toggleTaskCompletion(taskId: number, currentDone: boolean) {
+    await fetch(`/api/tasks/${taskId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: taskId, done: !currentDone }),
+    }).catch(() => {})
+  }
 
   function load() {
     fetch(`/api/page-laws?scopeKey=${encodeURIComponent(scopeKey)}`)
@@ -112,9 +139,15 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
     if (!taskTitle.trim() || taskForLaw === null) return
     await fetch('/api/tasks', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: taskTitle.trim(), submenu: scopeKey, law_id: taskForLaw }),
+      body: JSON.stringify({
+        title: taskTitle.trim(),
+        submenu: scopeKey,
+        law_id: taskForLaw,
+        assigned_to: taskAssignedTo.trim() || null
+      }),
     }).catch(() => {})
     setTaskTitle('')
+    setTaskAssignedTo('')
     setTaskForLaw(null)
   }
 
@@ -132,9 +165,15 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
     if (!taskTitleForFlag.trim() || taskForFlag === null) return
     await fetch('/api/tasks', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: taskTitleForFlag.trim(), submenu: scopeKey, flag_key: taskForFlag }),
+      body: JSON.stringify({
+        title: taskTitleForFlag.trim(),
+        submenu: scopeKey,
+        flag_key: taskForFlag,
+        assigned_to: taskAssignedToFlag.trim() || null
+      }),
     }).catch(() => {})
     setTaskTitleForFlag('')
+    setTaskAssignedToFlag('')
     setTaskForFlag(null)
   }
 
@@ -200,12 +239,16 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
                       </div>
                     )}
                     {taskForLaw === l.id ? (
-                      <div className="flex gap-1 mt-1">
+                      <div className="flex flex-col gap-1.5 mt-2 bg-blue-50 p-2 rounded border border-blue-200">
                         <input autoFocus value={taskTitle} onChange={e => setTaskTitle(e.target.value)} placeholder="Task title…"
                           onKeyDown={e => { if (e.key === 'Enter') addTaskForLaw(); if (e.key === 'Escape') setTaskForLaw(null) }}
-                          className="flex-1 min-w-0 text-[10px] bg-gray-100 border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
-                        <button onClick={addTaskForLaw} title="Save" className="shrink-0 text-green-600 hover:text-green-700 text-xs font-bold">✓</button>
-                        <button onClick={() => setTaskForLaw(null)} title="Cancel" className="shrink-0 text-gray-400 hover:text-gray-600 text-xs font-bold">×</button>
+                          className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+                        <input value={taskAssignedTo} onChange={e => setTaskAssignedTo(e.target.value)} placeholder="Assign to (optional)…"
+                          className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+                        <div className="flex gap-1">
+                          <button onClick={addTaskForLaw} title="Save" className="flex-1 text-green-600 hover:text-green-700 text-xs font-bold">Create Task</button>
+                          <button onClick={() => setTaskForLaw(null)} title="Cancel" className="shrink-0 text-gray-400 hover:text-gray-600 text-xs font-bold">×</button>
+                        </div>
                       </div>
                     ) : noteForLaw === l.id ? (
                       <div className="flex flex-col gap-1 mt-1">
@@ -243,12 +286,16 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
                   )}
                 </div>
                 {taskForFlag === f.key ? (
-                  <div className="flex gap-1 mt-2">
+                  <div className="flex flex-col gap-1.5 mt-2 bg-blue-50 p-2 rounded border border-blue-200">
                     <input autoFocus value={taskTitleForFlag} onChange={e => setTaskTitleForFlag(e.target.value)} placeholder="Task title…"
                       onKeyDown={e => { if (e.key === 'Enter') addTaskForFlag(); if (e.key === 'Escape') setTaskForFlag(null) }}
-                      className="flex-1 min-w-0 text-[10px] bg-gray-100 border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
-                    <button onClick={addTaskForFlag} title="Save" className="shrink-0 text-green-600 hover:text-green-700 text-xs font-bold">✓</button>
-                    <button onClick={() => setTaskForFlag(null)} title="Cancel" className="shrink-0 text-gray-400 hover:text-gray-600 text-xs font-bold">×</button>
+                      className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+                    <input value={taskAssignedToFlag} onChange={e => setTaskAssignedToFlag(e.target.value)} placeholder="Assign to (optional)…"
+                      className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+                    <div className="flex gap-1">
+                      <button onClick={addTaskForFlag} title="Save" className="flex-1 text-green-600 hover:text-green-700 text-xs font-bold">Create Task</button>
+                      <button onClick={() => setTaskForFlag(null)} title="Cancel" className="shrink-0 text-gray-400 hover:text-gray-600 text-xs font-bold">×</button>
+                    </div>
                   </div>
                 ) : noteForFlag === f.key ? (
                   <div className="flex flex-col gap-1 mt-2">
