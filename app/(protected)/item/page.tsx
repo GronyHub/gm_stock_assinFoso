@@ -213,7 +213,7 @@ const REPORT_VIEWS = new Set<LossView>([
 // they're already reachable right under their parent row, which is itself
 // inside these same sections.
 const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: string }[] = [
-  { key: 'items',    label: 'Items',    icon: '📦' },
+  { key: 'items',    label: 'Items',    icon: '📦', group: 'Items' },
   { key: 'services', label: 'Services', icon: '🛠️', group: 'Services' },
   { key: 'sales',    label: 'Sales',    icon: '🧾', group: 'Sales' },
   { key: 'bills',    label: 'Bills',    icon: '📃' },
@@ -1469,9 +1469,6 @@ function ItemHubPageInner() {
             {outerTab === 'loss' && (<>
             {canSeeCash && (
             <div>
-              {cashDisplayMode !== 'icon' && (
-                <p className="pt-1 pb-0.5"><span className="block w-full text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide px-2 py-1 truncate">Cash</span></p>
-              )}
               {flattenPaneRuns(buildPaneRuns(applyPaneOrder(effectiveCashItems, paneOrder.cash).filter(v => v.key !== 'pl' || canSeePL)), IDENTITY_GROUP_LABELS).map(({ item: v, header, divider }) => {
                 // A section whose own name is also one of its rows' names
                 // (Sales the section vs. Sales the row, same for Expenses/
