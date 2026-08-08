@@ -441,21 +441,6 @@ export default function PageLawsList({
         <p className={`text-[11px] text-gray-400 text-center py-6 ${isItemsLaws ? '' : ''}`}>No laws yet.</p>
       ) : (
         <div className={`bg-white ${isItemsLaws ? 'divide-y divide-gray-100' : 'border border-gray-200 rounded-lg divide-y divide-gray-50'}`}>
-          {isItemsLaws && (
-            <div className="px-1 py-0.5 bg-gray-50/50 flex items-center gap-1 justify-between">
-              <div className="flex items-center gap-1">
-                <button onClick={() => setCreatingGlobalTask?.(true)} className="text-blue-600 hover:text-blue-700 font-semibold text-[8px]">+ Task</button>
-                <button onClick={() => setCreatingGlobalNote?.(true)} className="text-amber-600 hover:text-amber-700 font-semibold text-[8px]">+ Note</button>
-              </div>
-              {flags && flags.length > 0 && (
-                <label className="flex items-center gap-0.5 cursor-pointer">
-                  <input type="checkbox" checked={hideZeroFlags ?? false} onChange={e => setHideZeroFlags?.(e.target.checked)}
-                    className="w-3 h-3 rounded border-gray-300" />
-                  <span className="text-[8px] text-gray-600 font-semibold">Hide 0</span>
-                </label>
-              )}
-            </div>
-          )}
           {laws.map((l, i) => (
             <div key={l.id} className={`flex items-center gap-1 ${isItemsLaws ? 'px-1 py-0.5 bg-gray-50/50' : 'px-1 py-0.5 bg-gray-50/50'}`} onMouseDown={() => handleMouseDown(l.id)} onMouseUp={handleMouseUp} onTouchStart={() => handleTouchStart(l.id)} onTouchEnd={handleTouchEnd}>
               <span className="shrink-0 text-[8px] font-bold text-gray-300">{i + 1}</span>
