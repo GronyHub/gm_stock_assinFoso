@@ -28,17 +28,39 @@ async function ensureTable() {
   await sql`ALTER TABLE custom_tasks ADD COLUMN IF NOT EXISTS flag_key TEXT`.catch(() => {})
   await sql`ALTER TABLE custom_tasks ADD COLUMN IF NOT EXISTS assigned_to TEXT`.catch(() => {})
   await sql`ALTER TABLE custom_tasks ADD COLUMN IF NOT EXISTS completed_by TEXT`.catch(() => {})
+  await sql`ALTER TABLE custom_tasks ADD COLUMN IF NOT EXISTS task_type TEXT DEFAULT 'General task'`.catch(() => {})
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   await ensureTable()
   try {
-    const rows = await sql`
-      SELECT id, title, notes, due_date, submenu, view, law_id, flag_key, done, created_by, created_at, completed_at, assigned_to, completed_by
-      FROM custom_tasks
-      ORDER BY done ASC, due_date NULLS LAST, created_at DESC
-    `
-    return NextResponse.json(rows)
+    const lawId = req.nextUrl.searchParams.get('lawId')
+    const flagKey = req.nextUrl.searchParams.get('flagKey')
+
+    if (lawId) {
+      const rows = await sql`
+        SELECT id, title, notes, due_date, submenu, view, law_id, flag_key, task_type, done, created_by, created_at, completed_at, assigned_to, completed_by
+        FROM custom_tasks
+        WHERE law_id = ${parseInt(lawId)}
+        ORDER BY done ASC, created_at DESC
+      `
+      return NextResponse.json(rows)
+    } else if (flagKey) {
+      const rows = await sql`
+        SELECT id, title, notes, due_date, submenu, view, law_id, flag_key, task_type, done, created_by, created_at, completed_at, assigned_to, completed_by
+        FROM custom_tasks
+        WHERE flag_key = ${flagKey}
+        ORDER BY done ASC, created_at DESC
+      `
+      return NextResponse.json(rows)
+    } else {
+      const rows = await sql`
+        SELECT id, title, notes, due_date, submenu, view, law_id, flag_key, task_type, done, created_by, created_at, completed_at, assigned_to, completed_by
+        FROM custom_tasks
+        ORDER BY done ASC, due_date NULLS LAST, created_at DESC
+      `
+      return NextResponse.json(rows)
+    }
   } catch (e) {
     console.error('tasks GET error:', e)
     return NextResponse.json([])
@@ -50,7 +72,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   await ensureTable()
 
-  const { title, notes, due_date, submenu, view, law_id, flag_key, assigned_to } = await req.json()
+  const { title, notes, due_date, submenu, view, law_id, flag_key, assigned_to, task_type } = await req.json()
   const text = typeof title === 'string' ? title.trim() : ''
   const submenuText = typeof submenu === 'string' ? submenu.trim() : ''
   const viewText = typeof view === 'string' ? view.trim() : ''
@@ -62,9 +84,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const [row] = await sql`
-      INSERT INTO custom_tasks (title, notes, due_date, submenu, view, law_id, flag_key, assigned_to, created_by)
-      VALUES (${text}, ${typeof notes === 'string' && notes.trim() ? notes.trim() : null}, ${due_date || null}, ${submenuText}, ${viewText || null}, ${law_id || null}, ${flag_key || null}, ${assignedToText}, ${actor})
-      RETURNING id, title, notes, due_date, submenu, view, law_id, flag_key, assigned_to, done, created_by, created_at, completed_at, completed_by
+      INSERT INTO custom_tasks (title, notes, due_date, submenu, view, law_id, flag_key, assigned_to, task_type, created_by)
+      VALUES (${text}, ${typeof notes === 'string' && notes.trim() ? notes.trim() : null}, ${due_date || null}, ${submenuText}, ${viewText || null}, ${law_id || null}, ${flag_key || null}, ${assignedToText}, ${task_type || 'General task'}, ${actor})
+      RETURNING id, title, notes, due_date, submenu, view, law_id, flag_key, task_type, assigned_to, done, created_by, created_at, completed_at, completed_by
     `
     return NextResponse.json(row, { status: 201 })
   } catch (e) {
@@ -89,7 +111,7 @@ export async function PATCH(req: NextRequest) {
       UPDATE custom_tasks
       SET done = ${done}, ${done ? sql`completed_at = now(), completed_by = ${actor}` : sql`completed_at = NULL, completed_by = NULL`}
       WHERE id = ${id}
-      RETURNING id, title, notes, due_date, submenu, view, law_id, flag_key, assigned_to, done, created_by, created_at, completed_at, completed_by
+      RETURNING id, title, notes, due_date, submenu, view, law_id, flag_key, task_type, assigned_to, done, created_by, created_at, completed_at, completed_by
     `
     return NextResponse.json(row)
   } catch (e) {
