@@ -29,6 +29,10 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
   const [noteText, setNoteText] = useState('')
   const [menuLawId, setMenuLawId] = useState<number | null>(null)
   const menuTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const [taskForFlag, setTaskForFlag] = useState<string | null>(null)
+  const [taskTitleForFlag, setTaskTitleForFlag] = useState('')
+  const [noteForFlag, setNoteForFlag] = useState<string | null>(null)
+  const [noteTextForFlag, setNoteTextForFlag] = useState('')
 
   function load() {
     fetch(`/api/page-laws?scopeKey=${encodeURIComponent(scopeKey)}`)
@@ -122,6 +126,26 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
     }).catch(() => {})
     setNoteText('')
     setNoteForLaw(null)
+  }
+
+  async function addTaskForFlag() {
+    if (!taskTitleForFlag.trim() || taskForFlag === null) return
+    await fetch('/api/tasks', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: taskTitleForFlag.trim(), submenu: scopeKey, flag_key: taskForFlag }),
+    }).catch(() => {})
+    setTaskTitleForFlag('')
+    setTaskForFlag(null)
+  }
+
+  async function addNoteForFlag() {
+    if (noteForFlag === null) return
+    await fetch('/api/page-notes', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scopeKey, kind: 'note', notes: noteTextForFlag.trim(), flag_key: noteForFlag }),
+    }).catch(() => {})
+    setNoteTextForFlag('')
+    setNoteForFlag(null)
   }
 
   if (loading) return <div className="py-6 text-center text-gray-400 text-xs">Loading…</div>
@@ -218,6 +242,30 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
                     </button>
                   )}
                 </div>
+                {taskForFlag === f.key ? (
+                  <div className="flex gap-1 mt-2">
+                    <input autoFocus value={taskTitleForFlag} onChange={e => setTaskTitleForFlag(e.target.value)} placeholder="Task title…"
+                      onKeyDown={e => { if (e.key === 'Enter') addTaskForFlag(); if (e.key === 'Escape') setTaskForFlag(null) }}
+                      className="flex-1 min-w-0 text-[10px] bg-gray-100 border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+                    <button onClick={addTaskForFlag} title="Save" className="shrink-0 text-green-600 hover:text-green-700 text-xs font-bold">✓</button>
+                    <button onClick={() => setTaskForFlag(null)} title="Cancel" className="shrink-0 text-gray-400 hover:text-gray-600 text-xs font-bold">×</button>
+                  </div>
+                ) : noteForFlag === f.key ? (
+                  <div className="flex flex-col gap-1 mt-2">
+                    <textarea autoFocus value={noteTextForFlag} onChange={e => setNoteTextForFlag(e.target.value)} placeholder="Note…" rows={2}
+                      onKeyDown={e => { if (e.key === 'Escape') setNoteForFlag(null) }}
+                      className="flex-1 min-w-0 text-[10px] bg-gray-100 border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400 resize-none" />
+                    <div className="flex gap-1">
+                      <button onClick={addNoteForFlag} title="Save" className="flex-1 text-green-600 hover:text-green-700 text-xs font-bold">Save</button>
+                      <button onClick={() => setNoteForFlag(null)} title="Cancel" className="shrink-0 text-gray-400 hover:text-gray-600 text-xs font-bold">×</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex gap-1.5 mt-2 text-[10px]">
+                    <button onClick={() => setTaskForFlag(f.key)} title="Add task for this flag" className="text-blue-500 hover:text-blue-600 font-semibold">✓ Task</button>
+                    <button onClick={() => setNoteForFlag(f.key)} title="Add note for this flag" className="text-amber-500 hover:text-amber-600 font-semibold">📝 Note</button>
+                  </div>
+                )}
               </div>
             </div>
           ))}
