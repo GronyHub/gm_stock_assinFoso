@@ -47,7 +47,7 @@ export const LOG_CATEGORIES: { key: ManageView; label: string; icon: string }[] 
 // sit next to each other in the underlying (reorderable) list.
 export const MANAGE_GROUP_LABELS: Record<string, string> = {
   advert: 'Advert',
-  grony_1_to_10: 'Grony 1 to 10 checks',
+  grony_1_to_10: 'GN 1-10 CHK',
 }
 
 // Which of LOG_CATEGORIES' rows belong to the "Grony 1 to 10 checks" group
