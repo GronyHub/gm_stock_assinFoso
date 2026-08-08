@@ -504,92 +504,92 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
             </div>
           ))}
           {flags && flags.map((f, i) => (
-            <div key={f.key} className={`flex items-start gap-2 ${isItemsLaws ? 'px-4 py-3 bg-red-50/30' : 'px-2.5 py-2 bg-gray-50/50'}`}>
-              <span className="shrink-0 text-[10px] font-bold text-gray-300 mt-0.5">{laws.length + i + 1}</span>
+            <div key={f.key} className={`flex items-center gap-1 ${isItemsLaws ? 'px-1 py-0.5 bg-red-50/30' : 'px-1 py-0.5 bg-gray-50/50'}`}>
+              <span className="shrink-0 text-[8px] font-bold text-gray-300">{laws.length + i + 1}</span>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <p className="text-[12px] text-gray-800">{f.label}</p>
+                <div className="flex items-center gap-1 flex-wrap leading-none">
+                  <p className="text-[9px] text-gray-800">{f.label}</p>
                   {f.description && (
                     <button onClick={() => setExpandedFlagDesc(expandedFlagDesc === f.key ? null : f.key)}
                       title="Show description"
-                      className="text-gray-400 hover:text-gray-600 text-xs font-bold shrink-0">ⓘ</button>
+                      className="text-gray-400 hover:text-gray-600 text-[8px] font-bold shrink-0">ⓘ</button>
                   )}
-                  <span className="text-[10px] bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded">{f.count}</span>
+                  <span className="text-[8px] bg-red-100 text-red-700 font-bold px-1 py-0 rounded text-center">{f.count}</span>
                   {f.onViewClick && (
-                    <button onClick={f.onViewClick} className="text-[10px] text-blue-600 font-semibold hover:text-blue-700">
+                    <button onClick={f.onViewClick} className="text-[8px] text-blue-600 font-semibold hover:text-blue-700">
                       flags
                     </button>
                   )}
+                  {!taskForFlag && !noteForFlag && (
+                    <>
+                      <button onClick={() => { setTaskForFlag(f.key); fetchTasksForFlag(f.key) }} title="Add task for this flag" className="text-blue-500 hover:text-blue-600 font-semibold text-[8px]">✓ Task</button>
+                      <button onClick={() => setNoteForFlag(f.key)} title="Add note for this flag" className="text-amber-500 hover:text-amber-600 font-semibold text-[8px]">📝 Note</button>
+                    </>
+                  )}
                 </div>
                 {expandedFlagDesc === f.key && f.description && (
-                  <p className="text-[10px] text-gray-600 mt-1.5 mb-1">{f.description}</p>
-                )}
-                {!taskForFlag && !noteForFlag && (
-                  <div className="flex gap-1.5 mt-1 text-[10px]">
-                    <button onClick={() => { setTaskForFlag(f.key); fetchTasksForFlag(f.key) }} title="Add task for this flag" className="text-blue-500 hover:text-blue-600 font-semibold">✓ Task</button>
-                    <button onClick={() => setNoteForFlag(f.key)} title="Add note for this flag" className="text-amber-500 hover:text-amber-600 font-semibold">📝 Note</button>
-                  </div>
+                  <p className="text-[8px] text-gray-600 leading-tight">{f.description}</p>
                 )}
                 {taskForFlag === f.key ? (
-                  <div className="flex flex-col gap-1.5 mt-2 bg-blue-50 p-2 rounded border border-blue-200">
+                  <div className="flex flex-col gap-0.5 bg-blue-50 p-1 border border-blue-200 leading-none">
                     <input autoFocus value={taskTitleForFlag} onChange={e => setTaskTitleForFlag(e.target.value)} placeholder="Task title…"
                       onKeyDown={e => { if (e.key === 'Enter') addTaskForFlag(); if (e.key === 'Escape') setTaskForFlag(null) }}
-                      className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+                      className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
                     <select value={taskTypeForFlag} onChange={e => setTaskTypeForFlag(e.target.value)}
-                      className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400">
+                      className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
                       <option>General task</option>
                       <option>App task</option>
                     </select>
                     <select value={taskAssignedToFlag} onChange={e => setTaskAssignedToFlag(e.target.value)}
-                      className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400">
-                      <option value="">Assign to (optional)…</option>
+                      className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
+                      <option value="">Assign to…</option>
                       {ASSIGNABLE_STAFF.map(staff => <option key={staff} value={staff}>{staff}</option>)}
                     </select>
                     <div className="flex gap-1">
-                      <button onClick={addTaskForFlag} title="Save" className="flex-1 text-green-600 hover:text-green-700 text-xs font-bold">Create Task</button>
-                      <button onClick={() => setTaskForFlag(null)} title="Cancel" className="shrink-0 text-gray-400 hover:text-gray-600 text-xs font-bold">×</button>
+                      <button onClick={addTaskForFlag} className="flex-1 text-green-600 hover:text-green-700 text-[8px] font-bold">Create</button>
+                      <button onClick={() => setTaskForFlag(null)} className="shrink-0 text-gray-400 hover:text-gray-600 text-[8px] font-bold">×</button>
                     </div>
                   </div>
                 ) : noteForFlag === f.key ? (
-                  <div className="flex flex-col gap-1 mt-2">
-                    <textarea autoFocus value={noteTextForFlag} onChange={e => setNoteTextForFlag(e.target.value)} placeholder="Note…" rows={2}
+                  <div className="flex flex-col gap-0.5">
+                    <textarea autoFocus value={noteTextForFlag} onChange={e => setNoteTextForFlag(e.target.value)} placeholder="Note…" rows={1}
                       onKeyDown={e => { if (e.key === 'Escape') setNoteForFlag(null) }}
-                      className="flex-1 min-w-0 text-[10px] bg-gray-100 border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400 resize-none" />
+                      className="flex-1 min-w-0 text-[8px] bg-gray-100 border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 resize-none" />
                     <div className="flex gap-1">
-                      <button onClick={addNoteForFlag} title="Save" className="flex-1 text-green-600 hover:text-green-700 text-xs font-bold">Save</button>
-                      <button onClick={() => setNoteForFlag(null)} title="Cancel" className="shrink-0 text-gray-400 hover:text-gray-600 text-xs font-bold">×</button>
+                      <button onClick={addNoteForFlag} className="flex-1 text-green-600 hover:text-green-700 text-[8px] font-bold">Save</button>
+                      <button onClick={() => setNoteForFlag(null)} className="shrink-0 text-gray-400 hover:text-gray-600 text-[8px] font-bold">×</button>
                     </div>
                   </div>
                 ) : (
                   <>
                     {tasksByFlagKey[f.key]?.length > 0 && (
-                      <div className="mt-2 space-y-1.5 text-[10px]">
+                      <div className="space-y-0.5 text-[8px]">
                         {tasksByFlagKey[f.key].map(task => (
-                          <div key={task.id} className={`p-1.5 rounded border ${task.done ? 'bg-gray-50 border-gray-200' : 'bg-blue-50 border-blue-200'}`}>
+                          <div key={task.id} className={`p-0.5 border text-[8px] ${task.done ? 'bg-gray-50 border-gray-200' : 'bg-blue-50 border-blue-200'}`}>
                             {editingTaskId === task.id ? (
-                              <div className="flex flex-col gap-1.5">
-                                <input autoFocus value={editTaskTitle} onChange={e => setEditTaskTitle(e.target.value)} placeholder="Task title…"
+                              <div className="flex flex-col gap-0.5 leading-none">
+                                <input autoFocus value={editTaskTitle} onChange={e => setEditTaskTitle(e.target.value)} placeholder="Task…"
                                   onKeyDown={e => { if (e.key === 'Enter') saveEditTask(undefined, f.key); if (e.key === 'Escape') setEditingTaskId(null) }}
-                                  className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
+                                  className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
                                 <select value={editTaskType} onChange={e => setEditTaskType(e.target.value)}
-                                  className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400">
-                                  <option>General task</option>
-                                  <option>App task</option>
+                                  className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
+                                  <option>General</option>
+                                  <option>App</option>
                                 </select>
                                 <select value={editTaskAssignedTo} onChange={e => setEditTaskAssignedTo(e.target.value)}
-                                  className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400">
-                                  <option value="">Assign to (optional)…</option>
+                                  className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
+                                  <option value="">Assign…</option>
                                   {ASSIGNABLE_STAFF.map(staff => <option key={staff} value={staff}>{staff}</option>)}
                                 </select>
-                                <div className="flex gap-1">
-                                  <button onClick={() => saveEditTask(undefined, f.key)} className="flex-1 text-green-600 hover:text-green-700 text-xs font-bold">Save</button>
-                                  <button onClick={() => setEditingTaskId(null)} className="shrink-0 text-gray-400 hover:text-gray-600 text-xs font-bold">×</button>
+                                <div className="flex gap-0.5">
+                                  <button onClick={() => saveEditTask(undefined, f.key)} className="flex-1 text-green-600 hover:text-green-700 text-[8px] font-bold">✓</button>
+                                  <button onClick={() => setEditingTaskId(null)} className="shrink-0 text-gray-400 hover:text-gray-600 text-[8px] font-bold">×</button>
                                 </div>
                               </div>
                             ) : (
-                              <div className="flex items-start gap-1">
+                              <div className="flex items-start gap-0.5 leading-tight">
                                 <input type="checkbox" checked={task.done} onChange={() => toggleTaskCompletion(task.id, task.done, undefined, f.key)}
-                                  className="mt-0.5 shrink-0" />
+                                  className="shrink-0 mt-0.5" />
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-start justify-between gap-2">
                                     <p className={`font-semibold ${task.done ? 'line-through text-gray-500' : 'text-gray-800'}`}>{task.title}</p>
