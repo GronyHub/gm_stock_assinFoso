@@ -40,6 +40,7 @@ import UKSettingsPanel from './_components/UKSettingsPanel'
 import { applyPaneOrder, buildPaneRuns, flattenPaneRuns, type PaneOrderMap } from './_components/paneOrder'
 import ServicesGroupTable from './_components/ServicesGroupTable'
 import NewCustomerForm from './_components/NewCustomerForm'
+import ExpenseOrdersPanel from './_components/ExpenseOrdersPanel'
 import { ToolsPanelProvider } from './_components/ToolsPanelContext'
 import CombinedToolsPanel from './_components/CombinedToolsPanel'
 import dynamic from 'next/dynamic'
@@ -111,6 +112,14 @@ type LossView = 'home' | 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'loss
   // scope (Notes/Tasks/Laws/Flags all separate from the Customers list's
   // own) rather than sharing 'customers'.
   | 'newCustomer'
+  // Same reasoning as 'newCustomer' above -- Expense Orders used to be a
+  // showOrders toggle living inside ExpensesTab itself, invisible to
+  // page.tsx, so the pane button could never actually know whether it was
+  // the current view (hardcoded active={false} forever) and its own
+  // Notes/Tasks/Laws scope had to be computed conditionally inside
+  // ExpensesTab. Its own real LossView instead, rendered as its own
+  // content block below, same as Expenses' own.
+  | 'expenseOrders'
   // Settings' own non-navigation row (View Portal As) becomes a real content
   // destination too now that Settings is its own side-by-side pane instead
   // of a full-screen takeover -- see SettingsPane.tsx and the settingsOpen
@@ -171,7 +180,7 @@ const OLD_TAB_TO_VIEW: Partial<Record<string, LossView>> = {
 // Manage/Staff view belongs here too -- none of them ever had a Cash-style
 // groups/search bar of their own.
 const REPORT_VIEWS = new Set<LossView>([
-  'home', 'pl', 'cab', 'vendors', 'customers', 'newCustomer', 'receipts', 'dailySummary',
+  'home', 'pl', 'cab', 'vendors', 'customers', 'newCustomer', 'expenseOrders', 'receipts', 'dailySummary',
   'purchaseOrders', 'item360', 'viewPortalAs', 'reorderLists', 'services',
   ...MANAGE_VIEW_KEYS, ...STAFF_VIEW_KEYS, ...CH_VIEW_KEYS,
 ])
@@ -529,7 +538,6 @@ function ItemHubPageInner() {
   const [cabConfirmSignal, setCabConfirmSignal] = useState(0)
   const [staffTimeSignal, setStaffTimeSignal]   = useState(0)
   const [vendorSignal, setVendorSignal]         = useState(0)
-  const [expenseOrdersSignal, setExpenseOrdersSignal] = useState(0)
   // Seeds PropertiesPage's own tab -- driven by the left pane's "Properties
   // at Shop"/"Properties not at Shop" rows under Expenses (see below).
   const [propertiesInitialTab, setPropertiesInitialTab] = useState<'available' | 'away' | null>(null)
@@ -1386,7 +1394,7 @@ function ItemHubPageInner() {
       { label: 'Sale Log', action: () => { pickLossView('sales'); setAddForm('liveLog') } },
       { label: 'New Customer', action: () => pickLossView('newCustomer') },
       { label: 'A4 sheet sng audit', action: () => { pickLossView('item360'); setItem360JumpId(375) } },
-      { label: 'Expense Orders', action: () => { pickLossView('expenses'); setExpenseOrdersSignal(n => n + 1) } },
+      { label: 'Expense Orders', action: () => pickLossView('expenseOrders') },
       { label: 'Properties at Shop', action: () => { pickLossView('properties'); setPropertiesInitialTab('available') } },
       { label: 'Properties not at Shop', action: () => { pickLossView('properties'); setPropertiesInitialTab('away') } },
       ...serviceGroups.map(g => ({ label: `Services — ${g}`, action: () => { pickLossView('services'); setSelectedServiceGroup(g) } })),
@@ -1583,12 +1591,15 @@ function ItemHubPageInner() {
                   the expense orders button from expenses to maintain its
                   standalone" / "make properties a section on its own"), so
                   neither one's chip styling reads as tucked inside the
-                  Expenses section anymore. Still reach the exact same
-                  pages/actions as before -- only their position and section
-                  identity in the pane changed. */}
-              <SidePaneButton icon="🧾" label="Expense Orders" mode={cashDisplayMode} active={false} divider chipLabel
+                  Expenses section anymore. Expense Orders is also now its
+                  own real LossView (see 'expenseOrders' above) rather than
+                  a signal that reopens a toggle buried inside ExpensesTab --
+                  active correctly reflects whether it's actually the
+                  current page now, instead of being hardcoded false. */}
+              <SidePaneButton icon="🧾" label="Expense Orders" mode={cashDisplayMode} divider chipLabel
+                active={paneActive(lossView === 'expenseOrders')}
                 taskBadge={taskCountFor('Expense Orders')}
-                onClick={() => { pickLossView('expenses'); setExpenseOrdersSignal(n => n + 1) }} />
+                onClick={() => pickLossView('expenseOrders')} />
               {cashDisplayMode !== 'icon' && (
                 <p className="pt-2 pb-0.5"><span className="block w-full text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide px-2 py-1 truncate">Properties</span></p>
               )}
@@ -2135,10 +2146,16 @@ function ItemHubPageInner() {
           </TabErrorBoundary>
         )}
         {!showAnalytics && addForm !== 'expense' && outerTab === 'loss' && lossView === 'expenses' && (
-          <ExpensesTab search={search} openOrdersSignal={expenseOrdersSignal} onFlagCountChange={setExpensesFlagsCount} />
+          <ExpensesTab search={search} onFlagCountChange={setExpensesFlagsCount} />
         )}
         {showAnalytics && outerTab === 'loss' && lossView === 'expenses' && (
           <TabErrorBoundary><div className="px-3 pt-3"><ExpensesAnalyticsSection /></div></TabErrorBoundary>
+        )}
+        {outerTab === 'loss' && lossView === 'expenseOrders' && (
+          <TabErrorBoundary>
+            <div className="px-3 pt-2"><PageToolIcons scopeKey="Expense Orders" /></div>
+            <div className="flex-1 overflow-y-auto min-h-0"><ExpenseOrdersPanel /></div>
+          </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'cab' && <CABTab openConfirmSignal={cabConfirmSignal} />}
         {/* Items pill selected -> ItemsTab's filtered fix view; otherwise the

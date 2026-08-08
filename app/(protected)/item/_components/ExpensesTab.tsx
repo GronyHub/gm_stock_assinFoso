@@ -2,7 +2,6 @@
 import { Fragment, useState, useEffect, useMemo, useRef } from 'react'
 import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
-import ExpenseOrdersPanel from './ExpenseOrdersPanel'
 import PageToolIcons from './PageToolIcons'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, ColResizeHandle, type ColumnDef, type ColumnPrefs } from './columnPrefs'
 
@@ -316,14 +315,13 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
   )
 }
 
-type Props = { search: string; openOrdersSignal?: number; onFlagCountChange?: (n: number) => void }
+type Props = { search: string; onFlagCountChange?: (n: number) => void }
 
-export default function ExpensesTab({ search, openOrdersSignal, onFlagCountChange }: Props) {
+export default function ExpensesTab({ search, onFlagCountChange }: Props) {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [groupBy, setGroupBy] = useState<'none' | 'account' | 'vendor'>('none')
   const [showHistory, setShowHistory] = useState(false)
-  const [showOrders, setShowOrders] = useState(false)
   const [highlightId, setHighlightId] = useState<number | null>(null)
   const [editId, setEditId] = useState<number | null>(null)
   const [form, setForm] = useState({ ...EMPTY_FORM })
@@ -351,15 +349,6 @@ export default function ExpensesTab({ search, openOrdersSignal, onFlagCountChang
 
   useEffect(() => { loadExpenses() }, [])
   usePolling(loadExpenses, 20000, editId === null)
-
-  // Driven by the left pane's own "Expense Orders" shortcut row (see
-  // item/page.tsx) -- same one-tap-open pattern as CustomersPage's
-  // openAddSignal.
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (openOrdersSignal) { setShowOrders(true); setShowHistory(false) }
-  }, [openOrdersSignal])
-
 
   const accountOptions = useMemo(() =>
     Array.from(new Set(expenses.map(e => e.expense_account).filter(Boolean))).sort()
@@ -504,14 +493,11 @@ export default function ExpensesTab({ search, openOrdersSignal, onFlagCountChang
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* Expense Orders gets its own Law/Notes/Tasks/Flags scope, separate
-          from Expenses' own -- rendered here (inside the toggle) rather than
-          once, unconditionally, above this component in item/page.tsx,
-          since page.tsx has no visibility into showOrders. Flag pills sit in
-          this same row now too, matching Items/Sales/Bills' own top row
-          (icons + pills together) instead of a separate row below. */}
+      {/* Flag pills sit in this same row now too, matching Items/Sales/
+          Bills' own top row (icons + pills together) instead of a separate
+          row below. */}
       <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto px-2 pt-2">
-        <PageToolIcons scopeKey={showOrders ? 'Expense Orders' : 'Expenses'} />
+        <PageToolIcons scopeKey="Expenses" />
         {flagButtons.map(({ key, letter, label }) => {
           const count = flagCounts[key]
           const active = activeFlag === key
@@ -552,12 +538,7 @@ export default function ExpensesTab({ search, openOrdersSignal, onFlagCountChang
           Non-Properties
         </label>
         <div className="w-px h-3 bg-gray-300 shrink-0" />
-        <button onClick={() => { setShowOrders(o => !o); setShowHistory(false) }}
-          className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition
-            ${showOrders ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
-          Expense Orders
-        </button>
-        <button onClick={() => { setShowHistory(h => !h); setShowOrders(false) }}
+        <button onClick={() => setShowHistory(h => !h)}
           className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition
             ${showHistory ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
           History
@@ -565,8 +546,6 @@ export default function ExpensesTab({ search, openOrdersSignal, onFlagCountChang
         <span className="ml-auto text-[9px] text-gray-400">{filtered.length} records</span>
         <ColumnsPickerButton prefs={colPrefs} />
       </div>
-
-      {showOrders && <div className="flex-1 overflow-y-auto min-h-0"><ExpenseOrdersPanel /></div>}
 
       {showHistory && <HistoryPanel keywords={['expense']} onEntryClick={log => {
         // "added expense": "account · ₵200 on 2024-01-15"
@@ -587,7 +566,7 @@ export default function ExpensesTab({ search, openOrdersSignal, onFlagCountChang
         }
       }} />}
 
-      {!showHistory && !showOrders && <div className="flex-1 overflow-y-auto min-h-0 p-2">
+      {!showHistory && <div className="flex-1 overflow-y-auto min-h-0 p-2">
         {groupBy !== 'none' ? (
           grouped.length === 0
             ? <p className="text-xs text-gray-400 text-center py-10">No expenses</p>
