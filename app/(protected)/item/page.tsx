@@ -569,6 +569,8 @@ function ItemHubPageInner() {
   const [globalTaskTitle, setGlobalTaskTitle] = useState('')
   const [globalTaskType, setGlobalTaskType] = useState('General task')
   const [globalTaskAssignedTo, setGlobalTaskAssignedTo] = useState('')
+  const [creatingGlobalLaw, setCreatingGlobalLaw] = useState(false)
+  const [globalLawText, setGlobalLawText] = useState('')
   const [creatingGlobalNote, setCreatingGlobalNote] = useState(false)
   const [globalNoteTopic, setGlobalNoteTopic] = useState('')
   const [globalNoteText, setGlobalNoteText] = useState('')
@@ -1856,6 +1858,10 @@ function ItemHubPageInner() {
                         </button>
                         {showItemsLaws && (
                           <>
+                            <button onClick={() => setCreatingGlobalLaw(o => !o)} title="Create new law"
+                              className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${creatingGlobalLaw ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
+                              + Law
+                            </button>
                             <button onClick={() => setCreatingGlobalTask(o => !o)} title="Create global task"
                               className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${creatingGlobalTask ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
                               + Task
@@ -2267,6 +2273,10 @@ function ItemHubPageInner() {
                     setGlobalTaskType={setGlobalTaskType}
                     globalTaskAssignedTo={globalTaskAssignedTo}
                     setGlobalTaskAssignedTo={setGlobalTaskAssignedTo}
+                    creatingGlobalLaw={creatingGlobalLaw}
+                    setCreatingGlobalLaw={setCreatingGlobalLaw}
+                    globalLawText={globalLawText}
+                    setGlobalLawText={setGlobalLawText}
                     creatingGlobalNote={creatingGlobalNote}
                     setCreatingGlobalNote={setCreatingGlobalNote}
                     globalNoteTopic={globalNoteTopic}
