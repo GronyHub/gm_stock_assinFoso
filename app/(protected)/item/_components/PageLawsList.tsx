@@ -245,12 +245,13 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
 
   async function addTaskForLaw() {
     if (!taskTitle.trim() || taskForLaw === null) return
+    const lawId = taskForLaw
     await fetch('/api/tasks', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         title: taskTitle.trim(),
         submenu: scopeKey,
-        law_id: taskForLaw,
+        law_id: lawId,
         task_type: taskType,
         assigned_to: taskAssignedTo || null
       }),
@@ -259,7 +260,7 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
     setTaskType('General task')
     setTaskAssignedTo('')
     setTaskForLaw(null)
-    await fetchTasksForLaw(taskForLaw)
+    await fetchTasksForLaw(lawId)
   }
 
   async function addNoteForLaw() {
@@ -274,12 +275,13 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
 
   async function addTaskForFlag() {
     if (!taskTitleForFlag.trim() || taskForFlag === null) return
+    const flagKey = taskForFlag
     await fetch('/api/tasks', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         title: taskTitleForFlag.trim(),
         submenu: scopeKey,
-        flag_key: taskForFlag,
+        flag_key: flagKey,
         task_type: taskTypeForFlag,
         assigned_to: taskAssignedToFlag || null
       }),
@@ -288,7 +290,7 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
     setTaskTypeForFlag('General task')
     setTaskAssignedToFlag('')
     setTaskForFlag(null)
-    await fetchTasksForFlag(taskForFlag)
+    await fetchTasksForFlag(flagKey)
   }
 
   async function addNoteForFlag() {
