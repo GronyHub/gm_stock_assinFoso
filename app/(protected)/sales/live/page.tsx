@@ -140,28 +140,24 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
   // remember turning on.
   const [expanded, setExpanded] = useState(false)
   const logColPrefs = useColumnPrefs<LogColKey>('liveSaleLog', LOG_COLUMNS)
-  // Persisted on this device (not the server) -- it's a per-terminal
-  // convenience for whoever's tapping on this phone, not shared business
-  // data, so a plain localStorage array of item ids is enough.
-  const [manualOrder, setManualOrder] = useState<number[]>(() => {
-    if (typeof window === 'undefined') return []
-    try {
-      const raw = window.localStorage.getItem(ORDER_KEY)
-      const parsed = raw ? JSON.parse(raw) : []
-      return Array.isArray(parsed) ? parsed : []
-    } catch {
-      return []
-    }
-  })
+  // Shared via /api/app-settings (owner-level to write, everyone reads),
+  // not per-device localStorage -- an arrangement the owner sets up should
+  // show the same way on every staff member's own phone, not just the one
+  // that set it (see the Shared Settings policy).
+  const [manualOrder, setManualOrder] = useState<number[]>([])
+  useEffect(() => {
+    fetch(`/api/app-settings?key=${ORDER_KEY}`)
+      .then(r => r.ok ? r.json() : { value: null })
+      .then((d: { value: unknown }) => { if (Array.isArray(d?.value)) setManualOrder(d.value as number[]) })
+      .catch(() => {})
+  }, [])
 
   function persistOrder(order: number[]) {
     setManualOrder(order)
-    try {
-      window.localStorage.setItem(ORDER_KEY, JSON.stringify(order))
-    } catch {
-      // best-effort -- a full/unavailable localStorage just means the
-      // arrangement won't stick, not that tapping should break
-    }
+    fetch('/api/app-settings', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: ORDER_KEY, value: order }),
+    }).catch(() => {})
   }
 
   useEffect(() => {

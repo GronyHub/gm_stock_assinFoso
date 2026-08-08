@@ -8,7 +8,7 @@ import { useSyncExternalStore } from 'react'
 // everywhere instead of each page remembering its own.
 export type DisplayMode = 'icon' | 'text' | 'both'
 
-const DISPLAY_MODE_KEY = 'sidePaneDisplayMode'
+const DISPLAY_MODE_KEY = 'paneDisplayMode'
 const GLYPH: Record<DisplayMode, string> = { icon: '🔘', both: '◧', text: '🔤' }
 const MODE_LABEL: Record<DisplayMode, string> = { icon: 'Icons only', both: 'Icons + text', text: 'Text only' }
 // Narrower on phones than on tablet/desktop (sm: 640px+) -- a fixed width
@@ -26,23 +26,42 @@ const WIDTH: Record<DisplayMode, string> = { icon: 'w-14', both: 'w-16 sm:w-20',
 // A module-level store (not per-component state) so every left pane on
 // screen at once -- Grony Manage's, and Staff's several nested ones --
 // reacts to a mode change immediately, instead of each only picking up
-// localStorage once on its own mount and drifting out of sync with the rest.
+// the saved mode once on its own mount and drifting out of sync with the
+// rest. Shared via /api/app-settings (owner-level to write, everyone
+// reads) rather than localStorage -- a mode the owner picks should apply
+// on every staff member's own device too, not just the browser that set
+// it. The shared value is fetched once, lazily, on the very first
+// subscribe() call across the whole app (not at module load, since that
+// can't await a fetch) -- every later mount just reads the already-synced
+// module-level currentMode like before.
 function isDisplayMode(v: string | null): v is DisplayMode {
   return v === 'icon' || v === 'text' || v === 'both'
 }
 let currentMode: DisplayMode = 'both'
-if (typeof window !== 'undefined') {
-  const saved = localStorage.getItem(DISPLAY_MODE_KEY)
-  if (isDisplayMode(saved)) currentMode = saved
-}
+let hasFetchedSharedMode = false
 const listeners = new Set<() => void>()
 function setGlobalMode(mode: DisplayMode) {
   currentMode = mode
-  localStorage.setItem(DISPLAY_MODE_KEY, mode)
   listeners.forEach(l => l())
+  fetch('/api/app-settings', {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key: DISPLAY_MODE_KEY, value: mode }),
+  }).catch(() => {})
 }
 function subscribe(listener: () => void) {
   listeners.add(listener)
+  if (!hasFetchedSharedMode) {
+    hasFetchedSharedMode = true
+    fetch(`/api/app-settings?key=${DISPLAY_MODE_KEY}`)
+      .then(r => r.ok ? r.json() : { value: null })
+      .then((d: { value: unknown }) => {
+        if (isDisplayMode(d?.value as string | null)) {
+          currentMode = d.value as DisplayMode
+          listeners.forEach(l => l())
+        }
+      })
+      .catch(() => {})
+  }
   return () => listeners.delete(listener)
 }
 function getSnapshot() { return currentMode }

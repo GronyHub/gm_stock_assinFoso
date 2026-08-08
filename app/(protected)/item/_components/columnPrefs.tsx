@@ -2,11 +2,17 @@
 import { useState, useEffect, useRef } from 'react'
 
 // Reusable "Columns" picker -- show/hide, reorder, and rename any table's
-// columns, remembered per table via its own localStorage key (storageKey)
-// so Sales' column choices don't affect Bills', etc. Originally built just
-// for the Items list (see lossTabColumns.ts/LossTab.tsx); every other
-// per-page table reuses this same hook + button instead of
-// re-implementing the picker chrome from scratch.
+// columns, remembered per table via its own key (storageKey) so Sales'
+// column choices don't affect Bills', etc. Originally built just for the
+// Items list (see lossTabColumns.ts/LossTab.tsx); every other per-page
+// table reuses this same hook + button instead of re-implementing the
+// picker chrome from scratch.
+//
+// Shared via /api/app-settings (owner-level to write, everyone reads) --
+// used to be per-browser localStorage, which meant a column layout the
+// owner set up never showed on any other staff member's own device. See
+// the "Shared Settings" policy: any owner-configured preference should
+// apply the same way to everyone, not stay private to one browser.
 export type ColumnDef<K extends string> = { key: K; label: string; width?: number }
 
 export type ColumnPrefs<K extends string> = {
@@ -33,48 +39,54 @@ export type ColumnPrefs<K extends string> = {
 export function useColumnPrefs<K extends string>(storageKey: string, columns: ColumnDef<K>[]): ColumnPrefs<K> {
   const allKeys = columns.map(c => c.key)
   const byKey = new Map(columns.map(c => [c.key, c]))
+  const settingsKey = `colprefs:${storageKey}`
 
-  const [visibleCols, setVisibleCols] = useState<Set<K>>(() => {
-    if (typeof window === 'undefined') return new Set(allKeys)
-    try {
-      const saved = JSON.parse(localStorage.getItem(`${storageKey}VisibleCols`) ?? 'null')
-      if (Array.isArray(saved) && saved.length > 0) {
-        const keep = saved.filter((k): k is K => allKeys.includes(k))
-        if (keep.length > 0) return new Set(keep)
-      }
-    } catch { /* ignore malformed storage */ }
-    return new Set(allKeys)
-  })
-  useEffect(() => {
-    localStorage.setItem(`${storageKey}VisibleCols`, JSON.stringify(Array.from(visibleCols)))
-  }, [visibleCols, storageKey])
+  const [visibleCols, setVisibleCols] = useState<Set<K>>(() => new Set(allKeys))
+  const [colOrder, setColOrder] = useState<K[]>(() => allKeys)
+  const [columnLabels, setColumnLabels] = useState<Partial<Record<K, string>>>({})
+  const [widths, setWidths] = useState<Record<string, number>>({})
+  // Guards the write effect below from firing (and overwriting the real
+  // shared prefs with these defaults) before the initial fetch below has
+  // actually resolved.
+  const loadedRef = useRef(false)
 
-  const [colOrder, setColOrder] = useState<K[]>(() => {
-    if (typeof window === 'undefined') return allKeys
-    try {
-      const saved = JSON.parse(localStorage.getItem(`${storageKey}ColOrder`) ?? 'null')
-      if (Array.isArray(saved)) {
-        const valid = saved.filter((k): k is K => allKeys.includes(k))
-        if (valid.length > 0) return [...valid, ...allKeys.filter(k => !valid.includes(k))]
-      }
-    } catch { /* ignore malformed storage */ }
-    return allKeys
-  })
   useEffect(() => {
-    localStorage.setItem(`${storageKey}ColOrder`, JSON.stringify(colOrder))
-  }, [colOrder, storageKey])
+    let cancelled = false
+    loadedRef.current = false
+    fetch(`/api/app-settings?key=${encodeURIComponent(settingsKey)}`)
+      .then(r => r.ok ? r.json() : { value: null })
+      .then((d: { value: unknown }) => {
+        if (cancelled) return
+        const saved = d?.value as {
+          visibleCols?: string[]; colOrder?: string[]
+          columnLabels?: Partial<Record<K, string>>; widths?: Record<string, number>
+        } | null
+        if (saved) {
+          if (Array.isArray(saved.visibleCols)) {
+            const keep = saved.visibleCols.filter((k): k is K => allKeys.includes(k as K))
+            if (keep.length > 0) setVisibleCols(new Set(keep))
+          }
+          if (Array.isArray(saved.colOrder)) {
+            const valid = saved.colOrder.filter((k): k is K => allKeys.includes(k as K))
+            if (valid.length > 0) setColOrder([...valid, ...allKeys.filter(k => !valid.includes(k))])
+          }
+          if (saved.columnLabels && typeof saved.columnLabels === 'object') setColumnLabels(saved.columnLabels)
+          if (saved.widths && typeof saved.widths === 'object') setWidths(saved.widths)
+        }
+        loadedRef.current = true
+      })
+      .catch(() => { loadedRef.current = true })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settingsKey])
 
-  const [columnLabels, setColumnLabels] = useState<Partial<Record<K, string>>>(() => {
-    if (typeof window === 'undefined') return {}
-    try {
-      const saved = JSON.parse(localStorage.getItem(`${storageKey}ColumnLabels`) ?? 'null')
-      if (saved && typeof saved === 'object') return saved
-    } catch { /* ignore malformed storage */ }
-    return {}
-  })
   useEffect(() => {
-    localStorage.setItem(`${storageKey}ColumnLabels`, JSON.stringify(columnLabels))
-  }, [columnLabels, storageKey])
+    if (!loadedRef.current) return
+    fetch('/api/app-settings', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: settingsKey, value: { visibleCols: Array.from(visibleCols), colOrder, columnLabels, widths } }),
+    }).catch(() => {})
+  }, [visibleCols, colOrder, columnLabels, widths, settingsKey])
 
   function toggleCol(key: K) {
     setVisibleCols(prev => {
@@ -104,18 +116,6 @@ export function useColumnPrefs<K extends string>(storageKey: string, columns: Co
   function resetVisible() {
     setVisibleCols(new Set())
   }
-
-  const [widths, setWidths] = useState<Record<string, number>>(() => {
-    if (typeof window === 'undefined') return {}
-    try {
-      const saved = JSON.parse(localStorage.getItem(`${storageKey}ColWidths`) ?? 'null')
-      if (saved && typeof saved === 'object') return saved
-    } catch { /* ignore malformed storage */ }
-    return {}
-  })
-  useEffect(() => {
-    localStorage.setItem(`${storageKey}ColWidths`, JSON.stringify(widths))
-  }, [widths, storageKey])
 
   function getWidth(key: string, fallback: number): number {
     return widths[key] ?? fallback
