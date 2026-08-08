@@ -85,12 +85,13 @@ export function SidePaneToggle({ mode, onChange, label }: { mode: DisplayMode; o
 // tooltip. `className` controls sizing: default `w-full` for
 // a standalone list; pass `flex-1 min-w-0` when placed in a row alongside
 // another control (e.g. a trailing delete button, or a sibling footer
-// button -- see Home/Daily in item/page.tsx). `badge` (red, top-left) overlays
-// a flag/violation count; `taskBadge` (green, top-right) overlays that same
-// page's own open task count (see DynamicTasksSection/custom_tasks) -- both
-// shown in every mode including icon-only, since that's exactly when a count
-// matters most. Opposite corners so a page with both flags and open tasks
-// shows both counts at once instead of one clobbering the other.
+// button -- see Home/Daily in item/page.tsx). `badge` (red) overlays a
+// flag/violation count; `taskBadge` (green) overlays that same page's own
+// open task count (see DynamicTasksSection/custom_tasks) -- both shown in
+// every mode including icon-only, since that's exactly when a count
+// matters most. Both sit together at the top-right corner (flags used to
+// be top-left, moved per direct feedback), side by side with a small gap
+// so neither clobbers the other when both are present.
 // `icon` takes a plain emoji string for the common case, or a ReactNode
 // (e.g. an inline SVG) for spots that need a real icon instead -- Home/Daily
 // used their own hand-drawn SVGs when they were floating buttons, and kept
@@ -156,20 +157,25 @@ export function SidePaneButton({ icon, label, active, mode, onClick, badge, task
           ? <span className="block w-full -mx-1 truncate text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide px-2 py-1">{label}</span>
           : <span className="w-full truncate">{label}</span>
       )}
-      {/* No background shape on either badge -- a filled circle sitting on
-          top of the label was covering some of its lettering, especially in
-          `both` mode where icon and label share limited vertical space.
-          Bare bold number instead, with a white text-shadow (not a solid
-          fill) so it still reads clearly regardless of which pane accent
-          color it's sitting on. */}
-      {!!badge && badge > 0 && (
-        <span className="absolute top-0.5 left-0.5 min-w-[14px] text-[9px] font-black leading-none text-red-600 [text-shadow:0_0_2px_white,0_0_2px_white,0_0_2px_white]">
-          {badge > 99 ? '99+' : badge}
-        </span>
-      )}
-      {!!taskBadge && taskBadge > 0 && (
-        <span className="absolute top-0.5 right-0.5 min-w-[14px] text-[9px] font-black leading-none text-green-600 [text-shadow:0_0_2px_white,0_0_2px_white,0_0_2px_white]">
-          {taskBadge > 99 ? '99+' : taskBadge}
+      {/* Both badges share the top-right corner now (flags used to sit at
+          top-left) -- no background shape on either, a filled circle
+          sitting on top of the label was covering some of its lettering,
+          especially in `both` mode where icon and label share limited
+          vertical space. Bare bold numbers instead, with a white
+          text-shadow (not a solid fill) so they still read clearly
+          regardless of which pane accent color they're sitting on. */}
+      {((!!badge && badge > 0) || (!!taskBadge && taskBadge > 0)) && (
+        <span className="absolute top-0.5 right-0.5 flex items-center gap-1">
+          {!!badge && badge > 0 && (
+            <span className="min-w-[14px] text-[9px] font-black leading-none text-red-600 [text-shadow:0_0_2px_white,0_0_2px_white,0_0_2px_white]">
+              {badge > 99 ? '99+' : badge}
+            </span>
+          )}
+          {!!taskBadge && taskBadge > 0 && (
+            <span className="min-w-[14px] text-[9px] font-black leading-none text-green-600 [text-shadow:0_0_2px_white,0_0_2px_white,0_0_2px_white]">
+              {taskBadge > 99 ? '99+' : taskBadge}
+            </span>
+          )}
         </span>
       )}
     </button>
