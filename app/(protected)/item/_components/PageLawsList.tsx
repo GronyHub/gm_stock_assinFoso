@@ -175,7 +175,26 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
       .then(d => { setLaws(Array.isArray(d) ? d : []); setLoading(false) })
       .catch(() => setLoading(false))
   }
+
   useEffect(() => { load() }, [scopeKey])
+
+  useEffect(() => {
+    laws.forEach(law => {
+      if (!tasksByLawId[law.id]) {
+        fetchTasksForLaw(law.id)
+      }
+    })
+  }, [laws])
+
+  useEffect(() => {
+    if (flags) {
+      flags.forEach(flag => {
+        if (!tasksByFlagKey[flag.key]) {
+          fetchTasksForFlag(flag.key)
+        }
+      })
+    }
+  }, [flags])
 
   async function addLaw(e: React.FormEvent) {
     e.preventDefault()
