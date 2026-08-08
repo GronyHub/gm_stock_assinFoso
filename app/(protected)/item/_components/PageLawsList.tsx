@@ -6,7 +6,7 @@ type Law = { id: number; text: string; created_at: string }
 export type FlagLaw = {
   key: string
   label: string
-  description: string
+  description?: string
   count: number
   onViewClick?: () => void
 }
