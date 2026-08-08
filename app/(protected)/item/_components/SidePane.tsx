@@ -153,7 +153,7 @@ export function SidePaneButton({ icon, label, active, mode, onClick, badge, task
           each side to keep the whole thing centered. */}
       {mode !== 'icon' && (
         (chipLabel || chipBorder)
-          ? <span className="block -mx-1 truncate text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide px-2 py-1">{label}</span>
+          ? <span className="block w-full -mx-1 truncate text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide px-2 py-1">{label}</span>
           : <span className="w-full truncate">{label}</span>
       )}
       {/* No background shape on either badge -- a filled circle sitting on
