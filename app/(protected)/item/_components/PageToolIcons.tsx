@@ -3,21 +3,17 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import DynamicTasksSection from './DynamicTasksSection'
 import PageLawsNote from './PageLawsNote'
 import PageLawsList from './PageLawsList'
-import { useToolsPanel, type ToolsPanelKind } from './ToolsPanelContext'
+import { useToolsPanel } from './ToolsPanelContext'
 
-type PanelKind = ToolsPanelKind
-
-const TITLES: Record<PanelKind, string> = { law: '⚖️ Law', notes: '📝 Notes', tasks: '✅ Tasks' }
-
-// Three icons every real page carries: Law (a real list of this page's own
-// fixed rules -- see PageLawsList/page_laws -- badged with how many laws
-// it has, not just whether one exists), Notes (a day-to-day scratchpad,
-// still one freeform textarea -- see PageLawsNote), and Tasks (the
-// checklist this used to be paired with alone). Each badges its own count
-// the same way the pane's own SidePaneButton does, fetched here directly
-// (same scope_key/submenu namespace as page_laws/page_notes/custom_tasks)
-// since every page gets this bar and none of them otherwise know these
-// numbers.
+// One icon every real page carries -- used to be three (Law/Notes/Tasks),
+// each opening its own separate panel. All three now open the exact same
+// combined window (see CombinedToolsPanel.tsx, which stacks Law, Tasks,
+// and Notes together in one scroll), so three buttons that all led to the
+// same place was just redundant -- down to one, badged with the combined
+// count across all three (open laws + open tasks + whether there's a
+// note), fetched here directly (same scope_key/submenu namespace as
+// page_laws/page_notes/custom_tasks) since every page gets this bar and
+// none of them otherwise know these numbers.
 //
 // There used to be a fourth, generic Flags icon here too -- removed. Every
 // real flag/violation type already has its own dedicated button elsewhere
@@ -27,16 +23,17 @@ const TITLES: Record<PanelKind, string> = { law: '⚖️ Law', notes: '📝 Note
 // did that -- it had no count of its own and just opened a static message
 // pointing back at those real ones, so it was a placeholder, not a flag.
 //
-// Clicking an icon used to open a small floating modal, right here, on top
-// of the whole screen (including the left pane). It now hands off to
+// Clicking used to open a small floating modal, right here, on top of the
+// whole screen (including the left pane). It now hands off to
 // CombinedToolsPanel via ToolsPanelContext instead -- a shared panel
 // rendered once in item/page.tsx's own content area, so it fills the same
 // space every other page's content does and the pane stays visible and
-// usable alongside it. Falls back to the old local modal when no provider
-// is present (the two standalone routes outside item/page.tsx's tree).
+// usable alongside it. Falls back to a local modal (with the same three
+// sections stacked inside it) when no provider is present -- the two
+// standalone routes outside item/page.tsx's tree.
 export default function PageToolIcons({ scopeKey }: { scopeKey: string }) {
   const toolsPanel = useToolsPanel()
-  const [open, setOpen] = useState<PanelKind | null>(null)
+  const [open, setOpen] = useState(false)
   const [taskCount, setTaskCount] = useState(0)
   const [lawCount, setLawCount] = useState(0)
   const [hasNotes, setHasNotes] = useState(false)
@@ -67,42 +64,36 @@ export default function PageToolIcons({ scopeKey }: { scopeKey: string }) {
   }, [toolsPanel, toolsPanel?.panel, scopeKey, loadCounts])
 
   function close() {
-    setOpen(null)
+    setOpen(false)
     loadCounts()
   }
 
-  const icons: { kind: PanelKind; icon: string; count?: number }[] = [
-    { kind: 'law', icon: '⚖️', count: lawCount },
-    { kind: 'notes', icon: '📝', count: hasNotes ? 1 : 0 },
-    { kind: 'tasks', icon: '✅', count: taskCount },
-  ]
+  const count = lawCount + taskCount + (hasNotes ? 1 : 0)
 
   return (
     <div className="flex items-center gap-1.5">
-      {icons.map(({ kind, icon, count }) => (
-        <button key={kind} onClick={() => toolsPanel ? toolsPanel.openPanel(scopeKey, kind) : setOpen(kind)} title={TITLES[kind]}
-          className="relative text-sm leading-none px-1.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 transition">
-          {icon}
-          {!!count && count > 0 && (
-            <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[14px] h-[14px] px-0.5 text-[8px] font-bold leading-none rounded-full bg-red-600 text-white">
-              {count > 99 ? '99+' : count}
-            </span>
-          )}
-        </button>
-      ))}
+      <button onClick={() => toolsPanel ? toolsPanel.openPanel(scopeKey, 'law') : setOpen(true)} title="Law, Tasks &amp; Notes"
+        className="relative text-sm leading-none px-1.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 transition">
+        ⚖️
+        {count > 0 && (
+          <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[14px] h-[14px] px-0.5 text-[8px] font-bold leading-none rounded-full bg-red-600 text-white">
+            {count > 99 ? '99+' : count}
+          </span>
+        )}
+      </button>
       {!toolsPanel && open && (
         <div className="fixed inset-0 z-[300] bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-4"
           onClick={close}>
           <div className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl max-h-[85dvh] overflow-y-auto"
             onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 sticky top-0 bg-white z-10">
-              <p className="text-sm font-bold text-gray-900">{TITLES[open]}</p>
+              <p className="text-sm font-bold text-gray-900">⚖️ Law, Tasks &amp; Notes</p>
               <button onClick={close} className="text-gray-400 hover:text-gray-600 text-xl font-bold leading-none">×</button>
             </div>
-            <div className="p-2">
-              {open === 'tasks' && <DynamicTasksSection scopeKey={scopeKey} />}
-              {open === 'law' && <PageLawsList scopeKey={scopeKey} onChange={loadCounts} />}
-              {open === 'notes' && <PageLawsNote scopeKey={scopeKey} kind="note" />}
+            <div className="p-2 space-y-3">
+              <PageLawsList scopeKey={scopeKey} onChange={loadCounts} />
+              <DynamicTasksSection scopeKey={scopeKey} />
+              <PageLawsNote scopeKey={scopeKey} kind="note" />
             </div>
           </div>
         </div>
