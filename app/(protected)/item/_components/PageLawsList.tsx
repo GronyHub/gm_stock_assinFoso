@@ -507,25 +507,29 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
             <div key={f.key} className={`flex items-start gap-2 ${isItemsLaws ? 'px-4 py-3 bg-red-50/30' : 'px-2.5 py-2 bg-gray-50/50'}`}>
               <span className="shrink-0 text-[10px] font-bold text-gray-300 mt-0.5">{laws.length + i + 1}</span>
               <div className="min-w-0 flex-1">
-                <div className="flex items-start gap-2">
-                  <p className="text-[12px] text-gray-800 flex-1">{f.label}</p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <p className="text-[12px] text-gray-800">{f.label}</p>
                   {f.description && (
                     <button onClick={() => setExpandedFlagDesc(expandedFlagDesc === f.key ? null : f.key)}
                       title="Show description"
                       className="text-gray-400 hover:text-gray-600 text-xs font-bold shrink-0">ⓘ</button>
                   )}
-                </div>
-                {expandedFlagDesc === f.key && f.description && (
-                  <p className="text-[10px] text-gray-600 mt-1.5 mb-2">{f.description}</p>
-                )}
-                <div className="flex items-center gap-1.5 mt-1.5">
                   <span className="text-[10px] bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded">{f.count}</span>
                   {f.onViewClick && (
                     <button onClick={f.onViewClick} className="text-[10px] text-blue-600 font-semibold hover:text-blue-700">
-                      View flagged records
+                      flags
                     </button>
                   )}
                 </div>
+                {expandedFlagDesc === f.key && f.description && (
+                  <p className="text-[10px] text-gray-600 mt-1.5 mb-1">{f.description}</p>
+                )}
+                {!taskForFlag && !noteForFlag && (
+                  <div className="flex gap-1.5 mt-1 text-[10px]">
+                    <button onClick={() => { setTaskForFlag(f.key); fetchTasksForFlag(f.key) }} title="Add task for this flag" className="text-blue-500 hover:text-blue-600 font-semibold">✓ Task</button>
+                    <button onClick={() => setNoteForFlag(f.key)} title="Add note for this flag" className="text-amber-500 hover:text-amber-600 font-semibold">📝 Note</button>
+                  </div>
+                )}
                 {taskForFlag === f.key ? (
                   <div className="flex flex-col gap-1.5 mt-2 bg-blue-50 p-2 rounded border border-blue-200">
                     <input autoFocus value={taskTitleForFlag} onChange={e => setTaskTitleForFlag(e.target.value)} placeholder="Task title…"
@@ -558,10 +562,6 @@ export default function PageLawsList({ scopeKey, onChange, flags, isItemsLaws = 
                   </div>
                 ) : (
                   <>
-                    <div className="flex gap-1.5 mt-2 text-[10px]">
-                      <button onClick={() => { setTaskForFlag(f.key); fetchTasksForFlag(f.key) }} title="Add task for this flag" className="text-blue-500 hover:text-blue-600 font-semibold">✓ Task</button>
-                      <button onClick={() => setNoteForFlag(f.key)} title="Add note for this flag" className="text-amber-500 hover:text-amber-600 font-semibold">📝 Note</button>
-                    </div>
                     {tasksByFlagKey[f.key]?.length > 0 && (
                       <div className="mt-2 space-y-1.5 text-[10px]">
                         {tasksByFlagKey[f.key].map(task => (
