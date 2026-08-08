@@ -26,13 +26,15 @@ async function ensureTable() {
   await sql`ALTER TABLE custom_tasks ADD COLUMN IF NOT EXISTS view TEXT`.catch(() => {})
   await sql`ALTER TABLE custom_tasks ADD COLUMN IF NOT EXISTS law_id INTEGER`.catch(() => {})
   await sql`ALTER TABLE custom_tasks ADD COLUMN IF NOT EXISTS flag_key TEXT`.catch(() => {})
+  await sql`ALTER TABLE custom_tasks ADD COLUMN IF NOT EXISTS assigned_to TEXT`.catch(() => {})
+  await sql`ALTER TABLE custom_tasks ADD COLUMN IF NOT EXISTS completed_by TEXT`.catch(() => {})
 }
 
 export async function GET() {
   await ensureTable()
   try {
     const rows = await sql`
-      SELECT id, title, notes, due_date, submenu, view, law_id, flag_key, done, created_by, created_at, completed_at
+      SELECT id, title, notes, due_date, submenu, view, law_id, flag_key, done, created_by, created_at, completed_at, assigned_to, completed_by
       FROM custom_tasks
       ORDER BY done ASC, due_date NULLS LAST, created_at DESC
     `
@@ -48,10 +50,11 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   await ensureTable()
 
-  const { title, notes, due_date, submenu, view, law_id, flag_key } = await req.json()
+  const { title, notes, due_date, submenu, view, law_id, flag_key, assigned_to } = await req.json()
   const text = typeof title === 'string' ? title.trim() : ''
   const submenuText = typeof submenu === 'string' ? submenu.trim() : ''
   const viewText = typeof view === 'string' ? view.trim() : ''
+  const assignedToText = typeof assigned_to === 'string' ? assigned_to.trim() : null
   if (!text) return NextResponse.json({ error: 'Title is required' }, { status: 400 })
   if (!submenuText) return NextResponse.json({ error: 'Submenu is required' }, { status: 400 })
 
@@ -59,14 +62,39 @@ export async function POST(req: NextRequest) {
 
   try {
     const [row] = await sql`
-      INSERT INTO custom_tasks (title, notes, due_date, submenu, view, law_id, flag_key, created_by)
-      VALUES (${text}, ${typeof notes === 'string' && notes.trim() ? notes.trim() : null}, ${due_date || null}, ${submenuText}, ${viewText || null}, ${law_id || null}, ${flag_key || null}, ${actor})
-      RETURNING id, title, notes, due_date, submenu, view, law_id, flag_key, done, created_by, created_at, completed_at
+      INSERT INTO custom_tasks (title, notes, due_date, submenu, view, law_id, flag_key, assigned_to, created_by)
+      VALUES (${text}, ${typeof notes === 'string' && notes.trim() ? notes.trim() : null}, ${due_date || null}, ${submenuText}, ${viewText || null}, ${law_id || null}, ${flag_key || null}, ${assignedToText}, ${actor})
+      RETURNING id, title, notes, due_date, submenu, view, law_id, flag_key, assigned_to, done, created_by, created_at, completed_at, completed_by
     `
     return NextResponse.json(row, { status: 201 })
   } catch (e) {
     console.error('tasks POST error:', e)
     const detail = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ error: `Could not save task: ${detail}` }, { status: 500 })
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  const session = await auth()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  await ensureTable()
+
+  const { id, done } = await req.json()
+  if (!id) return NextResponse.json({ error: 'Task ID is required' }, { status: 400 })
+
+  const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
+
+  try {
+    const [row] = await sql`
+      UPDATE custom_tasks
+      SET done = ${done}, ${done ? sql`completed_at = now(), completed_by = ${actor}` : sql`completed_at = NULL, completed_by = NULL`}
+      WHERE id = ${id}
+      RETURNING id, title, notes, due_date, submenu, view, law_id, flag_key, assigned_to, done, created_by, created_at, completed_at, completed_by
+    `
+    return NextResponse.json(row)
+  } catch (e) {
+    console.error('tasks PATCH error:', e)
+    const detail = e instanceof Error ? e.message : String(e)
+    return NextResponse.json({ error: `Could not update task: ${detail}` }, { status: 500 })
   }
 }
