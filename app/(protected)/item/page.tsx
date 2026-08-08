@@ -1817,16 +1817,6 @@ function ItemHubPageInner() {
                     horizontally instead of wrapping once there are more
                     pills than fit, so this row never pushes Groups/Search
                     further down the screen. */}
-                {(lossView === 'items' || lossView === 'sales' || lossView === 'bills') && !salesFormOpen && (
-                  <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
-                    <PageToolIcons scopeKey={CASH_LABEL.get(lossView) ?? lossView}
-                      flags={(lossView === 'items' ? ITEMS_FLAG_TYPES : lossView === 'sales' ? SALES_FLAG_TYPES : BILLS_FLAG_TYPES).map(({ key, letter, label }) => ({
-                        key, letter, label, count: violationCounts[key] ?? 0,
-                        description: ERROR_VIOLATIONS.find(v => v.key === key)?.description,
-                      }))}
-                      onFlagClick={goToViolation} />
-                  </div>
-                )}
                 <div className="flex items-center gap-1.5">
 
                   {/* Groups dropdown */}
