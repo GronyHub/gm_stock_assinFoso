@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
   try {
     const lawId = req.nextUrl.searchParams.get('lawId')
     const flagKey = req.nextUrl.searchParams.get('flagKey')
+    const submenu = req.nextUrl.searchParams.get('submenu')
 
     if (lawId) {
       const rows = await sql`
@@ -51,6 +52,14 @@ export async function GET(req: NextRequest) {
         FROM custom_tasks
         WHERE flag_key = ${flagKey}
         ORDER BY done ASC, created_at DESC
+      `
+      return NextResponse.json(rows)
+    } else if (submenu) {
+      const rows = await sql`
+        SELECT id, title, notes, due_date, submenu, view, law_id, flag_key, task_type, done, created_by, created_at, completed_at, assigned_to, completed_by
+        FROM custom_tasks
+        WHERE submenu = ${submenu}
+        ORDER BY done ASC, due_date NULLS LAST, created_at DESC
       `
       return NextResponse.json(rows)
     } else {
