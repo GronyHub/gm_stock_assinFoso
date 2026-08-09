@@ -26,5 +26,6 @@ export async function ensurePageNotesTable() {
   // applied, so this stays cheap on every request after the first.
   await sql`ALTER TABLE page_notes DROP CONSTRAINT IF EXISTS page_notes_pkey`.catch(() => {})
   await sql`CREATE UNIQUE INDEX IF NOT EXISTS page_notes_scope_kind_idx ON page_notes (scope_key, kind) WHERE law_id IS NULL AND flag_key IS NULL`.catch(() => {})
+  await sql`CREATE UNIQUE INDEX IF NOT EXISTS page_notes_scope_kind_law_idx ON page_notes (scope_key, kind, law_id) WHERE law_id IS NOT NULL`.catch(() => {})
   await sql`CREATE UNIQUE INDEX IF NOT EXISTS page_notes_scope_kind_flag_idx ON page_notes (scope_key, kind, flag_key) WHERE flag_key IS NOT NULL`.catch(() => {})
 }
