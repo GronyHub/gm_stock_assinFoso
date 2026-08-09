@@ -75,6 +75,8 @@ export default function PageLawsList({
   setHideZeroFlags?: (v: boolean | ((prev: boolean) => boolean)) => void
 }) {
   const [laws, setLaws] = useState<Law[]>([])
+  const [globalTasks, setGlobalTasks] = useState<any[]>([])
+  const [globalNotes, setGlobalNotes] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [text, setText] = useState('')
   const [saving, setSaving] = useState(false)
@@ -224,6 +226,17 @@ export default function PageLawsList({
       .then(r => r.ok ? r.json() : [])
       .then(d => { setLaws(Array.isArray(d) ? d : []); setLoading(false) })
       .catch(() => setLoading(false))
+    // Load global tasks for this scope
+    if (isItemsLaws) {
+      fetch(`/api/tasks?submenu=${encodeURIComponent(scopeKey)}`)
+        .then(r => r.ok ? r.json() : [])
+        .then(d => setGlobalTasks(Array.isArray(d) ? d.filter(t => !t.done) : []))
+        .catch(() => {})
+      fetch(`/api/page-notes?scopeKey=${encodeURIComponent(scopeKey)}&kind=note`)
+        .then(r => r.ok ? r.json() : null)
+        .then(d => setGlobalNotes(d?.notes ? [d] : []))
+        .catch(() => {})
+    }
   }
 
   useEffect(() => { load() }, [scopeKey])
@@ -828,6 +841,24 @@ export default function PageLawsList({
                     )}
                   </>
                 )}
+              </div>
+            </div>
+          ))}
+          {globalTasks.map((task, i) => (
+            <div key={`task-${task.id}`} className="px-1 py-0.5 bg-green-50/50 flex items-center gap-1">
+              <span className="shrink-0 text-[8px] font-bold text-gray-300">{laws.length + (flags?.length || 0) + i + 1}</span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[9px] text-gray-800">✓ {task.title}</p>
+                {task.assigned_to && (<p className="text-[8px] text-gray-500">To: {task.assigned_to}</p>)}
+              </div>
+            </div>
+          ))}
+          {globalNotes.map((note, i) => (
+            <div key="global-note" className="px-1 py-0.5 bg-yellow-50/50 flex items-center gap-1">
+              <span className="shrink-0 text-[8px] font-bold text-gray-300">{laws.length + (flags?.length || 0) + globalTasks.length + i + 1}</span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[9px] text-gray-800">📝 {note.topic || 'Note'}</p>
+                {note.notes && (<p className="text-[8px] text-gray-600 line-clamp-1">{note.notes}</p>)}
               </div>
             </div>
           ))}
