@@ -107,6 +107,10 @@ export default function PageLawsList({
   const [editTaskAssignedTo, setEditTaskAssignedTo] = useState('')
   const [expandedFlagDesc, setExpandedFlagDesc] = useState<string | null>(null)
   const [menuTaskId, setMenuTaskId] = useState<number | null>(null)
+  const [menuGlobalTaskId, setMenuGlobalTaskId] = useState<number | null>(null)
+  const [menuGlobalNoteId, setMenuGlobalNoteId] = useState<number | null>(null)
+  const globalTaskMenuTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const globalNoteMenuTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const taskMenuTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   function formatDate(dateStr: string) {
@@ -500,6 +504,76 @@ export default function PageLawsList({
     }
   }
 
+  async function deleteGlobalTask(taskId: number) {
+    if (!confirm('Delete this task?')) return
+    await fetch(`/api/tasks/${taskId}`, {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+    }).catch(() => {})
+    load()
+    onChange?.()
+  }
+
+  async function toggleGlobalTaskCompletion(taskId: number, currentDone: boolean) {
+    await fetch(`/api/tasks`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: taskId, done: !currentDone }),
+    }).catch(() => {})
+    load()
+    onChange?.()
+  }
+
+  function handleGlobalTaskMouseDown(taskId: number) {
+    globalTaskMenuTimeoutRef.current = setTimeout(() => {
+      setMenuGlobalTaskId(taskId)
+    }, 500)
+  }
+
+  function handleGlobalTaskMouseUp() {
+    if (globalTaskMenuTimeoutRef.current) {
+      clearTimeout(globalTaskMenuTimeoutRef.current)
+      globalTaskMenuTimeoutRef.current = null
+    }
+  }
+
+  function handleGlobalTaskTouchStart(taskId: number) {
+    globalTaskMenuTimeoutRef.current = setTimeout(() => {
+      setMenuGlobalTaskId(taskId)
+    }, 500)
+  }
+
+  function handleGlobalTaskTouchEnd() {
+    if (globalTaskMenuTimeoutRef.current) {
+      clearTimeout(globalTaskMenuTimeoutRef.current)
+      globalTaskMenuTimeoutRef.current = null
+    }
+  }
+
+  function handleGlobalNoteMouseDown(noteId: number) {
+    globalNoteMenuTimeoutRef.current = setTimeout(() => {
+      setMenuGlobalNoteId(noteId)
+    }, 500)
+  }
+
+  function handleGlobalNoteMouseUp() {
+    if (globalNoteMenuTimeoutRef.current) {
+      clearTimeout(globalNoteMenuTimeoutRef.current)
+      globalNoteMenuTimeoutRef.current = null
+    }
+  }
+
+  function handleGlobalNoteTouchStart(noteId: number) {
+    globalNoteMenuTimeoutRef.current = setTimeout(() => {
+      setMenuGlobalNoteId(noteId)
+    }, 500)
+  }
+
+  function handleGlobalNoteTouchEnd() {
+    if (globalNoteMenuTimeoutRef.current) {
+      clearTimeout(globalNoteMenuTimeoutRef.current)
+      globalNoteMenuTimeoutRef.current = null
+    }
+  }
+
   if (loading) return <div className="py-6 text-center text-gray-400 text-xs">Loading…</div>
 
   return (
@@ -845,20 +919,80 @@ export default function PageLawsList({
             </div>
           ))}
           {globalTasks.map((task, i) => (
-            <div key={`task-${task.id}`} className="px-1 py-0.5 bg-green-50/50 flex items-center gap-1">
+            <div key={`task-${task.id}`} className="px-1 py-0.5 bg-green-50/50 flex items-center gap-1" onMouseDown={() => handleGlobalTaskMouseDown(task.id)} onMouseUp={handleGlobalTaskMouseUp} onTouchStart={() => handleGlobalTaskTouchStart(task.id)} onTouchEnd={handleGlobalTaskTouchEnd}>
               <span className="shrink-0 text-[8px] font-bold text-gray-300">{laws.length + (flags?.length || 0) + i + 1}</span>
               <div className="min-w-0 flex-1">
                 <p className="text-[9px] text-gray-800">✓ {task.title}</p>
                 {task.assigned_to && (<p className="text-[8px] text-gray-500">To: {task.assigned_to}</p>)}
+                {menuGlobalTaskId === task.id && (
+                  <div className="flex gap-1 text-[8px] mt-0.5">
+                    <button onClick={() => { toggleGlobalTaskCompletion(task.id, task.done); setMenuGlobalTaskId(null) }} title={task.done ? 'Reopen' : 'Complete'} className="text-green-600 hover:text-green-700 font-semibold">✓</button>
+                    <button onClick={() => { setReplyingTo(`task-${task.id}`); fetchReplies('task', task.id); setMenuGlobalTaskId(null) }} title="Reply" className="text-blue-500 hover:text-blue-700 font-semibold">💬</button>
+                    <button onClick={() => { deleteGlobalTask(task.id); setMenuGlobalTaskId(null) }} title="Delete task" className="text-red-500 hover:text-red-700 font-semibold">×</button>
+                  </div>
+                )}
+                {replyingTo === `task-${task.id}` && (
+                  <div className="mt-0.5 bg-gray-50 p-1 rounded border border-gray-200 space-y-0.5">
+                    <textarea autoFocus value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Reply…" rows={1}
+                      onKeyDown={e => { if (e.key === 'Escape') { setReplyingTo(null); setReplyText('') } }}
+                      className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 resize-none w-full" />
+                    <div className="flex gap-0.5">
+                      <button onClick={() => addReply('task', task.id)} className="flex-1 text-green-600 hover:text-green-700 text-[8px] font-bold">Post</button>
+                      <button onClick={() => { setReplyingTo(null); setReplyText('') }} className="shrink-0 text-gray-400 hover:text-gray-600 text-[8px] font-bold">×</button>
+                    </div>
+                  </div>
+                )}
+                {repliesByItem[`task-${task.id}`]?.length > 0 && (
+                  <div className="mt-0.5 space-y-0.5 text-[7px] border-l border-gray-200 pl-1">
+                    {repliesByItem[`task-${task.id}`].map(reply => (
+                      <div key={reply.id} className="bg-gray-50 p-0.5 rounded">
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="font-semibold text-gray-700">{reply.created_by}</span>
+                          <button onClick={() => deleteReply(reply.id, 'task', task.id)} className="text-red-500 hover:text-red-700 font-bold">×</button>
+                        </div>
+                        <p className="text-gray-600">{reply.reply_text}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           ))}
           {globalNotes.map((note, i) => (
-            <div key="global-note" className="px-1 py-0.5 bg-yellow-50/50 flex items-center gap-1">
+            <div key={`global-note-${note.id || i}`} className="px-1 py-0.5 bg-yellow-50/50 flex items-center gap-1" onMouseDown={() => handleGlobalNoteMouseDown(note.id || 0)} onMouseUp={handleGlobalNoteMouseUp} onTouchStart={() => handleGlobalNoteTouchStart(note.id || 0)} onTouchEnd={handleGlobalNoteTouchEnd}>
               <span className="shrink-0 text-[8px] font-bold text-gray-300">{laws.length + (flags?.length || 0) + globalTasks.length + i + 1}</span>
               <div className="min-w-0 flex-1">
                 <p className="text-[9px] text-gray-800">📝 {note.topic || 'Note'}</p>
                 {note.notes && (<p className="text-[8px] text-gray-600 line-clamp-1">{note.notes}</p>)}
+                {menuGlobalNoteId === (note.id || 0) && (
+                  <div className="flex gap-1 text-[8px] mt-0.5">
+                    <button onClick={() => { setReplyingTo(`note-${note.id}`); fetchReplies('note', note.id); setMenuGlobalNoteId(null) }} title="Reply" className="text-blue-500 hover:text-blue-700 font-semibold">💬</button>
+                  </div>
+                )}
+                {replyingTo === `note-${note.id}` && (
+                  <div className="mt-0.5 bg-gray-50 p-1 rounded border border-gray-200 space-y-0.5">
+                    <textarea autoFocus value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Reply…" rows={1}
+                      onKeyDown={e => { if (e.key === 'Escape') { setReplyingTo(null); setReplyText('') } }}
+                      className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 resize-none w-full" />
+                    <div className="flex gap-0.5">
+                      <button onClick={() => addReply('note', note.id)} className="flex-1 text-green-600 hover:text-green-700 text-[8px] font-bold">Post</button>
+                      <button onClick={() => { setReplyingTo(null); setReplyText('') }} className="shrink-0 text-gray-400 hover:text-gray-600 text-[8px] font-bold">×</button>
+                    </div>
+                  </div>
+                )}
+                {repliesByItem[`note-${note.id}`]?.length > 0 && (
+                  <div className="mt-0.5 space-y-0.5 text-[7px] border-l border-gray-200 pl-1">
+                    {repliesByItem[`note-${note.id}`].map(reply => (
+                      <div key={reply.id} className="bg-gray-50 p-0.5 rounded">
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="font-semibold text-gray-700">{reply.created_by}</span>
+                          <button onClick={() => deleteReply(reply.id, 'note', note.id)} className="text-red-500 hover:text-red-700 font-bold">×</button>
+                        </div>
+                        <p className="text-gray-600">{reply.reply_text}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           ))}
