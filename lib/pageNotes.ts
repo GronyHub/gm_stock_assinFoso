@@ -24,4 +24,8 @@ export async function ensurePageNotesTable() {
   // Notes/Laws row per page) -- dropping it lets a page hold both a 'law'
   // row and a 'note' row instead. This is a no-op once already applied.
   await sql`ALTER TABLE page_notes DROP CONSTRAINT IF EXISTS page_notes_pkey`.catch(() => {})
+  // Drop the old partial unique indexes that were preventing multiple notes
+  await sql`DROP INDEX IF EXISTS page_notes_scope_kind_idx`.catch(() => {})
+  await sql`DROP INDEX IF EXISTS page_notes_law_notes_idx`.catch(() => {})
+  await sql`DROP INDEX IF EXISTS page_notes_flag_notes_idx`.catch(() => {})
 }
