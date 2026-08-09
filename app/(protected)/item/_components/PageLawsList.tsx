@@ -176,6 +176,7 @@ export default function PageLawsList({
     try {
       const res = await fetch(`/api/page-notes?scopeKey=${encodeURIComponent(scopeKey)}&lawId=${lawId}&kind=note`)
       const note = await res.json()
+      console.log('Fetched note for law', lawId, ':', note)
       setNotesByLawId(prev => ({ ...prev, [lawId]: note }))
     } catch (e) {
       console.error('fetch note error:', e)
@@ -186,6 +187,7 @@ export default function PageLawsList({
     try {
       const res = await fetch(`/api/page-notes?scopeKey=${encodeURIComponent(scopeKey)}&flagKey=${encodeURIComponent(flagKey)}&kind=note`)
       const note = await res.json()
+      console.log('Fetched note for flag', flagKey, ':', note)
       setNotesByFlagKey(prev => ({ ...prev, [flagKey]: note }))
     } catch (e) {
       console.error('fetch note error:', e)
@@ -806,7 +808,7 @@ export default function PageLawsList({
                             ))}
                           </div>
                         )}
-                        {notesByLawId[l.id]?.notes && (
+                        {notesByLawId[l.id]?.notes !== undefined && notesByLawId[l.id]?.notes !== '' && (
                           <div className="p-1 bg-amber-50/50 border border-amber-100 rounded text-[8px] text-gray-800">
                             <p className="font-semibold">📝 {notesByLawId[l.id].topic || 'Note'}</p>
                             <p className="text-[7px] text-gray-600 mt-0.5">{notesByLawId[l.id].notes}</p>
@@ -976,7 +978,7 @@ export default function PageLawsList({
                         ))}
                       </div>
                     )}
-                    {notesByFlagKey[f.key]?.notes && (
+                    {notesByFlagKey[f.key]?.notes !== undefined && notesByFlagKey[f.key]?.notes !== '' && (
                       <div className="p-1 bg-amber-50/50 border border-amber-100 rounded text-[8px] text-gray-800">
                         <p className="font-semibold">📝 {notesByFlagKey[f.key].topic || 'Note'}</p>
                         <p className="text-[7px] text-gray-600 mt-0.5">{notesByFlagKey[f.key].notes}</p>
