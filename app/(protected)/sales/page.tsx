@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { fmtDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
+import PageLawsList from '@/app/(protected)/item/_components/PageLawsList'
 
 const MONTHS = ['Ja','Fe','Mr','Ap','My','Ju','Jl','Au','Se','Oc','No','De']
 const DAYS   = ['Su','Mo','Tu','We','Th','Fr','Sa']
@@ -420,6 +421,13 @@ function SalesPageInner() {
           </div>
         )}
       </div>
+
+      {/* Laws Panel */}
+      {tab === 'List' && (
+        <div className="border-b border-gray-200 bg-white overflow-y-auto max-h-80">
+          <PageLawsList scopeKey="sales" isItemsLaws={false} />
+        </div>
+      )}
 
       {/* Split body */}
       {tab === 'List' && (
