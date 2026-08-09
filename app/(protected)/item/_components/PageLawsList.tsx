@@ -440,16 +440,18 @@ export default function PageLawsList({
       if (!res.ok) {
         const err = await res.text()
         console.error('Failed to create note:', err)
-        alert('Failed to save note. Please try again.')
+        alert(`Failed to save note: ${err}`)
         return
       }
       setNoteText('')
       setNoteForLaw(null)
-      await fetchNoteForLaw(lawId)
+      setTimeout(() => {
+        fetchNoteForLaw(lawId)
+      }, 200)
       onChange?.()
     } catch (e) {
       console.error('Note creation error:', e)
-      alert('Error saving note. Please try again.')
+      alert(`Error saving note: ${String(e)}`)
     }
   }
 
@@ -485,16 +487,18 @@ export default function PageLawsList({
       if (!res.ok) {
         const err = await res.text()
         console.error('Failed to create note:', err)
-        alert('Failed to save note. Please try again.')
+        alert(`Failed to save note: ${err}`)
         return
       }
       setNoteTextForFlag('')
       setNoteForFlag(null)
-      await fetchNoteForFlag(flagKey)
+      setTimeout(() => {
+        fetchNoteForFlag(flagKey)
+      }, 200)
       onChange?.()
     } catch (e) {
       console.error('Note creation error:', e)
-      alert('Error saving note. Please try again.')
+      alert(`Error saving note: ${String(e)}`)
     }
   }
 
@@ -545,7 +549,7 @@ export default function PageLawsList({
       if (!res.ok) {
         const err = await res.text()
         console.error('Failed to create note:', err)
-        alert('Failed to create note. Please try again.')
+        alert(`Failed to create note: ${err}`)
         return
       }
       setGlobalNoteText?.('')
@@ -554,11 +558,14 @@ export default function PageLawsList({
       setGlobalNoteDate?.(today.toISOString().split('T')[0])
       setGlobalNoteTaggedStaff?.([])
       setCreatingGlobalNote?.(false)
-      load()
+      // Wait a moment for database to persist, then reload
+      setTimeout(() => {
+        load()
+      }, 200)
       onChange?.()
     } catch (e) {
       console.error('Note creation error:', e)
-      alert('Error creating note. Please try again.')
+      alert(`Error creating note: ${String(e)}`)
     }
   }
 
