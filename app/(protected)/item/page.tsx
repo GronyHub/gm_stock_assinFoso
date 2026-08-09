@@ -273,7 +273,7 @@ type ErrorCategory = 'loss' | 'sales' | 'bills' | 'cab' | 'team'
 // a pill directly on the Grony Cash submenu it actually belongs to (see
 // LOSSVIEW_PILL_KEYS/VIOLATION_HOME below) rather than on a separate Errors
 // screen, so this list is just shared label/description data now.
-const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCategory; description: string }[] = [
+export const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCategory; description: string }[] = [
   {
     key: 'neg_soh', label: 'Neg SOH', category: 'loss',
     description: "This item's stock on hand has gone below zero -- more was sold or removed than was ever recorded as received. That usually means a bill or restock was never entered, an item was miscounted, or a sale was logged against the wrong item. Check the item's recent counts, bills, and sales to find and correct the mismatch.",
@@ -2206,33 +2206,6 @@ function ItemHubPageInner() {
             Sales/Counts/Feed below -- each of those already knows how to
             render its own filtered view when handed a matching violation
             key (SalesTab/CountsTab), or via the kind prop (LossFeedTab). */}
-        {outerTab === 'loss' && violation && pillKeys?.includes(violation) && (
-          <>
-            {/* The flag's own name, bold and red -- names the rule being
-                broken (e.g. "NO VENDOR") before the longer explanation,
-                so it reads like a heading for this filtered list instead
-                of starting straight into prose. The explanation itself is
-                tucked behind the ℹ️ next to it now -- tap to show, instead
-                of always taking up space on the page. */}
-            <div className="mx-3 mt-2 flex items-center gap-1.5">
-              <p className="text-sm font-extrabold text-red-600 uppercase tracking-wide">
-                {ERROR_VIOLATIONS.find(v => v.key === violation)?.label}
-              </p>
-              <button onClick={() => setInfoOpenFor(v => v === violation ? null : violation)} title="Why this flag exists"
-                className="shrink-0 text-sm leading-none w-5 h-5 rounded-full bg-blue-100 hover:bg-blue-200 flex items-center justify-center transition">
-                ℹ️
-              </button>
-            </div>
-            {infoOpenFor === violation && (
-              <div className="mx-3 mt-1 mb-1 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 flex gap-2">
-                <span className="text-sm shrink-0">ℹ️</span>
-                <p className="text-[11px] text-blue-800 leading-snug">
-                  {ERROR_VIOLATIONS.find(v => v.key === violation)?.description}
-                </p>
-              </div>
-            )}
-          </>
-        )}
         {outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'aliasWide' && (
           <TabErrorBoundary>
             <div className="px-4 pt-4 space-y-2"><PageToolIcons scopeKey="Alias Wide Table" /><AliasWidePage /></div>
@@ -2306,6 +2279,7 @@ function ItemHubPageInner() {
                       productType={productType}
                       search={search}
                       violation={violation}
+                      violationLabel={ERROR_VIOLATIONS.find(v => v.key === violation)?.label}
                       onItemsChanged={setItems}
                       showAdd={false}
                       onCloseAdd={() => {}}
