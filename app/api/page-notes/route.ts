@@ -43,23 +43,47 @@ export async function PUT(req: NextRequest) {
   try {
     await ensurePageNotesTable()
     if (law_id) {
-      await sql`
-        INSERT INTO page_notes (scope_key, kind, notes, law_id, topic, note_date, tagged_staff, updated_at)
-        VALUES (${scopeKey}, ${k}, ${notes ?? ''}, ${law_id}, ${topic ?? ''}, ${noteDate ?? null}, ${JSON.stringify(taggedStaff ?? [])}, now())
-        ON CONFLICT (scope_key, kind, law_id) DO UPDATE SET notes = ${notes ?? ''}, topic = ${topic ?? ''}, note_date = ${noteDate ?? null}, tagged_staff = ${JSON.stringify(taggedStaff ?? [])}, updated_at = now()
-      `
+      const [existing] = await sql`SELECT id FROM page_notes WHERE scope_key = ${scopeKey} AND kind = ${k} AND law_id = ${law_id}`
+      if (existing) {
+        await sql`
+          UPDATE page_notes
+          SET notes = ${notes ?? ''}, topic = ${topic ?? ''}, note_date = ${noteDate ?? null}, tagged_staff = ${JSON.stringify(taggedStaff ?? [])}, updated_at = now()
+          WHERE scope_key = ${scopeKey} AND kind = ${k} AND law_id = ${law_id}
+        `
+      } else {
+        await sql`
+          INSERT INTO page_notes (scope_key, kind, notes, law_id, topic, note_date, tagged_staff, updated_at)
+          VALUES (${scopeKey}, ${k}, ${notes ?? ''}, ${law_id}, ${topic ?? ''}, ${noteDate ?? null}, ${JSON.stringify(taggedStaff ?? [])}, now())
+        `
+      }
     } else if (flag_key) {
-      await sql`
-        INSERT INTO page_notes (scope_key, kind, notes, flag_key, topic, note_date, tagged_staff, updated_at)
-        VALUES (${scopeKey}, ${k}, ${notes ?? ''}, ${flag_key}, ${topic ?? ''}, ${noteDate ?? null}, ${JSON.stringify(taggedStaff ?? [])}, now())
-        ON CONFLICT (scope_key, kind, flag_key) DO UPDATE SET notes = ${notes ?? ''}, topic = ${topic ?? ''}, note_date = ${noteDate ?? null}, tagged_staff = ${JSON.stringify(taggedStaff ?? [])}, updated_at = now()
-      `
+      const [existing] = await sql`SELECT id FROM page_notes WHERE scope_key = ${scopeKey} AND kind = ${k} AND flag_key = ${flag_key}`
+      if (existing) {
+        await sql`
+          UPDATE page_notes
+          SET notes = ${notes ?? ''}, topic = ${topic ?? ''}, note_date = ${noteDate ?? null}, tagged_staff = ${JSON.stringify(taggedStaff ?? [])}, updated_at = now()
+          WHERE scope_key = ${scopeKey} AND kind = ${k} AND flag_key = ${flag_key}
+        `
+      } else {
+        await sql`
+          INSERT INTO page_notes (scope_key, kind, notes, flag_key, topic, note_date, tagged_staff, updated_at)
+          VALUES (${scopeKey}, ${k}, ${notes ?? ''}, ${flag_key}, ${topic ?? ''}, ${noteDate ?? null}, ${JSON.stringify(taggedStaff ?? [])}, now())
+        `
+      }
     } else {
-      await sql`
-        INSERT INTO page_notes (scope_key, kind, notes, topic, note_date, tagged_staff, updated_at)
-        VALUES (${scopeKey}, ${k}, ${notes ?? ''}, ${topic ?? ''}, ${noteDate ?? null}, ${JSON.stringify(taggedStaff ?? [])}, now())
-        ON CONFLICT (scope_key, kind) DO UPDATE SET notes = ${notes ?? ''}, topic = ${topic ?? ''}, note_date = ${noteDate ?? null}, tagged_staff = ${JSON.stringify(taggedStaff ?? [])}, updated_at = now()
-      `
+      const [existing] = await sql`SELECT id FROM page_notes WHERE scope_key = ${scopeKey} AND kind = ${k} AND law_id IS NULL AND flag_key IS NULL`
+      if (existing) {
+        await sql`
+          UPDATE page_notes
+          SET notes = ${notes ?? ''}, topic = ${topic ?? ''}, note_date = ${noteDate ?? null}, tagged_staff = ${JSON.stringify(taggedStaff ?? [])}, updated_at = now()
+          WHERE scope_key = ${scopeKey} AND kind = ${k} AND law_id IS NULL AND flag_key IS NULL
+        `
+      } else {
+        await sql`
+          INSERT INTO page_notes (scope_key, kind, notes, topic, note_date, tagged_staff, updated_at)
+          VALUES (${scopeKey}, ${k}, ${notes ?? ''}, ${topic ?? ''}, ${noteDate ?? null}, ${JSON.stringify(taggedStaff ?? [])}, now())
+        `
+      }
     }
     return NextResponse.json({ ok: true })
   } catch (e) {
