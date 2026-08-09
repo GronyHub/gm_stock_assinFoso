@@ -43,7 +43,7 @@ export async function PUT(req: NextRequest) {
   try {
     await ensurePageNotesTable()
     if (law_id) {
-      const [existing] = await sql`SELECT id FROM page_notes WHERE scope_key = ${scopeKey} AND kind = ${k} AND law_id = ${law_id}`
+      const [existing] = await sql`SELECT 1 FROM page_notes WHERE scope_key = ${scopeKey} AND kind = ${k} AND law_id = ${law_id}`
       if (existing) {
         await sql`
           UPDATE page_notes
@@ -57,7 +57,7 @@ export async function PUT(req: NextRequest) {
         `
       }
     } else if (flag_key) {
-      const [existing] = await sql`SELECT id FROM page_notes WHERE scope_key = ${scopeKey} AND kind = ${k} AND flag_key = ${flag_key}`
+      const [existing] = await sql`SELECT 1 FROM page_notes WHERE scope_key = ${scopeKey} AND kind = ${k} AND flag_key = ${flag_key}`
       if (existing) {
         await sql`
           UPDATE page_notes
@@ -71,7 +71,7 @@ export async function PUT(req: NextRequest) {
         `
       }
     } else {
-      const [existing] = await sql`SELECT id FROM page_notes WHERE scope_key = ${scopeKey} AND kind = ${k} AND law_id IS NULL AND flag_key IS NULL`
+      const [existing] = await sql`SELECT 1 FROM page_notes WHERE scope_key = ${scopeKey} AND kind = ${k} AND law_id IS NULL AND flag_key IS NULL`
       if (existing) {
         await sql`
           UPDATE page_notes
