@@ -98,6 +98,8 @@ export default function PageLawsList({
   const [noteTextForFlag, setNoteTextForFlag] = useState('')
   const [tasksByLawId, setTasksByLawId] = useState<Record<number, Task[]>>({})
   const [tasksByFlagKey, setTasksByFlagKey] = useState<Record<string, Task[]>>({})
+  const [notesByLawId, setNotesByLawId] = useState<Record<number, any>>({})
+  const [notesByFlagKey, setNotesByFlagKey] = useState<Record<string, any>>({})
   const [repliesByItem, setRepliesByItem] = useState<Record<string, any[]>>({})
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
@@ -167,6 +169,26 @@ export default function PageLawsList({
       setTasksByFlagKey(prev => ({ ...prev, [flagKey]: Array.isArray(tasks) ? tasks : [] }))
     } catch (e) {
       console.error('fetch tasks error:', e)
+    }
+  }
+
+  async function fetchNoteForLaw(lawId: number) {
+    try {
+      const res = await fetch(`/api/page-notes?scopeKey=${encodeURIComponent(scopeKey)}&lawId=${lawId}`)
+      const note = await res.json()
+      setNotesByLawId(prev => ({ ...prev, [lawId]: note }))
+    } catch (e) {
+      console.error('fetch note error:', e)
+    }
+  }
+
+  async function fetchNoteForFlag(flagKey: string) {
+    try {
+      const res = await fetch(`/api/page-notes?scopeKey=${encodeURIComponent(scopeKey)}&flagKey=${encodeURIComponent(flagKey)}`)
+      const note = await res.json()
+      setNotesByFlagKey(prev => ({ ...prev, [flagKey]: note }))
+    } catch (e) {
+      console.error('fetch note error:', e)
     }
   }
 
@@ -250,6 +272,9 @@ export default function PageLawsList({
       if (!tasksByLawId[law.id]) {
         fetchTasksForLaw(law.id)
       }
+      if (!notesByLawId[law.id]) {
+        fetchNoteForLaw(law.id)
+      }
     })
   }, [laws])
 
@@ -258,6 +283,9 @@ export default function PageLawsList({
       flags.forEach(flag => {
         if (!tasksByFlagKey[flag.key]) {
           fetchTasksForFlag(flag.key)
+        }
+        if (!notesByFlagKey[flag.key]) {
+          fetchNoteForFlag(flag.key)
         }
       })
     }
@@ -401,13 +429,26 @@ export default function PageLawsList({
 
   async function addNoteForLaw() {
     if (noteForLaw === null) return
-    await fetch('/api/page-notes', {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scopeKey, kind: 'note', notes: noteText.trim(), law_id: noteForLaw }),
-    }).catch(() => {})
-    setNoteText('')
-    setNoteForLaw(null)
-    onChange?.()
+    const lawId = noteForLaw
+    try {
+      const res = await fetch('/api/page-notes', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scopeKey, kind: 'note', notes: noteText.trim(), law_id: lawId }),
+      })
+      if (!res.ok) {
+        const err = await res.text()
+        console.error('Failed to create note:', err)
+        alert('Failed to save note. Please try again.')
+        return
+      }
+      setNoteText('')
+      setNoteForLaw(null)
+      await fetchNoteForLaw(lawId)
+      onChange?.()
+    } catch (e) {
+      console.error('Note creation error:', e)
+      alert('Error saving note. Please try again.')
+    }
   }
 
   async function addTaskForFlag() {
@@ -433,13 +474,26 @@ export default function PageLawsList({
 
   async function addNoteForFlag() {
     if (noteForFlag === null) return
-    await fetch('/api/page-notes', {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scopeKey, kind: 'note', notes: noteTextForFlag.trim(), flag_key: noteForFlag }),
-    }).catch(() => {})
-    setNoteTextForFlag('')
-    setNoteForFlag(null)
-    onChange?.()
+    const flagKey = noteForFlag
+    try {
+      const res = await fetch('/api/page-notes', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scopeKey, kind: 'note', notes: noteTextForFlag.trim(), flag_key: flagKey }),
+      })
+      if (!res.ok) {
+        const err = await res.text()
+        console.error('Failed to create note:', err)
+        alert('Failed to save note. Please try again.')
+        return
+      }
+      setNoteTextForFlag('')
+      setNoteForFlag(null)
+      await fetchNoteForFlag(flagKey)
+      onChange?.()
+    } catch (e) {
+      console.error('Note creation error:', e)
+      alert('Error saving note. Please try again.')
+    }
   }
 
   async function addGlobalTask() {
@@ -752,6 +806,13 @@ export default function PageLawsList({
                             ))}
                           </div>
                         )}
+                        {notesByLawId[l.id]?.notes && (
+                          <div className="p-1 bg-amber-50/50 border border-amber-100 rounded text-[8px] text-gray-800">
+                            <p className="font-semibold">📝 {notesByLawId[l.id].topic || 'Note'}</p>
+                            <p className="text-[7px] text-gray-600 mt-0.5">{notesByLawId[l.id].notes}</p>
+                            {notesByLawId[l.id].noteDate && <p className="text-[7px] text-gray-500 mt-0.5">{formatDate(notesByLawId[l.id].noteDate)}</p>}
+                          </div>
+                        )}
                         {replyingTo === `law-${l.id}` && (
                           <div className="mt-2 bg-gray-50 p-2 rounded border border-gray-200 space-y-1.5">
                             <textarea autoFocus value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Reply…" rows={2}
@@ -913,6 +974,13 @@ export default function PageLawsList({
                             )}
                           </div>
                         ))}
+                      </div>
+                    )}
+                    {notesByFlagKey[f.key]?.notes && (
+                      <div className="p-1 bg-amber-50/50 border border-amber-100 rounded text-[8px] text-gray-800">
+                        <p className="font-semibold">📝 {notesByFlagKey[f.key].topic || 'Note'}</p>
+                        <p className="text-[7px] text-gray-600 mt-0.5">{notesByFlagKey[f.key].notes}</p>
+                        {notesByFlagKey[f.key].noteDate && <p className="text-[7px] text-gray-500 mt-0.5">{formatDate(notesByFlagKey[f.key].noteDate)}</p>}
                       </div>
                     )}
                   </>
