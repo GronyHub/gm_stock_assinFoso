@@ -338,6 +338,7 @@ type Props = {
   productType: 'all' | 'goods' | 'services'
   search: string
   violation: string | null
+  violationLabel?: string
   onItemsChanged: (items: Item[]) => void
   showAdd?: boolean
   onCloseAdd?: () => void
@@ -346,7 +347,7 @@ type Props = {
   onOpenItem360?: (itemId: number) => void
 }
 
-export default function ItemsTab({ items, group, productType, search, violation, onItemsChanged, showAdd = false, onCloseAdd, jumpToItemId, onJumpDone, onOpenItem360 }: Props) {
+export default function ItemsTab({ items, group, productType, search, violation, violationLabel, onItemsChanged, showAdd = false, onCloseAdd, jumpToItemId, onJumpDone, onOpenItem360 }: Props) {
   const [lossMap, setLossMap] = useState<Record<number, DayRow[]>>({})
   const [lossLoading, setLossLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -580,7 +581,10 @@ export default function ItemsTab({ items, group, productType, search, violation,
             ← Back to Flags
           </button>
         )}
-        <p className="shrink-0 text-[10px] text-gray-400 px-2 py-1">{violatedItems.length} item{violatedItems.length !== 1 ? 's' : ''}</p>
+        <p className="shrink-0 text-[10px] text-gray-400 px-2 py-1">
+          {violationLabel ? `${violationLabel} - ` : ''}
+          {violatedItems.length} item{violatedItems.length !== 1 ? 's' : ''}
+        </p>
         <div className="flex-1 min-h-0 overflow-y-auto">
           <table className="w-full table-fixed border-collapse text-[8px]">
             <colgroup>
