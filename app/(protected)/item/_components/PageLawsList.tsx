@@ -721,7 +721,7 @@ export default function PageLawsList({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1 flex-wrap leading-none">
                       <p className="text-[9px] text-gray-800">{l.text}</p>
-                      {!taskForLaw && !noteForLaw && (
+                      {taskForLaw !== l.id && noteForLaw !== l.id && (
                         <>
                           <button onClick={() => { setTaskForLaw(l.id); fetchTasksForLaw(l.id) }} title="Add task" className="text-blue-500 hover:text-blue-600 font-semibold text-[8px]">✓ Task</button>
                           <button onClick={() => setNoteForLaw(l.id)} title="Add note" className="text-amber-500 hover:text-amber-600 font-semibold text-[8px]">📝 Note</button>
@@ -895,7 +895,7 @@ export default function PageLawsList({
                       flags
                     </button>
                   )}
-                  {!taskForFlag && !noteForFlag && (
+                  {taskForFlag !== f.key && noteForFlag !== f.key && (
                     <>
                       <button onClick={() => { setTaskForFlag(f.key); fetchTasksForFlag(f.key) }} title="Add task for this flag" className="text-blue-500 hover:text-blue-600 font-semibold text-[8px]">✓ Task</button>
                       <button onClick={() => setNoteForFlag(f.key)} title="Add note for this flag" className="text-amber-500 hover:text-amber-600 font-semibold text-[8px]">📝 Note</button>
