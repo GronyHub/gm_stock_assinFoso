@@ -411,22 +411,34 @@ export default function PageLawsList({
   async function addTaskForLaw() {
     if (!taskTitle.trim() || taskForLaw === null) return
     const lawId = taskForLaw
-    await fetch('/api/tasks', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title: taskTitle.trim(),
-        submenu: scopeKey,
-        law_id: lawId,
-        task_type: taskType,
-        assigned_to: taskAssignedTo || null
-      }),
-    }).catch(() => {})
-    setTaskTitle('')
-    setTaskType('General task')
-    setTaskAssignedTo('')
-    setTaskForLaw(null)
-    await fetchTasksForLaw(lawId)
-    onChange?.()
+    try {
+      const res = await fetch('/api/tasks', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: taskTitle.trim(),
+          submenu: scopeKey,
+          law_id: lawId,
+          task_type: taskType,
+          assigned_to: taskAssignedTo || null
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.text()
+        alert(`Failed to create task: ${err}`)
+        return
+      }
+      setTaskTitle('')
+      setTaskType('General task')
+      setTaskAssignedTo('')
+      setTaskForLaw(null)
+      setTimeout(() => {
+        fetchTasksForLaw(lawId)
+      }, 200)
+      onChange?.()
+    } catch (e) {
+      console.error('Task creation error:', e)
+      alert(`Error creating task: ${String(e)}`)
+    }
   }
 
   async function addNoteForLaw() {
@@ -458,22 +470,34 @@ export default function PageLawsList({
   async function addTaskForFlag() {
     if (!taskTitleForFlag.trim() || taskForFlag === null) return
     const flagKey = taskForFlag
-    await fetch('/api/tasks', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title: taskTitleForFlag.trim(),
-        submenu: scopeKey,
-        flag_key: flagKey,
-        task_type: taskTypeForFlag,
-        assigned_to: taskAssignedToFlag || null
-      }),
-    }).catch(() => {})
-    setTaskTitleForFlag('')
-    setTaskTypeForFlag('General task')
-    setTaskAssignedToFlag('')
-    setTaskForFlag(null)
-    await fetchTasksForFlag(flagKey)
-    onChange?.()
+    try {
+      const res = await fetch('/api/tasks', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: taskTitleForFlag.trim(),
+          submenu: scopeKey,
+          flag_key: flagKey,
+          task_type: taskTypeForFlag,
+          assigned_to: taskAssignedToFlag || null
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.text()
+        alert(`Failed to create task: ${err}`)
+        return
+      }
+      setTaskTitleForFlag('')
+      setTaskTypeForFlag('General task')
+      setTaskAssignedToFlag('')
+      setTaskForFlag(null)
+      setTimeout(() => {
+        fetchTasksForFlag(flagKey)
+      }, 200)
+      onChange?.()
+    } catch (e) {
+      console.error('Task creation error:', e)
+      alert(`Error creating task: ${String(e)}`)
+    }
   }
 
   async function addNoteForFlag() {
