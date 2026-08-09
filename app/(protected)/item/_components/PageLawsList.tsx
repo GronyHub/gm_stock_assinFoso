@@ -464,6 +464,7 @@ export default function PageLawsList({
       setGlobalTaskType?.('General task')
       setGlobalTaskAssignedTo?.('')
       setCreatingGlobalTask?.(false)
+      load()
       onChange?.()
     } catch (e) {
       console.error('Task creation error:', e)
@@ -497,6 +498,7 @@ export default function PageLawsList({
       setGlobalNoteDate?.(today.toISOString().split('T')[0])
       setGlobalNoteTaggedStaff?.([])
       setCreatingGlobalNote?.(false)
+      load()
       onChange?.()
     } catch (e) {
       console.error('Note creation error:', e)
