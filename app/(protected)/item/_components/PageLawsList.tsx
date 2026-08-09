@@ -639,6 +639,76 @@ export default function PageLawsList({
     }
   }
 
+  async function deleteGlobalTask(taskId: number) {
+    if (!confirm('Delete this task?')) return
+    await fetch(`/api/tasks/${taskId}`, {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+    }).catch(() => {})
+    load()
+    onChange?.()
+  }
+
+  async function toggleGlobalTaskCompletion(taskId: number, currentDone: boolean) {
+    await fetch(`/api/tasks`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: taskId, done: !currentDone }),
+    }).catch(() => {})
+    load()
+    onChange?.()
+  }
+
+  function handleGlobalTaskMouseDown(taskId: number) {
+    globalTaskMenuTimeoutRef.current = setTimeout(() => {
+      setMenuGlobalTaskId(taskId)
+    }, 500)
+  }
+
+  function handleGlobalTaskMouseUp() {
+    if (globalTaskMenuTimeoutRef.current) {
+      clearTimeout(globalTaskMenuTimeoutRef.current)
+      globalTaskMenuTimeoutRef.current = null
+    }
+  }
+
+  function handleGlobalTaskTouchStart(taskId: number) {
+    globalTaskMenuTimeoutRef.current = setTimeout(() => {
+      setMenuGlobalTaskId(taskId)
+    }, 500)
+  }
+
+  function handleGlobalTaskTouchEnd() {
+    if (globalTaskMenuTimeoutRef.current) {
+      clearTimeout(globalTaskMenuTimeoutRef.current)
+      globalTaskMenuTimeoutRef.current = null
+    }
+  }
+
+  function handleGlobalNoteMouseDown(noteId: number) {
+    globalNoteMenuTimeoutRef.current = setTimeout(() => {
+      setMenuGlobalNoteId(noteId)
+    }, 500)
+  }
+
+  function handleGlobalNoteMouseUp() {
+    if (globalNoteMenuTimeoutRef.current) {
+      clearTimeout(globalNoteMenuTimeoutRef.current)
+      globalNoteMenuTimeoutRef.current = null
+    }
+  }
+
+  function handleGlobalNoteTouchStart(noteId: number) {
+    globalNoteMenuTimeoutRef.current = setTimeout(() => {
+      setMenuGlobalNoteId(noteId)
+    }, 500)
+  }
+
+  function handleGlobalNoteTouchEnd() {
+    if (globalNoteMenuTimeoutRef.current) {
+      clearTimeout(globalNoteMenuTimeoutRef.current)
+      globalNoteMenuTimeoutRef.current = null
+    }
+  }
+
   if (loading) return <div className="py-6 text-center text-gray-400 text-xs">Loading…</div>
 
   return (
