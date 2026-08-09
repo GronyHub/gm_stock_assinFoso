@@ -701,7 +701,7 @@ export default function PageLawsList({
       ) : (
         <div className={`bg-white ${isItemsLaws ? 'divide-y divide-gray-100' : 'border border-gray-200 rounded-lg divide-y divide-gray-50'}`}>
           {laws.map((l, i) => (
-            <div key={l.id} className={`flex items-center gap-1 ${isItemsLaws ? 'px-1 py-0.5 bg-gray-50/50' : 'px-1 py-0.5 bg-gray-50/50'}`} onMouseDown={() => handleMouseDown(l.id)} onMouseUp={handleMouseUp} onTouchStart={() => handleTouchStart(l.id)} onTouchEnd={handleTouchEnd}>
+            <div key={l.id} className={`flex items-start gap-1 ${isItemsLaws ? 'px-1 py-0.5 bg-gray-50/50' : 'px-1 py-0.5 bg-gray-50/50'}`} onMouseDown={() => handleMouseDown(l.id)} onMouseUp={handleMouseUp} onTouchStart={() => handleTouchStart(l.id)} onTouchEnd={handleTouchEnd}>
               <span className="shrink-0 text-[8px] font-bold text-gray-300">{i + 1}</span>
               {editingId === l.id ? (
                 <>
@@ -879,7 +879,7 @@ export default function PageLawsList({
             </div>
           ))}
           {flags && flags.filter(f => !hideZeroFlags || f.count > 0).map((f, i) => (
-            <div key={f.key} className={`flex items-center gap-1 ${isItemsLaws ? 'px-1 py-0.5 bg-red-50/30' : 'px-1 py-0.5 bg-gray-50/50'}`}>
+            <div key={f.key} className={`flex items-start gap-1 ${isItemsLaws ? 'px-1 py-0.5 bg-red-50/30' : 'px-1 py-0.5 bg-gray-50/50'}`}>
               <span className="shrink-0 text-[8px] font-bold text-gray-300">{laws.length + i + 1}</span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1 flex-wrap leading-none">
