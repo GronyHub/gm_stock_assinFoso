@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
       const rows = await sql`
         SELECT id, title, notes, due_date, submenu, view, law_id, flag_key, task_type, done, created_by, created_at, completed_at, assigned_to, completed_by
         FROM custom_tasks
-        WHERE submenu = ${submenu}
+        WHERE submenu = ${submenu} AND law_id IS NULL AND flag_key IS NULL
         ORDER BY done ASC, due_date NULLS LAST, created_at DESC
       `
       return NextResponse.json(rows)
