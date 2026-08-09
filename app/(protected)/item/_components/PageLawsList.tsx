@@ -174,7 +174,7 @@ export default function PageLawsList({
 
   async function fetchNoteForLaw(lawId: number) {
     try {
-      const res = await fetch(`/api/page-notes?scopeKey=${encodeURIComponent(scopeKey)}&lawId=${lawId}`)
+      const res = await fetch(`/api/page-notes?scopeKey=${encodeURIComponent(scopeKey)}&lawId=${lawId}&kind=note`)
       const note = await res.json()
       setNotesByLawId(prev => ({ ...prev, [lawId]: note }))
     } catch (e) {
@@ -184,7 +184,7 @@ export default function PageLawsList({
 
   async function fetchNoteForFlag(flagKey: string) {
     try {
-      const res = await fetch(`/api/page-notes?scopeKey=${encodeURIComponent(scopeKey)}&flagKey=${encodeURIComponent(flagKey)}`)
+      const res = await fetch(`/api/page-notes?scopeKey=${encodeURIComponent(scopeKey)}&flagKey=${encodeURIComponent(flagKey)}&kind=note`)
       const note = await res.json()
       setNotesByFlagKey(prev => ({ ...prev, [flagKey]: note }))
     } catch (e) {
