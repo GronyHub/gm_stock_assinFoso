@@ -32,6 +32,8 @@ export type FlagLaw = {
 // appends flag laws as continuation items after regular editable laws.
 export default function PageLawsList({
   scopeKey, onChange, flags, isItemsLaws = false,
+  creatingGlobalLaw, setCreatingGlobalLaw,
+  globalLawText, setGlobalLawText,
   creatingGlobalTask, setCreatingGlobalTask,
   globalTaskTitle, setGlobalTaskTitle,
   globalTaskType, setGlobalTaskType,
@@ -47,6 +49,10 @@ export default function PageLawsList({
   onChange?: () => void
   flags?: FlagLaw[]
   isItemsLaws?: boolean
+  creatingGlobalLaw?: boolean
+  setCreatingGlobalLaw?: (v: boolean | ((prev: boolean) => boolean)) => void
+  globalLawText?: string
+  setGlobalLawText?: (v: string) => void
   creatingGlobalTask?: boolean
   setCreatingGlobalTask?: (v: boolean | ((prev: boolean) => boolean)) => void
   globalTaskTitle?: string
@@ -250,6 +256,29 @@ export default function PageLawsList({
     })
     setSaving(false)
     if (res.ok) { setText(''); load(); onChange?.() }
+  }
+
+  async function addGlobalLaw() {
+    if (!(globalLawText ?? '').trim()) return
+    try {
+      const res = await fetch('/api/page-laws', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scopeKey, text: (globalLawText ?? '').trim() }),
+      })
+      if (!res.ok) {
+        const err = await res.text()
+        console.error('Failed to create law:', err)
+        alert('Failed to create law. Please try again.')
+        return
+      }
+      setGlobalLawText?.('')
+      setCreatingGlobalLaw?.(false)
+      load()
+      onChange?.()
+    } catch (e) {
+      console.error('Law creation error:', e)
+      alert('Error creating law. Please try again.')
+    }
   }
 
   async function remove(id: number) {
@@ -477,6 +506,18 @@ export default function PageLawsList({
             </button>
           </form>
         </>
+      )}
+
+      {isItemsLaws && creatingGlobalLaw && (
+        <div className="px-1 py-1 bg-blue-50 border-t border-blue-200 flex flex-col gap-0.5 text-[8px]">
+          <input autoFocus value={globalLawText ?? ''} onChange={e => setGlobalLawText?.(e.target.value)} placeholder="New law…"
+            onKeyDown={e => { if (e.key === 'Enter') addGlobalLaw(); if (e.key === 'Escape') setCreatingGlobalLaw?.(false) }}
+            className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
+          <div className="flex gap-0.5">
+            <button onClick={addGlobalLaw} disabled={!globalLawText?.trim()} className="flex-1 text-green-600 hover:text-green-700 disabled:opacity-40 font-bold">Add</button>
+            <button onClick={() => setCreatingGlobalLaw?.(false)} className="shrink-0 text-gray-400 hover:text-gray-600 font-bold">×</button>
+          </div>
+        </div>
       )}
 
       {laws.length === 0 && (!flags || flags.length === 0) ? (
