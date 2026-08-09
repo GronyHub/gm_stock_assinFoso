@@ -58,7 +58,7 @@ export async function PUT(req: NextRequest) {
       await sql`
         INSERT INTO page_notes (scope_key, kind, notes, topic, note_date, tagged_staff, updated_at)
         VALUES (${scopeKey}, ${k}, ${notes ?? ''}, ${topic ?? ''}, ${noteDate ?? null}, ${JSON.stringify(taggedStaff ?? [])}, now())
-        ON CONFLICT (scope_key, kind) DO UPDATE SET notes = ${notes ?? ''}, topic = ${topic ?? ''}, note_date = ${noteDate ?? null}, tagged_staff = ${JSON.stringify(taggedStaff ?? [])}
+        ON CONFLICT (scope_key, kind) DO UPDATE SET notes = ${notes ?? ''}, topic = ${topic ?? ''}, note_date = ${noteDate ?? null}, tagged_staff = ${JSON.stringify(taggedStaff ?? [])}, updated_at = now()
       `
     }
     return NextResponse.json({ ok: true })
