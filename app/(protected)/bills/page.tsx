@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { usePolling } from '@/lib/usePolling'
+import PageLawsList from '@/app/(protected)/item/_components/PageLawsList'
 
 type Bill = {
   id: number
@@ -118,6 +119,11 @@ export default function BillsPage() {
           className="shrink-0 bg-blue-600 text-white text-[10px] font-bold px-2.5 py-1 rounded hover:bg-blue-500">
           + New
         </Link>
+      </div>
+
+      {/* Laws Panel */}
+      <div className="border-b border-gray-200 bg-white overflow-y-auto max-h-80">
+        <PageLawsList scopeKey="bills" isItemsLaws={false} />
       </div>
 
       <div className="flex flex-1 min-h-0">
