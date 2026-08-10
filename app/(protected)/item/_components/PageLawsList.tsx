@@ -669,11 +669,14 @@ export default function PageLawsList({
     <div className={isItemsLaws ? '' : 'space-y-2'}>
       {!isItemsLaws && (
         <>
-          <p className="text-[10px] text-gray-400">
-            The fixed rules for this page -- rarely change, separate from the main Company Laws page.
-          </p>
+          <div className="px-2 py-1.5 bg-gray-50 border-b border-gray-200">
+            <p className="text-[10px] text-gray-500 font-semibold">Page Rules</p>
+            <p className="text-[9px] text-gray-400 mt-0.5">
+              Fixed rules for this page -- rarely change, separate from the main Company Laws page.
+            </p>
+          </div>
 
-          <form onSubmit={addLaw} className="flex items-center gap-1.5">
+          <form onSubmit={addLaw} className="px-2 py-1.5 flex items-center gap-1.5 bg-white border-b border-gray-200">
             <input value={text} onChange={e => setText(e.target.value)} placeholder="Add a law…"
               className="flex-1 min-w-0 text-xs bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-blue-400" />
             <button type="submit" disabled={saving || !text.trim()}
@@ -697,7 +700,9 @@ export default function PageLawsList({
       )}
 
       {laws.length === 0 && (!flags || flags.length === 0) ? (
-        <p className={`text-[11px] text-gray-400 text-center py-6 ${isItemsLaws ? '' : ''}`}>No laws yet.</p>
+        <div className={`${isItemsLaws ? 'py-6' : 'px-2 py-4 bg-white border-b border-gray-200'} text-center`}>
+          <p className="text-[11px] text-gray-400">No laws yet.</p>
+        </div>
       ) : (
         <div className={`bg-white ${isItemsLaws ? 'divide-y divide-gray-100' : 'border border-gray-200 rounded-lg divide-y divide-gray-50'}`}>
           {laws.map((l, i) => (
