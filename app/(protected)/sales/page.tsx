@@ -278,6 +278,27 @@ function SalesPageInner() {
   const [flags, setFlags] = useState<any | null>(null)
   const [flagsLoading, setFlagsLoading] = useState(false)
 
+  const [showSalesLaws, setShowSalesLaws] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return localStorage.getItem('showSalesLaws') === 'true'
+  })
+  const [salesLawsRefresh, setSalesLawsRefresh] = useState(0)
+  const [creatingGlobalTask, setCreatingGlobalTask] = useState(false)
+  const [globalTaskTitle, setGlobalTaskTitle] = useState('')
+  const [globalTaskType, setGlobalTaskType] = useState('General task')
+  const [globalTaskAssignedTo, setGlobalTaskAssignedTo] = useState('')
+  const [creatingGlobalLaw, setCreatingGlobalLaw] = useState(false)
+  const [globalLawText, setGlobalLawText] = useState('')
+  const [creatingGlobalNote, setCreatingGlobalNote] = useState(false)
+  const [globalNoteTopic, setGlobalNoteTopic] = useState('')
+  const [globalNoteText, setGlobalNoteText] = useState('')
+  const [globalNoteDate, setGlobalNoteDate] = useState(() => {
+    const today = new Date()
+    return today.toISOString().split('T')[0]
+  })
+  const [globalNoteTaggedStaff, setGlobalNoteTaggedStaff] = useState<string[]>([])
+  const [hideZeroFlags, setHideZeroFlags] = useState(false)
+
   useEffect(() => {
     const flagTabs: Tab[] = ['No Cash', 'Missing Days', 'Cost Price']
     if (flagTabs.includes(tab) && !flags && !flagsLoading) {
@@ -312,6 +333,12 @@ function SalesPageInner() {
 
   useEffect(() => { loadReceipts() }, [])
   usePolling(loadReceipts, 20000, editingId === null)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('showSalesLaws', showSalesLaws ? 'true' : 'false')
+    }
+  }, [showSalesLaws])
 
   useEffect(() => {
     if (!autoReceiptId || autoOpened.current || receipts.length === 0) return
@@ -422,11 +449,70 @@ function SalesPageInner() {
         )}
       </div>
 
-      {/* Laws Panel */}
+      {/* Laws Header Bar and Panel */}
       {tab === 'List' && (
-        <div className="border-b border-gray-200 bg-white overflow-y-auto max-h-80">
-          <PageLawsList scopeKey="sales" isItemsLaws={false} />
-        </div>
+        <>
+          <div className="flex items-center gap-1.5 px-2 py-2 bg-green-600 shrink-0">
+            <button onClick={() => setShowSalesLaws(o => !o)} title="Show laws on this page"
+              className={`shrink-0 text-sm leading-none px-1.5 py-1 rounded-lg transition ${showSalesLaws ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
+              ⚖️
+            </button>
+            {showSalesLaws && (
+              <>
+                <button onClick={() => setCreatingGlobalLaw(o => !o)} title="Create new law"
+                  className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${creatingGlobalLaw ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
+                  + Law
+                </button>
+                <button onClick={() => setCreatingGlobalTask(o => !o)} title="Create global task"
+                  className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${creatingGlobalTask ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
+                  + Task
+                </button>
+                <button onClick={() => setCreatingGlobalNote(o => !o)} title="Create global note"
+                  className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${creatingGlobalNote ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
+                  + Note
+                </button>
+                <label className="shrink-0 flex items-center gap-1 text-white hover:bg-white/10 px-2 py-1 rounded-lg cursor-pointer transition">
+                  <input type="checkbox" checked={hideZeroFlags} onChange={e => setHideZeroFlags(e.target.checked)}
+                    className="w-4 h-4 rounded border-gray-300" />
+                  <span className="text-xs font-semibold leading-none">Hide 0</span>
+                </label>
+              </>
+            )}
+          </div>
+          {showSalesLaws && (
+            <div className="border-b border-gray-200 bg-white overflow-y-auto max-h-80">
+              <PageLawsList
+                scopeKey="sales"
+                isItemsLaws={true}
+                onChange={() => setSalesLawsRefresh(r => r + 1)}
+                creatingGlobalLaw={creatingGlobalLaw}
+                setCreatingGlobalLaw={setCreatingGlobalLaw}
+                globalLawText={globalLawText}
+                setGlobalLawText={setGlobalLawText}
+                creatingGlobalTask={creatingGlobalTask}
+                setCreatingGlobalTask={setCreatingGlobalTask}
+                globalTaskTitle={globalTaskTitle}
+                setGlobalTaskTitle={setGlobalTaskTitle}
+                globalTaskType={globalTaskType}
+                setGlobalTaskType={setGlobalTaskType}
+                globalTaskAssignedTo={globalTaskAssignedTo}
+                setGlobalTaskAssignedTo={setGlobalTaskAssignedTo}
+                creatingGlobalNote={creatingGlobalNote}
+                setCreatingGlobalNote={setCreatingGlobalNote}
+                globalNoteTopic={globalNoteTopic}
+                setGlobalNoteTopic={setGlobalNoteTopic}
+                globalNoteText={globalNoteText}
+                setGlobalNoteText={setGlobalNoteText}
+                globalNoteDate={globalNoteDate}
+                setGlobalNoteDate={setGlobalNoteDate}
+                globalNoteTaggedStaff={globalNoteTaggedStaff}
+                setGlobalNoteTaggedStaff={setGlobalNoteTaggedStaff}
+                hideZeroFlags={hideZeroFlags}
+                setHideZeroFlags={setHideZeroFlags}
+              />
+            </div>
+          )}
+        </>
       )}
 
       {/* Split body */}
