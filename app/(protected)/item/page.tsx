@@ -567,6 +567,26 @@ function ItemHubPageInner() {
   const [itemsLawsRefresh, setItemsLawsRefresh] = useState(0)
   const [itemsLawsOpenForm, setItemsLawsOpenForm] = useState<LawFormKind>(null)
   const [hideZeroFlags, setHideZeroFlags] = useState(false)
+  // Sales/Bills laws -- same inline-panel treatment as Items above (see
+  // showItemsLaws), one icon per view, no separate overlay-opening icon
+  // anymore. scopeKey stays "Sales"/"Bills" (capitalized, matching
+  // CASH_LABEL) so this reads the laws/flags/tasks that already existed
+  // under the old PageToolIcons-opened CombinedToolsPanel for these views,
+  // instead of starting a second, empty scope.
+  const [showSalesLaws, setShowSalesLaws] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return localStorage.getItem('showSalesLaws') === 'true'
+  })
+  const [salesLawsRefresh, setSalesLawsRefresh] = useState(0)
+  const [salesLawsOpenForm, setSalesLawsOpenForm] = useState<LawFormKind>(null)
+  const [salesHideZeroFlags, setSalesHideZeroFlags] = useState(false)
+  const [showBillsLaws, setShowBillsLaws] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return localStorage.getItem('showBillsLaws') === 'true'
+  })
+  const [billsLawsRefresh, setBillsLawsRefresh] = useState(0)
+  const [billsLawsOpenForm, setBillsLawsOpenForm] = useState<LawFormKind>(null)
+  const [billsHideZeroFlags, setBillsHideZeroFlags] = useState(false)
   const groupRef     = useRef<HTMLDivElement>(null)
   const searchRef    = useRef<HTMLDivElement>(null)
 
@@ -949,6 +969,14 @@ function ItemHubPageInner() {
   useEffect(() => {
     localStorage.setItem('showItemsLaws', showItemsLaws.toString())
   }, [showItemsLaws])
+
+  useEffect(() => {
+    localStorage.setItem('showSalesLaws', showSalesLaws.toString())
+  }, [showSalesLaws])
+
+  useEffect(() => {
+    localStorage.setItem('showBillsLaws', showBillsLaws.toString())
+  }, [showBillsLaws])
 
   function changeTab(t: OuterTab) {
     setOuterTab(t)
@@ -1831,14 +1859,6 @@ function ItemHubPageInner() {
                     further down the screen. */}
                 {(lossView === 'items' || lossView === 'sales' || lossView === 'bills') && !salesFormOpen && (
                   <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
-                    {(lossView === 'sales' || lossView === 'bills') && (
-                      <PageToolIcons scopeKey={CASH_LABEL.get(lossView) ?? lossView}
-                        flags={(lossView === 'sales' ? SALES_FLAG_TYPES : BILLS_FLAG_TYPES).map(({ key, letter, label }) => ({
-                          key, letter, label, count: violationCounts[key] ?? 0,
-                          description: ERROR_VIOLATIONS.find(v => v.key === key)?.description,
-                        }))}
-                        onFlagClick={goToViolation} />
-                    )}
                     {lossView === 'items' && (
                       <>
                         <button onClick={() => setShowItemsLaws(o => !o)} title="Show laws on this page"
@@ -1861,6 +1881,64 @@ function ItemHubPageInner() {
                             </button>
                             <label className="shrink-0 flex items-center gap-1 text-white hover:bg-white/10 px-2 py-1 rounded-lg cursor-pointer transition">
                               <input type="checkbox" checked={hideZeroFlags} onChange={e => setHideZeroFlags(e.target.checked)}
+                                className="w-4 h-4 rounded border-gray-300" />
+                              <span className="text-xs font-semibold leading-none">Hide 0</span>
+                            </label>
+                          </>
+                        )}
+                      </>
+                    )}
+                    {lossView === 'sales' && (
+                      <>
+                        <button onClick={() => setShowSalesLaws(o => !o)} title="Show laws on this page"
+                          className={`shrink-0 text-sm leading-none px-1.5 py-1 rounded-lg transition ${showSalesLaws ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
+                          ⚖️
+                        </button>
+                        {showSalesLaws && (
+                          <>
+                            <button onClick={() => setSalesLawsOpenForm(f => f === 'law' ? null : 'law')} title="Create new law"
+                              className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${salesLawsOpenForm === 'law' ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
+                              + Law
+                            </button>
+                            <button onClick={() => setSalesLawsOpenForm(f => f === 'task' ? null : 'task')} title="Create global task"
+                              className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${salesLawsOpenForm === 'task' ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
+                              + Task
+                            </button>
+                            <button onClick={() => setSalesLawsOpenForm(f => f === 'note' ? null : 'note')} title="Create global note"
+                              className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${salesLawsOpenForm === 'note' ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
+                              + Note
+                            </button>
+                            <label className="shrink-0 flex items-center gap-1 text-white hover:bg-white/10 px-2 py-1 rounded-lg cursor-pointer transition">
+                              <input type="checkbox" checked={salesHideZeroFlags} onChange={e => setSalesHideZeroFlags(e.target.checked)}
+                                className="w-4 h-4 rounded border-gray-300" />
+                              <span className="text-xs font-semibold leading-none">Hide 0</span>
+                            </label>
+                          </>
+                        )}
+                      </>
+                    )}
+                    {lossView === 'bills' && (
+                      <>
+                        <button onClick={() => setShowBillsLaws(o => !o)} title="Show laws on this page"
+                          className={`shrink-0 text-sm leading-none px-1.5 py-1 rounded-lg transition ${showBillsLaws ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
+                          ⚖️
+                        </button>
+                        {showBillsLaws && (
+                          <>
+                            <button onClick={() => setBillsLawsOpenForm(f => f === 'law' ? null : 'law')} title="Create new law"
+                              className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${billsLawsOpenForm === 'law' ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
+                              + Law
+                            </button>
+                            <button onClick={() => setBillsLawsOpenForm(f => f === 'task' ? null : 'task')} title="Create global task"
+                              className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${billsLawsOpenForm === 'task' ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
+                              + Task
+                            </button>
+                            <button onClick={() => setBillsLawsOpenForm(f => f === 'note' ? null : 'note')} title="Create global note"
+                              className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${billsLawsOpenForm === 'note' ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
+                              + Note
+                            </button>
+                            <label className="shrink-0 flex items-center gap-1 text-white hover:bg-white/10 px-2 py-1 rounded-lg cursor-pointer transition">
+                              <input type="checkbox" checked={billsHideZeroFlags} onChange={e => setBillsHideZeroFlags(e.target.checked)}
                                 className="w-4 h-4 rounded border-gray-300" />
                               <span className="text-xs font-semibold leading-none">Hide 0</span>
                             </label>
@@ -2269,6 +2347,26 @@ function ItemHubPageInner() {
           <TabErrorBoundary><div className="px-3 pt-3"><SalesAnalyticsSection /></div></TabErrorBoundary>
         )}
         {!showAnalytics && addForm !== 'sale' && addForm !== 'live' && addForm !== 'liveLog' && outerTab === 'loss' && lossView === 'sales' && (<>
+          {showSalesLaws && (
+            <div className="border-b border-gray-200 bg-white px-3 py-2 shadow-md">
+              <TabErrorBoundary key={salesLawsRefresh}>
+                <PageLawsList
+                  scopeKey="Sales"
+                  isItemsLaws={true}
+                  onChange={() => setSalesLawsRefresh(r => r + 1)}
+                  flags={SALES_FLAG_TYPES.map(({ key, label }) => ({
+                    key, label, count: violationCounts[key] ?? 0,
+                    description: ERROR_VIOLATIONS.find(v => v.key === key)?.description,
+                    onViewClick: () => goToViolation(key),
+                  }))}
+                  openForm={salesLawsOpenForm}
+                  setOpenForm={setSalesLawsOpenForm}
+                  hideZeroFlags={salesHideZeroFlags}
+                  setHideZeroFlags={setSalesHideZeroFlags}
+                />
+              </TabErrorBoundary>
+            </div>
+          )}
           <SalesTab items={items} groupFilter={group} search={search}
             violation={pillKeys?.includes(violation ?? '') ? violation : null}
             jumpToDate={jumpToReceiptDate} jumpToItemName={jumpToReceiptItemName}
@@ -2278,6 +2376,26 @@ function ItemHubPageInner() {
           <TabErrorBoundary><div className="px-3 pt-3"><BillsAnalyticsSection /></div></TabErrorBoundary>
         )}
         {!showAnalytics && addForm !== 'bill' && outerTab === 'loss' && lossView === 'bills' && (<>
+          {showBillsLaws && (
+            <div className="border-b border-gray-200 bg-white px-3 py-2 shadow-md">
+              <TabErrorBoundary key={billsLawsRefresh}>
+                <PageLawsList
+                  scopeKey="Bills"
+                  isItemsLaws={true}
+                  onChange={() => setBillsLawsRefresh(r => r + 1)}
+                  flags={BILLS_FLAG_TYPES.map(({ key, label }) => ({
+                    key, label, count: violationCounts[key] ?? 0,
+                    description: ERROR_VIOLATIONS.find(v => v.key === key)?.description,
+                    onViewClick: () => goToViolation(key),
+                  }))}
+                  openForm={billsLawsOpenForm}
+                  setOpenForm={setBillsLawsOpenForm}
+                  hideZeroFlags={billsHideZeroFlags}
+                  setHideZeroFlags={setBillsHideZeroFlags}
+                />
+              </TabErrorBoundary>
+            </div>
+          )}
           <BillsTab items={items} groupFilter={group} search={search}
             violation={pillKeys?.includes(violation ?? '') ? violation : null} />
         </>)}

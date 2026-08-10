@@ -7,7 +7,6 @@ import HistoryPanel from './HistoryPanel'
 import { useColumnPrefs, ColumnsPickerButton, type ColumnDef } from './columnPrefs'
 import { useAttachments, AttachmentPicker, type Attachment } from './attachmentsShared'
 import BulkAttachForms from './BulkAttachForms'
-import PageLawsList, { type LawFormKind } from './PageLawsList'
 
 type Item = { id: number; item_name: string; cf_group: string | null }
 
@@ -378,14 +377,6 @@ export default function SalesTab({
   // opening Edit Receipt per day -- see BulkAttachForms.
   const [showBulkAttach, setShowBulkAttach] = useState(false)
 
-  // Sales laws/tasks/notes state
-  const [showSalesLaws, setShowSalesLaws] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return localStorage.getItem('showSalesLaws') === 'true'
-  })
-  const [salesLawsRefresh, setSalesLawsRefresh] = useState(0)
-  const [lawsOpenForm, setLawsOpenForm] = useState<LawFormKind>(null)
-  const [hideZeroFlags, setHideZeroFlags] = useState(false)
 
   const colPrefs = useColumnPrefs<ColKey>('salesTable', SALES_COLUMNS)
   const attachments = useAttachments()
@@ -401,12 +392,6 @@ export default function SalesTab({
         .catch(() => { setFlags({ noCash: [], missingDays: [], costGteSell: [], dupReceipts: [] }); setFlagsLoading(false) })
     }
   }, [needsFlags, flags, flagsLoading])
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('showSalesLaws', showSalesLaws ? 'true' : 'false')
-    }
-  }, [showSalesLaws])
 
   function loadReceipts() {
     Promise.all([
@@ -880,48 +865,6 @@ export default function SalesTab({
         </button>
       )}
     </div>
-
-    {/* Laws Header Bar and Panel */}
-    <div className="flex items-center gap-1.5 px-2 py-2 bg-green-600 shrink-0">
-      <button onClick={() => setShowSalesLaws(o => !o)} title="Show laws on this page"
-        className={`shrink-0 text-sm leading-none px-1.5 py-1 rounded-lg transition ${showSalesLaws ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
-        ⚖️
-      </button>
-      {showSalesLaws && (
-        <>
-          <button onClick={() => setLawsOpenForm(f => f === 'law' ? null : 'law')} title="Create new law"
-            className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${lawsOpenForm === 'law' ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
-            + Law
-          </button>
-          <button onClick={() => setLawsOpenForm(f => f === 'task' ? null : 'task')} title="Create global task"
-            className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${lawsOpenForm === 'task' ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
-            + Task
-          </button>
-          <button onClick={() => setLawsOpenForm(f => f === 'note' ? null : 'note')} title="Create global note"
-            className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${lawsOpenForm === 'note' ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
-            + Note
-          </button>
-          <label className="shrink-0 flex items-center gap-1 text-white hover:bg-white/10 px-2 py-1 rounded-lg cursor-pointer transition">
-            <input type="checkbox" checked={hideZeroFlags} onChange={e => setHideZeroFlags(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300" />
-            <span className="text-xs font-semibold leading-none">Hide 0</span>
-          </label>
-        </>
-      )}
-    </div>
-    {showSalesLaws && (
-      <div className="border-b border-gray-200 bg-white overflow-y-auto max-h-80 shrink-0">
-        <PageLawsList
-          scopeKey="sales"
-          isItemsLaws={true}
-          onChange={() => setSalesLawsRefresh(r => r + 1)}
-          openForm={lawsOpenForm}
-          setOpenForm={setLawsOpenForm}
-          hideZeroFlags={hideZeroFlags}
-          setHideZeroFlags={setHideZeroFlags}
-        />
-      </div>
-    )}
 
     {/* overflow-auto (not just -y) so this single element handles both
         scroll directions -- nesting a separate overflow-x-auto div inside
