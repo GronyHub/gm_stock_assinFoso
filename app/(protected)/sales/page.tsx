@@ -449,70 +449,16 @@ function SalesPageInner() {
         )}
       </div>
 
-      {/* Laws Header Bar and Panel */}
+      {/* Laws Panel - TEST VERSION */}
       {tab === 'List' && (
-        <>
-          <div className="flex items-center gap-1.5 px-2 py-2 bg-green-600 shrink-0">
-            <button onClick={() => setShowSalesLaws(o => !o)} title="Show laws on this page"
-              className={`shrink-0 text-sm leading-none px-1.5 py-1 rounded-lg transition ${showSalesLaws ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
-              ⚖️
-            </button>
-            {showSalesLaws && (
-              <>
-                <button onClick={() => setCreatingGlobalLaw(o => !o)} title="Create new law"
-                  className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${creatingGlobalLaw ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
-                  + Law
-                </button>
-                <button onClick={() => setCreatingGlobalTask(o => !o)} title="Create global task"
-                  className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${creatingGlobalTask ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
-                  + Task
-                </button>
-                <button onClick={() => setCreatingGlobalNote(o => !o)} title="Create global note"
-                  className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${creatingGlobalNote ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
-                  + Note
-                </button>
-                <label className="shrink-0 flex items-center gap-1 text-white hover:bg-white/10 px-2 py-1 rounded-lg cursor-pointer transition">
-                  <input type="checkbox" checked={hideZeroFlags} onChange={e => setHideZeroFlags(e.target.checked)}
-                    className="w-4 h-4 rounded border-gray-300" />
-                  <span className="text-xs font-semibold leading-none">Hide 0</span>
-                </label>
-              </>
-            )}
-          </div>
-          {showSalesLaws && (
-            <div className="border-b border-gray-200 bg-white overflow-y-auto max-h-80">
-              <PageLawsList
-                scopeKey="sales"
-                isItemsLaws={true}
-                onChange={() => setSalesLawsRefresh(r => r + 1)}
-                creatingGlobalLaw={creatingGlobalLaw}
-                setCreatingGlobalLaw={setCreatingGlobalLaw}
-                globalLawText={globalLawText}
-                setGlobalLawText={setGlobalLawText}
-                creatingGlobalTask={creatingGlobalTask}
-                setCreatingGlobalTask={setCreatingGlobalTask}
-                globalTaskTitle={globalTaskTitle}
-                setGlobalTaskTitle={setGlobalTaskTitle}
-                globalTaskType={globalTaskType}
-                setGlobalTaskType={setGlobalTaskType}
-                globalTaskAssignedTo={globalTaskAssignedTo}
-                setGlobalTaskAssignedTo={setGlobalTaskAssignedTo}
-                creatingGlobalNote={creatingGlobalNote}
-                setCreatingGlobalNote={setCreatingGlobalNote}
-                globalNoteTopic={globalNoteTopic}
-                setGlobalNoteTopic={setGlobalNoteTopic}
-                globalNoteText={globalNoteText}
-                setGlobalNoteText={setGlobalNoteText}
-                globalNoteDate={globalNoteDate}
-                setGlobalNoteDate={setGlobalNoteDate}
-                globalNoteTaggedStaff={globalNoteTaggedStaff}
-                setGlobalNoteTaggedStaff={setGlobalNoteTaggedStaff}
-                hideZeroFlags={hideZeroFlags}
-                setHideZeroFlags={setHideZeroFlags}
-              />
-            </div>
-          )}
-        </>
+        <div className="bg-red-200 p-4 text-center text-red-800 font-bold border-b-4 border-red-500">
+          🔴 TEST: If you see this red box, the new code is deployed!
+        </div>
+      )}
+      {tab === 'List' && (
+        <div className="border-b border-gray-200 bg-white overflow-y-auto max-h-80">
+          <PageLawsList scopeKey="sales" isItemsLaws={false} />
+        </div>
       )}
 
       {/* Split body */}
