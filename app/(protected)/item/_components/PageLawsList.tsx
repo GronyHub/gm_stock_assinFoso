@@ -17,12 +17,42 @@ type Task = {
   task_type?: string
 }
 
+type Note = { notes?: string; topic?: string; noteDate?: string }
+type Reply = { id: number; created_by: string; reply_text: string; created_at: string }
+
 export type FlagLaw = {
   key: string
   label: string
   description?: string
   count: number
   onViewClick?: () => void
+}
+
+// Which of the three "global" (not tied to one law/flag) creation forms is
+// open, if any -- lifted only because the trigger buttons for it live in
+// the caller's own header bar (SalesTab's green bar, item/page.tsx's Items
+// header), physically separate from where this list renders below them.
+// Every other piece of that form's state (the actual text typed into it)
+// has no reason to live outside this component and stays local.
+export type LawFormKind = 'law' | 'task' | 'note' | null
+
+// Long-press (mobile) / mousedown-hold (desktop) to reveal a row's action
+// menu -- one shared implementation instead of a separate mousedown/
+// mouseup/touchstart/touchend quadruple per menu (law rows, task rows,
+// global task rows, global note rows all used to redeclare the same four
+// functions around their own timeout ref).
+function useLongPress(onTrigger: (id: number | string) => void, delay = 500) {
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const start = (id: number | string) => {
+    timeoutRef.current = setTimeout(() => onTrigger(id), delay)
+  }
+  const cancel = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+      timeoutRef.current = null
+    }
+  }
+  return { onMouseDown: start, onMouseUp: cancel, onTouchStart: start, onTouchEnd: cancel }
 }
 
 // The fixed rules for this page, as a real list -- each one its own row
@@ -32,75 +62,67 @@ export type FlagLaw = {
 // appends flag laws as continuation items after regular editable laws.
 export default function PageLawsList({
   scopeKey, onChange, flags, isItemsLaws = false,
-  creatingGlobalLaw, setCreatingGlobalLaw,
-  globalLawText, setGlobalLawText,
-  creatingGlobalTask, setCreatingGlobalTask,
-  globalTaskTitle, setGlobalTaskTitle,
-  globalTaskType, setGlobalTaskType,
-  globalTaskAssignedTo, setGlobalTaskAssignedTo,
-  creatingGlobalNote, setCreatingGlobalNote,
-  globalNoteTopic, setGlobalNoteTopic,
-  globalNoteText, setGlobalNoteText,
-  globalNoteDate, setGlobalNoteDate,
-  globalNoteTaggedStaff, setGlobalNoteTaggedStaff,
+  openForm, setOpenForm,
   hideZeroFlags, setHideZeroFlags,
 }: {
   scopeKey: string
   onChange?: () => void
   flags?: FlagLaw[]
   isItemsLaws?: boolean
-  creatingGlobalLaw?: boolean
-  setCreatingGlobalLaw?: (v: boolean | ((prev: boolean) => boolean)) => void
-  globalLawText?: string
-  setGlobalLawText?: (v: string) => void
-  creatingGlobalTask?: boolean
-  setCreatingGlobalTask?: (v: boolean | ((prev: boolean) => boolean)) => void
-  globalTaskTitle?: string
-  setGlobalTaskTitle?: (v: string) => void
-  globalTaskType?: string
-  setGlobalTaskType?: (v: string) => void
-  globalTaskAssignedTo?: string
-  setGlobalTaskAssignedTo?: (v: string) => void
-  creatingGlobalNote?: boolean
-  setCreatingGlobalNote?: (v: boolean | ((prev: boolean) => boolean)) => void
-  globalNoteTopic?: string
-  setGlobalNoteTopic?: (v: string) => void
-  globalNoteText?: string
-  setGlobalNoteText?: (v: string) => void
-  globalNoteDate?: string
-  setGlobalNoteDate?: (v: string) => void
-  globalNoteTaggedStaff?: string[]
-  setGlobalNoteTaggedStaff?: (v: string[] | ((prev: string[]) => string[])) => void
+  openForm?: LawFormKind
+  setOpenForm?: (v: LawFormKind) => void
   hideZeroFlags?: boolean
   setHideZeroFlags?: (v: boolean | ((prev: boolean) => boolean)) => void
 }) {
   const [laws, setLaws] = useState<Law[]>([])
-  const [globalTasks, setGlobalTasks] = useState<any[]>([])
-  const [globalNotes, setGlobalNotes] = useState<any[]>([])
+  const [globalTasks, setGlobalTasks] = useState<Task[]>([])
+  const [globalNotes, setGlobalNotes] = useState<(Note & { id?: number })[]>([])
   const [loading, setLoading] = useState(true)
   const [text, setText] = useState('')
   const [saving, setSaving] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editText, setEditText] = useState('')
+
+  // Per-law and per-flag "add a task/note for this one" inline forms.
   const [taskForLaw, setTaskForLaw] = useState<number | null>(null)
   const [taskTitle, setTaskTitle] = useState('')
   const [taskType, setTaskType] = useState('General task')
   const [taskAssignedTo, setTaskAssignedTo] = useState('')
   const [noteForLaw, setNoteForLaw] = useState<number | null>(null)
   const [noteText, setNoteText] = useState('')
-  const [menuLawId, setMenuLawId] = useState<number | null>(null)
-  const menuTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [taskForFlag, setTaskForFlag] = useState<string | null>(null)
   const [taskTitleForFlag, setTaskTitleForFlag] = useState('')
   const [taskTypeForFlag, setTaskTypeForFlag] = useState('General task')
   const [taskAssignedToFlag, setTaskAssignedToFlag] = useState('')
   const [noteForFlag, setNoteForFlag] = useState<string | null>(null)
   const [noteTextForFlag, setNoteTextForFlag] = useState('')
-  const [tasksByLawId, setTasksByLawId] = useState<Record<number, Task[]>>({})
+
+  // The "global" (Items-scope header bar) add forms -- open/closed comes
+  // from the caller (openForm/setOpenForm), everything typed into them is
+  // local.
+  const [globalLawText, setGlobalLawText] = useState('')
+  const [globalTaskTitle, setGlobalTaskTitle] = useState('')
+  const [globalTaskType, setGlobalTaskType] = useState('General task')
+  const [globalTaskAssignedTo, setGlobalTaskAssignedTo] = useState('')
+  const [globalNoteTopic, setGlobalNoteTopic] = useState('')
+  const [globalNoteText, setGlobalNoteText] = useState('')
+  const [globalNoteDate, setGlobalNoteDate] = useState(() => new Date().toISOString().split('T')[0])
+  const [globalNoteTaggedStaff, setGlobalNoteTaggedStaff] = useState<string[]>([])
+
+  const [menuLawId, setMenuLawId] = useState<number | null>(null)
+  const [menuTaskId, setMenuTaskId] = useState<number | null>(null)
+  const [menuGlobalTaskId, setMenuGlobalTaskId] = useState<number | null>(null)
+  const [menuGlobalNoteId, setMenuGlobalNoteId] = useState<number | null>(null)
+  const lawPress = useLongPress(id => setMenuLawId(id as number))
+  const taskPress = useLongPress(id => setMenuTaskId(id as number))
+  const globalTaskPress = useLongPress(id => setMenuGlobalTaskId(id as number))
+  const globalNotePress = useLongPress(id => setMenuGlobalNoteId(id as number))
+
+  const [taskForLawLoaded, setTaskForLawLoaded] = useState<Record<number, Task[]>>({})
   const [tasksByFlagKey, setTasksByFlagKey] = useState<Record<string, Task[]>>({})
-  const [notesByLawId, setNotesByLawId] = useState<Record<number, any>>({})
-  const [notesByFlagKey, setNotesByFlagKey] = useState<Record<string, any>>({})
-  const [repliesByItem, setRepliesByItem] = useState<Record<string, any[]>>({})
+  const [notesByLawId, setNotesByLawId] = useState<Record<number, Note>>({})
+  const [notesByFlagKey, setNotesByFlagKey] = useState<Record<string, Note>>({})
+  const [repliesByItem, setRepliesByItem] = useState<Record<string, Reply[]>>({})
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null)
@@ -108,12 +130,6 @@ export default function PageLawsList({
   const [editTaskType, setEditTaskType] = useState('General task')
   const [editTaskAssignedTo, setEditTaskAssignedTo] = useState('')
   const [expandedFlagDesc, setExpandedFlagDesc] = useState<string | null>(null)
-  const [menuTaskId, setMenuTaskId] = useState<number | null>(null)
-  const [menuGlobalTaskId, setMenuGlobalTaskId] = useState<number | null>(null)
-  const [menuGlobalNoteId, setMenuGlobalNoteId] = useState<number | null>(null)
-  const globalTaskMenuTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const globalNoteMenuTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const taskMenuTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   function formatDate(dateStr: string) {
     if (!dateStr) return ''
@@ -156,7 +172,7 @@ export default function PageLawsList({
     try {
       const res = await fetch(`/api/tasks?lawId=${lawId}`)
       const tasks = await res.json()
-      setTasksByLawId(prev => ({ ...prev, [lawId]: Array.isArray(tasks) ? tasks : [] }))
+      setTaskForLawLoaded(prev => ({ ...prev, [lawId]: Array.isArray(tasks) ? tasks : [] }))
     } catch (e) {
       console.error('fetch tasks error:', e)
     }
@@ -176,7 +192,6 @@ export default function PageLawsList({
     try {
       const res = await fetch(`/api/page-notes?scopeKey=${encodeURIComponent(scopeKey)}&lawId=${lawId}&kind=note`)
       const note = await res.json()
-      console.log('Fetched note for law', lawId, ':', note)
       setNotesByLawId(prev => ({ ...prev, [lawId]: note }))
     } catch (e) {
       console.error('fetch note error:', e)
@@ -187,7 +202,6 @@ export default function PageLawsList({
     try {
       const res = await fetch(`/api/page-notes?scopeKey=${encodeURIComponent(scopeKey)}&flagKey=${encodeURIComponent(flagKey)}&kind=note`)
       const note = await res.json()
-      console.log('Fetched note for flag', flagKey, ':', note)
       setNotesByFlagKey(prev => ({ ...prev, [flagKey]: note }))
     } catch (e) {
       console.error('fetch note error:', e)
@@ -254,11 +268,11 @@ export default function PageLawsList({
       .then(r => r.ok ? r.json() : [])
       .then(d => { setLaws(Array.isArray(d) ? d : []); setLoading(false) })
       .catch(() => setLoading(false))
-    // Load global tasks for this scope
+    // Load global tasks/notes for this scope
     if (isItemsLaws) {
       fetch(`/api/tasks?submenu=${encodeURIComponent(scopeKey)}`)
         .then(r => r.ok ? r.json() : [])
-        .then(d => setGlobalTasks(Array.isArray(d) ? d.filter(t => !t.done) : []))
+        .then(d => setGlobalTasks(Array.isArray(d) ? d.filter((t: Task) => !t.done) : []))
         .catch(() => {})
       fetch(`/api/page-notes?scopeKey=${encodeURIComponent(scopeKey)}&kind=note`)
         .then(r => r.ok ? r.json() : null)
@@ -271,26 +285,20 @@ export default function PageLawsList({
 
   useEffect(() => {
     laws.forEach(law => {
-      if (!tasksByLawId[law.id]) {
-        fetchTasksForLaw(law.id)
-      }
-      if (!notesByLawId[law.id]) {
-        fetchNoteForLaw(law.id)
-      }
+      if (!taskForLawLoaded[law.id]) fetchTasksForLaw(law.id)
+      if (!notesByLawId[law.id]) fetchNoteForLaw(law.id)
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [laws])
 
   useEffect(() => {
     if (flags) {
       flags.forEach(flag => {
-        if (!tasksByFlagKey[flag.key]) {
-          fetchTasksForFlag(flag.key)
-        }
-        if (!notesByFlagKey[flag.key]) {
-          fetchNoteForFlag(flag.key)
-        }
+        if (!tasksByFlagKey[flag.key]) fetchTasksForFlag(flag.key)
+        if (!notesByFlagKey[flag.key]) fetchNoteForFlag(flag.key)
       })
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flags])
 
   async function addLaw(e: React.FormEvent) {
@@ -306,11 +314,11 @@ export default function PageLawsList({
   }
 
   async function addGlobalLaw() {
-    if (!(globalLawText ?? '').trim()) return
+    if (!globalLawText.trim()) return
     try {
       const res = await fetch('/api/page-laws', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scopeKey, text: (globalLawText ?? '').trim() }),
+        body: JSON.stringify({ scopeKey, text: globalLawText.trim() }),
       })
       if (!res.ok) {
         const err = await res.text()
@@ -318,8 +326,8 @@ export default function PageLawsList({
         alert('Failed to create law. Please try again.')
         return
       }
-      setGlobalLawText?.('')
-      setCreatingGlobalLaw?.(false)
+      setGlobalLawText('')
+      setOpenForm?.(null)
       load()
       onChange?.()
     } catch (e) {
@@ -341,62 +349,6 @@ export default function PageLawsList({
     setMenuLawId(null)
   }
 
-  function handleLongPress(lawId: number) {
-    setMenuLawId(menuLawId === lawId ? null : lawId)
-  }
-
-  function handleMouseDown(lawId: number) {
-    menuTimeoutRef.current = setTimeout(() => {
-      setMenuLawId(lawId)
-    }, 500)
-  }
-
-  function handleMouseUp() {
-    if (menuTimeoutRef.current) {
-      clearTimeout(menuTimeoutRef.current)
-      menuTimeoutRef.current = null
-    }
-  }
-
-  function handleTouchStart(lawId: number) {
-    menuTimeoutRef.current = setTimeout(() => {
-      setMenuLawId(lawId)
-    }, 500)
-  }
-
-  function handleTouchEnd() {
-    if (menuTimeoutRef.current) {
-      clearTimeout(menuTimeoutRef.current)
-      menuTimeoutRef.current = null
-    }
-  }
-
-  function handleTaskMouseDown(taskId: number) {
-    taskMenuTimeoutRef.current = setTimeout(() => {
-      setMenuTaskId(taskId)
-    }, 500)
-  }
-
-  function handleTaskMouseUp() {
-    if (taskMenuTimeoutRef.current) {
-      clearTimeout(taskMenuTimeoutRef.current)
-      taskMenuTimeoutRef.current = null
-    }
-  }
-
-  function handleTaskTouchStart(taskId: number) {
-    taskMenuTimeoutRef.current = setTimeout(() => {
-      setMenuTaskId(taskId)
-    }, 500)
-  }
-
-  function handleTaskTouchEnd() {
-    if (taskMenuTimeoutRef.current) {
-      clearTimeout(taskMenuTimeoutRef.current)
-      taskMenuTimeoutRef.current = null
-    }
-  }
-
   async function saveEdit(id: number) {
     const trimmed = editText.trim()
     if (!trimmed) return
@@ -415,11 +367,8 @@ export default function PageLawsList({
       const res = await fetch('/api/tasks', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: taskTitle.trim(),
-          submenu: scopeKey,
-          law_id: lawId,
-          task_type: taskType,
-          assigned_to: taskAssignedTo || null
+          title: taskTitle.trim(), submenu: scopeKey, law_id: lawId,
+          task_type: taskType, assigned_to: taskAssignedTo || null,
         }),
       })
       if (!res.ok) {
@@ -431,9 +380,7 @@ export default function PageLawsList({
       setTaskType('General task')
       setTaskAssignedTo('')
       setTaskForLaw(null)
-      setTimeout(() => {
-        fetchTasksForLaw(lawId)
-      }, 200)
+      setTimeout(() => fetchTasksForLaw(lawId), 200)
       onChange?.()
     } catch (e) {
       console.error('Task creation error:', e)
@@ -457,9 +404,7 @@ export default function PageLawsList({
       }
       setNoteText('')
       setNoteForLaw(null)
-      setTimeout(() => {
-        fetchNoteForLaw(lawId)
-      }, 200)
+      setTimeout(() => fetchNoteForLaw(lawId), 200)
       onChange?.()
     } catch (e) {
       console.error('Note creation error:', e)
@@ -474,11 +419,8 @@ export default function PageLawsList({
       const res = await fetch('/api/tasks', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: taskTitleForFlag.trim(),
-          submenu: scopeKey,
-          flag_key: flagKey,
-          task_type: taskTypeForFlag,
-          assigned_to: taskAssignedToFlag || null
+          title: taskTitleForFlag.trim(), submenu: scopeKey, flag_key: flagKey,
+          task_type: taskTypeForFlag, assigned_to: taskAssignedToFlag || null,
         }),
       })
       if (!res.ok) {
@@ -490,9 +432,7 @@ export default function PageLawsList({
       setTaskTypeForFlag('General task')
       setTaskAssignedToFlag('')
       setTaskForFlag(null)
-      setTimeout(() => {
-        fetchTasksForFlag(flagKey)
-      }, 200)
+      setTimeout(() => fetchTasksForFlag(flagKey), 200)
       onChange?.()
     } catch (e) {
       console.error('Task creation error:', e)
@@ -516,9 +456,7 @@ export default function PageLawsList({
       }
       setNoteTextForFlag('')
       setNoteForFlag(null)
-      setTimeout(() => {
-        fetchNoteForFlag(flagKey)
-      }, 200)
+      setTimeout(() => fetchNoteForFlag(flagKey), 200)
       onChange?.()
     } catch (e) {
       console.error('Note creation error:', e)
@@ -527,15 +465,13 @@ export default function PageLawsList({
   }
 
   async function addGlobalTask() {
-    if (!(globalTaskTitle ?? '').trim()) return
+    if (!globalTaskTitle.trim()) return
     try {
       const res = await fetch('/api/tasks', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: (globalTaskTitle ?? '').trim(),
-          submenu: scopeKey,
-          task_type: globalTaskType ?? 'General task',
-          assigned_to: globalTaskAssignedTo || null,
+          title: globalTaskTitle.trim(), submenu: scopeKey,
+          task_type: globalTaskType, assigned_to: globalTaskAssignedTo || null,
         }),
       })
       if (!res.ok) {
@@ -544,10 +480,10 @@ export default function PageLawsList({
         alert('Failed to create task. Please try again.')
         return
       }
-      setGlobalTaskTitle?.('')
-      setGlobalTaskType?.('General task')
-      setGlobalTaskAssignedTo?.('')
-      setCreatingGlobalTask?.(false)
+      setGlobalTaskTitle('')
+      setGlobalTaskType('General task')
+      setGlobalTaskAssignedTo('')
+      setOpenForm?.(null)
       load()
       onChange?.()
     } catch (e) {
@@ -557,17 +493,13 @@ export default function PageLawsList({
   }
 
   async function addGlobalNote() {
-    if (!(globalNoteText ?? '').trim()) return
+    if (!globalNoteText.trim()) return
     try {
       const res = await fetch('/api/page-notes', {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          scopeKey,
-          kind: 'note',
-          notes: (globalNoteText ?? '').trim(),
-          topic: globalNoteTopic ?? '',
-          noteDate: globalNoteDate ?? '',
-          taggedStaff: globalNoteTaggedStaff ?? [],
+          scopeKey, kind: 'note', notes: globalNoteText.trim(),
+          topic: globalNoteTopic, noteDate: globalNoteDate, taggedStaff: globalNoteTaggedStaff,
         }),
       })
       if (!res.ok) {
@@ -576,16 +508,13 @@ export default function PageLawsList({
         alert(`Failed to create note: ${err}`)
         return
       }
-      setGlobalNoteText?.('')
-      setGlobalNoteTopic?.('')
-      const today = new Date()
-      setGlobalNoteDate?.(today.toISOString().split('T')[0])
-      setGlobalNoteTaggedStaff?.([])
-      setCreatingGlobalNote?.(false)
-      // Wait a moment for database to persist, then reload
-      setTimeout(() => {
-        load()
-      }, 200)
+      setGlobalNoteText('')
+      setGlobalNoteTopic('')
+      setGlobalNoteDate(new Date().toISOString().split('T')[0])
+      setGlobalNoteTaggedStaff([])
+      setOpenForm?.(null)
+      // Wait a moment for the database to persist, then reload
+      setTimeout(() => load(), 200)
       onChange?.()
     } catch (e) {
       console.error('Note creation error:', e)
@@ -611,56 +540,152 @@ export default function PageLawsList({
     onChange?.()
   }
 
-  function handleGlobalTaskMouseDown(taskId: number) {
-    globalTaskMenuTimeoutRef.current = setTimeout(() => {
-      setMenuGlobalTaskId(taskId)
-    }, 500)
+  // Reply thread shared by law rows, task rows (nested under a law/flag),
+  // and the flat global task/note rows -- law rows use the larger 'lg'
+  // sizing, everything nested under a task/note uses the compact 'sm' one.
+  function renderReplyThread(itemKey: string, itemType: string, itemId: number | string, size: 'sm' | 'lg' = 'sm') {
+    const lg = size === 'lg'
+    return (
+      <>
+        {replyingTo === itemKey && (
+          <div className={lg ? 'mt-2 bg-gray-50 p-2 rounded border border-gray-200 space-y-1.5' : 'mt-0.5 bg-gray-50 p-1 rounded border border-gray-200 space-y-0.5'}>
+            <textarea autoFocus value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Reply…" rows={lg ? 2 : 1}
+              onKeyDown={e => { if (e.key === 'Escape') { setReplyingTo(null); setReplyText('') } }}
+              className={`flex-1 min-w-0 ${lg ? 'text-[10px] rounded' : 'text-[8px]'} bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 resize-none w-full`} />
+            <div className={lg ? 'flex gap-1' : 'flex gap-0.5'}>
+              <button onClick={() => addReply(itemType, itemId)} className={`flex-1 text-green-600 hover:text-green-700 ${lg ? 'text-xs' : 'text-[8px]'} font-bold`}>Post</button>
+              <button onClick={() => { setReplyingTo(null); setReplyText('') }} className={`shrink-0 text-gray-400 hover:text-gray-600 ${lg ? 'text-xs' : 'text-[8px]'} font-bold`}>×</button>
+            </div>
+          </div>
+        )}
+        {repliesByItem[itemKey]?.length > 0 && (
+          <div className={lg ? 'mt-2 space-y-1 text-[9px] border-l-2 border-gray-200 pl-2' : 'mt-0.5 space-y-0.5 text-[7px] border-l border-gray-200 pl-1'}>
+            {repliesByItem[itemKey].map(reply => (
+              <div key={reply.id} className={lg ? 'bg-gray-50 p-1.5 rounded' : 'bg-gray-50 p-0.5 rounded'}>
+                <div className={lg ? 'flex items-start justify-between gap-2' : 'flex items-center justify-between gap-1'}>
+                  <p className="font-semibold text-gray-700">{reply.created_by}</p>
+                  <button onClick={() => deleteReply(reply.id, itemType, itemId)} className="text-red-500 hover:text-red-700 font-bold">×</button>
+                </div>
+                <p className="text-gray-600 mt-0.5">{reply.reply_text}</p>
+                {lg && <p className="text-gray-400 mt-0.5">{formatDate(reply.created_at)}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+      </>
+    )
   }
 
-  function handleGlobalTaskMouseUp() {
-    if (globalTaskMenuTimeoutRef.current) {
-      clearTimeout(globalTaskMenuTimeoutRef.current)
-      globalTaskMenuTimeoutRef.current = null
-    }
+  // "Add a task for this law/flag" inline form -- identical for both, only
+  // which create-handler and cancel-handler it's wired to differs.
+  function renderAddTaskForm(title: string, setTitle: (v: string) => void, type: string, setType: (v: string) => void,
+    assignedTo: string, setAssignedTo: (v: string) => void, onCreate: () => void, onCancel: () => void) {
+    return (
+      <div className="flex flex-col gap-0.5 bg-blue-50 p-1 border border-blue-200 leading-none">
+        <input autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder="Task…"
+          onKeyDown={e => { if (e.key === 'Enter') onCreate(); if (e.key === 'Escape') onCancel() }}
+          className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
+        <select value={type} onChange={e => setType(e.target.value)}
+          className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
+          <option>General task</option>
+          <option>App task</option>
+        </select>
+        <select value={assignedTo} onChange={e => setAssignedTo(e.target.value)}
+          className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
+          <option value="">Assign…</option>
+          {ASSIGNABLE_STAFF.map(staff => <option key={staff} value={staff}>{staff}</option>)}
+        </select>
+        <div className="flex gap-0.5">
+          <button onClick={onCreate} className="flex-1 text-green-600 hover:text-green-700 text-[8px] font-bold">Create</button>
+          <button onClick={onCancel} className="shrink-0 text-gray-400 hover:text-gray-600 text-[8px] font-bold">×</button>
+        </div>
+      </div>
+    )
   }
 
-  function handleGlobalTaskTouchStart(taskId: number) {
-    globalTaskMenuTimeoutRef.current = setTimeout(() => {
-      setMenuGlobalTaskId(taskId)
-    }, 500)
+  // "Add a note for this law/flag" inline form -- same story.
+  function renderAddNoteForm(value: string, setValue: (v: string) => void, onSave: () => void, onCancel: () => void) {
+    return (
+      <div className="flex flex-col gap-0.5">
+        <textarea autoFocus value={value} onChange={e => setValue(e.target.value)} placeholder="Note…" rows={1}
+          onKeyDown={e => { if (e.key === 'Escape') onCancel() }}
+          className="flex-1 min-w-0 text-[8px] bg-gray-100 border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 resize-none" />
+        <div className="flex gap-1">
+          <button onClick={onSave} className="flex-1 text-green-600 hover:text-green-700 text-[8px] font-bold">Save</button>
+          <button onClick={onCancel} className="shrink-0 text-gray-400 hover:text-gray-600 text-[8px] font-bold">×</button>
+        </div>
+      </div>
+    )
   }
 
-  function handleGlobalTaskTouchEnd() {
-    if (globalTaskMenuTimeoutRef.current) {
-      clearTimeout(globalTaskMenuTimeoutRef.current)
-      globalTaskMenuTimeoutRef.current = null
-    }
-  }
-
-  function handleGlobalNoteMouseDown(noteId: number) {
-    globalNoteMenuTimeoutRef.current = setTimeout(() => {
-      setMenuGlobalNoteId(noteId)
-    }, 500)
-  }
-
-  function handleGlobalNoteMouseUp() {
-    if (globalNoteMenuTimeoutRef.current) {
-      clearTimeout(globalNoteMenuTimeoutRef.current)
-      globalNoteMenuTimeoutRef.current = null
-    }
-  }
-
-  function handleGlobalNoteTouchStart(noteId: number) {
-    globalNoteMenuTimeoutRef.current = setTimeout(() => {
-      setMenuGlobalNoteId(noteId)
-    }, 500)
-  }
-
-  function handleGlobalNoteTouchEnd() {
-    if (globalNoteMenuTimeoutRef.current) {
-      clearTimeout(globalNoteMenuTimeoutRef.current)
-      globalNoteMenuTimeoutRef.current = null
-    }
+  // The task list + note attached to one law or one flag -- was duplicated
+  // near-verbatim once for laws (keyed by numeric law_id) and once for
+  // flags (keyed by string flag_key); both just needed a task list, a
+  // note, and which of (lawId, flagKey) to pass back through to the
+  // shared toggle/edit/delete handlers above.
+  function renderAttachedItems(tasks: Task[] | undefined, note: Note | undefined, lawId?: number, flagKey?: string) {
+    return (
+      <>
+        {tasks && tasks.length > 0 && (
+          <div className="space-y-0.5 text-[8px]">
+            {tasks.map(task => (
+              <div key={task.id} className={`p-0.5 rounded border leading-tight ${task.done ? 'bg-gray-50 border-gray-200' : 'bg-blue-50 border-blue-200'}`}
+                onMouseDown={() => taskPress.onMouseDown(task.id)} onMouseUp={taskPress.onMouseUp}
+                onTouchStart={() => taskPress.onTouchStart(task.id)} onTouchEnd={taskPress.onTouchEnd}>
+                {editingTaskId === task.id ? (
+                  <div className="flex flex-col gap-0.5 leading-none">
+                    <input autoFocus value={editTaskTitle} onChange={e => setEditTaskTitle(e.target.value)} placeholder="Task…"
+                      onKeyDown={e => { if (e.key === 'Enter') saveEditTask(lawId, flagKey); if (e.key === 'Escape') setEditingTaskId(null) }}
+                      className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
+                    <select value={editTaskType} onChange={e => setEditTaskType(e.target.value)}
+                      className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
+                      <option>General task</option>
+                      <option>App task</option>
+                    </select>
+                    <select value={editTaskAssignedTo} onChange={e => setEditTaskAssignedTo(e.target.value)}
+                      className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
+                      <option value="">Assign…</option>
+                      {ASSIGNABLE_STAFF.map(staff => <option key={staff} value={staff}>{staff}</option>)}
+                    </select>
+                    <div className="flex gap-0.5">
+                      <button onClick={() => saveEditTask(lawId, flagKey)} className="flex-1 text-green-600 hover:text-green-700 text-[8px] font-bold">✓</button>
+                      <button onClick={() => setEditingTaskId(null)} className="shrink-0 text-gray-400 hover:text-gray-600 text-[8px] font-bold">×</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-0.5">
+                    <p className={`font-semibold ${task.done ? 'line-through text-gray-500' : 'text-gray-800'}`}>{task.title}</p>
+                    <div className="flex items-center gap-1 flex-wrap text-[7px] text-gray-600">
+                      <span>{task.task_type === 'App task' ? 'App' : 'General'}</span>
+                      <span>•</span>
+                      <span>{formatDate(task.created_at)} by {task.created_by}</span>
+                      {task.assigned_to && (<><span>•</span><span>To: {task.assigned_to}</span></>)}
+                      {task.done && task.completed_at && (<><span>•</span><span>{calculateDuration(task.created_at, task.completed_at)}</span></>)}
+                    </div>
+                    {menuTaskId === task.id && (
+                      <div className="flex gap-1 text-[8px] mt-0.5">
+                        <button onClick={() => { toggleTaskCompletion(task.id, task.done, lawId, flagKey); setMenuTaskId(null) }} title={task.done ? 'Reopen' : 'Complete'} className="text-green-600 hover:text-green-700 font-semibold">✓</button>
+                        <button onClick={() => { startEditTask(task); setMenuTaskId(null) }} title="Edit task" className="text-gray-500 hover:text-gray-700 font-semibold">✎</button>
+                        <button onClick={() => { setReplyingTo(`task-${task.id}`); fetchReplies('task', task.id); setMenuTaskId(null) }} title="Reply" className="text-blue-500 hover:text-blue-700 font-semibold">💬</button>
+                        <button onClick={() => { deleteTask(task.id, lawId, flagKey); setMenuTaskId(null) }} title="Delete task" className="text-red-500 hover:text-red-700 font-semibold">×</button>
+                      </div>
+                    )}
+                    {renderReplyThread(`task-${task.id}`, 'task', task.id, 'sm')}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        {note?.notes !== undefined && note?.notes !== '' && (
+          <div className="p-1 bg-amber-50/50 border border-amber-100 rounded text-[8px] text-gray-800">
+            <p className="font-semibold">📝 {note.topic || 'Note'}</p>
+            <p className="text-[7px] text-gray-600 mt-0.5">{note.notes}</p>
+            {note.noteDate && <p className="text-[7px] text-gray-500 mt-0.5">{formatDate(note.noteDate)}</p>}
+          </div>
+        )}
+      </>
+    )
   }
 
   if (loading) return <div className="py-6 text-center text-gray-400 text-xs">Loading…</div>
@@ -687,14 +712,14 @@ export default function PageLawsList({
         </>
       )}
 
-      {isItemsLaws && creatingGlobalLaw && (
+      {isItemsLaws && openForm === 'law' && (
         <div className="px-1 py-1 bg-blue-50 border-t border-blue-200 flex flex-col gap-0.5 text-[8px]">
-          <input autoFocus value={globalLawText ?? ''} onChange={e => setGlobalLawText?.(e.target.value)} placeholder="New law…"
-            onKeyDown={e => { if (e.key === 'Enter') addGlobalLaw(); if (e.key === 'Escape') setCreatingGlobalLaw?.(false) }}
+          <input autoFocus value={globalLawText} onChange={e => setGlobalLawText(e.target.value)} placeholder="New law…"
+            onKeyDown={e => { if (e.key === 'Enter') addGlobalLaw(); if (e.key === 'Escape') setOpenForm?.(null) }}
             className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
           <div className="flex gap-0.5">
-            <button onClick={addGlobalLaw} disabled={!globalLawText?.trim()} className="flex-1 text-green-600 hover:text-green-700 disabled:opacity-40 font-bold">Add</button>
-            <button onClick={() => setCreatingGlobalLaw?.(false)} className="shrink-0 text-gray-400 hover:text-gray-600 font-bold">×</button>
+            <button onClick={addGlobalLaw} disabled={!globalLawText.trim()} className="flex-1 text-green-600 hover:text-green-700 disabled:opacity-40 font-bold">Add</button>
+            <button onClick={() => setOpenForm?.(null)} className="shrink-0 text-gray-400 hover:text-gray-600 font-bold">×</button>
           </div>
         </div>
       )}
@@ -706,7 +731,9 @@ export default function PageLawsList({
       ) : (
         <div className={`bg-white ${isItemsLaws ? 'divide-y divide-gray-100' : 'border border-gray-200 rounded-lg divide-y divide-gray-50'}`}>
           {laws.map((l, i) => (
-            <div key={l.id} className={`flex items-start gap-1 ${isItemsLaws ? 'px-1 py-0.5 bg-gray-50/50' : 'px-1 py-0.5 bg-gray-50/50'}`} onMouseDown={() => handleMouseDown(l.id)} onMouseUp={handleMouseUp} onTouchStart={() => handleTouchStart(l.id)} onTouchEnd={handleTouchEnd}>
+            <div key={l.id} className="flex items-start gap-1 px-1 py-0.5 bg-gray-50/50"
+              onMouseDown={() => lawPress.onMouseDown(l.id)} onMouseUp={lawPress.onMouseUp}
+              onTouchStart={() => lawPress.onTouchStart(l.id)} onTouchEnd={lawPress.onTouchEnd}>
               <span className="shrink-0 text-[8px] font-bold text-gray-300">{i + 1}</span>
               {editingId === l.id ? (
                 <>
@@ -722,169 +749,39 @@ export default function PageLawsList({
                     className="shrink-0 text-gray-400 hover:text-gray-600 px-0.5 text-[8px] font-bold">×</button>
                 </>
               ) : (
-                <>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1 flex-wrap leading-none">
-                      <p className="text-[9px] text-gray-800">{l.text}</p>
-                      {taskForLaw !== l.id && noteForLaw !== l.id && (
-                        <>
-                          <button onClick={() => { setTaskForLaw(l.id); fetchTasksForLaw(l.id) }} title="Add task" className="text-blue-500 hover:text-blue-600 font-semibold text-[8px]">✓ Task</button>
-                          <button onClick={() => setNoteForLaw(l.id)} title="Add note" className="text-amber-500 hover:text-amber-600 font-semibold text-[8px]">📝 Note</button>
-                        </>
-                      )}
-                    </div>
-                    {menuLawId === l.id && (
-                      <div className="flex gap-1 text-[8px]">
-                        <button onClick={() => startEdit(l)} title="Edit" className="text-gray-500 hover:text-gray-700 font-semibold">✎</button>
-                        <button onClick={() => { setReplyingTo(`law-${l.id}`); fetchReplies('law', l.id) }} title="Reply" className="text-blue-500 hover:text-blue-700 font-semibold">💬</button>
-                        <button onClick={() => { remove(l.id); setMenuLawId(null) }} className="text-red-500 hover:text-red-700 font-semibold">×</button>
-                      </div>
-                    )}
-                    {taskForLaw === l.id ? (
-                      <div className="flex flex-col gap-0.5 bg-blue-50 p-1 border border-blue-200 leading-none">
-                        <input autoFocus value={taskTitle} onChange={e => setTaskTitle(e.target.value)} placeholder="Task…"
-                          onKeyDown={e => { if (e.key === 'Enter') addTaskForLaw(); if (e.key === 'Escape') setTaskForLaw(null) }}
-                          className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
-                        <select value={taskType} onChange={e => setTaskType(e.target.value)}
-                          className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
-                          <option>General</option>
-                          <option>App</option>
-                        </select>
-                        <select value={taskAssignedTo} onChange={e => setTaskAssignedTo(e.target.value)}
-                          className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
-                          <option value="">Assign…</option>
-                          {ASSIGNABLE_STAFF.map(staff => <option key={staff} value={staff}>{staff}</option>)}
-                        </select>
-                        <div className="flex gap-0.5">
-                          <button onClick={addTaskForLaw} className="flex-1 text-green-600 hover:text-green-700 text-[8px] font-bold">Create</button>
-                          <button onClick={() => setTaskForLaw(null)} className="shrink-0 text-gray-400 hover:text-gray-600 text-[8px] font-bold">×</button>
-                        </div>
-                      </div>
-                    ) : noteForLaw === l.id ? (
-                      <div className="flex flex-col gap-0.5">
-                        <textarea autoFocus value={noteText} onChange={e => setNoteText(e.target.value)} placeholder="Note…" rows={1}
-                          onKeyDown={e => { if (e.key === 'Escape') setNoteForLaw(null) }}
-                          className="flex-1 min-w-0 text-[8px] bg-gray-100 border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 resize-none" />
-                        <div className="flex gap-0.5">
-                          <button onClick={addNoteForLaw} className="flex-1 text-green-600 hover:text-green-700 text-[8px] font-bold">Save</button>
-                          <button onClick={() => setNoteForLaw(null)} className="shrink-0 text-gray-400 hover:text-gray-600 text-[8px] font-bold">×</button>
-                        </div>
-                      </div>
-                    ) : (
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1 flex-wrap leading-none">
+                    <p className="text-[9px] text-gray-800">{l.text}</p>
+                    {taskForLaw !== l.id && noteForLaw !== l.id && (
                       <>
-                        {tasksByLawId[l.id]?.length > 0 && (
-                          <div className="space-y-0.5 text-[8px]">
-                            {tasksByLawId[l.id].map(task => (
-                              <div key={task.id} className={`p-0.5 rounded border leading-tight ${task.done ? 'bg-gray-50 border-gray-200' : 'bg-blue-50 border-blue-200'}`} onMouseDown={() => handleTaskMouseDown(task.id)} onMouseUp={handleTaskMouseUp} onTouchStart={() => handleTaskTouchStart(task.id)} onTouchEnd={handleTaskTouchEnd}>
-                                {editingTaskId === task.id ? (
-                                  <div className="flex flex-col gap-0.5 leading-none">
-                                    <input autoFocus value={editTaskTitle} onChange={e => setEditTaskTitle(e.target.value)} placeholder="Task…"
-                                      onKeyDown={e => { if (e.key === 'Enter') saveEditTask(l.id); if (e.key === 'Escape') setEditingTaskId(null) }}
-                                      className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
-                                    <select value={editTaskType} onChange={e => setEditTaskType(e.target.value)}
-                                      className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
-                                      <option>General</option>
-                                      <option>App</option>
-                                    </select>
-                                    <select value={editTaskAssignedTo} onChange={e => setEditTaskAssignedTo(e.target.value)}
-                                      className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
-                                      <option value="">Assign…</option>
-                                      {ASSIGNABLE_STAFF.map(staff => <option key={staff} value={staff}>{staff}</option>)}
-                                    </select>
-                                    <div className="flex gap-0.5">
-                                      <button onClick={() => saveEditTask(l.id)} className="flex-1 text-green-600 hover:text-green-700 text-[8px] font-bold">✓</button>
-                                      <button onClick={() => setEditingTaskId(null)} className="shrink-0 text-gray-400 hover:text-gray-600 text-[8px] font-bold">×</button>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div className="flex flex-col gap-0.5">
-                                    <p className={`font-semibold ${task.done ? 'line-through text-gray-500' : 'text-gray-800'}`}>{task.title}</p>
-                                    <div className="flex items-center gap-1 flex-wrap text-[7px] text-gray-600">
-                                      <span>{task.task_type === 'App task' ? 'App' : 'General'}</span>
-                                      <span>•</span>
-                                      <span>{formatDate(task.created_at)} by {task.created_by}</span>
-                                      {task.assigned_to && (<><span>•</span><span>To: {task.assigned_to}</span></>)}
-                                      {task.done && task.completed_at && (<><span>•</span><span>{calculateDuration(task.created_at, task.completed_at)}</span></>)}
-                                    </div>
-                                    {menuTaskId === task.id && (
-                                      <div className="flex gap-1 text-[8px] mt-0.5">
-                                        <button onClick={() => { toggleTaskCompletion(task.id, task.done, l.id); setMenuTaskId(null) }} title={task.done ? 'Reopen' : 'Complete'} className="text-green-600 hover:text-green-700 font-semibold">✓</button>
-                                        <button onClick={() => { startEditTask(task); setMenuTaskId(null) }} title="Edit task" className="text-gray-500 hover:text-gray-700 font-semibold">✎</button>
-                                        <button onClick={() => { setReplyingTo(`task-${task.id}`); fetchReplies('task', task.id); setMenuTaskId(null) }} title="Reply" className="text-blue-500 hover:text-blue-700 font-semibold">💬</button>
-                                        <button onClick={() => { deleteTask(task.id, l.id); setMenuTaskId(null) }} title="Delete task" className="text-red-500 hover:text-red-700 font-semibold">×</button>
-                                      </div>
-                                    )}
-                                    {replyingTo === `task-${task.id}` && (
-                                      <div className="mt-0.5 bg-gray-50 p-1 rounded border border-gray-200 space-y-0.5">
-                                        <textarea autoFocus value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Reply…" rows={1}
-                                          onKeyDown={e => { if (e.key === 'Escape') { setReplyingTo(null); setReplyText('') } }}
-                                          className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 resize-none w-full" />
-                                        <div className="flex gap-0.5">
-                                          <button onClick={() => addReply('task', task.id)} className="flex-1 text-green-600 hover:text-green-700 text-[8px] font-bold">Post</button>
-                                          <button onClick={() => { setReplyingTo(null); setReplyText('') }} className="shrink-0 text-gray-400 hover:text-gray-600 text-[8px] font-bold">×</button>
-                                        </div>
-                                      </div>
-                                    )}
-                                    {repliesByItem[`task-${task.id}`]?.length > 0 && (
-                                      <div className="mt-0.5 space-y-0.5 text-[7px] border-l border-gray-200 pl-1">
-                                        {repliesByItem[`task-${task.id}`].map(reply => (
-                                          <div key={reply.id} className="bg-gray-50 p-0.5 rounded">
-                                            <div className="flex items-center justify-between gap-1">
-                                              <span className="font-semibold text-gray-700">{reply.created_by}</span>
-                                              <button onClick={() => deleteReply(reply.id, 'task', task.id)} className="text-red-500 hover:text-red-700 font-bold">×</button>
-                                            </div>
-                                            <p className="text-gray-600">{reply.reply_text}</p>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        {notesByLawId[l.id]?.notes !== undefined && notesByLawId[l.id]?.notes !== '' && (
-                          <div className="p-1 bg-amber-50/50 border border-amber-100 rounded text-[8px] text-gray-800">
-                            <p className="font-semibold">📝 {notesByLawId[l.id].topic || 'Note'}</p>
-                            <p className="text-[7px] text-gray-600 mt-0.5">{notesByLawId[l.id].notes}</p>
-                            {notesByLawId[l.id].noteDate && <p className="text-[7px] text-gray-500 mt-0.5">{formatDate(notesByLawId[l.id].noteDate)}</p>}
-                          </div>
-                        )}
-                        {replyingTo === `law-${l.id}` && (
-                          <div className="mt-2 bg-gray-50 p-2 rounded border border-gray-200 space-y-1.5">
-                            <textarea autoFocus value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Reply…" rows={2}
-                              onKeyDown={e => { if (e.key === 'Escape') { setReplyingTo(null); setReplyText('') } }}
-                              className="flex-1 min-w-0 text-[10px] bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400 resize-none w-full" />
-                            <div className="flex gap-1">
-                              <button onClick={() => addReply('law', l.id)} className="flex-1 text-green-600 hover:text-green-700 text-xs font-bold">Post</button>
-                              <button onClick={() => { setReplyingTo(null); setReplyText('') }} className="shrink-0 text-gray-400 hover:text-gray-600 text-xs font-bold">×</button>
-                            </div>
-                          </div>
-                        )}
-                        {repliesByItem[`law-${l.id}`]?.length > 0 && (
-                          <div className="mt-2 space-y-1 text-[9px] border-l-2 border-gray-200 pl-2">
-                            {repliesByItem[`law-${l.id}`].map(reply => (
-                              <div key={reply.id} className="bg-gray-50 p-1.5 rounded">
-                                <div className="flex items-start justify-between gap-2">
-                                  <p className="font-semibold text-gray-700">{reply.created_by}</p>
-                                  <button onClick={() => deleteReply(reply.id, 'law', l.id)} className="text-red-500 hover:text-red-700 font-bold">×</button>
-                                </div>
-                                <p className="text-gray-600 mt-0.5">{reply.reply_text}</p>
-                                <p className="text-gray-400 mt-0.5">{formatDate(reply.created_at)}</p>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                        <button onClick={() => { setTaskForLaw(l.id); fetchTasksForLaw(l.id) }} title="Add task" className="text-blue-500 hover:text-blue-600 font-semibold text-[8px]">✓ Task</button>
+                        <button onClick={() => setNoteForLaw(l.id)} title="Add note" className="text-amber-500 hover:text-amber-600 font-semibold text-[8px]">📝 Note</button>
                       </>
                     )}
                   </div>
-                </>
+                  {menuLawId === l.id && (
+                    <div className="flex gap-1 text-[8px]">
+                      <button onClick={() => startEdit(l)} title="Edit" className="text-gray-500 hover:text-gray-700 font-semibold">✎</button>
+                      <button onClick={() => { setReplyingTo(`law-${l.id}`); fetchReplies('law', l.id) }} title="Reply" className="text-blue-500 hover:text-blue-700 font-semibold">💬</button>
+                      <button onClick={() => { remove(l.id); setMenuLawId(null) }} className="text-red-500 hover:text-red-700 font-semibold">×</button>
+                    </div>
+                  )}
+                  {taskForLaw === l.id
+                    ? renderAddTaskForm(taskTitle, setTaskTitle, taskType, setTaskType, taskAssignedTo, setTaskAssignedTo, addTaskForLaw, () => setTaskForLaw(null))
+                    : noteForLaw === l.id
+                      ? renderAddNoteForm(noteText, setNoteText, addNoteForLaw, () => setNoteForLaw(null))
+                      : (
+                        <>
+                          {renderAttachedItems(taskForLawLoaded[l.id], notesByLawId[l.id], l.id, undefined)}
+                          {renderReplyThread(`law-${l.id}`, 'law', l.id, 'lg')}
+                        </>
+                      )}
+                </div>
               )}
             </div>
           ))}
           {flags && flags.filter(f => !hideZeroFlags || f.count > 0).map((f, i) => (
-            <div key={f.key} className={`flex items-start gap-1 ${isItemsLaws ? 'px-1 py-0.5 bg-red-50/30' : 'px-1 py-0.5 bg-gray-50/50'}`}>
+            <div key={f.key} className="flex items-start gap-1 px-1 py-0.5 bg-red-50/30">
               <span className="shrink-0 text-[8px] font-bold text-gray-300">{laws.length + i + 1}</span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1 flex-wrap leading-none">
@@ -910,124 +807,18 @@ export default function PageLawsList({
                 {expandedFlagDesc === f.key && f.description && (
                   <p className="text-[8px] text-gray-600 leading-tight">{f.description}</p>
                 )}
-                {taskForFlag === f.key ? (
-                  <div className="flex flex-col gap-0.5 bg-blue-50 p-1 border border-blue-200 leading-none">
-                    <input autoFocus value={taskTitleForFlag} onChange={e => setTaskTitleForFlag(e.target.value)} placeholder="Task title…"
-                      onKeyDown={e => { if (e.key === 'Enter') addTaskForFlag(); if (e.key === 'Escape') setTaskForFlag(null) }}
-                      className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
-                    <select value={taskTypeForFlag} onChange={e => setTaskTypeForFlag(e.target.value)}
-                      className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
-                      <option>General task</option>
-                      <option>App task</option>
-                    </select>
-                    <select value={taskAssignedToFlag} onChange={e => setTaskAssignedToFlag(e.target.value)}
-                      className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
-                      <option value="">Assign to…</option>
-                      {ASSIGNABLE_STAFF.map(staff => <option key={staff} value={staff}>{staff}</option>)}
-                    </select>
-                    <div className="flex gap-1">
-                      <button onClick={addTaskForFlag} className="flex-1 text-green-600 hover:text-green-700 text-[8px] font-bold">Create</button>
-                      <button onClick={() => setTaskForFlag(null)} className="shrink-0 text-gray-400 hover:text-gray-600 text-[8px] font-bold">×</button>
-                    </div>
-                  </div>
-                ) : noteForFlag === f.key ? (
-                  <div className="flex flex-col gap-0.5">
-                    <textarea autoFocus value={noteTextForFlag} onChange={e => setNoteTextForFlag(e.target.value)} placeholder="Note…" rows={1}
-                      onKeyDown={e => { if (e.key === 'Escape') setNoteForFlag(null) }}
-                      className="flex-1 min-w-0 text-[8px] bg-gray-100 border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 resize-none" />
-                    <div className="flex gap-1">
-                      <button onClick={addNoteForFlag} className="flex-1 text-green-600 hover:text-green-700 text-[8px] font-bold">Save</button>
-                      <button onClick={() => setNoteForFlag(null)} className="shrink-0 text-gray-400 hover:text-gray-600 text-[8px] font-bold">×</button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    {tasksByFlagKey[f.key]?.length > 0 && (
-                      <div className="space-y-0.5 text-[8px]">
-                        {tasksByFlagKey[f.key].map(task => (
-                          <div key={task.id} className={`p-0.5 rounded border leading-tight ${task.done ? 'bg-gray-50 border-gray-200' : 'bg-blue-50 border-blue-200'}`} onMouseDown={() => handleTaskMouseDown(task.id)} onMouseUp={handleTaskMouseUp} onTouchStart={() => handleTaskTouchStart(task.id)} onTouchEnd={handleTaskTouchEnd}>
-                            {editingTaskId === task.id ? (
-                              <div className="flex flex-col gap-0.5 leading-none">
-                                <input autoFocus value={editTaskTitle} onChange={e => setEditTaskTitle(e.target.value)} placeholder="Task…"
-                                  onKeyDown={e => { if (e.key === 'Enter') saveEditTask(undefined, f.key); if (e.key === 'Escape') setEditingTaskId(null) }}
-                                  className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
-                                <select value={editTaskType} onChange={e => setEditTaskType(e.target.value)}
-                                  className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
-                                  <option>General</option>
-                                  <option>App</option>
-                                </select>
-                                <select value={editTaskAssignedTo} onChange={e => setEditTaskAssignedTo(e.target.value)}
-                                  className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
-                                  <option value="">Assign…</option>
-                                  {ASSIGNABLE_STAFF.map(staff => <option key={staff} value={staff}>{staff}</option>)}
-                                </select>
-                                <div className="flex gap-0.5">
-                                  <button onClick={() => saveEditTask(undefined, f.key)} className="flex-1 text-green-600 hover:text-green-700 text-[8px] font-bold">✓</button>
-                                  <button onClick={() => setEditingTaskId(null)} className="shrink-0 text-gray-400 hover:text-gray-600 text-[8px] font-bold">×</button>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="flex flex-col gap-0.5">
-                                <p className={`font-semibold ${task.done ? 'line-through text-gray-500' : 'text-gray-800'}`}>{task.title}</p>
-                                <div className="flex items-center gap-1 flex-wrap text-[7px] text-gray-600">
-                                  <span>{task.task_type === 'App task' ? 'App' : 'General'}</span>
-                                  <span>•</span>
-                                  <span>{formatDate(task.created_at)} by {task.created_by}</span>
-                                  {task.assigned_to && (<><span>•</span><span>To: {task.assigned_to}</span></>)}
-                                  {task.done && task.completed_at && (<><span>•</span><span>{calculateDuration(task.created_at, task.completed_at)}</span></>)}
-                                </div>
-                                {menuTaskId === task.id && (
-                                  <div className="flex gap-1 text-[8px] mt-0.5">
-                                    <button onClick={() => { toggleTaskCompletion(task.id, task.done, undefined, f.key); setMenuTaskId(null) }} title={task.done ? 'Reopen' : 'Complete'} className="text-green-600 hover:text-green-700 font-semibold">✓</button>
-                                    <button onClick={() => { startEditTask(task); setMenuTaskId(null) }} title="Edit task" className="text-gray-500 hover:text-gray-700 font-semibold">✎</button>
-                                    <button onClick={() => { setReplyingTo(`task-${task.id}`); fetchReplies('task', task.id); setMenuTaskId(null) }} title="Reply" className="text-blue-500 hover:text-blue-700 font-semibold">💬</button>
-                                    <button onClick={() => { deleteTask(task.id, undefined, f.key); setMenuTaskId(null) }} title="Delete task" className="text-red-500 hover:text-red-700 font-semibold">×</button>
-                                  </div>
-                                )}
-                                {replyingTo === `task-${task.id}` && (
-                                  <div className="mt-0.5 bg-gray-50 p-1 rounded border border-gray-200 space-y-0.5">
-                                    <textarea autoFocus value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Reply…" rows={1}
-                                      onKeyDown={e => { if (e.key === 'Escape') { setReplyingTo(null); setReplyText('') } }}
-                                      className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 resize-none w-full" />
-                                    <div className="flex gap-0.5">
-                                      <button onClick={() => addReply('task', task.id)} className="flex-1 text-green-600 hover:text-green-700 text-[8px] font-bold">Post</button>
-                                      <button onClick={() => { setReplyingTo(null); setReplyText('') }} className="shrink-0 text-gray-400 hover:text-gray-600 text-[8px] font-bold">×</button>
-                                    </div>
-                                  </div>
-                                )}
-                                {repliesByItem[`task-${task.id}`]?.length > 0 && (
-                                  <div className="mt-0.5 space-y-0.5 text-[7px] border-l border-gray-200 pl-1">
-                                    {repliesByItem[`task-${task.id}`].map(reply => (
-                                      <div key={reply.id} className="bg-gray-50 p-0.5 rounded">
-                                        <div className="flex items-center justify-between gap-1">
-                                          <span className="font-semibold text-gray-700">{reply.created_by}</span>
-                                          <button onClick={() => deleteReply(reply.id, 'task', task.id)} className="text-red-500 hover:text-red-700 font-bold">×</button>
-                                        </div>
-                                        <p className="text-gray-600">{reply.reply_text}</p>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {notesByFlagKey[f.key]?.notes !== undefined && notesByFlagKey[f.key]?.notes !== '' && (
-                      <div className="p-1 bg-amber-50/50 border border-amber-100 rounded text-[8px] text-gray-800">
-                        <p className="font-semibold">📝 {notesByFlagKey[f.key].topic || 'Note'}</p>
-                        <p className="text-[7px] text-gray-600 mt-0.5">{notesByFlagKey[f.key].notes}</p>
-                        {notesByFlagKey[f.key].noteDate && <p className="text-[7px] text-gray-500 mt-0.5">{formatDate(notesByFlagKey[f.key].noteDate)}</p>}
-                      </div>
-                    )}
-                  </>
-                )}
+                {taskForFlag === f.key
+                  ? renderAddTaskForm(taskTitleForFlag, setTaskTitleForFlag, taskTypeForFlag, setTaskTypeForFlag, taskAssignedToFlag, setTaskAssignedToFlag, addTaskForFlag, () => setTaskForFlag(null))
+                  : noteForFlag === f.key
+                    ? renderAddNoteForm(noteTextForFlag, setNoteTextForFlag, addNoteForFlag, () => setNoteForFlag(null))
+                    : renderAttachedItems(tasksByFlagKey[f.key], notesByFlagKey[f.key], undefined, f.key)}
               </div>
             </div>
           ))}
           {globalTasks.map((task, i) => (
-            <div key={`task-${task.id}`} className="px-1 py-0.5 bg-green-50/50 flex items-center gap-1" onMouseDown={() => handleGlobalTaskMouseDown(task.id)} onMouseUp={handleGlobalTaskMouseUp} onTouchStart={() => handleGlobalTaskTouchStart(task.id)} onTouchEnd={handleGlobalTaskTouchEnd}>
+            <div key={`task-${task.id}`} className="px-1 py-0.5 bg-green-50/50 flex items-center gap-1"
+              onMouseDown={() => globalTaskPress.onMouseDown(task.id)} onMouseUp={globalTaskPress.onMouseUp}
+              onTouchStart={() => globalTaskPress.onTouchStart(task.id)} onTouchEnd={globalTaskPress.onTouchEnd}>
               <span className="shrink-0 text-[8px] font-bold text-gray-300">{laws.length + (flags?.length || 0) + i + 1}</span>
               <div className="min-w-0 flex-1">
                 <p className="text-[9px] text-gray-800">✓ {task.title}</p>
@@ -1039,108 +830,64 @@ export default function PageLawsList({
                     <button onClick={() => { deleteGlobalTask(task.id); setMenuGlobalTaskId(null) }} title="Delete task" className="text-red-500 hover:text-red-700 font-semibold">×</button>
                   </div>
                 )}
-                {replyingTo === `task-${task.id}` && (
-                  <div className="mt-0.5 bg-gray-50 p-1 rounded border border-gray-200 space-y-0.5">
-                    <textarea autoFocus value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Reply…" rows={1}
-                      onKeyDown={e => { if (e.key === 'Escape') { setReplyingTo(null); setReplyText('') } }}
-                      className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 resize-none w-full" />
-                    <div className="flex gap-0.5">
-                      <button onClick={() => addReply('task', task.id)} className="flex-1 text-green-600 hover:text-green-700 text-[8px] font-bold">Post</button>
-                      <button onClick={() => { setReplyingTo(null); setReplyText('') }} className="shrink-0 text-gray-400 hover:text-gray-600 text-[8px] font-bold">×</button>
-                    </div>
-                  </div>
-                )}
-                {repliesByItem[`task-${task.id}`]?.length > 0 && (
-                  <div className="mt-0.5 space-y-0.5 text-[7px] border-l border-gray-200 pl-1">
-                    {repliesByItem[`task-${task.id}`].map(reply => (
-                      <div key={reply.id} className="bg-gray-50 p-0.5 rounded">
-                        <div className="flex items-center justify-between gap-1">
-                          <span className="font-semibold text-gray-700">{reply.created_by}</span>
-                          <button onClick={() => deleteReply(reply.id, 'task', task.id)} className="text-red-500 hover:text-red-700 font-bold">×</button>
-                        </div>
-                        <p className="text-gray-600">{reply.reply_text}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {renderReplyThread(`task-${task.id}`, 'task', task.id, 'sm')}
               </div>
             </div>
           ))}
           {globalNotes.map((note, i) => (
-            <div key={`global-note-${note.id || i}`} className="px-1 py-0.5 bg-yellow-50/50 flex items-center gap-1" onMouseDown={() => handleGlobalNoteMouseDown(note.id || 0)} onMouseUp={handleGlobalNoteMouseUp} onTouchStart={() => handleGlobalNoteTouchStart(note.id || 0)} onTouchEnd={handleGlobalNoteTouchEnd}>
+            <div key={`global-note-${note.id || i}`} className="px-1 py-0.5 bg-yellow-50/50 flex items-center gap-1"
+              onMouseDown={() => globalNotePress.onMouseDown(note.id || 0)} onMouseUp={globalNotePress.onMouseUp}
+              onTouchStart={() => globalNotePress.onTouchStart(note.id || 0)} onTouchEnd={globalNotePress.onTouchEnd}>
               <span className="shrink-0 text-[8px] font-bold text-gray-300">{laws.length + (flags?.length || 0) + globalTasks.length + i + 1}</span>
               <div className="min-w-0 flex-1">
                 <p className="text-[9px] text-gray-800">📝 {note.topic || 'Note'}</p>
                 {note.notes && (<p className="text-[8px] text-gray-600 line-clamp-1">{note.notes}</p>)}
                 {menuGlobalNoteId === (note.id || 0) && (
                   <div className="flex gap-1 text-[8px] mt-0.5">
-                    <button onClick={() => { setReplyingTo(`note-${note.id}`); fetchReplies('note', note.id); setMenuGlobalNoteId(null) }} title="Reply" className="text-blue-500 hover:text-blue-700 font-semibold">💬</button>
+                    <button onClick={() => { setReplyingTo(`note-${note.id}`); fetchReplies('note', note.id ?? 0); setMenuGlobalNoteId(null) }} title="Reply" className="text-blue-500 hover:text-blue-700 font-semibold">💬</button>
                   </div>
                 )}
-                {replyingTo === `note-${note.id}` && (
-                  <div className="mt-0.5 bg-gray-50 p-1 rounded border border-gray-200 space-y-0.5">
-                    <textarea autoFocus value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Reply…" rows={1}
-                      onKeyDown={e => { if (e.key === 'Escape') { setReplyingTo(null); setReplyText('') } }}
-                      className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 resize-none w-full" />
-                    <div className="flex gap-0.5">
-                      <button onClick={() => addReply('note', note.id)} className="flex-1 text-green-600 hover:text-green-700 text-[8px] font-bold">Post</button>
-                      <button onClick={() => { setReplyingTo(null); setReplyText('') }} className="shrink-0 text-gray-400 hover:text-gray-600 text-[8px] font-bold">×</button>
-                    </div>
-                  </div>
-                )}
-                {repliesByItem[`note-${note.id}`]?.length > 0 && (
-                  <div className="mt-0.5 space-y-0.5 text-[7px] border-l border-gray-200 pl-1">
-                    {repliesByItem[`note-${note.id}`].map(reply => (
-                      <div key={reply.id} className="bg-gray-50 p-0.5 rounded">
-                        <div className="flex items-center justify-between gap-1">
-                          <span className="font-semibold text-gray-700">{reply.created_by}</span>
-                          <button onClick={() => deleteReply(reply.id, 'note', note.id)} className="text-red-500 hover:text-red-700 font-bold">×</button>
-                        </div>
-                        <p className="text-gray-600">{reply.reply_text}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {renderReplyThread(`note-${note.id}`, 'note', note.id ?? 0, 'sm')}
               </div>
             </div>
           ))}
-          {isItemsLaws && creatingGlobalTask && (
+          {isItemsLaws && openForm === 'task' && (
             <div className="px-1 py-1 bg-blue-50 border-t border-blue-200 flex flex-col gap-0.5 text-[8px]">
-              <input autoFocus value={globalTaskTitle ?? ''} onChange={e => setGlobalTaskTitle?.(e.target.value)} placeholder="Task…"
-                onKeyDown={e => { if (e.key === 'Enter') addGlobalTask(); if (e.key === 'Escape') setCreatingGlobalTask?.(false) }}
+              <input autoFocus value={globalTaskTitle} onChange={e => setGlobalTaskTitle(e.target.value)} placeholder="Task…"
+                onKeyDown={e => { if (e.key === 'Enter') addGlobalTask(); if (e.key === 'Escape') setOpenForm?.(null) }}
                 className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
-              <select value={globalTaskType ?? 'General task'} onChange={e => setGlobalTaskType?.(e.target.value)}
+              <select value={globalTaskType} onChange={e => setGlobalTaskType(e.target.value)}
                 className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
                 <option>General task</option>
                 <option>App task</option>
               </select>
-              <select value={globalTaskAssignedTo ?? ''} onChange={e => setGlobalTaskAssignedTo?.(e.target.value)}
+              <select value={globalTaskAssignedTo} onChange={e => setGlobalTaskAssignedTo(e.target.value)}
                 className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
                 <option value="">Assign to…</option>
                 {ASSIGNABLE_STAFF.map(staff => <option key={staff} value={staff}>{staff}</option>)}
               </select>
               <div className="flex gap-0.5">
                 <button onClick={addGlobalTask} className="flex-1 text-green-600 hover:text-green-700 font-bold">Create</button>
-                <button onClick={() => setCreatingGlobalTask?.(false)} className="shrink-0 text-gray-400 hover:text-gray-600 font-bold">×</button>
+                <button onClick={() => setOpenForm?.(null)} className="shrink-0 text-gray-400 hover:text-gray-600 font-bold">×</button>
               </div>
             </div>
           )}
-          {isItemsLaws && creatingGlobalNote && (
+          {isItemsLaws && openForm === 'note' && (
             <div className="px-1 py-1 bg-gray-50 border-t border-gray-200 flex flex-col gap-0.5 text-[8px]">
-              <input autoFocus value={globalNoteTopic ?? ''} onChange={e => setGlobalNoteTopic?.(e.target.value)} placeholder="Topic…"
+              <input autoFocus value={globalNoteTopic} onChange={e => setGlobalNoteTopic(e.target.value)} placeholder="Topic…"
                 className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
               <div className="flex gap-0.5">
-                <input type="date" value={globalNoteDate ?? ''} onChange={e => setGlobalNoteDate?.(e.target.value)}
+                <input type="date" value={globalNoteDate} onChange={e => setGlobalNoteDate(e.target.value)}
                   className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
-                <input type="text" value={globalNoteTaggedStaff?.join(', ') ?? ''} onChange={e => setGlobalNoteTaggedStaff?.(e.target.value.split(',').map(s => s.trim()).filter(s => s))} placeholder="Tag staff (@name, @name)"
+                <input type="text" value={globalNoteTaggedStaff.join(', ')} onChange={e => setGlobalNoteTaggedStaff(e.target.value.split(',').map(s => s.trim()).filter(s => s))} placeholder="Tag staff (@name, @name)"
                   className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
               </div>
-              <textarea value={globalNoteText ?? ''} onChange={e => setGlobalNoteText?.(e.target.value)} placeholder="Note content… (use @ to tag staff)" rows={2}
-                onKeyDown={e => { if (e.key === 'Escape') setCreatingGlobalNote?.(false) }}
+              <textarea value={globalNoteText} onChange={e => setGlobalNoteText(e.target.value)} placeholder="Note content… (use @ to tag staff)" rows={2}
+                onKeyDown={e => { if (e.key === 'Escape') setOpenForm?.(null) }}
                 className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 resize-none" />
               <div className="flex gap-0.5">
                 <button onClick={addGlobalNote} className="flex-1 text-green-600 hover:text-green-700 font-bold">Save</button>
-                <button onClick={() => setCreatingGlobalNote?.(false)} className="shrink-0 text-gray-400 hover:text-gray-600 font-bold">×</button>
+                <button onClick={() => setOpenForm?.(null)} className="shrink-0 text-gray-400 hover:text-gray-600 font-bold">×</button>
               </div>
             </div>
           )}

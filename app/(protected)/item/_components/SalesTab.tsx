@@ -7,7 +7,7 @@ import HistoryPanel from './HistoryPanel'
 import { useColumnPrefs, ColumnsPickerButton, type ColumnDef } from './columnPrefs'
 import { useAttachments, AttachmentPicker, type Attachment } from './attachmentsShared'
 import BulkAttachForms from './BulkAttachForms'
-import PageLawsList from './PageLawsList'
+import PageLawsList, { type LawFormKind } from './PageLawsList'
 
 type Item = { id: number; item_name: string; cf_group: string | null }
 
@@ -384,20 +384,7 @@ export default function SalesTab({
     return localStorage.getItem('showSalesLaws') === 'true'
   })
   const [salesLawsRefresh, setSalesLawsRefresh] = useState(0)
-  const [creatingGlobalTask, setCreatingGlobalTask] = useState(false)
-  const [globalTaskTitle, setGlobalTaskTitle] = useState('')
-  const [globalTaskType, setGlobalTaskType] = useState('General task')
-  const [globalTaskAssignedTo, setGlobalTaskAssignedTo] = useState('')
-  const [creatingGlobalLaw, setCreatingGlobalLaw] = useState(false)
-  const [globalLawText, setGlobalLawText] = useState('')
-  const [creatingGlobalNote, setCreatingGlobalNote] = useState(false)
-  const [globalNoteTopic, setGlobalNoteTopic] = useState('')
-  const [globalNoteText, setGlobalNoteText] = useState('')
-  const [globalNoteDate, setGlobalNoteDate] = useState(() => {
-    const today = new Date()
-    return today.toISOString().split('T')[0]
-  })
-  const [globalNoteTaggedStaff, setGlobalNoteTaggedStaff] = useState<string[]>([])
+  const [lawsOpenForm, setLawsOpenForm] = useState<LawFormKind>(null)
   const [hideZeroFlags, setHideZeroFlags] = useState(false)
 
   const colPrefs = useColumnPrefs<ColKey>('salesTable', SALES_COLUMNS)
@@ -902,16 +889,16 @@ export default function SalesTab({
       </button>
       {showSalesLaws && (
         <>
-          <button onClick={() => setCreatingGlobalLaw(o => !o)} title="Create new law"
-            className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${creatingGlobalLaw ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
+          <button onClick={() => setLawsOpenForm(f => f === 'law' ? null : 'law')} title="Create new law"
+            className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${lawsOpenForm === 'law' ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
             + Law
           </button>
-          <button onClick={() => setCreatingGlobalTask(o => !o)} title="Create global task"
-            className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${creatingGlobalTask ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
+          <button onClick={() => setLawsOpenForm(f => f === 'task' ? null : 'task')} title="Create global task"
+            className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${lawsOpenForm === 'task' ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
             + Task
           </button>
-          <button onClick={() => setCreatingGlobalNote(o => !o)} title="Create global note"
-            className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${creatingGlobalNote ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
+          <button onClick={() => setLawsOpenForm(f => f === 'note' ? null : 'note')} title="Create global note"
+            className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${lawsOpenForm === 'note' ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
             + Note
           </button>
           <label className="shrink-0 flex items-center gap-1 text-white hover:bg-white/10 px-2 py-1 rounded-lg cursor-pointer transition">
@@ -928,28 +915,8 @@ export default function SalesTab({
           scopeKey="sales"
           isItemsLaws={true}
           onChange={() => setSalesLawsRefresh(r => r + 1)}
-          creatingGlobalLaw={creatingGlobalLaw}
-          setCreatingGlobalLaw={setCreatingGlobalLaw}
-          globalLawText={globalLawText}
-          setGlobalLawText={setGlobalLawText}
-          creatingGlobalTask={creatingGlobalTask}
-          setCreatingGlobalTask={setCreatingGlobalTask}
-          globalTaskTitle={globalTaskTitle}
-          setGlobalTaskTitle={setGlobalTaskTitle}
-          globalTaskType={globalTaskType}
-          setGlobalTaskType={setGlobalTaskType}
-          globalTaskAssignedTo={globalTaskAssignedTo}
-          setGlobalTaskAssignedTo={setGlobalTaskAssignedTo}
-          creatingGlobalNote={creatingGlobalNote}
-          setCreatingGlobalNote={setCreatingGlobalNote}
-          globalNoteTopic={globalNoteTopic}
-          setGlobalNoteTopic={setGlobalNoteTopic}
-          globalNoteText={globalNoteText}
-          setGlobalNoteText={setGlobalNoteText}
-          globalNoteDate={globalNoteDate}
-          setGlobalNoteDate={setGlobalNoteDate}
-          globalNoteTaggedStaff={globalNoteTaggedStaff}
-          setGlobalNoteTaggedStaff={setGlobalNoteTaggedStaff}
+          openForm={lawsOpenForm}
+          setOpenForm={setLawsOpenForm}
           hideZeroFlags={hideZeroFlags}
           setHideZeroFlags={setHideZeroFlags}
         />

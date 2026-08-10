@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useMemo, Component, Suspense, Fragment, ty
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { hasFeature, DEFAULT_ON_FEATURES, type FeatureKey, type RolePermissionsMap } from '@/lib/permissionsShared'
-import PageLawsList from './_components/PageLawsList'
+import PageLawsList, { type LawFormKind } from './_components/PageLawsList'
 
 class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boolean; message: string }> {
   state = { error: false, message: '' }
@@ -565,20 +565,7 @@ function ItemHubPageInner() {
     return localStorage.getItem('showItemsLaws') === 'true'
   })
   const [itemsLawsRefresh, setItemsLawsRefresh] = useState(0)
-  const [creatingGlobalTask, setCreatingGlobalTask] = useState(false)
-  const [globalTaskTitle, setGlobalTaskTitle] = useState('')
-  const [globalTaskType, setGlobalTaskType] = useState('General task')
-  const [globalTaskAssignedTo, setGlobalTaskAssignedTo] = useState('')
-  const [creatingGlobalLaw, setCreatingGlobalLaw] = useState(false)
-  const [globalLawText, setGlobalLawText] = useState('')
-  const [creatingGlobalNote, setCreatingGlobalNote] = useState(false)
-  const [globalNoteTopic, setGlobalNoteTopic] = useState('')
-  const [globalNoteText, setGlobalNoteText] = useState('')
-  const [globalNoteDate, setGlobalNoteDate] = useState(() => {
-    const today = new Date()
-    return today.toISOString().split('T')[0]
-  })
-  const [globalNoteTaggedStaff, setGlobalNoteTaggedStaff] = useState<string[]>([])
+  const [itemsLawsOpenForm, setItemsLawsOpenForm] = useState<LawFormKind>(null)
   const [hideZeroFlags, setHideZeroFlags] = useState(false)
   const groupRef     = useRef<HTMLDivElement>(null)
   const searchRef    = useRef<HTMLDivElement>(null)
@@ -1860,16 +1847,16 @@ function ItemHubPageInner() {
                         </button>
                         {showItemsLaws && (
                           <>
-                            <button onClick={() => setCreatingGlobalLaw(o => !o)} title="Create new law"
-                              className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${creatingGlobalLaw ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
+                            <button onClick={() => setItemsLawsOpenForm(f => f === 'law' ? null : 'law')} title="Create new law"
+                              className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${itemsLawsOpenForm === 'law' ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
                               + Law
                             </button>
-                            <button onClick={() => setCreatingGlobalTask(o => !o)} title="Create global task"
-                              className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${creatingGlobalTask ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
+                            <button onClick={() => setItemsLawsOpenForm(f => f === 'task' ? null : 'task')} title="Create global task"
+                              className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${itemsLawsOpenForm === 'task' ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
                               + Task
                             </button>
-                            <button onClick={() => setCreatingGlobalNote(o => !o)} title="Create global note"
-                              className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${creatingGlobalNote ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
+                            <button onClick={() => setItemsLawsOpenForm(f => f === 'note' ? null : 'note')} title="Create global note"
+                              className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${itemsLawsOpenForm === 'note' ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
                               + Note
                             </button>
                             <label className="shrink-0 flex items-center gap-1 text-white hover:bg-white/10 px-2 py-1 rounded-lg cursor-pointer transition">
@@ -2240,28 +2227,8 @@ function ItemHubPageInner() {
                       description: ERROR_VIOLATIONS.find(v => v.key === key)?.description,
                       onViewClick: () => goToViolation(key)
                     }))}
-                    creatingGlobalTask={creatingGlobalTask}
-                    setCreatingGlobalTask={setCreatingGlobalTask}
-                    globalTaskTitle={globalTaskTitle}
-                    setGlobalTaskTitle={setGlobalTaskTitle}
-                    globalTaskType={globalTaskType}
-                    setGlobalTaskType={setGlobalTaskType}
-                    globalTaskAssignedTo={globalTaskAssignedTo}
-                    setGlobalTaskAssignedTo={setGlobalTaskAssignedTo}
-                    creatingGlobalLaw={creatingGlobalLaw}
-                    setCreatingGlobalLaw={setCreatingGlobalLaw}
-                    globalLawText={globalLawText}
-                    setGlobalLawText={setGlobalLawText}
-                    creatingGlobalNote={creatingGlobalNote}
-                    setCreatingGlobalNote={setCreatingGlobalNote}
-                    globalNoteTopic={globalNoteTopic}
-                    setGlobalNoteTopic={setGlobalNoteTopic}
-                    globalNoteText={globalNoteText}
-                    setGlobalNoteText={setGlobalNoteText}
-                    globalNoteDate={globalNoteDate}
-                    setGlobalNoteDate={setGlobalNoteDate}
-                    globalNoteTaggedStaff={globalNoteTaggedStaff}
-                    setGlobalNoteTaggedStaff={setGlobalNoteTaggedStaff}
+                    openForm={itemsLawsOpenForm}
+                    setOpenForm={setItemsLawsOpenForm}
                     hideZeroFlags={hideZeroFlags}
                     setHideZeroFlags={setHideZeroFlags}
                   />

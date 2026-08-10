@@ -1,9 +1,9 @@
 'use client'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useToolsPanel, type ToolsPanelKind, type ToolsPanelFlag } from './ToolsPanelContext'
 import DynamicTasksSection from './DynamicTasksSection'
 import PageLawsNote from './PageLawsNote'
-import PageLawsList from './PageLawsList'
+import PageLawsList, { type LawFormKind } from './PageLawsList'
 
 const SECTIONS: { kind: ToolsPanelKind; icon: string; label: string; accent: string }[] = [
   { kind: 'law', icon: '⚖️', label: 'Law', accent: 'bg-indigo-50 border-indigo-100' },
@@ -40,6 +40,7 @@ const SECTIONS: { kind: ToolsPanelKind; icon: string; label: string; accent: str
 export default function CombinedToolsPanel() {
   const ctx = useToolsPanel()
   const panel = ctx?.panel
+  const [lawsOpenForm, setLawsOpenForm] = useState<LawFormKind>(null)
 
   const lawRef = useRef<HTMLDivElement>(null)
   const tasksRef = useRef<HTMLDivElement>(null)
@@ -62,28 +63,6 @@ export default function CombinedToolsPanel() {
     ctx!.closePanel()
   }
 
-  const addLaw = () => {
-    // TODO: Focus add law input in PageLawsList
-  }
-
-  const addGlobalTask = async () => {
-    const title = prompt('Task title:')
-    if (!title?.trim()) return
-    await fetch('/api/tasks', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: title.trim(), submenu: panel.scopeKey }),
-    }).catch(() => {})
-  }
-
-  const addGlobalNote = async () => {
-    const note = prompt('Note:')
-    if (note === null) return
-    await fetch('/api/page-notes', {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scopeKey: panel.scopeKey, kind: 'note', notes: note.trim() }),
-    }).catch(() => {})
-  }
-
   return (
     <div className="absolute inset-0 z-40 bg-white flex flex-col">
       <div className="shrink-0 flex items-center justify-between gap-2 px-3 pt-2.5 pb-2 border-b border-gray-100">
@@ -91,12 +70,12 @@ export default function CombinedToolsPanel() {
         <div className="flex items-center gap-1 shrink-0">
           {panel.scopeKey === 'Items' && (
             <>
-              <button onClick={addLaw} title="Add law"
-                className="text-gray-400 hover:text-gray-600 text-lg font-bold leading-none px-1">+</button>
-              <button onClick={addGlobalTask} title="Add task"
-                className="text-gray-400 hover:text-gray-600 text-xs font-semibold leading-none px-2 py-1">New Task</button>
-              <button onClick={addGlobalNote} title="Add note"
-                className="text-gray-400 hover:text-gray-600 text-xs font-semibold leading-none px-2 py-1">New Note</button>
+              <button onClick={() => setLawsOpenForm(f => f === 'law' ? null : 'law')} title="Add law"
+                className={`text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${lawsOpenForm === 'law' ? 'bg-gray-200 text-gray-800' : 'text-gray-400 hover:text-gray-600'}`}>+ Law</button>
+              <button onClick={() => setLawsOpenForm(f => f === 'task' ? null : 'task')} title="Add task"
+                className={`text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${lawsOpenForm === 'task' ? 'bg-gray-200 text-gray-800' : 'text-gray-400 hover:text-gray-600'}`}>+ Task</button>
+              <button onClick={() => setLawsOpenForm(f => f === 'note' ? null : 'note')} title="Add note"
+                className={`text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${lawsOpenForm === 'note' ? 'bg-gray-200 text-gray-800' : 'text-gray-400 hover:text-gray-600'}`}>+ Note</button>
             </>
           )}
           <button onClick={ctx.closePanel} title="Close"
@@ -117,6 +96,8 @@ export default function CombinedToolsPanel() {
                   onViewClick: () => viewFlag(f),
                 }))}
                 isItemsLaws={true}
+                openForm={lawsOpenForm}
+                setOpenForm={setLawsOpenForm}
               />
             </div>
             <div ref={tasksRef} className="bg-white">
