@@ -2,7 +2,9 @@
 import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import LocationField from '@/components/LocationField'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, ColResizeHandle, type ColumnDef } from '../item/_components/columnPrefs'
-import PageToolIcons from '../item/_components/PageToolIcons'
+import PageLawsList from '../item/_components/PageLawsList'
+import LawsToggleBar from '../item/_components/LawsToggleBar'
+import { useLawsPanel } from '../item/_components/useLawsPanel'
 
 type Customer = {
   id: number
@@ -189,6 +191,7 @@ export default function CustomersPage({ initialSearch, onFlagCountChange }: { in
   const [selected, setSelected] = useState<Customer | null>(null)
   const [editingCustomer, setEditingCustomer] = useState(false)
   const [activeFlag, setActiveFlag] = useState<FlagKey | null>(null)
+  const lawsPanel = useLawsPanel('showCustomersLaws')
   const colPrefs = useColumnPrefs<ColKey>('customersTable', CUSTOMER_COLUMNS)
 
   // Driven by the global search (page.tsx) landing here already knowing
@@ -266,9 +269,9 @@ export default function CustomersPage({ initialSearch, onFlagCountChange }: { in
           threshold, not a per-customer problem, so it's a plain banner
           instead of a filter. */}
       <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
-        <PageToolIcons scopeKey="Customers"
-          flags={FLAG_TYPES.map(({ key, letter, label }) => ({ key, letter, label, count: flagCounts[key] }))}
-          onFlagClick={key => setActiveFlag(key as FlagKey)} />
+        <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
+          openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
+          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} dark={false} />
         <span className={`shrink-0 flex items-center gap-1 text-[10px] font-semibold pl-1.5 pr-2 py-1 rounded-lg
           ${newThisWeek < NEW_CUSTOMERS_PER_WEEK_TARGET ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}
           title="New customers added in the last 7 days">
@@ -285,6 +288,21 @@ export default function CustomersPage({ initialSearch, onFlagCountChange }: { in
           </button>
         )}
       </div>
+
+      {lawsPanel.show && (
+        <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+          <PageLawsList
+            scopeKey="Customers"
+            isItemsLaws={true}
+            onChange={lawsPanel.bumpRefresh}
+            flags={FLAG_TYPES.map(({ key, label }) => ({ key, label, count: flagCounts[key], onViewClick: () => setActiveFlag(key as FlagKey) }))}
+            openForm={lawsPanel.openForm}
+            setOpenForm={lawsPanel.setOpenForm}
+            hideZeroFlags={lawsPanel.hideZeroFlags}
+            setHideZeroFlags={lawsPanel.setHideZeroFlags}
+          />
+        </div>
+      )}
 
       {/* Header */}
       <div className="flex items-center justify-between">

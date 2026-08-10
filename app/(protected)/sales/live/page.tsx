@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { usePresenceReporter } from '@/lib/usePresenceReporter'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from '../../item/_components/columnPrefs'
-import PageToolIcons from '../../item/_components/PageToolIcons'
+import PageLawsList from '../../item/_components/PageLawsList'
+import LawsToggleBar from '../../item/_components/LawsToggleBar'
+import { useLawsPanel } from '../../item/_components/useLawsPanel'
 
 type GridItem = {
   id: number
@@ -119,6 +121,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
   // Sales > Live Sale > Log), which remounts this page with a different
   // initialShowLog rather than toggling in place -- no local state needed.
   const showLog = !!initialShowLog
+  const lawsPanel = useLawsPanel('showLiveSaleLaws')
   const [staffFilter, setStaffFilter] = useState<string | null>(null)
   const [lastTap, setLastTap] = useState<Tap | null>(null)
   const [pendingItemId, setPendingItemId] = useState<number | null>(null)
@@ -290,7 +293,9 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
           ⚡ Live Sale <span className="font-normal text-gray-400">· tap to record</span>
         </h2>
         <div className="flex items-center gap-1.5 shrink-0">
-          <PageToolIcons scopeKey={showLog ? 'Sale Log' : 'Live Sale'} />
+          <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
+            openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
+            hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} dark={false} />
           {!showLog && (
             <button
               type="button"
@@ -322,6 +327,19 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
           )}
         </div>
       </div>
+      {lawsPanel.show && (
+        <div className="border-b border-gray-200 bg-white px-2 py-1.5">
+          <PageLawsList
+            scopeKey={showLog ? 'Sale Log' : 'Live Sale'}
+            isItemsLaws={true}
+            onChange={lawsPanel.bumpRefresh}
+            openForm={lawsPanel.openForm}
+            setOpenForm={lawsPanel.setOpenForm}
+            hideZeroFlags={lawsPanel.hideZeroFlags}
+            setHideZeroFlags={lawsPanel.setHideZeroFlags}
+          />
+        </div>
+      )}
       {showLog ? (
         <div className="px-2 pt-2">
           <div className="flex flex-wrap items-center gap-1.5 mb-2">

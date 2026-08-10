@@ -8,7 +8,9 @@ import CloserQuestionnaire, { ClosingAnswers } from '@/components/CloserQuestion
 import BinoChecklist, { BinoChecklistAnswers } from '@/components/BinoChecklist'
 import ManageLogPanel from '../item/_components/ManageLogPanel'
 import ContentPage from '../item/_components/ContentPage'
-import PageToolIcons from '../item/_components/PageToolIcons'
+import PageLawsList from '../item/_components/PageLawsList'
+import LawsToggleBar from '../item/_components/LawsToggleBar'
+import { useLawsPanel } from '../item/_components/useLawsPanel'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell,
 } from 'recharts'
@@ -220,6 +222,7 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
   const viewName = viewingStaff?.toLowerCase()
   const displayStaff = viewName ? [viewName] : STAFF
   const isOwnPage = !viewingStaff || viewName === username.toLowerCase()
+  const lawsPanel = useLawsPanel('showTeamTimesLaws')
 
   // Deactivated (resigned/suspended/etc, see Users page) staff drop out of
   // the shared history grid below -- their times aren't deleted, just moved
@@ -613,13 +616,14 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
     <div className="space-y-2.5">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-1.5">
-          {/* Standalone Notes/Tasks -- this page predates PageToolIcons and
-              already had its own bespoke Law button/panel below (reading
-              from content_pages via ContentPage, not page_laws), with real
-              existing content -- left in place rather than migrated, so
-              this only adds what was actually missing (Notes/Tasks) instead
-              of risking orphaning that data. */}
-          <PageToolIcons scopeKey="Team Times" />
+          {/* This page separately has its own bespoke Law button/panel below
+              (⚖️ Company Laws — Time, reading from content_pages via
+              ContentPage, not page_laws) -- left in place since it has real
+              existing content of its own. The bar here is the normal
+              page_laws-backed Law/Tasks/Notes panel, same as every other page. */}
+          <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
+            openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
+            hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} dark={false} />
           <button onClick={() => setShowLaws(v => !v)} title="Company Laws — Time"
             className="text-sm leading-none px-2 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 transition">
             ⚖️
@@ -638,6 +642,20 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
           </div>
         )}
       </div>
+
+      {lawsPanel.show && (
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <PageLawsList
+            scopeKey="Team Times"
+            isItemsLaws={true}
+            onChange={lawsPanel.bumpRefresh}
+            openForm={lawsPanel.openForm}
+            setOpenForm={lawsPanel.setOpenForm}
+            hideZeroFlags={lawsPanel.hideZeroFlags}
+            setHideZeroFlags={lawsPanel.setHideZeroFlags}
+          />
+        </div>
+      )}
 
       {/* Company Laws relating to time (lateness, overtime, clocking rules,
           etc.) -- viewable by everyone, editable by owner-level only (see
@@ -1073,6 +1091,7 @@ export function PayslipsTab({ role, username, viewingStaff }: { role: string; us
   const [selectedMonth, setSelectedMonth] = useState<string>('')
   const [selectedStaff, setSelectedStaff] = useState<string>(viewingStaff ?? 'Joe')
   const [expandedId, setExpandedId] = useState<number | null>(null)
+  const lawsPanel = useLawsPanel('showPayslipsLaws')
 
   const [confirmations, setConfirmations] = useState<PaymentConfirmation[]>([])
   const [confirming, setConfirming] = useState(false)
@@ -1170,13 +1189,26 @@ export function PayslipsTab({ role, username, viewingStaff }: { role: string; us
 
   return (
     <div className="space-y-4">
-      {/* Law/Notes/Tasks -- this page's own flag now lives entirely inside
-          that combined window instead of a separate toggle button here too. */}
+      {/* Law/Notes/Tasks -- inline panel, same treatment as Items/Sales/Bills. */}
       <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
-        <PageToolIcons scopeKey="Payslips"
-          flags={payFlags.length > 0 ? [{ key: 'payslip_issues', letter: '!', label: 'Payslip Issues', count: payFlags.length }] : []}
-          onFlagClick={() => setView('flags' as unknown as PayView)} />
+        <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
+          openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
+          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} dark={false} />
       </div>
+      {lawsPanel.show && (
+        <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+          <PageLawsList
+            scopeKey="Payslips"
+            isItemsLaws={true}
+            onChange={lawsPanel.bumpRefresh}
+            flags={payFlags.length > 0 ? [{ key: 'payslip_issues', label: 'Payslip Issues', count: payFlags.length, onViewClick: () => setView('flags' as unknown as PayView) }] : []}
+            openForm={lawsPanel.openForm}
+            setOpenForm={lawsPanel.setOpenForm}
+            hideZeroFlags={lawsPanel.hideZeroFlags}
+            setHideZeroFlags={lawsPanel.setHideZeroFlags}
+          />
+        </div>
+      )}
       {/* View selector */}
       {!viewingStaff && (
         <div className="flex gap-2 overflow-x-auto pb-1">
@@ -1441,6 +1473,7 @@ export function TeamProfilesTab() {
   const [editProfile, setEditProfile] = useState<StaffProfile | null>(null)
   const [editForm, setEditForm] = useState<Partial<StaffProfile>>({})
   const [savingProfile, setSavingProfile] = useState(false)
+  const lawsPanel = useLawsPanel('showTeamProfilesLaws')
 
   useEffect(() => {
     fetch('/api/staff/profiles').then(r => r.json()).catch(() => []).then(d => {
@@ -1468,7 +1501,24 @@ export function TeamProfilesTab() {
 
   return (
     <div className="space-y-3">
-      <PageToolIcons scopeKey="Team Profiles" />
+      <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
+        <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
+          openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
+          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} dark={false} />
+      </div>
+      {lawsPanel.show && (
+        <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+          <PageLawsList
+            scopeKey="Team Profiles"
+            isItemsLaws={true}
+            onChange={lawsPanel.bumpRefresh}
+            openForm={lawsPanel.openForm}
+            setOpenForm={lawsPanel.setOpenForm}
+            hideZeroFlags={lawsPanel.hideZeroFlags}
+            setHideZeroFlags={lawsPanel.setHideZeroFlags}
+          />
+        </div>
+      )}
       {editProfile && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">
@@ -1951,6 +2001,7 @@ export function ViolationsTab({ role, username, viewingStaff }: { role: string; 
   // automatically, which is exactly what this screen is now about.
   const [penaltySettings, setPenaltySettings] = useState<Record<string, string>>({})
   const [savingSettings, setSavingSettings] = useState(false)
+  const lawsPanel = useLawsPanel('showViolationsLaws')
 
   useEffect(() => {
     fetch('/api/staff/violations').then(r => r.ok ? r.json() : null).catch(() => null).then(v => {
@@ -2012,7 +2063,24 @@ export function ViolationsTab({ role, username, viewingStaff }: { role: string; 
   // respectively -- this used to be one of three switchable sub-views.
   return (
         <div className="space-y-4">
-          <PageToolIcons scopeKey="Violations" />
+          <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
+            <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
+              openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
+              hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} dark={false} />
+          </div>
+          {lawsPanel.show && (
+            <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+              <PageLawsList
+                scopeKey="Violations"
+                isItemsLaws={true}
+                onChange={lawsPanel.bumpRefresh}
+                openForm={lawsPanel.openForm}
+                setOpenForm={lawsPanel.setOpenForm}
+                hideZeroFlags={lawsPanel.hideZeroFlags}
+                setHideZeroFlags={lawsPanel.setHideZeroFlags}
+              />
+            </div>
+          )}
           {!viewingStaff && (
           <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
             <p className="text-sm font-semibold text-gray-700">Auto-Penalty Settings</p>
@@ -2744,6 +2812,7 @@ export function AnalyticsTab({ viewingStaff }: { viewingStaff?: string } = {}) {
   const [recent, setRecent] = useState<RecentRow[]>([])
   const [loading, setLoading] = useState(true)
   const [activeStaff, setActiveStaff] = useState<string[]>(viewingStaff ? [viewingStaff] : STAFF)
+  const lawsPanel = useLawsPanel('showStaffAnalyticsLaws')
 
   useEffect(() => {
     fetch('/api/staff-times/today')
@@ -2858,7 +2927,24 @@ export function AnalyticsTab({ viewingStaff }: { viewingStaff?: string } = {}) {
 
   return (
     <div className="space-y-5">
-      <PageToolIcons scopeKey="Analytics" />
+      <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
+        <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
+          openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
+          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} dark={false} />
+      </div>
+      {lawsPanel.show && (
+        <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+          <PageLawsList
+            scopeKey="Analytics"
+            isItemsLaws={true}
+            onChange={lawsPanel.bumpRefresh}
+            openForm={lawsPanel.openForm}
+            setOpenForm={lawsPanel.setOpenForm}
+            hideZeroFlags={lawsPanel.hideZeroFlags}
+            setHideZeroFlags={lawsPanel.setHideZeroFlags}
+          />
+        </div>
+      )}
       {/* Staff filter chips -- locked/hidden on a per-person page */}
       {!viewingStaff && (
         <div className="flex gap-1.5 flex-wrap">

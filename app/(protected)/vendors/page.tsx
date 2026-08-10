@@ -2,7 +2,9 @@
 import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import LocationField from '@/components/LocationField'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from '../item/_components/columnPrefs'
-import PageToolIcons from '../item/_components/PageToolIcons'
+import PageLawsList from '../item/_components/PageLawsList'
+import LawsToggleBar from '../item/_components/LawsToggleBar'
+import { useLawsPanel } from '../item/_components/useLawsPanel'
 
 type Vendor = {
   id: number
@@ -210,6 +212,7 @@ export default function VendorsPage({ openAddSignal, initialSearch, onFlagCountC
   const [selected, setSelected] = useState<Vendor | null>(null)
   const [editingVendor, setEditingVendor] = useState(false)
   const [showForm, setShowForm] = useState(false)
+  const lawsPanel = useLawsPanel('showVendorsLaws')
   // Vendors missing a contact number or location -- clicking narrows the
   // table below to just those, same flag language as Customers.
   const [showFlagged, setShowFlagged] = useState(false)
@@ -273,10 +276,24 @@ export default function VendorsPage({ openAddSignal, initialSearch, onFlagCountC
       {/* Law/Notes/Tasks -- this page's own flag now lives entirely inside
           that combined window instead of a separate pill here too. */}
       <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
-        <PageToolIcons scopeKey="Vendors"
-          flags={[{ key: 'no_contact', letter: 'C', label: 'No Contact Number or Location', count: noContactCount }]}
-          onFlagClick={() => setShowFlagged(true)} />
+        <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
+          openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
+          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} dark={false} />
       </div>
+      {lawsPanel.show && (
+        <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+          <PageLawsList
+            scopeKey="Vendors"
+            isItemsLaws={true}
+            onChange={lawsPanel.bumpRefresh}
+            flags={[{ key: 'no_contact', label: 'No Contact Number or Location', count: noContactCount, onViewClick: () => setShowFlagged(true) }]}
+            openForm={lawsPanel.openForm}
+            setOpenForm={lawsPanel.setOpenForm}
+            hideZeroFlags={lawsPanel.hideZeroFlags}
+            setHideZeroFlags={lawsPanel.setHideZeroFlags}
+          />
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold text-gray-900">Vendors</h1>

@@ -5,7 +5,9 @@ import { useSession } from 'next-auth/react'
 import { fmtDate } from '@/lib/fmtDate'
 import { NoStaffTimesList } from '../../staff/StaffClient'
 import AssignWidget from '../../item/_components/AssignWidget'
-import PageToolIcons from '../../item/_components/PageToolIcons'
+import PageLawsList from '../../item/_components/PageLawsList'
+import LawsToggleBar from '../../item/_components/LawsToggleBar'
+import { useLawsPanel } from '../../item/_components/useLawsPanel'
 
 type RecentRow = { id?: number; staff_name: string; work_date: string; actual_in: string | null; actual_out: string | null; entered_by: string | null }
 
@@ -98,6 +100,7 @@ export default function FlaggedTimesReviewPage() {
   const { data: session } = useSession()
   const role = (session?.user as any)?.role ?? 'staff'
   const username = (session?.user as any)?.username ?? session?.user?.name ?? ''
+  const lawsPanel = useLawsPanel('showTeamReviewLaws')
   const [longShifts, setLongShifts] = useState<(RecentRow & { mins: number })[] | null>(null)
   const [incomplete, setIncomplete] = useState<RecentRow[] | null>(null)
   const [pmClockIns, setPmClockIns] = useState<RecentRow[] | null>(null)
@@ -152,7 +155,24 @@ export default function FlaggedTimesReviewPage() {
 
   return (
     <div className="py-4 space-y-6">
-      <PageToolIcons scopeKey="Team" />
+      <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
+        <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
+          openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
+          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} dark={false} />
+      </div>
+      {lawsPanel.show && (
+        <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+          <PageLawsList
+            scopeKey="Team"
+            isItemsLaws={true}
+            onChange={lawsPanel.bumpRefresh}
+            openForm={lawsPanel.openForm}
+            setOpenForm={lawsPanel.setOpenForm}
+            hideZeroFlags={lawsPanel.hideZeroFlags}
+            setHideZeroFlags={lawsPanel.setHideZeroFlags}
+          />
+        </div>
+      )}
       <div className="flex items-center gap-2">
         <Link href="/staff" className="text-sm text-blue-600 font-semibold">← Staff</Link>
       </div>

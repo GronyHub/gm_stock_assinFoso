@@ -5,6 +5,8 @@ import { useSearchParams } from 'next/navigation'
 import { fmtDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
 import PageLawsList from '@/app/(protected)/item/_components/PageLawsList'
+import LawsToggleBar from '@/app/(protected)/item/_components/LawsToggleBar'
+import { useLawsPanel } from '@/app/(protected)/item/_components/useLawsPanel'
 
 const MONTHS = ['Ja','Fe','Mr','Ap','My','Ju','Jl','Au','Se','Oc','No','De']
 const DAYS   = ['Su','Mo','Tu','We','Th','Fr','Sa']
@@ -278,26 +280,7 @@ function SalesPageInner() {
   const [flags, setFlags] = useState<any | null>(null)
   const [flagsLoading, setFlagsLoading] = useState(false)
 
-  const [showSalesLaws, setShowSalesLaws] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return localStorage.getItem('showSalesLaws') === 'true'
-  })
-  const [salesLawsRefresh, setSalesLawsRefresh] = useState(0)
-  const [creatingGlobalTask, setCreatingGlobalTask] = useState(false)
-  const [globalTaskTitle, setGlobalTaskTitle] = useState('')
-  const [globalTaskType, setGlobalTaskType] = useState('General task')
-  const [globalTaskAssignedTo, setGlobalTaskAssignedTo] = useState('')
-  const [creatingGlobalLaw, setCreatingGlobalLaw] = useState(false)
-  const [globalLawText, setGlobalLawText] = useState('')
-  const [creatingGlobalNote, setCreatingGlobalNote] = useState(false)
-  const [globalNoteTopic, setGlobalNoteTopic] = useState('')
-  const [globalNoteText, setGlobalNoteText] = useState('')
-  const [globalNoteDate, setGlobalNoteDate] = useState(() => {
-    const today = new Date()
-    return today.toISOString().split('T')[0]
-  })
-  const [globalNoteTaggedStaff, setGlobalNoteTaggedStaff] = useState<string[]>([])
-  const [hideZeroFlags, setHideZeroFlags] = useState(false)
+  const lawsPanel = useLawsPanel('showSalesLaws')
 
   useEffect(() => {
     const flagTabs: Tab[] = ['No Cash', 'Missing Days', 'Cost Price']
@@ -333,12 +316,6 @@ function SalesPageInner() {
 
   useEffect(() => { loadReceipts() }, [])
   usePolling(loadReceipts, 20000, editingId === null)
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('showSalesLaws', showSalesLaws ? 'true' : 'false')
-    }
-  }, [showSalesLaws])
 
   useEffect(() => {
     if (!autoReceiptId || autoOpened.current || receipts.length === 0) return
@@ -440,7 +417,10 @@ function SalesPageInner() {
           </div>
         </div>
         {tab === 'List' && (
-          <div className="flex justify-end px-2 pb-1.5">
+          <div className="flex items-center justify-end gap-1.5 px-2 pb-1.5">
+            <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
+              openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
+              hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} dark={false} />
             <Link href="/sales/new"
               className="shrink-0 bg-blue-600 text-white text-[9px] font-bold px-2 py-1 rounded transition hover:bg-blue-500">
               + New
@@ -449,15 +429,17 @@ function SalesPageInner() {
         )}
       </div>
 
-      {/* Laws Panel - TEST VERSION */}
-      {tab === 'List' && (
-        <div className="bg-red-200 p-4 text-center text-red-800 font-bold border-b-4 border-red-500">
-          🔴 TEST: If you see this red box, the new code is deployed!
-        </div>
-      )}
-      {tab === 'List' && (
+      {tab === 'List' && lawsPanel.show && (
         <div className="border-b border-gray-200 bg-white overflow-y-auto max-h-80">
-          <PageLawsList scopeKey="sales" isItemsLaws={false} />
+          <PageLawsList
+            scopeKey="Sales"
+            isItemsLaws={true}
+            onChange={lawsPanel.bumpRefresh}
+            openForm={lawsPanel.openForm}
+            setOpenForm={lawsPanel.setOpenForm}
+            hideZeroFlags={lawsPanel.hideZeroFlags}
+            setHideZeroFlags={lawsPanel.setHideZeroFlags}
+          />
         </div>
       )}
 
