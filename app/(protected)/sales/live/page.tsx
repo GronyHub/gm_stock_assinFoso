@@ -295,7 +295,8 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
         <div className="flex items-center gap-1.5 shrink-0">
           <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
             openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-            hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} dark={false} />
+            hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
+          activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
           {!showLog && (
             <button
               type="button"
@@ -337,6 +338,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
             setOpenForm={lawsPanel.setOpenForm}
             hideZeroFlags={lawsPanel.hideZeroFlags}
             setHideZeroFlags={lawsPanel.setHideZeroFlags}
+            activeFilters={lawsPanel.activeFilters}
           />
         </div>
       )}

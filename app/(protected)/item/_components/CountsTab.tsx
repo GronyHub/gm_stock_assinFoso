@@ -620,7 +620,8 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
         <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto px-2 pt-2">
           <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
             openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-            hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} dark={false} />
+            hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
+          activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
         </div>
       )}
       {!showAnalytics && lawsPanel.show && (
@@ -639,6 +640,7 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
               setOpenForm={lawsPanel.setOpenForm}
               hideZeroFlags={lawsPanel.hideZeroFlags}
               setHideZeroFlags={lawsPanel.setHideZeroFlags}
+              activeFilters={lawsPanel.activeFilters}
             />
           </div>
         </div>

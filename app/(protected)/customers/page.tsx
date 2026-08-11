@@ -271,7 +271,8 @@ export default function CustomersPage({ initialSearch, onFlagCountChange }: { in
       <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
         <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
           openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} dark={false} />
+          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
+          activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
         <span className={`shrink-0 flex items-center gap-1 text-[10px] font-semibold pl-1.5 pr-2 py-1 rounded-lg
           ${newThisWeek < NEW_CUSTOMERS_PER_WEEK_TARGET ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}
           title="New customers added in the last 7 days">
@@ -300,6 +301,7 @@ export default function CustomersPage({ initialSearch, onFlagCountChange }: { in
             setOpenForm={lawsPanel.setOpenForm}
             hideZeroFlags={lawsPanel.hideZeroFlags}
             setHideZeroFlags={lawsPanel.setHideZeroFlags}
+            activeFilters={lawsPanel.activeFilters}
           />
         </div>
       )}

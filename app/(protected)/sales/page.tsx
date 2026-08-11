@@ -420,7 +420,8 @@ function SalesPageInner() {
           <div className="flex items-center justify-end gap-1.5 px-2 pb-1.5">
             <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
               openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-              hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} dark={false} />
+              hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
+          activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
             <Link href="/sales/new"
               className="shrink-0 bg-blue-600 text-white text-[9px] font-bold px-2 py-1 rounded transition hover:bg-blue-500">
               + New
@@ -439,6 +440,7 @@ function SalesPageInner() {
             setOpenForm={lawsPanel.setOpenForm}
             hideZeroFlags={lawsPanel.hideZeroFlags}
             setHideZeroFlags={lawsPanel.setHideZeroFlags}
+            activeFilters={lawsPanel.activeFilters}
           />
         </div>
       )}

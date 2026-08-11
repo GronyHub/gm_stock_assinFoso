@@ -853,7 +853,8 @@ export default function ItemsTab({ items, group, productType, search, violation,
         <div className="px-2 pt-2 shrink-0 flex flex-nowrap items-center gap-1.5 overflow-x-auto">
           <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
             openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-            hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} dark={false} />
+            hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
+          activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
         </div>
         {lawsPanel.show && (
           <div className="px-2 shrink-0">
@@ -867,6 +868,7 @@ export default function ItemsTab({ items, group, productType, search, violation,
                 setOpenForm={lawsPanel.setOpenForm}
                 hideZeroFlags={lawsPanel.hideZeroFlags}
                 setHideZeroFlags={lawsPanel.setHideZeroFlags}
+                activeFilters={lawsPanel.activeFilters}
               />
             </div>
           </div>

@@ -48,14 +48,17 @@ export default function GronyManageContent({
       <div className="px-2 pt-2 flex flex-nowrap items-center gap-1.5 overflow-x-auto">
         <LawsToggleBar show={panel.show} setShow={panel.setShow}
           openForm={panel.openForm} setOpenForm={panel.setOpenForm}
-          hideZeroFlags={panel.hideZeroFlags} setHideZeroFlags={panel.setHideZeroFlags} dark={false} />
+          hideZeroFlags={panel.hideZeroFlags} setHideZeroFlags={panel.setHideZeroFlags}
+          activeFilters={panel.activeFilters} toggleFilter={panel.toggleFilter} dark={false} />
       </div>
       {panel.show && (
         <div className="px-2">
           <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
             <PageLawsList scopeKey={scopeKey} isItemsLaws={true} onChange={panel.bumpRefresh}
               openForm={panel.openForm} setOpenForm={panel.setOpenForm}
-              hideZeroFlags={panel.hideZeroFlags} setHideZeroFlags={panel.setHideZeroFlags} />
+              hideZeroFlags={panel.hideZeroFlags} setHideZeroFlags={panel.setHideZeroFlags}
+
+              activeFilters={panel.activeFilters} />
           </div>
         </div>
       )}

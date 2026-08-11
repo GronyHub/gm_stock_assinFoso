@@ -623,7 +623,8 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
               page_laws-backed Law/Tasks/Notes panel, same as every other page. */}
           <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
             openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-            hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} dark={false} />
+            hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
+          activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
           <button onClick={() => setShowLaws(v => !v)} title="Company Laws — Time"
             className="text-sm leading-none px-2 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 transition">
             ⚖️
@@ -653,6 +654,7 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
             setOpenForm={lawsPanel.setOpenForm}
             hideZeroFlags={lawsPanel.hideZeroFlags}
             setHideZeroFlags={lawsPanel.setHideZeroFlags}
+            activeFilters={lawsPanel.activeFilters}
           />
         </div>
       )}
@@ -1193,7 +1195,8 @@ export function PayslipsTab({ role, username, viewingStaff }: { role: string; us
       <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
         <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
           openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} dark={false} />
+          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
+          activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
       </div>
       {lawsPanel.show && (
         <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
@@ -1206,6 +1209,7 @@ export function PayslipsTab({ role, username, viewingStaff }: { role: string; us
             setOpenForm={lawsPanel.setOpenForm}
             hideZeroFlags={lawsPanel.hideZeroFlags}
             setHideZeroFlags={lawsPanel.setHideZeroFlags}
+            activeFilters={lawsPanel.activeFilters}
           />
         </div>
       )}
@@ -1504,7 +1508,8 @@ export function TeamProfilesTab() {
       <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
         <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
           openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} dark={false} />
+          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
+          activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
       </div>
       {lawsPanel.show && (
         <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
@@ -1516,6 +1521,7 @@ export function TeamProfilesTab() {
             setOpenForm={lawsPanel.setOpenForm}
             hideZeroFlags={lawsPanel.hideZeroFlags}
             setHideZeroFlags={lawsPanel.setHideZeroFlags}
+            activeFilters={lawsPanel.activeFilters}
           />
         </div>
       )}
@@ -2066,7 +2072,8 @@ export function ViolationsTab({ role, username, viewingStaff }: { role: string; 
           <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
             <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
               openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-              hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} dark={false} />
+              hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
+          activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
           </div>
           {lawsPanel.show && (
             <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
@@ -2078,6 +2085,7 @@ export function ViolationsTab({ role, username, viewingStaff }: { role: string; 
                 setOpenForm={lawsPanel.setOpenForm}
                 hideZeroFlags={lawsPanel.hideZeroFlags}
                 setHideZeroFlags={lawsPanel.setHideZeroFlags}
+                activeFilters={lawsPanel.activeFilters}
               />
             </div>
           )}
@@ -2930,7 +2938,8 @@ export function AnalyticsTab({ viewingStaff }: { viewingStaff?: string } = {}) {
       <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
         <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
           openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} dark={false} />
+          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
+          activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
       </div>
       {lawsPanel.show && (
         <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
@@ -2942,6 +2951,7 @@ export function AnalyticsTab({ viewingStaff }: { viewingStaff?: string } = {}) {
             setOpenForm={lawsPanel.setOpenForm}
             hideZeroFlags={lawsPanel.hideZeroFlags}
             setHideZeroFlags={lawsPanel.setHideZeroFlags}
+            activeFilters={lawsPanel.activeFilters}
           />
         </div>
       )}

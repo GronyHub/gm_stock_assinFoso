@@ -612,12 +612,15 @@ function ItemHubPageInner() {
     return (<>
       <LawsToggleBar show={panel.show} setShow={panel.setShow}
         openForm={panel.openForm} setOpenForm={panel.setOpenForm}
-        hideZeroFlags={panel.hideZeroFlags} setHideZeroFlags={panel.setHideZeroFlags} dark={false} />
+        hideZeroFlags={panel.hideZeroFlags} setHideZeroFlags={panel.setHideZeroFlags}
+          activeFilters={panel.activeFilters} toggleFilter={panel.toggleFilter} dark={false} />
       {panel.show && (
         <div className="border border-gray-200 rounded-xl bg-white overflow-hidden mt-2">
           <PageLawsList scopeKey={scopeKey} isItemsLaws={true} onChange={panel.bumpRefresh}
             openForm={panel.openForm} setOpenForm={panel.setOpenForm}
-            hideZeroFlags={panel.hideZeroFlags} setHideZeroFlags={panel.setHideZeroFlags} />
+            hideZeroFlags={panel.hideZeroFlags} setHideZeroFlags={panel.setHideZeroFlags}
+
+              activeFilters={panel.activeFilters} />
         </div>
       )}
     </>)
@@ -2151,7 +2154,8 @@ function ItemHubPageInner() {
             <div className="flex items-center justify-between">
               <LawsToggleBar show={newSaleLaws.show} setShow={newSaleLaws.setShow}
                 openForm={newSaleLaws.openForm} setOpenForm={newSaleLaws.setOpenForm}
-                hideZeroFlags={newSaleLaws.hideZeroFlags} setHideZeroFlags={newSaleLaws.setHideZeroFlags} dark={false} />
+                hideZeroFlags={newSaleLaws.hideZeroFlags} setHideZeroFlags={newSaleLaws.setHideZeroFlags}
+          activeFilters={newSaleLaws.activeFilters} toggleFilter={newSaleLaws.toggleFilter} dark={false} />
               <button onClick={() => setAddForm(null)}
                 className="text-xs font-semibold px-3 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 border border-gray-300">×</button>
             </div>
@@ -2159,7 +2163,9 @@ function ItemHubPageInner() {
               <div className="border border-gray-200 rounded-xl bg-white overflow-hidden mb-2">
                 <PageLawsList scopeKey="New Sale" isItemsLaws={true} onChange={newSaleLaws.bumpRefresh}
                   openForm={newSaleLaws.openForm} setOpenForm={newSaleLaws.setOpenForm}
-                  hideZeroFlags={newSaleLaws.hideZeroFlags} setHideZeroFlags={newSaleLaws.setHideZeroFlags} />
+                  hideZeroFlags={newSaleLaws.hideZeroFlags} setHideZeroFlags={newSaleLaws.setHideZeroFlags}
+
+              activeFilters={newSaleLaws.activeFilters} />
               </div>
             )}
             <NewSaleForm onSuccess={() => setAddForm(null)} groupFilter={group} />

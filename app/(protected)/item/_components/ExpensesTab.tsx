@@ -499,7 +499,8 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
       <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto px-2 pt-2">
         <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
           openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} dark={false} />
+          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
+          activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
       </div>
       {lawsPanel.show && (
         <div className="px-2">
@@ -516,6 +517,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
               setOpenForm={lawsPanel.setOpenForm}
               hideZeroFlags={lawsPanel.hideZeroFlags}
               setHideZeroFlags={lawsPanel.setHideZeroFlags}
+              activeFilters={lawsPanel.activeFilters}
             />
           </div>
         </div>

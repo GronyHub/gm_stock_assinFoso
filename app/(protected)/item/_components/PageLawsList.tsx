@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { ASSIGNABLE_STAFF } from './violationAssignments'
+import type { LawFilterKey } from './useLawsPanel'
 
 type Law = { id: number; text: string; created_at: string }
 
@@ -64,6 +65,7 @@ export default function PageLawsList({
   scopeKey, onChange, flags, isItemsLaws = false,
   openForm, setOpenForm,
   hideZeroFlags, setHideZeroFlags,
+  activeFilters,
 }: {
   scopeKey: string
   onChange?: () => void
@@ -73,6 +75,7 @@ export default function PageLawsList({
   setOpenForm?: (v: LawFormKind) => void
   hideZeroFlags?: boolean
   setHideZeroFlags?: (v: boolean | ((prev: boolean) => boolean)) => void
+  activeFilters?: Set<LawFilterKey>
 }) {
   const [laws, setLaws] = useState<Law[]>([])
   const [globalTasks, setGlobalTasks] = useState<Task[]>([])
@@ -690,6 +693,21 @@ export default function PageLawsList({
 
   if (loading) return <div className="py-6 text-center text-gray-400 text-xs">Loading…</div>
 
+  // L/G/T/N row-category filters -- empty set (the default) shows
+  // everything; otherwise only the checked categories show. Group
+  // shortcut flags (key prefix `group_`, see item/page.tsx) are their own
+  // category (G) separate from real laws/violation flags (L), since
+  // they're navigation shortcuts, not laws or violations.
+  const anyFilterActive = !!activeFilters && activeFilters.size > 0
+  const showLawsFlags = !anyFilterActive || activeFilters!.has('L')
+  const showGroupFlags = !anyFilterActive || activeFilters!.has('G')
+  const showTasksSection = !anyFilterActive || activeFilters!.has('T')
+  const showNotesSection = !anyFilterActive || activeFilters!.has('N')
+  const visibleLaws = showLawsFlags ? laws : []
+  const visibleFlags = (flags ?? []).filter(f => f.key.startsWith('group_') ? showGroupFlags : showLawsFlags)
+  const visibleGlobalTasks = showTasksSection ? globalTasks : []
+  const visibleGlobalNotes = showNotesSection ? globalNotes : []
+
   return (
     <div className={isItemsLaws ? '' : 'space-y-2'}>
       {!isItemsLaws && (
@@ -724,13 +742,13 @@ export default function PageLawsList({
         </div>
       )}
 
-      {laws.length === 0 && (!flags || flags.length === 0) ? (
+      {visibleLaws.length === 0 && visibleFlags.length === 0 && visibleGlobalTasks.length === 0 && visibleGlobalNotes.length === 0 ? (
         <div className={`${isItemsLaws ? 'py-6' : 'px-2 py-4 bg-white border-b border-gray-200'} text-center`}>
-          <p className="text-[11px] text-gray-400">No laws yet.</p>
+          <p className="text-[11px] text-gray-400">{anyFilterActive ? 'Nothing matches this filter.' : 'No laws yet.'}</p>
         </div>
       ) : (
         <div className={`bg-white ${isItemsLaws ? 'divide-y divide-gray-100' : 'border border-gray-200 rounded-lg divide-y divide-gray-50'}`}>
-          {laws.map((l, i) => (
+          {visibleLaws.map((l, i) => (
             <div key={l.id} className="flex items-start gap-1 px-1 py-0.5 bg-gray-50/50"
               onMouseDown={() => lawPress.onMouseDown(l.id)} onMouseUp={lawPress.onMouseUp}
               onTouchStart={() => lawPress.onTouchStart(l.id)} onTouchEnd={lawPress.onTouchEnd}>
@@ -780,9 +798,9 @@ export default function PageLawsList({
               )}
             </div>
           ))}
-          {flags && flags.filter(f => !hideZeroFlags || f.count > 0).map((f, i) => (
+          {visibleFlags.filter(f => !hideZeroFlags || f.count > 0).map((f, i) => (
             <div key={f.key} className="flex items-start gap-1 px-1 py-0.5 bg-red-50/30">
-              <span className="shrink-0 text-[8px] font-bold text-gray-300">{laws.length + i + 1}</span>
+              <span className="shrink-0 text-[8px] font-bold text-gray-300">{visibleLaws.length + i + 1}</span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1 flex-wrap leading-none">
                   <p className="text-[9px] text-gray-800">{f.label}</p>
@@ -815,11 +833,11 @@ export default function PageLawsList({
               </div>
             </div>
           ))}
-          {globalTasks.map((task, i) => (
+          {visibleGlobalTasks.map((task, i) => (
             <div key={`task-${task.id}`} className="px-1 py-0.5 bg-green-50/50 flex items-center gap-1"
               onMouseDown={() => globalTaskPress.onMouseDown(task.id)} onMouseUp={globalTaskPress.onMouseUp}
               onTouchStart={() => globalTaskPress.onTouchStart(task.id)} onTouchEnd={globalTaskPress.onTouchEnd}>
-              <span className="shrink-0 text-[8px] font-bold text-gray-300">{laws.length + (flags?.length || 0) + i + 1}</span>
+              <span className="shrink-0 text-[8px] font-bold text-gray-300">{visibleLaws.length + visibleFlags.length + i + 1}</span>
               <div className="min-w-0 flex-1">
                 <p className="text-[9px] text-gray-800">✓ {task.title}</p>
                 {task.assigned_to && (<p className="text-[8px] text-gray-500">To: {task.assigned_to}</p>)}
@@ -834,11 +852,11 @@ export default function PageLawsList({
               </div>
             </div>
           ))}
-          {globalNotes.map((note, i) => (
+          {visibleGlobalNotes.map((note, i) => (
             <div key={`global-note-${note.id || i}`} className="px-1 py-0.5 bg-yellow-50/50 flex items-center gap-1"
               onMouseDown={() => globalNotePress.onMouseDown(note.id || 0)} onMouseUp={globalNotePress.onMouseUp}
               onTouchStart={() => globalNotePress.onTouchStart(note.id || 0)} onTouchEnd={globalNotePress.onTouchEnd}>
-              <span className="shrink-0 text-[8px] font-bold text-gray-300">{laws.length + (flags?.length || 0) + globalTasks.length + i + 1}</span>
+              <span className="shrink-0 text-[8px] font-bold text-gray-300">{visibleLaws.length + visibleFlags.length + visibleGlobalTasks.length + i + 1}</span>
               <div className="min-w-0 flex-1">
                 <p className="text-[9px] text-gray-800">📝 {note.topic || 'Note'}</p>
                 {note.notes && (<p className="text-[8px] text-gray-600 line-clamp-1">{note.notes}</p>)}

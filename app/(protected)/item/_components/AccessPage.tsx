@@ -43,13 +43,16 @@ export default function AccessPage({ initialTab, canSeeUsers, canSeeRoles }: {
       <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
         <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
           openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} dark={false} />
+          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
+          activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
       </div>
       {lawsPanel.show && (
         <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
           <PageLawsList scopeKey={tab === 'roles' ? 'Roles' : 'Users'} isItemsLaws={true} onChange={lawsPanel.bumpRefresh}
             openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-            hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} />
+            hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
+
+              activeFilters={lawsPanel.activeFilters} />
         </div>
       )}
       {canSeeUsers && canSeeRoles && (
