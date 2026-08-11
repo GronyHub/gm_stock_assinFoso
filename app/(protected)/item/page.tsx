@@ -1300,6 +1300,41 @@ function ItemHubPageInner() {
 
   const showControls = outerTab === 'loss' && !REPORT_VIEWS.has(lossView)
   const [cashDisplayMode, changeCashDisplayMode] = useSidePaneDisplayMode()
+  // Left-pane section headers that don't open a page of their own (Loss,
+  // Properties, Manage, Team, Personal, a UK/C&H person's "Submenus", ...)
+  // toggle their own sub-rows open/shut when tapped instead of just sitting
+  // there as decoration -- self-titled headers (Sales/Expenses/Customers/
+  // Services, whose own row IS the header and already navigates somewhere)
+  // are left alone, since they already do something useful on tap.
+  const [collapsedPaneGroups, setCollapsedPaneGroups] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set()
+    try {
+      const raw = localStorage.getItem('collapsedPaneGroups')
+      return raw ? new Set(JSON.parse(raw)) : new Set()
+    } catch { return new Set() }
+  })
+  useEffect(() => {
+    localStorage.setItem('collapsedPaneGroups', JSON.stringify([...collapsedPaneGroups]))
+  }, [collapsedPaneGroups])
+  function togglePaneGroup(key: string) {
+    setCollapsedPaneGroups(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key); else next.add(key)
+      return next
+    })
+  }
+  function renderPaneHeader(key: string, label: string) {
+    const collapsed = collapsedPaneGroups.has(key)
+    return (
+      <p className="pt-2 pb-0.5">
+        <button type="button" onClick={() => togglePaneGroup(key)}
+          className="flex items-center justify-between gap-1 w-full text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide px-2 py-1 truncate">
+          <span className="truncate">{label}</span>
+          <span className="shrink-0">{collapsed ? '▸' : '▾'}</span>
+        </button>
+      </p>
+    )
+  }
   const { data: session } = useSession()
   const role = (session?.user as any)?.role ?? 'staff'
   const username = (session?.user as any)?.username ?? session?.user?.name ?? ''
@@ -1553,7 +1588,16 @@ function ItemHubPageInner() {
             {outerTab === 'loss' && (<>
             {canSeeCash && (
             <div>
-              {flattenPaneRuns(buildPaneRuns(applyPaneOrder(effectiveCashItems, paneOrder.cash).filter(v => v.key !== 'pl' || canSeePL)), IDENTITY_GROUP_LABELS).map(({ item: v, header, divider }) => {
+              {(() => {
+                // A header that isn't self-titled (see below) can be
+                // collapsed -- carried across map iterations since only the
+                // run's first item gets a non-null `header` from
+                // flattenPaneRuns; every row until the next header belongs
+                // to that same run's collapsed/expanded state. Icon mode
+                // shows no headers at all, so it ignores collapse entirely
+                // rather than stranding a group with no way to reopen it.
+                let groupCollapsed = false
+                return flattenPaneRuns(buildPaneRuns(applyPaneOrder(effectiveCashItems, paneOrder.cash).filter(v => v.key !== 'pl' || canSeePL)), IDENTITY_GROUP_LABELS).map(({ item: v, header, divider }) => {
                 // A section whose own name is also one of its rows' names
                 // (Sales the section vs. Sales the row, same for Expenses/
                 // Customers/Services -- or any row an owner-level account
@@ -1573,11 +1617,12 @@ function ItemHubPageInner() {
                 // one-header-per-run slot, leaving the real self-titled row
                 // looking like a plain button.
                 const isSelfTitled = !!v.group && v.group === paneLabel(v.key, v.label)
+                if (header) groupCollapsed = !selfTitledGroups.has(header) && collapsedPaneGroups.has(header)
+                const show = cashDisplayMode === 'icon' || !groupCollapsed
                 return (
               <Fragment key={v.key}>
-                {header && cashDisplayMode !== 'icon' && !selfTitledGroups.has(header) && (
-                  <p className="pt-2 pb-0.5"><span className="block w-full text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide px-2 py-1 truncate">{header}</span></p>
-                )}
+                {header && cashDisplayMode !== 'icon' && !selfTitledGroups.has(header) && renderPaneHeader(header, header)}
+                {show && (<>
                 <SidePaneButton icon={v.icon} label={paneLabel(v.key, v.label)} mode={cashDisplayMode}
                   chipLabel={isSelfTitled && !v.standaloneOverride}
                   chipBorder={isSelfTitled && v.standaloneOverride}
@@ -1658,9 +1703,11 @@ function ItemHubPageInner() {
                     ))}
                   </div>
                 )}
+                </>)}
               </Fragment>
                 )
-              })}
+              })
+              })()}
               {/* Expense Orders and Properties used to be nested sub-rows
                   under Expenses' own pane row -- pulled out to their own
                   standalone rows here instead (per direct feedback: "remove
@@ -1676,42 +1723,45 @@ function ItemHubPageInner() {
                 active={paneActive(lossView === 'expenseOrders')}
                 taskBadge={taskCountFor('Expense Orders')}
                 onClick={() => pickLossView('expenseOrders')} />
-              {cashDisplayMode !== 'icon' && (
-                <p className="pt-2 pb-0.5"><span className="block w-full text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide px-2 py-1 truncate">Properties</span></p>
-              )}
+              {cashDisplayMode !== 'icon' && renderPaneHeader('Properties', 'Properties')}
+              {(cashDisplayMode === 'icon' || !collapsedPaneGroups.has('Properties')) && (<>
               <SidePaneButton icon="🏷️" label="Properties at Shop" mode={cashDisplayMode} active={false}
                 taskBadge={taskCountFor('Properties')}
                 onClick={() => { pickLossView('properties'); setPropertiesInitialTab('available') }} />
               <SidePaneButton icon="📦" label="Properties not at Shop" mode={cashDisplayMode} divider active={false}
                 taskBadge={taskCountFor('Properties')}
                 onClick={() => { pickLossView('properties'); setPropertiesInitialTab('away') }} />
+              </>)}
             </div>
             )}
 
             {canSeeManage && (
             <div className="mt-1 pt-1 border-t border-white/30">
-              {cashDisplayMode !== 'icon' && (
-                <p className="pt-1 pb-0.5"><span className="block w-full text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide px-2 py-1 truncate">Manage</span></p>
-              )}
-              {flattenPaneRuns(buildPaneRuns(applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage)), MANAGE_GROUP_LABELS).map(({ item: entry, header, divider }) => {
+              {cashDisplayMode !== 'icon' && renderPaneHeader('Manage', 'Manage')}
+              {(cashDisplayMode === 'icon' || !collapsedPaneGroups.has('Manage')) && (() => {
+                let groupCollapsed = false
+                return flattenPaneRuns(buildPaneRuns(applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage)), MANAGE_GROUP_LABELS).map(({ item: entry, header, divider }) => {
                 const badge = entry.key === 'opener' ? openerBadgeCount
                   : entry.key === 'closer' ? (globalFlags?.missingClosingReports?.length ?? 0)
                   : entry.key === 'jingle' ? jingleFlagsCount
                   : entry.key === 'equipment' ? equipmentFlagsCount
                   : entry.key === 'audio_status' ? advertStatusFlagsCount
                   : undefined
+                if (header) groupCollapsed = collapsedPaneGroups.has(header)
+                const show = cashDisplayMode === 'icon' || !groupCollapsed
                 return (
                   <Fragment key={entry.key}>
-                    {header && cashDisplayMode !== 'icon' && (
-                      <p className="pt-2 pb-0.5"><span className="block w-full text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide px-2 py-1 truncate">{header}</span></p>
+                    {header && cashDisplayMode !== 'icon' && renderPaneHeader(header, header)}
+                    {show && (
+                      <SidePaneButton icon={entry.icon} label={paneLabel(entry.key, entry.label)} mode={cashDisplayMode} divider={divider}
+                        active={paneActive(lossView === entry.key)} badge={badge}
+                        taskBadge={taskCountFor(entry.label)}
+                        onClick={() => pickLossView(entry.key)} />
                     )}
-                    <SidePaneButton icon={entry.icon} label={paneLabel(entry.key, entry.label)} mode={cashDisplayMode} divider={divider}
-                      active={paneActive(lossView === entry.key)} badge={badge}
-                      taskBadge={taskCountFor(entry.label)}
-                      onClick={() => pickLossView(entry.key)} />
                   </Fragment>
                 )
-              })}
+                })
+              })()}
             </div>
             )}
 
@@ -1723,10 +1773,8 @@ function ItemHubPageInner() {
                 hidden behind a gear icon. */}
             {canSeeTeam && (
               <div className="mt-1 pt-1 border-t border-white/30">
-                {cashDisplayMode !== 'icon' && (
-                  <p className="pt-1 pb-0.5"><span className="block w-full text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide px-2 py-1 truncate">Team</span></p>
-                )}
-                {STAFF_TEAM_ITEMS.map((t, i) => (
+                {cashDisplayMode !== 'icon' && renderPaneHeader('Team', 'Team')}
+                {(cashDisplayMode === 'icon' || !collapsedPaneGroups.has('Team')) && STAFF_TEAM_ITEMS.map((t, i) => (
                   <SidePaneButton key={t.key} icon={t.icon} label={paneLabel(t.key, t.label)} mode={cashDisplayMode} divider={i > 0}
                     active={paneActive(lossView === t.key)}
                     badge={t.key === 'staff_dress' ? dressFlagsCount : t.key === 'teamTimes' ? staffTimesFlagsCount : undefined}
@@ -1738,13 +1786,7 @@ function ItemHubPageInner() {
 
             {myStaffName && (
               <div className="mt-1 pt-1 border-t border-white/30">
-                {cashDisplayMode !== 'icon' && (
-                  <p className="pt-1 pb-0.5">
-                    <span className="block w-full text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide px-2 py-1 truncate">
-                      {viewingSelf ? 'Personal' : `Personal · Viewing: ${viewingName}`}
-                    </span>
-                  </p>
-                )}
+                {cashDisplayMode !== 'icon' && renderPaneHeader('Personal', viewingSelf ? 'Personal' : `Personal · Viewing: ${viewingName}`)}
                 {/* Payslips drops out of this list while viewing someone
                     else -- it no longer redirects with Viewing (see
                     viewingSelf's comment above), so showing it here would
@@ -1753,7 +1795,7 @@ function ItemHubPageInner() {
                     not viewing that person" explanation. Team Payslips
                     already has its own per-staff picker for exactly this
                     case. */}
-                {(() => {
+                {(cashDisplayMode === 'icon' || !collapsedPaneGroups.has('Personal')) && (() => {
                   const personalItems = STAFF_PERSONAL_ITEMS.filter(t => viewingSelf || t.key !== 'staffPayslips')
                   return (<>
                     {personalItems.map((t, i) => (
@@ -1785,10 +1827,8 @@ function ItemHubPageInner() {
                     active={paneActive(lossView === item.key)} onClick={() => pickCHView(item.key)} />
                   {CH_CHILD_PERSON[item.key] && lossView === item.key && (
                     <div className="mt-1 pt-1 border-t border-white/30">
-                      {cashDisplayMode !== 'icon' && (
-                        <p className="pt-1 pb-0.5"><span className="block w-full text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide px-2 py-1 truncate">{`${item.label}'s Submenus`}</span></p>
-                      )}
-                      {ch.submenus.map((s, j) => (
+                      {cashDisplayMode !== 'icon' && renderPaneHeader(`ch_${item.key}`, `${item.label}'s Submenus`)}
+                      {(cashDisplayMode === 'icon' || !collapsedPaneGroups.has(`ch_${item.key}`)) && ch.submenus.map((s, j) => (
                         <SidePaneButton key={s.id} icon="📋" label={s.name} mode={cashDisplayMode} divider={j > 0}
                           active={paneActive(ch.selectedSubmenuId === s.id)} onClick={() => ch.pickSubmenu(s.id)} />
                       ))}
@@ -1808,10 +1848,8 @@ function ItemHubPageInner() {
                 content area. Submenu names/columns are still fixed from
                 the UI's side (no self-service add/rename/delete). */}
             {outerTab === 'uk' && (<>
-              {cashDisplayMode !== 'icon' && (
-                <p className="pt-1 pb-0.5"><span className="block w-full text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide px-2 py-1 truncate">Menus &amp; Submenus</span></p>
-              )}
-              {ukAllSubmenus.map((s, i) => (
+              {cashDisplayMode !== 'icon' && renderPaneHeader('uk_menus', 'Menus & Submenus')}
+              {(cashDisplayMode === 'icon' || !collapsedPaneGroups.has('uk_menus')) && ukAllSubmenus.map((s, i) => (
                 <SidePaneButton key={s.id} icon="📋" label={`${s.person} ${s.name}`} mode={cashDisplayMode} divider={i > 0}
                   active={paneActive(uk.selectedSubmenuId === s.id)}
                   taskBadge={taskCountFor(`${s.person} ${s.name}`)}
@@ -1820,10 +1858,8 @@ function ItemHubPageInner() {
 
               {ukGeneralSubmenus.length > 0 && (
                 <div className="mt-1 pt-1 border-t border-white/30">
-                  {cashDisplayMode !== 'icon' && (
-                    <p className="pt-1 pb-0.5"><span className="block w-full text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide px-2 py-1 truncate">General Section</span></p>
-                  )}
-                  {ukGeneralSubmenus.map((s, i) => (
+                  {cashDisplayMode !== 'icon' && renderPaneHeader('uk_general', 'General Section')}
+                  {(cashDisplayMode === 'icon' || !collapsedPaneGroups.has('uk_general')) && ukGeneralSubmenus.map((s, i) => (
                     <SidePaneButton key={s.id} icon="📁" label={s.name} mode={cashDisplayMode} divider={i > 0}
                       active={paneActive(uk.selectedSubmenuId === s.id)}
                       taskBadge={taskCountFor(`General ${s.name}`)}
