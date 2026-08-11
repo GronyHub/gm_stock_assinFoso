@@ -237,7 +237,6 @@ const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: string }
   { key: 'customers', label: 'Customers', icon: '👥', group: 'Customers' },
   { key: 'receipts',  label: 'Cust. Receipts',  icon: '📑', group: 'Customers' },
   { key: 'counts',    label: 'Counts',    icon: '🔢' },
-  { key: 'item360', label: 'Item 360', icon: '🔍' },
 ]
 // flattenPaneRuns needs a group->label lookup to build each run's header
 // text, but a Cash row's group already IS its own label (see CASH_ITEMS'
@@ -1512,7 +1511,6 @@ function ItemHubPageInner() {
       { label: 'Live Sale', action: () => { pickLossView('sales'); setAddForm('live') } },
       { label: 'Sale Log', action: () => { pickLossView('sales'); setAddForm('liveLog') } },
       { label: 'New Customer', action: () => pickLossView('newCustomer') },
-      { label: 'A4 sheet sng audit', action: () => { pickLossView('item360'); setItem360JumpId(375) } },
       { label: 'Expense Orders', action: () => pickLossView('expenseOrders') },
       { label: 'Properties at Shop', action: () => { pickLossView('properties'); setPropertiesInitialTab('available') } },
       { label: 'Properties not at Shop', action: () => { pickLossView('properties'); setPropertiesInitialTab('away') } },
@@ -1681,21 +1679,6 @@ function ItemHubPageInner() {
                       active={paneActive(lossView === 'newCustomer')}
                       taskBadge={taskCountFor('New Customer')}
                       onClick={() => pickLossView('newCustomer')} />
-                  </div>
-                )}
-                {/* One-tap jump straight to a specific item's own Item 360
-                    page -- id 375 is "A4 Sheet Singles" (see canonical_name
-                    in the items table), a high-traffic item worth a
-                    permanent shortcut instead of searching for it inside
-                    Item 360 every time. Reuses the same item360JumpId state
-                    the global search's item results and Items tab's
-                    Duplicates flag already drive. */}
-                {v.key === 'item360' && (
-                  <div>
-                    <SidePaneButton icon="🔍" label="A4 sheet sng audit" mode={cashDisplayMode}
-                      active={paneActive(lossView === 'item360' && item360JumpId === 375)}
-                      taskBadge={taskCountFor('Item 360')}
-                      onClick={() => { pickLossView('item360'); setItem360JumpId(375) }} />
                   </div>
                 )}
                 </>)}
@@ -2386,6 +2369,20 @@ function ItemHubPageInner() {
                         label: 'Loss by Item',
                         count: 0,
                         onViewClick: () => setItemsInlineExtra({ kind: 'lossByItem' }),
+                      },
+                      // Item 360 stays a real full-page destination (every
+                      // item name across Bills/Counts/Sales/POs/Loss links
+                      // straight to it via ?view=item360&jumpItemId=, not
+                      // just this page), so unlike the two flags above this
+                      // one still navigates instead of opening inline -- same
+                      // as any other flag whose onViewClick calls
+                      // pickLossView. Just reached from here now instead of
+                      // its own left-pane row.
+                      {
+                        key: 'item_360',
+                        label: 'Item 360',
+                        count: 0,
+                        onViewClick: () => pickLossView('item360'),
                       },
                     ]}
                     openForm={itemsLawsOpenForm}
