@@ -1690,19 +1690,6 @@ function ItemHubPageInner() {
                       onClick={() => { pickLossView('item360'); setItem360JumpId(375) }} />
                   </div>
                 )}
-                {/* Services' own group buttons, right under its pane row --
-                    one per distinct cf_group in use (see serviceGroups
-                    above), each opening straight to that group's item list. */}
-                {v.key === 'services' && serviceGroups.length > 0 && (
-                  <div>
-                    {serviceGroups.map((g, gi) => (
-                      <SidePaneButton key={g} icon="🏷️" label={g} mode={cashDisplayMode} divider={gi > 0}
-                        taskBadge={taskCountFor(`Services — ${g}`)}
-                        active={paneActive(lossView === 'services' && selectedServiceGroup === g)}
-                        onClick={() => { pickLossView('services'); setSelectedServiceGroup(g) }} />
-                    ))}
-                  </div>
-                )}
                 </>)}
               </Fragment>
                 )
@@ -2245,7 +2232,7 @@ function ItemHubPageInner() {
             <div className="px-4 pt-2 pb-10">
               {inlineLaws(selectedServiceGroup ? `Services — ${selectedServiceGroup}` : 'Services', servicesLaws)}
               {!selectedServiceGroup ? (
-                <p className="py-20 text-center text-gray-400 text-xs">Pick a group from the left to see its items.</p>
+                <p className="py-20 text-center text-gray-400 text-xs">Pick a group from Items&apos; ⚖️ Law panel to see its items.</p>
               ) : (() => {
                 const groupItems = items.filter(i => i.cf_group === selectedServiceGroup)
                 return (
@@ -2378,13 +2365,33 @@ function ItemHubPageInner() {
                     scopeKey="Items"
                     isItemsLaws={true}
                     onChange={() => setItemsLawsRefresh(r => r + 1)}
-                    flags={ITEMS_FLAG_TYPES.map(({ key, label }) => ({
-                      key,
-                      label,
-                      count: violationCounts[key] ?? 0,
-                      description: ERROR_VIOLATIONS.find(v => v.key === key)?.description,
-                      onViewClick: () => goToViolation(key)
-                    }))}
+                    flags={[
+                      ...ITEMS_FLAG_TYPES.map(({ key, label }) => ({
+                        key,
+                        label,
+                        count: violationCounts[key] ?? 0,
+                        description: ERROR_VIOLATIONS.find(v => v.key === key)?.description,
+                        onViewClick: () => goToViolation(key)
+                      })),
+                      // One shortcut per real item group -- replaces the old
+                      // tall "Services" sidebar list of the same groups
+                      // (Batteries, Cables, ...), which existed only as a
+                      // manual way to visit each group and eyeball it. No
+                      // count (not a violation, just a jump-to-view), so it
+                      // renders 🏳️/gray like every other zero flag -- "Hide
+                      // 0" hides these along with genuine zero-violation
+                      // flags if toggled on. Reuses the existing Services
+                      // group-table view (lossView='services' +
+                      // selectedServiceGroup) rather than a new one -- that
+                      // view already filters `items` by cf_group regardless
+                      // of product_type, "Services" is just its name.
+                      ...serviceGroups.map(g => ({
+                        key: `group_${g}`,
+                        label: g,
+                        count: 0,
+                        onViewClick: () => { pickLossView('services'); setSelectedServiceGroup(g) },
+                      })),
+                    ]}
                     openForm={itemsLawsOpenForm}
                     setOpenForm={setItemsLawsOpenForm}
                     hideZeroFlags={hideZeroFlags}
