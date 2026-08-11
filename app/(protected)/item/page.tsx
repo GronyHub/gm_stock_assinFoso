@@ -2290,7 +2290,13 @@ function ItemHubPageInner() {
                         key: `group_${g}`,
                         label: g,
                         count: 0,
-                        onViewClick: () => setItemsInlineExtra({ kind: 'serviceGroup', group: g }),
+                        onViewClick: () => {
+                          if (itemsInlineExtra?.kind === 'serviceGroup' && itemsInlineExtra.group === g) {
+                            setItemsInlineExtra(null)
+                          } else {
+                            setItemsInlineExtra({ kind: 'serviceGroup', group: g })
+                          }
+                        },
                       })),
                       // Same underlying data as this table, just ranked by
                       // running loss instead of listed in item order -- used
@@ -2302,7 +2308,13 @@ function ItemHubPageInner() {
                         key: 'loss_by_item',
                         label: 'Loss by Item',
                         count: 0,
-                        onViewClick: () => setItemsInlineExtra({ kind: 'lossByItem' }),
+                        onViewClick: () => {
+                          if (itemsInlineExtra?.kind === 'lossByItem') {
+                            setItemsInlineExtra(null)
+                          } else {
+                            setItemsInlineExtra({ kind: 'lossByItem' })
+                          }
+                        },
                       },
                       // Item 360 stays a real full-page destination (every
                       // item name across Bills/Counts/Sales/POs/Loss links
