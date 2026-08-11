@@ -2,7 +2,9 @@
 import { Fragment, useState, useEffect, useMemo, useRef } from 'react'
 import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
-import PageToolIcons from './PageToolIcons'
+import PageLawsList from './PageLawsList'
+import LawsToggleBar from './LawsToggleBar'
+import { useLawsPanel } from './useLawsPanel'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, ColResizeHandle, type ColumnDef, type ColumnPrefs } from './columnPrefs'
 
 type Expense = {
@@ -322,6 +324,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
   const [loading, setLoading] = useState(true)
   const [groupBy, setGroupBy] = useState<'none' | 'account' | 'vendor'>('none')
   const [showHistory, setShowHistory] = useState(false)
+  const lawsPanel = useLawsPanel('showExpensesLaws')
   const [highlightId, setHighlightId] = useState<number | null>(null)
   const [editId, setEditId] = useState<number | null>(null)
   const [form, setForm] = useState({ ...EMPTY_FORM })
@@ -494,10 +497,29 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto px-2 pt-2">
-        <PageToolIcons scopeKey="Expenses"
-          flags={flagButtons.map(({ key, letter, label }) => ({ key, letter, label, count: flagCounts[key] }))}
-          onFlagClick={key => setActiveFlag(f => f === key ? null : (key as 'similar' | 'bundled' | 'no_vendor'))} />
+        <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
+          openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
+          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} dark={false} />
       </div>
+      {lawsPanel.show && (
+        <div className="px-2">
+          <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+            <PageLawsList
+              scopeKey="Expenses"
+              isItemsLaws={true}
+              onChange={lawsPanel.bumpRefresh}
+              flags={flagButtons.map(({ key, label }) => ({
+                key, label, count: flagCounts[key],
+                onViewClick: () => setActiveFlag(f => f === key ? null : (key as 'similar' | 'bundled' | 'no_vendor')),
+              }))}
+              openForm={lawsPanel.openForm}
+              setOpenForm={lawsPanel.setOpenForm}
+              hideZeroFlags={lawsPanel.hideZeroFlags}
+              setHideZeroFlags={lawsPanel.setHideZeroFlags}
+            />
+          </div>
+        </div>
+      )}
       <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0 flex-wrap">
         <button onClick={() => setGroupBy(g => g === 'account' ? 'none' : 'account')}
           className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition

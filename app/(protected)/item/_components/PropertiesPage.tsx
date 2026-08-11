@@ -1,7 +1,9 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
 import { usePolling } from '@/lib/usePolling'
-import PageToolIcons from './PageToolIcons'
+import PageLawsList from './PageLawsList'
+import LawsToggleBar from './LawsToggleBar'
+import { useLawsPanel } from './useLawsPanel'
 
 type Property = {
   id: number
@@ -54,6 +56,7 @@ export default function PropertiesPage({ initialTab }: { initialTab?: PropTab | 
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<PropTab>(initialTab ?? 'all')
   const [search, setSearch] = useState('')
+  const lawsPanel = useLawsPanel('showPropertiesLaws')
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -119,7 +122,20 @@ export default function PropertiesPage({ initialTab }: { initialTab?: PropTab | 
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="px-2 pt-2 shrink-0"><PageToolIcons scopeKey="Properties" /></div>
+      <div className="px-2 pt-2 shrink-0 flex flex-nowrap items-center gap-1.5 overflow-x-auto">
+        <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
+          openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
+          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} dark={false} />
+      </div>
+      {lawsPanel.show && (
+        <div className="px-2 shrink-0">
+          <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+            <PageLawsList scopeKey="Properties" isItemsLaws={true} onChange={lawsPanel.bumpRefresh}
+              openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
+              hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} />
+          </div>
+        </div>
+      )}
       <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0 flex-wrap">
         {tabs.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}

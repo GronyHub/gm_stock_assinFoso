@@ -1,6 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
-import PageToolIcons from './PageToolIcons'
+import PageLawsList from './PageLawsList'
+import LawsToggleBar from './LawsToggleBar'
+import { useLawsPanel } from './useLawsPanel'
 
 type ShirtNotWorn = { staff_name: string; work_date: string }
 type ShirtOverdue = { staff_name: string; due_date: string }
@@ -15,6 +17,7 @@ function fmtDate(d: string) {
 // has no AssignWidget, just the two read-only flag lists the auto-penalty
 // check acts on directly.
 export default function DressCodeFlagsPanel() {
+  const lawsPanel = useLawsPanel('showDressCodeLaws')
   const [notWorn, setNotWorn] = useState<ShirtNotWorn[] | null>(null)
   const [overdue, setOverdue] = useState<ShirtOverdue[] | null>(null)
 
@@ -49,10 +52,27 @@ export default function DressCodeFlagsPanel() {
           so they share the same row instead of PageToolIcons sitting alone
           above it. */}
       <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
-        <PageToolIcons scopeKey="Team Dress Code"
-          flags={flagButtons.map(({ id, letter, label, count }) => ({ key: id, letter, label, count }))}
-          onFlagClick={id => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />
+        <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
+          openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
+          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} dark={false} />
       </div>
+      {lawsPanel.show && (
+        <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+          <PageLawsList
+            scopeKey="Team Dress Code"
+            isItemsLaws={true}
+            onChange={lawsPanel.bumpRefresh}
+            flags={flagButtons.map(({ id, label, count }) => ({
+              key: id, label, count,
+              onViewClick: () => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+            }))}
+            openForm={lawsPanel.openForm}
+            setOpenForm={lawsPanel.setOpenForm}
+            hideZeroFlags={lawsPanel.hideZeroFlags}
+            setHideZeroFlags={lawsPanel.setHideZeroFlags}
+          />
+        </div>
+      )}
       <div id="dress-not-worn" className="space-y-2">
         <p className="text-xs text-gray-400">
           Staff who own a company t-shirt but were logged by the Closer as not wearing it. Penalty points build up automatically once someone racks up repeat lapses.

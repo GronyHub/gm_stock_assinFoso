@@ -6,7 +6,9 @@ import dynamic from 'next/dynamic'
 import { usePolling } from '@/lib/usePolling'
 import { isOwnerLevel } from '@/lib/roles'
 import HistoryPanel from './HistoryPanel'
-import PageToolIcons from './PageToolIcons'
+import PageLawsList from './PageLawsList'
+import LawsToggleBar from './LawsToggleBar'
+import { useLawsPanel } from './useLawsPanel'
 import { AnalyticsToggle } from './analyticsShared'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from './columnPrefs'
 const CountsAnalyticsSection = dynamic(() => import('./CountsAnalyticsSection'), { ssr: false })
@@ -403,6 +405,7 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
   const [records, setRecords] = useState<CountRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [showHistory, setShowHistory] = useState(false)
+  const lawsPanel = useLawsPanel('showCountsLaws')
   const [highlightId, setHighlightId] = useState<number | null>(null)
   const [editQty, setEditQty] = useState('')
   const [editNotes, setEditNotes] = useState('')
@@ -615,12 +618,29 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
           stay there, those are view controls, not flags). */}
       {!showAnalytics && (
         <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto px-2 pt-2">
-          <PageToolIcons scopeKey="Counts"
-            flags={COUNTS_FLAG_TYPES.map(({ key, letter, label }) => ({
-              key, letter, label,
-              count: key === 'daily' ? filteredDaily.length : key === '7day' ? filteredGmcWeekly.length : filteredOverdue.length,
-            }))}
-            onFlagClick={key => onGoToViolation?.(key)} />
+          <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
+            openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
+            hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} dark={false} />
+        </div>
+      )}
+      {!showAnalytics && lawsPanel.show && (
+        <div className="px-2">
+          <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+            <PageLawsList
+              scopeKey="Counts"
+              isItemsLaws={true}
+              onChange={lawsPanel.bumpRefresh}
+              flags={COUNTS_FLAG_TYPES.map(({ key, label }) => ({
+                key, label,
+                count: key === 'daily' ? filteredDaily.length : key === '7day' ? filteredGmcWeekly.length : filteredOverdue.length,
+                onViewClick: () => onGoToViolation?.(key),
+              }))}
+              openForm={lawsPanel.openForm}
+              setOpenForm={lawsPanel.setOpenForm}
+              hideZeroFlags={lawsPanel.hideZeroFlags}
+              setHideZeroFlags={lawsPanel.setHideZeroFlags}
+            />
+          </div>
         </div>
       )}
       <div className="flex flex-wrap items-center justify-end gap-1.5 px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">

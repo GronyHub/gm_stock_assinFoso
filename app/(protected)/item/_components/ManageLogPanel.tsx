@@ -4,7 +4,9 @@ import { usePolling } from '@/lib/usePolling'
 import { fmtDate } from '@/lib/fmtDate'
 import { Linkify } from '@/lib/linkify'
 import SavedFlash from './SavedFlash'
-import PageToolIcons from './PageToolIcons'
+import PageLawsList from './PageLawsList'
+import LawsToggleBar from './LawsToggleBar'
+import { useLawsPanel } from './useLawsPanel'
 
 type LogEntry = {
   id: number
@@ -39,6 +41,7 @@ function lastRequiredEquipmentCheckDate(): string {
 export default function ManageLogPanel({ category, label, icon, headerExtra }: { category: string; label: string; icon: string; headerExtra?: React.ReactNode }) {
   const [entries, setEntries] = useState<LogEntry[]>([])
   const [loading, setLoading] = useState(true)
+  const lawsPanel = useLawsPanel(`showManageLogLaws_${category}`)
   const [notes, setNotes] = useState('')
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
@@ -109,7 +112,18 @@ export default function ManageLogPanel({ category, label, icon, headerExtra }: {
 
   return (
     <div className="py-2 px-2 space-y-2">
-      <PageToolIcons scopeKey={label} />
+      <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
+        <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
+          openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
+          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} dark={false} />
+      </div>
+      {lawsPanel.show && (
+        <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+          <PageLawsList scopeKey={label} isItemsLaws={true} onChange={lawsPanel.bumpRefresh}
+            openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
+            hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} />
+        </div>
+      )}
       {headerExtra}
       {(jingleOverdue || equipmentOverdue) && (
         <div className="bg-red-50 border border-red-200 rounded-lg px-2.5 py-2 flex items-center gap-2">

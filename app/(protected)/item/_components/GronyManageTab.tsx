@@ -1,7 +1,9 @@
 'use client'
 import ManageLogPanel from './ManageLogPanel'
 import ContentPage from './ContentPage'
-import PageToolIcons from './PageToolIcons'
+import PageLawsList from './PageLawsList'
+import LawsToggleBar from './LawsToggleBar'
+import { useLawsPanel } from './useLawsPanel'
 import AdvertStatusPanel from './AdvertStatusPanel'
 import DynamicCategoryPage from './DynamicCategoryPage'
 import PropertiesPage from './PropertiesPage'
@@ -37,21 +39,43 @@ export default function GronyManageContent({
   propertiesInitialTab?: 'all' | 'available' | 'away' | null
 }) {
   const logCategory = LOG_CATEGORIES.find(c => c.key === view)
+  const openerLaws = useLawsPanel('showOpenerLaws')
+  const closerLaws = useLawsPanel('showCloserLaws')
+  const advertStatusLaws = useLawsPanel('showAdvertStatusLaws')
+
+  function inlineLaws(scopeKey: string, panel: ReturnType<typeof useLawsPanel>) {
+    return (<>
+      <div className="px-2 pt-2 flex flex-nowrap items-center gap-1.5 overflow-x-auto">
+        <LawsToggleBar show={panel.show} setShow={panel.setShow}
+          openForm={panel.openForm} setOpenForm={panel.setOpenForm}
+          hideZeroFlags={panel.hideZeroFlags} setHideZeroFlags={panel.setHideZeroFlags} dark={false} />
+      </div>
+      {panel.show && (
+        <div className="px-2">
+          <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+            <PageLawsList scopeKey={scopeKey} isItemsLaws={true} onChange={panel.bumpRefresh}
+              openForm={panel.openForm} setOpenForm={panel.setOpenForm}
+              hideZeroFlags={panel.hideZeroFlags} setHideZeroFlags={panel.setHideZeroFlags} />
+          </div>
+        </div>
+      )}
+    </>)
+  }
 
   return (<>
     {view === 'opener' && (<>
-      <div className="px-2 pt-2"><PageToolIcons scopeKey="Opener" /></div>
+      {inlineLaws('Opener', openerLaws)}
       <OpenerView violations={openerViolations}
         assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
         onGoToViolation={onGoToViolation} />
     </>)}
     {view === 'closer' && (<>
-      <div className="px-2 pt-2"><PageToolIcons scopeKey="Closer" /></div>
+      {inlineLaws('Closer', closerLaws)}
       <CloserView missingClosingReportsCount={missingClosingReportsCount} onOpenStaff={onOpenStaff} />
     </>)}
     {view === 'audio' && <ContentPage contentKey="advert_audio_roadside" title="Advert 1 — Audio (for Roadside)" submenu="Audio" />}
     {view === 'audio_status' && (<>
-      <div className="px-2 pt-2"><PageToolIcons scopeKey="Advert Status" /></div>
+      {inlineLaws('Advert Status', advertStatusLaws)}
       <AdvertStatusPanel />
     </>)}
     {view === 'jingle' && <ManageLogPanel category="audio_jingle" label="Jingle Log" icon="🎵" />}

@@ -1,7 +1,9 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import PageToolIcons from './PageToolIcons'
+import PageLawsList from './PageLawsList'
+import LawsToggleBar from './LawsToggleBar'
+import { useLawsPanel } from './useLawsPanel'
 
 type Profile = {
   id: number; username: string; display_name: string; email: string | null; phone: string | null; role: string
@@ -39,6 +41,7 @@ export default function ProfileTab() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [staffProfile, setStaffProfile] = useState<StaffProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const lawsPanel = useLawsPanel('showProfileLaws')
   const [form, setForm] = useState({ display_name: '', email: '', phone: '', password: '', confirm: '' })
   const [staffForm, setStaffForm] = useState<Partial<StaffProfile>>({})
   const [saving, setSaving] = useState(false)
@@ -107,7 +110,18 @@ export default function ProfileTab() {
 
   return (
     <div className="max-w-md mx-auto space-y-4">
-      <PageToolIcons scopeKey="Profile" />
+      <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
+        <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
+          openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
+          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} dark={false} />
+      </div>
+      {lawsPanel.show && (
+        <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+          <PageLawsList scopeKey="Profile" isItemsLaws={true} onChange={lawsPanel.bumpRefresh}
+            openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
+            hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} />
+        </div>
+      )}
       <div className="bg-white border border-gray-200 rounded-xl p-4">
         <p className="text-xs text-gray-400 mb-1">Username</p>
         <p className="font-semibold text-gray-800">@{profile?.username}</p>

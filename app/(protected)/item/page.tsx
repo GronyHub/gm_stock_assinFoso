@@ -28,7 +28,8 @@ import { useViolations } from './_components/useViolations'
 import PaneHomeDaily from './_components/PaneHomeDaily'
 import AddShortcutButton, { type ShortcutKey } from './_components/AddShortcutButton'
 import { MyAssignmentsSummary } from './_components/MyAssignmentsSummary'
-import PageToolIcons from './_components/PageToolIcons'
+import LawsToggleBar from './_components/LawsToggleBar'
+import { useLawsPanel } from './_components/useLawsPanel'
 import { COLUMNS, type ColKey } from './_components/lossTabColumns'
 import { useColumnPrefs, ColumnsPickerButton } from './_components/columnPrefs'
 import { MANAGE_LIST_ITEMS, MANAGE_GROUP_LABELS, useFixedCategoryIds, type ManageView } from './_components/manageViewData'
@@ -42,8 +43,6 @@ import { applyPaneOrder, buildPaneRuns, flattenPaneRuns, type PaneOrderMap } fro
 import ServicesGroupTable from './_components/ServicesGroupTable'
 import NewCustomerForm from './_components/NewCustomerForm'
 import ExpenseOrdersPanel from './_components/ExpenseOrdersPanel'
-import { ToolsPanelProvider } from './_components/ToolsPanelContext'
-import CombinedToolsPanel from './_components/CombinedToolsPanel'
 import dynamic from 'next/dynamic'
 const loading = (h: string) => <div className={`py-10 text-center text-gray-400 text-sm`}>{h}</div>
 const ItemsTab       = dynamic(() => import('./_components/ItemsTab'),        { ssr: false, loading: () => loading('Loading…') })
@@ -587,6 +586,43 @@ function ItemHubPageInner() {
   const [billsLawsRefresh, setBillsLawsRefresh] = useState(0)
   const [billsLawsOpenForm, setBillsLawsOpenForm] = useState<LawFormKind>(null)
   const [billsHideZeroFlags, setBillsHideZeroFlags] = useState(false)
+  // The rest of this page's many smaller panes (New Sale, P&L, Receipts,
+  // Purchase Orders, Item 360, Loss by Date/Item/Target, ...) each get their
+  // own inline law panel too, same as Items/Sales/Bills above -- one
+  // useLawsPanel() per scope, rendered through the inlineLaws() helper
+  // below instead of hand-rolling the toggle+panel JSX 16 more times.
+  const newSaleLaws = useLawsPanel('showNewSaleLaws')
+  const plLaws = useLawsPanel('showPLLaws')
+  const newCustomerLaws = useLawsPanel('showNewCustomerLaws')
+  const receiptsLaws = useLawsPanel('showReceiptsLaws')
+  const homeLaws = useLawsPanel('showHomeLaws')
+  const dailyLaws = useLawsPanel('showDailyLaws')
+  const purchaseOrdersLaws = useLawsPanel('showPurchaseOrdersLaws')
+  const item360Laws = useLawsPanel('showItem360Laws')
+  const servicesLaws = useLawsPanel('showServicesLaws')
+  const viewPortalAsLaws = useLawsPanel('showViewPortalAsLaws')
+  const reorderListsLaws = useLawsPanel('showReorderListsLaws')
+  const expenseOrdersLaws = useLawsPanel('showExpenseOrdersLaws')
+  const aliasWideTableLaws = useLawsPanel('showAliasWideTableLaws')
+  const serviceMatchesLaws = useLawsPanel('showServiceMatchesLaws')
+  const lossByDateLaws = useLawsPanel('showLossByDateLaws')
+  const lossByItemLaws = useLawsPanel('showLossByItemLaws')
+  const lossByTargetLaws = useLawsPanel('showLossByTargetLaws')
+
+  function inlineLaws(scopeKey: string, panel: ReturnType<typeof useLawsPanel>) {
+    return (<>
+      <LawsToggleBar show={panel.show} setShow={panel.setShow}
+        openForm={panel.openForm} setOpenForm={panel.setOpenForm}
+        hideZeroFlags={panel.hideZeroFlags} setHideZeroFlags={panel.setHideZeroFlags} dark={false} />
+      {panel.show && (
+        <div className="border border-gray-200 rounded-xl bg-white overflow-hidden mt-2">
+          <PageLawsList scopeKey={scopeKey} isItemsLaws={true} onChange={panel.bumpRefresh}
+            openForm={panel.openForm} setOpenForm={panel.setOpenForm}
+            hideZeroFlags={panel.hideZeroFlags} setHideZeroFlags={panel.setHideZeroFlags} />
+        </div>
+      )}
+    </>)
+  }
   const groupRef     = useRef<HTMLDivElement>(null)
   const searchRef    = useRef<HTMLDivElement>(null)
 
@@ -1837,7 +1873,6 @@ function ItemHubPageInner() {
         )}
 
         <div className="relative flex-1 min-w-0 min-h-0 flex flex-col">
-          <CombinedToolsPanel />
           {outerTab === 'loss' && (
             <div className="shrink-0 bg-green-800 border-b border-green-900">
               {/* Row 2: groups + violations + search — hidden on report-style submenus.
@@ -2092,10 +2127,19 @@ function ItemHubPageInner() {
         {addForm === 'sale'    && outerTab === 'loss' && lossView === 'sales'    && (
           <div className="px-4">
             <div className="flex items-center justify-between">
-              <PageToolIcons scopeKey="New Sale" />
+              <LawsToggleBar show={newSaleLaws.show} setShow={newSaleLaws.setShow}
+                openForm={newSaleLaws.openForm} setOpenForm={newSaleLaws.setOpenForm}
+                hideZeroFlags={newSaleLaws.hideZeroFlags} setHideZeroFlags={newSaleLaws.setHideZeroFlags} dark={false} />
               <button onClick={() => setAddForm(null)}
                 className="text-xs font-semibold px-3 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 border border-gray-300">×</button>
             </div>
+            {newSaleLaws.show && (
+              <div className="border border-gray-200 rounded-xl bg-white overflow-hidden mb-2">
+                <PageLawsList scopeKey="New Sale" isItemsLaws={true} onChange={newSaleLaws.bumpRefresh}
+                  openForm={newSaleLaws.openForm} setOpenForm={newSaleLaws.setOpenForm}
+                  hideZeroFlags={newSaleLaws.hideZeroFlags} setHideZeroFlags={newSaleLaws.setHideZeroFlags} />
+              </div>
+            )}
             <NewSaleForm onSuccess={() => setAddForm(null)} groupFilter={group} />
           </div>
         )}
@@ -2106,7 +2150,7 @@ function ItemHubPageInner() {
         {addForm === 'item'    && outerTab === 'loss' && lossView === 'items'    && <div className="px-4"><NewItemForm    onSuccess={() => { setAddForm(null); loadItems() }} /></div>}
         {outerTab === 'loss' && lossView === 'pl' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-2"><PageToolIcons scopeKey="P&L" /></div>
+            <div className="px-4 pt-2">{inlineLaws('P&L', plLaws)}</div>
             <ProfitLossTab />
           </TabErrorBoundary>
         )}
@@ -2123,7 +2167,7 @@ function ItemHubPageInner() {
         {outerTab === 'loss' && lossView === 'newCustomer' && (
           <TabErrorBoundary>
             <div className="px-4 pt-2">
-              <PageToolIcons scopeKey="New Customer" />
+              {inlineLaws('New Customer', newCustomerLaws)}
               <div className="mt-2">
                 <NewCustomerForm
                   onCreated={() => pickLossView('customers')}
@@ -2134,36 +2178,36 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'loss' && lossView === 'receipts' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-2 space-y-2"><PageToolIcons scopeKey="Receipts" /><ReceiptsPage /></div>
+            <div className="px-4 pt-2 space-y-2">{inlineLaws('Receipts', receiptsLaws)}<ReceiptsPage /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'home' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-2"><PageToolIcons scopeKey="Home" /></div>
+            <div className="px-4 pt-2">{inlineLaws('Home', homeLaws)}</div>
             <div className="px-4"><TodayContent /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'dailySummary' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-2"><PageToolIcons scopeKey="Daily" /></div>
+            <div className="px-4 pt-2">{inlineLaws('Daily', dailyLaws)}</div>
             <DailySummaryTab />
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'purchaseOrders' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-4 space-y-2"><PageToolIcons scopeKey="Purchase Orders" /><PurchaseOrdersPage /></div>
+            <div className="px-4 pt-4 space-y-2">{inlineLaws('Purchase Orders', purchaseOrdersLaws)}<PurchaseOrdersPage /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'item360' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-2"><PageToolIcons scopeKey="Item 360" /></div>
+            <div className="px-4 pt-2">{inlineLaws('Item 360', item360Laws)}</div>
             <Item360Tab items={items} jumpToItemId={item360JumpId} onJumpDone={() => setItem360JumpId(null)} />
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'services' && (
           <TabErrorBoundary>
             <div className="px-4 pt-2 pb-10">
-              <PageToolIcons scopeKey={selectedServiceGroup ? `Services — ${selectedServiceGroup}` : 'Services'} />
+              {inlineLaws(selectedServiceGroup ? `Services — ${selectedServiceGroup}` : 'Services', servicesLaws)}
               {!selectedServiceGroup ? (
                 <p className="py-20 text-center text-gray-400 text-xs">Pick a group from the left to see its items.</p>
               ) : (() => {
@@ -2191,7 +2235,7 @@ function ItemHubPageInner() {
         {outerTab === 'loss' && lossView === 'viewPortalAs' && (
           <TabErrorBoundary>
             <div className="px-4 pt-4 max-w-sm space-y-3">
-              <PageToolIcons scopeKey="View Portal As" />
+              {inlineLaws('View Portal As', viewPortalAsLaws)}
               <h1 className="text-lg font-bold text-gray-900">View Portal As</h1>
               <ViewPortalAsButton extraAllowed={canViewPortalAs} />
             </div>
@@ -2200,7 +2244,7 @@ function ItemHubPageInner() {
         {outerTab === 'loss' && lossView === 'reorderLists' && (
           <TabErrorBoundary>
             <div className="px-4 pt-4 max-w-sm space-y-2">
-              <PageToolIcons scopeKey="Reorder Lists" />
+              {inlineLaws('Reorder Lists', reorderListsLaws)}
               <ReorderListsPanel cashItems={effectiveCashItems} manageItems={MANAGE_LIST_ITEMS} staffItems={STAFF_TEAM_ITEMS}
                 paneOrder={paneOrder} setPaneOrder={setPaneOrder} paneLabels={paneLabels} setPaneLabels={setPaneLabels}
                 paneGroups={paneGroups} setPaneGroups={setPaneGroups} />
@@ -2261,7 +2305,7 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'loss' && lossView === 'expenseOrders' && (
           <TabErrorBoundary>
-            <div className="px-3 pt-2"><PageToolIcons scopeKey="Expense Orders" /></div>
+            <div className="px-3 pt-2">{inlineLaws('Expense Orders', expenseOrdersLaws)}</div>
             <div className="flex-1 overflow-y-auto min-h-0"><ExpenseOrdersPanel /></div>
           </TabErrorBoundary>
         )}
@@ -2273,12 +2317,12 @@ function ItemHubPageInner() {
             key (SalesTab/CountsTab), or via the kind prop (LossFeedTab). */}
         {outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'aliasWide' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-4 space-y-2"><PageToolIcons scopeKey="Alias Wide Table" /><AliasWidePage /></div>
+            <div className="px-4 pt-4 space-y-2">{inlineLaws('Alias Wide Table', aliasWideTableLaws)}<AliasWidePage /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'serviceMatches' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-4 space-y-2"><PageToolIcons scopeKey="Service Matches" /><ServiceMatchesPage /></div>
+            <div className="px-4 pt-4 space-y-2">{inlineLaws('Service Matches', serviceMatchesLaws)}<ServiceMatchesPage /></div>
           </TabErrorBoundary>
         )}
         {showAnalytics && outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'none' && (
@@ -2412,7 +2456,7 @@ function ItemHubPageInner() {
             that the 'gains' violation deep-link's only source (Tasks) is gone. */}
         {outerTab === 'loss' && lossView === 'feed' && (
           <TabErrorBoundary>
-            {!violation && <div className="px-3 pt-2"><PageToolIcons scopeKey="Loss by Date" /></div>}
+            {!violation && <div className="px-3 pt-2">{inlineLaws('Loss by Date', lossByDateLaws)}</div>}
             {!violation && (
               <div className="flex justify-end gap-1 px-3 pt-2">
                 <button onClick={() => setFeedShowGains(false)}
@@ -2430,13 +2474,13 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'loss' && lossView === 'lossByItem' && (
           <TabErrorBoundary>
-            <div className="px-3 pt-2"><PageToolIcons scopeKey="Loss by Item" /></div>
+            <div className="px-3 pt-2">{inlineLaws('Loss by Item', lossByItemLaws)}</div>
             <LossByItemTab search={search} />
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'lossByTarget' && (
           <TabErrorBoundary>
-            <div className="px-3 pt-2"><PageToolIcons scopeKey="Loss by Target" /></div>
+            <div className="px-3 pt-2">{inlineLaws('Loss by Target', lossByTargetLaws)}</div>
             <div className="py-20 text-center text-gray-400 text-xs">Coming soon.</div>
           </TabErrorBoundary>
         )}
@@ -2691,9 +2735,7 @@ function ItemHubPageInner() {
 export default function ItemHubPage() {
   return (
     <Suspense fallback={<div className="py-20 text-center text-gray-400 text-xs">Loading…</div>}>
-      <ToolsPanelProvider>
-        <ItemHubPageInner />
-      </ToolsPanelProvider>
+      <ItemHubPageInner />
     </Suspense>
   )
 }

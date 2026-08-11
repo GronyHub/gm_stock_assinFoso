@@ -5,7 +5,9 @@ import { usePolling } from '@/lib/usePolling'
 import { usePresenceReporter } from '@/lib/usePresenceReporter'
 import AliasesTab, { type Tab as AliasTab } from './AliasesTab'
 import AssignWidget from './AssignWidget'
-import PageToolIcons from './PageToolIcons'
+import PageLawsList from './PageLawsList'
+import LawsToggleBar from './LawsToggleBar'
+import { useLawsPanel } from './useLawsPanel'
 
 // Each of these 6 checks is its own flag pill on the Items page, and each
 // opens AliasesTab straight onto its own dedicated page -- no tab bar to
@@ -351,6 +353,7 @@ export default function ItemsTab({ items, group, productType, search, violation,
   const [lossMap, setLossMap] = useState<Record<number, DayRow[]>>({})
   const [lossLoading, setLossLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<number | null>(null)
+  const lawsPanel = useLawsPanel('showItemsFlagsLaws')
 
   useEffect(() => {
     if (!jumpToItemId) return
@@ -847,7 +850,27 @@ export default function ItemsTab({ items, group, productType, search, violation,
     ]
     return (
       <div className="flex flex-col h-full min-h-0">
-        <div className="px-2 pt-2 shrink-0"><PageToolIcons scopeKey="Items" flags={toolsPanelFlags} onFlagClick={flag => setFlagsSummary(flag as ItemsFlagType)} /></div>
+        <div className="px-2 pt-2 shrink-0 flex flex-nowrap items-center gap-1.5 overflow-x-auto">
+          <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
+            openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
+            hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags} dark={false} />
+        </div>
+        {lawsPanel.show && (
+          <div className="px-2 shrink-0">
+            <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+              <PageLawsList
+                scopeKey="Items"
+                isItemsLaws={true}
+                onChange={lawsPanel.bumpRefresh}
+                flags={toolsPanelFlags.map(({ key, label, count, description }) => ({ key, label, count, description, onViewClick: () => setFlagsSummary(key as ItemsFlagType) }))}
+                openForm={lawsPanel.openForm}
+                setOpenForm={lawsPanel.setOpenForm}
+                hideZeroFlags={lawsPanel.hideZeroFlags}
+                setHideZeroFlags={lawsPanel.setHideZeroFlags}
+              />
+            </div>
+          </div>
+        )}
         <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0">
           <button onClick={() => setFlagsSummary(null)}
             className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-red-600 text-white transition">
