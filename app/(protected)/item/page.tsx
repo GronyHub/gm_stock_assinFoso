@@ -29,7 +29,7 @@ import PaneHomeDaily from './_components/PaneHomeDaily'
 import AddShortcutButton, { type ShortcutKey } from './_components/AddShortcutButton'
 import { MyAssignmentsSummary } from './_components/MyAssignmentsSummary'
 import LawsToggleBar from './_components/LawsToggleBar'
-import { useLawsPanel } from './_components/useLawsPanel'
+import { useLawsPanel, useLawFilterState } from './_components/useLawsPanel'
 import { COLUMNS, type ColKey } from './_components/lossTabColumns'
 import { useColumnPrefs, ColumnsPickerButton } from './_components/columnPrefs'
 import { MANAGE_LIST_ITEMS, MANAGE_GROUP_LABELS, useFixedCategoryIds, type ManageView } from './_components/manageViewData'
@@ -565,6 +565,7 @@ function ItemHubPageInner() {
   const [itemsLawsRefresh, setItemsLawsRefresh] = useState(0)
   const [itemsLawsOpenForm, setItemsLawsOpenForm] = useState<LawFormKind>(null)
   const [hideZeroFlags, setHideZeroFlags] = useState(false)
+  const itemsFilters = useLawFilterState()
   // Sales/Bills laws -- same inline-panel treatment as Items above (see
   // showItemsLaws), one icon per view, no separate overlay-opening icon
   // anymore. scopeKey stays "Sales"/"Bills" (capitalized, matching
@@ -578,6 +579,7 @@ function ItemHubPageInner() {
   const [salesLawsRefresh, setSalesLawsRefresh] = useState(0)
   const [salesLawsOpenForm, setSalesLawsOpenForm] = useState<LawFormKind>(null)
   const [salesHideZeroFlags, setSalesHideZeroFlags] = useState(false)
+  const salesFilters = useLawFilterState()
   const [showBillsLaws, setShowBillsLaws] = useState(() => {
     if (typeof window === 'undefined') return false
     return localStorage.getItem('showBillsLaws') === 'true'
@@ -585,6 +587,7 @@ function ItemHubPageInner() {
   const [billsLawsRefresh, setBillsLawsRefresh] = useState(0)
   const [billsLawsOpenForm, setBillsLawsOpenForm] = useState<LawFormKind>(null)
   const [billsHideZeroFlags, setBillsHideZeroFlags] = useState(false)
+  const billsFilters = useLawFilterState()
   // The rest of this page's many smaller panes (New Sale, P&L, Receipts,
   // Purchase Orders, Item 360, Loss by Date/Item/Target, ...) each get their
   // own inline law panel too, same as Items/Sales/Bills above -- one
@@ -1909,91 +1912,22 @@ function ItemHubPageInner() {
                 {(lossView === 'items' || lossView === 'sales' || lossView === 'bills') && !salesFormOpen && (
                   <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
                     {lossView === 'items' && (
-                      <>
-                        <button onClick={() => setShowItemsLaws(o => !o)} title="Show laws on this page"
-                          className={`shrink-0 text-sm leading-none px-1.5 py-1 rounded-lg transition ${showItemsLaws ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
-                          ⚖️
-                        </button>
-                        {showItemsLaws && (
-                          <>
-                            <button onClick={() => setItemsLawsOpenForm(f => f === 'law' ? null : 'law')} title="Create new law"
-                              className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${itemsLawsOpenForm === 'law' ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
-                              + Law
-                            </button>
-                            <button onClick={() => setItemsLawsOpenForm(f => f === 'task' ? null : 'task')} title="Create global task"
-                              className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${itemsLawsOpenForm === 'task' ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
-                              + Task
-                            </button>
-                            <button onClick={() => setItemsLawsOpenForm(f => f === 'note' ? null : 'note')} title="Create global note"
-                              className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${itemsLawsOpenForm === 'note' ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
-                              + Note
-                            </button>
-                            <label className="shrink-0 flex items-center gap-1 text-white hover:bg-white/10 px-2 py-1 rounded-lg cursor-pointer transition">
-                              <input type="checkbox" checked={hideZeroFlags} onChange={e => setHideZeroFlags(e.target.checked)}
-                                className="w-4 h-4 rounded border-gray-300" />
-                              <span className="text-xs font-semibold leading-none">Hide 0</span>
-                            </label>
-                          </>
-                        )}
-                      </>
+                      <LawsToggleBar show={showItemsLaws} setShow={setShowItemsLaws}
+                        openForm={itemsLawsOpenForm} setOpenForm={setItemsLawsOpenForm}
+                        hideZeroFlags={hideZeroFlags} setHideZeroFlags={setHideZeroFlags}
+                        activeFilters={itemsFilters.activeFilters} toggleFilter={itemsFilters.toggleFilter} />
                     )}
                     {lossView === 'sales' && (
-                      <>
-                        <button onClick={() => setShowSalesLaws(o => !o)} title="Show laws on this page"
-                          className={`shrink-0 text-sm leading-none px-1.5 py-1 rounded-lg transition ${showSalesLaws ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
-                          ⚖️
-                        </button>
-                        {showSalesLaws && (
-                          <>
-                            <button onClick={() => setSalesLawsOpenForm(f => f === 'law' ? null : 'law')} title="Create new law"
-                              className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${salesLawsOpenForm === 'law' ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
-                              + Law
-                            </button>
-                            <button onClick={() => setSalesLawsOpenForm(f => f === 'task' ? null : 'task')} title="Create global task"
-                              className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${salesLawsOpenForm === 'task' ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
-                              + Task
-                            </button>
-                            <button onClick={() => setSalesLawsOpenForm(f => f === 'note' ? null : 'note')} title="Create global note"
-                              className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${salesLawsOpenForm === 'note' ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
-                              + Note
-                            </button>
-                            <label className="shrink-0 flex items-center gap-1 text-white hover:bg-white/10 px-2 py-1 rounded-lg cursor-pointer transition">
-                              <input type="checkbox" checked={salesHideZeroFlags} onChange={e => setSalesHideZeroFlags(e.target.checked)}
-                                className="w-4 h-4 rounded border-gray-300" />
-                              <span className="text-xs font-semibold leading-none">Hide 0</span>
-                            </label>
-                          </>
-                        )}
-                      </>
+                      <LawsToggleBar show={showSalesLaws} setShow={setShowSalesLaws}
+                        openForm={salesLawsOpenForm} setOpenForm={setSalesLawsOpenForm}
+                        hideZeroFlags={salesHideZeroFlags} setHideZeroFlags={setSalesHideZeroFlags}
+                        activeFilters={salesFilters.activeFilters} toggleFilter={salesFilters.toggleFilter} />
                     )}
                     {lossView === 'bills' && (
-                      <>
-                        <button onClick={() => setShowBillsLaws(o => !o)} title="Show laws on this page"
-                          className={`shrink-0 text-sm leading-none px-1.5 py-1 rounded-lg transition ${showBillsLaws ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
-                          ⚖️
-                        </button>
-                        {showBillsLaws && (
-                          <>
-                            <button onClick={() => setBillsLawsOpenForm(f => f === 'law' ? null : 'law')} title="Create new law"
-                              className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${billsLawsOpenForm === 'law' ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
-                              + Law
-                            </button>
-                            <button onClick={() => setBillsLawsOpenForm(f => f === 'task' ? null : 'task')} title="Create global task"
-                              className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${billsLawsOpenForm === 'task' ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
-                              + Task
-                            </button>
-                            <button onClick={() => setBillsLawsOpenForm(f => f === 'note' ? null : 'note')} title="Create global note"
-                              className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${billsLawsOpenForm === 'note' ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
-                              + Note
-                            </button>
-                            <label className="shrink-0 flex items-center gap-1 text-white hover:bg-white/10 px-2 py-1 rounded-lg cursor-pointer transition">
-                              <input type="checkbox" checked={billsHideZeroFlags} onChange={e => setBillsHideZeroFlags(e.target.checked)}
-                                className="w-4 h-4 rounded border-gray-300" />
-                              <span className="text-xs font-semibold leading-none">Hide 0</span>
-                            </label>
-                          </>
-                        )}
-                      </>
+                      <LawsToggleBar show={showBillsLaws} setShow={setShowBillsLaws}
+                        openForm={billsLawsOpenForm} setOpenForm={setBillsLawsOpenForm}
+                        hideZeroFlags={billsHideZeroFlags} setHideZeroFlags={setBillsHideZeroFlags}
+                        activeFilters={billsFilters.activeFilters} toggleFilter={billsFilters.toggleFilter} />
                     )}
                   </div>
                 )}
@@ -2389,6 +2323,7 @@ function ItemHubPageInner() {
                     setOpenForm={setItemsLawsOpenForm}
                     hideZeroFlags={hideZeroFlags}
                     setHideZeroFlags={setHideZeroFlags}
+                    activeFilters={itemsFilters.activeFilters}
                   />
                 </TabErrorBoundary>
               </div>
@@ -2490,6 +2425,7 @@ function ItemHubPageInner() {
                   setOpenForm={setSalesLawsOpenForm}
                   hideZeroFlags={salesHideZeroFlags}
                   setHideZeroFlags={setSalesHideZeroFlags}
+                  activeFilters={salesFilters.activeFilters}
                 />
               </TabErrorBoundary>
             </div>
@@ -2519,6 +2455,7 @@ function ItemHubPageInner() {
                   setOpenForm={setBillsLawsOpenForm}
                   hideZeroFlags={billsHideZeroFlags}
                   setHideZeroFlags={setBillsHideZeroFlags}
+                  activeFilters={billsFilters.activeFilters}
                 />
               </TabErrorBoundary>
             </div>

@@ -13,19 +13,15 @@ export type LawFilterKey = 'L' | 'G' | 'T' | 'N'
 // after a change. One hook instead of redeclaring the same handful of
 // useState calls (plus the show/hide localStorage effect) in every page
 // that wants its own inline panel.
-export function useLawsPanel(storageKey: string) {
-  const [show, setShow] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return localStorage.getItem(storageKey) === 'true'
-  })
-  const [refresh, setRefresh] = useState(0)
-  const [openForm, setOpenForm] = useState<LawFormKind>(null)
-  const [hideZeroFlags, setHideZeroFlags] = useState(false)
+// Just the L/G/T/N piece on its own -- Items/Sales/Bills predate this hook
+// and already keep their show/openForm/hideZeroFlags as their own separate
+// useState calls (each needs its own custom `flags` list built inline, which
+// doesn't fit the one-scopeKey-per-call inlineLaws() helper), so they can't
+// switch to useLawsPanel() wholesale without a much bigger diff. This lets
+// them pick up just the filter state/logic instead of hand-rolling their own
+// copy a third time.
+export function useLawFilterState() {
   const [activeFilters, setActiveFilters] = useState<Set<LawFilterKey>>(new Set())
-
-  useEffect(() => {
-    localStorage.setItem(storageKey, show.toString())
-  }, [show, storageKey])
 
   function toggleFilter(key: LawFilterKey) {
     setActiveFilters(prev => {
@@ -34,6 +30,23 @@ export function useLawsPanel(storageKey: string) {
       return next
     })
   }
+
+  return { activeFilters, toggleFilter }
+}
+
+export function useLawsPanel(storageKey: string) {
+  const [show, setShow] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return localStorage.getItem(storageKey) === 'true'
+  })
+  const [refresh, setRefresh] = useState(0)
+  const [openForm, setOpenForm] = useState<LawFormKind>(null)
+  const [hideZeroFlags, setHideZeroFlags] = useState(false)
+  const { activeFilters, toggleFilter } = useLawFilterState()
+
+  useEffect(() => {
+    localStorage.setItem(storageKey, show.toString())
+  }, [show, storageKey])
 
   return {
     show, setShow,
