@@ -2,19 +2,25 @@
 import type { LawFormKind } from './PageLawsList'
 import type { LawFilterKey } from './useLawsPanel'
 
-const FILTER_LABELS: { key: LawFilterKey; title: string }[] = [
-  { key: 'L', title: 'Laws & flags' },
-  { key: 'G', title: 'Group shortcuts' },
-  { key: 'T', title: 'Tasks' },
-  { key: 'N', title: 'Notes' },
+// L/T/N each merge a "+create" button with their own filter checkbox into
+// one compact control -- tapping the "+L"/"+T"/"+N" label still does
+// exactly what the old standalone +Law/+Task/+Note button did (opens that
+// create form), the checkbox next to it still does what the old standalone
+// L/T/N filter checkbox did (narrows the list to that category). G has no
+// matching "+create" button -- group shortcut flags are derived from item
+// groups, never user-created -- so it stays its own plain filter checkbox,
+// same as 0 (hide zero-count flags).
+const CREATE_FILTER_PAIRS: { key: 'L' | 'T' | 'N'; form: Exclude<LawFormKind, null>; createTitle: string; filterTitle: string }[] = [
+  { key: 'L', form: 'law',  createTitle: 'Create new law',     filterTitle: 'Show only laws & flags' },
+  { key: 'T', form: 'task', createTitle: 'Create global task', filterTitle: 'Show only tasks' },
+  { key: 'N', form: 'note', createTitle: 'Create global note', filterTitle: 'Show only notes' },
 ]
 
-// The ⚖️ / + Law / + Task / + Note / L-G-T-N / 0 row every inline law
-// panel is toggled and filtered by -- same markup Items/Sales/Bills
-// already use inline in item/page.tsx, pulled out so new pages don't
-// hand-copy it again. `dark` picks the light-icons-on-a-colored-bar look
-// those three use; pass `dark={false}` for a plain white/gray header
-// instead.
+// The ⚖️ / +L / +T / +N / G / 0 row every inline law panel is toggled and
+// filtered by -- same markup Items/Sales/Bills already use inline in
+// item/page.tsx, pulled out so new pages don't hand-copy it again. `dark`
+// picks the light-icons-on-a-colored-bar look those three use; pass
+// `dark={false}` for a plain white/gray header instead.
 export default function LawsToggleBar({
   show, setShow, openForm, setOpenForm, hideZeroFlags, setHideZeroFlags,
   activeFilters, toggleFilter, dark = true,
@@ -40,32 +46,27 @@ export default function LawsToggleBar({
       </button>
       {show && (
         <>
-          <button onClick={() => setOpenForm(openForm === 'law' ? null : 'law')} title="Create new law"
-            className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${openForm === 'law' ? activeCls : idleCls}`}>
-            + Law
-          </button>
-          <button onClick={() => setOpenForm(openForm === 'task' ? null : 'task')} title="Create global task"
-            className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${openForm === 'task' ? activeCls : idleCls}`}>
-            + Task
-          </button>
-          <button onClick={() => setOpenForm(openForm === 'note' ? null : 'note')} title="Create global note"
-            className={`shrink-0 text-xs font-semibold leading-none px-2 py-1 rounded-lg transition ${openForm === 'note' ? activeCls : idleCls}`}>
-            + Note
-          </button>
-          {/* Row-category filters -- multi-select, all combine. None
-              checked (the default) shows everything, same as before these
-              existed. L covers both plain laws and real violation flags
-              together (some laws have a linked flag, some don't -- they're
-              the same category); G is just the per-group shortcut flags,
-              kept separate since they're not laws or violations. */}
-          {FILTER_LABELS.map(({ key, title }) => (
-            <label key={key} title={title}
-              className={`shrink-0 flex items-center gap-1 px-1.5 py-1 rounded-lg cursor-pointer transition ${idleCls}`}>
-              <input type="checkbox" checked={activeFilters.has(key)} onChange={() => toggleFilter(key)}
+          {/* Multi-select, all combine -- none checked (the default) shows
+              everything, same as before these existed. L covers both plain
+              laws and real violation flags together (some laws have a
+              linked flag, some don't -- they're the same category). */}
+          {CREATE_FILTER_PAIRS.map(({ key, form, createTitle, filterTitle }) => (
+            <span key={key}
+              className={`shrink-0 flex items-center gap-1 px-1.5 py-1 rounded-lg transition ${openForm === form ? activeCls : idleCls}`}>
+              <button onClick={() => setOpenForm(openForm === form ? null : form)} title={createTitle}
+                className="text-xs font-semibold leading-none">
+                +{key}
+              </button>
+              <input type="checkbox" checked={activeFilters.has(key)} onChange={() => toggleFilter(key)} title={filterTitle}
                 className="w-4 h-4 rounded border-gray-300" />
-              <span className="text-xs font-semibold leading-none">{key}</span>
-            </label>
+            </span>
           ))}
+          <label className={`shrink-0 flex items-center gap-1 px-1.5 py-1 rounded-lg cursor-pointer transition ${idleCls}`}
+            title="Group shortcuts">
+            <input type="checkbox" checked={activeFilters.has('G')} onChange={() => toggleFilter('G')}
+              className="w-4 h-4 rounded border-gray-300" />
+            <span className="text-xs font-semibold leading-none">G</span>
+          </label>
           <label className={`shrink-0 flex items-center gap-1 px-1.5 py-1 rounded-lg cursor-pointer transition ${idleCls}`}
             title="Hide 0-count flags">
             <input type="checkbox" checked={hideZeroFlags} onChange={e => setHideZeroFlags(e.target.checked)}
