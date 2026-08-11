@@ -235,7 +235,7 @@ export async function GET() {
       SELECT id, canonical_name AS item_name, status
       FROM items
       WHERE (cf_group IS NULL OR TRIM(cf_group) = '')
-        AND LOWER(status) = 'active'
+        AND (status IS NULL OR LOWER(status) != 'inactive')
       ORDER BY canonical_name
     `),
 
