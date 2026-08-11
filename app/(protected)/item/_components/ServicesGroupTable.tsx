@@ -1,4 +1,5 @@
 'use client'
+import { useRouter } from 'next/navigation'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from './columnPrefs'
 
 type ServiceItem = {
@@ -30,6 +31,7 @@ function fmtMoney(v: string | null) {
 // group's items used to be plain stacked cards, the one list left that
 // couldn't have its columns resized, reordered, or hidden.
 export default function ServicesGroupTable({ items }: { items: ServiceItem[] }) {
+  const router = useRouter()
   const colPrefs = useColumnPrefs<ColKey>('servicesGroupTable', COLUMNS)
   const visibleKeys = colPrefs.colOrder.filter(k => colPrefs.visibleCols.has(k))
 
@@ -73,7 +75,8 @@ export default function ServicesGroupTable({ items }: { items: ServiceItem[] }) 
           </thead>
           <tbody className="divide-y divide-gray-100">
             {items.map((it, i) => (
-              <tr key={it.id} className={`transition-colors ${i % 2 === 1 ? 'bg-gray-50' : 'bg-white'} hover:bg-blue-50/60`}>
+              <tr key={it.id} onClick={() => router.push(`/item?tab=loss&view=item360&jumpItemId=${it.id}`)}
+                className={`cursor-pointer transition-colors ${i % 2 === 1 ? 'bg-gray-50' : 'bg-white'} hover:bg-blue-50/60`}>
                 <td className={`${TD} font-semibold text-gray-900 truncate`}>{it.item_name}</td>
                 {visibleKeys.map(k => bodyCellFor(k, it))}
               </tr>
