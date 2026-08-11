@@ -104,7 +104,7 @@ type OuterTab = 'today' | 'loss' | 'uk' | 'ch'
 // CHView is unioned in too even though C&H is its own separate top-level
 // tab, not part of the Grony Cash merge -- it just reuses this same shared
 // state/pane machinery rather than needing its own parallel copy.
-type LossView = 'home' | 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'lossByItem' | 'lossByTarget' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts' | 'dailySummary'
+type LossView = 'home' | 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'lossByTarget' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts' | 'dailySummary'
   | 'purchaseOrders' | 'item360' | 'services'
   // "New Customer" used to be a toggle-open form living inside the Customers
   // list page itself (CustomersPage's own showForm state) -- it's now this
@@ -195,11 +195,13 @@ const REPORT_VIEWS = new Set<LossView>([
 // needs the hamburger menu any more.
 //
 // Loss by Date/Item/Target used to be one 'feed' entry with its own internal
-// pill row (LossOverviewTab) switching between the three. They're now three
-// separate left-pane entries instead -- 'feed' keeps its key (and the gains
-// violation deep-link that already points at it) but is relabeled to "Loss
-// by Date", with Loss by Item and Loss by Target following right after as
-// their own lossViews.
+// pill row (LossOverviewTab) switching between the three. 'feed' kept its
+// key (and the gains violation deep-link that already points at it) but is
+// relabeled to "Loss by Date", with Loss by Target following right after as
+// its own lossView. Loss by Item moved again since -- it's now a flag on
+// Items itself (see the 'loss_by_item' entry in Items' flags list below),
+// since it's just the Items table's own loss numbers re-ranked, not a
+// separate dataset.
 //
 // Tasks used to live on the bottom Role Bar (Joe's tab), bundled together
 // with Grony Manage's own violations (the "former Bino bucket" -- staff
@@ -227,7 +229,6 @@ const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: string }
   { key: 'bills',    label: 'Bills',    icon: '📃' },
   { key: 'purchaseOrders',   label: 'Purchase Ord',   icon: '🛒' },
   { key: 'feed',         label: 'Loss by Date',   icon: '📉', group: 'Loss' },
-  { key: 'lossByItem',   label: 'Loss by Item',   icon: '📊', group: 'Loss' },
   { key: 'lossByTarget', label: 'Loss by Tgt',    icon: '🎯', group: 'Loss' },
   { key: 'expenses', label: 'Expenses', icon: '💳', group: 'Expenses' },
   { key: 'vendors',   label: 'Vendors',   icon: '🏭', group: 'Expenses' },
@@ -752,7 +753,12 @@ function ItemHubPageInner() {
   const serviceGroups = useMemo(() =>
     Array.from(new Set(items.map(i => i.cf_group).filter((g): g is string => !!g && g.trim() !== ''))).sort()
   , [items])
-  const [selectedServiceGroup, setSelectedServiceGroup] = useState<string | null>(null)
+  // Whichever inline sub-panel is showing below the Items law panel --
+  // a service group's item table or the Loss by Item ranking. Selecting
+  // one replaces the other instead of stacking, same as every other flag
+  // click on this page.
+  type ItemsInlineExtra = { kind: 'serviceGroup'; group: string } | { kind: 'lossByItem' }
+  const [itemsInlineExtra, setItemsInlineExtra] = useState<ItemsInlineExtra | null>(null)
 
   function loadItems() {
     fetch('/api/items').then(r => r.json()).then(d => {
@@ -1510,7 +1516,7 @@ function ItemHubPageInner() {
       { label: 'Expense Orders', action: () => pickLossView('expenseOrders') },
       { label: 'Properties at Shop', action: () => { pickLossView('properties'); setPropertiesInitialTab('available') } },
       { label: 'Properties not at Shop', action: () => { pickLossView('properties'); setPropertiesInitialTab('away') } },
-      ...serviceGroups.map(g => ({ label: `Services — ${g}`, action: () => { pickLossView('items'); setSelectedServiceGroup(g) } })),
+      ...serviceGroups.map(g => ({ label: `Services — ${g}`, action: () => { pickLossView('items'); setItemsInlineExtra({ kind: 'serviceGroup', group: g }) } })),
     ] : []),
     ...(canSeeManage ? MANAGE_LIST_ITEMS.map(v => ({ label: v.label, action: () => pickLossView(v.key) })) : []),
     ...(myStaffName ? [
@@ -2361,14 +2367,26 @@ function ItemHubPageInner() {
                       // renders 🏳️/gray like every other zero flag -- "Hide
                       // 0" hides these along with genuine zero-violation
                       // flags if toggled on. Opens inline, right below this
-                      // panel (see selectedServiceGroup below) -- no page
+                      // panel (see itemsInlineExtra below) -- no page
                       // navigation, same as every other flag on this page.
                       ...serviceGroups.map(g => ({
                         key: `group_${g}`,
                         label: g,
                         count: 0,
-                        onViewClick: () => setSelectedServiceGroup(g),
+                        onViewClick: () => setItemsInlineExtra({ kind: 'serviceGroup', group: g }),
                       })),
+                      // Same underlying data as this table, just ranked by
+                      // running loss instead of listed in item order -- used
+                      // to be its own left-pane row (see LossByItemTab). No
+                      // count yet (flags/tasks/notes on it come later, via
+                      // its own scoped law panel below), just a jump-to-view
+                      // like the group shortcuts above.
+                      {
+                        key: 'loss_by_item',
+                        label: 'Loss by Item',
+                        count: 0,
+                        onViewClick: () => setItemsInlineExtra({ kind: 'lossByItem' }),
+                      },
                     ]}
                     openForm={itemsLawsOpenForm}
                     setOpenForm={setItemsLawsOpenForm}
@@ -2385,18 +2403,18 @@ function ItemHubPageInner() {
                 nothing written there under the old separate-page version
                 is orphaned. Selecting a different group replaces this
                 instead of stacking, same as every other flag click. */}
-            {selectedServiceGroup && (
+            {itemsInlineExtra?.kind === 'serviceGroup' && (
               <div className="px-3 pt-2 pb-4 border-b border-gray-200">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-bold text-gray-900">{selectedServiceGroup}</p>
-                  <button onClick={() => setSelectedServiceGroup(null)}
+                  <p className="text-sm font-bold text-gray-900">{itemsInlineExtra.group}</p>
+                  <button onClick={() => setItemsInlineExtra(null)}
                     className="text-xs font-semibold px-2 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 border border-gray-300">×</button>
                 </div>
                 <div className="mt-1.5">
-                  {inlineLaws(`Services — ${selectedServiceGroup}`, servicesLaws)}
+                  {inlineLaws(`Services — ${itemsInlineExtra.group}`, servicesLaws)}
                 </div>
                 {(() => {
-                  const groupItems = items.filter(i => i.cf_group === selectedServiceGroup)
+                  const groupItems = items.filter(i => i.cf_group === itemsInlineExtra.group)
                   return groupItems.length === 0 ? (
                     <p className="py-10 text-center text-gray-400 text-xs">No items in this group.</p>
                   ) : (
@@ -2408,6 +2426,21 @@ function ItemHubPageInner() {
                     </div>
                   )
                 })()}
+              </div>
+            )}
+            {itemsInlineExtra?.kind === 'lossByItem' && (
+              <div className="px-3 pt-2 pb-4 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-bold text-gray-900">Loss by Item</p>
+                  <button onClick={() => setItemsInlineExtra(null)}
+                    className="text-xs font-semibold px-2 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 border border-gray-300">×</button>
+                </div>
+                <div className="mt-1.5">
+                  {inlineLaws('Loss by Item', lossByItemLaws)}
+                </div>
+                <div className="mt-2" style={{ height: 420 }}>
+                  <LossByItemTab search={search} />
+                </div>
               </div>
             )}
             {violation && pillKeys?.includes(violation) ? (
@@ -2523,12 +2556,6 @@ function ItemHubPageInner() {
               </div>
             )}
             <LossFeedTab search={search} kind={(violation === 'gains' || feedShowGains) ? 'gain' : 'loss'} />
-          </TabErrorBoundary>
-        )}
-        {outerTab === 'loss' && lossView === 'lossByItem' && (
-          <TabErrorBoundary>
-            <div className="px-3 pt-2">{inlineLaws('Loss by Item', lossByItemLaws)}</div>
-            <LossByItemTab search={search} />
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'lossByTarget' && (
