@@ -1507,7 +1507,7 @@ function ItemHubPageInner() {
       { label: 'Expense Orders', action: () => pickLossView('expenseOrders') },
       { label: 'Properties at Shop', action: () => { pickLossView('properties'); setPropertiesInitialTab('available') } },
       { label: 'Properties not at Shop', action: () => { pickLossView('properties'); setPropertiesInitialTab('away') } },
-      ...serviceGroups.map(g => ({ label: `Services — ${g}`, action: () => { pickLossView('services'); setSelectedServiceGroup(g) } })),
+      ...serviceGroups.map(g => ({ label: `Services — ${g}`, action: () => { pickLossView('items'); setSelectedServiceGroup(g) } })),
     ] : []),
     ...(canSeeManage ? MANAGE_LIST_ITEMS.map(v => ({ label: v.label, action: () => pickLossView(v.key) })) : []),
     ...(myStaffName ? [
@@ -2226,31 +2226,6 @@ function ItemHubPageInner() {
             <Item360Tab items={items} jumpToItemId={item360JumpId} onJumpDone={() => setItem360JumpId(null)} />
           </TabErrorBoundary>
         )}
-        {outerTab === 'loss' && lossView === 'services' && (
-          <TabErrorBoundary>
-            <div className="px-4 pt-2 pb-10">
-              {inlineLaws(selectedServiceGroup ? `Services — ${selectedServiceGroup}` : 'Services', servicesLaws)}
-              {!selectedServiceGroup ? (
-                <p className="py-20 text-center text-gray-400 text-xs">Pick a group from Items&apos; ⚖️ Law panel to see its items.</p>
-              ) : (() => {
-                const groupItems = items.filter(i => i.cf_group === selectedServiceGroup)
-                return (
-                  <div className="mt-2 space-y-2">
-                    <p className="text-sm font-bold text-gray-900">{selectedServiceGroup}</p>
-                    <p className="text-[11px] text-gray-400">
-                      {groupItems.length} item{groupItems.length !== 1 ? 's' : ''}
-                    </p>
-                    {groupItems.length === 0 ? (
-                      <p className="py-10 text-center text-gray-400 text-xs">No items in this group.</p>
-                    ) : (
-                      <ServicesGroupTable items={groupItems} />
-                    )}
-                  </div>
-                )
-              })()}
-            </div>
-          </TabErrorBoundary>
-        )}
         {/* Settings' own non-navigation row (see SettingsPane.tsx) -- now a
             real content destination like everything else in Settings,
             rather than an inline widget crammed into the narrow pane itself. */}
@@ -2379,16 +2354,14 @@ function ItemHubPageInner() {
                       // count (not a violation, just a jump-to-view), so it
                       // renders 🏳️/gray like every other zero flag -- "Hide
                       // 0" hides these along with genuine zero-violation
-                      // flags if toggled on. Reuses the existing Services
-                      // group-table view (lossView='services' +
-                      // selectedServiceGroup) rather than a new one -- that
-                      // view already filters `items` by cf_group regardless
-                      // of product_type, "Services" is just its name.
+                      // flags if toggled on. Opens inline, right below this
+                      // panel (see selectedServiceGroup below) -- no page
+                      // navigation, same as every other flag on this page.
                       ...serviceGroups.map(g => ({
                         key: `group_${g}`,
                         label: g,
                         count: 0,
-                        onViewClick: () => { pickLossView('services'); setSelectedServiceGroup(g) },
+                        onViewClick: () => setSelectedServiceGroup(g),
                       })),
                     ]}
                     openForm={itemsLawsOpenForm}
@@ -2397,6 +2370,38 @@ function ItemHubPageInner() {
                     setHideZeroFlags={setHideZeroFlags}
                   />
                 </TabErrorBoundary>
+              </div>
+            )}
+            {/* A group's item table, right below the Law panel instead of
+                its own separate page (see the per-group flags above) --
+                also still carries its own Law/Tasks/Notes, scoped
+                "Services — <group>" same as before this moved inline, so
+                nothing written there under the old separate-page version
+                is orphaned. Selecting a different group replaces this
+                instead of stacking, same as every other flag click. */}
+            {selectedServiceGroup && (
+              <div className="px-3 pt-2 pb-4 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-bold text-gray-900">{selectedServiceGroup}</p>
+                  <button onClick={() => setSelectedServiceGroup(null)}
+                    className="text-xs font-semibold px-2 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 border border-gray-300">×</button>
+                </div>
+                <div className="mt-1.5">
+                  {inlineLaws(`Services — ${selectedServiceGroup}`, servicesLaws)}
+                </div>
+                {(() => {
+                  const groupItems = items.filter(i => i.cf_group === selectedServiceGroup)
+                  return groupItems.length === 0 ? (
+                    <p className="py-10 text-center text-gray-400 text-xs">No items in this group.</p>
+                  ) : (
+                    <div className="mt-2 space-y-2">
+                      <p className="text-[11px] text-gray-400">
+                        {groupItems.length} item{groupItems.length !== 1 ? 's' : ''}
+                      </p>
+                      <ServicesGroupTable items={groupItems} />
+                    </div>
+                  )
+                })()}
               </div>
             )}
             {violation && pillKeys?.includes(violation) ? (
