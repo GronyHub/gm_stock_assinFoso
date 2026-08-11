@@ -840,7 +840,10 @@ export default function PageLawsList({
               <span className="shrink-0 text-[8px] font-bold text-gray-300">{visibleLaws.length + visibleFlags.length + i + 1}</span>
               <div className="min-w-0 flex-1">
                 <p className="text-[9px] text-gray-800">✓ {task.title}</p>
-                {task.assigned_to && (<p className="text-[8px] text-gray-500">To: {task.assigned_to}</p>)}
+                <div className="flex items-center gap-1 flex-wrap text-[7px] text-gray-600 mt-0.5">
+                  <span>{formatDate(task.created_at)} by {task.created_by}</span>
+                  {task.assigned_to && (<><span>•</span><span>To: {task.assigned_to}</span></>)}
+                </div>
                 {menuGlobalTaskId === task.id && (
                   <div className="flex gap-1 text-[8px] mt-0.5">
                     <button onClick={() => { toggleGlobalTaskCompletion(task.id, task.done); setMenuGlobalTaskId(null) }} title={task.done ? 'Reopen' : 'Complete'} className="text-green-600 hover:text-green-700 font-semibold">✓</button>
