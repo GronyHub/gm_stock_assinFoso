@@ -106,7 +106,7 @@ export default function ExpenseOrdersPanel() {
       setVendorNames(Array.isArray(d) ? Array.from(new Set(d.map((v: { display_name: string }) => v.display_name).filter(Boolean))).sort() : [])
     }).catch(() => {})
   }, [])
-  usePolling(load, 20000, editId === null)
+  usePolling(load, 60000, editId === null)
 
   async function addOrder() {
     if (!form.expense_name.trim()) return

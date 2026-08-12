@@ -770,7 +770,7 @@ function ItemHubPageInner() {
   }
 
   useEffect(() => { loadItems() }, [])
-  usePolling(loadItems, 20000)
+  usePolling(loadItems, 60000)
 
   // Group filter options -- deliberately NOT derived from `items` above.
   // The Items table (LossTab) is built from item_stock_summary, which can
@@ -786,7 +786,7 @@ function ItemHubPageInner() {
     }).catch(() => {})
   }
   useEffect(() => { loadLossGroups() }, [])
-  usePolling(loadLossGroups, 20000)
+  usePolling(loadLossGroups, 60000)
 
   // Renaming a group from the Group dropdown itself, rather than one item
   // at a time -- applies everywhere via PUT /api/items/groups.
@@ -875,7 +875,7 @@ function ItemHubPageInner() {
   }
 
   useEffect(() => { loadBadgeData() }, [])
-  usePolling(loadBadgeData, 20000)
+  usePolling(loadBadgeData, 60000)
 
   const violationCounts: Record<string, number> = useMemo(() => {
     const negSoh = items.filter(i => Number(i.calculated_soh) < 0 && i.product_type !== 'service').length
@@ -984,7 +984,7 @@ function ItemHubPageInner() {
       }).catch(() => {})
     }
     load()
-    const id = setInterval(load, 20000)
+    const id = setInterval(load, 60000)
     return () => { cancelled = true; clearInterval(id) }
   }, [])
   const taskCountFor = (scopeKey: string) => taskCounts[scopeKey] ?? 0

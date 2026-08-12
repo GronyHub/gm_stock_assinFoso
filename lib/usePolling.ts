@@ -12,7 +12,7 @@ import { useEffect, useRef } from 'react'
  * actually looking at the screen). Regaining visibility fires one
  * immediate catch-up call instead of waiting up to `intervalMs`.
  */
-export function usePolling(callback: () => void, intervalMs = 5000, enabled = true) {
+export function usePolling(callback: () => void, intervalMs = 30000, enabled = true) {
   const cbRef = useRef(callback)
   cbRef.current = callback
 

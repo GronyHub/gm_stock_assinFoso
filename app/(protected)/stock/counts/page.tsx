@@ -122,8 +122,8 @@ function CountsHistoryPageInner() {
 
   useEffect(() => { loadRecords() }, [])
   useEffect(() => { loadDaily() }, [])
-  usePolling(loadRecords, 20000, editingId === null)
-  usePolling(loadDaily, 20000, editingId === null)
+  usePolling(loadRecords, 60000, editingId === null)
+  usePolling(loadDaily, 60000, editingId === null)
 
   function removeDaily(id: number) { setDailyItems(prev => prev.filter(i => i.item_id !== id)) }
   function removeOverdue(id: number) { setOverdueItems(prev => prev.filter(i => i.item_id !== id)) }
