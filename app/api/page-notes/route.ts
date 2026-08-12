@@ -11,23 +11,41 @@ export async function GET(req: NextRequest) {
   if (!scopeKey) return NextResponse.json({ error: 'Missing scopeKey' }, { status: 400 })
   const kind = req.nextUrl.searchParams.get('kind') === 'note' ? 'note' : 'law'
   const lawId = req.nextUrl.searchParams.get('lawId')
+  const flagKey = req.nextUrl.searchParams.get('flagKey')
 
-  await ensurePageNotesTable()
-  if (lawId) {
-    const [row] = await sql`SELECT notes, topic, note_date, tagged_staff FROM page_notes WHERE scope_key = ${scopeKey} AND kind = ${kind} AND law_id = ${parseInt(lawId)}`
+  try {
+    await ensurePageNotesTable()
+    if (lawId) {
+      const lawIdNum = parseInt(lawId, 10)
+      if (isNaN(lawIdNum)) return NextResponse.json({ notes: '', topic: '', noteDate: '', taggedStaff: [] })
+      const [row] = await sql`SELECT notes, topic, note_date, tagged_staff FROM page_notes WHERE scope_key = ${scopeKey} AND kind = ${kind} AND law_id = ${lawIdNum}`
+      return NextResponse.json({
+        notes: row?.notes ?? '',
+        topic: row?.topic ?? '',
+        noteDate: row?.note_date ?? '',
+        taggedStaff: row?.tagged_staff ? JSON.parse(row.tagged_staff) : []
+      })
+    } else if (flagKey) {
+      const [row] = await sql`SELECT notes, topic, note_date, tagged_staff FROM page_notes WHERE scope_key = ${scopeKey} AND kind = ${kind} AND flag_key = ${flagKey}`
+      return NextResponse.json({
+        notes: row?.notes ?? '',
+        topic: row?.topic ?? '',
+        noteDate: row?.note_date ?? '',
+        taggedStaff: row?.tagged_staff ? JSON.parse(row.tagged_staff) : []
+      })
+    } else {
+      const [row] = await sql`SELECT notes, topic, note_date, tagged_staff FROM page_notes WHERE scope_key = ${scopeKey} AND kind = ${kind} AND law_id IS NULL AND flag_key IS NULL`
+      return NextResponse.json({
+        notes: row?.notes ?? '',
+        topic: row?.topic ?? '',
+        noteDate: row?.note_date ?? '',
+        taggedStaff: row?.tagged_staff ? JSON.parse(row.tagged_staff) : []
+      })
+    }
+  } catch (e) {
+    console.error('page-notes GET error:', e)
     return NextResponse.json({
-      notes: row?.notes ?? '',
-      topic: row?.topic ?? '',
-      noteDate: row?.note_date ?? '',
-      taggedStaff: row?.tagged_staff ? JSON.parse(row.tagged_staff) : []
-    })
-  } else {
-    const [row] = await sql`SELECT notes, topic, note_date, tagged_staff FROM page_notes WHERE scope_key = ${scopeKey} AND kind = ${kind} AND law_id IS NULL`
-    return NextResponse.json({
-      notes: row?.notes ?? '',
-      topic: row?.topic ?? '',
-      noteDate: row?.note_date ?? '',
-      taggedStaff: row?.tagged_staff ? JSON.parse(row.tagged_staff) : []
+      notes: '', topic: '', noteDate: '', taggedStaff: []
     })
   }
 }
