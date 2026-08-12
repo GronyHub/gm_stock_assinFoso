@@ -81,7 +81,7 @@ const LOG_CATEGORY_GROUPS: Partial<Record<ManageView, string>> = {
 export const MANAGE_LIST_ITEMS: { key: ManageView; label: string; icon?: string; group?: string }[] = [
   { key: 'opener', label: 'Opener', icon: '🌅' },
   { key: 'closer', label: 'Closer', icon: '🌙' },
-  { key: 'grony_checks', label: 'Grony Checks Grid', icon: '📊', group: 'grony_1_to_10' },
+  { key: 'grony_checks', label: 'Grony Checks Grid', icon: '📊' },
   { key: 'audio', label: 'Audio', icon: '🎙️', group: 'advert' },
   { key: 'audio_status', label: 'Advert Status', icon: '📋', group: 'advert' },
   { key: 'jingle', label: 'Jingle Log', icon: '🎵', group: 'advert' },
