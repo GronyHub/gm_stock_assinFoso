@@ -114,7 +114,7 @@ export default function StaffMeetingPanel({ staffRoster, routablePages }: { staf
       .catch(() => setLoading(false))
   }
   useEffect(() => { load() }, [])
-  usePolling(load, 20000)
+  usePolling(load, 60000)
 
   function toggleAttendee(name: string) {
     setAttendees(prev => prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name])

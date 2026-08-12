@@ -351,7 +351,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
   }
 
   useEffect(() => { loadExpenses() }, [])
-  usePolling(loadExpenses, 20000, editId === null)
+  usePolling(loadExpenses, 60000, editId === null)
 
   const accountOptions = useMemo(() =>
     Array.from(new Set(expenses.map(e => e.expense_account).filter(Boolean))).sort()

@@ -32,7 +32,7 @@ export default function AdvertStatusPanel() {
   }
 
   useEffect(() => { load() }, [])
-  usePolling(load, 20000, savingId === null)
+  usePolling(load, 60000, savingId === null)
 
   async function setStatus(item_id: number, has_advert: boolean) {
     setSavingId(item_id)

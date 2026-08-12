@@ -44,7 +44,7 @@ export default function ActivityToaster() {
     }
 
     poll()
-    const id = setInterval(poll, 8000)
+    const id = setInterval(poll, 30000)
     return () => { cancelled = true; clearInterval(id) }
   }, [status, username])
 
