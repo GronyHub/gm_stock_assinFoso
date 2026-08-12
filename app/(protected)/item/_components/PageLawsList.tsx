@@ -556,8 +556,8 @@ export default function PageLawsList({
               onKeyDown={e => { if (e.key === 'Escape') { setReplyingTo(null); setReplyText('') } }}
               className={`flex-1 min-w-0 ${lg ? 'text-[10px] rounded' : 'text-[8px]'} bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 resize-none w-full`} />
             <div className={lg ? 'flex gap-1' : 'flex gap-0.5'}>
-              <button onClick={() => addReply(itemType, itemId)} className={`flex-1 text-green-600 hover:text-green-700 ${lg ? 'text-xs' : 'text-[8px]'} font-bold`}>Post</button>
-              <button onClick={() => { setReplyingTo(null); setReplyText('') }} className={`shrink-0 text-gray-400 hover:text-gray-600 ${lg ? 'text-xs' : 'text-[8px]'} font-bold`}>×</button>
+              <button type="button" onClick={() => addReply(itemType, itemId)} className={`flex-1 text-green-600 hover:text-green-700 ${lg ? 'text-xs' : 'text-[8px]'} font-bold`}>Post</button>
+              <button type="button" onClick={() => { setReplyingTo(null); setReplyText('') }} className={`shrink-0 text-gray-400 hover:text-gray-600 ${lg ? 'text-xs' : 'text-[8px]'} font-bold`}>×</button>
             </div>
           </div>
         )}
@@ -567,7 +567,7 @@ export default function PageLawsList({
               <div key={reply.id} className={lg ? 'bg-gray-50 p-1.5 rounded' : 'bg-gray-50 p-0.5 rounded'}>
                 <div className={lg ? 'flex items-start justify-between gap-2' : 'flex items-center justify-between gap-1'}>
                   <p className="font-semibold text-gray-700">{reply.created_by}</p>
-                  <button onClick={() => deleteReply(reply.id, itemType, itemId)} className="text-red-500 hover:text-red-700 font-bold">×</button>
+                  <button type="button" onClick={() => deleteReply(reply.id, itemType, itemId)} className="text-red-500 hover:text-red-700 font-bold">×</button>
                 </div>
                 <p className="text-gray-600 mt-0.5">{reply.reply_text}</p>
                 {lg && <p className="text-gray-400 mt-0.5">{formatDate(reply.created_at)}</p>}
@@ -599,8 +599,8 @@ export default function PageLawsList({
           {ASSIGNABLE_STAFF.map(staff => <option key={staff} value={staff}>{staff}</option>)}
         </select>
         <div className="flex gap-0.5">
-          <button onClick={onCreate} className="flex-1 text-green-600 hover:text-green-700 text-[8px] font-bold">Create</button>
-          <button onClick={onCancel} className="shrink-0 text-gray-400 hover:text-gray-600 text-[8px] font-bold">×</button>
+          <button type="button" onClick={onCreate} className="flex-1 text-green-600 hover:text-green-700 text-[8px] font-bold">Create</button>
+          <button type="button" onClick={onCancel} className="shrink-0 text-gray-400 hover:text-gray-600 text-[8px] font-bold">×</button>
         </div>
       </div>
     )
@@ -614,8 +614,8 @@ export default function PageLawsList({
           onKeyDown={e => { if (e.key === 'Escape') onCancel() }}
           className="flex-1 min-w-0 text-[8px] bg-gray-100 border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 resize-none" />
         <div className="flex gap-1">
-          <button onClick={onSave} className="flex-1 text-green-600 hover:text-green-700 text-[8px] font-bold">Save</button>
-          <button onClick={onCancel} className="shrink-0 text-gray-400 hover:text-gray-600 text-[8px] font-bold">×</button>
+          <button type="button" onClick={onSave} className="flex-1 text-green-600 hover:text-green-700 text-[8px] font-bold">Save</button>
+          <button type="button" onClick={onCancel} className="shrink-0 text-gray-400 hover:text-gray-600 text-[8px] font-bold">×</button>
         </div>
       </div>
     )
@@ -651,8 +651,8 @@ export default function PageLawsList({
                       {ASSIGNABLE_STAFF.map(staff => <option key={staff} value={staff}>{staff}</option>)}
                     </select>
                     <div className="flex gap-0.5">
-                      <button onClick={() => saveEditTask(lawId, flagKey)} className="flex-1 text-green-600 hover:text-green-700 text-[8px] font-bold">✓</button>
-                      <button onClick={() => setEditingTaskId(null)} className="shrink-0 text-gray-400 hover:text-gray-600 text-[8px] font-bold">×</button>
+                      <button type="button" onClick={() => saveEditTask(lawId, flagKey)} className="flex-1 text-green-600 hover:text-green-700 text-[8px] font-bold">✓</button>
+                      <button type="button" onClick={() => setEditingTaskId(null)} className="shrink-0 text-gray-400 hover:text-gray-600 text-[8px] font-bold">×</button>
                     </div>
                   </div>
                 ) : (
@@ -667,10 +667,10 @@ export default function PageLawsList({
                     </div>
                     {menuTaskId === task.id && (
                       <div className="flex gap-1 text-[8px] mt-0.5">
-                        <button onClick={() => { toggleTaskCompletion(task.id, task.done, lawId, flagKey); setMenuTaskId(null) }} title={task.done ? 'Reopen' : 'Complete'} className="text-green-600 hover:text-green-700 font-semibold">✓</button>
-                        <button onClick={() => { startEditTask(task); setMenuTaskId(null) }} title="Edit task" className="text-gray-500 hover:text-gray-700 font-semibold">✎</button>
-                        <button onClick={() => { setReplyingTo(`task-${task.id}`); fetchReplies('task', task.id); setMenuTaskId(null) }} title="Reply" className="text-blue-500 hover:text-blue-700 font-semibold">💬</button>
-                        <button onClick={() => { deleteTask(task.id, lawId, flagKey); setMenuTaskId(null) }} title="Delete task" className="text-red-500 hover:text-red-700 font-semibold">×</button>
+                        <button type="button" onClick={() => { toggleTaskCompletion(task.id, task.done, lawId, flagKey); setMenuTaskId(null) }} title={task.done ? 'Reopen' : 'Complete'} className="text-green-600 hover:text-green-700 font-semibold">✓</button>
+                        <button type="button" onClick={() => { startEditTask(task); setMenuTaskId(null) }} title="Edit task" className="text-gray-500 hover:text-gray-700 font-semibold">✎</button>
+                        <button type="button" onClick={() => { setReplyingTo(`task-${task.id}`); fetchReplies('task', task.id); setMenuTaskId(null) }} title="Reply" className="text-blue-500 hover:text-blue-700 font-semibold">💬</button>
+                        <button type="button" onClick={() => { deleteTask(task.id, lawId, flagKey); setMenuTaskId(null) }} title="Delete task" className="text-red-500 hover:text-red-700 font-semibold">×</button>
                       </div>
                     )}
                     {renderReplyThread(`task-${task.id}`, 'task', task.id, 'sm')}
@@ -736,8 +736,8 @@ export default function PageLawsList({
             onKeyDown={e => { if (e.key === 'Enter') addGlobalLaw(); if (e.key === 'Escape') setOpenForm?.(null) }}
             className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
           <div className="flex gap-0.5">
-            <button onClick={addGlobalLaw} disabled={!globalLawText.trim()} className="flex-1 text-green-600 hover:text-green-700 disabled:opacity-40 font-bold">Add</button>
-            <button onClick={() => setOpenForm?.(null)} className="shrink-0 text-gray-400 hover:text-gray-600 font-bold">×</button>
+            <button type="button" onClick={addGlobalLaw} disabled={!globalLawText.trim()} className="flex-1 text-green-600 hover:text-green-700 disabled:opacity-40 font-bold">Add</button>
+            <button type="button" onClick={() => setOpenForm?.(null)} className="shrink-0 text-gray-400 hover:text-gray-600 font-bold">×</button>
           </div>
         </div>
       )}
@@ -761,9 +761,9 @@ export default function PageLawsList({
                       if (e.key === 'Escape') setEditingId(null)
                     }}
                     className="min-w-0 flex-1 text-[8px] bg-gray-100 border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
-                  <button onClick={() => saveEdit(l.id)} title="Save"
+                  <button type="button" onClick={() => saveEdit(l.id)} title="Save"
                     className="shrink-0 text-green-600 hover:text-green-700 px-0.5 text-[8px] font-bold">✓</button>
-                  <button onClick={() => setEditingId(null)} title="Cancel"
+                  <button type="button" onClick={() => setEditingId(null)} title="Cancel"
                     className="shrink-0 text-gray-400 hover:text-gray-600 px-0.5 text-[8px] font-bold">×</button>
                 </>
               ) : (
@@ -772,16 +772,16 @@ export default function PageLawsList({
                     <p className="text-[9px] text-gray-800">{l.text}</p>
                     {taskForLaw !== l.id && noteForLaw !== l.id && (
                       <>
-                        <button onClick={() => { setTaskForLaw(l.id); fetchTasksForLaw(l.id) }} title="Add task" className="text-blue-500 hover:text-blue-600 font-semibold text-[8px]">✓ Task</button>
-                        <button onClick={() => setNoteForLaw(l.id)} title="Add note" className="text-amber-500 hover:text-amber-600 font-semibold text-[8px]">📝 Note</button>
+                        <button type="button" onClick={() => { setTaskForLaw(l.id); fetchTasksForLaw(l.id) }} title="Add task" className="text-blue-500 hover:text-blue-600 font-semibold text-[8px]">✓ Task</button>
+                        <button type="button" onClick={() => setNoteForLaw(l.id)} title="Add note" className="text-amber-500 hover:text-amber-600 font-semibold text-[8px]">📝 Note</button>
                       </>
                     )}
                   </div>
                   {menuLawId === l.id && (
                     <div className="flex gap-1 text-[8px]">
-                      <button onClick={() => startEdit(l)} title="Edit" className="text-gray-500 hover:text-gray-700 font-semibold">✎</button>
-                      <button onClick={() => { setReplyingTo(`law-${l.id}`); fetchReplies('law', l.id) }} title="Reply" className="text-blue-500 hover:text-blue-700 font-semibold">💬</button>
-                      <button onClick={() => { remove(l.id); setMenuLawId(null) }} className="text-red-500 hover:text-red-700 font-semibold">×</button>
+                      <button type="button" onClick={() => startEdit(l)} title="Edit" className="text-gray-500 hover:text-gray-700 font-semibold">✎</button>
+                      <button type="button" onClick={() => { setReplyingTo(`law-${l.id}`); fetchReplies('law', l.id) }} title="Reply" className="text-blue-500 hover:text-blue-700 font-semibold">💬</button>
+                      <button type="button" onClick={() => { remove(l.id); setMenuLawId(null) }} className="text-red-500 hover:text-red-700 font-semibold">×</button>
                     </div>
                   )}
                   {taskForLaw === l.id
@@ -805,20 +805,20 @@ export default function PageLawsList({
                 <div className="flex items-center gap-1 flex-wrap leading-none">
                   <p className="text-[9px] text-gray-800">{f.label}</p>
                   {f.description && (
-                    <button onClick={() => setExpandedFlagDesc(expandedFlagDesc === f.key ? null : f.key)}
+                    <button type="button" onClick={() => setExpandedFlagDesc(expandedFlagDesc === f.key ? null : f.key)}
                       title="Show description"
                       className="text-gray-400 hover:text-gray-600 text-[8px] font-bold shrink-0">ⓘ</button>
                   )}
                   <span className="text-[8px] bg-red-100 text-red-700 font-bold px-1 py-0 rounded text-center">{f.count}</span>
                   {f.onViewClick && (
-                    <button onClick={f.onViewClick} className="text-[8px] text-blue-600 font-semibold hover:text-blue-700">
+                    <button type="button" onClick={f.onViewClick} className="text-[8px] text-blue-600 font-semibold hover:text-blue-700">
                       flags
                     </button>
                   )}
                   {taskForFlag !== f.key && noteForFlag !== f.key && (
                     <>
-                      <button onClick={() => { setTaskForFlag(f.key); fetchTasksForFlag(f.key) }} title="Add task for this flag" className="text-blue-500 hover:text-blue-600 font-semibold text-[8px]">✓ Task</button>
-                      <button onClick={() => setNoteForFlag(f.key)} title="Add note for this flag" className="text-amber-500 hover:text-amber-600 font-semibold text-[8px]">📝 Note</button>
+                      <button type="button" onClick={() => { setTaskForFlag(f.key); fetchTasksForFlag(f.key) }} title="Add task for this flag" className="text-blue-500 hover:text-blue-600 font-semibold text-[8px]">✓ Task</button>
+                      <button type="button" onClick={() => setNoteForFlag(f.key)} title="Add note for this flag" className="text-amber-500 hover:text-amber-600 font-semibold text-[8px]">📝 Note</button>
                     </>
                   )}
                 </div>
@@ -846,9 +846,9 @@ export default function PageLawsList({
                 </div>
                 {menuGlobalTaskId === task.id && (
                   <div className="flex gap-1 text-[8px] mt-0.5">
-                    <button onClick={() => { toggleGlobalTaskCompletion(task.id, task.done); setMenuGlobalTaskId(null) }} title={task.done ? 'Reopen' : 'Complete'} className="text-green-600 hover:text-green-700 font-semibold">✓</button>
-                    <button onClick={() => { setReplyingTo(`task-${task.id}`); fetchReplies('task', task.id); setMenuGlobalTaskId(null) }} title="Reply" className="text-blue-500 hover:text-blue-700 font-semibold">💬</button>
-                    <button onClick={() => { deleteGlobalTask(task.id); setMenuGlobalTaskId(null) }} title="Delete task" className="text-red-500 hover:text-red-700 font-semibold">×</button>
+                    <button type="button" onClick={() => { toggleGlobalTaskCompletion(task.id, task.done); setMenuGlobalTaskId(null) }} title={task.done ? 'Reopen' : 'Complete'} className="text-green-600 hover:text-green-700 font-semibold">✓</button>
+                    <button type="button" onClick={() => { setReplyingTo(`task-${task.id}`); fetchReplies('task', task.id); setMenuGlobalTaskId(null) }} title="Reply" className="text-blue-500 hover:text-blue-700 font-semibold">💬</button>
+                    <button type="button" onClick={() => { deleteGlobalTask(task.id); setMenuGlobalTaskId(null) }} title="Delete task" className="text-red-500 hover:text-red-700 font-semibold">×</button>
                   </div>
                 )}
                 {renderReplyThread(`task-${task.id}`, 'task', task.id, 'sm')}
@@ -865,7 +865,7 @@ export default function PageLawsList({
                 {note.notes && (<p className="text-[8px] text-gray-600 line-clamp-1">{note.notes}</p>)}
                 {menuGlobalNoteId === (note.id || 0) && (
                   <div className="flex gap-1 text-[8px] mt-0.5">
-                    <button onClick={() => { setReplyingTo(`note-${note.id}`); fetchReplies('note', note.id ?? 0); setMenuGlobalNoteId(null) }} title="Reply" className="text-blue-500 hover:text-blue-700 font-semibold">💬</button>
+                    <button type="button" onClick={() => { setReplyingTo(`note-${note.id}`); fetchReplies('note', note.id ?? 0); setMenuGlobalNoteId(null) }} title="Reply" className="text-blue-500 hover:text-blue-700 font-semibold">💬</button>
                   </div>
                 )}
                 {renderReplyThread(`note-${note.id}`, 'note', note.id ?? 0, 'sm')}
@@ -888,8 +888,8 @@ export default function PageLawsList({
                 {ASSIGNABLE_STAFF.map(staff => <option key={staff} value={staff}>{staff}</option>)}
               </select>
               <div className="flex gap-0.5">
-                <button onClick={addGlobalTask} className="flex-1 text-green-600 hover:text-green-700 font-bold">Create</button>
-                <button onClick={() => setOpenForm?.(null)} className="shrink-0 text-gray-400 hover:text-gray-600 font-bold">×</button>
+                <button type="button" onClick={addGlobalTask} className="flex-1 text-green-600 hover:text-green-700 font-bold">Create</button>
+                <button type="button" onClick={() => setOpenForm?.(null)} className="shrink-0 text-gray-400 hover:text-gray-600 font-bold">×</button>
               </div>
             </div>
           )}
@@ -907,8 +907,8 @@ export default function PageLawsList({
                 onKeyDown={e => { if (e.key === 'Escape') setOpenForm?.(null) }}
                 className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 resize-none" />
               <div className="flex gap-0.5">
-                <button onClick={addGlobalNote} className="flex-1 text-green-600 hover:text-green-700 font-bold">Save</button>
-                <button onClick={() => setOpenForm?.(null)} className="shrink-0 text-gray-400 hover:text-gray-600 font-bold">×</button>
+                <button type="button" onClick={addGlobalNote} className="flex-1 text-green-600 hover:text-green-700 font-bold">Save</button>
+                <button type="button" onClick={() => setOpenForm?.(null)} className="shrink-0 text-gray-400 hover:text-gray-600 font-bold">×</button>
               </div>
             </div>
           )}
