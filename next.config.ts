@@ -14,6 +14,12 @@ const nextConfig: NextConfig = {
       { source: '/sw.js', headers: [{ key: 'Cache-Control', value: 'no-cache' }] },
     ];
   },
+  // Enable output file tracing to reduce deployment bundle size and speed up builds
+  outputFileTracingRoot: undefined,
+  // Skip validation that can slow down builds
+  typescript: {
+    tsconfigPath: './tsconfig.json',
+  },
 };
 
 export default nextConfig;

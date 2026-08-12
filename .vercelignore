@@ -1,0 +1,43 @@
+# Documentation - not needed for deployment
+README.md
+CLAUDE.md
+AGENTS.md
+
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# IDE and editor config
+.vscode
+.idea
+*.swp
+*.swo
+*.code-workspace
+
+# Development files
+.env.local
+.env.*.local
+.DS_Store
+
+# Test files (if any)
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+__tests__
+__mocks__
+
+# Local development
+node_modules/.cache
+.next/cache
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.circleci
+
+# Package manager lock files (Vercel caches these)
+yarn.lock
+package-lock.json
+pnpm-lock.yaml
