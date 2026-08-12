@@ -17,14 +17,62 @@ export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json([], { status: 401 })
 
+  const view = req.nextUrl.searchParams.get('view')
   const category = req.nextUrl.searchParams.get('category')
+
+  // Grid view: fetch latest entry for each grony section + check type combination
+  if (view === 'grony_checks') {
+    try {
+      await ensureManageLogs()
+      const rows = await sql`
+        SELECT DISTINCT ON (grony_section, category)
+          grony_section, category, log_date::text, created_at
+        FROM manage_logs
+        WHERE category LIKE 'grony_%'
+        ORDER BY grony_section, category, log_date DESC, created_at DESC
+      `
+
+      const status: Record<number, Record<string, { hasEntry: boolean; lastDate?: string }>> = {}
+      for (let i = 1; i <= 10; i++) {
+        status[i] = {
+          properties: { hasEntry: false },
+          cleanliness: { hasEntry: false },
+          arrangement: { hasEntry: false },
+          repair_works: { hasEntry: false },
+          customer_display: { hasEntry: false },
+          security: { hasEntry: false },
+        }
+      }
+
+      rows.forEach((row: any) => {
+        const match = row.category.match(/grony_([^_]+)_(\d+)/)
+        if (match) {
+          const checkType = match[1]
+          const gronySection = parseInt(match[2], 10)
+          if (status[gronySection]?.[checkType]) {
+            status[gronySection][checkType] = {
+              hasEntry: true,
+              lastDate: new Date(row.log_date).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })
+            }
+          }
+        }
+      })
+
+      return NextResponse.json(status)
+    } catch (e) {
+      console.error('manage-logs grony_checks error:', e)
+      return NextResponse.json({})
+    }
+  }
+
+  // Regular category view
   if (!category) return NextResponse.json({ error: 'Missing category' }, { status: 400 })
 
   try {
     await ensureManageLogs()
     const rows = await sql`
       SELECT id, category, log_date::text, notes, photo_url, logged_by, created_at,
-        attendees, start_time::text, end_time::text
+        attendees, start_time::text, end_time::text, grony_section
       FROM manage_logs
       WHERE category = ${category}
       ORDER BY log_date DESC, created_at DESC

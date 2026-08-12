@@ -13,6 +13,7 @@ export type ManageView =
   | 'repair_works' | 'quality_assurance'
   | 'properties'
   | 'unfortunate_events' | 'security_chk' | 'app_info'
+  | 'grony_checks'
   | 'grony_1' | 'grony_2' | 'grony_3' | 'grony_4' | 'grony_5'
   | 'grony_6' | 'grony_7' | 'grony_8' | 'grony_9' | 'grony_10'
 
@@ -88,6 +89,7 @@ export const MANAGE_LIST_ITEMS: { key: ManageView; label: string; icon?: string;
   { key: 'whatsapp', label: 'WhatsApp', icon: '💬', group: 'advert' },
   { key: 'cuttings', label: 'Cuttings', icon: '✂️', group: 'advert' },
   { key: 'video', label: 'Video', icon: '🎬', group: 'advert' },
+  { key: 'grony_checks', label: 'Grony Checks Grid', icon: '📊', group: 'grony_1_to_10' },
   ...LOG_CATEGORIES.map(c => ({ key: c.key, label: c.label, icon: c.icon, group: LOG_CATEGORY_GROUPS[c.key] })),
   // 'properties' used to be a row here too -- moved to the Cash pane, right
   // under Expenses (see item/page.tsx), split into its own "Properties at

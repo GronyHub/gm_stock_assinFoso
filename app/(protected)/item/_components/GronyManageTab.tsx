@@ -9,6 +9,7 @@ import DynamicCategoryPage from './DynamicCategoryPage'
 import PropertiesPage from './PropertiesPage'
 import OpenerView from './OpenerView'
 import CloserView from './CloserView'
+import GronyChecksGrid from './GronyChecksGrid'
 import type { Violation } from './useViolations'
 import { LOG_CATEGORIES, FIXED_CATEGORY_LABELS, type ManageView } from './manageViewData'
 
@@ -97,6 +98,7 @@ export default function GronyManageContent({
     {view === 'app_info' && (
       <DynamicCategoryPage categoryId={categoryIds[FIXED_CATEGORY_LABELS.app_info]} categoryLabel="App info" canManage={canManage} />
     )}
+    {view === 'grony_checks' && <GronyChecksGrid />}
     {logCategory && <ManageLogPanel category={logCategory.key} label={logCategory.label} icon={logCategory.icon} />}
   </>)
 }
