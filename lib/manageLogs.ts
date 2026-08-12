@@ -21,6 +21,7 @@ export async function ensureManageLogs() {
     ALTER TABLE manage_logs
       ADD COLUMN IF NOT EXISTS attendees TEXT[],
       ADD COLUMN IF NOT EXISTS start_time TIME,
-      ADD COLUMN IF NOT EXISTS end_time TIME
+      ADD COLUMN IF NOT EXISTS end_time TIME,
+      ADD COLUMN IF NOT EXISTS grony_section INTEGER
   `.catch(() => {})
 }
