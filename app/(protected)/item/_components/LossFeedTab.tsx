@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { fmtDate } from '@/lib/fmtDate'
 import { useColumnPrefs, ColumnsPickerButton, ColResizeHandle, type ColumnDef } from './columnPrefs'
 
-const LOSS_FEED_COL_DEFAULTS: Record<string, number> = { date: 60, item: 140, expected: 50, counted: 50, lossQty: 50, lossAmt: 65 }
+const LOSS_FEED_COL_DEFAULTS: Record<string, number> = { date: 45, item: 90, expected: 35, counted: 35, lossQty: 35, lossAmt: 45 }
 
 // Date + Item stay sticky/always-visible; these four are the only ones the
 // picker can hide/reorder/rename. Labels flip between Loss/Gain wording
