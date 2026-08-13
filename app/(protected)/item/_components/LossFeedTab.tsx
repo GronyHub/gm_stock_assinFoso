@@ -92,23 +92,23 @@ export default function LossFeedTab({ search, kind = 'loss' }: { search: string;
   return (
     <div className="flex flex-col h-full min-h-0">
       {periodSummary && (
-        <div className="grid grid-cols-5 gap-1 px-3 pt-2 shrink-0">
+        <div className="grid grid-cols-5 gap-0.5 px-2 pt-1 shrink-0">
           {periodSummary.map(r => (
-            <div key={r.label} className="bg-white border border-gray-200 rounded-lg px-1.5 py-1 text-center">
-              <p className="text-[8px] text-gray-400 truncate">{r.label}</p>
-              <p className={`text-[10px] font-bold ${r.period.n > 0 ? 'text-red-600' : 'text-green-600'}`}>₵{fmtN(r.period.amt)}</p>
+            <div key={r.label} className="bg-white border border-gray-200 rounded px-1 py-0.5 text-center">
+              <p className="text-[7px] text-gray-400 truncate">{r.label}</p>
+              <p className={`text-[8px] font-bold ${r.period.n > 0 ? 'text-red-600' : 'text-green-600'}`}>₵{fmtN(r.period.amt)}</p>
             </div>
           ))}
         </div>
       )}
-      <div className={`flex items-center justify-between px-3 py-1.5 border-b shrink-0 ${isGain ? 'bg-amber-50 border-amber-100' : 'bg-red-50 border-red-100'}`}>
-        <p className={`text-[10px] font-bold ${isGain ? 'text-amber-800' : 'text-red-800'}`}>
+      <div className={`flex flex-col gap-1 px-2 py-1 border-b shrink-0 ${isGain ? 'bg-amber-50 border-amber-100' : 'bg-red-50 border-red-100'}`}>
+        <p className={`text-[8px] font-bold ${isGain ? 'text-amber-800' : 'text-red-800'}`}>
           {isGain
             ? `⚠ ${filtered.length} gain${filtered.length === 1 ? '' : 's'} on record — all should be 0; each one is a missing bill/GMC or a count error to fix`
             : `${filtered.length} loss${filtered.length === 1 ? '' : 'es'} detected`}
         </p>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <p className={`text-[10px] font-bold ${isGain ? 'text-amber-800' : 'text-red-800'}`}>Total: ₵{fmtN(parseFloat(totalAmt.toFixed(2)))}</p>
+        <div className="flex items-center justify-between gap-1">
+          <p className={`text-[8px] font-bold ${isGain ? 'text-amber-800' : 'text-red-800'}`}>Total: ₵{fmtN(parseFloat(totalAmt.toFixed(2)))}</p>
           <ColumnsPickerButton prefs={colPrefs} />
         </div>
       </div>
@@ -127,12 +127,12 @@ export default function LossFeedTab({ search, kind = 'loss' }: { search: string;
               {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: colPrefs.getWidth(c.key, LOSS_FEED_COL_DEFAULTS[c.key] ?? 80) }} />)}
             </colgroup>
             <thead className="sticky top-0 z-10">
-              <tr className={`${isGain ? 'bg-amber-500' : 'bg-red-600'} text-white font-bold`}>
-                <th className="relative overflow-hidden text-left px-1.5 py-1 border-r border-white/20">
+              <tr className={`${isGain ? 'bg-amber-500' : 'bg-red-600'} text-white font-bold text-[9px]`}>
+                <th className="relative overflow-hidden text-left px-0.5 py-0.5 border-r border-white/20">
                   <span className="block truncate">DATE</span>
                   <ColResizeHandle onResize={d => colPrefs.resizeWidth('date', d, LOSS_FEED_COL_DEFAULTS.date)} onReset={() => colPrefs.resetWidth('date')} />
                 </th>
-                <th className="relative overflow-hidden text-left px-1.5 py-1 border-r border-white/20">
+                <th className="relative overflow-hidden text-left px-0.5 py-0.5 border-r border-white/20">
                   <span className="block truncate">ITEM</span>
                   <ColResizeHandle onResize={d => colPrefs.resizeWidth('item', d, LOSS_FEED_COL_DEFAULTS.item)} onReset={() => colPrefs.resetWidth('item')} />
                 </th>
@@ -140,8 +140,8 @@ export default function LossFeedTab({ search, kind = 'loss' }: { search: string;
                   const meta = colByKey.get(c.key)!
                   return (
                     <th key={c.key} title={meta.title}
-                      className={`relative overflow-hidden px-1 py-1 ${c.key === 'lossAmt' ? 'text-right px-1.5' : 'text-center'} ${i === colPrefs.shownColumns.length - 1 ? '' : 'border-r border-white/20'}`}>
-                      <span className="block truncate">{c.label}</span>
+                      className={`relative overflow-hidden px-0.5 py-0.5 ${c.key === 'lossAmt' ? 'text-right px-0.5' : 'text-center'} ${i === colPrefs.shownColumns.length - 1 ? '' : 'border-r border-white/20'}`}>
+                      <span className="block truncate text-[9px]">{c.label}</span>
                       <ColResizeHandle onResize={d => colPrefs.resizeWidth(c.key, d, LOSS_FEED_COL_DEFAULTS[c.key] ?? 80)} onReset={() => colPrefs.resetWidth(c.key)} />
                     </th>
                   )
@@ -153,17 +153,17 @@ export default function LossFeedTab({ search, kind = 'loss' }: { search: string;
                 const newDay = i === 0 || filtered[i - 1].date !== e.date
                 return (
                   <tr key={`${e.item_id}-${e.date}`} className={`${newDay ? 'border-t-2 border-gray-300' : ''} bg-white ${isGain ? 'hover:bg-amber-50/50' : 'hover:bg-red-50/50'}`}>
-                    <td className="px-1.5 py-1 font-bold text-gray-600 truncate">
+                    <td className="px-0.5 py-0.5 font-bold text-gray-600 truncate text-[9px]">
                       {newDay ? fmtDate(e.date) : <span className="text-gray-300">〃</span>}
                     </td>
-                    <td className="px-1.5 py-1 font-semibold text-gray-900 overflow-hidden">
+                    <td className="px-0.5 py-0.5 font-semibold text-gray-900 overflow-hidden text-[9px]">
                       <Link href={`/item?tab=loss&view=item360&jumpItemId=${e.item_id}`} className="block truncate text-blue-600 hover:underline">{e.item_name}</Link>
                     </td>
                     {colPrefs.shownColumns.map(c => {
-                      if (c.key === 'expected') return <td key={c.key} className="px-1 py-1 text-center text-gray-500">{fmtN(e.expected)}</td>
-                      if (c.key === 'counted') return <td key={c.key} className="px-1 py-1 text-center text-gray-900 font-semibold">{fmtN(e.counted)}</td>
-                      if (c.key === 'lossQty') return <td key={c.key} className={`px-1 py-1 text-center font-bold ${valueCls}`}>{sign}{fmtN(e.loss_qty)}</td>
-                      return <td key={c.key} className={`px-1.5 py-1 text-right font-bold whitespace-nowrap ${valueCls}`}>{sign}₵{fmtN(e.loss_amt)}</td>
+                      if (c.key === 'expected') return <td key={c.key} className="px-0.5 py-0.5 text-center text-gray-500 text-[9px]">{fmtN(e.expected)}</td>
+                      if (c.key === 'counted') return <td key={c.key} className="px-0.5 py-0.5 text-center text-gray-900 font-semibold text-[9px]">{fmtN(e.counted)}</td>
+                      if (c.key === 'lossQty') return <td key={c.key} className={`px-0.5 py-0.5 text-center font-bold ${valueCls} text-[9px]`}>{sign}{fmtN(e.loss_qty)}</td>
+                      return <td key={c.key} className={`px-0.5 py-0.5 text-right font-bold whitespace-nowrap ${valueCls} text-[9px]`}>{sign}₵{fmtN(e.loss_amt)}</td>
                     })}
                   </tr>
                 )
