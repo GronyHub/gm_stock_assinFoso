@@ -596,28 +596,6 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
         </div>
       )}
       <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0 flex-wrap">
-        <button onClick={() => setGroupBy(g => g === 'account' ? 'none' : 'account')}
-          className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition
-            ${groupBy === 'account' ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
-          By Account
-        </button>
-        <button onClick={() => setGroupBy(g => g === 'vendor' ? 'none' : 'vendor')}
-          className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition
-            ${groupBy === 'vendor' ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
-          By Vendor
-        </button>
-        <div className="w-px h-3 bg-gray-300 shrink-0" />
-        <label className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
-          <input type="checkbox" checked={showProperties} onChange={() => setShowProperties(p => !p)}
-            className="w-3 h-3 accent-blue-600" />
-          Properties
-        </label>
-        <label className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
-          <input type="checkbox" checked={showNonProperties} onChange={() => setShowNonProperties(p => !p)}
-            className="w-3 h-3 accent-blue-600" />
-          Non-Properties
-        </label>
-        <div className="w-px h-3 bg-gray-300 shrink-0" />
         <button onClick={() => setShowPropertiesPanel(p => !p)}
           className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition
             ${showPropertiesPanel ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
