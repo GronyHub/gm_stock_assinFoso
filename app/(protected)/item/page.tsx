@@ -226,6 +226,7 @@ const REPORT_VIEWS = new Set<LossView>([
 const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: string }[] = [
   { key: 'counts',    label: 'Counts',    icon: '🔢' },
   { key: 'items',    label: 'Items',    icon: '📦', group: 'Items' },
+  { key: 'item360',   label: 'Item 360',  icon: '360' },
   { key: 'sales',    label: 'Sales',    icon: '🧾', group: 'Sales' },
   { key: 'bills',    label: 'Bills',    icon: '📃' },
   { key: 'purchaseOrders',   label: 'Purchase Ord',   icon: '🛒' },
@@ -2035,12 +2036,6 @@ function ItemHubPageInner() {
         {outerTab === 'loss' && lossView === 'purchaseOrders' && (
           <TabErrorBoundary>
             <div className="px-4 pt-4 space-y-2">{inlineLaws('Purchase Orders', purchaseOrdersLaws)}<PurchaseOrdersPage /></div>
-          </TabErrorBoundary>
-        )}
-        {outerTab === 'loss' && lossView === 'item360' && (
-          <TabErrorBoundary>
-            <div className="px-4 pt-2">{inlineLaws('Item 360', item360Laws)}</div>
-            <Item360Tab items={items} jumpToItemId={item360JumpId} onJumpDone={() => setItem360JumpId(null)} />
           </TabErrorBoundary>
         )}
         {/* Settings' own non-navigation row (see SettingsPane.tsx) -- now a
