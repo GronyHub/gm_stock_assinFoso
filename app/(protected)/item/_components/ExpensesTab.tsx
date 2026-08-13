@@ -27,6 +27,12 @@ type Expense = {
   source_sheet: string | null
 }
 
+type PropertyFields = Pick<Expense, 'availability' | 'working' | 'location' | 'not_working_reason' | 'not_available_reason'>
+
+const PROPERTY_LOCATIONS = Array.from({ length: 10 }, (_, i) => `Grony ${i + 1}`)
+const NOT_WORKING_REASONS = ['Faulty - Needs Repair', 'Condemned - Beyond Repairs']
+const NOT_AVAILABLE_REASONS = ['Spoilt and thrown away', 'Stolen', "At Grony's House"]
+
 const MONTHS = ['Ja','Fe','Mr','Ap','My','Ju','Jl','Au','Se','Oc','No','De']
 const DAYS   = ['Su','Mo','Tu','We','Th','Fr','Sa']
 
@@ -277,7 +283,7 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
                   </div>
                   {e.is_property && (
                     <p className="mt-1 text-[9px] text-blue-600 bg-blue-50 rounded px-2 py-1">
-                      Manage this property&apos;s availability/condition on the Properties page (Grony Manage).
+                      Manage this property&apos;s availability/location in the &ldquo;Manage Properties&rdquo; panel.
                     </p>
                   )}
                   <div className="flex items-center gap-1 mt-2">
@@ -319,6 +325,8 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
 
 type Props = { search: string; onFlagCountChange?: (n: number) => void }
 
+type PropTab = 'all' | 'available' | 'away'
+
 export default function ExpensesTab({ search, onFlagCountChange }: Props) {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
@@ -341,6 +349,9 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
   // near-duplicate pair; 'bundled' to descriptions that read like more than
   // one purchase; 'no_vendor' to expenses missing a vendor name.
   const [activeFlag, setActiveFlag] = useState<'similar' | 'bundled' | 'no_vendor' | 'properties_no_location' | null>(null)
+  const [showPropertiesPanel, setShowPropertiesPanel] = useState(false)
+  const [propertyTab, setPropertyTab] = useState<PropTab>('all')
+  const [propertySearch, setPropertySearch] = useState('')
   const colPrefs = useColumnPrefs<ColKey>('expensesTable', EXPENSE_COLUMNS)
 
   function loadExpenses() {
@@ -423,6 +434,31 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]))
   }, [filtered, groupBy])
 
+  const properties = useMemo(() => expenses.filter(e => e.is_property), [expenses])
+  const propertiesWithoutLocation = useMemo(() =>
+    properties.filter(p => p.availability === 'available' && !p.location),
+    [properties]
+  )
+  const filteredProperties = useMemo(() => {
+    let list = properties
+    if (propertyTab === 'available') list = list.filter(p => p.availability === 'available')
+    if (propertyTab === 'away')      list = list.filter(p => p.availability === 'not_available')
+    const q = propertySearch.toLowerCase()
+    if (!q) return list
+    return list.filter(p =>
+      p.expense_account.toLowerCase().includes(q) ||
+      (p.description ?? '').toLowerCase().includes(q) ||
+      (p.vendor_name ?? '').toLowerCase().includes(q) ||
+      (p.location ?? '').toLowerCase().includes(q)
+    )
+  }, [properties, propertyTab, propertySearch])
+
+  const propertyCounts = useMemo(() => ({
+    all: properties.length,
+    available: properties.filter(p => p.availability === 'available').length,
+    away: properties.filter(p => p.availability === 'not_available').length,
+  }), [properties])
+
   function openEdit(e: Expense) {
     if (e.amount_hidden) return
     setForm({
@@ -468,6 +504,22 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
       setConfirmDeleteId(null)
       setEditId(null)
     }
+  }
+
+  async function patchPropertyFields(expense: Expense, updates: Partial<PropertyFields>) {
+    const merged: PropertyFields = {
+      availability: expense.availability, working: expense.working, location: expense.location,
+      not_working_reason: expense.not_working_reason, not_available_reason: expense.not_available_reason,
+      ...updates,
+    }
+    const res = await fetch(`/api/expenses/${expense.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        availability: merged.availability, working: merged.working, location: merged.location,
+        notWorkingReason: merged.not_working_reason, notAvailableReason: merged.not_available_reason,
+      }),
+    })
+    if (res.ok) setExpenses(prev => prev.map(e => e.id === expense.id ? { ...e, ...merged } : e))
   }
 
   const tableProps = {
@@ -548,6 +600,11 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
           Non-Properties
         </label>
         <div className="w-px h-3 bg-gray-300 shrink-0" />
+        <button onClick={() => setShowPropertiesPanel(p => !p)}
+          className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition
+            ${showPropertiesPanel ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
+          Manage Properties
+        </button>
         <button onClick={() => setShowHistory(h => !h)}
           className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition
             ${showHistory ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
@@ -576,7 +633,114 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
         }
       }} />}
 
-      {!showHistory && <div className="flex-1 overflow-y-auto min-h-0 p-2">
+      {showPropertiesPanel && <div className="flex-1 overflow-y-auto min-h-0 p-2 space-y-2">
+        {propertiesWithoutLocation.length > 0 && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-2">
+            <p className="text-[9px] font-bold text-red-700">
+              ⚠ {propertiesWithoutLocation.length} available {propertiesWithoutLocation.length === 1 ? 'property' : 'properties'} without location assigned
+            </p>
+          </div>
+        )}
+        <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 rounded-xl flex-wrap">
+          {[
+            { key: 'all' as PropTab, label: 'All', count: propertyCounts.all },
+            { key: 'available' as PropTab, label: 'Available', count: propertyCounts.available },
+            { key: 'away' as PropTab, label: 'Not Available', count: propertyCounts.away },
+          ].map(t => (
+            <button key={t.key} onClick={() => setPropertyTab(t.key)}
+              className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition
+                ${propertyTab === t.key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
+              {t.label} ({t.count})
+            </button>
+          ))}
+          <input value={propertySearch} onChange={e => setPropertySearch(e.target.value)} placeholder="Search…"
+            className="text-[10px] bg-white border border-gray-200 rounded px-2 py-1 outline-none w-32" />
+        </div>
+        {filteredProperties.length === 0 ? (
+          <p className="text-xs text-gray-400 text-center py-10">No properties in this view</p>
+        ) : filteredProperties.map(p => (
+          <div key={p.id} className="bg-white border border-gray-200 rounded-xl p-3 space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-gray-900 truncate">{p.expense_account}</p>
+                <p className="text-[9px] text-gray-400">{fmtShort(p.expense_date)} · ₵{fmt(p.amount)}{p.vendor_name ? ` · ${p.vendor_name}` : ''}</p>
+              </div>
+              {p.description && <p className="text-[10px] text-gray-500 truncate max-w-[40%]">{p.description}</p>}
+            </div>
+
+            <div>
+              <p className="text-[9px] text-gray-400 mb-0.5">Availability</p>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-1 cursor-pointer">
+                  <input type="radio" name={`availability-${p.id}`} checked={p.availability === 'available'}
+                    onChange={() => patchPropertyFields(p, { availability: 'available', working: null, location: null, not_working_reason: null, not_available_reason: null })}
+                    className="w-3 h-3 accent-blue-600" />
+                  <span className="text-[10px] text-gray-700">Available</span>
+                </label>
+                <label className="flex items-center gap-1 cursor-pointer">
+                  <input type="radio" name={`availability-${p.id}`} checked={p.availability === 'not_available'}
+                    onChange={() => patchPropertyFields(p, { availability: 'not_available', working: null, location: null, not_working_reason: null, not_available_reason: null })}
+                    className="w-3 h-3 accent-blue-600" />
+                  <span className="text-[10px] text-gray-700">Not Available</span>
+                </label>
+              </div>
+            </div>
+
+            {p.availability === 'available' && (
+              <>
+                <div>
+                  <p className="text-[9px] text-gray-400 mb-0.5">Condition</p>
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-1 cursor-pointer">
+                      <input type="radio" name={`working-${p.id}`} checked={p.working === 'working'}
+                        onChange={() => patchPropertyFields(p, { working: 'working', not_working_reason: null })}
+                        className="w-3 h-3 accent-blue-600" />
+                      <span className="text-[10px] text-gray-700">Working</span>
+                    </label>
+                    <label className="flex items-center gap-1 cursor-pointer">
+                      <input type="radio" name={`working-${p.id}`} checked={p.working === 'not_working'}
+                        onChange={() => patchPropertyFields(p, { working: 'not_working' })}
+                        className="w-3 h-3 accent-blue-600" />
+                      <span className="text-[10px] text-gray-700">Not Working</span>
+                    </label>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[9px] text-gray-400 mb-0.5">Location</p>
+                  <select value={p.location ?? ''} onChange={ev => patchPropertyFields(p, { location: ev.target.value })}
+                    className={`${inputCls} w-auto`}>
+                    <option value="" disabled>Select…</option>
+                    {PROPERTY_LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                  </select>
+                </div>
+                {p.working === 'not_working' && (
+                  <div>
+                    <p className="text-[9px] text-gray-400 mb-0.5">Reason</p>
+                    <select value={p.not_working_reason ?? ''} onChange={ev => patchPropertyFields(p, { not_working_reason: ev.target.value })}
+                      className={`${inputCls} w-auto`}>
+                      <option value="" disabled>Select…</option>
+                      {NOT_WORKING_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                  </div>
+                )}
+              </>
+            )}
+
+            {p.availability === 'not_available' && (
+              <div>
+                <p className="text-[9px] text-gray-400 mb-0.5">Reason / Location</p>
+                <select value={p.not_available_reason ?? ''} onChange={ev => patchPropertyFields(p, { not_available_reason: ev.target.value })}
+                  className={`${inputCls} w-auto`}>
+                  <option value="" disabled>Select…</option>
+                  {NOT_AVAILABLE_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>}
+
+      {!showHistory && !showPropertiesPanel && <div className="flex-1 overflow-y-auto min-h-0 p-2">
         {groupBy !== 'none' ? (
           grouped.length === 0
             ? <p className="text-xs text-gray-400 text-center py-10">No expenses</p>
