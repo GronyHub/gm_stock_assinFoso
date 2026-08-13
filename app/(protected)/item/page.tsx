@@ -105,7 +105,7 @@ type OuterTab = 'today' | 'loss' | 'uk' | 'ch'
 // tab, not part of the Grony Cash merge -- it just reuses this same shared
 // state/pane machinery rather than needing its own parallel copy.
 type LossView = 'home' | 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'lossByTarget' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts' | 'dailySummary'
-  | 'purchaseOrders' | 'item360' | 'services'
+  | 'purchaseOrders' | 'item360' | 'services' | 'lossByItem'
   // "New Customer" used to be a toggle-open form living inside the Customers
   // list page itself (CustomersPage's own showForm state) -- it's now this
   // own separate LossView/pane row instead, so it gets its own PageToolIcons
@@ -232,6 +232,7 @@ const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: string }
   { key: 'purchaseOrders',   label: 'Purchase Ord',   icon: '🛒' },
   { key: 'feed',         label: 'Loss by Date',   icon: '📉', group: 'Loss' },
   { key: 'lossByTarget', label: 'Loss by Tgt',    icon: '🎯', group: 'Loss' },
+  { key: 'lossByItem',   label: 'Loss by Item',   icon: '📊', group: 'Loss' },
   { key: 'expenses', label: 'Expenses', icon: '💳', group: 'Expenses' },
   { key: 'vendors',   label: 'Vendors',   icon: '🏭', group: 'Expenses' },
   { key: 'pl',       label: 'P&L',      icon: '📈' },
@@ -2391,6 +2392,12 @@ function ItemHubPageInner() {
           <TabErrorBoundary>
             <div className="px-3 pt-2">{inlineLaws('Loss by Target', lossByTargetLaws)}</div>
             <div className="py-20 text-center text-gray-400 text-xs">Coming soon.</div>
+          </TabErrorBoundary>
+        )}
+        {outerTab === 'loss' && lossView === 'lossByItem' && (
+          <TabErrorBoundary>
+            <div className="px-3 pt-2">{inlineLaws('Loss by Item', lossByItemLaws)}</div>
+            <LossByItemTab search={search} />
           </TabErrorBoundary>
         )}
           </div>
