@@ -340,7 +340,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
   // 'similar' narrows to expenses whose account name is part of a
   // near-duplicate pair; 'bundled' to descriptions that read like more than
   // one purchase; 'no_vendor' to expenses missing a vendor name.
-  const [activeFlag, setActiveFlag] = useState<'similar' | 'bundled' | 'no_vendor' | null>(null)
+  const [activeFlag, setActiveFlag] = useState<'similar' | 'bundled' | 'no_vendor' | 'properties_no_location' | null>(null)
   const colPrefs = useColumnPrefs<ColKey>('expensesTable', EXPENSE_COLUMNS)
 
   function loadExpenses() {
@@ -378,13 +378,14 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
     similar: expenses.filter(e => similarAccountNames.has(e.expense_account)).length,
     bundled: expenses.filter(e => looksBundled(e.description)).length,
     no_vendor: expenses.filter(e => !e.vendor_name).length,
+    properties_no_location: expenses.filter(e => e.is_property && e.availability === 'available' && !e.location).length,
   }), [expenses, similarAccountNames])
   // Reports this page's own flag total up to item/page.tsx's pane badge --
-  // these three are local to Expenses (never went through the centralized
+  // these are local to Expenses (never went through the centralized
   // violations system other pages' pane badges read from), so the count on
   // the Expenses pane row never showed them until this existed.
   useEffect(() => {
-    onFlagCountChange?.(flagCounts.similar + flagCounts.bundled + flagCounts.no_vendor)
+    onFlagCountChange?.(flagCounts.similar + flagCounts.bundled + flagCounts.no_vendor + flagCounts.properties_no_location)
   }, [flagCounts, onFlagCountChange])
 
   const filtered = useMemo(() => {
@@ -392,6 +393,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
     if (activeFlag === 'similar') list = list.filter(e => similarAccountNames.has(e.expense_account))
     else if (activeFlag === 'bundled') list = list.filter(e => looksBundled(e.description))
     else if (activeFlag === 'no_vendor') list = list.filter(e => !e.vendor_name)
+    else if (activeFlag === 'properties_no_location') list = list.filter(e => e.is_property && e.availability === 'available' && !e.location)
     if (accountFilter) list = list.filter(e => e.expense_account === accountFilter)
     if (vendorFilter)  list = list.filter(e => e.vendor_name === vendorFilter)
     if (!showProperties || !showNonProperties) {
@@ -488,10 +490,11 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
 
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
 
-  const flagButtons: { key: 'similar' | 'bundled' | 'no_vendor'; letter: string; label: string }[] = [
+  const flagButtons: { key: 'similar' | 'bundled' | 'no_vendor' | 'properties_no_location'; letter: string; label: string }[] = [
     { key: 'similar', letter: 'S', label: 'Similar Account Names' },
     { key: 'bundled', letter: 'B', label: 'Description Looks Bundled' },
     { key: 'no_vendor', letter: 'V', label: 'No Vendor Name' },
+    { key: 'properties_no_location', letter: 'L', label: 'Properties Without Location' },
   ]
 
   return (
@@ -511,7 +514,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
               onChange={lawsPanel.bumpRefresh}
               flags={flagButtons.map(({ key, label }) => ({
                 key, label, count: flagCounts[key],
-                onViewClick: () => setActiveFlag(f => f === key ? null : (key as 'similar' | 'bundled' | 'no_vendor')),
+                onViewClick: () => setActiveFlag(f => f === key ? null : (key as 'similar' | 'bundled' | 'no_vendor' | 'properties_no_location')),
               }))}
               openForm={lawsPanel.openForm}
               setOpenForm={lawsPanel.setOpenForm}
