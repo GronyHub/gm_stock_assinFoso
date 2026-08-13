@@ -549,6 +549,13 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
     { key: 'properties_no_location', letter: 'L', label: 'Properties Without Location' },
   ]
 
+  const viewButtons: { key: string; letter: string; label: string; active: boolean; onChange: () => void }[] = [
+    { key: 'by_account', letter: 'A', label: 'By Account', active: groupBy === 'account', onChange: () => setGroupBy(g => g === 'account' ? 'none' : 'account') },
+    { key: 'by_vendor', letter: 'V', label: 'By Vendor', active: groupBy === 'vendor', onChange: () => setGroupBy(g => g === 'vendor' ? 'none' : 'vendor') },
+    { key: 'show_properties', letter: 'P', label: 'Properties', active: showProperties, onChange: () => setShowProperties(p => !p) },
+    { key: 'show_non_properties', letter: 'N', label: 'Non-Properties', active: showNonProperties, onChange: () => setShowNonProperties(p => !p) },
+  ]
+
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto px-2 pt-2">
@@ -564,10 +571,16 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
               scopeKey="Expenses"
               isItemsLaws={true}
               onChange={lawsPanel.bumpRefresh}
-              flags={flagButtons.map(({ key, label }) => ({
-                key, label, count: flagCounts[key],
-                onViewClick: () => setActiveFlag(f => f === key ? null : (key as 'similar' | 'bundled' | 'no_vendor' | 'properties_no_location')),
-              }))}
+              flags={[
+                ...flagButtons.map(({ key, label }) => ({
+                  key, label, count: flagCounts[key],
+                  onViewClick: () => setActiveFlag(f => f === key ? null : (key as 'similar' | 'bundled' | 'no_vendor' | 'properties_no_location')),
+                })),
+                ...viewButtons.map(({ key, label, active, onChange }) => ({
+                  key, label, count: active ? 1 : 0,
+                  onViewClick: onChange,
+                })),
+              ]}
               openForm={lawsPanel.openForm}
               setOpenForm={lawsPanel.setOpenForm}
               hideZeroFlags={lawsPanel.hideZeroFlags}
