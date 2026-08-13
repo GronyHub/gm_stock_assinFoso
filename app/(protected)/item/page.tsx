@@ -224,6 +224,7 @@ const REPORT_VIEWS = new Set<LossView>([
 // they're already reachable right under their parent row, which is itself
 // inside these same sections.
 const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: string }[] = [
+  { key: 'counts',    label: 'Counts',    icon: '🔢' },
   { key: 'items',    label: 'Items',    icon: '📦', group: 'Items' },
   { key: 'sales',    label: 'Sales',    icon: '🧾', group: 'Sales' },
   { key: 'bills',    label: 'Bills',    icon: '📃' },
@@ -236,7 +237,6 @@ const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: string }
   { key: 'cab',      label: 'CAB',      icon: '🗂️' },
   { key: 'customers', label: 'Customers', icon: '👥', group: 'Customers' },
   { key: 'receipts',  label: 'Cust. Receipts',  icon: '📑', group: 'Customers' },
-  { key: 'counts',    label: 'Counts',    icon: '🔢' },
 ]
 // flattenPaneRuns needs a group->label lookup to build each run's header
 // text, but a Cash row's group already IS its own label (see CASH_ITEMS'
