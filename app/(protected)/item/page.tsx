@@ -1338,7 +1338,7 @@ function ItemHubPageInner() {
     return (
       <p className="pt-2 pb-0.5">
         <button type="button" onClick={() => togglePaneGroup(key)}
-          className="flex items-center justify-between gap-1 w-full text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide px-2 py-1 truncate">
+          className="flex items-center justify-between gap-1 w-full text-[8px] font-extrabold text-white bg-[var(--pane-accent)] uppercase tracking-wide px-2 py-1 truncate opacity-80 hover:opacity-100">
           <span className="truncate">{label}</span>
           <span className="shrink-0">{collapsed ? '▸' : '▾'}</span>
         </button>
