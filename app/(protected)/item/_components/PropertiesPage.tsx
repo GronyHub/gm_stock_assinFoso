@@ -96,6 +96,11 @@ export default function PropertiesPage({ initialTab }: { initialTab?: PropTab | 
     away: properties.filter(p => p.availability === 'not_available').length,
   }), [properties])
 
+  const propertiesWithoutLocation = useMemo(() =>
+    properties.filter(p => p.availability === 'available' && !p.location),
+    [properties]
+  )
+
   async function patchPropertyFields(property: Property, updates: Partial<PropertyFields>) {
     const merged: PropertyFields = {
       availability: property.availability, working: property.working, location: property.location,
@@ -129,7 +134,14 @@ export default function PropertiesPage({ initialTab }: { initialTab?: PropTab | 
           activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
       </div>
       {lawsPanel.show && (
-        <div className="px-2 shrink-0">
+        <div className="px-2 shrink-0 space-y-2">
+          {propertiesWithoutLocation.length > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-2">
+              <p className="text-[9px] font-bold text-red-700">
+                ⚠ {propertiesWithoutLocation.length} available {propertiesWithoutLocation.length === 1 ? 'property' : 'properties'} without location assigned
+              </p>
+            </div>
+          )}
           <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
             <PageLawsList scopeKey="Properties" isItemsLaws={true} onChange={lawsPanel.bumpRefresh}
               openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
