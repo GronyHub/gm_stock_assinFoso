@@ -1,13 +1,9 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
+import { initializeDatabase } from '@/lib/dbInitialize'
 import { NextRequest, NextResponse } from 'next/server'
 
-// User-created tasks -- each pinned to a submenu (the same taskSubmenus
-// list page.tsx builds for the global search/Tasks blue bars) so it shows
-// up as an extra row under that submenu's bar in RoleFlagsTable, right
-// alongside the auto-generated violation rows. Self-migrating table/column,
-// same convention as the rest of this app's ad-hoc schema changes.
-async function ensureTable() {
+async function ensureCustomTasksTable() {
   await sql`
     CREATE TABLE IF NOT EXISTS custom_tasks (
       id SERIAL PRIMARY KEY,
@@ -32,7 +28,9 @@ async function ensureTable() {
 }
 
 export async function GET(req: NextRequest) {
-  await ensureTable()
+  await initializeDatabase()
+  await initializeDatabase()
+  await ensureCustomTasksTable()
   try {
     const lawId = req.nextUrl.searchParams.get('lawId')
     const flagKey = req.nextUrl.searchParams.get('flagKey')
@@ -79,7 +77,9 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  await ensureTable()
+  await initializeDatabase()
+  await initializeDatabase()
+  await ensureCustomTasksTable()
 
   const { title, notes, due_date, submenu, view, law_id, flag_key, assigned_to, task_type } = await req.json()
   const text = typeof title === 'string' ? title.trim() : ''
@@ -108,7 +108,9 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  await ensureTable()
+  await initializeDatabase()
+  await initializeDatabase()
+  await ensureCustomTasksTable()
 
   const { id, done } = await req.json()
   if (!id) return NextResponse.json({ error: 'Task ID is required' }, { status: 400 })

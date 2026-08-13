@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
+import { initializeDatabase } from '@/lib/dbInitialize'
 
 // invoices predates this app's own Receipt/Invoice creation flow (it was
 // built for Zoho-imported data), so these columns don't exist yet on older
@@ -45,6 +46,7 @@ export async function GET() {
   const session = await auth()
   if (!session) return NextResponse.json([], { status: 401 })
 
+  await initializeDatabase()
   await ensureColumns()
   const receipts = await sql.query(`
     SELECT ${SELECT_FIELDS}
@@ -97,7 +99,8 @@ export async function POST(req: NextRequest) {
   const enteredBy = session.user?.name || (session.user as any)?.username || null
 
   try {
-    await ensureColumns()
+    await initializeDatabase()
+  await ensureColumns()
 
     // zoho_invoice_id is NOT NULL (the column was built for Zoho-imported
     // invoices) but receipts created here have no Zoho id, so synthesize a

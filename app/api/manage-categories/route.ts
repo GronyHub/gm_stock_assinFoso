@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { NextRequest, NextResponse } from 'next/server'
+import { initializeDatabase } from '@/lib/dbInitialize'
 
 // User-added Grony Manage categories -- sit alongside the fixed ones
 // (Advert, Training, etc.) in the drawer, but their content is entirely
@@ -20,6 +21,7 @@ async function ensureTable() {
 }
 
 export async function GET() {
+  await initializeDatabase()
   await ensureTable()
   try {
     const rows = await sql`SELECT id, label, created_by, created_at FROM manage_categories ORDER BY created_at ASC`
@@ -35,6 +37,7 @@ export async function POST(req: NextRequest) {
   if (!isOwnerLevel(session?.user as any)) {
     return NextResponse.json({ error: 'Only the owner or Joe can add a category' }, { status: 403 })
   }
+  await initializeDatabase()
   await ensureTable()
 
   const { label } = await req.json()

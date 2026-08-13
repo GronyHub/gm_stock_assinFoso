@@ -1,8 +1,10 @@
 import sql from '@/lib/db'
 import { ensureSalesAttachmentsColumn } from '@/lib/salesAttachments'
 import { NextResponse } from 'next/server'
+import { initializeDatabase } from '@/lib/dbInitialize'
 
 export async function GET() {
+  await initializeDatabase()
   await ensureSalesAttachmentsColumn()
   try {
     const rows = await sql`

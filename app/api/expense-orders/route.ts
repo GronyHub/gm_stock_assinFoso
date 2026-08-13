@@ -3,13 +3,15 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { ensureExpenseOrders } from '@/lib/expenseOrders'
 import { NextRequest, NextResponse } from 'next/server'
+import { initializeDatabase } from '@/lib/dbInitialize'
 
 export async function GET() {
   const session = await auth()
   if (!session) return NextResponse.json([], { status: 401 })
 
   try {
-    await ensureExpenseOrders()
+    await initializeDatabase()
+  await ensureExpenseOrders()
     const rows = await sql`
       SELECT id, expense_name, vendor_name, price, notes, entered_by, created_at
       FROM expense_orders
@@ -34,7 +36,8 @@ export async function POST(req: NextRequest) {
   const enteredBy = (session.user as any)?.username || session.user?.name || 'Unknown'
 
   try {
-    await ensureExpenseOrders()
+    await initializeDatabase()
+  await ensureExpenseOrders()
     const [row] = await sql`
       INSERT INTO expense_orders (expense_name, vendor_name, price, notes, entered_by)
       VALUES (${String(expense_name).trim()}, ${vendor_name?.trim() || null}, ${price === '' || price == null ? null : price}, ${notes || null}, ${enteredBy})

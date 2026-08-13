@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { ensurePersonalSubcategoryColumn } from '@/lib/personalLedger'
 import { NextResponse } from 'next/server'
+import { initializeDatabase } from '@/lib/dbInitialize'
 
 function isAllowed(session: any) {
   const role     = (session?.user as any)?.role     as string | undefined
@@ -13,6 +14,7 @@ export async function GET() {
   const session = await auth()
   if (!session || !isAllowed(session)) return NextResponse.json([], { status: 403 })
 
+  await initializeDatabase()
   await ensurePersonalSubcategoryColumn()
   const entries = await sql`
     SELECT id, entry_date, description, amount, direction, category, subcategory, notes, needs_review
@@ -30,6 +32,7 @@ export async function POST(req: Request) {
   if (!entry_date || !description || !amount || !direction) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
   }
+  await initializeDatabase()
   await ensurePersonalSubcategoryColumn()
   const [row] = await sql`
     INSERT INTO grony_personal_ledger (entry_date, description, amount, direction, category, subcategory, notes, needs_review, source)
@@ -46,6 +49,7 @@ export async function PUT(req: Request) {
   const { id, category, subcategory, notes, description, amount, needs_review } = await req.json()
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
 
+  await initializeDatabase()
   await ensurePersonalSubcategoryColumn()
   await sql`
     UPDATE grony_personal_ledger

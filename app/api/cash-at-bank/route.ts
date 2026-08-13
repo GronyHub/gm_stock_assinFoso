@@ -3,6 +3,7 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { ensureCashAtBankDeficitColumn } from '@/lib/cashAtBank'
 import { NextRequest, NextResponse } from 'next/server'
+import { initializeDatabase } from '@/lib/dbInitialize'
 
 export async function GET() {
   const session = await auth()
@@ -46,7 +47,8 @@ export async function POST(req: NextRequest) {
   const total = parseFloat((bank + momo + physical).toFixed(2))
 
   try {
-    await ensureCashAtBankDeficitColumn()
+    await initializeDatabase()
+  await ensureCashAtBankDeficitColumn()
 
     const [existing] = await sql`SELECT 1 FROM cash_at_bank WHERE entry_date = ${entry_date}`
     if (!existing) await sql`INSERT INTO cash_at_bank (entry_date) VALUES (${entry_date})`

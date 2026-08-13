@@ -3,10 +3,12 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { ensurePurchaseOrderTables } from '@/lib/purchaseOrders'
 import { NextRequest, NextResponse } from 'next/server'
+import { initializeDatabase } from '@/lib/dbInitialize'
 
 export async function GET() {
   try {
-    await ensurePurchaseOrderTables()
+    await initializeDatabase()
+  await ensurePurchaseOrderTables()
     const [pos, lines] = await Promise.all([
       sql`
         SELECT po.id, po.po_number, po.vendor_id,
@@ -59,7 +61,8 @@ export async function POST(req: NextRequest) {
   const poNumber = `PO-${orderDate.replace(/-/g, '')}-${Date.now().toString().slice(-4)}`
 
   try {
-    await ensurePurchaseOrderTables()
+    await initializeDatabase()
+  await ensurePurchaseOrderTables()
     const [po] = await sql`
       INSERT INTO purchase_orders (po_number, vendor_id, vendor_name, order_date, expected_date, status, notes, created_by)
       VALUES (${poNumber}, ${vendorId ?? null}, ${vendorName ?? null}, ${orderDate}, ${expectedDate ?? null}, 'draft', ${notes ?? null}, ${createdBy})

@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
+import { initializeDatabase } from '@/lib/dbInitialize'
 
 // vendors predates a location field -- ADD COLUMN IF NOT EXISTS is cheap
 // once it's there, so just ensure it on every request (same approach as
@@ -14,6 +15,7 @@ export async function GET() {
   const session = await auth()
   if (!session) return NextResponse.json([], { status: 401 })
 
+  await initializeDatabase()
   await ensureColumns()
   const vendors = await sql`
     SELECT
@@ -46,7 +48,8 @@ export async function POST(req: NextRequest) {
   const enteredBy = session.user?.name || (session.user as any)?.username || null
 
   try {
-    await ensureColumns()
+    await initializeDatabase()
+  await ensureColumns()
     const [vendor] = await sql`
       INSERT INTO vendors
         (display_name, company_name, email, phone, location, status, is_internal, notes)

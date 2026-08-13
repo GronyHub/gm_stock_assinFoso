@@ -3,6 +3,7 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { ensureAdvertStatusTable } from '@/lib/advertStatus'
 import { NextRequest, NextResponse } from 'next/server'
+import { initializeDatabase } from '@/lib/dbInitialize'
 
 // Every active item/service and whether it currently has an audio advert
 // recorded -- items with no row (or has_advert = false) are what the
@@ -12,7 +13,8 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {
-    await ensureAdvertStatusTable()
+    await initializeDatabase()
+  await ensureAdvertStatusTable()
     const rows = await sql`
       SELECT
         i.id AS item_id, i.canonical_name AS item_name, i.cf_group,
@@ -40,7 +42,8 @@ export async function POST(req: NextRequest) {
   const updatedBy = (session.user as any)?.username || session.user?.name || 'Unknown'
 
   try {
-    await ensureAdvertStatusTable()
+    await initializeDatabase()
+  await ensureAdvertStatusTable()
     await sql`
       INSERT INTO item_audio_advert_status (item_id, has_advert, notes, updated_by, updated_at)
       VALUES (${item_id}, ${!!has_advert}, ${notes || null}, ${updatedBy}, now())

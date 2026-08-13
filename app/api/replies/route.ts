@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
+import { initializeDatabase } from '@/lib/dbInitialize'
 
 async function ensureTable() {
   await sql`
@@ -24,6 +25,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'itemType and itemId required' }, { status: 400 })
   }
 
+  await initializeDatabase()
   await ensureTable()
   try {
     const replies = await sql`
@@ -42,6 +44,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  await initializeDatabase()
   await ensureTable()
 
   const { itemType, itemId, replyText } = await req.json()
