@@ -3,6 +3,7 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { ensureManageLogs } from '@/lib/manageLogs'
 import { NextRequest, NextResponse } from 'next/server'
+import { initializeDatabase } from '@/lib/dbInitialize'
 
 // Daily checklist/log entries for the Grony Manage categories that have no
 // existing data behind them (Arrangement, Cleanliness, Future, Customer
@@ -23,7 +24,8 @@ export async function GET(req: NextRequest) {
   // Grid view: fetch latest entry for each grony section + check type combination
   if (view === 'grony_checks') {
     try {
-      await ensureManageLogs()
+      await initializeDatabase()
+  await ensureManageLogs()
       const rows = await sql`
         SELECT DISTINCT ON (grony_section, category)
           grony_section, category, log_date::text, created_at
@@ -69,7 +71,8 @@ export async function GET(req: NextRequest) {
   if (!category) return NextResponse.json({ error: 'Missing category' }, { status: 400 })
 
   try {
-    await ensureManageLogs()
+    await initializeDatabase()
+  await ensureManageLogs()
     const rows = await sql`
       SELECT id, category, log_date::text, notes, photo_url, logged_by, created_at,
         attendees, start_time::text, end_time::text, grony_section
@@ -100,7 +103,8 @@ export async function POST(req: NextRequest) {
   const loggedBy = (session.user as any)?.username || session.user?.name || 'Unknown'
 
   try {
-    await ensureManageLogs()
+    await initializeDatabase()
+  await ensureManageLogs()
     const [row] = await sql`
       INSERT INTO manage_logs (category, notes, photo_url, logged_by, attendees, start_time, end_time)
       VALUES (${category}, ${notes || null}, ${photo_url || null}, ${loggedBy},

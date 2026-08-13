@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
+import { initializeDatabase } from '@/lib/dbInitialize'
 
 // Older rows (or a pre-migration read) may have media_urls as plain URL strings
 // rather than { url, type } objects -- normalize so the client can rely on the shape.
@@ -25,7 +26,8 @@ async function ensureCategoryColumn() {
 // OR ..." pattern) when not provided, so one query serves every combination.
 export async function GET(req: NextRequest) {
   try {
-    await ensureCategoryColumn()
+    await initializeDatabase()
+  await ensureCategoryColumn()
     const before = req.nextUrl.searchParams.get('before')
     const q = req.nextUrl.searchParams.get('q')
     const category = req.nextUrl.searchParams.get('category')

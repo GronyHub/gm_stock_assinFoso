@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { NextRequest, NextResponse } from 'next/server'
+import { initializeDatabase } from '@/lib/dbInitialize'
 
 // The internal tabs inside a user-added Grony Manage category (see
 // manage-categories) -- each one is built from one of a small set of
@@ -28,6 +29,7 @@ async function ensureTable() {
 const VALID_TYPES = new Set(['log', 'notes', 'tasks', 'payslip_flags'])
 
 export async function GET(req: NextRequest) {
+  await initializeDatabase()
   await ensureTable()
   const categoryId = req.nextUrl.searchParams.get('category_id')
   if (!categoryId) return NextResponse.json({ error: 'Missing category_id' }, { status: 400 })
@@ -51,6 +53,7 @@ export async function POST(req: NextRequest) {
   if (!isOwnerLevel(session?.user as any)) {
     return NextResponse.json({ error: 'Only the owner or Joe can add a tab' }, { status: 403 })
   }
+  await initializeDatabase()
   await ensureTable()
 
   const { category_id, label, content_type } = await req.json()

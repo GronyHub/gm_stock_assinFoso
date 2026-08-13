@@ -3,8 +3,10 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { ensureBillAttachmentsColumn } from '@/lib/billAttachments'
 import { NextRequest, NextResponse } from 'next/server'
+import { initializeDatabase } from '@/lib/dbInitialize'
 
 export async function GET() {
+  await initializeDatabase()
   await ensureBillAttachmentsColumn()
   try {
     const rows = await sql`

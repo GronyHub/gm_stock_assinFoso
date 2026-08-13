@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { NextRequest, NextResponse } from 'next/server'
+import { initializeDatabase } from '@/lib/dbInitialize'
 
 // Simple key/value content pages for Grony Manage > Training (Tutorial and
 // Company Laws). Anyone logged in can read; only owner-level (Grony/Joe) can
@@ -141,7 +142,8 @@ export async function GET(req: NextRequest) {
   if (!key) return NextResponse.json({ error: 'Missing key' }, { status: 400 })
 
   try {
-    await ensureManageContent()
+    await initializeDatabase()
+  await ensureManageContent()
     const [row] = await sql`SELECT key, body, updated_by, updated_at FROM manage_content WHERE key = ${key}`
     if (row) return NextResponse.json(row)
     return NextResponse.json({ key, body: DEFAULTS[key] ?? '', updated_by: null, updated_at: null })
@@ -163,7 +165,8 @@ export async function PUT(req: NextRequest) {
   const updatedBy = (session!.user as any)?.username || session!.user?.name || 'Unknown'
 
   try {
-    await ensureManageContent()
+    await initializeDatabase()
+  await ensureManageContent()
     await sql`
       INSERT INTO manage_content (key, body, updated_by, updated_at)
       VALUES (${key}, ${body}, ${updatedBy}, now())

@@ -5,6 +5,7 @@ import { hasFeature, getUserPermissionsMap } from '@/lib/permissions'
 import { logActivity } from '@/lib/logger'
 import { ensureExpensePropertyColumns } from '@/lib/expenseProperties'
 import { NextRequest, NextResponse } from 'next/server'
+import { initializeDatabase } from '@/lib/dbInitialize'
 
 function redact(rows: any[], canSeeAmounts: boolean) {
   if (canSeeAmounts) return rows
@@ -16,6 +17,7 @@ export async function GET() {
   if (!session) return NextResponse.json([], { status: 401 })
   const canSeeAmounts = hasFeature(session.user as any, 'confidential_expenses', await getUserPermissionsMap())
 
+  await initializeDatabase()
   await ensureExpensePropertyColumns()
 
   try {

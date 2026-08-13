@@ -5,6 +5,7 @@ import { ensureClosingReports } from '@/lib/closingReports'
 import { ensureSalesAttachmentsColumn } from '@/lib/salesAttachments'
 import { ensureBillAttachmentsColumn } from '@/lib/billAttachments'
 import { NextResponse } from 'next/server'
+import { initializeDatabase } from '@/lib/dbInitialize'
 
 export const dynamic = 'force-dynamic'
 
@@ -382,6 +383,7 @@ export async function GET() {
   `)
 
   // 11. Items/services with no audio advert recorded (Grony Manage > Advert > Audio's own rule)
+  await initializeDatabase()
   await ensureAdvertStatusTable()
   const noAdvert = await safeQuery(() => sql`
     SELECT i.id AS item_id, i.canonical_name AS item_name, COALESCE(i.product_type, 'goods') AS product_type

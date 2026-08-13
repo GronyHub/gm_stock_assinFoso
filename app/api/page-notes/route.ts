@@ -1,6 +1,6 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
-import { ensurePageNotesTable } from '@/lib/pageNotes'
+import { initializeDatabase } from '@/lib/dbInitialize'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(req: NextRequest) {
@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   const flagKey = req.nextUrl.searchParams.get('flagKey')
 
   try {
-    await ensurePageNotesTable()
+    await initializeDatabase()
     if (lawId) {
       const lawIdNum = parseInt(lawId, 10)
       if (isNaN(lawIdNum)) return NextResponse.json({ notes: '', topic: '', noteDate: '', taggedStaff: [] })
@@ -59,7 +59,7 @@ export async function PUT(req: NextRequest) {
   const k = kind === 'note' ? 'note' : 'law'
 
   try {
-    await ensurePageNotesTable()
+    await initializeDatabase()
     if (law_id) {
       const [existing] = await sql`SELECT 1 FROM page_notes WHERE scope_key = ${scopeKey} AND kind = ${k} AND law_id = ${law_id}`
       if (existing) {
