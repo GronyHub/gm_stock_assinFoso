@@ -1612,6 +1612,18 @@ function ItemHubPageInner() {
                         onClick={() => pickLossView('newCustomer')} />
                     </div>
                   )}
+                  {v.key === 'expenses' && (
+                    <div>
+                      <SidePaneButton icon="🏷️" label="Properties at Shop" mode={cashDisplayMode}
+                        active={paneActive(lossView === 'properties' && propertiesInitialTab === 'available')}
+                        taskBadge={taskCountFor('Properties')}
+                        onClick={() => { pickLossView('properties'); setPropertiesInitialTab('available') }} />
+                      <SidePaneButton icon="📦" label="Properties not at Shop" mode={cashDisplayMode} divider
+                        active={paneActive(lossView === 'properties' && propertiesInitialTab === 'away')}
+                        taskBadge={taskCountFor('Properties')}
+                        onClick={() => { pickLossView('properties'); setPropertiesInitialTab('away') }} />
+                    </div>
+                  )}
                 </Fragment>
               ))}
               {/* Expense Orders */}
@@ -1619,13 +1631,6 @@ function ItemHubPageInner() {
                 active={paneActive(lossView === 'expenseOrders')}
                 taskBadge={taskCountFor('Expense Orders')}
                 onClick={() => pickLossView('expenseOrders')} />
-              {/* Properties */}
-              <SidePaneButton icon="🏷️" label="Properties at Shop" mode={cashDisplayMode} divider active={false}
-                taskBadge={taskCountFor('Properties')}
-                onClick={() => { pickLossView('properties'); setPropertiesInitialTab('available') }} />
-              <SidePaneButton icon="📦" label="Properties not at Shop" mode={cashDisplayMode} divider active={false}
-                taskBadge={taskCountFor('Properties')}
-                onClick={() => { pickLossView('properties'); setPropertiesInitialTab('away') }} />
             </div>
             )}
 
