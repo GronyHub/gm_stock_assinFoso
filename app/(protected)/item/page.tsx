@@ -1294,6 +1294,22 @@ function ItemHubPageInner() {
     setViolation(key)
   }
 
+  function toggleAllLaws() {
+    const lawsKeys = [
+      'showAliasWideTableLaws', 'showCABLaws', 'showCloserLaws', 'showCountsLaws',
+      'showDailyLaws', 'showExpenseOrdersLaws', 'showExpensesLaws', 'showHomeLaws',
+      'showItem360Laws', 'showItemsFlagsLaws', 'showLossByDateLaws', 'showLossByItemLaws',
+      'showLossByTargetLaws', 'showNewCustomerLaws', 'showNewSaleLaws', 'showOpenerLaws',
+      'showPLLaws', 'showProfileLaws', 'showPropertiesLaws', 'showPurchaseOrdersLaws',
+      'showReceiptsLaws', 'showReorderListsLaws', 'showServiceMatchesLaws', 'showServicesLaws',
+      'showViewPortalAsLaws', 'showAccessLaws', 'showAdvertStatusLaws', 'showDressCodeLaws',
+      'showTeamAssessmentLaws', 'showTeamLogsLaws', 'showTeamMeetingLaws', 'showTeamRotaLaws',
+    ]
+    const allShown = lawsKeys.every(k => localStorage.getItem(k) === 'true')
+    lawsKeys.forEach(k => localStorage.setItem(k, allShown ? 'false' : 'true'))
+    window.location.reload()
+  }
+
   const groups = ['All Groups', ...Array.from(new Set(lossGroups.map(g => g ?? 'Ungrouped'))).sort()]
   // Clicking the search box (even before typing) shows a browsable dropdown
   // of item names -- typing narrows it. Picking one fills the box with that
@@ -1745,8 +1761,10 @@ function ItemHubPageInner() {
                 e.g. Times), since "settings is open" and "this content is
                 showing" are independent, not mutually exclusive states. */}
             <div className="mt-1 pt-1 border-t border-white/30">
+              <SidePaneButton icon="📜" label="Laws" mode={cashDisplayMode} active={false}
+                onClick={() => toggleAllLaws()} />
               {canOpenThisSettings && (
-                <SidePaneButton icon="⚙️" label="Settings" mode={cashDisplayMode} active={settingsOpen}
+                <SidePaneButton icon="⚙️" label="Settings" mode={cashDisplayMode} active={settingsOpen} divider
                   onClick={() => setSettingsOpen(v => !v)} />
               )}
               <SidePaneButton icon="🚪" label="Sign out" mode={cashDisplayMode} active={false} divider={canOpenThisSettings}
