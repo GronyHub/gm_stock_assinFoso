@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { fmtDate } from '@/lib/fmtDate'
 import { useColumnPrefs, ColumnsPickerButton, ColResizeHandle, type ColumnDef } from './columnPrefs'
 
-const LOSS_FEED_COL_DEFAULTS: Record<string, number> = { date: 80, item: 200, expected: 70, counted: 70, lossQty: 70, lossAmt: 90 }
+const LOSS_FEED_COL_DEFAULTS: Record<string, number> = { date: 60, item: 140, expected: 50, counted: 50, lossQty: 50, lossAmt: 65 }
 
 // Date + Item stay sticky/always-visible; these four are the only ones the
 // picker can hide/reorder/rename. Labels flip between Loss/Gain wording
@@ -118,10 +118,8 @@ export default function LossFeedTab({ search, kind = 'loss' }: { search: string;
             {isGain ? 'No gains on record — all clean. 🎉' : 'No losses recorded. 🎉'}
           </p>
         ) : (
-          <table className="border-collapse text-[10px]" style={{
+          <table className="border-collapse text-[10px] w-full" style={{
             tableLayout: 'fixed',
-            width: colPrefs.getWidth('date', LOSS_FEED_COL_DEFAULTS.date) + colPrefs.getWidth('item', LOSS_FEED_COL_DEFAULTS.item)
-              + colPrefs.shownColumns.reduce((s, c) => s + colPrefs.getWidth(c.key, LOSS_FEED_COL_DEFAULTS[c.key] ?? 80), 0),
           }}>
             <colgroup>
               <col style={{ width: colPrefs.getWidth('date', LOSS_FEED_COL_DEFAULTS.date) }} />
