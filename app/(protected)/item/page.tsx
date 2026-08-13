@@ -1316,35 +1316,6 @@ function ItemHubPageInner() {
   // there as decoration -- self-titled headers (Sales/Expenses/Customers/
   // Services, whose own row IS the header and already navigates somewhere)
   // are left alone, since they already do something useful on tap.
-  const [collapsedPaneGroups, setCollapsedPaneGroups] = useState<Set<string>>(() => {
-    if (typeof window === 'undefined') return new Set()
-    try {
-      const raw = localStorage.getItem('collapsedPaneGroups')
-      return raw ? new Set(JSON.parse(raw)) : new Set()
-    } catch { return new Set() }
-  })
-  useEffect(() => {
-    localStorage.setItem('collapsedPaneGroups', JSON.stringify([...collapsedPaneGroups]))
-  }, [collapsedPaneGroups])
-  function togglePaneGroup(key: string) {
-    setCollapsedPaneGroups(prev => {
-      const next = new Set(prev)
-      if (next.has(key)) next.delete(key); else next.add(key)
-      return next
-    })
-  }
-  function renderPaneHeader(key: string, label: string) {
-    const collapsed = collapsedPaneGroups.has(key)
-    return (
-      <p className="pt-2 pb-0.5">
-        <button type="button" onClick={() => togglePaneGroup(key)}
-          className="flex items-center justify-between gap-1 w-full text-[8px] font-extrabold text-white bg-[var(--pane-accent)] uppercase tracking-wide px-2 py-1 truncate opacity-80 hover:opacity-100">
-          <span className="truncate">{label}</span>
-          <span className="shrink-0">{collapsed ? '▸' : '▾'}</span>
-        </button>
-      </p>
-    )
-  }
   const { data: session } = useSession()
   const role = (session?.user as any)?.role ?? 'staff'
   const username = (session?.user as any)?.username ?? session?.user?.name ?? ''
@@ -1597,152 +1568,81 @@ function ItemHubPageInner() {
             {outerTab === 'loss' && (<>
             {canSeeCash && (
             <div>
-              {(() => {
-                // A header that isn't self-titled (see below) can be
-                // collapsed -- carried across map iterations since only the
-                // run's first item gets a non-null `header` from
-                // flattenPaneRuns; every row until the next header belongs
-                // to that same run's collapsed/expanded state. Icon mode
-                // shows no headers at all, so it ignores collapse entirely
-                // rather than stranding a group with no way to reopen it.
-                let groupCollapsed = false
-                return flattenPaneRuns(buildPaneRuns(applyPaneOrder(effectiveCashItems, paneOrder.cash).filter(v => v.key !== 'pl' || canSeePL)), IDENTITY_GROUP_LABELS).map(({ item: v, header, divider }) => {
-                // A section whose own name is also one of its rows' names
-                // (Sales the section vs. Sales the row, same for Expenses/
-                // Customers/Services -- or any row an owner-level account
-                // has marked "standalone" via Settings) doesn't need a
-                // separate, identical-looking header above that row -- the
-                // row's own label becomes the section heading instead (see
-                // chipLabel/chipBorder on SidePaneButton), still fully
-                // clickable. chipBorder (not filled) marks a manually
-                // standalone-toggled row specifically, so it reads as
-                // distinct from a "real" multi-row group's own self-titled
-                // lead row.
-                // Checked per-item (not "is this the group's first/header-
-                // bearing row") so a self-titled row (Expenses, Sales, ...)
-                // keeps its own chip styling even if some other row gets
-                // moved into the same section ahead of it in pane order --
-                // that other row would otherwise "steal" flattenPaneRuns'
-                // one-header-per-run slot, leaving the real self-titled row
-                // looking like a plain button.
-                const isSelfTitled = !!v.group && v.group === paneLabel(v.key, v.label)
-                if (header) groupCollapsed = !selfTitledGroups.has(header) && collapsedPaneGroups.has(header)
-                const show = cashDisplayMode === 'icon' || !groupCollapsed
-                return (
-              <Fragment key={v.key}>
-                {header && cashDisplayMode !== 'icon' && !selfTitledGroups.has(header) && renderPaneHeader(header, header)}
-                {show && (<>
-                <SidePaneButton icon={v.icon} label={paneLabel(v.key, v.label)} mode={cashDisplayMode}
-                  chipLabel={isSelfTitled && !v.standaloneOverride}
-                  chipBorder={isSelfTitled && v.standaloneOverride}
-                  active={paneActive(lossView === v.key)} divider={divider}
-                  badge={v.key === 'sales' ? salesFlagsCount
-                    : v.key === 'items' ? itemsFlagsCount
-                    : v.key === 'bills' ? billsFlagsCount
-                    : v.key === 'cab' ? cabFlagsCount
-                    : v.key === 'counts' ? countsFlagsCount
-                    : v.key === 'feed' ? lossByDateFlagsCount
-                    : v.key === 'expenses' ? expensesFlagsCount
-                    : v.key === 'customers' ? customersFlagsCount
-                    : v.key === 'vendors' ? vendorsFlagsCount
-                    : undefined}
-                  taskBadge={taskCountFor(cashTaskScopeKey(v.key))}
-                  onClick={() => pickLossView(v.key)} />
-                {/* Sales' two add-forms get their own one-tap rows right under
-                    Sales -- staff opening a sale (especially Live Sale, built
-                    for speed under pressure) shouldn't have to land on the
-                    Sales list first and then hunt for the New/Live buttons in
-                    the toolbar above the table. */}
-                {v.key === 'sales' && (
-                  <div>
-                    <SidePaneButton icon="🧾" label="New Sale" mode={cashDisplayMode}
-                      active={paneActive(lossView === 'sales' && addForm === 'sale')}
-                      taskBadge={taskCountFor('New Sale')}
-                      onClick={() => { pickLossView('sales'); setAddForm('sale') }} />
-                    <SidePaneButton icon="⚡" label="Live Sale" mode={cashDisplayMode} divider
-                      active={paneActive(lossView === 'sales' && addForm === 'live')}
-                      taskBadge={taskCountFor('Live Sale')}
-                      onClick={() => { pickLossView('sales'); setAddForm('live') }} />
+              {applyPaneOrder(effectiveCashItems, paneOrder.cash).filter(v => v.key !== 'pl' || canSeePL).map((v, i) => (
+                <Fragment key={v.key}>
+                  <SidePaneButton icon={v.icon} label={paneLabel(v.key, v.label)} mode={cashDisplayMode}
+                    active={paneActive(lossView === v.key)} divider={i > 0}
+                    badge={v.key === 'sales' ? salesFlagsCount
+                      : v.key === 'items' ? itemsFlagsCount
+                      : v.key === 'bills' ? billsFlagsCount
+                      : v.key === 'cab' ? cabFlagsCount
+                      : v.key === 'counts' ? countsFlagsCount
+                      : v.key === 'feed' ? lossByDateFlagsCount
+                      : v.key === 'expenses' ? expensesFlagsCount
+                      : v.key === 'customers' ? customersFlagsCount
+                      : v.key === 'vendors' ? vendorsFlagsCount
+                      : undefined}
+                    taskBadge={taskCountFor(cashTaskScopeKey(v.key))}
+                    onClick={() => pickLossView(v.key)} />
+                  {v.key === 'sales' && (
                     <div>
-                      <SidePaneButton icon="📋" label="Log" mode={cashDisplayMode}
-                        active={paneActive(lossView === 'sales' && addForm === 'liveLog')}
-                        taskBadge={taskCountFor('Sale Log')}
-                        onClick={() => { pickLossView('sales'); setAddForm('liveLog') }} />
+                      <SidePaneButton icon="🧾" label="New Sale" mode={cashDisplayMode}
+                        active={paneActive(lossView === 'sales' && addForm === 'sale')}
+                        taskBadge={taskCountFor('New Sale')}
+                        onClick={() => { pickLossView('sales'); setAddForm('sale') }} />
+                      <SidePaneButton icon="⚡" label="Live Sale" mode={cashDisplayMode} divider
+                        active={paneActive(lossView === 'sales' && addForm === 'live')}
+                        taskBadge={taskCountFor('Live Sale')}
+                        onClick={() => { pickLossView('sales'); setAddForm('live') }} />
+                      <div>
+                        <SidePaneButton icon="📋" label="Log" mode={cashDisplayMode}
+                          active={paneActive(lossView === 'sales' && addForm === 'liveLog')}
+                          taskBadge={taskCountFor('Sale Log')}
+                          onClick={() => { pickLossView('sales'); setAddForm('liveLog') }} />
+                      </div>
                     </div>
-                  </div>
-                )}
-                {/* New Customer is its own separate page/pane row now (see
-                    the 'newCustomer' LossView above) -- not a signal that
-                    reopens a form embedded in the Customers list page, so
-                    Notes/Tasks/Laws/Flags stay fully separate between the
-                    two instead of sharing the Customers list's own. */}
-                {v.key === 'customers' && (
-                  <div>
-                    <SidePaneButton icon="👤" label="New Customer" mode={cashDisplayMode}
-                      active={paneActive(lossView === 'newCustomer')}
-                      taskBadge={taskCountFor('New Customer')}
-                      onClick={() => pickLossView('newCustomer')} />
-                  </div>
-                )}
-                </>)}
-              </Fragment>
-                )
-              })
-              })()}
-              {/* Expense Orders and Properties used to be nested sub-rows
-                  under Expenses' own pane row -- pulled out to their own
-                  standalone rows here instead (per direct feedback: "remove
-                  the expense orders button from expenses to maintain its
-                  standalone" / "make properties a section on its own"), so
-                  neither one's chip styling reads as tucked inside the
-                  Expenses section anymore. Expense Orders is also now its
-                  own real LossView (see 'expenseOrders' above) rather than
-                  a signal that reopens a toggle buried inside ExpensesTab --
-                  active correctly reflects whether it's actually the
-                  current page now, instead of being hardcoded false. */}
-              <SidePaneButton icon="🧾" label="Expense Orders" mode={cashDisplayMode} divider chipLabel
+                  )}
+                  {v.key === 'customers' && (
+                    <div>
+                      <SidePaneButton icon="👤" label="New Customer" mode={cashDisplayMode}
+                        active={paneActive(lossView === 'newCustomer')}
+                        taskBadge={taskCountFor('New Customer')}
+                        onClick={() => pickLossView('newCustomer')} />
+                    </div>
+                  )}
+                </Fragment>
+              ))}
+              {/* Expense Orders */}
+              <SidePaneButton icon="🧾" label="Expense Orders" mode={cashDisplayMode} divider
                 active={paneActive(lossView === 'expenseOrders')}
                 taskBadge={taskCountFor('Expense Orders')}
                 onClick={() => pickLossView('expenseOrders')} />
-              {cashDisplayMode !== 'icon' && renderPaneHeader('Properties', 'Properties')}
-              {(cashDisplayMode === 'icon' || !collapsedPaneGroups.has('Properties')) && (<>
-              <SidePaneButton icon="🏷️" label="Properties at Shop" mode={cashDisplayMode} active={false}
+              {/* Properties */}
+              <SidePaneButton icon="🏷️" label="Properties at Shop" mode={cashDisplayMode} divider active={false}
                 taskBadge={taskCountFor('Properties')}
                 onClick={() => { pickLossView('properties'); setPropertiesInitialTab('available') }} />
               <SidePaneButton icon="📦" label="Properties not at Shop" mode={cashDisplayMode} divider active={false}
                 taskBadge={taskCountFor('Properties')}
                 onClick={() => { pickLossView('properties'); setPropertiesInitialTab('away') }} />
-              </>)}
             </div>
             )}
 
             {canSeeManage && (
             <div className="mt-1 pt-1 border-t border-white/30">
-              {cashDisplayMode !== 'icon' && renderPaneHeader('Manage', 'Manage')}
-              {(cashDisplayMode === 'icon' || !collapsedPaneGroups.has('Manage')) && (() => {
-                let groupCollapsed = false
-                return flattenPaneRuns(buildPaneRuns(applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage)), MANAGE_GROUP_LABELS).map(({ item: entry, header, divider }) => {
+              {applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage).map((entry, i) => {
                 const badge = entry.key === 'opener' ? openerBadgeCount
                   : entry.key === 'closer' ? (globalFlags?.missingClosingReports?.length ?? 0)
                   : entry.key === 'jingle' ? jingleFlagsCount
                   : entry.key === 'equipment' ? equipmentFlagsCount
                   : entry.key === 'audio_status' ? advertStatusFlagsCount
                   : undefined
-                if (header) groupCollapsed = collapsedPaneGroups.has(header)
-                const show = cashDisplayMode === 'icon' || !groupCollapsed
                 return (
-                  <Fragment key={entry.key}>
-                    {header && cashDisplayMode !== 'icon' && renderPaneHeader(header, header)}
-                    {show && (
-                      <SidePaneButton icon={entry.icon} label={paneLabel(entry.key, entry.label)} mode={cashDisplayMode} divider={divider}
-                        active={paneActive(lossView === entry.key)} badge={badge}
-                        taskBadge={taskCountFor(entry.label)}
-                        onClick={() => pickLossView(entry.key)} />
-                    )}
-                  </Fragment>
+                  <SidePaneButton key={entry.key} icon={entry.icon} label={paneLabel(entry.key, entry.label)} mode={cashDisplayMode} divider={i > 0}
+                    active={paneActive(lossView === entry.key)} badge={badge}
+                    taskBadge={taskCountFor(entry.label)}
+                    onClick={() => pickLossView(entry.key)} />
                 )
-                })
-              })()}
+              })}
             </div>
             )}
 
@@ -1754,8 +1654,7 @@ function ItemHubPageInner() {
                 hidden behind a gear icon. */}
             {canSeeTeam && (
               <div className="mt-1 pt-1 border-t border-white/30">
-                {cashDisplayMode !== 'icon' && renderPaneHeader('Team', 'Team')}
-                {(cashDisplayMode === 'icon' || !collapsedPaneGroups.has('Team')) && STAFF_TEAM_ITEMS.map((t, i) => (
+                {STAFF_TEAM_ITEMS.map((t, i) => (
                   <SidePaneButton key={t.key} icon={t.icon} label={paneLabel(t.key, t.label)} mode={cashDisplayMode} divider={i > 0}
                     active={paneActive(lossView === t.key)}
                     badge={t.key === 'staff_dress' ? dressFlagsCount : t.key === 'teamTimes' ? staffTimesFlagsCount : undefined}
@@ -1767,20 +1666,12 @@ function ItemHubPageInner() {
 
             {myStaffName && (
               <div className="mt-1 pt-1 border-t border-white/30">
-                {cashDisplayMode !== 'icon' && renderPaneHeader('Personal', viewingSelf ? 'Personal' : `Personal · Viewing: ${viewingName}`)}
-                {/* Payslips drops out of this list while viewing someone
-                    else -- it no longer redirects with Viewing (see
-                    viewingSelf's comment above), so showing it here would
-                    either silently keep displaying your own data under
-                    someone else's name, or need its own separate "actually
-                    not viewing that person" explanation. Team Payslips
-                    already has its own per-staff picker for exactly this
-                    case. */}
-                {(cashDisplayMode === 'icon' || !collapsedPaneGroups.has('Personal')) && (() => {
+                {(() => {
                   const personalItems = STAFF_PERSONAL_ITEMS.filter(t => viewingSelf || t.key !== 'staffPayslips')
+                  let itemIndex = 0
                   return (<>
-                    {personalItems.map((t, i) => (
-                      <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode} divider={i > 0}
+                    {personalItems.map((t) => (
+                      <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode} divider={itemIndex++ > 0}
                         active={paneActive(lossView === t.key)}
                         onClick={() => pickLossView(t.key)} />
                     ))}
@@ -1808,8 +1699,7 @@ function ItemHubPageInner() {
                     active={paneActive(lossView === item.key)} onClick={() => pickCHView(item.key)} />
                   {CH_CHILD_PERSON[item.key] && lossView === item.key && (
                     <div className="mt-1 pt-1 border-t border-white/30">
-                      {cashDisplayMode !== 'icon' && renderPaneHeader(`ch_${item.key}`, `${item.label}'s Submenus`)}
-                      {(cashDisplayMode === 'icon' || !collapsedPaneGroups.has(`ch_${item.key}`)) && ch.submenus.map((s, j) => (
+                      {ch.submenus.map((s, j) => (
                         <SidePaneButton key={s.id} icon="📋" label={s.name} mode={cashDisplayMode} divider={j > 0}
                           active={paneActive(ch.selectedSubmenuId === s.id)} onClick={() => ch.pickSubmenu(s.id)} />
                       ))}
@@ -1829,8 +1719,7 @@ function ItemHubPageInner() {
                 content area. Submenu names/columns are still fixed from
                 the UI's side (no self-service add/rename/delete). */}
             {outerTab === 'uk' && (<>
-              {cashDisplayMode !== 'icon' && renderPaneHeader('uk_menus', 'Menus & Submenus')}
-              {(cashDisplayMode === 'icon' || !collapsedPaneGroups.has('uk_menus')) && ukAllSubmenus.map((s, i) => (
+              {ukAllSubmenus.map((s, i) => (
                 <SidePaneButton key={s.id} icon="📋" label={`${s.person} ${s.name}`} mode={cashDisplayMode} divider={i > 0}
                   active={paneActive(uk.selectedSubmenuId === s.id)}
                   taskBadge={taskCountFor(`${s.person} ${s.name}`)}
@@ -1839,8 +1728,7 @@ function ItemHubPageInner() {
 
               {ukGeneralSubmenus.length > 0 && (
                 <div className="mt-1 pt-1 border-t border-white/30">
-                  {cashDisplayMode !== 'icon' && renderPaneHeader('uk_general', 'General Section')}
-                  {(cashDisplayMode === 'icon' || !collapsedPaneGroups.has('uk_general')) && ukGeneralSubmenus.map((s, i) => (
+                  {ukGeneralSubmenus.map((s, i) => (
                     <SidePaneButton key={s.id} icon="📁" label={s.name} mode={cashDisplayMode} divider={i > 0}
                       active={paneActive(uk.selectedSubmenuId === s.id)}
                       taskBadge={taskCountFor(`General ${s.name}`)}
