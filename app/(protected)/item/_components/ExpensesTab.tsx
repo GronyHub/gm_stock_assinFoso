@@ -352,6 +352,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
   const [showPropertiesPanel, setShowPropertiesPanel] = useState(false)
   const [propertyTab, setPropertyTab] = useState<PropTab>('all')
   const [propertySearch, setPropertySearch] = useState('')
+  const [propertyAvailabilityFilter, setPropertyAvailabilityFilter] = useState<'all' | 'available' | 'not_available'>('all')
   const colPrefs = useColumnPrefs<ColKey>('expensesTable', EXPENSE_COLUMNS)
 
   function loadExpenses() {
@@ -410,6 +411,8 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
     if (!showProperties || !showNonProperties) {
       list = list.filter(e => e.is_property ? showProperties : showNonProperties)
     }
+    if (propertyAvailabilityFilter === 'available') list = list.filter(e => e.is_property && e.availability === 'available')
+    else if (propertyAvailabilityFilter === 'not_available') list = list.filter(e => e.is_property && e.availability === 'not_available')
     const q = search.toLowerCase()
     if (!q) return list
     return list.filter(e =>
@@ -419,7 +422,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
       (e.source_sheet ?? '').toLowerCase().includes(q) ||
       (e.source ?? '').toLowerCase().includes(q)
     )
-  }, [expenses, search, accountFilter, vendorFilter, showProperties, showNonProperties, activeFlag, similarAccountNames])
+  }, [expenses, search, accountFilter, vendorFilter, showProperties, showNonProperties, propertyAvailabilityFilter, activeFlag, similarAccountNames])
 
   const grouped = useMemo(() => {
     if (groupBy === 'none') return []
@@ -554,6 +557,8 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
     { key: 'by_vendor', letter: 'V', label: 'By Vendor', active: groupBy === 'vendor', onChange: () => setGroupBy(g => g === 'vendor' ? 'none' : 'vendor') },
     { key: 'show_properties', letter: 'P', label: 'Properties', active: showProperties, onChange: () => setShowProperties(p => !p) },
     { key: 'show_non_properties', letter: 'N', label: 'Non-Properties', active: showNonProperties, onChange: () => setShowNonProperties(p => !p) },
+    { key: 'prop_available', letter: 'A', label: 'Properties Available', active: propertyAvailabilityFilter === 'available', onChange: () => setPropertyAvailabilityFilter(f => f === 'available' ? 'all' : 'available') },
+    { key: 'prop_not_available', letter: 'U', label: 'Properties Not Available', active: propertyAvailabilityFilter === 'not_available', onChange: () => setPropertyAvailabilityFilter(f => f === 'not_available' ? 'all' : 'not_available') },
   ]
 
   return (
