@@ -86,20 +86,25 @@ function looksBundled(description: string | null): boolean {
 const TH = 'text-left px-3 py-2 font-bold text-gray-400 text-[10px] uppercase tracking-wide border-b border-gray-200'
 const TD = 'px-3 py-2'
 
-// Date and Amt stay sticky/always-visible (first two columns); these five
-// are the only ones the picker can hide/reorder/rename. Account and Vendor
-// also get force-hidden while grouped by that same field (see hideAccount/
-// hideVendor below) -- that's independent of the picker's own choice.
-type ColKey = 'account' | 'description' | 'vendor' | 'source' | 'by'
+// Date and Amt stay sticky/always-visible (first two columns); these columns
+// are configurable. Account and Vendor also get force-hidden while grouped by
+// that same field. Property columns are shown only when viewing properties.
+type ColKey = 'account' | 'description' | 'vendor' | 'source' | 'by' | 'property_type' | 'availability' | 'working' | 'location' | 'reason'
 const EXPENSE_COLUMNS: ColumnDef<ColKey>[] = [
-  { key: 'account',     label: 'Account' },
-  { key: 'description', label: 'Description' },
-  { key: 'vendor',      label: 'Vendor' },
-  { key: 'source',      label: 'Source' },
-  { key: 'by',          label: 'By' },
+  { key: 'account',      label: 'Account' },
+  { key: 'description',  label: 'Description' },
+  { key: 'vendor',       label: 'Vendor' },
+  { key: 'source',       label: 'Source' },
+  { key: 'by',           label: 'By' },
+  { key: 'property_type', label: 'Type' },
+  { key: 'availability', label: 'Available?' },
+  { key: 'working',      label: 'Condition' },
+  { key: 'location',     label: 'Location' },
+  { key: 'reason',       label: 'Reason' },
 ]
 const EXPENSES_COL_DEFAULTS: Record<string, number> = {
   date: 92, amt: 90, account: 120, description: 160, vendor: 120, source: 90, by: 80,
+  property_type: 80, availability: 90, working: 90, location: 100, reason: 120,
 }
 
 type TableProps = {
@@ -120,6 +125,7 @@ type TableProps = {
   colPrefs: ColumnPrefs<ColKey>
   hideAccount?: boolean
   hideVendor?: boolean
+  hidePropertyColumns?: boolean
   accounts: string[]
   vendors: string[]
   accountFilter: string | null
@@ -182,10 +188,12 @@ function FilterHeaderCell({ label, options, value, onChange, onResize, onResetWi
 }
 
 function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, saving, form, onEdit, onCloseEdit,
-  onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, colPrefs, hideAccount, hideVendor,
+  onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, colPrefs, hideAccount, hideVendor, hidePropertyColumns,
   accounts, vendors, accountFilter, vendorFilter, onAccountFilter, onVendorFilter }: TableProps) {
+  const propertyColKeys: ColKey[] = ['property_type', 'availability', 'working', 'location', 'reason']
   const visibleKeys = colPrefs.colOrder.filter(k => colPrefs.visibleCols.has(k)
-    && !(k === 'account' && hideAccount) && !(k === 'vendor' && hideVendor))
+    && !(k === 'account' && hideAccount) && !(k === 'vendor' && hideVendor)
+    && !(hidePropertyColumns && propertyColKeys.includes(k)))
 
   function headerCellFor(key: ColKey, isLast: boolean) {
     const label = colPrefs.columnLabels[key] ?? EXPENSE_COLUMNS.find(c => c.key === key)!.label
@@ -200,7 +208,13 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
     if (key === 'description') return <td key={key} className={`${TD} text-gray-700 truncate`}>{e.description ?? '—'}</td>
     if (key === 'vendor') return <td key={key} className={`${TD} text-gray-500 truncate`}>{e.vendor_name ?? '—'}</td>
     if (key === 'source') return <td key={key} className={`${TD} text-gray-400 truncate`}>{e.source_sheet ?? e.source ?? '—'}</td>
-    return <td key={key} className={`${TD} text-blue-500 truncate`}>{e.entered_by ?? '—'}</td>
+    if (key === 'by') return <td key={key} className={`${TD} text-blue-500 truncate`}>{e.entered_by ?? '—'}</td>
+    if (key === 'property_type') return <td key={key} className={`${TD} text-gray-600 truncate`}>{e.property_type ?? '—'}</td>
+    if (key === 'availability') return <td key={key} className={`${TD} text-gray-600 truncate`}>{e.availability ? (e.availability === 'available' ? '✓ Available' : '✗ Away') : '—'}</td>
+    if (key === 'working') return <td key={key} className={`${TD} text-gray-600 truncate`}>{e.working ? (e.working === 'working' ? '✓ Working' : '✗ Not Working') : '—'}</td>
+    if (key === 'location') return <td key={key} className={`${TD} text-gray-600 truncate`}>{e.location ?? '—'}</td>
+    if (key === 'reason') return <td key={key} className={`${TD} text-gray-600 truncate text-[9px]`}>{e.not_working_reason ?? e.not_available_reason ?? '—'}</td>
+    return <td key={key} className={`${TD} text-gray-500`}>—</td>
   }
 
   const tableWidth = colPrefs.getWidth('date', EXPENSES_COL_DEFAULTS.date) + colPrefs.getWidth('amt', EXPENSES_COL_DEFAULTS.amt)
@@ -734,14 +748,15 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
                   <div className="[&>div]:rounded-t-none">
                     <ExpenseTable rows={rows} {...tableProps}
                       hideAccount={groupBy === 'account'}
-                      hideVendor={groupBy === 'vendor'} />
+                      hideVendor={groupBy === 'vendor'}
+                      hidePropertyColumns={showNonProperties} />
                   </div>
                 </div>
               ))}
             </div>
         ) : (
           <>
-            <ExpenseTable rows={filtered} {...tableProps} />
+            <ExpenseTable rows={filtered} {...tableProps} hidePropertyColumns={showNonProperties} />
             {filtered.length === 0 && <p className="text-xs text-gray-400 text-center py-10">No expenses</p>}
           </>
         )}
