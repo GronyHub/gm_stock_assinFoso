@@ -545,11 +545,11 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
 
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
 
-  const flagButtons: { key: 'similar' | 'bundled' | 'no_vendor' | 'properties_no_location'; letter: string; label: string }[] = [
-    { key: 'similar', letter: 'S', label: 'Similar Account Names' },
-    { key: 'bundled', letter: 'B', label: 'Description Looks Bundled' },
-    { key: 'no_vendor', letter: 'V', label: 'No Vendor Name' },
-    { key: 'properties_no_location', letter: 'L', label: 'Properties Without Location' },
+  const flagButtons: { key: 'similar' | 'bundled' | 'no_vendor' | 'properties_no_location'; letter: string; label: string; description: string }[] = [
+    { key: 'similar', letter: 'S', label: 'Similar Account Names', description: 'Account names that are close variations of each other (e.g., "Office Expense" vs "Office Expenses") — likely duplicates entered different ways.' },
+    { key: 'bundled', letter: 'B', label: 'Description Looks Bundled', description: 'Expense descriptions mentioning multiple items (commas, "&", "and", "etc") — suggests several purchases lumped into one line instead of separate rows.' },
+    { key: 'no_vendor', letter: 'V', label: 'No Vendor Name', description: 'Expenses missing a vendor name — helps identify incomplete expense records that need follow-up.' },
+    { key: 'properties_no_location', letter: 'L', label: 'Properties Without Location', description: 'Available properties that have not been assigned a storage location — need to be placed at a Grony location.' },
   ]
 
   const isAllExpenses = activeFlag === null && propertyAvailabilityFilter === 'all' && groupBy === 'none' && showProperties && showNonProperties
@@ -570,14 +570,14 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
 
   const activeViewHeading = getActiveViewHeading()
 
-  const viewButtons: { key: string; letter: string; label: string; active: boolean; onChange: () => void }[] = [
-    { key: 'all_expenses', letter: '∑', label: 'All Expenses', active: isAllExpenses, onChange: () => { setActiveFlag(null); setPropertyAvailabilityFilter('all'); setGroupBy('none'); setShowProperties(true); setShowNonProperties(true) } },
-    { key: 'by_account', letter: 'A', label: 'By Account', active: groupBy === 'account', onChange: () => setGroupBy(g => g === 'account' ? 'none' : 'account') },
-    { key: 'by_vendor', letter: 'V', label: 'By Vendor', active: groupBy === 'vendor', onChange: () => setGroupBy(g => g === 'vendor' ? 'none' : 'vendor') },
-    { key: 'show_properties', letter: 'P', label: 'Properties', active: showProperties, onChange: () => setShowProperties(p => !p) },
-    { key: 'show_non_properties', letter: 'N', label: 'Non-Properties', active: showNonProperties, onChange: () => setShowNonProperties(p => !p) },
-    { key: 'prop_available', letter: 'A', label: 'Properties Available', active: propertyAvailabilityFilter === 'available', onChange: () => setPropertyAvailabilityFilter(f => f === 'available' ? 'all' : 'available') },
-    { key: 'prop_not_available', letter: 'U', label: 'Properties Not Available', active: propertyAvailabilityFilter === 'not_available', onChange: () => setPropertyAvailabilityFilter(f => f === 'not_available' ? 'all' : 'not_available') },
+  const viewButtons: { key: string; letter: string; label: string; description: string; active: boolean; onChange: () => void }[] = [
+    { key: 'all_expenses', letter: '∑', label: 'All Expenses', description: 'View all expenses without any filters or grouping — returns to the default view.', active: isAllExpenses, onChange: () => { setActiveFlag(null); setPropertyAvailabilityFilter('all'); setGroupBy('none'); setShowProperties(true); setShowNonProperties(true) } },
+    { key: 'by_account', letter: 'A', label: 'By Account', description: 'Group expenses by their account category to see totals and records for each account.', active: groupBy === 'account', onChange: () => setGroupBy(g => g === 'account' ? 'none' : 'account') },
+    { key: 'by_vendor', letter: 'V', label: 'By Vendor', description: 'Group expenses by vendor to see total spending and records for each supplier.', active: groupBy === 'vendor', onChange: () => setGroupBy(g => g === 'vendor' ? 'none' : 'vendor') },
+    { key: 'show_properties', letter: 'P', label: 'Properties', description: 'Toggle to show or hide expenses marked as properties/equipment.', active: showProperties, onChange: () => setShowProperties(p => !p) },
+    { key: 'show_non_properties', letter: 'N', label: 'Non-Properties', description: 'Toggle to show or hide regular expenses (non-property expenditures).', active: showNonProperties, onChange: () => setShowNonProperties(p => !p) },
+    { key: 'prop_available', letter: 'A', label: 'Properties Available', description: 'View only properties currently at a Grony shop location (marked as available).', active: propertyAvailabilityFilter === 'available', onChange: () => setPropertyAvailabilityFilter(f => f === 'available' ? 'all' : 'available') },
+    { key: 'prop_not_available', letter: 'U', label: 'Properties Not Available', description: 'View only properties that are currently away from shop (spoilt, stolen, or at Grony\'s house).', active: propertyAvailabilityFilter === 'not_available', onChange: () => setPropertyAvailabilityFilter(f => f === 'not_available' ? 'all' : 'not_available') },
   ]
 
   return (
@@ -596,12 +596,12 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
               isItemsLaws={true}
               onChange={lawsPanel.bumpRefresh}
               flags={[
-                ...flagButtons.map(({ key, label }) => ({
-                  key, label, count: flagCounts[key],
+                ...flagButtons.map(({ key, label, description }) => ({
+                  key, label, description, count: flagCounts[key],
                   onViewClick: () => setActiveFlag(f => f === key ? null : (key as 'similar' | 'bundled' | 'no_vendor' | 'properties_no_location')),
                 })),
-                ...viewButtons.map(({ key, label, active, onChange }) => ({
-                  key, label, count: active ? 1 : 0,
+                ...viewButtons.map(({ key, label, description, active, onChange }) => ({
+                  key, label, description, count: active ? 1 : 0,
                   onViewClick: onChange,
                 })),
               ]}
