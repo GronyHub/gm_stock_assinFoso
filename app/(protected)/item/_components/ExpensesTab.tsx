@@ -350,7 +350,7 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
                   {form.is_property && (
                     <div className="mt-3 space-y-2 p-2 bg-blue-50 rounded border border-blue-200">
                       <div>
-                        <p className="text-[9px] text-gray-400 mb-0.5">Property Type</p>
+                        <p className="text-[9px] text-gray-400 mb-0.5">Property Group</p>
                         <select value={form.property_type ?? ''} onChange={ev => {
                           const newType = ev.target.value
                           onFormChange({ ...form, property_type: newType, related_item_id: null })
