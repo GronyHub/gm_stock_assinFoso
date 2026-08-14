@@ -981,7 +981,7 @@ function MergeItemPicker({ itemId, itemName, typeLabel, mergePool, onMerged }: {
 // externally. Exported so ItemDetailPanel.tsx can also render it standalone
 // on the Item 360 page, with its own equivalents of the pools/records this
 // file builds from its own full-list fetch.
-export function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, mergePool, isOwnerLevelUser, onSaved, onRelationsSaved, onMerged, onDateClick, showPrices, lossOnly, gainOnly }: {
+export function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, mergePool, isOwnerLevelUser, onSaved, onRelationsSaved, onMerged, onDateClick, showPrices, lossOnly, gainOnly, maxRows }: {
   item: SummaryRow; groups: string[]; allItems: { item_id: number; item_name: string }[]
   currentAliases: AliasRecord[]; currentMatches: MatchRecord[]
   candidatePool: CandidateItem[]
@@ -994,6 +994,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   showPrices?: boolean
   gainOnly?: boolean
   lossOnly?: boolean
+  maxRows?: number
 }) {
   const [dayRows, setDayRows] = useState<DayRow[] | null>(null)
   const [editing, setEditing] = useState(false)
@@ -1093,6 +1094,8 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   const sp = parseFloat(item.sp ?? '0') || 0
   const totalLoss = computed ? parseFloat(computed.reduce((s, r) => s + (r.loss ?? 0), 0).toFixed(4)) : 0
   const totalCost = parseFloat((totalLoss * sp).toFixed(2))
+  const displayedRows = maxRows && computed ? computed.slice(0, maxRows) : computed
+  const hasMoreRows = maxRows && computed ? computed.length > maxRows : false
   const lgCls = `px-3 py-0 leading-none text-right ${totalLoss > 0 ? 'text-red-500' : totalLoss < 0 ? 'text-green-600' : 'text-gray-400'}`
 
   // When 2+ services independently draw on this item's stock, show each one as its own
@@ -1495,7 +1498,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {computed!.map((row, i) => {
+            {displayedRows!.map((row, i) => {
               const lossVal = row.loss !== null ? row.loss * sp : null
               return (
                 <tr key={i} className={row.loss !== null && row.loss > 0.001 ? 'bg-red-50' : ''}>
@@ -1550,6 +1553,11 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
             </tr>
           </tfoot>
         </table>
+        {hasMoreRows && (
+          <div className="px-3 py-1 text-[10px] text-gray-400 bg-gray-50 border-t border-gray-100">
+            ...and {computed!.length - maxRows!} more rows
+          </div>
+        )}
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -1570,7 +1578,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {computed!.map((row, i) => {
+            {displayedRows!.map((row, i) => {
               const lossVal = row.loss !== null ? row.loss * sp : null
               return (
                 <tr key={i} className={row.loss !== null && row.loss > 0.001 ? 'bg-red-50' : ''}>
@@ -1618,6 +1626,11 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
             </tr>
           </tfoot>
         </table>
+        {hasMoreRows && (
+          <div className="px-3 py-1 text-[10px] text-gray-400 bg-gray-50 border-t border-gray-100">
+            ...and {computed!.length - maxRows!} more rows
+          </div>
+        )}
         </div>
       )}
     </div>
