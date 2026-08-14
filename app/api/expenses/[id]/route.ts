@@ -26,7 +26,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
-  const { expense_date, expense_account, description, cf_justify, vendor_name, amount, cf_expense_type, is_property, propertyType, relatedItemId, expense_group, availability, working, location, notWorkingReason, notAvailableReason } = await req.json()
+  const { expense_date, expense_account, description, cf_justify, vendor_name, amount, cf_expense_type, is_property, propertyType, relatedItemId, expense_group, availability, working, location, notWorkingReason, notAvailableReason, is_related_expense, related_to_property_id, related_expense_reasons } = await req.json()
 
   if (!hasFeature(session.user as any, 'confidential_expenses', await getUserPermissionsMap())) {
     const [existing] = await sql`SELECT expense_account FROM expenses WHERE id = ${Number(id)}`
@@ -41,9 +41,12 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
     // description now, and the older standalone /expenses page only ever
     // sends cf_justify, so whichever one a given caller omits must be left
     // alone rather than nulled out.
-    // Ensure related_item_id and expense_group columns exist
+    // Ensure related_item_id, expense_group, and related expense columns exist
     await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS related_item_id INTEGER`.catch(() => {})
     await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS expense_group TEXT`.catch(() => {})
+    await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS is_related_expense BOOLEAN DEFAULT false`.catch(() => {})
+    await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS related_to_property_id INTEGER`.catch(() => {})
+    await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS related_expense_reasons TEXT`.catch(() => {})
 
     const [row] = await sql`
       UPDATE expenses SET
@@ -57,10 +60,14 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
         cf_expense_type = ${cf_expense_type ?? null},
         is_property     = COALESCE(${is_property ?? null}, is_property),
         related_item_id = ${relatedItemId ?? null},
-        expense_group   = ${expense_group ?? null}
+        expense_group   = ${expense_group ?? null},
+        is_related_expense = ${is_related_expense ?? null},
+        related_to_property_id = ${related_to_property_id ?? null},
+        related_expense_reasons = ${related_expense_reasons ?? null}
       WHERE id = ${Number(id)}
       RETURNING id, expense_date::date AS expense_date, expense_account, description, cf_justify,
-                vendor_name, amount, cf_expense_type, is_property, related_item_id, expense_group
+                vendor_name, amount, cf_expense_type, is_property, related_item_id, expense_group,
+                is_related_expense, related_to_property_id, related_expense_reasons
     `
     if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
@@ -97,7 +104,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
     await logActivity(actor, 'edited expense', describeExpense(row.expense_account, row.amount, row.expense_date))
 
     const [ep] = await sql`SELECT property_status, property_type, availability, working, location, not_working_reason, not_available_reason FROM expense_properties WHERE expense_id = ${row.id}`
-    return NextResponse.json({ ...row, property_status: ep?.property_status ?? null, property_type: ep?.property_type ?? null, availability: ep?.availability ?? null, working: ep?.working ?? null, location: ep?.location ?? null, not_working_reason: ep?.not_working_reason ?? null, not_available_reason: ep?.not_available_reason ?? null })
+    return NextResponse.json({ ...row, property_status: ep?.property_status ?? null, property_type: ep?.property_type ?? null, availability: ep?.availability ?? null, working: ep?.working ?? null, location: ep?.location ?? null, not_working_reason: ep?.not_working_reason ?? null, not_available_reason: ep?.not_available_reason ?? null, is_related_expense: row.is_related_expense ?? false, related_to_property_id: row.related_to_property_id ?? null, related_expense_reasons: row.related_expense_reasons ?? null })
   } catch (e) {
     console.error('PUT /api/expenses/[id] error:', e)
     return NextResponse.json({ error: `Server error: ${e instanceof Error ? e.message : String(e)}` }, { status: 500 })

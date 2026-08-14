@@ -28,6 +28,9 @@ type Expense = {
   source: string | null
   source_sheet: string | null
   expense_group: string | null
+  is_related_expense: boolean
+  related_to_property_id: number | null
+  related_expense_reasons: string | null
 }
 
 type PropertyFields = Pick<Expense, 'availability' | 'working' | 'location' | 'not_working_reason' | 'not_available_reason'>
@@ -141,6 +144,8 @@ type TableProps = {
   onVendorFilter: (v: string | null) => void
   itemsByType: Record<string, Array<{ id: number; name: string }>>
   onFetchItemsForType: (propType: string) => Promise<void>
+  relatedItems: Array<{ id: number; name: string }>
+  onFetchRelatedItems: () => Promise<void>
 }
 
 const EMPTY_FORM = {
@@ -149,7 +154,10 @@ const EMPTY_FORM = {
   related_item_id: null as number | null, expense_group: null as string | null,
   availability: null as string | null, working: null as string | null, location: null as string | null,
   not_working_reason: null as string | null, not_available_reason: null as string | null,
+  is_related_expense: false, related_to_property_id: null as number | null, related_expense_reasons: null as string | null,
 }
+
+const RELATED_EXPENSE_REASONS = ['Repairs', 'Spare Part', 'Delivery', 'Installation', 'Maintenance', 'Upgrade']
 
 const PROPERTY_TYPES = ['Printer', 'Computer', 'Banners', 'Seating', 'Tables', 'Lamination']
 
@@ -201,7 +209,7 @@ function FilterHeaderCell({ label, options, value, onChange, onResize, onResetWi
 
 function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, saving, form, saveError, onEdit, onCloseEdit,
   onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, colPrefs, hideAccount, hideVendor, hidePropertyColumns,
-  accounts, vendors, accountFilter, vendorFilter, onAccountFilter, onVendorFilter, itemsByType, onFetchItemsForType }: TableProps) {
+  accounts, vendors, accountFilter, vendorFilter, onAccountFilter, onVendorFilter, itemsByType, onFetchItemsForType, relatedItems, onFetchRelatedItems }: TableProps) {
   const propertyColKeys: ColKey[] = ['property_type', 'availability', 'working', 'location', 'reason']
   const visibleKeys = colPrefs.colOrder.filter(k => colPrefs.visibleCols.has(k)
     && !(k === 'account' && hideAccount) && !(k === 'vendor' && hideVendor)
@@ -347,6 +355,62 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
                       {EXPENSE_GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
                     </select>
                   </div>
+                  <div className="mt-2">
+                    <p className="text-[9px] text-gray-400 mb-0.5">Related to another property?</p>
+                    <div className="flex items-center gap-3">
+                      <label className="flex items-center gap-1 cursor-pointer">
+                        <input type="radio" name={`is-related-${e.id}`} checked={form.is_related_expense === false}
+                          onChange={() => onFormChange({ ...form, is_related_expense: false, related_to_property_id: null, related_expense_reasons: null })}
+                          className="w-3 h-3 accent-blue-600" />
+                        <span className="text-[10px] text-gray-700">No</span>
+                      </label>
+                      <label className="flex items-center gap-1 cursor-pointer">
+                        <input type="radio" name={`is-related-${e.id}`} checked={form.is_related_expense === true}
+                          onChange={() => { onFormChange({ ...form, is_related_expense: true }); onFetchRelatedItems() }}
+                          className="w-3 h-3 accent-blue-600" />
+                        <span className="text-[10px] text-gray-700">Yes</span>
+                      </label>
+                    </div>
+                  </div>
+                  {form.is_related_expense && (
+                    <div className="mt-2 space-y-2 p-2 bg-amber-50 rounded border border-amber-200">
+                      <div>
+                        <p className="text-[9px] text-gray-400 mb-0.5">Select the related property</p>
+                        <select value={form.related_to_property_id ?? ''} onChange={ev => onFormChange({ ...form, related_to_property_id: ev.target.value ? parseInt(ev.target.value) : null })}
+                          className={`${inputCls} text-[9px]`}>
+                          <option value="">Choose a property…</option>
+                          {relatedItems.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <p className="text-[9px] text-gray-400 mb-0.5">Reason(s)</p>
+                        <div className="space-y-1">
+                          {RELATED_EXPENSE_REASONS.map(reason => {
+                            const reasonsArray = form.related_expense_reasons
+                              ? form.related_expense_reasons.split(',').map(r => r.trim())
+                              : []
+                            const isChecked = reasonsArray.includes(reason)
+                            return (
+                              <label key={reason} className="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" checked={isChecked}
+                                  onChange={ev => {
+                                    if (ev.target.checked) {
+                                      const updated = reasonsArray.includes(reason) ? reasonsArray : [...reasonsArray, reason]
+                                      onFormChange({ ...form, related_expense_reasons: updated.join(', ') })
+                                    } else {
+                                      const updated = reasonsArray.filter(r => r !== reason)
+                                      onFormChange({ ...form, related_expense_reasons: updated.length > 0 ? updated.join(', ') : null })
+                                    }
+                                  }}
+                                  className="w-3 h-3 accent-blue-600" />
+                                <span className="text-[10px] text-gray-700">{reason}</span>
+                              </label>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   {form.is_property && (
                     <div className="mt-3 space-y-2 p-2 bg-blue-50 rounded border border-blue-200">
                       <div>
@@ -512,6 +576,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
   const [propertyTypeFilter, setPropertyTypeFilter] = useState<string | null>(null)
   const [customViewNames, setCustomViewNames] = useState<Record<string, string>>({})
   const [itemsByType, setItemsByType] = useState<Record<string, { id: number; name: string }[]>>({})
+  const [relatedItems, setRelatedItems] = useState<Array<{ id: number; name: string }>>([])
 
   // Create a unique key for column preferences based on the current view/flag
   const getPrefsKey = () => {
@@ -653,6 +718,20 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
     }
   }
 
+  async function fetchRelatedItems() {
+    if (relatedItems.length === 0) {
+      try {
+        const res = await fetch('/api/items/search?q=')
+        if (res.ok) {
+          const items = await res.json()
+          setRelatedItems(items.slice(0, 50))
+        }
+      } catch (e) {
+        console.error('Failed to fetch related items:', e)
+      }
+    }
+  }
+
   function openEdit(e: Expense) {
     if (e.amount_hidden) return
     setForm({
@@ -671,6 +750,9 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
       location: e.location ?? null,
       not_working_reason: e.not_working_reason ?? null,
       not_available_reason: e.not_available_reason ?? null,
+      is_related_expense: e.is_related_expense ?? false,
+      related_to_property_id: e.related_to_property_id ?? null,
+      related_expense_reasons: e.related_expense_reasons ?? null,
     })
     if (e.property_type) {
       fetchItemsForType(e.property_type)
@@ -699,6 +781,9 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
       location: form.location || null,
       notWorkingReason: form.not_working_reason || null,
       notAvailableReason: form.not_available_reason || null,
+      is_related_expense: form.is_related_expense || false,
+      related_to_property_id: form.related_to_property_id || null,
+      related_expense_reasons: form.related_expense_reasons || null,
     }
     console.log('Saving expense:', body)
     const res = await fetch(`/api/expenses/${editId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -746,6 +831,8 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
     onVendorFilter: setVendorFilter,
     itemsByType,
     onFetchItemsForType: fetchItemsForType,
+    relatedItems,
+    onFetchRelatedItems: fetchRelatedItems,
   }
 
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>

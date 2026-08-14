@@ -22,13 +22,17 @@ export async function GET() {
 
   try {
     await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS expense_group TEXT`.catch(() => {})
+    await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS is_related_expense BOOLEAN DEFAULT false`.catch(() => {})
+    await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS related_to_property_id INTEGER`.catch(() => {})
+    await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS related_expense_reasons TEXT`.catch(() => {})
     const rows = await sql`
       SELECT
         e.id, e.expense_date::date AS expense_date, e.expense_account,
         e.description, e.cf_justify, e.vendor_name, e.amount, e.cf_expense_type,
         e.is_property, COALESCE(ep.property_status, 'at_shop') AS property_status,
         ep.property_type, ep.availability, ep.working, ep.location, ep.not_working_reason, ep.not_available_reason,
-        e.expense_group, e.entered_by, e.source, e.source_sheet
+        e.expense_group, e.entered_by, e.source, e.source_sheet,
+        e.is_related_expense, e.related_to_property_id, e.related_expense_reasons
       FROM expenses e
       LEFT JOIN expense_properties ep ON ep.expense_id = e.id
       ORDER BY e.expense_date DESC, e.id DESC
@@ -36,13 +40,17 @@ export async function GET() {
     return NextResponse.json(redact(rows, canSeeAmounts))
   } catch {
     await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS expense_group TEXT`.catch(() => {})
+    await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS is_related_expense BOOLEAN DEFAULT false`.catch(() => {})
+    await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS related_to_property_id INTEGER`.catch(() => {})
+    await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS related_expense_reasons TEXT`.catch(() => {})
     const rows = await sql`
       SELECT
         e.id, e.expense_date::date AS expense_date, e.expense_account,
         e.description, e.cf_justify, e.vendor_name, e.amount, e.cf_expense_type,
         e.is_property, COALESCE(ep.property_status, 'at_shop') AS property_status,
         ep.property_type, ep.availability, ep.working, ep.location, ep.not_working_reason, ep.not_available_reason,
-        e.expense_group, NULL AS entered_by, e.source, e.source_sheet
+        e.expense_group, NULL AS entered_by, e.source, e.source_sheet,
+        e.is_related_expense, e.related_to_property_id, e.related_expense_reasons
       FROM expenses e
       LEFT JOIN expense_properties ep ON ep.expense_id = e.id
       ORDER BY e.expense_date DESC, e.id DESC
@@ -55,7 +63,7 @@ export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { expense_date, expense_account, description, cf_justify, vendor_name, amount, cf_expense_type, is_property, expense_group } = await req.json()
+  const { expense_date, expense_account, description, cf_justify, vendor_name, amount, cf_expense_type, is_property, expense_group, is_related_expense, related_to_property_id, related_expense_reasons } = await req.json()
   if (!expense_date || !expense_account || !amount) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
@@ -77,21 +85,27 @@ export async function POST(req: NextRequest) {
     try {
       [row] = await sql`
         INSERT INTO expenses (zoho_expense_id, expense_date, expense_account, description, cf_justify, vendor_name, amount, total,
-                              cf_expense_type, is_property, expense_group, source, entry_number, entered_by)
+                              cf_expense_type, is_property, expense_group, source, entry_number, entered_by,
+                              is_related_expense, related_to_property_id, related_expense_reasons)
         VALUES (${zohoExpenseId}, ${expense_date}, ${expense_account}, ${description ?? null}, ${cf_justify ?? null}, ${vendor_name ?? null},
-                ${amount}, ${amount}, ${cf_expense_type ?? null}, ${isProp}, ${expense_group ?? null}, 'app', ${entryNumber}, ${enteredBy})
+                ${amount}, ${amount}, ${cf_expense_type ?? null}, ${isProp}, ${expense_group ?? null}, 'app', ${entryNumber}, ${enteredBy},
+                ${is_related_expense ?? false}, ${related_to_property_id ?? null}, ${related_expense_reasons ?? null})
         RETURNING id, expense_date::date AS expense_date, expense_account, description, cf_justify,
-                  vendor_name, amount, cf_expense_type, is_property, expense_group, entered_by
+                  vendor_name, amount, cf_expense_type, is_property, expense_group, entered_by,
+                  is_related_expense, related_to_property_id, related_expense_reasons
       `
     } catch (e) {
       console.error('expenses insert with entered_by failed, retrying without it:', e)
       ;[row] = await sql`
         INSERT INTO expenses (zoho_expense_id, expense_date, expense_account, description, cf_justify, vendor_name, amount, total,
-                              cf_expense_type, is_property, expense_group, source, entry_number)
+                              cf_expense_type, is_property, expense_group, source, entry_number,
+                              is_related_expense, related_to_property_id, related_expense_reasons)
         VALUES (${zohoExpenseId}, ${expense_date}, ${expense_account}, ${description ?? null}, ${cf_justify ?? null}, ${vendor_name ?? null},
-                ${amount}, ${amount}, ${cf_expense_type ?? null}, ${isProp}, ${expense_group ?? null}, 'app', ${entryNumber})
+                ${amount}, ${amount}, ${cf_expense_type ?? null}, ${isProp}, ${expense_group ?? null}, 'app', ${entryNumber},
+                ${is_related_expense ?? false}, ${related_to_property_id ?? null}, ${related_expense_reasons ?? null})
         RETURNING id, expense_date::date AS expense_date, expense_account, description, cf_justify,
-                  vendor_name, amount, cf_expense_type, is_property, expense_group
+                  vendor_name, amount, cf_expense_type, is_property, expense_group,
+                  is_related_expense, related_to_property_id, related_expense_reasons
       `
     }
 
