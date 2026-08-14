@@ -35,51 +35,67 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
     }
   }
 
-  // description/cf_justify are set conditionally, not unconditionally like
-  // the other fields -- the Expenses tab's edit form only ever sends
-  // description now, and the older standalone /expenses page only ever
-  // sends cf_justify, so whichever one a given caller omits must be left
-  // alone rather than nulled out.
-  const [row] = await sql`
-    UPDATE expenses SET
-      expense_date    = COALESCE(${expense_date ?? null}::date, expense_date),
-      expense_account = COALESCE(${expense_account ?? null}, expense_account),
-      description     = CASE WHEN ${description !== undefined} THEN ${description ?? null} ELSE description END,
-      cf_justify      = CASE WHEN ${cf_justify !== undefined} THEN ${cf_justify ?? null} ELSE cf_justify END,
-      vendor_name     = ${vendor_name ?? null},
-      amount          = COALESCE(${amount ?? null}, amount),
-      total           = COALESCE(${amount ?? null}, total),
-      cf_expense_type = ${cf_expense_type ?? null},
-      is_property     = COALESCE(${is_property ?? null}, is_property)
-    WHERE id = ${Number(id)}
-    RETURNING id, expense_date::date AS expense_date, expense_account, description, cf_justify,
-              vendor_name, amount, cf_expense_type, is_property
-  `
-  if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-
-  // Ensure property row exists if is_property toggled on
-  if (row.is_property) {
-    await ensureExpensePropertyColumns()
-    await sql`
-      INSERT INTO expense_properties (expense_id, property_status, property_type, availability, working, location, not_working_reason, not_available_reason)
-      VALUES (${row.id}, 'at_shop', ${propertyType ?? null}, ${availability ?? null}, ${working ?? null}, ${location ?? null}, ${notWorkingReason ?? null}, ${notAvailableReason ?? null})
-      ON CONFLICT (expense_id) DO UPDATE SET
-        property_status = COALESCE(EXCLUDED.property_status, property_status),
-        property_type = COALESCE(EXCLUDED.property_type, property_type),
-        availability = COALESCE(EXCLUDED.availability, availability),
-        working = COALESCE(EXCLUDED.working, working),
-        location = COALESCE(EXCLUDED.location, location),
-        not_working_reason = COALESCE(EXCLUDED.not_working_reason, not_working_reason),
-        not_available_reason = COALESCE(EXCLUDED.not_available_reason, not_available_reason),
-        updated_at = NOW()
+  try {
+    // description/cf_justify are set conditionally, not unconditionally like
+    // the other fields -- the Expenses tab's edit form only ever sends
+    // description now, and the older standalone /expenses page only ever
+    // sends cf_justify, so whichever one a given caller omits must be left
+    // alone rather than nulled out.
+    const [row] = await sql`
+      UPDATE expenses SET
+        expense_date    = COALESCE(${expense_date ?? null}::date, expense_date),
+        expense_account = COALESCE(${expense_account ?? null}, expense_account),
+        description     = CASE WHEN ${description !== undefined} THEN ${description ?? null} ELSE description END,
+        cf_justify      = CASE WHEN ${cf_justify !== undefined} THEN ${cf_justify ?? null} ELSE cf_justify END,
+        vendor_name     = ${vendor_name ?? null},
+        amount          = COALESCE(${amount ?? null}, amount),
+        total           = COALESCE(${amount ?? null}, total),
+        cf_expense_type = ${cf_expense_type ?? null},
+        is_property     = COALESCE(${is_property ?? null}, is_property)
+      WHERE id = ${Number(id)}
+      RETURNING id, expense_date::date AS expense_date, expense_account, description, cf_justify,
+                vendor_name, amount, cf_expense_type, is_property
     `
+    if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+    // Ensure property row exists if is_property toggled on
+    if (row.is_property) {
+      try {
+        await ensureExpensePropertyColumns()
+      } catch (e) {
+        console.error('ensureExpensePropertyColumns error:', e)
+        return NextResponse.json({ error: `Failed to ensure property columns: ${e instanceof Error ? e.message : String(e)}` }, { status: 500 })
+      }
+
+      try {
+        await sql`
+          INSERT INTO expense_properties (expense_id, property_status, property_type, availability, working, location, not_working_reason, not_available_reason)
+          VALUES (${row.id}, 'at_shop', ${propertyType ?? null}, ${availability ?? null}, ${working ?? null}, ${location ?? null}, ${notWorkingReason ?? null}, ${notAvailableReason ?? null})
+          ON CONFLICT (expense_id) DO UPDATE SET
+            property_status = COALESCE(EXCLUDED.property_status, property_status),
+            property_type = COALESCE(EXCLUDED.property_type, property_type),
+            availability = COALESCE(EXCLUDED.availability, availability),
+            working = COALESCE(EXCLUDED.working, working),
+            location = COALESCE(EXCLUDED.location, location),
+            not_working_reason = COALESCE(EXCLUDED.not_working_reason, not_working_reason),
+            not_available_reason = COALESCE(EXCLUDED.not_available_reason, not_available_reason),
+            updated_at = NOW()
+        `
+      } catch (e) {
+        console.error('property update error:', e)
+        return NextResponse.json({ error: `Failed to update property: ${e instanceof Error ? e.message : String(e)}` }, { status: 500 })
+      }
+    }
+
+    const actor = session.user?.name || (session.user as any)?.username || 'Unknown'
+    await logActivity(actor, 'edited expense', describeExpense(row.expense_account, row.amount, row.expense_date))
+
+    const [ep] = await sql`SELECT property_status, property_type, availability, working, location, not_working_reason, not_available_reason FROM expense_properties WHERE expense_id = ${row.id}`
+    return NextResponse.json({ ...row, property_status: ep?.property_status ?? null, property_type: ep?.property_type ?? null, availability: ep?.availability ?? null, working: ep?.working ?? null, location: ep?.location ?? null, not_working_reason: ep?.not_working_reason ?? null, not_available_reason: ep?.not_available_reason ?? null })
+  } catch (e) {
+    console.error('PUT /api/expenses/[id] error:', e)
+    return NextResponse.json({ error: `Server error: ${e instanceof Error ? e.message : String(e)}` }, { status: 500 })
   }
-
-  const actor = session.user?.name || (session.user as any)?.username || 'Unknown'
-  await logActivity(actor, 'edited expense', describeExpense(row.expense_account, row.amount, row.expense_date))
-
-  const [ep] = await sql`SELECT property_status, property_type, availability, working, location, not_working_reason, not_available_reason FROM expense_properties WHERE expense_id = ${row.id}`
-  return NextResponse.json({ ...row, property_status: ep?.property_status ?? null, property_type: ep?.property_type ?? null, availability: ep?.availability ?? null, working: ep?.working ?? null, location: ep?.location ?? null, not_working_reason: ep?.not_working_reason ?? null, not_available_reason: ep?.not_available_reason ?? null })
 }
 
 export async function DELETE(_req: NextRequest, { params }: Ctx) {
