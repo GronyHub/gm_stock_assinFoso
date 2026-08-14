@@ -461,7 +461,19 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
   const [propertyAvailabilityFilter, setPropertyAvailabilityFilter] = useState<'all' | 'available' | 'not_available'>('all')
   const [propertyTypeFilter, setPropertyTypeFilter] = useState<string | null>(null)
   const [customViewNames, setCustomViewNames] = useState<Record<string, string>>({})
-  const colPrefs = useColumnPrefs<ColKey>('expensesTable', EXPENSE_COLUMNS)
+
+  // Create a unique key for column preferences based on the current view/flag
+  const getPrefsKey = () => {
+    if (activeFlag) return `expensesTable_flag_${activeFlag}`
+    if (groupBy !== 'none') return `expensesTable_groupBy_${groupBy}`
+    if (propertyAvailabilityFilter !== 'all') return `expensesTable_propFilter_${propertyAvailabilityFilter}`
+    if (propertyTypeFilter) return `expensesTable_propType_${propertyTypeFilter}`
+    if (showProperties && !showNonProperties) return 'expensesTable_propertiesOnly'
+    if (!showProperties && showNonProperties) return 'expensesTable_nonPropertiesOnly'
+    return 'expensesTable_all'
+  }
+
+  const colPrefs = useColumnPrefs<ColKey>(getPrefsKey(), EXPENSE_COLUMNS)
 
   function loadExpenses() {
     fetch('/api/expenses')
