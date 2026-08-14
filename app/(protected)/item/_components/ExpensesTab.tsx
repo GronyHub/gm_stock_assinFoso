@@ -157,6 +157,22 @@ type TableProps = {
   onFetchRelatedItems: () => Promise<void>
   relatedItemsLoading: boolean
   relatedItemsError: string | null
+  accountsData: Array<{ id: number; name: string }>
+  showAccountsPanel: boolean
+  newAccountName: string
+  editingAccountId: number | null
+  editingAccountName: string
+  accountError: string | null
+  accountSaving: boolean
+  onSetShowAccountsPanel: (v: boolean) => void
+  onSetNewAccountName: (v: string) => void
+  onSetEditingAccountId: (v: number | null) => void
+  onSetEditingAccountName: (v: string) => void
+  onSetAccountError: (v: string | null) => void
+  onFetchAccountsData: () => Promise<void>
+  onCreateAccount: () => Promise<void>
+  onRenameAccount: () => Promise<void>
+  onDeleteAccount: (id: number) => Promise<void>
 }
 
 const EMPTY_FORM = {
@@ -220,7 +236,10 @@ function FilterHeaderCell({ label, options, value, onChange, onResize, onResetWi
 
 function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, saving, form, saveError, onEdit, onCloseEdit,
   onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, colPrefs, hideAccount, hideVendor, hidePropertyColumns,
-  accounts, vendors, accountFilter, vendorFilter, onAccountFilter, onVendorFilter, itemsByType, onFetchItemsForType, relatedItems, onFetchRelatedItems, relatedItemsLoading, relatedItemsError }: TableProps) {
+  accounts, vendors, accountFilter, vendorFilter, onAccountFilter, onVendorFilter, itemsByType, onFetchItemsForType, relatedItems, onFetchRelatedItems, relatedItemsLoading, relatedItemsError,
+  accountsData, showAccountsPanel, newAccountName, editingAccountId, editingAccountName, accountError, accountSaving,
+  onSetShowAccountsPanel, onSetNewAccountName, onSetEditingAccountId, onSetEditingAccountName, onSetAccountError,
+  onFetchAccountsData, onCreateAccount, onRenameAccount, onDeleteAccount }: TableProps) {
   const propertyColKeys: ColKey[] = ['property_status', 'property_type', 'availability', 'working', 'location', 'reason']
   const visibleKeys = colPrefs.colOrder.filter(k => colPrefs.visibleCols.has(k)
     && !(k === 'account' && hideAccount) && !(k === 'vendor' && hideVendor)
@@ -330,7 +349,7 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
                     <div className="col-span-2">
                       <div className="flex items-center justify-between mb-0.5">
                         <p className="text-[9px] text-gray-400">Account</p>
-                        <button onClick={() => { setShowAccountsPanel(!showAccountsPanel); if (!showAccountsPanel) fetchAccountsData() }}
+                        <button onClick={() => { onSetShowAccountsPanel(!showAccountsPanel); if (!showAccountsPanel) onFetchAccountsData() }}
                           className="text-[8px] text-blue-600 hover:text-blue-700 font-semibold">
                           {showAccountsPanel ? '✕ Hide' : '⚙ Manage'}
                         </button>
@@ -350,10 +369,10 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
                           <div>
                             <p className="text-[9px] text-gray-600 mb-1">New Account</p>
                             <div className="flex gap-1">
-                              <input type="text" value={newAccountName} onChange={e => setNewAccountName(e.target.value)}
-                                onKeyPress={ev => ev.key === 'Enter' && handleCreateAccount()}
+                              <input type="text" value={newAccountName} onChange={e => onSetNewAccountName(e.target.value)}
+                                onKeyPress={ev => ev.key === 'Enter' && onCreateAccount()}
                                 placeholder="Account name…" className="flex-1 text-[10px] px-1.5 py-1 border border-gray-200 rounded bg-white focus:ring-1 focus:ring-blue-400 outline-none" />
-                              <button onClick={handleCreateAccount} disabled={!newAccountName.trim() || accountSaving}
+                              <button onClick={onCreateAccount} disabled={!newAccountName.trim() || accountSaving}
                                 className="px-1.5 py-1 bg-green-600 text-white text-[9px] font-semibold rounded hover:bg-green-700 disabled:opacity-50">
                                 Add
                               </button>
@@ -369,20 +388,20 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
                                   <div key={acc.id} className="flex items-center gap-1 p-1 bg-white rounded border border-gray-200 text-[9px]">
                                     {editingAccountId === acc.id ? (
                                       <>
-                                        <input type="text" value={editingAccountName} onChange={e => setEditingAccountName(e.target.value)}
-                                          onKeyPress={ev => ev.key === 'Enter' && handleRenameAccount()}
+                                        <input type="text" value={editingAccountName} onChange={e => onSetEditingAccountName(e.target.value)}
+                                          onKeyPress={ev => ev.key === 'Enter' && onRenameAccount()}
                                           className="flex-1 px-1 py-0.5 border border-blue-300 rounded text-[9px] bg-white outline-none" autoFocus />
-                                        <button onClick={handleRenameAccount} disabled={accountSaving}
+                                        <button onClick={onRenameAccount} disabled={accountSaving}
                                           className="px-1 py-0.5 bg-green-600 text-white text-[8px] font-semibold rounded hover:bg-green-700 disabled:opacity-50">✓</button>
-                                        <button onClick={() => { setEditingAccountId(null); setEditingAccountName('') }} disabled={accountSaving}
+                                        <button onClick={() => { onSetEditingAccountId(null); onSetEditingAccountName('') }} disabled={accountSaving}
                                           className="px-1 py-0.5 bg-gray-300 text-gray-700 text-[8px] font-semibold rounded hover:bg-gray-400 disabled:opacity-50">✕</button>
                                       </>
                                     ) : (
                                       <>
                                         <span className="flex-1 truncate">{acc.name}</span>
-                                        <button onClick={() => { setEditingAccountId(acc.id); setEditingAccountName(acc.name); setAccountError(null) }}
+                                        <button onClick={() => { onSetEditingAccountId(acc.id); onSetEditingAccountName(acc.name); onSetAccountError(null) }}
                                           className="px-1 py-0.5 bg-blue-100 text-blue-700 text-[8px] hover:bg-blue-200 rounded">Rename</button>
-                                        <button onClick={() => handleDeleteAccount(acc.id)}
+                                        <button onClick={() => onDeleteAccount(acc.id)}
                                           className="px-1 py-0.5 bg-red-100 text-red-700 text-[8px] hover:bg-red-200 rounded">Delete</button>
                                       </>
                                     )}
@@ -856,7 +875,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
     }
   }
 
-  async function handleCreateAccount() {
+  async function handleCreateAccount(formData: typeof EMPTY_FORM, updateForm: (f: typeof EMPTY_FORM) => void) {
     if (!newAccountName.trim()) {
       setAccountError('Account name cannot be empty')
       return
@@ -873,7 +892,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
         const account = await res.json()
         setAccountsData(prev => [...prev, account].sort((a, b) => a.name.localeCompare(b.name)))
         setNewAccountName('')
-        onFormChange({ ...form, expense_account: account.name })
+        updateForm({ ...formData, expense_account: account.name })
       } else {
         const data = await res.json()
         setAccountError(data.error || 'Failed to create account')
@@ -885,7 +904,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
     }
   }
 
-  async function handleRenameAccount() {
+  async function handleRenameAccount(formData: typeof EMPTY_FORM, updateForm: (f: typeof EMPTY_FORM) => void) {
     if (!editingAccountId || !editingAccountName.trim()) {
       setAccountError('Account name cannot be empty')
       return
@@ -901,8 +920,8 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
       if (res.ok) {
         const updated = await res.json()
         setAccountsData(prev => prev.map(a => a.id === editingAccountId ? updated : a).sort((a, b) => a.name.localeCompare(b.name)))
-        if (form.expense_account === accountsData.find(a => a.id === editingAccountId)?.name) {
-          onFormChange({ ...form, expense_account: updated.name })
+        if (formData.expense_account === accountsData.find(a => a.id === editingAccountId)?.name) {
+          updateForm({ ...formData, expense_account: updated.name })
         }
         setEditingAccountId(null)
         setEditingAccountName('')
@@ -1039,6 +1058,22 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
     onFetchRelatedItems: fetchRelatedItems,
     relatedItemsLoading,
     relatedItemsError,
+    accountsData,
+    showAccountsPanel,
+    newAccountName,
+    editingAccountId,
+    editingAccountName,
+    accountError,
+    accountSaving,
+    onSetShowAccountsPanel: setShowAccountsPanel,
+    onSetNewAccountName: setNewAccountName,
+    onSetEditingAccountId: setEditingAccountId,
+    onSetEditingAccountName: setEditingAccountName,
+    onSetAccountError: setAccountError,
+    onFetchAccountsData: fetchAccountsData,
+    onCreateAccount: () => handleCreateAccount(form, setForm),
+    onRenameAccount: () => handleRenameAccount(form, setForm),
+    onDeleteAccount: handleDeleteAccount,
   }
 
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
