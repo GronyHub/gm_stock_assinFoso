@@ -1475,7 +1475,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
         <table className="w-full border-collapse text-xs">
           <thead>
             <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide border-b border-gray-200">
-              <th className="px-3 py-0 leading-none text-left whitespace-nowrap sticky left-0 z-10 bg-gray-50 border-r border-gray-200">Date</th>
+              <th className="pl-0 pr-3 py-0 leading-none text-left whitespace-nowrap sticky left-0 z-10 bg-gray-50 border-r border-gray-200">Date</th>
               <th className="px-3 py-0 leading-none text-right" title="Physical count taken that day">Cnt</th>
               <th className="px-3 py-0 leading-none text-right" title="Converted in from another item's GMC take">CNV</th>
               <th className="px-3 py-0 leading-none text-right text-blue-500" title="Available = previous stock + bills received + converted in">Avail</th>
@@ -1499,7 +1499,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
               const lossVal = row.loss !== null ? row.loss * sp : null
               return (
                 <tr key={i} className={row.loss !== null && row.loss > 0.001 ? 'bg-red-50' : ''}>
-                  <td className="px-3 py-0 leading-none text-gray-600 whitespace-nowrap sticky left-0 z-10 bg-inherit border-r border-gray-200">
+                  <td className="pl-0 pr-3 py-0 leading-none text-gray-600 whitespace-nowrap sticky left-0 z-10 bg-inherit border-r border-gray-200">
                     {onDateClick ? (
                       <button onClick={() => onDateClick(row.date, item.item_name)} className="text-blue-600 hover:underline">
                         {fmtDate(row.date)}
@@ -1542,7 +1542,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
           </tbody>
           <tfoot>
             <tr className="border-t border-gray-200 bg-gray-50 font-semibold">
-              <td className="px-3 py-0 leading-none text-gray-500 sticky left-0 z-10 bg-gray-50 border-r border-gray-200">Total</td>
+              <td className="pl-0 pr-3 py-0 leading-none text-gray-500 sticky left-0 z-10 bg-gray-50 border-r border-gray-200">Total</td>
               <td colSpan={5 + breakdownNames.length} />
               <td className={lgCls}>{totalLoss > 0.001 ? `-${fmtN(totalLoss)}` : totalLoss < -0.001 ? `+${fmtN(Math.abs(totalLoss))}` : '0'}</td>
               <td className={lgCls}>{totalCost > 0.01 ? `-₵${fmtN(totalCost)}` : totalCost < -0.01 ? `+₵${fmtN(Math.abs(totalCost))}` : '0'}</td>
@@ -1556,7 +1556,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
         <table className="w-full border-collapse text-xs">
           <thead>
             <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide border-b border-gray-200">
-              <th className="px-3 py-0 leading-none text-left whitespace-nowrap sticky left-0 z-10 bg-gray-50 border-r border-gray-200">Date</th>
+              <th className="pl-0 pr-3 py-0 leading-none text-left whitespace-nowrap sticky left-0 z-10 bg-gray-50 border-r border-gray-200">Date</th>
               <th className="px-3 py-0 leading-none text-right">₵</th>
               <th className="px-3 py-0 leading-none text-right">L/G</th>
               <th className="px-3 py-0 leading-none text-right">Cnt</th>
@@ -1574,7 +1574,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
               const lossVal = row.loss !== null ? row.loss * sp : null
               return (
                 <tr key={i} className={row.loss !== null && row.loss > 0.001 ? 'bg-red-50' : ''}>
-                  <td className="px-3 py-0 leading-none text-gray-600 whitespace-nowrap sticky left-0 z-10 bg-inherit border-r border-gray-200">
+                  <td className="pl-0 pr-3 py-0 leading-none text-gray-600 whitespace-nowrap sticky left-0 z-10 bg-inherit border-r border-gray-200">
                     {onDateClick ? (
                       <button onClick={() => onDateClick(row.date, item.item_name)} className="text-blue-600 hover:underline">
                         {fmtDate(row.date)}
@@ -1611,7 +1611,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
           </tbody>
           <tfoot>
             <tr className="border-t border-gray-200 bg-gray-50 font-semibold">
-              <td className="px-3 py-0 leading-none text-gray-500 sticky left-0 z-10 bg-gray-50 border-r border-gray-200">Total</td>
+              <td className="pl-0 pr-3 py-0 leading-none text-gray-500 sticky left-0 z-10 bg-gray-50 border-r border-gray-200">Total</td>
               <td className={lgCls}>{totalCost > 0.01 ? `-₵${fmtN(totalCost)}` : totalCost < -0.01 ? `+₵${fmtN(Math.abs(totalCost))}` : '0'}</td>
               <td className={lgCls}>{totalLoss > 0.001 ? `-${fmtN(totalLoss)}` : totalLoss < -0.001 ? `+${fmtN(Math.abs(totalLoss))}` : '0'}</td>
               <td colSpan={8} />
