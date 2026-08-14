@@ -312,14 +312,6 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
                         onChange={ev => onFormChange({ ...form, description: ev.target.value })} className={inputCls} />
                     </div>
                     <div>
-                      <p className="text-[9px] text-gray-400 mb-0.5">Group</p>
-                      <select value={form.expense_group ?? ''} onChange={ev => onFormChange({ ...form, expense_group: ev.target.value || null })}
-                        className={inputCls}>
-                        <option value="">Select…</option>
-                        {EXPENSE_GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
-                      </select>
-                    </div>
-                    <div>
                       <p className="text-[9px] text-gray-400 mb-0.5">Vendor</p>
                       <input value={form.vendor_name}
                         onChange={ev => onFormChange({ ...form, vendor_name: ev.target.value })} className={inputCls} />
@@ -335,17 +327,25 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
                     <div className="flex items-center gap-3">
                       <label className="flex items-center gap-1 cursor-pointer">
                         <input type="radio" name={`is-property-${e.id}`} checked={form.is_property === true}
-                          onChange={() => onFormChange({ ...form, is_property: true })}
+                          onChange={() => onFormChange({ ...form, is_property: true, expense_group: 'Properties' })}
                           className="w-3 h-3 accent-blue-600" />
                         <span className="text-[10px] text-gray-700">Property</span>
                       </label>
                       <label className="flex items-center gap-1 cursor-pointer">
                         <input type="radio" name={`is-property-${e.id}`} checked={form.is_property === false}
-                          onChange={() => onFormChange({ ...form, is_property: false })}
+                          onChange={() => onFormChange({ ...form, is_property: false, expense_group: 'Non-Properties' })}
                           className="w-3 h-3 accent-blue-600" />
                         <span className="text-[10px] text-gray-700">Not a property</span>
                       </label>
                     </div>
+                  </div>
+                  <div className="mt-2">
+                    <p className="text-[9px] text-gray-400 mb-0.5">Group</p>
+                    <select value={form.expense_group ?? ''} onChange={ev => onFormChange({ ...form, expense_group: ev.target.value || null })}
+                      className={inputCls}>
+                      <option value="">Select…</option>
+                      {EXPENSE_GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
+                    </select>
                   </div>
                   {form.is_property && (
                     <div className="mt-3 space-y-2 p-2 bg-blue-50 rounded border border-blue-200">
