@@ -115,10 +115,12 @@ export default function PageLawsList({
   const [expandedFlagDesc, setExpandedFlagDesc] = useState<string | null>(null)
 
   const [menuLawId, setMenuLawId] = useState<number | null>(null)
+  const [menuFlagKey, setMenuFlagKey] = useState<string | null>(null)
   const [menuTaskId, setMenuTaskId] = useState<number | null>(null)
   const [menuGlobalTaskId, setMenuGlobalTaskId] = useState<number | null>(null)
   const [menuGlobalNoteId, setMenuGlobalNoteId] = useState<number | null>(null)
   const lawPress = useLongPress(id => setMenuLawId(id as number))
+  const flagPress = useLongPress(id => setMenuFlagKey(id as string))
   const taskPress = useLongPress(id => setMenuTaskId(id as number))
   const globalTaskPress = useLongPress(id => setMenuGlobalTaskId(id as number))
   const globalNotePress = useLongPress(id => setMenuGlobalNoteId(id as number))
@@ -858,7 +860,9 @@ export default function PageLawsList({
             </div>
           ))}
           {orderedFlags.filter(f => !hideZeroFlags || f.count > 0).map((f, i) => (
-            <div key={f.key} className="flex items-start gap-1 px-1 py-0.5 bg-red-50/30">
+            <div key={f.key} className="flex items-start gap-1 px-1 py-0.5 bg-red-50/30"
+              onMouseDown={() => flagPress.onMouseDown(f.key)} onMouseUp={flagPress.onMouseUp}
+              onTouchStart={() => flagPress.onTouchStart(f.key)} onTouchEnd={flagPress.onTouchEnd}>
               <span className="shrink-0 text-[8px] font-bold text-gray-300">{visibleLaws.length + i + 1}</span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1 flex-wrap leading-none">
@@ -874,13 +878,19 @@ export default function PageLawsList({
                       flags
                     </button>
                   )}
-                  <button type="button" onClick={() => moveLawInOrder(f.key, 'up')} title="Move up" className="text-gray-500 hover:text-gray-700 text-[8px] font-semibold">▲</button>
-                  <button type="button" onClick={() => moveLawInOrder(f.key, 'down')} title="Move down" className="text-gray-500 hover:text-gray-700 text-[8px] font-semibold">▼</button>
-                  {taskForFlag !== f.key && noteForFlag !== f.key && (
+                  {menuFlagKey === f.key ? (
                     <>
-                      <button type="button" onClick={() => { setTaskForFlag(f.key); fetchTasksForFlag(f.key) }} title="Add task for this flag" className="text-blue-500 hover:text-blue-600 font-semibold text-[8px]">✓ Task</button>
-                      <button type="button" onClick={() => setNoteForFlag(f.key)} title="Add note for this flag" className="text-amber-500 hover:text-amber-600 font-semibold text-[8px]">📝 Note</button>
+                      <button type="button" onClick={() => moveLawInOrder(f.key, 'up')} title="Move up" className="text-gray-500 hover:text-gray-700 text-[8px] font-semibold">▲</button>
+                      <button type="button" onClick={() => moveLawInOrder(f.key, 'down')} title="Move down" className="text-gray-500 hover:text-gray-700 text-[8px] font-semibold">▼</button>
+                      {taskForFlag !== f.key && noteForFlag !== f.key && (
+                        <>
+                          <button type="button" onClick={() => { setTaskForFlag(f.key); fetchTasksForFlag(f.key) }} title="Add task for this flag" className="text-blue-500 hover:text-blue-600 font-semibold text-[8px]">✓ Task</button>
+                          <button type="button" onClick={() => setNoteForFlag(f.key)} title="Add note for this flag" className="text-amber-500 hover:text-amber-600 font-semibold text-[8px]">📝 Note</button>
+                        </>
+                      )}
                     </>
+                  ) : (
+                    <button type="button" onClick={() => setMenuFlagKey(f.key)} className="text-gray-400 hover:text-gray-600 text-[8px] font-semibold">⋯</button>
                   )}
                 </div>
                 {expandedFlagDesc === f.key && f.description && (
