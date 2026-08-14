@@ -71,6 +71,7 @@ const GronyManageContent = dynamic(() => import('./_components/GronyManageTab'),
 const VendorsPage    = dynamic(() => import('../vendors/page'),               { ssr: false, loading: () => loading('Loading…') })
 const CustomersPage  = dynamic(() => import('../customers/page'),             { ssr: false, loading: () => loading('Loading…') })
 const ReceiptsPage   = dynamic(() => import('../receipts/page'),              { ssr: false, loading: () => loading('Loading…') })
+const LocationsPage  = dynamic(() => import('../locations/page'),             { ssr: false, loading: () => loading('Loading…') })
 const PurchaseOrdersPage  = dynamic(() => import('../purchase-orders/page'),        { ssr: false, loading: () => loading('Loading…') })
 const AliasWidePage       = dynamic(() => import('../aliases/wide/page'),           { ssr: false, loading: () => loading('Loading…') })
 const ServiceMatchesPage  = dynamic(() => import('../matches/wide/page'),           { ssr: false, loading: () => loading('Loading…') })
@@ -111,7 +112,7 @@ type LossView = 'home' | 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'loss
   // own separate LossView/pane row instead, so it gets its own PageToolIcons
   // scope (Notes/Tasks/Laws/Flags all separate from the Customers list's
   // own) rather than sharing 'customers'.
-  | 'newCustomer'
+  | 'newCustomer' | 'locations'
   // Same reasoning as 'newCustomer' above -- Expense Orders used to be a
   // showOrders toggle living inside ExpensesTab itself, invisible to
   // page.tsx, so the pane button could never actually know whether it was
@@ -239,6 +240,7 @@ const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: string }
   { key: 'cab',      label: 'CAB',      icon: '🗂️' },
   { key: 'customers', label: 'Customers', icon: '👥', group: 'Customers' },
   { key: 'receipts',  label: 'Cust. Receipts',  icon: '📑', group: 'Customers' },
+  { key: 'locations', label: 'Locations',      icon: '📍', group: 'Customers' },
 ]
 // flattenPaneRuns needs a group->label lookup to build each run's header
 // text, but a Cash row's group already IS its own label (see CASH_ITEMS'
@@ -2031,6 +2033,11 @@ function ItemHubPageInner() {
         {outerTab === 'loss' && lossView === 'receipts' && (
           <TabErrorBoundary>
             <div className="px-4 pt-2 space-y-2">{inlineLaws('Receipts', receiptsLaws)}<ReceiptsPage /></div>
+          </TabErrorBoundary>
+        )}
+        {outerTab === 'loss' && lossView === 'locations' && (
+          <TabErrorBoundary>
+            <div className="px-4 pt-2 space-y-2"><LocationsPage /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'home' && (
