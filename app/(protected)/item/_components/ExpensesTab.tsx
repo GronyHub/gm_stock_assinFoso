@@ -721,10 +721,10 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
   async function fetchRelatedItems() {
     if (relatedItems.length === 0) {
       try {
-        const res = await fetch('/api/items/search?q=')
+        const res = await fetch('/api/properties')
         if (res.ok) {
-          const items = await res.json()
-          setRelatedItems(items.slice(0, 50))
+          const properties = await res.json()
+          setRelatedItems(properties)
         }
       } catch (e) {
         console.error('Failed to fetch related items:', e)
