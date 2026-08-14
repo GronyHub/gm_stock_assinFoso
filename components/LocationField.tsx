@@ -54,7 +54,7 @@ export default function LocationField({ value, onChange, label = 'Location (opti
         onFocus={() => setOpen(true)}
         placeholder="Search or add a location" className={inputCls} />
       {open && (
-        <div className="absolute z-20 left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+        <div className="absolute z-[9999] left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
           {/* Always the first option -- picking or adding a location
               shouldn't require guessing whether it's already on the list. */}
           <button type="button" onClick={addNew}

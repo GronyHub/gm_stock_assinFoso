@@ -352,13 +352,15 @@ function NewReceiptForm({ onCreated, onCancel }: { onCreated: (r: Receipt) => vo
       </div>
 
       {showNewCustomerForm && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <NewCustomerForm
-              initialDisplayName={customerName.trim()}
-              onCreated={handleCustomerCreated}
-              onCancel={() => setShowNewCustomerForm(false)}
-            />
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl max-w-2xl w-full my-auto">
+            <div className="overflow-y-auto max-h-[90vh]">
+              <NewCustomerForm
+                initialDisplayName={customerName.trim()}
+                onCreated={handleCustomerCreated}
+                onCancel={() => setShowNewCustomerForm(false)}
+              />
+            </div>
           </div>
         </div>
       )}
