@@ -733,8 +733,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
           activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
       </div>
       {lawsPanel.show && (
-        <div className="px-2 min-h-0 max-h-[40vh] overflow-y-auto">
-          <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+        <div className="px-2 min-h-0 max-h-[40vh] overflow-y-auto border border-gray-200 rounded-xl bg-white">
             <PageLawsList
               scopeKey="Expenses"
               isItemsLaws={true}
@@ -757,7 +756,6 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
               setHideZeroFlags={lawsPanel.setHideZeroFlags}
               activeFilters={lawsPanel.activeFilters}
             />
-          </div>
         </div>
       )}
       <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0 flex-wrap">
