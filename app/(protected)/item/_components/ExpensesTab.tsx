@@ -552,7 +552,10 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
     { key: 'properties_no_location', letter: 'L', label: 'Properties Without Location' },
   ]
 
+  const isAllExpenses = activeFlag === null && propertyAvailabilityFilter === 'all' && groupBy === 'none' && showProperties && showNonProperties
+
   const viewButtons: { key: string; letter: string; label: string; active: boolean; onChange: () => void }[] = [
+    { key: 'all_expenses', letter: '∑', label: 'All Expenses', active: isAllExpenses, onChange: () => { setActiveFlag(null); setPropertyAvailabilityFilter('all'); setGroupBy('none'); setShowProperties(true); setShowNonProperties(true) } },
     { key: 'by_account', letter: 'A', label: 'By Account', active: groupBy === 'account', onChange: () => setGroupBy(g => g === 'account' ? 'none' : 'account') },
     { key: 'by_vendor', letter: 'V', label: 'By Vendor', active: groupBy === 'vendor', onChange: () => setGroupBy(g => g === 'vendor' ? 'none' : 'vendor') },
     { key: 'show_properties', letter: 'P', label: 'Properties', active: showProperties, onChange: () => setShowProperties(p => !p) },
