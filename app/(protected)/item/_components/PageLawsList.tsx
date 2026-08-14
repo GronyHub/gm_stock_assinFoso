@@ -912,11 +912,6 @@ export default function PageLawsList({
                             {VIEW_KEYS.includes(f.key) ? (customViewNames[f.key] || f.label) : (customFlagNames[f.key] || f.label)}
                           </button>
                           <span className="text-[8px] bg-red-100 text-red-700 font-bold px-1 py-0 rounded text-center">{f.count}</span>
-                          {f.onViewClick && (
-                            <button type="button" onClick={e => { e.stopPropagation(); f.onViewClick?.() }} className="text-[8px] text-blue-600 font-semibold hover:text-blue-700">
-                              flags
-                            </button>
-                          )}
                           {menuFlagKey === f.key && (
                             <div className="flex gap-1 text-[8px]">
                               <button type="button" onClick={() => moveLawInOrder(f.key, 'up')} title="Move up" className="text-gray-500 hover:text-gray-700 font-semibold">▲</button>
@@ -970,11 +965,6 @@ export default function PageLawsList({
                   )}
                   {editingFlagKey !== f.key && (
                     <span className="text-[8px] bg-red-100 text-red-700 font-bold px-1 py-0 rounded text-center">{f.count}</span>
-                  )}
-                  {editingFlagKey !== f.key && f.onViewClick && (
-                    <button type="button" onClick={f.onViewClick} className="text-[8px] text-blue-600 font-semibold hover:text-blue-700">
-                      flags
-                    </button>
                   )}
                   {editingFlagKey !== f.key && menuFlagKey === f.key ? (
                     <>
