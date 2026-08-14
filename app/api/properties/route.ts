@@ -8,10 +8,10 @@ export async function GET() {
 
   try {
     const properties = await sql`
-      SELECT DISTINCT i.id, i.name
-      FROM items i
-      WHERE (i.status IS NULL OR LOWER(i.status) != 'inactive')
-      ORDER BY i.name ASC
+      SELECT DISTINCT id, expense_account AS name
+      FROM expenses
+      WHERE is_property = true
+      ORDER BY expense_account ASC
     `
     return NextResponse.json(properties)
   } catch (e) {
