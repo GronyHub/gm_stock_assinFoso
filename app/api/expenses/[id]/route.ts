@@ -63,15 +63,23 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
     await sql`
       INSERT INTO expense_properties (expense_id, property_status, property_type, availability, working, location, not_working_reason, not_available_reason)
       VALUES (${row.id}, 'at_shop', ${propertyType ?? null}, ${availability ?? null}, ${working ?? null}, ${location ?? null}, ${notWorkingReason ?? null}, ${notAvailableReason ?? null})
-      ON CONFLICT (expense_id) DO UPDATE SET property_type = ${propertyType ?? null}, availability = COALESCE(${availability ?? null}, availability), working = COALESCE(${working ?? null}, working), location = COALESCE(${location ?? null}, location), not_working_reason = COALESCE(${notWorkingReason ?? null}, not_working_reason), not_available_reason = COALESCE(${notAvailableReason ?? null}, not_available_reason)
+      ON CONFLICT (expense_id) DO UPDATE SET
+        property_status = COALESCE(EXCLUDED.property_status, property_status),
+        property_type = COALESCE(EXCLUDED.property_type, property_type),
+        availability = COALESCE(EXCLUDED.availability, availability),
+        working = COALESCE(EXCLUDED.working, working),
+        location = COALESCE(EXCLUDED.location, location),
+        not_working_reason = COALESCE(EXCLUDED.not_working_reason, not_working_reason),
+        not_available_reason = COALESCE(EXCLUDED.not_available_reason, not_available_reason),
+        updated_at = NOW()
     `
   }
 
   const actor = session.user?.name || (session.user as any)?.username || 'Unknown'
   await logActivity(actor, 'edited expense', describeExpense(row.expense_account, row.amount, row.expense_date))
 
-  const [ep] = await sql`SELECT property_status, property_type, availability, working, location FROM expense_properties WHERE expense_id = ${row.id}`
-  return NextResponse.json({ ...row, property_status: ep?.property_status ?? null, property_type: ep?.property_type ?? null, availability: ep?.availability ?? null, working: ep?.working ?? null, location: ep?.location ?? null })
+  const [ep] = await sql`SELECT property_status, property_type, availability, working, location, not_working_reason, not_available_reason FROM expense_properties WHERE expense_id = ${row.id}`
+  return NextResponse.json({ ...row, property_status: ep?.property_status ?? null, property_type: ep?.property_type ?? null, availability: ep?.availability ?? null, working: ep?.working ?? null, location: ep?.location ?? null, not_working_reason: ep?.not_working_reason ?? null, not_available_reason: ep?.not_available_reason ?? null })
 }
 
 export async function DELETE(_req: NextRequest, { params }: Ctx) {
