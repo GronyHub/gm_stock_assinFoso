@@ -300,11 +300,11 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
                     </div>
                     <div>
                       <p className="text-[9px] text-gray-400 mb-0.5">Account</p>
-                      <input list="expense-accounts-edit" value={form.expense_account}
-                        onChange={ev => onFormChange({ ...form, expense_account: ev.target.value })} className={inputCls} />
-                      <datalist id="expense-accounts-edit">
-                        {ACCOUNTS.map(a => <option key={a} value={a} />)}
-                      </datalist>
+                      <select value={form.expense_account}
+                        onChange={ev => onFormChange({ ...form, expense_account: ev.target.value })} className={inputCls}>
+                        <option value="">Select…</option>
+                        {ACCOUNTS.map(a => <option key={a} value={a}>{a}</option>)}
+                      </select>
                     </div>
                     <div>
                       <p className="text-[9px] text-gray-400 mb-0.5">Description</p>
