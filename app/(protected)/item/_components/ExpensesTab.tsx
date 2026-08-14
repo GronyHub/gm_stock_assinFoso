@@ -504,6 +504,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
     }
     if (propertyAvailabilityFilter === 'available') list = list.filter(e => e.is_property && e.availability === 'available')
     else if (propertyAvailabilityFilter === 'not_available') list = list.filter(e => e.is_property && e.availability === 'not_available')
+    if (propertyTypeFilter) list = list.filter(e => e.is_property && e.property_type === propertyTypeFilter)
     const q = search.toLowerCase()
     if (!q) return list
     return list.filter(e =>
@@ -513,7 +514,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
       (e.source_sheet ?? '').toLowerCase().includes(q) ||
       (e.source ?? '').toLowerCase().includes(q)
     )
-  }, [expenses, search, accountFilter, vendorFilter, showProperties, showNonProperties, propertyAvailabilityFilter, activeFlag, similarAccountNames])
+  }, [expenses, search, accountFilter, vendorFilter, showProperties, showNonProperties, propertyAvailabilityFilter, propertyTypeFilter, activeFlag, similarAccountNames])
 
   const grouped = useMemo(() => {
     if (groupBy === 'none') return []
@@ -620,13 +621,14 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
     { key: 'properties_no_location', letter: 'L', label: 'Properties Without Location', description: 'Available properties that have not been assigned a storage location — need to be placed at a Grony location.' },
   ]
 
-  const isAllExpenses = activeFlag === null && propertyAvailabilityFilter === 'all' && groupBy === 'none' && showProperties && showNonProperties
+  const isAllExpenses = activeFlag === null && propertyAvailabilityFilter === 'all' && groupBy === 'none' && showProperties && showNonProperties && !propertyTypeFilter
 
   const getActiveViewHeading = () => {
     if (activeFlag === 'similar') return 'Similar Account Names'
     if (activeFlag === 'bundled') return 'Description Looks Bundled'
     if (activeFlag === 'no_vendor') return 'No Vendor Name'
     if (activeFlag === 'properties_no_location') return 'Properties Without Location'
+    if (propertyTypeFilter === 'Printer') return 'Printers'
     if (groupBy === 'account') return 'Grouped by Account'
     if (groupBy === 'vendor') return 'Grouped by Vendor'
     if (propertyAvailabilityFilter === 'available') return 'Properties Available'
@@ -639,13 +641,14 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
   const activeViewHeading = getActiveViewHeading()
 
   const viewButtons: { key: string; letter: string; label: string; description: string; active: boolean; onChange: () => void }[] = [
-    { key: 'all_expenses', letter: '∑', label: 'All Expenses', description: 'View all expenses without any filters or grouping — returns to the default view.', active: isAllExpenses, onChange: () => { setActiveFlag(null); setPropertyAvailabilityFilter('all'); setGroupBy('none'); setShowProperties(true); setShowNonProperties(true) } },
+    { key: 'all_expenses', letter: '∑', label: 'All Expenses', description: 'View all expenses without any filters or grouping — returns to the default view.', active: isAllExpenses, onChange: () => { setActiveFlag(null); setPropertyAvailabilityFilter('all'); setGroupBy('none'); setShowProperties(true); setShowNonProperties(true); setPropertyTypeFilter(null) } },
     { key: 'by_account', letter: 'A', label: 'By Account', description: 'Group expenses by their account category to see totals and records for each account.', active: groupBy === 'account', onChange: () => setGroupBy(g => g === 'account' ? 'none' : 'account') },
     { key: 'by_vendor', letter: 'V', label: 'By Vendor', description: 'Group expenses by vendor to see total spending and records for each supplier.', active: groupBy === 'vendor', onChange: () => setGroupBy(g => g === 'vendor' ? 'none' : 'vendor') },
     { key: 'show_properties', letter: 'P', label: 'Properties', description: 'View only expenses marked as properties/equipment.', active: showProperties && !showNonProperties, onChange: () => { if (showProperties && !showNonProperties) { setShowProperties(true); setShowNonProperties(true) } else { setShowProperties(true); setShowNonProperties(false) } } },
     { key: 'show_non_properties', letter: 'N', label: 'Non-Properties', description: 'View only regular expenses (non-property expenditures).', active: !showProperties && showNonProperties, onChange: () => { if (!showProperties && showNonProperties) { setShowProperties(true); setShowNonProperties(true) } else { setShowProperties(false); setShowNonProperties(true) } } },
     { key: 'prop_available', letter: 'A', label: 'Properties Available', description: 'View only properties currently at a Grony shop location (marked as available).', active: propertyAvailabilityFilter === 'available', onChange: () => setPropertyAvailabilityFilter(f => f === 'available' ? 'all' : 'available') },
     { key: 'prop_not_available', letter: 'U', label: 'Properties Not Available', description: 'View only properties that are currently away from shop (spoilt, stolen, or at Grony\'s house).', active: propertyAvailabilityFilter === 'not_available', onChange: () => setPropertyAvailabilityFilter(f => f === 'not_available' ? 'all' : 'not_available') },
+    { key: 'printers', letter: 'M', label: 'Printers', description: 'View only printers and printer-related expenses.', active: propertyTypeFilter === 'Printer', onChange: () => setPropertyTypeFilter(t => t === 'Printer' ? null : 'Printer') },
   ]
 
   return (
