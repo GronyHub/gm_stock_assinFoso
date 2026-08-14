@@ -111,6 +111,8 @@ export default function PageLawsList({
   const [globalNoteText, setGlobalNoteText] = useState('')
   const [globalNoteDate, setGlobalNoteDate] = useState(() => new Date().toISOString().split('T')[0])
   const [globalNoteTaggedStaff, setGlobalNoteTaggedStaff] = useState<string[]>([])
+  const [customLawOrder, setCustomLawOrder] = useState<string[]>([])
+  const [expandedFlagDesc, setExpandedFlagDesc] = useState<string | null>(null)
 
   const [menuLawId, setMenuLawId] = useState<number | null>(null)
   const [menuTaskId, setMenuTaskId] = useState<number | null>(null)
@@ -271,6 +273,11 @@ export default function PageLawsList({
       .then(r => r.ok ? r.json() : [])
       .then(d => { setLaws(Array.isArray(d) ? d : []); setLoading(false) })
       .catch(() => setLoading(false))
+    // Load custom law order
+    fetch(`/api/law-order?scopeKey=${encodeURIComponent(scopeKey)}`)
+      .then(r => r.ok ? r.json() : { order: [] })
+      .then(d => setCustomLawOrder(Array.isArray(d.order) ? d.order : []))
+      .catch(() => {})
     // Load global tasks/notes for this scope
     if (isItemsLaws) {
       fetch(`/api/tasks?submenu=${encodeURIComponent(scopeKey)}`)
@@ -281,6 +288,38 @@ export default function PageLawsList({
         .then(r => r.ok ? r.json() : null)
         .then(d => setGlobalNotes(d?.notes ? [d] : []))
         .catch(() => {})
+    }
+  }
+
+  async function saveLawOrder(newOrder: string[]) {
+    setCustomLawOrder(newOrder)
+    await fetch('/api/law-order', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scopeKey, order: newOrder }),
+    }).catch(() => {})
+  }
+
+  function moveLawInOrder(key: string, direction: 'up' | 'down') {
+    const allKeys = [...customLawOrder]
+    const idx = allKeys.indexOf(key)
+    if (idx === -1) {
+      // Not in custom order yet, initialize it
+      const allLawKeys = laws.map(l => `law-${l.id}`)
+      const allFlagKeys = flags?.map(f => f.key) ?? []
+      const allKey = [...allLawKeys, ...allFlagKeys]
+      const newIdx = allKey.indexOf(key)
+      if (newIdx === -1) return
+      if (direction === 'up' && newIdx === 0) return
+      if (direction === 'down' && newIdx === allKey.length - 1) return
+      const swapIdx = direction === 'up' ? newIdx - 1 : newIdx + 1
+      ;[allKey[newIdx], allKey[swapIdx]] = [allKey[swapIdx], allKey[newIdx]]
+      saveLawOrder(allKey)
+    } else {
+      if (direction === 'up' && idx === 0) return
+      if (direction === 'down' && idx === allKeys.length - 1) return
+      const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+      ;[allKeys[idx], allKeys[swapIdx]] = [allKeys[swapIdx], allKeys[idx]]
+      saveLawOrder(allKeys)
     }
   }
 
@@ -708,6 +747,25 @@ export default function PageLawsList({
   const visibleGlobalTasks = showTasksSection ? globalTasks : []
   const visibleGlobalNotes = showNotesSection ? globalNotes : []
 
+  // Apply custom law/flag order
+  const orderedLaws = customLawOrder.length > 0 ? visibleLaws.sort((a, b) => {
+    const aIdx = customLawOrder.indexOf(`law-${a.id}`)
+    const bIdx = customLawOrder.indexOf(`law-${b.id}`)
+    if (aIdx === -1 && bIdx === -1) return 0
+    if (aIdx === -1) return 1
+    if (bIdx === -1) return -1
+    return aIdx - bIdx
+  }) : visibleLaws
+
+  const orderedFlags = customLawOrder.length > 0 ? visibleFlags.sort((a, b) => {
+    const aIdx = customLawOrder.indexOf(a.key)
+    const bIdx = customLawOrder.indexOf(b.key)
+    if (aIdx === -1 && bIdx === -1) return 0
+    if (aIdx === -1) return 1
+    if (bIdx === -1) return -1
+    return aIdx - bIdx
+  }) : visibleFlags
+
   return (
     <div className={isItemsLaws ? '' : 'space-y-2'}>
       {!isItemsLaws && (
@@ -748,7 +806,7 @@ export default function PageLawsList({
         </div>
       ) : (
         <div className={`bg-white ${isItemsLaws ? 'divide-y divide-gray-100' : 'border border-gray-200 rounded-lg divide-y divide-gray-50'}`}>
-          {visibleLaws.map((l, i) => (
+          {orderedLaws.map((l, i) => (
             <div key={l.id} className="flex items-start gap-1 px-1 py-0.5 bg-gray-50/50"
               onMouseDown={() => lawPress.onMouseDown(l.id)} onMouseUp={lawPress.onMouseUp}
               onTouchStart={() => lawPress.onTouchStart(l.id)} onTouchEnd={lawPress.onTouchEnd}>
@@ -779,6 +837,8 @@ export default function PageLawsList({
                   </div>
                   {menuLawId === l.id && (
                     <div className="flex gap-1 text-[8px]">
+                      <button type="button" onClick={() => moveLawInOrder(`law-${l.id}`, 'up')} title="Move up" className="text-gray-500 hover:text-gray-700 font-semibold">▲</button>
+                      <button type="button" onClick={() => moveLawInOrder(`law-${l.id}`, 'down')} title="Move down" className="text-gray-500 hover:text-gray-700 font-semibold">▼</button>
                       <button type="button" onClick={() => startEdit(l)} title="Edit" className="text-gray-500 hover:text-gray-700 font-semibold">✎</button>
                       <button type="button" onClick={() => { setReplyingTo(`law-${l.id}`); fetchReplies('law', l.id) }} title="Reply" className="text-blue-500 hover:text-blue-700 font-semibold">💬</button>
                       <button type="button" onClick={() => { remove(l.id); setMenuLawId(null) }} className="text-red-500 hover:text-red-700 font-semibold">×</button>
@@ -798,7 +858,7 @@ export default function PageLawsList({
               )}
             </div>
           ))}
-          {visibleFlags.filter(f => !hideZeroFlags || f.count > 0).map((f, i) => (
+          {orderedFlags.filter(f => !hideZeroFlags || f.count > 0).map((f, i) => (
             <div key={f.key} className="flex items-start gap-1 px-1 py-0.5 bg-red-50/30">
               <span className="shrink-0 text-[8px] font-bold text-gray-300">{visibleLaws.length + i + 1}</span>
               <div className="min-w-0 flex-1">
@@ -815,6 +875,8 @@ export default function PageLawsList({
                       flags
                     </button>
                   )}
+                  <button type="button" onClick={() => moveLawInOrder(f.key, 'up')} title="Move up" className="text-gray-500 hover:text-gray-700 text-[8px] font-semibold">▲</button>
+                  <button type="button" onClick={() => moveLawInOrder(f.key, 'down')} title="Move down" className="text-gray-500 hover:text-gray-700 text-[8px] font-semibold">▼</button>
                   {taskForFlag !== f.key && noteForFlag !== f.key && (
                     <>
                       <button type="button" onClick={() => { setTaskForFlag(f.key); fetchTasksForFlag(f.key) }} title="Add task for this flag" className="text-blue-500 hover:text-blue-600 font-semibold text-[8px]">✓ Task</button>
