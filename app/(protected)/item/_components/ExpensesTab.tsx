@@ -116,6 +116,7 @@ type TableProps = {
   deleting: boolean
   saving: boolean
   form: typeof EMPTY_FORM
+  saveError: string | null
   onEdit: (e: Expense) => void
   onCloseEdit: () => void
   onFormChange: (f: typeof EMPTY_FORM) => void
@@ -188,7 +189,7 @@ function FilterHeaderCell({ label, options, value, onChange, onResize, onResetWi
   )
 }
 
-function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, saving, form, onEdit, onCloseEdit,
+function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, saving, form, saveError, onEdit, onCloseEdit,
   onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, colPrefs, hideAccount, hideVendor, hidePropertyColumns,
   accounts, vendors, accountFilter, vendorFilter, onAccountFilter, onVendorFilter }: TableProps) {
   const propertyColKeys: ColKey[] = ['property_type', 'availability', 'working', 'location', 'reason']
@@ -631,7 +632,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
   }
 
   const tableProps = {
-    highlightId, editId, confirmDeleteId, deleting, saving, form,
+    highlightId, editId, confirmDeleteId, deleting, saving, form, saveError,
     onEdit: openEdit,
     onCloseEdit: () => { setEditId(null); setConfirmDeleteId(null); setSaveError(null) },
     onFormChange: setForm,
