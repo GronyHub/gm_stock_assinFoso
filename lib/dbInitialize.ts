@@ -3,6 +3,7 @@ import { ensureBillAttachmentsColumn } from './billAttachments'
 import { ensureCashAtBankDeficitColumn } from './cashAtBank'
 import { ensureClosingReports } from './closingReports'
 import { ensureCountRevisions } from './countRevisions'
+import { ensureCustomerZohoColumn } from './customerZohoColumn'
 import { ensureExpenseOrders } from './expenseOrders'
 import { ensureExpensePropertyColumns } from './expenseProperties'
 import { ensureLiveSaleTapsTable } from './liveSales'
@@ -28,6 +29,7 @@ export async function initializeDatabase() {
       ensureCashAtBankDeficitColumn(),
       ensureClosingReports(),
       ensureCountRevisions(),
+      ensureCustomerZohoColumn(),
       ensureExpenseOrders(),
       ensureExpensePropertyColumns(),
       ensureLiveSaleTapsTable(),
