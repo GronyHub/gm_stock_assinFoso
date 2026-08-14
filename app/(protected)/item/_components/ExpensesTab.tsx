@@ -144,6 +144,8 @@ type TableProps = {
   onFetchItemsForType: (propType: string) => Promise<void>
   relatedItems: Array<{ id: number; name: string }>
   onFetchRelatedItems: () => Promise<void>
+  relatedItemsLoading: boolean
+  relatedItemsError: string | null
 }
 
 const EMPTY_FORM = {
@@ -207,7 +209,7 @@ function FilterHeaderCell({ label, options, value, onChange, onResize, onResetWi
 
 function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, saving, form, saveError, onEdit, onCloseEdit,
   onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, colPrefs, hideAccount, hideVendor, hidePropertyColumns,
-  accounts, vendors, accountFilter, vendorFilter, onAccountFilter, onVendorFilter, itemsByType, onFetchItemsForType, relatedItems, onFetchRelatedItems }: TableProps) {
+  accounts, vendors, accountFilter, vendorFilter, onAccountFilter, onVendorFilter, itemsByType, onFetchItemsForType, relatedItems, onFetchRelatedItems, relatedItemsLoading, relatedItemsError }: TableProps) {
   const propertyColKeys: ColKey[] = ['property_type', 'availability', 'working', 'location', 'reason']
   const visibleKeys = colPrefs.colOrder.filter(k => colPrefs.visibleCols.has(k)
     && !(k === 'account' && hideAccount) && !(k === 'vendor' && hideVendor)
@@ -374,11 +376,22 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
                     <div className="mt-2 space-y-2 p-2 bg-amber-50 rounded border border-amber-200">
                       <div>
                         <p className="text-[9px] text-gray-400 mb-0.5">Select the related property</p>
+                        {relatedItemsLoading && (
+                          <div className="text-[9px] text-amber-600 mb-1">Loading properties...</div>
+                        )}
+                        {relatedItemsError && (
+                          <div className="text-[9px] text-red-600 mb-1 p-1 bg-red-50 rounded border border-red-200">
+                            ⚠️ {relatedItemsError}
+                          </div>
+                        )}
                         <select value={form.related_to_property_id?.toString() ?? ''} onChange={ev => onFormChange({ ...form, related_to_property_id: ev.target.value ? parseInt(ev.target.value) : null })}
                           className={`${inputCls} text-[9px]`}>
                           <option value="">Choose a property…</option>
-                          {relatedItems.length > 0 ? relatedItems.map(item => <option key={item.id} value={String(item.id)}>{item.name}</option>) : <option value="" disabled>Loading properties...</option>}
+                          {relatedItems.length > 0 ? relatedItems.map(item => <option key={item.id} value={String(item.id)}>{item.name}</option>) : null}
                         </select>
+                        {relatedItems.length > 0 && (
+                          <div className="text-[9px] text-green-600 mt-1">✓ {relatedItems.length} properties available</div>
+                        )}
                       </div>
                       <div>
                         <p className="text-[9px] text-gray-400 mb-0.5">Reason(s)</p>
@@ -575,6 +588,8 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
   const [customViewNames, setCustomViewNames] = useState<Record<string, string>>({})
   const [itemsByType, setItemsByType] = useState<Record<string, { id: number; name: string }[]>>({})
   const [relatedItems, setRelatedItems] = useState<Array<{ id: number; name: string }>>([])
+  const [relatedItemsError, setRelatedItemsError] = useState<string | null>(null)
+  const [relatedItemsLoading, setRelatedItemsLoading] = useState(false)
 
   // Create a unique key for column preferences based on the current view/flag
   const getPrefsKey = () => {
@@ -719,20 +734,24 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
 
   async function fetchRelatedItems() {
     if (relatedItems.length === 0) {
+      setRelatedItemsLoading(true)
+      setRelatedItemsError(null)
       try {
-        console.log('Fetching related items...')
         const res = await fetch('/api/properties')
-        console.log('Response status:', res.status)
         if (res.ok) {
           const properties = await res.json()
-          console.log('Properties fetched:', properties)
           setRelatedItems(properties)
+          if (properties.length === 0) {
+            setRelatedItemsError('No properties found in database')
+          }
         } else {
           const error = await res.text()
-          console.error('Failed to fetch properties:', res.status, error)
+          setRelatedItemsError(`Error ${res.status}: ${error || res.statusText}`)
         }
       } catch (e) {
-        console.error('Failed to fetch related items:', e)
+        setRelatedItemsError(`Connection error: ${e instanceof Error ? e.message : String(e)}`)
+      } finally {
+        setRelatedItemsLoading(false)
       }
     }
   }
@@ -838,6 +857,8 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
     onFetchItemsForType: fetchItemsForType,
     relatedItems,
     onFetchRelatedItems: fetchRelatedItems,
+    relatedItemsLoading,
+    relatedItemsError,
   }
 
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
