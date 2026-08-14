@@ -93,7 +93,7 @@ const TD = 'px-3 py-2'
 // Account (frozen, first), Description (second, always), Group (third, always), then Date, Amt, others
 // Vendor gets force-hidden while grouped by that field.
 // Property columns are shown only when viewing properties.
-type ColKey = 'date' | 'account' | 'description' | 'group' | 'is_property' | 'vendor' | 'source' | 'by' | 'property_type' | 'availability' | 'working' | 'location' | 'reason'
+type ColKey = 'date' | 'account' | 'description' | 'group' | 'is_property' | 'vendor' | 'source' | 'by' | 'is_related_expense' | 'related_property' | 'related_reasons' | 'property_type' | 'availability' | 'working' | 'location' | 'reason'
 const EXPENSE_COLUMNS: ColumnDef<ColKey>[] = [
   { key: 'account',      label: 'Account' },
   { key: 'description',  label: 'Description' },
@@ -103,6 +103,9 @@ const EXPENSE_COLUMNS: ColumnDef<ColKey>[] = [
   { key: 'vendor',       label: 'Vendor' },
   { key: 'source',       label: 'Source' },
   { key: 'by',           label: 'By' },
+  { key: 'is_related_expense', label: 'Related to Property?' },
+  { key: 'related_property', label: 'Related Property' },
+  { key: 'related_reasons', label: 'Relationship' },
   { key: 'property_type', label: 'Type' },
   { key: 'availability', label: 'Available?' },
   { key: 'working',      label: 'Condition' },
@@ -111,6 +114,7 @@ const EXPENSE_COLUMNS: ColumnDef<ColKey>[] = [
 ]
 const EXPENSES_COL_DEFAULTS: Record<string, number> = {
   date: 92, amt: 90, account: 120, description: 160, group: 100, is_property: 85, vendor: 120, source: 90, by: 80,
+  is_related_expense: 95, related_property: 120, related_reasons: 130,
   property_type: 80, availability: 90, working: 90, location: 100, reason: 120,
 }
 
@@ -237,6 +241,12 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
     if (key === 'vendor') return <td key={key} className={`${TD} text-gray-500 truncate`}>{e.vendor_name ?? '—'}</td>
     if (key === 'source') return <td key={key} className={`${TD} text-gray-400 truncate`}>{e.source_sheet ?? e.source ?? '—'}</td>
     if (key === 'by') return <td key={key} className={`${TD} text-blue-500 truncate`}>{e.entered_by ?? '—'}</td>
+    if (key === 'is_related_expense') return <td key={key} className={`${TD} text-gray-600 truncate`}>{e.is_related_expense ? '✓ Yes' : '✗ No'}</td>
+    if (key === 'related_property') {
+      const propName = relatedItems.find(p => p.id === e.related_to_property_id)?.name
+      return <td key={key} className={`${TD} text-gray-600 truncate`}>{propName ?? '—'}</td>
+    }
+    if (key === 'related_reasons') return <td key={key} className={`${TD} text-gray-600 truncate text-[9px]`}>{e.related_expense_reasons ?? '—'}</td>
     if (key === 'property_type') return <td key={key} className={`${TD} text-gray-600 truncate`}>{e.property_type ?? '—'}</td>
     if (key === 'availability') return <td key={key} className={`${TD} text-gray-600 truncate`}>{e.availability ? (e.availability === 'available' ? '✓ Available' : '✗ Away') : '—'}</td>
     if (key === 'working') return <td key={key} className={`${TD} text-gray-600 truncate`}>{e.working ? (e.working === 'working' ? '✓ Working' : '✗ Not Working') : '—'}</td>
