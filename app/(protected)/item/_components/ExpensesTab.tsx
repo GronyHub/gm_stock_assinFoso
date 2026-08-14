@@ -509,10 +509,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
     if (!q) return list
     return list.filter(e =>
       e.expense_account.toLowerCase().includes(q) ||
-      (e.description ?? '').toLowerCase().includes(q) ||
-      (e.vendor_name ?? '').toLowerCase().includes(q) ||
-      (e.source_sheet ?? '').toLowerCase().includes(q) ||
-      (e.source ?? '').toLowerCase().includes(q)
+      (e.description ?? '').toLowerCase().includes(q)
     )
   }, [expenses, search, accountFilter, vendorFilter, showProperties, showNonProperties, propertyAvailabilityFilter, propertyTypeFilter, activeFlag, similarAccountNames])
 
