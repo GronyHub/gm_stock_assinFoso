@@ -134,7 +134,6 @@ export default function PageLawsList({
   const [editTaskTitle, setEditTaskTitle] = useState('')
   const [editTaskType, setEditTaskType] = useState('General task')
   const [editTaskAssignedTo, setEditTaskAssignedTo] = useState('')
-  const [expandedFlagDesc, setExpandedFlagDesc] = useState<string | null>(null)
 
   function formatDate(dateStr: string) {
     if (!dateStr) return ''

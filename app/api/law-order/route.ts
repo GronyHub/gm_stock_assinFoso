@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
 
   await sql`CREATE TABLE IF NOT EXISTS law_order (scope_key TEXT, username TEXT, order_json TEXT, PRIMARY KEY (scope_key, username))`.catch(() => {})
 
-  const row = await sql`SELECT order_json FROM law_order WHERE scope_key = ${scopeKey} AND username = ${session.user?.username || 'anonymous'}`
+  const row = await sql`SELECT order_json FROM law_order WHERE scope_key = ${scopeKey} AND username = ${(session.user as { username?: string } | undefined)?.username || 'anonymous'}`
   if (row.length === 0) return NextResponse.json({ order: [] })
 
   try {
@@ -37,7 +37,7 @@ export async function PATCH(req: NextRequest) {
   await sql`CREATE TABLE IF NOT EXISTS law_order (scope_key TEXT, username TEXT, order_json TEXT, PRIMARY KEY (scope_key, username))`.catch(() => {})
 
   const orderJson = JSON.stringify(order)
-  const username = session.user?.username || 'anonymous'
+  const username = (session.user as { username?: string } | undefined)?.username || 'anonymous'
   await sql`
     INSERT INTO law_order (scope_key, username, order_json) VALUES (${scopeKey}, ${username}, ${orderJson})
     ON CONFLICT (scope_key, username) DO UPDATE SET order_json = ${orderJson}
