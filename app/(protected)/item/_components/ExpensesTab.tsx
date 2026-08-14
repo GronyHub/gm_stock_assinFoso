@@ -707,6 +707,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
     if (propertyAvailabilityFilter === 'not_available') return 'Properties Not Available'
     if (!showProperties && showNonProperties) return 'Non-Properties Only'
     if (showProperties && !showNonProperties) return 'Properties Only'
+    if (isAllExpenses) return 'All Expenses'
     return null
   }
 
