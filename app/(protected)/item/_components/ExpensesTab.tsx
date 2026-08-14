@@ -792,11 +792,19 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto px-2 pt-2">
+      <div className="flex flex-nowrap items-center gap-1.5 px-2 pt-2 pb-2">
         <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
           openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
           hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
           activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
+        <div className="ml-auto flex items-center gap-1.5">
+          <button onClick={() => setShowHistory(h => !h)}
+            className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition
+              ${showHistory ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
+            History
+          </button>
+          <ColumnsPickerButton prefs={colPrefs} />
+        </div>
       </div>
       {lawsPanel.show && (
         <div className="px-2 min-h-0 max-h-[40vh] overflow-y-auto border border-gray-200 rounded-xl bg-white">
@@ -824,15 +832,6 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
             />
         </div>
       )}
-      <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0 flex-wrap">
-        <button onClick={() => setShowHistory(h => !h)}
-          className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition
-            ${showHistory ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
-          History
-        </button>
-        <span className="ml-auto text-[9px] text-gray-400">{filtered.length} records</span>
-        <ColumnsPickerButton prefs={colPrefs} />
-      </div>
 
       {showHistory && <HistoryPanel keywords={['expense']} onEntryClick={log => {
         // "added expense": "account · ₵200 on 2024-01-15"
