@@ -86,11 +86,12 @@ function looksBundled(description: string | null): boolean {
 const TH = 'text-left px-3 py-2 font-bold text-gray-400 text-[10px] uppercase tracking-wide border-b border-gray-200'
 const TD = 'px-3 py-2'
 
-// Date and Amt stay sticky/always-visible (first two columns); these columns
-// are configurable. Account and Vendor also get force-hidden while grouped by
-// that same field. Property columns are shown only when viewing properties.
-type ColKey = 'account' | 'description' | 'vendor' | 'source' | 'by' | 'property_type' | 'availability' | 'working' | 'location' | 'reason'
+// Date, Amt, and Account stay sticky/always-visible (first three columns in properties view).
+// These columns are configurable. Vendor also gets force-hidden while grouped by that field.
+// Property columns are shown only when viewing properties.
+type ColKey = 'date' | 'account' | 'description' | 'vendor' | 'source' | 'by' | 'property_type' | 'availability' | 'working' | 'location' | 'reason'
 const EXPENSE_COLUMNS: ColumnDef<ColKey>[] = [
+  { key: 'date',         label: 'Date' },
   { key: 'account',      label: 'Account' },
   { key: 'description',  label: 'Description' },
   { key: 'vendor',       label: 'Vendor' },
@@ -191,9 +192,12 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
   onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, colPrefs, hideAccount, hideVendor, hidePropertyColumns,
   accounts, vendors, accountFilter, vendorFilter, onAccountFilter, onVendorFilter }: TableProps) {
   const propertyColKeys: ColKey[] = ['property_type', 'availability', 'working', 'location', 'reason']
+  const stickyAccountInProperties = !hidePropertyColumns
   const visibleKeys = colPrefs.colOrder.filter(k => colPrefs.visibleCols.has(k)
     && !(k === 'account' && hideAccount) && !(k === 'vendor' && hideVendor)
-    && !(hidePropertyColumns && propertyColKeys.includes(k)))
+    && !(k === 'account' && stickyAccountInProperties)
+    && !(hidePropertyColumns && propertyColKeys.includes(k))
+    && !(k === 'date' && stickyAccountInProperties))
 
   function headerCellFor(key: ColKey, isLast: boolean) {
     const label = colPrefs.columnLabels[key] ?? EXPENSE_COLUMNS.find(c => c.key === key)!.label
@@ -217,21 +221,26 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
     return <td key={key} className={`${TD} text-gray-500`}>—</td>
   }
 
-  const tableWidth = colPrefs.getWidth('date', EXPENSES_COL_DEFAULTS.date) + colPrefs.getWidth('amt', EXPENSES_COL_DEFAULTS.amt)
+  const dateWidth = colPrefs.getWidth('date', EXPENSES_COL_DEFAULTS.date)
+  const amtWidth = colPrefs.getWidth('amt', EXPENSES_COL_DEFAULTS.amt)
+  const accountWidth = stickyAccountInProperties ? colPrefs.getWidth('account', EXPENSES_COL_DEFAULTS.account) : 0
+  const tableWidth = dateWidth + amtWidth + accountWidth
     + visibleKeys.reduce((s, k) => s + colPrefs.getWidth(k, EXPENSES_COL_DEFAULTS[k] ?? 100), 0)
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
     <table className="border-collapse text-xs" style={{ tableLayout: 'fixed', width: tableWidth }}>
       <colgroup>
-        <col style={{ width: colPrefs.getWidth('date', EXPENSES_COL_DEFAULTS.date) }} />
-        <col style={{ width: colPrefs.getWidth('amt', EXPENSES_COL_DEFAULTS.amt) }} />
+        <col style={{ width: dateWidth }} />
+        <col style={{ width: amtWidth }} />
+        {stickyAccountInProperties && <col style={{ width: accountWidth }} />}
         {visibleKeys.map(k => <col key={k} style={{ width: colPrefs.getWidth(k, EXPENSES_COL_DEFAULTS[k] ?? 100) }} />)}
       </colgroup>
       <thead className="sticky top-0 z-10">
         <tr className="bg-gray-50">
           <ResizableTh onResize={d => colPrefs.resizeWidth('date', d, EXPENSES_COL_DEFAULTS.date)} onReset={() => colPrefs.resetWidth('date')}>Date</ResizableTh>
           <ResizableTh align="right" onResize={d => colPrefs.resizeWidth('amt', d, EXPENSES_COL_DEFAULTS.amt)} onReset={() => colPrefs.resetWidth('amt')}>Amt</ResizableTh>
+          {stickyAccountInProperties && headerCellFor('account', visibleKeys.length === 0)}
           {visibleKeys.map((key, i) => headerCellFor(key, i === visibleKeys.length - 1))}
         </tr>
       </thead>
@@ -243,11 +252,12 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
               className={`transition-colors ${e.amount_hidden ? '' : 'cursor-pointer'} ${highlightId === e.id ? 'bg-yellow-100' : i % 2 === 1 ? 'bg-gray-50' : 'bg-white'} hover:bg-blue-50/60`}>
               <td className={`${TD} text-gray-600 whitespace-nowrap`}>{fmtShort(e.expense_date)}</td>
               <td className={`${TD} text-right font-bold text-gray-900`}>{e.amount_hidden ? '🔒 Hidden' : `₵${fmt(e.amount)}`}</td>
+              {stickyAccountInProperties && bodyCellFor('account', e)}
               {visibleKeys.map(k => bodyCellFor(k, e))}
             </tr>
             {editId === e.id && (
               <tr className="bg-blue-50/40">
-                <td colSpan={2 + visibleKeys.length} className="px-3 py-3">
+                <td colSpan={2 + (stickyAccountInProperties ? 1 : 0) + visibleKeys.length} className="px-3 py-3">
                   <div className="grid grid-cols-2 gap-1 max-w-lg">
                     <div>
                       <p className="text-[9px] text-gray-400 mb-0.5">Date</p>
