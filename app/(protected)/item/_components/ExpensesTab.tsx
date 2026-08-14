@@ -17,7 +17,9 @@ type Expense = {
   amount: string | null
   amount_hidden?: boolean
   cf_expense_type: string | null
+  cf_justify: string | null
   is_property: boolean
+  property_status: string | null
   property_type: string | null
   related_item_id: number | null
   availability: string | null
@@ -93,12 +95,14 @@ const TD = 'px-3 py-2'
 // Account (frozen, first), Description (second, always), Group (third, always), then Date, Amt, others
 // Vendor gets force-hidden while grouped by that field.
 // Property columns are shown only when viewing properties.
-type ColKey = 'date' | 'account' | 'description' | 'group' | 'is_property' | 'vendor' | 'source' | 'by' | 'is_related_expense' | 'related_property' | 'related_reasons' | 'property_type' | 'availability' | 'working' | 'location' | 'reason'
+type ColKey = 'date' | 'account' | 'description' | 'group' | 'is_property' | 'amount' | 'expense_type' | 'vendor' | 'source' | 'by' | 'is_related_expense' | 'related_property' | 'related_reasons' | 'property_status' | 'property_type' | 'availability' | 'working' | 'location' | 'reason'
 const EXPENSE_COLUMNS: ColumnDef<ColKey>[] = [
   { key: 'account',      label: 'Account' },
   { key: 'description',  label: 'Description' },
   { key: 'group',        label: 'Group' },
   { key: 'is_property',  label: 'Is Property?' },
+  { key: 'amount',       label: 'Amount' },
+  { key: 'expense_type', label: 'Expense Type' },
   { key: 'date',         label: 'Date' },
   { key: 'vendor',       label: 'Vendor' },
   { key: 'source',       label: 'Source' },
@@ -106,6 +110,7 @@ const EXPENSE_COLUMNS: ColumnDef<ColKey>[] = [
   { key: 'is_related_expense', label: 'Related to Property?' },
   { key: 'related_property', label: 'Related Property' },
   { key: 'related_reasons', label: 'Relationship' },
+  { key: 'property_status', label: 'Property Status' },
   { key: 'property_type', label: 'Type' },
   { key: 'availability', label: 'Available?' },
   { key: 'working',      label: 'Condition' },
@@ -113,8 +118,8 @@ const EXPENSE_COLUMNS: ColumnDef<ColKey>[] = [
   { key: 'reason',       label: 'Reason' },
 ]
 const EXPENSES_COL_DEFAULTS: Record<string, number> = {
-  date: 92, amt: 90, account: 120, description: 160, group: 100, is_property: 85, vendor: 120, source: 90, by: 80,
-  is_related_expense: 95, related_property: 120, related_reasons: 130,
+  date: 92, amt: 90, account: 120, description: 160, group: 100, is_property: 85, amount: 90, expense_type: 100, vendor: 120, source: 90, by: 80,
+  is_related_expense: 95, related_property: 120, related_reasons: 130, property_status: 100,
   property_type: 80, availability: 90, working: 90, location: 100, reason: 120,
 }
 
@@ -216,7 +221,7 @@ function FilterHeaderCell({ label, options, value, onChange, onResize, onResetWi
 function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, saving, form, saveError, onEdit, onCloseEdit,
   onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, colPrefs, hideAccount, hideVendor, hidePropertyColumns,
   accounts, vendors, accountFilter, vendorFilter, onAccountFilter, onVendorFilter, itemsByType, onFetchItemsForType, relatedItems, onFetchRelatedItems, relatedItemsLoading, relatedItemsError }: TableProps) {
-  const propertyColKeys: ColKey[] = ['property_type', 'availability', 'working', 'location', 'reason']
+  const propertyColKeys: ColKey[] = ['property_status', 'property_type', 'availability', 'working', 'location', 'reason']
   const visibleKeys = colPrefs.colOrder.filter(k => colPrefs.visibleCols.has(k)
     && !(k === 'account' && hideAccount) && !(k === 'vendor' && hideVendor)
     && !(k === 'account')
@@ -238,6 +243,8 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
     if (key === 'description') return <td key={key} className={`${TD} text-gray-700 truncate`}>{e.description ?? '—'}</td>
     if (key === 'group') return <td key={key} className={`${TD} text-gray-700 truncate`}>{e.expense_group ?? '—'}</td>
     if (key === 'is_property') return <td key={key} className={`${TD} text-gray-600 truncate`}>{e.is_property ? '✓ Yes' : '✗ No'}</td>
+    if (key === 'amount') return <td key={key} className={`${TD} text-right font-semibold text-gray-900`}>{e.amount_hidden ? '🔒' : `₵${fmt(e.amount)}`}</td>
+    if (key === 'expense_type') return <td key={key} className={`${TD} text-gray-600 truncate text-[9px]`}>{e.cf_expense_type ?? '—'}</td>
     if (key === 'vendor') return <td key={key} className={`${TD} text-gray-500 truncate`}>{e.vendor_name ?? '—'}</td>
     if (key === 'source') return <td key={key} className={`${TD} text-gray-400 truncate`}>{e.source_sheet ?? e.source ?? '—'}</td>
     if (key === 'by') return <td key={key} className={`${TD} text-blue-500 truncate`}>{e.entered_by ?? '—'}</td>
@@ -247,6 +254,7 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
       return <td key={key} className={`${TD} text-gray-600 truncate`}>{propName ?? '—'}</td>
     }
     if (key === 'related_reasons') return <td key={key} className={`${TD} text-gray-600 truncate text-[9px]`}>{e.related_expense_reasons ?? '—'}</td>
+    if (key === 'property_status') return <td key={key} className={`${TD} text-gray-600 truncate text-[9px]`}>{e.property_status ?? '—'}</td>
     if (key === 'property_type') return <td key={key} className={`${TD} text-gray-600 truncate`}>{e.property_type ?? '—'}</td>
     if (key === 'availability') return <td key={key} className={`${TD} text-gray-600 truncate`}>{e.availability ? (e.availability === 'available' ? '✓ Available' : '✗ Away') : '—'}</td>
     if (key === 'working') return <td key={key} className={`${TD} text-gray-600 truncate`}>{e.working ? (e.working === 'working' ? '✓ Working' : '✗ Not Working') : '—'}</td>
