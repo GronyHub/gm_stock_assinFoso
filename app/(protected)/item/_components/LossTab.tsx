@@ -496,7 +496,7 @@ function SingleServicePackChainTable({
             const totalCedisRow = pCedis === null && cCedis === null ? null : (pCedis ?? 0) + (cCedis ?? 0)
             return (
               <tr key={i} className={`border-b border-gray-200 ${rowHasLoss(row, packCyclesByStart) ? 'bg-red-50' : rowHasGain(row, packCyclesByStart) ? 'bg-orange-50' : 'bg-white'}`}>
-                <td className="pl-0.5 py-0.5 font-bold text-gray-500 whitespace-nowrap sticky left-0 bg-inherit">
+                <td className="pl-0.5 py-0 font-bold text-gray-500 whitespace-nowrap sticky left-0 bg-inherit">
                   {onDateClick ? (
                     <button onClick={() => onDateClick(row.date, item.item_name)} className="text-blue-600 hover:underline">{fmtDate(row.date)}</button>
                   ) : fmtDate(row.date)}
@@ -542,10 +542,10 @@ function SingleServicePackChainTable({
                 </>}
                 {!cyc ? (
                   <>
-                    <td className="text-center py-0.5 border-l-2 border-l-gray-600" />
-                    <td className="text-center py-0.5 border-l border-gray-300" />
-                    <td className="text-center py-0.5 border-l border-gray-300" />
-                    <td className="text-center py-0.5 border-l border-gray-300" />
+                    <td className="text-center py-0 border-l-2 border-l-gray-600" />
+                    <td className="text-center py-0 border-l border-gray-300" />
+                    <td className="text-center py-0 border-l border-gray-300" />
+                    <td className="text-center py-0 border-l border-gray-300" />
                   </>
                 ) : (
                   <>
@@ -589,23 +589,23 @@ function SingleServicePackChainTable({
                 <td className="text-center py-0 font-bold border-l border-gray-300 text-gray-400 whitespace-nowrap">
                   <CntValue qty={row.singlesCnt} countedBy={row.singlesCntBy} history={row.singlesCntHistory} blank />
                 </td>
-                <td className="pl-1 py-0.5 border-l-2 border-l-gray-600 text-purple-700 font-semibold overflow-hidden whitespace-nowrap">
+                <td className="pl-1 py-0 border-l-2 border-l-gray-600 text-purple-700 font-semibold overflow-hidden whitespace-nowrap">
                   <span className="block truncate" title={row.packAliases ?? ''}>{row.packAliases ?? <span className="text-gray-300">—</span>}</span>
                 </td>
-                <td className="pl-1 py-0.5 border-l border-gray-300 text-purple-700 font-semibold overflow-hidden whitespace-nowrap">
+                <td className="pl-1 py-0 border-l border-gray-300 text-purple-700 font-semibold overflow-hidden whitespace-nowrap">
                   <span className="block truncate" title={row.singlesAliases ?? ''}>{row.singlesAliases ?? <span className="text-gray-300">—</span>}</span>
                 </td>
               </tr>
             )
           })}
           <tr className="bg-gray-100 border-t-2 border-gray-400 font-bold">
-            <td colSpan={packColSpan} className="text-right pr-1 py-1 text-gray-600 text-[7px] border-l-2 border-l-amber-600">
+            <td colSpan={packColSpan} className="text-right pr-1 py-0 text-gray-600 text-[7px] border-l-2 border-l-amber-600">
               {`Pack side, net of gains: ${packLossCedisTotal > 0.001 ? `-₵${fmtN(packLossCedisTotal)}` : '0'}${packGainCedisTotal > 0.001 ? ` (⚠+₵${fmtN(packGainCedisTotal)} gained)` : ''}`}
             </td>
-            <td colSpan={singlesColSpan} className="text-right pr-1 py-1 text-gray-600 text-[7px] border-l-2 border-l-indigo-600">
+            <td colSpan={singlesColSpan} className="text-right pr-1 py-0 text-gray-600 text-[7px] border-l-2 border-l-indigo-600">
               {`over ${closedCycles.length} closed pack${closedCycles.length === 1 ? '' : 's'} → USED/PACK, net of gains: ${cycleLossTotal > 0.001 ? `-₵${fmtN(cycleLossTotal * sheetPrice)}` : '0'}${cycleGainTotal > 0.001 ? ` (⚠+₵${fmtN(cycleGainTotal * sheetPrice)} gained)` : ''}`}
             </td>
-            <td className="text-center py-1 border-l-2 border-l-gray-600 whitespace-nowrap">
+            <td className="text-center py-0 border-l-2 border-l-gray-600 whitespace-nowrap">
               {grandTotalCedis > 0.001 ? <span className="text-red-600">-₵{fmtN(parseFloat(grandTotalCedis.toFixed(2)))}</span>
                 : grandTotalCedis < -0.001 ? <span className="text-green-600">+₵{fmtN(Math.abs(parseFloat(grandTotalCedis.toFixed(2))))}</span>
                 : <span className="text-gray-400">0</span>}
@@ -1327,7 +1327,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                   const omissions = packChainOmissionsByDate.get(row.date) ?? []
                   return (
                   <tr key={i} className={`border-b border-gray-200 ${(row.singlesLoss ?? 0) > 0.001 || (row.packLoss ?? 0) > 0.001 ? 'bg-red-50' : omissions.length > 0 ? 'bg-orange-50' : 'bg-white'}`}>
-                    <td className="pl-0.5 py-0.5 font-bold text-gray-500 whitespace-nowrap sticky left-0 bg-inherit">
+                    <td className="pl-0.5 py-0 font-bold text-gray-500 whitespace-nowrap sticky left-0 bg-inherit">
                       {onDateClick ? (
                         <button onClick={() => onDateClick(row.date, item.item_name)} className="text-blue-600 hover:underline">
                           {fmtDate(row.date)}
@@ -1359,9 +1359,9 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                       const cyc = packCyclesByStart.get(row.date)
                       if (!cyc) return (
                         <>
-                          <td className="text-center py-0.5 border-l border-gray-300"><span className="text-gray-300">—</span></td>
-                          <td className="text-center py-0.5 border-l border-gray-300"><span className="text-gray-300">—</span></td>
-                          <td className="text-center py-0.5 border-l border-gray-300"><span className="text-gray-300">—</span></td>
+                          <td className="text-center py-0 border-l border-gray-300"><span className="text-gray-300">—</span></td>
+                          <td className="text-center py-0 border-l border-gray-300"><span className="text-gray-300">—</span></td>
+                          <td className="text-center py-0 border-l border-gray-300"><span className="text-gray-300">—</span></td>
                         </>
                       )
                       const diff = parseFloat((cyc.sheetsGiven - cyc.used).toFixed(2))
@@ -1424,10 +1424,10 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                         return <span className="text-gray-400">0</span>
                       })()}
                     </td>
-                    <td className="pl-1 py-0.5 border-l-2 border-l-gray-600 text-purple-700 font-semibold overflow-hidden whitespace-nowrap">
+                    <td className="pl-1 py-0 border-l-2 border-l-gray-600 text-purple-700 font-semibold overflow-hidden whitespace-nowrap">
                       <span className="block truncate" title={row.packAliases ?? ''}>{row.packAliases ?? <span className="text-gray-300">—</span>}</span>
                     </td>
-                    <td className="pl-1 py-0.5 border-l border-gray-300 text-purple-700 font-semibold overflow-hidden whitespace-nowrap">
+                    <td className="pl-1 py-0 border-l border-gray-300 text-purple-700 font-semibold overflow-hidden whitespace-nowrap">
                       <span className="block truncate" title={row.singlesAliases ?? ''}>{row.singlesAliases ?? <span className="text-gray-300">—</span>}</span>
                     </td>
                   </tr>
@@ -1437,24 +1437,24 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                   const totalCedis = packChainRows.reduce((s, r) => s + (rowLossCedis(r, numVal(item.units_per_pack), sheetPrice) ?? 0), 0)
                   return (
                     <tr className="bg-gray-100 border-t-2 border-gray-400 font-bold">
-                      <td colSpan={9} className="text-right pr-1 py-1 text-gray-600 text-[7px]">
+                      <td colSpan={9} className="text-right pr-1 py-0 text-gray-600 text-[7px]">
                         {`over ${closedCycles.length} closed pack${closedCycles.length === 1 ? '' : 's'} →`}
                       </td>
                       <td className="border-l border-gray-300" />
-                      <td className="text-center py-1 border-l border-gray-300 whitespace-nowrap"
+                      <td className="text-center py-0 border-l border-gray-300 whitespace-nowrap"
                         title="Total sheets given but never recorded as used, over all closed pack cycles">
                         {cycleLossTotal > 0.001 ? <span className="text-red-600">-₵{fmtN(cycleLossTotal * sheetPrice)}</span>
                           : <span className="text-gray-400">0</span>}
                       </td>
-                      <td className="text-center py-1 border-l border-gray-300 whitespace-nowrap"
+                      <td className="text-center py-0 border-l border-gray-300 whitespace-nowrap"
                         title="Total sheets used beyond what packs gave — should be 0">
                         {cycleGainTotal > 0.001 ? <span className="bg-red-600 text-white rounded px-0.5">⚠+{fmtQ(cycleGainTotal)}</span>
                           : <span className="text-gray-400">0</span>}
                       </td>
-                      <td colSpan={4 + packChainBreakdownNames.length} className="text-right pr-1 py-1 text-gray-600">
+                      <td colSpan={4 + packChainBreakdownNames.length} className="text-right pr-1 py-0 text-gray-600">
                         TOTAL (net of gains)
                       </td>
-                      <td className="text-center py-1 border-l-2 border-l-gray-600 whitespace-nowrap">
+                      <td className="text-center py-0 border-l-2 border-l-gray-600 whitespace-nowrap">
                         {totalCedis > 0.001 ? <span className="text-red-600">-₵{fmtN(parseFloat(totalCedis.toFixed(2)))}</span>
                           : totalCedis < -0.001 ? <span className="text-green-600">+₵{fmtN(Math.abs(parseFloat(totalCedis.toFixed(2))))}</span>
                           : <span className="text-gray-400">0</span>}
