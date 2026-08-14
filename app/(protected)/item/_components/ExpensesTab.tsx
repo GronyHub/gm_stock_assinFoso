@@ -135,7 +135,7 @@ const EMPTY_FORM = {
   not_working_reason: null as string | null, not_available_reason: null as string | null,
 }
 
-const PROPERTY_TYPES = ['Printer']
+const PROPERTY_TYPES = ['Printer', 'Computer']
 
 // Clicking the header opens a dropdown of every distinct value in that
 // column -- picking one filters the table down to just that value; "All"
