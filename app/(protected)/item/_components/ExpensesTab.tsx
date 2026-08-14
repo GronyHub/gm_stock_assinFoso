@@ -123,7 +123,7 @@ const EXPENSES_COL_DEFAULTS: Record<string, number> = {
   property_type: 80, availability: 90, working: 90, location: 100, reason: 120,
 }
 
-const EXPENSE_GROUPS = ['Properties', 'Non-Properties', 'Utilities']
+const EXPENSE_GROUPS = ['Utilities']
 
 type TableProps = {
   rows: Expense[]
@@ -356,13 +356,13 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
                     <div className="flex items-center gap-3">
                       <label className="flex items-center gap-1 cursor-pointer">
                         <input type="radio" name={`is-property-${e.id}`} checked={form.is_property === true}
-                          onChange={() => onFormChange({ ...form, is_property: true, expense_group: 'Properties' })}
+                          onChange={() => onFormChange({ ...form, is_property: true })}
                           className="w-3 h-3 accent-blue-600" />
                         <span className="text-[10px] text-gray-700">Property</span>
                       </label>
                       <label className="flex items-center gap-1 cursor-pointer">
                         <input type="radio" name={`is-property-${e.id}`} checked={form.is_property === false}
-                          onChange={() => onFormChange({ ...form, is_property: false, expense_group: 'Non-Properties' })}
+                          onChange={() => onFormChange({ ...form, is_property: false })}
                           className="w-3 h-3 accent-blue-600" />
                         <span className="text-[10px] text-gray-700">Not a property</span>
                       </label>
