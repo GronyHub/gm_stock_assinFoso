@@ -907,7 +907,9 @@ export default function PageLawsList({
                           className="flex items-center gap-1.5 cursor-pointer hover:bg-purple-100 px-1.5 py-0.5 rounded transition"
                           onMouseDown={() => flagPress.onMouseDown(f.key)} onMouseUp={flagPress.onMouseUp}
                           onTouchStart={() => flagPress.onTouchStart(f.key)} onTouchEnd={flagPress.onTouchEnd}>
-                          <span className="text-[9px] text-gray-800 font-medium">{VIEW_KEYS.includes(f.key) ? (customViewNames[f.key] || f.label) : (customFlagNames[f.key] || f.label)}</span>
+                          <button type="button" onClick={f.onViewClick} className="text-[9px] text-gray-800 font-medium hover:text-blue-600 hover:underline transition">
+                            {VIEW_KEYS.includes(f.key) ? (customViewNames[f.key] || f.label) : (customFlagNames[f.key] || f.label)}
+                          </button>
                           <span className="text-[8px] bg-red-100 text-red-700 font-bold px-1 py-0 rounded text-center">{f.count}</span>
                           {f.onViewClick && (
                             <button type="button" onClick={e => { e.stopPropagation(); f.onViewClick?.() }} className="text-[8px] text-blue-600 font-semibold hover:text-blue-700">
@@ -956,7 +958,9 @@ export default function PageLawsList({
                         className="shrink-0 text-gray-400 hover:text-gray-600 px-0.5 text-[8px] font-bold">×</button>
                     </>
                   ) : (
-                    <p className="text-[9px] text-gray-800">{VIEW_KEYS.includes(f.key) ? (customViewNames[f.key] || f.label) : (customFlagNames[f.key] || f.label)}</p>
+                    <button type="button" onClick={f.onViewClick} className="text-[9px] text-gray-800 font-medium hover:text-blue-600 hover:underline transition">
+                      {VIEW_KEYS.includes(f.key) ? (customViewNames[f.key] || f.label) : (customFlagNames[f.key] || f.label)}
+                    </button>
                   )}
                   {editingFlagKey !== f.key && f.description && (
                     <button type="button" onClick={() => setExpandedFlagDesc(expandedFlagDesc === f.key ? null : f.key)}
