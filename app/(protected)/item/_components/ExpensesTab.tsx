@@ -678,6 +678,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
     if (activeFlag === 'no_vendor') return 'No Vendor Name'
     if (activeFlag === 'properties_no_location') return 'Properties Without Location'
     if (propertyTypeFilter === 'Printer') return 'Printers'
+    if (propertyTypeFilter === 'Computer') return 'Computers'
     if (groupBy === 'account') return 'Grouped by Account'
     if (groupBy === 'vendor') return 'Grouped by Vendor'
     if (propertyAvailabilityFilter === 'available') return 'Properties Available'
@@ -698,6 +699,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
     { key: 'prop_available', letter: 'A', label: 'Properties Available', description: 'View only properties currently at a Grony shop location (marked as available).', active: propertyAvailabilityFilter === 'available', onChange: () => { setActiveFlag(null); setPropertyTypeFilter(null); setPropertyAvailabilityFilter('available') } },
     { key: 'prop_not_available', letter: 'U', label: 'Properties Not Available', description: 'View only properties that are currently away from shop (spoilt, stolen, or at Grony\'s house).', active: propertyAvailabilityFilter === 'not_available', onChange: () => { setActiveFlag(null); setPropertyTypeFilter(null); setPropertyAvailabilityFilter('not_available') } },
     { key: 'printers', letter: 'M', label: 'Printers', description: 'View only printers and printer-related expenses.', active: propertyTypeFilter === 'Printer', onChange: () => { setActiveFlag(null); setPropertyAvailabilityFilter('all'); setPropertyTypeFilter('Printer') } },
+    { key: 'computers', letter: 'C', label: 'Computers', description: 'View only computers and computer-related expenses.', active: propertyTypeFilter === 'Computer', onChange: () => { setActiveFlag(null); setPropertyAvailabilityFilter('all'); setPropertyTypeFilter('Computer') } },
   ]
 
   return (
