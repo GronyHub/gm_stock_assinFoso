@@ -711,7 +711,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
           activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
       </div>
       {lawsPanel.show && (
-        <div className="px-2">
+        <div className="px-2 min-h-0 max-h-[40vh] overflow-y-auto">
           <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
             <PageLawsList
               scopeKey="Expenses"
