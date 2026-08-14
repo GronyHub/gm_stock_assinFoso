@@ -77,6 +77,7 @@ function NewReceiptForm({ onCreated, onCancel }: { onCreated: (r: Receipt) => vo
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [customerName, setCustomerName] = useState('')
   const [customerId, setCustomerId] = useState<number | null>(null)
+  const [customerIsNew, setCustomerIsNew] = useState(false)
   const [customerOptions, setCustomerOptions] = useState<CustomerOption[]>([])
   const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false)
   const [addingCustomer, setAddingCustomer] = useState(false)
@@ -115,6 +116,7 @@ function NewReceiptForm({ onCreated, onCancel }: { onCreated: (r: Receipt) => vo
   function pickCustomer(c: CustomerOption) {
     setCustomerName(c.display_name)
     setCustomerId(c.id)
+    setCustomerIsNew(false)
     setCustomerDropdownOpen(false)
   }
 
@@ -133,6 +135,7 @@ function NewReceiptForm({ onCreated, onCancel }: { onCreated: (r: Receipt) => vo
       setCustomerOptions(prev => [...prev, { id: d.id, display_name: d.display_name }])
       setCustomerName(d.display_name)
       setCustomerId(d.id)
+      setCustomerIsNew(true)
       setCustomerDropdownOpen(false)
     } else {
       setCustomerPickError(d.error || 'Could not add customer.')
@@ -248,11 +251,13 @@ function NewReceiptForm({ onCreated, onCancel }: { onCreated: (r: Receipt) => vo
       <div className="relative" ref={customerBoxRef}>
         <label className={labelCls}>Customer — pick an existing one or add a new one</label>
         <input value={customerName}
-          onChange={e => { setCustomerName(e.target.value); setCustomerId(null); setCustomerDropdownOpen(true) }}
+          onChange={e => { setCustomerName(e.target.value); setCustomerId(null); setCustomerIsNew(false); setCustomerDropdownOpen(true) }}
           onFocus={() => setCustomerDropdownOpen(true)}
           placeholder="Who is this receipt for?" className={inputCls} />
         {customerId != null && (
-          <p className="text-[10px] text-green-600 font-semibold mt-0.5">✓ Linked to saved customer</p>
+          <p className="text-[10px] text-green-600 font-semibold mt-0.5">
+            ✓ {customerIsNew ? 'New customer created' : 'Linked to existing customer'}
+          </p>
         )}
         {customerDropdownOpen && (
           <div className="absolute z-20 left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
