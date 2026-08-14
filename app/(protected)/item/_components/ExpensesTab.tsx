@@ -60,8 +60,6 @@ function fmtTotal(expenses: Expense[]) {
 
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
 
-const ACCOUNTS = ['Office Expenses','Rent','Utilities','Salaries','Transport','Repairs','Supplies','Other']
-
 // Cheap edit-distance check for the "similar account names" flag -- catches
 // near-duplicates like "Office Expense" vs "Office Expenses" without
 // needing a DB round trip, since the full account list is already loaded.
@@ -311,7 +309,7 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
                       <select value={form.expense_account}
                         onChange={ev => onFormChange({ ...form, expense_account: ev.target.value })} className={inputCls}>
                         <option value="">Select…</option>
-                        {ACCOUNTS.map(a => <option key={a} value={a}>{a}</option>)}
+                        {accounts.map(a => <option key={a} value={a}>{a}</option>)}
                       </select>
                     </div>
                     <div>
