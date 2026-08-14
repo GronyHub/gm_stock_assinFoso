@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from '../item/_components/columnPrefs'
+import NewCustomerForm from '../item/_components/NewCustomerForm'
 
 type Line = {
   id: number
@@ -80,7 +81,7 @@ function NewReceiptForm({ onCreated, onCancel }: { onCreated: (r: Receipt) => vo
   const [customerIsNew, setCustomerIsNew] = useState(false)
   const [customerOptions, setCustomerOptions] = useState<CustomerOption[]>([])
   const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false)
-  const [addingCustomer, setAddingCustomer] = useState(false)
+  const [showNewCustomerForm, setShowNewCustomerForm] = useState(false)
   const [customerPickError, setCustomerPickError] = useState('')
   const customerBoxRef = useRef<HTMLDivElement>(null)
   const [notes, setNotes] = useState('')
@@ -120,26 +121,20 @@ function NewReceiptForm({ onCreated, onCancel }: { onCreated: (r: Receipt) => vo
     setCustomerDropdownOpen(false)
   }
 
-  async function addNewCustomer() {
-    const name = customerName.trim()
-    if (!name) return
-    setAddingCustomer(true)
-    setCustomerPickError('')
-    const res = await fetch('/api/customers', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ display_name: name }),
-    })
-    const d = await res.json().catch(() => ({}))
-    setAddingCustomer(false)
-    if (res.ok) {
-      setCustomerOptions(prev => [...prev, { id: d.id, display_name: d.display_name }])
-      setCustomerName(d.display_name)
-      setCustomerId(d.id)
-      setCustomerIsNew(true)
-      setCustomerDropdownOpen(false)
-    } else {
-      setCustomerPickError(d.error || 'Could not add customer.')
-    }
+  function openNewCustomerForm() {
+    setShowNewCustomerForm(true)
+    setCustomerDropdownOpen(false)
+  }
+
+  function handleCustomerCreated(newCustomer: any) {
+    setCustomerOptions(prev => [...prev, { id: newCustomer.id, display_name: newCustomer.display_name }])
+    setCustomerName(newCustomer.display_name)
+    setCustomerId(newCustomer.id)
+    setCustomerIsNew(true)
+    setCustomerPhone(newCustomer.phone || '')
+    setCustomerOrganisation(newCustomer.company_name || '')
+    setCustomerTownDistrict(newCustomer.location?.split(',')[0]?.trim() || '')
+    setShowNewCustomerForm(false)
   }
 
   function setDocType(t: 'Receipt' | 'Invoice') {
@@ -264,9 +259,9 @@ function NewReceiptForm({ onCreated, onCancel }: { onCreated: (r: Receipt) => vo
             {/* Always the first option, not just once a non-matching name is
                 typed -- adding a customer shouldn't require guessing
                 whether they're new. */}
-            <button type="button" onClick={addNewCustomer} disabled={addingCustomer}
-              className="w-full text-left px-2.5 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 disabled:opacity-40 border-b border-gray-100">
-              {addingCustomer ? 'Adding…' : customerName.trim() ? `+ Add "${customerName.trim()}" as a new customer` : '+ Add new customer'}
+            <button type="button" onClick={openNewCustomerForm}
+              className="w-full text-left px-2.5 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 border-b border-gray-100">
+              {customerName.trim() ? `+ Add "${customerName.trim()}" as a new customer` : '+ Add new customer'}
             </button>
             {customerMatches.map(c => (
               <button key={c.id} type="button" onClick={() => pickCustomer(c)}
@@ -355,6 +350,18 @@ function NewReceiptForm({ onCreated, onCancel }: { onCreated: (r: Receipt) => vo
         </button>
         <button onClick={onCancel} className="px-4 py-2.5 bg-gray-100 text-gray-600 text-sm font-semibold rounded-xl">Cancel</button>
       </div>
+
+      {showNewCustomerForm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <NewCustomerForm
+              initialDisplayName={customerName.trim()}
+              onCreated={handleCustomerCreated}
+              onCancel={() => setShowNewCustomerForm(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
