@@ -18,6 +18,7 @@ type Expense = {
   cf_expense_type: string | null
   is_property: boolean
   property_type: string | null
+  related_item_id: number | null
   availability: string | null
   working: string | null
   location: string | null
@@ -134,16 +135,19 @@ type TableProps = {
   vendorFilter: string | null
   onAccountFilter: (v: string | null) => void
   onVendorFilter: (v: string | null) => void
+  itemsByType: Record<string, Array<{ id: number; name: string }>>
+  onFetchItemsForType: (propType: string) => Promise<void>
 }
 
 const EMPTY_FORM = {
   expense_date: '', expense_account: '', description: '', vendor_name: '',
   amount: '', cf_expense_type: '', is_property: false, property_type: null as string | null,
+  related_item_id: null as number | null,
   availability: null as string | null, working: null as string | null, location: null as string | null,
   not_working_reason: null as string | null, not_available_reason: null as string | null,
 }
 
-const PROPERTY_TYPES = ['Printer', 'Computer']
+const PROPERTY_TYPES = ['Printer', 'Computer', 'Banners', 'Seating', 'Tables', 'Lamination']
 
 // Clicking the header opens a dropdown of every distinct value in that
 // column -- picking one filters the table down to just that value; "All"
@@ -193,7 +197,7 @@ function FilterHeaderCell({ label, options, value, onChange, onResize, onResetWi
 
 function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, saving, form, saveError, onEdit, onCloseEdit,
   onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, colPrefs, hideAccount, hideVendor, hidePropertyColumns,
-  accounts, vendors, accountFilter, vendorFilter, onAccountFilter, onVendorFilter }: TableProps) {
+  accounts, vendors, accountFilter, vendorFilter, onAccountFilter, onVendorFilter, itemsByType, onFetchItemsForType }: TableProps) {
   const propertyColKeys: ColKey[] = ['property_type', 'availability', 'working', 'location', 'reason']
   const visibleKeys = colPrefs.colOrder.filter(k => colPrefs.visibleCols.has(k)
     && !(k === 'account' && hideAccount) && !(k === 'vendor' && hideVendor)
@@ -324,12 +328,26 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
                     <div className="mt-3 space-y-2 p-2 bg-blue-50 rounded border border-blue-200">
                       <div>
                         <p className="text-[9px] text-gray-400 mb-0.5">Property Type</p>
-                        <select value={form.property_type ?? ''} onChange={ev => onFormChange({ ...form, property_type: ev.target.value })}
+                        <select value={form.property_type ?? ''} onChange={ev => {
+                          const newType = ev.target.value
+                          onFormChange({ ...form, property_type: newType, related_item_id: null })
+                          if (newType) onFetchItemsForType(newType)
+                        }}
                           className={`${inputCls} text-[9px]`}>
                           <option value="">Select…</option>
                           {PROPERTY_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
                         </select>
                       </div>
+                      {form.property_type && (
+                        <div>
+                          <p className="text-[9px] text-gray-400 mb-0.5">Related {form.property_type}</p>
+                          <select value={form.related_item_id ?? ''} onChange={ev => onFormChange({ ...form, related_item_id: ev.target.value ? parseInt(ev.target.value) : null })}
+                            className={`${inputCls} text-[9px]`}>
+                            <option value="">Select a {form.property_type}…</option>
+                            {(itemsByType[form.property_type] || []).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+                          </select>
+                        </div>
+                      )}
                       <div>
                         <p className="text-[9px] text-gray-400 mb-0.5">Availability</p>
                         <div className="flex items-center gap-3">
@@ -470,6 +488,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
   const [propertyAvailabilityFilter, setPropertyAvailabilityFilter] = useState<'all' | 'available' | 'not_available'>('all')
   const [propertyTypeFilter, setPropertyTypeFilter] = useState<string | null>(null)
   const [customViewNames, setCustomViewNames] = useState<Record<string, string>>({})
+  const [itemsByType, setItemsByType] = useState<Record<string, { id: number; name: string }[]>>({})
 
   // Create a unique key for column preferences based on the current view/flag
   const getPrefsKey = () => {
@@ -597,6 +616,20 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
     [properties]
   )
 
+  async function fetchItemsForType(propType: string) {
+    if (!propType || !itemsByType[propType]) {
+      try {
+        const res = await fetch(`/api/items/by-type?type=${encodeURIComponent(propType)}`)
+        if (res.ok) {
+          const items = await res.json()
+          setItemsByType(prev => ({ ...prev, [propType]: items }))
+        }
+      } catch (e) {
+        console.error('Failed to fetch items for type:', e)
+      }
+    }
+  }
+
   function openEdit(e: Expense) {
     if (e.amount_hidden) return
     setForm({
@@ -608,12 +641,16 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
       cf_expense_type: e.cf_expense_type ?? '',
       is_property: e.is_property,
       property_type: e.property_type ?? null,
+      related_item_id: e.related_item_id ?? null,
       availability: e.availability ?? null,
       working: e.working ?? null,
       location: e.location ?? null,
       not_working_reason: e.not_working_reason ?? null,
       not_available_reason: e.not_available_reason ?? null,
     })
+    if (e.property_type) {
+      fetchItemsForType(e.property_type)
+    }
     setEditId(e.id)
     setConfirmDeleteId(null)
   }
@@ -631,6 +668,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
       cf_expense_type: form.cf_expense_type || null,
       is_property: form.is_property,
       propertyType: form.property_type || null,
+      relatedItemId: form.related_item_id || null,
       availability: form.availability || null,
       working: form.working || null,
       location: form.location || null,
@@ -681,6 +719,8 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
     vendorFilter,
     onAccountFilter: setAccountFilter,
     onVendorFilter: setVendorFilter,
+    itemsByType,
+    onFetchItemsForType: fetchItemsForType,
   }
 
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
