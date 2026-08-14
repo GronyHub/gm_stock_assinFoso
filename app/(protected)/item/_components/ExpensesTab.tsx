@@ -595,12 +595,18 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
       notWorkingReason: form.not_working_reason || null,
       notAvailableReason: form.not_available_reason || null,
     }
+    console.log('Saving expense:', body)
     const res = await fetch(`/api/expenses/${editId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     setSaving(false)
+    console.log('Save response status:', res.status)
     if (res.ok) {
       const updated: Expense = await res.json()
+      console.log('Updated expense:', updated)
       setExpenses(prev => prev.map(e => e.id === editId ? { ...e, ...updated } : e))
       setEditId(null)
+    } else {
+      const error = await res.text()
+      console.error('Save error:', error)
     }
   }
 
