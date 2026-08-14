@@ -26,7 +26,7 @@ export async function GET() {
         e.id, e.expense_date::date AS expense_date, e.expense_account,
         e.description, e.cf_justify, e.vendor_name, e.amount, e.cf_expense_type,
         e.is_property, COALESCE(ep.property_status, 'at_shop') AS property_status,
-        ep.availability, ep.working, ep.location, ep.not_working_reason, ep.not_available_reason,
+        ep.property_type, ep.availability, ep.working, ep.location, ep.not_working_reason, ep.not_available_reason,
         e.entered_by, e.source, e.source_sheet
       FROM expenses e
       LEFT JOIN expense_properties ep ON ep.expense_id = e.id
@@ -39,7 +39,7 @@ export async function GET() {
         e.id, e.expense_date::date AS expense_date, e.expense_account,
         e.description, e.cf_justify, e.vendor_name, e.amount, e.cf_expense_type,
         e.is_property, COALESCE(ep.property_status, 'at_shop') AS property_status,
-        ep.availability, ep.working, ep.location, ep.not_working_reason, ep.not_available_reason,
+        ep.property_type, ep.availability, ep.working, ep.location, ep.not_working_reason, ep.not_available_reason,
         NULL AS entered_by, e.source, e.source_sheet
       FROM expenses e
       LEFT JOIN expense_properties ep ON ep.expense_id = e.id

@@ -10,4 +10,5 @@ export async function ensureExpensePropertyColumns() {
   await sql`ALTER TABLE expense_properties ADD COLUMN IF NOT EXISTS location TEXT`.catch(() => {})
   await sql`ALTER TABLE expense_properties ADD COLUMN IF NOT EXISTS not_working_reason TEXT`.catch(() => {})
   await sql`ALTER TABLE expense_properties ADD COLUMN IF NOT EXISTS not_available_reason TEXT`.catch(() => {})
+  await sql`ALTER TABLE expense_properties ADD COLUMN IF NOT EXISTS property_type TEXT`.catch(() => {})
 }
