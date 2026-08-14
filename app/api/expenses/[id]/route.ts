@@ -72,13 +72,13 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
           INSERT INTO expense_properties (expense_id, property_status, property_type, availability, working, location, not_working_reason, not_available_reason)
           VALUES (${row.id}, 'at_shop', ${propertyType ?? null}, ${availability ?? null}, ${working ?? null}, ${location ?? null}, ${notWorkingReason ?? null}, ${notAvailableReason ?? null})
           ON CONFLICT (expense_id) DO UPDATE SET
-            property_status = COALESCE(EXCLUDED.property_status, property_status),
-            property_type = COALESCE(EXCLUDED.property_type, property_type),
-            availability = COALESCE(EXCLUDED.availability, availability),
-            working = COALESCE(EXCLUDED.working, working),
-            location = COALESCE(EXCLUDED.location, location),
-            not_working_reason = COALESCE(EXCLUDED.not_working_reason, not_working_reason),
-            not_available_reason = COALESCE(EXCLUDED.not_available_reason, not_available_reason),
+            property_status = COALESCE(EXCLUDED.property_status, expense_properties.property_status),
+            property_type = COALESCE(EXCLUDED.property_type, expense_properties.property_type),
+            availability = COALESCE(EXCLUDED.availability, expense_properties.availability),
+            working = COALESCE(EXCLUDED.working, expense_properties.working),
+            location = COALESCE(EXCLUDED.location, expense_properties.location),
+            not_working_reason = COALESCE(EXCLUDED.not_working_reason, expense_properties.not_working_reason),
+            not_available_reason = COALESCE(EXCLUDED.not_available_reason, expense_properties.not_available_reason),
             updated_at = NOW()
         `
       } catch (e) {
