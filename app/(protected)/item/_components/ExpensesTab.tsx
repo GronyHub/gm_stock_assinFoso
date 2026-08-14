@@ -610,6 +610,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
       .then(r => r.ok ? r.json() : {})
       .then(d => setCustomViewNames(d))
       .catch(() => {})
+    fetchRelatedItems()
   }, [])
   usePolling(loadExpenses, 60000, editId === null)
 
@@ -719,10 +720,16 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
   async function fetchRelatedItems() {
     if (relatedItems.length === 0) {
       try {
+        console.log('Fetching related items...')
         const res = await fetch('/api/properties')
+        console.log('Response status:', res.status)
         if (res.ok) {
           const properties = await res.json()
+          console.log('Properties fetched:', properties)
           setRelatedItems(properties)
+        } else {
+          const error = await res.text()
+          console.error('Failed to fetch properties:', res.status, error)
         }
       } catch (e) {
         console.error('Failed to fetch related items:', e)
