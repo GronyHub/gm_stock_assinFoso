@@ -496,20 +496,20 @@ function SingleServicePackChainTable({
             const totalCedisRow = pCedis === null && cCedis === null ? null : (pCedis ?? 0) + (cCedis ?? 0)
             return (
               <tr key={i} className={`border-b border-gray-200 ${rowHasLoss(row, packCyclesByStart) ? 'bg-red-50' : rowHasGain(row, packCyclesByStart) ? 'bg-orange-50' : 'bg-white'}`}>
-                <td className="pl-0.5 py-0 font-bold text-gray-500 whitespace-nowrap sticky left-0 bg-inherit">
+                <td className="pl-0.5 py-0 leading-none font-bold text-gray-500 whitespace-nowrap sticky left-0 bg-inherit">
                   {onDateClick ? (
                     <button onClick={() => onDateClick(row.date, item.item_name)} className="text-blue-600 hover:underline">{fmtDate(row.date)}</button>
                   ) : fmtDate(row.date)}
                 </td>
-                <td className="text-center py-0 font-bold border-l-2 border-l-amber-600 text-blue-600">{blankDash(fmtQs(row.packBl))}</td>
-                <td className="text-center py-0 font-bold border-l border-gray-300 text-gray-600">{blankDash(fmtQs(row.packWic))}</td>
+                <td className="text-center py-0 leading-none font-bold border-l-2 border-l-amber-600 text-blue-600">{blankDash(fmtQs(row.packBl))}</td>
+                <td className="text-center py-0 leading-none font-bold border-l border-gray-300 text-gray-600">{blankDash(fmtQs(row.packWic))}</td>
                 {showPackPrices && <>
-                  <td className="text-center py-0 font-bold border-l border-gray-300 text-gray-600">{packWicQty > 0 ? `₵${fmtN(packSpVal)}` : null}</td>
-                  <td className="text-center py-0 font-bold border-l border-gray-300 text-gray-600">{packWicQty > 0 ? `₵${fmtN(packAmount)}` : null}</td>
+                  <td className="text-center py-0 leading-none font-bold border-l border-gray-300 text-gray-600">{packWicQty > 0 ? `₵${fmtN(packSpVal)}` : null}</td>
+                  <td className="text-center py-0 leading-none font-bold border-l border-gray-300 text-gray-600">{packWicQty > 0 ? `₵${fmtN(packAmount)}` : null}</td>
                   <td className="text-center py-0 font-bold border-l border-gray-300 text-gray-500">₵{fmtN(packCpVal)}</td>
                   <td className="text-center py-0 font-bold border-l border-gray-300 text-gray-500">₵{fmtN(packProfit)}</td>
                 </>}
-                <td className="text-center py-0 font-bold border-l border-gray-300 text-gray-600">{blankDash(fmtQs(row.packGmc))}</td>
+                <td className="text-center py-0 leading-none font-bold border-l border-gray-300 text-gray-600">{blankDash(fmtQs(row.packGmc))}</td>
                 <td className="text-center py-0 font-bold border-l border-gray-300 text-gray-400">{blankDash(fmtN(row.packExp))}</td>
                 <td className="text-center py-0 font-bold border-l border-gray-300 text-gray-900 whitespace-nowrap">
                   <CntValue qty={row.packCnt} countedBy={row.packCntBy} history={row.packCntHistory} blank />
@@ -535,8 +535,8 @@ function SingleServicePackChainTable({
                 </td>
                 <td className="text-center py-0 font-bold border-l-2 border-l-indigo-600 text-gray-600">{singlesQty === 0 ? null : fmtQ(singlesQty)}</td>
                 {showPrices && <>
-                  <td className="text-center py-0 font-bold border-l border-gray-300 text-gray-600">{singlesQty > 0 ? `₵${fmtN(singlesSpVal)}` : null}</td>
-                  <td className="text-center py-0 font-bold border-l border-gray-300 text-gray-600">{singlesQty > 0 ? `₵${fmtN(singlesAmount)}` : null}</td>
+                  <td className="text-center py-0 leading-none font-bold border-l border-gray-300 text-gray-600">{singlesQty > 0 ? `₵${fmtN(singlesSpVal)}` : null}</td>
+                  <td className="text-center py-0 leading-none font-bold border-l border-gray-300 text-gray-600">{singlesQty > 0 ? `₵${fmtN(singlesAmount)}` : null}</td>
                   <td className="text-center py-0 font-bold border-l border-gray-300 text-gray-500">₵{fmtN(sheetCP)}</td>
                   <td className="text-center py-0 font-bold border-l border-gray-300 text-gray-500">₵{fmtN(singlesProfit)}</td>
                 </>}
@@ -1334,12 +1334,12 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                         </button>
                       ) : fmtDate(row.date)}
                     </td>
-                    <td className="text-center py-0 font-bold border-l-2 border-l-gray-600 text-gray-900 whitespace-nowrap">
+                    <td className="text-center py-0 leading-none font-bold border-l-2 border-l-gray-600 text-gray-900 whitespace-nowrap">
                       <CntValue qty={row.packCnt} countedBy={row.packCntBy} history={row.packCntHistory} />
                     </td>
                     <td className="text-center py-0 font-bold border-l border-gray-300 text-blue-600">{fmtQs(row.packBl)}</td>
-                    <td className="text-center py-0 font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.packGmc)}</td>
-                    <td className="text-center py-0 font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.packWic)}</td>
+                    <td className="text-center py-0 leading-none font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.packGmc)}</td>
+                    <td className="text-center py-0 leading-none font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.packWic)}</td>
                     <td className="text-center py-0 font-bold border-l border-gray-300 text-gray-400">{fmtN(row.packExp)}</td>
                     <td className="text-center py-0 font-bold border-l border-gray-300">
                       {row.packLoss === null ? <span className="text-gray-300">—</span>
@@ -1407,7 +1407,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                     <td className="text-center py-0 font-bold border-l border-gray-300 text-gray-900 whitespace-nowrap">
                       <CntValue qty={row.singlesCnt} countedBy={row.singlesCntBy} history={row.singlesCntHistory} />
                     </td>
-                    <td className="text-center py-0 font-bold border-l border-gray-300 text-gray-600">{fmtQ(row.singlesUsed)}</td>
+                    <td className="text-center py-0 leading-none font-bold border-l border-gray-300 text-gray-600">{fmtQ(row.singlesUsed)}</td>
                     <td className="text-center py-0 font-bold border-l border-gray-300 text-gray-400">{fmtN(row.singlesExp)}</td>
                     <td className="text-center py-0 font-bold border-l border-gray-300">
                       {row.singlesLoss === null ? <span className="text-gray-300">—</span>
