@@ -88,6 +88,9 @@ export default function ItemDetailPanel({ itemId }: { itemId: number }) {
 
   return (
     <div className="overflow-x-auto">
+      <div className="px-1 py-1 bg-white border-b border-gray-200">
+        <p className="text-sm font-bold text-red-600 truncate">{item.item_name}</p>
+      </div>
       <div className="flex items-center gap-1 pb-0.5 flex-wrap">
         <button onClick={() => setShowPrices(p => !p)}
           title="Show/hide the SP, AMOUNT, CP and PROFIT columns on the pack-chain detail table"
