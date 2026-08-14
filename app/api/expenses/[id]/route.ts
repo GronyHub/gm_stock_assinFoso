@@ -26,7 +26,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
-  const { expense_date, expense_account, description, cf_justify, vendor_name, amount, cf_expense_type, is_property, propertyType, relatedItemId, availability, working, location, notWorkingReason, notAvailableReason } = await req.json()
+  const { expense_date, expense_account, description, cf_justify, vendor_name, amount, cf_expense_type, is_property, propertyType, relatedItemId, expense_group, availability, working, location, notWorkingReason, notAvailableReason } = await req.json()
 
   if (!hasFeature(session.user as any, 'confidential_expenses', await getUserPermissionsMap())) {
     const [existing] = await sql`SELECT expense_account FROM expenses WHERE id = ${Number(id)}`
@@ -41,8 +41,9 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
     // description now, and the older standalone /expenses page only ever
     // sends cf_justify, so whichever one a given caller omits must be left
     // alone rather than nulled out.
-    // Ensure related_item_id column exists
+    // Ensure related_item_id and expense_group columns exist
     await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS related_item_id INTEGER`.catch(() => {})
+    await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS expense_group TEXT`.catch(() => {})
 
     const [row] = await sql`
       UPDATE expenses SET
@@ -55,10 +56,11 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
         total           = COALESCE(${amount ?? null}, total),
         cf_expense_type = ${cf_expense_type ?? null},
         is_property     = COALESCE(${is_property ?? null}, is_property),
-        related_item_id = ${relatedItemId ?? null}
+        related_item_id = ${relatedItemId ?? null},
+        expense_group   = ${expense_group ?? null}
       WHERE id = ${Number(id)}
       RETURNING id, expense_date::date AS expense_date, expense_account, description, cf_justify,
-                vendor_name, amount, cf_expense_type, is_property, related_item_id
+                vendor_name, amount, cf_expense_type, is_property, related_item_id, expense_group
     `
     if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 

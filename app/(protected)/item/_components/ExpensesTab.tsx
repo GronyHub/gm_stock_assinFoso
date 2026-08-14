@@ -27,6 +27,7 @@ type Expense = {
   entered_by: string | null
   source: string | null
   source_sheet: string | null
+  expense_group: string | null
 }
 
 type PropertyFields = Pick<Expense, 'availability' | 'working' | 'location' | 'not_working_reason' | 'not_available_reason'>
@@ -87,14 +88,15 @@ function looksBundled(description: string | null): boolean {
 const TH = 'text-left px-3 py-2 font-bold text-gray-400 text-[10px] uppercase tracking-wide border-b border-gray-200'
 const TD = 'px-3 py-2'
 
-// Date, Amt, and Account stay sticky/always-visible (first three columns in properties view).
-// These columns are configurable. Vendor also gets force-hidden while grouped by that field.
+// Account (frozen, first), Description (second, always), Group (third, always), then Date, Amt, others
+// Vendor gets force-hidden while grouped by that field.
 // Property columns are shown only when viewing properties.
-type ColKey = 'date' | 'account' | 'description' | 'vendor' | 'source' | 'by' | 'property_type' | 'availability' | 'working' | 'location' | 'reason'
+type ColKey = 'date' | 'account' | 'description' | 'group' | 'vendor' | 'source' | 'by' | 'property_type' | 'availability' | 'working' | 'location' | 'reason'
 const EXPENSE_COLUMNS: ColumnDef<ColKey>[] = [
-  { key: 'date',         label: 'Date' },
   { key: 'account',      label: 'Account' },
   { key: 'description',  label: 'Description' },
+  { key: 'group',        label: 'Group' },
+  { key: 'date',         label: 'Date' },
   { key: 'vendor',       label: 'Vendor' },
   { key: 'source',       label: 'Source' },
   { key: 'by',           label: 'By' },
@@ -105,9 +107,11 @@ const EXPENSE_COLUMNS: ColumnDef<ColKey>[] = [
   { key: 'reason',       label: 'Reason' },
 ]
 const EXPENSES_COL_DEFAULTS: Record<string, number> = {
-  date: 92, amt: 90, account: 120, description: 160, vendor: 120, source: 90, by: 80,
+  date: 92, amt: 90, account: 120, description: 160, group: 100, vendor: 120, source: 90, by: 80,
   property_type: 80, availability: 90, working: 90, location: 100, reason: 120,
 }
+
+const EXPENSE_GROUPS = ['Properties', 'Non-Properties', 'Utilities']
 
 type TableProps = {
   rows: Expense[]
@@ -142,7 +146,7 @@ type TableProps = {
 const EMPTY_FORM = {
   expense_date: '', expense_account: '', description: '', vendor_name: '',
   amount: '', cf_expense_type: '', is_property: false, property_type: null as string | null,
-  related_item_id: null as number | null,
+  related_item_id: null as number | null, expense_group: null as string | null,
   availability: null as string | null, working: null as string | null, location: null as string | null,
   not_working_reason: null as string | null, not_available_reason: null as string | null,
 }
@@ -202,8 +206,10 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
   const visibleKeys = colPrefs.colOrder.filter(k => colPrefs.visibleCols.has(k)
     && !(k === 'account' && hideAccount) && !(k === 'vendor' && hideVendor)
     && !(k === 'account')
-    && !(hidePropertyColumns && propertyColKeys.includes(k))
-    && !(k === 'date'))
+    && !(k === 'description')
+    && !(k === 'group')
+    && !(k === 'date')
+    && !(hidePropertyColumns && propertyColKeys.includes(k)))
 
   function headerCellFor(key: ColKey, isLast: boolean) {
     const label = colPrefs.columnLabels[key] ?? EXPENSE_COLUMNS.find(c => c.key === key)!.label
@@ -216,6 +222,7 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
   function bodyCellFor(key: ColKey, e: Expense) {
     if (key === 'account') return <td key={key} className={`${TD} text-gray-900 font-semibold truncate`}>{e.expense_account}</td>
     if (key === 'description') return <td key={key} className={`${TD} text-gray-700 truncate`}>{e.description ?? '—'}</td>
+    if (key === 'group') return <td key={key} className={`${TD} text-gray-700 truncate`}>{e.expense_group ?? '—'}</td>
     if (key === 'vendor') return <td key={key} className={`${TD} text-gray-500 truncate`}>{e.vendor_name ?? '—'}</td>
     if (key === 'source') return <td key={key} className={`${TD} text-gray-400 truncate`}>{e.source_sheet ?? e.source ?? '—'}</td>
     if (key === 'by') return <td key={key} className={`${TD} text-blue-500 truncate`}>{e.entered_by ?? '—'}</td>
@@ -228,9 +235,11 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
   }
 
   const accountWidth = colPrefs.getWidth('account', EXPENSES_COL_DEFAULTS.account)
+  const descriptionWidth = colPrefs.getWidth('description', EXPENSES_COL_DEFAULTS.description)
+  const groupWidth = colPrefs.getWidth('group', EXPENSES_COL_DEFAULTS.group)
   const dateWidth = colPrefs.getWidth('date', EXPENSES_COL_DEFAULTS.date)
   const amtWidth = colPrefs.getWidth('amt', EXPENSES_COL_DEFAULTS.amt)
-  const tableWidth = accountWidth + dateWidth + amtWidth
+  const tableWidth = accountWidth + descriptionWidth + groupWidth + dateWidth + amtWidth
     + visibleKeys.reduce((s, k) => s + colPrefs.getWidth(k, EXPENSES_COL_DEFAULTS[k] ?? 100), 0)
 
   return (
@@ -238,6 +247,8 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
     <table className="border-collapse text-xs" style={{ tableLayout: 'fixed', width: tableWidth }}>
       <colgroup>
         <col style={{ width: accountWidth }} />
+        <col style={{ width: descriptionWidth }} />
+        <col style={{ width: groupWidth }} />
         <col style={{ width: dateWidth }} />
         <col style={{ width: amtWidth }} />
         {visibleKeys.map(k => <col key={k} style={{ width: colPrefs.getWidth(k, EXPENSES_COL_DEFAULTS[k] ?? 100) }} />)}
@@ -253,6 +264,8 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
             onResetWidth={() => colPrefs.resetWidth('account')}
             sticky
           />
+          <ResizableTh onResize={d => colPrefs.resizeWidth('description', d, EXPENSES_COL_DEFAULTS.description)} onReset={() => colPrefs.resetWidth('description')}>Description</ResizableTh>
+          <ResizableTh onResize={d => colPrefs.resizeWidth('group', d, EXPENSES_COL_DEFAULTS.group)} onReset={() => colPrefs.resetWidth('group')}>Group</ResizableTh>
           <ResizableTh onResize={d => colPrefs.resizeWidth('date', d, EXPENSES_COL_DEFAULTS.date)} onReset={() => colPrefs.resetWidth('date')}>Date Bought</ResizableTh>
           <ResizableTh align="right" onResize={d => colPrefs.resizeWidth('amt', d, EXPENSES_COL_DEFAULTS.amt)} onReset={() => colPrefs.resetWidth('amt')}>Amt</ResizableTh>
           {visibleKeys.map((key, i) => headerCellFor(key, i === visibleKeys.length - 1))}
@@ -265,6 +278,8 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
               onClick={() => { if (e.amount_hidden) return; if (editId === e.id) onCloseEdit(); else onEdit(e) }}
               className={`transition-colors ${e.amount_hidden ? '' : 'cursor-pointer'} ${highlightId === e.id ? 'bg-yellow-100' : i % 2 === 1 ? 'bg-gray-50' : 'bg-white'} hover:bg-blue-50/60`}>
               <td className={`${TD} sticky left-0 z-10 text-gray-900 font-semibold truncate border-r bg-inherit`}>{e.expense_account}</td>
+              {bodyCellFor('description', e)}
+              {bodyCellFor('group', e)}
               <td className={`${TD} text-gray-600 whitespace-nowrap`}>{fmtShort(e.expense_date)}</td>
               <td className={`${TD} text-right font-bold text-gray-900`}>{e.amount_hidden ? '🔒 Hidden' : `₵${fmt(e.amount)}`}</td>
               {visibleKeys.map(k => bodyCellFor(k, e))}
@@ -295,6 +310,14 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
                       <p className="text-[9px] text-gray-400 mb-0.5">Description</p>
                       <input value={form.description}
                         onChange={ev => onFormChange({ ...form, description: ev.target.value })} className={inputCls} />
+                    </div>
+                    <div>
+                      <p className="text-[9px] text-gray-400 mb-0.5">Group</p>
+                      <select value={form.expense_group ?? ''} onChange={ev => onFormChange({ ...form, expense_group: ev.target.value || null })}
+                        className={inputCls}>
+                        <option value="">Select…</option>
+                        {EXPENSE_GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
+                      </select>
                     </div>
                     <div>
                       <p className="text-[9px] text-gray-400 mb-0.5">Vendor</p>
@@ -642,6 +665,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
       is_property: e.is_property,
       property_type: e.property_type ?? null,
       related_item_id: e.related_item_id ?? null,
+      expense_group: e.expense_group ?? null,
       availability: e.availability ?? null,
       working: e.working ?? null,
       location: e.location ?? null,
@@ -669,6 +693,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
       is_property: form.is_property,
       propertyType: form.property_type || null,
       relatedItemId: form.related_item_id || null,
+      expense_group: form.expense_group || null,
       availability: form.availability || null,
       working: form.working || null,
       location: form.location || null,
