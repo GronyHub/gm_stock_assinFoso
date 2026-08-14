@@ -526,6 +526,19 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
     no_vendor: expenses.filter(e => !e.vendor_name).length,
     properties_no_location: expenses.filter(e => e.is_property && e.availability === 'available' && !e.location).length,
   }), [expenses, similarAccountNames])
+
+  const viewCounts = useMemo(() => ({
+    all_expenses: expenses.length,
+    by_account: expenses.length,
+    by_vendor: expenses.length,
+    show_properties: expenses.filter(e => e.is_property).length,
+    show_non_properties: expenses.filter(e => !e.is_property).length,
+    prop_available: expenses.filter(e => e.is_property && e.availability === 'available').length,
+    prop_not_available: expenses.filter(e => e.is_property && e.availability === 'not_available').length,
+    printers: expenses.filter(e => e.is_property && e.property_type === 'Printer').length,
+    computers: expenses.filter(e => e.is_property && e.property_type === 'Computer').length,
+  }), [expenses])
+
   // Reports this page's own flag total up to item/page.tsx's pane badge --
   // these are local to Expenses (never went through the centralized
   // violations system other pages' pane badges read from), so the count on
@@ -690,16 +703,16 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
 
   const activeViewHeading = getActiveViewHeading()
 
-  const viewButtons: { key: string; letter: string; label: string; description: string; active: boolean; onChange: () => void }[] = [
-    { key: 'all_expenses', letter: '∑', label: 'All Expenses', description: 'View all expenses without any filters or grouping — returns to the default view.', active: isAllExpenses, onChange: () => { setActiveFlag(null); setPropertyAvailabilityFilter('all'); setGroupBy('none'); setShowProperties(true); setShowNonProperties(true); setPropertyTypeFilter(null) } },
-    { key: 'by_account', letter: 'A', label: 'By Account', description: 'Group expenses by their account category to see totals and records for each account.', active: groupBy === 'account', onChange: () => { setActiveFlag(null); setGroupBy(g => g === 'account' ? 'none' : 'account') } },
-    { key: 'by_vendor', letter: 'V', label: 'By Vendor', description: 'Group expenses by vendor to see total spending and records for each supplier.', active: groupBy === 'vendor', onChange: () => { setActiveFlag(null); setGroupBy(g => g === 'vendor' ? 'none' : 'vendor') } },
-    { key: 'show_properties', letter: 'P', label: 'All Properties', description: 'View only expenses marked as properties/equipment.', active: showProperties && !showNonProperties, onChange: () => { setActiveFlag(null); setPropertyAvailabilityFilter('all'); setPropertyTypeFilter(null); setShowProperties(true); setShowNonProperties(false) } },
-    { key: 'show_non_properties', letter: 'N', label: 'Non-Properties', description: 'View only regular expenses (non-property expenditures).', active: !showProperties && showNonProperties, onChange: () => { setActiveFlag(null); setShowProperties(false); setShowNonProperties(true) } },
-    { key: 'prop_available', letter: 'A', label: 'Properties Available', description: 'View only properties currently at a Grony shop location (marked as available).', active: propertyAvailabilityFilter === 'available', onChange: () => { setActiveFlag(null); setPropertyTypeFilter(null); setPropertyAvailabilityFilter('available') } },
-    { key: 'prop_not_available', letter: 'U', label: 'Properties Not Available', description: 'View only properties that are currently away from shop (spoilt, stolen, or at Grony\'s house).', active: propertyAvailabilityFilter === 'not_available', onChange: () => { setActiveFlag(null); setPropertyTypeFilter(null); setPropertyAvailabilityFilter('not_available') } },
-    { key: 'printers', letter: 'M', label: 'Printers', description: 'View only printers and printer-related expenses.', active: propertyTypeFilter === 'Printer', onChange: () => { setActiveFlag(null); setPropertyAvailabilityFilter('all'); setPropertyTypeFilter('Printer') } },
-    { key: 'computers', letter: 'C', label: 'Computers', description: 'View only computers and computer-related expenses.', active: propertyTypeFilter === 'Computer', onChange: () => { setActiveFlag(null); setPropertyAvailabilityFilter('all'); setPropertyTypeFilter('Computer') } },
+  const viewButtons: { key: string; letter: string; label: string; description: string; active: boolean; count: number; onChange: () => void }[] = [
+    { key: 'all_expenses', letter: '∑', label: 'All Expenses', description: 'View all expenses without any filters or grouping — returns to the default view.', active: isAllExpenses, count: viewCounts.all_expenses, onChange: () => { setActiveFlag(null); setPropertyAvailabilityFilter('all'); setGroupBy('none'); setShowProperties(true); setShowNonProperties(true); setPropertyTypeFilter(null) } },
+    { key: 'by_account', letter: 'A', label: 'By Account', description: 'Group expenses by their account category to see totals and records for each account.', active: groupBy === 'account', count: viewCounts.by_account, onChange: () => { setActiveFlag(null); setGroupBy(g => g === 'account' ? 'none' : 'account') } },
+    { key: 'by_vendor', letter: 'V', label: 'By Vendor', description: 'Group expenses by vendor to see total spending and records for each supplier.', active: groupBy === 'vendor', count: viewCounts.by_vendor, onChange: () => { setActiveFlag(null); setGroupBy(g => g === 'vendor' ? 'none' : 'vendor') } },
+    { key: 'show_properties', letter: 'P', label: 'All Properties', description: 'View only expenses marked as properties/equipment.', active: showProperties && !showNonProperties, count: viewCounts.show_properties, onChange: () => { setActiveFlag(null); setPropertyAvailabilityFilter('all'); setPropertyTypeFilter(null); setShowProperties(true); setShowNonProperties(false) } },
+    { key: 'show_non_properties', letter: 'N', label: 'Non-Properties', description: 'View only regular expenses (non-property expenditures).', active: !showProperties && showNonProperties, count: viewCounts.show_non_properties, onChange: () => { setActiveFlag(null); setShowProperties(false); setShowNonProperties(true) } },
+    { key: 'prop_available', letter: 'A', label: 'Properties Available', description: 'View only properties currently at a Grony shop location (marked as available).', active: propertyAvailabilityFilter === 'available', count: viewCounts.prop_available, onChange: () => { setActiveFlag(null); setPropertyTypeFilter(null); setPropertyAvailabilityFilter('available') } },
+    { key: 'prop_not_available', letter: 'U', label: 'Properties Not Available', description: 'View only properties that are currently away from shop (spoilt, stolen, or at Grony\'s house).', active: propertyAvailabilityFilter === 'not_available', count: viewCounts.prop_not_available, onChange: () => { setActiveFlag(null); setPropertyTypeFilter(null); setPropertyAvailabilityFilter('not_available') } },
+    { key: 'printers', letter: 'M', label: 'Printers', description: 'View only printers and printer-related expenses.', active: propertyTypeFilter === 'Printer', count: viewCounts.printers, onChange: () => { setActiveFlag(null); setPropertyAvailabilityFilter('all'); setPropertyTypeFilter('Printer') } },
+    { key: 'computers', letter: 'C', label: 'Computers', description: 'View only computers and computer-related expenses.', active: propertyTypeFilter === 'Computer', count: viewCounts.computers, onChange: () => { setActiveFlag(null); setPropertyAvailabilityFilter('all'); setPropertyTypeFilter('Computer') } },
   ]
 
   return (
@@ -722,8 +735,8 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
                   key, label, description, count: flagCounts[key],
                   onViewClick: () => setActiveFlag(f => f === key ? null : (key as 'similar' | 'bundled' | 'no_vendor' | 'properties_no_location')),
                 })),
-                ...viewButtons.map(({ key, label, description, active, onChange }) => ({
-                  key, label, description, count: active ? 1 : 0,
+                ...viewButtons.map(({ key, label, description, count, onChange }) => ({
+                  key, label, description, count,
                   onViewClick: onChange,
                 })),
               ]}
