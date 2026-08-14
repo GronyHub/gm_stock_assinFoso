@@ -2411,6 +2411,12 @@ function ItemHubPageInner() {
             <LossByItemTab search={search} />
           </TabErrorBoundary>
         )}
+        {outerTab === 'loss' && lossView === 'item360' && (
+          <TabErrorBoundary>
+            <div className="px-3 pt-2">{inlineLaws('Item 360', item360Laws)}</div>
+            <Item360Tab items={items} jumpToItemId={item360JumpId} onJumpDone={() => setItem360JumpId(null)} />
+          </TabErrorBoundary>
+        )}
           </div>
           {/* Biz/UK/C&H/Search now live here instead of the left pane's
               footer -- small icons, spaced far apart, pinned outside the
