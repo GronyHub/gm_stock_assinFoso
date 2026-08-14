@@ -34,9 +34,9 @@ export default function Item360Tab({ items, jumpToItemId, onJumpDone }: {
 
   if (selectedId != null) {
     return (
-      <div className="px-4 pt-4 space-y-2">
+      <div className="px-2 pt-1 space-y-1">
         <button onClick={() => setSelectedId(null)}
-          className="text-xs font-semibold text-blue-600 hover:underline">
+          className="text-[7px] font-semibold text-blue-600 hover:underline">
           ← Search a different item
         </button>
         <ItemDetailPanel itemId={selectedId} />
@@ -45,19 +45,19 @@ export default function Item360Tab({ items, jumpToItemId, onJumpDone }: {
   }
 
   return (
-    <div className="px-4 pt-4 space-y-2">
+    <div className="px-2 pt-1 space-y-1">
       <input value={search} onChange={e => setSearch(e.target.value)}
         placeholder="Search items…" autoFocus
-        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400" />
+        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-blue-400" />
       <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-[70vh] overflow-y-auto">
         {matches.length === 0 && (
-          <p className="px-3 py-4 text-sm text-gray-400 text-center">No matching items</p>
+          <p className="px-2 py-2 text-xs text-gray-400 text-center">No matching items</p>
         )}
         {matches.map(i => (
           <button key={i.id} onClick={() => setSelectedId(i.id)}
-            className="w-full text-left px-3 py-2 text-sm text-gray-800 hover:bg-blue-50 transition">
+            className="w-full text-left px-2 py-1 text-xs text-gray-800 hover:bg-blue-50 transition">
             {i.item_name}
-            {i.cf_group && <span className="text-gray-400 text-xs ml-1.5">· {i.cf_group}</span>}
+            {i.cf_group && <span className="text-gray-400 text-[10px] ml-1">· {i.cf_group}</span>}
           </button>
         ))}
       </div>
