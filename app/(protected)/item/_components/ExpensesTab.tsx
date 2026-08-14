@@ -148,9 +148,9 @@ const PROPERTY_TYPES = ['Printer', 'Computer']
 // Clicking the header opens a dropdown of every distinct value in that
 // column -- picking one filters the table down to just that value; "All"
 // clears it. The header itself turns blue while a filter is active.
-function FilterHeaderCell({ label, options, value, onChange, onResize, onResetWidth }: {
+function FilterHeaderCell({ label, options, value, onChange, onResize, onResetWidth, sticky }: {
   label: string; options: string[]; value: string | null; onChange: (v: string | null) => void
-  onResize: (deltaPx: number) => void; onResetWidth: () => void
+  onResize: (deltaPx: number) => void; onResetWidth: () => void; sticky?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLTableCellElement>(null)
@@ -163,8 +163,10 @@ function FilterHeaderCell({ label, options, value, onChange, onResize, onResetWi
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  const stickyClass = sticky ? 'sticky left-0 z-20 bg-gray-50' : ''
+
   return (
-    <th className={`${TH} relative overflow-hidden border-r`} ref={ref}>
+    <th className={`${TH} relative overflow-hidden border-r ${stickyClass}`} ref={ref}>
       <button onClick={() => setOpen(o => !o)}
         className={`flex items-center gap-0.5 ${value ? 'text-blue-600' : ''}`}>
         <span className="truncate max-w-[80px]">{value ?? label}</span>
@@ -238,12 +240,15 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
       </colgroup>
       <thead className="sticky top-0 z-10">
         <tr className="bg-gray-50">
-          <th className={`${TH} sticky left-0 z-20 border-r bg-gray-50`} style={{ width: accountWidth }}>
-            <div className="flex items-center justify-between">
-              <span>Account</span>
-              <ColResizeHandle onResize={d => colPrefs.resizeWidth('account', d, EXPENSES_COL_DEFAULTS.account)} onReset={() => colPrefs.resetWidth('account')} />
-            </div>
-          </th>
+          <FilterHeaderCell
+            label="Account"
+            options={accounts}
+            value={accountFilter}
+            onChange={onAccountFilter}
+            onResize={d => colPrefs.resizeWidth('account', d, EXPENSES_COL_DEFAULTS.account)}
+            onResetWidth={() => colPrefs.resetWidth('account')}
+            sticky
+          />
           <ResizableTh onResize={d => colPrefs.resizeWidth('date', d, EXPENSES_COL_DEFAULTS.date)} onReset={() => colPrefs.resetWidth('date')}>Date Bought</ResizableTh>
           <ResizableTh align="right" onResize={d => colPrefs.resizeWidth('amt', d, EXPENSES_COL_DEFAULTS.amt)} onReset={() => colPrefs.resetWidth('amt')}>Amt</ResizableTh>
           {visibleKeys.map((key, i) => headerCellFor(key, i === visibleKeys.length - 1))}
