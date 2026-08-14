@@ -554,6 +554,22 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
 
   const isAllExpenses = activeFlag === null && propertyAvailabilityFilter === 'all' && groupBy === 'none' && showProperties && showNonProperties
 
+  const getActiveViewHeading = () => {
+    if (activeFlag === 'similar') return 'Similar Account Names'
+    if (activeFlag === 'bundled') return 'Description Looks Bundled'
+    if (activeFlag === 'no_vendor') return 'No Vendor Name'
+    if (activeFlag === 'properties_no_location') return 'Properties Without Location'
+    if (groupBy === 'account') return 'Grouped by Account'
+    if (groupBy === 'vendor') return 'Grouped by Vendor'
+    if (propertyAvailabilityFilter === 'available') return 'Properties Available'
+    if (propertyAvailabilityFilter === 'not_available') return 'Properties Not Available'
+    if (!showProperties && showNonProperties) return 'Non-Properties Only'
+    if (showProperties && !showNonProperties) return 'Properties Only'
+    return null
+  }
+
+  const activeViewHeading = getActiveViewHeading()
+
   const viewButtons: { key: string; letter: string; label: string; active: boolean; onChange: () => void }[] = [
     { key: 'all_expenses', letter: '∑', label: 'All Expenses', active: isAllExpenses, onChange: () => { setActiveFlag(null); setPropertyAvailabilityFilter('all'); setGroupBy('none'); setShowProperties(true); setShowNonProperties(true) } },
     { key: 'by_account', letter: 'A', label: 'By Account', active: groupBy === 'account', onChange: () => setGroupBy(g => g === 'account' ? 'none' : 'account') },
@@ -739,7 +755,12 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
         ))}
       </div>}
 
-      {!showHistory && !showPropertiesPanel && <div className="flex-1 overflow-y-auto min-h-0 p-2">
+      {!showHistory && !showPropertiesPanel && <div className="flex-1 overflow-y-auto min-h-0 p-2 flex flex-col">
+        {activeViewHeading && (
+          <div className="px-3 py-2 mb-2 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-xs font-semibold text-blue-700">Showing: {activeViewHeading}</p>
+          </div>
+        )}
         {groupBy !== 'none' ? (
           grouped.length === 0
             ? <p className="text-xs text-gray-400 text-center py-10">No expenses</p>
