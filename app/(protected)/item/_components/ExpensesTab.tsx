@@ -4,6 +4,7 @@ import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
 import PageLawsList from './PageLawsList'
 import LawsToggleBar from './LawsToggleBar'
+import AccountsManager from './AccountsManager'
 import { useLawsPanel } from './useLawsPanel'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, ColResizeHandle, type ColumnDef, type ColumnPrefs } from './columnPrefs'
 
@@ -565,6 +566,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
   const [loading, setLoading] = useState(true)
   const [groupBy, setGroupBy] = useState<'none' | 'account' | 'vendor'>('none')
   const [showHistory, setShowHistory] = useState(false)
+  const [showAccountsManager, setShowAccountsManager] = useState(false)
   const lawsPanel = useLawsPanel('showExpensesLaws')
   const [highlightId, setHighlightId] = useState<number | null>(null)
   const [editId, setEditId] = useState<number | null>(null)
@@ -911,6 +913,11 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
           hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
           activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
         <div className="ml-auto flex items-center gap-1.5">
+          <button onClick={() => setShowAccountsManager(true)}
+            className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition
+              ${showAccountsManager ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
+            Accounts
+          </button>
           <button onClick={() => setShowHistory(h => !h)}
             className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition
               ${showHistory ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
@@ -977,6 +984,13 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
           }, 50)
         }
       }} />}
+
+      {showAccountsManager && (
+        <AccountsManager
+          onClose={() => setShowAccountsManager(false)}
+          onAccountCreated={loadExpenses}
+        />
+      )}
 
       {!showHistory && <div className="flex-1 overflow-y-auto min-h-0 p-2 flex flex-col">
         {activeViewHeading && (
