@@ -17,6 +17,7 @@ type Expense = {
   amount_hidden?: boolean
   cf_expense_type: string | null
   is_property: boolean
+  property_type: string | null
   availability: string | null
   working: string | null
   location: string | null
@@ -129,10 +130,12 @@ type TableProps = {
 
 const EMPTY_FORM = {
   expense_date: '', expense_account: '', description: '', vendor_name: '',
-  amount: '', cf_expense_type: '', is_property: false,
+  amount: '', cf_expense_type: '', is_property: false, property_type: null as string | null,
   availability: null as string | null, working: null as string | null, location: null as string | null,
   not_working_reason: null as string | null, not_available_reason: null as string | null,
 }
+
+const PROPERTY_TYPES = ['Printer']
 
 // Clicking the header opens a dropdown of every distinct value in that
 // column -- picking one filters the table down to just that value; "All"
@@ -286,6 +289,14 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
                   {form.is_property && (
                     <div className="mt-3 space-y-2 p-2 bg-blue-50 rounded border border-blue-200">
                       <div>
+                        <p className="text-[9px] text-gray-400 mb-0.5">Property Type</p>
+                        <select value={form.property_type ?? ''} onChange={ev => onFormChange({ ...form, property_type: ev.target.value })}
+                          className={`${inputCls} text-[9px]`}>
+                          <option value="">Select…</option>
+                          {PROPERTY_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
+                        </select>
+                      </div>
+                      <div>
                         <p className="text-[9px] text-gray-400 mb-0.5">Availability</p>
                         <div className="flex items-center gap-3">
                           <label className="flex items-center gap-1 cursor-pointer">
@@ -417,6 +428,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
   // one purchase; 'no_vendor' to expenses missing a vendor name.
   const [activeFlag, setActiveFlag] = useState<'similar' | 'bundled' | 'no_vendor' | 'properties_no_location' | null>(null)
   const [propertyAvailabilityFilter, setPropertyAvailabilityFilter] = useState<'all' | 'available' | 'not_available'>('all')
+  const [propertyTypeFilter, setPropertyTypeFilter] = useState<string | null>(null)
   const [customViewNames, setCustomViewNames] = useState<Record<string, string>>({})
   const colPrefs = useColumnPrefs<ColKey>('expensesTable', EXPENSE_COLUMNS)
 
@@ -532,6 +544,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
       amount: e.amount != null ? parseFloat(e.amount).toString() : '',
       cf_expense_type: e.cf_expense_type ?? '',
       is_property: e.is_property,
+      property_type: e.property_type ?? null,
       availability: e.availability ?? null,
       working: e.working ?? null,
       location: e.location ?? null,
@@ -553,6 +566,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
       amount: parseFloat(form.amount),
       cf_expense_type: form.cf_expense_type || null,
       is_property: form.is_property,
+      propertyType: form.property_type || null,
       availability: form.availability || null,
       working: form.working || null,
       location: form.location || null,
