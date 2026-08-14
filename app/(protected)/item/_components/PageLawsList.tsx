@@ -66,6 +66,8 @@ export default function PageLawsList({
   openForm, setOpenForm,
   hideZeroFlags, setHideZeroFlags,
   activeFilters,
+  customViewNames = {},
+  onSaveViewName,
 }: {
   scopeKey: string
   onChange?: () => void
@@ -76,6 +78,8 @@ export default function PageLawsList({
   hideZeroFlags?: boolean
   setHideZeroFlags?: (v: boolean | ((prev: boolean) => boolean)) => void
   activeFilters?: Set<LawFilterKey>
+  customViewNames?: Record<string, string>
+  onSaveViewName?: (viewKey: string, customLabel: string) => void
 }) {
   const [laws, setLaws] = useState<Law[]>([])
   const [globalTasks, setGlobalTasks] = useState<Task[]>([])
@@ -112,7 +116,10 @@ export default function PageLawsList({
   const [globalNoteDate, setGlobalNoteDate] = useState(() => new Date().toISOString().split('T')[0])
   const [globalNoteTaggedStaff, setGlobalNoteTaggedStaff] = useState<string[]>([])
   const [customLawOrder, setCustomLawOrder] = useState<string[]>([])
+  const [customFlagNames, setCustomFlagNames] = useState<Record<string, string>>({})
   const [expandedFlagDesc, setExpandedFlagDesc] = useState<string | null>(null)
+  const [editingFlagKey, setEditingFlagKey] = useState<string | null>(null)
+  const [editFlagLabel, setEditFlagLabel] = useState('')
 
   const [menuLawId, setMenuLawId] = useState<number | null>(null)
   const [menuFlagKey, setMenuFlagKey] = useState<string | null>(null)
@@ -279,6 +286,11 @@ export default function PageLawsList({
       .then(r => r.ok ? r.json() : { order: [] })
       .then(d => setCustomLawOrder(Array.isArray(d.order) ? d.order : []))
       .catch(() => {})
+    // Load custom flag names
+    fetch('/api/rename-flag')
+      .then(r => r.ok ? r.json() : {})
+      .then(d => setCustomFlagNames(d))
+      .catch(() => {})
     // Load global tasks/notes for this scope
     if (isItemsLaws) {
       fetch(`/api/tasks?submenu=${encodeURIComponent(scopeKey)}`)
@@ -298,6 +310,26 @@ export default function PageLawsList({
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ scopeKey, order: newOrder }),
     }).catch(() => {})
+  }
+
+  const VIEW_KEYS = ['all_expenses', 'by_account', 'by_vendor', 'show_properties', 'show_non_properties', 'prop_available', 'prop_not_available']
+
+  async function saveCustomFlagName(flagKey: string, customLabel: string) {
+    setCustomFlagNames(prev => ({ ...prev, [flagKey]: customLabel }))
+    if (VIEW_KEYS.includes(flagKey)) {
+      onSaveViewName?.(flagKey, customLabel)
+    } else {
+      await fetch('/api/rename-flag', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ flagKey, customLabel }),
+      }).catch(() => {})
+    }
+  }
+
+  function startEditFlag(flag: FlagLaw) {
+    setEditingFlagKey(flag.key)
+    const isView = VIEW_KEYS.includes(flag.key)
+    setEditFlagLabel((isView ? customViewNames[flag.key] : customFlagNames[flag.key]) || flag.label)
   }
 
   function moveLawInOrder(key: string, direction: 'up' | 'down') {
@@ -866,22 +898,40 @@ export default function PageLawsList({
               <span className="shrink-0 text-[8px] font-bold text-gray-300">{visibleLaws.length + i + 1}</span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1 flex-wrap leading-none">
-                  <p className="text-[9px] text-gray-800">{f.label}</p>
-                  {f.description && (
+                  {editingFlagKey === f.key ? (
+                    <>
+                      <input autoFocus value={editFlagLabel} onChange={e => setEditFlagLabel(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') { saveCustomFlagName(f.key, editFlagLabel); setEditingFlagKey(null) }
+                          if (e.key === 'Escape') setEditingFlagKey(null)
+                        }}
+                        className="min-w-0 flex-1 text-[9px] bg-gray-100 border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
+                      <button type="button" onClick={() => { saveCustomFlagName(f.key, editFlagLabel); setEditingFlagKey(null) }} title="Save"
+                        className="shrink-0 text-green-600 hover:text-green-700 px-0.5 text-[8px] font-bold">✓</button>
+                      <button type="button" onClick={() => setEditingFlagKey(null)} title="Cancel"
+                        className="shrink-0 text-gray-400 hover:text-gray-600 px-0.5 text-[8px] font-bold">×</button>
+                    </>
+                  ) : (
+                    <p className="text-[9px] text-gray-800">{VIEW_KEYS.includes(f.key) ? (customViewNames[f.key] || f.label) : (customFlagNames[f.key] || f.label)}</p>
+                  )}
+                  {editingFlagKey !== f.key && f.description && (
                     <button type="button" onClick={() => setExpandedFlagDesc(expandedFlagDesc === f.key ? null : f.key)}
                       title="Show description"
                       className="text-gray-400 hover:text-gray-600 text-[8px] font-bold shrink-0">ⓘ</button>
                   )}
-                  <span className="text-[8px] bg-red-100 text-red-700 font-bold px-1 py-0 rounded text-center">{f.count}</span>
-                  {f.onViewClick && (
+                  {editingFlagKey !== f.key && (
+                    <span className="text-[8px] bg-red-100 text-red-700 font-bold px-1 py-0 rounded text-center">{f.count}</span>
+                  )}
+                  {editingFlagKey !== f.key && f.onViewClick && (
                     <button type="button" onClick={f.onViewClick} className="text-[8px] text-blue-600 font-semibold hover:text-blue-700">
                       flags
                     </button>
                   )}
-                  {menuFlagKey === f.key ? (
+                  {editingFlagKey !== f.key && menuFlagKey === f.key ? (
                     <>
                       <button type="button" onClick={() => moveLawInOrder(f.key, 'up')} title="Move up" className="text-gray-500 hover:text-gray-700 text-[8px] font-semibold">▲</button>
                       <button type="button" onClick={() => moveLawInOrder(f.key, 'down')} title="Move down" className="text-gray-500 hover:text-gray-700 text-[8px] font-semibold">▼</button>
+                      <button type="button" onClick={() => startEditFlag(f)} title="Rename" className="text-gray-500 hover:text-gray-700 text-[8px] font-semibold">✎</button>
                       {taskForFlag !== f.key && noteForFlag !== f.key && (
                         <>
                           <button type="button" onClick={() => { setTaskForFlag(f.key); fetchTasksForFlag(f.key) }} title="Add task for this flag" className="text-blue-500 hover:text-blue-600 font-semibold text-[8px]">✓ Task</button>
@@ -889,7 +939,7 @@ export default function PageLawsList({
                         </>
                       )}
                     </>
-                  ) : (
+                  ) : editingFlagKey !== f.key && (
                     <button type="button" onClick={() => setMenuFlagKey(f.key)} className="text-gray-400 hover:text-gray-600 text-[8px] font-semibold">⋯</button>
                   )}
                 </div>

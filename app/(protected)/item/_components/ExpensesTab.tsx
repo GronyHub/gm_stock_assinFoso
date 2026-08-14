@@ -353,6 +353,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
   const [propertyTab, setPropertyTab] = useState<PropTab>('all')
   const [propertySearch, setPropertySearch] = useState('')
   const [propertyAvailabilityFilter, setPropertyAvailabilityFilter] = useState<'all' | 'available' | 'not_available'>('all')
+  const [customViewNames, setCustomViewNames] = useState<Record<string, string>>({})
   const colPrefs = useColumnPrefs<ColKey>('expensesTable', EXPENSE_COLUMNS)
 
   function loadExpenses() {
@@ -362,7 +363,21 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
       .catch(() => setLoading(false))
   }
 
-  useEffect(() => { loadExpenses() }, [])
+  function saveCustomViewName(viewKey: string, customLabel: string) {
+    setCustomViewNames(prev => ({ ...prev, [viewKey]: customLabel }))
+    fetch('/api/rename-view', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ viewKey, customLabel }),
+    }).catch(() => {})
+  }
+
+  useEffect(() => {
+    loadExpenses()
+    fetch('/api/rename-view')
+      .then(r => r.ok ? r.json() : {})
+      .then(d => setCustomViewNames(d))
+      .catch(() => {})
+  }, [])
   usePolling(loadExpenses, 60000, editId === null)
 
   const accountOptions = useMemo(() =>
@@ -605,6 +620,8 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
                   onViewClick: onChange,
                 })),
               ]}
+              customViewNames={customViewNames}
+              onSaveViewName={saveCustomViewName}
               openForm={lawsPanel.openForm}
               setOpenForm={lawsPanel.setOpenForm}
               hideZeroFlags={lawsPanel.hideZeroFlags}
