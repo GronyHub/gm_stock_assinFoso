@@ -93,11 +93,12 @@ const TD = 'px-3 py-2'
 // Account (frozen, first), Description (second, always), Group (third, always), then Date, Amt, others
 // Vendor gets force-hidden while grouped by that field.
 // Property columns are shown only when viewing properties.
-type ColKey = 'date' | 'account' | 'description' | 'group' | 'vendor' | 'source' | 'by' | 'property_type' | 'availability' | 'working' | 'location' | 'reason'
+type ColKey = 'date' | 'account' | 'description' | 'group' | 'is_property' | 'vendor' | 'source' | 'by' | 'property_type' | 'availability' | 'working' | 'location' | 'reason'
 const EXPENSE_COLUMNS: ColumnDef<ColKey>[] = [
   { key: 'account',      label: 'Account' },
   { key: 'description',  label: 'Description' },
   { key: 'group',        label: 'Group' },
+  { key: 'is_property',  label: 'Is Property?' },
   { key: 'date',         label: 'Date' },
   { key: 'vendor',       label: 'Vendor' },
   { key: 'source',       label: 'Source' },
@@ -109,7 +110,7 @@ const EXPENSE_COLUMNS: ColumnDef<ColKey>[] = [
   { key: 'reason',       label: 'Reason' },
 ]
 const EXPENSES_COL_DEFAULTS: Record<string, number> = {
-  date: 92, amt: 90, account: 120, description: 160, group: 100, vendor: 120, source: 90, by: 80,
+  date: 92, amt: 90, account: 120, description: 160, group: 100, is_property: 85, vendor: 120, source: 90, by: 80,
   property_type: 80, availability: 90, working: 90, location: 100, reason: 120,
 }
 
@@ -232,6 +233,7 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
     if (key === 'account') return <td key={key} className={`${TD} text-gray-900 font-semibold truncate`}>{e.expense_account}</td>
     if (key === 'description') return <td key={key} className={`${TD} text-gray-700 truncate`}>{e.description ?? '—'}</td>
     if (key === 'group') return <td key={key} className={`${TD} text-gray-700 truncate`}>{e.expense_group ?? '—'}</td>
+    if (key === 'is_property') return <td key={key} className={`${TD} text-gray-600 truncate`}>{e.is_property ? '✓ Yes' : '✗ No'}</td>
     if (key === 'vendor') return <td key={key} className={`${TD} text-gray-500 truncate`}>{e.vendor_name ?? '—'}</td>
     if (key === 'source') return <td key={key} className={`${TD} text-gray-400 truncate`}>{e.source_sheet ?? e.source ?? '—'}</td>
     if (key === 'by') return <td key={key} className={`${TD} text-blue-500 truncate`}>{e.entered_by ?? '—'}</td>
