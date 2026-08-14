@@ -1000,14 +1000,14 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
                     <ExpenseTable rows={rows} {...tableProps}
                       hideAccount={groupBy === 'account'}
                       hideVendor={groupBy === 'vendor'}
-                      hidePropertyColumns={showNonProperties} />
+                      hidePropertyColumns={!showProperties && showNonProperties} />
                   </div>
                 </div>
               ))}
             </div>
         ) : (
           <>
-            <ExpenseTable rows={filtered} {...tableProps} hidePropertyColumns={showNonProperties} />
+            <ExpenseTable rows={filtered} {...tableProps} hidePropertyColumns={!showProperties && showNonProperties} />
             {filtered.length === 0 && <p className="text-xs text-gray-400 text-center py-10">No expenses</p>}
           </>
         )}
