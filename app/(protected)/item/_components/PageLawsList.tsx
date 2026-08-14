@@ -891,11 +891,55 @@ export default function PageLawsList({
               )}
             </div>
           ))}
-          {orderedFlags.filter(f => !hideZeroFlags || f.count > 0).map((f, i) => (
+          {(() => {
+            const propertyTypeKeys = ['printers', 'computers']
+            const propertyTypeFlags = orderedFlags.filter(f => propertyTypeKeys.includes(f.key.toLowerCase()))
+            const otherFlags = orderedFlags.filter(f => !propertyTypeKeys.includes(f.key.toLowerCase()))
+
+            return (
+              <>
+                {propertyTypeFlags.length > 0 && (
+                  <div className="flex items-center gap-2 px-1 py-0.5 bg-purple-50/30">
+                    <span className="shrink-0 text-[8px] font-bold text-gray-300">{visibleLaws.length + 1}</span>
+                    <div className="flex items-center gap-3 flex-wrap min-w-0">
+                      {propertyTypeFlags.filter(f => !hideZeroFlags || f.count > 0).map((f, typeIdx) => (
+                        <div key={f.key}
+                          className="flex items-center gap-1.5 cursor-pointer hover:bg-purple-100 px-1.5 py-0.5 rounded transition"
+                          onMouseDown={() => flagPress.onMouseDown(f.key)} onMouseUp={flagPress.onMouseUp}
+                          onTouchStart={() => flagPress.onTouchStart(f.key)} onTouchEnd={flagPress.onTouchEnd}>
+                          <span className="text-[9px] text-gray-800 font-medium">{VIEW_KEYS.includes(f.key) ? (customViewNames[f.key] || f.label) : (customFlagNames[f.key] || f.label)}</span>
+                          <span className="text-[8px] bg-red-100 text-red-700 font-bold px-1 py-0 rounded text-center">{f.count}</span>
+                          {f.onViewClick && (
+                            <button type="button" onClick={e => { e.stopPropagation(); f.onViewClick?.() }} className="text-[8px] text-blue-600 font-semibold hover:text-blue-700">
+                              flags
+                            </button>
+                          )}
+                          {menuFlagKey === f.key && (
+                            <div className="flex gap-1 text-[8px]">
+                              <button type="button" onClick={() => moveLawInOrder(f.key, 'up')} title="Move up" className="text-gray-500 hover:text-gray-700 font-semibold">▲</button>
+                              <button type="button" onClick={() => moveLawInOrder(f.key, 'down')} title="Move down" className="text-gray-500 hover:text-gray-700 font-semibold">▼</button>
+                              <button type="button" onClick={() => startEditFlag(f)} title="Rename" className="text-gray-500 hover:text-gray-700 font-semibold">✎</button>
+                              {taskForFlag !== f.key && noteForFlag !== f.key && (
+                                <>
+                                  <button type="button" onClick={() => { setTaskForFlag(f.key); fetchTasksForFlag(f.key) }} title="Add task for this flag" className="text-blue-500 hover:text-blue-600 font-semibold text-[8px]">✓ Task</button>
+                                  <button type="button" onClick={() => setNoteForFlag(f.key)} title="Add note for this flag" className="text-amber-500 hover:text-amber-600 font-semibold text-[8px]">📝 Note</button>
+                                </>
+                              )}
+                            </div>
+                          )}
+                          {menuFlagKey !== f.key && (
+                            <button type="button" onClick={() => setMenuFlagKey(f.key)} className="text-gray-400 hover:text-gray-600 text-[8px] font-semibold">⋯</button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {otherFlags.filter(f => !hideZeroFlags || f.count > 0).map((f, i) => (
             <div key={f.key} className="flex items-start gap-1 px-1 py-0.5 bg-red-50/30"
               onMouseDown={() => flagPress.onMouseDown(f.key)} onMouseUp={flagPress.onMouseUp}
               onTouchStart={() => flagPress.onTouchStart(f.key)} onTouchEnd={flagPress.onTouchEnd}>
-              <span className="shrink-0 text-[8px] font-bold text-gray-300">{visibleLaws.length + i + 1}</span>
+              <span className="shrink-0 text-[8px] font-bold text-gray-300">{visibleLaws.length + (propertyTypeFlags.length > 0 ? 2 : 1) + i}</span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1 flex-wrap leading-none">
                   {editingFlagKey === f.key ? (
@@ -954,6 +998,9 @@ export default function PageLawsList({
               </div>
             </div>
           ))}
+              </>
+            )
+          })()}
           {visibleGlobalTasks.map((task, i) => (
             <div key={`task-${task.id}`} className="px-1 py-0.5 bg-green-50/50 flex items-center gap-1"
               onMouseDown={() => globalTaskPress.onMouseDown(task.id)} onMouseUp={globalTaskPress.onMouseUp}
