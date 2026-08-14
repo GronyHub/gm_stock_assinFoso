@@ -388,6 +388,11 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
                       )}
                     </div>
                   )}
+                  {saveError && (
+                    <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded text-red-700 text-[9px]">
+                      {saveError}
+                    </div>
+                  )}
                   <div className="flex items-center gap-1 mt-2">
                     <button onClick={onSaveEdit} disabled={saving}
                       className="bg-green-600 text-white text-[10px] font-bold rounded px-3 py-1 disabled:opacity-40">
@@ -439,6 +444,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
   const [editId, setEditId] = useState<number | null>(null)
   const [form, setForm] = useState({ ...EMPTY_FORM })
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [accountFilter, setAccountFilter] = useState<string | null>(null)
@@ -580,6 +586,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
   async function saveEdit() {
     if (!editId) return
     setSaving(true)
+    setSaveError(null)
     const body = {
       expense_date: form.expense_date || undefined,
       expense_account: form.expense_account,
@@ -604,9 +611,11 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
       console.log('Updated expense:', updated)
       setExpenses(prev => prev.map(e => e.id === editId ? { ...e, ...updated } : e))
       setEditId(null)
+      setSaveError(null)
     } else {
       const error = await res.text()
       console.error('Save error:', error)
+      setSaveError(`Save failed: ${res.status} ${error || res.statusText}`)
     }
   }
 
@@ -624,7 +633,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
   const tableProps = {
     highlightId, editId, confirmDeleteId, deleting, saving, form,
     onEdit: openEdit,
-    onCloseEdit: () => { setEditId(null); setConfirmDeleteId(null) },
+    onCloseEdit: () => { setEditId(null); setConfirmDeleteId(null); setSaveError(null) },
     onFormChange: setForm,
     onSaveEdit: saveEdit,
     onDeleteStart: (id: number) => setConfirmDeleteId(id),
