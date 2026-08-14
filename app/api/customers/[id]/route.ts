@@ -3,6 +3,18 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 
+async function checkCustomerRelations(customerId: number) {
+  try {
+    const receipts = await sql`SELECT COUNT(*)::int as count FROM sales_receipts WHERE customer_id = ${customerId}`
+    const invoices = await sql`SELECT COUNT(*)::int as count FROM invoices WHERE customer_id = ${customerId}`.catch(() => [{ count: 0 }])
+
+    const totalCount = (receipts[0]?.count || 0) + (invoices[0]?.count || 0)
+    return totalCount
+  } catch (e) {
+    return -1
+  }
+}
+
 // Same fields New Customer can set, now editable after the fact --
 // COALESCE against the existing value so a field left out of the request
 // (rather than explicitly cleared to "") is untouched, not wiped.
@@ -52,5 +64,42 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     console.error('customer PATCH error:', e)
     const detail = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ error: `Could not save customer: ${detail}` }, { status: 500 })
+  }
+}
+
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { id } = await params
+  const customerId = Number(id)
+
+  try {
+    // Check if customer has any related records
+    const relatedCount = await checkCustomerRelations(customerId)
+
+    if (relatedCount > 0) {
+      return NextResponse.json({
+        error: `Cannot delete customer: has ${relatedCount} related transaction(s) (sales/invoices). Delete related records first or mark as inactive.`
+      }, { status: 400 })
+    }
+
+    // Get customer name before deletion for logging
+    const [customer] = await sql`SELECT display_name FROM customers WHERE id = ${customerId}`
+    if (!customer) {
+      return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
+    }
+
+    // Delete the customer
+    await sql`DELETE FROM customers WHERE id = ${customerId}`
+
+    const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
+    await logActivity(actor, 'deleted customer', customer.display_name)
+
+    return NextResponse.json({ success: true, message: `Customer '${customer.display_name}' deleted` })
+  } catch (e) {
+    console.error('customer DELETE error:', e)
+    const detail = e instanceof Error ? e.message : String(e)
+    return NextResponse.json({ error: `Could not delete customer: ${detail}` }, { status: 500 })
   }
 }

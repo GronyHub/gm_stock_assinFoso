@@ -83,7 +83,7 @@ const CUSTOMERS_COL_DEFAULTS: Record<string, number> = {
   lastVisited: 110, serviceGoods: 140, whatsapp: 100, sales: 100, outstanding: 110, receiptCount: 80,
 }
 
-function EditCustomerForm({ customer, onSaved, onCancel }: { customer: Customer; onSaved: (c: Customer) => void; onCancel: () => void }) {
+function EditCustomerForm({ customer, onSaved, onCancel, onDeleted }: { customer: Customer; onSaved: (c: Customer) => void; onCancel: () => void; onDeleted?: () => void }) {
   const [companyName, setCompanyName] = useState(customer.company_name ?? '')
   const [phone, setPhone] = useState(customer.phone ?? '')
   const [email, setEmail] = useState(customer.email ?? '')
@@ -93,7 +93,9 @@ function EditCustomerForm({ customer, onSaved, onCancel }: { customer: Customer;
   const [serviceGoods, setServiceGoods] = useState(customer.service_goods ?? '')
   const [whatsappAdded, setWhatsappAdded] = useState(customer.whatsapp_group_added)
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   async function submit() {
     setError(null)
@@ -117,6 +119,20 @@ function EditCustomerForm({ customer, onSaved, onCancel }: { customer: Customer;
     } else {
       const d = await res.json().catch(() => null)
       setError(d?.error ?? 'Could not save changes.')
+    }
+  }
+
+  async function handleDelete() {
+    setError(null)
+    setDeleting(true)
+    const res = await fetch(`/api/customers/${customer.id}`, { method: 'DELETE' })
+    setDeleting(false)
+    if (res.ok) {
+      setShowDeleteConfirm(false)
+      onDeleted?.()
+    } else {
+      const d = await res.json().catch(() => null)
+      setError(d?.error ?? 'Could not delete customer.')
     }
   }
 
@@ -161,12 +177,31 @@ function EditCustomerForm({ customer, onSaved, onCancel }: { customer: Customer;
 
       {error && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-2.5 py-1.5">{error}</p>}
 
+      {showDeleteConfirm && (
+        <div className="border border-red-200 bg-red-50 rounded-lg p-3 space-y-2">
+          <p className="text-xs font-semibold text-red-700">Delete customer "{customer.display_name}"?</p>
+          <p className="text-xs text-red-600">This action cannot be undone. Customer must not have any related sales receipts or invoices.</p>
+          <div className="flex gap-2">
+            <button onClick={handleDelete} disabled={deleting}
+              className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-xs font-semibold rounded-lg py-2 transition">
+              {deleting ? 'Deleting…' : 'Delete Customer'}
+            </button>
+            <button onClick={() => setShowDeleteConfirm(false)} disabled={deleting}
+              className="px-3 py-2 bg-red-100 text-red-700 text-xs font-semibold rounded-lg hover:bg-red-200">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex gap-2">
-        <button onClick={submit} disabled={saving}
+        <button onClick={submit} disabled={saving || deleting}
           className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2.5 transition">
           {saving ? 'Saving…' : 'Save Changes'}
         </button>
-        <button onClick={onCancel} disabled={saving} className="px-4 py-2.5 bg-gray-100 text-gray-600 text-sm font-semibold rounded-xl">Cancel</button>
+        <button onClick={onCancel} disabled={saving || deleting} className="px-4 py-2.5 bg-gray-100 text-gray-600 text-sm font-semibold rounded-xl">Cancel</button>
+        <button onClick={() => setShowDeleteConfirm(true)} disabled={saving || deleting}
+          className="px-4 py-2.5 bg-red-50 text-red-600 text-sm font-semibold rounded-xl hover:bg-red-100">Delete</button>
       </div>
     </div>
   )
@@ -366,6 +401,11 @@ export default function CustomersPage({ initialSearch, onFlagCountChange }: { in
                 const merged = { ...selected, ...updated }
                 setSelected(merged)
                 setCustomers(prev => prev.map(x => x.id === merged.id ? merged : x))
+                setEditingCustomer(false)
+              }}
+              onDeleted={() => {
+                setCustomers(prev => prev.filter(x => x.id !== selected.id))
+                setSelected(null)
                 setEditingCustomer(false)
               }} />
           ) : (
