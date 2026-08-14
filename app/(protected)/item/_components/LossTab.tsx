@@ -1474,7 +1474,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
       ) : computed!.length === 0 ? (
         <p className="text-[9px] text-gray-400 text-center py-3">No activity.</p>
       ) : showBreakdown ? (
-        <div className="overflow-x-auto">
+        <div className={`overflow-x-auto ${maxRows ? 'overflow-y-auto max-h-96' : ''}`}>
         <table className="w-full border-collapse text-xs">
           <thead>
             <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide border-b border-gray-200">
@@ -1560,7 +1560,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
         )}
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className={`overflow-x-auto ${maxRows ? 'overflow-y-auto max-h-96' : ''}`}>
         <table className="w-full border-collapse text-xs">
           <thead>
             <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide border-b border-gray-200">
