@@ -1475,9 +1475,9 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
         <p className="text-[9px] text-gray-400 text-center py-3">No activity.</p>
       ) : showBreakdown ? (
         <div className={`overflow-x-auto ${maxRows ? 'overflow-y-auto max-h-96' : ''}`}>
-        <table className="w-full border-collapse text-xs">
+        <table className="w-full border-collapse text-[6px]">
           <thead>
-            <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide border-b border-gray-200">
+            <tr className="bg-gray-50 text-gray-400 text-[5px] uppercase tracking-wide border-b border-gray-200">
               <th className="pl-0 pr-3 py-0 leading-none text-left whitespace-nowrap sticky left-0 z-10 bg-gray-50 border-r border-gray-200">Date</th>
               <th className="px-3 py-0 leading-none text-right" title="Physical count taken that day">Cnt</th>
               <th className="px-3 py-0 leading-none text-right" title="Converted in from another item's GMC take">CNV</th>
@@ -1554,16 +1554,16 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
           </tfoot>
         </table>
         {hasMoreRows && (
-          <div className="px-3 py-1 text-[10px] text-gray-400 bg-gray-50 border-t border-gray-100">
+          <div className="px-3 py-0.5 text-[5px] text-gray-400 bg-gray-50 border-t border-gray-100">
             ...and {computed!.length - maxRows!} more rows
           </div>
         )}
         </div>
       ) : (
         <div className={`overflow-x-auto ${maxRows ? 'overflow-y-auto max-h-96' : ''}`}>
-        <table className="w-full border-collapse text-xs">
+        <table className="w-full border-collapse text-[6px]">
           <thead>
-            <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide border-b border-gray-200">
+            <tr className="bg-gray-50 text-gray-400 text-[5px] uppercase tracking-wide border-b border-gray-200">
               <th className="pl-0 pr-3 py-0 leading-none text-left whitespace-nowrap sticky left-0 z-10 bg-gray-50 border-r border-gray-200">Date</th>
               <th className="px-3 py-0 leading-none text-right">₵</th>
               <th className="px-3 py-0 leading-none text-right">L/G</th>
@@ -1627,7 +1627,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
           </tfoot>
         </table>
         {hasMoreRows && (
-          <div className="px-3 py-1 text-[10px] text-gray-400 bg-gray-50 border-t border-gray-100">
+          <div className="px-3 py-0.5 text-[5px] text-gray-400 bg-gray-50 border-t border-gray-100">
             ...and {computed!.length - maxRows!} more rows
           </div>
         )}
