@@ -64,7 +64,8 @@ export function useColumnPrefs<K extends string>(storageKey: string, columns: Co
         if (saved) {
           if (Array.isArray(saved.visibleCols)) {
             const keep = saved.visibleCols.filter((k): k is K => allKeys.includes(k as K))
-            if (keep.length > 0) setVisibleCols(new Set(keep))
+            const newCols = allKeys.filter(k => !keep.includes(k))
+            setVisibleCols(new Set([...keep, ...newCols]))
           }
           if (Array.isArray(saved.colOrder)) {
             const valid = saved.colOrder.filter((k): k is K => allKeys.includes(k as K))
