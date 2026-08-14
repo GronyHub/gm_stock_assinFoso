@@ -26,6 +26,7 @@ export type FlagLaw = {
   label: string
   description?: string
   count: number
+  active?: boolean
   onViewClick?: () => void
 }
 
@@ -904,10 +905,10 @@ export default function PageLawsList({
                     <div className="flex items-center gap-3 flex-wrap min-w-0">
                       {propertyTypeFlags.filter(f => !hideZeroFlags || f.count > 0).map((f, typeIdx) => (
                         <div key={f.key}
-                          className="flex items-center gap-1.5 cursor-pointer hover:bg-purple-100 px-1.5 py-0.5 rounded transition"
+                          className={`flex items-center gap-1.5 cursor-pointer px-1.5 py-0.5 rounded transition ${f.active ? 'bg-blue-200 ring-2 ring-blue-400' : 'hover:bg-purple-100'}`}
                           onMouseDown={() => flagPress.onMouseDown(f.key)} onMouseUp={flagPress.onMouseUp}
                           onTouchStart={() => flagPress.onTouchStart(f.key)} onTouchEnd={flagPress.onTouchEnd}>
-                          <button type="button" onClick={f.onViewClick} className="text-[9px] text-gray-800 font-medium hover:text-blue-600 hover:underline transition">
+                          <button type="button" onClick={f.onViewClick} className={`text-[9px] font-medium transition ${f.active ? 'text-blue-900 font-bold' : 'text-gray-800 hover:text-blue-600 hover:underline'}`}>
                             {VIEW_KEYS.includes(f.key) ? (customViewNames[f.key] || f.label) : (customFlagNames[f.key] || f.label)}
                           </button>
                           <span className="text-[8px] bg-red-100 text-red-700 font-bold px-1 py-0 rounded text-center">{f.count}</span>
@@ -938,7 +939,7 @@ export default function PageLawsList({
                   </div>
                 )}
                 {otherFlags.filter(f => !hideZeroFlags || f.count > 0).map((f, i) => (
-            <div key={f.key} className="flex items-start gap-1 px-1 py-0.5 bg-red-50/30"
+            <div key={f.key} className={`flex items-start gap-1 px-1 py-0.5 transition ${f.active ? 'bg-blue-100 ring-2 ring-inset ring-blue-400' : 'bg-red-50/30'}`}
               onMouseDown={() => flagPress.onMouseDown(f.key)} onMouseUp={flagPress.onMouseUp}
               onTouchStart={() => flagPress.onTouchStart(f.key)} onTouchEnd={flagPress.onTouchEnd}>
               <span className="shrink-0 text-[8px] font-bold text-gray-300">{visibleLaws.length + (propertyTypeFlags.length > 0 ? 2 : 1) + i}</span>
@@ -958,7 +959,7 @@ export default function PageLawsList({
                         className="shrink-0 text-gray-400 hover:text-gray-600 px-0.5 text-[8px] font-bold">×</button>
                     </>
                   ) : (
-                    <button type="button" onClick={f.onViewClick} className="text-[9px] text-gray-800 font-medium hover:text-blue-600 hover:underline transition">
+                    <button type="button" onClick={f.onViewClick} className={`text-[9px] font-medium transition ${f.active ? 'text-blue-900 font-bold' : 'text-gray-800 hover:text-blue-600 hover:underline'}`}>
                       {VIEW_KEYS.includes(f.key) ? (customViewNames[f.key] || f.label) : (customFlagNames[f.key] || f.label)}
                     </button>
                   )}

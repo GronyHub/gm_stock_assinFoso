@@ -781,11 +781,11 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
               onChange={lawsPanel.bumpRefresh}
               flags={[
                 ...flagButtons.map(({ key, label, description }) => ({
-                  key, label, description, count: flagCounts[key],
+                  key, label, description, count: flagCounts[key], active: activeFlag === key,
                   onViewClick: () => setActiveFlag(f => f === key ? null : (key as 'similar' | 'bundled' | 'no_vendor' | 'properties_no_location')),
                 })),
-                ...viewButtons.map(({ key, label, description, count, onChange }) => ({
-                  key, label, description, count,
+                ...viewButtons.map(({ key, label, description, count, onChange, active }) => ({
+                  key, label, description, count, active,
                   onViewClick: onChange,
                 })),
               ]}
