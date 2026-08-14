@@ -374,10 +374,10 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
                     <div className="mt-2 space-y-2 p-2 bg-amber-50 rounded border border-amber-200">
                       <div>
                         <p className="text-[9px] text-gray-400 mb-0.5">Select the related property</p>
-                        <select value={form.related_to_property_id ?? ''} onChange={ev => onFormChange({ ...form, related_to_property_id: ev.target.value ? parseInt(ev.target.value) : null })}
+                        <select value={form.related_to_property_id?.toString() ?? ''} onChange={ev => onFormChange({ ...form, related_to_property_id: ev.target.value ? parseInt(ev.target.value) : null })}
                           className={`${inputCls} text-[9px]`}>
                           <option value="">Choose a property…</option>
-                          {relatedItems.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+                          {relatedItems.length > 0 ? relatedItems.map(item => <option key={item.id} value={String(item.id)}>{item.name}</option>) : <option value="" disabled>Loading properties...</option>}
                         </select>
                       </div>
                       <div>
