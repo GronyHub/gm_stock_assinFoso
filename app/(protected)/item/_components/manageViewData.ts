@@ -84,6 +84,11 @@ const GRONY_CHECKS_KEYS = new Set<ManageView>([
   'grony_6', 'grony_7', 'grony_8', 'grony_9', 'grony_10', 'security_chk',
 ])
 
+// Group assignments for remaining LOG_CATEGORIES items (the ones not nested
+// under grony_checks). Currently empty since 'future' and 'quality_assurance'
+// have no group assignments.
+const LOG_CATEGORY_GROUPS: Partial<Record<ManageView, string>> = {}
+
 // The Manage section's fixed contents, top to bottom -- one flat list (still
 // one reorderable sequence for ReorderListsPanel). Items nested under
 // grony_checks are not here; they're rendered dynamically when that view is
