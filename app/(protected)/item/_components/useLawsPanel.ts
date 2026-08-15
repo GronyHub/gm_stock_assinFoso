@@ -20,8 +20,17 @@ export type LawFilterKey = 'L' | 'G' | 'T' | 'N'
 // switch to useLawsPanel() wholesale without a much bigger diff. This lets
 // them pick up just the filter state/logic instead of hand-rolling their own
 // copy a third time.
-export function useLawFilterState() {
-  const [activeFilters, setActiveFilters] = useState<Set<LawFilterKey>>(new Set())
+export function useLawFilterState(storageKey?: string) {
+  const [activeFilters, setActiveFilters] = useState<Set<LawFilterKey>>(() => {
+    if (typeof window === 'undefined' || !storageKey) return new Set()
+    const stored = localStorage.getItem(storageKey)
+    if (!stored) return new Set()
+    try {
+      return new Set(JSON.parse(stored) as LawFilterKey[])
+    } catch {
+      return new Set()
+    }
+  })
 
   function toggleFilter(key: LawFilterKey) {
     setActiveFilters(prev => {
@@ -30,6 +39,11 @@ export function useLawFilterState() {
       return next
     })
   }
+
+  useEffect(() => {
+    if (!storageKey) return
+    localStorage.setItem(storageKey, JSON.stringify(Array.from(activeFilters)))
+  }, [activeFilters, storageKey])
 
   return { activeFilters, toggleFilter }
 }
@@ -41,12 +55,19 @@ export function useLawsPanel(storageKey: string) {
   })
   const [refresh, setRefresh] = useState(0)
   const [openForm, setOpenForm] = useState<LawFormKind>(null)
-  const [hideZeroFlags, setHideZeroFlags] = useState(false)
-  const { activeFilters, toggleFilter } = useLawFilterState()
+  const [hideZeroFlags, setHideZeroFlags] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return localStorage.getItem(`${storageKey}:hideZeroFlags`) === 'true'
+  })
+  const { activeFilters, toggleFilter } = useLawFilterState(`${storageKey}:filters`)
 
   useEffect(() => {
     localStorage.setItem(storageKey, show.toString())
   }, [show, storageKey])
+
+  useEffect(() => {
+    localStorage.setItem(`${storageKey}:hideZeroFlags`, hideZeroFlags.toString())
+  }, [hideZeroFlags, storageKey])
 
   return {
     show, setShow,
