@@ -154,6 +154,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
   const [itemPresets, setItemPresets] = useState<Record<number, number[]>>({})
   const [editingButton, setEditingButton] = useState<{ itemId: number; index: number } | null>(null)
   const [editingValue, setEditingValue] = useState('')
+  const [quickArrangeItemId, setQuickArrangeItemId] = useState<number | null>(null)
   const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   useEffect(() => {
     fetch(`/api/app-settings?key=${ORDER_KEY}`)
@@ -509,7 +510,28 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                   <span className="shrink-0 w-4 text-right text-[9px] font-bold text-gray-400">{idx + 1}</span>
                 )
                 const label = (
-                  <p className="flex-1 min-w-0 text-[10px] font-semibold text-gray-900 leading-tight" style={{ wordBreak: 'break-word' }}>
+                  <p
+                    className="flex-1 min-w-0 text-[10px] font-semibold text-gray-900 leading-tight"
+                    style={{ wordBreak: 'break-word' }}
+                    onPointerDown={() => {
+                      longPressTimeoutRef.current = setTimeout(() => {
+                        setQuickArrangeItemId(it.id)
+                        longPressTimeoutRef.current = null
+                      }, 500)
+                    }}
+                    onPointerUp={() => {
+                      if (longPressTimeoutRef.current) {
+                        clearTimeout(longPressTimeoutRef.current)
+                        longPressTimeoutRef.current = null
+                      }
+                    }}
+                    onPointerLeave={() => {
+                      if (longPressTimeoutRef.current) {
+                        clearTimeout(longPressTimeoutRef.current)
+                        longPressTimeoutRef.current = null
+                      }
+                    }}
+                  >
                     {it.name} <span className="text-blue-600 font-bold">({moneyCompact(Number(it.selling_price) || 0)})</span>
                   </p>
                 )
@@ -597,6 +619,45 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                           </span>
                         )}
                       </div>
+                      {quickArrangeItemId === it.id && (
+                        <div className="ml-auto flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => moveBy(it.id, -1)}
+                            disabled={idx === 0}
+                            title="Move up"
+                            className="shrink-0 w-5 h-5 rounded bg-gray-100 text-gray-600 text-[10px] font-bold flex items-center justify-center hover:bg-gray-200 disabled:opacity-30"
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveBy(it.id, 1)}
+                            disabled={idx === gridItems.length - 1}
+                            title="Move down"
+                            className="shrink-0 w-5 h-5 rounded bg-gray-100 text-gray-600 text-[10px] font-bold flex items-center justify-center hover:bg-gray-200 disabled:opacity-30"
+                          >
+                            ↓
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveToTop(it.id)}
+                            disabled={idx === 0}
+                            title="Move to top"
+                            className="shrink-0 px-1.5 h-5 rounded bg-blue-50 text-blue-700 text-[9px] font-bold flex items-center justify-center hover:bg-blue-100 disabled:opacity-30"
+                          >
+                            ⤒ Top
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setQuickArrangeItemId(null)}
+                            title="Close"
+                            className="shrink-0 w-5 h-5 rounded bg-gray-200 text-gray-600 text-[10px] font-bold flex items-center justify-center hover:bg-gray-300"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
                       {/* Buttons follow item names, flowing inline and wrapping
                           naturally to fill available space neatly. The pressed
                           one turns solid while its request is in flight so it
