@@ -150,9 +150,8 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
   const [manualOrder, setManualOrder] = useState<number[]>([])
   const [manualAmounts, setManualAmounts] = useState<Record<number, string>>({})
   const [positionInputs, setPositionInputs] = useState<Record<number, string>>({})
-  const [customGoodsQty, setCustomGoodsQty] = useState<number[]>(GOODS_QTY)
-  const [customServiceQty, setCustomServiceQty] = useState<number[]>(SERVICE_QTY)
-  const [editingPresets, setEditingPresets] = useState(false)
+  const [itemPresets, setItemPresets] = useState<Record<number, number[]>>({})
+  const [editingPresetsForItem, setEditingPresetsForItem] = useState<number | null>(null)
   useEffect(() => {
     fetch(`/api/app-settings?key=${ORDER_KEY}`)
       .then(r => r.ok ? r.json() : { value: null })
@@ -161,19 +160,18 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
   }, [])
 
   useEffect(() => {
-    const saved = localStorage.getItem('liveSalePresets')
+    const saved = localStorage.getItem('liveSaleItemPresets')
     if (saved) {
       try {
-        const { goods, service } = JSON.parse(saved)
-        if (Array.isArray(goods)) setCustomGoodsQty(goods)
-        if (Array.isArray(service)) setCustomServiceQty(service)
+        const parsed = JSON.parse(saved)
+        if (typeof parsed === 'object') setItemPresets(parsed)
       } catch {}
     }
   }, [])
 
   useEffect(() => {
-    localStorage.setItem('liveSalePresets', JSON.stringify({ goods: customGoodsQty, service: customServiceQty }))
-  }, [customGoodsQty, customServiceQty])
+    localStorage.setItem('liveSaleItemPresets', JSON.stringify(itemPresets))
+  }, [itemPresets])
 
   function persistOrder(order: number[]) {
     setManualOrder(order)
@@ -285,6 +283,15 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
     }
   }
 
+  function getPresetsForItem(item: GridItem) {
+    if (itemPresets[item.id]) return itemPresets[item.id]
+    return item.product_type === 'service' ? SERVICE_QTY : GOODS_QTY
+  }
+
+  function setPresetsForItem(itemId: number, presets: number[]) {
+    setItemPresets((prev) => ({ ...prev, [itemId]: presets }))
+  }
+
   function submitManualAmount(item: GridItem) {
     const amount = manualAmounts[item.id]?.trim()
     if (!amount) return
@@ -356,12 +363,12 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
               </button>
               <button
                 type="button"
-                onClick={() => setEditingPresets((v) => !v)}
-                title="Edit quantity presets"
+                onClick={() => setEditingPresetsForItem(editingPresetsForItem ? null : -1)}
+                title="Edit item presets"
                 className={`px-2 py-0.5 rounded-lg text-xs font-semibold border transition
-                  ${editingPresets ? 'bg-green-600 text-white border-green-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300'}`}
+                  ${editingPresetsForItem !== null ? 'bg-green-600 text-white border-green-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300'}`}
               >
-                {editingPresets ? 'Done' : '⚙ Presets'}
+                {editingPresetsForItem !== null ? 'Done' : '⚙ Presets'}
               </button>
             </>
           )}
@@ -399,80 +406,76 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
           />
         </div>
       )}
-      {editingPresets && !showLog && (
-        <div className="border-b border-gray-200 bg-gray-50 px-2 py-2">
-          <div className="space-y-2">
-            <div>
-              <p className="text-[10px] font-bold text-gray-600 mb-1">Goods Presets</p>
+      {editingPresetsForItem !== null && !showLog && (
+        <div className="border-b border-gray-200 bg-gray-50 px-2 py-2 max-h-96 overflow-y-auto">
+          {editingPresetsForItem === -1 ? (
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-bold text-gray-600 mb-2">Select an item to edit its presets</p>
+              {fullOrderedItems.map((it) => (
+                <button
+                  key={it.id}
+                  type="button"
+                  onClick={() => setEditingPresetsForItem(it.id)}
+                  className="w-full text-left px-2 py-1 rounded bg-white hover:bg-blue-50 border border-gray-300 text-[10px] font-semibold text-gray-900 transition"
+                >
+                  {it.name}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setEditingPresetsForItem(-1)}
+                className="text-[10px] font-bold text-blue-600 hover:text-blue-700 mb-1"
+              >
+                ← Back to items
+              </button>
+              <p className="text-[10px] font-bold text-gray-600">
+                Edit presets for: {fullOrderedItems.find((it) => it.id === editingPresetsForItem)?.name}
+              </p>
               <div className="flex flex-wrap gap-1">
-                {customGoodsQty.map((val, i) => (
+                {getPresetsForItem(fullOrderedItems.find((it) => it.id === editingPresetsForItem)!).map((val, i) => (
                   <input
                     key={i}
                     type="number"
                     inputMode="numeric"
                     value={val}
                     onChange={(e) => {
-                      const newPresets = [...customGoodsQty]
+                      const item = fullOrderedItems.find((it) => it.id === editingPresetsForItem)!
+                      const newPresets = [...getPresetsForItem(item)]
                       newPresets[i] = Number(e.target.value) || 0
-                      setCustomGoodsQty(newPresets)
+                      setPresetsForItem(editingPresetsForItem, newPresets)
                     }}
                     className="w-12 h-6 px-1 rounded text-[10px] font-bold border border-gray-300 text-center focus:outline-none focus:ring-1 focus:ring-blue-400"
                   />
                 ))}
                 <button
                   type="button"
-                  onClick={() => setCustomGoodsQty([...customGoodsQty, 0])}
-                  className="w-12 h-6 rounded bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold flex items-center justify-center"
+                  onClick={() => {
+                    const item = fullOrderedItems.find((it) => it.id === editingPresetsForItem)!
+                    setPresetsForItem(editingPresetsForItem, [...getPresetsForItem(item), 0])
+                  }}
+                  className="w-6 h-6 rounded bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold flex items-center justify-center"
                 >
                   +
                 </button>
-                {customGoodsQty.length > 1 && (
+                {getPresetsForItem(fullOrderedItems.find((it) => it.id === editingPresetsForItem)!).length > 1 && (
                   <button
                     type="button"
-                    onClick={() => setCustomGoodsQty(customGoodsQty.slice(0, -1))}
-                    className="w-12 h-6 rounded bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold flex items-center justify-center"
-                  >
-                    −
-                  </button>
-                )}
-              </div>
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-gray-600 mb-1">Service Presets</p>
-              <div className="flex flex-wrap gap-1">
-                {customServiceQty.map((val, i) => (
-                  <input
-                    key={i}
-                    type="number"
-                    inputMode="numeric"
-                    value={val}
-                    onChange={(e) => {
-                      const newPresets = [...customServiceQty]
-                      newPresets[i] = Number(e.target.value) || 0
-                      setCustomServiceQty(newPresets)
+                    onClick={() => {
+                      const item = fullOrderedItems.find((it) => it.id === editingPresetsForItem)!
+                      const presets = getPresetsForItem(item)
+                      setPresetsForItem(editingPresetsForItem, presets.slice(0, -1))
                     }}
-                    className="w-12 h-6 px-1 rounded text-[10px] font-bold border border-gray-300 text-center focus:outline-none focus:ring-1 focus:ring-blue-400"
-                  />
-                ))}
-                <button
-                  type="button"
-                  onClick={() => setCustomServiceQty([...customServiceQty, 0])}
-                  className="w-12 h-6 rounded bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold flex items-center justify-center"
-                >
-                  +
-                </button>
-                {customServiceQty.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => setCustomServiceQty(customServiceQty.slice(0, -1))}
-                    className="w-12 h-6 rounded bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold flex items-center justify-center"
+                    className="w-6 h-6 rounded bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold flex items-center justify-center"
                   >
                     −
                   </button>
                 )}
               </div>
             </div>
-          </div>
+          )}
         </div>
       )}
       {showLog ? (
@@ -677,7 +680,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                           reads as "that's the one I hit," instead of every
                           button in the row dimming the same way together. */}
                       <div className="flex flex-wrap items-center gap-1">
-                        {(it.product_type === 'service' ? customServiceQty : customGoodsQty).map((q) => {
+                        {getPresetsForItem(it).map((q) => {
                           const total = (Number(it.selling_price) || 0) * q
                           const pressed = pending && pendingQty === q
                           return (
