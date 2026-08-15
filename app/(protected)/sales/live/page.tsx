@@ -450,7 +450,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                   <tr className="bg-gray-50">
                     {logColPrefs.shownColumns.map((c) => (
                       <ResizableTh key={c.key} align={c.key === 'sp' || c.key === 'qty' || c.key === 'total' ? 'right' : 'left'}
-                        className="text-[9px]"
+                        className={`text-[9px] ${c.key === 'item' ? 'sticky left-0 bg-gray-50 z-10' : ''}`}
                         onResize={(d) => logColPrefs.resizeWidth(c.key, d, LOG_COL_DEFAULTS[c.key] ?? 80)}
                         onReset={() => logColPrefs.resetWidth(c.key)}>
                         {c.label}
@@ -469,7 +469,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                     >
                       {logColPrefs.shownColumns.map((c) => (
                         <td key={c.key}
-                          className={`px-2 py-1 overflow-hidden text-ellipsis whitespace-nowrap ${c.key === 'item' ? 'font-semibold' : ''} ${c.key === 'sp' || c.key === 'qty' || c.key === 'total' ? 'text-right' : ''} ${c.key === 'total' ? 'font-bold text-blue-600' : ''}`}
+                          className={`px-2 py-1 overflow-hidden text-ellipsis whitespace-nowrap ${c.key === 'item' ? 'font-semibold sticky left-0 bg-white z-10' : ''} ${c.key === 'sp' || c.key === 'qty' || c.key === 'total' ? 'text-right' : ''} ${c.key === 'total' ? 'font-bold text-blue-600' : ''}`}
                         >
                           {c.key === 'item' && t.item_name}
                           {c.key === 'time' && new Date(t.tapped_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
