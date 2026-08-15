@@ -300,7 +300,7 @@ export default function PageLawsList({
         .catch(() => {})
       fetch(`/api/page-notes?scopeKey=${encodeURIComponent(scopeKey)}&kind=note`)
         .then(r => r.ok ? r.json() : null)
-        .then(d => setGlobalNotes(d?.notes ? [d] : []))
+        .then(d => setGlobalNotes(d && (d.notes || d.topic) ? [d] : []))
         .catch(() => {})
     }
   }
