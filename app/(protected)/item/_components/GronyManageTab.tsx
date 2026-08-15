@@ -49,7 +49,6 @@ export default function GronyManageContent({
   const openerLaws = useLawsPanel('showOpenerLaws')
   const closerLaws = useLawsPanel('showCloserLaws')
   const advertLaws = useLawsPanel('showAdvertLaws')
-  const advertStatusLaws = useLawsPanel('showAdvertStatusLaws')
   const gronyChecksLaws = useLawsPanel('showGronyChecksLaws')
 
   function inlineLaws(scopeKey: string, panel: ReturnType<typeof useLawsPanel>) {
@@ -107,10 +106,7 @@ export default function GronyManageContent({
         </div>
       )}
       {selectedAdvertItem === 'audio' && <ContentPage contentKey="advert_audio_roadside" title="Advert 1 — Audio (for Roadside)" submenu="Audio" />}
-      {selectedAdvertItem === 'audio_status' && (<>
-        {inlineLaws('Advert Status', advertStatusLaws)}
-        <AdvertStatusPanel />
-      </>)}
+      {selectedAdvertItem === 'audio_status' && <AdvertStatusPanel />}
       {selectedAdvertItem === 'jingle' && <ManageLogPanel category="audio_jingle" label="Jingle Log" icon="🎵" />}
       {selectedAdvertItem === 'equipment' && <ManageLogPanel category="audio_equipment_check" label="Equipment Check" icon="🔊" />}
       {selectedAdvertItem === 'photoshop' && <ContentPage contentKey="advert_photo_photoshop" title="Advert 2 — Photo (Photoshop Files)" submenu="Photoshop" />}

@@ -1321,7 +1321,7 @@ function ItemHubPageInner() {
   }
 
   const lawsKeys = [
-    'showAccessLaws', 'showAdvertLaws', 'showAdvertStatusLaws', 'showAliasWideTableLaws',
+    'showAccessLaws', 'showAdvertLaws', 'showAliasWideTableLaws',
     'showBillsLaws', 'showCABLaws', 'showCloserLaws', 'showCountsLaws', 'showCustomersLaws',
     'showDailyLaws', 'showDressCodeLaws', 'showExpenseOrdersLaws', 'showExpensesLaws',
     'showGronyChecksLaws', 'showHomeLaws', 'showItem360Laws', 'showItemsFlagsLaws',
