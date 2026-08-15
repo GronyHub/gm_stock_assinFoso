@@ -177,13 +177,21 @@ export default function PageLawsList({
   }
 
   async function toggleTaskCompletion(taskId: number, currentDone: boolean, lawId?: number, flagKey?: string) {
-    await fetch(`/api/tasks`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: taskId, done: !currentDone }),
-    }).catch(() => {})
-    if (lawId !== undefined) await fetchTasksForLaw(lawId)
-    if (flagKey !== undefined) await fetchTasksForFlag(flagKey)
-    onChange?.()
+    try {
+      const res = await fetch(`/api/tasks`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: taskId, done: !currentDone }),
+      })
+      if (!res.ok) {
+        console.error('Failed to toggle task completion')
+        return
+      }
+      if (lawId !== undefined) await fetchTasksForLaw(lawId)
+      if (flagKey !== undefined) await fetchTasksForFlag(flagKey)
+      onChange?.()
+    } catch (e) {
+      console.error('Error toggling task completion:', e)
+    }
   }
 
   async function deleteTask(taskId: number, lawId?: number, flagKey?: string) {
@@ -640,12 +648,20 @@ export default function PageLawsList({
   }
 
   async function toggleGlobalTaskCompletion(taskId: number, currentDone: boolean) {
-    await fetch(`/api/tasks`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: taskId, done: !currentDone }),
-    }).catch(() => {})
-    load()
-    onChange?.()
+    try {
+      const res = await fetch(`/api/tasks`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: taskId, done: !currentDone }),
+      })
+      if (!res.ok) {
+        console.error('Failed to toggle task completion')
+        return
+      }
+      await load()
+      onChange?.()
+    } catch (e) {
+      console.error('Error toggling task completion:', e)
+    }
   }
 
   // Reply thread shared by law rows, task rows (nested under a law/flag),

@@ -124,7 +124,7 @@ export async function PATCH(req: NextRequest) {
       UPDATE custom_tasks
       SET done = ${done}, ${done ? sql`completed_at = now(), completed_by = ${actor}` : sql`completed_at = NULL, completed_by = NULL`}
       WHERE id = ${id}
-      RETURNING id, title, notes, due_date, submenu, view, law_id, flag_key, task_type, assigned_to, done, created_by, created_at, completed_at, completed_by
+      RETURNING id, title, notes, due_date, submenu, view, law_id, flag_key, task_type, recurrence_type, recurrence_days, assigned_to, done, created_by, created_at, completed_at, completed_by
     `
     return NextResponse.json(row)
   } catch (e) {
