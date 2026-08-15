@@ -11,7 +11,7 @@ import OpenerView from './OpenerView'
 import CloserView from './CloserView'
 import GronyChecksGrid from './GronyChecksGrid'
 import type { Violation } from './useViolations'
-import { LOG_CATEGORIES, FIXED_CATEGORY_LABELS, GRONY_CHECKS_ITEMS, type ManageView } from './manageViewData'
+import { LOG_CATEGORIES, FIXED_CATEGORY_LABELS, GRONY_CHECKS_ITEMS, ADVERT_ITEMS, type ManageView } from './manageViewData'
 
 export type { ManageView }
 
@@ -43,6 +43,7 @@ export default function GronyManageContent({
   const logCategory = LOG_CATEGORIES.find(c => c.key === view)
   const openerLaws = useLawsPanel('showOpenerLaws')
   const closerLaws = useLawsPanel('showCloserLaws')
+  const advertLaws = useLawsPanel('showAdvertLaws')
   const advertStatusLaws = useLawsPanel('showAdvertStatusLaws')
   const gronyChecksLaws = useLawsPanel('showGronyChecksLaws')
 
@@ -78,6 +79,28 @@ export default function GronyManageContent({
     {view === 'closer' && (<>
       {inlineLaws('Closer', closerLaws)}
       <CloserView missingClosingReportsCount={missingClosingReportsCount} onOpenStaff={onOpenStaff} />
+    </>)}
+    {view === 'advert' && (<>
+      <div className="px-2 pt-2 flex flex-nowrap items-center gap-1.5 overflow-x-auto">
+        <LawsToggleBar show={advertLaws.show} setShow={advertLaws.setShow}
+          openForm={advertLaws.openForm} setOpenForm={advertLaws.setOpenForm}
+          hideZeroFlags={advertLaws.hideZeroFlags} setHideZeroFlags={advertLaws.setHideZeroFlags}
+          activeFilters={advertLaws.activeFilters} toggleFilter={advertLaws.toggleFilter} dark={false} />
+      </div>
+      {advertLaws.show && (
+        <div className="px-2">
+          <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+            <div className="divide-y">
+              {ADVERT_ITEMS.map((item) => (
+                <button key={item.key} onClick={() => onSelectCheckType?.(item.key)} className="w-full text-left px-4 py-3 hover:bg-blue-50 transition flex items-center gap-3">
+                  <span className="text-lg">{item.icon}</span>
+                  <span className="text-sm font-medium text-gray-900">{item.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </>)}
     {view === 'audio' && <ContentPage contentKey="advert_audio_roadside" title="Advert 1 — Audio (for Roadside)" submenu="Audio" />}
     {view === 'audio_status' && (<>

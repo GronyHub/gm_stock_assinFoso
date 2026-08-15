@@ -8,7 +8,7 @@ import { useState, useEffect } from 'react'
 // etc.) just to render the list of buttons.
 export type ManageView =
   | 'opener' | 'closer'
-  | 'audio' | 'audio_status' | 'jingle' | 'equipment' | 'photoshop' | 'whatsapp' | 'cuttings' | 'video' | 'advert_log'
+  | 'advert' | 'audio' | 'audio_status' | 'jingle' | 'equipment' | 'photoshop' | 'whatsapp' | 'cuttings' | 'video' | 'advert_log'
   | 'arrangement' | 'cleanliness' | 'future' | 'customer_display'
   | 'repair_works' | 'quality_assurance'
   | 'properties'
@@ -76,12 +76,30 @@ export const GRONY_CHECKS_ITEMS: { key: ManageView; label: string; icon: string 
   { key: 'security_chk', label: 'Security chk', icon: '🔒' },
 ]
 
+// Nested sub-items shown only when viewing 'advert' -- these include
+// all the audio and photo/video advert pages
+export const ADVERT_ITEMS: { key: ManageView; label: string; icon: string }[] = [
+  { key: 'audio',           label: 'Audio',             icon: '🎙️' },
+  { key: 'audio_status',    label: 'Advert Status',     icon: '📋' },
+  { key: 'jingle',          label: 'Jingle Log',        icon: '🎵' },
+  { key: 'equipment',       label: 'Equipment Check',   icon: '🔊' },
+  { key: 'photoshop',       label: 'Photoshop',         icon: '🖌️' },
+  { key: 'whatsapp',        label: 'WhatsApp',          icon: '💬' },
+  { key: 'cuttings',        label: 'Cuttings',          icon: '✂️' },
+  { key: 'video',           label: 'Video',             icon: '🎬' },
+]
+
 // Which LOG_CATEGORIES are NOT nested under grony_checks (the rest are
 // included as separate sidebar items)
 export const GRONY_CHECKS_KEYS = new Set<ManageView>([
   'arrangement', 'cleanliness', 'customer_display', 'repair_works',
   'grony_1', 'grony_2', 'grony_3', 'grony_4', 'grony_5',
   'grony_6', 'grony_7', 'grony_8', 'grony_9', 'grony_10', 'security_chk',
+])
+
+// Which advert items are nested under 'advert' view instead of shown separately
+export const ADVERT_KEYS = new Set<ManageView>([
+  'audio', 'audio_status', 'jingle', 'equipment', 'photoshop', 'whatsapp', 'cuttings', 'video',
 ])
 
 // Group assignments for remaining LOG_CATEGORIES items (the ones not nested
@@ -91,21 +109,15 @@ const LOG_CATEGORY_GROUPS: Partial<Record<ManageView, string>> = {}
 
 // The Manage section's fixed contents, top to bottom -- one flat list (still
 // one reorderable sequence for ReorderListsPanel). Items nested under
-// grony_checks are not here; they're rendered dynamically when that view is
-// active (see GRONY_CHECKS_ITEMS). Home/Daily aren't here either -- they're
-// the merged pane's shared footer now (see PaneHomeDaily in page.tsx).
+// grony_checks or advert are not here; they're rendered dynamically when that
+// view is active (see GRONY_CHECKS_ITEMS and ADVERT_ITEMS). Home/Daily aren't
+// here either -- they're the merged pane's shared footer now (see
+// PaneHomeDaily in page.tsx).
 export const MANAGE_LIST_ITEMS: { key: ManageView; label: string; icon?: string; group?: string }[] = [
   { key: 'opener', label: 'Opener', icon: '🌅' },
   { key: 'closer', label: 'Closer', icon: '🌙' },
   { key: 'grony_checks', label: 'Grony Checks', icon: '⚖️' },
-  { key: 'audio', label: 'Audio', icon: '🎙️', group: 'advert' },
-  { key: 'audio_status', label: 'Advert Status', icon: '📋', group: 'advert' },
-  { key: 'jingle', label: 'Jingle Log', icon: '🎵', group: 'advert' },
-  { key: 'equipment', label: 'Equipment Check', icon: '🔊', group: 'advert' },
-  { key: 'photoshop', label: 'Photoshop', icon: '🖌️', group: 'advert' },
-  { key: 'whatsapp', label: 'WhatsApp', icon: '💬', group: 'advert' },
-  { key: 'cuttings', label: 'Cuttings', icon: '✂️', group: 'advert' },
-  { key: 'video', label: 'Video', icon: '🎬', group: 'advert' },
+  { key: 'advert', label: 'Advert', icon: '📢' },
   ...LOG_CATEGORIES.filter(c => !GRONY_CHECKS_KEYS.has(c.key)).map(c => ({ key: c.key, label: c.label, icon: c.icon, group: LOG_CATEGORY_GROUPS[c.key] })),
   // 'properties' used to be a row here too -- moved to the Cash pane, right
   // under Expenses (see item/page.tsx), split into its own "Properties at
