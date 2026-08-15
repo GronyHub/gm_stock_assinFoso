@@ -1322,13 +1322,13 @@ function ItemHubPageInner() {
 
   function toggleAllLaws() {
     const lawsKeys = [
-      'showAliasWideTableLaws', 'showCABLaws', 'showCloserLaws', 'showCountsLaws',
-      'showDailyLaws', 'showExpenseOrdersLaws', 'showExpensesLaws', 'showHomeLaws',
-      'showItem360Laws', 'showItemsFlagsLaws', 'showLossByDateLaws', 'showLossByItemLaws',
-      'showLossByTargetLaws', 'showNewCustomerLaws', 'showNewSaleLaws', 'showOpenerLaws',
-      'showPLLaws', 'showProfileLaws', 'showPropertiesLaws', 'showPurchaseOrdersLaws',
-      'showReceiptsLaws', 'showReorderListsLaws', 'showServiceMatchesLaws', 'showServicesLaws',
-      'showViewPortalAsLaws', 'showAccessLaws', 'showAdvertStatusLaws', 'showDressCodeLaws',
+      'showItemsLaws', 'showSalesLaws', 'showBillsLaws',
+      'showAliasWideTableLaws', 'showDailyLaws', 'showExpenseOrdersLaws',
+      'showHomeLaws', 'showItem360Laws', 'showLossByDateLaws', 'showLossByItemLaws',
+      'showLossByTargetLaws', 'showNewCustomerLaws', 'showNewSaleLaws',
+      'showPLLaws', 'showPurchaseOrdersLaws', 'showReceiptsLaws',
+      'showReorderListsLaws', 'showServiceMatchesLaws', 'showServicesLaws',
+      'showViewPortalAsLaws', 'showExpenseOrdersLaws',
       'showTeamAssessmentLaws', 'showTeamLogsLaws', 'showTeamMeetingLaws', 'showTeamRotaLaws',
     ]
     const allShown = lawsKeys.every(k => localStorage.getItem(k) === 'true')
