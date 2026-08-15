@@ -231,17 +231,17 @@ const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: string }
   { key: 'items',    label: 'Items',    icon: '📦' },
   { key: 'item360',   label: 'Item 360',  icon: '360' },
   { key: 'sales',    label: 'Sales',    icon: '🧾' },
-  { key: 'bills',    label: 'Bills',    icon: '📃', group: 'Bills' },
+  { key: 'bills',    label: 'Bills',    icon: '📃' },
   { key: 'purchaseOrders',   label: 'Purchase Ord',   icon: '🛒' },
   { key: 'feed',         label: 'Loss by Date',   icon: '📉' },
   { key: 'lossByTarget', label: 'Loss by Tgt',    icon: '🎯' },
   { key: 'lossByItem',   label: 'Loss by Item',   icon: '📊' },
   { key: 'expenses', label: 'Expenses', icon: '💳' },
   { key: 'vendors',   label: 'Vendors',   icon: '🏭' },
-  { key: 'pl',       label: 'P&L',      icon: '📈', group: 'P&L' },
-  { key: 'cab',      label: 'CAB',      icon: '🗂️', group: 'CAB' },
-  { key: 'customers', label: 'Customers', icon: '👥', group: 'Customers' },
-  { key: 'receipts',  label: 'Cust. Receipts',  icon: '📑', group: 'Customers' },
+  { key: 'pl',       label: 'P&L',      icon: '📈' },
+  { key: 'cab',      label: 'CAB',      icon: '🗂️' },
+  { key: 'customers', label: 'Customers', icon: '👥' },
+  { key: 'receipts',  label: 'Cust. Receipts',  icon: '📑' },
 ]
 // flattenPaneRuns needs a group->label lookup to build each run's header
 // text, but a Cash row's group already IS its own label (see CASH_ITEMS'
