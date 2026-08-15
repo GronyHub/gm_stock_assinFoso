@@ -59,9 +59,10 @@ const ORDER_KEY = 'liveSaleOrder'
 // quantity number, since that's what a customer actually hands over and
 // what staff are matching against. 1 is always in the list (added to
 // SERVICE_QTY, already there for goods) so the item's own single-unit
-// selling price always appears as one of the buttons.
-const GOODS_QTY = [1, 2, 3, 4, 5]
-const SERVICE_QTY = [1, 10, 12, 15, 18, 20]
+// selling price always appears as one of the buttons. Kept minimal so
+// item name + buttons fit on one line; users can customize via long-press.
+const GOODS_QTY = [1, 2, 3]
+const SERVICE_QTY = [1, 10, 15]
 function qtyPresetsFor(item: GridItem) {
   return item.product_type === 'service' ? SERVICE_QTY : GOODS_QTY
 }
