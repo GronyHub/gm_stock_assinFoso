@@ -643,6 +643,19 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                                   }}
                                   className="w-12 h-7 px-0.5 rounded-lg bg-yellow-50 text-yellow-700 text-[11px] font-bold border-2 border-yellow-400 text-center focus:outline-none focus:ring-1 focus:ring-yellow-500"
                                 />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const presets = getPresetsForItem(it)
+                                    setPresetsForItem(it.id, [...presets, 0])
+                                    setEditingButton({ itemId: it.id, index: presets.length })
+                                    setEditingValue('')
+                                  }}
+                                  className="w-5 h-7 rounded-lg bg-green-600 hover:bg-green-700 text-white text-[9px] font-bold flex items-center justify-center transition"
+                                  title="Add new button"
+                                >
+                                  +
+                                </button>
                                 {presets.length > 1 && (
                                   <button
                                     type="button"
@@ -653,7 +666,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                                       setEditingValue('')
                                     }}
                                     className="w-5 h-7 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[9px] font-bold flex items-center justify-center transition"
-                                    title="Delete this preset"
+                                    title="Delete this button"
                                   >
                                     −
                                   </button>
@@ -696,19 +709,6 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                             </button>
                           )
                         })}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const presets = getPresetsForItem(it)
-                            setPresetsForItem(it.id, [...presets, 0])
-                            setEditingButton({ itemId: it.id, index: presets.length })
-                            setEditingValue('')
-                          }}
-                          className="w-5 h-7 rounded-lg bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold flex items-center justify-center transition"
-                          title="Add new preset"
-                        >
-                          +
-                        </button>
                         <input
                           type="number"
                           inputMode="numeric"
