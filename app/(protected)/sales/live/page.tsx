@@ -399,50 +399,6 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
     <div className={expanded
       ? 'fixed inset-0 z-50 bg-white overflow-y-auto pb-24'
       : 'relative pb-24'}>
-      <div className="flex items-center justify-between gap-2 px-2 pt-1 pb-1 border-b border-gray-200">
-        <h2 className="min-w-0 text-xs font-bold leading-tight truncate">
-          ⚡ Live Sale <span className="font-normal text-gray-400">· tap to record</span>
-        </h2>
-        <div className="flex items-center gap-1.5 shrink-0">
-          {!hideTopControls && (
-            <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
-              openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-              hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
-            activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
-          )}
-          {!showLog && (
-            <button
-              type="button"
-              onClick={() => setArranging((v) => !v)}
-              title="Arrange the item list"
-              className={`px-2 py-0.5 rounded-lg text-xs font-semibold border transition
-                ${arranging ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300'}`}
-            >
-              {arranging ? 'Done' : '↕ Arrange'}
-            </button>
-          )}
-          {!hideTopControls && (
-          <button
-            type="button"
-            onClick={() => setExpanded((v) => !v)}
-            title={expanded ? 'Exit large screen' : 'Large screen'}
-            className={`shrink-0 w-6 h-6 rounded-lg text-xs font-semibold border flex items-center justify-center transition
-              ${expanded ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300'}`}
-          >
-            {expanded ? '⤡' : '⤢'}
-          </button>
-          )}
-          {onClose && (
-            <button
-              type="button"
-              onClick={onClose}
-              className="shrink-0 px-2 py-0.5 rounded-lg text-xs font-semibold bg-gray-100 hover:bg-gray-200 border border-gray-300"
-            >
-              ×
-            </button>
-          )}
-        </div>
-      </div>
       {lawsPanel.show && (
         <div className="border-b border-gray-200 bg-white px-2 py-1.5">
           <PageLawsList

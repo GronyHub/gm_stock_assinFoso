@@ -1969,7 +1969,7 @@ function ItemHubPageInner() {
                   </div>
 
                   {/* Search */}
-                  <div className="relative min-w-0 flex-1" ref={searchRef}>
+                  <div className="relative min-w-0 flex-1 max-w-xs" ref={searchRef}>
                     <input value={search} onChange={e => setSearch(e.target.value)}
                       onFocus={() => setSearchOpen(true)}
                       placeholder={`Search ${CASH_LABEL.get(lossView) ?? ''}`} autoComplete="off"
