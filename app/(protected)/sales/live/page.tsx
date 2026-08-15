@@ -156,10 +156,13 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
   const [editingValue, setEditingValue] = useState('')
   const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   useEffect(() => {
-    fetch(`/api/app-settings?key=${ORDER_KEY}`)
-      .then(r => r.ok ? r.json() : { value: null })
-      .then((d: { value: unknown }) => { if (Array.isArray(d?.value)) setManualOrder(d.value as number[]) })
-      .catch(() => {})
+    const saved = localStorage.getItem('liveSaleOrder')
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed)) setManualOrder(parsed)
+      } catch {}
+    }
   }, [])
 
   useEffect(() => {
@@ -178,10 +181,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
 
   function persistOrder(order: number[]) {
     setManualOrder(order)
-    fetch('/api/app-settings', {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: ORDER_KEY, value: order }),
-    }).catch(() => {})
+    localStorage.setItem('liveSaleOrder', JSON.stringify(order))
   }
 
   useEffect(() => {
