@@ -184,11 +184,13 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
   // Calculate items per page based on container height
   useEffect(() => {
     const calculateItemsPerPage = () => {
-      if (!itemsContainerRef.current) return
-      const containerHeight = itemsContainerRef.current.clientHeight
+      // Calculate available viewport height for items
+      // Subtract: top bar (~60px) + controls (~50px) + pagination (~50px) + log table (~200px)
+      const reservedHeight = 360
+      const availableHeight = window.innerHeight - reservedHeight
       // Estimate: each item row is roughly 50-60px (text + padding + border)
       const estimatedItemHeight = 55
-      const calculated = Math.max(3, Math.floor(containerHeight / estimatedItemHeight))
+      const calculated = Math.max(3, Math.floor(availableHeight / estimatedItemHeight))
       setItemsPerPage(calculated)
     }
     calculateItemsPerPage()
