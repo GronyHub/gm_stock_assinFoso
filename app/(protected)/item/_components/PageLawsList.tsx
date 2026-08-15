@@ -9,6 +9,7 @@ type Task = {
   id: number
   title: string
   notes?: string
+  due_date?: string | null
   done: boolean
   created_by: string
   created_at: string
@@ -16,6 +17,8 @@ type Task = {
   completed_at?: string
   completed_by?: string
   task_type?: string
+  recurrence_type?: string | null
+  recurrence_days?: string | null | (string | number)[]
 }
 
 type Note = { notes?: string; topic?: string; noteDate?: string }
@@ -98,12 +101,18 @@ export default function PageLawsList({
   const [taskTitle, setTaskTitle] = useState('')
   const [taskType, setTaskType] = useState('General +')
   const [taskAssignedTo, setTaskAssignedTo] = useState('')
+  const [taskDueDate, setTaskDueDate] = useState('')
+  const [taskRecurrenceType, setTaskRecurrenceType] = useState<'once' | 'weekly' | 'monthly'>('once')
+  const [taskRecurrenceDays, setTaskRecurrenceDays] = useState<(string | number)[]>([])
   const [noteForLaw, setNoteForLaw] = useState<number | null>(null)
   const [noteText, setNoteText] = useState('')
   const [taskForFlag, setTaskForFlag] = useState<string | null>(null)
   const [taskTitleForFlag, setTaskTitleForFlag] = useState('')
   const [taskTypeForFlag, setTaskTypeForFlag] = useState('General +')
   const [taskAssignedToFlag, setTaskAssignedToFlag] = useState('')
+  const [taskDueDateFlag, setTaskDueDateFlag] = useState('')
+  const [taskRecurrenceTypeFlag, setTaskRecurrenceTypeFlag] = useState<'once' | 'weekly' | 'monthly'>('once')
+  const [taskRecurrenceDaysFlag, setTaskRecurrenceDaysFlag] = useState<(string | number)[]>([])
   const [noteForFlag, setNoteForFlag] = useState<string | null>(null)
   const [noteTextForFlag, setNoteTextForFlag] = useState('')
 
@@ -114,6 +123,9 @@ export default function PageLawsList({
   const [globalTaskTitle, setGlobalTaskTitle] = useState('')
   const [globalTaskType, setGlobalTaskType] = useState('General +')
   const [globalTaskAssignedTo, setGlobalTaskAssignedTo] = useState('')
+  const [globalTaskDueDate, setGlobalTaskDueDate] = useState('')
+  const [globalTaskRecurrenceType, setGlobalTaskRecurrenceType] = useState<'once' | 'weekly' | 'monthly'>('once')
+  const [globalTaskRecurrenceDays, setGlobalTaskRecurrenceDays] = useState<(string | number)[]>([])
   const [globalNoteTopic, setGlobalNoteTopic] = useState('')
   const [globalNoteText, setGlobalNoteText] = useState('')
   const [globalNoteDate, setGlobalNoteDate] = useState(() => new Date().toISOString().split('T')[0])
@@ -447,6 +459,9 @@ export default function PageLawsList({
         body: JSON.stringify({
           title: taskTitle.trim(), submenu: scopeKey, law_id: lawId,
           task_type: taskType, assigned_to: taskAssignedTo || null,
+          due_date: taskDueDate || null,
+          recurrence_type: taskRecurrenceType === 'once' ? null : taskRecurrenceType,
+          recurrence_days: taskRecurrenceType === 'once' || taskRecurrenceDays.length === 0 ? null : taskRecurrenceDays,
         }),
       })
       if (!res.ok) {
@@ -457,6 +472,9 @@ export default function PageLawsList({
       setTaskTitle('')
       setTaskType('General +')
       setTaskAssignedTo('')
+      setTaskDueDate('')
+      setTaskRecurrenceType('once')
+      setTaskRecurrenceDays([])
       setTaskForLaw(null)
       setTimeout(() => fetchTasksForLaw(lawId), 200)
       onChange?.()
@@ -499,6 +517,9 @@ export default function PageLawsList({
         body: JSON.stringify({
           title: taskTitleForFlag.trim(), submenu: scopeKey, flag_key: flagKey,
           task_type: taskTypeForFlag, assigned_to: taskAssignedToFlag || null,
+          due_date: taskDueDateFlag || null,
+          recurrence_type: taskRecurrenceTypeFlag === 'once' ? null : taskRecurrenceTypeFlag,
+          recurrence_days: taskRecurrenceTypeFlag === 'once' || taskRecurrenceDaysFlag.length === 0 ? null : taskRecurrenceDaysFlag,
         }),
       })
       if (!res.ok) {
@@ -509,6 +530,9 @@ export default function PageLawsList({
       setTaskTitleForFlag('')
       setTaskTypeForFlag('General +')
       setTaskAssignedToFlag('')
+      setTaskDueDateFlag('')
+      setTaskRecurrenceTypeFlag('once')
+      setTaskRecurrenceDaysFlag([])
       setTaskForFlag(null)
       setTimeout(() => fetchTasksForFlag(flagKey), 200)
       onChange?.()
@@ -550,6 +574,9 @@ export default function PageLawsList({
         body: JSON.stringify({
           title: globalTaskTitle.trim(), submenu: scopeKey,
           task_type: globalTaskType, assigned_to: globalTaskAssignedTo || null,
+          due_date: globalTaskDueDate || null,
+          recurrence_type: globalTaskRecurrenceType === 'once' ? null : globalTaskRecurrenceType,
+          recurrence_days: globalTaskRecurrenceType === 'once' || globalTaskRecurrenceDays.length === 0 ? null : globalTaskRecurrenceDays,
         }),
       })
       if (!res.ok) {
@@ -561,6 +588,9 @@ export default function PageLawsList({
       setGlobalTaskTitle('')
       setGlobalTaskType('General +')
       setGlobalTaskAssignedTo('')
+      setGlobalTaskDueDate('')
+      setGlobalTaskRecurrenceType('once')
+      setGlobalTaskRecurrenceDays([])
       setOpenForm?.(null)
       load()
       onChange?.()
@@ -657,23 +687,81 @@ export default function PageLawsList({
   // "Add a task for this law/flag" inline form -- identical for both, only
   // which create-handler and cancel-handler it's wired to differs.
   function renderAddTaskForm(title: string, setTitle: (v: string) => void, type: string, setType: (v: string) => void,
-    assignedTo: string, setAssignedTo: (v: string) => void, onCreate: () => void, onCancel: () => void) {
+    assignedTo: string, setAssignedTo: (v: string) => void, onCreate: () => void, onCancel: () => void,
+    dueDate?: string, setDueDate?: (v: string) => void, recurrenceType?: 'once' | 'weekly' | 'monthly',
+    setRecurrenceType?: (v: 'once' | 'weekly' | 'monthly') => void, recurrenceDays?: (string | number)[],
+    setRecurrenceDays?: (v: (string | number)[]) => void) {
+    const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    const monthDays = ['1', '2', '3', '5', '10', '15', '20', '25', '28', 'Last']
+
     return (
       <div className="flex flex-col gap-0.5 bg-blue-50 p-1 border border-blue-200 leading-none">
         <input autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder="Task…"
           onKeyDown={e => { if (e.key === 'Enter') onCreate(); if (e.key === 'Escape') onCancel() }}
           className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
-        <select value={type} onChange={e => setType(e.target.value)}
-          className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
-          <option>General +</option>
-          <option>App +</option>
-          <option>Note</option>
-        </select>
+        <div className="flex gap-0.5">
+          <select value={type} onChange={e => setType(e.target.value)}
+            className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
+            <option>General +</option>
+            <option>App +</option>
+            <option>Note</option>
+          </select>
+          {setDueDate && (
+            <input type="date" value={dueDate || ''} onChange={e => setDueDate(e.target.value)}
+              className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
+          )}
+        </div>
         <select value={assignedTo} onChange={e => setAssignedTo(e.target.value)}
           className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
           <option value="">Assign…</option>
           {ASSIGNABLE_STAFF.map(staff => <option key={staff} value={staff}>{staff}</option>)}
         </select>
+        {setRecurrenceType && (
+          <>
+            <select value={recurrenceType} onChange={e => setRecurrenceType(e.target.value as 'once' | 'weekly' | 'monthly')}
+              className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
+              <option value="once">One-time</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+            {recurrenceType === 'weekly' && (
+              <div className="flex flex-wrap gap-0.5">
+                {weekDays.map(day => (
+                  <label key={day} className="flex items-center gap-0.5 text-[8px] cursor-pointer">
+                    <input type="checkbox" checked={recurrenceDays?.includes(day) || false}
+                      onChange={e => {
+                        if (e.target.checked) {
+                          setRecurrenceDays?.([...(recurrenceDays || []), day])
+                        } else {
+                          setRecurrenceDays?.(recurrenceDays?.filter(d => d !== day) || [])
+                        }
+                      }}
+                      className="w-3 h-3" />
+                    {day}
+                  </label>
+                ))}
+              </div>
+            )}
+            {recurrenceType === 'monthly' && (
+              <div className="flex flex-wrap gap-0.5">
+                {monthDays.map(day => (
+                  <label key={day} className="flex items-center gap-0.5 text-[8px] cursor-pointer">
+                    <input type="checkbox" checked={recurrenceDays?.includes(day) || false}
+                      onChange={e => {
+                        if (e.target.checked) {
+                          setRecurrenceDays?.([...(recurrenceDays || []), day])
+                        } else {
+                          setRecurrenceDays?.(recurrenceDays?.filter(d => d !== day) || [])
+                        }
+                      }}
+                      className="w-3 h-3" />
+                    {day === 'Last' ? 'Last day' : day}
+                  </label>
+                ))}
+              </div>
+            )}
+          </>
+        )}
         <div className="flex gap-0.5">
           <button type="button" onClick={onCreate} className="flex-1 text-green-600 hover:text-green-700 text-[8px] font-bold">Create</button>
           <button type="button" onClick={onCancel} className="shrink-0 text-gray-400 hover:text-gray-600 text-[8px] font-bold">×</button>
@@ -883,7 +971,8 @@ export default function PageLawsList({
                     </div>
                   )}
                   {taskForLaw === l.id
-                    ? renderAddTaskForm(taskTitle, setTaskTitle, taskType, setTaskType, taskAssignedTo, setTaskAssignedTo, addTaskForLaw, () => setTaskForLaw(null))
+                    ? renderAddTaskForm(taskTitle, setTaskTitle, taskType, setTaskType, taskAssignedTo, setTaskAssignedTo, addTaskForLaw, () => setTaskForLaw(null),
+                        taskDueDate, setTaskDueDate, taskRecurrenceType, setTaskRecurrenceType, taskRecurrenceDays, setTaskRecurrenceDays)
                     : (
                         <>
                           {renderAttachedItems(taskForLawLoaded[l.id], l.id, undefined)}
@@ -987,7 +1076,8 @@ export default function PageLawsList({
                   <p className="text-[8px] text-gray-600 leading-tight">{f.description}</p>
                 )}
                 {taskForFlag === f.key
-                  ? renderAddTaskForm(taskTitleForFlag, setTaskTitleForFlag, taskTypeForFlag, setTaskTypeForFlag, taskAssignedToFlag, setTaskAssignedToFlag, addTaskForFlag, () => setTaskForFlag(null))
+                  ? renderAddTaskForm(taskTitleForFlag, setTaskTitleForFlag, taskTypeForFlag, setTaskTypeForFlag, taskAssignedToFlag, setTaskAssignedToFlag, addTaskForFlag, () => setTaskForFlag(null),
+                      taskDueDateFlag, setTaskDueDateFlag, taskRecurrenceTypeFlag, setTaskRecurrenceTypeFlag, taskRecurrenceDaysFlag, setTaskRecurrenceDaysFlag)
                   : renderAttachedItems(tasksByFlagKey[f.key], undefined, f.key)}
               </div>
             </div>
@@ -1018,26 +1108,10 @@ export default function PageLawsList({
             </div>
           ))}
           {isItemsLaws && openForm === 'task' && (
-            <div className="px-1 py-1 bg-blue-50 border-t border-blue-200 flex flex-col gap-0.5 text-[8px]">
-              <input autoFocus value={globalTaskTitle} onChange={e => setGlobalTaskTitle(e.target.value)} placeholder="Task…"
-                onKeyDown={e => { if (e.key === 'Enter') addGlobalTask(); if (e.key === 'Escape') setOpenForm?.(null) }}
-                className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
-              <select value={globalTaskType} onChange={e => setGlobalTaskType(e.target.value)}
-                className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
-                <option>General +</option>
-                <option>App +</option>
-                <option>Note</option>
-              </select>
-              <select value={globalTaskAssignedTo} onChange={e => setGlobalTaskAssignedTo(e.target.value)}
-                className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
-                <option value="">Assign to…</option>
-                {ASSIGNABLE_STAFF.map(staff => <option key={staff} value={staff}>{staff}</option>)}
-              </select>
-              <div className="flex gap-0.5">
-                <button type="button" onClick={addGlobalTask} className="flex-1 text-green-600 hover:text-green-700 font-bold">Create</button>
-                <button type="button" onClick={() => setOpenForm?.(null)} className="shrink-0 text-gray-400 hover:text-gray-600 font-bold">×</button>
-              </div>
-            </div>
+            renderAddTaskForm(globalTaskTitle, setGlobalTaskTitle, globalTaskType, setGlobalTaskType,
+              globalTaskAssignedTo, setGlobalTaskAssignedTo, addGlobalTask, () => setOpenForm?.(null),
+              globalTaskDueDate, setGlobalTaskDueDate, globalTaskRecurrenceType, setGlobalTaskRecurrenceType,
+              globalTaskRecurrenceDays, setGlobalTaskRecurrenceDays)
           )}
         </div>
       )}
