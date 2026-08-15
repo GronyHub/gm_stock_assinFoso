@@ -94,13 +94,13 @@ export default function PageLawsList({
   // Per-law and per-flag "add a task/note for this one" inline forms.
   const [taskForLaw, setTaskForLaw] = useState<number | null>(null)
   const [taskTitle, setTaskTitle] = useState('')
-  const [taskType, setTaskType] = useState('General task')
+  const [taskType, setTaskType] = useState('General +')
   const [taskAssignedTo, setTaskAssignedTo] = useState('')
   const [noteForLaw, setNoteForLaw] = useState<number | null>(null)
   const [noteText, setNoteText] = useState('')
   const [taskForFlag, setTaskForFlag] = useState<string | null>(null)
   const [taskTitleForFlag, setTaskTitleForFlag] = useState('')
-  const [taskTypeForFlag, setTaskTypeForFlag] = useState('General task')
+  const [taskTypeForFlag, setTaskTypeForFlag] = useState('General +')
   const [taskAssignedToFlag, setTaskAssignedToFlag] = useState('')
   const [noteForFlag, setNoteForFlag] = useState<string | null>(null)
   const [noteTextForFlag, setNoteTextForFlag] = useState('')
@@ -110,7 +110,7 @@ export default function PageLawsList({
   // local.
   const [globalLawText, setGlobalLawText] = useState('')
   const [globalTaskTitle, setGlobalTaskTitle] = useState('')
-  const [globalTaskType, setGlobalTaskType] = useState('General task')
+  const [globalTaskType, setGlobalTaskType] = useState('General +')
   const [globalTaskAssignedTo, setGlobalTaskAssignedTo] = useState('')
   const [globalNoteTopic, setGlobalNoteTopic] = useState('')
   const [globalNoteText, setGlobalNoteText] = useState('')
@@ -142,7 +142,7 @@ export default function PageLawsList({
   const [replyText, setReplyText] = useState('')
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null)
   const [editTaskTitle, setEditTaskTitle] = useState('')
-  const [editTaskType, setEditTaskType] = useState('General task')
+  const [editTaskType, setEditTaskType] = useState('General +')
   const [editTaskAssignedTo, setEditTaskAssignedTo] = useState('')
 
   function formatDate(dateStr: string) {
@@ -254,7 +254,7 @@ export default function PageLawsList({
   function startEditTask(task: Task) {
     setEditingTaskId(task.id)
     setEditTaskTitle(task.title)
-    setEditTaskType(task.task_type || 'General task')
+    setEditTaskType(task.task_type || 'General +')
     setEditTaskAssignedTo(task.assigned_to || '')
   }
 
@@ -270,7 +270,7 @@ export default function PageLawsList({
     }).catch(() => {})
     setEditingTaskId(null)
     setEditTaskTitle('')
-    setEditTaskType('General task')
+    setEditTaskType('General +')
     setEditTaskAssignedTo('')
     if (lawId !== undefined) await fetchTasksForLaw(lawId)
     if (flagKey !== undefined) await fetchTasksForFlag(flagKey)
@@ -453,7 +453,7 @@ export default function PageLawsList({
         return
       }
       setTaskTitle('')
-      setTaskType('General task')
+      setTaskType('General +')
       setTaskAssignedTo('')
       setTaskForLaw(null)
       setTimeout(() => fetchTasksForLaw(lawId), 200)
@@ -505,7 +505,7 @@ export default function PageLawsList({
         return
       }
       setTaskTitleForFlag('')
-      setTaskTypeForFlag('General task')
+      setTaskTypeForFlag('General +')
       setTaskAssignedToFlag('')
       setTaskForFlag(null)
       setTimeout(() => fetchTasksForFlag(flagKey), 200)
@@ -557,7 +557,7 @@ export default function PageLawsList({
         return
       }
       setGlobalTaskTitle('')
-      setGlobalTaskType('General task')
+      setGlobalTaskType('General +')
       setGlobalTaskAssignedTo('')
       setOpenForm?.(null)
       load()
@@ -663,8 +663,8 @@ export default function PageLawsList({
           className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
         <select value={type} onChange={e => setType(e.target.value)}
           className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
-          <option>General task</option>
-          <option>App task</option>
+          <option>General +</option>
+          <option>App +</option>
           <option>Note</option>
         </select>
         <select value={assignedTo} onChange={e => setAssignedTo(e.target.value)}
@@ -716,8 +716,8 @@ export default function PageLawsList({
                       className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
                     <select value={editTaskType} onChange={e => setEditTaskType(e.target.value)}
                       className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
-                      <option>General task</option>
-                      <option>App task</option>
+                      <option>General +</option>
+                      <option>App +</option>
                       <option>Note</option>
                     </select>
                     <select value={editTaskAssignedTo} onChange={e => setEditTaskAssignedTo(e.target.value)}
@@ -734,7 +734,7 @@ export default function PageLawsList({
                   <div className="flex flex-col gap-0.5">
                     <p className={`font-semibold ${task.done ? 'line-through text-gray-500' : 'text-gray-800'}`}>{task.title}</p>
                     <div className="flex items-center gap-1 flex-wrap text-[7px] text-gray-600">
-                      <span>{task.task_type === 'App task' ? 'App' : task.task_type === 'Note' ? 'Note' : 'General'}</span>
+                      <span>{task.task_type === 'App +' ? 'App' : task.task_type === 'Note' ? 'Note' : 'General'}</span>
                       <span>•</span>
                       <span>{formatDate(task.created_at)} by {task.created_by}</span>
                       {task.assigned_to && (<><span>•</span><span>To: {task.assigned_to}</span></>)}
@@ -858,7 +858,7 @@ export default function PageLawsList({
                     <p className="text-[9px] text-gray-800">{l.text}</p>
                     {taskForLaw !== l.id && noteForLaw !== l.id && (
                       <>
-                        <button type="button" onClick={() => { setTaskForLaw(l.id); fetchTasksForLaw(l.id) }} title="Add task" className="text-blue-500 hover:text-blue-600 font-semibold text-[8px]">✓ Task</button>
+                        <button type="button" onClick={() => { setTaskForLaw(l.id); fetchTasksForLaw(l.id) }} title="Add task" className="text-blue-500 hover:text-blue-600 font-semibold text-[8px]">✓ +</button>
                       </>
                     )}
                   </div>
@@ -910,7 +910,7 @@ export default function PageLawsList({
                               <button type="button" onClick={() => startEditFlag(f)} title="Rename" className="text-gray-500 hover:text-gray-700 font-semibold">✎</button>
                               {taskForFlag !== f.key && noteForFlag !== f.key && (
                                 <>
-                                  <button type="button" onClick={() => { setTaskForFlag(f.key); fetchTasksForFlag(f.key) }} title="Add task for this flag" className="text-blue-500 hover:text-blue-600 font-semibold text-[8px]">✓ Task</button>
+                                  <button type="button" onClick={() => { setTaskForFlag(f.key); fetchTasksForFlag(f.key) }} title="Add task for this flag" className="text-blue-500 hover:text-blue-600 font-semibold text-[8px]">✓ +</button>
                                 </>
                               )}
                             </div>
@@ -963,7 +963,7 @@ export default function PageLawsList({
                       <button type="button" onClick={() => startEditFlag(f)} title="Rename" className="text-gray-500 hover:text-gray-700 text-[8px] font-semibold">✎</button>
                       {taskForFlag !== f.key && (
                         <>
-                          <button type="button" onClick={() => { setTaskForFlag(f.key); fetchTasksForFlag(f.key) }} title="Add task for this flag" className="text-blue-500 hover:text-blue-600 font-semibold text-[8px]">✓ Task</button>
+                          <button type="button" onClick={() => { setTaskForFlag(f.key); fetchTasksForFlag(f.key) }} title="Add task for this flag" className="text-blue-500 hover:text-blue-600 font-semibold text-[8px]">✓ +</button>
                         </>
                       )}
                     </>
@@ -1012,8 +1012,8 @@ export default function PageLawsList({
                 className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
               <select value={globalTaskType} onChange={e => setGlobalTaskType(e.target.value)}
                 className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
-                <option>General task</option>
-                <option>App task</option>
+                <option>General +</option>
+                <option>App +</option>
                 <option>Note</option>
               </select>
               <select value={globalTaskAssignedTo} onChange={e => setGlobalTaskAssignedTo(e.target.value)}
