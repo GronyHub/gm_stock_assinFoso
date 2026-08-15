@@ -155,7 +155,11 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
   const [editingButton, setEditingButton] = useState<{ itemId: number; index: number } | null>(null)
   const [editingValue, setEditingValue] = useState('')
   const [quickArrangeItemId, setQuickArrangeItemId] = useState<number | null>(null)
+  const [currentPage, setCurrentPage] = useState(0)
+  const [itemsPerPage, setItemsPerPage] = useState(5)
   const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const touchStartXRef = useRef(0)
+  const itemsContainerRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     fetch(`/api/app-settings?key=${ORDER_KEY}`)
       .then(r => r.ok ? r.json() : { value: null })
@@ -176,6 +180,43 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
   useEffect(() => {
     localStorage.setItem('liveSaleItemPresets', JSON.stringify(itemPresets))
   }, [itemPresets])
+
+  // Calculate items per page based on container height
+  useEffect(() => {
+    const calculateItemsPerPage = () => {
+      if (!itemsContainerRef.current) return
+      const containerHeight = itemsContainerRef.current.clientHeight
+      // Estimate: each item row is roughly 50-60px (text + padding + border)
+      const estimatedItemHeight = 55
+      const calculated = Math.max(3, Math.floor(containerHeight / estimatedItemHeight))
+      setItemsPerPage(calculated)
+    }
+    calculateItemsPerPage()
+    window.addEventListener('resize', calculateItemsPerPage)
+    return () => window.removeEventListener('resize', calculateItemsPerPage)
+  }, [])
+
+  // Handle swipe gestures
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartXRef.current = e.touches[0]?.clientX || 0
+  }
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const touchEndX = e.changedTouches[0]?.clientX || 0
+    const delta = touchStartXRef.current - touchEndX
+    const threshold = 50 // Minimum swipe distance
+    const totalPages = Math.ceil(gridItems.length / itemsPerPage)
+
+    if (Math.abs(delta) > threshold) {
+      if (delta > 0 && currentPage < totalPages - 1) {
+        // Swiped left, go to next page
+        setCurrentPage(currentPage + 1)
+      } else if (delta < 0 && currentPage > 0) {
+        // Swiped right, go to previous page
+        setCurrentPage(currentPage - 1)
+      }
+    }
+  }
 
   function persistOrder(order: number[]) {
     setManualOrder(order)
@@ -240,6 +281,11 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
     if (q) list = list.filter((it) => it.name.toLowerCase().includes(q))
     return list
   }, [fullOrderedItems, groupFilter, search])
+
+  // Reset to first page when items change
+  useEffect(() => {
+    setCurrentPage(0)
+  }, [gridItems.length])
 
   function moveToTop(id: number) {
     persistOrder([id, ...fullOrderedItems.filter((it) => it.id !== id).map((it) => it.id)])
@@ -504,11 +550,23 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
             <p className="text-sm text-gray-400">Loading items…</p>
           ) : (
             <div>
-              {gridItems.map((it, idx) => {
-                const count = tapCounts.get(it.id) ?? 0
-                const number = (
-                  <span className="shrink-0 w-4 text-right text-[9px] font-bold text-gray-400">{idx + 1}</span>
-                )
+              {/* Items container with swipe support */}
+              <div
+                ref={itemsContainerRef}
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+                className="overflow-hidden"
+              >
+                {(() => {
+                  const startIdx = currentPage * itemsPerPage
+                  const endIdx = startIdx + itemsPerPage
+                  const pageItems = gridItems.slice(startIdx, endIdx)
+                  return pageItems.map((it, pageIdx) => {
+                    const globalIdx = startIdx + pageIdx
+                    const count = tapCounts.get(it.id) ?? 0
+                    const number = (
+                      <span className="shrink-0 w-4 text-right text-[9px] font-bold text-gray-400">{globalIdx + 1}</span>
+                    )
                 const label = (
                   <p
                     className="text-[10px] font-semibold text-gray-900 leading-tight"
@@ -551,7 +609,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                             moveBy(it.id, -1)
                           }
                         }}
-                        disabled={idx === 0}
+                        disabled={globalIdx === 0}
                         title="Move up"
                         className="shrink-0 w-5 h-5 rounded bg-gray-100 text-gray-600 text-[10px] font-bold flex items-center justify-center hover:bg-gray-200 disabled:opacity-30"
                       >
@@ -564,7 +622,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                             moveBy(it.id, 1)
                           }
                         }}
-                        disabled={idx === gridItems.length - 1}
+                        disabled={globalIdx === gridItems.length - 1}
                         title="Move down"
                         className="shrink-0 w-5 h-5 rounded bg-gray-100 text-gray-600 text-[10px] font-bold flex items-center justify-center hover:bg-gray-200 disabled:opacity-30"
                       >
@@ -577,7 +635,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                             moveToTop(it.id)
                           }
                         }}
-                        disabled={idx === 0}
+                        disabled={globalIdx === 0}
                         title="Move to top"
                         className="shrink-0 px-1.5 h-5 rounded bg-blue-50 text-blue-700 text-[9px] font-bold flex items-center justify-center hover:bg-blue-100 disabled:opacity-30"
                       >
@@ -619,7 +677,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                 }
 
                 const pending = pendingItemId === it.id
-                const bgColor = idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                const bgColor = globalIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                 return (
                   <div key={it.id} className={`w-full px-0 pr-2 py-1.5 border-b border-gray-200 ${bgColor}`}>
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -773,7 +831,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                                 setQuickArrangeItemId(null)
                               }
                             }}
-                            disabled={idx === 0}
+                            disabled={globalIdx === 0}
                             title="Move up"
                             className="shrink-0 w-5 h-5 rounded bg-gray-100 text-gray-600 text-[10px] font-bold flex items-center justify-center hover:bg-gray-200 disabled:opacity-30"
                           >
@@ -787,7 +845,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                                 setQuickArrangeItemId(null)
                               }
                             }}
-                            disabled={idx === gridItems.length - 1}
+                            disabled={globalIdx === gridItems.length - 1}
                             title="Move down"
                             className="shrink-0 w-5 h-5 rounded bg-gray-100 text-gray-600 text-[10px] font-bold flex items-center justify-center hover:bg-gray-200 disabled:opacity-30"
                           >
@@ -801,7 +859,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                                 setQuickArrangeItemId(null)
                               }
                             }}
-                            disabled={idx === 0}
+                            disabled={globalIdx === 0}
                             title="Move to top"
                             className="shrink-0 px-1.5 h-5 rounded bg-blue-50 text-blue-700 text-[9px] font-bold flex items-center justify-center hover:bg-blue-100 disabled:opacity-30"
                           >
@@ -820,7 +878,27 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                     </div>
                   </div>
                 )
-              })}
+                  })
+                })()}
+              </div>
+              {/* Pagination dots */}
+              {gridItems.length > 0 && (
+                <div className="flex items-center justify-center gap-2 py-3 border-b border-gray-200 bg-gray-50">
+                  {(() => {
+                    const totalPages = Math.ceil(gridItems.length / itemsPerPage)
+                    return Array.from({ length: totalPages }).map((_, page) => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`w-2 h-2 rounded-full transition ${
+                          page === currentPage ? 'bg-blue-600 w-6' : 'bg-gray-300 hover:bg-gray-400'
+                        }`}
+                        title={`Page ${page + 1}`}
+                      />
+                    ))
+                  })()}
+                </div>
+              )}
               {gridItems.length === 0 && <p className="text-[10px] text-gray-400 text-center py-6">No items match.</p>}
             </div>
           )}
