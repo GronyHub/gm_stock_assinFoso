@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, useRef } from 'react'
+import { useEffect, useMemo, useState, useRef, Fragment } from 'react'
 import { usePresenceReporter } from '@/lib/usePresenceReporter'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from '../../item/_components/columnPrefs'
 import PageLawsList from '../../item/_components/PageLawsList'
@@ -316,6 +316,18 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
     return taps.filter((t) => t.staff_name === staffFilter)
   }, [taps, staffFilter])
 
+  // Group taps by date for log display
+  const tapsByDate = useMemo(() => {
+    const grouped = new Map<string, typeof taps>()
+    for (const tap of visibleTaps) {
+      const date = tap.tapped_at.split('T')[0]
+      if (!grouped.has(date)) grouped.set(date, [])
+      grouped.get(date)!.push(tap)
+    }
+    // Sort dates in descending order (today first)
+    return Array.from(grouped.entries()).sort((a, b) => b[0].localeCompare(a[0]))
+  }, [visibleTaps])
+
   async function tap(item: GridItem, quantity: number) {
     if (pendingItemId) return
     setPendingItemId(item.id)
@@ -445,7 +457,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
           {loadingTaps ? (
             <p className="text-sm text-gray-400">Loading…</p>
           ) : visibleTaps.length === 0 ? (
-            <p className="text-sm text-gray-400">No taps yet today.</p>
+            <p className="text-sm text-gray-400">No sales recorded.</p>
           ) : (
             <div className="overflow-x-auto border border-gray-200 rounded-lg">
               <table className="border-collapse text-[10px]" style={{
@@ -473,37 +485,54 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                   </tr>
                 </thead>
                 <tbody>
-                  {visibleTaps.map((t) => (
-                    <tr
-                      key={t.id}
-                      className={`border-b border-gray-50 last:border-0 ${t.undone ? 'bg-gray-50 text-gray-400 line-through' : 'bg-white'}`}
-                    >
-                      {logColPrefs.shownColumns.map((c) => (
-                        <td key={c.key}
-                          className={`px-2 py-1 overflow-hidden text-ellipsis whitespace-nowrap ${c.key === 'item' ? 'font-semibold sticky left-0 bg-white z-10' : ''} ${c.key === 'sp' || c.key === 'qty' || c.key === 'total' ? 'text-right' : ''} ${c.key === 'total' ? 'font-bold text-blue-600' : ''}`}
-                        >
-                          {c.key === 'item' && t.item_name}
-                          {c.key === 'time' && new Date(t.tapped_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                          {c.key === 'sp' && money(Number(t.price))}
-                          {c.key === 'qty' && t.quantity}
-                          {c.key === 'total' && money(Number(t.price) * t.quantity)}
-                          {c.key === 'staff' && t.staff_name}
-                        </td>
-                      ))}
-                      <td className="px-2 py-1 whitespace-nowrap">
-                        {!t.undone && (
-                          <button
-                            type="button"
-                            onClick={() => undo(t.id)}
-                            disabled={undoingId === t.id}
-                            className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 disabled:opacity-50"
+                  {tapsByDate.map(([date, dayTaps]) => {
+                    const dayTotal = dayTaps.reduce((sum, t) => sum + (t.undone ? 0 : Number(t.price) * t.quantity), 0)
+                    const dateObj = new Date(date)
+                    const dateLabel = dateObj.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: dateObj.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined })
+                    return (
+                      <Fragment key={date}>
+                        <tr className="bg-green-50 border-b border-green-200">
+                          <td className={`px-2 py-2 text-[9px] font-bold text-green-800 ${logColPrefs.shownColumns[0]?.key === 'item' ? 'sticky left-0 bg-green-50 z-10' : ''}`} colSpan={logColPrefs.shownColumns.length}>
+                            📅 {dateLabel}
+                          </td>
+                          <td className="px-2 py-2 text-right font-bold text-green-800 text-[9px]">
+                            Sale: {money(dayTotal)}
+                          </td>
+                        </tr>
+                        {dayTaps.map((t) => (
+                          <tr
+                            key={t.id}
+                            className={`border-b border-gray-50 last:border-0 ${t.undone ? 'bg-gray-50 text-gray-400 line-through' : 'bg-white'}`}
                           >
-                            Undo
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                            {logColPrefs.shownColumns.map((c) => (
+                              <td key={c.key}
+                                className={`px-2 py-1 overflow-hidden text-ellipsis whitespace-nowrap ${c.key === 'item' ? 'font-semibold sticky left-0 bg-white z-10' : ''} ${c.key === 'sp' || c.key === 'qty' || c.key === 'total' ? 'text-right' : ''} ${c.key === 'total' ? 'font-bold text-blue-600' : ''}`}
+                              >
+                                {c.key === 'item' && t.item_name}
+                                {c.key === 'time' && new Date(t.tapped_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                {c.key === 'sp' && money(Number(t.price))}
+                                {c.key === 'qty' && t.quantity}
+                                {c.key === 'total' && money(Number(t.price) * t.quantity)}
+                                {c.key === 'staff' && t.staff_name}
+                              </td>
+                            ))}
+                            <td className="px-2 py-1 whitespace-nowrap">
+                              {!t.undone && (
+                                <button
+                                  type="button"
+                                  onClick={() => undo(t.id)}
+                                  disabled={undoingId === t.id}
+                                  className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 disabled:opacity-50"
+                                >
+                                  Undo
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </Fragment>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
