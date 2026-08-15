@@ -1320,18 +1320,23 @@ function ItemHubPageInner() {
     setViolation(key)
   }
 
+  const lawsKeys = [
+    'showItemsLaws', 'showSalesLaws', 'showBillsLaws',
+    'showAliasWideTableLaws', 'showDailyLaws', 'showExpenseOrdersLaws',
+    'showHomeLaws', 'showItem360Laws', 'showLossByDateLaws', 'showLossByItemLaws',
+    'showLossByTargetLaws', 'showNewCustomerLaws', 'showNewSaleLaws',
+    'showPLLaws', 'showPurchaseOrdersLaws', 'showReceiptsLaws',
+    'showReorderListsLaws', 'showServiceMatchesLaws', 'showServicesLaws',
+    'showViewPortalAsLaws', 'showExpenseOrdersLaws',
+    'showTeamAssessmentLaws', 'showTeamLogsLaws', 'showTeamMeetingLaws', 'showTeamRotaLaws',
+  ]
+
+  function areAllLawsShown() {
+    return lawsKeys.every(k => localStorage.getItem(k) === 'true')
+  }
+
   function toggleAllLaws() {
-    const lawsKeys = [
-      'showItemsLaws', 'showSalesLaws', 'showBillsLaws',
-      'showAliasWideTableLaws', 'showDailyLaws', 'showExpenseOrdersLaws',
-      'showHomeLaws', 'showItem360Laws', 'showLossByDateLaws', 'showLossByItemLaws',
-      'showLossByTargetLaws', 'showNewCustomerLaws', 'showNewSaleLaws',
-      'showPLLaws', 'showPurchaseOrdersLaws', 'showReceiptsLaws',
-      'showReorderListsLaws', 'showServiceMatchesLaws', 'showServicesLaws',
-      'showViewPortalAsLaws', 'showExpenseOrdersLaws',
-      'showTeamAssessmentLaws', 'showTeamLogsLaws', 'showTeamMeetingLaws', 'showTeamRotaLaws',
-    ]
-    const allShown = lawsKeys.every(k => localStorage.getItem(k) === 'true')
+    const allShown = areAllLawsShown()
     lawsKeys.forEach(k => localStorage.setItem(k, allShown ? 'false' : 'true'))
     window.location.reload()
   }
@@ -2539,7 +2544,8 @@ function ItemHubPageInner() {
               🔍
             </button>
             <button onClick={() => toggleAllLaws()} title="Toggle all laws"
-              className="w-9 h-9 rounded-full flex items-center justify-center text-lg border-2 border-transparent text-gray-500 opacity-70 hover:opacity-100 transition">
+              className={`w-9 h-9 rounded-full flex items-center justify-center text-lg border-2 text-gray-500 transition
+                ${areAllLawsShown() ? 'border-gray-500 opacity-100' : 'border-transparent opacity-40 hover:opacity-70'}`}>
               📜
             </button>
             <AddShortcutButton onShortcut={handleShortcut} />
