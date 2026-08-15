@@ -1830,10 +1830,8 @@ function ItemHubPageInner() {
                 e.g. Times), since "settings is open" and "this content is
                 showing" are independent, not mutually exclusive states. */}
             <div className="mt-1 pt-1 border-t border-white/30">
-              <SidePaneButton icon="📜" label="Laws" mode={cashDisplayMode} active={false}
-                onClick={() => toggleAllLaws()} />
               {canOpenThisSettings && (
-                <SidePaneButton icon="⚙️" label="Settings" mode={cashDisplayMode} active={settingsOpen} divider
+                <SidePaneButton icon="⚙️" label="Settings" mode={cashDisplayMode} active={settingsOpen}
                   onClick={() => setSettingsOpen(v => !v)} />
               )}
               <SidePaneButton icon="🚪" label="Sign out" mode={cashDisplayMode} active={false} divider={canOpenThisSettings}
@@ -2539,6 +2537,10 @@ function ItemHubPageInner() {
             <button onClick={() => setGlobalSearchOpen(true)} title="Search"
               className="w-9 h-9 rounded-full flex items-center justify-center text-lg border-2 border-transparent text-gray-500 opacity-70 hover:opacity-100 transition">
               🔍
+            </button>
+            <button onClick={() => toggleAllLaws()} title="Toggle all laws"
+              className="w-9 h-9 rounded-full flex items-center justify-center text-lg border-2 border-transparent text-gray-500 opacity-70 hover:opacity-100 transition">
+              📜
             </button>
             <AddShortcutButton onShortcut={handleShortcut} />
           </div>
