@@ -508,14 +508,14 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                           </span>
                         )}
                       </div>
-                      {/* Buttons on the right -- wraps onto a second line
-                          within its own column if there are more presets
-                          than fit next to the name, instead of pushing the
-                          name over. The pressed one turns solid while its
+                      {/* Buttons follow item names on the left -- wraps onto a
+                          second line within its own column if there are more
+                          presets than fit next to the name, instead of pushing
+                          the name over. The pressed one turns solid while its
                           request is in flight so it reads as "that's the
                           one I hit," instead of every button in the row
                           dimming the same way together. */}
-                      <div className="shrink-0 flex flex-wrap items-center justify-end gap-1 max-w-[45%]">
+                      <div className="shrink-0 flex flex-wrap items-center justify-start gap-1 max-w-[45%]">
                         {qtyPresetsFor(it).map((q) => {
                           const total = (Number(it.selling_price) || 0) * q
                           const pressed = pending && pendingQty === q
