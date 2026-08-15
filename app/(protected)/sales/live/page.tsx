@@ -631,9 +631,8 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                           </span>
                         )}
                       </div>
-                      {/* Preset buttons follow item name */}
-                      <div className="flex flex-wrap items-center gap-1">
-                        {getPresetsForItem(it).map((q, qIdx) => {
+                      {/* Preset buttons follow item name, wrapping with outer flex */}
+                      {getPresetsForItem(it).map((q, qIdx) => {
                           const total = (Number(it.selling_price) || 0) * q
                           const pressed = pending && pendingQty === q
                           const isEditing = editingButton?.itemId === it.id && editingButton?.index === qIdx
@@ -763,7 +762,6 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                             ✓
                           </button>
                         )}
-                      </div>
                       {quickArrangeItemId === it.id && (
                         <div className="ml-auto flex items-center gap-1">
                           <button
