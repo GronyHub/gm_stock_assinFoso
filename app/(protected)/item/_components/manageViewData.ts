@@ -78,7 +78,7 @@ export const GRONY_CHECKS_ITEMS: { key: ManageView; label: string; icon: string 
 
 // Which LOG_CATEGORIES are NOT nested under grony_checks (the rest are
 // included as separate sidebar items)
-const GRONY_CHECKS_KEYS = new Set<ManageView>([
+export const GRONY_CHECKS_KEYS = new Set<ManageView>([
   'arrangement', 'cleanliness', 'customer_display', 'repair_works',
   'grony_1', 'grony_2', 'grony_3', 'grony_4', 'grony_5',
   'grony_6', 'grony_7', 'grony_8', 'grony_9', 'grony_10', 'security_chk',

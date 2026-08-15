@@ -32,7 +32,7 @@ import LawsToggleBar from './_components/LawsToggleBar'
 import { useLawsPanel, useLawFilterState } from './_components/useLawsPanel'
 import { COLUMNS, type ColKey } from './_components/lossTabColumns'
 import { useColumnPrefs, ColumnsPickerButton } from './_components/columnPrefs'
-import { MANAGE_LIST_ITEMS, MANAGE_GROUP_LABELS, MANAGE_GROUP_ICONS, GRONY_CHECKS_ITEMS, useFixedCategoryIds, type ManageView } from './_components/manageViewData'
+import { MANAGE_LIST_ITEMS, MANAGE_GROUP_LABELS, MANAGE_GROUP_ICONS, GRONY_CHECKS_ITEMS, GRONY_CHECKS_KEYS, useFixedCategoryIds, type ManageView } from './_components/manageViewData'
 import { STAFF_PERSONAL_ITEMS, STAFF_TEAM_ITEMS, STAFF_ADMIN_TEAM_ITEMS, type StaffView } from './_components/staffViewData'
 import { CH_ITEMS, CH_CHILD_PERSON, CH_PERSON_VIEW, type CHView } from './_components/chViewData'
 import { useUKData, UK_PEOPLE } from './_components/ukViewData'
@@ -151,8 +151,11 @@ const OLD_LOSSVIEW_TO_EXTRA: Partial<Record<string, ItemsExtraView>> = {
 // own pane rows -- its two pane entries now live under Expenses instead
 // (see the Cash pane loop below), so it has to be added back in here by
 // hand or this content-routing gate (and REPORT_VIEWS, which spreads this
-// same set) would stop recognizing it.
-const MANAGE_VIEW_KEYS = new Set<LossView>([...MANAGE_LIST_ITEMS.map(i => i.key), 'properties'])
+// same set) would stop recognizing it. Items nested under Grony Checks
+// (arrangement, cleanliness, etc.) are also excluded from MANAGE_LIST_ITEMS
+// but still routed here since they're valid ManageViews reached by clicking
+// items in the Grony Checks laws panel.
+const MANAGE_VIEW_KEYS = new Set<LossView>([...MANAGE_LIST_ITEMS.map(i => i.key), ...Array.from(GRONY_CHECKS_KEYS), 'properties'])
 const STAFF_VIEW_KEYS = new Set<LossView>([
   ...STAFF_PERSONAL_ITEMS.map(i => i.key), 'staffProfile', ...STAFF_TEAM_ITEMS.map(i => i.key),
   ...STAFF_ADMIN_TEAM_ITEMS.map(i => i.key), 'users', 'roles',
