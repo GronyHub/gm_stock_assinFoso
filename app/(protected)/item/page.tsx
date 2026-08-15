@@ -1321,14 +1321,18 @@ function ItemHubPageInner() {
   }
 
   const lawsKeys = [
-    'showItemsLaws', 'showSalesLaws', 'showBillsLaws',
-    'showAliasWideTableLaws', 'showDailyLaws', 'showExpenseOrdersLaws',
-    'showHomeLaws', 'showItem360Laws', 'showLossByDateLaws', 'showLossByItemLaws',
-    'showLossByTargetLaws', 'showNewCustomerLaws', 'showNewSaleLaws',
-    'showPLLaws', 'showPurchaseOrdersLaws', 'showReceiptsLaws',
-    'showReorderListsLaws', 'showServiceMatchesLaws', 'showServicesLaws',
-    'showViewPortalAsLaws', 'showExpenseOrdersLaws',
-    'showTeamAssessmentLaws', 'showTeamLogsLaws', 'showTeamMeetingLaws', 'showTeamRotaLaws',
+    'showAccessLaws', 'showAdvertLaws', 'showAdvertStatusLaws', 'showAliasWideTableLaws',
+    'showBillsLaws', 'showCABLaws', 'showCloserLaws', 'showCountsLaws', 'showCustomersLaws',
+    'showDailyLaws', 'showDressCodeLaws', 'showExpenseOrdersLaws', 'showExpensesLaws',
+    'showGronyChecksLaws', 'showHomeLaws', 'showItem360Laws', 'showItemsFlagsLaws',
+    'showItemsLaws', 'showLiveSaleLaws', 'showLossByDateLaws', 'showLossByItemLaws',
+    'showLossByTargetLaws', 'showNewCustomerLaws', 'showNewSaleLaws', 'showOpenerLaws',
+    'showPayslipsLaws', 'showPLLaws', 'showProfileLaws', 'showPropertiesLaws',
+    'showPurchaseOrdersLaws', 'showReceiptsLaws', 'showReorderListsLaws', 'showSalesLaws',
+    'showServiceMatchesLaws', 'showServicesLaws', 'showStaffAnalyticsLaws', 'showTeamAssessmentLaws',
+    'showTeamLogsLaws', 'showTeamMeetingLaws', 'showTeamProfilesLaws', 'showTeamReviewLaws',
+    'showTeamRotaLaws', 'showTeamTimesLaws', 'showVendorsLaws', 'showViewPortalAsLaws',
+    'showViolationsLaws',
   ]
 
   function areAllLawsShown() {
