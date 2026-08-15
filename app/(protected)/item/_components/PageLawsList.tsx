@@ -665,6 +665,7 @@ export default function PageLawsList({
           className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
           <option>General task</option>
           <option>App task</option>
+          <option>Note</option>
         </select>
         <select value={assignedTo} onChange={e => setAssignedTo(e.target.value)}
           className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
@@ -717,6 +718,7 @@ export default function PageLawsList({
                       className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
                       <option>General task</option>
                       <option>App task</option>
+                      <option>Note</option>
                     </select>
                     <select value={editTaskAssignedTo} onChange={e => setEditTaskAssignedTo(e.target.value)}
                       className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
@@ -732,7 +734,7 @@ export default function PageLawsList({
                   <div className="flex flex-col gap-0.5">
                     <p className={`font-semibold ${task.done ? 'line-through text-gray-500' : 'text-gray-800'}`}>{task.title}</p>
                     <div className="flex items-center gap-1 flex-wrap text-[7px] text-gray-600">
-                      <span>{task.task_type === 'App task' ? 'App' : 'General'}</span>
+                      <span>{task.task_type === 'App task' ? 'App' : task.task_type === 'Note' ? 'Note' : 'General'}</span>
                       <span>•</span>
                       <span>{formatDate(task.created_at)} by {task.created_by}</span>
                       {task.assigned_to && (<><span>•</span><span>To: {task.assigned_to}</span></>)}
@@ -1044,6 +1046,7 @@ export default function PageLawsList({
                 className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
                 <option>General task</option>
                 <option>App task</option>
+                <option>Note</option>
               </select>
               <select value={globalTaskAssignedTo} onChange={e => setGlobalTaskAssignedTo(e.target.value)}
                 className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
