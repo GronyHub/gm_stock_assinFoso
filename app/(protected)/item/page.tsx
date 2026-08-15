@@ -619,6 +619,8 @@ function ItemHubPageInner() {
   const lossByDateLaws = useLawsPanel('showLossByDateLaws')
   const lossByItemLaws = useLawsPanel('showLossByItemLaws')
   const lossByTargetLaws = useLawsPanel('showLossByTargetLaws')
+  const liveSaleLaws = useLawsPanel('showLiveSaleLaws')
+  const [liveExpanded, setLiveExpanded] = useState(false)
 
   function inlineLaws(scopeKey: string, panel: ReturnType<typeof useLawsPanel>) {
     return (<>
@@ -2042,6 +2044,24 @@ function ItemHubPageInner() {
                     })()}
                   </div>
                 )}
+
+                {(addForm === 'live' || addForm === 'liveLog') && outerTab === 'loss' && lossView === 'sales' && (
+                  <div className="flex items-center gap-1.5 ml-auto">
+                    <LawsToggleBar show={liveSaleLaws.show} setShow={liveSaleLaws.setShow}
+                      openForm={liveSaleLaws.openForm} setOpenForm={liveSaleLaws.setOpenForm}
+                      hideZeroFlags={liveSaleLaws.hideZeroFlags} setHideZeroFlags={liveSaleLaws.setHideZeroFlags}
+                      activeFilters={liveSaleLaws.activeFilters} toggleFilter={liveSaleLaws.toggleFilter} dark={false} />
+                    <button
+                      type="button"
+                      onClick={() => setLiveExpanded((v) => !v)}
+                      title={liveExpanded ? 'Exit large screen' : 'Large screen'}
+                      className={`shrink-0 w-6 h-6 rounded-lg text-xs font-semibold border flex items-center justify-center transition
+                        ${liveExpanded ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300'}`}
+                    >
+                      {liveExpanded ? '⤡' : '⤢'}
+                    </button>
+                  </div>
+                )}
               </div>
               )}
             </div>
@@ -2072,7 +2092,7 @@ function ItemHubPageInner() {
           </div>
         )}
         {(addForm === 'live' || addForm === 'liveLog') && outerTab === 'loss' && lossView === 'sales' &&
-          <LiveSaleForm key={addForm} onClose={() => setAddForm(null)} initialShowLog={addForm === 'liveLog'} search={search} groupFilter={group} />}
+          <LiveSaleForm key={addForm} onClose={() => setAddForm(null)} initialShowLog={addForm === 'liveLog'} search={search} groupFilter={group} lawsPanel={liveSaleLaws} expanded={liveExpanded} setExpanded={setLiveExpanded} hideTopControls={true} />}
         {addForm === 'bill'    && outerTab === 'loss' && lossView === 'bills'    && <div className="px-4"><NewBillForm    onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'expense' && outerTab === 'loss' && lossView === 'expenses' && <div className="px-4"><NewExpenseForm onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'item'    && outerTab === 'loss' && lossView === 'items'    && <div className="px-4"><NewItemForm    onSuccess={() => { setAddForm(null); loadItems() }} /></div>}

@@ -109,8 +109,8 @@ function applyManualOrder(list: GridItem[], order: number[]) {
   return [...ranked, ...rest]
 }
 
-export default function LiveSalePage({ onClose, initialShowLog, search, groupFilter }: {
-  onClose?: () => void; initialShowLog?: boolean; search?: string; groupFilter?: string | null
+export default function LiveSalePage({ onClose, initialShowLog, search, groupFilter, lawsPanel: propsLawsPanel, expanded: propsExpanded, setExpanded: propsSetExpanded, hideTopControls }: {
+  onClose?: () => void; initialShowLog?: boolean; search?: string; groupFilter?: string | null; lawsPanel?: ReturnType<typeof useLawsPanel>; expanded?: boolean; setExpanded?: (v: boolean | ((prev: boolean) => boolean)) => void; hideTopControls?: boolean
 } = {}) {
   usePresenceReporter('live-tapping a sale')
 
@@ -122,7 +122,8 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
   // Sales > Live Sale > Log), which remounts this page with a different
   // initialShowLog rather than toggling in place -- no local state needed.
   const showLog = !!initialShowLog
-  const lawsPanel = useLawsPanel('showLiveSaleLaws')
+  const localLawsPanel = useLawsPanel('showLiveSaleLaws')
+  const lawsPanel = propsLawsPanel ?? localLawsPanel
   const [staffFilter, setStaffFilter] = useState<string | null>(null)
   const [lastTap, setLastTap] = useState<Tap | null>(null)
   const [pendingItemId, setPendingItemId] = useState<number | null>(null)
@@ -142,7 +143,9 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
   // a lot of staff. Not persisted -- always starts normal-sized so
   // reopening Live Sale doesn't strand someone in an overlay they don't
   // remember turning on.
-  const [expanded, setExpanded] = useState(false)
+  const [localExpanded, setLocalExpanded] = useState(false)
+  const expanded = propsExpanded ?? localExpanded
+  const setExpanded = propsSetExpanded ?? setLocalExpanded
   const logColPrefs = useColumnPrefs<LogColKey>('liveSaleLog', LOG_COLUMNS)
   // Shared via /api/app-settings (owner-level to write, everyone reads),
   // not per-device localStorage -- an arrangement the owner sets up should
@@ -401,10 +404,12 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
           ⚡ Live Sale <span className="font-normal text-gray-400">· tap to record</span>
         </h2>
         <div className="flex items-center gap-1.5 shrink-0">
-          <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
-            openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-            hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
-          activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
+          {!hideTopControls && (
+            <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
+              openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
+              hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
+            activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
+          )}
           {!showLog && (
             <button
               type="button"
@@ -416,6 +421,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
               {arranging ? 'Done' : '↕ Arrange'}
             </button>
           )}
+          {!hideTopControls && (
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
@@ -425,6 +431,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
           >
             {expanded ? '⤡' : '⤢'}
           </button>
+          )}
           {onClose && (
             <button
               type="button"
