@@ -227,21 +227,21 @@ const REPORT_VIEWS = new Set<LossView>([
 // they're already reachable right under their parent row, which is itself
 // inside these same sections.
 const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: string }[] = [
-  { key: 'counts',    label: 'Counts',    icon: '🔢' },
-  { key: 'items',    label: 'Items',    icon: '📦', group: 'Items' },
-  { key: 'item360',   label: 'Item 360',  icon: '360' },
-  { key: 'sales',    label: 'Sales',    icon: '🧾', group: 'Sales' },
-  { key: 'bills',    label: 'Bills',    icon: '📃' },
-  { key: 'purchaseOrders',   label: 'Purchase Ord',   icon: '🛒' },
-  { key: 'feed',         label: 'Loss by Date',   icon: '📉', group: 'Loss' },
-  { key: 'lossByTarget', label: 'Loss by Tgt',    icon: '🎯', group: 'Loss' },
-  { key: 'lossByItem',   label: 'Loss by Item',   icon: '📊', group: 'Loss' },
-  { key: 'expenses', label: 'Expenses', icon: '💳', group: 'Expenses' },
-  { key: 'vendors',   label: 'Vendors',   icon: '🏭', group: 'Expenses' },
-  { key: 'pl',       label: 'P&L',      icon: '📈' },
-  { key: 'cab',      label: 'CAB',      icon: '🗂️' },
-  { key: 'customers', label: 'Customers', icon: '👥', group: 'Customers' },
-  { key: 'receipts',  label: 'Cust. Receipts',  icon: '📑', group: 'Customers' },
+  { key: 'counts',    label: 'Counts',    icon: '🔢', group: 'Cash' },
+  { key: 'items',    label: 'Items',    icon: '📦', group: 'Cash' },
+  { key: 'item360',   label: 'Item 360',  icon: '360', group: 'Cash' },
+  { key: 'sales',    label: 'Sales',    icon: '🧾', group: 'Cash' },
+  { key: 'bills',    label: 'Bills',    icon: '📃', group: 'Cash' },
+  { key: 'purchaseOrders',   label: 'Purchase Ord',   icon: '🛒', group: 'Cash' },
+  { key: 'feed',         label: 'Loss by Date',   icon: '📉', group: 'Cash' },
+  { key: 'lossByTarget', label: 'Loss by Tgt',    icon: '🎯', group: 'Cash' },
+  { key: 'lossByItem',   label: 'Loss by Item',   icon: '📊', group: 'Cash' },
+  { key: 'expenses', label: 'Expenses', icon: '💳', group: 'Cash' },
+  { key: 'vendors',   label: 'Vendors',   icon: '🏭', group: 'Cash' },
+  { key: 'pl',       label: 'P&L',      icon: '📈', group: 'Cash' },
+  { key: 'cab',      label: 'CAB',      icon: '🗂️', group: 'Cash' },
+  { key: 'customers', label: 'Customers', icon: '👥', group: 'Cash' },
+  { key: 'receipts',  label: 'Cust. Receipts',  icon: '📑', group: 'Cash' },
 ]
 // flattenPaneRuns needs a group->label lookup to build each run's header
 // text, but a Cash row's group already IS its own label (see CASH_ITEMS'
@@ -1589,50 +1589,64 @@ function ItemHubPageInner() {
             {outerTab === 'loss' && (<>
             {canSeeCash && (
             <div>
-              {applyPaneOrder(effectiveCashItems, paneOrder.cash).filter(v => v.key !== 'pl' || canSeePL).map((v, i) => (
-                <Fragment key={v.key}>
-                  <SidePaneButton icon={v.icon} label={paneLabel(v.key, v.label)} mode={cashDisplayMode}
-                    active={paneActive(lossView === v.key)} divider={i > 0}
-                    badge={v.key === 'sales' ? salesFlagsCount
-                      : v.key === 'items' ? itemsFlagsCount
-                      : v.key === 'bills' ? billsFlagsCount
-                      : v.key === 'cab' ? cabFlagsCount
-                      : v.key === 'counts' ? countsFlagsCount
-                      : v.key === 'feed' ? lossByDateFlagsCount
-                      : v.key === 'expenses' ? expensesFlagsCount
-                      : v.key === 'customers' ? customersFlagsCount
-                      : v.key === 'vendors' ? vendorsFlagsCount
-                      : undefined}
-                    taskBadge={taskCountFor(cashTaskScopeKey(v.key))}
-                    onClick={() => pickLossView(v.key)} />
-                  {v.key === 'sales' && (
-                    <div>
-                      <SidePaneButton icon="🧾" label="New Sale" mode={cashDisplayMode}
-                        active={paneActive(lossView === 'sales' && addForm === 'sale')}
-                        taskBadge={taskCountFor('New Sale')}
-                        onClick={() => { pickLossView('sales'); setAddForm('sale') }} />
-                      <SidePaneButton icon="⚡" label="Live Sale" mode={cashDisplayMode} divider
-                        active={paneActive(lossView === 'sales' && addForm === 'live')}
-                        taskBadge={taskCountFor('Live Sale')}
-                        onClick={() => { pickLossView('sales'); setAddForm('live') }} />
-                      <div>
-                        <SidePaneButton icon="📋" label="Log" mode={cashDisplayMode}
-                          active={paneActive(lossView === 'sales' && addForm === 'liveLog')}
-                          taskBadge={taskCountFor('Sale Log')}
-                          onClick={() => { pickLossView('sales'); setAddForm('liveLog') }} />
-                      </div>
-                    </div>
-                  )}
-                  {v.key === 'customers' && (
-                    <div>
-                      <SidePaneButton icon="👤" label="New Customer" mode={cashDisplayMode}
-                        active={paneActive(lossView === 'newCustomer')}
-                        taskBadge={taskCountFor('New Customer')}
-                        onClick={() => pickLossView('newCustomer')} />
-                    </div>
-                  )}
-                </Fragment>
-              ))}
+              {(() => {
+                const orderedItems = applyPaneOrder(effectiveCashItems, paneOrder.cash).filter(v => v.key !== 'pl' || canSeePL)
+                const runs = buildPaneRuns(orderedItems)
+                const flatRows = flattenPaneRuns(runs, IDENTITY_GROUP_LABELS)
+                return flatRows.map((row, idx) => {
+                  const v = row.item
+                  return (
+                    <Fragment key={`${v.key}-${idx}`}>
+                      {row.header && (
+                        <div className="flex items-center gap-1.5 px-1 py-1 text-[9px] font-bold text-blue-200 uppercase tracking-wide">
+                          <span className="text-sm">💼</span>
+                          <span>{row.header}</span>
+                        </div>
+                      )}
+                      <SidePaneButton icon={v.icon} label={paneLabel(v.key, v.label)} mode={cashDisplayMode}
+                        active={paneActive(lossView === v.key)} divider={row.divider}
+                        badge={v.key === 'sales' ? salesFlagsCount
+                          : v.key === 'items' ? itemsFlagsCount
+                          : v.key === 'bills' ? billsFlagsCount
+                          : v.key === 'cab' ? cabFlagsCount
+                          : v.key === 'counts' ? countsFlagsCount
+                          : v.key === 'feed' ? lossByDateFlagsCount
+                          : v.key === 'expenses' ? expensesFlagsCount
+                          : v.key === 'customers' ? customersFlagsCount
+                          : v.key === 'vendors' ? vendorsFlagsCount
+                          : undefined}
+                        taskBadge={taskCountFor(cashTaskScopeKey(v.key))}
+                        onClick={() => pickLossView(v.key)} />
+                      {v.key === 'sales' && (
+                        <div>
+                          <SidePaneButton icon="🧾" label="New Sale" mode={cashDisplayMode}
+                            active={paneActive(lossView === 'sales' && addForm === 'sale')}
+                            taskBadge={taskCountFor('New Sale')}
+                            onClick={() => { pickLossView('sales'); setAddForm('sale') }} />
+                          <SidePaneButton icon="⚡" label="Live Sale" mode={cashDisplayMode} divider
+                            active={paneActive(lossView === 'sales' && addForm === 'live')}
+                            taskBadge={taskCountFor('Live Sale')}
+                            onClick={() => { pickLossView('sales'); setAddForm('live') }} />
+                          <div>
+                            <SidePaneButton icon="📋" label="Log" mode={cashDisplayMode}
+                              active={paneActive(lossView === 'sales' && addForm === 'liveLog')}
+                              taskBadge={taskCountFor('Sale Log')}
+                              onClick={() => { pickLossView('sales'); setAddForm('liveLog') }} />
+                          </div>
+                        </div>
+                      )}
+                      {v.key === 'customers' && (
+                        <div>
+                          <SidePaneButton icon="👤" label="New Customer" mode={cashDisplayMode}
+                            active={paneActive(lossView === 'newCustomer')}
+                            taskBadge={taskCountFor('New Customer')}
+                            onClick={() => pickLossView('newCustomer')} />
+                        </div>
+                      )}
+                    </Fragment>
+                  )
+                })
+              })()}
               {/* Expense Orders */}
               <SidePaneButton icon="🧾" label="Expense Orders" mode={cashDisplayMode} divider
                 active={paneActive(lossView === 'expenseOrders')}

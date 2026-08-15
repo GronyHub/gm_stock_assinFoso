@@ -53,6 +53,7 @@ export const MANAGE_GROUP_LABELS: Record<string, string> = {
 // Icons for manage group headers
 export const MANAGE_GROUP_ICONS: Record<string, string> = {
   advert: '📢',
+  Manage: '⚙️',
 }
 
 // Nested sub-items shown only when viewing 'grony_checks' -- these include
@@ -114,18 +115,18 @@ const LOG_CATEGORY_GROUPS: Partial<Record<ManageView, string>> = {}
 // here either -- they're the merged pane's shared footer now (see
 // PaneHomeDaily in page.tsx).
 export const MANAGE_LIST_ITEMS: { key: ManageView; label: string; icon?: string; group?: string }[] = [
-  { key: 'opener', label: 'Opener', icon: '🌅' },
-  { key: 'closer', label: 'Closer', icon: '🌙' },
-  { key: 'grony_checks', label: 'Grony Checks', icon: '⚖️' },
-  { key: 'advert', label: 'Advert', icon: '📢' },
-  ...LOG_CATEGORIES.filter(c => !GRONY_CHECKS_KEYS.has(c.key)).map(c => ({ key: c.key, label: c.label, icon: c.icon, group: LOG_CATEGORY_GROUPS[c.key] })),
+  { key: 'opener', label: 'Opener', icon: '🌅', group: 'Manage' },
+  { key: 'closer', label: 'Closer', icon: '🌙', group: 'Manage' },
+  { key: 'grony_checks', label: 'Grony Checks', icon: '⚖️', group: 'Manage' },
+  { key: 'advert', label: 'Advert', icon: '📢', group: 'Manage' },
+  ...LOG_CATEGORIES.filter(c => !GRONY_CHECKS_KEYS.has(c.key)).map(c => ({ key: c.key, label: c.label, icon: c.icon, group: LOG_CATEGORY_GROUPS[c.key] ?? 'Manage' })),
   // 'properties' used to be a row here too -- moved to the Cash pane, right
   // under Expenses (see item/page.tsx), split into its own "Properties at
   // Shop"/"Properties not at Shop" rows. Still a real ManageView (see the
   // type above) and still routed through GronyManageContent -> PropertiesPage
   // exactly as before -- only its pane placement changed, not its content.
-  { key: 'unfortunate_events', label: 'Unfortunate Events', icon: '🚨' },
-  { key: 'app_info', label: 'App info', icon: 'ℹ️' },
+  { key: 'unfortunate_events', label: 'Unfortunate Events', icon: '🚨', group: 'Manage' },
+  { key: 'app_info', label: 'App info', icon: 'ℹ️', group: 'Manage' },
 ]
 
 export type DynamicCategory = { id: number; label: string }
