@@ -511,7 +511,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                 )
                 const label = (
                   <p
-                    className="flex-1 min-w-0 text-[10px] font-semibold text-gray-900 leading-tight"
+                    className="text-[10px] font-semibold text-gray-900 leading-tight"
                     style={{ wordBreak: 'break-word' }}
                     onPointerDown={() => {
                       longPressTimeoutRef.current = setTimeout(() => {
