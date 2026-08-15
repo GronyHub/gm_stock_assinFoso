@@ -700,7 +700,7 @@ export default function PageLawsList({
   // flags (keyed by string flag_key); both just needed a task list, a
   // note, and which of (lawId, flagKey) to pass back through to the
   // shared toggle/edit/delete handlers above.
-  function renderAttachedItems(tasks: Task[] | undefined, note: Note | undefined, lawId?: number, flagKey?: string) {
+  function renderAttachedItems(tasks: Task[] | undefined, lawId?: number, flagKey?: string) {
     return (
       <>
         {tasks && tasks.length > 0 && (
@@ -755,13 +755,6 @@ export default function PageLawsList({
             ))}
           </div>
         )}
-        {note && (note?.notes !== undefined && note?.notes !== '' || note?.topic) && (
-          <div className="p-1 bg-amber-50/50 border border-amber-100 rounded text-[8px] text-gray-800">
-            <p className="font-semibold">📝 {note.topic || 'Note'}</p>
-            {note.notes && <p className="text-[7px] text-gray-600 mt-0.5">{note.notes}</p>}
-            {note.noteDate && <p className="text-[7px] text-gray-500 mt-0.5">{formatDate(note.noteDate)}</p>}
-          </div>
-        )}
       </>
     )
   }
@@ -781,7 +774,6 @@ export default function PageLawsList({
   const visibleLaws = showLawsFlags ? laws : []
   const visibleFlags = (flags ?? []).filter(f => f.key.startsWith('group_') ? showGroupFlags : showLawsFlags)
   const visibleGlobalTasks = showTasksSection ? globalTasks : []
-  const visibleGlobalNotes = showNotesSection ? globalNotes : []
 
   // Apply custom law/flag order
   const orderedLaws = customLawOrder.length > 0 ? visibleLaws.sort((a, b) => {
@@ -836,7 +828,7 @@ export default function PageLawsList({
         </div>
       )}
 
-      {visibleLaws.length === 0 && visibleFlags.length === 0 && visibleGlobalTasks.length === 0 && visibleGlobalNotes.length === 0 ? (
+      {visibleLaws.length === 0 && visibleFlags.length === 0 && visibleGlobalTasks.length === 0 ? (
         <div className={`${isItemsLaws ? 'py-6' : 'px-2 py-4 bg-white border-b border-gray-200'} text-center`}>
           <p className="text-[11px] text-gray-400">{anyFilterActive ? 'Nothing matches this filter.' : 'No laws yet.'}</p>
         </div>
@@ -886,7 +878,7 @@ export default function PageLawsList({
                       ? renderAddNoteForm(noteText, setNoteText, addNoteForLaw, () => setNoteForLaw(null))
                       : (
                         <>
-                          {renderAttachedItems(taskForLawLoaded[l.id], notesByLawId[l.id], l.id, undefined)}
+                          {renderAttachedItems(taskForLawLoaded[l.id], l.id, undefined)}
                           {renderReplyThread(`law-${l.id}`, 'law', l.id, 'lg')}
                         </>
                       )}
@@ -991,7 +983,7 @@ export default function PageLawsList({
                   ? renderAddTaskForm(taskTitleForFlag, setTaskTitleForFlag, taskTypeForFlag, setTaskTypeForFlag, taskAssignedToFlag, setTaskAssignedToFlag, addTaskForFlag, () => setTaskForFlag(null))
                   : noteForFlag === f.key
                     ? renderAddNoteForm(noteTextForFlag, setNoteTextForFlag, addNoteForFlag, () => setNoteForFlag(null))
-                    : renderAttachedItems(tasksByFlagKey[f.key], notesByFlagKey[f.key], undefined, f.key)}
+                    : renderAttachedItems(tasksByFlagKey[f.key], undefined, f.key)}
               </div>
             </div>
           ))}
@@ -1017,23 +1009,6 @@ export default function PageLawsList({
                   </div>
                 )}
                 {renderReplyThread(`task-${task.id}`, 'task', task.id, 'sm')}
-              </div>
-            </div>
-          ))}
-          {visibleGlobalNotes.map((note, i) => (
-            <div key={`global-note-${note.id || i}`} className="px-1 py-0.5 bg-yellow-50/50 flex items-center gap-1"
-              onMouseDown={() => globalNotePress.onMouseDown(note.id || 0)} onMouseUp={globalNotePress.onMouseUp}
-              onTouchStart={() => globalNotePress.onTouchStart(note.id || 0)} onTouchEnd={globalNotePress.onTouchEnd}>
-              <span className="shrink-0 text-[8px] font-bold text-gray-300">{visibleLaws.length + visibleFlags.length + visibleGlobalTasks.length + i + 1}</span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[9px] text-gray-800">📝 {note.topic || 'Note'}</p>
-                {note.notes && (<p className="text-[8px] text-gray-600 line-clamp-1">{note.notes}</p>)}
-                {menuGlobalNoteId === (note.id || 0) && (
-                  <div className="flex gap-1 text-[8px] mt-0.5">
-                    <button type="button" onClick={() => { setReplyingTo(`note-${note.id}`); fetchReplies('note', note.id ?? 0); setMenuGlobalNoteId(null) }} title="Reply" className="text-blue-500 hover:text-blue-700 font-semibold">💬</button>
-                  </div>
-                )}
-                {renderReplyThread(`note-${note.id}`, 'note', note.id ?? 0, 'sm')}
               </div>
             </div>
           ))}
