@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { usePresenceReporter } from '@/lib/usePresenceReporter'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from '../../item/_components/columnPrefs'
 import PageLawsList from '../../item/_components/PageLawsList'
@@ -151,7 +151,9 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
   const [manualAmounts, setManualAmounts] = useState<Record<number, string>>({})
   const [positionInputs, setPositionInputs] = useState<Record<number, string>>({})
   const [itemPresets, setItemPresets] = useState<Record<number, number[]>>({})
-  const [editingPresetsForItem, setEditingPresetsForItem] = useState<number | null>(null)
+  const [editingButton, setEditingButton] = useState<{ itemId: number; index: number } | null>(null)
+  const [editingValue, setEditingValue] = useState('')
+  const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   useEffect(() => {
     fetch(`/api/app-settings?key=${ORDER_KEY}`)
       .then(r => r.ok ? r.json() : { value: null })
@@ -351,26 +353,15 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
             hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
           activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
           {!showLog && (
-            <>
-              <button
-                type="button"
-                onClick={() => setArranging((v) => !v)}
-                title="Arrange the item list"
-                className={`px-2 py-0.5 rounded-lg text-xs font-semibold border transition
-                  ${arranging ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300'}`}
-              >
-                {arranging ? 'Done' : '↕ Arrange'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setEditingPresetsForItem(editingPresetsForItem ? null : -1)}
-                title="Edit item presets"
-                className={`px-2 py-0.5 rounded-lg text-xs font-semibold border transition
-                  ${editingPresetsForItem !== null ? 'bg-green-600 text-white border-green-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300'}`}
-              >
-                {editingPresetsForItem !== null ? 'Done' : '⚙ Presets'}
-              </button>
-            </>
+            <button
+              type="button"
+              onClick={() => setArranging((v) => !v)}
+              title="Arrange the item list"
+              className={`px-2 py-0.5 rounded-lg text-xs font-semibold border transition
+                ${arranging ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300'}`}
+            >
+              {arranging ? 'Done' : '↕ Arrange'}
+            </button>
           )}
           <button
             type="button"
@@ -404,78 +395,6 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
             setHideZeroFlags={lawsPanel.setHideZeroFlags}
             activeFilters={lawsPanel.activeFilters}
           />
-        </div>
-      )}
-      {editingPresetsForItem !== null && !showLog && (
-        <div className="border-b border-gray-200 bg-gray-50 px-2 py-2 max-h-96 overflow-y-auto">
-          {editingPresetsForItem === -1 ? (
-            <div className="space-y-1.5">
-              <p className="text-[10px] font-bold text-gray-600 mb-2">Select an item to edit its presets</p>
-              {fullOrderedItems.map((it) => (
-                <button
-                  key={it.id}
-                  type="button"
-                  onClick={() => setEditingPresetsForItem(it.id)}
-                  className="w-full text-left px-2 py-1 rounded bg-white hover:bg-blue-50 border border-gray-300 text-[10px] font-semibold text-gray-900 transition"
-                >
-                  {it.name}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => setEditingPresetsForItem(-1)}
-                className="text-[10px] font-bold text-blue-600 hover:text-blue-700 mb-1"
-              >
-                ← Back to items
-              </button>
-              <p className="text-[10px] font-bold text-gray-600">
-                Edit presets for: {fullOrderedItems.find((it) => it.id === editingPresetsForItem)?.name}
-              </p>
-              <div className="flex flex-wrap gap-1">
-                {getPresetsForItem(fullOrderedItems.find((it) => it.id === editingPresetsForItem)!).map((val, i) => (
-                  <input
-                    key={i}
-                    type="number"
-                    inputMode="numeric"
-                    value={val}
-                    onChange={(e) => {
-                      const item = fullOrderedItems.find((it) => it.id === editingPresetsForItem)!
-                      const newPresets = [...getPresetsForItem(item)]
-                      newPresets[i] = Number(e.target.value) || 0
-                      setPresetsForItem(editingPresetsForItem, newPresets)
-                    }}
-                    className="w-12 h-6 px-1 rounded text-[10px] font-bold border border-gray-300 text-center focus:outline-none focus:ring-1 focus:ring-blue-400"
-                  />
-                ))}
-                <button
-                  type="button"
-                  onClick={() => {
-                    const item = fullOrderedItems.find((it) => it.id === editingPresetsForItem)!
-                    setPresetsForItem(editingPresetsForItem, [...getPresetsForItem(item), 0])
-                  }}
-                  className="w-6 h-6 rounded bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold flex items-center justify-center"
-                >
-                  +
-                </button>
-                {getPresetsForItem(fullOrderedItems.find((it) => it.id === editingPresetsForItem)!).length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const item = fullOrderedItems.find((it) => it.id === editingPresetsForItem)!
-                      const presets = getPresetsForItem(item)
-                      setPresetsForItem(editingPresetsForItem, presets.slice(0, -1))
-                    }}
-                    className="w-6 h-6 rounded bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold flex items-center justify-center"
-                  >
-                    −
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
         </div>
       )}
       {showLog ? (
@@ -680,16 +599,77 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                           reads as "that's the one I hit," instead of every
                           button in the row dimming the same way together. */}
                       <div className="flex flex-wrap items-center gap-1">
-                        {getPresetsForItem(it).map((q) => {
+                        {getPresetsForItem(it).map((q, qIdx) => {
                           const total = (Number(it.selling_price) || 0) * q
                           const pressed = pending && pendingQty === q
+                          const isEditing = editingButton?.itemId === it.id && editingButton?.index === qIdx
+
+                          if (isEditing) {
+                            return (
+                              <input
+                                key={`edit-${qIdx}`}
+                                type="number"
+                                inputMode="numeric"
+                                autoFocus
+                                value={editingValue}
+                                onChange={(e) => setEditingValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault()
+                                    const newVal = Number(editingValue)
+                                    if (!isNaN(newVal) && newVal > 0) {
+                                      const presets = [...getPresetsForItem(it)]
+                                      presets[qIdx] = newVal
+                                      setPresetsForItem(it.id, presets)
+                                    }
+                                    setEditingButton(null)
+                                    setEditingValue('')
+                                  } else if (e.key === 'Escape') {
+                                    setEditingButton(null)
+                                    setEditingValue('')
+                                  }
+                                }}
+                                onBlur={() => {
+                                  const newVal = Number(editingValue)
+                                  if (!isNaN(newVal) && newVal > 0) {
+                                    const presets = [...getPresetsForItem(it)]
+                                    presets[qIdx] = newVal
+                                    setPresetsForItem(it.id, presets)
+                                  }
+                                  setEditingButton(null)
+                                  setEditingValue('')
+                                }}
+                                className="w-12 h-7 px-0.5 rounded-lg bg-yellow-50 text-yellow-700 text-[11px] font-bold border-2 border-yellow-400 text-center focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                              />
+                            )
+                          }
+
                           return (
                             <button
-                              key={q}
+                              key={`btn-${qIdx}`}
                               type="button"
                               onClick={() => tap(it, q)}
+                              onPointerDown={() => {
+                                longPressTimeoutRef.current = setTimeout(() => {
+                                  setEditingButton({ itemId: it.id, index: qIdx })
+                                  setEditingValue(String(q))
+                                  longPressTimeoutRef.current = null
+                                }, 500)
+                              }}
+                              onPointerUp={() => {
+                                if (longPressTimeoutRef.current) {
+                                  clearTimeout(longPressTimeoutRef.current)
+                                  longPressTimeoutRef.current = null
+                                }
+                              }}
+                              onPointerLeave={() => {
+                                if (longPressTimeoutRef.current) {
+                                  clearTimeout(longPressTimeoutRef.current)
+                                  longPressTimeoutRef.current = null
+                                }
+                              }}
                               disabled={pending}
-                              title={`${q} unit${q > 1 ? 's' : ''} · ${money(total)}`}
+                              title={`${q} unit${q > 1 ? 's' : ''} · ${money(total)}\n(long-press to edit)`}
                               className={pressed
                                 ? 'min-w-[2rem] h-7 px-1.5 rounded-lg bg-blue-600 text-white text-[11px] font-bold flex items-center justify-center transition disabled:opacity-100'
                                 : 'min-w-[2rem] h-7 px-1.5 rounded-lg bg-blue-50 text-blue-700 text-[11px] font-bold flex items-center justify-center hover:bg-blue-100 active:bg-blue-200 active:scale-95 transition disabled:opacity-40'}
