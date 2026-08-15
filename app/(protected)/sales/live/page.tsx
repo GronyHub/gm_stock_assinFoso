@@ -148,6 +148,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
   // show the same way on every staff member's own phone, not just the one
   // that set it (see the Shared Settings policy).
   const [manualOrder, setManualOrder] = useState<number[]>([])
+  const [manualAmounts, setManualAmounts] = useState<Record<number, string>>({})
   useEffect(() => {
     fetch(`/api/app-settings?key=${ORDER_KEY}`)
       .then(r => r.ok ? r.json() : { value: null })
@@ -263,6 +264,18 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
       setPendingItemId(null)
       setPendingQty(null)
     }
+  }
+
+  function submitManualAmount(item: GridItem) {
+    const amount = manualAmounts[item.id]?.trim()
+    if (!amount) return
+    const qty = Number(amount)
+    if (isNaN(qty) || qty <= 0) {
+      alert('Please enter a valid amount')
+      return
+    }
+    setManualAmounts((prev) => ({ ...prev, [item.id]: '' }))
+    tap(item, qty)
   }
 
   async function undo(tapId: number) {
@@ -531,6 +544,31 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                             </button>
                           )
                         })}
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          placeholder="+"
+                          value={manualAmounts[it.id] ?? ''}
+                          onChange={(e) => setManualAmounts((prev) => ({ ...prev, [it.id]: e.target.value }))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              submitManualAmount(it)
+                            }
+                          }}
+                          disabled={pending}
+                          className="min-w-[2rem] h-7 px-1.5 rounded-lg bg-gray-100 text-gray-700 text-[11px] font-bold border border-gray-300 text-center focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-40 transition"
+                        />
+                        {manualAmounts[it.id] && (
+                          <button
+                            type="button"
+                            onClick={() => submitManualAmount(it)}
+                            disabled={pending}
+                            className="min-w-[2rem] h-7 px-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-[11px] font-bold flex items-center justify-center transition disabled:opacity-40"
+                          >
+                            ✓
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
