@@ -11,7 +11,7 @@ import OpenerView from './OpenerView'
 import CloserView from './CloserView'
 import GronyChecksGrid from './GronyChecksGrid'
 import type { Violation } from './useViolations'
-import { LOG_CATEGORIES, FIXED_CATEGORY_LABELS, type ManageView } from './manageViewData'
+import { LOG_CATEGORIES, FIXED_CATEGORY_LABELS, GRONY_CHECKS_ITEMS, type ManageView } from './manageViewData'
 
 export type { ManageView }
 
@@ -23,7 +23,7 @@ export type { ManageView }
 export default function GronyManageContent({
   view, canManage, categoryIds,
   openerViolations, assignments, deadlines, assignedBy, assignedOn, vSettings,
-  onGoToViolation, missingClosingReportsCount, onOpenStaff, propertiesInitialTab,
+  onGoToViolation, onSelectCheckType, missingClosingReportsCount, onOpenStaff, propertiesInitialTab,
 }: {
   view: ManageView
   canManage: boolean
@@ -35,6 +35,7 @@ export default function GronyManageContent({
   assignedOn: Record<string, string>
   vSettings: Record<string, string>
   onGoToViolation: (key: string) => void
+  onSelectCheckType?: (key: ManageView) => void
   missingClosingReportsCount: number
   onOpenStaff: () => void
   propertiesInitialTab?: 'all' | 'available' | 'away' | null
@@ -43,6 +44,7 @@ export default function GronyManageContent({
   const openerLaws = useLawsPanel('showOpenerLaws')
   const closerLaws = useLawsPanel('showCloserLaws')
   const advertStatusLaws = useLawsPanel('showAdvertStatusLaws')
+  const gronyChecksLaws = useLawsPanel('showGronyChecksLaws')
 
   function inlineLaws(scopeKey: string, panel: ReturnType<typeof useLawsPanel>) {
     return (<>
@@ -98,7 +100,29 @@ export default function GronyManageContent({
     {view === 'app_info' && (
       <DynamicCategoryPage categoryId={categoryIds[FIXED_CATEGORY_LABELS.app_info]} categoryLabel="App info" canManage={canManage} />
     )}
-    {view === 'grony_checks' && <GronyChecksGrid />}
+    {view === 'grony_checks' && (<>
+      <div className="px-2 pt-2 flex flex-nowrap items-center gap-1.5 overflow-x-auto">
+        <LawsToggleBar show={gronyChecksLaws.show} setShow={gronyChecksLaws.setShow}
+          openForm={gronyChecksLaws.openForm} setOpenForm={gronyChecksLaws.setOpenForm}
+          hideZeroFlags={gronyChecksLaws.hideZeroFlags} setHideZeroFlags={gronyChecksLaws.setHideZeroFlags}
+          activeFilters={gronyChecksLaws.activeFilters} toggleFilter={gronyChecksLaws.toggleFilter} dark={false} />
+      </div>
+      {gronyChecksLaws.show && (
+        <div className="px-2">
+          <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+            <div className="divide-y">
+              {GRONY_CHECKS_ITEMS.map((item) => (
+                <button key={item.key} onClick={() => onSelectCheckType?.(item.key)} className="w-full text-left px-4 py-3 hover:bg-blue-50 transition flex items-center gap-3">
+                  <span className="text-lg">{item.icon}</span>
+                  <span className="text-sm font-medium text-gray-900">{item.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+      <GronyChecksGrid />
+    </>)}
     {logCategory && <ManageLogPanel category={logCategory.key} label={logCategory.label} icon={logCategory.icon} />}
   </>)
 }

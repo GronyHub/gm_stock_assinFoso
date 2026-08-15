@@ -1664,16 +1664,6 @@ function ItemHubPageInner() {
                         active={paneActive(lossView === entry.key)} badge={badge}
                         taskBadge={taskCountFor(entry.label)}
                         onClick={() => pickLossView(entry.key)} />
-                      {entry.key === 'grony_checks' && lossView === 'grony_checks' && (
-                        <div>
-                          {GRONY_CHECKS_ITEMS.slice(1).map((item, i) => (
-                            <SidePaneButton key={item.key} icon={item.icon} label={item.label} mode={cashDisplayMode} divider={i === 0}
-                              active={paneActive(lossView === item.key)}
-                              taskBadge={taskCountFor(item.label)}
-                              onClick={() => pickLossView(item.key)} />
-                          ))}
-                        </div>
-                      )}
                     </Fragment>
                   )
                 })
@@ -2103,6 +2093,7 @@ function ItemHubPageInner() {
               openerViolations={openerViolations}
               assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
               onGoToViolation={goToViolation}
+              onSelectCheckType={(key) => pickLossView(key)}
               missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
               onOpenStaff={() => pickLossView('teamTimes')}
               propertiesInitialTab={propertiesInitialTab} />
