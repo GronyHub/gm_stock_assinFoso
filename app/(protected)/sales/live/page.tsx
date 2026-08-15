@@ -497,9 +497,9 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                 const pending = pendingItemId === it.id
                 return (
                   <div key={it.id} className="w-full px-2 py-1.5 border-b border-gray-50 bg-white">
-                    <div className="flex items-start gap-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       {number}
-                      <div className="flex-1 min-w-0 flex items-center gap-1">
+                      <div className="flex items-center gap-1">
                         {label}
                         {count > 0 && (
                           <span className="shrink-0 min-w-[0.9rem] h-[0.9rem] px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold flex items-center justify-center">
@@ -507,14 +507,12 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                           </span>
                         )}
                       </div>
-                      {/* Buttons follow item names on the left -- wraps onto a
-                          second line within its own column if there are more
-                          presets than fit next to the name, instead of pushing
-                          the name over. The pressed one turns solid while its
-                          request is in flight so it reads as "that's the
-                          one I hit," instead of every button in the row
-                          dimming the same way together. */}
-                      <div className="shrink-0 flex flex-wrap items-center justify-start gap-1 max-w-[45%]">
+                      {/* Buttons follow item names, flowing inline and wrapping
+                          naturally to fill available space neatly. The pressed
+                          one turns solid while its request is in flight so it
+                          reads as "that's the one I hit," instead of every
+                          button in the row dimming the same way together. */}
+                      <div className="flex flex-wrap items-center gap-1">
                         {qtyPresetsFor(it).map((q) => {
                           const total = (Number(it.selling_price) || 0) * q
                           const pressed = pending && pendingQty === q
