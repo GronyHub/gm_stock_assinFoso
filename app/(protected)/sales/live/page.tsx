@@ -150,12 +150,30 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
   const [manualOrder, setManualOrder] = useState<number[]>([])
   const [manualAmounts, setManualAmounts] = useState<Record<number, string>>({})
   const [positionInputs, setPositionInputs] = useState<Record<number, string>>({})
+  const [customGoodsQty, setCustomGoodsQty] = useState<number[]>(GOODS_QTY)
+  const [customServiceQty, setCustomServiceQty] = useState<number[]>(SERVICE_QTY)
+  const [editingPresets, setEditingPresets] = useState(false)
   useEffect(() => {
     fetch(`/api/app-settings?key=${ORDER_KEY}`)
       .then(r => r.ok ? r.json() : { value: null })
       .then((d: { value: unknown }) => { if (Array.isArray(d?.value)) setManualOrder(d.value as number[]) })
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    const saved = localStorage.getItem('liveSalePresets')
+    if (saved) {
+      try {
+        const { goods, service } = JSON.parse(saved)
+        if (Array.isArray(goods)) setCustomGoodsQty(goods)
+        if (Array.isArray(service)) setCustomServiceQty(service)
+      } catch {}
+    }
+  }, [])
+
+  useEffect(() => {
+    localStorage.setItem('liveSalePresets', JSON.stringify({ goods: customGoodsQty, service: customServiceQty }))
+  }, [customGoodsQty, customServiceQty])
 
   function persistOrder(order: number[]) {
     setManualOrder(order)
@@ -326,15 +344,26 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
             hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
           activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
           {!showLog && (
-            <button
-              type="button"
-              onClick={() => setArranging((v) => !v)}
-              title="Arrange the item list"
-              className={`px-2 py-0.5 rounded-lg text-xs font-semibold border transition
-                ${arranging ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300'}`}
-            >
-              {arranging ? 'Done' : '↕ Arrange'}
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => setArranging((v) => !v)}
+                title="Arrange the item list"
+                className={`px-2 py-0.5 rounded-lg text-xs font-semibold border transition
+                  ${arranging ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300'}`}
+              >
+                {arranging ? 'Done' : '↕ Arrange'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditingPresets((v) => !v)}
+                title="Edit quantity presets"
+                className={`px-2 py-0.5 rounded-lg text-xs font-semibold border transition
+                  ${editingPresets ? 'bg-green-600 text-white border-green-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300'}`}
+              >
+                {editingPresets ? 'Done' : '⚙ Presets'}
+              </button>
+            </>
           )}
           <button
             type="button"
@@ -368,6 +397,82 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
             setHideZeroFlags={lawsPanel.setHideZeroFlags}
             activeFilters={lawsPanel.activeFilters}
           />
+        </div>
+      )}
+      {editingPresets && !showLog && (
+        <div className="border-b border-gray-200 bg-gray-50 px-2 py-2">
+          <div className="space-y-2">
+            <div>
+              <p className="text-[10px] font-bold text-gray-600 mb-1">Goods Presets</p>
+              <div className="flex flex-wrap gap-1">
+                {customGoodsQty.map((val, i) => (
+                  <input
+                    key={i}
+                    type="number"
+                    inputMode="numeric"
+                    value={val}
+                    onChange={(e) => {
+                      const newPresets = [...customGoodsQty]
+                      newPresets[i] = Number(e.target.value) || 0
+                      setCustomGoodsQty(newPresets)
+                    }}
+                    className="w-12 h-6 px-1 rounded text-[10px] font-bold border border-gray-300 text-center focus:outline-none focus:ring-1 focus:ring-blue-400"
+                  />
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setCustomGoodsQty([...customGoodsQty, 0])}
+                  className="w-12 h-6 rounded bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold flex items-center justify-center"
+                >
+                  +
+                </button>
+                {customGoodsQty.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setCustomGoodsQty(customGoodsQty.slice(0, -1))}
+                    className="w-12 h-6 rounded bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold flex items-center justify-center"
+                  >
+                    −
+                  </button>
+                )}
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-gray-600 mb-1">Service Presets</p>
+              <div className="flex flex-wrap gap-1">
+                {customServiceQty.map((val, i) => (
+                  <input
+                    key={i}
+                    type="number"
+                    inputMode="numeric"
+                    value={val}
+                    onChange={(e) => {
+                      const newPresets = [...customServiceQty]
+                      newPresets[i] = Number(e.target.value) || 0
+                      setCustomServiceQty(newPresets)
+                    }}
+                    className="w-12 h-6 px-1 rounded text-[10px] font-bold border border-gray-300 text-center focus:outline-none focus:ring-1 focus:ring-blue-400"
+                  />
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setCustomServiceQty([...customServiceQty, 0])}
+                  className="w-12 h-6 rounded bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold flex items-center justify-center"
+                >
+                  +
+                </button>
+                {customServiceQty.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setCustomServiceQty(customServiceQty.slice(0, -1))}
+                    className="w-12 h-6 rounded bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold flex items-center justify-center"
+                  >
+                    −
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
       {showLog ? (
@@ -572,7 +677,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                           reads as "that's the one I hit," instead of every
                           button in the row dimming the same way together. */}
                       <div className="flex flex-wrap items-center gap-1">
-                        {qtyPresetsFor(it).map((q) => {
+                        {(it.product_type === 'service' ? customServiceQty : customGoodsQty).map((q) => {
                           const total = (Number(it.selling_price) || 0) * q
                           const pressed = pending && pendingQty === q
                           return (
