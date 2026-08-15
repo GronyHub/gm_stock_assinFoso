@@ -77,6 +77,7 @@ const ServiceMatchesPage  = dynamic(() => import('../matches/wide/page'),       
 const ViewPortalAsButton  = dynamic(() => import('@/components/ViewPortalAsButton'), { ssr: false })
 const Item360Tab = dynamic(() => import('./_components/Item360Tab'),          { ssr: false, loading: () => loading('Loading…') })
 const StaffContent = dynamic(() => import('./_components/StaffPersonTab'),    { ssr: false, loading: () => loading('Loading…') })
+const StaffMemberPersonalTab = dynamic(() => import('./_components/StaffMemberPersonalTab'), { ssr: false, loading: () => loading('Loading…') })
 const UKTab = dynamic(() => import('./_components/UKTab'), { ssr: false, loading: () => loading('Loading…') })
 const CHTab = dynamic(() => import('./_components/CHTab'), { ssr: false, loading: () => loading('Loading…') })
 const ReorderListsPanel = dynamic(() => import('./_components/ReorderListsPanel'), { ssr: false, loading: () => loading('Loading…') })
@@ -160,6 +161,9 @@ const STAFF_VIEW_KEYS = new Set<LossView>([
   ...STAFF_PERSONAL_ITEMS.map(i => i.key), 'staffProfile', ...STAFF_TEAM_ITEMS.map(i => i.key),
   ...STAFF_ADMIN_TEAM_ITEMS.map(i => i.key), 'users', 'roles',
 ])
+// Check if a view is a staff view, including dynamic staff member pages (staffMember_username)
+const isStaffView = (view: string): boolean =>
+  STAFF_VIEW_KEYS.has(view as LossView) || view.startsWith('staffMember_')
 // C&H's own rows -- same purpose as the two sets above, but for the
 // separate C&H tab's own pane content (see chViewData.ts).
 const CH_VIEW_KEYS = new Set<LossView>(CH_ITEMS.map(i => i.key))
@@ -1729,11 +1733,14 @@ function ItemHubPageInner() {
             {canSeeTeam && activeStaff.length > 0 && (
               <div className="mt-1 pt-1 border-t border-white/30">
                 <div className="text-xs font-semibold text-gray-400 px-3 py-2">Staff Members</div>
-                {activeStaff.map((staff, i) => (
-                  <SidePaneButton key={staff.username} icon="👤" label={staff.username.charAt(0).toUpperCase() + staff.username.slice(1)} mode={cashDisplayMode} divider={i > 0}
-                    active={paneActive(lossView === 'staffPayslips' && viewingNameOverride?.toLowerCase() === staff.username.toLowerCase())}
-                    onClick={() => { setViewingNameOverride(staff.username); pickLossView('staffPayslips') }} />
-                ))}
+                {activeStaff.map((staff, i) => {
+                  const staffViewKey = `staffMember_${staff.username}` as LossView
+                  return (
+                    <SidePaneButton key={staff.username} icon="👤" label={staff.username.charAt(0).toUpperCase() + staff.username.slice(1)} mode={cashDisplayMode} divider={i > 0}
+                      active={paneActive(lossView === staffViewKey)}
+                      onClick={() => pickLossView(staffViewKey)} />
+                  )
+                })}
               </div>
             )}
 
@@ -2147,9 +2154,20 @@ function ItemHubPageInner() {
               propertiesInitialTab={propertiesInitialTab} />
           </TabErrorBoundary>
         )}
-        {outerTab === 'loss' && STAFF_VIEW_KEYS.has(lossView) && (
+        {outerTab === 'loss' && isStaffView(lossView) && (
           <TabErrorBoundary>
-            {myStaffName ? (
+            {lossView.startsWith('staffMember_') ? (
+              // Individual staff member personal page
+              (() => {
+                const staffName = lossView.substring('staffMember_'.length)
+                return (
+                  <StaffMemberPersonalTab
+                    staffName={staffName} username={username} role={role}
+                    canManage={canManage} staffRoster={STAFF_ROSTER}
+                    routablePages={routablePages} categoryIds={fixedCategoryIds} />
+                )
+              })()
+            ) : myStaffName ? (
               // key forces a full remount whenever the logged-in identity
               // changes (e.g. an admin switching "View as" between staff
               // without leaving this tab) -- a stale identity could
