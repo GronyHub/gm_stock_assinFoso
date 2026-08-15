@@ -675,6 +675,20 @@ function ItemHubPageInner() {
   // everyone else always views themself (see viewingName below).
   const [viewingNameOverride, setViewingNameOverride] = useState<string | undefined>(undefined)
 
+  // Active staff members fetched from /api/staff/status -- used to dynamically
+  // create individual staff member pages in the pane below STAFF_TEAM_ITEMS.
+  const [activeStaff, setActiveStaff] = useState<{ username: string; active: boolean }[]>([])
+  useEffect(() => {
+    const fetchStaff = () => {
+      fetch('/api/staff/status').then(r => r.ok ? r.json() : [])
+        .then(d => setActiveStaff(Array.isArray(d) ? d.filter((s: any) => s.active) : []))
+        .catch(() => {})
+    }
+    fetchStaff()
+    const interval = setInterval(fetchStaff, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
   // UK's people + per-person submenus + selected submenu's columns/rows --
   // shared between the merged pane (a flat "every person's every submenu"
   // list, see below) and UKTab (rendering the selected submenu's columns +
@@ -1703,6 +1717,17 @@ function ItemHubPageInner() {
                     badge={t.key === 'staff_dress' ? dressFlagsCount : t.key === 'teamTimes' ? staffTimesFlagsCount : undefined}
                     taskBadge={taskCountFor(t.label)}
                     onClick={() => pickLossView(t.key)} />
+                ))}
+              </div>
+            )}
+
+            {canSeeTeam && activeStaff.length > 0 && (
+              <div className="mt-1 pt-1 border-t border-white/30">
+                <div className="text-xs font-semibold text-gray-400 px-3 py-2">Staff Members</div>
+                {activeStaff.map((staff, i) => (
+                  <SidePaneButton key={staff.username} icon="👤" label={staff.username.charAt(0).toUpperCase() + staff.username.slice(1)} mode={cashDisplayMode} divider={i > 0}
+                    active={paneActive(lossView === 'staffPayslips' && viewingNameOverride?.toLowerCase() === staff.username.toLowerCase())}
+                    onClick={() => { setViewingNameOverride(staff.username); pickLossView('staffPayslips') }} />
                 ))}
               </div>
             )}
