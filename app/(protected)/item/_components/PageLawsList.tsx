@@ -36,7 +36,7 @@ export type FlagLaw = {
 // header), physically separate from where this list renders below them.
 // Every other piece of that form's state (the actual text typed into it)
 // has no reason to live outside this component and stays local.
-export type LawFormKind = 'law' | 'task' | 'note' | null
+export type LawFormKind = 'law' | 'task' | null
 
 // Long-press (mobile) / mousedown-hold (desktop) to reveal a row's action
 // menu -- one shared implementation instead of a separate mousedown/
@@ -859,7 +859,6 @@ export default function PageLawsList({
                     {taskForLaw !== l.id && noteForLaw !== l.id && (
                       <>
                         <button type="button" onClick={() => { setTaskForLaw(l.id); fetchTasksForLaw(l.id) }} title="Add task" className="text-blue-500 hover:text-blue-600 font-semibold text-[8px]">✓ Task</button>
-                        <button type="button" onClick={() => setNoteForLaw(l.id)} title="Add note" className="text-amber-500 hover:text-amber-600 font-semibold text-[8px]">📝 Note</button>
                       </>
                     )}
                   </div>
@@ -874,9 +873,7 @@ export default function PageLawsList({
                   )}
                   {taskForLaw === l.id
                     ? renderAddTaskForm(taskTitle, setTaskTitle, taskType, setTaskType, taskAssignedTo, setTaskAssignedTo, addTaskForLaw, () => setTaskForLaw(null))
-                    : noteForLaw === l.id
-                      ? renderAddNoteForm(noteText, setNoteText, addNoteForLaw, () => setNoteForLaw(null))
-                      : (
+                    : (
                         <>
                           {renderAttachedItems(taskForLawLoaded[l.id], l.id, undefined)}
                           {renderReplyThread(`law-${l.id}`, 'law', l.id, 'lg')}
@@ -914,7 +911,6 @@ export default function PageLawsList({
                               {taskForFlag !== f.key && noteForFlag !== f.key && (
                                 <>
                                   <button type="button" onClick={() => { setTaskForFlag(f.key); fetchTasksForFlag(f.key) }} title="Add task for this flag" className="text-blue-500 hover:text-blue-600 font-semibold text-[8px]">✓ Task</button>
-                                  <button type="button" onClick={() => setNoteForFlag(f.key)} title="Add note for this flag" className="text-amber-500 hover:text-amber-600 font-semibold text-[8px]">📝 Note</button>
                                 </>
                               )}
                             </div>
@@ -965,10 +961,9 @@ export default function PageLawsList({
                       <button type="button" onClick={() => moveLawInOrder(f.key, 'up')} title="Move up" className="text-gray-500 hover:text-gray-700 text-[8px] font-semibold">▲</button>
                       <button type="button" onClick={() => moveLawInOrder(f.key, 'down')} title="Move down" className="text-gray-500 hover:text-gray-700 text-[8px] font-semibold">▼</button>
                       <button type="button" onClick={() => startEditFlag(f)} title="Rename" className="text-gray-500 hover:text-gray-700 text-[8px] font-semibold">✎</button>
-                      {taskForFlag !== f.key && noteForFlag !== f.key && (
+                      {taskForFlag !== f.key && (
                         <>
                           <button type="button" onClick={() => { setTaskForFlag(f.key); fetchTasksForFlag(f.key) }} title="Add task for this flag" className="text-blue-500 hover:text-blue-600 font-semibold text-[8px]">✓ Task</button>
-                          <button type="button" onClick={() => setNoteForFlag(f.key)} title="Add note for this flag" className="text-amber-500 hover:text-amber-600 font-semibold text-[8px]">📝 Note</button>
                         </>
                       )}
                     </>
@@ -981,9 +976,7 @@ export default function PageLawsList({
                 )}
                 {taskForFlag === f.key
                   ? renderAddTaskForm(taskTitleForFlag, setTaskTitleForFlag, taskTypeForFlag, setTaskTypeForFlag, taskAssignedToFlag, setTaskAssignedToFlag, addTaskForFlag, () => setTaskForFlag(null))
-                  : noteForFlag === f.key
-                    ? renderAddNoteForm(noteTextForFlag, setNoteTextForFlag, addNoteForFlag, () => setNoteForFlag(null))
-                    : renderAttachedItems(tasksByFlagKey[f.key], undefined, f.key)}
+                  : renderAttachedItems(tasksByFlagKey[f.key], undefined, f.key)}
               </div>
             </div>
           ))}
@@ -1030,25 +1023,6 @@ export default function PageLawsList({
               </select>
               <div className="flex gap-0.5">
                 <button type="button" onClick={addGlobalTask} className="flex-1 text-green-600 hover:text-green-700 font-bold">Create</button>
-                <button type="button" onClick={() => setOpenForm?.(null)} className="shrink-0 text-gray-400 hover:text-gray-600 font-bold">×</button>
-              </div>
-            </div>
-          )}
-          {isItemsLaws && openForm === 'note' && (
-            <div className="px-1 py-1 bg-gray-50 border-t border-gray-200 flex flex-col gap-0.5 text-[8px]">
-              <input autoFocus value={globalNoteTopic} onChange={e => setGlobalNoteTopic(e.target.value)} placeholder="Topic…"
-                className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
-              <div className="flex gap-0.5">
-                <input type="date" value={globalNoteDate} onChange={e => setGlobalNoteDate(e.target.value)}
-                  className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
-                <input type="text" value={globalNoteTaggedStaff.join(', ')} onChange={e => setGlobalNoteTaggedStaff(e.target.value.split(',').map(s => s.trim()).filter(s => s))} placeholder="Tag staff (@name, @name)"
-                  className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
-              </div>
-              <textarea value={globalNoteText} onChange={e => setGlobalNoteText(e.target.value)} placeholder="Note content… (use @ to tag staff)" rows={2}
-                onKeyDown={e => { if (e.key === 'Escape') setOpenForm?.(null) }}
-                className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 resize-none" />
-              <div className="flex gap-0.5">
-                <button type="button" onClick={addGlobalNote} className="flex-1 text-green-600 hover:text-green-700 font-bold">Save</button>
                 <button type="button" onClick={() => setOpenForm?.(null)} className="shrink-0 text-gray-400 hover:text-gray-600 font-bold">×</button>
               </div>
             </div>

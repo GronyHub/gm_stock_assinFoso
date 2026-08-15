@@ -2,24 +2,21 @@
 import type { LawFormKind } from './PageLawsList'
 import type { LawFilterKey } from './useLawsPanel'
 
-// L/T/N each merge a "+create" button with their own filter checkbox into
-// one compact control -- tapping the "+L"/"+T"/"+N" label still does
-// exactly what the old standalone +Law/+Task/+Note button did (opens that
-// create form), the checkbox next to it still does what the old standalone
-// L/T/N filter checkbox did (narrows the list to that category). G has no
+// L/T each merge a "+create" button with their own filter checkbox into
+// one compact control -- tapping the "+L"/"+T" label opens the create
+// form, the checkbox next to it filters the list to that category. G has no
 // matching "+create" button -- group shortcut flags are derived from item
 // groups, never user-created -- so it stays its own plain filter checkbox,
 // same as 0 (hide zero-count flags).
-const CREATE_FILTER_PAIRS: { key: 'L' | 'T' | 'N'; form: Exclude<LawFormKind, null>; createTitle: string; filterTitle: string }[] = [
+const CREATE_FILTER_PAIRS: { key: 'L' | 'T'; form: Exclude<LawFormKind, null>; createTitle: string; filterTitle: string }[] = [
   { key: 'L', form: 'law',  createTitle: 'Create new law',     filterTitle: 'Show only laws & flags' },
   { key: 'T', form: 'task', createTitle: 'Create global task', filterTitle: 'Show only tasks' },
-  { key: 'N', form: 'note', createTitle: 'Create global note', filterTitle: 'Show only notes' },
 ]
 
-// The ⚖️ / +L / +T / +N / G / 0 row every inline law panel is toggled and
+// The ⚖️ / +L / +T / G / 0 row every inline law panel is toggled and
 // filtered by -- same markup Items/Sales/Bills already use inline in
 // item/page.tsx, pulled out so new pages don't hand-copy it again. `dark`
-// picks the light-icons-on-a-colored-bar look those three use; pass
+// picks the light-icons-on-a-colored-bar look those two use; pass
 // `dark={false}` for a plain white/gray header instead.
 export default function LawsToggleBar({
   show, setShow, openForm, setOpenForm, hideZeroFlags, setHideZeroFlags,
