@@ -620,76 +620,10 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
 
                 const pending = pendingItemId === it.id
                 return (
-                  <div key={it.id} className="w-full px-2 py-1.5 border-b border-gray-50 bg-white">
+                  <div key={it.id} className="w-full px-0 pr-2 py-1.5 border-b border-gray-50 bg-white">
                     <div className="flex flex-wrap items-center gap-1.5">
                       {number}
-                      <div className="flex items-center gap-1">
-                        {label}
-                        {count > 0 && (
-                          <span className="shrink-0 min-w-[0.9rem] h-[0.9rem] px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold flex items-center justify-center">
-                            {count}
-                          </span>
-                        )}
-                      </div>
-                      {quickArrangeItemId === it.id && (
-                        <div className="ml-auto flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (confirm(`Move "${it.name}" up?`)) {
-                                moveBy(it.id, -1)
-                                setQuickArrangeItemId(null)
-                              }
-                            }}
-                            disabled={idx === 0}
-                            title="Move up"
-                            className="shrink-0 w-5 h-5 rounded bg-gray-100 text-gray-600 text-[10px] font-bold flex items-center justify-center hover:bg-gray-200 disabled:opacity-30"
-                          >
-                            ↑
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (confirm(`Move "${it.name}" down?`)) {
-                                moveBy(it.id, 1)
-                                setQuickArrangeItemId(null)
-                              }
-                            }}
-                            disabled={idx === gridItems.length - 1}
-                            title="Move down"
-                            className="shrink-0 w-5 h-5 rounded bg-gray-100 text-gray-600 text-[10px] font-bold flex items-center justify-center hover:bg-gray-200 disabled:opacity-30"
-                          >
-                            ↓
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (confirm(`Move "${it.name}" to top?`)) {
-                                moveToTop(it.id)
-                                setQuickArrangeItemId(null)
-                              }
-                            }}
-                            disabled={idx === 0}
-                            title="Move to top"
-                            className="shrink-0 px-1.5 h-5 rounded bg-blue-50 text-blue-700 text-[9px] font-bold flex items-center justify-center hover:bg-blue-100 disabled:opacity-30"
-                          >
-                            ⤒ Top
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setQuickArrangeItemId(null)}
-                            title="Close"
-                            className="shrink-0 w-5 h-5 rounded bg-gray-200 text-gray-600 text-[10px] font-bold flex items-center justify-center hover:bg-gray-300"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      )}
-                      {/* Buttons follow item names, flowing inline and wrapping
-                          naturally to fill available space neatly. The pressed
-                          one turns solid while its request is in flight so it
-                          reads as "that's the one I hit," instead of every
-                          button in the row dimming the same way together. */}
+                      {/* Preset buttons flow from left, filling available space before item name */}
                       <div className="flex flex-wrap items-center gap-1">
                         {getPresetsForItem(it).map((q, qIdx) => {
                           const total = (Number(it.selling_price) || 0) * q
@@ -714,38 +648,34 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                                         const newPresets = [...presets]
                                         newPresets[qIdx] = newVal
                                         setPresetsForItem(it.id, newPresets)
+                                        setEditingButton(null)
+                                        setEditingValue('')
                                       }
-                                      setEditingButton(null)
-                                      setEditingValue('')
-                                    } else if (e.key === 'Escape') {
+                                    }
+                                    if (e.key === 'Escape') {
+                                      e.preventDefault()
                                       setEditingButton(null)
                                       setEditingValue('')
                                     }
                                   }}
-                                  onBlur={() => {
+                                  className="w-10 h-7 px-1 rounded-lg bg-white text-blue-700 text-[11px] font-bold border border-blue-300 text-center focus:outline-none focus:ring-1 focus:ring-blue-500 transition"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
                                     const newVal = Number(editingValue)
                                     if (!isNaN(newVal) && newVal > 0) {
                                       const newPresets = [...presets]
                                       newPresets[qIdx] = newVal
                                       setPresetsForItem(it.id, newPresets)
+                                      setEditingButton(null)
+                                      setEditingValue('')
                                     }
-                                    setEditingButton(null)
-                                    setEditingValue('')
                                   }}
-                                  className="w-12 h-7 px-0.5 rounded-lg bg-yellow-50 text-yellow-700 text-[11px] font-bold border-2 border-yellow-400 text-center focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const presets = getPresetsForItem(it)
-                                    setPresetsForItem(it.id, [...presets, 0])
-                                    setEditingButton({ itemId: it.id, index: presets.length })
-                                    setEditingValue('')
-                                  }}
-                                  className="w-5 h-7 rounded-lg bg-green-600 hover:bg-green-700 text-white text-[9px] font-bold flex items-center justify-center transition"
-                                  title="Add new button"
+                                  className="w-6 h-7 rounded-lg bg-green-600 hover:bg-green-700 text-white text-[9px] font-bold flex items-center justify-center transition"
+                                  title="Save"
                                 >
-                                  +
+                                  ✓
                                 </button>
                                 {presets.length > 1 && (
                                   <button
@@ -826,6 +756,68 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                           </button>
                         )}
                       </div>
+                      <div className="flex items-center gap-1">
+                        {label}
+                        {count > 0 && (
+                          <span className="shrink-0 min-w-[0.9rem] h-[0.9rem] px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold flex items-center justify-center">
+                            {count}
+                          </span>
+                        )}
+                      </div>
+                      {quickArrangeItemId === it.id && (
+                        <div className="ml-auto flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm(`Move "${it.name}" up?`)) {
+                                moveBy(it.id, -1)
+                                setQuickArrangeItemId(null)
+                              }
+                            }}
+                            disabled={idx === 0}
+                            title="Move up"
+                            className="shrink-0 w-5 h-5 rounded bg-gray-100 text-gray-600 text-[10px] font-bold flex items-center justify-center hover:bg-gray-200 disabled:opacity-30"
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm(`Move "${it.name}" down?`)) {
+                                moveBy(it.id, 1)
+                                setQuickArrangeItemId(null)
+                              }
+                            }}
+                            disabled={idx === gridItems.length - 1}
+                            title="Move down"
+                            className="shrink-0 w-5 h-5 rounded bg-gray-100 text-gray-600 text-[10px] font-bold flex items-center justify-center hover:bg-gray-200 disabled:opacity-30"
+                          >
+                            ↓
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm(`Move "${it.name}" to top?`)) {
+                                moveToTop(it.id)
+                                setQuickArrangeItemId(null)
+                              }
+                            }}
+                            disabled={idx === 0}
+                            title="Move to top"
+                            className="shrink-0 px-1.5 h-5 rounded bg-blue-50 text-blue-700 text-[9px] font-bold flex items-center justify-center hover:bg-blue-100 disabled:opacity-30"
+                          >
+                            ⤒ Top
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setQuickArrangeItemId(null)}
+                            title="Close"
+                            className="shrink-0 w-5 h-5 rounded bg-gray-200 text-gray-600 text-[10px] font-bold flex items-center justify-center hover:bg-gray-300"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )
