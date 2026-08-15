@@ -32,7 +32,7 @@ import LawsToggleBar from './_components/LawsToggleBar'
 import { useLawsPanel, useLawFilterState } from './_components/useLawsPanel'
 import { COLUMNS, type ColKey } from './_components/lossTabColumns'
 import { useColumnPrefs, ColumnsPickerButton } from './_components/columnPrefs'
-import { MANAGE_LIST_ITEMS, MANAGE_GROUP_LABELS, MANAGE_GROUP_ICONS, useFixedCategoryIds, type ManageView } from './_components/manageViewData'
+import { MANAGE_LIST_ITEMS, MANAGE_GROUP_LABELS, MANAGE_GROUP_ICONS, GRONY_CHECKS_ITEMS, useFixedCategoryIds, type ManageView } from './_components/manageViewData'
 import { STAFF_PERSONAL_ITEMS, STAFF_TEAM_ITEMS, STAFF_ADMIN_TEAM_ITEMS, type StaffView } from './_components/staffViewData'
 import { CH_ITEMS, CH_CHILD_PERSON, CH_PERSON_VIEW, type CHView } from './_components/chViewData'
 import { useUKData, UK_PEOPLE } from './_components/ukViewData'
@@ -1664,6 +1664,16 @@ function ItemHubPageInner() {
                         active={paneActive(lossView === entry.key)} badge={badge}
                         taskBadge={taskCountFor(entry.label)}
                         onClick={() => pickLossView(entry.key)} />
+                      {entry.key === 'grony_checks' && lossView === 'grony_checks' && (
+                        <div>
+                          {GRONY_CHECKS_ITEMS.slice(1).map((item, i) => (
+                            <SidePaneButton key={item.key} icon={item.icon} label={item.label} mode={cashDisplayMode} divider={i === 0}
+                              active={paneActive(lossView === item.key)}
+                              taskBadge={taskCountFor(item.label)}
+                              onClick={() => pickLossView(item.key)} />
+                          ))}
+                        </div>
+                      )}
                     </Fragment>
                   )
                 })
