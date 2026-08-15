@@ -675,13 +675,18 @@ function ItemHubPageInner() {
   // everyone else always views themself (see viewingName below).
   const [viewingNameOverride, setViewingNameOverride] = useState<string | undefined>(undefined)
 
-  // Active staff members fetched from /api/staff/status -- used to dynamically
+  // Active Biz staff members fetched from /api/staff/status -- used to dynamically
   // create individual staff member pages in the pane below STAFF_TEAM_ITEMS.
+  // Only includes staff in STAFF_ROSTER (Biz members), not all app users.
   const [activeStaff, setActiveStaff] = useState<{ username: string; active: boolean }[]>([])
   useEffect(() => {
     const fetchStaff = () => {
       fetch('/api/staff/status').then(r => r.ok ? r.json() : [])
-        .then(d => setActiveStaff(Array.isArray(d) ? d.filter((s: any) => s.active) : []))
+        .then(d => {
+          if (!Array.isArray(d)) return
+          const bizStaff = d.filter((s: any) => s.active && STAFF_ROSTER.some(name => name.toLowerCase() === s.username.toLowerCase()))
+          setActiveStaff(bizStaff)
+        })
         .catch(() => {})
     }
     fetchStaff()
