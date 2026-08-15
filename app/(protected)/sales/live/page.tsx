@@ -623,7 +623,15 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                   <div key={it.id} className="w-full px-0 pr-2 py-1.5 border-b border-gray-50 bg-white">
                     <div className="flex flex-wrap items-center gap-1.5">
                       {number}
-                      {/* Preset buttons flow from left, filling available space before item name */}
+                      <div className="flex items-center gap-1">
+                        {label}
+                        {count > 0 && (
+                          <span className="shrink-0 min-w-[0.9rem] h-[0.9rem] px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold flex items-center justify-center">
+                            {count}
+                          </span>
+                        )}
+                      </div>
+                      {/* Preset buttons follow item name */}
                       <div className="flex flex-wrap items-center gap-1">
                         {getPresetsForItem(it).map((q, qIdx) => {
                           const total = (Number(it.selling_price) || 0) * q
@@ -754,14 +762,6 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                           >
                             ✓
                           </button>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {label}
-                        {count > 0 && (
-                          <span className="shrink-0 min-w-[0.9rem] h-[0.9rem] px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold flex items-center justify-center">
-                            {count}
-                          </span>
                         )}
                       </div>
                       {quickArrangeItemId === it.id && (
