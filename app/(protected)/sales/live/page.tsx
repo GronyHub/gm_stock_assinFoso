@@ -546,7 +546,11 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                       {label}
                       <button
                         type="button"
-                        onClick={() => moveBy(it.id, -1)}
+                        onClick={() => {
+                          if (confirm(`Move "${it.name}" up?`)) {
+                            moveBy(it.id, -1)
+                          }
+                        }}
                         disabled={idx === 0}
                         title="Move up"
                         className="shrink-0 w-5 h-5 rounded bg-gray-100 text-gray-600 text-[10px] font-bold flex items-center justify-center hover:bg-gray-200 disabled:opacity-30"
@@ -555,7 +559,11 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                       </button>
                       <button
                         type="button"
-                        onClick={() => moveBy(it.id, 1)}
+                        onClick={() => {
+                          if (confirm(`Move "${it.name}" down?`)) {
+                            moveBy(it.id, 1)
+                          }
+                        }}
                         disabled={idx === gridItems.length - 1}
                         title="Move down"
                         className="shrink-0 w-5 h-5 rounded bg-gray-100 text-gray-600 text-[10px] font-bold flex items-center justify-center hover:bg-gray-200 disabled:opacity-30"
@@ -564,7 +572,11 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                       </button>
                       <button
                         type="button"
-                        onClick={() => moveToTop(it.id)}
+                        onClick={() => {
+                          if (confirm(`Move "${it.name}" to top?`)) {
+                            moveToTop(it.id)
+                          }
+                        }}
                         disabled={idx === 0}
                         title="Move to top"
                         className="shrink-0 px-1.5 h-5 rounded bg-blue-50 text-blue-700 text-[9px] font-bold flex items-center justify-center hover:bg-blue-100 disabled:opacity-30"
@@ -623,7 +635,12 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                         <div className="ml-auto flex items-center gap-1">
                           <button
                             type="button"
-                            onClick={() => moveBy(it.id, -1)}
+                            onClick={() => {
+                              if (confirm(`Move "${it.name}" up?`)) {
+                                moveBy(it.id, -1)
+                                setQuickArrangeItemId(null)
+                              }
+                            }}
                             disabled={idx === 0}
                             title="Move up"
                             className="shrink-0 w-5 h-5 rounded bg-gray-100 text-gray-600 text-[10px] font-bold flex items-center justify-center hover:bg-gray-200 disabled:opacity-30"
@@ -632,7 +649,12 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                           </button>
                           <button
                             type="button"
-                            onClick={() => moveBy(it.id, 1)}
+                            onClick={() => {
+                              if (confirm(`Move "${it.name}" down?`)) {
+                                moveBy(it.id, 1)
+                                setQuickArrangeItemId(null)
+                              }
+                            }}
                             disabled={idx === gridItems.length - 1}
                             title="Move down"
                             className="shrink-0 w-5 h-5 rounded bg-gray-100 text-gray-600 text-[10px] font-bold flex items-center justify-center hover:bg-gray-200 disabled:opacity-30"
@@ -641,7 +663,12 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                           </button>
                           <button
                             type="button"
-                            onClick={() => moveToTop(it.id)}
+                            onClick={() => {
+                              if (confirm(`Move "${it.name}" to top?`)) {
+                                moveToTop(it.id)
+                                setQuickArrangeItemId(null)
+                              }
+                            }}
                             disabled={idx === 0}
                             title="Move to top"
                             className="shrink-0 px-1.5 h-5 rounded bg-blue-50 text-blue-700 text-[9px] font-bold flex items-center justify-center hover:bg-blue-100 disabled:opacity-30"
