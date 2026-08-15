@@ -619,8 +619,9 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                 }
 
                 const pending = pendingItemId === it.id
+                const bgColor = idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                 return (
-                  <div key={it.id} className="w-full px-0 pr-2 py-1.5 border-b border-gray-50 bg-white">
+                  <div key={it.id} className={`w-full px-0 pr-2 py-1.5 border-b border-gray-200 ${bgColor}`}>
                     <div className="flex flex-wrap items-center gap-1.5">
                       {number}
                       <div className="flex items-center gap-1">
