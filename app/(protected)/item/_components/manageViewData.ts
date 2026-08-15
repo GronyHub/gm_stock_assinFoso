@@ -48,6 +48,7 @@ export const LOG_CATEGORIES: { key: ManageView; label: string; icon: string }[] 
 // sit next to each other in the underlying (reorderable) list.
 export const MANAGE_GROUP_LABELS: Record<string, string> = {
   advert: 'Advert',
+  Manage: 'Manage',
 }
 
 // Icons for manage group headers
