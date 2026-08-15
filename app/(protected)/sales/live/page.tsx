@@ -339,6 +339,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
             hideZeroFlags={lawsPanel.hideZeroFlags}
             setHideZeroFlags={lawsPanel.setHideZeroFlags}
             activeFilters={lawsPanel.activeFilters}
+            toggleFilter={lawsPanel.toggleFilter}
           />
         </div>
       )}
