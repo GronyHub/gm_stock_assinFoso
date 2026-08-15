@@ -557,14 +557,14 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                             }
                           }}
                           disabled={pending}
-                          className="min-w-[2rem] h-7 px-1.5 rounded-lg bg-gray-100 text-gray-700 text-[11px] font-bold border border-gray-300 text-center focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-40 transition"
+                          className="w-8 h-7 px-0.5 rounded-lg bg-gray-100 text-gray-700 text-[10px] font-bold border border-gray-300 text-center focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-40 transition"
                         />
                         {manualAmounts[it.id] && (
                           <button
                             type="button"
                             onClick={() => submitManualAmount(it)}
                             disabled={pending}
-                            className="min-w-[2rem] h-7 px-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-[11px] font-bold flex items-center justify-center transition disabled:opacity-40"
+                            className="w-6 h-7 rounded-lg bg-green-600 hover:bg-green-700 text-white text-[9px] font-bold flex items-center justify-center transition disabled:opacity-40"
                           >
                             ✓
                           </button>
