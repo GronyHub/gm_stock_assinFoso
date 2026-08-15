@@ -445,33 +445,6 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                 {name}
               </button>
             ))}
-            {/* ml-auto pushes this to the row's right edge -- anchored any
-                closer to the left, the dropdown (which opens from its own
-                right edge, extending leftward) ran out of room on a phone
-                and got clipped by the left pane. */}
-            <button
-              type="button"
-              onClick={async () => {
-                for (const [date] of tapsByDate) {
-                  try {
-                    await fetch('/api/sales/live-sale', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ date }),
-                    })
-                  } catch (e) {
-                    console.error(`Failed to create sale for ${date}:`, e)
-                  }
-                }
-                // Refresh the taps
-                const res = await fetch('/api/sales/live-taps')
-                const data = await res.json()
-                setTaps(Array.isArray(data) ? data : [])
-              }}
-              className="px-2 py-1 rounded-lg text-xs font-semibold bg-green-600 text-white hover:bg-green-700 border border-green-700"
-            >
-              Create Daily Sales
-            </button>
             <div className="ml-auto">
               <ColumnsPickerButton prefs={logColPrefs} />
             </div>
@@ -509,9 +482,6 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                 </thead>
                 <tbody>
                   {tapsByDate.map(([date, dayTaps]) => {
-                    const regularTaps = dayTaps.filter(t => t.item_name !== 'Sale')
-                    const saleTap = dayTaps.find(t => t.item_name === 'Sale')
-                    const dayTotal = regularTaps.reduce((sum, t) => sum + (t.undone ? 0 : Number(t.price) * t.quantity), 0)
                     const dateObj = new Date(date)
                     const dateLabel = dateObj.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: dateObj.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined })
                     return (
@@ -521,7 +491,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                             📅 {dateLabel}
                           </td>
                         </tr>
-                        {regularTaps.map((t) => (
+                        {dayTaps.map((t) => (
                           <tr
                             key={t.id}
                             className={`border-b border-gray-50 ${t.undone ? 'bg-gray-50 text-gray-400 line-through' : 'bg-white'}`}
@@ -552,19 +522,6 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                             </td>
                           </tr>
                         ))}
-                        {saleTap && (
-                          <tr className="bg-green-100 border-b border-green-300 font-bold">
-                            {logColPrefs.shownColumns.map((c) => (
-                              <td key={c.key}
-                                className={`px-2 py-1.5 text-[9px] font-bold text-green-800 ${c.key === 'item' ? 'sticky left-0 bg-green-100 z-10' : ''} ${c.key === 'sp' || c.key === 'qty' || c.key === 'total' ? 'text-right' : ''}`}
-                              >
-                                {c.key === 'item' && '💰 Sale'}
-                                {c.key === 'total' && money(dayTotal)}
-                              </td>
-                            ))}
-                            <td />
-                          </tr>
-                        )}
                       </Fragment>
                     )
                   })}

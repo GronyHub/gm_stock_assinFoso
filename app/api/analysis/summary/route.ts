@@ -24,28 +24,57 @@ export async function GET() {
       mostCountedItems,
     ] = await Promise.all([
       // SALES ─────────────────────────────────────────────────────────────
+      // Consolidate both New Sale (sales_receipts) and Live Sale (live_sale_taps)
       sql`
         SELECT
-          to_char(receipt_date, 'YYYY-MM') AS month,
-          SUM(CASE WHEN customer_name IS DISTINCT FROM 'Grony Multimedia as Customer' THEN total ELSE 0 END) AS wic,
-          SUM(CASE WHEN customer_name = 'Grony Multimedia as Customer' THEN total ELSE 0 END) AS gmc,
-          SUM(total) AS total
-        FROM sales_receipts
-        WHERE receipt_date IS NOT NULL
-        GROUP BY 1 ORDER BY 1
+          to_char(month_date, 'YYYY-MM') AS month,
+          SUM(CASE WHEN customer_type = 'wic' THEN amount ELSE 0 END) AS wic,
+          SUM(CASE WHEN customer_type = 'gmc' THEN amount ELSE 0 END) AS gmc,
+          SUM(amount) AS total
+        FROM (
+          SELECT to_char(sr.receipt_date, 'YYYY-MM') AS month_date,
+            CASE WHEN sr.customer_name = 'Grony Multimedia as Customer' THEN 'gmc' ELSE 'wic' END AS customer_type,
+            sr.total AS amount
+          FROM sales_receipts sr
+          WHERE sr.receipt_date IS NOT NULL
+          UNION ALL
+          SELECT to_char(lst.tapped_at::date, 'YYYY-MM') AS month_date, 'wic' AS customer_type,
+            (lst.price::numeric * lst.quantity) AS amount
+          FROM live_sale_taps lst
+          WHERE lst.undone = false AND lst.tapped_at IS NOT NULL
+        ) combined
+        GROUP BY month_date ORDER BY month_date
       `,
       sql`
-        SELECT receipt_date::date AS date, SUM(total) AS total
-        FROM sales_receipts
-        WHERE receipt_date >= CURRENT_DATE - INTERVAL '30 days'
-        GROUP BY 1 ORDER BY 1
+        SELECT date, SUM(total) AS total
+        FROM (
+          SELECT sr.receipt_date::date AS date, sr.total
+          FROM sales_receipts sr
+          WHERE sr.receipt_date >= CURRENT_DATE - INTERVAL '30 days'
+          UNION ALL
+          SELECT lst.tapped_at::date AS date, (lst.price::numeric * lst.quantity) AS total
+          FROM live_sale_taps lst
+          WHERE lst.undone = false AND lst.tapped_at >= CURRENT_DATE - INTERVAL '30 days'
+        ) combined
+        GROUP BY date ORDER BY date
       `,
       sql`
-        SELECT COALESCE(resolved_name, raw_item_name) AS item_name,
-          SUM(quantity) AS qty, SUM(item_total) AS revenue
-        FROM sales_receipt_lines
-        WHERE item_total IS NOT NULL
-        GROUP BY 1 ORDER BY revenue DESC LIMIT 10
+        SELECT item_name,
+          SUM(qty) AS qty, SUM(revenue) AS revenue
+        FROM (
+          SELECT COALESCE(srl.resolved_name, srl.raw_item_name) AS item_name,
+            SUM(srl.quantity) AS qty, SUM(srl.item_total) AS revenue
+          FROM sales_receipt_lines srl
+          WHERE srl.item_total IS NOT NULL
+          GROUP BY COALESCE(srl.resolved_name, srl.raw_item_name)
+          UNION ALL
+          SELECT lst.item_name,
+            SUM(lst.quantity) AS qty, SUM(lst.price::numeric * lst.quantity) AS revenue
+          FROM live_sale_taps lst
+          WHERE lst.undone = false
+          GROUP BY lst.item_name
+        ) combined
+        GROUP BY item_name ORDER BY revenue DESC LIMIT 10
       `,
       sql`
         SELECT to_char(receipt_date, 'YYYY-MM') AS month,
