@@ -934,7 +934,7 @@ export default function PageLawsList({
         </div>
       )}
 
-      {visibleLaws.length === 0 && visibleFlags.length === 0 && visibleGlobalTasks.length === 0 ? (
+      {visibleLaws.length === 0 && visibleFlags.length === 0 && visibleGlobalTasks.length === 0 && !(isItemsLaws && openForm === 'task') ? (
         <div className={`${isItemsLaws ? 'py-6' : 'px-2 py-4 bg-white border-b border-gray-200'} text-center`}>
           <p className="text-[11px] text-gray-400">{anyFilterActive ? 'Nothing matches this filter.' : 'No laws yet.'}</p>
         </div>
