@@ -2518,6 +2518,7 @@ function ItemHubPageInner() {
               once UK and/or C&H access exists. The "+" shortcut menu (see
               AddShortcutButton/handleShortcut) rejoins this row too --
               always shown, same as when it was its own floating button. */}
+          {!(addForm === 'live' || addForm === 'liveLog') && (
           <div className="shrink-0 flex items-center justify-evenly py-2 bg-white border-t border-gray-200">
             {(canSeeUK || canSeeCH) && (
               <button onClick={() => changeTab('loss')} title="Biz"
@@ -2554,6 +2555,7 @@ function ItemHubPageInner() {
             </button>
             <AddShortcutButton onShortcut={handleShortcut} />
           </div>
+          )}
         </div>
       </div>
 
