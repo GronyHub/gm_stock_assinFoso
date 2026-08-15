@@ -753,10 +753,10 @@ export default function PageLawsList({
             ))}
           </div>
         )}
-        {note?.notes !== undefined && note?.notes !== '' && (
+        {note && (note?.notes !== undefined && note?.notes !== '' || note?.topic) && (
           <div className="p-1 bg-amber-50/50 border border-amber-100 rounded text-[8px] text-gray-800">
             <p className="font-semibold">📝 {note.topic || 'Note'}</p>
-            <p className="text-[7px] text-gray-600 mt-0.5">{note.notes}</p>
+            {note.notes && <p className="text-[7px] text-gray-600 mt-0.5">{note.notes}</p>}
             {note.noteDate && <p className="text-[7px] text-gray-500 mt-0.5">{formatDate(note.noteDate)}</p>}
           </div>
         )}
