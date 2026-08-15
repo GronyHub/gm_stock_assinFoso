@@ -36,7 +36,7 @@ export default function LawsToggleBar({
   const idleCls = dark ? 'text-white hover:bg-white/10' : 'text-gray-500 hover:bg-gray-100'
 
   return (
-    <>
+    <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
       <button onClick={() => setShow(o => !o)} title="Show laws on this page"
         className={`shrink-0 text-sm leading-none px-1.5 py-1 rounded-lg transition ${show ? activeCls : idleCls}`}>
         ⚖️
@@ -72,6 +72,6 @@ export default function LawsToggleBar({
           </label>
         </>
       )}
-    </>
+    </div>
   )
 }
