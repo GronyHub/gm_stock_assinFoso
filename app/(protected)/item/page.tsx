@@ -1361,7 +1361,12 @@ function ItemHubPageInner() {
   // pane immediately, not just after a refresh.
   const [paneOrder, setPaneOrder] = useState<PaneOrderMap>({})
   useEffect(() => {
-    fetch('/api/pane-order').then(r => r.ok ? r.json() : {}).then(setPaneOrder).catch(() => {})
+    const fetchOrder = () => {
+      fetch('/api/pane-order').then(r => r.ok ? r.json() : {}).then(setPaneOrder).catch(() => {})
+    }
+    fetchOrder()
+    const interval = setInterval(fetchOrder, 5000)
+    return () => clearInterval(interval)
   }, [])
   // Same shared-with-everyone pattern as paneOrder above, but for display
   // labels instead of row order -- see ReorderListsPanel.tsx and
@@ -1370,7 +1375,12 @@ function ItemHubPageInner() {
   // changes, so this can't orphan any of that data.
   const [paneLabels, setPaneLabels] = useState<Record<string, string>>({})
   useEffect(() => {
-    fetch('/api/pane-labels').then(r => r.ok ? r.json() : {}).then(setPaneLabels).catch(() => {})
+    const fetchLabels = () => {
+      fetch('/api/pane-labels').then(r => r.ok ? r.json() : {}).then(setPaneLabels).catch(() => {})
+    }
+    fetchLabels()
+    const interval = setInterval(fetchLabels, 5000)
+    return () => clearInterval(interval)
   }, [])
   const paneLabel = (key: string, fallback: string) => paneLabels[key] ?? fallback
   // Same shared-with-everyone pattern again, but for which section a Cash
@@ -1384,7 +1394,12 @@ function ItemHubPageInner() {
   // isSelfTitled/chipLabel/chipBorder end up applied per row.
   const [paneGroups, setPaneGroups] = useState<Record<string, { group_name: string | null; standalone: boolean }>>({})
   useEffect(() => {
-    fetch('/api/pane-groups').then(r => r.ok ? r.json() : {}).then(setPaneGroups).catch(() => {})
+    const fetchGroups = () => {
+      fetch('/api/pane-groups').then(r => r.ok ? r.json() : {}).then(setPaneGroups).catch(() => {})
+    }
+    fetchGroups()
+    const interval = setInterval(fetchGroups, 5000)
+    return () => clearInterval(interval)
   }, [])
   const effectiveCashItems = CASH_ITEMS.map(item => {
     const override = paneGroups[item.key]
