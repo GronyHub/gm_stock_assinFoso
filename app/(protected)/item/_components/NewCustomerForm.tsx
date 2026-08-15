@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import LocationField from '@/components/LocationField'
 
 type Customer = {
@@ -34,6 +34,38 @@ export default function NewCustomerForm({ onCreated, onCancel, initialDisplayNam
   const [whatsappAdded, setWhatsappAdded] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showLocationManager, setShowLocationManager] = useState(false)
+  const [newLocationName, setNewLocationName] = useState('')
+  const [addingLocation, setAddingLocation] = useState(false)
+  const [locationError, setLocationError] = useState<string | null>(null)
+
+  async function addNewLocation() {
+    const name = newLocationName.trim()
+    if (!name) return
+
+    setAddingLocation(true)
+    setLocationError(null)
+    try {
+      const res = await fetch('/api/locations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ location: name }),
+      })
+
+      if (res.ok) {
+        setNewLocationName('')
+        // Optionally set it as the current location
+        setLocation(name)
+      } else {
+        const data = await res.json().catch(() => ({}))
+        setLocationError(data.error || 'Could not add location.')
+      }
+    } catch (err) {
+      setLocationError('Failed to add location.')
+    } finally {
+      setAddingLocation(false)
+    }
+  }
 
   async function submit() {
     setError(null)
@@ -89,7 +121,34 @@ export default function NewCustomerForm({ onCreated, onCancel, initialDisplayNam
           <input type="email" value={email} onChange={e => setEmail(e.target.value)} className={inputCls} />
         </div>
       </div>
-      <LocationField value={location} onChange={setLocation} />
+      <div className="border border-gray-200 rounded-lg p-3 bg-blue-50 space-y-2">
+        <div className="flex items-center justify-between">
+          <label className={labelCls}>Location</label>
+          <button type="button" onClick={() => setShowLocationManager(!showLocationManager)}
+            className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+            {showLocationManager ? '− Manage' : '+ Add Location'}
+          </button>
+        </div>
+
+        {showLocationManager && (
+          <div className="bg-white border border-blue-200 rounded-lg p-2 space-y-2">
+            <div className="flex gap-2">
+              <input value={newLocationName} onChange={e => setNewLocationName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addNewLocation()}
+                placeholder="Type new location (e.g., Accra, Kumasi)"
+                className="flex-1 bg-gray-100 border border-gray-200 rounded px-2 py-1.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-400" />
+              <button type="button" onClick={addNewLocation} disabled={addingLocation || !newLocationName.trim()}
+                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-semibold rounded transition">
+                {addingLocation ? 'Adding…' : 'Add'}
+              </button>
+            </div>
+            {locationError && <p className="text-xs text-red-600">{locationError}</p>}
+            <p className="text-[10px] text-gray-500">Add new locations that will be available for all customers and vendors.</p>
+          </div>
+        )}
+
+        <LocationField value={location} onChange={setLocation} />
+      </div>
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className={labelCls}>Last Visited</label>
