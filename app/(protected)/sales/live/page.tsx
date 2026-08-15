@@ -603,44 +603,61 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                           const total = (Number(it.selling_price) || 0) * q
                           const pressed = pending && pendingQty === q
                           const isEditing = editingButton?.itemId === it.id && editingButton?.index === qIdx
+                          const presets = getPresetsForItem(it)
 
                           if (isEditing) {
                             return (
-                              <input
-                                key={`edit-${qIdx}`}
-                                type="number"
-                                inputMode="numeric"
-                                autoFocus
-                                value={editingValue}
-                                onChange={(e) => setEditingValue(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    e.preventDefault()
+                              <div key={`edit-${qIdx}`} className="flex items-center gap-0.5">
+                                <input
+                                  type="number"
+                                  inputMode="numeric"
+                                  autoFocus
+                                  value={editingValue}
+                                  onChange={(e) => setEditingValue(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault()
+                                      const newVal = Number(editingValue)
+                                      if (!isNaN(newVal) && newVal > 0) {
+                                        const newPresets = [...presets]
+                                        newPresets[qIdx] = newVal
+                                        setPresetsForItem(it.id, newPresets)
+                                      }
+                                      setEditingButton(null)
+                                      setEditingValue('')
+                                    } else if (e.key === 'Escape') {
+                                      setEditingButton(null)
+                                      setEditingValue('')
+                                    }
+                                  }}
+                                  onBlur={() => {
                                     const newVal = Number(editingValue)
                                     if (!isNaN(newVal) && newVal > 0) {
-                                      const presets = [...getPresetsForItem(it)]
-                                      presets[qIdx] = newVal
-                                      setPresetsForItem(it.id, presets)
+                                      const newPresets = [...presets]
+                                      newPresets[qIdx] = newVal
+                                      setPresetsForItem(it.id, newPresets)
                                     }
                                     setEditingButton(null)
                                     setEditingValue('')
-                                  } else if (e.key === 'Escape') {
-                                    setEditingButton(null)
-                                    setEditingValue('')
-                                  }
-                                }}
-                                onBlur={() => {
-                                  const newVal = Number(editingValue)
-                                  if (!isNaN(newVal) && newVal > 0) {
-                                    const presets = [...getPresetsForItem(it)]
-                                    presets[qIdx] = newVal
-                                    setPresetsForItem(it.id, presets)
-                                  }
-                                  setEditingButton(null)
-                                  setEditingValue('')
-                                }}
-                                className="w-12 h-7 px-0.5 rounded-lg bg-yellow-50 text-yellow-700 text-[11px] font-bold border-2 border-yellow-400 text-center focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                              />
+                                  }}
+                                  className="w-12 h-7 px-0.5 rounded-lg bg-yellow-50 text-yellow-700 text-[11px] font-bold border-2 border-yellow-400 text-center focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                                />
+                                {presets.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const newPresets = presets.filter((_, i) => i !== qIdx)
+                                      setPresetsForItem(it.id, newPresets)
+                                      setEditingButton(null)
+                                      setEditingValue('')
+                                    }}
+                                    className="w-5 h-7 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[9px] font-bold flex items-center justify-center transition"
+                                    title="Delete this preset"
+                                  >
+                                    −
+                                  </button>
+                                )}
+                              </div>
                             )
                           }
 
@@ -678,6 +695,19 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                             </button>
                           )
                         })}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const presets = getPresetsForItem(it)
+                            setPresetsForItem(it.id, [...presets, 0])
+                            setEditingButton({ itemId: it.id, index: presets.length })
+                            setEditingValue('')
+                          }}
+                          className="w-5 h-7 rounded-lg bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold flex items-center justify-center transition"
+                          title="Add new preset"
+                        >
+                          +
+                        </button>
                         <input
                           type="number"
                           inputMode="numeric"
