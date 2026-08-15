@@ -51,6 +51,12 @@ export const MANAGE_GROUP_LABELS: Record<string, string> = {
   grony_1_to_10: 'GN 1-10 CHK',
 }
 
+// Icons for manage group headers
+export const MANAGE_GROUP_ICONS: Record<string, string> = {
+  advert: '📢',
+  grony_1_to_10: '⚖️',
+}
+
 // Which of LOG_CATEGORIES' rows belong to the "Grony 1 to 10 checks" group
 // once spread into MANAGE_LIST_ITEMS below -- kept separate from
 // LOG_CATEGORIES itself since that array is also used unmodified for

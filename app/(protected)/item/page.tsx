@@ -32,7 +32,7 @@ import LawsToggleBar from './_components/LawsToggleBar'
 import { useLawsPanel, useLawFilterState } from './_components/useLawsPanel'
 import { COLUMNS, type ColKey } from './_components/lossTabColumns'
 import { useColumnPrefs, ColumnsPickerButton } from './_components/columnPrefs'
-import { MANAGE_LIST_ITEMS, MANAGE_GROUP_LABELS, useFixedCategoryIds, type ManageView } from './_components/manageViewData'
+import { MANAGE_LIST_ITEMS, MANAGE_GROUP_LABELS, MANAGE_GROUP_ICONS, useFixedCategoryIds, type ManageView } from './_components/manageViewData'
 import { STAFF_PERSONAL_ITEMS, STAFF_TEAM_ITEMS, STAFF_ADMIN_TEAM_ITEMS, type StaffView } from './_components/staffViewData'
 import { CH_ITEMS, CH_CHILD_PERSON, CH_PERSON_VIEW, type CHView } from './_components/chViewData'
 import { useUKData, UK_PEOPLE } from './_components/ukViewData'
@@ -1640,20 +1640,34 @@ function ItemHubPageInner() {
 
             {canSeeManage && (
             <div className="mt-1 pt-1 border-t border-white/30">
-              {applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage).map((entry, i) => {
-                const badge = entry.key === 'opener' ? openerBadgeCount
-                  : entry.key === 'closer' ? (globalFlags?.missingClosingReports?.length ?? 0)
-                  : entry.key === 'jingle' ? jingleFlagsCount
-                  : entry.key === 'equipment' ? equipmentFlagsCount
-                  : entry.key === 'audio_status' ? advertStatusFlagsCount
-                  : undefined
-                return (
-                  <SidePaneButton key={entry.key} icon={entry.icon} label={paneLabel(entry.key, entry.label)} mode={cashDisplayMode} divider={i > 0}
-                    active={paneActive(lossView === entry.key)} badge={badge}
-                    taskBadge={taskCountFor(entry.label)}
-                    onClick={() => pickLossView(entry.key)} />
-                )
-              })}
+              {(() => {
+                const orderedItems = applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage)
+                const runs = buildPaneRuns(orderedItems)
+                const flatRows = flattenPaneRuns(runs, MANAGE_GROUP_LABELS)
+                return flatRows.map((row, idx) => {
+                  const entry = row.item
+                  const badge = entry.key === 'opener' ? openerBadgeCount
+                    : entry.key === 'closer' ? (globalFlags?.missingClosingReports?.length ?? 0)
+                    : entry.key === 'jingle' ? jingleFlagsCount
+                    : entry.key === 'equipment' ? equipmentFlagsCount
+                    : entry.key === 'audio_status' ? advertStatusFlagsCount
+                    : undefined
+                  return (
+                    <Fragment key={`${entry.key}-${idx}`}>
+                      {row.header && (
+                        <div className="flex items-center gap-1.5 px-1 py-1 text-[9px] font-bold text-blue-200 uppercase tracking-wide">
+                          <span className="text-sm">{MANAGE_GROUP_ICONS[row.header] || '•'}</span>
+                          <span>{row.header}</span>
+                        </div>
+                      )}
+                      <SidePaneButton icon={entry.icon} label={paneLabel(entry.key, entry.label)} mode={cashDisplayMode} divider={row.divider}
+                        active={paneActive(lossView === entry.key)} badge={badge}
+                        taskBadge={taskCountFor(entry.label)}
+                        onClick={() => pickLossView(entry.key)} />
+                    </Fragment>
+                  )
+                })
+              })()}
             </div>
             )}
 
