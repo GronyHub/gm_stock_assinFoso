@@ -85,26 +85,7 @@ export default function GronyManageContent({
       <CloserView missingClosingReportsCount={missingClosingReportsCount} onOpenStaff={onOpenStaff} />
     </>)}
     {view === 'advert' && (<>
-      <div className="px-2 pt-2 flex flex-nowrap items-center gap-1.5 overflow-x-auto">
-        <LawsToggleBar show={advertLaws.show} setShow={advertLaws.setShow}
-          openForm={advertLaws.openForm} setOpenForm={advertLaws.setOpenForm}
-          hideZeroFlags={advertLaws.hideZeroFlags} setHideZeroFlags={advertLaws.setHideZeroFlags}
-          activeFilters={advertLaws.activeFilters} toggleFilter={advertLaws.toggleFilter} dark={false} />
-      </div>
-      {advertLaws.show && (
-        <div className="px-2">
-          <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
-            <div className="divide-y">
-              {ADVERT_ITEMS.map((item) => (
-                <button key={item.key} onClick={() => setSelectedAdvertItem(item.key)} className="w-full text-left px-4 py-3 hover:bg-blue-50 transition flex items-center gap-3">
-                  <span className="text-lg">{item.icon}</span>
-                  <span className="text-sm font-medium text-gray-900">{item.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      {inlineLaws('Advert', advertLaws)}
       {selectedAdvertItem === 'audio' && <ContentPage contentKey="advert_audio_roadside" title="Advert 1 — Audio (for Roadside)" submenu="Audio" />}
       {selectedAdvertItem === 'audio_status' && <AdvertStatusPanel />}
       {selectedAdvertItem === 'jingle' && <ManageLogPanel category="audio_jingle" label="Jingle Log" icon="🎵" />}
@@ -125,26 +106,7 @@ export default function GronyManageContent({
       <DynamicCategoryPage categoryId={categoryIds[FIXED_CATEGORY_LABELS.app_info]} categoryLabel="App info" canManage={canManage} />
     )}
     {view === 'grony_checks' && (<>
-      <div className="px-2 pt-2 flex flex-nowrap items-center gap-1.5 overflow-x-auto">
-        <LawsToggleBar show={gronyChecksLaws.show} setShow={gronyChecksLaws.setShow}
-          openForm={gronyChecksLaws.openForm} setOpenForm={gronyChecksLaws.setOpenForm}
-          hideZeroFlags={gronyChecksLaws.hideZeroFlags} setHideZeroFlags={gronyChecksLaws.setHideZeroFlags}
-          activeFilters={gronyChecksLaws.activeFilters} toggleFilter={gronyChecksLaws.toggleFilter} dark={false} />
-      </div>
-      {gronyChecksLaws.show && (
-        <div className="px-2">
-          <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
-            <div className="divide-y">
-              {GRONY_CHECKS_ITEMS.map((item) => (
-                <button key={item.key} onClick={() => setSelectedGronyCheckItem(item.key)} className="w-full text-left px-4 py-3 hover:bg-blue-50 transition flex items-center gap-3">
-                  <span className="text-lg">{item.icon}</span>
-                  <span className="text-sm font-medium text-gray-900">{item.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      {inlineLaws('Grony Checks', gronyChecksLaws)}
       {selectedGronyCheckItem === 'grony_checks' && <GronyChecksGrid />}
       {selectedGronyCheckItem === 'arrangement' && <ManageLogPanel category="arrangement" label="Arrangement" icon="🪑" />}
       {selectedGronyCheckItem === 'cleanliness' && <ManageLogPanel category="cleanliness" label="Cleanliness" icon="🧹" />}
