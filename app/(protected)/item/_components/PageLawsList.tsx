@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { ASSIGNABLE_STAFF } from './violationAssignments'
 import type { LawFilterKey } from './useLawsPanel'
 
-type Law = { id: number; text: string; created_at: string }
+type Law = { id: number; text: string; created_at: string; onViewClick?: () => void }
 
 type Task = {
   id: number
@@ -69,6 +69,7 @@ export default function PageLawsList({
   activeFilters,
   customViewNames = {},
   onSaveViewName,
+  onLawClick,
 }: {
   scopeKey: string
   onChange?: () => void
@@ -81,6 +82,7 @@ export default function PageLawsList({
   activeFilters?: Set<LawFilterKey>
   customViewNames?: Record<string, string>
   onSaveViewName?: (viewKey: string, customLabel: string) => void
+  onLawClick?: (lawId: number) => void
 }) {
   const [laws, setLaws] = useState<Law[]>([])
   const [globalTasks, setGlobalTasks] = useState<Task[]>([])
@@ -834,7 +836,9 @@ export default function PageLawsList({
         </div>
       ) : (
         <div className={`bg-white ${isItemsLaws ? 'divide-y divide-gray-100' : 'border border-gray-200 rounded-lg divide-y divide-gray-50'}`}>
-          {orderedLaws.map((l, i) => (
+          {orderedLaws.map((l, i) => {
+            const lawWithClick = onLawClick ? { ...l, onViewClick: () => onLawClick(l.id) } : l
+            return (
             <div key={l.id} className="flex items-start gap-1 px-1 py-0.5 bg-gray-50/50"
               onMouseDown={() => lawPress.onMouseDown(l.id)} onMouseUp={lawPress.onMouseUp}
               onTouchStart={() => lawPress.onTouchStart(l.id)} onTouchEnd={lawPress.onTouchEnd}>
@@ -855,7 +859,14 @@ export default function PageLawsList({
               ) : (
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1 flex-wrap leading-none">
-                    <p className="text-[9px] text-gray-800">{l.text}</p>
+                    {lawWithClick.onViewClick && (
+                      <button type="button" onClick={lawWithClick.onViewClick} className="text-[9px] font-medium transition text-gray-800 hover:text-blue-600 hover:underline">
+                        {lawWithClick.text}
+                      </button>
+                    )}
+                    {!lawWithClick.onViewClick && (
+                      <p className="text-[9px] text-gray-800">{lawWithClick.text}</p>
+                    )}
                     {taskForLaw !== l.id && noteForLaw !== l.id && (
                       <>
                         <button type="button" onClick={() => { setTaskForLaw(l.id); fetchTasksForLaw(l.id) }} title="Add task" className="text-blue-500 hover:text-blue-600 font-semibold text-[8px]">✓ +</button>
@@ -882,7 +893,8 @@ export default function PageLawsList({
                 </div>
               )}
             </div>
-          ))}
+            )
+          })}
           {(() => {
             const propertyTypeKeys = ['printers', 'computers']
             const propertyTypeFlags = orderedFlags.filter(f => propertyTypeKeys.includes(f.key.toLowerCase()))
