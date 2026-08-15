@@ -149,6 +149,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
   // that set it (see the Shared Settings policy).
   const [manualOrder, setManualOrder] = useState<number[]>([])
   const [manualAmounts, setManualAmounts] = useState<Record<number, string>>({})
+  const [positionInputs, setPositionInputs] = useState<Record<number, string>>({})
   useEffect(() => {
     fetch(`/api/app-settings?key=${ORDER_KEY}`)
       .then(r => r.ok ? r.json() : { value: null })
@@ -276,6 +277,20 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
     }
     setManualAmounts((prev) => ({ ...prev, [item.id]: '' }))
     tap(item, qty)
+  }
+
+  function moveToPosition(itemId: number, targetPos: number) {
+    const ids = fullOrderedItems.map((it) => it.id)
+    const currentIdx = ids.indexOf(itemId)
+    if (currentIdx < 0) return
+    // Convert 1-based position to 0-based index
+    const newIdx = Math.max(0, Math.min(ids.length - 1, targetPos - 1))
+    if (newIdx === currentIdx) return
+    // Remove item and insert at new position
+    const newIds = ids.filter((id) => id !== itemId)
+    newIds.splice(newIdx, 0, itemId)
+    persistOrder(newIds)
+    setPositionInputs((prev) => ({ ...prev, [itemId]: '' }))
   }
 
   async function undo(tapId: number) {
@@ -503,6 +518,37 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                       >
                         ⤒ Top
                       </button>
+                      <div className="ml-auto flex items-center gap-1">
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          placeholder="pos"
+                          min="1"
+                          max={fullOrderedItems.length}
+                          value={positionInputs[it.id] ?? ''}
+                          onChange={(e) => setPositionInputs((prev) => ({ ...prev, [it.id]: e.target.value }))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              const pos = Number(positionInputs[it.id])
+                              if (!isNaN(pos)) moveToPosition(it.id, pos)
+                            }
+                          }}
+                          className="w-12 h-5 px-0.5 rounded bg-white text-gray-700 text-[9px] font-bold border border-gray-300 text-center focus:outline-none focus:ring-1 focus:ring-blue-400"
+                        />
+                        {positionInputs[it.id] && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const pos = Number(positionInputs[it.id])
+                              if (!isNaN(pos)) moveToPosition(it.id, pos)
+                            }}
+                            className="w-5 h-5 rounded bg-green-600 hover:bg-green-700 text-white text-[8px] font-bold flex items-center justify-center"
+                          >
+                            ✓
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )
                 }
