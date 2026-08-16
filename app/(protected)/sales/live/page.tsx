@@ -6,6 +6,7 @@ import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from
 import PageLawsList from '../../item/_components/PageLawsList'
 import LawsToggleBar from '../../item/_components/LawsToggleBar'
 import { useLawsPanel } from '../../item/_components/useLawsPanel'
+import { TrainingGuideModal } from './_components/TrainingGuideModal'
 
 type GridItem = {
   id: number
@@ -160,6 +161,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
   const [quickArrangeItemId, setQuickArrangeItemId] = useState<number | null>(null)
   const [currentPage, setCurrentPage] = useState(0)
   const [itemsPerPage, setItemsPerPage] = useState(5)
+  const [showHelpModal, setShowHelpModal] = useState(false)
   const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const touchStartXRef = useRef(0)
   const itemsContainerRef = useRef<HTMLDivElement>(null)
@@ -537,6 +539,16 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
             <p className="text-sm text-gray-400">Loading items…</p>
           ) : (
             <div>
+              {/* Help button */}
+              <div className="px-2 py-2 border-b border-gray-200 bg-blue-50">
+                <button
+                  onClick={() => setShowHelpModal(true)}
+                  className="text-xs font-semibold text-blue-700 hover:text-blue-600 px-3 py-1.5 rounded bg-white border border-blue-200 hover:bg-blue-100 transition"
+                >
+                  ? Help & Training
+                </button>
+              </div>
+            <div>
               {/* Items container with swipe support */}
               <div
                 ref={itemsContainerRef}
@@ -905,6 +917,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
           </button>
         </div>
       )}
+      <TrainingGuideModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
     </div>
   )
 }
