@@ -17,24 +17,8 @@ export async function GET() {
         cash_counted,
         (cash_counted - total) AS wnw,
         entered_by,
-        COALESCE(attachments, '[]'::jsonb) AS attachments,
-        'sales_receipt' AS source
+        COALESCE(attachments, '[]'::jsonb) AS attachments
       FROM sales_receipts
-      UNION ALL
-      SELECT
-        -id AS id,
-        'LIVE-' || id::text AS receipt_number,
-        tapped_at::date AS receipt_date,
-        NULL AS customer_name,
-        SUM(price::numeric * quantity) AS invoice_amount,
-        NULL AS cash_counted,
-        NULL AS wnw,
-        staff_name AS entered_by,
-        '[]'::jsonb AS attachments,
-        'live_sale_taps' AS source
-      FROM live_sale_taps
-      WHERE undone = false
-      GROUP BY tapped_at::date, id, staff_name
       ORDER BY receipt_date DESC, id DESC
     `
     return NextResponse.json(rows)
@@ -50,24 +34,8 @@ export async function GET() {
         cash_counted,
         (cash_counted - total) AS wnw,
         NULL AS entered_by,
-        COALESCE(attachments, '[]'::jsonb) AS attachments,
-        'sales_receipt' AS source
+        COALESCE(attachments, '[]'::jsonb) AS attachments
       FROM sales_receipts
-      UNION ALL
-      SELECT
-        -id AS id,
-        'LIVE-' || id::text AS receipt_number,
-        tapped_at::date AS receipt_date,
-        NULL AS customer_name,
-        SUM(price::numeric * quantity) AS invoice_amount,
-        NULL AS cash_counted,
-        NULL AS wnw,
-        staff_name AS entered_by,
-        '[]'::jsonb AS attachments,
-        'live_sale_taps' AS source
-      FROM live_sale_taps
-      WHERE undone = false
-      GROUP BY tapped_at::date, id, staff_name
       ORDER BY receipt_date DESC, id DESC
     `
     return NextResponse.json(rows)
