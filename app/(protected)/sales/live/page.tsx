@@ -539,13 +539,24 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
             <p className="text-sm text-gray-400">Loading items…</p>
           ) : (
             <div>
-              {/* Help button */}
-              <div className="px-2 py-2 border-b border-gray-200 bg-blue-50">
+              {/* Help and Fullscreen buttons */}
+              <div className="px-2 py-2 border-b border-gray-200 bg-blue-50 flex items-center gap-2">
                 <button
                   onClick={() => setShowHelpModal(true)}
                   className="text-xs font-semibold text-blue-700 hover:text-blue-600 px-3 py-1.5 rounded bg-white border border-blue-200 hover:bg-blue-100 transition"
                 >
                   ? Help & Training
+                </button>
+                <button
+                  onClick={() => setExpanded(!expanded)}
+                  className={`text-xs font-semibold px-3 py-1.5 rounded border transition ml-auto ${
+                    expanded
+                      ? 'text-red-700 hover:text-red-600 bg-white border-red-200 hover:bg-red-100'
+                      : 'text-blue-700 hover:text-blue-600 bg-white border-blue-200 hover:bg-blue-100'
+                  }`}
+                  title={expanded ? 'Return to normal view' : 'Enter fullscreen mode'}
+                >
+                  {expanded ? '⊖ Exit Fullscreen' : '⊕ Fullscreen'}
                 </button>
               </div>
             <div>
@@ -899,6 +910,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                 </div>
               )}
               {gridItems.length === 0 && <p className="text-[10px] text-gray-400 text-center py-6">No items match.</p>}
+            </div>
             </div>
           )}
         </div>
