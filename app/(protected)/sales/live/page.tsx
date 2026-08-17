@@ -53,6 +53,27 @@ function compactAmount(n: number) {
 const PRIORITY_GROUP = 'Printing Press Services'
 const ORDER_KEY = 'liveSaleOrder'
 
+type ColorScheme = {
+  itemName: string
+  priceBox: string
+  priceFont: string
+}
+
+const COLOR_PALETTE: ColorScheme[] = [
+  { itemName: 'text-red-900', priceBox: 'bg-red-100', priceFont: 'text-red-900' },
+  { itemName: 'text-teal-900', priceBox: 'bg-teal-100', priceFont: 'text-teal-900' },
+  { itemName: 'text-amber-900', priceBox: 'bg-amber-100', priceFont: 'text-amber-900' },
+  { itemName: 'text-indigo-900', priceBox: 'bg-indigo-100', priceFont: 'text-indigo-900' },
+  { itemName: 'text-rose-900', priceBox: 'bg-rose-100', priceFont: 'text-rose-900' },
+  { itemName: 'text-cyan-900', priceBox: 'bg-cyan-100', priceFont: 'text-cyan-900' },
+  { itemName: 'text-lime-900', priceBox: 'bg-lime-100', priceFont: 'text-lime-900' },
+  { itemName: 'text-violet-900', priceBox: 'bg-violet-100', priceFont: 'text-violet-900' },
+]
+
+function getColorScheme(index: number): ColorScheme {
+  return COLOR_PALETTE[index % COLOR_PALETTE.length]
+}
+
 // The buttons record these quantities same as before -- goods are usually
 // bought a handful at a time, while photo/print services (passport photos
 // being the classic case) get ordered in the batch sizes below -- but they're
@@ -577,9 +598,10 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                     const number = (
                       <span className="shrink-0 w-4 text-right text-[9px] font-bold text-gray-400">{globalIdx + 1}</span>
                     )
+                const colors = getColorScheme(globalIdx)
                 const label = (
                   <p
-                    className="text-[10px] font-semibold text-gray-900 leading-tight"
+                    className={`text-[10px] font-semibold ${colors.itemName} leading-tight`}
                     style={{ wordBreak: 'break-word' }}
                     onPointerDown={() => {
                       longPressTimeoutRef.current = setTimeout(() => {
@@ -799,8 +821,8 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                               disabled={pending}
                               title={`${q} unit${q > 1 ? 's' : ''} · ${money(total)}\n(long-press to edit)`}
                               className={pressed
-                                ? 'min-w-[2rem] h-7 px-1.5 rounded-lg bg-yellow-500 text-red-700 text-[11px] font-bold flex items-center justify-center transition disabled:opacity-100'
-                                : 'min-w-[2rem] h-7 px-1.5 rounded-lg bg-yellow-300 text-red-700 text-[11px] font-bold flex items-center justify-center hover:bg-yellow-400 active:bg-yellow-600 active:scale-95 transition disabled:opacity-40'}
+                                ? `min-w-[2rem] h-7 px-1.5 rounded-lg ${colors.priceBox} ${colors.priceFont} text-[11px] font-bold flex items-center justify-center transition disabled:opacity-100`
+                                : `min-w-[2rem] h-7 px-1.5 rounded-lg ${colors.priceBox} ${colors.priceFont} text-[11px] font-bold flex items-center justify-center active:scale-95 transition disabled:opacity-40`}
                             >
                               {compactAmount(total)}
                             </button>
