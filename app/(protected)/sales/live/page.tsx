@@ -28,6 +28,7 @@ type Tap = {
   undone: boolean
   receipt_id?: number
   quantity: number
+  soh?: number | null
 }
 
 function money(n: number) {
@@ -93,16 +94,17 @@ function qtyPresetsFor(item: GridItem) {
 // table in the app uses (see columnPrefs.tsx), so staff can drop columns
 // they don't care about and widen the ones they do instead of being stuck
 // with a fixed layout.
-type LogColKey = 'item' | 'time' | 'sp' | 'qty' | 'total' | 'staff'
+type LogColKey = 'item' | 'time' | 'sp' | 'qty' | 'total' | 'staff' | 'soh'
 const LOG_COLUMNS: ColumnDef<LogColKey>[] = [
   { key: 'item',  label: 'Item' },
   { key: 'time',  label: 'Time' },
   { key: 'sp',    label: 'SP' },
   { key: 'qty',   label: 'Qty' },
   { key: 'total', label: 'Total' },
+  { key: 'soh',   label: 'SOH' },
   { key: 'staff', label: 'Staff' },
 ]
-const LOG_COL_DEFAULTS: Record<string, number> = { item: 160, time: 70, sp: 56, qty: 44, total: 70, staff: 90, actions: 56 }
+const LOG_COL_DEFAULTS: Record<string, number> = { item: 160, time: 70, sp: 56, qty: 44, total: 70, soh: 50, staff: 90, actions: 56 }
 
 function defaultSort(list: GridItem[], tapCounts: Map<number, number>) {
   return [...list].sort((a, b) => {
@@ -557,13 +559,14 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                           >
                             {logColPrefs.shownColumns.map((c) => (
                               <td key={c.key}
-                                className={`px-2 py-1 overflow-hidden text-ellipsis whitespace-nowrap ${c.key === 'item' ? 'font-semibold sticky left-0 bg-white z-10' : ''} ${c.key === 'sp' || c.key === 'qty' || c.key === 'total' ? 'text-right' : ''} ${c.key === 'total' ? 'font-bold text-blue-600' : ''}`}
+                                className={`px-2 py-1 overflow-hidden text-ellipsis whitespace-nowrap ${c.key === 'item' ? 'font-semibold sticky left-0 bg-white z-10' : ''} ${c.key === 'sp' || c.key === 'qty' || c.key === 'total' || c.key === 'soh' ? 'text-right' : ''} ${c.key === 'total' ? 'font-bold text-blue-600' : ''}`}
                               >
                                 {c.key === 'item' && t.item_name}
                                 {c.key === 'time' && new Date(t.tapped_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                                 {c.key === 'sp' && money(Number(t.price))}
                                 {c.key === 'qty' && t.quantity}
                                 {c.key === 'total' && money(Number(t.price) * t.quantity)}
+                                {c.key === 'soh' && (t.soh ?? '-')}
                                 {c.key === 'staff' && t.staff_name}
                               </td>
                             ))}
@@ -895,6 +898,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                         >
                           SP
                         </button>
+                        <span className="text-[10px] text-gray-500 ml-2">Current stock: {it.soh ?? 0}</span>
                       {quickArrangeItemId === it.id && (
                         <div className="ml-auto flex items-center gap-1">
                           <button
