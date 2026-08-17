@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { itemId, quantity } = await req.json()
+  const { itemId, quantity, customPrice } = await req.json()
   if (!itemId) return NextResponse.json({ error: 'Missing itemId' }, { status: 400 })
   const qty = Math.max(1, Math.floor(Number(quantity) || 1))
 
@@ -40,7 +40,8 @@ export async function POST(req: NextRequest) {
 
     const [item] = await sql`SELECT id, canonical_name, selling_rate FROM items WHERE id = ${Number(itemId)}`
     if (!item) return NextResponse.json({ error: 'Item not found' }, { status: 404 })
-    const price = Number(item.selling_rate) || 0
+    const price = customPrice ? Number(customPrice) : (Number(item.selling_rate) || 0)
+    if (price <= 0) return NextResponse.json({ error: 'Invalid price' }, { status: 400 })
     const lineAmount = price * qty
 
     let [receipt] = await sql`

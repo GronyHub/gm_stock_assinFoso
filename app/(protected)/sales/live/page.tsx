@@ -183,6 +183,9 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
   const [currentPage, setCurrentPage] = useState(0)
   const [itemsPerPage, setItemsPerPage] = useState(5)
   const [showHelpModal, setShowHelpModal] = useState(false)
+  const [customSellingPrices, setCustomSellingPrices] = useState<Record<number, string>>({})
+  const [priceOverrideItemId, setPriceOverrideItemId] = useState<number | null>(null)
+  const [priceOverrideInput, setPriceOverrideInput] = useState('')
   const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const touchStartXRef = useRef(0)
   const itemsContainerRef = useRef<HTMLDivElement>(null)
@@ -356,10 +359,18 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
     setPendingItemId(item.id)
     setPendingQty(quantity)
     try {
+      const customPrice = customSellingPrices[item.id]
+      const body: { itemId: number; quantity: number; customPrice?: number } = { itemId: item.id, quantity }
+      if (customPrice) {
+        const price = Number(customPrice)
+        if (!isNaN(price) && price > 0) {
+          body.customPrice = price
+        }
+      }
       const res = await fetch('/api/sales/live-tap', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ itemId: item.id, quantity }),
+        body: JSON.stringify(body),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -368,6 +379,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
       }
       setTaps((prev) => [data.tap, ...prev])
       setLastTap(data.tap)
+      setCustomSellingPrices((prev) => ({ ...prev, [item.id]: '' }))
     } catch {
       alert('Could not record tap')
     } finally {
@@ -874,6 +886,15 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                             ✓
                           </button>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => setPriceOverrideItemId(it.id)}
+                          disabled={pending}
+                          title="Override selling price for next tap"
+                          className="w-8 h-7 px-1 rounded-lg bg-blue-100 text-blue-700 text-[10px] font-bold border border-blue-300 hover:bg-blue-200 disabled:opacity-40 transition"
+                        >
+                          SP
+                        </button>
                       {quickArrangeItemId === it.id && (
                         <div className="ml-auto flex items-center gap-1">
                           <button
@@ -986,6 +1007,62 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
           </button>
         </div>
       )}
+
+      {priceOverrideItemId && (
+        <div className="fixed inset-0 z-40 bg-black/50 flex items-center justify-center p-4" onClick={() => setPriceOverrideItemId(null)}>
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full shadow-lg" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-bold text-gray-900 mb-4">Override Selling Price</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              {gridItems.find(it => it.id === priceOverrideItemId)?.name}
+            </p>
+            <input
+              type="number"
+              inputMode="decimal"
+              placeholder="0.00"
+              value={priceOverrideInput}
+              onChange={(e) => setPriceOverrideInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  const price = Number(priceOverrideInput)
+                  if (!isNaN(price) && price > 0) {
+                    setCustomSellingPrices((prev) => ({ ...prev, [priceOverrideItemId]: priceOverrideInput }))
+                    setPriceOverrideItemId(null)
+                    setPriceOverrideInput('')
+                  }
+                }
+              }}
+              autoFocus
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 text-gray-900 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  const price = Number(priceOverrideInput)
+                  if (!isNaN(price) && price > 0) {
+                    setCustomSellingPrices((prev) => ({ ...prev, [priceOverrideItemId]: priceOverrideInput }))
+                    setPriceOverrideItemId(null)
+                    setPriceOverrideInput('')
+                  }
+                }}
+                className="flex-1 px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition"
+              >
+                Set Price
+              </button>
+              <button
+                onClick={() => {
+                  setPriceOverrideItemId(null)
+                  setPriceOverrideInput('')
+                }}
+                className="flex-1 px-3 py-2 rounded-lg bg-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-300 transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <TrainingGuideModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
     </div>
   )
