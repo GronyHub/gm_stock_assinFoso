@@ -601,7 +601,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                 const colors = getColorScheme(globalIdx)
                 const label = (
                   <p
-                    className={`text-[10px] font-semibold ${colors.itemName} leading-tight`}
+                    className={`text-[14px] font-semibold ${colors.itemName} leading-7 h-7 flex items-center`}
                     style={{ wordBreak: 'break-word' }}
                     onPointerDown={() => {
                       longPressTimeoutRef.current = setTimeout(() => {
