@@ -92,8 +92,8 @@ export async function POST(req: NextRequest) {
       RETURNING id, item_id, item_name, price, staff_name, tapped_at, undone, quantity
     `
 
-    const [itemData] = await sql`SELECT stock_on_hand FROM items WHERE id = ${item.id}`
-    const soh = itemData?.stock_on_hand ?? null
+    const [itemData] = await sql`SELECT calculated_soh FROM item_stock_summary WHERE item_id = ${item.id}`
+    const soh = itemData ? parseFloat(itemData.calculated_soh) : null
 
     await logActivity(staffName, 'live sale tap', `${item.canonical_name} × ${qty} · ₵${lineAmount.toFixed(2)}`)
 
