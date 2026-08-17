@@ -913,26 +913,36 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                   })
                 })()}
               </div>
-              {/* Pagination numbers */}
+              {/* Pagination numbers - scrollable with current page auto-centered */}
               {gridItems.length > 0 && (
-                <div className="flex items-center justify-center gap-1.5 py-2 border-b border-gray-200 bg-gray-50">
-                  {(() => {
-                    const totalPages = Math.ceil(gridItems.length / itemsPerPage)
-                    return Array.from({ length: totalPages }).map((_, page) => (
-                      <button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
-                        className={`min-w-[28px] h-7 px-2 rounded-md text-xs font-semibold transition ${
-                          page === currentPage
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
-                        }`}
-                        title={`Go to page ${page + 1}`}
-                      >
-                        {page + 1}
-                      </button>
-                    ))
-                  })()}
+                <div className="overflow-x-auto py-2 border-b border-gray-200 bg-gray-50">
+                  <div className="flex items-center justify-start gap-1.5 px-2 min-w-min" ref={(el) => {
+                    if (el) {
+                      const activeBtn = el.querySelector('[data-active="true"]') as HTMLElement
+                      if (activeBtn) {
+                        activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+                      }
+                    }
+                  }}>
+                    {(() => {
+                      const totalPages = Math.ceil(gridItems.length / itemsPerPage)
+                      return Array.from({ length: totalPages }).map((_, page) => (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          data-active={page === currentPage}
+                          className={`min-w-[32px] h-7 px-2 rounded-md text-xs font-semibold transition ${
+                            page === currentPage
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
+                          }`}
+                          title={`Go to page ${page + 1}`}
+                        >
+                          {page + 1}
+                        </button>
+                      ))
+                    })()}
+                  </div>
                 </div>
               )}
               {gridItems.length === 0 && <p className="text-[10px] text-gray-400 text-center py-6">No items match.</p>}
