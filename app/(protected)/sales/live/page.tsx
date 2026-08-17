@@ -913,20 +913,24 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                   })
                 })()}
               </div>
-              {/* Pagination dots */}
+              {/* Pagination numbers */}
               {gridItems.length > 0 && (
-                <div className="flex items-center justify-center gap-2 py-3 border-b border-gray-200 bg-gray-50">
+                <div className="flex items-center justify-center gap-1.5 py-2 border-b border-gray-200 bg-gray-50">
                   {(() => {
                     const totalPages = Math.ceil(gridItems.length / itemsPerPage)
                     return Array.from({ length: totalPages }).map((_, page) => (
                       <button
                         key={page}
                         onClick={() => setCurrentPage(page)}
-                        className={`w-2 h-2 rounded-full transition ${
-                          page === currentPage ? 'bg-blue-600 w-6' : 'bg-gray-300 hover:bg-gray-400'
+                        className={`min-w-[28px] h-7 px-2 rounded-md text-xs font-semibold transition ${
+                          page === currentPage
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
                         }`}
-                        title={`Page ${page + 1}`}
-                      />
+                        title={`Go to page ${page + 1}`}
+                      >
+                        {page + 1}
+                      </button>
                     ))
                   })()}
                 </div>
