@@ -799,8 +799,8 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                               disabled={pending}
                               title={`${q} unit${q > 1 ? 's' : ''} · ${money(total)}\n(long-press to edit)`}
                               className={pressed
-                                ? 'min-w-[2rem] h-7 px-1.5 rounded-lg bg-blue-600 text-white text-[11px] font-bold flex items-center justify-center transition disabled:opacity-100'
-                                : 'min-w-[2rem] h-7 px-1.5 rounded-lg bg-blue-50 text-blue-700 text-[11px] font-bold flex items-center justify-center hover:bg-blue-100 active:bg-blue-200 active:scale-95 transition disabled:opacity-40'}
+                                ? 'min-w-[2rem] h-7 px-1.5 rounded-lg bg-yellow-500 text-red-700 text-[11px] font-bold flex items-center justify-center transition disabled:opacity-100'
+                                : 'min-w-[2rem] h-7 px-1.5 rounded-lg bg-yellow-300 text-red-700 text-[11px] font-bold flex items-center justify-center hover:bg-yellow-400 active:bg-yellow-600 active:scale-95 transition disabled:opacity-40'}
                             >
                               {compactAmount(total)}
                             </button>
