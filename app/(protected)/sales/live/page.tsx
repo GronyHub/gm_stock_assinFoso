@@ -397,7 +397,30 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
     tap(item, qty)
   }
 
-  function moveToPosition(itemId: number, targetPos: number) {
+  function parsePagePosition(input: string): number | null {
+    const trimmed = input.trim()
+    if (!trimmed) return null
+    if (trimmed.includes('.')) {
+      const [pageStr, posStr] = trimmed.split('.')
+      const pageNum = Number(pageStr)
+      const posOnPage = Number(posStr)
+      if (isNaN(pageNum) || isNaN(posOnPage) || pageNum < 1 || posOnPage < 1) return null
+      const absolutePos = (pageNum - 1) * itemsPerPage + posOnPage
+      return absolutePos
+    } else {
+      const pos = Number(trimmed)
+      return isNaN(pos) || pos < 1 ? null : pos
+    }
+  }
+
+  function moveToPosition(itemId: number, positionInput: string | number) {
+    let targetPos: number | null = null
+    if (typeof positionInput === 'string') {
+      targetPos = parsePagePosition(positionInput)
+    } else {
+      targetPos = positionInput
+    }
+    if (targetPos === null) return
     const ids = fullOrderedItems.map((it) => it.id)
     const currentIdx = ids.indexOf(itemId)
     if (currentIdx < 0) return
@@ -675,30 +698,28 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                       </button>
                       <div className="ml-auto flex items-center gap-1">
                         <input
-                          type="number"
+                          type="text"
                           inputMode="numeric"
-                          placeholder="pos"
-                          min="1"
-                          max={fullOrderedItems.length}
+                          placeholder="p.n"
                           value={positionInputs[it.id] ?? ''}
                           onChange={(e) => setPositionInputs((prev) => ({ ...prev, [it.id]: e.target.value }))}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                               e.preventDefault()
-                              const pos = Number(positionInputs[it.id])
-                              if (!isNaN(pos)) moveToPosition(it.id, pos)
+                              moveToPosition(it.id, positionInputs[it.id])
                             }
                           }}
-                          className="w-12 h-5 px-0.5 rounded bg-white text-gray-700 text-[9px] font-bold border border-gray-300 text-center focus:outline-none focus:ring-1 focus:ring-blue-400"
+                          title="Enter page.position (e.g., 3.2 = page 3, position 2)"
+                          className="w-14 h-5 px-0.5 rounded bg-white text-gray-700 text-[9px] font-bold border border-gray-300 text-center focus:outline-none focus:ring-1 focus:ring-blue-400"
                         />
                         {positionInputs[it.id] && (
                           <button
                             type="button"
                             onClick={() => {
-                              const pos = Number(positionInputs[it.id])
-                              if (!isNaN(pos)) moveToPosition(it.id, pos)
+                              moveToPosition(it.id, positionInputs[it.id])
                             }}
                             className="w-5 h-5 rounded bg-green-600 hover:bg-green-700 text-white text-[8px] font-bold flex items-center justify-center"
+                            title="Move to page.position"
                           >
                             ✓
                           </button>
