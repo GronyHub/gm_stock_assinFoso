@@ -24,4 +24,6 @@ export async function ensureLiveSaleTapsTable() {
   // photos) came after the table already existed in some environments --
   // this backfills it on those without touching any existing row's data.
   await sql`ALTER TABLE live_sale_taps ADD COLUMN IF NOT EXISTS quantity INTEGER NOT NULL DEFAULT 1`.catch(() => {})
+  // Stock-on-hand snapshot at time of tap
+  await sql`ALTER TABLE live_sale_taps ADD COLUMN IF NOT EXISTS soh NUMERIC`.catch(() => {})
 }

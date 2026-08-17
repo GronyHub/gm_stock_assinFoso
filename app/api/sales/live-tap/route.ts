@@ -86,18 +86,25 @@ export async function POST(req: NextRequest) {
       WHERE id = ${receipt.id}
     `
 
-    const [tap] = await sql`
-      INSERT INTO live_sale_taps (item_id, item_name, price, staff_name, receipt_id, receipt_line_id, quantity)
-      VALUES (${item.id}, ${item.canonical_name}, ${price}, ${staffName}, ${receipt.id}, ${line.id}, ${qty})
-      RETURNING id, item_id, item_name, price, staff_name, tapped_at, undone, quantity
-    `
+    let soh: number | null = null
+    try {
+      const [itemData] = await sql`SELECT calculated_soh FROM item_stock_summary WHERE item_id = ${item.id}`
+      if (itemData?.calculated_soh !== null && itemData?.calculated_soh !== undefined) {
+        soh = parseFloat(itemData.calculated_soh)
+      }
+    } catch (e) {
+      console.warn('Failed to fetch SOH:', e)
+    }
 
-    const [itemData] = await sql`SELECT calculated_soh FROM item_stock_summary WHERE item_id = ${item.id}`
-    const soh = itemData ? parseFloat(itemData.calculated_soh) : null
+    const [tap] = await sql`
+      INSERT INTO live_sale_taps (item_id, item_name, price, staff_name, receipt_id, receipt_line_id, quantity, soh)
+      VALUES (${item.id}, ${item.canonical_name}, ${price}, ${staffName}, ${receipt.id}, ${line.id}, ${qty}, ${soh})
+      RETURNING id, item_id, item_name, price, staff_name, tapped_at, undone, quantity, soh
+    `
 
     await logActivity(staffName, 'live sale tap', `${item.canonical_name} × ${qty} · ₵${lineAmount.toFixed(2)}`)
 
-    return NextResponse.json({ tap: { ...tap, soh }, lineQuantity: line.quantity, lineTotal: line.item_total })
+    return NextResponse.json({ tap, lineQuantity: line.quantity, lineTotal: line.item_total })
   } catch (e) {
     console.error('live-tap POST error:', e)
     const detail = e instanceof Error ? e.message : String(e)
