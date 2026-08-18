@@ -9,6 +9,8 @@ type Tap = { id: number; item_id: number; item_name: string; price: number | str
 export default function LiveSalePage(props: any = {}) {
   usePresenceReporter('live-tapping a sale')
 
+  const { initialShowLog = false } = props
+
   const [allItems, setAllItems] = useState<Item[]>([])
   const [loadingItems, setLoadingItems] = useState(true)
   const [taps, setTaps] = useState<Tap[]>([])
@@ -19,6 +21,7 @@ export default function LiveSalePage(props: any = {}) {
   const [qty, setQty] = useState('')
   const [price, setPrice] = useState('')
   const [saving, setSaving] = useState(false)
+  const [showLog, setShowLog] = useState(initialShowLog)
 
   // Fetch items
   useEffect(() => {
@@ -102,6 +105,77 @@ export default function LiveSalePage(props: any = {}) {
     } finally {
       setSaving(false)
     }
+  }
+
+  async function undoTap(tapId: number) {
+    try {
+      const res = await fetch(`/api/sales/live-taps/${tapId}/undo`, { method: 'POST' })
+      if (res.ok) {
+        setTaps(prev => prev.map(t => t.id === tapId ? { ...t, undone: true } : t))
+      }
+    } catch (e) {
+      setError('Could not undo tap')
+    }
+  }
+
+  // Log view
+  if (showLog) {
+    const today = new Date().toISOString().slice(0, 10)
+    const todayTaps = taps.filter(t => t.tapped_at.startsWith(today))
+    const total = todayTaps.reduce((s, t) => s + (t.undone ? 0 : Number(t.price) * t.quantity), 0)
+
+    return (
+      <div className="h-full flex flex-col bg-white">
+        <div className="px-4 py-3 border-b border-gray-200">
+          <h2 className="text-sm font-bold text-gray-900">Live Sale Log — {today}</h2>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {todayTaps.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-8">No sales recorded</p>
+          ) : (
+            <div className="divide-y divide-gray-200">
+              {todayTaps.map(tap => (
+                <div
+                  key={tap.id}
+                  className={`px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition ${
+                    tap.undone ? 'opacity-50 bg-gray-50' : ''
+                  }`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-semibold ${tap.undone ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                      {tap.item_name}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {tap.staff_name} · {new Date(tap.tapped_at).toLocaleTimeString()}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right ml-4">
+                    <p className="text-sm font-semibold text-gray-900">₵{(Number(tap.price) * tap.quantity).toFixed(2)}</p>
+                    <p className="text-xs text-gray-500">{tap.quantity} × ₵{Number(tap.price).toFixed(2)}</p>
+                  </div>
+                  {!tap.undone && (
+                    <button
+                      onClick={() => undoTap(tap.id)}
+                      className="shrink-0 ml-4 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 rounded transition"
+                    >
+                      Undo
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="border-t border-gray-200 bg-gray-50 px-4 py-3">
+          <div className="flex justify-between items-center text-sm font-semibold">
+            <span className="text-gray-600">Total ({todayTaps.length} taps)</span>
+            <span className="text-lg text-gray-900">₵{total.toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
