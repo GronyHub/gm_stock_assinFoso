@@ -209,7 +209,7 @@ export default function LiveSalePage(props: any = {}) {
                           <p className="text-sm text-gray-600">{tap.staff_name}</p>
                         </div>
                         <div className="px-4 py-3 text-center">
-                          <p className="text-sm text-gray-500">{tap.soh ?? '-'}</p>
+                          <p className="text-sm text-gray-500">{tap.soh !== null && tap.soh !== undefined ? Math.ceil(tap.soh) : '-'}</p>
                         </div>
                         <div className="px-4 py-3 text-right">
                           {!tap.undone && (
@@ -299,7 +299,7 @@ export default function LiveSalePage(props: any = {}) {
                       <span className="text-gray-400"> · </span>
                       <span className="text-green-600 font-semibold">CP ₵{formatPrice(item.cost_price)}</span>
                       <span className="text-gray-400"> · </span>
-                      <span className="text-red-600 font-semibold">{Number(item.soh)} pcs</span>
+                      <span className="text-red-600 font-semibold">{Math.ceil(Number(item.soh))} pcs</span>
                     </p>
                   </div>
                   <div className="flex items-center gap-0.5 shrink-0">
@@ -339,7 +339,7 @@ export default function LiveSalePage(props: any = {}) {
                 <span className="text-gray-400"> · </span>
                 <span>Cost: ₵{formatPrice(selectedItem.cost_price)}</span>
                 <span className="text-gray-400"> · </span>
-                <span>Stock: {Number(selectedItem.soh)} pcs</span>
+                <span>Stock: {Math.ceil(Number(selectedItem.soh))} pcs</span>
               </p>
             </div>
 
