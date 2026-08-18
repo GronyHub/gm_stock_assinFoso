@@ -283,13 +283,13 @@ export default function LiveSalePage(props: any = {}) {
         ) : catalogueItems.length === 0 ? (
           <p className="text-xs text-gray-400 text-center py-8">No items found</p>
         ) : (
-          <div className="grid grid-cols-2 gap-2 p-2">
+          <div className="grid grid-cols-2 gap-0 p-0">
             {catalogueItems.map(item => {
               const count = salesCounts.get(item.id) ?? 0
               return (
                 <div
                   key={item.id}
-                  className="p-2 flex items-start justify-between hover:bg-gray-50 transition group border border-gray-100 rounded"
+                  className="p-2 flex items-start justify-between hover:bg-gray-50 transition group border-r border-b border-gray-100"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1 mb-0.5">
