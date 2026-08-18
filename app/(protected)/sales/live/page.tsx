@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { usePresenceReporter } from '@/lib/usePresenceReporter'
 
 type Item = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; product_type: string | null }
@@ -13,6 +14,7 @@ function formatPrice(num: number | string): string {
 
 export default function LiveSalePage(props: any = {}) {
   usePresenceReporter('live-tapping a sale')
+  const router = useRouter()
 
   const { initialShowLog = false } = props
 
@@ -293,7 +295,13 @@ export default function LiveSalePage(props: any = {}) {
                   className="p-2 flex items-start gap-1 hover:bg-gray-50 transition group border-r border-b border-gray-100"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-semibold text-gray-900 leading-tight truncate">{item.name}</p>
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/item?id=${item.id}`)}
+                      className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 leading-tight truncate text-left hover:underline transition"
+                    >
+                      {item.name}
+                    </button>
                     <p className="text-[9px] text-gray-600 leading-tight">
                       <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
                       <span className="text-gray-400"> · </span>
