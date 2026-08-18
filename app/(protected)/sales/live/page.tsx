@@ -6,6 +6,11 @@ import { usePresenceReporter } from '@/lib/usePresenceReporter'
 type Item = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; product_type: string | null }
 type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null }
 
+function formatPrice(num: number | string): string {
+  const n = Number(num)
+  return n % 1 === 0 ? n.toFixed(0) : n.toFixed(2)
+}
+
 export default function LiveSalePage(props: any = {}) {
   usePresenceReporter('live-tapping a sale')
 
@@ -164,7 +169,7 @@ export default function LiveSalePage(props: any = {}) {
                     {/* Date header */}
                     <div className="grid grid-cols-[2fr_1fr_1fr_0.8fr_0.6fr_1fr_0.6fr_0.8fr] gap-0 bg-green-50 border-b border-green-200 sticky top-10 z-9">
                       <div className="col-span-8 px-4 py-2 text-xs font-semibold text-green-700">
-                        {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · Total: ₵{dateTotal.toFixed(2)}
+                        {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · Total: ₵{formatPrice(dateTotal)}
                       </div>
                     </div>
 
@@ -183,7 +188,7 @@ export default function LiveSalePage(props: any = {}) {
                         </div>
                         <div className="px-4 py-3 text-right">
                           <p className={`text-sm font-semibold ${tap.undone ? 'text-gray-400' : 'text-blue-600'}`}>
-                            ₵{(Number(tap.price) * tap.quantity).toFixed(2)}
+                            ₵{formatPrice(Number(tap.price) * tap.quantity)}
                           </p>
                         </div>
                         <div className="px-4 py-3 text-center">
@@ -191,7 +196,7 @@ export default function LiveSalePage(props: any = {}) {
                         </div>
                         <div className="px-4 py-3 text-right">
                           <p className={`text-sm font-semibold ${tap.undone ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
-                            ₵{Number(tap.price).toFixed(2)}
+                            ₵{formatPrice(tap.price)}
                           </p>
                         </div>
                         <div className="px-4 py-3 text-center">
@@ -297,9 +302,9 @@ export default function LiveSalePage(props: any = {}) {
                     </div>
                     <p className="text-[10px] text-gray-600 leading-tight space-y-0.5">
                       <div>
-                        <span className="text-blue-600 font-semibold">₵{Number(item.selling_price).toFixed(2)}</span>
+                        <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
                         <span className="text-gray-400"> · </span>
-                        <span className="text-green-600 font-semibold">CP ₵{Number(item.cost_price).toFixed(2)}</span>
+                        <span className="text-green-600 font-semibold">CP ₵{formatPrice(item.cost_price)}</span>
                       </div>
                       <div>
                         <span className="text-red-600 font-semibold">{Number(item.soh)} pcs</span>
@@ -332,9 +337,9 @@ export default function LiveSalePage(props: any = {}) {
             <div className="px-4 py-4 border-b border-gray-200">
               <h3 className="text-lg font-bold text-gray-900">{selectedItem.name}</h3>
               <p className="text-xs text-gray-500 mt-1">
-                <span>Selling: ₵{Number(selectedItem.selling_price).toFixed(2)}</span>
+                <span>Selling: ₵{formatPrice(selectedItem.selling_price)}</span>
                 <span className="text-gray-400"> · </span>
-                <span>Cost: ₵{Number(selectedItem.cost_price).toFixed(2)}</span>
+                <span>Cost: ₵{formatPrice(selectedItem.cost_price)}</span>
                 <span className="text-gray-400"> · </span>
                 <span>Stock: {Number(selectedItem.soh)} pcs</span>
               </p>
@@ -371,13 +376,13 @@ export default function LiveSalePage(props: any = {}) {
                     step="0.01"
                     value={price}
                     onChange={e => setPrice(e.target.value)}
-                    placeholder={Number(selectedItem.selling_price).toFixed(2)}
+                    placeholder={formatPrice(selectedItem.selling_price)}
                     className="w-full text-lg font-semibold text-gray-900 bg-gray-50 border border-gray-300 rounded-lg pl-7 pr-3 py-2 outline-none focus:ring-1 focus:ring-blue-400"
                     disabled={saving}
                   />
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  Defaults to ₵{Number(selectedItem.selling_price).toFixed(2)}
+                  Defaults to ₵{formatPrice(selectedItem.selling_price)}
                 </p>
               </div>
 
