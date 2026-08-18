@@ -289,40 +289,36 @@ export default function LiveSalePage(props: any = {}) {
               return (
                 <div
                   key={item.id}
-                  className="p-2 flex items-start justify-between hover:bg-gray-50 transition group border-r border-b border-gray-100"
+                  className="p-2 flex items-start gap-1 hover:bg-gray-50 transition group border-r border-b border-gray-100"
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1 mb-0.5">
-                      <p className="text-xs font-semibold text-gray-900 leading-tight">{item.name}</p>
-                      {count > 0 && (
-                        <span className="inline-flex items-center justify-center min-w-4 h-4 px-0.5 rounded-full bg-blue-600 text-white text-[10px] font-bold shrink-0">
-                          {count}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[10px] text-gray-600 leading-tight space-y-0.5">
-                      <div>
-                        <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
-                        <span className="text-gray-400"> · </span>
-                        <span className="text-green-600 font-semibold">CP ₵{formatPrice(item.cost_price)}</span>
-                      </div>
-                      <div>
-                        <span className="text-red-600 font-semibold">{Number(item.soh)} pcs</span>
-                      </div>
+                    <p className="text-xs font-semibold text-gray-900 leading-tight truncate">{item.name}</p>
+                    <p className="text-[10px] text-gray-600 leading-tight">
+                      <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
+                      <span className="text-gray-400"> · </span>
+                      <span className="text-green-600 font-semibold">CP ₵{formatPrice(item.cost_price)}</span>
                     </p>
+                    <p className="text-[10px] text-red-600 font-semibold">{Number(item.soh)} pcs</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedItem(item)
-                      setPrice('')
-                      setQty('')
-                      setError('')
-                    }}
-                    className="shrink-0 ml-2 w-7 h-7 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm flex items-center justify-center transition"
-                  >
-                    +
-                  </button>
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    {count > 0 && (
+                      <span className="inline-flex items-center justify-center min-w-4 h-4 px-0.5 rounded-full bg-blue-600 text-white text-[10px] font-bold">
+                        {count}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedItem(item)
+                        setPrice('')
+                        setQty('')
+                        setError('')
+                      }}
+                      className="w-7 h-7 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm flex items-center justify-center transition"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
               )
             })}
