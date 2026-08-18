@@ -48,17 +48,17 @@ export default function LiveSalePage(props: any = {}) {
     return allItems
   }, [allItems, search])
 
-  // Count sales today by item
+  // Count sales by item (all historical taps)
   const today = new Date().toISOString().slice(0, 10)
   const salesCounts = useMemo(() => {
     const counts = new Map<number, number>()
     for (const tap of taps) {
-      if (!tap.undone && tap.tapped_at.startsWith(today)) {
+      if (!tap.undone) {
         counts.set(tap.item_id, (counts.get(tap.item_id) ?? 0) + tap.quantity)
       }
     }
     return counts
-  }, [taps, today])
+  }, [taps])
 
   async function recordTap() {
     if (!selectedItem || !qty) return
