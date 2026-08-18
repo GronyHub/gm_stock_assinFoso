@@ -271,36 +271,39 @@ export default function LiveSalePage(props: any = {}) {
         />
       </div>
 
-      {/* Items List */}
+      {/* Items Grid - 2 Columns */}
       <div className="flex-1 overflow-y-auto">
         {loadingItems ? (
-          <p className="text-sm text-gray-400 text-center py-8">Loading…</p>
+          <p className="text-xs text-gray-400 text-center py-8">Loading…</p>
         ) : catalogueItems.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-8">No items found</p>
+          <p className="text-xs text-gray-400 text-center py-8">No items found</p>
         ) : (
-          <div className="divide-y divide-gray-200">
+          <div className="grid grid-cols-2 gap-2 p-2">
             {catalogueItems.map(item => {
               const count = salesCounts.get(item.id) ?? 0
               return (
                 <div
                   key={item.id}
-                  className="px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition group"
+                  className="p-2 flex items-start justify-between hover:bg-gray-50 transition group border border-gray-100 rounded"
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="text-sm font-semibold text-gray-900">{item.name}</p>
+                    <div className="flex items-center gap-1 mb-0.5">
+                      <p className="text-xs font-semibold text-gray-900 leading-tight">{item.name}</p>
                       {count > 0 && (
-                        <span className="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-blue-600 text-white text-xs font-bold">
+                        <span className="inline-flex items-center justify-center min-w-4 h-4 px-0.5 rounded-full bg-blue-600 text-white text-[10px] font-bold shrink-0">
                           {count}
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-gray-600 leading-tight">
-                      <span className="text-blue-600 font-semibold">₵{Number(item.selling_price).toFixed(2)}</span>
-                      <span className="text-gray-400"> · </span>
-                      <span className="text-green-600 font-semibold">CP ₵{Number(item.cost_price).toFixed(2)}</span>
-                      <span className="text-gray-400"> · </span>
-                      <span className="text-red-600 font-semibold">{Number(item.soh)} pcs</span>
+                    <p className="text-[10px] text-gray-600 leading-tight space-y-0.5">
+                      <div>
+                        <span className="text-blue-600 font-semibold">₵{Number(item.selling_price).toFixed(2)}</span>
+                        <span className="text-gray-400"> · </span>
+                        <span className="text-green-600 font-semibold">CP ₵{Number(item.cost_price).toFixed(2)}</span>
+                      </div>
+                      <div>
+                        <span className="text-red-600 font-semibold">{Number(item.soh)} pcs</span>
+                      </div>
                     </p>
                   </div>
                   <button
@@ -311,7 +314,7 @@ export default function LiveSalePage(props: any = {}) {
                       setQty('')
                       setError('')
                     }}
-                    className="shrink-0 ml-4 w-10 h-10 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg flex items-center justify-center transition"
+                    className="shrink-0 ml-2 w-7 h-7 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm flex items-center justify-center transition"
                   >
                     +
                   </button>
