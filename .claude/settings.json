@@ -1,0 +1,5 @@
+{
+  "env": {
+    "DATABASE_URL": "postgresql://neondb_owner:npg_h8XwVlMHmrE5@ep-bold-lab-ahdj65dl-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+  }
+}
