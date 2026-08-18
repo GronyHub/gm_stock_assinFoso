@@ -283,7 +283,7 @@ export default function LiveSalePage(props: any = {}) {
                   <div className="flex-1 min-w-0">
                     <button
                       type="button"
-                      onClick={() => router.push(`/item?id=${item.id}`)}
+                      onClick={() => router.push(`/item?view=item360&jumpItemId=${item.id}`)}
                       className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 leading-tight truncate text-left hover:underline transition"
                     >
                       {item.name}
