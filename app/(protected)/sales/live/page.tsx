@@ -1,960 +1,273 @@
 'use client'
 
-// Rebuild: 2026-08-18
-import { useEffect, useMemo, useState, useRef, Fragment } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { usePresenceReporter } from '@/lib/usePresenceReporter'
-import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from '../../item/_components/columnPrefs'
-import PageLawsList from '../../item/_components/PageLawsList'
-import LawsToggleBar from '../../item/_components/LawsToggleBar'
-import { useLawsPanel } from '../../item/_components/useLawsPanel'
-import { TrainingGuideModal } from './_components/TrainingGuideModal'
 
-type GridItem = {
-  id: number
-  name: string
-  group: string | null
-  soh: number | null
-  selling_price: number | null
-  cost_price: number | null
-  product_type: string | null
-}
+type Item = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; product_type: string | null }
+type CartLine = { item: Item; qty: number; price: number }
+type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null }
 
-type Tap = {
-  id: number
-  item_id: number
-  item_name: string
-  price: number | string
-  staff_name: string
-  tapped_at: string
-  undone: boolean
-  receipt_id?: number
-  quantity: number
-  soh?: number | null
-}
-
-function money(n: number) {
-  return `₵${n.toFixed(2)}`
-}
-
-// Same trailing-.00 trim as compactAmount below, but keeps the ₵ sign --
-// used for the item row's own selling price, which reads fine short (e.g.
-// "₵50") without needing money()'s always-2dp precision.
-function moneyCompact(n: number) {
-  return `₵${Math.round(n * 100) / 100}`
-}
-
-// Preset-button labels only -- no ₵ sign (obvious from context, sitting
-// right under the item's own priced name) and no trailing .00, so more
-// buttons fit on one line. Rounds to 2dp first to clear floating-point
-// noise (e.g. 3 x 0.7), then lets JS's own number->string conversion drop
-// whatever trailing zeros/decimal point aren't needed.
-function compactAmount(n: number) {
-  return `${Math.round(n * 100) / 100}`
-}
-
-const PRIORITY_GROUP = 'Printing Press Services'
-const ORDER_KEY = 'liveSaleOrder'
-
-type ColorScheme = {
-  itemName: string
-  priceBox: string
-  priceFont: string
-}
-
-const COLOR_PALETTE: ColorScheme[] = [
-  { itemName: 'text-red-900', priceBox: 'bg-red-100', priceFont: 'text-red-900' },
-  { itemName: 'text-teal-900', priceBox: 'bg-teal-100', priceFont: 'text-teal-900' },
-  { itemName: 'text-amber-900', priceBox: 'bg-amber-100', priceFont: 'text-amber-900' },
-  { itemName: 'text-indigo-900', priceBox: 'bg-indigo-100', priceFont: 'text-indigo-900' },
-  { itemName: 'text-rose-900', priceBox: 'bg-rose-100', priceFont: 'text-rose-900' },
-  { itemName: 'text-cyan-900', priceBox: 'bg-cyan-100', priceFont: 'text-cyan-900' },
-  { itemName: 'text-lime-900', priceBox: 'bg-lime-100', priceFont: 'text-lime-900' },
-  { itemName: 'text-violet-900', priceBox: 'bg-violet-100', priceFont: 'text-violet-900' },
-]
-
-function getColorScheme(index: number): ColorScheme {
-  return COLOR_PALETTE[index % COLOR_PALETTE.length]
-}
-
-// The buttons record these quantities same as before -- goods are usually
-// bought a handful at a time, while photo/print services (passport photos
-// being the classic case) get ordered in the batch sizes below -- but they're
-// now LABELED by the total price that quantity comes to, not the bare
-// quantity number, since that's what a customer actually hands over and
-// what staff are matching against. 1 is always in the list (added to
-// SERVICE_QTY, already there for goods) so the item's own single-unit
-// selling price always appears as one of the buttons. Kept minimal so
-// item name + buttons fit on one line; users can customize via long-press.
-const GOODS_QTY = [1, 2, 3]
-const SERVICE_QTY = [1, 10, 15]
-function qtyPresetsFor(item: GridItem) {
-  return item.product_type === 'service' ? SERVICE_QTY : GOODS_QTY
-}
-
-// Log table columns -- same show/hide/reorder/resize picker every other
-// table in the app uses (see columnPrefs.tsx), so staff can drop columns
-// they don't care about and widen the ones they do instead of being stuck
-// with a fixed layout.
-type LogColKey = 'item' | 'time' | 'sp' | 'qty' | 'total' | 'staff' | 'soh'
-const LOG_COLUMNS: ColumnDef<LogColKey>[] = [
-  { key: 'item',  label: 'Item' },
-  { key: 'time',  label: 'Time' },
-  { key: 'sp',    label: 'SP' },
-  { key: 'qty',   label: 'Qty' },
-  { key: 'total', label: 'Total' },
-  { key: 'soh',   label: 'SOH' },
-  { key: 'staff', label: 'Staff' },
-]
-const LOG_COL_DEFAULTS: Record<string, number> = { item: 160, time: 70, sp: 56, qty: 44, total: 70, soh: 50, staff: 90, actions: 56 }
-
-function defaultSort(list: GridItem[], tapCounts: Map<number, number>) {
-  return [...list].sort((a, b) => {
-    const ca = tapCounts.get(a.id) ?? 0
-    const cb = tapCounts.get(b.id) ?? 0
-    if (ca !== cb) return cb - ca
-    // Today's actual taps still win (a hot item floats up regardless of
-    // group), but before anything's been tapped the list should still
-    // open with the group that gets used most -- Printing Press Services.
-    const pa = a.group === PRIORITY_GROUP ? 0 : 1
-    const pb = b.group === PRIORITY_GROUP ? 0 : 1
-    if (pa !== pb) return pa - pb
-    return a.name.localeCompare(b.name)
-  })
-}
-
-// Staff-arranged order wins over the automatic sort for whichever items
-// have been explicitly placed -- anything not yet touched just falls in
-// afterwards using the normal hot-item/group/alphabetical order, so a
-// newly stocked item still shows up without needing to be arranged first.
-function applyManualOrder(list: GridItem[], order: number[]) {
-  if (order.length === 0) return list
-  const rank = new Map(order.map((id, i) => [id, i]))
-  const ranked = list.filter((it) => rank.has(it.id)).sort((a, b) => rank.get(a.id)! - rank.get(b.id)!)
-  const rest = list.filter((it) => !rank.has(it.id))
-  return [...ranked, ...rest]
-}
-
-export default function LiveSalePage({ onClose, initialShowLog, search, groupFilter, lawsPanel: propsLawsPanel, expanded: propsExpanded, setExpanded: propsSetExpanded, hideTopControls }: {
-  onClose?: () => void; initialShowLog?: boolean; search?: string; groupFilter?: string | null; lawsPanel?: ReturnType<typeof useLawsPanel>; expanded?: boolean; setExpanded?: (v: boolean | ((prev: boolean) => boolean)) => void; hideTopControls?: boolean
-} = {}) {
+export default function LiveSalePage({ onClose, groupFilter, search: propsSearch, initialShowLog, lawsPanel, expanded, setExpanded, hideTopControls }: any = {}) {
   usePresenceReporter('live-tapping a sale')
 
-  const [items, setItems] = useState<GridItem[]>([])
+  const [allItems, setAllItems] = useState<Item[]>([])
   const [loadingItems, setLoadingItems] = useState(true)
   const [taps, setTaps] = useState<Tap[]>([])
   const [loadingTaps, setLoadingTaps] = useState(true)
-  // Grid vs. log is now picked from the left pane (Sales > Live Sale vs.
-  // Sales > Live Sale > Log), which remounts this page with a different
-  // initialShowLog rather than toggling in place -- no local state needed.
-  const showLog = !!initialShowLog
-  const localLawsPanel = useLawsPanel('showLiveSaleLaws')
-  const lawsPanel = propsLawsPanel ?? localLawsPanel
-  const [staffFilter, setStaffFilter] = useState<string | null>(null)
-  const [lastTap, setLastTap] = useState<Tap | null>(null)
-  const [pendingItemId, setPendingItemId] = useState<number | null>(null)
-  // Which specific preset was tapped -- pendingItemId alone can't tell the
-  // pressed button apart from its siblings on the same row, which is why
-  // all of them dimmed together instead of just the one actually pressed.
-  const [pendingQty, setPendingQty] = useState<number | null>(null)
-  const [undoingId, setUndoingId] = useState<number | null>(null)
-  const [arranging, setArranging] = useState(false)
-  // Large-screen mode -- overlays the whole viewport (fixed inset-0, above
-  // everything else) instead of sitting inside the normal pane/content
-  // layout, so the grid gets the full screen to tap into instead of
-  // sharing it with the left pane. A plain CSS overlay rather than the
-  // real Fullscreen API -- iOS Safari on phones doesn't support
-  // requestFullscreen() on ordinary elements (only <video>), and this is
-  // used mostly on phones, so the API route would just silently fail for
-  // a lot of staff. Not persisted -- always starts normal-sized so
-  // reopening Live Sale doesn't strand someone in an overlay they don't
-  // remember turning on.
-  const [localExpanded, setLocalExpanded] = useState(false)
-  const expanded = propsExpanded ?? localExpanded
-  const setExpanded = propsSetExpanded ?? setLocalExpanded
-  const logColPrefs = useColumnPrefs<LogColKey>('liveSaleLog', LOG_COLUMNS)
-  // Shared via /api/app-settings (owner-level to write, everyone reads),
-  // not per-device localStorage -- an arrangement the owner sets up should
-  // show the same way on every staff member's own phone, not just the one
-  // that set it (see the Shared Settings policy).
-  const [manualOrder, setManualOrder] = useState<number[]>([])
-  const [manualAmounts, setManualAmounts] = useState<Record<number, string>>({})
-  const [positionInputs, setPositionInputs] = useState<Record<number, string>>({})
-  const [itemPresets, setItemPresets] = useState<Record<number, number[]>>({})
-  const [editingButton, setEditingButton] = useState<{ itemId: number; index: number } | null>(null)
-  const [editingValue, setEditingValue] = useState('')
-  const [quickArrangeItemId, setQuickArrangeItemId] = useState<number | null>(null)
-  const [currentPage, setCurrentPage] = useState(0)
-  const [itemsPerPage, setItemsPerPage] = useState(5)
-  const [showHelpModal, setShowHelpModal] = useState(false)
-  const [customSellingPrices, setCustomSellingPrices] = useState<Record<number, string>>({})
-  const [priceOverrideItemId, setPriceOverrideItemId] = useState<number | null>(null)
-  const [priceOverrideInput, setPriceOverrideInput] = useState('')
-  const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const touchStartXRef = useRef(0)
-  const itemsContainerRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    fetch(`/api/app-settings?key=${ORDER_KEY}`)
-      .then(r => r.ok ? r.json() : { value: null })
-      .then((d: { value: unknown }) => { if (Array.isArray(d?.value)) setManualOrder(d.value as number[]) })
-      .catch(() => {})
-  }, [])
+  const [search, setSearch] = useState(propsSearch ?? '')
+  const [saleType, setSaleType] = useState<'WIC' | 'GMC'>('WIC')
+  const [showLog, setShowLog] = useState(false)
+  const [error, setError] = useState('')
 
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.localStorage) return
-    const saved = localStorage.getItem('liveSaleItemPresets')
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved)
-        if (typeof parsed === 'object') setItemPresets(parsed)
-      } catch {}
-    }
-  }, [])
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.localStorage) return
-    localStorage.setItem('liveSaleItemPresets', JSON.stringify(itemPresets))
-  }, [itemPresets])
-
-  // Calculate items per page based on container height
-  useEffect(() => {
-    const calculateItemsPerPage = () => {
-      // Calculate available viewport height for items
-      // Subtract: top bar (~50px) + controls (~40px) + pagination (~35px) + log table (~150px)
-      const reservedHeight = 275
-      const availableHeight = window.innerHeight - reservedHeight
-      // Estimate: each item row is roughly 40-45px (compact spacing)
-      const estimatedItemHeight = 42
-      const calculated = Math.max(5, Math.floor(availableHeight / estimatedItemHeight))
-      setItemsPerPage(calculated)
-    }
-    calculateItemsPerPage()
-    window.addEventListener('resize', calculateItemsPerPage)
-    return () => window.removeEventListener('resize', calculateItemsPerPage)
-  }, [])
-
-  // Handle swipe gestures
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartXRef.current = e.touches[0]?.clientX || 0
-  }
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    const touchEndX = e.changedTouches[0]?.clientX || 0
-    const delta = touchStartXRef.current - touchEndX
-    const threshold = 50 // Minimum swipe distance
-    const totalPages = Math.ceil(gridItems.length / itemsPerPage)
-
-    if (Math.abs(delta) > threshold) {
-      if (delta > 0 && currentPage < totalPages - 1) {
-        // Swiped left, go to next page
-        setCurrentPage(currentPage + 1)
-      } else if (delta < 0 && currentPage > 0) {
-        // Swiped right, go to previous page
-        setCurrentPage(currentPage - 1)
-      }
-    }
-  }
-
-  function persistOrder(order: number[]) {
-    setManualOrder(order)
-    fetch('/api/app-settings', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: ORDER_KEY, value: order }),
-    }).catch(() => {
-      console.error('Failed to save arrangement - only owner can arrange items')
-    })
-  }
-
+  // Fetch items
   useEffect(() => {
     fetch('/api/items/all')
-      .then((r) => r.json())
-      .then((data) => setItems(Array.isArray(data) ? data : []))
-      .catch(() => setItems([]))
-      .finally(() => setLoadingItems(false))
+      .then(r => r.json())
+      .then(d => { setAllItems(Array.isArray(d) ? d : []); setLoadingItems(false) })
+      .catch(() => setLoadingItems(false))
   }, [])
 
+  // Fetch taps
   useEffect(() => {
     fetch('/api/sales/live-taps')
-      .then((r) => r.json())
-      .then((data) => setTaps(Array.isArray(data) ? data : []))
-      .catch(() => setTaps([]))
-      .finally(() => setLoadingTaps(false))
+      .then(r => r.json())
+      .then(d => { setTaps(Array.isArray(d) ? d : []); setLoadingTaps(false) })
+      .catch(() => setLoadingTaps(false))
   }, [])
 
-  useEffect(() => {
-    if (!lastTap) return
-    const t = setTimeout(() => setLastTap(null), 6000)
-    return () => clearTimeout(t)
-  }, [lastTap])
-
-  // Sum of units tapped today, not number of tap events -- a single "20"
-  // tap for a passport-photo batch should outweigh five single "1" taps
-  // of something else by the same margin it does in real demand.
-  const tapCounts = useMemo(() => {
-    const counts = new Map<number, number>()
-    for (const t of taps) {
-      if (t.undone) continue
-      counts.set(t.item_id, (counts.get(t.item_id) ?? 0) + (Number(t.quantity) || 1))
+  // Filter items by search and group
+  const catalogueItems = useMemo(() => {
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      return allItems.filter(i => i.name.toLowerCase().includes(q) || (i.group ?? '').toLowerCase().includes(q))
     }
-    return counts
-  }, [taps])
-
-  // The full arranged order (unfiltered) is what move/top actions operate
-  // on and persist, so a move made while a group/search filter is active
-  // still lands in the right place once the filter is cleared.
-  const fullOrderedItems = useMemo(
-    () => applyManualOrder(defaultSort(items, tapCounts), manualOrder),
-    [items, tapCounts, manualOrder]
-  )
-
-  // Search and group filtering come from the green bar above (item/page.tsx's
-  // `search`/`group` state) instead of a local search box + chip row -- one
-  // filter for the page instead of two that could disagree.
-  const gridItems = useMemo(() => {
-    const q = (search ?? '').trim().toLowerCase()
-    let list = fullOrderedItems
-    if (groupFilter) list = list.filter((it) => (it.group ?? 'Ungrouped') === groupFilter)
-    if (q) list = list.filter((it) => it.name.toLowerCase().includes(q))
-    return list
-  }, [fullOrderedItems, groupFilter, search])
-
-  // Reset to first page when items change
-  useEffect(() => {
-    setCurrentPage(0)
-  }, [gridItems.length])
-
-  function moveToTop(id: number) {
-    persistOrder([id, ...fullOrderedItems.filter((it) => it.id !== id).map((it) => it.id)])
-  }
-
-  function moveBy(id: number, delta: number) {
-    const ids = fullOrderedItems.map((it) => it.id)
-    const i = ids.indexOf(id)
-    const j = i + delta
-    if (i < 0 || j < 0 || j >= ids.length) return
-    ;[ids[i], ids[j]] = [ids[j], ids[i]]
-    persistOrder(ids)
-  }
-
-  const staffNames = useMemo(() => {
-    const set = new Set<string>()
-    for (const t of taps) set.add(t.staff_name)
-    return Array.from(set).sort()
-  }, [taps])
-
-  const visibleTaps = useMemo(() => {
-    if (!staffFilter) return taps
-    return taps.filter((t) => t.staff_name === staffFilter)
-  }, [taps, staffFilter])
-
-  // Group taps by date for log display
-  const tapsByDate = useMemo(() => {
-    const grouped = new Map<string, typeof taps>()
-    for (const tap of visibleTaps) {
-      const date = tap.tapped_at.split('T')[0]
-      if (!grouped.has(date)) grouped.set(date, [])
-      grouped.get(date)!.push(tap)
+    if (groupFilter) {
+      return allItems.filter(i => (i.group ?? 'Ungrouped') === groupFilter)
     }
-    // Sort dates in descending order (today first)
-    return Array.from(grouped.entries()).sort((a, b) => b[0].localeCompare(a[0]))
-  }, [visibleTaps])
+    return allItems
+  }, [allItems, search, groupFilter])
 
-  async function tap(item: GridItem, quantity: number) {
-    if (pendingItemId) return
-    setPendingItemId(item.id)
-    setPendingQty(quantity)
-    try {
-      const customPrice = customSellingPrices[item.id]
-      const body: { itemId: number; quantity: number; customPrice?: number } = { itemId: item.id, quantity }
-      if (customPrice) {
-        const price = Number(customPrice)
-        if (!isNaN(price) && price > 0) {
-          body.customPrice = price
-        }
+  // Build cart from today's taps for current sale type
+  const today = new Date().toISOString().slice(0, 10)
+  const todayTaps = useMemo(() => {
+    return taps.filter(t => !t.undone && t.tapped_at.startsWith(today))
+  }, [taps, today])
+
+  const saleTypeCustomer = saleType === 'GMC' ? 'Grony Multimedia as Customer' : null
+  const cartLines: CartLine[] = useMemo(() => {
+    const byItemId = new Map<number, CartLine>()
+    for (const tap of todayTaps) {
+      // For GMC taps, filter to those recorded for Grony; for WIC, exclude Grony taps
+      const isGmcTap = tap.receipt_id && false // We don't have receipt data easily here, so we'll use a simpler approach
+
+      const item = allItems.find(it => it.id === tap.item_id)
+      if (!item) continue
+
+      const key = tap.item_id
+      const existing = byItemId.get(key)
+      if (existing) {
+        existing.qty += tap.quantity
+      } else {
+        byItemId.set(key, { item, qty: tap.quantity, price: Number(tap.price) })
       }
+    }
+    return Array.from(byItemId.values())
+  }, [todayTaps, allItems])
+
+  const total = cartLines.reduce((s, l) => s + l.qty * l.price, 0)
+
+  async function addToCart(item: Item, quantity: number = 1, customPrice?: number) {
+    setError('')
+    try {
+      const price = customPrice ?? Number(item.selling_price)
+      if (price <= 0) {
+        setError('Invalid price')
+        return
+      }
+
       const res = await fetch('/api/sales/live-tap', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ itemId: item.id, quantity, customPrice: customPrice ? price : undefined }),
       })
       const data = await res.json()
       if (!res.ok) {
-        alert(data.error || 'Could not record tap')
+        setError(data.error || 'Could not record tap')
         return
       }
-      setTaps((prev) => [data.tap, ...prev])
-      setLastTap(data.tap)
-      setCustomSellingPrices((prev) => ({ ...prev, [item.id]: '' }))
-    } catch {
-      alert('Could not record tap')
-    } finally {
-      setPendingItemId(null)
-      setPendingQty(null)
+      setTaps(prev => [data.tap, ...prev])
+    } catch (e) {
+      setError('Network error')
     }
   }
 
-  function getPresetsForItem(item: GridItem) {
-    if (itemPresets[item.id]) return itemPresets[item.id]
-    return item.product_type === 'service' ? SERVICE_QTY : GOODS_QTY
-  }
-
-  function setPresetsForItem(itemId: number, presets: number[]) {
-    setItemPresets((prev) => ({ ...prev, [itemId]: presets }))
-  }
-
-  function submitManualAmount(item: GridItem) {
-    const amount = manualAmounts[item.id]?.trim()
-    if (!amount) return
-    const qty = Number(amount)
-    if (isNaN(qty) || qty <= 0) {
-      alert('Please enter a valid amount')
-      return
-    }
-    setManualAmounts((prev) => ({ ...prev, [item.id]: '' }))
-    tap(item, qty)
-  }
-
-  function parsePagePosition(input: string): number | null {
-    const trimmed = input.trim()
-    if (!trimmed) return null
-    if (trimmed.includes('.')) {
-      const [pageStr, posStr] = trimmed.split('.')
-      const pageNum = Number(pageStr)
-      const posOnPage = Number(posStr)
-      if (isNaN(pageNum) || isNaN(posOnPage) || pageNum < 1 || posOnPage < 1) return null
-      const absolutePos = (pageNum - 1) * itemsPerPage + posOnPage
-      return absolutePos
-    } else {
-      const pos = Number(trimmed)
-      return isNaN(pos) || pos < 1 ? null : pos
-    }
-  }
-
-  function moveToPosition(itemId: number, positionInput: string | number) {
-    let targetPos: number | null = null
-    if (typeof positionInput === 'string') {
-      targetPos = parsePagePosition(positionInput)
-    } else {
-      targetPos = positionInput
-    }
-    if (targetPos === null) return
-    const ids = fullOrderedItems.map((it) => it.id)
-    const currentIdx = ids.indexOf(itemId)
-    if (currentIdx < 0) return
-    // Convert 1-based position to 0-based index
-    const newIdx = Math.max(0, Math.min(ids.length - 1, targetPos - 1))
-    if (newIdx === currentIdx) return
-    // Remove item and insert at new position
-    const newIds = ids.filter((id) => id !== itemId)
-    newIds.splice(newIdx, 0, itemId)
-    persistOrder(newIds)
-    setPositionInputs((prev) => ({ ...prev, [itemId]: '' }))
-  }
-
-  async function undo(tapId: number) {
-    if (undoingId) return
-    setUndoingId(tapId)
+  async function undoTap(tapId: number) {
     try {
-      const res = await fetch(`/api/sales/live-tap/${tapId}`, { method: 'DELETE' })
-      const data = await res.json()
-      if (!res.ok) {
-        alert(data.error || 'Could not undo tap')
-        return
+      const res = await fetch(`/api/sales/live-taps/${tapId}/undo`, { method: 'POST' })
+      if (res.ok) {
+        setTaps(prev => prev.map(t => t.id === tapId ? { ...t, undone: true } : t))
       }
-      setTaps((prev) => prev.map((t) => (t.id === tapId ? { ...t, undone: true } : t)))
-      setLastTap((prev) => (prev && prev.id === tapId ? null : prev))
-    } catch {
-      alert('Could not undo tap')
-    } finally {
-      setUndoingId(null)
+    } catch (e) {
+      setError('Could not undo tap')
     }
+  }
+
+  if (showLog) {
+    return (
+      <div className="p-4">
+        <div className="mb-4 flex justify-between items-center">
+          <h2 className="font-bold text-lg">Live Sale Log</h2>
+          <button onClick={() => setShowLog(false)} className="px-3 py-1 bg-blue-600 text-white rounded text-sm">
+            Back to Grid
+          </button>
+        </div>
+        <div className="space-y-1">
+          {todayTaps.map(tap => (
+            <div key={tap.id} className={`flex justify-between px-3 py-2 border rounded text-sm ${tap.undone ? 'opacity-50 line-through' : ''}`}>
+              <div>
+                <p className="font-semibold">{tap.item_name}</p>
+                <p className="text-xs text-gray-500">{tap.staff_name} at {new Date(tap.tapped_at).toLocaleTimeString()}</p>
+              </div>
+              <div className="text-right">
+                <p className="font-semibold">₵{(Number(tap.price) * tap.quantity).toFixed(2)}</p>
+                <p className="text-xs text-gray-500">{tap.quantity} × ₵{tap.price}</p>
+              </div>
+              {!tap.undone && (
+                <button onClick={() => undoTap(tap.id)} className="ml-2 text-red-600 hover:text-red-800 text-xs font-bold">
+                  Undo
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className={expanded
-      ? 'fixed inset-0 z-50 bg-white overflow-y-auto pb-24'
-      : 'relative pb-24'}>
-      {lawsPanel.show && (
-        <div className="border-b border-gray-200 bg-white px-2 py-1.5">
-          <PageLawsList
-            scopeKey={showLog ? 'Sale Log' : 'Live Sale'}
-            isItemsLaws={true}
-            onChange={lawsPanel.bumpRefresh}
-            openForm={lawsPanel.openForm}
-            setOpenForm={lawsPanel.setOpenForm}
-            hideZeroFlags={lawsPanel.hideZeroFlags}
-            setHideZeroFlags={lawsPanel.setHideZeroFlags}
-            activeFilters={lawsPanel.activeFilters}
+    <div className="flex gap-0 -mx-4 -mt-4 h-[calc(100dvh-60px)] md:h-[calc(100dvh-56px)]">
+
+      {/* LEFT: Item Catalogue */}
+      <div className="w-1/2 flex flex-col border-r border-gray-200 bg-white min-h-0">
+        <div className="px-2 py-1.5 border-b border-gray-100">
+          <p className="text-[9px] font-bold text-gray-400 uppercase mb-1">Item Catalogue</p>
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder={loadingItems ? 'Loading…' : `Search ${allItems.length} items…`}
+            disabled={loadingItems}
+            className="w-full text-[11px] text-gray-900 placeholder-gray-300 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400"
           />
         </div>
-      )}
-      {showLog ? (
-        <div className="px-2 pt-2">
-          <div className="flex flex-wrap items-center gap-1.5 mb-2">
+
+        <div className="flex-1 overflow-y-auto min-h-0">
+          {loadingItems ? (
+            <p className="text-[10px] text-gray-400 text-center py-6">Loading…</p>
+          ) : catalogueItems.length === 0 ? (
+            <p className="text-[10px] text-gray-400 text-center py-6">No items found</p>
+          ) : (
+            catalogueItems.map(item => (
+              <div key={item.id} className="flex items-center px-2 py-1.5 border-b border-gray-50 gap-1">
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-semibold text-gray-900 leading-tight" style={{ wordBreak: 'break-word' }}>
+                    {item.name}
+                  </p>
+                  <p className="text-[9px] leading-tight">
+                    <span className="text-blue-600 font-bold">₵{Number(item.selling_price).toFixed(2)}</span>
+                    <span className="text-gray-400"> · </span>
+                    <span className="text-green-600 font-bold">CP ₵{Number(item.cost_price).toFixed(2)}</span>
+                    <span className="text-gray-400"> · </span>
+                    <span className="text-red-500 font-bold">{Number(item.soh)} pcs</span>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => addToCart(item)}
+                  className="shrink-0 w-6 h-6 rounded-full bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold flex items-center justify-center transition"
+                >
+                  +
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* RIGHT: Daily Receipt */}
+      <div className="w-1/2 flex flex-col bg-gray-50 min-h-0">
+
+        {/* Header */}
+        <div className="px-2 py-1.5 bg-white border-b border-gray-200 space-y-1">
+          <p className="text-[9px] font-bold text-gray-400 uppercase">Live Sale — {today}</p>
+          <div className="flex gap-1">
             <button
               type="button"
-              onClick={() => setStaffFilter(null)}
-              className={`px-2 py-1 rounded-full text-xs font-semibold border ${!staffFilter ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300'}`}
+              onClick={() => setSaleType('WIC')}
+              className={`flex-1 text-[10px] font-bold py-0.5 rounded transition ${
+                saleType === 'WIC' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
             >
-              All staff
+              WIC
             </button>
-            {staffNames.map((name) => (
-              <button
-                key={name}
-                type="button"
-                onClick={() => setStaffFilter(name)}
-                className={`px-2 py-1 rounded-full text-xs font-semibold border ${staffFilter === name ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300'}`}
-              >
-                {name}
-              </button>
-            ))}
-            <div className="ml-auto">
-              <ColumnsPickerButton prefs={logColPrefs} />
-            </div>
+            <button
+              type="button"
+              onClick={() => setSaleType('GMC')}
+              className={`flex-1 text-[10px] font-bold py-0.5 rounded transition ${
+                saleType === 'GMC' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              GMC
+            </button>
           </div>
-
-          {loadingTaps ? (
-            <p className="text-sm text-gray-400">Loading…</p>
-          ) : visibleTaps.length === 0 ? (
-            <p className="text-sm text-gray-400">No sales recorded.</p>
-          ) : (
-            <div className="overflow-x-auto border border-gray-200 rounded-lg">
-              <table className="border-collapse text-[10px]" style={{
-                tableLayout: 'fixed',
-                width: logColPrefs.shownColumns.reduce((s, c) => s + logColPrefs.getWidth(c.key, LOG_COL_DEFAULTS[c.key] ?? 80), 0)
-                  + logColPrefs.getWidth('actions', LOG_COL_DEFAULTS.actions),
-              }}>
-                <colgroup>
-                  {logColPrefs.shownColumns.map((c) => <col key={c.key} style={{ width: logColPrefs.getWidth(c.key, LOG_COL_DEFAULTS[c.key] ?? 80) }} />)}
-                  <col style={{ width: logColPrefs.getWidth('actions', LOG_COL_DEFAULTS.actions) }} />
-                </colgroup>
-                <thead>
-                  <tr className="bg-gray-50">
-                    {logColPrefs.shownColumns.map((c) => (
-                      <ResizableTh key={c.key} align={c.key === 'sp' || c.key === 'qty' || c.key === 'total' ? 'right' : 'left'}
-                        className={`text-[9px] ${c.key === 'item' ? 'sticky left-0 bg-gray-50 z-10' : ''}`}
-                        onResize={(d) => logColPrefs.resizeWidth(c.key, d, LOG_COL_DEFAULTS[c.key] ?? 80)}
-                        onReset={() => logColPrefs.resetWidth(c.key)}>
-                        {c.label}
-                      </ResizableTh>
-                    ))}
-                    <ResizableTh noDivider className="text-[9px]"
-                      onResize={(d) => logColPrefs.resizeWidth('actions', d, LOG_COL_DEFAULTS.actions)}
-                      onReset={() => logColPrefs.resetWidth('actions')} />
-                  </tr>
-                </thead>
-                <tbody>
-                  {tapsByDate.map(([date, dayTaps]) => {
-                    const dateObj = new Date(date)
-                    const dateLabel = dateObj.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: dateObj.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined })
-                    const dayTotal = dayTaps.reduce((sum, t) => sum + (t.undone ? 0 : Number(t.price) * t.quantity), 0)
-                    return (
-                      <Fragment key={date}>
-                        <tr className="bg-green-50 border-b border-green-200">
-                          <td className={`px-2 py-2 text-[9px] font-bold text-green-800 ${logColPrefs.shownColumns[0]?.key === 'item' ? 'sticky left-0 bg-green-50 z-10' : ''}`} colSpan={logColPrefs.shownColumns.length}>
-                            📅 {dateLabel} · <span className="text-green-700">Total: {money(dayTotal)}</span>
-                          </td>
-                        </tr>
-                        {dayTaps.map((t) => (
-                          <tr
-                            key={t.id}
-                            className={`border-b border-gray-50 ${t.undone ? 'bg-gray-50 text-gray-400 line-through' : 'bg-white'}`}
-                          >
-                            {logColPrefs.shownColumns.map((c) => (
-                              <td key={c.key}
-                                className={`px-2 py-1 overflow-hidden text-ellipsis whitespace-nowrap ${c.key === 'item' ? 'font-semibold sticky left-0 bg-white z-10' : ''} ${c.key === 'sp' || c.key === 'qty' || c.key === 'total' || c.key === 'soh' ? 'text-right' : ''} ${c.key === 'total' ? 'font-bold text-blue-600' : ''}`}
-                              >
-                                {c.key === 'item' && t.item_name}
-                                {c.key === 'time' && new Date(t.tapped_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                                {c.key === 'sp' && money(Number(t.price))}
-                                {c.key === 'qty' && t.quantity}
-                                {c.key === 'total' && money(Number(t.price) * t.quantity)}
-                                {c.key === 'soh' && (t.soh ?? '-')}
-                                {c.key === 'staff' && t.staff_name}
-                              </td>
-                            ))}
-                            <td className="px-2 py-1 whitespace-nowrap">
-                              {!t.undone && (
-                                <button
-                                  type="button"
-                                  onClick={() => undo(t.id)}
-                                  disabled={undoingId === t.id}
-                                  className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 disabled:opacity-50"
-                                >
-                                  Undo
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </Fragment>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+          {saleType === 'GMC' && (
+            <p className="text-[9px] text-purple-600 font-semibold">Recorded as "Grony Multimedia as Customer"</p>
           )}
         </div>
-      ) : (
-        <div>
-          {loadingItems ? (
-            <p className="text-sm text-gray-400">Loading items…</p>
+
+        {/* Cart Items */}
+        <div className="flex-1 overflow-y-auto min-h-0">
+          {cartLines.length === 0 ? (
+            <p className="text-[10px] text-gray-400 text-center py-8">Tap + to add items</p>
           ) : (
-            <div>
-              {/* Help and Fullscreen buttons */}
-              <div className="px-2 py-2 border-b border-gray-200 bg-blue-50 flex items-center gap-2">
-                <button
-                  onClick={() => setShowHelpModal(true)}
-                  className="text-xs font-semibold text-blue-700 hover:text-blue-600 px-3 py-1.5 rounded bg-white border border-blue-200 hover:bg-blue-100 transition"
-                >
-                  ? Help & Training
-                </button>
-                <button
-                  onClick={() => setExpanded(!expanded)}
-                  className={`text-xs font-semibold px-3 py-1.5 rounded border transition ml-auto ${
-                    expanded
-                      ? 'text-red-700 hover:text-red-600 bg-white border-red-200 hover:bg-red-100'
-                      : 'text-blue-700 hover:text-blue-600 bg-white border-blue-200 hover:bg-blue-100'
-                  }`}
-                  title={expanded ? 'Return to normal view' : 'Enter fullscreen mode'}
-                >
-                  {expanded ? '⊖ Exit Fullscreen' : '⊕ Fullscreen'}
-                </button>
+            <>
+              <div className="grid grid-cols-[1fr_28px_38px_38px_14px] gap-0.5 px-2 py-1 bg-gray-100 border-b border-gray-200 sticky top-0">
+                <span className="text-[8px] text-gray-500 font-semibold uppercase">Item</span>
+                <span className="text-[8px] text-gray-500 font-semibold uppercase text-center">Qty</span>
+                <span className="text-[8px] text-gray-500 font-semibold uppercase text-center">Price</span>
+                <span className="text-[8px] text-gray-500 font-semibold uppercase text-center">Total</span>
+                <span />
               </div>
-            <div>
-              {/* Items container with swipe support */}
-              <div
-                ref={itemsContainerRef}
-                onTouchStart={handleTouchStart}
-                onTouchEnd={handleTouchEnd}
-                className="overflow-hidden"
-              >
-                {(() => {
-                  const startIdx = currentPage * itemsPerPage
-                  const endIdx = startIdx + itemsPerPage
-                  const pageItems = gridItems.slice(startIdx, endIdx)
-                  return pageItems.map((it, pageIdx) => {
-                    const globalIdx = startIdx + pageIdx
-                    const count = tapCounts.get(it.id) ?? 0
-                    const number = (
-                      <span className="shrink-0 w-4 text-right text-[9px] font-bold text-gray-400">{globalIdx + 1}</span>
-                    )
-                const colors = getColorScheme(globalIdx)
-                const label = (
-                  <p
-                    className={`text-[14px] font-semibold ${colors.itemName} leading-7 h-7 flex items-center`}
-                    style={{ wordBreak: 'break-word' }}
-                    onPointerDown={() => {
-                      longPressTimeoutRef.current = setTimeout(() => {
-                        setQuickArrangeItemId(it.id)
-                        longPressTimeoutRef.current = null
-                      }, 500)
-                    }}
-                    onPointerUp={() => {
-                      if (longPressTimeoutRef.current) {
-                        clearTimeout(longPressTimeoutRef.current)
-                        longPressTimeoutRef.current = null
-                      }
-                    }}
-                    onPointerLeave={() => {
-                      if (longPressTimeoutRef.current) {
-                        clearTimeout(longPressTimeoutRef.current)
-                        longPressTimeoutRef.current = null
-                      }
-                    }}
-                  >
-                    {it.name} <span className="text-blue-600 font-bold">({moneyCompact(Number(it.selling_price) || 0)})</span>
-                  </p>
-                )
-
-                if (arranging) {
-                  return (
-                    <div
-                      key={it.id}
-                      className="w-full flex items-center gap-1 px-2 py-1.5 border-b border-gray-50 bg-white"
-                    >
-                      {number}
-                      {label}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (confirm(`Move "${it.name}" up?`)) {
-                            moveBy(it.id, -1)
-                          }
-                        }}
-                        disabled={globalIdx === 0}
-                        title="Move up"
-                        className="shrink-0 w-5 h-5 rounded bg-gray-100 text-gray-600 text-[10px] font-bold flex items-center justify-center hover:bg-gray-200 disabled:opacity-30"
-                      >
-                        ↑
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (confirm(`Move "${it.name}" down?`)) {
-                            moveBy(it.id, 1)
-                          }
-                        }}
-                        disabled={globalIdx === gridItems.length - 1}
-                        title="Move down"
-                        className="shrink-0 w-5 h-5 rounded bg-gray-100 text-gray-600 text-[10px] font-bold flex items-center justify-center hover:bg-gray-200 disabled:opacity-30"
-                      >
-                        ↓
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (confirm(`Move "${it.name}" to top?`)) {
-                            moveToTop(it.id)
-                          }
-                        }}
-                        disabled={globalIdx === 0}
-                        title="Move to top"
-                        className="shrink-0 px-1.5 h-5 rounded bg-blue-50 text-blue-700 text-[9px] font-bold flex items-center justify-center hover:bg-blue-100 disabled:opacity-30"
-                      >
-                        ⤒ Top
-                      </button>
-                      <div className="ml-auto flex items-center gap-1">
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="p.n"
-                          value={positionInputs[it.id] ?? ''}
-                          onChange={(e) => setPositionInputs((prev) => ({ ...prev, [it.id]: e.target.value }))}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault()
-                              moveToPosition(it.id, positionInputs[it.id])
-                            }
-                          }}
-                          title="Enter page.position (e.g., 3.2 = page 3, position 2)"
-                          className="w-14 h-5 px-0.5 rounded bg-white text-gray-700 text-[9px] font-bold border border-gray-300 text-center focus:outline-none focus:ring-1 focus:ring-blue-400"
-                        />
-                        {positionInputs[it.id] && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              moveToPosition(it.id, positionInputs[it.id])
-                            }}
-                            className="w-5 h-5 rounded bg-green-600 hover:bg-green-700 text-white text-[8px] font-bold flex items-center justify-center"
-                            title="Move to page.position"
-                          >
-                            ✓
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )
-                }
-
-                const pending = pendingItemId === it.id
-                const bgColor = globalIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                return (
-                  <div key={it.id} className={`w-full px-0 pr-2 py-1.5 border-b border-gray-200 ${bgColor}`}>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {number}
-                      <div className="flex items-center gap-1">
-                        {label}
-                        {count > 0 && (
-                          <span className="shrink-0 min-w-[0.9rem] h-[0.9rem] px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold flex items-center justify-center">
-                            {count}
-                          </span>
-                        )}
-                      </div>
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        placeholder="Qty"
-                        value={manualAmounts[it.id] ?? ''}
-                        onChange={(e) => setManualAmounts((prev) => ({ ...prev, [it.id]: e.target.value }))}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault()
-                            submitManualAmount(it)
-                          }
-                        }}
-                        disabled={pending}
-                        className="w-12 h-7 px-1 rounded-lg bg-white text-gray-700 text-[11px] font-bold border border-gray-300 text-center focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-40 transition"
-                      />
-                      {manualAmounts[it.id] && (
-                        <button
-                          type="button"
-                          onClick={() => submitManualAmount(it)}
-                          disabled={pending}
-                          className="px-2 h-7 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[9px] font-bold flex items-center justify-center transition disabled:opacity-40"
-                        >
-                          Tap
-                        </button>
-                      )}
-                      {quickArrangeItemId === it.id && (
-                        <div className="ml-auto flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (confirm(`Move "${it.name}" up?`)) {
-                                moveBy(it.id, -1)
-                                setQuickArrangeItemId(null)
-                              }
-                            }}
-                            disabled={globalIdx === 0}
-                            title="Move up"
-                            className="shrink-0 w-5 h-5 rounded bg-gray-100 text-gray-600 text-[10px] font-bold flex items-center justify-center hover:bg-gray-200 disabled:opacity-30"
-                          >
-                            ↑
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (confirm(`Move "${it.name}" down?`)) {
-                                moveBy(it.id, 1)
-                                setQuickArrangeItemId(null)
-                              }
-                            }}
-                            disabled={globalIdx === gridItems.length - 1}
-                            title="Move down"
-                            className="shrink-0 w-5 h-5 rounded bg-gray-100 text-gray-600 text-[10px] font-bold flex items-center justify-center hover:bg-gray-200 disabled:opacity-30"
-                          >
-                            ↓
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (confirm(`Move "${it.name}" to top?`)) {
-                                moveToTop(it.id)
-                                setQuickArrangeItemId(null)
-                              }
-                            }}
-                            disabled={globalIdx === 0}
-                            title="Move to top"
-                            className="shrink-0 px-1.5 h-5 rounded bg-blue-50 text-blue-700 text-[9px] font-bold flex items-center justify-center hover:bg-blue-100 disabled:opacity-30"
-                          >
-                            ⤒ Top
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setQuickArrangeItemId(null)}
-                            title="Close"
-                            className="shrink-0 w-5 h-5 rounded bg-gray-200 text-gray-600 text-[10px] font-bold flex items-center justify-center hover:bg-gray-300"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )
-                  })
-                })()}
-              </div>
-              {/* Pagination numbers - scrollable with current page auto-centered */}
-              {gridItems.length > 0 && (
-                <div className="overflow-x-auto py-2 border-b border-gray-200 bg-gray-50">
-                  <div className="flex items-center justify-start gap-1.5 px-2 min-w-min" ref={(el) => {
-                    if (el) {
-                      const activeBtn = el.querySelector('[data-active="true"]') as HTMLElement
-                      if (activeBtn) {
-                        activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
-                      }
-                    }
-                  }}>
-                    {(() => {
-                      const totalPages = Math.ceil(gridItems.length / itemsPerPage)
-                      return Array.from({ length: totalPages }).map((_, page) => (
-                        <button
-                          key={page}
-                          onClick={() => setCurrentPage(page)}
-                          data-active={page === currentPage}
-                          className={`min-w-[32px] h-7 px-2 rounded-md text-xs font-semibold transition ${
-                            page === currentPage
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
-                          }`}
-                          title={`Go to page ${page + 1}`}
-                        >
-                          {page + 1}
-                        </button>
-                      ))
-                    })()}
-                  </div>
+              {cartLines.map((l, idx) => (
+                <div key={idx} className="grid grid-cols-[1fr_28px_38px_38px_14px] gap-0.5 items-center px-2 py-1 border-b border-gray-100">
+                  <p className="text-[9px] font-semibold text-gray-900 leading-tight truncate">{l.item.name}</p>
+                  <p className="text-[9px] text-center text-gray-900 font-semibold">{l.qty}</p>
+                  <p className="text-[9px] text-center text-gray-900 font-semibold">₵{l.price.toFixed(2)}</p>
+                  <p className="text-[9px] font-bold text-gray-900 text-center">₵{(l.qty * l.price).toFixed(0)}</p>
+                  <span />
                 </div>
-              )}
-              {gridItems.length === 0 && <p className="text-[10px] text-gray-400 text-center py-6">No items match.</p>}
-            </div>
-            </div>
+              ))}
+            </>
           )}
         </div>
-      )}
 
-      {lastTap && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2.5 rounded-full bg-green-600 text-white shadow-lg text-sm font-semibold">
-          <span>✓ {lastTap.item_name} × {lastTap.quantity} · {money(Number(lastTap.price) * lastTap.quantity)}</span>
+        {/* Footer */}
+        <div className="border-t border-gray-200 bg-white px-2 py-1.5 space-y-1">
+          <div className="flex justify-between text-[10px] font-bold text-gray-900">
+            <span>{cartLines.length} item{cartLines.length !== 1 ? 's' : ''}</span>
+            <span>₵{total.toFixed(2)}</span>
+          </div>
+          {error && (
+            <p className="text-[10px] text-red-500 font-medium text-center">{error}</p>
+          )}
           <button
             type="button"
-            onClick={() => undo(lastTap.id)}
-            disabled={undoingId === lastTap.id}
-            className="px-2 py-0.5 rounded-full bg-white/20 hover:bg-white/30 text-xs font-bold disabled:opacity-50"
+            onClick={() => setShowLog(true)}
+            className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold text-[11px] rounded-lg py-1.5 transition"
           >
-            Undo
+            View Log
           </button>
         </div>
-      )}
-
-      {priceOverrideItemId && (
-        <div className="fixed inset-0 z-40 bg-black/50 flex items-center justify-center p-4" onClick={() => setPriceOverrideItemId(null)}>
-          <div className="bg-white rounded-lg p-6 max-w-sm w-full shadow-lg" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Override Selling Price</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              {gridItems.find(it => it.id === priceOverrideItemId)?.name}
-            </p>
-            <input
-              type="number"
-              inputMode="decimal"
-              placeholder="0.00"
-              value={priceOverrideInput}
-              onChange={(e) => setPriceOverrideInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  const price = Number(priceOverrideInput)
-                  if (!isNaN(price) && price > 0) {
-                    setCustomSellingPrices((prev) => ({ ...prev, [priceOverrideItemId]: priceOverrideInput }))
-                    setPriceOverrideItemId(null)
-                    setPriceOverrideInput('')
-                  }
-                }
-              }}
-              autoFocus
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 text-gray-900 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
-            />
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  const price = Number(priceOverrideInput)
-                  if (!isNaN(price) && price > 0) {
-                    setCustomSellingPrices((prev) => ({ ...prev, [priceOverrideItemId]: priceOverrideInput }))
-                    setPriceOverrideItemId(null)
-                    setPriceOverrideInput('')
-                  }
-                }}
-                className="flex-1 px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition"
-              >
-                Set Price
-              </button>
-              <button
-                onClick={() => {
-                  setPriceOverrideItemId(null)
-                  setPriceOverrideInput('')
-                }}
-                className="flex-1 px-3 py-2 rounded-lg bg-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-300 transition"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <TrainingGuideModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
+      </div>
     </div>
   )
 }
