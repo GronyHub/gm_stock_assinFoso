@@ -21,7 +21,6 @@ export default function LiveSalePage(props: any = {}) {
   const [allItems, setAllItems] = useState<Item[]>([])
   const [loadingItems, setLoadingItems] = useState(true)
   const [taps, setTaps] = useState<Tap[]>([])
-  const [search, setSearch] = useState('')
   const [saleType, setSaleType] = useState<'WIC' | 'GMC'>('WIC')
   const [error, setError] = useState('')
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
@@ -58,15 +57,10 @@ export default function LiveSalePage(props: any = {}) {
     return counts
   }, [taps])
 
-  // Filter items by search and sort by sales count (highest to lowest)
+  // Sort items by sales count (highest to lowest)
   const catalogueItems = useMemo(() => {
-    let items = allItems
-    if (search.trim()) {
-      const q = search.toLowerCase()
-      items = items.filter(i => i.name.toLowerCase().includes(q))
-    }
-    return items.sort((a, b) => (salesCounts.get(b.id) ?? 0) - (salesCounts.get(a.id) ?? 0))
-  }, [allItems, search, salesCounts])
+    return allItems.sort((a, b) => (salesCounts.get(b.id) ?? 0) - (salesCounts.get(a.id) ?? 0))
+  }, [allItems, salesCounts])
 
   async function recordTap() {
     if (!selectedItem || !qty) return
@@ -269,14 +263,6 @@ export default function LiveSalePage(props: any = {}) {
         {saleType === 'GMC' && (
           <p className="text-xs text-purple-600 font-semibold">Recorded as "Grony Multimedia as Customer"</p>
         )}
-        <input
-          type="text"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder={loadingItems ? 'Loading…' : 'Search items…'}
-          disabled={loadingItems}
-          className="w-full text-sm text-gray-900 placeholder-gray-400 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400"
-        />
       </div>
 
       {/* Items Grid - 2 Columns */}
