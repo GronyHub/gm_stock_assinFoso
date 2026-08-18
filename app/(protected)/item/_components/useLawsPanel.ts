@@ -41,7 +41,7 @@ export function useLawFilterState(storageKey?: string) {
   }
 
   useEffect(() => {
-    if (!storageKey) return
+    if (!storageKey || typeof window === 'undefined' || !window.localStorage) return
     localStorage.setItem(storageKey, JSON.stringify(Array.from(activeFilters)))
   }, [activeFilters, storageKey])
 
@@ -62,10 +62,12 @@ export function useLawsPanel(storageKey: string) {
   const { activeFilters, toggleFilter } = useLawFilterState(`${storageKey}:filters`)
 
   useEffect(() => {
+    if (typeof window === 'undefined' || !window.localStorage) return
     localStorage.setItem(storageKey, show.toString())
   }, [show, storageKey])
 
   useEffect(() => {
+    if (typeof window === 'undefined' || !window.localStorage) return
     localStorage.setItem(`${storageKey}:hideZeroFlags`, hideZeroFlags.toString())
   }, [hideZeroFlags, storageKey])
 

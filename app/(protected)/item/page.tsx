@@ -1043,14 +1043,17 @@ function ItemHubPageInner() {
   }, [])
 
   useEffect(() => {
+    if (typeof window === 'undefined' || !window.localStorage) return
     localStorage.setItem('showItemsLaws', showItemsLaws.toString())
   }, [showItemsLaws])
 
   useEffect(() => {
+    if (typeof window === 'undefined' || !window.localStorage) return
     localStorage.setItem('showSalesLaws', showSalesLaws.toString())
   }, [showSalesLaws])
 
   useEffect(() => {
+    if (typeof window === 'undefined' || !window.localStorage) return
     localStorage.setItem('showBillsLaws', showBillsLaws.toString())
   }, [showBillsLaws])
 
@@ -1338,10 +1341,12 @@ function ItemHubPageInner() {
   ]
 
   function areAllLawsShown() {
+    if (typeof window === 'undefined' || !window.localStorage) return false
     return lawsKeys.every(k => localStorage.getItem(k) === 'true')
   }
 
   function toggleAllLaws() {
+    if (typeof window === 'undefined' || !window.localStorage) return
     const allShown = areAllLawsShown()
     lawsKeys.forEach(k => localStorage.setItem(k, allShown ? 'false' : 'true'))
     window.location.reload()
