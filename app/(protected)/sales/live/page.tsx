@@ -109,9 +109,11 @@ export default function LiveSalePage(props: any = {}) {
 
   async function undoTap(tapId: number) {
     try {
-      const res = await fetch(`/api/sales/live-taps/${tapId}/undo`, { method: 'POST' })
+      const res = await fetch(`/api/sales/live-taps/${tapId}?action=undo`, { method: 'POST' })
       if (res.ok) {
         setTaps(prev => prev.map(t => t.id === tapId ? { ...t, undone: true } : t))
+      } else {
+        setError('Could not undo tap')
       }
     } catch (e) {
       setError('Could not undo tap')
@@ -126,53 +128,86 @@ export default function LiveSalePage(props: any = {}) {
 
     return (
       <div className="h-full flex flex-col bg-white">
-        <div className="px-4 py-3 border-b border-gray-200">
+        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
           <h2 className="text-sm font-bold text-gray-900">Live Sale Log — {today}</h2>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-auto">
           {todayTaps.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-8">No sales recorded</p>
           ) : (
-            <div className="divide-y divide-gray-200">
-              {todayTaps.map(tap => (
-                <div
-                  key={tap.id}
-                  className={`px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition ${
-                    tap.undone ? 'opacity-50 bg-gray-50' : ''
-                  }`}
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-semibold ${tap.undone ? 'line-through text-gray-400' : 'text-gray-900'}`}>
-                      {tap.item_name}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {tap.staff_name} · {new Date(tap.tapped_at).toLocaleTimeString()}
-                    </p>
-                  </div>
-                  <div className="shrink-0 text-right ml-4">
-                    <p className="text-sm font-semibold text-gray-900">₵{(Number(tap.price) * tap.quantity).toFixed(2)}</p>
-                    <p className="text-xs text-gray-500">{tap.quantity} × ₵{Number(tap.price).toFixed(2)}</p>
-                  </div>
-                  {!tap.undone && (
-                    <button
-                      onClick={() => undoTap(tap.id)}
-                      className="shrink-0 ml-4 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 rounded transition"
-                    >
-                      Undo
-                    </button>
+            <div className="inline-block min-w-full">
+              {/* Table header */}
+              <div className="grid grid-cols-[2fr_1fr_1fr_0.8fr_0.6fr_1fr_0.6fr_0.8fr] gap-0 bg-gray-50 border-b border-gray-200 sticky top-0">
+                <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase">Item</div>
+                <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase text-right">Total</div>
+                <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase text-center">Time</div>
+                <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase text-right">SP</div>
+                <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase text-center">Qty</div>
+                <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase">Staff</div>
+                <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase text-center">SOH</div>
+                <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase" />
+              </div>
+
+              {/* Table rows */}
+              {todayTaps.map((tap, idx) => (
+                <div key={tap.id}>
+                  {idx === 0 && (
+                    <div className="grid grid-cols-[2fr_1fr_1fr_0.8fr_0.6fr_1fr_0.6fr_0.8fr] gap-0 bg-green-50 border-b border-green-200 px-4 py-2">
+                      <div className="col-span-8 text-xs font-semibold text-green-700">
+                        {new Date(today).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · Total: ₵{todayTaps.filter(t => !t.undone).reduce((s, t) => s + Number(t.price) * t.quantity, 0).toFixed(2)}
+                      </div>
+                    </div>
                   )}
+                  <div
+                    className={`grid grid-cols-[2fr_1fr_1fr_0.8fr_0.6fr_1fr_0.6fr_0.8fr] gap-0 border-b border-gray-100 items-center hover:bg-gray-50 transition ${
+                      tap.undone ? 'bg-gray-50 opacity-60' : ''
+                    }`}
+                  >
+                    <div className="px-4 py-3">
+                      <p className={`text-sm font-semibold ${tap.undone ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                        {tap.item_name}
+                      </p>
+                    </div>
+                    <div className="px-4 py-3 text-right">
+                      <p className={`text-sm font-semibold ${tap.undone ? 'text-gray-400' : 'text-blue-600'}`}>
+                        ₵{(Number(tap.price) * tap.quantity).toFixed(2)}
+                      </p>
+                    </div>
+                    <div className="px-4 py-3 text-center">
+                      <p className="text-xs text-gray-500">{new Date(tap.tapped_at).toLocaleTimeString()}</p>
+                    </div>
+                    <div className="px-4 py-3 text-right">
+                      <p className={`text-sm font-semibold ${tap.undone ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                        ₵{Number(tap.price).toFixed(2)}
+                      </p>
+                    </div>
+                    <div className="px-4 py-3 text-center">
+                      <p className={`text-sm font-semibold ${tap.undone ? 'text-gray-400' : 'text-gray-900'}`}>
+                        {tap.quantity}
+                      </p>
+                    </div>
+                    <div className="px-4 py-3">
+                      <p className="text-sm text-gray-600">{tap.staff_name}</p>
+                    </div>
+                    <div className="px-4 py-3 text-center">
+                      <p className="text-sm text-gray-500">{tap.soh ?? '-'}</p>
+                    </div>
+                    <div className="px-4 py-3 text-right">
+                      {!tap.undone && (
+                        <button
+                          onClick={() => undoTap(tap.id)}
+                          className="px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-100 rounded transition"
+                        >
+                          Undo
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
           )}
-        </div>
-
-        <div className="border-t border-gray-200 bg-gray-50 px-4 py-3">
-          <div className="flex justify-between items-center text-sm font-semibold">
-            <span className="text-gray-600">Total ({todayTaps.length} taps)</span>
-            <span className="text-lg text-gray-900">₵{total.toFixed(2)}</span>
-          </div>
         </div>
       </div>
     )
