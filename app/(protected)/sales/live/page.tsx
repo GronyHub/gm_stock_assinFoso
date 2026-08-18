@@ -292,13 +292,14 @@ export default function LiveSalePage(props: any = {}) {
                   className="p-2 flex items-start gap-1 hover:bg-gray-50 transition group border-r border-b border-gray-100"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-gray-900 leading-tight truncate">{item.name}</p>
-                    <p className="text-[10px] text-gray-600 leading-tight">
+                    <p className="text-[11px] font-semibold text-gray-900 leading-tight truncate">{item.name}</p>
+                    <p className="text-[9px] text-gray-600 leading-tight">
                       <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
                       <span className="text-gray-400"> · </span>
                       <span className="text-green-600 font-semibold">CP ₵{formatPrice(item.cost_price)}</span>
+                      <span className="text-gray-400"> · </span>
+                      <span className="text-red-600 font-semibold">{Number(item.soh)} pcs</span>
                     </p>
-                    <p className="text-[10px] text-red-600 font-semibold">{Number(item.soh)} pcs</p>
                   </div>
                   <div className="flex items-center gap-0.5 shrink-0">
                     {count > 0 && (
