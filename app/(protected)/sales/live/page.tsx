@@ -3,6 +3,9 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { usePresenceReporter } from '@/lib/usePresenceReporter'
+import { useLawsPanel } from '@/app/(protected)/item/_components/useLawsPanel'
+import LawsToggleBar from '@/app/(protected)/item/_components/LawsToggleBar'
+import PageLawsList from '@/app/(protected)/item/_components/PageLawsList'
 
 type Item = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; product_type: string | null }
 type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null }
@@ -28,6 +31,7 @@ export default function LiveSalePage(props: any = {}) {
   const [price, setPrice] = useState('')
   const [saving, setSaving] = useState(false)
   const [showLog, setShowLog] = useState(initialShowLog)
+  const liveSaleLaws = useLawsPanel('showLiveSaleLaws')
 
   // Fetch items
   useEffect(() => {
@@ -263,7 +267,32 @@ export default function LiveSalePage(props: any = {}) {
         {saleType === 'GMC' && (
           <p className="text-xs text-purple-600 font-semibold">Recorded as "Grony Multimedia as Customer"</p>
         )}
+        <div className="bg-green-700 -mx-4 px-4 py-2">
+          <LawsToggleBar
+            show={liveSaleLaws.show}
+            setShow={liveSaleLaws.setShow}
+            openForm={liveSaleLaws.openForm}
+            setOpenForm={liveSaleLaws.setOpenForm}
+            hideZeroFlags={liveSaleLaws.hideZeroFlags}
+            setHideZeroFlags={liveSaleLaws.setHideZeroFlags}
+            activeFilters={liveSaleLaws.activeFilters}
+            toggleFilter={liveSaleLaws.toggleFilter}
+            dark={true}
+          />
+        </div>
       </div>
+      {liveSaleLaws.show && (
+        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 overflow-auto max-h-48">
+          <PageLawsList
+            scopeKey="liveSalesLaws"
+            openForm={liveSaleLaws.openForm}
+            setOpenForm={liveSaleLaws.setOpenForm}
+            hideZeroFlags={liveSaleLaws.hideZeroFlags}
+            setHideZeroFlags={liveSaleLaws.setHideZeroFlags}
+            activeFilters={liveSaleLaws.activeFilters}
+          />
+        </div>
+      )}
 
       {/* Items Grid - 2 Columns */}
       <div className="flex-1 overflow-y-auto">
