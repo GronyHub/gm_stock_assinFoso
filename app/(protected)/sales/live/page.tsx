@@ -304,7 +304,7 @@ export default function LiveSalePage(props: any = {}) {
                   </div>
                   <div className="flex items-center gap-0.5 shrink-0">
                     {count > 0 && (
-                      <span className="inline-flex items-center justify-center min-w-4 h-4 px-0.5 rounded-full bg-blue-600 text-white text-[10px] font-bold">
+                      <span className="inline-flex items-center justify-center min-w-3 h-3 px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold">
                         {count}
                       </span>
                     )}
