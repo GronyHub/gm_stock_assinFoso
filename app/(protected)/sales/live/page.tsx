@@ -199,6 +199,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
   }, [])
 
   useEffect(() => {
+    if (typeof window === 'undefined' || !window.localStorage) return
     const saved = localStorage.getItem('liveSaleItemPresets')
     if (saved) {
       try {
@@ -209,6 +210,7 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
   }, [])
 
   useEffect(() => {
+    if (typeof window === 'undefined' || !window.localStorage) return
     localStorage.setItem('liveSaleItemPresets', JSON.stringify(itemPresets))
   }, [itemPresets])
 

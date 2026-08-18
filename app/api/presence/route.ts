@@ -8,8 +8,19 @@ import { NextRequest, NextResponse } from 'next/server'
 // actively delete it.
 const STALE_SECONDS = 25
 
+async function ensureUserPresenceTable() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS user_presence (
+      staff_name TEXT PRIMARY KEY,
+      activity TEXT NOT NULL,
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `.catch(() => {})
+}
+
 export async function GET() {
   try {
+    await ensureUserPresenceTable()
     const rows = await sql`
       SELECT staff_name, activity, updated_at
       FROM user_presence
@@ -36,6 +47,7 @@ export async function POST(req: NextRequest) {
   // shouldn't 500 out of whatever the user was actually doing, so fail the
   // same quiet way GET already does.
   try {
+    await ensureUserPresenceTable()
     await sql`
       INSERT INTO user_presence (staff_name, activity, updated_at)
       VALUES (${staffName}, ${activity}, NOW())
@@ -53,6 +65,7 @@ export async function DELETE(req: NextRequest) {
 
   const staffName = (session.user as any)?.username ?? session.user?.name
   try {
+    await ensureUserPresenceTable()
     await sql`DELETE FROM user_presence WHERE staff_name = ${staffName}`
   } catch (e) {
     console.error('presence DELETE error:', e)
