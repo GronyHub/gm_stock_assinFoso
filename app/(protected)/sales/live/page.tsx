@@ -758,147 +758,31 @@ export default function LiveSalePage({ onClose, initialShowLog, search, groupFil
                           </span>
                         )}
                       </div>
-                      {/* Preset buttons follow item name, wrapping with outer flex */}
-                      {getPresetsForItem(it).map((q, qIdx) => {
-                          const total = (Number(it.selling_price) || 0) * q
-                          const pressed = pending && pendingQty === q
-                          const isEditing = editingButton?.itemId === it.id && editingButton?.index === qIdx
-                          const presets = getPresetsForItem(it)
-
-                          if (isEditing) {
-                            return (
-                              <div key={`edit-${qIdx}`} className="flex items-center gap-0.5">
-                                <input
-                                  type="number"
-                                  inputMode="numeric"
-                                  autoFocus
-                                  value={editingValue}
-                                  onChange={(e) => setEditingValue(e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      e.preventDefault()
-                                      const newVal = Number(editingValue)
-                                      if (!isNaN(newVal) && newVal > 0) {
-                                        const newPresets = [...presets]
-                                        newPresets[qIdx] = newVal
-                                        setPresetsForItem(it.id, newPresets)
-                                        setEditingButton(null)
-                                        setEditingValue('')
-                                      }
-                                    }
-                                    if (e.key === 'Escape') {
-                                      e.preventDefault()
-                                      setEditingButton(null)
-                                      setEditingValue('')
-                                    }
-                                  }}
-                                  className="w-10 h-7 px-1 rounded-lg bg-white text-blue-700 text-[11px] font-bold border border-blue-300 text-center focus:outline-none focus:ring-1 focus:ring-blue-500 transition"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const newVal = Number(editingValue)
-                                    if (!isNaN(newVal) && newVal > 0) {
-                                      const newPresets = [...presets]
-                                      newPresets[qIdx] = newVal
-                                      setPresetsForItem(it.id, newPresets)
-                                      setEditingButton(null)
-                                      setEditingValue('')
-                                    }
-                                  }}
-                                  className="w-6 h-7 rounded-lg bg-green-600 hover:bg-green-700 text-white text-[9px] font-bold flex items-center justify-center transition"
-                                  title="Save"
-                                >
-                                  ✓
-                                </button>
-                                {presets.length > 1 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const newPresets = presets.filter((_, i) => i !== qIdx)
-                                      setPresetsForItem(it.id, newPresets)
-                                      setEditingButton(null)
-                                      setEditingValue('')
-                                    }}
-                                    className="w-5 h-7 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[9px] font-bold flex items-center justify-center transition"
-                                    title="Delete this button"
-                                  >
-                                    −
-                                  </button>
-                                )}
-                              </div>
-                            )
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        placeholder="Qty"
+                        value={manualAmounts[it.id] ?? ''}
+                        onChange={(e) => setManualAmounts((prev) => ({ ...prev, [it.id]: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            submitManualAmount(it)
                           }
-
-                          return (
-                            <button
-                              key={`btn-${qIdx}`}
-                              type="button"
-                              onClick={() => tap(it, q)}
-                              onPointerDown={() => {
-                                longPressTimeoutRef.current = setTimeout(() => {
-                                  setEditingButton({ itemId: it.id, index: qIdx })
-                                  setEditingValue(String(q))
-                                  longPressTimeoutRef.current = null
-                                }, 500)
-                              }}
-                              onPointerUp={() => {
-                                if (longPressTimeoutRef.current) {
-                                  clearTimeout(longPressTimeoutRef.current)
-                                  longPressTimeoutRef.current = null
-                                }
-                              }}
-                              onPointerLeave={() => {
-                                if (longPressTimeoutRef.current) {
-                                  clearTimeout(longPressTimeoutRef.current)
-                                  longPressTimeoutRef.current = null
-                                }
-                              }}
-                              disabled={pending}
-                              title={`${q} unit${q > 1 ? 's' : ''} · ${money(total)}\n(long-press to edit)`}
-                              className={pressed
-                                ? `min-w-[2rem] h-7 px-1.5 rounded-lg ${colors.priceBox} ${colors.priceFont} text-[11px] font-bold flex items-center justify-center transition disabled:opacity-100`
-                                : `min-w-[2rem] h-7 px-1.5 rounded-lg ${colors.priceBox} ${colors.priceFont} text-[11px] font-bold flex items-center justify-center active:scale-95 transition disabled:opacity-40`}
-                            >
-                              {compactAmount(total)}
-                            </button>
-                          )
-                        })}
-                        <input
-                          type="number"
-                          inputMode="numeric"
-                          placeholder="+"
-                          value={manualAmounts[it.id] ?? ''}
-                          onChange={(e) => setManualAmounts((prev) => ({ ...prev, [it.id]: e.target.value }))}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault()
-                              submitManualAmount(it)
-                            }
-                          }}
-                          disabled={pending}
-                          className="w-8 h-7 px-0.5 rounded-lg bg-gray-100 text-gray-700 text-[10px] font-bold border border-gray-300 text-center focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-40 transition"
-                        />
-                        {manualAmounts[it.id] && (
-                          <button
-                            type="button"
-                            onClick={() => submitManualAmount(it)}
-                            disabled={pending}
-                            className="w-6 h-7 rounded-lg bg-green-600 hover:bg-green-700 text-white text-[9px] font-bold flex items-center justify-center transition disabled:opacity-40"
-                          >
-                            ✓
-                          </button>
-                        )}
+                        }}
+                        disabled={pending}
+                        className="w-12 h-7 px-1 rounded-lg bg-white text-gray-700 text-[11px] font-bold border border-gray-300 text-center focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-40 transition"
+                      />
+                      {manualAmounts[it.id] && (
                         <button
                           type="button"
-                          onClick={() => setPriceOverrideItemId(it.id)}
+                          onClick={() => submitManualAmount(it)}
                           disabled={pending}
-                          title="Override selling price for next tap"
-                          className="w-8 h-7 px-1 rounded-lg bg-blue-100 text-blue-700 text-[10px] font-bold border border-blue-300 hover:bg-blue-200 disabled:opacity-40 transition"
+                          className="px-2 h-7 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[9px] font-bold flex items-center justify-center transition disabled:opacity-40"
                         >
-                          SP
+                          Tap
                         </button>
-                        <span className="text-[10px] text-gray-500 ml-2">Current stock: {it.soh ?? 0}</span>
+                      )}
                       {quickArrangeItemId === it.id && (
                         <div className="ml-auto flex items-center gap-1">
                           <button
