@@ -44,15 +44,6 @@ export default function LiveSalePage(props: any = {}) {
       .catch(() => {})
   }, [])
 
-  // Filter items by search
-  const catalogueItems = useMemo(() => {
-    if (search.trim()) {
-      const q = search.toLowerCase()
-      return allItems.filter(i => i.name.toLowerCase().includes(q))
-    }
-    return allItems
-  }, [allItems, search])
-
   // Count sales by item (all historical taps)
   const today = new Date().toISOString().slice(0, 10)
   const salesCounts = useMemo(() => {
@@ -64,6 +55,16 @@ export default function LiveSalePage(props: any = {}) {
     }
     return counts
   }, [taps])
+
+  // Filter items by search and sort by sales count (highest to lowest)
+  const catalogueItems = useMemo(() => {
+    let items = allItems
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      items = items.filter(i => i.name.toLowerCase().includes(q))
+    }
+    return items.sort((a, b) => (salesCounts.get(b.id) ?? 0) - (salesCounts.get(a.id) ?? 0))
+  }, [allItems, search, salesCounts])
 
   async function recordTap() {
     if (!selectedItem || !qty) return
