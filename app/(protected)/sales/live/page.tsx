@@ -42,12 +42,11 @@ export default function LiveSalePage(props: any = {}) {
   const [showHelpModal, setShowHelpModal] = useState(false)
   const [currentView, setCurrentView] = useState<{ kind: 'violation' | 'serviceGroup' | 'lossByItem' | 'aliasWide' | 'serviceMatches' | 'newItem' | 'dailySummary'; key?: string; group?: string } | null>(null)
   const [violations, setViolations] = useState<Record<string, number>>({})
-  const [searchQuery, setSearchQuery] = useState('')
   const [productTypeFilter, setProductTypeFilter] = useState<'all' | 'goods' | 'services'>('all')
-  const [itemSearchQuery, setItemSearchQuery] = useState('')
-  const [itemSearchResults, setItemSearchResults] = useState<Item[]>([])
-  const [showSearchResults, setShowSearchResults] = useState(false)
-  const [selectedSearchItemId, setSelectedSearchItemId] = useState<number | null>(null)
+  const [itemPickerQuery, setItemPickerQuery] = useState('')
+  const [itemPickerResults, setItemPickerResults] = useState<Item[]>([])
+  const [showItemPicker, setShowItemPicker] = useState(false)
+  const [pickedItemId, setPickedItemId] = useState<number | null>(null)
   const localLawsPanel = useLawsPanel('showLiveSaleLaws')
   const liveSaleLaws = incomingLawsPanel || localLawsPanel
 
@@ -134,23 +133,23 @@ export default function LiveSalePage(props: any = {}) {
 
   // Search items as user types
   useEffect(() => {
-    if (!itemSearchQuery.trim()) {
-      setItemSearchResults([])
-      setShowSearchResults(false)
+    if (!itemPickerQuery.trim()) {
+      setItemPickerResults([])
+      setShowItemPicker(false)
       return
     }
     const timer = setTimeout(async () => {
       try {
-        const r = await fetch(`/api/items/search?q=${encodeURIComponent(itemSearchQuery)}`)
+        const r = await fetch(`/api/items/search?q=${encodeURIComponent(itemPickerQuery)}`)
         const results = await r.json()
-        setItemSearchResults(Array.isArray(results) ? results : [])
-        setShowSearchResults(true)
+        setItemPickerResults(Array.isArray(results) ? results : [])
+        setShowItemPicker(true)
       } catch (e) {
-        setItemSearchResults([])
+        setItemPickerResults([])
       }
     }, 300)
     return () => clearTimeout(timer)
-  }, [itemSearchQuery])
+  }, [itemPickerQuery])
 
   // Count sales by item (all historical taps)
   const today = new Date().toISOString().slice(0, 10)
@@ -164,15 +163,16 @@ export default function LiveSalePage(props: any = {}) {
     return counts
   }, [taps])
 
-  // Filter and sort items based on current view, search, and product type
+  // Filter and sort items based on current view and product type
   const catalogueItems = useMemo(() => {
     if (allItems.length === 0) return []
 
     let filtered = [...allItems]
 
-    // Apply selected search item filter (takes priority)
-    if (selectedSearchItemId) {
-      filtered = filtered.filter(item => item.id === selectedSearchItemId)
+    // If an item is picked, show ONLY that item
+    if (pickedItemId !== null) {
+      filtered = filtered.filter(item => item.id === pickedItemId)
+      return filtered
     }
 
     // Apply product type filter
@@ -180,15 +180,6 @@ export default function LiveSalePage(props: any = {}) {
       filtered = filtered.filter(item => item.product_type !== 'service')
     } else if (productTypeFilter === 'services') {
       filtered = filtered.filter(item => item.product_type === 'service')
-    }
-
-    // Apply search filter
-    if (searchQuery && searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim()
-      filtered = filtered.filter(item => {
-        const itemName = (item.name || '').toLowerCase()
-        return itemName.includes(q)
-      })
     }
 
     // Apply view filter
@@ -213,7 +204,7 @@ export default function LiveSalePage(props: any = {}) {
 
     // Sort by sales count (highest to lowest)
     return filtered.sort((a, b) => (salesCounts.get(b.id) ?? 0) - (salesCounts.get(a.id) ?? 0))
-  }, [allItems, salesCounts, currentView, searchQuery, productTypeFilter, selectedSearchItemId])
+  }, [allItems, salesCounts, currentView, productTypeFilter, pickedItemId])
 
   async function recordTap() {
     if (!selectedItem || !qty) return
@@ -407,37 +398,41 @@ export default function LiveSalePage(props: any = {}) {
             <div className="relative">
               <input
                 type="text"
-                value={itemSearchQuery}
-                onChange={e => setItemSearchQuery(e.target.value)}
-                onFocus={() => itemSearchQuery.trim() && setShowSearchResults(true)}
-                placeholder="Search items…"
-                className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 w-48"
+                value={itemPickerQuery}
+                onChange={e => setItemPickerQuery(e.target.value)}
+                onFocus={() => itemPickerQuery.trim() && setShowItemPicker(true)}
+                placeholder="Search & pick item…"
+                className={`text-sm px-3 py-1.5 border rounded-lg focus:outline-none focus:ring-1 w-48 ${
+                  pickedItemId !== null
+                    ? 'border-green-400 bg-green-50 focus:ring-green-400'
+                    : 'border-gray-300 focus:ring-blue-400'
+                }`}
               />
-              {itemSearchQuery && (
+              {itemPickerQuery && (
                 <button
+                  type="button"
                   onClick={() => {
-                    setItemSearchQuery('')
-                    setSelectedSearchItemId(null)
-                    setItemSearchResults([])
-                    setShowSearchResults(false)
+                    setItemPickerQuery('')
+                    setItemPickerResults([])
+                    setShowItemPicker(false)
                   }}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
                   ✕
                 </button>
               )}
-              {showSearchResults && itemSearchResults.length > 0 && (
+              {showItemPicker && itemPickerResults.length > 0 && (
                 <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
-                  {itemSearchResults.map(item => (
+                  {itemPickerResults.map(item => (
                     <button
                       key={item.id}
                       type="button"
                       onClick={() => {
-                        setSelectedSearchItemId(item.id)
-                        setItemSearchQuery(item.name)
-                        setShowSearchResults(false)
+                        setPickedItemId(item.id)
+                        setItemPickerQuery('')
+                        setShowItemPicker(false)
                       }}
-                      className="w-full text-left px-3 py-2 hover:bg-blue-50 border-b border-gray-100 last:border-b-0 text-sm text-gray-700"
+                      className="w-full text-left px-3 py-2 hover:bg-green-50 border-b border-gray-100 last:border-b-0 text-sm text-gray-700"
                     >
                       <div className="font-semibold text-gray-900">{item.name}</div>
                       <div className="text-xs text-gray-500">₵{formatPrice(item.selling_price)} · Stock: {Math.ceil(Number(item.soh))}</div>
@@ -446,6 +441,18 @@ export default function LiveSalePage(props: any = {}) {
                 </div>
               )}
             </div>
+            {pickedItemId !== null && (
+              <button
+                type="button"
+                onClick={() => {
+                  setPickedItemId(null)
+                  setItemPickerQuery('')
+                }}
+                className="px-2 py-1.5 text-sm font-semibold bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+              >
+                Clear Item
+              </button>
+            )}
             <select
               value={productTypeFilter}
               onChange={e => setProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
