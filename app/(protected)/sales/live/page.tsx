@@ -535,25 +535,15 @@ export default function LiveSalePage(props: any = {}) {
             )}
             <button
               type="button"
-              onClick={() => setSaleType('WIC')}
-              className={`font-semibold rounded transition ${compactSearch ? 'px-2 py-1 text-xs' : 'px-4 py-1.5 text-sm'} ${
-                saleType === 'WIC'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              WIC
-            </button>
-            <button
-              type="button"
-              onClick={() => setSaleType('GMC')}
+              onClick={() => setSaleType(t => t === 'WIC' ? 'GMC' : 'WIC')}
+              title="Tap to switch between WIC and GMC"
               className={`font-semibold rounded transition ${compactSearch ? 'px-2 py-1 text-xs' : 'px-4 py-1.5 text-sm'} ${
                 saleType === 'GMC'
                   ? 'bg-purple-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  : 'bg-blue-600 text-white'
               }`}
             >
-              GMC
+              {saleType}
             </button>
           </>
         )
