@@ -1973,7 +1973,8 @@ function ItemHubPageInner() {
                     )}
                   </div>
 
-                  {/* Search */}
+                  {/* Search - Hidden when viewing Live Sale */}
+                  {!(addForm === 'live' && lossView === 'sales') && (
                   <div className="relative min-w-0 flex-1 max-w-xs" ref={searchRef}>
                     <input value={search} onChange={e => setSearch(e.target.value)}
                       onFocus={() => setSearchOpen(true)}
@@ -2002,6 +2003,7 @@ function ItemHubPageInner() {
                       </div>
                     )}
                   </div>
+                  )}
                 </div>
 
                 {['items', 'sales', 'bills', 'expenses'].includes(lossView) && !salesFormOpen && (
