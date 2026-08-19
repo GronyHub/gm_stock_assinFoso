@@ -388,38 +388,6 @@ export default function LiveSalePage(props: any = {}) {
             </select>
             <button
               type="button"
-              onClick={() => router.push('/bills')}
-              title="Bills"
-              className="px-2 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-50 rounded transition"
-            >
-              📃
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push('/expenses')}
-              title="Expenses"
-              className="px-2 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-50 rounded transition"
-            >
-              💳
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push('/customers')}
-              title="Customers"
-              className="px-2 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-50 rounded transition"
-            >
-              👥
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push('/vendors')}
-              title="Vendors"
-              className="px-2 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-50 rounded transition"
-            >
-              🏭
-            </button>
-            <button
-              type="button"
               onClick={() => setShowHelpModal(true)}
               className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 font-semibold text-sm flex items-center justify-center transition"
               title="Help"
