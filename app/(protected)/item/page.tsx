@@ -48,7 +48,6 @@ const loading = (h: string) => <div className={`py-10 text-center text-gray-400 
 const ItemsTab       = dynamic(() => import('./_components/ItemsTab'),        { ssr: false, loading: () => loading('Loading…') })
 const SalesTab       = dynamic(() => import('./_components/SalesTab'),        { ssr: false, loading: () => loading('Loading…') })
 const BillsTab       = dynamic(() => import('./_components/BillsTab'),        { ssr: false, loading: () => loading('Loading…') })
-const CountsTab      = dynamic(() => import('./_components/CountsTab'),       { ssr: false, loading: () => loading('Loading…') })
 const ExpensesTab    = dynamic(() => import('./_components/ExpensesTab'),     { ssr: false, loading: () => loading('Loading…') })
 const CABTab         = dynamic(() => import('./_components/CABTab'),          { ssr: false, loading: () => loading('Loading…') })
 const TodayContent   = dynamic(() => import('./_components/TodayContent'),    { ssr: false, loading: () => loading('Loading…') })
@@ -104,7 +103,7 @@ type OuterTab = 'today' | 'loss' | 'uk' | 'ch'
 // CHView is unioned in too even though C&H is its own separate top-level
 // tab, not part of the Grony Cash merge -- it just reuses this same shared
 // state/pane machinery rather than needing its own parallel copy.
-type LossView = 'home' | 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'lossByTarget' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts' | 'dailySummary'
+type LossView = 'home' | 'items' | 'sales' | 'bills' | 'feed' | 'lossByTarget' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts' | 'dailySummary'
   | 'purchaseOrders' | 'item360' | 'services'
   // "New Customer" used to be a toggle-open form living inside the Customers
   // list page itself (CustomersPage's own showForm state) -- it's now this
@@ -230,7 +229,6 @@ const REPORT_VIEWS = new Set<LossView>([
 // they're already reachable right under their parent row, which is itself
 // inside these same sections.
 const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: string }[] = [
-  { key: 'counts',    label: 'Counts',    icon: '🔢' },
   { key: 'items',    label: 'Items',    icon: '📦' },
   { key: 'item360',   label: 'Loss by Item',  icon: '📊' },
   { key: 'sales',    label: 'Sales',    icon: '🧾' },
@@ -404,12 +402,15 @@ export const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCate
 // listed: they land on Grony Manage's Advert sub-tab. no_staff_times isn't
 // listed either: it lands on the Staff tab's Team overview, which carries
 // that checklist since it's about a missing day, not one person.
+// daily/7day/15day (the Counts violations) aren't listed either any more --
+// they're handled as an early-return special case in goToViolation instead,
+// since they jump into a specific tab of Live Sale (Count 2), not a plain
+// lossView + violation pill the way everything below still works.
 const VIOLATION_HOME: Partial<Record<string, LossView>> = {
   neg_soh: 'items', no_sp: 'items', no_cp: 'items', no_group: 'items',
   duplicates: 'items', unlinked_named: 'items', service_violation: 'items',
   alias_prezoho_sales: 'items', alias_prezoho_bills: 'items', alias_prezoho_receipts: 'items', alias_flagged: 'items', alias_ambiguous: 'items',
   alias_name_conflicts: 'items',
-  daily: 'counts', '7day': 'counts', '15day': 'counts',
   gains: 'feed',
   no_cash: 'sales', missing_days: 'sales', cost_price: 'sales', dup_receipt: 'sales', no_attachment: 'sales', high_wnw: 'sales',
   no_vendor: 'bills', no_items_bills: 'bills', bill_total_mismatch: 'bills', bill_no_attachment: 'bills',
@@ -417,14 +418,15 @@ const VIOLATION_HOME: Partial<Record<string, LossView>> = {
 }
 
 // Which violation keys belong to each lossView -- scopes the info banner
-// and filtered views (ItemsTab/SalesTab/CountsTab/LossFeedTab) reached via
-// a "Fix now" deep link (see goFixRecords/goToViolation).
+// and filtered views (ItemsTab/SalesTab/LossFeedTab) reached via a "Fix
+// now" deep link (see goFixRecords/goToViolation). Counts' own daily/7day/
+// 15day no longer need an entry here -- they route straight into Live
+// Sale's Count 2 tab instead of a lossView-level pill.
 const LOSSVIEW_PILL_KEYS: Partial<Record<LossView, string[]>> = {
   items: [
     'neg_soh', 'no_sp', 'no_cp', 'no_group', 'duplicates', 'unlinked_named', 'service_violation',
     'alias_prezoho_sales', 'alias_prezoho_bills', 'alias_prezoho_receipts', 'alias_flagged', 'alias_ambiguous', 'alias_name_conflicts',
   ],
-  counts: ['daily', '7day', '15day'],
   feed: ['gains'],
   sales: ['no_cash', 'missing_days', 'cost_price', 'dup_receipt', 'no_attachment', 'high_wnw'],
   bills: ['no_vendor', 'no_items_bills', 'bill_total_mismatch', 'bill_no_attachment'],
@@ -472,7 +474,7 @@ const BILLS_FLAG_TYPES: { key: string; letter: string; label: string }[] = [
 ]
 
 const VALID_TABS: OuterTab[] = ['today', 'loss', 'uk', 'ch']
-const VALID_ADD_FORMS = ['item', 'sale', 'live', 'liveLog', 'bill', 'expense'] as const
+const VALID_ADD_FORMS = ['item', 'sale', 'live', 'bill', 'expense'] as const
 
 // Biz (Today + Grony Cash), UK, and C&H are three separate areas that should
 // never visually blur into each other -- each gets its own deep, near-black
@@ -534,7 +536,7 @@ function ItemHubPageInner() {
   // sitting inline in the pane -- see SettingsPanel.tsx.
   const [settingsOpen, setSettingsOpen] = useState(false)
   const rawInitialForm = searchParams.get('form')
-  const [addForm, setAddForm]             = useState<'item' | 'sale' | 'live' | 'liveLog' | 'bill' | 'expense' | null>(
+  const [addForm, setAddForm]             = useState<'item' | 'sale' | 'live' | 'bill' | 'expense' | null>(
     (VALID_ADD_FORMS as readonly string[]).includes(rawInitialForm ?? '') ? (rawInitialForm as typeof VALID_ADD_FORMS[number]) : null
   )
   // Bumped by the "+" shortcut menu (see AddShortcutButton) for flows that
@@ -622,6 +624,23 @@ function ItemHubPageInner() {
   const [liveGroupFilter, setLiveGroupFilter] = useState<string | null>(null)
   const [liveHelpModalOpen, setLiveHelpModalOpen] = useState(false)
   const [liveSearchSlotEl, setLiveSearchSlotEl] = useState<HTMLDivElement | null>(null)
+  // Deep links into a specific Live Sale tab (Sale/Count/Count 2/Log) --
+  // the "Sale Log" search result, a "Fix now: Counts" button, and a
+  // Daily/7-Day/15-Day Counts violation pill all jump here now that none
+  // of those is a real LossView any more (Counts folded into Live Sale's
+  // own Count/Count 2 tabs, Log into its own Log tab). Seq is a plain
+  // incrementing counter so the same tab/violation can be jumped to twice
+  // in a row and still fire.
+  const [liveSaleJumpSeq, setLiveSaleJumpSeq] = useState(0)
+  const [liveSaleJumpTab, setLiveSaleJumpTab] = useState<'sale' | 'count' | 'count2' | 'log'>('sale')
+  const [liveSaleJumpViolation, setLiveSaleJumpViolation] = useState<string | null>(null)
+  function jumpToLiveSaleTab(tab: 'sale' | 'count' | 'count2' | 'log', violation: string | null = null) {
+    pickLossView('sales')
+    setAddForm('live')
+    setLiveSaleJumpTab(tab)
+    setLiveSaleJumpViolation(violation)
+    setLiveSaleJumpSeq(s => s + 1)
+  }
 
   function inlineLaws(scopeKey: string, panel: ReturnType<typeof useLawsPanel>) {
     return (<>
@@ -1151,9 +1170,12 @@ function ItemHubPageInner() {
     }
   }
 
-  // From the loss dialog: jump to the records that usually explain a "loss"
-  // (Sales / Bills / Counts live as sub-views of the Grony Cash tab).
+  // From the loss dialog: jump to the records that usually explain a
+  // "loss". Sales/Bills are their own lossViews; Counts is now Live
+  // Sale's own Count 2 tab (see jumpToLiveSaleTab) instead of a separate
+  // lossView.
   function goFixRecords(view: 'sales' | 'bills' | 'counts') {
+    if (view === 'counts') { jumpToLiveSaleTab('count2'); return }
     pickLossView(view)
   }
 
@@ -1328,6 +1350,11 @@ function ItemHubPageInner() {
     // lands on Team Times -- shared and unfiltered, it already shows every
     // staff member's clock records.
     if (key === 'no_staff_times') { pickLossView('teamTimes'); return }
+    // Daily/7-Day/15-Day Counts aren't a separate lossView any more --
+    // they're queues Live Sale's own Count 2 tab already knows how to
+    // show filtered to one violation (same CountsTab component, just
+    // embedded there now instead of behind its own destination).
+    if (key === 'daily' || key === '7day' || key === '15day') { jumpToLiveSaleTab('count2', key); return }
     const targetView = VIOLATION_HOME[key]
     if (!targetView) return
     pickLossView(targetView)
@@ -1464,17 +1491,18 @@ function ItemHubPageInner() {
     const interval = setInterval(fetchHidden, 5000)
     return () => clearInterval(interval)
   }, [])
-  // New Sale/Live Sale/Log used to be hardcoded sub-buttons nested under
-  // the Sales row, only ever appearing together and never independently
-  // reorderable/hideable/renamable. Standalone entries here instead, so
-  // each goes through the exact same paneOrder/paneLabels/paneGroups/
-  // paneHidden pipeline as any other Cash row (see the render loop below
-  // for how their clicks/active-state map back onto lossView='sales' +
-  // addForm, since none of them is a real LossView of its own).
+  // New Sale/Live Sale used to be hardcoded sub-buttons nested under the
+  // Sales row (Log was a third), only ever appearing together and never
+  // independently reorderable/hideable/renamable. Standalone entries here
+  // instead, so each goes through the exact same paneOrder/paneLabels/
+  // paneGroups/paneHidden pipeline as any other Cash row (see the render
+  // loop below for how their clicks/active-state map back onto
+  // lossView='sales' + addForm, since neither is a real LossView of its
+  // own). Log itself moved again since -- it's now one of Live Sale's own
+  // tabs (Sale/Count/Count 2/Log) rather than a separate destination.
   const SALES_ACTION_ITEMS: { key: string; label: string; icon: string; group?: string }[] = [
     { key: 'newSale',  label: 'New Sale',  icon: '🧾', group: 'Sales' },
     { key: 'liveSale', label: 'Live Sale', icon: '⚡', group: 'Sales' },
-    { key: 'saleLog',  label: 'Log',       icon: '📋', group: 'Sales' },
   ]
   const effectiveSalesActionItems = SALES_ACTION_ITEMS.map(item => {
     const override = paneGroups[item.key]
@@ -1485,26 +1513,23 @@ function ItemHubPageInner() {
   function cashItemActive(key: string) {
     if (key === 'newSale') return lossView === 'sales' && addForm === 'sale'
     if (key === 'liveSale') return lossView === 'sales' && addForm === 'live'
-    if (key === 'saleLog') return lossView === 'sales' && addForm === 'liveLog'
     // Sales itself now only means "browsing the plain sales list" -- New
-    // Sale/Live Sale/Log are their own standalone rows above, each with
-    // their own highlight, so Sales shouldn't also light up while one of
-    // them is open (it did back when they were nested sub-buttons under
-    // it, but as independent rows that reads as two things selected at
-    // once instead of one).
+    // Sale/Live Sale are their own standalone rows above, each with their
+    // own highlight, so Sales shouldn't also light up while one of them
+    // is open (it did back when they were nested sub-buttons under it,
+    // but as independent rows that reads as two things selected at once
+    // instead of one).
     if (key === 'sales') return lossView === 'sales' && !addForm
     return lossView === key
   }
   function cashItemClick(key: string) {
     if (key === 'newSale') { pickLossView('sales'); setAddForm('sale'); return }
     if (key === 'liveSale') { pickLossView('sales'); setAddForm('live'); return }
-    if (key === 'saleLog') { pickLossView('sales'); setAddForm('liveLog'); return }
     pickLossView(key as LossView)
   }
   function cashItemTaskScope(key: string) {
     if (key === 'newSale') return 'New Sale'
     if (key === 'liveSale') return 'Live Sale'
-    if (key === 'saleLog') return 'Sale Log'
     return cashTaskScopeKey(key as LossView)
   }
   const effectiveCashItems = CASH_ITEMS.map(item => {
@@ -1631,7 +1656,7 @@ function ItemHubPageInner() {
       // already jumps straight to.
       { label: 'New Sale', action: () => { pickLossView('sales'); setAddForm('sale') } },
       { label: 'Live Sale', action: () => { pickLossView('sales'); setAddForm('live') } },
-      { label: 'Sale Log', action: () => { pickLossView('sales'); setAddForm('liveLog') } },
+      { label: 'Sale Log', action: () => jumpToLiveSaleTab('log') },
       { label: 'New Customer', action: () => pickLossView('newCustomer') },
       { label: 'Expense Orders', action: () => pickLossView('expenseOrders') },
       { label: 'Properties at Shop', action: () => { pickLossView('properties'); setPropertiesInitialTab('available') } },
@@ -1683,7 +1708,7 @@ function ItemHubPageInner() {
   // own thing to do (build a cart, tap items, review a log) -- the
   // Analytics toggle and flag badges above them belong to the Sales list
   // view they're not showing, so they're just clutter here.
-  const salesFormOpen = lossView === 'sales' && (addForm === 'sale' || addForm === 'live' || addForm === 'liveLog')
+  const salesFormOpen = lossView === 'sales' && (addForm === 'sale' || addForm === 'live')
 
   return (
     <div className="-mx-4 -mt-4 -mb-6 flex flex-col h-[100dvh] md:h-[calc(100dvh-56px)]">
@@ -1724,7 +1749,10 @@ function ItemHubPageInner() {
                       : v.key === 'items' ? itemsFlagsCount
                       : v.key === 'bills' ? billsFlagsCount
                       : v.key === 'cab' ? cabFlagsCount
-                      : v.key === 'counts' ? countsFlagsCount
+                      // Counts merged into Live Sale's own Count/Count 2
+                      // tabs (no longer its own row) -- the due-count
+                      // badge moves to Live Sale itself.
+                      : v.key === 'liveSale' ? countsFlagsCount
                       : v.key === 'feed' ? lossByDateFlagsCount
                       : v.key === 'expenses' ? expensesFlagsCount
                       : v.key === 'customers' ? customersFlagsCount
@@ -2109,7 +2137,7 @@ function ItemHubPageInner() {
                   </div>
                 )}
 
-                {(addForm === 'live' || addForm === 'liveLog') && outerTab === 'loss' && lossView === 'sales' && (
+                {addForm === 'live' && outerTab === 'loss' && lossView === 'sales' && (
                   <div className="flex flex-col gap-1.5 ml-auto items-end">
                     <div className="flex items-center gap-1.5 flex-wrap justify-end">
                       <select
@@ -2187,11 +2215,10 @@ function ItemHubPageInner() {
             <NewSaleForm onSuccess={() => setAddForm(null)} groupFilter={group} />
           </div>
         )}
-        {(addForm === 'live' || addForm === 'liveLog') && outerTab === 'loss' && lossView === 'sales' && (
+        {addForm === 'live' && outerTab === 'loss' && lossView === 'sales' && (
           <LiveSaleForm
             key={addForm}
             onClose={() => setAddForm(null)}
-            initialShowLog={addForm === 'liveLog'}
             search={search}
             lawsPanel={liveSaleLaws}
             expanded={liveExpanded}
@@ -2205,6 +2232,9 @@ function ItemHubPageInner() {
             showHelpModal={liveHelpModalOpen}
             onHelpModalChange={setLiveHelpModalOpen}
             searchSlotEl={liveSearchSlotEl}
+            jumpToTabSeq={liveSaleJumpSeq}
+            jumpToTab={liveSaleJumpTab}
+            jumpToTabViolation={liveSaleJumpViolation}
             violationCounts={violationCounts}
             violationTypes={ITEMS_FLAG_TYPES.map(({ key, label }) => ({ key, label, description: ERROR_VIOLATIONS.find(v => v.key === key)?.description }))}
             serviceGroups={serviceGroups}
@@ -2513,7 +2543,7 @@ function ItemHubPageInner() {
         {showAnalytics && outerTab === 'loss' && lossView === 'sales' && (
           <TabErrorBoundary><div className="px-3 pt-3"><SalesAnalyticsSection /></div></TabErrorBoundary>
         )}
-        {!showAnalytics && addForm !== 'sale' && addForm !== 'live' && addForm !== 'liveLog' && outerTab === 'loss' && lossView === 'sales' && (<>
+        {!showAnalytics && addForm !== 'sale' && addForm !== 'live' && outerTab === 'loss' && lossView === 'sales' && (<>
           {showSalesLaws && (
             <div className="border-b border-gray-200 bg-white px-3 py-2 shadow-md">
               <TabErrorBoundary key={salesLawsRefresh}>
@@ -2568,11 +2598,6 @@ function ItemHubPageInner() {
           <BillsTab items={items} groupFilter={group} search={search}
             violation={pillKeys?.includes(violation ?? '') ? violation : null} />
         </>)}
-        {outerTab === 'loss' && lossView === 'counts' && (<>
-          <CountsTab items={items} groupFilter={group} search={search}
-            violation={pillKeys?.includes(violation ?? '') ? violation : null} onFixRecords={goFixRecords}
-            onGoToViolation={goToViolation} />
-        </>)}
         {/* The gains pill (see LOSSVIEW_PILL_KEYS['feed']) always lands here
             via VIOLATION_HOME['gains'] = 'feed' -- it's a violation to fix,
             not a way of browsing losses, so this view shows the gain feed
@@ -2626,7 +2651,7 @@ function ItemHubPageInner() {
               once UK and/or C&H access exists. The "+" shortcut menu (see
               AddShortcutButton/handleShortcut) rejoins this row too --
               always shown, same as when it was its own floating button. */}
-          {!(addForm === 'live' || addForm === 'liveLog') && (
+          {addForm !== 'live' && (
           <div className="shrink-0 flex items-center justify-evenly py-2 bg-white border-t border-gray-200">
             {(canSeeUK || canSeeCH) && (
               <button onClick={() => changeTab('loss')} title="Biz"
