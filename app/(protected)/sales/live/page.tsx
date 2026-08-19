@@ -431,6 +431,7 @@ export default function LiveSalePage(props: any = {}) {
                   {itemSearchResults.map(item => (
                     <button
                       key={item.id}
+                      type="button"
                       onClick={() => {
                         setSelectedSearchItemId(item.id)
                         setItemSearchQuery(item.name)
