@@ -232,7 +232,7 @@ const REPORT_VIEWS = new Set<LossView>([
 const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: string }[] = [
   { key: 'counts',    label: 'Counts',    icon: '🔢' },
   { key: 'items',    label: 'Items',    icon: '📦' },
-  { key: 'item360',   label: 'Item 360',  icon: '360' },
+  { key: 'item360',   label: 'Loss by Item',  icon: '📊' },
   { key: 'sales',    label: 'Sales',    icon: '🧾' },
   { key: 'bills',    label: 'Bills',    icon: '📃' },
   { key: 'purchaseOrders',   label: 'Purchase Ord',   icon: '🛒' },
@@ -1031,6 +1031,10 @@ function ItemHubPageInner() {
   const CASH_TASK_SCOPE_OVERRIDES: Partial<Record<LossView, string>> = {
     purchaseOrders: 'Purchase Orders',
     lossByTarget: 'Loss by Target',
+    // Relabeled from "Item 360" to "Loss by Item" -- scopeKey stays the old
+    // label so tasks/notes/laws already recorded against this page (still
+    // stored under "Item 360") aren't orphaned by the rename.
+    item360: 'Item 360',
   }
   const cashTaskScopeKey = (key: LossView) => CASH_TASK_SCOPE_OVERRIDES[key] ?? CASH_LABEL.get(key) ?? key
   // Every remaining Manage row's scopeKey already equals its own label
@@ -2420,17 +2424,17 @@ function ItemHubPageInner() {
                           }
                         },
                       })),
-                      // Item 360 stays a real full-page destination (every
-                      // item name across Bills/Counts/Sales/POs/Loss links
-                      // straight to it via ?view=item360&jumpItemId=, not
-                      // just this page), so unlike the group flags above this
-                      // one still navigates instead of opening inline -- same
-                      // as any other flag whose onViewClick calls
-                      // pickLossView. Loss by Item also lives there now too
-                      // (see Item360Tab), instead of its own left-pane row.
+                      // Item 360 (relabeled "Loss by Item" -- its landing
+                      // table is now that ranking, see Item360Tab) stays a
+                      // real full-page destination (every item name across
+                      // Bills/Counts/Sales/POs/Loss links straight to it via
+                      // ?view=item360&jumpItemId=, not just this page), so
+                      // unlike the group flags above this one still
+                      // navigates instead of opening inline -- same as any
+                      // other flag whose onViewClick calls pickLossView.
                       {
                         key: 'item_360',
-                        label: 'Item 360',
+                        label: 'Loss by Item',
                         count: 0,
                         onViewClick: () => pickLossView('item360'),
                       },
@@ -2601,6 +2605,10 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'loss' && lossView === 'item360' && (
           <TabErrorBoundary>
+            {/* scopeKey stays "Item 360" (not the pane's new "Loss by
+                Item" label) so laws/notes recorded here before the rename
+                stay reachable -- see CASH_TASK_SCOPE_OVERRIDES above for
+                the same reasoning on tasks. */}
             <div className="px-3 pt-2">{inlineLaws('Item 360', item360Laws)}</div>
             <Item360Tab jumpToItemId={item360JumpId} onJumpDone={() => setItem360JumpId(null)} />
           </TabErrorBoundary>
