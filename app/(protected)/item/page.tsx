@@ -1917,7 +1917,8 @@ function ItemHubPageInner() {
                 )}
                 <div className="flex items-center gap-1.5">
 
-                  {/* Groups dropdown */}
+                  {/* Groups dropdown - Hidden when viewing Live Sale */}
+                  {!(addForm === 'live' && lossView === 'sales') && (
                   <div className="relative shrink-0" ref={groupRef}>
                     <button onClick={() => setGroupOpen(o => !o)}
                       className={`text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap flex items-center gap-1 transition
@@ -1972,6 +1973,7 @@ function ItemHubPageInner() {
                       </div>
                     )}
                   </div>
+                  )}
 
                   {/* Search - Hidden when viewing Live Sale */}
                   {!(addForm === 'live' && lossView === 'sales') && (
