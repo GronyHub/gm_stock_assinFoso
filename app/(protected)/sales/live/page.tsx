@@ -20,7 +20,7 @@ export default function LiveSalePage(props: any = {}) {
   usePresenceReporter('live-tapping a sale')
   const router = useRouter()
 
-  const { initialShowLog = false } = props
+  const { initialShowLog = false, lawsPanel: incomingLawsPanel, hideTopControls = false } = props
 
   const [allItems, setAllItems] = useState<Item[]>([])
   const [loadingItems, setLoadingItems] = useState(true)
@@ -33,7 +33,8 @@ export default function LiveSalePage(props: any = {}) {
   const [saving, setSaving] = useState(false)
   const [showLog, setShowLog] = useState(initialShowLog)
   const [showHelpModal, setShowHelpModal] = useState(false)
-  const liveSaleLaws = useLawsPanel('showLiveSaleLaws')
+  const localLawsPanel = useLawsPanel('showLiveSaleLaws')
+  const liveSaleLaws = incomingLawsPanel || localLawsPanel
 
   // Fetch items
   useEffect(() => {
@@ -250,6 +251,8 @@ export default function LiveSalePage(props: any = {}) {
   return (
     <>
     <div className="h-full flex flex-col bg-white">
+      {!hideTopControls && (
+      <>
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-200 space-y-3">
         <div className="flex items-center justify-between">
@@ -304,8 +307,10 @@ export default function LiveSalePage(props: any = {}) {
           />
         </div>
       </div>
+      </>
+      )}
       {liveSaleLaws.show && (
-        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 overflow-auto max-h-48">
+        <div className={`px-4 py-3 border-b border-gray-200 bg-gray-50 overflow-auto max-h-48 ${hideTopControls ? 'border-t' : ''}`}>
           <PageLawsList
             scopeKey="liveSaleLaws"
             onChange={liveSaleLaws.bumpRefresh}
