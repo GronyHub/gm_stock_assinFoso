@@ -75,16 +75,6 @@ export default function LiveSalePage(props: any = {}) {
           : { kind: 'violation' as const, key: v.key })
       }
     })),
-    ...serviceGroups.map((g: string) => ({
-      key: `group_${g}`,
-      label: g,
-      count: 0,
-      onViewClick: () => {
-        setCurrentView(currentView?.kind === 'serviceGroup' && currentView.group === g
-          ? null
-          : { kind: 'serviceGroup' as const, group: g })
-      }
-    })),
     {
       key: 'loss_by_item',
       label: 'Loss by Item',
@@ -559,7 +549,6 @@ export default function LiveSalePage(props: any = {}) {
         <div className="px-4 py-2 bg-blue-50 border-b border-blue-200 flex items-center justify-between">
           <span className="text-xs font-semibold text-blue-700">
             {currentView.kind === 'violation' && `Viewing: Items with "${computedFlags.find(f => f.key === currentView.key)?.label}"`}
-            {currentView.kind === 'serviceGroup' && `Viewing: ${currentView.group} (${catalogueItems.length} items)`}
             {currentView.kind === 'lossByItem' && `Viewing: Loss by Item (${catalogueItems.length} items)`}
             {currentView.kind === 'aliasWide' && `Viewing: Alias Wide Table`}
             {currentView.kind === 'serviceMatches' && `Viewing: Service Matches`}
