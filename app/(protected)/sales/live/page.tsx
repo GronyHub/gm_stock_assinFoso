@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { usePresenceReporter } from '@/lib/usePresenceReporter'
@@ -35,7 +36,9 @@ export default function LiveSalePage(props: any = {}) {
     groupFilter: controlledGroupFilter, onGroupFilterChange,
     showHelpModal: controlledShowHelpModal, onHelpModalChange,
     hideFilterBar = false,
+    searchSlotEl = null,
   } = props
+  const compactSearch = !!searchSlotEl
 
   const [allItems, setAllItems] = useState<Item[]>([])
   const [loadingItems, setLoadingItems] = useState(true)
@@ -459,19 +462,23 @@ export default function LiveSalePage(props: any = {}) {
       </div>
       )}
 
-      {/* Search & Controls */}
-      <div className="px-4 py-3 border-b border-gray-200 space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          {!hideTopControls && <h2 className="text-sm font-bold text-gray-900">Live Sale — {today}</h2>}
-          <div className="flex gap-2 items-center ml-auto">
+      {/* Search & Controls -- rendered inline normally, or portaled into a
+          slot the host page (Item page) supplies so it can sit compactly
+          beside the laws/help/expand icons in the merged green bar instead
+          of its own full-size row. */}
+      {(() => {
+        const searchControlsNode = (
+          <>
             <div className="relative">
               <input
                 type="text"
                 value={itemPickerQuery}
                 onChange={e => setItemPickerQuery(e.target.value)}
                 onFocus={() => itemPickerQuery.trim() && setShowItemPicker(true)}
-                placeholder="Search & pick item…"
-                className={`text-sm px-3 py-1.5 border rounded-lg focus:outline-none focus:ring-1 w-48 ${
+                placeholder={compactSearch ? 'Search item…' : 'Search & pick item…'}
+                className={`border rounded-lg focus:outline-none focus:ring-1 ${
+                  compactSearch ? 'text-xs px-2 py-1 w-24 bg-white' : 'text-sm px-3 py-1.5 w-48'
+                } ${
                   pickedItemId !== null
                     ? 'border-green-400 bg-green-50 focus:ring-green-400'
                     : 'border-gray-300 focus:ring-blue-400'
@@ -491,7 +498,9 @@ export default function LiveSalePage(props: any = {}) {
                 </button>
               )}
               {showItemPicker && itemPickerResults.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
+                <div className={`absolute top-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto ${
+                  compactSearch ? 'left-0 w-56' : 'left-0 right-0'
+                }`}>
                   {itemPickerResults.map(item => (
                     <button
                       key={item.id}
@@ -517,15 +526,17 @@ export default function LiveSalePage(props: any = {}) {
                   setPickedItemId(null)
                   setItemPickerQuery('')
                 }}
-                className="px-2 py-1.5 text-sm font-semibold bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                className={`font-semibold bg-green-600 text-white rounded-lg hover:bg-green-700 transition ${
+                  compactSearch ? 'px-1.5 py-1 text-xs' : 'px-2 py-1.5 text-sm'
+                }`}
               >
-                Clear Item
+                {compactSearch ? '✕ Item' : 'Clear Item'}
               </button>
             )}
             <button
               type="button"
               onClick={() => setSaleType('WIC')}
-              className={`px-4 py-1.5 text-sm font-semibold rounded transition ${
+              className={`font-semibold rounded transition ${compactSearch ? 'px-2 py-1 text-xs' : 'px-4 py-1.5 text-sm'} ${
                 saleType === 'WIC'
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -536,7 +547,7 @@ export default function LiveSalePage(props: any = {}) {
             <button
               type="button"
               onClick={() => setSaleType('GMC')}
-              className={`px-4 py-1.5 text-sm font-semibold rounded transition ${
+              className={`font-semibold rounded transition ${compactSearch ? 'px-2 py-1 text-xs' : 'px-4 py-1.5 text-sm'} ${
                 saleType === 'GMC'
                   ? 'bg-purple-600 text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -544,12 +555,30 @@ export default function LiveSalePage(props: any = {}) {
             >
               GMC
             </button>
+          </>
+        )
+
+        if (compactSearch) {
+          return searchSlotEl ? createPortal(
+            <div className="flex gap-1.5 items-center">{searchControlsNode}</div>,
+            searchSlotEl
+          ) : null
+        }
+
+        return (
+          <div className="px-4 py-3 border-b border-gray-200 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              {!hideTopControls && <h2 className="text-sm font-bold text-gray-900">Live Sale — {today}</h2>}
+              <div className="flex gap-2 items-center ml-auto">
+                {searchControlsNode}
+              </div>
+            </div>
+            {!hideTopControls && saleType === 'GMC' && (
+              <p className="text-xs text-purple-600 font-semibold">Recorded as "Grony Multimedia as Customer"</p>
+            )}
           </div>
-        </div>
-        {!hideTopControls && saleType === 'GMC' && (
-          <p className="text-xs text-purple-600 font-semibold">Recorded as "Grony Multimedia as Customer"</p>
-        )}
-      </div>
+        )
+      })()}
       {liveSaleLaws.show && (
         <div className={`px-4 py-3 border-b border-gray-200 bg-gray-50 overflow-auto max-h-48 ${hideTopControls ? 'border-t' : ''}`}>
           <PageLawsList

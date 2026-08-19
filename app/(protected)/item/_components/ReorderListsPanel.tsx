@@ -63,7 +63,7 @@ function SectionPicker({ current, groupNames, onPick }: { current: string | null
 // Manage's own groups (Advert, Grony 1 to 10 checks) and Team (no groups
 // at all) aren't backed by /api/pane-groups, so those two tabs keep the
 // plain flat reorder/rename list they always had.
-export default function ReorderListsPanel({ cashItems, manageItems, staffItems, paneOrder, setPaneOrder, paneLabels, setPaneLabels, paneGroups, setPaneGroups }: {
+export default function ReorderListsPanel({ cashItems, manageItems, staffItems, paneOrder, setPaneOrder, paneLabels, setPaneLabels, paneGroups, setPaneGroups, paneHidden, setPaneHidden }: {
   cashItems: Item[]
   manageItems: Item[]
   staffItems: Item[]
@@ -73,6 +73,8 @@ export default function ReorderListsPanel({ cashItems, manageItems, staffItems, 
   setPaneLabels: React.Dispatch<React.SetStateAction<Record<string, string>>>
   paneGroups: Record<string, GroupOverride>
   setPaneGroups: React.Dispatch<React.SetStateAction<Record<string, GroupOverride>>>
+  paneHidden: Record<string, boolean>
+  setPaneHidden: React.Dispatch<React.SetStateAction<Record<string, boolean>>>
 }) {
   const [tab, setTab] = useState<'cash' | 'manage' | 'team'>('cash')
   const [saving, setSaving] = useState(false)
@@ -141,6 +143,22 @@ export default function ReorderListsPanel({ cashItems, manageItems, staffItems, 
     if (res?.ok) { setJustSaved(true); setTimeout(() => setJustSaved(false), 1500) }
   }
 
+  async function toggleHidden(item: Item) {
+    const nextHidden = !paneHidden[item.key]
+    setPaneHidden(prev => {
+      const next = { ...prev }
+      if (nextHidden) next[item.key] = true; else delete next[item.key]
+      return next
+    })
+    setSaving(true)
+    const res = await fetch('/api/pane-hidden', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: item.key, hidden: nextHidden }),
+    }).catch(() => null)
+    setSaving(false)
+    if (res?.ok) { setJustSaved(true); setTimeout(() => setJustSaved(false), 1500) }
+  }
+
   return (
     <div className="space-y-3">
       <h1 className="text-lg font-bold text-gray-900">Reorder &amp; Rename Lists</h1>
@@ -160,10 +178,10 @@ export default function ReorderListsPanel({ cashItems, manageItems, staffItems, 
       </div>
       <p className="text-xs text-gray-400">
         {tab === 'team'
-          ? 'Tap the pencil to rename a row -- changes apply to everyone\'s pane right away.'
+          ? 'Tap the eye to hide a row from the sidebar, or the pencil to rename it -- changes apply to everyone\'s pane right away.'
           : tab === 'cash'
-          ? 'Arrows move a row, the pencil renames it, and Section moves it into a different group (or check Standalone to make it its own) -- changes apply to everyone\'s pane right away.'
-          : 'Use the arrows to move a row up or down, or the pencil to rename it -- changes apply to everyone\'s pane right away.'}
+          ? 'Tap the eye to hide a row from the sidebar, the pencil to rename it, arrows to move it, and Section to move it into a different group (or check Standalone to make it its own) -- changes apply to everyone\'s pane right away.'
+          : 'Tap the eye to hide a row from the sidebar, the pencil to rename it, or use the arrows to move it -- changes apply to everyone\'s pane right away.'}
       </p>
       <div className="space-y-1">
         {rows.map(({ item, header }) => {
@@ -174,7 +192,7 @@ export default function ReorderListsPanel({ cashItems, manageItems, staffItems, 
             {header && (
               <p className="pt-2 pb-1"><span className="block w-full text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide px-2 py-1 truncate">{header}</span></p>
             )}
-            <div className="flex flex-col gap-1.5 bg-white border border-gray-200 rounded-lg px-3 py-2">
+            <div className={`flex flex-col gap-1.5 bg-white border rounded-lg px-3 py-2 transition ${paneHidden[item.key] ? 'border-gray-200 opacity-50' : 'border-gray-200'}`}>
               <div className="flex items-center gap-2">
                 {item.icon && <span className="text-base leading-none shrink-0">{item.icon}</span>}
                 {renamingKey === item.key ? (
@@ -194,6 +212,13 @@ export default function ReorderListsPanel({ cashItems, manageItems, staffItems, 
                 ) : (
                   <>
                     <span className="flex-1 text-sm text-gray-800 truncate">{paneLabels[item.key] ?? item.label}</span>
+                    <button onClick={() => toggleHidden(item)} disabled={saving}
+                      title={paneHidden[item.key] ? 'Hidden -- tap to show' : 'Visible -- tap to hide'}
+                      className={`shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-sm transition disabled:opacity-40 ${
+                        paneHidden[item.key] ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}>
+                      {paneHidden[item.key] ? '🚫' : '👁'}
+                    </button>
                     <button onClick={() => startRename(item)} title="Rename"
                       className="shrink-0 text-gray-300 hover:text-gray-600 px-1 text-sm">✎</button>
                     {tab !== 'team' && <>

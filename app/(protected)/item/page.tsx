@@ -624,6 +624,7 @@ function ItemHubPageInner() {
   const [liveProductTypeFilter, setLiveProductTypeFilter] = useState<'all' | 'goods' | 'services'>('all')
   const [liveGroupFilter, setLiveGroupFilter] = useState<string | null>(null)
   const [liveHelpModalOpen, setLiveHelpModalOpen] = useState(false)
+  const [liveSearchSlotEl, setLiveSearchSlotEl] = useState<HTMLDivElement | null>(null)
 
   function inlineLaws(scopeKey: string, panel: ReturnType<typeof useLawsPanel>) {
     return (<>
@@ -1447,12 +1448,69 @@ function ItemHubPageInner() {
     const interval = setInterval(fetchGroups, 5000)
     return () => clearInterval(interval)
   }, [])
+  // Same shared-with-everyone pattern again, but for which rows are hidden
+  // from the sidebar entirely -- see /api/pane-hidden and
+  // ReorderListsPanel.tsx. Purely a visibility override, same guarantee as
+  // paneLabels/paneGroups above: a hidden row's key, routing, and every
+  // task/notes/laws/flag lookup keyed off it are untouched, so un-hiding it
+  // later brings it straight back with everything intact.
+  const [paneHidden, setPaneHidden] = useState<Record<string, boolean>>({})
+  useEffect(() => {
+    const fetchHidden = () => {
+      fetch('/api/pane-hidden').then(r => r.ok ? r.json() : {}).then(setPaneHidden).catch(() => {})
+    }
+    fetchHidden()
+    const interval = setInterval(fetchHidden, 5000)
+    return () => clearInterval(interval)
+  }, [])
+  // New Sale/Live Sale/Log used to be hardcoded sub-buttons nested under
+  // the Sales row, only ever appearing together and never independently
+  // reorderable/hideable/renamable. Standalone entries here instead, so
+  // each goes through the exact same paneOrder/paneLabels/paneGroups/
+  // paneHidden pipeline as any other Cash row (see the render loop below
+  // for how their clicks/active-state map back onto lossView='sales' +
+  // addForm, since none of them is a real LossView of its own).
+  const SALES_ACTION_ITEMS: { key: string; label: string; icon: string; group?: string }[] = [
+    { key: 'newSale',  label: 'New Sale',  icon: '🧾', group: 'Sales' },
+    { key: 'liveSale', label: 'Live Sale', icon: '⚡', group: 'Sales' },
+    { key: 'saleLog',  label: 'Log',       icon: '📋', group: 'Sales' },
+  ]
+  const effectiveSalesActionItems = SALES_ACTION_ITEMS.map(item => {
+    const override = paneGroups[item.key]
+    if (!override) return { ...item, standaloneOverride: false }
+    if (override.standalone) return { ...item, group: paneLabel(item.key, item.label), standaloneOverride: true }
+    return { ...item, group: override.group_name ?? undefined, standaloneOverride: false }
+  })
+  function cashItemActive(key: string) {
+    if (key === 'newSale') return lossView === 'sales' && addForm === 'sale'
+    if (key === 'liveSale') return lossView === 'sales' && addForm === 'live'
+    if (key === 'saleLog') return lossView === 'sales' && addForm === 'liveLog'
+    return lossView === key
+  }
+  function cashItemClick(key: string) {
+    if (key === 'newSale') { pickLossView('sales'); setAddForm('sale'); return }
+    if (key === 'liveSale') { pickLossView('sales'); setAddForm('live'); return }
+    if (key === 'saleLog') { pickLossView('sales'); setAddForm('liveLog'); return }
+    pickLossView(key as LossView)
+  }
+  function cashItemTaskScope(key: string) {
+    if (key === 'newSale') return 'New Sale'
+    if (key === 'liveSale') return 'Live Sale'
+    if (key === 'saleLog') return 'Sale Log'
+    return cashTaskScopeKey(key as LossView)
+  }
   const effectiveCashItems = CASH_ITEMS.map(item => {
     const override = paneGroups[item.key]
     if (!override) return { ...item, standaloneOverride: false }
     if (override.standalone) return { ...item, group: paneLabel(item.key, item.label), standaloneOverride: true }
     return { ...item, group: override.group_name ?? undefined, standaloneOverride: false }
   })
+  // New Sale/Live Sale/Log sit right after Sales by default (their old
+  // nested position) -- paneOrder can still move them anywhere else, this
+  // only picks where they start out.
+  const combinedCashItems = effectiveCashItems.flatMap(item =>
+    item.key === 'sales' ? [item, ...effectiveSalesActionItems] : [item]
+  )
   // Groups with a self-titled member (Expenses the section vs. Expenses
   // the row) never need the separate floating header -- that member's own
   // chip already serves as the heading. Computed as a set of group names,
@@ -1650,10 +1708,10 @@ function ItemHubPageInner() {
             {outerTab === 'loss' && (<>
             {canSeeCash && (
             <div>
-              {applyPaneOrder(effectiveCashItems, paneOrder.cash).filter(v => v.key !== 'pl' || canSeePL).map((v, i) => (
+              {applyPaneOrder(combinedCashItems, paneOrder.cash).filter(v => (v.key !== 'pl' || canSeePL) && !paneHidden[v.key]).map((v, i) => (
                 <Fragment key={v.key}>
                   <SidePaneButton icon={v.icon} label={paneLabel(v.key, v.label)} mode={cashDisplayMode}
-                    active={paneActive(lossView === v.key)} divider={i > 0}
+                    active={paneActive(cashItemActive(v.key))} divider={i > 0}
                     badge={v.key === 'sales' ? salesFlagsCount
                       : v.key === 'items' ? itemsFlagsCount
                       : v.key === 'bills' ? billsFlagsCount
@@ -1664,26 +1722,8 @@ function ItemHubPageInner() {
                       : v.key === 'customers' ? customersFlagsCount
                       : v.key === 'vendors' ? vendorsFlagsCount
                       : undefined}
-                    taskBadge={taskCountFor(cashTaskScopeKey(v.key))}
-                    onClick={() => pickLossView(v.key)} />
-                  {v.key === 'sales' && (
-                    <div>
-                      <SidePaneButton icon="🧾" label="New Sale" mode={cashDisplayMode}
-                        active={paneActive(lossView === 'sales' && addForm === 'sale')}
-                        taskBadge={taskCountFor('New Sale')}
-                        onClick={() => { pickLossView('sales'); setAddForm('sale') }} />
-                      <SidePaneButton icon="⚡" label="Live Sale" mode={cashDisplayMode} divider
-                        active={paneActive(lossView === 'sales' && addForm === 'live')}
-                        taskBadge={taskCountFor('Live Sale')}
-                        onClick={() => { pickLossView('sales'); setAddForm('live') }} />
-                      <div>
-                        <SidePaneButton icon="📋" label="Log" mode={cashDisplayMode}
-                          active={paneActive(lossView === 'sales' && addForm === 'liveLog')}
-                          taskBadge={taskCountFor('Sale Log')}
-                          onClick={() => { pickLossView('sales'); setAddForm('liveLog') }} />
-                      </div>
-                    </div>
-                  )}
+                    taskBadge={taskCountFor(cashItemTaskScope(v.key))}
+                    onClick={() => cashItemClick(v.key)} />
                   {v.key === 'customers' && (
                     <div>
                       <SidePaneButton icon="👤" label="New Customer" mode={cashDisplayMode}
@@ -1705,7 +1745,7 @@ function ItemHubPageInner() {
             {canSeeManage && (
             <div className="mt-1 pt-1 border-t border-white/30">
               {(() => {
-                const orderedItems = applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage)
+                const orderedItems = applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage).filter(item => !paneHidden[item.key])
                 const runs = buildPaneRuns(orderedItems)
                 const flatRows = flattenPaneRuns(runs, MANAGE_GROUP_LABELS)
                 return flatRows.map((row, idx) => {
@@ -1743,7 +1783,7 @@ function ItemHubPageInner() {
                 hidden behind a gear icon. */}
             {canSeeTeam && (
               <div className="mt-1 pt-1 border-t border-white/30">
-                {STAFF_TEAM_ITEMS.map((t, i) => (
+                {STAFF_TEAM_ITEMS.filter(t => !paneHidden[t.key]).map((t, i) => (
                   <SidePaneButton key={t.key} icon={t.icon} label={paneLabel(t.key, t.label)} mode={cashDisplayMode} divider={i > 0}
                     active={paneActive(lossView === t.key)}
                     badge={t.key === 'staff_dress' ? dressFlagsCount : t.key === 'teamTimes' ? staffTimesFlagsCount : undefined}
@@ -2062,47 +2102,52 @@ function ItemHubPageInner() {
                 )}
 
                 {(addForm === 'live' || addForm === 'liveLog') && outerTab === 'loss' && lossView === 'sales' && (
-                  <div className="flex items-center gap-1.5 ml-auto flex-wrap justify-end">
-                    <select
-                      value={liveProductTypeFilter}
-                      onChange={e => setLiveProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
-                      className="text-xs px-2 py-1 rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                    >
-                      <option value="all">All types</option>
-                      <option value="goods">Goods</option>
-                      <option value="services">Services</option>
-                    </select>
-                    <select
-                      value={liveGroupFilter || ''}
-                      onChange={e => setLiveGroupFilter(e.target.value || null)}
-                      className="text-xs px-2 py-1 rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                    >
-                      <option value="">All groups</option>
-                      {liveGroups.map(g => (
-                        <option key={g} value={g}>{g}</option>
-                      ))}
-                    </select>
-                    <LawsToggleBar show={liveSaleLaws.show} setShow={liveSaleLaws.setShow}
-                      openForm={liveSaleLaws.openForm} setOpenForm={liveSaleLaws.setOpenForm}
-                      hideZeroFlags={liveSaleLaws.hideZeroFlags} setHideZeroFlags={liveSaleLaws.setHideZeroFlags}
-                      activeFilters={liveSaleLaws.activeFilters} toggleFilter={liveSaleLaws.toggleFilter} dark={false} />
-                    <button
-                      type="button"
-                      onClick={() => setLiveHelpModalOpen(true)}
-                      title="Help"
-                      className="shrink-0 w-6 h-6 rounded-lg text-xs font-semibold border flex items-center justify-center transition bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300"
-                    >
-                      ?
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setLiveExpanded((v) => !v)}
-                      title={liveExpanded ? 'Exit large screen' : 'Large screen'}
-                      className={`shrink-0 w-6 h-6 rounded-lg text-xs font-semibold border flex items-center justify-center transition
-                        ${liveExpanded ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300'}`}
-                    >
-                      {liveExpanded ? '⤡' : '⤢'}
-                    </button>
+                  <div className="flex flex-col gap-1.5 ml-auto items-end">
+                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                      <select
+                        value={liveProductTypeFilter}
+                        onChange={e => setLiveProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
+                        className="text-xs px-2 py-1 rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                      >
+                        <option value="all">All types</option>
+                        <option value="goods">Goods</option>
+                        <option value="services">Services</option>
+                      </select>
+                      <select
+                        value={liveGroupFilter || ''}
+                        onChange={e => setLiveGroupFilter(e.target.value || null)}
+                        className="text-xs px-2 py-1 rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                      >
+                        <option value="">All groups</option>
+                        {liveGroups.map(g => (
+                          <option key={g} value={g}>{g}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                      <div ref={el => setLiveSearchSlotEl(el)} className="flex items-center gap-1.5" />
+                      <LawsToggleBar show={liveSaleLaws.show} setShow={liveSaleLaws.setShow}
+                        openForm={liveSaleLaws.openForm} setOpenForm={liveSaleLaws.setOpenForm}
+                        hideZeroFlags={liveSaleLaws.hideZeroFlags} setHideZeroFlags={liveSaleLaws.setHideZeroFlags}
+                        activeFilters={liveSaleLaws.activeFilters} toggleFilter={liveSaleLaws.toggleFilter} dark={false} />
+                      <button
+                        type="button"
+                        onClick={() => setLiveHelpModalOpen(true)}
+                        title="Help"
+                        className="shrink-0 w-6 h-6 rounded-lg text-xs font-semibold border flex items-center justify-center transition bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300"
+                      >
+                        ?
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLiveExpanded((v) => !v)}
+                        title={liveExpanded ? 'Exit large screen' : 'Large screen'}
+                        className={`shrink-0 w-6 h-6 rounded-lg text-xs font-semibold border flex items-center justify-center transition
+                          ${liveExpanded ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300'}`}
+                      >
+                        {liveExpanded ? '⤡' : '⤢'}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -2151,6 +2196,7 @@ function ItemHubPageInner() {
             onGroupFilterChange={setLiveGroupFilter}
             showHelpModal={liveHelpModalOpen}
             onHelpModalChange={setLiveHelpModalOpen}
+            searchSlotEl={liveSearchSlotEl}
             violationCounts={violationCounts}
             violationTypes={ITEMS_FLAG_TYPES.map(({ key, label }) => ({ key, label, description: ERROR_VIOLATIONS.find(v => v.key === key)?.description }))}
             serviceGroups={serviceGroups}
@@ -2231,9 +2277,9 @@ function ItemHubPageInner() {
           <TabErrorBoundary>
             <div className="px-4 pt-4 max-w-sm space-y-2">
               {inlineLaws('Reorder Lists', reorderListsLaws)}
-              <ReorderListsPanel cashItems={effectiveCashItems} manageItems={MANAGE_LIST_ITEMS} staffItems={STAFF_TEAM_ITEMS}
+              <ReorderListsPanel cashItems={combinedCashItems} manageItems={MANAGE_LIST_ITEMS} staffItems={STAFF_TEAM_ITEMS}
                 paneOrder={paneOrder} setPaneOrder={setPaneOrder} paneLabels={paneLabels} setPaneLabels={setPaneLabels}
-                paneGroups={paneGroups} setPaneGroups={setPaneGroups} />
+                paneGroups={paneGroups} setPaneGroups={setPaneGroups} paneHidden={paneHidden} setPaneHidden={setPaneHidden} />
             </div>
           </TabErrorBoundary>
         )}
