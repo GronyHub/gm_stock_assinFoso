@@ -33,7 +33,7 @@ export type SummaryRow = {
 
 type SortDir = 'asc' | 'desc'
 
-const EMPTY_FORM = { item_name: '', cf_group: '', selling_rate: '', purchase_rate: '', units_per_pack: '', unit_name: '', converts_to_item_id: '' }
+const EMPTY_FORM = { item_name: '', cf_group: '', selling_rate: '', purchase_rate: '', units_per_pack: '', unit_name: '', converts_to_item_id: '', count_excluded: false, count_cadence_days: '' }
 
 /* ── helpers ── */
 function fmtN(n: number | null) {
@@ -712,6 +712,25 @@ function ItemEditForm({ form, onChange, groups, itemId, isService, allItems }: {
           ))}
         </select>
       </div>
+      {!isService && (
+        <div className="pt-1 border-t border-gray-200 space-y-1">
+          <label className="text-[7px] font-bold text-gray-500 block">Stock counts</label>
+          <label className="flex items-center gap-1.5 text-[9px] text-gray-700 cursor-pointer select-none">
+            <input type="checkbox" checked={form.count_excluded}
+              onChange={e => onChange({ ...form, count_excluded: e.target.checked })}
+              className="w-3 h-3 accent-red-600" />
+            Exclude from counts entirely
+          </label>
+          {!form.count_excluded && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-[9px] text-gray-500 shrink-0">Count every</span>
+              <input type="number" min="1" step="1" placeholder="auto" value={form.count_cadence_days}
+                onChange={set('count_cadence_days')} className={inputCls + ' w-14'} />
+              <span className="text-[9px] text-gray-500 shrink-0">days (blank = automatic)</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -1061,10 +1080,22 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
       item_name: item.item_name, cf_group: item.cf_group ?? '', selling_rate: item.sp ?? '', purchase_rate: item.cp ?? '',
       units_per_pack: item.units_per_pack ?? '', unit_name: '',
       converts_to_item_id: item.converts_to_item_id ? String(item.converts_to_item_id) : '',
+      count_excluded: false, count_cadence_days: '',
     })
     setAliases(currentAliases)
     setMatches(currentMatches)
     setEditing(true)
+    // The Loss ranking row this form starts from doesn't carry
+    // count_excluded/count_cadence_days (they're not part of the loss
+    // summary this whole tab is built from) -- fetched separately here so
+    // opening the form doesn't need to wait on it first.
+    fetch(`/api/items/${item.item_id}`).then(r => r.json())
+      .then(d => setForm(f => ({
+        ...f,
+        count_excluded: !!d?.count_excluded,
+        count_cadence_days: d?.count_cadence_days != null ? String(d.count_cadence_days) : '',
+      })))
+      .catch(() => {})
   }
 
   async function saveEdit() {
@@ -1079,6 +1110,8 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
         units_per_pack: form.units_per_pack ? parseFloat(form.units_per_pack) : null,
         unit_name: form.unit_name || null,
         converts_to_item_id: form.converts_to_item_id ? Number(form.converts_to_item_id) : null,
+        count_excluded: form.count_excluded,
+        count_cadence_days: form.count_cadence_days ? parseInt(form.count_cadence_days, 10) : null,
       }),
     })
     setSaving(false); setEditing(false)

@@ -2,14 +2,17 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { isOwnerLevel } from '@/lib/roles'
+import { ensureCountCadenceColumns } from '@/lib/countRules'
 import { NextResponse } from 'next/server'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   try {
+    await ensureCountCadenceColumns()
     const [row] = await sql`
       SELECT i.id, i.canonical_name, i.cf_group, i.selling_rate AS selling_price,
              i.purchase_rate, i.units_per_pack, i.unit_name, i.converts_to_item_id,
+             i.count_excluded, i.count_cadence_days,
              COALESCE(s.calculated_soh, 0) AS calculated_soh
       FROM items i
       LEFT JOIN item_stock_summary s ON s.item_id = i.id
@@ -55,8 +58,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const body = await req.json()
   const has = (k: string) => Object.prototype.hasOwnProperty.call(body, k)
 
+  await ensureCountCadenceColumns()
   const [current] = await sql`
-    SELECT canonical_name, cf_group, selling_rate, purchase_rate, units_per_pack, unit_name, converts_to_item_id, product_type
+    SELECT canonical_name, cf_group, selling_rate, purchase_rate, units_per_pack, unit_name, converts_to_item_id, product_type,
+           count_excluded, count_cadence_days
     FROM items WHERE id = ${itemId}
   `
   if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -69,6 +74,14 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const unit_name           = has('unit_name') ? body.unit_name : current.unit_name
   const converts_to_item_id = has('converts_to_item_id') ? body.converts_to_item_id : current.converts_to_item_id
   const product_type        = has('product_type') ? (body.product_type === 'service' ? 'service' : 'goods') : current.product_type
+  // count_cadence_days genuinely needs a real null to mean "back to
+  // automatic" (see /api/stock/gmc-weekly and overdue, which COALESCE
+  // this against the computed 7/15/30-day default) -- so, like every
+  // other field here, an omitted key falls back to the current value at
+  // the JS level rather than via SQL COALESCE, which would treat an
+  // explicit null the same as "not sent" and never let it clear.
+  const count_excluded      = has('count_excluded') ? !!body.count_excluded : current.count_excluded
+  const count_cadence_days  = has('count_cadence_days') ? body.count_cadence_days : current.count_cadence_days
 
   const [row] = await sql`
     UPDATE items SET
@@ -80,9 +93,12 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       units_per_pack      = ${units_per_pack ?? null},
       unit_name           = ${unit_name      ?? null},
       converts_to_item_id = ${converts_to_item_id ?? null},
-      product_type        = ${product_type   ?? 'goods'}
+      product_type        = ${product_type   ?? 'goods'},
+      count_excluded      = ${count_excluded ?? false},
+      count_cadence_days  = ${count_cadence_days ?? null}
     WHERE id = ${itemId}
-    RETURNING id, canonical_name AS item_name, cf_group, selling_rate, purchase_rate, units_per_pack, unit_name, converts_to_item_id, product_type
+    RETURNING id, canonical_name AS item_name, cf_group, selling_rate, purchase_rate, units_per_pack, unit_name, converts_to_item_id, product_type,
+              count_excluded, count_cadence_days
   `
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 

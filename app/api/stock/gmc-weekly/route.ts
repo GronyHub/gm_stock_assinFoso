@@ -1,14 +1,18 @@
 import sql from '@/lib/db'
-import { DAILY_ITEM_IDS } from '@/lib/countRules'
+import { DAILY_ITEM_IDS, ensureCountCadenceColumns } from '@/lib/countRules'
 import { NextResponse } from 'next/server'
 
 // 7-day count list: GMC items -- goods the shop takes for its own use
 // (4x6 packs, A4 sheets, Brown Envelope packs, etc., identified by having
 // at least one GMC take on record). Internal use moves faster and is easier
-// to forget to record, so these get a weekly count instead of 15 days.
-// Daily-count items are excluded (they're already counted every day), and
-// services are never countable.
+// to forget to record, so these get a weekly count instead of 15 days --
+// unless an item's own edit form set a different cadence (items.
+// count_cadence_days), which wins over the 7-day default when present.
+// Daily-count items are excluded (they're already counted every day),
+// services are never countable, and count_excluded opts an item out
+// entirely regardless of its GMC history.
 export async function GET() {
+  await ensureCountCadenceColumns()
   const rows = await sql`
     WITH gmc_items AS (
       SELECT DISTINCT srl.item_id
@@ -28,7 +32,7 @@ export async function GET() {
       c.last_count_date,
       CASE
         WHEN c.last_count_date IS NULL THEN NULL
-        ELSE (CURRENT_DATE - c.last_count_date::date - 7)
+        ELSE (CURRENT_DATE - c.last_count_date::date - COALESCE(i.count_cadence_days, 7))
       END AS days_overdue
     FROM item_stock_summary s
     LEFT JOIN items i ON i.id = s.item_id
@@ -40,8 +44,9 @@ export async function GET() {
       AND s.cf_group IS DISTINCT FROM 'Large Format'
       AND COALESCE(i.product_type, 'goods') <> 'service'
       AND (s.cf_group IS NULL OR s.cf_group NOT ILIKE 'service%')
+      AND COALESCE(i.count_excluded, false) = false
       AND (c.last_count_date IS NULL
-       OR c.last_count_date::date < CURRENT_DATE - 7)
+       OR c.last_count_date::date < CURRENT_DATE - COALESCE(i.count_cadence_days, 7))
     ORDER BY
       CASE WHEN c.last_count_date IS NULL THEN 999999
            ELSE (CURRENT_DATE - c.last_count_date::date)

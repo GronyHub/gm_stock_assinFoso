@@ -1,6 +1,13 @@
 import sql from '@/lib/db'
 import { PACK_PAIRING_CHAINS } from '@/lib/stockGuard'
 
+// items.count_excluded (set from an item's own edit form) is checked in
+// itemRows/itemNamesOnly below, so it applies uniformly everywhere this
+// file's exports are consumed -- the daily queue, the GMC/overdue queues
+// (see the API routes' own item joins), the Opener penalty audit, and
+// Today's summary all agree an excluded item was never supposed to be
+// counted, rather than each surface needing its own copy of the check.
+
 // Items counted every single day (hardcoded set chosen by the shop).
 export const DAILY_ITEM_IDS = [367, 368, 369, 370, 371, 372, 373, 374, 375, 376]
 
@@ -10,8 +17,24 @@ export const DAILY_ITEM_IDS = [367, 368, 369, 370, 371, 372, 373, 374, 375, 376]
 // than trimmed from DAILY_ITEM_IDS so the id list doesn't need editing.
 const EXCLUDED_DAILY_SINGLE_NAMES = [/cardboard/i, /a4\s*sheet/i]
 
+// Lazy self-migrating column add, same pattern as
+// lib/billAttachments.ts's ensureBillAttachmentsColumn() -- called from
+// itemRows/itemNamesOnly below (this file's only two raw item queries)
+// and from the item edit PUT route, so the columns exist on first real
+// request in an environment with DB access, instead of requiring
+// scripts/add-count-cadence-fields.mjs to be run by hand first. Once the
+// columns exist this is a fast no-op, so it's cheap to call on every
+// request rather than tracking down every consumer route individually
+// (the Opener audit and Today's summary both reach these functions
+// indirectly).
+export async function ensureCountCadenceColumns() {
+  await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS count_excluded BOOLEAN NOT NULL DEFAULT false`.catch(() => {})
+  await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS count_cadence_days INTEGER`.catch(() => {})
+}
+
 async function itemRows(itemIds: number[]) {
   if (itemIds.length === 0) return []
+  await ensureCountCadenceColumns()
   return await sql`
     SELECT
       s.item_id,
@@ -33,6 +56,7 @@ async function itemRows(itemIds: number[]) {
     WHERE s.item_id = ANY(${itemIds})
       AND s.cf_group IS DISTINCT FROM 'Large Format'
       AND COALESCE(i.product_type, 'goods') <> 'service'
+      AND COALESCE(i.count_excluded, false) = false
       AND (c.last_count_date IS NULL OR c.last_count_date::date < CURRENT_DATE)
     ORDER BY COALESCE(i.canonical_name, s.item_name) ASC
   `
@@ -55,6 +79,7 @@ export async function blockingPackDailyIds(): Promise<number[]> {
 
 async function itemNamesOnly(ids: number[]): Promise<{ id: number; name: string }[]> {
   if (ids.length === 0) return []
+  await ensureCountCadenceColumns()
   const rows = await sql`
     SELECT s.item_id AS id, COALESCE(i.canonical_name, s.item_name) AS name
     FROM item_stock_summary s
@@ -62,6 +87,7 @@ async function itemNamesOnly(ids: number[]): Promise<{ id: number; name: string 
     WHERE s.item_id = ANY(${ids})
       AND s.cf_group IS DISTINCT FROM 'Large Format'
       AND COALESCE(i.product_type, 'goods') <> 'service'
+      AND COALESCE(i.count_excluded, false) = false
   `
   return rows as unknown as { id: number; name: string }[]
 }
