@@ -142,7 +142,9 @@ export default function LiveSalePage(props: any = {}) {
 
   // Filter and sort items based on current view, search, and product type
   const catalogueItems = useMemo(() => {
-    let filtered = allItems
+    if (allItems.length === 0) return []
+
+    let filtered = [...allItems]
 
     // Apply product type filter
     if (productTypeFilter === 'goods') {
@@ -152,9 +154,12 @@ export default function LiveSalePage(props: any = {}) {
     }
 
     // Apply search filter
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase()
-      filtered = filtered.filter(item => item.name.toLowerCase().includes(q))
+    if (searchQuery && searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim()
+      filtered = filtered.filter(item => {
+        const itemName = (item.name || '').toLowerCase()
+        return itemName.includes(q)
+      })
     }
 
     // Apply view filter
