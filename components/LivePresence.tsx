@@ -31,7 +31,7 @@ export default function LivePresence() {
   if (!rows.length) return null
 
   return (
-    <div className="fixed bottom-20 md:bottom-4 left-1/2 -translate-x-1/2 z-[290] flex flex-col gap-1.5 w-[92%] max-w-sm px-2">
+    <div className="fixed bottom-20 md:bottom-4 left-1/2 -translate-x-1/2 z-[290] flex flex-col gap-1.5 w-[92%] max-w-sm px-2 pointer-events-none">
       {rows.map(r => (
         <div key={r.staff_name}
           className="bg-blue-600/95 text-white text-xs rounded-full px-3 py-1.5 shadow-lg flex items-center gap-2">
