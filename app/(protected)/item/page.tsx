@@ -1749,9 +1749,9 @@ function ItemHubPageInner() {
                       : v.key === 'items' ? itemsFlagsCount
                       : v.key === 'bills' ? billsFlagsCount
                       : v.key === 'cab' ? cabFlagsCount
-                      // Counts merged into Live Sale's own Count/Count 2
-                      // tabs (no longer its own row) -- the due-count
-                      // badge moves to Live Sale itself.
+                      // Counts merged into Live Sale (no longer its own
+                      // row) -- the due-count badge lives on Live Sale
+                      // itself instead.
                       : v.key === 'liveSale' ? countsFlagsCount
                       : v.key === 'feed' ? lossByDateFlagsCount
                       : v.key === 'expenses' ? expensesFlagsCount
