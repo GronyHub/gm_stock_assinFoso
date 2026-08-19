@@ -44,6 +44,10 @@ export default function LiveSalePage(props: any = {}) {
   const [violations, setViolations] = useState<Record<string, number>>({})
   const [searchQuery, setSearchQuery] = useState('')
   const [productTypeFilter, setProductTypeFilter] = useState<'all' | 'goods' | 'services'>('all')
+  const [itemSearchQuery, setItemSearchQuery] = useState('')
+  const [itemSearchResults, setItemSearchResults] = useState<Item[]>([])
+  const [showSearchResults, setShowSearchResults] = useState(false)
+  const [selectedSearchItemId, setSelectedSearchItemId] = useState<number | null>(null)
   const localLawsPanel = useLawsPanel('showLiveSaleLaws')
   const liveSaleLaws = incomingLawsPanel || localLawsPanel
 
@@ -128,6 +132,26 @@ export default function LiveSalePage(props: any = {}) {
       .catch(() => {})
   }, [])
 
+  // Search items as user types
+  useEffect(() => {
+    if (!itemSearchQuery.trim()) {
+      setItemSearchResults([])
+      setShowSearchResults(false)
+      return
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const r = await fetch(`/api/items/search?q=${encodeURIComponent(itemSearchQuery)}`)
+        const results = await r.json()
+        setItemSearchResults(Array.isArray(results) ? results : [])
+        setShowSearchResults(true)
+      } catch (e) {
+        setItemSearchResults([])
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [itemSearchQuery])
+
   // Count sales by item (all historical taps)
   const today = new Date().toISOString().slice(0, 10)
   const salesCounts = useMemo(() => {
@@ -145,6 +169,11 @@ export default function LiveSalePage(props: any = {}) {
     if (allItems.length === 0) return []
 
     let filtered = [...allItems]
+
+    // Apply selected search item filter (takes priority)
+    if (selectedSearchItemId) {
+      filtered = filtered.filter(item => item.id === selectedSearchItemId)
+    }
 
     // Apply product type filter
     if (productTypeFilter === 'goods') {
@@ -184,7 +213,7 @@ export default function LiveSalePage(props: any = {}) {
 
     // Sort by sales count (highest to lowest)
     return filtered.sort((a, b) => (salesCounts.get(b.id) ?? 0) - (salesCounts.get(a.id) ?? 0))
-  }, [allItems, salesCounts, currentView, searchQuery, productTypeFilter])
+  }, [allItems, salesCounts, currentView, searchQuery, productTypeFilter, selectedSearchItemId])
 
   async function recordTap() {
     if (!selectedItem || !qty) return
@@ -375,13 +404,47 @@ export default function LiveSalePage(props: any = {}) {
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold text-gray-900">Live Sale — {today}</h2>
           <div className="flex gap-2 items-center">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search items…"
-              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                value={itemSearchQuery}
+                onChange={e => setItemSearchQuery(e.target.value)}
+                onFocus={() => itemSearchQuery.trim() && setShowSearchResults(true)}
+                placeholder="Search items…"
+                className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 w-48"
+              />
+              {itemSearchQuery && (
+                <button
+                  onClick={() => {
+                    setItemSearchQuery('')
+                    setSelectedSearchItemId(null)
+                    setItemSearchResults([])
+                    setShowSearchResults(false)
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              )}
+              {showSearchResults && itemSearchResults.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
+                  {itemSearchResults.map(item => (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        setSelectedSearchItemId(item.id)
+                        setItemSearchQuery(item.name)
+                        setShowSearchResults(false)
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-blue-50 border-b border-gray-100 last:border-b-0 text-sm text-gray-700"
+                    >
+                      <div className="font-semibold text-gray-900">{item.name}</div>
+                      <div className="text-xs text-gray-500">₵{formatPrice(item.selling_price)} · Stock: {Math.ceil(Number(item.soh))}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <select
               value={productTypeFilter}
               onChange={e => setProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
