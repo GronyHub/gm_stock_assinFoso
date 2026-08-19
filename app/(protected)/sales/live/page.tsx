@@ -4,7 +4,9 @@ import { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { usePresenceReporter } from '@/lib/usePresenceReporter'
+import { isOwnerLevel } from '@/lib/roles'
 import { useLawsPanel } from '@/app/(protected)/item/_components/useLawsPanel'
 import LawsToggleBar from '@/app/(protected)/item/_components/LawsToggleBar'
 import PageLawsList from '@/app/(protected)/item/_components/PageLawsList'
@@ -34,6 +36,8 @@ export default function LiveSalePage(props: any = {}) {
   console.log('LiveSalePage mounted with new item picker')
   usePresenceReporter('live-tapping a sale')
   const router = useRouter()
+  const { data: session } = useSession()
+  const canDeleteCounts = isOwnerLevel(session?.user as any)
 
   const {
     initialShowLog = false, lawsPanel: incomingLawsPanel, hideTopControls = false,
@@ -92,6 +96,10 @@ export default function LiveSalePage(props: any = {}) {
   const [lossPrompt, setLossPrompt] = useState<LossPrompt | null>(null)
   const [pairingPrompt, setPairingPrompt] = useState<PairingPrompt | null>(null)
   const [countRecords, setCountRecords] = useState<CountRecord[]>([])
+  const [editingCountId, setEditingCountId] = useState<number | null>(null)
+  const [editCountQty, setEditCountQty] = useState('')
+  const [editCountNotes, setEditCountNotes] = useState('')
+  const [editCountSaving, setEditCountSaving] = useState(false)
 
   const groups = useMemo(() => {
     const uniqueGroups = new Set<string>()
@@ -426,6 +434,50 @@ export default function LiveSalePage(props: any = {}) {
     setCountError(d?.error ?? 'Could not save count.')
   }
 
+  // Same edit/delete pair Counts' own list already offers -- kept here so
+  // fixing or removing a count record doesn't require leaving Live Sale
+  // just because that page still also exists.
+  function startEditCount(r: CountRecord) {
+    setEditCountQty(String(r.quantity_counted))
+    setEditCountNotes(r.notes ?? '')
+    setEditingCountId(r.id)
+  }
+
+  async function saveEditCount(lossExtra?: LossExtra) {
+    if (editingCountId == null) return
+    setEditCountSaving(true)
+    const res = await fetch(`/api/stock/counts/${editingCountId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ quantity_counted: Number(editCountQty), notes: editCountNotes, ...(lossExtra ?? {}) }),
+    })
+    setEditCountSaving(false)
+    if (res.ok) {
+      const updated: CountRecord = await res.json()
+      setCountRecords(prev => prev.map(r => r.id === editingCountId ? { ...r, ...updated } : r))
+      setEditingCountId(null)
+    } else {
+      const d = await res.json().catch(() => null)
+      if (res.status === 409 && d?.requires_loss_reason) {
+        setLossPrompt({ d, retry: extra => saveEditCount(extra) })
+        return
+      }
+      alert(d?.error ?? 'Could not save count.')
+    }
+  }
+
+  async function deleteCountRecord(r: CountRecord) {
+    const dateLabel = new Date(r.count_date.slice(0, 10) + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    if (!confirm(`Delete the count of ${Number(r.quantity_counted)} for "${r.item_name}" on ${dateLabel}? This changes the loss/gain math from that day onward.`)) return
+    const res = await fetch(`/api/stock/counts/${r.id}`, { method: 'DELETE' })
+    if (res.ok) {
+      setCountRecords(prev => prev.filter(x => x.id !== r.id))
+      if (editingCountId === r.id) setEditingCountId(null)
+    } else {
+      alert((await res.json().catch(() => null))?.error ?? 'Could not delete count.')
+    }
+  }
+
   // Log view
   if (showLog) {
     // Group taps by date
@@ -485,41 +537,103 @@ export default function LiveSalePage(props: any = {}) {
             <p className="text-sm text-gray-400 text-center py-8">No counts recorded</p>
           ) : (
             <div className="inline-block min-w-full">
-              <div className="grid grid-cols-[2fr_1fr_0.6fr_1fr_0.8fr_1.4fr] gap-0 bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+              <div className="grid grid-cols-[2fr_1fr_0.6fr_1fr_0.8fr_1.4fr_0.9fr] gap-0 bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                 <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase">Item</div>
                 <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase">Group</div>
                 <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase text-center">Qty</div>
                 <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase">By</div>
                 <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase">Source</div>
                 <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase">Notes</div>
+                <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase text-right">Actions</div>
               </div>
               {countsByDate.map(([date, dateRecs]) => (
                 <div key={date}>
-                  <div className="grid grid-cols-[2fr_1fr_0.6fr_1fr_0.8fr_1.4fr] gap-0 bg-amber-50 border-b border-amber-200 sticky top-10 z-9">
-                    <div className="col-span-6 px-4 py-2 text-xs font-semibold text-amber-700">
+                  <div className="grid grid-cols-[2fr_1fr_0.6fr_1fr_0.8fr_1.4fr_0.9fr] gap-0 bg-amber-50 border-b border-amber-200 sticky top-10 z-9">
+                    <div className="col-span-7 px-4 py-2 text-xs font-semibold text-amber-700">
                       {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {dateRecs.length} counted
                     </div>
                   </div>
                   {dateRecs.map(rec => (
-                    <div key={rec.id} className="grid grid-cols-[2fr_1fr_0.6fr_1fr_0.8fr_1.4fr] gap-0 border-b border-gray-100 items-center hover:bg-gray-50 transition">
-                      <div className="px-4 py-3">
-                        <p className="text-sm font-semibold text-gray-900">{rec.item_name}</p>
+                    <div key={rec.id}>
+                      <div className="grid grid-cols-[2fr_1fr_0.6fr_1fr_0.8fr_1.4fr_0.9fr] gap-0 border-b border-gray-100 items-center hover:bg-gray-50 transition">
+                        <div className="px-4 py-3">
+                          <p className="text-sm font-semibold text-gray-900">{rec.item_name}</p>
+                        </div>
+                        <div className="px-4 py-3">
+                          <p className="text-sm text-gray-600">{rec.cf_group ?? '—'}</p>
+                        </div>
+                        <div className="px-4 py-3 text-center">
+                          <p className="text-sm font-semibold text-gray-900">{Number(rec.quantity_counted)}</p>
+                        </div>
+                        <div className="px-4 py-3">
+                          <p className="text-sm text-blue-600 font-medium">{rec.counted_by ?? '—'}</p>
+                        </div>
+                        <div className="px-4 py-3">
+                          <p className="text-sm text-gray-500">{rec.source ?? '—'}</p>
+                        </div>
+                        <div className="px-4 py-3">
+                          <p className="text-sm text-gray-500 italic truncate">{rec.notes ?? '—'}</p>
+                        </div>
+                        <div className="px-4 py-3">
+                          <div className="flex gap-1 justify-end whitespace-nowrap">
+                            <button
+                              type="button"
+                              onClick={() => editingCountId === rec.id ? setEditingCountId(null) : startEditCount(rec)}
+                              className="text-xs text-blue-600 font-semibold bg-blue-50 px-2 py-1 rounded-full hover:bg-blue-100 transition"
+                            >
+                              {editingCountId === rec.id ? 'Close' : 'Edit'}
+                            </button>
+                            {canDeleteCounts && (
+                              <button
+                                type="button"
+                                onClick={() => deleteCountRecord(rec)}
+                                className="text-xs text-red-600 font-semibold bg-red-50 px-2 py-1 rounded-full hover:bg-red-100 transition"
+                              >
+                                Del
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <div className="px-4 py-3">
-                        <p className="text-sm text-gray-600">{rec.cf_group ?? '—'}</p>
-                      </div>
-                      <div className="px-4 py-3 text-center">
-                        <p className="text-sm font-semibold text-gray-900">{Number(rec.quantity_counted)}</p>
-                      </div>
-                      <div className="px-4 py-3">
-                        <p className="text-sm text-blue-600 font-medium">{rec.counted_by ?? '—'}</p>
-                      </div>
-                      <div className="px-4 py-3">
-                        <p className="text-sm text-gray-500">{rec.source ?? '—'}</p>
-                      </div>
-                      <div className="px-4 py-3">
-                        <p className="text-sm text-gray-500 italic truncate">{rec.notes ?? '—'}</p>
-                      </div>
+                      {editingCountId === rec.id && (
+                        <div className="bg-blue-50/60 border-b border-gray-100 px-4 py-3 flex items-end gap-3 flex-wrap">
+                          <div>
+                            <p className="text-xs text-gray-400 mb-1">Qty Counted</p>
+                            <input
+                              type="number" min="0" step="any"
+                              value={editCountQty}
+                              onChange={e => setEditCountQty(e.target.value)}
+                              className="w-28 bg-white border border-gray-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-blue-400"
+                            />
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-400 mb-1">Notes</p>
+                            <input
+                              value={editCountNotes}
+                              onChange={e => setEditCountNotes(e.target.value)}
+                              placeholder="Optional"
+                              className="w-48 bg-white border border-gray-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-blue-400"
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => saveEditCount()}
+                              disabled={editCountSaving}
+                              className="bg-green-600 hover:bg-green-500 text-white text-sm font-bold rounded-lg px-4 py-1.5 disabled:opacity-40 transition"
+                            >
+                              {editCountSaving ? 'Saving…' : 'Save'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingCountId(null)}
+                              className="px-4 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm font-semibold rounded-lg transition"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
