@@ -19,17 +19,17 @@ const NewItemForm = dynamic(() => import('../../item/_components/NewItemForm'), 
 // "Count 2" tab -- the old standalone Counts page's own component,
 // embedded wholesale rather than folded apart, kept around as a safety
 // net for the pieces (History, Analytics, free-form any-item counting)
-// the new Count mode above doesn't cover yet.
+// Sale mode's due-item treatment doesn't cover.
 const CountsTab = dynamic(() => import('../../item/_components/CountsTab'), { ssr: false })
 
 type Item = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; product_type: string | null }
 type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null }
 type FlagLaw = { key: string; label: string; description?: string; count: number; active?: boolean; onViewClick?: () => void }
 type ViolationType = { key: string; label: string; description?: string }
-// Count mode's due-count queues -- same shape /api/stock/daily,
+// Sale mode's due-count queues -- same shape /api/stock/daily,
 // /api/stock/gmc-weekly and /api/stock/overdue already return for CountsTab.
 type DueItem = { item_id: number; item_name: string; cf_group: string | null; calculated_soh: number; last_count_date: string | null; days_overdue: number | null }
-// Count mode's Log view -- same shape /api/stock/counts already returns for CountsTab's own history table.
+// The Log tab's Count view -- same shape /api/stock/counts already returns for CountsTab's own history table.
 type CountRecord = { id: number; item_id: number | null; item_name: string; count_date: string; quantity_counted: string; notes: string | null; counted_by: string | null; source: string | null; cf_group: string | null }
 
 function formatPrice(num: number | string): string {
@@ -100,19 +100,17 @@ export default function LiveSalePage(props: any = {}) {
   const localLawsPanel = useLawsPanel('showLiveSaleLaws')
   const liveSaleLaws = incomingLawsPanel || localLawsPanel
 
-  // Count mode -- Counts' own due-count queues/badges/entry-form folded in
-  // as a second mode on this same grid, instead of Counts staying its own
-  // page (see the "Count as a mode, not a page" sketch this implements).
-  // Sale and Count never share one tap action: the "+" button opens a
-  // completely different sheet per mode (below), so a wrong tap can't log
-  // a sale as a count or vice versa. 'count2' and 'log' are the other two
-  // tabs sharing this same switcher: 'count2' is the full old standalone
-  // Counts page (History/Analytics/free-form counting this new Count mode
-  // doesn't have yet, kept as a safety net while Count mode proves
-  // itself), 'log' is what used to be a separate showLog boolean --
-  // folded in as a tab rather than its own sidebar destination since it's
-  // just history of the other three.
-  const [mode, setMode] = useState<'sale' | 'count' | 'count2' | 'log'>('sale')
+  // The standalone "Count" mode (its own due-count queues/badges/entry-form
+  // as a second grid mode) was removed once Sale mode grew its own pinned
+  // "COUNT NOW" block and inline count field for due items (below) -- those
+  // don't depend on this mode existing, they're Sale-mode-native. 'count2'
+  // and 'log' are the other two tabs sharing this switcher: 'count2' is the
+  // full old standalone Counts page (History/Analytics/free-form counting
+  // Sale mode's due-item treatment doesn't cover), kept as a safety net;
+  // 'log' is what used to be a separate showLog boolean -- folded in as a
+  // tab rather than its own sidebar destination since it's just history of
+  // the other two.
+  const [mode, setMode] = useState<'sale' | 'count2' | 'log'>('sale')
   const [count2Violation, setCount2Violation] = useState<string | null>(null)
   useEffect(() => {
     if (!jumpToTabSeq || !jumpToTab) return
@@ -120,21 +118,19 @@ export default function LiveSalePage(props: any = {}) {
     setCount2Violation(jumpToTabViolation)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jumpToTabSeq])
-  const [dueOnly, setDueOnly] = useState(false)
   const [dailyItems, setDailyItems] = useState<DueItem[]>([])
   const [gmcWeeklyItems, setGmcWeeklyItems] = useState<DueItem[]>([])
   const [overdueItems, setOverdueItems] = useState<DueItem[]>([])
-  const [countingItem, setCountingItem] = useState<Item | null>(null)
   const [countQty, setCountQty] = useState('')
   const [countSaving, setCountSaving] = useState(false)
   const [countError, setCountError] = useState('')
   const [lossPrompt, setLossPrompt] = useState<LossPrompt | null>(null)
   const [pairingPrompt, setPairingPrompt] = useState<PairingPrompt | null>(null)
   const [countRecords, setCountRecords] = useState<CountRecord[]>([])
-  // Which history the Log tab shows -- independent of the Sale/Count/
-  // Count 2 grid mode above it (Log is its own tab now, not a flag you
-  // toggle on top of whichever grid mode happened to be active), so it
-  // gets its own small Sale/Count sub-toggle in its own header instead.
+  // Which history the Log tab shows -- independent of the Sale/Count 2 grid
+  // mode above it (Log is its own tab, not a flag you toggle on top of
+  // whichever grid mode happened to be active), so it gets its own small
+  // Sale/Count sub-toggle in its own header instead.
   const [logKind, setLogKind] = useState<'sale' | 'count'>('sale')
   // Count 2's own filter text -- CountsTab expects its `search` prop from
   // a visible input the host page owns; the grid's own item-picker query
@@ -268,9 +264,10 @@ export default function LiveSalePage(props: any = {}) {
       .catch(() => {})
   }, [])
 
-  // Count mode's 3 due-count queues -- same endpoints CountsTab's own flag
-  // pills read from. Fetched once regardless of mode (cheap, and keeps the
-  // Sale/Count toggle instant instead of showing a loading flash on switch).
+  // Sale mode's 3 due-count queues (COUNT NOW block + inline count field) --
+  // same endpoints CountsTab's own flag pills read from. Fetched once up
+  // front (cheap, and avoids a loading flash the first time a due item
+  // would show up).
   useEffect(() => {
     Promise.all([
       fetch('/api/stock/daily').then(r => r.json()),
@@ -354,17 +351,9 @@ export default function LiveSalePage(props: any = {}) {
     // the browse grid from offering a normal walk-in item under an
     // internal-use receipt. Doesn't apply to a deliberately searched-and-
     // picked item above, since that's how an item gets its first-ever GMC
-    // record in the first place. Sale-mode-only -- WIC/GMC has no meaning
-    // in Count mode.
+    // record in the first place.
     if (mode === 'sale' && saleType === 'GMC') {
       filtered = filtered.filter(item => gmcItemIds.has(item.id))
-    }
-
-    // Count mode's "Due only" filter -- narrows the grid to items one of
-    // the 3 due-count queues actually flagged, same items Counts' own flag
-    // pills would jump to.
-    if (mode === 'count' && dueOnly) {
-      filtered = filtered.filter(item => countStatus.has(item.id))
     }
 
     // Apply view filter
@@ -389,14 +378,14 @@ export default function LiveSalePage(props: any = {}) {
 
     // Sort by sales count (highest to lowest)
     return filtered.sort((a, b) => (salesCounts.get(b.id) ?? 0) - (salesCounts.get(a.id) ?? 0))
-  }, [allItems, salesCounts, currentView, productTypeFilter, groupFilter, pickedItemId, saleType, gmcItemIds, mode, dueOnly, countStatus])
+  }, [allItems, salesCounts, currentView, productTypeFilter, groupFilter, pickedItemId, saleType, gmcItemIds, mode])
 
   // Log tab's two histories, grouped by date -- computed unconditionally
   // (not inside the `if (mode === 'log')` branch below) since React
   // requires the same hooks to run on every render of this component;
-  // Sale/Count/Count 2/Log now all live in one mounted instance switched
-  // by `mode`, so a useMemo that only ran while mode==='log' would change
-  // the hook count the moment you switched tabs and crash the page.
+  // Sale/Count 2/Log now all live in one mounted instance switched by
+  // `mode`, so a useMemo that only ran while mode==='log' would change the
+  // hook count the moment you switched tabs and crash the page.
   const tapsByDate = useMemo(() => {
     const groups = new Map<string, typeof taps>()
     for (const tap of taps) {
@@ -418,13 +407,11 @@ export default function LiveSalePage(props: any = {}) {
   }, [countRecords])
 
   // Sale mode's own due-count callout -- staff mostly live in Sale mode, so
-  // a due item only ever surfacing inside Count mode meant it stayed
-  // invisible unless someone deliberately switched over. Pinned as its own
-  // block at the very top (not interleaved into the sales-frequency order
-  // below it), so the normal most-sold-first list staff rely on for fast
-  // tapping never reshuffles just because something unrelated went
-  // overdue. Count mode already has its own due/overdue treatment (badges
-  // + Due-only filter), so this split only matters in Sale mode.
+  // a due item needs to be visible right there instead of requiring a trip
+  // to a separate count screen. Pinned as its own block at the very top
+  // (not interleaved into the sales-frequency order below it), so the
+  // normal most-sold-first list staff rely on for fast tapping never
+  // reshuffles just because something unrelated went overdue.
   const [pinnedDueItems, restCatalogueItems] = useMemo(() => {
     if (mode !== 'sale') return [[], catalogueItems] as [Item[], Item[]]
     const due: Item[] = []
@@ -506,10 +493,8 @@ export default function LiveSalePage(props: any = {}) {
   // already submit through -- a pack-pairing or loss-reason requirement
   // comes back as a 409 with a flag the caller re-submits against once the
   // prompt is answered, not a plain error, so this mirrors that retry shape
-  // exactly rather than reinventing it. Takes the item explicitly (not read
-  // off countingItem) so it works both from Count mode's own sheet and from
-  // the inline "Count today's stock" field the Sale sheet grows for a due
-  // item (see the modal below) -- one submit path, two entry points.
+  // exactly rather than reinventing it. Used by the inline "Count today's
+  // stock" field the Sale sheet grows for a due item (see the modal below).
   async function submitCount(item: Item, qty: number, lossExtra?: LossExtra) {
     setCountSaving(true)
     setCountError('')
@@ -523,7 +508,6 @@ export default function LiveSalePage(props: any = {}) {
       setDailyItems(prev => prev.filter(i => i.item_id !== item.id))
       setGmcWeeklyItems(prev => prev.filter(i => i.item_id !== item.id))
       setOverdueItems(prev => prev.filter(i => i.item_id !== item.id))
-      setCountingItem(null)
       setCountQty('')
       return
     }
@@ -583,9 +567,9 @@ export default function LiveSalePage(props: any = {}) {
     }
   }
 
-  // The one 4-way switcher (Sale/Count/Count 2/Log) shared by every tab's
-  // own header, so jumping straight from Log to Count 2 (say) doesn't
-  // require detouring back through the grid first.
+  // The one 3-way switcher (Sale/Count 2/Log) shared by every tab's own
+  // header, so jumping straight from Log to Count 2 (say) doesn't require
+  // detouring back through the grid first.
   function renderModeToggle(compact: boolean) {
     const btnCls = (active: boolean, color: string) =>
       `font-bold rounded-md transition ${compact ? 'px-1.5 py-1 text-[10px]' : 'px-2.5 py-1 text-xs'} ${
@@ -594,7 +578,6 @@ export default function LiveSalePage(props: any = {}) {
     return (
       <div className="inline-flex bg-gray-200 rounded-lg p-0.5">
         <button type="button" onClick={() => setMode('sale')} title="Sale mode" className={btnCls(mode === 'sale', 'bg-blue-600')}>Sale</button>
-        <button type="button" onClick={() => setMode('count')} title="Count mode" className={btnCls(mode === 'count', 'bg-amber-600')}>Count</button>
         <button type="button" onClick={() => setMode('count2')} title="Count 2 -- the full old Counts page" className={btnCls(mode === 'count2', 'bg-purple-600')}>Count 2</button>
         <button type="button" onClick={() => setMode('log')} title="Log" className={btnCls(mode === 'log', 'bg-gray-700')}>Log</button>
       </div>
@@ -935,9 +918,6 @@ export default function LiveSalePage(props: any = {}) {
           beside the laws/help/expand icons in the merged green bar instead
           of its own full-size row. */}
       {(() => {
-        const dueTodayCount = dailyItems.length + gmcWeeklyItems.length
-        const overdueCount = overdueItems.length
-
         const searchControlsNode = (
           <>
             {renderModeToggle(compactSearch)}
@@ -1018,17 +998,6 @@ export default function LiveSalePage(props: any = {}) {
               >
                 {saleType}
               </button>
-            )}
-            {mode === 'count' && (
-              <>
-                <span className={`font-bold text-amber-900 bg-amber-100 rounded-lg whitespace-nowrap ${compactSearch ? 'px-1.5 py-1 text-[10px]' : 'px-2.5 py-1.5 text-xs'}`}>
-                  {dueTodayCount} due · {overdueCount} overdue
-                </span>
-                <label className={`inline-flex items-center gap-1 font-semibold text-amber-900 bg-amber-100 rounded-lg cursor-pointer select-none whitespace-nowrap ${compactSearch ? 'px-1.5 py-1 text-[10px]' : 'px-2.5 py-1.5 text-xs'}`}>
-                  <input type="checkbox" checked={dueOnly} onChange={e => setDueOnly(e.target.checked)} className="w-3 h-3 accent-amber-600" />
-                  Due only
-                </label>
-              </>
             )}
           </>
         )
@@ -1271,7 +1240,6 @@ export default function LiveSalePage(props: any = {}) {
             )}
             {restCatalogueItems.map(item => {
               const count = salesCounts.get(item.id) ?? 0
-              const due = countStatus.get(item.id)
               return (
                 <div
                   key={item.id}
@@ -1293,47 +1261,26 @@ export default function LiveSalePage(props: any = {}) {
                       <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
                     </p>
                   </div>
-                  {mode === 'sale' ? (
-                    <div className="flex items-center gap-0.5 shrink-0">
-                      {count > 0 && (
-                        <span className="inline-flex items-center justify-center min-w-3 h-3 px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold">
-                          {count}
-                        </span>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedItem(item)
-                          setDueWhenOpened(false)
-                          setPrice('')
-                          setQty('')
-                          setError('')
-                        }}
-                        className="w-7 h-7 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm flex items-center justify-center transition"
-                      >
-                        +
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-0.5 shrink-0">
-                      <span className={`inline-flex items-center justify-center min-w-[16px] h-[14px] px-0.5 rounded-full text-white text-[8px] font-bold ${
-                        due?.level === 'overdue' ? 'bg-red-600' : due?.level === 'due' ? 'bg-amber-500' : 'bg-emerald-600'
-                      }`}>
-                        {due ? due.label : '✓'}
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    {count > 0 && (
+                      <span className="inline-flex items-center justify-center min-w-3 h-3 px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold">
+                        {count}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCountingItem(item)
-                          setCountQty('')
-                          setCountError('')
-                        }}
-                        className="w-7 h-7 rounded-full bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm flex items-center justify-center transition"
-                      >
-                        +
-                      </button>
-                    </div>
-                  )}
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedItem(item)
+                        setDueWhenOpened(false)
+                        setPrice('')
+                        setQty('')
+                        setError('')
+                      }}
+                      className="w-7 h-7 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm flex items-center justify-center transition"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
               )
             })}
@@ -1496,107 +1443,6 @@ export default function LiveSalePage(props: any = {}) {
             </div>
           </div>
         </div>
-        )
-      })()}
-
-      {/* Count Sheet -- Count mode's own "+" destination. Deliberately a
-          different modal from the Sale one above (different fields,
-          different submit endpoint) rather than the same form branching on
-          mode, so there's no shared state a wrong tap could cross-wire
-          between recording a sale and recording a count. */}
-      {countingItem && (() => {
-        const expected = Number(countingItem.soh)
-        const enteredNum = countQty === '' ? null : Number(countQty)
-        const short = enteredNum !== null && !isNaN(enteredNum) && enteredNum < expected
-        return (
-          <div className="fixed inset-0 bg-black/50 flex items-end z-50">
-            <div className="w-full bg-white rounded-t-2xl shadow-xl">
-              <div className="px-4 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-bold text-gray-900">{countingItem.name}</h3>
-                <p className="text-xs text-gray-500 mt-1">
-                  <span>Group: {countingItem.group ?? '—'}</span>
-                  {countStatus.has(countingItem.id) && (
-                    <>
-                      <span className="text-gray-400"> · </span>
-                      <span className="text-amber-600 font-semibold">
-                        {countStatus.get(countingItem.id)!.level === 'overdue' ? 'Overdue' : 'Due'} ({countStatus.get(countingItem.id)!.label})
-                      </span>
-                    </>
-                  )}
-                </p>
-              </div>
-
-              <div className="p-4 space-y-4">
-                <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                  <span className="text-sm font-semibold text-amber-800">System expects</span>
-                  <span className="text-lg font-bold text-amber-900">{expected}</span>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-2">
-                    Counted quantity <span className="text-red-600">*</span>
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      min="0"
-                      step="any"
-                      value={countQty}
-                      onChange={e => setCountQty(e.target.value)}
-                      placeholder="What's actually on the shelf"
-                      className="flex-1 text-lg font-semibold text-gray-900 bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-amber-400"
-                      disabled={countSaving}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setCountQty(String(expected))}
-                      disabled={countSaving}
-                      className="shrink-0 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg transition disabled:opacity-50"
-                    >
-                      ={expected}
-                    </button>
-                  </div>
-                  {enteredNum !== null && !isNaN(enteredNum) && (
-                    <p className={`text-xs font-semibold mt-2 ${short ? 'text-red-600' : 'text-emerald-600'}`}>
-                      {short
-                        ? `${(expected - enteredNum).toFixed(2).replace(/\.00$/, '')} short of expected — a reason will be requested`
-                        : 'On target'}
-                    </p>
-                  )}
-                </div>
-
-                {countError && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-600 font-medium">
-                    {countError}
-                  </div>
-                )}
-
-                <div className="flex gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCountingItem(null)
-                      setCountQty('')
-                      setCountError('')
-                    }}
-                    disabled={countSaving}
-                    className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold rounded-lg transition disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => enteredNum !== null && submitCount(countingItem, enteredNum)}
-                    disabled={countQty === '' || countSaving}
-                    className={`flex-1 px-4 py-3 text-white font-semibold rounded-lg transition disabled:opacity-50 ${short ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'}`}
-                  >
-                    {countSaving ? 'Saving…' : short ? 'Confirm as a loss' : 'Confirm count'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
         )
       })()}
 

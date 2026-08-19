@@ -624,17 +624,17 @@ function ItemHubPageInner() {
   const [liveGroupFilter, setLiveGroupFilter] = useState<string | null>(null)
   const [liveHelpModalOpen, setLiveHelpModalOpen] = useState(false)
   const [liveSearchSlotEl, setLiveSearchSlotEl] = useState<HTMLDivElement | null>(null)
-  // Deep links into a specific Live Sale tab (Sale/Count/Count 2/Log) --
-  // the "Sale Log" search result, a "Fix now: Counts" button, and a
+  // Deep links into a specific Live Sale tab (Sale/Count 2/Log) -- the
+  // "Sale Log" search result, a "Fix now: Counts" button, and a
   // Daily/7-Day/15-Day Counts violation pill all jump here now that none
   // of those is a real LossView any more (Counts folded into Live Sale's
-  // own Count/Count 2 tabs, Log into its own Log tab). Seq is a plain
-  // incrementing counter so the same tab/violation can be jumped to twice
-  // in a row and still fire.
+  // own Count 2 tab, Log into its own Log tab). Seq is a plain incrementing
+  // counter so the same tab/violation can be jumped to twice in a row and
+  // still fire.
   const [liveSaleJumpSeq, setLiveSaleJumpSeq] = useState(0)
-  const [liveSaleJumpTab, setLiveSaleJumpTab] = useState<'sale' | 'count' | 'count2' | 'log'>('sale')
+  const [liveSaleJumpTab, setLiveSaleJumpTab] = useState<'sale' | 'count2' | 'log'>('sale')
   const [liveSaleJumpViolation, setLiveSaleJumpViolation] = useState<string | null>(null)
-  function jumpToLiveSaleTab(tab: 'sale' | 'count' | 'count2' | 'log', violation: string | null = null) {
+  function jumpToLiveSaleTab(tab: 'sale' | 'count2' | 'log', violation: string | null = null) {
     pickLossView('sales')
     setAddForm('live')
     setLiveSaleJumpTab(tab)
