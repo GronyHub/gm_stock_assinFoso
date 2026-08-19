@@ -24,6 +24,7 @@ function formatPrice(num: number | string): string {
 }
 
 export default function LiveSalePage(props: any = {}) {
+  console.log('LiveSalePage mounted with new item picker')
   usePresenceReporter('live-tapping a sale')
   const router = useRouter()
 
