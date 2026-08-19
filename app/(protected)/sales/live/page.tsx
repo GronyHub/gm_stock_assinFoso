@@ -56,6 +56,13 @@ export default function LiveSalePage(props: any = {}) {
   const [saleType, setSaleType] = useState<'WIC' | 'GMC'>('WIC')
   const [error, setError] = useState('')
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
+  // Snapshot of whether selectedItem was due-for-count at the moment its
+  // sheet opened -- countStatus itself updates the instant a count is
+  // saved (the item drops out of the due queues), so comparing "was due
+  // on open" against "still due now" is how the sheet tells "never was
+  // due" apart from "just got counted", regardless of whether that count
+  // went straight through or via the loss/pairing dialogs.
+  const [dueWhenOpened, setDueWhenOpened] = useState(false)
   const [qty, setQty] = useState('')
   const [price, setPrice] = useState('')
   const [saving, setSaving] = useState(false)
@@ -338,6 +345,31 @@ export default function LiveSalePage(props: any = {}) {
     return filtered.sort((a, b) => (salesCounts.get(b.id) ?? 0) - (salesCounts.get(a.id) ?? 0))
   }, [allItems, salesCounts, currentView, productTypeFilter, groupFilter, pickedItemId, saleType, gmcItemIds, mode, dueOnly, countStatus])
 
+  // Sale mode's own due-count callout -- staff mostly live in Sale mode, so
+  // a due item only ever surfacing inside Count mode meant it stayed
+  // invisible unless someone deliberately switched over. Pinned as its own
+  // block at the very top (not interleaved into the sales-frequency order
+  // below it), so the normal most-sold-first list staff rely on for fast
+  // tapping never reshuffles just because something unrelated went
+  // overdue. Count mode already has its own due/overdue treatment (badges
+  // + Due-only filter), so this split only matters in Sale mode.
+  const [pinnedDueItems, restCatalogueItems] = useMemo(() => {
+    if (mode !== 'sale') return [[], catalogueItems] as [Item[], Item[]]
+    const due: Item[] = []
+    const rest: Item[] = []
+    for (const item of catalogueItems) {
+      if (countStatus.has(item.id)) due.push(item)
+      else rest.push(item)
+    }
+    const urgency = (item: Item) => {
+      const d = countStatus.get(item.id)!
+      const n = parseInt(d.label, 10)
+      return (d.level === 'overdue' ? 1000 : 0) + (isNaN(n) ? 0 : n)
+    }
+    due.sort((a, b) => urgency(b) - urgency(a))
+    return [due, rest] as [Item[], Item[]]
+  }, [catalogueItems, countStatus, mode])
+
   async function recordTap() {
     if (!selectedItem || !qty) return
     setSaving(true)
@@ -402,33 +434,34 @@ export default function LiveSalePage(props: any = {}) {
   // already submit through -- a pack-pairing or loss-reason requirement
   // comes back as a 409 with a flag the caller re-submits against once the
   // prompt is answered, not a plain error, so this mirrors that retry shape
-  // exactly rather than reinventing it.
-  async function submitCount(qty: number, lossExtra?: LossExtra) {
-    if (!countingItem) return
+  // exactly rather than reinventing it. Takes the item explicitly (not read
+  // off countingItem) so it works both from Count mode's own sheet and from
+  // the inline "Count today's stock" field the Sale sheet grows for a due
+  // item (see the modal below) -- one submit path, two entry points.
+  async function submitCount(item: Item, qty: number, lossExtra?: LossExtra) {
     setCountSaving(true)
     setCountError('')
     const res = await fetch('/api/stock/count', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ itemId: countingItem.id, qty, notes: '', ...(lossExtra ?? {}) }),
+      body: JSON.stringify({ itemId: item.id, qty, notes: '', ...(lossExtra ?? {}) }),
     })
     setCountSaving(false)
     if (res.ok) {
-      const doneId = countingItem.id
-      setDailyItems(prev => prev.filter(i => i.item_id !== doneId))
-      setGmcWeeklyItems(prev => prev.filter(i => i.item_id !== doneId))
-      setOverdueItems(prev => prev.filter(i => i.item_id !== doneId))
+      setDailyItems(prev => prev.filter(i => i.item_id !== item.id))
+      setGmcWeeklyItems(prev => prev.filter(i => i.item_id !== item.id))
+      setOverdueItems(prev => prev.filter(i => i.item_id !== item.id))
       setCountingItem(null)
       setCountQty('')
       return
     }
     const d = await res.json().catch(() => null)
     if (res.status === 409 && d?.requires_pack_count) {
-      setPairingPrompt({ itemName: countingItem.name, packs: d.packs, retry: () => submitCount(qty, lossExtra) })
+      setPairingPrompt({ itemName: item.name, packs: d.packs, retry: () => submitCount(item, qty, lossExtra) })
       return
     }
     if (res.status === 409 && d?.requires_loss_reason) {
-      setLossPrompt({ d, retry: extra => submitCount(qty, extra) })
+      setLossPrompt({ d, retry: extra => submitCount(item, qty, extra) })
       return
     }
     setCountError(d?.error ?? 'Could not save count.')
@@ -1085,7 +1118,70 @@ export default function LiveSalePage(props: any = {}) {
           </p>
         ) : (
           <div className="grid grid-cols-2 gap-0 p-0">
-            {catalogueItems.map(item => {
+            {pinnedDueItems.length > 0 && (
+              <div className="col-span-2 px-2 py-1 bg-gray-800 text-[9px] font-bold text-white uppercase tracking-wide">
+                {pinnedDueItems.length} item{pinnedDueItems.length !== 1 ? 's' : ''} need{pinnedDueItems.length === 1 ? 's' : ''} counting
+              </div>
+            )}
+            {pinnedDueItems.map(item => {
+              const count = salesCounts.get(item.id) ?? 0
+              const due = countStatus.get(item.id)!
+              const overdue = due.level === 'overdue'
+              return (
+                <div
+                  key={item.id}
+                  className={`flex flex-col border-r border-b group ${overdue ? 'bg-red-50 border-red-100' : 'bg-amber-50 border-amber-100'}`}
+                >
+                  <div className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide ${overdue ? 'bg-red-600' : 'bg-amber-500'}`}>
+                    ⚠ COUNT NOW {overdue ? `· ${due.label} OVERDUE` : `· ${due.label}`}
+                  </div>
+                  <div className="p-2 flex items-start gap-1 hover:bg-black/5 transition">
+                    <div className="flex-1 min-w-0">
+                      <button
+                        type="button"
+                        onClick={() => router.push(`/item?view=item360&jumpItemId=${item.id}`)}
+                        className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 leading-tight truncate text-left hover:underline transition"
+                      >
+                        {item.name}
+                      </button>
+                      <p className="text-[9px] text-gray-600 leading-tight">
+                        <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
+                        <span className="text-gray-400"> · </span>
+                        <span className="text-green-600 font-semibold">CP ₵{formatPrice(item.cost_price)}</span>
+                        <span className="text-gray-400"> · </span>
+                        <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      {count > 0 && (
+                        <span className="inline-flex items-center justify-center min-w-3 h-3 px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold">
+                          {count}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedItem(item)
+                          setDueWhenOpened(true)
+                          setPrice('')
+                          setQty('')
+                          setError('')
+                          setCountQty('')
+                          setCountError('')
+                        }}
+                        className={`w-7 h-7 rounded-full text-white font-bold text-sm flex items-center justify-center transition ${overdue ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'}`}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+            {pinnedDueItems.length > 0 && restCatalogueItems.length > 0 && (
+              <div className="col-span-2 border-b border-gray-200" />
+            )}
+            {restCatalogueItems.map(item => {
               const count = salesCounts.get(item.id) ?? 0
               const due = countStatus.get(item.id)
               return (
@@ -1106,7 +1202,7 @@ export default function LiveSalePage(props: any = {}) {
                       <span className="text-gray-400"> · </span>
                       <span className="text-green-600 font-semibold">CP ₵{formatPrice(item.cost_price)}</span>
                       <span className="text-gray-400"> · </span>
-                      <span className="text-red-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
+                      <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
                     </p>
                   </div>
                   {mode === 'sale' ? (
@@ -1120,6 +1216,7 @@ export default function LiveSalePage(props: any = {}) {
                         type="button"
                         onClick={() => {
                           setSelectedItem(item)
+                          setDueWhenOpened(false)
                           setPrice('')
                           setQty('')
                           setError('')
@@ -1158,9 +1255,14 @@ export default function LiveSalePage(props: any = {}) {
       )}
 
       {/* Modal */}
-      {selectedItem && (
+      {selectedItem && (() => {
+        const due = countStatus.get(selectedItem.id)
+        const expected = Number(selectedItem.soh)
+        const enteredCount = countQty === '' ? null : Number(countQty)
+        const countShort = enteredCount !== null && !isNaN(enteredCount) && enteredCount < expected
+        return (
         <div className="fixed inset-0 bg-black/50 flex items-end z-50">
-          <div className="w-full bg-white rounded-t-2xl shadow-xl">
+          <div className="w-full bg-white rounded-t-2xl shadow-xl max-h-[92dvh] overflow-y-auto">
             <div className="px-4 py-4 border-b border-gray-200">
               <h3 className="text-lg font-bold text-gray-900">{selectedItem.name}</h3>
               <p className="text-xs text-gray-500 mt-1">
@@ -1171,6 +1273,65 @@ export default function LiveSalePage(props: any = {}) {
                 <span>Stock: {Math.ceil(Number(selectedItem.soh))} pc</span>
               </p>
             </div>
+
+            {/* This item is due for a count -- surfaced right inside the
+                sale sheet instead of requiring a separate mode-switch and
+                a separate tap. Still its own field and its own submit,
+                going to the count endpoint independently of the sale
+                below, so entering one never gets mistaken for the other. */}
+            {due && (
+              <div className={`mx-4 mt-4 rounded-xl border overflow-hidden ${due.level === 'overdue' ? 'border-red-300' : 'border-amber-300'}`}>
+                <div className={`px-3 py-1.5 text-xs font-extrabold text-white ${due.level === 'overdue' ? 'bg-red-600' : 'bg-amber-500'}`}>
+                  ⚠ COUNT NOW — {due.level === 'overdue' ? `${due.label} overdue` : due.label}
+                </div>
+                <div className={`p-3 space-y-2 ${due.level === 'overdue' ? 'bg-red-50' : 'bg-amber-50'}`}>
+                  <p className="text-xs text-gray-600">System expects <b>{expected}</b> on the shelf.</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="any"
+                      value={countQty}
+                      onChange={e => setCountQty(e.target.value)}
+                      placeholder="Counted quantity"
+                      className="flex-1 text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-amber-400"
+                      disabled={countSaving}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setCountQty(String(expected))}
+                      disabled={countSaving}
+                      className="shrink-0 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition disabled:opacity-50"
+                    >
+                      ={expected}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => enteredCount !== null && submitCount(selectedItem, enteredCount)}
+                      disabled={countQty === '' || countSaving}
+                      className={`shrink-0 px-3 py-2 text-white text-sm font-semibold rounded-lg transition disabled:opacity-50 ${countShort ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'}`}
+                    >
+                      {countSaving ? '…' : countShort ? 'Save as loss' : 'Save Count'}
+                    </button>
+                  </div>
+                  {enteredCount !== null && !isNaN(enteredCount) && (
+                    <p className={`text-xs font-semibold ${countShort ? 'text-red-600' : 'text-emerald-600'}`}>
+                      {countShort
+                        ? `${(expected - enteredCount).toFixed(2).replace(/\.00$/, '')} short of expected — a reason will be requested`
+                        : 'On target'}
+                    </p>
+                  )}
+                  {countError && <p className="text-xs font-semibold text-red-600">{countError}</p>}
+                </div>
+              </div>
+            )}
+            {!due && dueWhenOpened && (
+              <div className="mx-4 mt-4 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 flex items-center gap-2">
+                <span className="text-emerald-600 font-bold">✓</span>
+                <span className="text-sm font-semibold text-emerald-700">Stock counted for today.</span>
+              </div>
+            )}
 
             <div className="p-4 space-y-4">
               <div>
@@ -1227,6 +1388,8 @@ export default function LiveSalePage(props: any = {}) {
                     setQty('')
                     setPrice('')
                     setError('')
+                    setCountQty('')
+                    setCountError('')
                   }}
                   disabled={saving}
                   className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold rounded-lg transition disabled:opacity-50"
@@ -1245,7 +1408,8 @@ export default function LiveSalePage(props: any = {}) {
             </div>
           </div>
         </div>
-      )}
+        )
+      })()}
 
       {/* Count Sheet -- Count mode's own "+" destination. Deliberately a
           different modal from the Sale one above (different fields,
@@ -1335,7 +1499,7 @@ export default function LiveSalePage(props: any = {}) {
                   </button>
                   <button
                     type="button"
-                    onClick={() => enteredNum !== null && submitCount(enteredNum)}
+                    onClick={() => enteredNum !== null && submitCount(countingItem, enteredNum)}
                     disabled={countQty === '' || countSaving}
                     className={`flex-1 px-4 py-3 text-white font-semibold rounded-lg transition disabled:opacity-50 ${short ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'}`}
                   >
