@@ -163,7 +163,7 @@ export default function ItemsAnalyticsSection() {
           </ResponsiveContainer>
         </Card>
         <Recommendation>
-          This is an all-time count-vs-ledger shortfall, not a monthly figure -- see the Loss tab&apos;s own Loss by Item view for the same ranking, and its Analytics toggle for the ₵ value/quantity/month-over-month breakdown.
+          This is an all-time count-vs-ledger shortfall, not a monthly figure -- see Item 360&apos;s own landing table for the same ranking, and its Analytics toggle for the ₵ value/quantity/month-over-month breakdown.
         </Recommendation>
         <Card title="Stock Value by Group" subtitle="SOH × cost price per category.">
           <ResponsiveContainer width="100%" height={Math.max(180, (data.stockValueByGroup?.length ?? 0) * 28)}>

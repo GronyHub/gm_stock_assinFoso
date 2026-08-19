@@ -64,7 +64,6 @@ const BillsAnalyticsSection      = dynamic(() => import('./_components/BillsAnal
 const ExpensesAnalyticsSection   = dynamic(() => import('./_components/ExpensesAnalyticsSection'),   { ssr: false, loading: () => loading('Loading analytics…') })
 const LossTab        = dynamic(() => import('./_components/LossTab'),         { ssr: false, loading: () => loading('Loading…') })
 const LossFeedTab    = dynamic(() => import('./_components/LossFeedTab'),     { ssr: false, loading: () => loading('Loading…') })
-const LossByItemTab  = dynamic(() => import('./_components/LossByItemTab'),   { ssr: false, loading: () => loading('Loading…') })
 const ProfitLossTab  = dynamic(() => import('./_components/ProfitLossTab'),   { ssr: false, loading: () => loading('Loading…') })
 const DailySummaryTab = dynamic(() => import('./_components/DailySummaryTab'), { ssr: false, loading: () => loading('Loading…') })
 const GronyManageContent = dynamic(() => import('./_components/GronyManageTab'), { ssr: false, loading: () => loading('Loading…') })
@@ -106,7 +105,7 @@ type OuterTab = 'today' | 'loss' | 'uk' | 'ch'
 // tab, not part of the Grony Cash merge -- it just reuses this same shared
 // state/pane machinery rather than needing its own parallel copy.
 type LossView = 'home' | 'items' | 'sales' | 'bills' | 'counts' | 'feed' | 'lossByTarget' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts' | 'dailySummary'
-  | 'purchaseOrders' | 'item360' | 'services' | 'lossByItem'
+  | 'purchaseOrders' | 'item360' | 'services'
   // "New Customer" used to be a toggle-open form living inside the Customers
   // list page itself (CustomersPage's own showForm state) -- it's now this
   // own separate LossView/pane row instead, so it gets its own PageToolIcons
@@ -205,10 +204,10 @@ const REPORT_VIEWS = new Set<LossView>([
 // pill row (LossOverviewTab) switching between the three. 'feed' kept its
 // key (and the gains violation deep-link that already points at it) but is
 // relabeled to "Loss by Date", with Loss by Target following right after as
-// its own lossView. Loss by Item moved again since -- it's now a flag on
-// Items itself (see the 'loss_by_item' entry in Items' flags list below),
-// since it's just the Items table's own loss numbers re-ranked, not a
-// separate dataset.
+// its own lossView. Loss by Item moved twice more since -- first to a flag
+// on Items itself, then folded into Item 360 as its landing table (see
+// Item360Tab), since a row there already drilled into the exact same
+// per-item detail Item 360 shows.
 //
 // Tasks used to live on the bottom Role Bar (Joe's tab), bundled together
 // with Grony Manage's own violations (the "former Bino bucket" -- staff
@@ -239,7 +238,6 @@ const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: string }
   { key: 'purchaseOrders',   label: 'Purchase Ord',   icon: '🛒' },
   { key: 'feed',         label: 'Loss by Date',   icon: '📉' },
   { key: 'lossByTarget', label: 'Loss by Tgt',    icon: '🎯' },
-  { key: 'lossByItem',   label: 'Loss by Item',   icon: '📊' },
   { key: 'expenses', label: 'Expenses', icon: '💳' },
   { key: 'vendors',   label: 'Vendors',   icon: '🏭' },
   { key: 'pl',       label: 'P&L',      icon: '📈' },
@@ -617,7 +615,6 @@ function ItemHubPageInner() {
   const aliasWideTableLaws = useLawsPanel('showAliasWideTableLaws')
   const serviceMatchesLaws = useLawsPanel('showServiceMatchesLaws')
   const lossByDateLaws = useLawsPanel('showLossByDateLaws')
-  const lossByItemLaws = useLawsPanel('showLossByItemLaws')
   const lossByTargetLaws = useLawsPanel('showLossByTargetLaws')
   const liveSaleLaws = useLawsPanel('showLiveSaleLaws')
   const [liveExpanded, setLiveExpanded] = useState(false)
@@ -793,11 +790,11 @@ function ItemHubPageInner() {
   const serviceGroups = useMemo(() =>
     Array.from(new Set(items.map(i => i.cf_group).filter((g): g is string => !!g && g.trim() !== ''))).sort()
   , [items])
-  // Whichever inline sub-panel is showing below the Items law panel --
-  // a service group's item table or the Loss by Item ranking. Selecting
-  // one replaces the other instead of stacking, same as every other flag
-  // click on this page.
-  type ItemsInlineExtra = { kind: 'serviceGroup'; group: string } | { kind: 'lossByItem' }
+  // Whichever inline sub-panel is showing below the Items law panel -- just
+  // a service group's item table for now. Selecting a different group
+  // replaces it instead of stacking, same as every other flag click on
+  // this page.
+  type ItemsInlineExtra = { kind: 'serviceGroup'; group: string }
   const [itemsInlineExtra, setItemsInlineExtra] = useState<ItemsInlineExtra | null>(null)
 
   function loadItems() {
@@ -2423,32 +2420,14 @@ function ItemHubPageInner() {
                           }
                         },
                       })),
-                      // Same underlying data as this table, just ranked by
-                      // running loss instead of listed in item order -- used
-                      // to be its own left-pane row (see LossByItemTab). No
-                      // count yet (flags/tasks/notes on it come later, via
-                      // its own scoped law panel below), just a jump-to-view
-                      // like the group shortcuts above.
-                      {
-                        key: 'loss_by_item',
-                        label: 'Loss by Item',
-                        count: 0,
-                        onViewClick: () => {
-                          if (itemsInlineExtra?.kind === 'lossByItem') {
-                            setItemsInlineExtra(null)
-                          } else {
-                            setItemsInlineExtra({ kind: 'lossByItem' })
-                          }
-                        },
-                      },
                       // Item 360 stays a real full-page destination (every
                       // item name across Bills/Counts/Sales/POs/Loss links
                       // straight to it via ?view=item360&jumpItemId=, not
-                      // just this page), so unlike the two flags above this
+                      // just this page), so unlike the group flags above this
                       // one still navigates instead of opening inline -- same
                       // as any other flag whose onViewClick calls
-                      // pickLossView. Just reached from here now instead of
-                      // its own left-pane row.
+                      // pickLossView. Loss by Item also lives there now too
+                      // (see Item360Tab), instead of its own left-pane row.
                       {
                         key: 'item_360',
                         label: 'Item 360',
@@ -2495,21 +2474,6 @@ function ItemHubPageInner() {
                     </div>
                   )
                 })()}
-              </div>
-            )}
-            {itemsInlineExtra?.kind === 'lossByItem' && (
-              <div className="px-3 pt-2 pb-4 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-bold text-gray-900">Loss by Item</p>
-                  <button onClick={() => setItemsInlineExtra(null)}
-                    className="text-xs font-semibold px-2 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 border border-gray-300">×</button>
-                </div>
-                <div className="mt-1.5">
-                  {inlineLaws('Loss by Item', lossByItemLaws)}
-                </div>
-                <div className="mt-2" style={{ height: 420 }}>
-                  <LossByItemTab search={search} />
-                </div>
               </div>
             )}
             {violation && pillKeys?.includes(violation) ? (
@@ -2635,16 +2599,10 @@ function ItemHubPageInner() {
             <div className="py-20 text-center text-gray-400 text-xs">Coming soon.</div>
           </TabErrorBoundary>
         )}
-        {outerTab === 'loss' && lossView === 'lossByItem' && (
-          <TabErrorBoundary>
-            <div className="px-3 pt-2">{inlineLaws('Loss by Item', lossByItemLaws)}</div>
-            <LossByItemTab search={search} />
-          </TabErrorBoundary>
-        )}
         {outerTab === 'loss' && lossView === 'item360' && (
           <TabErrorBoundary>
             <div className="px-3 pt-2">{inlineLaws('Item 360', item360Laws)}</div>
-            <Item360Tab items={items} jumpToItemId={item360JumpId} onJumpDone={() => setItem360JumpId(null)} />
+            <Item360Tab jumpToItemId={item360JumpId} onJumpDone={() => setItem360JumpId(null)} />
           </TabErrorBoundary>
         )}
           </div>

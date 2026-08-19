@@ -1,6 +1,5 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { AnalyticsToggle } from './analyticsShared'
 import { useColumnPrefs, ColumnsPickerButton, ColResizeHandle, type ColumnDef } from './columnPrefs'
@@ -45,9 +44,10 @@ function Th({ label, col, cls = '', sort, onSort, onResize, onResetWidth, noDivi
 // Every item ranked by its own running loss total -- same underlying data
 // as the Items table (/api/losses/summary), just narrowed to the two
 // numbers that actually answer "which items are losing money" instead of
-// all eleven metric columns.
-export default function LossByItemTab({ search }: { search: string }) {
-  const router = useRouter()
+// all eleven metric columns. Now Item 360's own landing page (see
+// Item360Tab) rather than a separate destination -- a row click drills
+// straight into that same item's full 360 detail via onSelectItem.
+export default function LossByItemTab({ search, onSelectItem }: { search: string; onSelectItem: (id: number) => void }) {
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [sort, setSort] = useState<{ col: SortCol; dir: SortDir }>({ col: 'lgAmt', dir: 'desc' })
@@ -121,7 +121,7 @@ export default function LossByItemTab({ search }: { search: string }) {
               <tr><td colSpan={1 + colPrefs.shownColumns.length} className="py-10 text-center text-gray-400 text-xs">No items</td></tr>
             )}
             {filtered.map((row, i) => (
-              <tr key={row.item_id} onClick={() => router.push(`/item?tab=loss&view=item360&jumpItemId=${row.item_id}`)}
+              <tr key={row.item_id} onClick={() => onSelectItem(row.item_id)}
                 className={`cursor-pointer hover:bg-blue-50/60 transition ${i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}`}>
                 <td className="pl-2 pr-2 py-1.5 font-bold truncate text-blue-600">{row.item_name}</td>
                 {colPrefs.shownColumns.map(c => c.key === 'lossCount' ? (
