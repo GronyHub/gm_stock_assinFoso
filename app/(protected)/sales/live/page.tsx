@@ -11,6 +11,7 @@ import { TrainingGuideModal } from './_components/TrainingGuideModal'
 type Item = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; product_type: string | null }
 type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null }
 type FlagLaw = { key: string; label: string; description?: string; count: number; active?: boolean; onViewClick?: () => void }
+type ViolationType = { key: string; label: string; description?: string }
 
 function formatPrice(num: number | string): string {
   const n = Number(num)
@@ -21,7 +22,7 @@ export default function LiveSalePage(props: any = {}) {
   usePresenceReporter('live-tapping a sale')
   const router = useRouter()
 
-  const { initialShowLog = false, lawsPanel: incomingLawsPanel, hideTopControls = false, flags = [] } = props
+  const { initialShowLog = false, lawsPanel: incomingLawsPanel, hideTopControls = false, violationCounts = {}, violationTypes = [], serviceGroups = [] } = props
 
   const [allItems, setAllItems] = useState<Item[]>([])
   const [loadingItems, setLoadingItems] = useState(true)
@@ -35,8 +36,43 @@ export default function LiveSalePage(props: any = {}) {
   const [showLog, setShowLog] = useState(initialShowLog)
   const [showHelpModal, setShowHelpModal] = useState(false)
   const [debugInfo, setDebugInfo] = useState('')
+  const [currentView, setCurrentView] = useState<{ kind: 'violation' | 'serviceGroup' | 'lossByItem'; key?: string; group?: string } | null>(null)
+  const [violations, setViolations] = useState<Record<string, number>>({})
   const localLawsPanel = useLawsPanel('showLiveSaleLaws')
   const liveSaleLaws = incomingLawsPanel || localLawsPanel
+
+  // Build flags array with Live Sale callbacks
+  const computedFlags = useMemo(() => [
+    ...violationTypes.map((v: ViolationType) => ({
+      key: v.key,
+      label: v.label,
+      description: v.description,
+      count: violationCounts[v.key] ?? 0,
+      onViewClick: () => {
+        setCurrentView(currentView?.kind === 'violation' && currentView.key === v.key
+          ? null
+          : { kind: 'violation' as const, key: v.key })
+      }
+    })),
+    ...serviceGroups.map((g: string) => ({
+      key: `group_${g}`,
+      label: g,
+      count: 0,
+      onViewClick: () => {
+        setCurrentView(currentView?.kind === 'serviceGroup' && currentView.group === g
+          ? null
+          : { kind: 'serviceGroup' as const, group: g })
+      }
+    })),
+    {
+      key: 'loss_by_item',
+      label: 'Loss by Item',
+      count: 0,
+      onViewClick: () => {
+        setCurrentView(currentView?.kind === 'lossByItem' ? null : { kind: 'lossByItem' as const })
+      }
+    }
+  ], [violationCounts, violationTypes, serviceGroups, currentView])
 
   // Debug logging for mobile
   useEffect(() => {
@@ -324,7 +360,7 @@ export default function LiveSalePage(props: any = {}) {
           </div>
           <PageLawsList
             scopeKey="Items"
-            flags={flags}
+            flags={computedFlags}
             onChange={liveSaleLaws.bumpRefresh}
             openForm={liveSaleLaws.openForm}
             setOpenForm={liveSaleLaws.setOpenForm}
