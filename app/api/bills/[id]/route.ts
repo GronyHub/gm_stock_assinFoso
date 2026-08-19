@@ -31,19 +31,27 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   // explicit [] (every attachment removed) still updates, since
   // JSON.stringify([]) is the truthy string '[]', not null.
   const attachmentsJson = attachments !== undefined ? JSON.stringify(normalizeAttachments(attachments)) : null
+  // vendor_name is the one field a user can legitimately want to blank out
+  // (clearing it entirely), so it can't reuse the plain
+  // COALESCE(new ?? null, old) pattern the other fields use -- that would
+  // silently keep the old value forever since COALESCE(null, old) = old.
+  // A dedicated "was this key even sent" flag lets omitted (leave as-is)
+  // and explicitly-cleared (set to null) be told apart.
+  const vendorNameProvided = vendor_name !== undefined
 
   await ensureBillAttachmentsColumn()
   const [row] = await sql`
     UPDATE bills
     SET
       bill_date = COALESCE(${bill_date ?? null}, bill_date),
-      vendor_name = COALESCE(${vendor_name ?? null}, vendor_name),
+      vendor_name = CASE WHEN ${vendorNameProvided} THEN ${vendor_name ?? null} ELSE vendor_name END,
       status = COALESCE(${status ?? null}, status),
       attachments = COALESCE(${attachmentsJson}::jsonb, attachments)
     WHERE id = ${Number(id)}
     RETURNING id, bill_number, bill_date::date AS bill_date, vendor_name, total, status, entered_by,
               COALESCE(attachments, '[]'::jsonb) AS attachments
   `
+  if (!row) return NextResponse.json({ error: 'Bill not found' }, { status: 404 })
   const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
   await logActivity(actor, 'edited bill', `Bill #${id}${row.vendor_name ? ` — ${row.vendor_name}` : ''}`)
   return NextResponse.json(row)

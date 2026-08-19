@@ -184,6 +184,7 @@ export default function BillsTab({ items, groupFilter, search, violation = null 
   const [editForm, setEditForm] = useState({ bill_date: '', vendor_name: '' })
   const editAttachments = useAttachments([], '/api/bills/upload')
   const [saving, setSaving] = useState(false)
+  const [editError, setEditError] = useState('')
   // Collapses every group down to just its header bar (Date/Vendor/Total) --
   // the item lines beneath stay hidden until toggled back on, same pattern
   // as Sales' Bars Only.
@@ -365,6 +366,7 @@ export default function BillsTab({ items, groupFilter, search, violation = null 
     const b = billsById[billId]
     setEditForm({ bill_date: b?.bill_date?.slice(0, 10) ?? '', vendor_name: b?.vendor_name ?? '' })
     editAttachments.reset(b?.attachments ?? [])
+    setEditError('')
     setEditingBillId(billId)
   }
 
@@ -378,6 +380,7 @@ export default function BillsTab({ items, groupFilter, search, violation = null 
 
   async function saveEdit(billId: number) {
     setSaving(true)
+    setEditError('')
     const res = await fetch(`/api/bills/${billId}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -390,6 +393,9 @@ export default function BillsTab({ items, groupFilter, search, violation = null 
       const updated: Bill = await res.json()
       setBills(prev => prev.map(b => b.id === billId ? { ...b, ...updated } : b))
       setEditingBillId(null)
+    } else {
+      const d = await res.json().catch(() => null)
+      setEditError(d?.error ?? `Could not save (${res.status}). Try again.`)
     }
   }
 
@@ -638,12 +644,15 @@ export default function BillsTab({ items, groupFilter, search, violation = null 
                         <AttachmentPicker items={editAttachments.items} onAdd={editAttachments.addFiles}
                           onRemove={editAttachments.remove} disabled={saving} />
                       </div>
+                      {editError && (
+                        <p className="text-[10px] font-semibold text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1">{editError}</p>
+                      )}
                       <div className="flex gap-1">
                         <button onClick={() => saveEdit(g.editBillId)} disabled={saving}
                           className="flex-1 bg-green-600 text-white text-[10px] font-bold rounded py-1 disabled:opacity-40">
                           {saving ? 'Saving…' : 'Save'}
                         </button>
-                        <button onClick={() => setEditingBillId(null)}
+                        <button onClick={() => { setEditingBillId(null); setEditError('') }}
                           className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
                         {isOwnerLevelUser && (
                           <button onClick={() => deleteBill(g.editBillId)} disabled={saving}
