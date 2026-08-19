@@ -1,12 +1,16 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { usePresenceReporter } from '@/lib/usePresenceReporter'
 import { useLawsPanel } from '@/app/(protected)/item/_components/useLawsPanel'
 import LawsToggleBar from '@/app/(protected)/item/_components/LawsToggleBar'
 import PageLawsList from '@/app/(protected)/item/_components/PageLawsList'
 import { TrainingGuideModal } from './_components/TrainingGuideModal'
+
+const AliasWidePage = dynamic(() => import('../../aliases/wide/page'), { ssr: false })
+const ServiceMatchesPage = dynamic(() => import('../../matches/wide/page'), { ssr: false })
 
 type Item = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; product_type: string | null }
 type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null }
@@ -35,7 +39,7 @@ export default function LiveSalePage(props: any = {}) {
   const [saving, setSaving] = useState(false)
   const [showLog, setShowLog] = useState(initialShowLog)
   const [showHelpModal, setShowHelpModal] = useState(false)
-  const [currentView, setCurrentView] = useState<{ kind: 'violation' | 'serviceGroup' | 'lossByItem'; key?: string; group?: string } | null>(null)
+  const [currentView, setCurrentView] = useState<{ kind: 'violation' | 'serviceGroup' | 'lossByItem' | 'aliasWide' | 'serviceMatches'; key?: string; group?: string } | null>(null)
   const [violations, setViolations] = useState<Record<string, number>>({})
   const localLawsPanel = useLawsPanel('showLiveSaleLaws')
   const liveSaleLaws = incomingLawsPanel || localLawsPanel
@@ -69,6 +73,22 @@ export default function LiveSalePage(props: any = {}) {
       count: 0,
       onViewClick: () => {
         setCurrentView(currentView?.kind === 'lossByItem' ? null : { kind: 'lossByItem' as const })
+      }
+    },
+    {
+      key: 'alias_wide_table',
+      label: 'Alias Wide Table',
+      count: 0,
+      onViewClick: () => {
+        setCurrentView(currentView?.kind === 'aliasWide' ? null : { kind: 'aliasWide' as const })
+      }
+    },
+    {
+      key: 'service_matches',
+      label: 'Service Matches',
+      count: 0,
+      onViewClick: () => {
+        setCurrentView(currentView?.kind === 'serviceMatches' ? null : { kind: 'serviceMatches' as const })
       }
     }
   ], [violationCounts, violationTypes, serviceGroups, currentView])
@@ -392,6 +412,8 @@ export default function LiveSalePage(props: any = {}) {
             {currentView.kind === 'violation' && `Viewing: Items with "${computedFlags.find(f => f.key === currentView.key)?.label}"`}
             {currentView.kind === 'serviceGroup' && `Viewing: ${currentView.group} (${catalogueItems.length} items)`}
             {currentView.kind === 'lossByItem' && `Viewing: Loss by Item (${catalogueItems.length} items)`}
+            {currentView.kind === 'aliasWide' && `Viewing: Alias Wide Table`}
+            {currentView.kind === 'serviceMatches' && `Viewing: Service Matches`}
           </span>
           <button
             type="button"
@@ -403,7 +425,22 @@ export default function LiveSalePage(props: any = {}) {
         </div>
       )}
 
+      {/* Alias Wide Table View */}
+      {currentView?.kind === 'aliasWide' && (
+        <div className="flex-1 overflow-y-auto">
+          <AliasWidePage />
+        </div>
+      )}
+
+      {/* Service Matches View */}
+      {currentView?.kind === 'serviceMatches' && (
+        <div className="flex-1 overflow-y-auto">
+          <ServiceMatchesPage />
+        </div>
+      )}
+
       {/* Items Grid - 2 Columns */}
+      {currentView?.kind !== 'aliasWide' && currentView?.kind !== 'serviceMatches' && (
       <div className="flex-1 overflow-y-auto">
         {loadingItems ? (
           <p className="text-xs text-gray-400 text-center py-8">Loading…</p>
@@ -461,6 +498,7 @@ export default function LiveSalePage(props: any = {}) {
           </div>
         )}
       </div>
+      )}
 
       {/* Modal */}
       {selectedItem && (
