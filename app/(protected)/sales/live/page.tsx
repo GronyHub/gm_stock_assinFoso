@@ -6,6 +6,7 @@ import { usePresenceReporter } from '@/lib/usePresenceReporter'
 import { useLawsPanel } from '@/app/(protected)/item/_components/useLawsPanel'
 import LawsToggleBar from '@/app/(protected)/item/_components/LawsToggleBar'
 import PageLawsList from '@/app/(protected)/item/_components/PageLawsList'
+import { TrainingGuideModal } from './_components/TrainingGuideModal'
 
 type Item = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; product_type: string | null }
 type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null }
@@ -31,6 +32,7 @@ export default function LiveSalePage(props: any = {}) {
   const [price, setPrice] = useState('')
   const [saving, setSaving] = useState(false)
   const [showLog, setShowLog] = useState(initialShowLog)
+  const [showHelpModal, setShowHelpModal] = useState(false)
   const liveSaleLaws = useLawsPanel('showLiveSaleLaws')
 
   // Fetch items
@@ -141,8 +143,16 @@ export default function LiveSalePage(props: any = {}) {
 
     return (
       <div className="h-full flex flex-col bg-white">
-        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
           <h2 className="text-sm font-bold text-gray-900">Live Sale Log</h2>
+          <button
+            type="button"
+            onClick={() => setShowHelpModal(true)}
+            className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 font-semibold text-sm flex items-center justify-center transition"
+            title="Help"
+          >
+            ?
+          </button>
         </div>
 
         <div className="flex-1 overflow-auto">
@@ -230,6 +240,8 @@ export default function LiveSalePage(props: any = {}) {
           )}
         </div>
       </div>
+
+      <TrainingGuideModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
     )
   }
 
@@ -240,6 +252,14 @@ export default function LiveSalePage(props: any = {}) {
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold text-gray-900">Live Sale — {today}</h2>
           <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setShowHelpModal(true)}
+              className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 font-semibold text-sm flex items-center justify-center transition"
+              title="Help"
+            >
+              ?
+            </button>
             <button
               type="button"
               onClick={() => setSaleType('WIC')}
@@ -284,7 +304,7 @@ export default function LiveSalePage(props: any = {}) {
       {liveSaleLaws.show && (
         <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 overflow-auto max-h-48">
           <PageLawsList
-            scopeKey="liveSalesLaws"
+            scopeKey="liveSaleLaws"
             openForm={liveSaleLaws.openForm}
             setOpenForm={liveSaleLaws.setOpenForm}
             hideZeroFlags={liveSaleLaws.hideZeroFlags}
@@ -440,6 +460,8 @@ export default function LiveSalePage(props: any = {}) {
           </div>
         </div>
       )}
+
+      <TrainingGuideModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
     </div>
   )
 }
