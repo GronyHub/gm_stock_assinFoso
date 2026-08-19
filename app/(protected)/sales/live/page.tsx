@@ -28,7 +28,14 @@ export default function LiveSalePage(props: any = {}) {
   usePresenceReporter('live-tapping a sale')
   const router = useRouter()
 
-  const { initialShowLog = false, lawsPanel: incomingLawsPanel, hideTopControls = false, violationCounts = {}, violationTypes = [], serviceGroups = [], itemsWithViolations = {} } = props
+  const {
+    initialShowLog = false, lawsPanel: incomingLawsPanel, hideTopControls = false,
+    violationCounts = {}, violationTypes = [], serviceGroups = [], itemsWithViolations = {},
+    productTypeFilter: controlledProductTypeFilter, onProductTypeFilterChange,
+    groupFilter: controlledGroupFilter, onGroupFilterChange,
+    showHelpModal: controlledShowHelpModal, onHelpModalChange,
+    hideFilterBar = false,
+  } = props
 
   const [allItems, setAllItems] = useState<Item[]>([])
   const [loadingItems, setLoadingItems] = useState(true)
@@ -40,11 +47,17 @@ export default function LiveSalePage(props: any = {}) {
   const [price, setPrice] = useState('')
   const [saving, setSaving] = useState(false)
   const [showLog, setShowLog] = useState(initialShowLog)
-  const [showHelpModal, setShowHelpModal] = useState(false)
+  const [internalShowHelpModal, setInternalShowHelpModal] = useState(false)
+  const showHelpModal = controlledShowHelpModal ?? internalShowHelpModal
+  const setShowHelpModal = onHelpModalChange ?? setInternalShowHelpModal
   const [currentView, setCurrentView] = useState<{ kind: 'violation' | 'serviceGroup' | 'lossByItem' | 'aliasWide' | 'serviceMatches' | 'newItem' | 'dailySummary'; key?: string; group?: string } | null>(null)
   const [violations, setViolations] = useState<Record<string, number>>({})
-  const [productTypeFilter, setProductTypeFilter] = useState<'all' | 'goods' | 'services'>('all')
-  const [groupFilter, setGroupFilter] = useState<string | null>(null)
+  const [internalProductTypeFilter, setInternalProductTypeFilter] = useState<'all' | 'goods' | 'services'>('all')
+  const productTypeFilter = controlledProductTypeFilter ?? internalProductTypeFilter
+  const setProductTypeFilter = onProductTypeFilterChange ?? setInternalProductTypeFilter
+  const [internalGroupFilter, setInternalGroupFilter] = useState<string | null>(null)
+  const groupFilter = controlledGroupFilter !== undefined ? controlledGroupFilter : internalGroupFilter
+  const setGroupFilter = onGroupFilterChange ?? setInternalGroupFilter
   const [itemPickerQuery, setItemPickerQuery] = useState('')
   const [itemPickerResults, setItemPickerResults] = useState<Item[]>([])
   const [showItemPicker, setShowItemPicker] = useState(false)
@@ -395,7 +408,9 @@ export default function LiveSalePage(props: any = {}) {
   return (
     <>
     <div className="h-full flex flex-col bg-white">
-      {/* Filter Bar - Green bar at top - Always visible */}
+      {/* Filter Bar - Green bar at top - hidden when the host page (Item page)
+          renders its own merged version of this bar via hideFilterBar */}
+      {!hideFilterBar && (
       <div className="bg-green-700 -mx-0 px-4 py-2 flex items-center justify-between">
           <div className="flex gap-2 items-center">
             <select
@@ -442,6 +457,7 @@ export default function LiveSalePage(props: any = {}) {
             </button>
           </div>
       </div>
+      )}
 
       {/* Search & Controls */}
       <div className="px-4 py-3 border-b border-gray-200 space-y-3">

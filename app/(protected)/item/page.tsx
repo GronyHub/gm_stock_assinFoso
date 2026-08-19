@@ -621,6 +621,9 @@ function ItemHubPageInner() {
   const lossByTargetLaws = useLawsPanel('showLossByTargetLaws')
   const liveSaleLaws = useLawsPanel('showLiveSaleLaws')
   const [liveExpanded, setLiveExpanded] = useState(false)
+  const [liveProductTypeFilter, setLiveProductTypeFilter] = useState<'all' | 'goods' | 'services'>('all')
+  const [liveGroupFilter, setLiveGroupFilter] = useState<string | null>(null)
+  const [liveHelpModalOpen, setLiveHelpModalOpen] = useState(false)
 
   function inlineLaws(scopeKey: string, panel: ReturnType<typeof useLawsPanel>) {
     return (<>
@@ -777,6 +780,10 @@ function ItemHubPageInner() {
 
   const [items, setItems]           = useState<Item[]>([])
   const [itemsLoading, setItemsLoading] = useState(true)
+  const liveGroups = useMemo(
+    () => Array.from(new Set(items.map(i => i.cf_group).filter((g): g is string => !!g))).sort(),
+    [items]
+  )
   // Services' left-pane rows -- one button per distinct cf_group already in
   // use across the item catalog (goods and services alike; "Services" here
   // is just this section's name, not a product_type filter), derived
@@ -2055,11 +2062,38 @@ function ItemHubPageInner() {
                 )}
 
                 {(addForm === 'live' || addForm === 'liveLog') && outerTab === 'loss' && lossView === 'sales' && (
-                  <div className="flex items-center gap-1.5 ml-auto">
+                  <div className="flex items-center gap-1.5 ml-auto flex-wrap justify-end">
+                    <select
+                      value={liveProductTypeFilter}
+                      onChange={e => setLiveProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
+                      className="text-xs px-2 py-1 rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                    >
+                      <option value="all">All types</option>
+                      <option value="goods">Goods</option>
+                      <option value="services">Services</option>
+                    </select>
+                    <select
+                      value={liveGroupFilter || ''}
+                      onChange={e => setLiveGroupFilter(e.target.value || null)}
+                      className="text-xs px-2 py-1 rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                    >
+                      <option value="">All groups</option>
+                      {liveGroups.map(g => (
+                        <option key={g} value={g}>{g}</option>
+                      ))}
+                    </select>
                     <LawsToggleBar show={liveSaleLaws.show} setShow={liveSaleLaws.setShow}
                       openForm={liveSaleLaws.openForm} setOpenForm={liveSaleLaws.setOpenForm}
                       hideZeroFlags={liveSaleLaws.hideZeroFlags} setHideZeroFlags={liveSaleLaws.setHideZeroFlags}
                       activeFilters={liveSaleLaws.activeFilters} toggleFilter={liveSaleLaws.toggleFilter} dark={false} />
+                    <button
+                      type="button"
+                      onClick={() => setLiveHelpModalOpen(true)}
+                      title="Help"
+                      className="shrink-0 w-6 h-6 rounded-lg text-xs font-semibold border flex items-center justify-center transition bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300"
+                    >
+                      ?
+                    </button>
                     <button
                       type="button"
                       onClick={() => setLiveExpanded((v) => !v)}
@@ -2106,11 +2140,17 @@ function ItemHubPageInner() {
             onClose={() => setAddForm(null)}
             initialShowLog={addForm === 'liveLog'}
             search={search}
-            groupFilter={group}
             lawsPanel={liveSaleLaws}
             expanded={liveExpanded}
             setExpanded={setLiveExpanded}
             hideTopControls={true}
+            hideFilterBar={true}
+            productTypeFilter={liveProductTypeFilter}
+            onProductTypeFilterChange={setLiveProductTypeFilter}
+            groupFilter={liveGroupFilter}
+            onGroupFilterChange={setLiveGroupFilter}
+            showHelpModal={liveHelpModalOpen}
+            onHelpModalChange={setLiveHelpModalOpen}
             violationCounts={violationCounts}
             violationTypes={ITEMS_FLAG_TYPES.map(({ key, label }) => ({ key, label, description: ERROR_VIOLATIONS.find(v => v.key === key)?.description }))}
             serviceGroups={serviceGroups}
