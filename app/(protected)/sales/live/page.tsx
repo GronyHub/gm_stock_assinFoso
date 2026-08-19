@@ -141,6 +141,19 @@ export default function LiveSalePage(props: any = {}) {
       .catch(() => setLoadingItems(false))
   }, [])
 
+  // Items with at least one past GMC (internal-use) sale on record -- the
+  // only existing definition of "GMC items" anywhere in the app (see
+  // /api/items/gmc-ids). Fetched once; when saleType flips to GMC the grid
+  // narrows to this set so a walk-in item can't accidentally get tapped
+  // under an internal-use receipt.
+  const [gmcItemIds, setGmcItemIds] = useState<Set<number>>(new Set())
+  useEffect(() => {
+    fetch('/api/items/gmc-ids')
+      .then(r => r.json())
+      .then(d => setGmcItemIds(new Set(Array.isArray(d) ? d : [])))
+      .catch(() => {})
+  }, [])
+
   // Fetch taps
   useEffect(() => {
     fetch('/api/sales/live-taps')
@@ -205,6 +218,15 @@ export default function LiveSalePage(props: any = {}) {
       filtered = filtered.filter(item => item.group === groupFilter)
     }
 
+    // GMC (internal use) only ever taps items with a GMC history -- keeps
+    // the browse grid from offering a normal walk-in item under an
+    // internal-use receipt. Doesn't apply to a deliberately searched-and-
+    // picked item above, since that's how an item gets its first-ever GMC
+    // record in the first place.
+    if (saleType === 'GMC') {
+      filtered = filtered.filter(item => gmcItemIds.has(item.id))
+    }
+
     // Apply view filter
     if (currentView?.kind === 'serviceGroup' && currentView.group) {
       filtered = filtered.filter(item => item.group === currentView.group)
@@ -227,7 +249,7 @@ export default function LiveSalePage(props: any = {}) {
 
     // Sort by sales count (highest to lowest)
     return filtered.sort((a, b) => (salesCounts.get(b.id) ?? 0) - (salesCounts.get(a.id) ?? 0))
-  }, [allItems, salesCounts, currentView, productTypeFilter, groupFilter, pickedItemId])
+  }, [allItems, salesCounts, currentView, productTypeFilter, groupFilter, pickedItemId, saleType, gmcItemIds])
 
   async function recordTap() {
     if (!selectedItem || !qty) return
@@ -563,12 +585,28 @@ export default function LiveSalePage(props: any = {}) {
                 {searchControlsNode}
               </div>
             </div>
-            {!hideTopControls && saleType === 'GMC' && (
-              <p className="text-xs text-purple-600 font-semibold">Recorded as "Grony Multimedia as Customer"</p>
-            )}
           </div>
         )
       })()}
+
+      {/* GMC warning -- internal-use recording is easy to mis-tap and hard
+          to catch afterward (it's excluded from revenue/margin and feeds
+          the stock-gain reconciliation checks), so this stays loud and
+          impossible to miss for as long as GMC is selected. */}
+      {saleType === 'GMC' && (
+        <div className="px-4 py-3 bg-red-600 border-b-4 border-red-800">
+          <p className="text-white font-extrabold text-lg leading-tight">
+            ⚠ GMC MODE — Internal Use, Not a Real Sale
+          </p>
+          <p className="text-red-50 text-xs font-semibold mt-1 leading-snug">
+            GMC ("Grony Multimedia as Customer") records stock the shop takes for its own internal use —
+            it is excluded from revenue and profit, and is used to explain stock changes that aren't
+            walk-in sales. Only tap items actually taken for internal use here. Switch back to WIC for
+            normal customer sales.
+          </p>
+        </div>
+      )}
+
       {liveSaleLaws.show && (
         <div className={`px-4 py-3 border-b border-gray-200 bg-gray-50 overflow-auto max-h-48 ${hideTopControls ? 'border-t' : ''}`}>
           <PageLawsList
