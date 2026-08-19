@@ -2096,8 +2096,28 @@ function ItemHubPageInner() {
             <NewSaleForm onSuccess={() => setAddForm(null)} groupFilter={group} />
           </div>
         )}
-        {(addForm === 'live' || addForm === 'liveLog') && outerTab === 'loss' && lossView === 'sales' &&
-          <LiveSaleForm key={addForm} onClose={() => setAddForm(null)} initialShowLog={addForm === 'liveLog'} search={search} groupFilter={group} lawsPanel={liveSaleLaws} expanded={liveExpanded} setExpanded={setLiveExpanded} hideTopControls={true} violationCounts={violationCounts} violationTypes={ITEMS_FLAG_TYPES.map(({ key, label }) => ({ key, label, description: ERROR_VIOLATIONS.find(v => v.key === key)?.description }))} serviceGroups={serviceGroups} />}
+        {(addForm === 'live' || addForm === 'liveLog') && outerTab === 'loss' && lossView === 'sales' && (
+          <LiveSaleForm
+            key={addForm}
+            onClose={() => setAddForm(null)}
+            initialShowLog={addForm === 'liveLog'}
+            search={search}
+            groupFilter={group}
+            lawsPanel={liveSaleLaws}
+            expanded={liveExpanded}
+            setExpanded={setLiveExpanded}
+            hideTopControls={true}
+            violationCounts={violationCounts}
+            violationTypes={ITEMS_FLAG_TYPES.map(({ key, label }) => ({ key, label, description: ERROR_VIOLATIONS.find(v => v.key === key)?.description }))}
+            serviceGroups={serviceGroups}
+            itemsWithViolations={{
+              neg_soh: items.filter(i => Number(i.calculated_soh) < 0 && i.product_type !== 'service').map(i => i.id),
+              no_sp: items.filter(i => !i.selling_rate || parseFloat(i.selling_rate) === 0).map(i => i.id),
+              no_cp: items.filter(i => !i.purchase_rate || parseFloat(i.purchase_rate) === 0).map(i => i.id),
+              no_group: items.filter(i => !i.cf_group).map(i => i.id),
+            }}
+          />
+        )}
         {addForm === 'bill'    && outerTab === 'loss' && lossView === 'bills'    && <div className="px-4"><NewBillForm    onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'expense' && outerTab === 'loss' && lossView === 'expenses' && <div className="px-4"><NewExpenseForm onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'item'    && outerTab === 'loss' && lossView === 'items'    && <div className="px-4"><NewItemForm    onSuccess={() => { setAddForm(null); loadItems() }} /></div>}

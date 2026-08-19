@@ -22,7 +22,7 @@ export default function LiveSalePage(props: any = {}) {
   usePresenceReporter('live-tapping a sale')
   const router = useRouter()
 
-  const { initialShowLog = false, lawsPanel: incomingLawsPanel, hideTopControls = false, violationCounts = {}, violationTypes = [], serviceGroups = [] } = props
+  const { initialShowLog = false, lawsPanel: incomingLawsPanel, hideTopControls = false, violationCounts = {}, violationTypes = [], serviceGroups = [], itemsWithViolations = {} } = props
 
   const [allItems, setAllItems] = useState<Item[]>([])
   const [loadingItems, setLoadingItems] = useState(true)
@@ -116,16 +116,13 @@ export default function LiveSalePage(props: any = {}) {
     if (currentView?.kind === 'serviceGroup' && currentView.group) {
       filtered = filtered.filter(item => item.group === currentView.group)
     } else if (currentView?.kind === 'violation' && currentView.key) {
-      // Filter items by violation type
-      const key = currentView.key
-      filtered = filtered.filter(item => {
-        if (key === 'neg_soh') return Number(item.soh) < 0
-        if (key === 'no_sp') return !item.selling_price || Number(item.selling_price) === 0
-        if (key === 'no_cp') return !item.cost_price || Number(item.cost_price) === 0
-        if (key === 'no_group') return !item.group
-        // Complex violations need server data - for now exclude them
-        return false
-      })
+      // Filter items by violation type using pre-computed violation data from Item page
+      const violationItemIds = itemsWithViolations[currentView.key] as number[] | undefined
+      if (violationItemIds) {
+        filtered = filtered.filter(item => violationItemIds.includes(item.id))
+      } else {
+        filtered = []
+      }
     } else if (currentView?.kind === 'lossByItem') {
       // Sort by loss amount when viewing loss by item
       return filtered.sort((a, b) => {
