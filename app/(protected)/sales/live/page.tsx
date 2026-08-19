@@ -8,6 +8,7 @@ import { usePresenceReporter } from '@/lib/usePresenceReporter'
 import { useLawsPanel } from '@/app/(protected)/item/_components/useLawsPanel'
 import LawsToggleBar from '@/app/(protected)/item/_components/LawsToggleBar'
 import PageLawsList from '@/app/(protected)/item/_components/PageLawsList'
+import { LossDialog, PairingDialog, type LossExtra, type LossPrompt, type PairingPrompt } from '@/app/(protected)/item/_components/CountDialogs'
 import { TrainingGuideModal } from './_components/TrainingGuideModal'
 
 const AliasWidePage = dynamic(() => import('../../aliases/wide/page'), { ssr: false })
@@ -18,6 +19,11 @@ type Item = { id: number; name: string; group: string | null; soh: number; selli
 type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null }
 type FlagLaw = { key: string; label: string; description?: string; count: number; active?: boolean; onViewClick?: () => void }
 type ViolationType = { key: string; label: string; description?: string }
+// Count mode's due-count queues -- same shape /api/stock/daily,
+// /api/stock/gmc-weekly and /api/stock/overdue already return for CountsTab.
+type DueItem = { item_id: number; item_name: string; cf_group: string | null; calculated_soh: number; last_count_date: string | null; days_overdue: number | null }
+// Count mode's Log view -- same shape /api/stock/counts already returns for CountsTab's own history table.
+type CountRecord = { id: number; item_id: number | null; item_name: string; count_date: string; quantity_counted: string; notes: string | null; counted_by: string | null; source: string | null; cf_group: string | null }
 
 function formatPrice(num: number | string): string {
   const n = Number(num)
@@ -68,6 +74,25 @@ export default function LiveSalePage(props: any = {}) {
   const localLawsPanel = useLawsPanel('showLiveSaleLaws')
   const liveSaleLaws = incomingLawsPanel || localLawsPanel
 
+  // Count mode -- Counts' own due-count queues/badges/entry-form folded in
+  // as a second mode on this same grid, instead of Counts staying its own
+  // page (see the "Count as a mode, not a page" sketch this implements).
+  // Sale and Count never share one tap action: the "+" button opens a
+  // completely different sheet per mode (below), so a wrong tap can't log
+  // a sale as a count or vice versa.
+  const [mode, setMode] = useState<'sale' | 'count'>('sale')
+  const [dueOnly, setDueOnly] = useState(false)
+  const [dailyItems, setDailyItems] = useState<DueItem[]>([])
+  const [gmcWeeklyItems, setGmcWeeklyItems] = useState<DueItem[]>([])
+  const [overdueItems, setOverdueItems] = useState<DueItem[]>([])
+  const [countingItem, setCountingItem] = useState<Item | null>(null)
+  const [countQty, setCountQty] = useState('')
+  const [countSaving, setCountSaving] = useState(false)
+  const [countError, setCountError] = useState('')
+  const [lossPrompt, setLossPrompt] = useState<LossPrompt | null>(null)
+  const [pairingPrompt, setPairingPrompt] = useState<PairingPrompt | null>(null)
+  const [countRecords, setCountRecords] = useState<CountRecord[]>([])
+
   const groups = useMemo(() => {
     const uniqueGroups = new Set<string>()
     for (const item of allItems) {
@@ -77,6 +102,26 @@ export default function LiveSalePage(props: any = {}) {
     }
     return Array.from(uniqueGroups).sort()
   }, [allItems])
+
+  // Merges the 3 due-count queues into one per-item lookup for Count
+  // mode's grid badges -- daily/7-day GMC items are "due", 15-day items
+  // are "overdue" (a stronger color); an item in none of the 3 just isn't
+  // due right now. The queues never overlap the same item in practice
+  // (each excludes the others' item set server-side), so layering order
+  // here only matters as a safety default, not a real precedence rule.
+  const countStatus = useMemo(() => {
+    const map = new Map<number, { level: 'due' | 'overdue'; label: string }>()
+    for (const it of dailyItems) {
+      map.set(it.item_id, { level: 'due', label: !it.days_overdue || it.days_overdue <= 0 ? 'Today' : `${it.days_overdue}d` })
+    }
+    for (const it of gmcWeeklyItems) {
+      map.set(it.item_id, { level: 'due', label: !it.days_overdue || it.days_overdue <= 0 ? 'Due' : `${it.days_overdue}d` })
+    }
+    for (const it of overdueItems) {
+      map.set(it.item_id, { level: 'overdue', label: `${it.days_overdue ?? '?'}d` })
+    }
+    return map
+  }, [dailyItems, gmcWeeklyItems, overdueItems])
 
   // Build flags array with Live Sale callbacks
   const computedFlags = useMemo(() => [
@@ -162,6 +207,32 @@ export default function LiveSalePage(props: any = {}) {
       .catch(() => {})
   }, [])
 
+  // Count mode's 3 due-count queues -- same endpoints CountsTab's own flag
+  // pills read from. Fetched once regardless of mode (cheap, and keeps the
+  // Sale/Count toggle instant instead of showing a loading flash on switch).
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/stock/daily').then(r => r.json()),
+      fetch('/api/stock/gmc-weekly').then(r => r.json()),
+      fetch('/api/stock/overdue').then(r => r.json()),
+    ]).then(([daily, gmcWeekly, overdue]) => {
+      setDailyItems(Array.isArray(daily) ? daily : [])
+      setGmcWeeklyItems(Array.isArray(gmcWeekly) ? gmcWeekly : [])
+      setOverdueItems(Array.isArray(overdue) ? overdue : [])
+    }).catch(() => {})
+  }, [])
+
+  // Count Log -- fetched only once Count mode's Log is actually opened,
+  // unlike the queues above (this is the full all-time history, not a
+  // small due-today list).
+  useEffect(() => {
+    if (mode !== 'count' || !showLog) return
+    fetch('/api/stock/counts')
+      .then(r => r.json())
+      .then(d => setCountRecords(Array.isArray(d) ? d : []))
+      .catch(() => {})
+  }, [mode, showLog])
+
   // Search items as user types
   useEffect(() => {
     if (!itemPickerQuery.trim()) {
@@ -222,9 +293,17 @@ export default function LiveSalePage(props: any = {}) {
     // the browse grid from offering a normal walk-in item under an
     // internal-use receipt. Doesn't apply to a deliberately searched-and-
     // picked item above, since that's how an item gets its first-ever GMC
-    // record in the first place.
-    if (saleType === 'GMC') {
+    // record in the first place. Sale-mode-only -- WIC/GMC has no meaning
+    // in Count mode.
+    if (mode === 'sale' && saleType === 'GMC') {
       filtered = filtered.filter(item => gmcItemIds.has(item.id))
+    }
+
+    // Count mode's "Due only" filter -- narrows the grid to items one of
+    // the 3 due-count queues actually flagged, same items Counts' own flag
+    // pills would jump to.
+    if (mode === 'count' && dueOnly) {
+      filtered = filtered.filter(item => countStatus.has(item.id))
     }
 
     // Apply view filter
@@ -249,7 +328,7 @@ export default function LiveSalePage(props: any = {}) {
 
     // Sort by sales count (highest to lowest)
     return filtered.sort((a, b) => (salesCounts.get(b.id) ?? 0) - (salesCounts.get(a.id) ?? 0))
-  }, [allItems, salesCounts, currentView, productTypeFilter, groupFilter, pickedItemId, saleType, gmcItemIds])
+  }, [allItems, salesCounts, currentView, productTypeFilter, groupFilter, pickedItemId, saleType, gmcItemIds, mode, dueOnly, countStatus])
 
   async function recordTap() {
     if (!selectedItem || !qty) return
@@ -311,6 +390,42 @@ export default function LiveSalePage(props: any = {}) {
     }
   }
 
+  // Same /api/stock/count contract CountsTab's own CountRow/ManualCountForm
+  // already submit through -- a pack-pairing or loss-reason requirement
+  // comes back as a 409 with a flag the caller re-submits against once the
+  // prompt is answered, not a plain error, so this mirrors that retry shape
+  // exactly rather than reinventing it.
+  async function submitCount(qty: number, lossExtra?: LossExtra) {
+    if (!countingItem) return
+    setCountSaving(true)
+    setCountError('')
+    const res = await fetch('/api/stock/count', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId: countingItem.id, qty, notes: '', ...(lossExtra ?? {}) }),
+    })
+    setCountSaving(false)
+    if (res.ok) {
+      const doneId = countingItem.id
+      setDailyItems(prev => prev.filter(i => i.item_id !== doneId))
+      setGmcWeeklyItems(prev => prev.filter(i => i.item_id !== doneId))
+      setOverdueItems(prev => prev.filter(i => i.item_id !== doneId))
+      setCountingItem(null)
+      setCountQty('')
+      return
+    }
+    const d = await res.json().catch(() => null)
+    if (res.status === 409 && d?.requires_pack_count) {
+      setPairingPrompt({ itemName: countingItem.name, packs: d.packs, retry: () => submitCount(qty, lossExtra) })
+      return
+    }
+    if (res.status === 409 && d?.requires_loss_reason) {
+      setLossPrompt({ d, retry: extra => submitCount(qty, extra) })
+      return
+    }
+    setCountError(d?.error ?? 'Could not save count.')
+  }
+
   // Log view
   if (showLog) {
     // Group taps by date
@@ -324,21 +439,95 @@ export default function LiveSalePage(props: any = {}) {
       return Array.from(groups.entries()).sort(([a], [b]) => b.localeCompare(a))
     }, [taps])
 
+    // Group count records by date, same shape as tapsByDate above -- Count
+    // mode's Log is this same list toggled to the other data source, not a
+    // separate destination.
+    const countsByDate = useMemo(() => {
+      const groups = new Map<string, typeof countRecords>()
+      for (const rec of countRecords) {
+        const date = rec.count_date.slice(0, 10)
+        if (!groups.has(date)) groups.set(date, [])
+        groups.get(date)!.push(rec)
+      }
+      return Array.from(groups.entries()).sort(([a], [b]) => b.localeCompare(a))
+    }, [countRecords])
+
     return (
       <>
       <div className="h-full flex flex-col bg-white">
-        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-          <h2 className="text-sm font-bold text-gray-900">Live Sale Log</h2>
-          <button
-            type="button"
-            onClick={() => setShowHelpModal(true)}
-            className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 font-semibold text-sm flex items-center justify-center transition"
-            title="Help"
-          >
-            ?
-          </button>
+        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2">
+          <h2 className="text-sm font-bold text-gray-900">{mode === 'count' ? 'Count Log' : 'Live Sale Log'}</h2>
+          <div className="flex items-center gap-2">
+            <div className="inline-flex bg-gray-200 rounded-lg p-0.5">
+              <button type="button" onClick={() => setMode('sale')}
+                className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${mode === 'sale' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-gray-700'}`}>
+                Sale
+              </button>
+              <button type="button" onClick={() => setMode('count')}
+                className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${mode === 'count' ? 'bg-amber-600 text-white' : 'text-gray-500 hover:text-gray-700'}`}>
+                Count
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowHelpModal(true)}
+              className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 font-semibold text-sm flex items-center justify-center transition"
+              title="Help"
+            >
+              ?
+            </button>
+          </div>
         </div>
 
+        {mode === 'count' ? (
+        <div className="flex-1 overflow-auto">
+          {countRecords.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-8">No counts recorded</p>
+          ) : (
+            <div className="inline-block min-w-full">
+              <div className="grid grid-cols-[2fr_1fr_0.6fr_1fr_0.8fr_1.4fr] gap-0 bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+                <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase">Item</div>
+                <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase">Group</div>
+                <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase text-center">Qty</div>
+                <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase">By</div>
+                <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase">Source</div>
+                <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase">Notes</div>
+              </div>
+              {countsByDate.map(([date, dateRecs]) => (
+                <div key={date}>
+                  <div className="grid grid-cols-[2fr_1fr_0.6fr_1fr_0.8fr_1.4fr] gap-0 bg-amber-50 border-b border-amber-200 sticky top-10 z-9">
+                    <div className="col-span-6 px-4 py-2 text-xs font-semibold text-amber-700">
+                      {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {dateRecs.length} counted
+                    </div>
+                  </div>
+                  {dateRecs.map(rec => (
+                    <div key={rec.id} className="grid grid-cols-[2fr_1fr_0.6fr_1fr_0.8fr_1.4fr] gap-0 border-b border-gray-100 items-center hover:bg-gray-50 transition">
+                      <div className="px-4 py-3">
+                        <p className="text-sm font-semibold text-gray-900">{rec.item_name}</p>
+                      </div>
+                      <div className="px-4 py-3">
+                        <p className="text-sm text-gray-600">{rec.cf_group ?? '—'}</p>
+                      </div>
+                      <div className="px-4 py-3 text-center">
+                        <p className="text-sm font-semibold text-gray-900">{Number(rec.quantity_counted)}</p>
+                      </div>
+                      <div className="px-4 py-3">
+                        <p className="text-sm text-blue-600 font-medium">{rec.counted_by ?? '—'}</p>
+                      </div>
+                      <div className="px-4 py-3">
+                        <p className="text-sm text-gray-500">{rec.source ?? '—'}</p>
+                      </div>
+                      <div className="px-4 py-3">
+                        <p className="text-sm text-gray-500 italic truncate">{rec.notes ?? '—'}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        ) : (
         <div className="flex-1 overflow-auto">
           {taps.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-8">No sales recorded</p>
@@ -423,6 +612,7 @@ export default function LiveSalePage(props: any = {}) {
             </div>
           )}
         </div>
+        )}
       </div>
 
       <TrainingGuideModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
@@ -489,8 +679,33 @@ export default function LiveSalePage(props: any = {}) {
           beside the laws/help/expand icons in the merged green bar instead
           of its own full-size row. */}
       {(() => {
+        const dueTodayCount = dailyItems.length + gmcWeeklyItems.length
+        const overdueCount = overdueItems.length
+
         const searchControlsNode = (
           <>
+            <div className={`inline-flex bg-gray-200 rounded-lg p-0.5 ${compactSearch ? '' : 'shrink-0'}`}>
+              <button
+                type="button"
+                onClick={() => setMode('sale')}
+                title="Sale mode — the '+' button records a sale"
+                className={`font-bold rounded-md transition ${compactSearch ? 'px-1.5 py-1 text-[10px]' : 'px-2.5 py-1 text-xs'} ${
+                  mode === 'sale' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Sale
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('count')}
+                title="Count mode — the '+' button records a stock count"
+                className={`font-bold rounded-md transition ${compactSearch ? 'px-1.5 py-1 text-[10px]' : 'px-2.5 py-1 text-xs'} ${
+                  mode === 'count' ? 'bg-amber-600 text-white' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Count
+              </button>
+            </div>
             <div className="relative">
               <input
                 type="text"
@@ -555,18 +770,31 @@ export default function LiveSalePage(props: any = {}) {
                 {compactSearch ? '✕ Item' : 'Clear Item'}
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => setSaleType(t => t === 'WIC' ? 'GMC' : 'WIC')}
-              title="Tap to switch between WIC and GMC"
-              className={`font-semibold rounded transition ${compactSearch ? 'px-2 py-1 text-xs' : 'px-4 py-1.5 text-sm'} ${
-                saleType === 'GMC'
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-blue-600 text-white'
-              }`}
-            >
-              {saleType}
-            </button>
+            {mode === 'sale' && (
+              <button
+                type="button"
+                onClick={() => setSaleType(t => t === 'WIC' ? 'GMC' : 'WIC')}
+                title="Tap to switch between WIC and GMC"
+                className={`font-semibold rounded transition ${compactSearch ? 'px-2 py-1 text-xs' : 'px-4 py-1.5 text-sm'} ${
+                  saleType === 'GMC'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-blue-600 text-white'
+                }`}
+              >
+                {saleType}
+              </button>
+            )}
+            {mode === 'count' && (
+              <>
+                <span className={`font-bold text-amber-900 bg-amber-100 rounded-lg whitespace-nowrap ${compactSearch ? 'px-1.5 py-1 text-[10px]' : 'px-2.5 py-1.5 text-xs'}`}>
+                  {dueTodayCount} due · {overdueCount} overdue
+                </span>
+                <label className={`inline-flex items-center gap-1 font-semibold text-amber-900 bg-amber-100 rounded-lg cursor-pointer select-none whitespace-nowrap ${compactSearch ? 'px-1.5 py-1 text-[10px]' : 'px-2.5 py-1.5 text-xs'}`}>
+                  <input type="checkbox" checked={dueOnly} onChange={e => setDueOnly(e.target.checked)} className="w-3 h-3 accent-amber-600" />
+                  Due only
+                </label>
+              </>
+            )}
           </>
         )
 
@@ -593,7 +821,7 @@ export default function LiveSalePage(props: any = {}) {
           to catch afterward (it's excluded from revenue/margin and feeds
           the stock-gain reconciliation checks), so this stays loud and
           impossible to miss for as long as GMC is selected. */}
-      {saleType === 'GMC' && (
+      {mode === 'sale' && saleType === 'GMC' && (
         <div className="px-4 py-3 bg-red-600 border-b-4 border-red-800">
           <p className="text-white font-extrabold text-lg leading-tight">
             ⚠ GMC MODE — Internal Use, Not a Real Sale
@@ -745,6 +973,7 @@ export default function LiveSalePage(props: any = {}) {
           <div className="grid grid-cols-2 gap-0 p-0">
             {catalogueItems.map(item => {
               const count = salesCounts.get(item.id) ?? 0
+              const due = countStatus.get(item.id)
               return (
                 <div
                   key={item.id}
@@ -766,25 +995,46 @@ export default function LiveSalePage(props: any = {}) {
                       <span className="text-red-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
                     </p>
                   </div>
-                  <div className="flex items-center gap-0.5 shrink-0">
-                    {count > 0 && (
-                      <span className="inline-flex items-center justify-center min-w-3 h-3 px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold">
-                        {count}
+                  {mode === 'sale' ? (
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      {count > 0 && (
+                        <span className="inline-flex items-center justify-center min-w-3 h-3 px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold">
+                          {count}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedItem(item)
+                          setPrice('')
+                          setQty('')
+                          setError('')
+                        }}
+                        className="w-7 h-7 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm flex items-center justify-center transition"
+                      >
+                        +
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      <span className={`inline-flex items-center justify-center min-w-[16px] h-[14px] px-0.5 rounded-full text-white text-[8px] font-bold ${
+                        due?.level === 'overdue' ? 'bg-red-600' : due?.level === 'due' ? 'bg-amber-500' : 'bg-emerald-600'
+                      }`}>
+                        {due ? due.label : '✓'}
                       </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedItem(item)
-                        setPrice('')
-                        setQty('')
-                        setError('')
-                      }}
-                      className="w-7 h-7 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm flex items-center justify-center transition"
-                    >
-                      +
-                    </button>
-                  </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCountingItem(item)
+                          setCountQty('')
+                          setCountError('')
+                        }}
+                        className="w-7 h-7 rounded-full bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm flex items-center justify-center transition"
+                      >
+                        +
+                      </button>
+                    </div>
+                  )}
                 </div>
               )
             })}
@@ -882,6 +1132,110 @@ export default function LiveSalePage(props: any = {}) {
           </div>
         </div>
       )}
+
+      {/* Count Sheet -- Count mode's own "+" destination. Deliberately a
+          different modal from the Sale one above (different fields,
+          different submit endpoint) rather than the same form branching on
+          mode, so there's no shared state a wrong tap could cross-wire
+          between recording a sale and recording a count. */}
+      {countingItem && (() => {
+        const expected = Number(countingItem.soh)
+        const enteredNum = countQty === '' ? null : Number(countQty)
+        const short = enteredNum !== null && !isNaN(enteredNum) && enteredNum < expected
+        return (
+          <div className="fixed inset-0 bg-black/50 flex items-end z-50">
+            <div className="w-full bg-white rounded-t-2xl shadow-xl">
+              <div className="px-4 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-bold text-gray-900">{countingItem.name}</h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  <span>Group: {countingItem.group ?? '—'}</span>
+                  {countStatus.has(countingItem.id) && (
+                    <>
+                      <span className="text-gray-400"> · </span>
+                      <span className="text-amber-600 font-semibold">
+                        {countStatus.get(countingItem.id)!.level === 'overdue' ? 'Overdue' : 'Due'} ({countStatus.get(countingItem.id)!.label})
+                      </span>
+                    </>
+                  )}
+                </p>
+              </div>
+
+              <div className="p-4 space-y-4">
+                <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  <span className="text-sm font-semibold text-amber-800">System expects</span>
+                  <span className="text-lg font-bold text-amber-900">{expected}</span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-2">
+                    Counted quantity <span className="text-red-600">*</span>
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="any"
+                      value={countQty}
+                      onChange={e => setCountQty(e.target.value)}
+                      placeholder="What's actually on the shelf"
+                      className="flex-1 text-lg font-semibold text-gray-900 bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-amber-400"
+                      disabled={countSaving}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setCountQty(String(expected))}
+                      disabled={countSaving}
+                      className="shrink-0 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg transition disabled:opacity-50"
+                    >
+                      ={expected}
+                    </button>
+                  </div>
+                  {enteredNum !== null && !isNaN(enteredNum) && (
+                    <p className={`text-xs font-semibold mt-2 ${short ? 'text-red-600' : 'text-emerald-600'}`}>
+                      {short
+                        ? `${(expected - enteredNum).toFixed(2).replace(/\.00$/, '')} short of expected — a reason will be requested`
+                        : 'On target'}
+                    </p>
+                  )}
+                </div>
+
+                {countError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-600 font-medium">
+                    {countError}
+                  </div>
+                )}
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCountingItem(null)
+                      setCountQty('')
+                      setCountError('')
+                    }}
+                    disabled={countSaving}
+                    className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold rounded-lg transition disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => enteredNum !== null && submitCount(enteredNum)}
+                    disabled={countQty === '' || countSaving}
+                    className={`flex-1 px-4 py-3 text-white font-semibold rounded-lg transition disabled:opacity-50 ${short ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'}`}
+                  >
+                    {countSaving ? 'Saving…' : short ? 'Confirm as a loss' : 'Confirm count'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
+      {lossPrompt && <LossDialog prompt={lossPrompt} onClose={() => setLossPrompt(null)} />}
+      {pairingPrompt && <PairingDialog prompt={pairingPrompt} onClose={() => setPairingPrompt(null)} />}
 
       <TrainingGuideModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
     </div>
