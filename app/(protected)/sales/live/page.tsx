@@ -40,8 +40,10 @@ export default function LiveSalePage(props: any = {}) {
   const [saving, setSaving] = useState(false)
   const [showLog, setShowLog] = useState(initialShowLog)
   const [showHelpModal, setShowHelpModal] = useState(false)
-  const [currentView, setCurrentView] = useState<{ kind: 'violation' | 'serviceGroup' | 'lossByItem' | 'aliasWide' | 'serviceMatches' | 'newItem'; key?: string; group?: string } | null>(null)
+  const [currentView, setCurrentView] = useState<{ kind: 'violation' | 'serviceGroup' | 'lossByItem' | 'aliasWide' | 'serviceMatches' | 'newItem' | 'dailySummary'; key?: string; group?: string } | null>(null)
   const [violations, setViolations] = useState<Record<string, number>>({})
+  const [searchQuery, setSearchQuery] = useState('')
+  const [productTypeFilter, setProductTypeFilter] = useState<'all' | 'goods' | 'services'>('all')
   const localLawsPanel = useLawsPanel('showLiveSaleLaws')
   const liveSaleLaws = incomingLawsPanel || localLawsPanel
 
@@ -99,6 +101,14 @@ export default function LiveSalePage(props: any = {}) {
       onViewClick: () => {
         setCurrentView(currentView?.kind === 'newItem' ? null : { kind: 'newItem' as const })
       }
+    },
+    {
+      key: 'daily_summary',
+      label: 'Daily Summary',
+      count: 0,
+      onViewClick: () => {
+        setCurrentView(currentView?.kind === 'dailySummary' ? null : { kind: 'dailySummary' as const })
+      }
     }
   ], [violationCounts, violationTypes, serviceGroups, currentView])
 
@@ -130,9 +140,22 @@ export default function LiveSalePage(props: any = {}) {
     return counts
   }, [taps])
 
-  // Filter and sort items based on current view
+  // Filter and sort items based on current view, search, and product type
   const catalogueItems = useMemo(() => {
     let filtered = allItems
+
+    // Apply product type filter
+    if (productTypeFilter === 'goods') {
+      filtered = filtered.filter(item => item.product_type !== 'service')
+    } else if (productTypeFilter === 'services') {
+      filtered = filtered.filter(item => item.product_type === 'service')
+    }
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase()
+      filtered = filtered.filter(item => item.name.toLowerCase().includes(q))
+    }
 
     // Apply view filter
     if (currentView?.kind === 'serviceGroup' && currentView.group) {
@@ -156,7 +179,7 @@ export default function LiveSalePage(props: any = {}) {
 
     // Sort by sales count (highest to lowest)
     return filtered.sort((a, b) => (salesCounts.get(b.id) ?? 0) - (salesCounts.get(a.id) ?? 0))
-  }, [allItems, salesCounts, currentView])
+  }, [allItems, salesCounts, currentView, searchQuery, productTypeFilter])
 
   async function recordTap() {
     if (!selectedItem || !qty) return
@@ -346,7 +369,55 @@ export default function LiveSalePage(props: any = {}) {
       <div className="px-4 py-3 border-b border-gray-200 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold text-gray-900">Live Sale — {today}</h2>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search items…"
+              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400"
+            />
+            <select
+              value={productTypeFilter}
+              onChange={e => setProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
+              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400"
+            >
+              <option value="all">All groups</option>
+              <option value="goods">Goods</option>
+              <option value="services">Services</option>
+            </select>
+            <button
+              type="button"
+              onClick={() => router.push('/bills')}
+              title="Bills"
+              className="px-2 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-50 rounded transition"
+            >
+              📃
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push('/expenses')}
+              title="Expenses"
+              className="px-2 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-50 rounded transition"
+            >
+              💳
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push('/customers')}
+              title="Customers"
+              className="px-2 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-50 rounded transition"
+            >
+              👥
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push('/vendors')}
+              title="Vendors"
+              className="px-2 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-50 rounded transition"
+            >
+              🏭
+            </button>
             <button
               type="button"
               onClick={() => setShowHelpModal(true)}
@@ -424,6 +495,7 @@ export default function LiveSalePage(props: any = {}) {
             {currentView.kind === 'aliasWide' && `Viewing: Alias Wide Table`}
             {currentView.kind === 'serviceMatches' && `Viewing: Service Matches`}
             {currentView.kind === 'newItem' && `Creating New Item`}
+            {currentView.kind === 'dailySummary' && `Daily Sales Summary`}
           </span>
           <button
             type="button"
@@ -449,6 +521,62 @@ export default function LiveSalePage(props: any = {}) {
         </div>
       )}
 
+      {/* Daily Summary View */}
+      {currentView?.kind === 'dailySummary' && (
+        <div className="flex-1 overflow-y-auto px-4 py-4">
+          {useMemo(() => {
+            const validTaps = taps.filter(t => !t.undone)
+            const todayTaps = validTaps.filter(t => t.tapped_at.startsWith(today))
+            const totalRevenue = todayTaps.reduce((sum, t) => sum + Number(t.price) * t.quantity, 0)
+            const totalQuantity = todayTaps.reduce((sum, t) => sum + t.quantity, 0)
+            const uniqueItems = new Set(todayTaps.map(t => t.item_id)).size
+
+            return (
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p className="text-xs text-blue-600 font-semibold">Total Revenue</p>
+                    <p className="text-2xl font-bold text-blue-900 mt-1">₵{formatPrice(totalRevenue)}</p>
+                  </div>
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <p className="text-xs text-green-600 font-semibold">Total Quantity</p>
+                    <p className="text-2xl font-bold text-green-900 mt-1">{totalQuantity}</p>
+                  </div>
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                    <p className="text-xs text-purple-600 font-semibold">Unique Items</p>
+                    <p className="text-2xl font-bold text-purple-900 mt-1">{uniqueItems}</p>
+                  </div>
+                </div>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <p className="text-xs font-semibold text-gray-600 mb-3">Top Items</p>
+                  <div className="space-y-2">
+                    {Array.from(
+                      todayTaps.reduce((acc, t) => {
+                        const key = t.item_id
+                        acc.set(key, (acc.get(key) || 0) + t.quantity)
+                        return acc
+                      }, new Map<number, number>())
+                    )
+                      .sort((a, b) => b[1] - a[1])
+                      .slice(0, 5)
+                      .map(([itemId, qty]) => {
+                        const item = allItems.find(i => i.id === itemId)
+                        return (
+                          <div key={itemId} className="flex justify-between text-xs">
+                            <span className="text-gray-700">{item?.name || '?'}</span>
+                            <span className="font-semibold text-blue-600">{qty} units</span>
+                          </div>
+                        )
+                      })
+                    }
+                  </div>
+                </div>
+              </div>
+            )
+          }, [taps, today, allItems])}
+        </div>
+      )}
+
       {/* New Item Form */}
       {currentView?.kind === 'newItem' && (
         <div className="flex-1 overflow-y-auto px-4 py-4">
@@ -457,7 +585,7 @@ export default function LiveSalePage(props: any = {}) {
       )}
 
       {/* Items Grid - 2 Columns */}
-      {currentView?.kind !== 'aliasWide' && currentView?.kind !== 'serviceMatches' && currentView?.kind !== 'newItem' && (
+      {currentView?.kind !== 'aliasWide' && currentView?.kind !== 'serviceMatches' && currentView?.kind !== 'newItem' && currentView?.kind !== 'dailySummary' && (
       <div className="flex-1 overflow-y-auto">
         {loadingItems ? (
           <p className="text-xs text-gray-400 text-center py-8">Loading…</p>
