@@ -142,6 +142,7 @@ export default function LiveSalePage(props: any = {}) {
     }, [taps])
 
     return (
+      <>
       <div className="h-full flex flex-col bg-white">
         <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
           <h2 className="text-sm font-bold text-gray-900">Live Sale Log</h2>
@@ -242,10 +243,12 @@ export default function LiveSalePage(props: any = {}) {
       </div>
 
       <TrainingGuideModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
+      </>
     )
   }
 
   return (
+    <>
     <div className="h-full flex flex-col bg-white">
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-200 space-y-3">
@@ -463,5 +466,6 @@ export default function LiveSalePage(props: any = {}) {
 
       <TrainingGuideModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
     </div>
+    </>
   )
 }
