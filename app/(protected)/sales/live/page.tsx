@@ -383,6 +383,7 @@ export default function LiveSalePage(props: any = {}) {
           </div>
           <PageLawsList
             scopeKey="Items"
+            isItemsLaws={true}
             flags={computedFlags}
             onChange={liveSaleLaws.bumpRefresh}
             openForm={liveSaleLaws.openForm}
