@@ -308,6 +308,7 @@ export default function LiveSalePage(props: any = {}) {
         <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 overflow-auto max-h-48">
           <PageLawsList
             scopeKey="liveSaleLaws"
+            onChange={liveSaleLaws.bumpRefresh}
             openForm={liveSaleLaws.openForm}
             setOpenForm={liveSaleLaws.setOpenForm}
             hideZeroFlags={liveSaleLaws.hideZeroFlags}
