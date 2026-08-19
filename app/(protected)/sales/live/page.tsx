@@ -119,13 +119,11 @@ export default function LiveSalePage(props: any = {}) {
       // Filter items by violation type
       const key = currentView.key
       filtered = filtered.filter(item => {
-        if (key === 'negative_stock') return Number(item.soh) < 0
-        if (key === 'missing_selling_price') return !item.selling_price || Number(item.selling_price) === 0
-        if (key === 'missing_cost_price') return !item.cost_price || Number(item.cost_price) === 0
-        if (key === 'old_cp_for_inactive') return item.product_type === 'Inactive'
-        if (key === 'pre_zoho_receipt_aliases') return false // Complex, needs server data
-        if (key === 'ambiguous_aliases') return false // Complex, needs server data
-        if (key === 'name_conflicts') return false // Complex, needs server data
+        if (key === 'neg_soh') return Number(item.soh) < 0
+        if (key === 'no_sp') return !item.selling_price || Number(item.selling_price) === 0
+        if (key === 'no_cp') return !item.cost_price || Number(item.cost_price) === 0
+        if (key === 'no_group') return !item.group
+        // Complex violations need server data - for now exclude them
         return false
       })
     } else if (currentView?.kind === 'lossByItem') {
