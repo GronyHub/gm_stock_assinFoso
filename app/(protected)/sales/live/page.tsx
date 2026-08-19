@@ -108,10 +108,38 @@ export default function LiveSalePage(props: any = {}) {
     return counts
   }, [taps])
 
-  // Sort items by sales count (highest to lowest)
+  // Filter and sort items based on current view
   const catalogueItems = useMemo(() => {
-    return allItems.sort((a, b) => (salesCounts.get(b.id) ?? 0) - (salesCounts.get(a.id) ?? 0))
-  }, [allItems, salesCounts])
+    let filtered = allItems
+
+    // Apply view filter
+    if (currentView?.kind === 'serviceGroup' && currentView.group) {
+      filtered = filtered.filter(item => item.group === currentView.group)
+    } else if (currentView?.kind === 'violation' && currentView.key) {
+      // Filter items by violation type
+      const key = currentView.key
+      filtered = filtered.filter(item => {
+        if (key === 'negative_stock') return Number(item.soh) < 0
+        if (key === 'missing_selling_price') return !item.selling_price || Number(item.selling_price) === 0
+        if (key === 'missing_cost_price') return !item.cost_price || Number(item.cost_price) === 0
+        if (key === 'old_cp_for_inactive') return item.product_type === 'Inactive'
+        if (key === 'pre_zoho_receipt_aliases') return false // Complex, needs server data
+        if (key === 'ambiguous_aliases') return false // Complex, needs server data
+        if (key === 'name_conflicts') return false // Complex, needs server data
+        return false
+      })
+    } else if (currentView?.kind === 'lossByItem') {
+      // Sort by loss amount when viewing loss by item
+      return filtered.sort((a, b) => {
+        const lossA = Math.abs(Number(a.selling_price || 0) - Number(a.cost_price || 0))
+        const lossB = Math.abs(Number(b.selling_price || 0) - Number(b.cost_price || 0))
+        return lossB - lossA
+      })
+    }
+
+    // Sort by sales count (highest to lowest)
+    return filtered.sort((a, b) => (salesCounts.get(b.id) ?? 0) - (salesCounts.get(a.id) ?? 0))
+  }, [allItems, salesCounts, currentView])
 
   async function recordTap() {
     if (!selectedItem || !qty) return
@@ -371,12 +399,32 @@ export default function LiveSalePage(props: any = {}) {
         </div>
       )}
 
+      {/* Current View Indicator */}
+      {currentView && (
+        <div className="px-4 py-2 bg-blue-50 border-b border-blue-200 flex items-center justify-between">
+          <span className="text-xs font-semibold text-blue-700">
+            {currentView.kind === 'violation' && `Viewing: Items with "${computedFlags.find(f => f.key === currentView.key)?.label}"`}
+            {currentView.kind === 'serviceGroup' && `Viewing: ${currentView.group} (${catalogueItems.length} items)`}
+            {currentView.kind === 'lossByItem' && `Viewing: Loss by Item (${catalogueItems.length} items)`}
+          </span>
+          <button
+            type="button"
+            onClick={() => setCurrentView(null)}
+            className="text-xs font-semibold px-2 py-1 rounded bg-white text-blue-600 hover:bg-blue-100 transition"
+          >
+            ✕ Clear
+          </button>
+        </div>
+      )}
+
       {/* Items Grid - 2 Columns */}
       <div className="flex-1 overflow-y-auto">
         {loadingItems ? (
           <p className="text-xs text-gray-400 text-center py-8">Loading…</p>
         ) : catalogueItems.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center py-8">No items found</p>
+          <p className="text-xs text-gray-400 text-center py-8">
+            {currentView ? 'No items in this view' : 'No items found'}
+          </p>
         ) : (
           <div className="grid grid-cols-2 gap-0 p-0">
             {catalogueItems.map(item => {
