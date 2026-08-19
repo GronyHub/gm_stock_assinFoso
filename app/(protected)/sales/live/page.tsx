@@ -44,12 +44,23 @@ export default function LiveSalePage(props: any = {}) {
   const [currentView, setCurrentView] = useState<{ kind: 'violation' | 'serviceGroup' | 'lossByItem' | 'aliasWide' | 'serviceMatches' | 'newItem' | 'dailySummary'; key?: string; group?: string } | null>(null)
   const [violations, setViolations] = useState<Record<string, number>>({})
   const [productTypeFilter, setProductTypeFilter] = useState<'all' | 'goods' | 'services'>('all')
+  const [groupFilter, setGroupFilter] = useState<string | null>(null)
   const [itemPickerQuery, setItemPickerQuery] = useState('')
   const [itemPickerResults, setItemPickerResults] = useState<Item[]>([])
   const [showItemPicker, setShowItemPicker] = useState(false)
   const [pickedItemId, setPickedItemId] = useState<number | null>(null)
   const localLawsPanel = useLawsPanel('showLiveSaleLaws')
   const liveSaleLaws = incomingLawsPanel || localLawsPanel
+
+  const groups = useMemo(() => {
+    const uniqueGroups = new Set<string>()
+    for (const item of allItems) {
+      if (item.group) {
+        uniqueGroups.add(item.group)
+      }
+    }
+    return Array.from(uniqueGroups).sort()
+  }, [allItems])
 
   // Build flags array with Live Sale callbacks
   const computedFlags = useMemo(() => [
@@ -183,6 +194,11 @@ export default function LiveSalePage(props: any = {}) {
       filtered = filtered.filter(item => item.product_type === 'service')
     }
 
+    // Apply group filter
+    if (groupFilter !== null) {
+      filtered = filtered.filter(item => item.group === groupFilter)
+    }
+
     // Apply view filter
     if (currentView?.kind === 'serviceGroup' && currentView.group) {
       filtered = filtered.filter(item => item.group === currentView.group)
@@ -205,7 +221,7 @@ export default function LiveSalePage(props: any = {}) {
 
     // Sort by sales count (highest to lowest)
     return filtered.sort((a, b) => (salesCounts.get(b.id) ?? 0) - (salesCounts.get(a.id) ?? 0))
-  }, [allItems, salesCounts, currentView, productTypeFilter, pickedItemId])
+  }, [allItems, salesCounts, currentView, productTypeFilter, groupFilter, pickedItemId])
 
   async function recordTap() {
     if (!selectedItem || !qty) return
@@ -460,6 +476,16 @@ export default function LiveSalePage(props: any = {}) {
               <option value="all">All types</option>
               <option value="goods">Goods</option>
               <option value="services">Services</option>
+            </select>
+            <select
+              value={groupFilter || ''}
+              onChange={e => setGroupFilter(e.target.value || null)}
+              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400"
+            >
+              <option value="">All groups</option>
+              {groups.map(group => (
+                <option key={group} value={group}>{group}</option>
+              ))}
             </select>
             <button
               type="button"
