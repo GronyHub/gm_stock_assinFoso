@@ -35,7 +35,6 @@ export default function LiveSalePage(props: any = {}) {
   const [saving, setSaving] = useState(false)
   const [showLog, setShowLog] = useState(initialShowLog)
   const [showHelpModal, setShowHelpModal] = useState(false)
-  const [debugInfo, setDebugInfo] = useState('')
   const [currentView, setCurrentView] = useState<{ kind: 'violation' | 'serviceGroup' | 'lossByItem'; key?: string; group?: string } | null>(null)
   const [violations, setViolations] = useState<Record<string, number>>({})
   const localLawsPanel = useLawsPanel('showLiveSaleLaws')
@@ -73,12 +72,6 @@ export default function LiveSalePage(props: any = {}) {
       }
     }
   ], [violationCounts, violationTypes, serviceGroups, currentView])
-
-  // Debug logging for mobile
-  useEffect(() => {
-    const info = `Panel: ${liveSaleLaws.show ? 'OPEN' : 'CLOSED'} | Using: ${incomingLawsPanel ? 'Item page laws' : 'Local laws'} | Scope: Items (shared with main inventory)`
-    setDebugInfo(info)
-  }, [liveSaleLaws.show, incomingLawsPanel])
 
   // Fetch items
   useEffect(() => {
@@ -378,9 +371,6 @@ export default function LiveSalePage(props: any = {}) {
       )}
       {liveSaleLaws.show && (
         <div className={`px-4 py-3 border-b border-gray-200 bg-gray-50 overflow-auto max-h-48 ${hideTopControls ? 'border-t' : ''}`}>
-          <div className="text-xs text-gray-500 mb-2 p-2 bg-white rounded border border-gray-200">
-            {debugInfo}
-          </div>
           <PageLawsList
             scopeKey="Items"
             isItemsLaws={true}
