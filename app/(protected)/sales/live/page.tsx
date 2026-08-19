@@ -391,6 +391,32 @@ export default function LiveSalePage(props: any = {}) {
     return filtered.sort((a, b) => (salesCounts.get(b.id) ?? 0) - (salesCounts.get(a.id) ?? 0))
   }, [allItems, salesCounts, currentView, productTypeFilter, groupFilter, pickedItemId, saleType, gmcItemIds, mode, dueOnly, countStatus])
 
+  // Log tab's two histories, grouped by date -- computed unconditionally
+  // (not inside the `if (mode === 'log')` branch below) since React
+  // requires the same hooks to run on every render of this component;
+  // Sale/Count/Count 2/Log now all live in one mounted instance switched
+  // by `mode`, so a useMemo that only ran while mode==='log' would change
+  // the hook count the moment you switched tabs and crash the page.
+  const tapsByDate = useMemo(() => {
+    const groups = new Map<string, typeof taps>()
+    for (const tap of taps) {
+      const date = tap.tapped_at.slice(0, 10)
+      if (!groups.has(date)) groups.set(date, [])
+      groups.get(date)!.push(tap)
+    }
+    return Array.from(groups.entries()).sort(([a], [b]) => b.localeCompare(a))
+  }, [taps])
+
+  const countsByDate = useMemo(() => {
+    const groups = new Map<string, typeof countRecords>()
+    for (const rec of countRecords) {
+      const date = rec.count_date.slice(0, 10)
+      if (!groups.has(date)) groups.set(date, [])
+      groups.get(date)!.push(rec)
+    }
+    return Array.from(groups.entries()).sort(([a], [b]) => b.localeCompare(a))
+  }, [countRecords])
+
   // Sale mode's own due-count callout -- staff mostly live in Sale mode, so
   // a due item only ever surfacing inside Count mode meant it stayed
   // invisible unless someone deliberately switched over. Pinned as its own
@@ -577,30 +603,6 @@ export default function LiveSalePage(props: any = {}) {
 
   // Log tab
   if (mode === 'log') {
-    // Group taps by date
-    const tapsByDate = useMemo(() => {
-      const groups = new Map<string, typeof taps>()
-      for (const tap of taps) {
-        const date = tap.tapped_at.slice(0, 10)
-        if (!groups.has(date)) groups.set(date, [])
-        groups.get(date)!.push(tap)
-      }
-      return Array.from(groups.entries()).sort(([a], [b]) => b.localeCompare(a))
-    }, [taps])
-
-    // Group count records by date, same shape as tapsByDate above -- Count
-    // mode's Log is this same list toggled to the other data source, not a
-    // separate destination.
-    const countsByDate = useMemo(() => {
-      const groups = new Map<string, typeof countRecords>()
-      for (const rec of countRecords) {
-        const date = rec.count_date.slice(0, 10)
-        if (!groups.has(date)) groups.set(date, [])
-        groups.get(date)!.push(rec)
-      }
-      return Array.from(groups.entries()).sort(([a], [b]) => b.localeCompare(a))
-    }, [countRecords])
-
     return (
       <>
       <div className="h-full flex flex-col bg-white">
