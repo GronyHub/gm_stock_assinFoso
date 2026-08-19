@@ -1485,6 +1485,13 @@ function ItemHubPageInner() {
     if (key === 'newSale') return lossView === 'sales' && addForm === 'sale'
     if (key === 'liveSale') return lossView === 'sales' && addForm === 'live'
     if (key === 'saleLog') return lossView === 'sales' && addForm === 'liveLog'
+    // Sales itself now only means "browsing the plain sales list" -- New
+    // Sale/Live Sale/Log are their own standalone rows above, each with
+    // their own highlight, so Sales shouldn't also light up while one of
+    // them is open (it did back when they were nested sub-buttons under
+    // it, but as independent rows that reads as two things selected at
+    // once instead of one).
+    if (key === 'sales') return lossView === 'sales' && !addForm
     return lossView === key
   }
   function cashItemClick(key: string) {
