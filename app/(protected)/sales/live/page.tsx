@@ -39,7 +39,7 @@ export default function LiveSalePage(props: any = {}) {
 
   // Debug logging for mobile
   useEffect(() => {
-    const info = `Panel: ${liveSaleLaws.show ? 'OPEN' : 'CLOSED'} | Using: ${incomingLawsPanel ? 'Item page laws' : 'Local laws'} | Scope: liveSaleLaws`
+    const info = `Panel: ${liveSaleLaws.show ? 'OPEN' : 'CLOSED'} | Using: ${incomingLawsPanel ? 'Item page laws' : 'Local laws'} | Scope: Items (shared with main inventory)`
     setDebugInfo(info)
   }, [liveSaleLaws.show, incomingLawsPanel])
 
@@ -322,7 +322,7 @@ export default function LiveSalePage(props: any = {}) {
             {debugInfo}
           </div>
           <PageLawsList
-            scopeKey="liveSaleLaws"
+            scopeKey="Items"
             onChange={liveSaleLaws.bumpRefresh}
             openForm={liveSaleLaws.openForm}
             setOpenForm={liveSaleLaws.setOpenForm}
