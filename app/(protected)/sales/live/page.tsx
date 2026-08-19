@@ -382,7 +382,7 @@ export default function LiveSalePage(props: any = {}) {
               onChange={e => setProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
               className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400"
             >
-              <option value="all">All groups</option>
+              <option value="all">All types</option>
               <option value="goods">Goods</option>
               <option value="services">Services</option>
             </select>
@@ -492,56 +492,67 @@ export default function LiveSalePage(props: any = {}) {
       {/* Daily Summary View */}
       {currentView?.kind === 'dailySummary' && (
         <div className="flex-1 overflow-y-auto px-4 py-4">
-          {useMemo(() => {
-            const validTaps = taps.filter(t => !t.undone)
-            const todayTaps = validTaps.filter(t => t.tapped_at.startsWith(today))
-            const totalRevenue = todayTaps.reduce((sum, t) => sum + Number(t.price) * t.quantity, 0)
-            const totalQuantity = todayTaps.reduce((sum, t) => sum + t.quantity, 0)
-            const uniqueItems = new Set(todayTaps.map(t => t.item_id)).size
+          {(() => {
+            try {
+              const validTaps = taps.filter(t => !t.undone)
+              const todayTaps = validTaps.filter(t => t.tapped_at.startsWith(today))
+              const totalRevenue = todayTaps.reduce((sum, t) => sum + Number(t.price) * t.quantity, 0)
+              const totalQuantity = todayTaps.reduce((sum, t) => sum + t.quantity, 0)
+              const uniqueItems = new Set(todayTaps.map(t => t.item_id)).size
 
-            return (
-              <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <p className="text-xs text-blue-600 font-semibold">Total Revenue</p>
-                    <p className="text-2xl font-bold text-blue-900 mt-1">₵{formatPrice(totalRevenue)}</p>
+              const topItemsMap = new Map<number, number>()
+              for (const tap of todayTaps) {
+                topItemsMap.set(tap.item_id, (topItemsMap.get(tap.item_id) ?? 0) + tap.quantity)
+              }
+              const topItems = Array.from(topItemsMap.entries())
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5)
+
+              return (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <p className="text-xs text-blue-600 font-semibold">Total Revenue</p>
+                      <p className="text-2xl font-bold text-blue-900 mt-1">₵{formatPrice(totalRevenue)}</p>
+                    </div>
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <p className="text-xs text-green-600 font-semibold">Total Quantity</p>
+                      <p className="text-2xl font-bold text-green-900 mt-1">{totalQuantity}</p>
+                    </div>
+                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                      <p className="text-xs text-purple-600 font-semibold">Unique Items</p>
+                      <p className="text-2xl font-bold text-purple-900 mt-1">{uniqueItems}</p>
+                    </div>
                   </div>
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <p className="text-xs text-green-600 font-semibold">Total Quantity</p>
-                    <p className="text-2xl font-bold text-green-900 mt-1">{totalQuantity}</p>
-                  </div>
-                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                    <p className="text-xs text-purple-600 font-semibold">Unique Items</p>
-                    <p className="text-2xl font-bold text-purple-900 mt-1">{uniqueItems}</p>
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <p className="text-xs font-semibold text-gray-600 mb-3">Top Items</p>
+                    <div className="space-y-2">
+                      {topItems.length === 0 ? (
+                        <p className="text-xs text-gray-500">No sales today</p>
+                      ) : (
+                        topItems.map(([itemId, qty]) => {
+                          const item = allItems.find(i => i.id === itemId)
+                          return (
+                            <div key={itemId} className="flex justify-between text-xs">
+                              <span className="text-gray-700">{item?.name || '?'}</span>
+                              <span className="font-semibold text-blue-600">{qty} units</span>
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                  <p className="text-xs font-semibold text-gray-600 mb-3">Top Items</p>
-                  <div className="space-y-2">
-                    {Array.from(
-                      todayTaps.reduce((acc, t) => {
-                        const key = t.item_id
-                        acc.set(key, (acc.get(key) || 0) + t.quantity)
-                        return acc
-                      }, new Map<number, number>())
-                    )
-                      .sort((a, b) => b[1] - a[1])
-                      .slice(0, 5)
-                      .map(([itemId, qty]) => {
-                        const item = allItems.find(i => i.id === itemId)
-                        return (
-                          <div key={itemId} className="flex justify-between text-xs">
-                            <span className="text-gray-700">{item?.name || '?'}</span>
-                            <span className="font-semibold text-blue-600">{qty} units</span>
-                          </div>
-                        )
-                      })
-                    }
-                  </div>
+              )
+            } catch (e) {
+              console.error('Daily summary error:', e)
+              return (
+                <div className="text-center py-8">
+                  <p className="text-sm text-red-600 font-medium">Could not load daily summary</p>
                 </div>
-              </div>
-            )
-          }, [taps, today, allItems])}
+              )
+            }
+          })()}
         </div>
       )}
 
