@@ -395,9 +395,8 @@ export default function LiveSalePage(props: any = {}) {
   return (
     <>
     <div className="h-full flex flex-col bg-white">
-      {/* Filter Bar - Green bar at top */}
-      {!hideTopControls && (
-        <div className="bg-green-700 -mx-0 px-4 py-2 flex items-center justify-between">
+      {/* Filter Bar - Green bar at top - Always visible */}
+      <div className="bg-green-700 -mx-0 px-4 py-2 flex items-center justify-between">
           <div className="flex gap-2 items-center">
             <select
               value={productTypeFilter}
@@ -442,8 +441,7 @@ export default function LiveSalePage(props: any = {}) {
               ?
             </button>
           </div>
-        </div>
-      )}
+      </div>
 
       {/* Search & Controls */}
       <div className="px-4 py-3 border-b border-gray-200 space-y-3">
