@@ -2096,8 +2096,47 @@ function ItemHubPageInner() {
             <NewSaleForm onSuccess={() => setAddForm(null)} groupFilter={group} />
           </div>
         )}
-        {(addForm === 'live' || addForm === 'liveLog') && outerTab === 'loss' && lossView === 'sales' &&
-          <LiveSaleForm key={addForm} onClose={() => setAddForm(null)} initialShowLog={addForm === 'liveLog'} search={search} groupFilter={group} lawsPanel={liveSaleLaws} expanded={liveExpanded} setExpanded={setLiveExpanded} hideTopControls={true} />}
+        {(addForm === 'live' || addForm === 'liveLog') && outerTab === 'loss' && lossView === 'sales' && (
+          <LiveSaleForm key={addForm} onClose={() => setAddForm(null)} initialShowLog={addForm === 'liveLog'} search={search} groupFilter={group} lawsPanel={liveSaleLaws} expanded={liveExpanded} setExpanded={setLiveExpanded} hideTopControls={true} flags={[
+            ...ITEMS_FLAG_TYPES.map(({ key, label }) => ({
+              key,
+              label,
+              count: violationCounts[key] ?? 0,
+              description: ERROR_VIOLATIONS.find(v => v.key === key)?.description,
+              onViewClick: () => goToViolation(key)
+            })),
+            ...serviceGroups.map(g => ({
+              key: `group_${g}`,
+              label: g,
+              count: 0,
+              onViewClick: () => {
+                if (itemsInlineExtra?.kind === 'serviceGroup' && itemsInlineExtra.group === g) {
+                  setItemsInlineExtra(null)
+                } else {
+                  setItemsInlineExtra({ kind: 'serviceGroup', group: g })
+                }
+              },
+            })),
+            {
+              key: 'loss_by_item',
+              label: 'Loss by Item',
+              count: 0,
+              onViewClick: () => {
+                if (itemsInlineExtra?.kind === 'lossByItem') {
+                  setItemsInlineExtra(null)
+                } else {
+                  setItemsInlineExtra({ kind: 'lossByItem' })
+                }
+              },
+            },
+            {
+              key: 'item_360',
+              label: 'Item 360',
+              count: 0,
+              onViewClick: () => pickLossView('item360'),
+            },
+          ]} />
+        )}
         {addForm === 'bill'    && outerTab === 'loss' && lossView === 'bills'    && <div className="px-4"><NewBillForm    onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'expense' && outerTab === 'loss' && lossView === 'expenses' && <div className="px-4"><NewExpenseForm onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'item'    && outerTab === 'loss' && lossView === 'items'    && <div className="px-4"><NewItemForm    onSuccess={() => { setAddForm(null); loadItems() }} /></div>}

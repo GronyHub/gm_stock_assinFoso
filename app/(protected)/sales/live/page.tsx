@@ -10,6 +10,7 @@ import { TrainingGuideModal } from './_components/TrainingGuideModal'
 
 type Item = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; product_type: string | null }
 type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null }
+type FlagLaw = { key: string; label: string; description?: string; count: number; active?: boolean; onViewClick?: () => void }
 
 function formatPrice(num: number | string): string {
   const n = Number(num)
@@ -20,7 +21,7 @@ export default function LiveSalePage(props: any = {}) {
   usePresenceReporter('live-tapping a sale')
   const router = useRouter()
 
-  const { initialShowLog = false, lawsPanel: incomingLawsPanel, hideTopControls = false } = props
+  const { initialShowLog = false, lawsPanel: incomingLawsPanel, hideTopControls = false, flags = [] } = props
 
   const [allItems, setAllItems] = useState<Item[]>([])
   const [loadingItems, setLoadingItems] = useState(true)
@@ -323,6 +324,7 @@ export default function LiveSalePage(props: any = {}) {
           </div>
           <PageLawsList
             scopeKey="Items"
+            flags={flags}
             onChange={liveSaleLaws.bumpRefresh}
             openForm={liveSaleLaws.openForm}
             setOpenForm={liveSaleLaws.setOpenForm}
