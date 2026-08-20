@@ -145,6 +145,11 @@ export default function LiveSalePage(props: any = {}) {
   // the other two.
   const [mode, setMode] = useState<'sale' | 'count2' | 'log'>('sale')
   const [count2Violation, setCount2Violation] = useState<string | null>(null)
+  // Whether jumping into Count 2 (via the "Count History" law/view below)
+  // should land on its History panel instead of the records list -- read
+  // once as CountsTab's initial state, since it gets a fresh mount every
+  // time mode switches to 'count2'.
+  const [count2StartOnHistory, setCount2StartOnHistory] = useState(false)
   useEffect(() => {
     if (!jumpToTabSeq || !jumpToTab) return
     setMode(jumpToTab)
@@ -299,7 +304,32 @@ export default function LiveSalePage(props: any = {}) {
       onViewClick: () => {
         setCurrentView(currentView?.kind === 'dailySummary' ? null : { kind: 'dailySummary' as const })
       }
-    }
+    },
+    // Jumps straight into Count 2 -- its own records list and History
+    // panel already exist there (loadRecords()/showHistory), so these are
+    // shortcuts into that existing UI rather than new tables of their own.
+    // A plain jump, not a toggle (mode has no "off" state the way
+    // currentView does), matching how "Fix now: Counts" already jumps here.
+    {
+      key: 'count_records',
+      label: 'Count Records',
+      count: 0,
+      onViewClick: () => {
+        setCount2Violation(null)
+        setCount2StartOnHistory(false)
+        setMode('count2')
+      }
+    },
+    {
+      key: 'count_history',
+      label: 'Count History',
+      count: 0,
+      onViewClick: () => {
+        setCount2Violation(null)
+        setCount2StartOnHistory(true)
+        setMode('count2')
+      }
+    },
   ], [violationCounts, violationTypes, serviceGroups, currentView, countIntervalFlags])
 
   // Fetch items
@@ -1012,6 +1042,7 @@ export default function LiveSalePage(props: any = {}) {
             search={count2Search}
             violation={count2Violation}
             onGoToViolation={key => setCount2Violation(key)}
+            startOnHistory={count2StartOnHistory}
           />
         </div>
       </div>
