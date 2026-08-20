@@ -985,14 +985,14 @@ export default function LiveSalePage(props: any = {}) {
                   still frozen (sticky left-0) as a safety net for very
                   narrow screens or long item names. */}
               <div className="grid grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_1.25rem_2.25rem_1.5rem_1.5rem] gap-0 bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
-                <div className="sticky left-0 z-10 bg-gray-50 px-0.5 py-0 text-[7px] leading-[0.6] font-semibold text-gray-600 uppercase truncate">Item</div>
-                <div className="px-0.5 py-0 text-[7px] leading-[0.6] font-semibold text-gray-600 uppercase text-right">Total</div>
-                <div className="px-0.5 py-0 text-[7px] leading-[0.6] font-semibold text-gray-600 uppercase text-center">Time</div>
-                <div className="px-0.5 py-0 text-[7px] leading-[0.6] font-semibold text-gray-600 uppercase text-right">SP</div>
-                <div className="px-0.5 py-0 text-[7px] leading-[0.6] font-semibold text-gray-600 uppercase text-center">Qty</div>
-                <div className="px-0.5 py-0 text-[7px] leading-[0.6] font-semibold text-gray-600 uppercase truncate">Staff</div>
-                <div className="px-0.5 py-0 text-[7px] leading-[0.6] font-semibold text-gray-600 uppercase text-center">SOH</div>
-                <div className="px-0.5 py-0 text-[7px] leading-[0.6] font-semibold text-gray-600 uppercase" />
+                <div className="sticky left-0 z-10 bg-gray-50 px-0.5 py-0 text-[7px] leading-none font-semibold text-gray-600 uppercase truncate">Item</div>
+                <div className="px-0.5 py-0 text-[7px] leading-none font-semibold text-gray-600 uppercase text-right">Total</div>
+                <div className="px-0.5 py-0 text-[7px] leading-none font-semibold text-gray-600 uppercase text-center">Time</div>
+                <div className="px-0.5 py-0 text-[7px] leading-none font-semibold text-gray-600 uppercase text-right">SP</div>
+                <div className="px-0.5 py-0 text-[7px] leading-none font-semibold text-gray-600 uppercase text-center">Qty</div>
+                <div className="px-0.5 py-0 text-[7px] leading-none font-semibold text-gray-600 uppercase truncate">Staff</div>
+                <div className="px-0.5 py-0 text-[7px] leading-none font-semibold text-gray-600 uppercase text-center">SOH</div>
+                <div className="px-0.5 py-0 text-[7px] leading-none font-semibold text-gray-600 uppercase" />
               </div>
 
               {/* Table rows grouped by date */}
@@ -1002,7 +1002,7 @@ export default function LiveSalePage(props: any = {}) {
                   <div key={date}>
                     {/* Date header */}
                     <div className="grid grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_1.25rem_2.25rem_1.5rem_1.5rem] gap-0 bg-green-50 border-b border-green-200 sticky top-[7px] z-9">
-                      <div className="col-span-8 px-0.5 py-0 text-[7px] leading-[0.6] font-semibold text-green-700 truncate">
+                      <div className="col-span-8 px-0.5 py-0 text-[7px] leading-none font-semibold text-green-700 truncate">
                         {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · Total: ₵{formatPrice(dateTotal)}
                       </div>
                     </div>
@@ -1013,38 +1013,38 @@ export default function LiveSalePage(props: any = {}) {
                     {dateTaps.map(tap => (
                       <div
                         key={tap.id}
-                        className={`group grid grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_1.25rem_2.25rem_1.5rem_1.5rem] gap-0 border-b border-gray-100 items-center hover:bg-gray-50 transition ${
+                        className={`group grid grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_1.25rem_2.25rem_1.5rem_1.5rem] gap-0 items-center hover:bg-gray-50 transition ${
                           tap.undone ? 'bg-gray-50 opacity-60' : ''
                         }`}
                       >
                         <div className={`sticky left-0 z-[1] px-0.5 py-0 group-hover:bg-gray-50 ${tap.undone ? 'bg-gray-50' : 'bg-white'}`}>
-                          <p className={`text-[8px] leading-[0.6] font-semibold truncate ${tap.undone ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                          <p className={`text-[8px] leading-none font-semibold truncate ${tap.undone ? 'line-through text-gray-400' : 'text-gray-900'}`}>
                             {tap.item_name}
                           </p>
                         </div>
                         <div className="px-0.5 py-0 text-right">
-                          <p className={`text-[8px] leading-[0.6] font-semibold truncate ${tap.undone ? 'text-gray-400' : 'text-blue-600'}`}>
+                          <p className={`text-[8px] leading-none font-semibold truncate ${tap.undone ? 'text-gray-400' : 'text-blue-600'}`}>
                             ₵{formatPrice(Number(tap.price) * tap.quantity)}
                           </p>
                         </div>
                         <div className="px-0.5 py-0 text-center">
-                          <p className="text-[7px] leading-[0.6] text-gray-500 truncate">{new Date(tap.tapped_at).toLocaleTimeString()}</p>
+                          <p className="text-[7px] leading-none text-gray-500 truncate">{new Date(tap.tapped_at).toLocaleTimeString()}</p>
                         </div>
                         <div className="px-0.5 py-0 text-right">
-                          <p className={`text-[8px] leading-[0.6] font-semibold truncate ${tap.undone ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                          <p className={`text-[8px] leading-none font-semibold truncate ${tap.undone ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
                             ₵{formatPrice(tap.price)}
                           </p>
                         </div>
                         <div className="px-0.5 py-0 text-center">
-                          <p className={`text-[8px] leading-[0.6] font-semibold ${tap.undone ? 'text-gray-400' : 'text-gray-900'}`}>
+                          <p className={`text-[8px] leading-none font-semibold ${tap.undone ? 'text-gray-400' : 'text-gray-900'}`}>
                             {tap.quantity}
                           </p>
                         </div>
                         <div className="px-0.5 py-0">
-                          <p className="text-[8px] leading-[0.6] text-gray-600 truncate">{tap.staff_name}</p>
+                          <p className="text-[8px] leading-none text-gray-600 truncate">{tap.staff_name}</p>
                         </div>
                         <div className="px-0.5 py-0 text-center">
-                          <p className="text-[8px] leading-[0.6] text-gray-500 truncate">{tap.soh !== null && tap.soh !== undefined ? Math.ceil(tap.soh) : '-'}</p>
+                          <p className="text-[8px] leading-none text-gray-500 truncate">{tap.soh !== null && tap.soh !== undefined ? Math.ceil(tap.soh) : '-'}</p>
                         </div>
                         <div className="px-0.5 py-0 text-center">
                           {!tap.undone && (
