@@ -12,10 +12,27 @@ export async function GET(req: NextRequest) {
   const kind = req.nextUrl.searchParams.get('kind') === 'note' ? 'note' : 'law'
   const lawId = req.nextUrl.searchParams.get('lawId')
   const flagKey = req.nextUrl.searchParams.get('flagKey')
+  const lawIds = req.nextUrl.searchParams.get('lawIds')
+  const flagKeys = req.nextUrl.searchParams.get('flagKeys')
 
   try {
     await initializeDatabase()
-    if (lawId) {
+    if (lawIds || flagKeys) {
+      // Batched form for PageLawsList -- see /api/tasks for why. Only
+      // returns rows that actually have a note; the caller fills in the
+      // empty-note default for every requested id/key not present here.
+      const lawIdList = lawIds ? lawIds.split(',').map(s => parseInt(s, 10)).filter(n => !isNaN(n)) : []
+      const flagKeyList = flagKeys ? flagKeys.split(',').filter(Boolean) : []
+      const rows = await sql`
+        SELECT law_id, flag_key, notes, topic, note_date, tagged_staff FROM page_notes
+        WHERE scope_key = ${scopeKey} AND kind = ${kind} AND (law_id = ANY(${lawIdList}::int[]) OR flag_key = ANY(${flagKeyList}::text[]))
+      `
+      return NextResponse.json(rows.map((row: any) => ({
+        lawId: row.law_id, flagKey: row.flag_key,
+        notes: row.notes ?? '', topic: row.topic ?? '', noteDate: row.note_date ?? '',
+        taggedStaff: row.tagged_staff ? JSON.parse(row.tagged_staff) : [],
+      })))
+    } else if (lawId) {
       const lawIdNum = parseInt(lawId, 10)
       if (isNaN(lawIdNum)) return NextResponse.json({ notes: '', topic: '', noteDate: '', taggedStaff: [] })
       const [row] = await sql`SELECT notes, topic, note_date, tagged_staff FROM page_notes WHERE scope_key = ${scopeKey} AND kind = ${kind} AND law_id = ${lawIdNum}`

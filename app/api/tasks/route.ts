@@ -37,8 +37,23 @@ export async function GET(req: NextRequest) {
     const lawId = req.nextUrl.searchParams.get('lawId')
     const flagKey = req.nextUrl.searchParams.get('flagKey')
     const submenu = req.nextUrl.searchParams.get('submenu')
+    const lawIds = req.nextUrl.searchParams.get('lawIds')
+    const flagKeys = req.nextUrl.searchParams.get('flagKeys')
 
-    if (lawId) {
+    if (lawIds || flagKeys) {
+      // Batched form for PageLawsList, which otherwise fires one request per
+      // law/flag on every mount (34 mount sites x dozens of laws each was a
+      // meaningful chunk of Vercel's Observability Events volume).
+      const lawIdList = lawIds ? lawIds.split(',').map(s => parseInt(s, 10)).filter(n => !isNaN(n)) : []
+      const flagKeyList = flagKeys ? flagKeys.split(',').filter(Boolean) : []
+      const rows = await sql`
+        SELECT id, title, notes, due_date, submenu, view, law_id, flag_key, task_type, recurrence_type, recurrence_days, done, created_by, created_at, completed_at, assigned_to, completed_by
+        FROM custom_tasks
+        WHERE (law_id = ANY(${lawIdList}::int[]) OR flag_key = ANY(${flagKeyList}::text[]))
+        ORDER BY done ASC, created_at DESC
+      `
+      return NextResponse.json(rows)
+    } else if (lawId) {
       const rows = await sql`
         SELECT id, title, notes, due_date, submenu, view, law_id, flag_key, task_type, recurrence_type, recurrence_days, done, created_by, created_at, completed_at, assigned_to, completed_by
         FROM custom_tasks
