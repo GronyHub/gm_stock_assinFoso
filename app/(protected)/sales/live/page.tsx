@@ -985,14 +985,14 @@ export default function LiveSalePage(props: any = {}) {
                   still frozen (sticky left-0) as a safety net for very
                   narrow screens or long item names. */}
               <div className="grid grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_1.25rem_2.25rem_1.5rem_1.5rem] gap-0 bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
-                <div className="sticky left-0 z-10 bg-gray-50 px-0.5 py-0.5 text-[7px] font-semibold text-gray-600 uppercase truncate">Item</div>
-                <div className="px-0.5 py-0.5 text-[7px] font-semibold text-gray-600 uppercase text-right">Total</div>
-                <div className="px-0.5 py-0.5 text-[7px] font-semibold text-gray-600 uppercase text-center">Time</div>
-                <div className="px-0.5 py-0.5 text-[7px] font-semibold text-gray-600 uppercase text-right">SP</div>
-                <div className="px-0.5 py-0.5 text-[7px] font-semibold text-gray-600 uppercase text-center">Qty</div>
-                <div className="px-0.5 py-0.5 text-[7px] font-semibold text-gray-600 uppercase truncate">Staff</div>
-                <div className="px-0.5 py-0.5 text-[7px] font-semibold text-gray-600 uppercase text-center">SOH</div>
-                <div className="px-0.5 py-0.5 text-[7px] font-semibold text-gray-600 uppercase" />
+                <div className="sticky left-0 z-10 bg-gray-50 px-0.5 py-px text-[7px] leading-tight font-semibold text-gray-600 uppercase truncate">Item</div>
+                <div className="px-0.5 py-px text-[7px] leading-tight font-semibold text-gray-600 uppercase text-right">Total</div>
+                <div className="px-0.5 py-px text-[7px] leading-tight font-semibold text-gray-600 uppercase text-center">Time</div>
+                <div className="px-0.5 py-px text-[7px] leading-tight font-semibold text-gray-600 uppercase text-right">SP</div>
+                <div className="px-0.5 py-px text-[7px] leading-tight font-semibold text-gray-600 uppercase text-center">Qty</div>
+                <div className="px-0.5 py-px text-[7px] leading-tight font-semibold text-gray-600 uppercase truncate">Staff</div>
+                <div className="px-0.5 py-px text-[7px] leading-tight font-semibold text-gray-600 uppercase text-center">SOH</div>
+                <div className="px-0.5 py-px text-[7px] leading-tight font-semibold text-gray-600 uppercase" />
               </div>
 
               {/* Table rows grouped by date */}
@@ -1001,8 +1001,8 @@ export default function LiveSalePage(props: any = {}) {
                 return (
                   <div key={date}>
                     {/* Date header */}
-                    <div className="grid grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_1.25rem_2.25rem_1.5rem_1.5rem] gap-0 bg-green-50 border-b border-green-200 sticky top-[19px] z-9">
-                      <div className="col-span-8 px-0.5 py-0.5 text-[7px] font-semibold text-green-700 truncate">
+                    <div className="grid grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_1.25rem_2.25rem_1.5rem_1.5rem] gap-0 bg-green-50 border-b border-green-200 sticky top-[11px] z-9">
+                      <div className="col-span-8 px-0.5 py-px text-[7px] leading-tight font-semibold text-green-700 truncate">
                         {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · Total: ₵{formatPrice(dateTotal)}
                       </div>
                     </div>
@@ -1017,36 +1017,36 @@ export default function LiveSalePage(props: any = {}) {
                           tap.undone ? 'bg-gray-50 opacity-60' : ''
                         }`}
                       >
-                        <div className={`sticky left-0 z-[1] px-0.5 py-0.5 group-hover:bg-gray-50 ${tap.undone ? 'bg-gray-50' : 'bg-white'}`}>
-                          <p className={`text-[8px] font-semibold truncate ${tap.undone ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                        <div className={`sticky left-0 z-[1] px-0.5 py-px group-hover:bg-gray-50 ${tap.undone ? 'bg-gray-50' : 'bg-white'}`}>
+                          <p className={`text-[8px] leading-tight font-semibold truncate ${tap.undone ? 'line-through text-gray-400' : 'text-gray-900'}`}>
                             {tap.item_name}
                           </p>
                         </div>
-                        <div className="px-0.5 py-0.5 text-right">
-                          <p className={`text-[8px] font-semibold truncate ${tap.undone ? 'text-gray-400' : 'text-blue-600'}`}>
+                        <div className="px-0.5 py-px text-right">
+                          <p className={`text-[8px] leading-tight font-semibold truncate ${tap.undone ? 'text-gray-400' : 'text-blue-600'}`}>
                             ₵{formatPrice(Number(tap.price) * tap.quantity)}
                           </p>
                         </div>
-                        <div className="px-0.5 py-0.5 text-center">
-                          <p className="text-[7px] text-gray-500 truncate">{new Date(tap.tapped_at).toLocaleTimeString()}</p>
+                        <div className="px-0.5 py-px text-center">
+                          <p className="text-[7px] leading-tight text-gray-500 truncate">{new Date(tap.tapped_at).toLocaleTimeString()}</p>
                         </div>
-                        <div className="px-0.5 py-0.5 text-right">
-                          <p className={`text-[8px] font-semibold truncate ${tap.undone ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                        <div className="px-0.5 py-px text-right">
+                          <p className={`text-[8px] leading-tight font-semibold truncate ${tap.undone ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
                             ₵{formatPrice(tap.price)}
                           </p>
                         </div>
-                        <div className="px-0.5 py-0.5 text-center">
-                          <p className={`text-[8px] font-semibold ${tap.undone ? 'text-gray-400' : 'text-gray-900'}`}>
+                        <div className="px-0.5 py-px text-center">
+                          <p className={`text-[8px] leading-tight font-semibold ${tap.undone ? 'text-gray-400' : 'text-gray-900'}`}>
                             {tap.quantity}
                           </p>
                         </div>
-                        <div className="px-0.5 py-0.5">
-                          <p className="text-[8px] text-gray-600 truncate">{tap.staff_name}</p>
+                        <div className="px-0.5 py-px">
+                          <p className="text-[8px] leading-tight text-gray-600 truncate">{tap.staff_name}</p>
                         </div>
-                        <div className="px-0.5 py-0.5 text-center">
-                          <p className="text-[8px] text-gray-500 truncate">{tap.soh !== null && tap.soh !== undefined ? Math.ceil(tap.soh) : '-'}</p>
+                        <div className="px-0.5 py-px text-center">
+                          <p className="text-[8px] leading-tight text-gray-500 truncate">{tap.soh !== null && tap.soh !== undefined ? Math.ceil(tap.soh) : '-'}</p>
                         </div>
-                        <div className="px-0.5 py-0.5 text-center">
+                        <div className="px-0.5 py-px text-center">
                           {!tap.undone && (
                             <button
                               onClick={() => undoTap(tap.id)}
