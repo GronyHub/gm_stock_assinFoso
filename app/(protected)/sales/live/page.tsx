@@ -1451,7 +1451,7 @@ export default function LiveSalePage(props: any = {}) {
                 <button
                   type="button"
                   onClick={startEditSelectedItem}
-                  className="shrink-0 px-2.5 py-1.5 text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
+                  className="shrink-0 px-5 py-2.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
                 >
                   Edit
                 </button>
@@ -1464,7 +1464,7 @@ export default function LiveSalePage(props: any = {}) {
                 form a tap on Save applies to. Cancel returns to the normal
                 sheet, it doesn't close it. */}
             {editingSelectedItem ? (
-              <div className="p-2">
+              <div className="p-4">
                 {editLoading ? (
                   <p className="text-xs text-gray-400 text-center py-6">Loading…</p>
                 ) : (
@@ -1475,14 +1475,15 @@ export default function LiveSalePage(props: any = {}) {
                     itemId={selectedItem.id}
                     isService={selectedItem.product_type === 'service'}
                     allItems={editAllItemsList}
+                    size="large"
                   />
                 )}
                 {editError && (
-                  <div className="mx-2 mt-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-600 font-medium">
+                  <div className="mt-4 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-600 font-medium">
                     {editError}
                   </div>
                 )}
-                <div className="flex gap-2 p-4 pt-3">
+                <div className="flex gap-2 pt-4">
                   <button
                     type="button"
                     onClick={() => { setEditingSelectedItem(false); setEditError('') }}
