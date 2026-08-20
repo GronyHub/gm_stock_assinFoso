@@ -42,6 +42,19 @@ function formatPrice(num: number | string): string {
   return n % 1 === 0 ? n.toFixed(0) : n.toFixed(2)
 }
 
+// lgAmt is the NET loss/gain in cedis (positive = net loss, negative = net
+// gain -- same sign convention Item 360's own loss table uses); lossCount
+// is how many separate days actually came up short, independent of sign.
+function formatLoss(l: { lossCount: number; lgAmt: number } | undefined): { text: string; cls: string } {
+  const count = l?.lossCount ?? 0
+  const amt = l?.lgAmt ?? 0
+  const fmtAmt = (v: number) => (v % 1 === 0 ? v.toFixed(0) : v.toFixed(2))
+  if (count === 0 && amt === 0) return { text: 'No loss', cls: 'text-gray-400' }
+  if (amt > 0) return { text: `Loss ${count} · -₵${fmtAmt(amt)}`, cls: 'text-red-500 font-semibold' }
+  if (amt < 0) return { text: `Loss ${count} · +₵${fmtAmt(Math.abs(amt))}`, cls: 'text-green-600 font-semibold' }
+  return { text: `Loss ${count}`, cls: 'text-gray-400' }
+}
+
 export default function LiveSalePage(props: any = {}) {
   console.log('LiveSalePage mounted with new item picker')
   usePresenceReporter('live-tapping a sale')
@@ -307,6 +320,20 @@ export default function LiveSalePage(props: any = {}) {
     fetch('/api/items/gmc-ids')
       .then(r => r.json())
       .then(d => setGmcItemIds(new Set(Array.isArray(d) ? d : [])))
+      .catch(() => {})
+  }, [])
+
+  // Loss count/amount per item -- same numbers Item 360's own loss ranking
+  // is built from (/api/losses/summary), shown inline next to price/cost/
+  // stock/count-interval so a loss-prone item is visible without opening
+  // its Item 360 detail. Fetched once, same as the GMC id set above.
+  const [lossByItemId, setLossByItemId] = useState<Map<number, { lossCount: number; lgAmt: number }>>(new Map())
+  useEffect(() => {
+    fetch('/api/losses/summary')
+      .then(r => r.json())
+      .then((d: { item_id: number; lossCount: number; lgAmt: number }[]) => {
+        setLossByItemId(new Map(Array.isArray(d) ? d.map(r => [r.item_id, { lossCount: r.lossCount, lgAmt: r.lgAmt }]) : []))
+      })
       .catch(() => {})
   }, [])
 
@@ -1347,6 +1374,8 @@ export default function LiveSalePage(props: any = {}) {
                             <span className="text-gray-500">{item.count_interval}</span>
                           </>
                         )}
+                        <span className="text-gray-400"> · </span>
+                        <span className={formatLoss(lossByItemId.get(item.id)).cls}>{formatLoss(lossByItemId.get(item.id)).text}</span>
                       </p>
                     </div>
                     <div className="flex items-center gap-0.5 shrink-0">
@@ -1405,6 +1434,8 @@ export default function LiveSalePage(props: any = {}) {
                           <span className="text-gray-500">{item.count_interval}</span>
                         </>
                       )}
+                      <span className="text-gray-400"> · </span>
+                      <span className={formatLoss(lossByItemId.get(item.id)).cls}>{formatLoss(lossByItemId.get(item.id)).text}</span>
                     </p>
                   </div>
                   <div className="flex items-center gap-0.5 shrink-0">
