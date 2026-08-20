@@ -232,11 +232,6 @@ type Props = {
   // since Counts isn't part of their shared green-bar toolbar (it carries
   // its own toolbar row instead, see the flag buttons below).
   onGoToViolation?: (key: string) => void
-  // Lands straight on the History panel instead of the records list --
-  // read once as showHistory's initial value, not a seq-counter/effect,
-  // since this component gets a fresh mount every time Live Sale's mode
-  // switches to 'count2' (see the "Count History" law/view in Live Sale).
-  startOnHistory?: boolean
 }
 
 // Counts' 3 flag categories -- same treatment as Sales/Items' own flag
@@ -247,12 +242,12 @@ const COUNTS_FLAG_TYPES: { key: 'daily' | '7day' | '15day'; letter: string; labe
   { key: '15day', letter: '15', label: '15-Day Counts' },
 ]
 
-export default function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoToViolation, startOnHistory }: Props) {
+export default function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoToViolation }: Props) {
   const { data: session } = useSession()
   const canDelete = isOwnerLevel(session?.user as any)
   const [records, setRecords] = useState<CountRecord[]>([])
   const [loading, setLoading] = useState(true)
-  const [showHistory, setShowHistory] = useState(!!startOnHistory)
+  const [showHistory, setShowHistory] = useState(false)
   const lawsPanel = useLawsPanel('showCountsLaws')
   const [highlightId, setHighlightId] = useState<number | null>(null)
   const [editQty, setEditQty] = useState('')
