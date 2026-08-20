@@ -244,6 +244,67 @@ export default function PageLawsList({
     }
   }
 
+  // Batched versions of the four fetchers above, used only for the initial
+  // per-mount load below -- one request per law/flag was multiplying by
+  // however many laws+flags a scope has, across 30+ mount sites, and was a
+  // meaningful chunk of Vercel's Observability Events volume. Edits still go
+  // through the single-item fetchers above to refresh just the one row.
+  async function fetchTasksForLaws(lawIds: number[]) {
+    if (!lawIds.length) return
+    try {
+      const res = await fetch(`/api/tasks?lawIds=${lawIds.join(',')}`)
+      const tasks = await res.json()
+      const grouped: Record<number, Task[]> = {}
+      for (const id of lawIds) grouped[id] = []
+      if (Array.isArray(tasks)) for (const t of tasks) { if (t.law_id != null) (grouped[t.law_id] ??= []).push(t) }
+      setTaskForLawLoaded(prev => ({ ...prev, ...grouped }))
+    } catch (e) {
+      console.error('fetch tasks error:', e)
+    }
+  }
+
+  async function fetchNotesForLaws(lawIds: number[]) {
+    if (!lawIds.length) return
+    try {
+      const res = await fetch(`/api/page-notes?scopeKey=${encodeURIComponent(scopeKey)}&lawIds=${lawIds.join(',')}&kind=note`)
+      const rows = await res.json()
+      const byId: Record<number, Note> = {}
+      for (const id of lawIds) byId[id] = { notes: '', topic: '', noteDate: '' }
+      if (Array.isArray(rows)) for (const r of rows) { if (r.lawId != null) byId[r.lawId] = r }
+      setNotesByLawId(prev => ({ ...prev, ...byId }))
+    } catch (e) {
+      console.error('fetch note error:', e)
+    }
+  }
+
+  async function fetchTasksForFlags(flagKeys: string[]) {
+    if (!flagKeys.length) return
+    try {
+      const res = await fetch(`/api/tasks?flagKeys=${flagKeys.map(encodeURIComponent).join(',')}`)
+      const tasks = await res.json()
+      const grouped: Record<string, Task[]> = {}
+      for (const k of flagKeys) grouped[k] = []
+      if (Array.isArray(tasks)) for (const t of tasks) { if (t.flag_key) (grouped[t.flag_key] ??= []).push(t) }
+      setTasksByFlagKey(prev => ({ ...prev, ...grouped }))
+    } catch (e) {
+      console.error('fetch tasks error:', e)
+    }
+  }
+
+  async function fetchNotesForFlags(flagKeys: string[]) {
+    if (!flagKeys.length) return
+    try {
+      const res = await fetch(`/api/page-notes?scopeKey=${encodeURIComponent(scopeKey)}&flagKeys=${flagKeys.map(encodeURIComponent).join(',')}&kind=note`)
+      const rows = await res.json()
+      const byKey: Record<string, Note> = {}
+      for (const k of flagKeys) byKey[k] = { notes: '', topic: '', noteDate: '' }
+      if (Array.isArray(rows)) for (const r of rows) { if (r.flagKey) byKey[r.flagKey] = r }
+      setNotesByFlagKey(prev => ({ ...prev, ...byKey }))
+    } catch (e) {
+      console.error('fetch note error:', e)
+    }
+  }
+
   async function fetchReplies(itemType: string, itemId: number | string) {
     try {
       const res = await fetch(`/api/replies?itemType=${itemType}&itemId=${itemId}`)
@@ -382,19 +443,15 @@ export default function PageLawsList({
   useEffect(() => { load() }, [scopeKey])
 
   useEffect(() => {
-    laws.forEach(law => {
-      if (!taskForLawLoaded[law.id]) fetchTasksForLaw(law.id)
-      if (!notesByLawId[law.id]) fetchNoteForLaw(law.id)
-    })
+    fetchTasksForLaws(laws.filter(law => !taskForLawLoaded[law.id]).map(law => law.id))
+    fetchNotesForLaws(laws.filter(law => !notesByLawId[law.id]).map(law => law.id))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [laws])
 
   useEffect(() => {
     if (flags) {
-      flags.forEach(flag => {
-        if (!tasksByFlagKey[flag.key]) fetchTasksForFlag(flag.key)
-        if (!notesByFlagKey[flag.key]) fetchNoteForFlag(flag.key)
-      })
+      fetchTasksForFlags(flags.filter(flag => !tasksByFlagKey[flag.key]).map(flag => flag.key))
+      fetchNotesForFlags(flags.filter(flag => !notesByFlagKey[flag.key]).map(flag => flag.key))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flags])
