@@ -684,20 +684,17 @@ function ItemHubPageInner() {
   // create individual staff member pages in the pane below STAFF_TEAM_ITEMS.
   // Only includes staff in STAFF_ROSTER (Biz members), not all app users.
   const [activeStaff, setActiveStaff] = useState<{ username: string; active: boolean }[]>([])
-  useEffect(() => {
-    const fetchStaff = () => {
-      fetch('/api/staff/status').then(r => r.ok ? r.json() : [])
-        .then(d => {
-          if (!Array.isArray(d)) return
-          const bizStaff = d.filter((s: any) => s.active && STAFF_ROSTER.some(name => name.toLowerCase() === s.username.toLowerCase()))
-          setActiveStaff(bizStaff)
-        })
-        .catch(() => {})
-    }
-    fetchStaff()
-    const interval = setInterval(fetchStaff, 30000)
-    return () => clearInterval(interval)
-  }, [])
+  const fetchStaff = () => {
+    fetch('/api/staff/status').then(r => r.ok ? r.json() : [])
+      .then(d => {
+        if (!Array.isArray(d)) return
+        const bizStaff = d.filter((s: any) => s.active && STAFF_ROSTER.some(name => name.toLowerCase() === s.username.toLowerCase()))
+        setActiveStaff(bizStaff)
+      })
+      .catch(() => {})
+  }
+  useEffect(() => { fetchStaff() }, [])
+  usePolling(fetchStaff, 30000)
 
   // UK's people + per-person submenus + selected submenu's columns/rows --
   // shared between the merged pane (a flat "every person's every submenu"
@@ -1002,24 +999,19 @@ function ItemHubPageInner() {
   // DynamicTasksSection instance already uses), instead of every pane row
   // running its own fetch the way PageToolIcons does for its single page.
   const [taskCounts, setTaskCounts] = useState<Record<string, number>>({})
-  useEffect(() => {
-    let cancelled = false
-    function load() {
-      fetch('/api/tasks').then(r => r.ok ? r.json() : []).then((all: unknown) => {
-        if (cancelled) return
-        const list = Array.isArray(all) ? all as { submenu?: string | null; done?: boolean }[] : []
-        const counts: Record<string, number> = {}
-        for (const t of list) {
-          if (t.done || !t.submenu) continue
-          counts[t.submenu] = (counts[t.submenu] ?? 0) + 1
-        }
-        setTaskCounts(counts)
-      }).catch(() => {})
-    }
-    load()
-    const id = setInterval(load, 60000)
-    return () => { cancelled = true; clearInterval(id) }
-  }, [])
+  function loadTaskCounts() {
+    fetch('/api/tasks').then(r => r.ok ? r.json() : []).then((all: unknown) => {
+      const list = Array.isArray(all) ? all as { submenu?: string | null; done?: boolean }[] : []
+      const counts: Record<string, number> = {}
+      for (const t of list) {
+        if (t.done || !t.submenu) continue
+        counts[t.submenu] = (counts[t.submenu] ?? 0) + 1
+      }
+      setTaskCounts(counts)
+    }).catch(() => {})
+  }
+  useEffect(() => { loadTaskCounts() }, [])
+  usePolling(loadTaskCounts, 60000)
   const taskCountFor = (scopeKey: string) => taskCounts[scopeKey] ?? 0
   // A few pane rows' PageToolIcons scopeKey differs from their own pane
   // label (either because the label was later shortened for the pane -- see
@@ -1390,29 +1382,30 @@ function ItemHubPageInner() {
   // Custom Cash/Manage row order (Settings > Reorder Lists) -- shared with
   // ReorderListsPanel via props so a move there is reflected in this same
   // pane immediately, not just after a refresh.
+  // paneOrder/paneLabels/paneGroups/paneHidden below all share one pattern:
+  // an owner-level account can customize the sidebar (Settings > Reorder
+  // Lists) and everyone else's pane should pick that up without a refresh.
+  // These used to poll every 5s each (hand-rolled setInterval, no
+  // visibility guard) -- for cosmetic settings that realistically change a
+  // few times a year, that was four separate endpoints getting hit
+  // thousands of times a day per open tab, including tabs sitting hidden
+  // in the background, for nothing. usePolling's existing 60s/
+  // visibility-gated cadence (same as everything else in this file) is
+  // still fast enough that a reorder shows up for other staff within a
+  // minute, at a small fraction of the request volume.
   const [paneOrder, setPaneOrder] = useState<PaneOrderMap>({})
-  useEffect(() => {
-    const fetchOrder = () => {
-      fetch('/api/pane-order').then(r => r.ok ? r.json() : {}).then(setPaneOrder).catch(() => {})
-    }
-    fetchOrder()
-    const interval = setInterval(fetchOrder, 5000)
-    return () => clearInterval(interval)
-  }, [])
+  const fetchPaneOrder = () => fetch('/api/pane-order').then(r => r.ok ? r.json() : {}).then(setPaneOrder).catch(() => {})
+  useEffect(() => { fetchPaneOrder() }, [])
+  usePolling(fetchPaneOrder, 60000)
   // Same shared-with-everyone pattern as paneOrder above, but for display
   // labels instead of row order -- see ReorderListsPanel.tsx and
   // /api/pane-labels. Purely cosmetic: a row's `key` (used for routing,
   // PageToolIcons scopeKey, and every task/notes/laws/flag lookup) never
   // changes, so this can't orphan any of that data.
   const [paneLabels, setPaneLabels] = useState<Record<string, string>>({})
-  useEffect(() => {
-    const fetchLabels = () => {
-      fetch('/api/pane-labels').then(r => r.ok ? r.json() : {}).then(setPaneLabels).catch(() => {})
-    }
-    fetchLabels()
-    const interval = setInterval(fetchLabels, 5000)
-    return () => clearInterval(interval)
-  }, [])
+  const fetchPaneLabels = () => fetch('/api/pane-labels').then(r => r.ok ? r.json() : {}).then(setPaneLabels).catch(() => {})
+  useEffect(() => { fetchPaneLabels() }, [])
+  usePolling(fetchPaneLabels, 60000)
   const paneLabel = (key: string, fallback: string) => paneLabels[key] ?? fallback
   // Same shared-with-everyone pattern again, but for which section a Cash
   // row sits in -- see /api/pane-groups and ReorderListsPanel.tsx. A row
@@ -1424,14 +1417,9 @@ function ItemHubPageInner() {
   // Customers/Services -- see the Cash pane loop below for how
   // isSelfTitled/chipLabel/chipBorder end up applied per row.
   const [paneGroups, setPaneGroups] = useState<Record<string, { group_name: string | null; standalone: boolean }>>({})
-  useEffect(() => {
-    const fetchGroups = () => {
-      fetch('/api/pane-groups').then(r => r.ok ? r.json() : {}).then(setPaneGroups).catch(() => {})
-    }
-    fetchGroups()
-    const interval = setInterval(fetchGroups, 5000)
-    return () => clearInterval(interval)
-  }, [])
+  const fetchPaneGroups = () => fetch('/api/pane-groups').then(r => r.ok ? r.json() : {}).then(setPaneGroups).catch(() => {})
+  useEffect(() => { fetchPaneGroups() }, [])
+  usePolling(fetchPaneGroups, 60000)
   // Same shared-with-everyone pattern again, but for which rows are hidden
   // from the sidebar entirely -- see /api/pane-hidden and
   // ReorderListsPanel.tsx. Purely a visibility override, same guarantee as
@@ -1439,14 +1427,9 @@ function ItemHubPageInner() {
   // task/notes/laws/flag lookup keyed off it are untouched, so un-hiding it
   // later brings it straight back with everything intact.
   const [paneHidden, setPaneHidden] = useState<Record<string, boolean>>({})
-  useEffect(() => {
-    const fetchHidden = () => {
-      fetch('/api/pane-hidden').then(r => r.ok ? r.json() : {}).then(setPaneHidden).catch(() => {})
-    }
-    fetchHidden()
-    const interval = setInterval(fetchHidden, 5000)
-    return () => clearInterval(interval)
-  }, [])
+  const fetchPaneHidden = () => fetch('/api/pane-hidden').then(r => r.ok ? r.json() : {}).then(setPaneHidden).catch(() => {})
+  useEffect(() => { fetchPaneHidden() }, [])
+  usePolling(fetchPaneHidden, 60000)
   // New Sale/Live Sale/Log used to be hardcoded sub-buttons nested under
   // the Sales row, then their own standalone rows. Now Sales, Bills, Loss
   // by Date, and Loss by Target have all folded into Live Sale's own mode
