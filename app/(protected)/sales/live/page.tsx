@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import dynamic from 'next/dynamic'
-import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { usePresenceReporter } from '@/lib/usePresenceReporter'
 import { isOwnerLevel } from '@/lib/roles'
@@ -17,6 +16,11 @@ import { TrainingGuideModal } from './_components/TrainingGuideModal'
 const AliasWidePage = dynamic(() => import('../../aliases/wide/page'), { ssr: false })
 const ServiceMatchesPage = dynamic(() => import('../../matches/wide/page'), { ssr: false })
 const NewItemForm = dynamic(() => import('../../item/_components/NewItemForm'), { ssr: false })
+// Item 360's own detail view (loss/gain history, pack-chain, aliases,
+// merge) -- already built to run standalone off just an itemId (see its
+// own comment), so tapping an item's name here can pop it up in place
+// instead of navigating to the Loss by Item page just to look one item up.
+const ItemDetailPanel = dynamic(() => import('../../item/_components/ItemDetailPanel'), { ssr: false })
 // "Count 2" tab -- the old standalone Counts page's own component,
 // embedded wholesale rather than folded apart, kept around as a safety
 // net for the pieces (History, Analytics, free-form any-item counting)
@@ -41,7 +45,6 @@ function formatPrice(num: number | string): string {
 export default function LiveSalePage(props: any = {}) {
   console.log('LiveSalePage mounted with new item picker')
   usePresenceReporter('live-tapping a sale')
-  const router = useRouter()
   const { data: session } = useSession()
   const canDeleteCounts = isOwnerLevel(session?.user as any)
 
@@ -72,6 +75,11 @@ export default function LiveSalePage(props: any = {}) {
   const [taps, setTaps] = useState<Tap[]>([])
   const [saleType, setSaleType] = useState<'WIC' | 'GMC'>('WIC')
   const [error, setError] = useState('')
+  // Tapping an item's name opens its full Item 360 detail (loss/gain
+  // history, pack-chain, aliases, merge) as its own popup -- separate from
+  // selectedItem/the sale-tap sheet, since the two can be open from
+  // different rows at once with no relationship to each other.
+  const [viewingItemId, setViewingItemId] = useState<number | null>(null)
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
   // Snapshot of whether selectedItem was due-for-count at the moment its
   // sheet opened -- countStatus itself updates the instant a count is
@@ -1322,7 +1330,7 @@ export default function LiveSalePage(props: any = {}) {
                     <div className="flex-1 min-w-0">
                       <button
                         type="button"
-                        onClick={() => router.push(`/item?view=item360&jumpItemId=${item.id}`)}
+                        onClick={() => setViewingItemId(item.id)}
                         className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 leading-tight truncate text-left hover:underline transition"
                       >
                         {item.name}
@@ -1380,7 +1388,7 @@ export default function LiveSalePage(props: any = {}) {
                   <div className="flex-1 min-w-0">
                     <button
                       type="button"
-                      onClick={() => router.push(`/item?view=item360&jumpItemId=${item.id}`)}
+                      onClick={() => setViewingItemId(item.id)}
                       className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 leading-tight truncate text-left hover:underline transition"
                     >
                       {item.name}
@@ -1644,6 +1652,30 @@ export default function LiveSalePage(props: any = {}) {
         </div>
         )
       })()}
+
+      {/* Item 360 popup -- opened by tapping an item's name, same bottom-
+          sheet treatment as the sale-tap sheet above rather than navigating
+          to the Loss by Item page just to look one item up. */}
+      {viewingItemId != null && (
+        <div className="fixed inset-0 bg-black/50 flex items-end z-50" onClick={() => setViewingItemId(null)}>
+          <div
+            className="w-full bg-white rounded-t-2xl shadow-xl max-h-[92dvh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
+              <h3 className="text-sm font-bold text-gray-900">Item Details</h3>
+              <button
+                type="button"
+                onClick={() => setViewingItemId(null)}
+                className="w-8 h-8 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 text-xl font-bold leading-none flex items-center justify-center transition"
+              >
+                ×
+              </button>
+            </div>
+            <ItemDetailPanel itemId={viewingItemId} />
+          </div>
+        </div>
+      )}
 
       {lossPrompt && <LossDialog prompt={lossPrompt} onClose={() => setLossPrompt(null)} />}
       {pairingPrompt && <PairingDialog prompt={pairingPrompt} onClose={() => setPairingPrompt(null)} />}
