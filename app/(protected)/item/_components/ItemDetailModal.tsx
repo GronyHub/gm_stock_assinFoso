@@ -25,7 +25,7 @@ export default function ItemDetailModal({ itemId, onClose }: { itemId: number; o
             ×
           </button>
         </div>
-        <ItemDetailPanel itemId={itemId} />
+        <ItemDetailPanel itemId={itemId} onItemGone={onClose} />
       </div>
     </div>
   )

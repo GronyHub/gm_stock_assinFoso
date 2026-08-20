@@ -1175,11 +1175,13 @@ function ItemHubPageInner() {
   }
 
   // From the loss dialog: jump to the records that usually explain a
-  // "loss". Sales/Bills are their own lossViews; Counts is now Live
-  // Sale's own Count 2 tab (see jumpToLiveSaleTab) instead of a separate
-  // lossView.
+  // "loss". Sales/Bills are their own lossViews; Counts lands on Live
+  // Sale's Sale mode -- its own pinned "COUNT NOW" block and count-
+  // interval law views already surface what Count 2's violation lists
+  // used to, so there's no dedicated Counts destination to jump into
+  // anymore.
   function goFixRecords(view: 'sales' | 'bills' | 'counts') {
-    if (view === 'counts') { jumpToLiveSaleTab('count2'); return }
+    if (view === 'counts') { jumpToLiveSaleTab('sale'); return }
     pickLossView(view)
   }
 
@@ -1354,11 +1356,11 @@ function ItemHubPageInner() {
     // lands on Team Times -- shared and unfiltered, it already shows every
     // staff member's clock records.
     if (key === 'no_staff_times') { pickLossView('teamTimes'); return }
-    // Daily/7-Day/15-Day Counts aren't a separate lossView any more --
-    // they're queues Live Sale's own Count 2 tab already knows how to
-    // show filtered to one violation (same CountsTab component, just
-    // embedded there now instead of behind its own destination).
-    if (key === 'daily' || key === '7day' || key === '15day') { jumpToLiveSaleTab('count2', key); return }
+    // Daily/7-Day/15-Day Counts aren't a separate lossView any more, and
+    // no longer have a dedicated violation-filtered list to jump to --
+    // Live Sale's own pinned "COUNT NOW" block and its Daily/Every 7d/
+    // Every 15d law views already cover the same ground from Sale mode.
+    if (key === 'daily' || key === '7day' || key === '15day') { jumpToLiveSaleTab('sale'); return }
     const targetView = VIOLATION_HOME[key]
     if (!targetView) return
     pickLossView(targetView)

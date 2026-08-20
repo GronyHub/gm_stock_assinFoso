@@ -38,7 +38,7 @@ export default function Item360Tab({ jumpToItemId, onJumpDone }: {
           className="text-[7px] font-semibold text-blue-600 hover:underline">
           ← View all items
         </button>
-        <ItemDetailPanel itemId={selectedId} />
+        <ItemDetailPanel itemId={selectedId} onItemGone={() => setSelectedId(null)} />
       </div>
     )
   }

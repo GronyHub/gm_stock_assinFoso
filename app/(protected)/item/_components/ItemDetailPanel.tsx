@@ -1,6 +1,5 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { isOwnerLevel } from '@/lib/roles'
 import { ItemDetail, type SummaryRow, type AliasRecord, type MatchRecord, type CandidateItem } from './LossTab'
@@ -14,10 +13,15 @@ interface ItemDetailPanelProps {
   itemId: number
   collapsed?: boolean
   onExpand?: () => void
+  // Called once this item stops existing here (merged away or deleted) --
+  // the caller decides what "gone" means for it (close the popup, go back
+  // to a list, ...) instead of this component picking a page to navigate
+  // to on its own, since it's now opened from many different pages, not
+  // just its own standalone destination.
+  onItemGone?: () => void
 }
 
-export default function ItemDetailPanel({ itemId, collapsed, onExpand }: ItemDetailPanelProps) {
-  const router = useRouter()
+export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGone }: ItemDetailPanelProps) {
   const { data: session } = useSession()
   const isOwnerLevelUser = isOwnerLevel(session?.user as any)
 
@@ -153,9 +157,13 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand }: ItemDet
           setAliasRecords(prev => ({ ...prev, [item.item_id]: newAliases }))
           setMatchRecords(prev => ({ ...prev, [item.item_name.trim().toLowerCase()]: newMatches }))
         }}
-        onMerged={() => router.push('/item')}
+        onMerged={() => onItemGone?.()}
+        // Opened in a new tab rather than navigated to in place -- this
+        // popup can be sitting on top of any page (Live Sale, Bills, a PO,
+        // ...), and jumping the current tab to Sales would silently lose
+        // whatever the user was doing there.
         onDateClick={(date, itemName) =>
-          router.push(`/item?tab=loss&view=sales&jumpDate=${encodeURIComponent(date)}&jumpItem=${encodeURIComponent(itemName)}`)}
+          window.open(`/item?tab=loss&view=sales&jumpDate=${encodeURIComponent(date)}&jumpItem=${encodeURIComponent(itemName)}`, '_blank')}
         showPrices={showPrices}
         lossOnly={lossOnly}
         gainOnly={gainOnly}
