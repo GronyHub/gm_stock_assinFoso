@@ -361,7 +361,13 @@ export default function SalesTab({
   const [monthFilter, setMonthFilter] = useState<number | null>(null)
   const [yearFilter, setYearFilter] = useState<number | null>(null)
   const [linesMap, setLinesMap] = useState<Record<number, Line[]>>({})
-  const [editingId, setEditingId] = useState<number | null>(null)
+  // 'new-gmc' is a not-yet-created receipt -- the same edit panel below
+  // (date/customer/cash fields + line items) doubles as its create form,
+  // keyed by addingGmcDate instead of an existing receipt's id. Nothing is
+  // written to the database until Save (see saveEdit's 'new-gmc' branch);
+  // Cancel just clears this state.
+  const [editingId, setEditingId] = useState<number | 'new-gmc' | null>(null)
+  const [addingGmcDate, setAddingGmcDate] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({ receipt_date: '', customer_name: '', cash_counted: '' })
   const [editLines, setEditLines] = useState<EditLine[]>([])
   const [saving, setSaving] = useState(false)
@@ -521,6 +527,28 @@ export default function SalesTab({
     setEditingId(r.id)
   }
 
+  // Dates that already have a real GMC receipt -- the "+G" button on a
+  // WIC row only shows for dates missing from this set, and disappears
+  // again (no more button to click) the moment one exists, whether that's
+  // from this flow or entered any other way.
+  const gmcDates = useMemo(() =>
+    new Set(receipts.filter(r => r.customer_name === 'Grony Multimedia as Customer').map(r => r.receipt_date?.slice(0, 10)))
+  , [receipts])
+
+  function startAddGmc(date: string) {
+    setEditForm({ receipt_date: date, customer_name: 'Grony Multimedia as Customer', cash_counted: '' })
+    setEditLines([])
+    setNewItemQuery('')
+    attachments.reset([])
+    setAddingGmcDate(date)
+    setEditingId('new-gmc')
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setAddingGmcDate(null)
+  }
+
   function addEditLine(item: Item & { selling_rate?: string | number | null }) {
     setEditLines(prev => [...prev, {
       id: null,
@@ -588,6 +616,35 @@ export default function SalesTab({
     if (attachments.hasError) { setEditError('An attachment failed to upload — remove it or try again before saving.'); return }
     setSaving(true)
     setEditError('')
+
+    if (editingId === 'new-gmc') {
+      if (!editLines.length) { setSaving(false); setEditError('Add at least one item before saving.'); return }
+      const res = await fetch('/api/sales/receipt', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: editForm.receipt_date,
+          customerName: editForm.customer_name || 'Grony Multimedia as Customer',
+          cashCounted: editForm.cash_counted ? parseFloat(editForm.cash_counted) : null,
+          attachments: attachments.saved,
+          lines: editLines.map(l => ({
+            itemId: l.itemId, itemName: l.item_name,
+            qty: parseFloat(l.quantity) || 0, price: parseFloat(l.item_price) || 0,
+            total: (parseFloat(l.quantity) || 0) * (parseFloat(l.item_price) || 0),
+          })),
+        }),
+      })
+      const d = await res.json().catch(() => ({}))
+      setSaving(false)
+      if (res.ok) {
+        cancelEdit()
+        loadReceipts()
+        if (Array.isArray(d.warnings) && d.warnings.length > 0) alert(d.warnings.join('\n\n'))
+      } else {
+        setEditError(d.error || 'Could not create the GMC receipt. Please try again.')
+      }
+      return
+    }
+
     const headerRes = await fetch(`/api/sales/${editingId}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -928,11 +985,16 @@ export default function SalesTab({
           // below with just ITEM/C/QTY/SP/TOTAL, so ITEM has the width to
           // fit on one line. CC/Inv/WNW are blanked out on the bar while
           // itemNameMatch is true, same as before.
-          const editingRow = editingId === r.id && (
+          // The "+G" flow's own not-yet-created receipt attaches to
+          // whichever WIC row is for that date, same panel as an ordinary
+          // edit -- there's no receipt id yet to match against, so it's
+          // keyed by addingGmcDate instead.
+          const isAddingGmcHere = editingId === 'new-gmc' && addingGmcDate === r.receipt_date?.slice(0, 10) && fmtCust(r.customer_name) === 'W'
+          const editingRow = (editingId === r.id || isAddingGmcHere) && (
               <tr>
                 <td colSpan={1 + colPrefs.shownColumns.length} className="p-0 bg-blue-50/40 border-b border-gray-200">
                 <div className="p-2 space-y-2">
-                  <p className="text-[10px] font-bold text-gray-600">Edit Receipt</p>
+                  <p className="text-[10px] font-bold text-gray-600">{isAddingGmcHere ? 'New GMC Receipt' : 'Edit Receipt'}</p>
                   <div className="grid grid-cols-2 gap-1">
                     <div>
                       <p className="text-[9px] text-gray-400 mb-0.5">Date</p>
@@ -1033,12 +1095,14 @@ export default function SalesTab({
                       className="flex-1 bg-green-600 text-white text-[10px] font-bold rounded py-1 disabled:opacity-40">
                       {saving ? 'Saving…' : 'Save'}
                     </button>
-                    <button onClick={() => setEditingId(null)}
+                    <button onClick={cancelEdit}
                       className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
-                    <button onClick={() => setConfirmDeleteId(r.id)}
-                      className="px-3 py-1 bg-red-50 text-red-600 text-[10px] font-semibold rounded">Delete</button>
+                    {editingId !== 'new-gmc' && (
+                      <button onClick={() => setConfirmDeleteId(r.id)}
+                        className="px-3 py-1 bg-red-50 text-red-600 text-[10px] font-semibold rounded">Delete</button>
+                    )}
                   </div>
-                  {confirmDeleteId === r.id && (
+                  {editingId !== 'new-gmc' && confirmDeleteId === r.id && (
                     <div className="mt-1.5 px-2 py-2 bg-red-50 border border-red-100 rounded flex items-center justify-between gap-2">
                       <span className="text-[10px] text-red-700 font-medium">Delete this receipt permanently?</span>
                       <div className="flex gap-1 shrink-0">
@@ -1083,6 +1147,17 @@ export default function SalesTab({
                     className={`leading-none shrink-0 ${isDayHead ? 'text-blue-100 hover:text-white' : 'text-gray-400 hover:text-gray-700'}`}>
                     ✏️
                   </button>
+                  {/* Only on a WIC row whose date has no GMC receipt yet --
+                      a way to catch up a missed GMC internal-use entry for
+                      that day, not something that belongs to the WIC
+                      receipt itself. Disappears once one exists. */}
+                  {fmtCust(r.customer_name) === 'W' && !gmcDates.has(r.receipt_date?.slice(0, 10)) && (
+                    <button onClick={e => { e.stopPropagation(); startAddGmc(r.receipt_date.slice(0, 10)) }}
+                      title="Add this day's missing GMC receipt"
+                      className={`leading-none shrink-0 text-[10px] font-extrabold ${isDayHead ? 'text-blue-100 hover:text-white' : 'text-purple-500 hover:text-purple-700'}`}>
+                      +G
+                    </button>
+                  )}
                   {/* truncate (not whitespace-nowrap on the whole span) so a
                       long customer name ellipsizes within its fixed-width
                       column instead of overflowing into CC next door. */}
