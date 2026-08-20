@@ -28,6 +28,10 @@ const LossFeedTab = dynamic(() => import('../../item/_components/LossFeedTab'), 
 const NewBillForm = dynamic(() => import('../../bills/new/page'), { ssr: false })
 const SalesAnalyticsSection = dynamic(() => import('../../item/_components/SalesAnalyticsSection'), { ssr: false })
 const BillsAnalyticsSection = dynamic(() => import('../../item/_components/BillsAnalyticsSection'), { ssr: false })
+// Live/Log share one analytics view (same underlying tap data); Loss by
+// Date gets its own, backed by the same loss/gain events LossFeedTab lists.
+const LiveSaleAnalyticsSection = dynamic(() => import('../../item/_components/LiveSaleAnalyticsSection'), { ssr: false })
+const LossFeedAnalyticsSection = dynamic(() => import('../../item/_components/LossFeedAnalyticsSection'), { ssr: false })
 
 type Item = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; product_type: string | null; count_interval?: string | null }
 type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null }
@@ -226,6 +230,9 @@ export default function LiveSalePage(props: any = {}) {
   const [billsAddingNew, setBillsAddingNew] = useState(false)
   const [salesShowAnalytics, setSalesShowAnalytics] = useState(false)
   const [billsShowAnalytics, setBillsShowAnalytics] = useState(false)
+  const [liveShowAnalytics, setLiveShowAnalytics] = useState(false)
+  const [logShowAnalytics, setLogShowAnalytics] = useState(false)
+  const [feedShowAnalytics, setFeedShowAnalytics] = useState(false)
 
   const groups = useMemo(() => {
     const uniqueGroups = new Set<string>()
@@ -1014,6 +1021,21 @@ export default function LiveSalePage(props: any = {}) {
       <>
       <div className="h-full flex flex-col bg-white">
         {renderModeToggleRow()}
+        <div className="flex justify-end px-1.5 py-1 border-b border-gray-100">
+          <button
+            type="button"
+            onClick={() => setLogShowAnalytics(a => !a)}
+            title="Analytics"
+            className={`shrink-0 font-bold rounded-lg px-2 py-1 text-[10px] transition ${
+              logShowAnalytics ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            📊
+          </button>
+        </div>
+        {logShowAnalytics ? (
+          <div className="px-3 pt-3 flex-1 overflow-auto"><LiveSaleAnalyticsSection /></div>
+        ) : (
         <div className="flex-1 overflow-auto">
           {taps.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-8">No sales recorded</p>
@@ -1139,6 +1161,7 @@ export default function LiveSalePage(props: any = {}) {
             </div>
           )}
         </div>
+        )}
       </div>
 
       <TrainingGuideModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
@@ -1331,6 +1354,11 @@ export default function LiveSalePage(props: any = {}) {
               openForm={lossByDateLaws.openForm} setOpenForm={lossByDateLaws.setOpenForm}
               hideZeroFlags={lossByDateLaws.hideZeroFlags} setHideZeroFlags={lossByDateLaws.setHideZeroFlags}
               activeFilters={lossByDateLaws.activeFilters} toggleFilter={lossByDateLaws.toggleFilter} dark={false} />
+            <button type="button" onClick={() => setFeedShowAnalytics(a => !a)}
+              title="Analytics"
+              className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${feedShowAnalytics ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+              📊
+            </button>
             <button
               type="button"
               onClick={() => setShowHelpModal(true)}
@@ -1341,6 +1369,9 @@ export default function LiveSalePage(props: any = {}) {
             </button>
           </div>
         </div>
+        {feedShowAnalytics ? (
+          <div className="px-3 pt-3 flex-1 overflow-auto"><LossFeedAnalyticsSection /></div>
+        ) : (<>
         {lossByDateLaws.show && (
           <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 overflow-auto max-h-48">
             <PageLawsList
@@ -1364,6 +1395,7 @@ export default function LiveSalePage(props: any = {}) {
         <div className="flex-1 overflow-auto">
           <LossFeedTab search={embeddedSearch} kind={feedShowGains ? 'gain' : 'loss'} />
         </div>
+        </>)}
       </div>
       <TrainingGuideModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
       </>
@@ -1557,6 +1589,18 @@ export default function LiveSalePage(props: any = {}) {
                 {saleType}
               </button>
             )}
+            {mode === 'sale' && (
+              <button
+                type="button"
+                onClick={() => setLiveShowAnalytics(a => !a)}
+                title="Analytics"
+                className={`shrink-0 font-bold rounded-lg transition ${compactSearch ? 'px-1.5 py-1 text-[10px]' : 'px-2.5 py-1 text-xs'} ${
+                  liveShowAnalytics ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                📊
+              </button>
+            )}
           </>
         )
 
@@ -1578,6 +1622,10 @@ export default function LiveSalePage(props: any = {}) {
           </div>
         )
       })()}
+
+      {liveShowAnalytics ? (
+        <div className="px-3 pt-3 flex-1 overflow-auto"><LiveSaleAnalyticsSection /></div>
+      ) : (<>
 
       {/* GMC warning -- internal-use recording is easy to mis-tap and hard
           to catch afterward (it's excluded from revenue/margin and feeds
@@ -2157,6 +2205,8 @@ export default function LiveSalePage(props: any = {}) {
         </div>
         )
       })()}
+
+      </>)}
 
       {/* Item detail popup -- opened by tapping an item's name, instead of
           navigating to the Loss by Item page (which no longer exists as
