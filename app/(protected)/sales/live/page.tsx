@@ -18,6 +18,16 @@ import { TrainingGuideModal } from './_components/TrainingGuideModal'
 const AliasWidePage = dynamic(() => import('../../aliases/wide/page'), { ssr: false })
 const ServiceMatchesPage = dynamic(() => import('../../matches/wide/page'), { ssr: false })
 const NewItemForm = dynamic(() => import('../../item/_components/NewItemForm'), { ssr: false })
+// Sales/Bills/Loss by Date -- folded into Live Sale's own switcher (same
+// treatment Count 2 and Log got) since none of them had anything left
+// that justified a separate sidebar destination once the "New Sale" flow
+// was dropped and the classic Sales list's own tap-a-sale case moved here.
+const SalesTab = dynamic(() => import('../../item/_components/SalesTab'), { ssr: false })
+const BillsTab = dynamic(() => import('../../item/_components/BillsTab'), { ssr: false })
+const LossFeedTab = dynamic(() => import('../../item/_components/LossFeedTab'), { ssr: false })
+const NewBillForm = dynamic(() => import('../../bills/new/page'), { ssr: false })
+const SalesAnalyticsSection = dynamic(() => import('../../item/_components/SalesAnalyticsSection'), { ssr: false })
+const BillsAnalyticsSection = dynamic(() => import('../../item/_components/BillsAnalyticsSection'), { ssr: false })
 
 type Item = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; product_type: string | null; count_interval?: string | null }
 type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null }
@@ -56,17 +66,31 @@ export default function LiveSalePage(props: any = {}) {
   const {
     lawsPanel: incomingLawsPanel, hideTopControls = false,
     violationCounts = {}, violationTypes = [], serviceGroups = [], itemsWithViolations = {},
+    // Sales'/Bills' own violation flag types -- same treatment as Items'
+    // violationTypes above, just a separate array since each set only
+    // makes sense (and only knows how to filter) its own embedded tab.
+    salesViolationTypes = [], billsViolationTypes = [],
+    // Seeded from an item's detail popup ("click a date" in its loss
+    // table, opened in a new tab) -- lands on the Sales tab with that
+    // receipt jumped to and highlighted.
+    jumpToReceiptDate = null, jumpToReceiptItemName = null, onReceiptJumpDone,
     productTypeFilter: controlledProductTypeFilter, onProductTypeFilterChange,
     groupFilter: controlledGroupFilter, onGroupFilterChange,
     showHelpModal: controlledShowHelpModal, onHelpModalChange,
     hideFilterBar = false,
     searchSlotEl = null,
-    // "Sale Log" search result deep-link (jumpToTab: 'log'). jumpToTabSeq
-    // is a plain incrementing counter, not a boolean, so a second jump to
-    // the same tab still fires (a boolean/string prop that repeats its
-    // value wouldn't re-trigger the effect below).
+    // Every "open Live Sale on a specific tab" deep link -- the "Sale Log"
+    // search result (jumpToTab: 'log'), "Fix now: Sales/Bills" buttons, a
+    // Sales/Bills violation pill (jumpToTab + jumpToTabViolation), and a
+    // global-search Sales/Bills result (jumpToTab + jumpToTabSearch) all
+    // land here. jumpToTabSeq is a plain incrementing counter, not a
+    // boolean, so a second jump to the same tab still fires (a boolean/
+    // string prop that repeats its value wouldn't re-trigger the effect
+    // below).
     jumpToTabSeq = 0,
     jumpToTab = null,
+    jumpToTabViolation = null,
+    jumpToTabSearch = null,
   } = props
   const compactSearch = !!searchSlotEl
 
@@ -124,17 +148,30 @@ export default function LiveSalePage(props: any = {}) {
   // as a second grid mode) was removed once Sale mode grew its own pinned
   // "COUNT NOW" block and inline count field for due items (below) -- those
   // don't depend on this mode existing, they're Sale-mode-native. 'log' is
-  // the other tab sharing this switcher -- what used to be a separate
-  // showLog boolean, folded in as a tab rather than its own sidebar
-  // destination since it's just history of Sale mode's own actions.
-  // Count 2 (the full old standalone Counts page) was the third tab here
-  // until its own History/Analytics/free-form counting no longer had
-  // anything Sale mode's due-item treatment and Log tab didn't already
-  // cover, and it was removed along with the Loss by Item page.
-  const [mode, setMode] = useState<'sale' | 'log'>('sale')
+  // the other original tab sharing this switcher -- what used to be a
+  // separate showLog boolean, folded in as a tab rather than its own
+  // sidebar destination since it's just history of Sale mode's own
+  // actions. Count 2 (the full old standalone Counts page) was a third
+  // tab here until its own History/Analytics/free-form counting no longer
+  // had anything Sale mode's due-item treatment and Log tab didn't already
+  // cover, and it was removed along with the Loss by Item page. 'sales'/
+  // 'bills'/'feed'/'lossByTarget' followed once the classic Sales Receipts
+  // list, Bills, Loss by Date, and Loss by Target lost anything that
+  // justified a separate sidebar destination once "New Sale" was dropped.
+  const [mode, setMode] = useState<'sale' | 'sales' | 'bills' | 'feed' | 'lossByTarget' | 'log'>('sale')
+  const [salesViolationFilter, setSalesViolationFilter] = useState<string | null>(null)
+  const [billsViolationFilter, setBillsViolationFilter] = useState<string | null>(null)
+  const [embeddedSearch, setEmbeddedSearch] = useState('')
   useEffect(() => {
     if (!jumpToTabSeq || !jumpToTab) return
     setMode(jumpToTab)
+    setSalesViolationFilter(jumpToTab === 'sales' ? jumpToTabViolation : null)
+    setBillsViolationFilter(jumpToTab === 'bills' ? jumpToTabViolation : null)
+    // The 'gains' violation pill is the one way Loss by Date's own filter
+    // (not a violation key it understands) needs setting on arrival --
+    // every other feed jump defaults back to the Losses side.
+    if (jumpToTab === 'feed') setFeedShowGains(jumpToTabViolation === 'gains')
+    setEmbeddedSearch(jumpToTabSearch ?? '')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jumpToTabSeq])
   const [dailyItems, setDailyItems] = useState<DueItem[]>([])
@@ -155,6 +192,15 @@ export default function LiveSalePage(props: any = {}) {
   const [editCountQty, setEditCountQty] = useState('')
   const [editCountNotes, setEditCountNotes] = useState('')
   const [editCountSaving, setEditCountSaving] = useState(false)
+  // Loss by Date's own Losses/Gains toggle, same as it had as a standalone
+  // page.
+  const [feedShowGains, setFeedShowGains] = useState(false)
+  // Bills has no internal "add new" of its own (unlike Sales, which this
+  // is a tap-to-sell page already covers) -- it always relied on this
+  // page rendering NewBillForm as a sibling, so that comes along with it.
+  const [billsAddingNew, setBillsAddingNew] = useState(false)
+  const [salesShowAnalytics, setSalesShowAnalytics] = useState(false)
+  const [billsShowAnalytics, setBillsShowAnalytics] = useState(false)
 
   const groups = useMemo(() => {
     const uniqueGroups = new Set<string>()
@@ -165,6 +211,15 @@ export default function LiveSalePage(props: any = {}) {
     }
     return Array.from(uniqueGroups).sort()
   }, [allItems])
+
+  // SalesTab/BillsTab expect items shaped {id, item_name, cf_group} -- this
+  // page's own item list already uses {id, name, group} for everything
+  // else, so this is just a field-name adapter, not a different data
+  // source (same trick countsTabItems used to use for CountsTab).
+  const salesBillsItems = useMemo(
+    () => allItems.map(i => ({ id: i.id, item_name: i.name, cf_group: i.group })),
+    [allItems]
+  )
 
   // Merges the 3 due-count queues into one per-item lookup for Count
   // mode's grid badges -- daily/7-day GMC items are "due", 15-day items
@@ -230,6 +285,34 @@ export default function LiveSalePage(props: any = {}) {
         setCurrentView(currentView?.kind === 'violation' && currentView.key === v.key
           ? null
           : { kind: 'violation' as const, key: v.key })
+      }
+    })),
+    // Sales'/Bills' own violation flags -- unlike the Items ones above,
+    // clicking one switches the whole tab (there's no "filter the current
+    // grid" option once you're on a different mode's data entirely), and
+    // sets that tab's own violation filter instead of currentView.
+    ...salesViolationTypes.map((v: ViolationType) => ({
+      key: v.key,
+      label: v.label,
+      description: v.description,
+      count: violationCounts[v.key] ?? 0,
+      active: mode === 'sales' && salesViolationFilter === v.key,
+      onViewClick: () => {
+        if (mode === 'sales' && salesViolationFilter === v.key) { setSalesViolationFilter(null); return }
+        setMode('sales')
+        setSalesViolationFilter(v.key)
+      }
+    })),
+    ...billsViolationTypes.map((v: ViolationType) => ({
+      key: v.key,
+      label: v.label,
+      description: v.description,
+      count: violationCounts[v.key] ?? 0,
+      active: mode === 'bills' && billsViolationFilter === v.key,
+      onViewClick: () => {
+        if (mode === 'bills' && billsViolationFilter === v.key) { setBillsViolationFilter(null); return }
+        setMode('bills')
+        setBillsViolationFilter(v.key)
       }
     })),
     ...countIntervalFlags,
@@ -720,17 +803,20 @@ export default function LiveSalePage(props: any = {}) {
     }
   }
 
-  // The Sale/Log switcher shared by every tab's own header, so jumping
-  // straight from Log back to Sale doesn't require detouring back through
-  // the grid first.
+  // The tab switcher shared by every mode's own header, so jumping between
+  // any two of them doesn't require detouring back through the grid first.
   function renderModeToggle(compact: boolean) {
     const btnCls = (active: boolean, color: string) =>
-      `font-bold rounded-md transition ${compact ? 'px-1.5 py-1 text-[10px]' : 'px-2.5 py-1 text-xs'} ${
+      `font-bold rounded-md transition whitespace-nowrap ${compact ? 'px-1.5 py-1 text-[10px]' : 'px-2 py-1 text-xs'} ${
         active ? `${color} text-white` : 'text-gray-500 hover:text-gray-700'
       }`
     return (
-      <div className="inline-flex bg-gray-200 rounded-lg p-0.5">
+      <div className="inline-flex bg-gray-200 rounded-lg p-0.5 flex-wrap">
         <button type="button" onClick={() => setMode('sale')} title="Sale mode" className={btnCls(mode === 'sale', 'bg-blue-600')}>Sale</button>
+        <button type="button" onClick={() => setMode('sales')} title="Sales" className={btnCls(mode === 'sales', 'bg-emerald-600')}>Sales</button>
+        <button type="button" onClick={() => setMode('bills')} title="Bills" className={btnCls(mode === 'bills', 'bg-orange-600')}>Bills</button>
+        <button type="button" onClick={() => setMode('feed')} title="Loss by Date" className={btnCls(mode === 'feed', 'bg-red-600')}>Loss by Date</button>
+        <button type="button" onClick={() => setMode('lossByTarget')} title="Loss by Target" className={btnCls(mode === 'lossByTarget', 'bg-pink-600')}>Loss by Tgt</button>
         <button type="button" onClick={() => setMode('log')} title="Log" className={btnCls(mode === 'log', 'bg-gray-700')}>Log</button>
       </div>
     )
@@ -973,6 +1059,186 @@ export default function LiveSalePage(props: any = {}) {
         )}
       </div>
 
+      <TrainingGuideModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
+      </>
+    )
+  }
+
+  // Sales tab -- the classic Sales Receipts list. Folded in here since it
+  // had nothing left that justified its own sidebar destination once the
+  // New Sale form was dropped and its own tap-a-sale case moved to Sale mode.
+  if (mode === 'sales') {
+    return (
+      <>
+      <div className="h-full flex flex-col bg-white">
+        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
+          <h2 className="text-sm font-bold text-gray-900">Sales</h2>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={embeddedSearch}
+              onChange={e => setEmbeddedSearch(e.target.value)}
+              placeholder="Search…"
+              className="text-xs px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 w-32"
+            />
+            {renderModeToggle(false)}
+            <button type="button" onClick={() => setSalesShowAnalytics(a => !a)}
+              title="Analytics"
+              className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${salesShowAnalytics ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+              📊
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowHelpModal(true)}
+              className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 font-semibold text-sm flex items-center justify-center transition"
+              title="Help"
+            >
+              ?
+            </button>
+          </div>
+        </div>
+        {salesShowAnalytics ? (
+          <div className="px-3 pt-3 flex-1 overflow-auto"><SalesAnalyticsSection /></div>
+        ) : (
+          <div className="flex-1 overflow-auto">
+            <SalesTab items={salesBillsItems} groupFilter={groupFilter} search={embeddedSearch}
+              violation={salesViolationFilter}
+              jumpToDate={jumpToReceiptDate} jumpToItemName={jumpToReceiptItemName}
+              onJumpDone={onReceiptJumpDone} />
+          </div>
+        )}
+      </div>
+      <TrainingGuideModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
+      </>
+    )
+  }
+
+  // Bills tab -- BillsTab itself has no "add new" flow of its own; it always
+  // relied on a sibling NewBillForm rendered externally, which now lives
+  // inside this tab's own header instead.
+  if (mode === 'bills') {
+    return (
+      <>
+      <div className="h-full flex flex-col bg-white">
+        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
+          <h2 className="text-sm font-bold text-gray-900">Bills</h2>
+          <div className="flex items-center gap-2">
+            {!billsAddingNew && (
+              <input
+                type="text"
+                value={embeddedSearch}
+                onChange={e => setEmbeddedSearch(e.target.value)}
+                placeholder="Search…"
+                className="text-xs px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 w-32"
+              />
+            )}
+            <button type="button" onClick={() => setBillsAddingNew(a => !a)}
+              className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${billsAddingNew ? 'bg-red-600 text-white' : 'bg-green-600 text-white hover:bg-green-500'}`}>
+              {billsAddingNew ? 'Cancel' : '+ New Bill'}
+            </button>
+            {renderModeToggle(false)}
+            {!billsAddingNew && (
+              <button type="button" onClick={() => setBillsShowAnalytics(a => !a)}
+                title="Analytics"
+                className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${billsShowAnalytics ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                📊
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowHelpModal(true)}
+              className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 font-semibold text-sm flex items-center justify-center transition"
+              title="Help"
+            >
+              ?
+            </button>
+          </div>
+        </div>
+        {billsAddingNew ? (
+          <div className="px-4 flex-1 overflow-auto">
+            <NewBillForm onSuccess={() => setBillsAddingNew(false)} />
+          </div>
+        ) : billsShowAnalytics ? (
+          <div className="px-3 pt-3 flex-1 overflow-auto"><BillsAnalyticsSection /></div>
+        ) : (
+          <div className="flex-1 overflow-auto">
+            <BillsTab items={salesBillsItems} groupFilter={groupFilter} search={embeddedSearch} violation={billsViolationFilter} />
+          </div>
+        )}
+      </div>
+      <TrainingGuideModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
+      </>
+    )
+  }
+
+  // Loss by Date tab -- the loss/gain feed.
+  if (mode === 'feed') {
+    return (
+      <>
+      <div className="h-full flex flex-col bg-white">
+        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
+          <h2 className="text-sm font-bold text-gray-900">Loss by Date</h2>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={embeddedSearch}
+              onChange={e => setEmbeddedSearch(e.target.value)}
+              placeholder="Search…"
+              className="text-xs px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 w-32"
+            />
+            <div className="inline-flex bg-gray-200 rounded-lg p-0.5">
+              <button type="button" onClick={() => setFeedShowGains(false)}
+                className={`px-2 py-1 text-[10px] font-bold rounded-md transition ${!feedShowGains ? 'bg-red-600 text-white' : 'text-gray-500 hover:text-gray-700'}`}>
+                Losses
+              </button>
+              <button type="button" onClick={() => setFeedShowGains(true)}
+                className={`px-2 py-1 text-[10px] font-bold rounded-md transition ${feedShowGains ? 'bg-amber-600 text-white' : 'text-gray-500 hover:text-gray-700'}`}>
+                🚩 Gains
+              </button>
+            </div>
+            {renderModeToggle(false)}
+            <button
+              type="button"
+              onClick={() => setShowHelpModal(true)}
+              className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 font-semibold text-sm flex items-center justify-center transition"
+              title="Help"
+            >
+              ?
+            </button>
+          </div>
+        </div>
+        <div className="flex-1 overflow-auto">
+          <LossFeedTab search={embeddedSearch} kind={feedShowGains ? 'gain' : 'loss'} />
+        </div>
+      </div>
+      <TrainingGuideModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
+      </>
+    )
+  }
+
+  // Loss by Target tab -- still an unimplemented placeholder upstream; kept
+  // here purely so its sidebar destination can be retired without losing
+  // the (currently empty) spot for whenever it's built.
+  if (mode === 'lossByTarget') {
+    return (
+      <>
+      <div className="h-full flex flex-col bg-white">
+        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
+          <h2 className="text-sm font-bold text-gray-900">Loss by Target</h2>
+          <div className="flex items-center gap-2">
+            {renderModeToggle(false)}
+            <button
+              type="button"
+              onClick={() => setShowHelpModal(true)}
+              className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 font-semibold text-sm flex items-center justify-center transition"
+              title="Help"
+            >
+              ?
+            </button>
+          </div>
+        </div>
+        <div className="py-20 text-center text-gray-400 text-xs">Coming soon.</div>
+      </div>
       <TrainingGuideModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
       </>
     )

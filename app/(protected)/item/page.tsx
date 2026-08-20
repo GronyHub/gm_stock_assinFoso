@@ -47,23 +47,16 @@ import ExpenseOrdersPanel from './_components/ExpenseOrdersPanel'
 import dynamic from 'next/dynamic'
 const loading = (h: string) => <div className={`py-10 text-center text-gray-400 text-sm`}>{h}</div>
 const ItemsTab       = dynamic(() => import('./_components/ItemsTab'),        { ssr: false, loading: () => loading('Loading…') })
-const SalesTab       = dynamic(() => import('./_components/SalesTab'),        { ssr: false, loading: () => loading('Loading…') })
-const BillsTab       = dynamic(() => import('./_components/BillsTab'),        { ssr: false, loading: () => loading('Loading…') })
 const ExpensesTab    = dynamic(() => import('./_components/ExpensesTab'),     { ssr: false, loading: () => loading('Loading…') })
 const CABTab         = dynamic(() => import('./_components/CABTab'),          { ssr: false, loading: () => loading('Loading…') })
 const TodayContent   = dynamic(() => import('./_components/TodayContent'),    { ssr: false, loading: () => loading('Loading…') })
-const NewSaleForm    = dynamic(() => import('../sales/new/page'),             { ssr: false, loading: () => loading('Loading…') })
 const LiveSaleForm   = dynamic(() => import('../sales/live/page'),            { ssr: false, loading: () => loading('Loading…') })
-const NewBillForm    = dynamic(() => import('../bills/new/page'),             { ssr: false, loading: () => loading('Loading…') })
 const NewExpenseForm = dynamic(() => import('../expenses/new/page'),          { ssr: false, loading: () => loading('Loading…') })
 const NewItemForm    = dynamic(() => import('./_components/NewItemForm'),     { ssr: false, loading: () => loading('Loading…') })
 const ItemsAnalyticsSection      = dynamic(() => import('./_components/ItemsAnalyticsSection'),      { ssr: false, loading: () => loading('Loading analytics…') })
 const ViolationsAnalyticsSection = dynamic(() => import('./_components/ViolationsAnalyticsSection'), { ssr: false, loading: () => loading('Loading analytics…') })
-const SalesAnalyticsSection      = dynamic(() => import('./_components/SalesAnalyticsSection'),      { ssr: false, loading: () => loading('Loading analytics…') })
-const BillsAnalyticsSection      = dynamic(() => import('./_components/BillsAnalyticsSection'),      { ssr: false, loading: () => loading('Loading analytics…') })
 const ExpensesAnalyticsSection   = dynamic(() => import('./_components/ExpensesAnalyticsSection'),   { ssr: false, loading: () => loading('Loading analytics…') })
 const LossTab        = dynamic(() => import('./_components/LossTab'),         { ssr: false, loading: () => loading('Loading…') })
-const LossFeedTab    = dynamic(() => import('./_components/LossFeedTab'),     { ssr: false, loading: () => loading('Loading…') })
 const ProfitLossTab  = dynamic(() => import('./_components/ProfitLossTab'),   { ssr: false, loading: () => loading('Loading…') })
 const DailySummaryTab = dynamic(() => import('./_components/DailySummaryTab'), { ssr: false, loading: () => loading('Loading…') })
 const GronyManageContent = dynamic(() => import('./_components/GronyManageTab'), { ssr: false, loading: () => loading('Loading…') })
@@ -103,7 +96,7 @@ type OuterTab = 'today' | 'loss' | 'uk' | 'ch'
 // CHView is unioned in too even though C&H is its own separate top-level
 // tab, not part of the Grony Cash merge -- it just reuses this same shared
 // state/pane machinery rather than needing its own parallel copy.
-type LossView = 'home' | 'items' | 'sales' | 'bills' | 'feed' | 'lossByTarget' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts' | 'dailySummary'
+type LossView = 'home' | 'items' | 'sales' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts' | 'dailySummary'
   | 'purchaseOrders' | 'services'
   // "New Customer" used to be a toggle-open form living inside the Customers
   // list page itself (CustomersPage's own showForm state) -- it's now this
@@ -231,11 +224,8 @@ const REPORT_VIEWS = new Set<LossView>([
 // inside these same sections.
 const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: string }[] = [
   { key: 'items',    label: 'Items',    icon: '📦' },
-  { key: 'sales',    label: 'Sales',    icon: '🧾' },
-  { key: 'bills',    label: 'Bills',    icon: '📃' },
+  { key: 'sales',    label: 'Live Sale',    icon: '⚡' },
   { key: 'purchaseOrders',   label: 'Purchase Ord',   icon: '🛒' },
-  { key: 'feed',         label: 'Loss by Date',   icon: '📉' },
-  { key: 'lossByTarget', label: 'Loss by Tgt',    icon: '🎯' },
   { key: 'expenses', label: 'Expenses', icon: '💳' },
   { key: 'vendors',   label: 'Vendors',   icon: '🏭' },
   { key: 'pl',       label: 'P&L',      icon: '📈' },
@@ -406,7 +396,11 @@ export const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCate
 // they're handled as an early-return special case in goToViolation instead,
 // since they jump into a specific tab of Live Sale (Count 2), not a plain
 // lossView + violation pill the way everything below still works.
-const VIOLATION_HOME: Partial<Record<string, LossView>> = {
+// 'sales'/'bills'/'feed' below aren't real LossViews any more -- each is one
+// of Live Sale's own embedded tabs now, so goToViolation special-cases them
+// into a jumpToLiveSaleTab() call instead of the generic pickLossView(target)
+// fallback every other target here still uses.
+const VIOLATION_HOME: Partial<Record<string, LossView | 'sales' | 'bills' | 'feed'>> = {
   neg_soh: 'items', no_sp: 'items', no_cp: 'items', no_group: 'items',
   duplicates: 'items', unlinked_named: 'items', service_violation: 'items',
   alias_prezoho_sales: 'items', alias_prezoho_bills: 'items', alias_prezoho_receipts: 'items', alias_flagged: 'items', alias_ambiguous: 'items',
@@ -427,9 +421,6 @@ const LOSSVIEW_PILL_KEYS: Partial<Record<LossView, string[]>> = {
     'neg_soh', 'no_sp', 'no_cp', 'no_group', 'duplicates', 'unlinked_named', 'service_violation',
     'alias_prezoho_sales', 'alias_prezoho_bills', 'alias_prezoho_receipts', 'alias_flagged', 'alias_ambiguous', 'alias_name_conflicts',
   ],
-  feed: ['gains'],
-  sales: ['no_cash', 'missing_days', 'cost_price', 'dup_receipt', 'no_attachment', 'high_wnw'],
-  bills: ['no_vendor', 'no_items_bills', 'bill_total_mismatch', 'bill_no_attachment'],
   cab: ['unchecked_cab'],
 }
 
@@ -510,8 +501,12 @@ function ItemHubPageInner() {
   const rawInitialView = searchParams.get('view')
   const initialExtraView = rawInitialView ? OLD_LOSSVIEW_TO_EXTRA[rawInitialView] : undefined
   const initialView = (initialExtraView ? 'items' : rawInitialView) as LossView | null
+  // 'losses' (the old standalone Loss Feed tab) lands on Live Sale now --
+  // Loss by Date is one of its embedded tabs, jumped to via the mount
+  // effect below (jumpToLiveSaleTab isn't defined yet this early in the
+  // component, so it can't be called directly from this initializer).
   const [lossView, setLossView]         = useState<LossView>(
-    rawInitialTab === 'losses' ? 'feed'
+    rawInitialTab === 'losses' ? 'sales'
       : oldTabView ?? initialView ?? (outerTab === 'ch' ? CH_ITEMS[0].key : 'items')
   )
   const [itemsExtraView, setItemsExtraView] = useState<ItemsExtraView>(initialExtraView ?? 'none')
@@ -558,12 +553,10 @@ function ItemHubPageInner() {
   // /item?tab=loss&view=sales&jumpDate=...&jumpItem=..., which the
   // URL-sync effect below strips off again on its first run since only
   // tab/view/q are ever written back to the URL.
+  // Fed straight into LiveSaleForm's own jumpToReceiptDate/jumpToReceiptItemName
+  // props now that Sales lives inside Live Sale's own Sales tab.
   const [jumpToReceiptDate, setJumpToReceiptDate] = useState<string | null>(searchParams.get('jumpDate'))
   const [jumpToReceiptItemName, setJumpToReceiptItemName] = useState<string | null>(searchParams.get('jumpItem'))
-  // Loss by Date's own Losses/Gains toggle -- used to only switch to the
-  // gains feed via the (now-removed) Tasks page's 'gains' violation deep-
-  // link, so this is now the only way to reach it.
-  const [feedShowGains, setFeedShowGains] = useState(false)
   const [showItemsLaws, setShowItemsLaws] = useState(() => {
     if (typeof window === 'undefined') return false
     return localStorage.getItem('showItemsLaws') === 'true'
@@ -572,34 +565,12 @@ function ItemHubPageInner() {
   const [itemsLawsOpenForm, setItemsLawsOpenForm] = useState<LawFormKind>(null)
   const [hideZeroFlags, setHideZeroFlags] = useState(false)
   const itemsFilters = useLawFilterState()
-  // Sales/Bills laws -- same inline-panel treatment as Items above (see
-  // showItemsLaws), one icon per view, no separate overlay-opening icon
-  // anymore. scopeKey stays "Sales"/"Bills" (capitalized, matching
-  // CASH_LABEL) so this reads the laws/flags/tasks that already existed
-  // under the old PageToolIcons-opened CombinedToolsPanel for these views,
-  // instead of starting a second, empty scope.
-  const [showSalesLaws, setShowSalesLaws] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return localStorage.getItem('showSalesLaws') === 'true'
-  })
-  const [salesLawsRefresh, setSalesLawsRefresh] = useState(0)
-  const [salesLawsOpenForm, setSalesLawsOpenForm] = useState<LawFormKind>(null)
-  const [salesHideZeroFlags, setSalesHideZeroFlags] = useState(false)
-  const salesFilters = useLawFilterState()
-  const [showBillsLaws, setShowBillsLaws] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return localStorage.getItem('showBillsLaws') === 'true'
-  })
-  const [billsLawsRefresh, setBillsLawsRefresh] = useState(0)
-  const [billsLawsOpenForm, setBillsLawsOpenForm] = useState<LawFormKind>(null)
-  const [billsHideZeroFlags, setBillsHideZeroFlags] = useState(false)
-  const billsFilters = useLawFilterState()
-  // The rest of this page's many smaller panes (New Sale, P&L, Receipts,
-  // Purchase Orders, Loss by Date/Target, ...) each get their
-  // own inline law panel too, same as Items/Sales/Bills above -- one
-  // useLawsPanel() per scope, rendered through the inlineLaws() helper
-  // below instead of hand-rolling the toggle+panel JSX 16 more times.
-  const newSaleLaws = useLawsPanel('showNewSaleLaws')
+  // The rest of this page's many smaller panes (P&L, Receipts, Purchase
+  // Orders, ...) each get their own inline law panel too, same as Items
+  // above -- one useLawsPanel() per scope, rendered through the
+  // inlineLaws() helper below instead of hand-rolling the toggle+panel
+  // JSX repeatedly. Sales/Bills/Loss by Date/Loss by Target no longer need
+  // one of their own -- all four live inside Live Sale's own laws panel now.
   const plLaws = useLawsPanel('showPLLaws')
   const newCustomerLaws = useLawsPanel('showNewCustomerLaws')
   const receiptsLaws = useLawsPanel('showReceiptsLaws')
@@ -612,28 +583,38 @@ function ItemHubPageInner() {
   const expenseOrdersLaws = useLawsPanel('showExpenseOrdersLaws')
   const aliasWideTableLaws = useLawsPanel('showAliasWideTableLaws')
   const serviceMatchesLaws = useLawsPanel('showServiceMatchesLaws')
-  const lossByDateLaws = useLawsPanel('showLossByDateLaws')
-  const lossByTargetLaws = useLawsPanel('showLossByTargetLaws')
   const liveSaleLaws = useLawsPanel('showLiveSaleLaws')
   const [liveExpanded, setLiveExpanded] = useState(false)
   const [liveProductTypeFilter, setLiveProductTypeFilter] = useState<'all' | 'goods' | 'services'>('all')
   const [liveGroupFilter, setLiveGroupFilter] = useState<string | null>(null)
   const [liveHelpModalOpen, setLiveHelpModalOpen] = useState(false)
   const [liveSearchSlotEl, setLiveSearchSlotEl] = useState<HTMLDivElement | null>(null)
-  // Deep links into a specific Live Sale tab (Sale/Log) -- the "Sale Log"
-  // search result, a "Fix now: Counts" button, and a Daily/7-Day/15-Day
-  // Counts violation pill all jump here now that none of those is a real
-  // LossView any more (Counts folded into Live Sale's Sale mode, Log into
-  // its own Log tab). Seq is a plain incrementing counter so the same tab
-  // can be jumped to twice in a row and still fire.
+  // Deep links into a specific Live Sale tab (Sale/Sales/Bills/Loss by
+  // Date/Loss by Tgt/Log) -- the "Sale Log" search result, a "Fix now:
+  // Counts" button, a Daily/7-Day/15-Day Counts violation pill, a Sales/
+  // Bills/Loss-by-Date violation pill, and the global search's Sales/Bills
+  // results all jump here now that none of those is a real LossView any
+  // more (each folded into one of Live Sale's own tabs). Seq is a plain
+  // incrementing counter so the same tab can be jumped to twice in a row
+  // and still fire.
   const [liveSaleJumpSeq, setLiveSaleJumpSeq] = useState(0)
-  const [liveSaleJumpTab, setLiveSaleJumpTab] = useState<'sale' | 'log'>('sale')
-  function jumpToLiveSaleTab(tab: 'sale' | 'log') {
+  const [liveSaleJumpTab, setLiveSaleJumpTab] = useState<'sale' | 'sales' | 'bills' | 'feed' | 'lossByTarget' | 'log'>('sale')
+  const [liveSaleJumpViolation, setLiveSaleJumpViolation] = useState<string | null>(null)
+  const [liveSaleJumpSearch, setLiveSaleJumpSearch] = useState<string | null>(null)
+  function jumpToLiveSaleTab(tab: 'sale' | 'sales' | 'bills' | 'feed' | 'lossByTarget' | 'log', violation: string | null = null, search: string | null = null) {
     pickLossView('sales')
-    setAddForm('live')
     setLiveSaleJumpTab(tab)
+    setLiveSaleJumpViolation(violation)
+    setLiveSaleJumpSearch(search)
     setLiveSaleJumpSeq(s => s + 1)
   }
+  // Finishes the old ?tab=losses deep link (see the lossView initializer
+  // above) -- can't call jumpToLiveSaleTab directly from that initializer
+  // since it isn't defined yet that early in the component.
+  useEffect(() => {
+    if (rawInitialTab === 'losses') jumpToLiveSaleTab('feed')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function inlineLaws(scopeKey: string, panel: ReturnType<typeof useLawsPanel>) {
     return (<>
@@ -1042,7 +1023,6 @@ function ItemHubPageInner() {
   // <PageToolIcons scopeKey=.../> call for the authoritative string.
   const CASH_TASK_SCOPE_OVERRIDES: Partial<Record<LossView, string>> = {
     purchaseOrders: 'Purchase Orders',
-    lossByTarget: 'Loss by Target',
   }
   const cashTaskScopeKey = (key: LossView) => CASH_TASK_SCOPE_OVERRIDES[key] ?? CASH_LABEL.get(key) ?? key
   // Every remaining Manage row's scopeKey already equals its own label
@@ -1063,16 +1043,6 @@ function ItemHubPageInner() {
     if (typeof window === 'undefined' || !window.localStorage) return
     localStorage.setItem('showItemsLaws', showItemsLaws.toString())
   }, [showItemsLaws])
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.localStorage) return
-    localStorage.setItem('showSalesLaws', showSalesLaws.toString())
-  }, [showSalesLaws])
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.localStorage) return
-    localStorage.setItem('showBillsLaws', showBillsLaws.toString())
-  }, [showBillsLaws])
 
   function changeTab(t: OuterTab) {
     setOuterTab(t)
@@ -1160,28 +1130,29 @@ function ItemHubPageInner() {
   }
 
   // From the loss dialog: jump to the records that usually explain a
-  // "loss". Sales/Bills are their own lossViews; Counts lands on Live
-  // Sale's Sale mode -- its own pinned "COUNT NOW" block and count-
-  // interval law views already surface what Count 2's violation lists
-  // used to, so there's no dedicated Counts destination to jump into
-  // anymore.
+  // "loss". Sales/Bills/Counts all land inside Live Sale now -- its own
+  // Sales/Bills tabs for the first two, and Sale mode's pinned "COUNT NOW"
+  // block/count-interval law views for the third.
   function goFixRecords(view: 'sales' | 'bills' | 'counts') {
     if (view === 'counts') { jumpToLiveSaleTab('sale'); return }
-    pickLossView(view)
+    jumpToLiveSaleTab(view)
   }
 
   // The "+" shortcut menu (see AddShortcutButton) -- jumps straight to a
-  // "create new" flow wherever it already lives. Sales/Bills/Item/Expenses
-  // reuse the existing addForm mechanism (pickLossView resets it, so set it
-  // after); the rest reopen via a per-target signal since their forms are
-  // local component state with no addForm equivalent. Staff Time lands on
-  // Team Times, not a per-person page -- Personal has no Times row of its
-  // own anymore (see Team Times' own history), but TimesTab's admin "add
-  // entry" form works the same regardless of whose page it's opened from.
+  // "create new" flow wherever it already lives. Item/Expenses reuse the
+  // existing addForm mechanism (pickLossView resets it, so set it after);
+  // Sales/Bills land on Live Sale's own Sales/Bills tab instead now (New
+  // Sale is gone -- Sale mode's own tap-a-sale flow is the replacement;
+  // Bills' "+ New Bill" is one click away on its tab rather than opening
+  // pre-expanded); the rest reopen via a per-target signal since their
+  // forms are local component state with no addForm equivalent. Staff Time
+  // lands on Team Times, not a per-person page -- Personal has no Times row
+  // of its own anymore (see Team Times' own history), but TimesTab's admin
+  // "add entry" form works the same regardless of whose page it's opened from.
   function handleShortcut(key: ShortcutKey) {
     switch (key) {
-      case 'sale':       pickLossView('sales');     setAddForm('sale'); break
-      case 'bill':       pickLossView('bills');     setAddForm('bill'); break
+      case 'sale':       jumpToLiveSaleTab('sale'); break
+      case 'bill':       jumpToLiveSaleTab('bills'); break
       case 'item':       pickLossView('items');     setAddForm('item'); break
       case 'expense':    pickLossView('expenses');  setAddForm('expense'); break
       case 'cabConfirm': pickLossView('cab');       setCabConfirmSignal(n => n + 1); break
@@ -1311,9 +1282,9 @@ function ItemHubPageInner() {
   }, [searchParams])
 
   function goToViolation(key: string) {
-    // The loss-summary rows point at the Loss feed (a row of the merged
-    // pane), not a violation pill.
-    if (key === '__loss_feed') { pickLossView('feed'); return }
+    // The loss-summary rows point at the Loss feed, one of Live Sale's own
+    // embedded tabs now, not a plain lossView.
+    if (key === '__loss_feed') { jumpToLiveSaleTab('feed'); return }
     // The Advert section's own checks (audio adverts, jingle, equipment)
     // now route straight to their exact row instead of just landing
     // somewhere in Manage's section generally.
@@ -1331,6 +1302,12 @@ function ItemHubPageInner() {
     if (key === 'daily' || key === '7day' || key === '15day') { jumpToLiveSaleTab('sale'); return }
     const targetView = VIOLATION_HOME[key]
     if (!targetView) return
+    // Sales/Bills/Loss by Date pills all land inside one of Live Sale's own
+    // embedded tabs now, rather than a plain lossView -- see jumpToLiveSaleTab.
+    if (targetView === 'sales' || targetView === 'bills' || targetView === 'feed') {
+      jumpToLiveSaleTab(targetView, key)
+      return
+    }
     pickLossView(targetView)
     setViolation(key)
   }
@@ -1465,59 +1442,29 @@ function ItemHubPageInner() {
     const interval = setInterval(fetchHidden, 5000)
     return () => clearInterval(interval)
   }, [])
-  // New Sale/Live Sale used to be hardcoded sub-buttons nested under the
-  // Sales row (Log was a third), only ever appearing together and never
-  // independently reorderable/hideable/renamable. Standalone entries here
-  // instead, so each goes through the exact same paneOrder/paneLabels/
-  // paneGroups/paneHidden pipeline as any other Cash row (see the render
-  // loop below for how their clicks/active-state map back onto
-  // lossView='sales' + addForm, since neither is a real LossView of its
-  // own). Log itself moved again since -- it's now one of Live Sale's own
-  // tabs (Sale/Count/Count 2/Log) rather than a separate destination.
-  const SALES_ACTION_ITEMS: { key: string; label: string; icon: string; group?: string }[] = [
-    { key: 'newSale',  label: 'New Sale',  icon: '🧾', group: 'Sales' },
-    { key: 'liveSale', label: 'Live Sale', icon: '⚡', group: 'Sales' },
-  ]
-  const effectiveSalesActionItems = SALES_ACTION_ITEMS.map(item => {
-    const override = paneGroups[item.key]
-    if (!override) return { ...item, standaloneOverride: false }
-    if (override.standalone) return { ...item, group: paneLabel(item.key, item.label), standaloneOverride: true }
-    return { ...item, group: override.group_name ?? undefined, standaloneOverride: false }
-  })
+  // New Sale/Live Sale/Log used to be hardcoded sub-buttons nested under
+  // the Sales row, then their own standalone rows. Now Sales, Bills, Loss
+  // by Date, and Loss by Target have all folded into Live Sale's own mode
+  // switcher (Sale/Sales/Bills/Loss by Date/Loss by Tgt/Log) the same way
+  // Count 2 and Log did before them, so the 'sales' CASH_ITEMS row (now
+  // labeled "Live Sale") is a plain row again like any other -- no more
+  // addForm-based sub-item special-casing needed.
   function cashItemActive(key: string) {
-    if (key === 'newSale') return lossView === 'sales' && addForm === 'sale'
-    if (key === 'liveSale') return lossView === 'sales' && addForm === 'live'
-    // Sales itself now only means "browsing the plain sales list" -- New
-    // Sale/Live Sale are their own standalone rows above, each with their
-    // own highlight, so Sales shouldn't also light up while one of them
-    // is open (it did back when they were nested sub-buttons under it,
-    // but as independent rows that reads as two things selected at once
-    // instead of one).
-    if (key === 'sales') return lossView === 'sales' && !addForm
     return lossView === key
   }
   function cashItemClick(key: string) {
-    if (key === 'newSale') { pickLossView('sales'); setAddForm('sale'); return }
-    if (key === 'liveSale') { pickLossView('sales'); setAddForm('live'); return }
     pickLossView(key as LossView)
   }
   function cashItemTaskScope(key: string) {
-    if (key === 'newSale') return 'New Sale'
-    if (key === 'liveSale') return 'Live Sale'
     return cashTaskScopeKey(key as LossView)
   }
-  const effectiveCashItems = CASH_ITEMS.map(item => {
+  const combinedCashItems = CASH_ITEMS.map(item => {
     const override = paneGroups[item.key]
     if (!override) return { ...item, standaloneOverride: false }
     if (override.standalone) return { ...item, group: paneLabel(item.key, item.label), standaloneOverride: true }
     return { ...item, group: override.group_name ?? undefined, standaloneOverride: false }
   })
-  // New Sale/Live Sale/Log sit right after Sales by default (their old
-  // nested position) -- paneOrder can still move them anywhere else, this
-  // only picks where they start out.
-  const combinedCashItems = effectiveCashItems.flatMap(item =>
-    item.key === 'sales' ? [item, ...effectiveSalesActionItems] : [item]
-  )
+  const effectiveCashItems = combinedCashItems
   // Groups with a self-titled member (Expenses the section vs. Expenses
   // the row) never need the separate floating header -- that member's own
   // chip already serves as the heading. Computed as a set of group names,
@@ -1678,11 +1625,11 @@ function ItemHubPageInner() {
   const paneActive = (cond: boolean) => cond && !settingsOpen
   const paneAccent = PANE_ACCENT[outerTab]
 
-  // New Sale / Live Sale / Log take over the whole content area with their
-  // own thing to do (build a cart, tap items, review a log) -- the
-  // Analytics toggle and flag badges above them belong to the Sales list
-  // view they're not showing, so they're just clutter here.
-  const salesFormOpen = lossView === 'sales' && (addForm === 'sale' || addForm === 'live')
+  // Live Sale takes over the whole content area with its own thing to do
+  // (build a cart, tap items, review a log, browse Sales/Bills/Loss by
+  // Date/Loss by Tgt) -- the Analytics toggle and flag badges above it
+  // belong to submenus that don't apply here, so they're just clutter.
+  const salesFormOpen = lossView === 'sales'
 
   return (
     <div className="-mx-4 -mt-4 -mb-6 flex flex-col h-[100dvh] md:h-[calc(100dvh-56px)]">
@@ -1719,15 +1666,9 @@ function ItemHubPageInner() {
                 <Fragment key={v.key}>
                   <SidePaneButton icon={v.icon} label={paneLabel(v.key, v.label)} mode={cashDisplayMode}
                     active={paneActive(cashItemActive(v.key))} divider={i > 0}
-                    badge={v.key === 'sales' ? salesFlagsCount
+                    badge={v.key === 'sales' ? (salesFlagsCount + billsFlagsCount + countsFlagsCount + lossByDateFlagsCount)
                       : v.key === 'items' ? itemsFlagsCount
-                      : v.key === 'bills' ? billsFlagsCount
                       : v.key === 'cab' ? cabFlagsCount
-                      // Counts merged into Live Sale (no longer its own
-                      // row) -- the due-count badge lives on Live Sale
-                      // itself instead.
-                      : v.key === 'liveSale' ? countsFlagsCount
-                      : v.key === 'feed' ? lossByDateFlagsCount
                       : v.key === 'expenses' ? expensesFlagsCount
                       : v.key === 'customers' ? customersFlagsCount
                       : v.key === 'vendors' ? vendorsFlagsCount
@@ -1950,32 +1891,18 @@ function ItemHubPageInner() {
                     horizontally instead of wrapping once there are more
                     pills than fit, so this row never pushes Groups/Search
                     further down the screen. */}
-                {(lossView === 'items' || lossView === 'sales' || lossView === 'bills') && !salesFormOpen && (
+                {lossView === 'items' && (
                   <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
-                    {lossView === 'items' && (
-                      <LawsToggleBar show={showItemsLaws} setShow={setShowItemsLaws}
-                        openForm={itemsLawsOpenForm} setOpenForm={setItemsLawsOpenForm}
-                        hideZeroFlags={hideZeroFlags} setHideZeroFlags={setHideZeroFlags}
-                        activeFilters={itemsFilters.activeFilters} toggleFilter={itemsFilters.toggleFilter} />
-                    )}
-                    {lossView === 'sales' && (
-                      <LawsToggleBar show={showSalesLaws} setShow={setShowSalesLaws}
-                        openForm={salesLawsOpenForm} setOpenForm={setSalesLawsOpenForm}
-                        hideZeroFlags={salesHideZeroFlags} setHideZeroFlags={setSalesHideZeroFlags}
-                        activeFilters={salesFilters.activeFilters} toggleFilter={salesFilters.toggleFilter} />
-                    )}
-                    {lossView === 'bills' && (
-                      <LawsToggleBar show={showBillsLaws} setShow={setShowBillsLaws}
-                        openForm={billsLawsOpenForm} setOpenForm={setBillsLawsOpenForm}
-                        hideZeroFlags={billsHideZeroFlags} setHideZeroFlags={setBillsHideZeroFlags}
-                        activeFilters={billsFilters.activeFilters} toggleFilter={billsFilters.toggleFilter} />
-                    )}
+                    <LawsToggleBar show={showItemsLaws} setShow={setShowItemsLaws}
+                      openForm={itemsLawsOpenForm} setOpenForm={setItemsLawsOpenForm}
+                      hideZeroFlags={hideZeroFlags} setHideZeroFlags={setHideZeroFlags}
+                      activeFilters={itemsFilters.activeFilters} toggleFilter={itemsFilters.toggleFilter} />
                   </div>
                 )}
                 <div className="flex items-center gap-1.5">
 
                   {/* Groups dropdown - Hidden when viewing Live Sale */}
-                  {!(addForm === 'live' && lossView === 'sales') && (
+                  {lossView !== 'sales' && (
                   <div className="relative shrink-0" ref={groupRef}>
                     <button onClick={() => setGroupOpen(o => !o)}
                       className={`text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap flex items-center gap-1 transition
@@ -2033,7 +1960,7 @@ function ItemHubPageInner() {
                   )}
 
                   {/* Search - Hidden when viewing Live Sale */}
-                  {!(addForm === 'live' && lossView === 'sales') && (
+                  {lossView !== 'sales' && (
                   <div className="relative min-w-0 flex-1 max-w-xs" ref={searchRef}>
                     <input value={search} onChange={e => setSearch(e.target.value)}
                       onFocus={() => setSearchOpen(true)}
@@ -2065,7 +1992,7 @@ function ItemHubPageInner() {
                   )}
                 </div>
 
-                {['items', 'sales', 'bills', 'expenses'].includes(lossView) && !salesFormOpen && (
+                {['items', 'expenses'].includes(lossView) && (
                   <div className="flex items-center gap-1.5">
 
                     {/* Columns picker -- Items submenu only, next to New since it's
@@ -2095,11 +2022,11 @@ function ItemHubPageInner() {
                       📊 {showAnalytics ? 'List' : 'Ana'}
                     </button>
 
-                    {/* New button — Items/Bills/Expenses/PO submenus only; Sales' New/Live/Log
-                        moved to their own rows under Sales in the left pane, and report-style
-                        and Counts submenus have no add-form, so neither shows a button here. */}
-                    {!showAnalytics && lossView !== 'sales' && (() => {
-                      const formKey = lossView === 'items' ? 'item' : lossView === 'bills' ? 'bill' : 'expense'
+                    {/* New button — Items/Expenses/PO submenus only; Sales/Bills' own New
+                        flows live inside Live Sale's own Sales/Bills tabs now, and report-
+                        style submenus have no add-form, so neither shows a button here. */}
+                    {!showAnalytics && (() => {
+                      const formKey = lossView === 'items' ? 'item' : 'expense'
                       return (
                         <button onClick={() => setAddForm(addForm === formKey ? null : formKey)}
                           className={`shrink-0 ml-auto text-xs font-semibold px-3 py-1 rounded-lg transition
@@ -2111,7 +2038,7 @@ function ItemHubPageInner() {
                   </div>
                 )}
 
-                {addForm === 'live' && outerTab === 'loss' && lossView === 'sales' && (
+                {outerTab === 'loss' && lossView === 'sales' && (
                   <div className="flex flex-col gap-1.5 ml-auto items-end">
                     <div className="flex items-center gap-1.5 flex-wrap justify-end">
                       <select
@@ -2167,32 +2094,8 @@ function ItemHubPageInner() {
 
           {/* ── Content ── */}
           <div className="relative flex-1 min-h-0 overflow-y-auto">
-        {addForm === 'sale'    && outerTab === 'loss' && lossView === 'sales'    && (
-          <div className="px-4">
-            <div className="flex items-center justify-between">
-              <LawsToggleBar show={newSaleLaws.show} setShow={newSaleLaws.setShow}
-                openForm={newSaleLaws.openForm} setOpenForm={newSaleLaws.setOpenForm}
-                hideZeroFlags={newSaleLaws.hideZeroFlags} setHideZeroFlags={newSaleLaws.setHideZeroFlags}
-          activeFilters={newSaleLaws.activeFilters} toggleFilter={newSaleLaws.toggleFilter} dark={false} />
-              <button onClick={() => setAddForm(null)}
-                className="text-xs font-semibold px-3 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 border border-gray-300">×</button>
-            </div>
-            {newSaleLaws.show && (
-              <div className="border border-gray-200 rounded-xl bg-white overflow-hidden mb-2">
-                <PageLawsList scopeKey="New Sale" isItemsLaws={true} onChange={newSaleLaws.bumpRefresh}
-                  openForm={newSaleLaws.openForm} setOpenForm={newSaleLaws.setOpenForm}
-                  hideZeroFlags={newSaleLaws.hideZeroFlags} setHideZeroFlags={newSaleLaws.setHideZeroFlags}
-
-              activeFilters={newSaleLaws.activeFilters} />
-              </div>
-            )}
-            <NewSaleForm onSuccess={() => setAddForm(null)} groupFilter={group} />
-          </div>
-        )}
-        {addForm === 'live' && outerTab === 'loss' && lossView === 'sales' && (
+        {outerTab === 'loss' && lossView === 'sales' && (
           <LiveSaleForm
-            key={addForm}
-            onClose={() => setAddForm(null)}
             search={search}
             lawsPanel={liveSaleLaws}
             expanded={liveExpanded}
@@ -2208,8 +2111,15 @@ function ItemHubPageInner() {
             searchSlotEl={liveSearchSlotEl}
             jumpToTabSeq={liveSaleJumpSeq}
             jumpToTab={liveSaleJumpTab}
+            jumpToTabViolation={liveSaleJumpViolation}
+            jumpToTabSearch={liveSaleJumpSearch}
+            jumpToReceiptDate={jumpToReceiptDate}
+            jumpToReceiptItemName={jumpToReceiptItemName}
+            onReceiptJumpDone={() => { setJumpToReceiptDate(null); setJumpToReceiptItemName(null) }}
             violationCounts={violationCounts}
             violationTypes={ITEMS_FLAG_TYPES.map(({ key, label }) => ({ key, label, description: ERROR_VIOLATIONS.find(v => v.key === key)?.description }))}
+            salesViolationTypes={SALES_FLAG_TYPES.map(({ key, label }) => ({ key, label, description: ERROR_VIOLATIONS.find(v => v.key === key)?.description }))}
+            billsViolationTypes={BILLS_FLAG_TYPES.map(({ key, label }) => ({ key, label, description: ERROR_VIOLATIONS.find(v => v.key === key)?.description }))}
             serviceGroups={serviceGroups}
             itemsWithViolations={{
               neg_soh: items.filter(i => Number(i.calculated_soh) < 0 && i.product_type !== 'service').map(i => i.id),
@@ -2219,7 +2129,6 @@ function ItemHubPageInner() {
             }}
           />
         )}
-        {addForm === 'bill'    && outerTab === 'loss' && lossView === 'bills'    && <div className="px-4"><NewBillForm    onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'expense' && outerTab === 'loss' && lossView === 'expenses' && <div className="px-4"><NewExpenseForm onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'item'    && outerTab === 'loss' && lossView === 'items'    && <div className="px-4"><NewItemForm    onSuccess={() => { setAddForm(null); loadItems() }} /></div>}
         {outerTab === 'loss' && lossView === 'pl' && (
@@ -2344,7 +2253,7 @@ function ItemHubPageInner() {
         {outerTab === 'ch' && (
           <TabErrorBoundary><CHTab view={lossView as CHView} childData={ch} /></TabErrorBoundary>
         )}
-        {outerTab === 'today' && !(addForm === 'sale' || addForm === 'bill' || addForm === 'expense') && (
+        {outerTab === 'today' && addForm !== 'expense' && (
           <TabErrorBoundary>
             <div className="h-full overflow-y-auto px-4 space-y-2 pt-2">
               <MyAssignmentsSummary assignments={assignments} deadlines={deadlines} />
@@ -2498,94 +2407,6 @@ function ItemHubPageInner() {
             )}
           </>
         )}
-        {showAnalytics && outerTab === 'loss' && lossView === 'sales' && (
-          <TabErrorBoundary><div className="px-3 pt-3"><SalesAnalyticsSection /></div></TabErrorBoundary>
-        )}
-        {!showAnalytics && addForm !== 'sale' && addForm !== 'live' && outerTab === 'loss' && lossView === 'sales' && (<>
-          {showSalesLaws && (
-            <div className="border-b border-gray-200 bg-white px-3 py-2 shadow-md">
-              <TabErrorBoundary key={salesLawsRefresh}>
-                <PageLawsList
-                  scopeKey="Sales"
-                  isItemsLaws={true}
-                  onChange={() => setSalesLawsRefresh(r => r + 1)}
-                  flags={SALES_FLAG_TYPES.map(({ key, label }) => ({
-                    key, label, count: violationCounts[key] ?? 0,
-                    description: ERROR_VIOLATIONS.find(v => v.key === key)?.description,
-                    onViewClick: () => goToViolation(key),
-                  }))}
-                  openForm={salesLawsOpenForm}
-                  setOpenForm={setSalesLawsOpenForm}
-                  hideZeroFlags={salesHideZeroFlags}
-                  setHideZeroFlags={setSalesHideZeroFlags}
-                  activeFilters={salesFilters.activeFilters}
-                />
-              </TabErrorBoundary>
-            </div>
-          )}
-          <SalesTab items={items} groupFilter={group} search={search}
-            violation={pillKeys?.includes(violation ?? '') ? violation : null}
-            jumpToDate={jumpToReceiptDate} jumpToItemName={jumpToReceiptItemName}
-            onJumpDone={() => { setJumpToReceiptDate(null); setJumpToReceiptItemName(null) }} />
-        </>)}
-        {showAnalytics && outerTab === 'loss' && lossView === 'bills' && (
-          <TabErrorBoundary><div className="px-3 pt-3"><BillsAnalyticsSection /></div></TabErrorBoundary>
-        )}
-        {!showAnalytics && addForm !== 'bill' && outerTab === 'loss' && lossView === 'bills' && (<>
-          {showBillsLaws && (
-            <div className="border-b border-gray-200 bg-white px-3 py-2 shadow-md">
-              <TabErrorBoundary key={billsLawsRefresh}>
-                <PageLawsList
-                  scopeKey="Bills"
-                  isItemsLaws={true}
-                  onChange={() => setBillsLawsRefresh(r => r + 1)}
-                  flags={BILLS_FLAG_TYPES.map(({ key, label }) => ({
-                    key, label, count: violationCounts[key] ?? 0,
-                    description: ERROR_VIOLATIONS.find(v => v.key === key)?.description,
-                    onViewClick: () => goToViolation(key),
-                  }))}
-                  openForm={billsLawsOpenForm}
-                  setOpenForm={setBillsLawsOpenForm}
-                  hideZeroFlags={billsHideZeroFlags}
-                  setHideZeroFlags={setBillsHideZeroFlags}
-                  activeFilters={billsFilters.activeFilters}
-                />
-              </TabErrorBoundary>
-            </div>
-          )}
-          <BillsTab items={items} groupFilter={group} search={search}
-            violation={pillKeys?.includes(violation ?? '') ? violation : null} />
-        </>)}
-        {/* The gains pill (see LOSSVIEW_PILL_KEYS['feed']) always lands here
-            via VIOLATION_HOME['gains'] = 'feed' -- it's a violation to fix,
-            not a way of browsing losses, so this view shows the gain feed
-            instead of the loss feed while it's active. The Losses/Gains
-            toggle below covers reaching the gain feed on its own too, now
-            that the 'gains' violation deep-link's only source (Tasks) is gone. */}
-        {outerTab === 'loss' && lossView === 'feed' && (
-          <TabErrorBoundary>
-            {!violation && <div className="px-3 pt-2">{inlineLaws('Loss by Date', lossByDateLaws)}</div>}
-            {!violation && (
-              <div className="flex justify-end gap-1 px-3 pt-2">
-                <button onClick={() => setFeedShowGains(false)}
-                  className={`text-[9px] font-semibold px-2 py-1 rounded transition ${!feedShowGains ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                  Losses
-                </button>
-                <button onClick={() => setFeedShowGains(true)}
-                  className={`text-[9px] font-semibold px-2 py-1 rounded transition ${feedShowGains ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                  🚩 Gains
-                </button>
-              </div>
-            )}
-            <LossFeedTab search={search} kind={(violation === 'gains' || feedShowGains) ? 'gain' : 'loss'} />
-          </TabErrorBoundary>
-        )}
-        {outerTab === 'loss' && lossView === 'lossByTarget' && (
-          <TabErrorBoundary>
-            <div className="px-3 pt-2">{inlineLaws('Loss by Target', lossByTargetLaws)}</div>
-            <div className="py-20 text-center text-gray-400 text-xs">Coming soon.</div>
-          </TabErrorBoundary>
-        )}
           </div>
           {/* Biz/UK/C&H/Search now live here instead of the left pane's
               footer -- small icons, spaced far apart, pinned outside the
@@ -2724,7 +2545,7 @@ function ItemHubPageInner() {
                       <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Sales</p>
                       {r.sales.map(s => (
                         <button key={s.id}
-                          onClick={() => { changeTab('loss'); setLossView('sales'); setSearch(s.receipt_number || s.customer_name || ''); closeGlobalSearch() }}
+                          onClick={() => { changeTab('loss'); jumpToLiveSaleTab('sales', null, s.receipt_number || s.customer_name || ''); closeGlobalSearch() }}
                           className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
                           {s.receipt_number || `Receipt #${s.id}`}
                           {s.customer_name && <span className="text-gray-400 text-xs ml-1.5">· {s.customer_name}</span>}
@@ -2737,7 +2558,7 @@ function ItemHubPageInner() {
                       <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Bills</p>
                       {r.bills.map(b => (
                         <button key={b.id}
-                          onClick={() => { changeTab('loss'); setLossView('bills'); setSearch(b.bill_number || b.vendor_name || ''); closeGlobalSearch() }}
+                          onClick={() => { changeTab('loss'); jumpToLiveSaleTab('bills', null, b.bill_number || b.vendor_name || ''); closeGlobalSearch() }}
                           className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
                           {b.bill_number || `Bill #${b.id}`}
                           {b.vendor_name && <span className="text-gray-400 text-xs ml-1.5">· {b.vendor_name}</span>}
