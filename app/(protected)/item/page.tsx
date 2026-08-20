@@ -628,21 +628,18 @@ function ItemHubPageInner() {
   const [liveGroupFilter, setLiveGroupFilter] = useState<string | null>(null)
   const [liveHelpModalOpen, setLiveHelpModalOpen] = useState(false)
   const [liveSearchSlotEl, setLiveSearchSlotEl] = useState<HTMLDivElement | null>(null)
-  // Deep links into a specific Live Sale tab (Sale/Count 2/Log) -- the
-  // "Sale Log" search result, a "Fix now: Counts" button, and a
-  // Daily/7-Day/15-Day Counts violation pill all jump here now that none
-  // of those is a real LossView any more (Counts folded into Live Sale's
-  // own Count 2 tab, Log into its own Log tab). Seq is a plain incrementing
-  // counter so the same tab/violation can be jumped to twice in a row and
-  // still fire.
+  // Deep links into a specific Live Sale tab (Sale/Log) -- the "Sale Log"
+  // search result, a "Fix now: Counts" button, and a Daily/7-Day/15-Day
+  // Counts violation pill all jump here now that none of those is a real
+  // LossView any more (Counts folded into Live Sale's Sale mode, Log into
+  // its own Log tab). Seq is a plain incrementing counter so the same tab
+  // can be jumped to twice in a row and still fire.
   const [liveSaleJumpSeq, setLiveSaleJumpSeq] = useState(0)
-  const [liveSaleJumpTab, setLiveSaleJumpTab] = useState<'sale' | 'count2' | 'log'>('sale')
-  const [liveSaleJumpViolation, setLiveSaleJumpViolation] = useState<string | null>(null)
-  function jumpToLiveSaleTab(tab: 'sale' | 'count2' | 'log', violation: string | null = null) {
+  const [liveSaleJumpTab, setLiveSaleJumpTab] = useState<'sale' | 'log'>('sale')
+  function jumpToLiveSaleTab(tab: 'sale' | 'log') {
     pickLossView('sales')
     setAddForm('live')
     setLiveSaleJumpTab(tab)
-    setLiveSaleJumpViolation(violation)
     setLiveSaleJumpSeq(s => s + 1)
   }
 
@@ -2240,7 +2237,6 @@ function ItemHubPageInner() {
             searchSlotEl={liveSearchSlotEl}
             jumpToTabSeq={liveSaleJumpSeq}
             jumpToTab={liveSaleJumpTab}
-            jumpToTabViolation={liveSaleJumpViolation}
             violationCounts={violationCounts}
             violationTypes={ITEMS_FLAG_TYPES.map(({ key, label }) => ({ key, label, description: ERROR_VIOLATIONS.find(v => v.key === key)?.description }))}
             serviceGroups={serviceGroups}

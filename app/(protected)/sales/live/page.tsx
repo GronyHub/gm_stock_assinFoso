@@ -17,11 +17,6 @@ import { TrainingGuideModal } from './_components/TrainingGuideModal'
 const AliasWidePage = dynamic(() => import('../../aliases/wide/page'), { ssr: false })
 const ServiceMatchesPage = dynamic(() => import('../../matches/wide/page'), { ssr: false })
 const NewItemForm = dynamic(() => import('../../item/_components/NewItemForm'), { ssr: false })
-// "Count 2" tab -- the old standalone Counts page's own component,
-// embedded wholesale rather than folded apart, kept around as a safety
-// net for the pieces (History, Analytics, free-form any-item counting)
-// Sale mode's due-item treatment doesn't cover.
-const CountsTab = dynamic(() => import('../../item/_components/CountsTab'), { ssr: false })
 
 type Item = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; product_type: string | null; count_interval?: string | null }
 type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null }
@@ -65,17 +60,12 @@ export default function LiveSalePage(props: any = {}) {
     showHelpModal: controlledShowHelpModal, onHelpModalChange,
     hideFilterBar = false,
     searchSlotEl = null,
-    // Every "open Live Sale on a specific tab" deep link -- the "Sale Log"
-    // search result (jumpToTab: 'log'), "Fix now: Counts" (jumpToTab:
-    // 'count2'), and a Daily/7-Day/15-Day Counts violation pill
-    // (jumpToTab: 'count2' + jumpToTabViolation: the key) -- all land
-    // here. jumpToTabSeq is a plain incrementing counter, not a boolean,
-    // so a second jump to the same tab/violation still fires (a
-    // boolean/string prop that repeats its value wouldn't re-trigger the
-    // effect below).
+    // "Sale Log" search result deep-link (jumpToTab: 'log'). jumpToTabSeq
+    // is a plain incrementing counter, not a boolean, so a second jump to
+    // the same tab still fires (a boolean/string prop that repeats its
+    // value wouldn't re-trigger the effect below).
     jumpToTabSeq = 0,
     jumpToTab = null,
-    jumpToTabViolation = null,
   } = props
   const compactSearch = !!searchSlotEl
 
@@ -132,19 +122,18 @@ export default function LiveSalePage(props: any = {}) {
   // The standalone "Count" mode (its own due-count queues/badges/entry-form
   // as a second grid mode) was removed once Sale mode grew its own pinned
   // "COUNT NOW" block and inline count field for due items (below) -- those
-  // don't depend on this mode existing, they're Sale-mode-native. 'count2'
-  // and 'log' are the other two tabs sharing this switcher: 'count2' is the
-  // full old standalone Counts page (History/Analytics/free-form counting
-  // Sale mode's due-item treatment doesn't cover), kept as a safety net;
-  // 'log' is what used to be a separate showLog boolean -- folded in as a
-  // tab rather than its own sidebar destination since it's just history of
-  // the other two.
-  const [mode, setMode] = useState<'sale' | 'count2' | 'log'>('sale')
-  const [count2Violation, setCount2Violation] = useState<string | null>(null)
+  // don't depend on this mode existing, they're Sale-mode-native. 'log' is
+  // the other tab sharing this switcher -- what used to be a separate
+  // showLog boolean, folded in as a tab rather than its own sidebar
+  // destination since it's just history of Sale mode's own actions.
+  // Count 2 (the full old standalone Counts page) was the third tab here
+  // until its own History/Analytics/free-form counting no longer had
+  // anything Sale mode's due-item treatment and Log tab didn't already
+  // cover, and it was removed along with the Loss by Item page.
+  const [mode, setMode] = useState<'sale' | 'log'>('sale')
   useEffect(() => {
     if (!jumpToTabSeq || !jumpToTab) return
     setMode(jumpToTab)
-    setCount2Violation(jumpToTabViolation)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jumpToTabSeq])
   const [dailyItems, setDailyItems] = useState<DueItem[]>([])
@@ -156,16 +145,11 @@ export default function LiveSalePage(props: any = {}) {
   const [lossPrompt, setLossPrompt] = useState<LossPrompt | null>(null)
   const [pairingPrompt, setPairingPrompt] = useState<PairingPrompt | null>(null)
   const [countRecords, setCountRecords] = useState<CountRecord[]>([])
-  // Which history the Log tab shows -- independent of the Sale/Count 2 grid
-  // mode above it (Log is its own tab, not a flag you toggle on top of
-  // whichever grid mode happened to be active), so it gets its own small
-  // Sale/Count sub-toggle in its own header instead.
+  // Which history the Log tab shows -- independent of the Sale grid mode
+  // above it (Log is its own tab, not a flag you toggle on top of Sale
+  // mode), so it gets its own small Sale/Count sub-toggle in its own
+  // header instead.
   const [logKind, setLogKind] = useState<'sale' | 'count'>('sale')
-  // Count 2's own filter text -- CountsTab expects its `search` prop from
-  // a visible input the host page owns; the grid's own item-picker query
-  // is a different, transient thing (it clears itself once an item's
-  // picked) and isn't shown while this tab's open anyway.
-  const [count2Search, setCount2Search] = useState('')
   const [editingCountId, setEditingCountId] = useState<number | null>(null)
   const [editCountQty, setEditCountQty] = useState('')
   const [editCountNotes, setEditCountNotes] = useState('')
@@ -180,14 +164,6 @@ export default function LiveSalePage(props: any = {}) {
     }
     return Array.from(uniqueGroups).sort()
   }, [allItems])
-
-  // CountsTab (Count 2) expects items shaped {item_name, cf_group} -- this
-  // page's own item list already uses {name, group} for everything else,
-  // so this is just a field-name adapter, not a different data source.
-  const countsTabItems = useMemo(
-    () => allItems.map(i => ({ id: i.id, item_name: i.name, cf_group: i.group, product_type: i.product_type })),
-    [allItems]
-  )
 
   // Merges the 3 due-count queues into one per-item lookup for Count
   // mode's grid badges -- daily/7-day GMC items are "due", 15-day items
@@ -462,9 +438,9 @@ export default function LiveSalePage(props: any = {}) {
   // Log tab's two histories, grouped by date -- computed unconditionally
   // (not inside the `if (mode === 'log')` branch below) since React
   // requires the same hooks to run on every render of this component;
-  // Sale/Count 2/Log now all live in one mounted instance switched by
-  // `mode`, so a useMemo that only ran while mode==='log' would change the
-  // hook count the moment you switched tabs and crash the page.
+  // Sale and Log both live in one mounted instance switched by `mode`, so
+  // a useMemo that only ran while mode==='log' would change the hook
+  // count the moment you switched tabs and crash the page.
   const tapsByDate = useMemo(() => {
     const groups = new Map<string, typeof taps>()
     for (const tap of taps) {
@@ -725,9 +701,9 @@ export default function LiveSalePage(props: any = {}) {
     }
   }
 
-  // The one 3-way switcher (Sale/Count 2/Log) shared by every tab's own
-  // header, so jumping straight from Log to Count 2 (say) doesn't require
-  // detouring back through the grid first.
+  // The Sale/Log switcher shared by every tab's own header, so jumping
+  // straight from Log back to Sale doesn't require detouring back through
+  // the grid first.
   function renderModeToggle(compact: boolean) {
     const btnCls = (active: boolean, color: string) =>
       `font-bold rounded-md transition ${compact ? 'px-1.5 py-1 text-[10px]' : 'px-2.5 py-1 text-xs'} ${
@@ -736,7 +712,6 @@ export default function LiveSalePage(props: any = {}) {
     return (
       <div className="inline-flex bg-gray-200 rounded-lg p-0.5">
         <button type="button" onClick={() => setMode('sale')} title="Sale mode" className={btnCls(mode === 'sale', 'bg-blue-600')}>Sale</button>
-        <button type="button" onClick={() => setMode('count2')} title="Count 2 -- the full old Counts page" className={btnCls(mode === 'count2', 'bg-purple-600')}>Count 2</button>
         <button type="button" onClick={() => setMode('log')} title="Log" className={btnCls(mode === 'log', 'bg-gray-700')}>Log</button>
       </div>
     )
@@ -968,48 +943,6 @@ export default function LiveSalePage(props: any = {}) {
           )}
         </div>
         )}
-      </div>
-
-      <TrainingGuideModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
-      </>
-    )
-  }
-
-  // Count 2 tab -- the full old standalone Counts page, embedded as-is.
-  if (mode === 'count2') {
-    return (
-      <>
-      <div className="h-full flex flex-col bg-white">
-        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
-          <h2 className="text-sm font-bold text-gray-900">Count 2</h2>
-          <div className="flex items-center gap-2 flex-wrap">
-            <input
-              type="text"
-              value={count2Search}
-              onChange={e => setCount2Search(e.target.value)}
-              placeholder="Search…"
-              className="text-xs px-2.5 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-400 w-32"
-            />
-            {renderModeToggle(false)}
-            <button
-              type="button"
-              onClick={() => setShowHelpModal(true)}
-              className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 font-semibold text-sm flex items-center justify-center transition"
-              title="Help"
-            >
-              ?
-            </button>
-          </div>
-        </div>
-        <div className="flex-1 min-h-0">
-          <CountsTab
-            items={countsTabItems}
-            groupFilter={groupFilter}
-            search={count2Search}
-            violation={count2Violation}
-            onGoToViolation={key => setCount2Violation(key)}
-          />
-        </div>
       </div>
 
       <TrainingGuideModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
@@ -1525,8 +1458,8 @@ export default function LiveSalePage(props: any = {}) {
                     view even when it isn't currently due (the due block
                     below only shows up for items the count queues have
                     already flagged). Its own submit, going through the
-                    same submitCount() the due block and Count 2 use, so it
-                    hits the same pack-pairing/loss-reason prompts. */}
+                    same submitCount() the due block uses, so it hits the
+                    same pack-pairing/loss-reason prompts. */}
                 {!editLoading && selectedItem.product_type !== 'service' && (
                   <div className="mt-4 rounded-xl border border-gray-200 overflow-hidden">
                     <div className="px-3 py-1.5 text-xs font-extrabold text-white bg-gray-700">
