@@ -11,6 +11,7 @@ import { useLawsPanel } from '@/app/(protected)/item/_components/useLawsPanel'
 import LawsToggleBar from '@/app/(protected)/item/_components/LawsToggleBar'
 import PageLawsList from '@/app/(protected)/item/_components/PageLawsList'
 import { LossDialog, PairingDialog, type LossExtra, type LossPrompt, type PairingPrompt } from '@/app/(protected)/item/_components/CountDialogs'
+import { ItemEditForm, EMPTY_ITEM_EDIT_FORM } from '@/app/(protected)/item/_components/ItemEditForm'
 import { TrainingGuideModal } from './_components/TrainingGuideModal'
 
 const AliasWidePage = dynamic(() => import('../../aliases/wide/page'), { ssr: false })
@@ -82,6 +83,17 @@ export default function LiveSalePage(props: any = {}) {
   const [qty, setQty] = useState('')
   const [price, setPrice] = useState('')
   const [saving, setSaving] = useState(false)
+  // Editing the selected item's own fields -- opened from an "Edit" button
+  // inside the same sale-tap sheet instead of navigating to Item 360, so a
+  // quick price/group/count-cadence fix doesn't require leaving the sheet
+  // (or the item picked for a sale). Swaps the sheet's body to the edit
+  // form in place; Cancel returns to the normal sale/count view without
+  // closing the sheet.
+  const [editingSelectedItem, setEditingSelectedItem] = useState(false)
+  const [editForm, setEditForm] = useState(EMPTY_ITEM_EDIT_FORM)
+  const [editLoading, setEditLoading] = useState(false)
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState('')
   const [internalShowHelpModal, setInternalShowHelpModal] = useState(false)
   const showHelpModal = controlledShowHelpModal ?? internalShowHelpModal
   const setShowHelpModal = onHelpModalChange ?? setInternalShowHelpModal
@@ -557,6 +569,83 @@ export default function LiveSalePage(props: any = {}) {
       return
     }
     setCountError(d?.error ?? 'Could not save count.')
+  }
+
+  // Groups/conversion-target list ItemEditForm needs, derived from the
+  // catalogue Live Sale already has loaded rather than a separate fetch.
+  const editGroups = useMemo(() =>
+    Array.from(new Set(allItems.map(i => i.group).filter((g): g is string => !!g))).sort()
+  , [allItems])
+  const editAllItemsList = useMemo(() =>
+    allItems.map(i => ({ item_id: i.id, item_name: i.name }))
+  , [allItems])
+
+  // The sale-tap sheet's own Item fields don't carry cf_group/units_per_pack/
+  // unit_name/converts_to_item_id/count_excluded/count_cadence_days (not
+  // needed for tapping a sale), so opening the edit form fetches the full
+  // item record the same way LossTab's ItemEditForm does.
+  async function startEditSelectedItem() {
+    if (!selectedItem) return
+    setEditingSelectedItem(true)
+    setEditError('')
+    setEditLoading(true)
+    try {
+      const r = await fetch(`/api/items/${selectedItem.id}`)
+      const d = await r.json()
+      setEditForm({
+        item_name: d?.canonical_name ?? selectedItem.name,
+        cf_group: d?.cf_group ?? '',
+        selling_rate: d?.selling_price != null ? String(d.selling_price) : '',
+        purchase_rate: d?.purchase_rate != null ? String(d.purchase_rate) : '',
+        units_per_pack: d?.units_per_pack != null ? String(d.units_per_pack) : '',
+        unit_name: d?.unit_name ?? '',
+        converts_to_item_id: d?.converts_to_item_id ? String(d.converts_to_item_id) : '',
+        count_excluded: !!d?.count_excluded,
+        count_cadence_days: d?.count_cadence_days != null ? String(d.count_cadence_days) : '',
+      })
+    } catch {
+      setEditError('Could not load item details.')
+    }
+    setEditLoading(false)
+  }
+
+  async function saveEditSelectedItem() {
+    if (!selectedItem) return
+    setEditSaving(true)
+    setEditError('')
+    const res = await fetch(`/api/items/${selectedItem.id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        item_name: editForm.item_name || undefined,
+        cf_group: editForm.cf_group || null,
+        selling_rate: editForm.selling_rate ? parseFloat(editForm.selling_rate) : null,
+        purchase_rate: editForm.purchase_rate ? parseFloat(editForm.purchase_rate) : null,
+        units_per_pack: editForm.units_per_pack ? parseFloat(editForm.units_per_pack) : null,
+        unit_name: editForm.unit_name || null,
+        converts_to_item_id: editForm.converts_to_item_id ? Number(editForm.converts_to_item_id) : null,
+        count_excluded: editForm.count_excluded,
+        count_cadence_days: editForm.count_cadence_days ? parseInt(editForm.count_cadence_days, 10) : null,
+      }),
+    })
+    setEditSaving(false)
+    if (!res.ok) {
+      const d = await res.json().catch(() => null)
+      setEditError(d?.error ?? 'Could not save changes.')
+      return
+    }
+    const updated = await res.json()
+    const itemId = selectedItem.id
+    setSelectedItem(prev => prev && prev.id === itemId ? {
+      ...prev,
+      name: updated.item_name ?? prev.name,
+      selling_price: updated.selling_rate ?? prev.selling_price,
+      cost_price: updated.purchase_rate ?? prev.cost_price,
+    } : prev)
+    // Refetch the full catalogue so this item's price/group/count-interval
+    // label update everywhere else in Live Sale (grid, other views), not
+    // just inside this sheet.
+    fetch('/api/items/all').then(r => r.json()).then(d => setAllItems(Array.isArray(d) ? d : [])).catch(() => {})
+    setEditingSelectedItem(false)
   }
 
   // Same edit/delete pair Counts' own list already offers -- kept here so
@@ -1347,17 +1436,73 @@ export default function LiveSalePage(props: any = {}) {
         return (
         <div className="fixed inset-0 bg-black/50 flex items-end z-50">
           <div className="w-full bg-white rounded-t-2xl shadow-xl max-h-[92dvh] overflow-y-auto">
-            <div className="px-4 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-bold text-gray-900">{selectedItem.name}</h3>
-              <p className="text-xs text-gray-500 mt-1">
-                <span>Selling: ₵{formatPrice(selectedItem.selling_price)}</span>
-                <span className="text-gray-400"> · </span>
-                <span>Cost: ₵{formatPrice(selectedItem.cost_price)}</span>
-                <span className="text-gray-400"> · </span>
-                <span>Stock: {Math.ceil(Number(selectedItem.soh))} pc</span>
-              </p>
+            <div className="px-4 py-4 border-b border-gray-200 flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <h3 className="text-lg font-bold text-gray-900 truncate">{selectedItem.name}</h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  <span>Selling: ₵{formatPrice(selectedItem.selling_price)}</span>
+                  <span className="text-gray-400"> · </span>
+                  <span>Cost: ₵{formatPrice(selectedItem.cost_price)}</span>
+                  <span className="text-gray-400"> · </span>
+                  <span>Stock: {Math.ceil(Number(selectedItem.soh))} pc</span>
+                </p>
+              </div>
+              {!editingSelectedItem && (
+                <button
+                  type="button"
+                  onClick={startEditSelectedItem}
+                  className="shrink-0 px-2.5 py-1.5 text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
+                >
+                  Edit
+                </button>
+              )}
             </div>
 
+            {/* Editing this item's own fields -- opened via the Edit button
+                above. Replaces the sale/count body below rather than
+                stacking alongside it, so there's no ambiguity about which
+                form a tap on Save applies to. Cancel returns to the normal
+                sheet, it doesn't close it. */}
+            {editingSelectedItem ? (
+              <div className="p-2">
+                {editLoading ? (
+                  <p className="text-xs text-gray-400 text-center py-6">Loading…</p>
+                ) : (
+                  <ItemEditForm
+                    form={editForm}
+                    onChange={setEditForm}
+                    groups={editGroups}
+                    itemId={selectedItem.id}
+                    isService={selectedItem.product_type === 'service'}
+                    allItems={editAllItemsList}
+                  />
+                )}
+                {editError && (
+                  <div className="mx-2 mt-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-600 font-medium">
+                    {editError}
+                  </div>
+                )}
+                <div className="flex gap-2 p-4 pt-3">
+                  <button
+                    type="button"
+                    onClick={() => { setEditingSelectedItem(false); setEditError('') }}
+                    disabled={editSaving}
+                    className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold rounded-lg transition disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveEditSelectedItem}
+                    disabled={editSaving || editLoading || !editForm.item_name.trim()}
+                    className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition disabled:opacity-50"
+                  >
+                    {editSaving ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+            <>
             {/* This item is due for a count -- surfaced right inside the
                 sale sheet instead of requiring a separate mode-switch and
                 a separate tap. Still its own field and its own submit,
@@ -1474,6 +1619,8 @@ export default function LiveSalePage(props: any = {}) {
                     setError('')
                     setCountQty('')
                     setCountError('')
+                    setEditingSelectedItem(false)
+                    setEditError('')
                   }}
                   disabled={saving}
                   className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold rounded-lg transition disabled:opacity-50"
@@ -1490,6 +1637,8 @@ export default function LiveSalePage(props: any = {}) {
                 </button>
               </div>
             </div>
+            </>
+            )}
           </div>
         </div>
         )
