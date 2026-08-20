@@ -92,13 +92,14 @@ function looksBundled(description: string | null): boolean {
 const TH = 'text-left px-3 py-2 font-bold text-gray-400 text-[10px] uppercase tracking-wide border-b border-gray-200'
 const TD = 'px-3 py-2'
 
-// Account (frozen, first), Description (second, always), Group (third, always), then Date, Amt, others
-// Vendor gets force-hidden while grouped by that field.
-// Property columns are shown only when viewing properties.
-type ColKey = 'date' | 'account' | 'description' | 'group' | 'is_property' | 'amount' | 'expense_type' | 'vendor' | 'source' | 'by' | 'is_related_expense' | 'related_property' | 'related_reasons' | 'property_status' | 'property_type' | 'availability' | 'working' | 'location' | 'reason'
+// Account (frozen, first, folds in the description as "Account —
+// Description" -- see bodyCellFor -- so it no longer needs its own
+// column), Group (second, always), then Date, Amt, others. Vendor gets
+// force-hidden while grouped by that field. Property columns are shown
+// only when viewing properties.
+type ColKey = 'date' | 'account' | 'group' | 'is_property' | 'amount' | 'expense_type' | 'vendor' | 'source' | 'by' | 'is_related_expense' | 'related_property' | 'related_reasons' | 'property_status' | 'property_type' | 'availability' | 'working' | 'location' | 'reason'
 const EXPENSE_COLUMNS: ColumnDef<ColKey>[] = [
   { key: 'account',      label: 'Account' },
-  { key: 'description',  label: 'Description' },
   { key: 'group',        label: 'Group' },
   { key: 'is_property',  label: 'Is Property?' },
   { key: 'amount',       label: 'Amount' },
@@ -118,7 +119,7 @@ const EXPENSE_COLUMNS: ColumnDef<ColKey>[] = [
   { key: 'reason',       label: 'Reason' },
 ]
 const EXPENSES_COL_DEFAULTS: Record<string, number> = {
-  date: 92, amt: 90, account: 120, description: 160, group: 100, is_property: 85, amount: 90, expense_type: 100, vendor: 120, source: 90, by: 80,
+  date: 92, amt: 90, account: 260, group: 100, is_property: 85, amount: 90, expense_type: 100, vendor: 120, source: 90, by: 80,
   is_related_expense: 95, related_property: 120, related_reasons: 130, property_status: 100,
   property_type: 80, availability: 90, working: 90, location: 100, reason: 120,
 }
@@ -244,7 +245,6 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
   const visibleKeys = colPrefs.colOrder.filter(k => colPrefs.visibleCols.has(k)
     && !(k === 'account' && hideAccount) && !(k === 'vendor' && hideVendor)
     && !(k === 'account')
-    && !(k === 'description')
     && !(k === 'group')
     && !(k === 'date')
     && !(hidePropertyColumns && propertyColKeys.includes(k)))
@@ -263,7 +263,6 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
     // into what the Account cell shows, so the account reads as its own
     // full name at a glance instead of needing the Description column too.
     if (key === 'account') return <td key={key} className={`${TD} text-gray-900 font-semibold truncate`}>{e.description ? `${e.expense_account} — ${e.description}` : e.expense_account}</td>
-    if (key === 'description') return <td key={key} className={`${TD} text-gray-700 truncate`}>{e.description ?? '—'}</td>
     if (key === 'group') return <td key={key} className={`${TD} text-gray-700 truncate`}>{e.expense_group ?? '—'}</td>
     if (key === 'is_property') return <td key={key} className={`${TD} text-gray-600 truncate`}>{e.is_property ? '✓ Yes' : '✗ No'}</td>
     if (key === 'amount') return <td key={key} className={`${TD} text-right font-semibold text-gray-900`}>{e.amount_hidden ? '🔒' : `₵${fmt(e.amount)}`}</td>
@@ -287,11 +286,10 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
   }
 
   const accountWidth = colPrefs.getWidth('account', EXPENSES_COL_DEFAULTS.account)
-  const descriptionWidth = colPrefs.getWidth('description', EXPENSES_COL_DEFAULTS.description)
   const groupWidth = colPrefs.getWidth('group', EXPENSES_COL_DEFAULTS.group)
   const dateWidth = colPrefs.getWidth('date', EXPENSES_COL_DEFAULTS.date)
   const amtWidth = colPrefs.getWidth('amt', EXPENSES_COL_DEFAULTS.amt)
-  const tableWidth = accountWidth + descriptionWidth + groupWidth + dateWidth + amtWidth
+  const tableWidth = accountWidth + groupWidth + dateWidth + amtWidth
     + visibleKeys.reduce((s, k) => s + colPrefs.getWidth(k, EXPENSES_COL_DEFAULTS[k] ?? 100), 0)
 
   return (
@@ -299,7 +297,6 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
     <table className="border-collapse text-xs" style={{ tableLayout: 'fixed', width: tableWidth }}>
       <colgroup>
         <col style={{ width: accountWidth }} />
-        <col style={{ width: descriptionWidth }} />
         <col style={{ width: groupWidth }} />
         <col style={{ width: dateWidth }} />
         <col style={{ width: amtWidth }} />
@@ -316,7 +313,6 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
             onResetWidth={() => colPrefs.resetWidth('account')}
             sticky
           />
-          <ResizableTh onResize={d => colPrefs.resizeWidth('description', d, EXPENSES_COL_DEFAULTS.description)} onReset={() => colPrefs.resetWidth('description')}>Description</ResizableTh>
           <ResizableTh onResize={d => colPrefs.resizeWidth('group', d, EXPENSES_COL_DEFAULTS.group)} onReset={() => colPrefs.resetWidth('group')}>Group</ResizableTh>
           <ResizableTh onResize={d => colPrefs.resizeWidth('date', d, EXPENSES_COL_DEFAULTS.date)} onReset={() => colPrefs.resetWidth('date')}>Date Bought</ResizableTh>
           <ResizableTh align="right" onResize={d => colPrefs.resizeWidth('amt', d, EXPENSES_COL_DEFAULTS.amt)} onReset={() => colPrefs.resetWidth('amt')}>Amt</ResizableTh>
@@ -336,7 +332,6 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
               <td className={`${TD} sticky left-0 z-10 text-gray-900 font-semibold truncate border-r bg-inherit`}>
                 {e.description ? `${e.expense_account} — ${e.description}` : e.expense_account}
               </td>
-              {bodyCellFor('description', e)}
               {bodyCellFor('group', e)}
               <td className={`${TD} text-gray-600 whitespace-nowrap`}>{fmtShort(e.expense_date)}</td>
               <td className={`${TD} text-right font-bold text-gray-900`}>{e.amount_hidden ? '🔒 Hidden' : `₵${fmt(e.amount)}`}</td>
