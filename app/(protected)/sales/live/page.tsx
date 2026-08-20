@@ -828,11 +828,11 @@ export default function LiveSalePage(props: any = {}) {
     return (
       <div className="flex bg-gray-200 rounded-lg p-0.5 overflow-x-auto max-w-full">
         <button type="button" onClick={() => setMode('sale')} title="Live Sale" className={btnCls(mode === 'sale', 'bg-blue-600')}>Live</button>
+        <button type="button" onClick={() => setMode('log')} title="Log" className={btnCls(mode === 'log', 'bg-gray-700')}>Log</button>
         <button type="button" onClick={() => setMode('sales')} title="Sales" className={btnCls(mode === 'sales', 'bg-emerald-600')}>Sales</button>
         <button type="button" onClick={() => setMode('bills')} title="Bills" className={btnCls(mode === 'bills', 'bg-orange-600')}>Bills</button>
         <button type="button" onClick={() => setMode('feed')} title="Loss by Date" className={btnCls(mode === 'feed', 'bg-red-600')}>Loss by Date</button>
         <button type="button" onClick={() => setMode('lossByTarget')} title="Loss by Target" className={btnCls(mode === 'lossByTarget', 'bg-pink-600')}>Loss by Tgt</button>
-        <button type="button" onClick={() => setMode('log')} title="Log" className={btnCls(mode === 'log', 'bg-gray-700')}>Log</button>
       </div>
     )
   }
