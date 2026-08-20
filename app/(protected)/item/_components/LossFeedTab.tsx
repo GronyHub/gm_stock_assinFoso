@@ -1,8 +1,8 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 import { fmtDate } from '@/lib/fmtDate'
 import { useColumnPrefs, ColumnsPickerButton, ColResizeHandle, type ColumnDef } from './columnPrefs'
+import ItemDetailModal from './ItemDetailModal'
 
 const LOSS_FEED_COL_DEFAULTS: Record<string, number> = { date: 45, item: 90, expected: 35, counted: 35, lossQty: 35, lossAmt: 45 }
 
@@ -31,6 +31,7 @@ function fmtN(v: number) { return v % 1 === 0 ? String(v) : v.toFixed(2) }
 export default function LossFeedTab({ search, kind = 'loss' }: { search: string; kind?: 'loss' | 'gain' }) {
   const [events, setEvents] = useState<LossEvent[]>([])
   const [loading, setLoading] = useState(true)
+  const [viewingItemId, setViewingItemId] = useState<number | null>(null)
   const isGain = kind === 'gain'
   const columns: (ColumnDef<ColKey> & { title: string })[] = [
     { key: 'expected', label: 'EXP', title: 'Stock the records expected on that day' },
@@ -157,7 +158,7 @@ export default function LossFeedTab({ search, kind = 'loss' }: { search: string;
                       {newDay ? fmtDate(e.date) : <span className="text-gray-300">〃</span>}
                     </td>
                     <td className="px-0.5 py-0.5 font-semibold text-gray-900 overflow-hidden text-[9px]">
-                      <Link href={`/item?tab=loss&view=item360&jumpItemId=${e.item_id}`} className="block truncate text-blue-600 hover:underline">{e.item_name}</Link>
+                      <button type="button" onClick={() => setViewingItemId(e.item_id)} className="block truncate text-blue-600 hover:underline text-left">{e.item_name}</button>
                     </td>
                     {colPrefs.shownColumns.map(c => {
                       if (c.key === 'expected') return <td key={c.key} className="px-0.5 py-0.5 text-center text-gray-500 text-[9px]">{fmtN(e.expected)}</td>
@@ -172,6 +173,9 @@ export default function LossFeedTab({ search, kind = 'loss' }: { search: string;
           </table>
         )}
       </div>
+      {viewingItemId != null && (
+        <ItemDetailModal itemId={viewingItemId} onClose={() => setViewingItemId(null)} />
+      )}
     </div>
   )
 }

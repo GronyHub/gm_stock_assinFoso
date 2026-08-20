@@ -11,16 +11,12 @@ import LawsToggleBar from '@/app/(protected)/item/_components/LawsToggleBar'
 import PageLawsList from '@/app/(protected)/item/_components/PageLawsList'
 import { LossDialog, PairingDialog, type LossExtra, type LossPrompt, type PairingPrompt } from '@/app/(protected)/item/_components/CountDialogs'
 import { ItemEditForm, EMPTY_ITEM_EDIT_FORM } from '@/app/(protected)/item/_components/ItemEditForm'
+import ItemDetailModal from '@/app/(protected)/item/_components/ItemDetailModal'
 import { TrainingGuideModal } from './_components/TrainingGuideModal'
 
 const AliasWidePage = dynamic(() => import('../../aliases/wide/page'), { ssr: false })
 const ServiceMatchesPage = dynamic(() => import('../../matches/wide/page'), { ssr: false })
 const NewItemForm = dynamic(() => import('../../item/_components/NewItemForm'), { ssr: false })
-// Item 360's own detail view (loss/gain history, pack-chain, aliases,
-// merge) -- already built to run standalone off just an itemId (see its
-// own comment), so tapping an item's name here can pop it up in place
-// instead of navigating to the Loss by Item page just to look one item up.
-const ItemDetailPanel = dynamic(() => import('../../item/_components/ItemDetailPanel'), { ssr: false })
 // "Count 2" tab -- the old standalone Counts page's own component,
 // embedded wholesale rather than folded apart, kept around as a safety
 // net for the pieces (History, Analytics, free-form any-item counting)
@@ -1746,28 +1742,11 @@ export default function LiveSalePage(props: any = {}) {
         )
       })()}
 
-      {/* Item 360 popup -- opened by tapping an item's name, same bottom-
-          sheet treatment as the sale-tap sheet above rather than navigating
-          to the Loss by Item page just to look one item up. */}
+      {/* Item detail popup -- opened by tapping an item's name, instead of
+          navigating to the Loss by Item page (which no longer exists as
+          its own destination). */}
       {viewingItemId != null && (
-        <div className="fixed inset-0 bg-black/50 flex items-end z-50" onClick={() => setViewingItemId(null)}>
-          <div
-            className="w-full bg-white rounded-t-2xl shadow-xl max-h-[92dvh] overflow-y-auto"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
-              <h3 className="text-sm font-bold text-gray-900">Item Details</h3>
-              <button
-                type="button"
-                onClick={() => setViewingItemId(null)}
-                className="w-8 h-8 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 text-xl font-bold leading-none flex items-center justify-center transition"
-              >
-                ×
-              </button>
-            </div>
-            <ItemDetailPanel itemId={viewingItemId} />
-          </div>
-        </div>
+        <ItemDetailModal itemId={viewingItemId} onClose={() => setViewingItemId(null)} />
       )}
 
       {lossPrompt && <LossDialog prompt={lossPrompt} onClose={() => setLossPrompt(null)} />}

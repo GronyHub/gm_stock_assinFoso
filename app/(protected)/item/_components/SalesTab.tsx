@@ -1,12 +1,12 @@
 'use client'
 import { Fragment, useState, useEffect, useMemo } from 'react'
-import Link from 'next/link'
 import { fmtDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
 import { useColumnPrefs, ColumnsPickerButton, type ColumnDef } from './columnPrefs'
 import { useAttachments, AttachmentPicker, type Attachment } from './attachmentsShared'
 import BulkAttachForms from './BulkAttachForms'
+import ItemDetailModal from './ItemDetailModal'
 
 type Item = { id: number; item_name: string; cf_group: string | null }
 
@@ -342,6 +342,7 @@ export default function SalesTab({
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [showHistory, setShowHistory] = useState(false)
+  const [viewingItemId, setViewingItemId] = useState<number | null>(null)
   // Collapses every receipt down to just its header bar (date/customer/CC/
   // Inv/WNW) -- the item lines beneath stay hidden until toggled back on,
   // so a long list of days can be scanned at a glance.
@@ -1129,9 +1130,9 @@ export default function SalesTab({
                 <td colSpan={1 + lineItemLeadingBlanks} className="px-1 py-1 text-gray-900 align-top sticky left-0 z-[5] bg-inherit">
                   {line ? (
                     line.item_id ? (
-                      <Link href={`/item?tab=loss&view=item360&jumpItemId=${line.item_id}`} className="text-blue-600 hover:underline">
+                      <button type="button" onClick={() => setViewingItemId(line.item_id!)} className="text-blue-600 hover:underline">
                         {line.item_name}
-                      </Link>
+                      </button>
                     ) : line.item_name
                   ) : <span className="text-gray-400 italic">No items</span>}
                 </td>
@@ -1159,6 +1160,9 @@ export default function SalesTab({
     {showBulkAttach && (
       <BulkAttachForms receipts={receipts} onClose={() => setShowBulkAttach(false)}
         onDone={() => { setShowBulkAttach(false); loadReceipts() }} />
+    )}
+    {viewingItemId != null && (
+      <ItemDetailModal itemId={viewingItemId} onClose={() => setViewingItemId(null)} />
     )}
     </div>
   )

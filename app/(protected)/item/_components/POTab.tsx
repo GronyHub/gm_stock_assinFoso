@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { usePolling } from '@/lib/usePolling'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from './columnPrefs'
+import ItemDetailModal from './ItemDetailModal'
 
 type POLine = {
   id: number
@@ -118,6 +119,7 @@ export default function POTab({ search }: Props) {
   const [receiveQtys, setReceiveQtys] = useState<Record<number, string>>({})
   const [receivePrices, setReceivePrices] = useState<Record<number, string>>({})
   const [receiveError, setReceiveError] = useState('')
+  const [viewingItemId, setViewingItemId] = useState<number | null>(null)
   // Full edit (vendor/dates/notes/lines) -- only offered for still-draft
   // POs, matching Send/Delete's own draft-only gating. Reuses the same
   // add-item-by-search pattern as the New PO form.
@@ -571,9 +573,9 @@ export default function POTab({ search }: Props) {
                         <tr key={i} className="border-b border-gray-100">
                           <td className="px-1.5 py-0.5 text-gray-900">
                             {l.item_id ? (
-                              <Link href={`/item?tab=loss&view=item360&jumpItemId=${l.item_id}`} className="text-blue-600 hover:underline">
+                              <button type="button" onClick={() => setViewingItemId(l.item_id!)} className="text-blue-600 hover:underline">
                                 {l.item_name}
-                              </Link>
+                              </button>
                             ) : l.item_name}
                           </td>
                           <td className="px-1.5 py-0.5 text-right text-gray-700">{fmt(l.qty_ordered)}</td>
@@ -609,6 +611,9 @@ export default function POTab({ search }: Props) {
           )}
         </div>
       </div>
+      {viewingItemId != null && (
+        <ItemDetailModal itemId={viewingItemId} onClose={() => setViewingItemId(null)} />
+      )}
     </div>
   )
 }

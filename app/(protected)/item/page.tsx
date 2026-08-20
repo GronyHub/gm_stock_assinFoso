@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { hasFeature, DEFAULT_ON_FEATURES, type FeatureKey, type RolePermissionsMap } from '@/lib/permissionsShared'
 import PageLawsList, { type LawFormKind } from './_components/PageLawsList'
+import ItemDetailModal from './_components/ItemDetailModal'
 
 class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boolean; message: string }> {
   state = { error: false, message: '' }
@@ -550,6 +551,9 @@ function ItemHubPageInner() {
   // at Shop"/"Properties not at Shop" rows under Expenses (see below).
   const [propertiesInitialTab, setPropertiesInitialTab] = useState<'available' | 'away' | null>(null)
   const [jumpToItemId, setJumpToItemId]   = useState<number | null>(null)
+  // Global search's own "Items" result -- opens the item detail popup
+  // directly instead of navigating to the Loss by Item page.
+  const [globalSearchViewingItemId, setGlobalSearchViewingItemId] = useState<number | null>(null)
   // Seeded from ?jumpDate=/?jumpItem= -- Item 360's Detail table (and its
   // "click a date" links) lands here via /item?tab=loss&view=sales&jumpDate=
   // ...&jumpItem=..., which the URL-sync effect below strips off again on
@@ -2527,7 +2531,6 @@ function ItemHubPageInner() {
                       onCloseAdd={() => {}}
                       jumpToItemId={jumpToItemId}
                       onJumpDone={() => setJumpToItemId(null)}
-                      onOpenItem360={id => { pickLossView('item360'); setItem360JumpId(id) }}
                     />
                   </TabErrorBoundary>
                 )
@@ -2737,7 +2740,7 @@ function ItemHubPageInner() {
                     <div>
                       <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Items</p>
                       {r.items.map(i => (
-                        <button key={i.id} onClick={() => { changeTab('loss'); setLossView('item360'); setItem360JumpId(i.id); closeGlobalSearch() }}
+                        <button key={i.id} onClick={() => { setGlobalSearchViewingItemId(i.id); closeGlobalSearch() }}
                           className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
                           {i.name}
                           {i.cf_group && <span className="text-gray-400 text-xs ml-1.5">· {i.cf_group}</span>}
@@ -2888,6 +2891,9 @@ function ItemHubPageInner() {
             </div>
           </div>
         </div>
+      )}
+      {globalSearchViewingItemId != null && (
+        <ItemDetailModal itemId={globalSearchViewingItemId} onClose={() => setGlobalSearchViewingItemId(null)} />
       )}
     </div>
   )

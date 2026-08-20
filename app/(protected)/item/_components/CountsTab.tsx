@@ -1,6 +1,5 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
-import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import dynamic from 'next/dynamic'
 import { usePolling } from '@/lib/usePolling'
@@ -12,6 +11,7 @@ import { useLawsPanel } from './useLawsPanel'
 import { AnalyticsToggle } from './analyticsShared'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from './columnPrefs'
 import { LossDialog, PairingDialog, type LossExtra, type LossPrompt, type PackRef, type PairingPrompt } from './CountDialogs'
+import ItemDetailModal from './ItemDetailModal'
 const CountsAnalyticsSection = dynamic(() => import('./CountsAnalyticsSection'), { ssr: false })
 
 // Date and Item stay sticky/always-visible (first two columns), and the
@@ -248,6 +248,7 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
   const [records, setRecords] = useState<CountRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [showHistory, setShowHistory] = useState(false)
+  const [viewingItemId, setViewingItemId] = useState<number | null>(null)
   const lawsPanel = useLawsPanel('showCountsLaws')
   const [highlightId, setHighlightId] = useState<number | null>(null)
   const [editQty, setEditQty] = useState('')
@@ -547,7 +548,7 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
                   <td className="px-2.5 py-1.5 text-gray-500 truncate border-b border-gray-100">{fmtShort(r.count_date)}</td>
                   <td className="px-2.5 py-1.5 text-gray-900 font-semibold border-b border-gray-100 overflow-hidden">
                     {r.item_id ? (
-                      <Link href={`/item?tab=loss&view=item360&jumpItemId=${r.item_id}`} className="block truncate text-blue-600 hover:underline">{r.item_name}</Link>
+                      <button type="button" onClick={() => setViewingItemId(r.item_id!)} className="block truncate text-blue-600 hover:underline text-left">{r.item_name}</button>
                     ) : <span className="block truncate">{r.item_name}</span>}
                   </td>
                   {colPrefs.shownColumns.map(c => {
@@ -606,6 +607,9 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
         </div>
         </div>
       </div>}
+      {viewingItemId != null && (
+        <ItemDetailModal itemId={viewingItemId} onClose={() => setViewingItemId(null)} />
+      )}
     </div>
   )
 }

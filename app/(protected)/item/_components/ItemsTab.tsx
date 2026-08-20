@@ -8,6 +8,7 @@ import AssignWidget from './AssignWidget'
 import PageLawsList from './PageLawsList'
 import LawsToggleBar from './LawsToggleBar'
 import { useLawsPanel } from './useLawsPanel'
+import ItemDetailModal from './ItemDetailModal'
 
 // Each of these 6 checks is its own flag pill on the Items page, and each
 // opens AliasesTab straight onto its own dedicated page -- no tab bar to
@@ -146,12 +147,12 @@ function DuplicateFix({ r, onFixed, onOpenItem360 }: { r: any; onFixed: (id1: nu
     onFixed(r.id1, r.id2)
   }
 
-  // Names alone are often too similar to tell apart -- each one links
-  // straight to its Item 360 page so it can actually be identified.
+  // Names alone are often too similar to tell apart -- each one opens its
+  // own item detail popup so it can actually be identified.
   function nameLink(id: number, name: string) {
     if (!onOpenItem360) return name
     return (
-      <button onClick={() => onOpenItem360(id)} title="Open Item 360" className="text-blue-600 hover:underline underline-offset-2">
+      <button onClick={() => onOpenItem360(id)} title="View item details" className="text-blue-600 hover:underline underline-offset-2">
         {name}
       </button>
     )
@@ -346,14 +347,18 @@ type Props = {
   onCloseAdd?: () => void
   jumpToItemId?: number | null
   onJumpDone?: () => void
-  onOpenItem360?: (itemId: number) => void
 }
 
-export default function ItemsTab({ items, group, productType, search, violation, violationLabel, onItemsChanged, showAdd = false, onCloseAdd, jumpToItemId, onJumpDone, onOpenItem360 }: Props) {
+export default function ItemsTab({ items, group, productType, search, violation, violationLabel, onItemsChanged, showAdd = false, onCloseAdd, jumpToItemId, onJumpDone }: Props) {
   const [lossMap, setLossMap] = useState<Record<number, DayRow[]>>({})
   const [lossLoading, setLossLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const lawsPanel = useLawsPanel('showItemsFlagsLaws')
+  // Item 360 popup -- own local state since ItemsTab is reused in several
+  // shells, not just item/page.tsx's, so it can't rely on a parent to own
+  // this. Both the "360°" button and DuplicateFix's item-name links (see
+  // nameLink) below open the same popup.
+  const [viewingItemId, setViewingItemId] = useState<number | null>(null)
 
   useEffect(() => {
     if (!jumpToItemId) return
@@ -757,7 +762,7 @@ export default function ItemsTab({ items, group, productType, search, violation,
           ? <p className="py-4 text-center text-gray-400 text-[10px]">No duplicate item names found.</p>
           : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
               {activeDups.map((r: any) => (
-                <DuplicateFix key={`${r.id1}-${r.id2}`} r={r} onOpenItem360={onOpenItem360} onFixed={(id1, id2) => {
+                <DuplicateFix key={`${r.id1}-${r.id2}`} r={r} onOpenItem360={setViewingItemId} onFixed={(id1, id2) => {
                   const lo = Math.min(id1, id2), hi = Math.max(id1, id2)
                   setDismissed(prev => new Set(prev).add(`${lo}-${hi}`))
                 }} />
@@ -986,10 +991,10 @@ export default function ItemsTab({ items, group, productType, search, violation,
                       </p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      <a href={`/item?tab=loss&view=item360&jumpItemId=${item.id}`}
+                      <button type="button" onClick={() => setViewingItemId(item.id)}
                         className="text-[9px] text-blue-600 font-semibold bg-white px-2 py-0.5 rounded hover:bg-blue-50">
                         360°
-                      </a>
+                      </button>
                       <button onClick={() => startEdit(item)}
                         className="text-[9px] text-blue-600 font-semibold bg-white px-2 py-0.5 rounded hover:bg-blue-50">
                         Edit
@@ -1067,6 +1072,9 @@ export default function ItemsTab({ items, group, productType, search, violation,
           )
         })}
       </div>
+      {viewingItemId != null && (
+        <ItemDetailModal itemId={viewingItemId} onClose={() => setViewingItemId(null)} />
+      )}
     </div>
   )
 }

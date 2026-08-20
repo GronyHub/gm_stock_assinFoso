@@ -1,12 +1,12 @@
 'use client'
 import { Fragment, useState, useEffect, useMemo } from 'react'
-import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { isOwnerLevel } from '@/lib/roles'
 import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from './columnPrefs'
 import { useAttachments, AttachmentPicker, type Attachment } from './attachmentsShared'
+import ItemDetailModal from './ItemDetailModal'
 
 type Item = { id: number; item_name: string; cf_group: string | null }
 
@@ -177,6 +177,7 @@ export default function BillsTab({ items, groupFilter, search, violation = null 
   const [bills, setBills] = useState<Bill[]>([])
   const [loading, setLoading] = useState(true)
   const [showHistory, setShowHistory] = useState(false)
+  const [viewingItemId, setViewingItemId] = useState<number | null>(null)
   const [linesMap, setLinesMap] = useState<Record<number, BillLine[]>>({})
   // Editing is bill-level now, triggered from the ✏️ on a group's bar
   // rather than by clicking any line -- keyed by bill id directly.
@@ -691,9 +692,9 @@ export default function BillsTab({ items, groupFilter, search, violation = null 
                       className={`border-b border-gray-100 text-[13px] font-bold ${row.unresolved ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
                       <td className="px-1 py-1 text-gray-900 overflow-hidden">
                         {row.itemId ? (
-                          <Link href={`/item?tab=loss&view=item360&jumpItemId=${row.itemId}`} className="block truncate text-blue-600 hover:underline">
+                          <button type="button" onClick={() => setViewingItemId(row.itemId)} className="block truncate text-blue-600 hover:underline text-left">
                             {row.itemName}
-                          </Link>
+                          </button>
                         ) : (
                           <span className="block truncate text-red-600">{row.itemName}</span>
                         )}
@@ -719,6 +720,9 @@ export default function BillsTab({ items, groupFilter, search, violation = null 
         {filtered.length === 0 && <p className="text-[10px] text-gray-400 text-center py-10">No bills</p>}
         </div>
       </div>
+      {viewingItemId != null && (
+        <ItemDetailModal itemId={viewingItemId} onClose={() => setViewingItemId(null)} />
+      )}
     </div>
   )
 }

@@ -1,6 +1,5 @@
 'use client'
 import { useState, useEffect, useMemo, useRef, Fragment, type ReactNode, type CSSProperties } from 'react'
-import { useRouter } from 'next/navigation'
 import { fmtDate } from '@/lib/fmtDate'
 import type { ItemDayRow as DayRow, CountRevision } from '@/lib/itemDayRows'
 import {
@@ -10,6 +9,7 @@ import {
 import { COL_BY_KEY, type ColKey, type SortCol } from './lossTabColumns'
 import { ColResizeHandle } from './columnPrefs'
 import { ItemEditForm, EMPTY_ITEM_EDIT_FORM } from './ItemEditForm'
+import ItemDetailModal from './ItemDetailModal'
 
 /* ── types ── */
 export type SummaryRow = {
@@ -1683,14 +1683,13 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
   resizeWidth: (key: string, deltaPx: number, fallback: number) => void
   resetWidth: (key: string) => void
 }) {
-  const router = useRouter()
   const [rows, setRows] = useState<SummaryRow[]>([])
   const [loading, setLoading] = useState(true)
   const [sort, setSort] = useState<{ col: SortCol; dir: SortDir }>({ col: 'lgAmt', dir: 'desc' })
+  const [viewingItemId, setViewingItemId] = useState<number | null>(null)
 
-  // Remembers scroll position across a trip to an item's 360° page and back
-  // -- otherwise returning via the browser's back button drops you at the
-  // top of a long list instead of where you actually were.
+  // Remembers scroll position across a reload -- otherwise coming back to
+  // this list drops you at the top instead of where you actually were.
   const scrollRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (loading || !scrollRef.current) return
@@ -1768,7 +1767,7 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
     // background to stay legible while the rest of the row scrolls under it.
     const stripe = i % 2 === 1 ? 'bg-gray-50' : 'bg-white'
     return (
-      <tr key={row.item_id} onClick={() => router.push(`/item?tab=loss&view=item360&jumpItemId=${row.item_id}`)}
+      <tr key={row.item_id} onClick={() => setViewingItemId(row.item_id)}
         className={`cursor-pointer hover:bg-blue-50/60 transition ${stripe}`}>
         <td className={`pl-2 pr-2 py-1.5 font-bold truncate sticky left-0 z-10 ${stripe}`}
           style={{ width: itemColWidth, maxWidth: itemColWidth }} title={row.item_name}>
@@ -1828,6 +1827,9 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
           </tbody>
         </table>
       </div>
+      {viewingItemId != null && (
+        <ItemDetailModal itemId={viewingItemId} onClose={() => setViewingItemId(null)} />
+      )}
     </div>
   )
 }
