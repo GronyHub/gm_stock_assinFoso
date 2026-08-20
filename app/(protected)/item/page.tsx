@@ -74,7 +74,6 @@ const PurchaseOrdersPage  = dynamic(() => import('../purchase-orders/page'),    
 const AliasWidePage       = dynamic(() => import('../aliases/wide/page'),           { ssr: false, loading: () => loading('Loading…') })
 const ServiceMatchesPage  = dynamic(() => import('../matches/wide/page'),           { ssr: false, loading: () => loading('Loading…') })
 const ViewPortalAsButton  = dynamic(() => import('@/components/ViewPortalAsButton'), { ssr: false })
-const Item360Tab = dynamic(() => import('./_components/Item360Tab'),          { ssr: false, loading: () => loading('Loading…') })
 const StaffContent = dynamic(() => import('./_components/StaffPersonTab'),    { ssr: false, loading: () => loading('Loading…') })
 const StaffMemberPersonalTab = dynamic(() => import('./_components/StaffMemberPersonalTab'), { ssr: false, loading: () => loading('Loading…') })
 const UKTab = dynamic(() => import('./_components/UKTab'), { ssr: false, loading: () => loading('Loading…') })
@@ -105,7 +104,7 @@ type OuterTab = 'today' | 'loss' | 'uk' | 'ch'
 // tab, not part of the Grony Cash merge -- it just reuses this same shared
 // state/pane machinery rather than needing its own parallel copy.
 type LossView = 'home' | 'items' | 'sales' | 'bills' | 'feed' | 'lossByTarget' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts' | 'dailySummary'
-  | 'purchaseOrders' | 'item360' | 'services'
+  | 'purchaseOrders' | 'services'
   // "New Customer" used to be a toggle-open form living inside the Customers
   // list page itself (CustomersPage's own showForm state) -- it's now this
   // own separate LossView/pane row instead, so it gets its own PageToolIcons
@@ -187,7 +186,7 @@ const OLD_TAB_TO_VIEW: Partial<Record<string, LossView>> = {
 // groups/search bar of their own.
 const REPORT_VIEWS = new Set<LossView>([
   'home', 'pl', 'cab', 'vendors', 'customers', 'newCustomer', 'expenseOrders', 'receipts', 'dailySummary',
-  'purchaseOrders', 'item360', 'viewPortalAs', 'reorderLists', 'services',
+  'purchaseOrders', 'viewPortalAs', 'reorderLists', 'services',
   ...MANAGE_VIEW_KEYS, ...STAFF_VIEW_KEYS, ...CH_VIEW_KEYS,
 ])
 
@@ -205,9 +204,10 @@ const REPORT_VIEWS = new Set<LossView>([
 // key (and the gains violation deep-link that already points at it) but is
 // relabeled to "Loss by Date", with Loss by Target following right after as
 // its own lossView. Loss by Item moved twice more since -- first to a flag
-// on Items itself, then folded into Item 360 as its landing table (see
-// Item360Tab), since a row there already drilled into the exact same
-// per-item detail Item 360 shows.
+// on Items itself, then folded into Item 360 as its landing table, then Item
+// 360 itself was removed once its detail popup (ItemDetailModal) was
+// reachable from everywhere that needed it -- Live Sale's own "Loss by
+// Item" law view (sorts its grid by loss) covers what this row used to.
 //
 // Tasks used to live on the bottom Role Bar (Joe's tab), bundled together
 // with Grony Manage's own violations (the "former Bino bucket" -- staff
@@ -231,7 +231,6 @@ const REPORT_VIEWS = new Set<LossView>([
 // inside these same sections.
 const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: string }[] = [
   { key: 'items',    label: 'Items',    icon: '📦' },
-  { key: 'item360',   label: 'Loss by Item',  icon: '📊' },
   { key: 'sales',    label: 'Sales',    icon: '🧾' },
   { key: 'bills',    label: 'Bills',    icon: '📃' },
   { key: 'purchaseOrders',   label: 'Purchase Ord',   icon: '🛒' },
@@ -554,23 +553,17 @@ function ItemHubPageInner() {
   // Global search's own "Items" result -- opens the item detail popup
   // directly instead of navigating to the Loss by Item page.
   const [globalSearchViewingItemId, setGlobalSearchViewingItemId] = useState<number | null>(null)
-  // Seeded from ?jumpDate=/?jumpItem= -- Item 360's Detail table (and its
-  // "click a date" links) lands here via /item?tab=loss&view=sales&jumpDate=
-  // ...&jumpItem=..., which the URL-sync effect below strips off again on
-  // its first run since only tab/view/q are ever written back to the URL.
+  // Seeded from ?jumpDate=/?jumpItem= -- an item's detail popup (see
+  // ItemDetailPanel's onDateClick) opens this in a new tab via
+  // /item?tab=loss&view=sales&jumpDate=...&jumpItem=..., which the
+  // URL-sync effect below strips off again on its first run since only
+  // tab/view/q are ever written back to the URL.
   const [jumpToReceiptDate, setJumpToReceiptDate] = useState<string | null>(searchParams.get('jumpDate'))
   const [jumpToReceiptItemName, setJumpToReceiptItemName] = useState<string | null>(searchParams.get('jumpItem'))
   // Loss by Date's own Losses/Gains toggle -- used to only switch to the
   // gains feed via the (now-removed) Tasks page's 'gains' violation deep-
   // link, so this is now the only way to reach it.
   const [feedShowGains, setFeedShowGains] = useState(false)
-  // Every "tap an item" spot in the app (Items list rows, Sales/Bills item
-  // links, the old standalone /stock/[id] route's former callers) now lands
-  // here instead -- ?jumpItemId= opens Item 360 straight to that item's
-  // detail rather than its search box. Seeded (and re-seeded on later
-  // same-page navigations) entirely by the searchParams effect below, since
-  // a plain useState initializer only ever sees the URL a page starts on.
-  const [item360JumpId, setItem360JumpId] = useState<number | null>(null)
   const [showItemsLaws, setShowItemsLaws] = useState(() => {
     if (typeof window === 'undefined') return false
     return localStorage.getItem('showItemsLaws') === 'true'
@@ -602,7 +595,7 @@ function ItemHubPageInner() {
   const [billsHideZeroFlags, setBillsHideZeroFlags] = useState(false)
   const billsFilters = useLawFilterState()
   // The rest of this page's many smaller panes (New Sale, P&L, Receipts,
-  // Purchase Orders, Item 360, Loss by Date/Item/Target, ...) each get their
+  // Purchase Orders, Loss by Date/Target, ...) each get their
   // own inline law panel too, same as Items/Sales/Bills above -- one
   // useLawsPanel() per scope, rendered through the inlineLaws() helper
   // below instead of hand-rolling the toggle+panel JSX 16 more times.
@@ -613,7 +606,6 @@ function ItemHubPageInner() {
   const homeLaws = useLawsPanel('showHomeLaws')
   const dailyLaws = useLawsPanel('showDailyLaws')
   const purchaseOrdersLaws = useLawsPanel('showPurchaseOrdersLaws')
-  const item360Laws = useLawsPanel('showItem360Laws')
   const servicesLaws = useLawsPanel('showServicesLaws')
   const viewPortalAsLaws = useLawsPanel('showViewPortalAsLaws')
   const reorderListsLaws = useLawsPanel('showReorderListsLaws')
@@ -787,9 +779,9 @@ function ItemHubPageInner() {
   const itemsColPrefs = useColumnPrefs<ColKey>('lossTab', COLUMNS)
 
   // Toggles the Items/Sales/Bills/Expenses tabs over to their Analytics
-  // view instead of the normal list -- these four (plus Loss and Counts,
-  // which own the same toggle themselves, see LossByItemTab/CountsTab)
-  // are where the removed "Data" tab's eight sections got redistributed to.
+  // view instead of the normal list -- these four (plus Counts, which owns
+  // the same toggle itself, see CountsTab) are where the removed "Data"
+  // tab's eight sections got redistributed to.
   const [showAnalytics, setShowAnalytics] = useState(searchParams.get('analytics') === '1')
   // Sales' own combined 🚩 flags view -- lifted up here (like itemsExtraView
   // above) so its trigger can sit on the green bar next to New, matching
@@ -1051,10 +1043,6 @@ function ItemHubPageInner() {
   const CASH_TASK_SCOPE_OVERRIDES: Partial<Record<LossView, string>> = {
     purchaseOrders: 'Purchase Orders',
     lossByTarget: 'Loss by Target',
-    // Relabeled from "Item 360" to "Loss by Item" -- scopeKey stays the old
-    // label so tasks/notes/laws already recorded against this page (still
-    // stored under "Item 360") aren't orphaned by the rename.
-    item360: 'Item 360',
   }
   const cashTaskScopeKey = (key: LossView) => CASH_TASK_SCOPE_OVERRIDES[key] ?? CASH_LABEL.get(key) ?? key
   // Every remaining Manage row's scopeKey already equals its own label
@@ -1319,23 +1307,6 @@ function ItemHubPageInner() {
     const urlForm = (VALID_ADD_FORMS as readonly string[]).includes(rawUrlForm ?? '')
       ? (rawUrlForm as typeof VALID_ADD_FORMS[number]) : null
     if (urlForm !== addForm) setAddForm(urlForm)
-    // Read (and re-read) on every searchParams change, not just first mount --
-    // unlike outerTab/lossView above, a plain useState initializer would only
-    // ever see this on a fresh page load, never on a same-page router.push
-    // from one Grony Cash submenu to another (Sales/Bills/Counts/etc. tapping
-    // an item all land here this way now that /stock/[id] is gone). Stripped
-    // back out of the URL immediately after being read, or switching lossView
-    // again later would keep re-triggering the same jump forever.
-    const rawJumpItemId = searchParams.get('jumpItemId')
-    if (rawJumpItemId) {
-      const n = Number(rawJumpItemId)
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (!Number.isNaN(n)) setItem360JumpId(n)
-      const params = new URLSearchParams(window.location.search)
-      params.delete('jumpItemId')
-      const qs = params.toString()
-      router.replace(qs ? `/item?${qs}` : '/item', { scroll: false })
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
@@ -2456,20 +2427,6 @@ function ItemHubPageInner() {
                           }
                         },
                       })),
-                      // Item 360 (relabeled "Loss by Item" -- its landing
-                      // table is now that ranking, see Item360Tab) stays a
-                      // real full-page destination (every item name across
-                      // Bills/Counts/Sales/POs/Loss links straight to it via
-                      // ?view=item360&jumpItemId=, not just this page), so
-                      // unlike the group flags above this one still
-                      // navigates instead of opening inline -- same as any
-                      // other flag whose onViewClick calls pickLossView.
-                      {
-                        key: 'item_360',
-                        label: 'Loss by Item',
-                        count: 0,
-                        onViewClick: () => pickLossView('item360'),
-                      },
                     ]}
                     openForm={itemsLawsOpenForm}
                     setOpenForm={setItemsLawsOpenForm}
@@ -2627,16 +2584,6 @@ function ItemHubPageInner() {
           <TabErrorBoundary>
             <div className="px-3 pt-2">{inlineLaws('Loss by Target', lossByTargetLaws)}</div>
             <div className="py-20 text-center text-gray-400 text-xs">Coming soon.</div>
-          </TabErrorBoundary>
-        )}
-        {outerTab === 'loss' && lossView === 'item360' && (
-          <TabErrorBoundary>
-            {/* scopeKey stays "Item 360" (not the pane's new "Loss by
-                Item" label) so laws/notes recorded here before the rename
-                stay reachable -- see CASH_TASK_SCOPE_OVERRIDES above for
-                the same reasoning on tasks. */}
-            <div className="px-3 pt-2">{inlineLaws('Item 360', item360Laws)}</div>
-            <Item360Tab jumpToItemId={item360JumpId} onJumpDone={() => setItem360JumpId(null)} />
           </TabErrorBoundary>
         )}
           </div>
