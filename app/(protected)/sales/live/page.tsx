@@ -79,6 +79,11 @@ export default function LiveSalePage(props: any = {}) {
     showHelpModal: controlledShowHelpModal, onHelpModalChange,
     hideFilterBar = false,
     searchSlotEl = null,
+    // Portal target for the mode switcher -- kept separate from
+    // searchSlotEl so the host page (Item page) can pin it to its own top
+    // row instead of it sharing space with the search box/laws/help/expand
+    // icons, where it used to wrap onto a second line.
+    modeToggleSlotEl = null,
     // Every "open Live Sale on a specific tab" deep link -- the "Sale Log"
     // search result (jumpToTab: 'log'), "Fix now: Sales/Bills" buttons, a
     // Sales/Bills violation pill (jumpToTab + jumpToTabViolation), and a
@@ -807,11 +812,13 @@ export default function LiveSalePage(props: any = {}) {
   // any two of them doesn't require detouring back through the grid first.
   function renderModeToggle(compact: boolean) {
     const btnCls = (active: boolean, color: string) =>
-      `font-bold rounded-md transition whitespace-nowrap ${compact ? 'px-1.5 py-1 text-[10px]' : 'px-2 py-1 text-xs'} ${
+      `font-bold rounded-md transition whitespace-nowrap shrink-0 ${compact ? 'px-1.5 py-1 text-[10px]' : 'px-2 py-1 text-xs'} ${
         active ? `${color} text-white` : 'text-gray-500 hover:text-gray-700'
       }`
+    // Always one line -- scrolls horizontally rather than wrapping onto a
+    // second row when there isn't room for all six buttons.
     return (
-      <div className="inline-flex bg-gray-200 rounded-lg p-0.5 flex-wrap">
+      <div className="flex bg-gray-200 rounded-lg p-0.5 overflow-x-auto max-w-full">
         <button type="button" onClick={() => setMode('sale')} title="Sale mode" className={btnCls(mode === 'sale', 'bg-blue-600')}>Sale</button>
         <button type="button" onClick={() => setMode('sales')} title="Sales" className={btnCls(mode === 'sales', 'bg-emerald-600')}>Sales</button>
         <button type="button" onClick={() => setMode('bills')} title="Bills" className={btnCls(mode === 'bills', 'bg-orange-600')}>Bills</button>
@@ -1247,6 +1254,19 @@ export default function LiveSalePage(props: any = {}) {
   return (
     <>
     <div className="h-full flex flex-col bg-white">
+      {/* Mode switcher -- pinned to its own top row (one line, scrolls
+          horizontally rather than wrapping) above the filter bar and
+          everything else, rather than sharing space with the search box.
+          Portaled into modeToggleSlotEl instead when the host page (Item
+          page) supplies one, so it can pin the switcher to its own top row
+          in the merged bar. */}
+      {!modeToggleSlotEl && (
+        <div className="px-2 py-1.5 border-b border-gray-200 bg-gray-50 overflow-x-auto">
+          {renderModeToggle(false)}
+        </div>
+      )}
+      {modeToggleSlotEl && createPortal(renderModeToggle(true), modeToggleSlotEl)}
+
       {/* Filter Bar - Green bar at top - hidden when the host page (Item page)
           renders its own merged version of this bar via hideFilterBar */}
       {!hideFilterBar && (
@@ -1305,7 +1325,6 @@ export default function LiveSalePage(props: any = {}) {
       {(() => {
         const searchControlsNode = (
           <>
-            {renderModeToggle(compactSearch)}
             <div className="relative">
               <input
                 type="text"

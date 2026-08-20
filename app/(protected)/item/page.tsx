@@ -589,6 +589,7 @@ function ItemHubPageInner() {
   const [liveGroupFilter, setLiveGroupFilter] = useState<string | null>(null)
   const [liveHelpModalOpen, setLiveHelpModalOpen] = useState(false)
   const [liveSearchSlotEl, setLiveSearchSlotEl] = useState<HTMLDivElement | null>(null)
+  const [liveModeToggleSlotEl, setLiveModeToggleSlotEl] = useState<HTMLDivElement | null>(null)
   // Deep links into a specific Live Sale tab (Sale/Sales/Bills/Loss by
   // Date/Loss by Tgt/Log) -- the "Sale Log" search result, a "Fix now:
   // Counts" button, a Daily/7-Day/15-Day Counts violation pill, a Sales/
@@ -2039,7 +2040,15 @@ function ItemHubPageInner() {
                 )}
 
                 {outerTab === 'loss' && lossView === 'sales' && (
-                  <div className="flex flex-col gap-1.5 ml-auto items-end">
+                  <div className="flex flex-col gap-1.5 ml-auto items-end w-full">
+                    {/* Mode switcher -- pinned to its own top row, always one
+                        line (scrolls horizontally rather than wrapping) so
+                        it reads as a single control instead of splitting
+                        into two rows the way it did sharing space with the
+                        laws/help/expand icons below. */}
+                    <div className="w-full overflow-x-auto">
+                      <div ref={el => setLiveModeToggleSlotEl(el)} className="flex" />
+                    </div>
                     <div className="flex items-center gap-1.5 flex-wrap justify-end">
                       <select
                         value={liveProductTypeFilter}
@@ -2109,6 +2118,7 @@ function ItemHubPageInner() {
             showHelpModal={liveHelpModalOpen}
             onHelpModalChange={setLiveHelpModalOpen}
             searchSlotEl={liveSearchSlotEl}
+            modeToggleSlotEl={liveModeToggleSlotEl}
             jumpToTabSeq={liveSaleJumpSeq}
             jumpToTab={liveSaleJumpTab}
             jumpToTabViolation={liveSaleJumpViolation}
