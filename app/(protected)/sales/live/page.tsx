@@ -893,15 +893,20 @@ export default function LiveSalePage(props: any = {}) {
   // The switcher's permanent home -- its own top row, above every tab's own
   // header/filter bar, identical on all six tabs. Portaled into
   // modeToggleSlotEl instead when the host page (Item page) supplies one,
-  // so it can pin the switcher to its own top row in the merged bar.
+  // so it can pin the switcher to its own top row in the merged bar. In
+  // "Large screen" mode this page's own root goes `fixed inset-0`, covering
+  // the host page entirely -- modeToggleSlotEl still lives in the (now
+  // hidden-behind-the-overlay) host page, so the portal target is useless
+  // then and this renders its own row instead, same as when there's no
+  // slot at all.
   function renderModeToggleRow() {
     return (<>
-      {!modeToggleSlotEl && (
+      {(!modeToggleSlotEl || expanded) && (
         <div className="px-2 py-1.5 border-b border-gray-200 bg-gray-50 overflow-x-auto shrink-0">
           {renderModeToggle(false)}
         </div>
       )}
-      {modeToggleSlotEl && createPortal(renderModeToggle(true), modeToggleSlotEl)}
+      {modeToggleSlotEl && !expanded && createPortal(renderModeToggle(true), modeToggleSlotEl)}
     </>)
   }
 
@@ -1464,8 +1469,11 @@ export default function LiveSalePage(props: any = {}) {
       {renderModeToggleRow()}
 
       {/* Filter Bar - Green bar at top - hidden when the host page (Item page)
-          renders its own merged version of this bar via hideFilterBar */}
-      {!hideFilterBar && (
+          renders its own merged version of this bar via hideFilterBar,
+          except in "Large screen" mode -- the host page's own version is
+          behind this page's now-fixed-fullscreen overlay, so it needs its
+          own copy here too rather than losing the type/group filters entirely. */}
+      {(!hideFilterBar || expanded) && (
       <div className="bg-green-700 -mx-0 px-4 py-2 flex items-center justify-between">
           <div className="flex gap-2 items-center">
             <select
@@ -1614,7 +1622,13 @@ export default function LiveSalePage(props: any = {}) {
           </>
         )
 
-        if (compactSearch) {
+        // Same reasoning as renderModeToggleRow above -- searchSlotEl lives
+        // in the host page, which "Large screen" mode's fixed overlay
+        // covers entirely, so the portal target is useless while expanded
+        // and this renders its own row instead (with the search box,
+        // WIC/GMC toggle, and Analytics button all included, not just
+        // hidden behind the overlay).
+        if (compactSearch && !expanded) {
           return searchSlotEl ? createPortal(
             <div className="flex gap-1.5 items-center">{searchControlsNode}</div>,
             searchSlotEl
