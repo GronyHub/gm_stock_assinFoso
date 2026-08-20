@@ -18,8 +18,12 @@ export async function GET(req: NextRequest) {
 
   await ensureLiveSaleTapsTable()
   const daysInt = parseInt(days)
+  // soh is a per-tap snapshot recorded at insert time (see /api/sales/
+  // live-tap's POST), not a live join -- it needs to read as "what the
+  // stock was right after this tap", not today's current stock, or every
+  // past tap of the same item would show the same (wrong) number.
   const rows = await sql`
-    SELECT id, item_id, item_name, price, staff_name, tapped_at, undone, receipt_id, quantity
+    SELECT id, item_id, item_name, price, staff_name, tapped_at, undone, receipt_id, quantity, soh
     FROM live_sale_taps
     WHERE tapped_at >= CURRENT_TIMESTAMP - MAKE_INTERVAL(days => ${daysInt})
     ORDER BY tapped_at DESC
