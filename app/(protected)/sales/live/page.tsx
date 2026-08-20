@@ -974,20 +974,6 @@ export default function LiveSalePage(props: any = {}) {
       <>
       <div className="h-full flex flex-col bg-white">
         {renderModeToggleRow()}
-        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
-          <h2 className="text-sm font-bold text-gray-900">Live Sale Log</h2>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowHelpModal(true)}
-              className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 font-semibold text-sm flex items-center justify-center transition"
-              title="Help"
-            >
-              ?
-            </button>
-          </div>
-        </div>
-
         <div className="flex-1 overflow-auto">
           {taps.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-8">No sales recorded</p>
