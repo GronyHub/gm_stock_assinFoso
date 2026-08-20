@@ -148,14 +148,14 @@ export function realizedCycleCedis(cyc: PackCycle, sheetPrice: number): number |
 // dates that came out as a real gain instead (pack-side + cycle-side
 // combined, same unit as Loss Amount -- the two are opposite halves of one
 // ledger).
-export function computeChainLossSummary(packDayRows: ItemDayRow[], singlesDayRows: ItemDayRow[], unitsPerPack: number, sheetPrice: number): { lossAmt: number; lossCount: number; gainAmt: number } {
+export function computeChainLossSummary(packDayRows: ItemDayRow[], singlesDayRows: ItemDayRow[], unitsPerPack: number, sheetPrice: number): { lossAmt: number; lossCount: number; gainAmt: number; gainCount: number } {
   const packRows = computeRows(packDayRows)
   const singlesRows = computeRows(singlesDayRows)
   const chainRows = buildPackChainRows(packRows, singlesRows)
   const cycles = buildPackCycles(singlesRows)
   const cyclesByStart = new Map(cycles.map(c => [c.start, c]))
 
-  let lossAmt = 0, lossCount = 0, gainAmt = 0
+  let lossAmt = 0, lossCount = 0, gainAmt = 0, gainCount = 0
   for (const row of chainRows) {
     const cyc = cyclesByStart.get(row.date)
     const pCedis = packSideCedis(row, unitsPerPack, sheetPrice)
@@ -164,7 +164,7 @@ export function computeChainLossSummary(packDayRows: ItemDayRow[], singlesDayRow
     const total = (pCedis ?? 0) + (cCedis ?? 0)
     lossAmt += total
     if (total > 0.001) lossCount++
-    else if (total < -0.001) gainAmt += -total
+    else if (total < -0.001) { gainAmt += -total; gainCount++ }
   }
-  return { lossAmt: parseFloat(lossAmt.toFixed(2)), lossCount, gainAmt: parseFloat(gainAmt.toFixed(2)) }
+  return { lossAmt: parseFloat(lossAmt.toFixed(2)), lossCount, gainAmt: parseFloat(gainAmt.toFixed(2)), gainCount }
 }

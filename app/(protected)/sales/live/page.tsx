@@ -62,16 +62,20 @@ function formatGapMins(mins: number): string {
 }
 
 // lgAmt is the NET loss/gain in cedis (positive = net loss, negative = net
-// gain -- same sign convention Item 360's own loss table uses); lossCount
-// is how many separate days actually came up short, independent of sign.
-function formatLoss(l: { lossCount: number; lgAmt: number } | undefined): { text: string; cls: string } {
+// gain -- same sign convention Item 360's own loss table uses); lossCount/
+// gainCount are how many separate days came up short/over, each
+// independent of the other and of lgAmt's net sign (a item can have both
+// loss days and gain days that partly offset into one net figure).
+function formatLoss(l: { lossCount: number; lgAmt: number; gainCount?: number } | undefined): { text: string; cls: string } {
   const count = l?.lossCount ?? 0
   const amt = l?.lgAmt ?? 0
+  const gainCount = l?.gainCount ?? 0
   const fmtAmt = (v: number) => (v % 1 === 0 ? v.toFixed(0) : v.toFixed(2))
-  if (count === 0 && amt === 0) return { text: 'No loss', cls: 'text-gray-400' }
-  if (amt > 0) return { text: `Loss ${count} · -₵${fmtAmt(amt)}`, cls: 'text-red-500 font-semibold' }
-  if (amt < 0) return { text: `Loss ${count} · +₵${fmtAmt(Math.abs(amt))}`, cls: 'text-green-600 font-semibold' }
-  return { text: `Loss ${count}`, cls: 'text-gray-400' }
+  const gainSuffix = gainCount > 0 ? ` · Gain ${gainCount}` : ''
+  if (count === 0 && amt === 0 && gainCount === 0) return { text: 'No loss', cls: 'text-gray-400' }
+  if (amt > 0) return { text: `Loss ${count} · -₵${fmtAmt(amt)}${gainSuffix}`, cls: 'text-red-500 font-semibold' }
+  if (amt < 0) return { text: `Loss ${count} · +₵${fmtAmt(Math.abs(amt))}${gainSuffix}`, cls: 'text-green-600 font-semibold' }
+  return { text: `Loss ${count}${gainSuffix}`, cls: 'text-gray-400' }
 }
 
 export default function LiveSalePage(props: any = {}) {
@@ -441,12 +445,12 @@ export default function LiveSalePage(props: any = {}) {
   // is built from (/api/losses/summary), shown inline next to price/cost/
   // stock/count-interval so a loss-prone item is visible without opening
   // its Item 360 detail. Fetched once, same as the GMC id set above.
-  const [lossByItemId, setLossByItemId] = useState<Map<number, { lossCount: number; lgAmt: number }>>(new Map())
+  const [lossByItemId, setLossByItemId] = useState<Map<number, { lossCount: number; lgAmt: number; gainCount: number }>>(new Map())
   useEffect(() => {
     fetch('/api/losses/summary')
       .then(r => r.json())
-      .then((d: { item_id: number; lossCount: number; lgAmt: number }[]) => {
-        setLossByItemId(new Map(Array.isArray(d) ? d.map(r => [r.item_id, { lossCount: r.lossCount, lgAmt: r.lgAmt }]) : []))
+      .then((d: { item_id: number; lossCount: number; lgAmt: number; gainCount: number }[]) => {
+        setLossByItemId(new Map(Array.isArray(d) ? d.map(r => [r.item_id, { lossCount: r.lossCount, lgAmt: r.lgAmt, gainCount: r.gainCount }]) : []))
       })
       .catch(() => {})
   }, [])
