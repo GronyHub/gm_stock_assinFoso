@@ -829,6 +829,21 @@ export default function LiveSalePage(props: any = {}) {
     )
   }
 
+  // The switcher's permanent home -- its own top row, above every tab's own
+  // header/filter bar, identical on all six tabs. Portaled into
+  // modeToggleSlotEl instead when the host page (Item page) supplies one,
+  // so it can pin the switcher to its own top row in the merged bar.
+  function renderModeToggleRow() {
+    return (<>
+      {!modeToggleSlotEl && (
+        <div className="px-2 py-1.5 border-b border-gray-200 bg-gray-50 overflow-x-auto shrink-0">
+          {renderModeToggle(false)}
+        </div>
+      )}
+      {modeToggleSlotEl && createPortal(renderModeToggle(true), modeToggleSlotEl)}
+    </>)
+  }
+
   // The count records table -- shared by the Log tab's own Count view and
   // Sale mode's "Count Records" law view (see currentView.kind ===
   // 'countRecords' below), so there's one table instead of two copies.
@@ -951,10 +966,10 @@ export default function LiveSalePage(props: any = {}) {
     return (
       <>
       <div className="h-full flex flex-col bg-white">
+        {renderModeToggleRow()}
         <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
           <h2 className="text-sm font-bold text-gray-900">{logKind === 'count' ? 'Count Log' : 'Live Sale Log'}</h2>
           <div className="flex items-center gap-2">
-            {renderModeToggle(false)}
             <div className="inline-flex bg-gray-200 rounded-lg p-0.5">
               <button type="button" onClick={() => setLogKind('sale')}
                 className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${logKind === 'sale' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-gray-700'}`}>
@@ -1078,6 +1093,7 @@ export default function LiveSalePage(props: any = {}) {
     return (
       <>
       <div className="h-full flex flex-col bg-white">
+        {renderModeToggleRow()}
         <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
           <h2 className="text-sm font-bold text-gray-900">Sales</h2>
           <div className="flex items-center gap-2">
@@ -1088,7 +1104,6 @@ export default function LiveSalePage(props: any = {}) {
               placeholder="Search…"
               className="text-xs px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 w-32"
             />
-            {renderModeToggle(false)}
             <button type="button" onClick={() => setSalesShowAnalytics(a => !a)}
               title="Analytics"
               className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${salesShowAnalytics ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
@@ -1127,6 +1142,7 @@ export default function LiveSalePage(props: any = {}) {
     return (
       <>
       <div className="h-full flex flex-col bg-white">
+        {renderModeToggleRow()}
         <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
           <h2 className="text-sm font-bold text-gray-900">Bills</h2>
           <div className="flex items-center gap-2">
@@ -1143,7 +1159,6 @@ export default function LiveSalePage(props: any = {}) {
               className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${billsAddingNew ? 'bg-red-600 text-white' : 'bg-green-600 text-white hover:bg-green-500'}`}>
               {billsAddingNew ? 'Cancel' : '+ New Bill'}
             </button>
-            {renderModeToggle(false)}
             {!billsAddingNew && (
               <button type="button" onClick={() => setBillsShowAnalytics(a => !a)}
                 title="Analytics"
@@ -1183,6 +1198,7 @@ export default function LiveSalePage(props: any = {}) {
     return (
       <>
       <div className="h-full flex flex-col bg-white">
+        {renderModeToggleRow()}
         <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
           <h2 className="text-sm font-bold text-gray-900">Loss by Date</h2>
           <div className="flex items-center gap-2">
@@ -1203,7 +1219,6 @@ export default function LiveSalePage(props: any = {}) {
                 🚩 Gains
               </button>
             </div>
-            {renderModeToggle(false)}
             <button
               type="button"
               onClick={() => setShowHelpModal(true)}
@@ -1230,10 +1245,10 @@ export default function LiveSalePage(props: any = {}) {
     return (
       <>
       <div className="h-full flex flex-col bg-white">
+        {renderModeToggleRow()}
         <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
           <h2 className="text-sm font-bold text-gray-900">Loss by Target</h2>
           <div className="flex items-center gap-2">
-            {renderModeToggle(false)}
             <button
               type="button"
               onClick={() => setShowHelpModal(true)}
@@ -1254,18 +1269,7 @@ export default function LiveSalePage(props: any = {}) {
   return (
     <>
     <div className="h-full flex flex-col bg-white">
-      {/* Mode switcher -- pinned to its own top row (one line, scrolls
-          horizontally rather than wrapping) above the filter bar and
-          everything else, rather than sharing space with the search box.
-          Portaled into modeToggleSlotEl instead when the host page (Item
-          page) supplies one, so it can pin the switcher to its own top row
-          in the merged bar. */}
-      {!modeToggleSlotEl && (
-        <div className="px-2 py-1.5 border-b border-gray-200 bg-gray-50 overflow-x-auto">
-          {renderModeToggle(false)}
-        </div>
-      )}
-      {modeToggleSlotEl && createPortal(renderModeToggle(true), modeToggleSlotEl)}
+      {renderModeToggleRow()}
 
       {/* Filter Bar - Green bar at top - hidden when the host page (Item page)
           renders its own merged version of this bar via hideFilterBar */}
