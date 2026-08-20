@@ -131,3 +131,62 @@ export async function outstandingDailyItems() {
 
   return [...dailyRows, ...packRows].sort((a, b) => String(a.item_name).localeCompare(String(b.item_name)))
 }
+
+// Every countable item's own effective cadence, as a plain label -- not
+// just the ones currently due, unlike the 3 queue endpoints above. Mirrors
+// the exact same rules those endpoints (and their WHERE clauses) use, so
+// the label an item shows here always matches which queue it'll actually
+// show up on: 'excluded' (count_excluded), 'daily' (DAILY_ITEM_IDS minus
+// Cardboard/A4 Sheet, or the pack of a blocking-chain daily item),
+// a fixed number (count_cadence_days override), '7' (GMC history), or the
+// dynamic 15/30-day default (3 identical counts with no bill since -> 30).
+// Services aren't in the returned map at all -- they're never countable.
+export async function itemCountIntervalLabels(): Promise<Map<number, string>> {
+  await ensureCountCadenceColumns()
+  const blockingIds = await blockingPackDailyIds()
+  const rows = await sql`
+    WITH ranked AS (
+      SELECT item_id, count_date::date AS d, quantity_counted,
+             ROW_NUMBER() OVER (PARTITION BY item_id ORDER BY count_date DESC, id DESC) AS rn
+      FROM stock_counts
+    ),
+    recent AS (
+      SELECT item_id,
+             COUNT(*) FILTER (WHERE rn <= 3) AS n3,
+             COUNT(DISTINCT quantity_counted) FILTER (WHERE rn <= 3) AS distinct3,
+             MIN(d) FILTER (WHERE rn <= 3) AS since3
+      FROM ranked WHERE rn <= 3
+      GROUP BY item_id
+    ),
+    last_bill AS (
+      SELECT bl.item_id, MAX(b.bill_date::date) AS d
+      FROM bill_lines bl JOIN bills b ON b.id = bl.bill_id
+      GROUP BY bl.item_id
+    ),
+    gmc_items AS (
+      SELECT DISTINCT srl.item_id
+      FROM sales_receipt_lines srl
+      JOIN sales_receipts sr ON sr.id = srl.receipt_id
+      WHERE sr.customer_name = 'Grony Multimedia as Customer' AND srl.item_id IS NOT NULL
+    )
+    SELECT
+      i.id AS item_id,
+      CASE
+        WHEN COALESCE(i.count_excluded, false) THEN 'excluded'
+        WHEN i.id = ANY(${DAILY_ITEM_IDS})
+             AND i.canonical_name !~* 'cardboard' AND i.canonical_name !~* 'a4\s*sheet' THEN 'daily'
+        WHEN i.converts_to_item_id = ANY(${blockingIds}) THEN 'daily'
+        WHEN i.count_cadence_days IS NOT NULL THEN i.count_cadence_days::text
+        WHEN i.id IN (SELECT item_id FROM gmc_items) THEN '7'
+        ELSE (CASE
+          WHEN COALESCE(r.n3, 0) = 3 AND r.distinct3 = 1 AND (lb.d IS NULL OR lb.d <= r.since3)
+          THEN '30' ELSE '15'
+        END)
+      END AS label
+    FROM items i
+    LEFT JOIN recent r ON r.item_id = i.id
+    LEFT JOIN last_bill lb ON lb.item_id = i.id
+    WHERE COALESCE(i.product_type, 'goods') <> 'service'
+  ` as { item_id: number; label: string }[]
+  return new Map(rows.map(r => [r.item_id, r.label]))
+}

@@ -22,7 +22,7 @@ const NewItemForm = dynamic(() => import('../../item/_components/NewItemForm'), 
 // Sale mode's due-item treatment doesn't cover.
 const CountsTab = dynamic(() => import('../../item/_components/CountsTab'), { ssr: false })
 
-type Item = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; product_type: string | null }
+type Item = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; product_type: string | null; count_interval?: string | null }
 type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null }
 type FlagLaw = { key: string; label: string; description?: string; count: number; active?: boolean; onViewClick?: () => void }
 type ViolationType = { key: string; label: string; description?: string }
@@ -1207,6 +1207,12 @@ export default function LiveSalePage(props: any = {}) {
                         <span className="text-green-600 font-semibold">CP ₵{formatPrice(item.cost_price)}</span>
                         <span className="text-gray-400"> · </span>
                         <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
+                        {item.count_interval && (
+                          <>
+                            <span className="text-gray-400"> · </span>
+                            <span className="text-gray-500">{item.count_interval}</span>
+                          </>
+                        )}
                       </p>
                     </div>
                     <div className="flex items-center gap-0.5 shrink-0">
@@ -1259,6 +1265,12 @@ export default function LiveSalePage(props: any = {}) {
                       <span className="text-green-600 font-semibold">CP ₵{formatPrice(item.cost_price)}</span>
                       <span className="text-gray-400"> · </span>
                       <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
+                      {item.count_interval && (
+                        <>
+                          <span className="text-gray-400"> · </span>
+                          <span className="text-gray-500">{item.count_interval}</span>
+                        </>
+                      )}
                     </p>
                   </div>
                   <div className="flex items-center gap-0.5 shrink-0">
