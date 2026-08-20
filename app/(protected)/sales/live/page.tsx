@@ -862,49 +862,52 @@ export default function LiveSalePage(props: any = {}) {
           <p className="text-sm text-gray-400 text-center py-8">No counts recorded</p>
         ) : (
           <div className="inline-block min-w-full">
-            <div className="grid grid-cols-[2fr_1fr_0.6fr_1fr_0.8fr_1.4fr_0.9fr] gap-0 bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
-              <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase">Item</div>
-              <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase">Group</div>
-              <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase text-center">Qty</div>
-              <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase">By</div>
-              <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase">Source</div>
-              <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase">Notes</div>
-              <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase text-right">Actions</div>
+            {/* Item is frozen (sticky left-0), matching every data row
+                below, so it's still visible after scrolling right through
+                the narrower compact columns. */}
+            <div className="grid grid-cols-[minmax(7rem,1.4fr)_5rem_3rem_5rem_4rem_minmax(6rem,1fr)_5.5rem] gap-0 bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+              <div className="sticky left-0 z-10 bg-gray-50 px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Item</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Group</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center">Qty</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">By</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Source</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Notes</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-right">Actions</div>
             </div>
             {countsByDate.map(([date, dateRecs]) => (
               <div key={date}>
-                <div className="grid grid-cols-[2fr_1fr_0.6fr_1fr_0.8fr_1.4fr_0.9fr] gap-0 bg-amber-50 border-b border-amber-200 sticky top-10 z-9">
-                  <div className="col-span-7 px-4 py-2 text-xs font-semibold text-amber-700">
+                <div className="grid grid-cols-[minmax(7rem,1.4fr)_5rem_3rem_5rem_4rem_minmax(6rem,1fr)_5.5rem] gap-0 bg-amber-50 border-b border-amber-200 sticky top-[26px] z-9">
+                  <div className="col-span-7 px-2 py-1 text-[10px] font-semibold text-amber-700">
                     {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {dateRecs.length} counted
                   </div>
                 </div>
                 {dateRecs.map(rec => (
                   <div key={rec.id}>
-                    <div className="grid grid-cols-[2fr_1fr_0.6fr_1fr_0.8fr_1.4fr_0.9fr] gap-0 border-b border-gray-100 items-center hover:bg-gray-50 transition">
-                      <div className="px-4 py-3">
-                        <p className="text-sm font-semibold text-gray-900">{rec.item_name}</p>
+                    <div className="group grid grid-cols-[minmax(7rem,1.4fr)_5rem_3rem_5rem_4rem_minmax(6rem,1fr)_5.5rem] gap-0 border-b border-gray-100 items-center hover:bg-gray-50 transition">
+                      <div className="sticky left-0 z-[1] bg-white group-hover:bg-gray-50 px-2 py-1">
+                        <p className="text-xs font-semibold text-gray-900 truncate">{rec.item_name}</p>
                       </div>
-                      <div className="px-4 py-3">
-                        <p className="text-sm text-gray-600">{rec.cf_group ?? '—'}</p>
+                      <div className="px-2 py-1">
+                        <p className="text-xs text-gray-600 truncate">{rec.cf_group ?? '—'}</p>
                       </div>
-                      <div className="px-4 py-3 text-center">
-                        <p className="text-sm font-semibold text-gray-900">{Number(rec.quantity_counted)}</p>
+                      <div className="px-2 py-1 text-center">
+                        <p className="text-xs font-semibold text-gray-900">{Number(rec.quantity_counted)}</p>
                       </div>
-                      <div className="px-4 py-3">
-                        <p className="text-sm text-blue-600 font-medium">{rec.counted_by ?? '—'}</p>
+                      <div className="px-2 py-1">
+                        <p className="text-xs text-blue-600 font-medium truncate">{rec.counted_by ?? '—'}</p>
                       </div>
-                      <div className="px-4 py-3">
-                        <p className="text-sm text-gray-500">{rec.source ?? '—'}</p>
+                      <div className="px-2 py-1">
+                        <p className="text-xs text-gray-500 truncate">{rec.source ?? '—'}</p>
                       </div>
-                      <div className="px-4 py-3">
-                        <p className="text-sm text-gray-500 italic truncate">{rec.notes ?? '—'}</p>
+                      <div className="px-2 py-1">
+                        <p className="text-xs text-gray-500 italic truncate">{rec.notes ?? '—'}</p>
                       </div>
-                      <div className="px-4 py-3">
+                      <div className="px-2 py-1">
                         <div className="flex gap-1 justify-end whitespace-nowrap">
                           <button
                             type="button"
                             onClick={() => editingCountId === rec.id ? setEditingCountId(null) : startEditCount(rec)}
-                            className="text-xs text-blue-600 font-semibold bg-blue-50 px-2 py-1 rounded-full hover:bg-blue-100 transition"
+                            className="text-[10px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded-full hover:bg-blue-100 transition"
                           >
                             {editingCountId === rec.id ? 'Close' : 'Edit'}
                           </button>
@@ -912,7 +915,7 @@ export default function LiveSalePage(props: any = {}) {
                             <button
                               type="button"
                               onClick={() => deleteCountRecord(rec)}
-                              className="text-xs text-red-600 font-semibold bg-red-50 px-2 py-1 rounded-full hover:bg-red-100 transition"
+                              className="text-[10px] text-red-600 font-semibold bg-red-50 px-1.5 py-0.5 rounded-full hover:bg-red-100 transition"
                             >
                               Del
                             </button>
@@ -1007,16 +1010,18 @@ export default function LiveSalePage(props: any = {}) {
             <p className="text-sm text-gray-400 text-center py-8">No sales recorded</p>
           ) : (
             <div className="inline-block min-w-full">
-              {/* Table header */}
-              <div className="grid grid-cols-[2fr_1fr_1fr_0.8fr_0.6fr_1fr_0.6fr_0.8fr] gap-0 bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
-                <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase">Item</div>
-                <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase text-right">Total</div>
-                <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase text-center">Time</div>
-                <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase text-right">SP</div>
-                <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase text-center">Qty</div>
-                <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase">Staff</div>
-                <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase text-center">SOH</div>
-                <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase" />
+              {/* Table header -- Item is frozen (sticky left-0), matching
+                  every data row below, so it's still visible after
+                  scrolling right through the narrower compact columns. */}
+              <div className="grid grid-cols-[minmax(7rem,1.4fr)_5rem_4rem_3.5rem_3rem_5rem_3rem_3.5rem] gap-0 bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+                <div className="sticky left-0 z-10 bg-gray-50 px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Item</div>
+                <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-right">Total</div>
+                <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center">Time</div>
+                <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-right">SP</div>
+                <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center">Qty</div>
+                <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Staff</div>
+                <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center">SOH</div>
+                <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase" />
               </div>
 
               {/* Table rows grouped by date */}
@@ -1025,54 +1030,56 @@ export default function LiveSalePage(props: any = {}) {
                 return (
                   <div key={date}>
                     {/* Date header */}
-                    <div className="grid grid-cols-[2fr_1fr_1fr_0.8fr_0.6fr_1fr_0.6fr_0.8fr] gap-0 bg-green-50 border-b border-green-200 sticky top-10 z-9">
-                      <div className="col-span-8 px-4 py-2 text-xs font-semibold text-green-700">
+                    <div className="grid grid-cols-[minmax(7rem,1.4fr)_5rem_4rem_3.5rem_3rem_5rem_3rem_3.5rem] gap-0 bg-green-50 border-b border-green-200 sticky top-[26px] z-9">
+                      <div className="col-span-8 px-2 py-1 text-[10px] font-semibold text-green-700">
                         {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · Total: ₵{formatPrice(dateTotal)}
                       </div>
                     </div>
 
-                    {/* Date's taps */}
+                    {/* Date's taps -- `group` + an explicit bg on the sticky
+                        first cell (not bg-inherit) so scrolled-under columns
+                        don't show through it, same fix as Item 360's table. */}
                     {dateTaps.map(tap => (
                       <div
                         key={tap.id}
-                        className={`grid grid-cols-[2fr_1fr_1fr_0.8fr_0.6fr_1fr_0.6fr_0.8fr] gap-0 border-b border-gray-100 items-center hover:bg-gray-50 transition ${
+                        className={`group grid grid-cols-[minmax(7rem,1.4fr)_5rem_4rem_3.5rem_3rem_5rem_3rem_3.5rem] gap-0 border-b border-gray-100 items-center hover:bg-gray-50 transition ${
                           tap.undone ? 'bg-gray-50 opacity-60' : ''
                         }`}
                       >
-                        <div className="px-4 py-3">
-                          <p className={`text-sm font-semibold ${tap.undone ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                        <div className={`sticky left-0 z-[1] px-2 py-1 group-hover:bg-gray-50 ${tap.undone ? 'bg-gray-50' : 'bg-white'}`}>
+                          <p className={`text-xs font-semibold truncate ${tap.undone ? 'line-through text-gray-400' : 'text-gray-900'}`}>
                             {tap.item_name}
                           </p>
                         </div>
-                        <div className="px-4 py-3 text-right">
-                          <p className={`text-sm font-semibold ${tap.undone ? 'text-gray-400' : 'text-blue-600'}`}>
+                        <div className="px-2 py-1 text-right">
+                          <p className={`text-xs font-semibold ${tap.undone ? 'text-gray-400' : 'text-blue-600'}`}>
                             ₵{formatPrice(Number(tap.price) * tap.quantity)}
                           </p>
                         </div>
-                        <div className="px-4 py-3 text-center">
-                          <p className="text-xs text-gray-500">{new Date(tap.tapped_at).toLocaleTimeString()}</p>
+                        <div className="px-2 py-1 text-center">
+                          <p className="text-[10px] text-gray-500">{new Date(tap.tapped_at).toLocaleTimeString()}</p>
                         </div>
-                        <div className="px-4 py-3 text-right">
-                          <p className={`text-sm font-semibold ${tap.undone ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                        <div className="px-2 py-1 text-right">
+                          <p className={`text-xs font-semibold ${tap.undone ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
                             ₵{formatPrice(tap.price)}
                           </p>
                         </div>
-                        <div className="px-4 py-3 text-center">
-                          <p className={`text-sm font-semibold ${tap.undone ? 'text-gray-400' : 'text-gray-900'}`}>
+                        <div className="px-2 py-1 text-center">
+                          <p className={`text-xs font-semibold ${tap.undone ? 'text-gray-400' : 'text-gray-900'}`}>
                             {tap.quantity}
                           </p>
                         </div>
-                        <div className="px-4 py-3">
-                          <p className="text-sm text-gray-600">{tap.staff_name}</p>
+                        <div className="px-2 py-1">
+                          <p className="text-xs text-gray-600 truncate">{tap.staff_name}</p>
                         </div>
-                        <div className="px-4 py-3 text-center">
-                          <p className="text-sm text-gray-500">{tap.soh !== null && tap.soh !== undefined ? Math.ceil(tap.soh) : '-'}</p>
+                        <div className="px-2 py-1 text-center">
+                          <p className="text-xs text-gray-500">{tap.soh !== null && tap.soh !== undefined ? Math.ceil(tap.soh) : '-'}</p>
                         </div>
-                        <div className="px-4 py-3 text-right">
+                        <div className="px-1 py-1 text-right">
                           {!tap.undone && (
                             <button
                               onClick={() => undoTap(tap.id)}
-                              className="px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-100 rounded transition"
+                              className="px-1.5 py-0.5 text-[10px] font-semibold text-red-600 hover:bg-red-100 rounded transition"
                             >
                               Undo
                             </button>
