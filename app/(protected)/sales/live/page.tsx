@@ -94,6 +94,7 @@ export default function LiveSalePage(props: any = {}) {
     productTypeFilter: controlledProductTypeFilter, onProductTypeFilterChange,
     groupFilter: controlledGroupFilter, onGroupFilterChange,
     showHelpModal: controlledShowHelpModal, onHelpModalChange,
+    expanded: controlledExpanded, setExpanded: onExpandedChange,
     hideFilterBar = false,
     searchSlotEl = null,
     // Portal target for the mode switcher -- kept separate from
@@ -155,6 +156,15 @@ export default function LiveSalePage(props: any = {}) {
   const [internalShowHelpModal, setInternalShowHelpModal] = useState(false)
   const showHelpModal = controlledShowHelpModal ?? internalShowHelpModal
   const setShowHelpModal = onHelpModalChange ?? setInternalShowHelpModal
+  // "Large screen" -- breaks the whole tab out of the host page's layout
+  // (sidebar, content padding) into a fixed fullscreen overlay. The toggle
+  // button itself lives in the host page's own merged bar (see item/page.tsx),
+  // so it always comes in as a controlled prop there; the internal fallback
+  // only matters when this page is visited directly at /sales/live.
+  const [internalExpanded, setInternalExpanded] = useState(false)
+  const expanded = controlledExpanded ?? internalExpanded
+  const setExpanded = onExpandedChange ?? setInternalExpanded
+  const rootClassName = `bg-white flex flex-col ${expanded ? 'fixed inset-0 z-50 overflow-y-auto' : 'h-full'}`
   const [currentView, setCurrentView] = useState<{ kind: 'violation' | 'serviceGroup' | 'lossByItem' | 'aliasWide' | 'serviceMatches' | 'newItem' | 'dailySummary' | 'countInterval' | 'countRecords' | 'countHistory'; key?: string; group?: string } | null>(null)
   const [violations, setViolations] = useState<Record<string, number>>({})
   const [internalProductTypeFilter, setInternalProductTypeFilter] = useState<'all' | 'goods' | 'services'>('all')
@@ -1019,7 +1029,7 @@ export default function LiveSalePage(props: any = {}) {
   if (mode === 'log') {
     return (
       <>
-      <div className="h-full flex flex-col bg-white">
+      <div className={rootClassName}>
         {renderModeToggleRow()}
         <div className="flex justify-end px-1.5 py-1 border-b border-gray-100">
           <button
@@ -1175,7 +1185,7 @@ export default function LiveSalePage(props: any = {}) {
   if (mode === 'sales') {
     return (
       <>
-      <div className="h-full flex flex-col bg-white">
+      <div className={rootClassName}>
         {renderModeToggleRow()}
         <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
           <h2 className="text-sm font-bold text-gray-900">Sales</h2>
@@ -1247,7 +1257,7 @@ export default function LiveSalePage(props: any = {}) {
   if (mode === 'bills') {
     return (
       <>
-      <div className="h-full flex flex-col bg-white">
+      <div className={rootClassName}>
         {renderModeToggleRow()}
         <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
           <h2 className="text-sm font-bold text-gray-900">Bills</h2>
@@ -1328,7 +1338,7 @@ export default function LiveSalePage(props: any = {}) {
   if (mode === 'feed') {
     return (
       <>
-      <div className="h-full flex flex-col bg-white">
+      <div className={rootClassName}>
         {renderModeToggleRow()}
         <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
           <h2 className="text-sm font-bold text-gray-900">Loss by Date</h2>
@@ -1408,7 +1418,7 @@ export default function LiveSalePage(props: any = {}) {
   if (mode === 'lossByTarget') {
     return (
       <>
-      <div className="h-full flex flex-col bg-white">
+      <div className={rootClassName}>
         {renderModeToggleRow()}
         <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
           <h2 className="text-sm font-bold text-gray-900">Loss by Target</h2>
@@ -1450,7 +1460,7 @@ export default function LiveSalePage(props: any = {}) {
 
   return (
     <>
-    <div className="h-full flex flex-col bg-white">
+    <div className={rootClassName}>
       {renderModeToggleRow()}
 
       {/* Filter Bar - Green bar at top - hidden when the host page (Item page)
