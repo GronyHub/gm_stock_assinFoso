@@ -196,11 +196,6 @@ export default function LiveSalePage(props: any = {}) {
   const [lossPrompt, setLossPrompt] = useState<LossPrompt | null>(null)
   const [pairingPrompt, setPairingPrompt] = useState<PairingPrompt | null>(null)
   const [countRecords, setCountRecords] = useState<CountRecord[]>([])
-  // Which history the Log tab shows -- independent of the Sale grid mode
-  // above it (Log is its own tab, not a flag you toggle on top of Sale
-  // mode), so it gets its own small Sale/Count sub-toggle in its own
-  // header instead.
-  const [logKind, setLogKind] = useState<'sale' | 'count'>('sale')
   const [editingCountId, setEditingCountId] = useState<number | null>(null)
   const [editCountQty, setEditCountQty] = useState('')
   const [editCountNotes, setEditCountNotes] = useState('')
@@ -446,18 +441,19 @@ export default function LiveSalePage(props: any = {}) {
     }).catch(() => {})
   }, [])
 
-  // Count Log -- fetched only once it's actually being looked at, either
-  // via the Log tab's Count view or Sale mode's own "Count Records" law
-  // view (same table, see renderCountRecordsTable), unlike the queues
-  // above (this is the full all-time history, not a small due-today list).
+  // Count Records -- fetched only once it's actually being looked at, via
+  // Sale mode's own "Count Records" law view (see renderCountRecordsTable),
+  // unlike the queues above (this is the full all-time history, not a
+  // small due-today list). The Log tab dropped its own Count view since
+  // it's the same table, already reachable from Sale mode.
   const viewingCountRecords = currentView?.kind === 'countRecords'
   useEffect(() => {
-    if (!(mode === 'log' && logKind === 'count') && !viewingCountRecords) return
+    if (!viewingCountRecords) return
     fetch('/api/stock/counts')
       .then(r => r.json())
       .then(d => setCountRecords(Array.isArray(d) ? d : []))
       .catch(() => {})
-  }, [mode, logKind, viewingCountRecords])
+  }, [viewingCountRecords])
 
   // Search items as user types
   useEffect(() => {
@@ -979,18 +975,8 @@ export default function LiveSalePage(props: any = {}) {
       <div className="h-full flex flex-col bg-white">
         {renderModeToggleRow()}
         <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
-          <h2 className="text-sm font-bold text-gray-900">{logKind === 'count' ? 'Count Log' : 'Live Sale Log'}</h2>
+          <h2 className="text-sm font-bold text-gray-900">Live Sale Log</h2>
           <div className="flex items-center gap-2">
-            <div className="inline-flex bg-gray-200 rounded-lg p-0.5">
-              <button type="button" onClick={() => setLogKind('sale')}
-                className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${logKind === 'sale' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-gray-700'}`}>
-                Sale
-              </button>
-              <button type="button" onClick={() => setLogKind('count')}
-                className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${logKind === 'count' ? 'bg-amber-600 text-white' : 'text-gray-500 hover:text-gray-700'}`}>
-                Count
-              </button>
-            </div>
             <button
               type="button"
               onClick={() => setShowHelpModal(true)}
@@ -1002,9 +988,6 @@ export default function LiveSalePage(props: any = {}) {
           </div>
         </div>
 
-        {logKind === 'count' ? (
-          renderCountRecordsTable()
-        ) : (
         <div className="flex-1 overflow-auto">
           {taps.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-8">No sales recorded</p>
@@ -1093,7 +1076,6 @@ export default function LiveSalePage(props: any = {}) {
             </div>
           )}
         </div>
-        )}
       </div>
 
       <TrainingGuideModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
