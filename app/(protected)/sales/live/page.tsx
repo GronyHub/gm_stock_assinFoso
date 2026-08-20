@@ -819,7 +819,7 @@ export default function LiveSalePage(props: any = {}) {
     // second row when there isn't room for all six buttons.
     return (
       <div className="flex bg-gray-200 rounded-lg p-0.5 overflow-x-auto max-w-full">
-        <button type="button" onClick={() => setMode('sale')} title="Sale mode" className={btnCls(mode === 'sale', 'bg-blue-600')}>Sale</button>
+        <button type="button" onClick={() => setMode('sale')} title="Live Sale" className={btnCls(mode === 'sale', 'bg-blue-600')}>Live</button>
         <button type="button" onClick={() => setMode('sales')} title="Sales" className={btnCls(mode === 'sales', 'bg-emerald-600')}>Sales</button>
         <button type="button" onClick={() => setMode('bills')} title="Bills" className={btnCls(mode === 'bills', 'bg-orange-600')}>Bills</button>
         <button type="button" onClick={() => setMode('feed')} title="Loss by Date" className={btnCls(mode === 'feed', 'bg-red-600')}>Loss by Date</button>
