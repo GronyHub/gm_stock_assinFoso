@@ -148,6 +148,14 @@ export default function LiveSalePage(props: any = {}) {
   const [pickedItemId, setPickedItemId] = useState<number | null>(null)
   const localLawsPanel = useLawsPanel('showLiveSaleLaws')
   const liveSaleLaws = incomingLawsPanel || localLawsPanel
+  // Sales/Bills/Loss by Date/Loss by Target each kept their own laws/notes/
+  // tasks under their own scopeKey (from back when each was its own page) --
+  // still sitting in the database under those same scope keys, so each tab
+  // gets its own laws icon here to reach them, same as Sale mode's own.
+  const salesLaws = useLawsPanel('showSalesLaws')
+  const billsLaws = useLawsPanel('showBillsLaws')
+  const lossByDateLaws = useLawsPanel('showLossByDateLaws')
+  const lossByTargetLaws = useLawsPanel('showLossByTargetLaws')
 
   // The standalone "Count" mode (its own due-count queues/badges/entry-form
   // as a second grid mode) was removed once Sale mode grew its own pinned
@@ -1104,6 +1112,10 @@ export default function LiveSalePage(props: any = {}) {
               placeholder="Search…"
               className="text-xs px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 w-32"
             />
+            <LawsToggleBar show={salesLaws.show} setShow={salesLaws.setShow}
+              openForm={salesLaws.openForm} setOpenForm={salesLaws.setOpenForm}
+              hideZeroFlags={salesLaws.hideZeroFlags} setHideZeroFlags={salesLaws.setHideZeroFlags}
+              activeFilters={salesLaws.activeFilters} toggleFilter={salesLaws.toggleFilter} dark={false} />
             <button type="button" onClick={() => setSalesShowAnalytics(a => !a)}
               title="Analytics"
               className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${salesShowAnalytics ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
@@ -1119,6 +1131,25 @@ export default function LiveSalePage(props: any = {}) {
             </button>
           </div>
         </div>
+        {salesLaws.show && (
+          <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 overflow-auto max-h-48">
+            <PageLawsList
+              scopeKey="Sales"
+              isItemsLaws={true}
+              onChange={salesLaws.bumpRefresh}
+              flags={salesViolationTypes.map((v: ViolationType) => ({
+                key: v.key, label: v.label, description: v.description,
+                count: violationCounts[v.key] ?? 0,
+                onViewClick: () => setSalesViolationFilter(f => f === v.key ? null : v.key),
+              }))}
+              openForm={salesLaws.openForm}
+              setOpenForm={salesLaws.setOpenForm}
+              hideZeroFlags={salesLaws.hideZeroFlags}
+              setHideZeroFlags={salesLaws.setHideZeroFlags}
+              activeFilters={salesLaws.activeFilters}
+            />
+          </div>
+        )}
         {salesShowAnalytics ? (
           <div className="px-3 pt-3 flex-1 overflow-auto"><SalesAnalyticsSection /></div>
         ) : (
@@ -1160,6 +1191,12 @@ export default function LiveSalePage(props: any = {}) {
               {billsAddingNew ? 'Cancel' : '+ New Bill'}
             </button>
             {!billsAddingNew && (
+              <LawsToggleBar show={billsLaws.show} setShow={billsLaws.setShow}
+                openForm={billsLaws.openForm} setOpenForm={billsLaws.setOpenForm}
+                hideZeroFlags={billsLaws.hideZeroFlags} setHideZeroFlags={billsLaws.setHideZeroFlags}
+                activeFilters={billsLaws.activeFilters} toggleFilter={billsLaws.toggleFilter} dark={false} />
+            )}
+            {!billsAddingNew && (
               <button type="button" onClick={() => setBillsShowAnalytics(a => !a)}
                 title="Analytics"
                 className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${billsShowAnalytics ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
@@ -1176,6 +1213,25 @@ export default function LiveSalePage(props: any = {}) {
             </button>
           </div>
         </div>
+        {!billsAddingNew && billsLaws.show && (
+          <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 overflow-auto max-h-48">
+            <PageLawsList
+              scopeKey="Bills"
+              isItemsLaws={true}
+              onChange={billsLaws.bumpRefresh}
+              flags={billsViolationTypes.map((v: ViolationType) => ({
+                key: v.key, label: v.label, description: v.description,
+                count: violationCounts[v.key] ?? 0,
+                onViewClick: () => setBillsViolationFilter(f => f === v.key ? null : v.key),
+              }))}
+              openForm={billsLaws.openForm}
+              setOpenForm={billsLaws.setOpenForm}
+              hideZeroFlags={billsLaws.hideZeroFlags}
+              setHideZeroFlags={billsLaws.setHideZeroFlags}
+              activeFilters={billsLaws.activeFilters}
+            />
+          </div>
+        )}
         {billsAddingNew ? (
           <div className="px-4 flex-1 overflow-auto">
             <NewBillForm onSuccess={() => setBillsAddingNew(false)} />
@@ -1219,6 +1275,10 @@ export default function LiveSalePage(props: any = {}) {
                 🚩 Gains
               </button>
             </div>
+            <LawsToggleBar show={lossByDateLaws.show} setShow={lossByDateLaws.setShow}
+              openForm={lossByDateLaws.openForm} setOpenForm={lossByDateLaws.setOpenForm}
+              hideZeroFlags={lossByDateLaws.hideZeroFlags} setHideZeroFlags={lossByDateLaws.setHideZeroFlags}
+              activeFilters={lossByDateLaws.activeFilters} toggleFilter={lossByDateLaws.toggleFilter} dark={false} />
             <button
               type="button"
               onClick={() => setShowHelpModal(true)}
@@ -1229,6 +1289,26 @@ export default function LiveSalePage(props: any = {}) {
             </button>
           </div>
         </div>
+        {lossByDateLaws.show && (
+          <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 overflow-auto max-h-48">
+            <PageLawsList
+              scopeKey="Loss by Date"
+              isItemsLaws={true}
+              onChange={lossByDateLaws.bumpRefresh}
+              flags={[{
+                key: 'gains', label: 'Gains',
+                description: 'Counts that came in ABOVE what the records support. A gain should always be 0 — every one means a bill or GMC take was never recorded, or an earlier count was wrong. Fix the missing record (or correct the count) until this list is empty.',
+                count: violationCounts['gains'] ?? 0,
+                onViewClick: () => setFeedShowGains(true),
+              }]}
+              openForm={lossByDateLaws.openForm}
+              setOpenForm={lossByDateLaws.setOpenForm}
+              hideZeroFlags={lossByDateLaws.hideZeroFlags}
+              setHideZeroFlags={lossByDateLaws.setHideZeroFlags}
+              activeFilters={lossByDateLaws.activeFilters}
+            />
+          </div>
+        )}
         <div className="flex-1 overflow-auto">
           <LossFeedTab search={embeddedSearch} kind={feedShowGains ? 'gain' : 'loss'} />
         </div>
@@ -1249,6 +1329,10 @@ export default function LiveSalePage(props: any = {}) {
         <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
           <h2 className="text-sm font-bold text-gray-900">Loss by Target</h2>
           <div className="flex items-center gap-2">
+            <LawsToggleBar show={lossByTargetLaws.show} setShow={lossByTargetLaws.setShow}
+              openForm={lossByTargetLaws.openForm} setOpenForm={lossByTargetLaws.setOpenForm}
+              hideZeroFlags={lossByTargetLaws.hideZeroFlags} setHideZeroFlags={lossByTargetLaws.setHideZeroFlags}
+              activeFilters={lossByTargetLaws.activeFilters} toggleFilter={lossByTargetLaws.toggleFilter} dark={false} />
             <button
               type="button"
               onClick={() => setShowHelpModal(true)}
@@ -1259,6 +1343,20 @@ export default function LiveSalePage(props: any = {}) {
             </button>
           </div>
         </div>
+        {lossByTargetLaws.show && (
+          <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 overflow-auto max-h-48">
+            <PageLawsList
+              scopeKey="Loss by Target"
+              isItemsLaws={true}
+              onChange={lossByTargetLaws.bumpRefresh}
+              openForm={lossByTargetLaws.openForm}
+              setOpenForm={lossByTargetLaws.setOpenForm}
+              hideZeroFlags={lossByTargetLaws.hideZeroFlags}
+              setHideZeroFlags={lossByTargetLaws.setHideZeroFlags}
+              activeFilters={lossByTargetLaws.activeFilters}
+            />
+          </div>
+        )}
         <div className="py-20 text-center text-gray-400 text-xs">Coming soon.</div>
       </div>
       <TrainingGuideModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
