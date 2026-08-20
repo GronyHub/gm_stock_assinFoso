@@ -42,7 +42,6 @@ import SettingsPane from './_components/SettingsPane'
 import UKSettingsPanel from './_components/UKSettingsPanel'
 import { applyPaneOrder, buildPaneRuns, flattenPaneRuns, type PaneOrderMap } from './_components/paneOrder'
 import ServicesGroupTable from './_components/ServicesGroupTable'
-import NewCustomerForm from './_components/NewCustomerForm'
 import ExpenseOrdersPanel from './_components/ExpenseOrdersPanel'
 import dynamic from 'next/dynamic'
 const loading = (h: string) => <div className={`py-10 text-center text-gray-400 text-sm`}>{h}</div>
@@ -62,7 +61,6 @@ const DailySummaryTab = dynamic(() => import('./_components/DailySummaryTab'), {
 const GronyManageContent = dynamic(() => import('./_components/GronyManageTab'), { ssr: false, loading: () => loading('Loading…') })
 const VendorsPage    = dynamic(() => import('../vendors/page'),               { ssr: false, loading: () => loading('Loading…') })
 const CustomersPage  = dynamic(() => import('../customers/page'),             { ssr: false, loading: () => loading('Loading…') })
-const ReceiptsPage   = dynamic(() => import('../receipts/page'),              { ssr: false, loading: () => loading('Loading…') })
 const PurchaseOrdersPage  = dynamic(() => import('../purchase-orders/page'),        { ssr: false, loading: () => loading('Loading…') })
 const AliasWidePage       = dynamic(() => import('../aliases/wide/page'),           { ssr: false, loading: () => loading('Loading…') })
 const ServiceMatchesPage  = dynamic(() => import('../matches/wide/page'),           { ssr: false, loading: () => loading('Loading…') })
@@ -96,15 +94,13 @@ type OuterTab = 'today' | 'loss' | 'uk' | 'ch'
 // CHView is unioned in too even though C&H is its own separate top-level
 // tab, not part of the Grony Cash merge -- it just reuses this same shared
 // state/pane machinery rather than needing its own parallel copy.
-type LossView = 'home' | 'items' | 'sales' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'receipts' | 'dailySummary'
+type LossView = 'home' | 'items' | 'sales' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'dailySummary'
   | 'purchaseOrders' | 'services'
-  // "New Customer" used to be a toggle-open form living inside the Customers
-  // list page itself (CustomersPage's own showForm state) -- it's now this
-  // own separate LossView/pane row instead, so it gets its own PageToolIcons
-  // scope (Notes/Tasks/Laws/Flags all separate from the Customers list's
-  // own) rather than sharing 'customers'.
-  | 'newCustomer'
-  // Same reasoning as 'newCustomer' above -- Expense Orders used to be a
+  // Cust. Receipts and New Customer folded into Customers' own tabs (same
+  // treatment Sales/Bills/Loss by Date/Loss by Target got inside Live
+  // Sale) -- see jumpToCustomersTab, since neither is a real LossView any
+  // more.
+  // Same reasoning as 'newCustomer' used to be above -- Expense Orders was a
   // showOrders toggle living inside ExpensesTab itself, invisible to
   // page.tsx, so the pane button could never actually know whether it was
   // the current view (hardcoded active={false} forever) and its own
@@ -178,7 +174,7 @@ const OLD_TAB_TO_VIEW: Partial<Record<string, LossView>> = {
 // Manage/Staff view belongs here too -- none of them ever had a Cash-style
 // groups/search bar of their own.
 const REPORT_VIEWS = new Set<LossView>([
-  'home', 'pl', 'cab', 'vendors', 'customers', 'newCustomer', 'expenseOrders', 'receipts', 'dailySummary',
+  'home', 'pl', 'cab', 'vendors', 'customers', 'expenseOrders', 'dailySummary',
   'purchaseOrders', 'viewPortalAs', 'reorderLists', 'services',
   ...MANAGE_VIEW_KEYS, ...STAFF_VIEW_KEYS, ...CH_VIEW_KEYS,
 ])
@@ -231,7 +227,6 @@ const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: string }
   { key: 'pl',       label: 'P&L',      icon: '📈' },
   { key: 'cab',      label: 'CAB',      icon: '🗂️' },
   { key: 'customers', label: 'Customers', icon: '👥' },
-  { key: 'receipts',  label: 'Cust. Receipts',  icon: '📑' },
 ]
 // flattenPaneRuns needs a group->label lookup to build each run's header
 // text, but a Cash row's group already IS its own label (see CASH_ITEMS'
@@ -572,8 +567,6 @@ function ItemHubPageInner() {
   // JSX repeatedly. Sales/Bills/Loss by Date/Loss by Target no longer need
   // one of their own -- all four live inside Live Sale's own laws panel now.
   const plLaws = useLawsPanel('showPLLaws')
-  const newCustomerLaws = useLawsPanel('showNewCustomerLaws')
-  const receiptsLaws = useLawsPanel('showReceiptsLaws')
   const homeLaws = useLawsPanel('showHomeLaws')
   const dailyLaws = useLawsPanel('showDailyLaws')
   const purchaseOrdersLaws = useLawsPanel('showPurchaseOrdersLaws')
@@ -608,6 +601,17 @@ function ItemHubPageInner() {
     setLiveSaleJumpViolation(violation)
     setLiveSaleJumpSearch(search)
     setLiveSaleJumpSeq(s => s + 1)
+  }
+  // Deep links into a specific Customers tab -- the "+" shortcut menu's
+  // "New Customer" and the global search's page-jump list both land here
+  // now that neither Cust. Receipts nor New Customer is a real LossView
+  // any more (both folded into Customers' own tabs).
+  const [customersJumpSeq, setCustomersJumpSeq] = useState(0)
+  const [customersJumpTab, setCustomersJumpTab] = useState<'customers' | 'receipts' | 'new'>('customers')
+  function jumpToCustomersTab(tab: 'customers' | 'receipts' | 'new') {
+    pickLossView('customers')
+    setCustomersJumpTab(tab)
+    setCustomersJumpSeq(s => s + 1)
   }
   // Finishes the old ?tab=losses deep link (see the lossView initializer
   // above) -- can't call jumpToLiveSaleTab directly from that initializer
@@ -1157,7 +1161,7 @@ function ItemHubPageInner() {
       case 'item':       pickLossView('items');     setAddForm('item'); break
       case 'expense':    pickLossView('expenses');  setAddForm('expense'); break
       case 'cabConfirm': pickLossView('cab');       setCabConfirmSignal(n => n + 1); break
-      case 'customer':   pickLossView('newCustomer'); break
+      case 'customer':   jumpToCustomersTab('new'); break
       case 'vendor':     pickLossView('vendors');   setVendorSignal(n => n + 1); break
       case 'staffTime': {
         pickLossView('teamTimes')
@@ -1578,7 +1582,8 @@ function ItemHubPageInner() {
       // there's no entry for it any more.
       { label: 'Live Sale', action: () => jumpToLiveSaleTab('sale') },
       { label: 'Sale Log', action: () => jumpToLiveSaleTab('log') },
-      { label: 'New Customer', action: () => pickLossView('newCustomer') },
+      { label: 'New Customer', action: () => jumpToCustomersTab('new') },
+      { label: 'Cust. Receipts', action: () => jumpToCustomersTab('receipts') },
       { label: 'Expense Orders', action: () => pickLossView('expenseOrders') },
       { label: 'Properties at Shop', action: () => { pickLossView('properties'); setPropertiesInitialTab('available') } },
       { label: 'Properties not at Shop', action: () => { pickLossView('properties'); setPropertiesInitialTab('away') } },
@@ -1675,14 +1680,6 @@ function ItemHubPageInner() {
                       : undefined}
                     taskBadge={taskCountFor(cashItemTaskScope(v.key))}
                     onClick={() => cashItemClick(v.key)} />
-                  {v.key === 'customers' && (
-                    <div>
-                      <SidePaneButton icon="👤" label="New Customer" mode={cashDisplayMode}
-                        active={paneActive(lossView === 'newCustomer')}
-                        taskBadge={taskCountFor('New Customer')}
-                        onClick={() => pickLossView('newCustomer')} />
-                    </div>
-                  )}
                 </Fragment>
               ))}
               {/* Expense Orders */}
@@ -2153,24 +2150,10 @@ function ItemHubPageInner() {
         )}
         {outerTab === 'loss' && lossView === 'customers' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-2 space-y-2"><CustomersPage initialSearch={customerSearchText} onFlagCountChange={setCustomersFlagsCount} /></div>
-          </TabErrorBoundary>
-        )}
-        {outerTab === 'loss' && lossView === 'newCustomer' && (
-          <TabErrorBoundary>
-            <div className="px-4 pt-2">
-              {inlineLaws('New Customer', newCustomerLaws)}
-              <div className="mt-2">
-                <NewCustomerForm
-                  onCreated={() => pickLossView('customers')}
-                  onCancel={() => pickLossView('customers')} />
-              </div>
+            <div className="px-4 pt-2 space-y-2">
+              <CustomersPage initialSearch={customerSearchText} onFlagCountChange={setCustomersFlagsCount}
+                jumpToTabSeq={customersJumpSeq} jumpToTab={customersJumpTab} />
             </div>
-          </TabErrorBoundary>
-        )}
-        {outerTab === 'loss' && lossView === 'receipts' && (
-          <TabErrorBoundary>
-            <div className="px-4 pt-2 space-y-2">{inlineLaws('Receipts', receiptsLaws)}<ReceiptsPage /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'home' && (

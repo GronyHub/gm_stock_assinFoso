@@ -1,10 +1,17 @@
 'use client'
 import { useState, useEffect, useMemo, type ReactNode } from 'react'
+import dynamic from 'next/dynamic'
 import LocationField from '@/components/LocationField'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, ColResizeHandle, type ColumnDef } from '../item/_components/columnPrefs'
 import PageLawsList from '../item/_components/PageLawsList'
 import LawsToggleBar from '../item/_components/LawsToggleBar'
 import { useLawsPanel } from '../item/_components/useLawsPanel'
+import NewCustomerForm from '../item/_components/NewCustomerForm'
+
+// Cust. Receipts and New Customer folded in here as tabs (same treatment
+// Live Sale's own switcher got) since neither had anything left that
+// justified its own left-sidebar destination.
+const ReceiptsPage = dynamic(() => import('../receipts/page'), { ssr: false })
 
 type Customer = {
   id: number
@@ -219,7 +226,23 @@ const FLAG_TYPES: { key: FlagKey; letter: string; label: string }[] = [
 ]
 const NEW_CUSTOMERS_PER_WEEK_TARGET = 10
 
-export default function CustomersPage({ initialSearch, onFlagCountChange }: { initialSearch?: string; onFlagCountChange?: (n: number) => void } = {}) {
+export default function CustomersPage({
+  initialSearch, onFlagCountChange,
+  // Deep links into a specific tab -- the "+" shortcut menu's "New
+  // Customer" and the global search's page-jump list both land here now
+  // that neither is its own LossView any more. Seq is a plain incrementing
+  // counter so the same tab can be jumped to twice in a row and still fire.
+  jumpToTabSeq = 0, jumpToTab = null,
+}: {
+  initialSearch?: string; onFlagCountChange?: (n: number) => void
+  jumpToTabSeq?: number; jumpToTab?: 'customers' | 'receipts' | 'new' | null
+} = {}) {
+  const [mode, setMode] = useState<'customers' | 'receipts' | 'new'>('customers')
+  useEffect(() => {
+    if (!jumpToTabSeq || !jumpToTab) return
+    setMode(jumpToTab)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jumpToTabSeq])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState(initialSearch ?? '')
@@ -227,6 +250,8 @@ export default function CustomersPage({ initialSearch, onFlagCountChange }: { in
   const [editingCustomer, setEditingCustomer] = useState(false)
   const [activeFlag, setActiveFlag] = useState<FlagKey | null>(null)
   const lawsPanel = useLawsPanel('showCustomersLaws')
+  const receiptsLaws = useLawsPanel('showReceiptsLaws')
+  const newCustomerLaws = useLawsPanel('showNewCustomerLaws')
   const colPrefs = useColumnPrefs<ColKey>('customersTable', CUSTOMER_COLUMNS)
 
   // Driven by the global search (page.tsx) landing here already knowing
@@ -237,12 +262,13 @@ export default function CustomersPage({ initialSearch, onFlagCountChange }: { in
     if (initialSearch) setSearch(initialSearch)
   }, [initialSearch])
 
-  useEffect(() => {
+  function loadCustomers() {
     fetch('/api/customers')
       .then(r => r.json())
       .then(d => { setCustomers(Array.isArray(d) ? d : []); setLoading(false) })
       .catch(() => setLoading(false))
-  }, [])
+  }
+  useEffect(() => { loadCustomers() }, [])
 
   const flagCounts = useMemo(() => ({
     location: customers.filter(x => !x.location).length,
@@ -292,10 +318,82 @@ export default function CustomersPage({ initialSearch, onFlagCountChange }: { in
     outstanding: customers.reduce((s, x) => s + parseFloat(x.invoice_outstanding), 0),
   }), [customers])
 
-  if (loading) return <div className="py-16 text-center text-gray-400">Loading…</div>
+  // Pinned above everything else, identical on all three tabs -- same
+  // "always one line, own top row" treatment Live Sale's own switcher got.
+  function renderModeSwitcher() {
+    const btnCls = (active: boolean) =>
+      `px-2.5 py-1 text-xs font-bold rounded-md transition whitespace-nowrap shrink-0 ${
+        active ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-gray-700'
+      }`
+    return (
+      <div className="flex bg-gray-100 rounded-lg p-0.5 overflow-x-auto mb-3">
+        <button type="button" onClick={() => setMode('customers')} className={btnCls(mode === 'customers')}>Customers</button>
+        <button type="button" onClick={() => setMode('receipts')} className={btnCls(mode === 'receipts')}>Cust. Receipts</button>
+        <button type="button" onClick={() => setMode('new')} className={btnCls(mode === 'new')}>+ New Customer</button>
+      </div>
+    )
+  }
+
+  if (mode === 'receipts') {
+    return (
+      <div>
+        {renderModeSwitcher()}
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="text-lg font-bold text-gray-900">Cust. Receipts</h1>
+          <LawsToggleBar show={receiptsLaws.show} setShow={receiptsLaws.setShow}
+            openForm={receiptsLaws.openForm} setOpenForm={receiptsLaws.setOpenForm}
+            hideZeroFlags={receiptsLaws.hideZeroFlags} setHideZeroFlags={receiptsLaws.setHideZeroFlags}
+            activeFilters={receiptsLaws.activeFilters} toggleFilter={receiptsLaws.toggleFilter} dark={false} />
+        </div>
+        {receiptsLaws.show && (
+          <div className="border border-gray-200 rounded-xl bg-white overflow-hidden mb-3">
+            <PageLawsList scopeKey="Receipts" isItemsLaws={true} onChange={receiptsLaws.bumpRefresh}
+              openForm={receiptsLaws.openForm} setOpenForm={receiptsLaws.setOpenForm}
+              hideZeroFlags={receiptsLaws.hideZeroFlags} setHideZeroFlags={receiptsLaws.setHideZeroFlags}
+              activeFilters={receiptsLaws.activeFilters} />
+          </div>
+        )}
+        <ReceiptsPage />
+      </div>
+    )
+  }
+
+  if (mode === 'new') {
+    return (
+      <div>
+        {renderModeSwitcher()}
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="text-lg font-bold text-gray-900">New Customer</h1>
+          <LawsToggleBar show={newCustomerLaws.show} setShow={newCustomerLaws.setShow}
+            openForm={newCustomerLaws.openForm} setOpenForm={newCustomerLaws.setOpenForm}
+            hideZeroFlags={newCustomerLaws.hideZeroFlags} setHideZeroFlags={newCustomerLaws.setHideZeroFlags}
+            activeFilters={newCustomerLaws.activeFilters} toggleFilter={newCustomerLaws.toggleFilter} dark={false} />
+        </div>
+        {newCustomerLaws.show && (
+          <div className="border border-gray-200 rounded-xl bg-white overflow-hidden mb-3">
+            <PageLawsList scopeKey="New Customer" isItemsLaws={true} onChange={newCustomerLaws.bumpRefresh}
+              openForm={newCustomerLaws.openForm} setOpenForm={newCustomerLaws.setOpenForm}
+              hideZeroFlags={newCustomerLaws.hideZeroFlags} setHideZeroFlags={newCustomerLaws.setHideZeroFlags}
+              activeFilters={newCustomerLaws.activeFilters} />
+          </div>
+        )}
+        <NewCustomerForm
+          onCreated={() => { loadCustomers(); setMode('customers') }}
+          onCancel={() => setMode('customers')} />
+      </div>
+    )
+  }
+
+  if (loading) return (
+    <div>
+      {renderModeSwitcher()}
+      <div className="py-16 text-center text-gray-400">Loading…</div>
+    </div>
+  )
 
   return (
     <div className="space-y-4 pb-10">
+      {renderModeSwitcher()}
       {/* Law/Notes/Tasks + this page's own flag pills, together in one row
           at the very top -- same treatment as Items/Sales/Bills' own green
           header row. One small button per category (🚩/🏳️ + letter +
