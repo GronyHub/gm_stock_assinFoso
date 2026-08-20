@@ -258,7 +258,11 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
     return <ResizableTh key={key} noDivider={isLast} onResize={onResize} onReset={onReset}>{label}</ResizableTh>
   }
   function bodyCellFor(key: ColKey, e: Expense) {
-    if (key === 'account') return <td key={key} className={`${TD} text-gray-900 font-semibold truncate`}>{e.expense_account}</td>
+    // Display only -- expense_account/description stay separate columns in
+    // the database and in the edit form; this just folds the description
+    // into what the Account cell shows, so the account reads as its own
+    // full name at a glance instead of needing the Description column too.
+    if (key === 'account') return <td key={key} className={`${TD} text-gray-900 font-semibold truncate`}>{e.description ? `${e.expense_account} — ${e.description}` : e.expense_account}</td>
     if (key === 'description') return <td key={key} className={`${TD} text-gray-700 truncate`}>{e.description ?? '—'}</td>
     if (key === 'group') return <td key={key} className={`${TD} text-gray-700 truncate`}>{e.expense_group ?? '—'}</td>
     if (key === 'is_property') return <td key={key} className={`${TD} text-gray-600 truncate`}>{e.is_property ? '✓ Yes' : '✗ No'}</td>
@@ -325,7 +329,13 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
             <tr id={`expense-${e.id}`}
               onClick={() => { if (e.amount_hidden) return; if (editId === e.id) onCloseEdit(); else onEdit(e) }}
               className={`transition-colors ${e.amount_hidden ? '' : 'cursor-pointer'} ${highlightId === e.id ? 'bg-yellow-100' : i % 2 === 1 ? 'bg-gray-50' : 'bg-white'} hover:bg-blue-50/60`}>
-              <td className={`${TD} sticky left-0 z-10 text-gray-900 font-semibold truncate border-r bg-inherit`}>{e.expense_account}</td>
+              {/* Display only -- expense_account/description stay separate
+                  columns in the database and in the edit form below; this
+                  just folds the description into what the frozen Account
+                  column shows, so the account reads as its own full name. */}
+              <td className={`${TD} sticky left-0 z-10 text-gray-900 font-semibold truncate border-r bg-inherit`}>
+                {e.description ? `${e.expense_account} — ${e.description}` : e.expense_account}
+              </td>
               {bodyCellFor('description', e)}
               {bodyCellFor('group', e)}
               <td className={`${TD} text-gray-600 whitespace-nowrap`}>{fmtShort(e.expense_date)}</td>
