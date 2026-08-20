@@ -984,15 +984,15 @@ export default function LiveSalePage(props: any = {}) {
                   columns on screen at once with nothing to scroll. Item is
                   still frozen (sticky left-0) as a safety net for very
                   narrow screens or long item names. */}
-              <div className="grid grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_1.25rem_2.25rem_1.5rem_1.5rem] gap-0 h-[13px] bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
-                <div className="sticky left-0 z-10 flex items-center bg-gray-50 px-0.5 text-[7px] leading-none font-semibold text-gray-600 uppercase truncate">Item</div>
-                <div className="flex items-center justify-end px-0.5 text-[7px] leading-none font-semibold text-gray-600 uppercase">Total</div>
-                <div className="flex items-center justify-center px-0.5 text-[7px] leading-none font-semibold text-gray-600 uppercase">Time</div>
-                <div className="flex items-center justify-end px-0.5 text-[7px] leading-none font-semibold text-gray-600 uppercase">SP</div>
-                <div className="flex items-center justify-center px-0.5 text-[7px] leading-none font-semibold text-gray-600 uppercase">Qty</div>
-                <div className="flex items-center px-0.5 text-[7px] leading-none font-semibold text-gray-600 uppercase truncate">Staff</div>
-                <div className="flex items-center justify-center px-0.5 text-[7px] leading-none font-semibold text-gray-600 uppercase">SOH</div>
-                <div className="px-0.5 text-[7px] leading-none font-semibold text-gray-600 uppercase" />
+              <div className="grid grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_1.25rem_2.25rem_1.5rem_1.5rem] gap-0 h-[14px] bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+                <div className="sticky left-0 z-10 flex items-center bg-gray-50 px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase truncate">Item</div>
+                <div className="flex items-center justify-end px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">Total</div>
+                <div className="flex items-center justify-center px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">Time</div>
+                <div className="flex items-center justify-end px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">SP</div>
+                <div className="flex items-center justify-center px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">Qty</div>
+                <div className="flex items-center px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase truncate">Staff</div>
+                <div className="flex items-center justify-center px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">SOH</div>
+                <div className="px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase" />
               </div>
 
               {/* Table rows grouped by date */}
@@ -1001,8 +1001,8 @@ export default function LiveSalePage(props: any = {}) {
                 return (
                   <div key={date}>
                     {/* Date header */}
-                    <div className="grid grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_1.25rem_2.25rem_1.5rem_1.5rem] gap-0 h-[13px] bg-green-50 border-b border-green-200 sticky top-[13px] z-9">
-                      <div className="col-span-8 flex items-center px-0.5 text-[7px] leading-none font-semibold text-green-700 truncate">
+                    <div className="grid grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_1.25rem_2.25rem_1.5rem_1.5rem] gap-0 h-[14px] bg-green-50 border-b border-green-200 sticky top-[14px] z-9">
+                      <div className="col-span-8 flex items-center px-0.5 text-[8px] leading-none font-semibold text-green-700 truncate">
                         {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · Total: ₵{formatPrice(dateTotal)}
                       </div>
                     </div>
@@ -1010,52 +1010,54 @@ export default function LiveSalePage(props: any = {}) {
                     {/* Date's taps -- `group` + an explicit bg on the sticky
                         first cell (not bg-inherit) so scrolled-under columns
                         don't show through it, same fix as Item 360's table. */}
-                    {/* Fixed row height (not content-sized) is what actually
-                        closes the gaps -- leading-none alone still left
-                        each row sized by browser default margins/line
-                        boxes on the <p>/<button> inside. */}
+                    {/* Row height is min- rather than fixed now -- the Item
+                        cell wraps to 2 lines (line-clamp-2) past ~20
+                        characters instead of truncating, so a long name
+                        doesn't need the column stretched wide to read it;
+                        every other cell stays single-line and centers
+                        within whatever height that Item cell grows the row to. */}
                     {dateTaps.map(tap => (
                       <div
                         key={tap.id}
-                        className={`group grid grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_1.25rem_2.25rem_1.5rem_1.5rem] gap-0 h-[13px] overflow-hidden hover:bg-gray-50 transition ${
+                        className={`group grid grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_1.25rem_2.25rem_1.5rem_1.5rem] gap-0 min-h-[15px] hover:bg-gray-50 transition ${
                           tap.undone ? 'bg-gray-50 opacity-60' : ''
                         }`}
                       >
                         <div className={`sticky left-0 z-[1] flex items-center px-0.5 group-hover:bg-gray-50 ${tap.undone ? 'bg-gray-50' : 'bg-white'}`}>
-                          <span className={`text-[8px] leading-none font-semibold truncate ${tap.undone ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                          <span className={`text-[9px] leading-[1.1] font-semibold line-clamp-2 break-words ${tap.undone ? 'line-through text-gray-400' : 'text-gray-900'}`}>
                             {tap.item_name}
                           </span>
                         </div>
                         <div className="flex items-center justify-end px-0.5">
-                          <span className={`text-[8px] leading-none font-semibold truncate ${tap.undone ? 'text-gray-400' : 'text-blue-600'}`}>
+                          <span className={`text-[9px] leading-none font-semibold truncate ${tap.undone ? 'text-gray-400' : 'text-blue-600'}`}>
                             ₵{formatPrice(Number(tap.price) * tap.quantity)}
                           </span>
                         </div>
                         <div className="flex items-center justify-center px-0.5">
-                          <span className="text-[7px] leading-none text-gray-500 truncate">{new Date(tap.tapped_at).toLocaleTimeString()}</span>
+                          <span className="text-[8px] leading-none text-gray-500 truncate">{new Date(tap.tapped_at).toLocaleTimeString()}</span>
                         </div>
                         <div className="flex items-center justify-end px-0.5">
-                          <span className={`text-[8px] leading-none font-semibold truncate ${tap.undone ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                          <span className={`text-[9px] leading-none font-semibold truncate ${tap.undone ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
                             ₵{formatPrice(tap.price)}
                           </span>
                         </div>
                         <div className="flex items-center justify-center px-0.5">
-                          <span className={`text-[8px] leading-none font-semibold ${tap.undone ? 'text-gray-400' : 'text-gray-900'}`}>
+                          <span className={`text-[9px] leading-none font-semibold ${tap.undone ? 'text-gray-400' : 'text-gray-900'}`}>
                             {tap.quantity}
                           </span>
                         </div>
                         <div className="flex items-center px-0.5">
-                          <span className="text-[8px] leading-none text-gray-600 truncate">{tap.staff_name}</span>
+                          <span className="text-[9px] leading-none text-gray-600 truncate">{tap.staff_name}</span>
                         </div>
                         <div className="flex items-center justify-center px-0.5">
-                          <span className="text-[8px] leading-none text-gray-500 truncate">{tap.soh !== null && tap.soh !== undefined ? Math.ceil(tap.soh) : '-'}</span>
+                          <span className="text-[9px] leading-none text-gray-500 truncate">{tap.soh !== null && tap.soh !== undefined ? Math.ceil(tap.soh) : '-'}</span>
                         </div>
                         <div className="flex items-center justify-center px-0.5">
                           {!tap.undone && (
                             <button
                               onClick={() => undoTap(tap.id)}
                               title="Undo"
-                              className="text-[9px] font-bold text-red-600 hover:bg-red-100 rounded leading-none p-0"
+                              className="text-[10px] font-bold text-red-600 hover:bg-red-100 rounded leading-none p-0"
                             >
                               ↩
                             </button>
