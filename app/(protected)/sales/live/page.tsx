@@ -85,7 +85,7 @@ export default function LiveSalePage(props: any = {}) {
   const [internalShowHelpModal, setInternalShowHelpModal] = useState(false)
   const showHelpModal = controlledShowHelpModal ?? internalShowHelpModal
   const setShowHelpModal = onHelpModalChange ?? setInternalShowHelpModal
-  const [currentView, setCurrentView] = useState<{ kind: 'violation' | 'serviceGroup' | 'lossByItem' | 'aliasWide' | 'serviceMatches' | 'newItem' | 'dailySummary'; key?: string; group?: string } | null>(null)
+  const [currentView, setCurrentView] = useState<{ kind: 'violation' | 'serviceGroup' | 'lossByItem' | 'aliasWide' | 'serviceMatches' | 'newItem' | 'dailySummary' | 'countInterval'; key?: string; group?: string } | null>(null)
   const [violations, setViolations] = useState<Record<string, number>>({})
   const [internalProductTypeFilter, setInternalProductTypeFilter] = useState<'all' | 'goods' | 'services'>('all')
   const productTypeFilter = controlledProductTypeFilter ?? internalProductTypeFilter
@@ -180,6 +180,39 @@ export default function LiveSalePage(props: any = {}) {
     return map
   }, [dailyItems, gmcWeeklyItems, overdueItems])
 
+  // One view per distinct count-interval label actually in use (Daily,
+  // Every 7d, Every 15d, Every 30d, Not counted, or any custom override
+  // someone's set on an item's edit form -- the set isn't fixed to just
+  // those, since count_cadence_days is a free-form number). Built from
+  // allItems rather than catalogueItems so the counts don't shrink/shift
+  // as other filters (product type, group, WIC/GMC) get applied.
+  const countIntervalFlags = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const it of allItems) {
+      if (!it.count_interval) continue
+      counts.set(it.count_interval, (counts.get(it.count_interval) ?? 0) + 1)
+    }
+    const sortKey = (label: string) => {
+      if (label === 'Daily') return -1
+      if (label === 'Not counted') return Infinity
+      const m = label.match(/^Every (\d+)d$/)
+      return m ? Number(m[1]) : 999998
+    }
+    return Array.from(counts.entries())
+      .sort(([a], [b]) => sortKey(a) - sortKey(b))
+      .map(([label, count]) => ({
+        key: `count_interval_${label}`,
+        label,
+        count,
+        active: currentView?.kind === 'countInterval' && currentView.key === label,
+        onViewClick: () => {
+          setCurrentView(currentView?.kind === 'countInterval' && currentView.key === label
+            ? null
+            : { kind: 'countInterval' as const, key: label })
+        }
+      }))
+  }, [allItems, currentView])
+
   // Build flags array with Live Sale callbacks
   const computedFlags = useMemo(() => [
     ...violationTypes.map((v: ViolationType) => ({
@@ -193,6 +226,7 @@ export default function LiveSalePage(props: any = {}) {
           : { kind: 'violation' as const, key: v.key })
       }
     })),
+    ...countIntervalFlags,
     {
       key: 'loss_by_item',
       label: 'Loss by Item',
@@ -233,7 +267,7 @@ export default function LiveSalePage(props: any = {}) {
         setCurrentView(currentView?.kind === 'dailySummary' ? null : { kind: 'dailySummary' as const })
       }
     }
-  ], [violationCounts, violationTypes, serviceGroups, currentView])
+  ], [violationCounts, violationTypes, serviceGroups, currentView, countIntervalFlags])
 
   // Fetch items
   useEffect(() => {
@@ -374,6 +408,8 @@ export default function LiveSalePage(props: any = {}) {
         const lossB = Math.abs(Number(b.selling_price || 0) - Number(b.cost_price || 0))
         return lossB - lossA
       })
+    } else if (currentView?.kind === 'countInterval' && currentView.key) {
+      filtered = filtered.filter(item => item.count_interval === currentView.key)
     }
 
     // Sort by sales count (highest to lowest)
@@ -1065,6 +1101,7 @@ export default function LiveSalePage(props: any = {}) {
             {currentView.kind === 'serviceMatches' && `Viewing: Service Matches`}
             {currentView.kind === 'newItem' && `Creating New Item`}
             {currentView.kind === 'dailySummary' && `Daily Sales Summary`}
+            {currentView.kind === 'countInterval' && `Viewing: ${currentView.key} (${catalogueItems.length} items)`}
           </span>
           <button
             type="button"
