@@ -44,6 +44,19 @@ function formatPrice(num: number | string): string {
   return n % 1 === 0 ? n.toFixed(0) : n.toFixed(2)
 }
 
+// The Log tab's Gap column -- minutes between two clock times, shown as
+// "12m" under an hour or "1h05" past it. Negative gaps (a clock-in/out
+// entered wrong, or a tap logged before the shop's own opening time) show
+// as "-12m" rather than being hidden, since that itself is worth noticing.
+function formatGapMins(mins: number): string {
+  const sign = mins < 0 ? '-' : ''
+  const abs = Math.round(Math.abs(mins))
+  if (abs < 60) return `${sign}${abs}m`
+  const h = Math.floor(abs / 60)
+  const m = abs % 60
+  return `${sign}${h}h${m ? String(m).padStart(2, '0') : ''}`
+}
+
 // lgAmt is the NET loss/gain in cedis (positive = net loss, negative = net
 // gain -- same sign convention Item 360's own loss table uses); lossCount
 // is how many separate days actually came up short, independent of sign.
@@ -102,6 +115,10 @@ export default function LiveSalePage(props: any = {}) {
   const [allItems, setAllItems] = useState<Item[]>([])
   const [loadingItems, setLoadingItems] = useState(true)
   const [taps, setTaps] = useState<Tap[]>([])
+  // Shop opening/last-sign-out clock times per date -- backs the Log tab's
+  // Gap column for the first/last tap of each day (see dayBounds effect
+  // below and /api/staff-times/day-bounds).
+  const [dayBounds, setDayBounds] = useState<Record<string, { openTime: string | null; closeTime: string | null }>>({})
   const [saleType, setSaleType] = useState<'WIC' | 'GMC'>('WIC')
   const [error, setError] = useState('')
   // Tapping an item's name opens its full Item 360 detail (loss/gain
@@ -562,6 +579,29 @@ export default function LiveSalePage(props: any = {}) {
     return Array.from(groups.entries()).sort(([a], [b]) => b.localeCompare(a))
   }, [taps])
 
+  // Shop open/close bounds for the Log tab's Gap column -- only fetched
+  // while Log is actually being looked at (same "not until it's viewed"
+  // treatment as Count Records below), and only for dates not already
+  // fetched, so switching back to Log after the first time doesn't refetch
+  // every date again.
+  useEffect(() => {
+    if (mode !== 'log') return
+    const dates = tapsByDate.map(([date]) => date).filter(d => !(d in dayBounds))
+    if (!dates.length) return
+    fetch(`/api/staff-times/day-bounds?dates=${dates.join(',')}`)
+      .then(r => r.json())
+      .then((d: { date: string; openTime: string | null; closeTime: string | null }[]) => {
+        if (!Array.isArray(d)) return
+        setDayBounds(prev => {
+          const next = { ...prev }
+          for (const row of d) next[row.date] = { openTime: row.openTime, closeTime: row.closeTime }
+          return next
+        })
+      })
+      .catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, tapsByDate])
+
   const countsByDate = useMemo(() => {
     const groups = new Map<string, typeof countRecords>()
     for (const rec of countRecords) {
@@ -984,7 +1024,7 @@ export default function LiveSalePage(props: any = {}) {
                   columns on screen at once with nothing to scroll. Item is
                   still frozen (sticky left-0) as a safety net for very
                   narrow screens or long item names. */}
-              <div className="grid grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_1.25rem_2.25rem_1.5rem_1.5rem] gap-0 h-[14px] bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+              <div className="grid grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_1.25rem_2.25rem_1.5rem_2.25rem_1.5rem] gap-0 h-[14px] bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                 <div className="sticky left-0 z-10 flex items-center bg-gray-50 px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase truncate">Item</div>
                 <div className="flex items-center justify-end px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">Total</div>
                 <div className="flex items-center justify-center px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">Time</div>
@@ -992,6 +1032,7 @@ export default function LiveSalePage(props: any = {}) {
                 <div className="flex items-center justify-center px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">Qty</div>
                 <div className="flex items-center px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase truncate">Staff</div>
                 <div className="flex items-center justify-center px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">SOH</div>
+                <div className="flex items-center justify-end px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase" title="Time since the previous tap -- since shop opening for the day's first, until the last staff signed out for the day's last">Gap</div>
                 <div className="px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase" />
               </div>
 
@@ -1001,8 +1042,8 @@ export default function LiveSalePage(props: any = {}) {
                 return (
                   <div key={date}>
                     {/* Date header */}
-                    <div className="grid grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_1.25rem_2.25rem_1.5rem_1.5rem] gap-0 h-[14px] bg-green-50 border-b border-green-200 sticky top-[14px] z-9">
-                      <div className="col-span-8 flex items-center px-0.5 text-[8px] leading-none font-semibold text-green-700 truncate">
+                    <div className="grid grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_1.25rem_2.25rem_1.5rem_2.25rem_1.5rem] gap-0 h-[14px] bg-green-50 border-b border-green-200 sticky top-[14px] z-9">
+                      <div className="col-span-9 flex items-center px-0.5 text-[8px] leading-none font-semibold text-green-700 truncate">
                         {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · Total: ₵{formatPrice(dateTotal)}
                       </div>
                     </div>
@@ -1016,10 +1057,33 @@ export default function LiveSalePage(props: any = {}) {
                         doesn't need the column stretched wide to read it;
                         every other cell stays single-line and centers
                         within whatever height that Item cell grows the row to. */}
-                    {dateTaps.map(tap => (
+                    {dateTaps.map((tap, i) => {
+                      // Gap = time since the previous (chronologically
+                      // earlier) tap -- dateTaps is newest-first, so that's
+                      // index i+1. The day's oldest tap (i at the end of the
+                      // array) has no earlier tap to diff against, so it
+                      // uses the shop's opening time instead; the day's
+                      // newest tap (i === 0) additionally gets a second
+                      // reading against when the last staff signed out,
+                      // shown instead of its since-previous-tap gap since
+                      // that's the more useful number for the final sale of
+                      // the day.
+                      const bounds = dayBounds[date]
+                      const isOldest = i === dateTaps.length - 1
+                      const isNewest = i === 0
+                      let gapMins: number | null = null
+                      if (isNewest && bounds?.closeTime) {
+                        gapMins = (new Date(bounds.closeTime).getTime() - new Date(tap.tapped_at).getTime()) / 60000
+                      } else if (isOldest && bounds?.openTime) {
+                        gapMins = (new Date(tap.tapped_at).getTime() - new Date(bounds.openTime).getTime()) / 60000
+                      } else {
+                        const prevTap = dateTaps[i + 1]
+                        if (prevTap) gapMins = (new Date(tap.tapped_at).getTime() - new Date(prevTap.tapped_at).getTime()) / 60000
+                      }
+                      return (
                       <div
                         key={tap.id}
-                        className={`group grid grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_1.25rem_2.25rem_1.5rem_1.5rem] gap-0 min-h-[15px] hover:bg-gray-50 transition ${
+                        className={`group grid grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_1.25rem_2.25rem_1.5rem_2.25rem_1.5rem] gap-0 min-h-[15px] hover:bg-gray-50 transition ${
                           tap.undone ? 'bg-gray-50 opacity-60' : ''
                         }`}
                       >
@@ -1052,6 +1116,9 @@ export default function LiveSalePage(props: any = {}) {
                         <div className="flex items-center justify-center px-0.5">
                           <span className="text-[9px] leading-none text-gray-500 truncate">{tap.soh !== null && tap.soh !== undefined ? Math.ceil(tap.soh) : '-'}</span>
                         </div>
+                        <div className="flex items-center justify-end px-0.5" title={isNewest ? 'Until last sign-out' : isOldest ? 'Since shop opening' : 'Since previous tap'}>
+                          <span className="text-[9px] leading-none text-gray-500 truncate">{gapMins !== null ? formatGapMins(gapMins) : '-'}</span>
+                        </div>
                         <div className="flex items-center justify-center px-0.5">
                           {!tap.undone && (
                             <button
@@ -1064,7 +1131,8 @@ export default function LiveSalePage(props: any = {}) {
                           )}
                         </div>
                       </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )
               })}
