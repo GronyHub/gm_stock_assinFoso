@@ -624,6 +624,8 @@ export default function LiveSalePage(props: any = {}) {
     setEditingSelectedItem(true)
     setEditError('')
     setEditLoading(true)
+    setCountQty('')
+    setCountError('')
     try {
       const r = await fetch(`/api/items/${selectedItem.id}`)
       const d = await r.json()
@@ -1522,10 +1524,70 @@ export default function LiveSalePage(props: any = {}) {
                     {editError}
                   </div>
                 )}
+
+                {/* Manual count -- lets this item be counted from the edit
+                    view even when it isn't currently due (the due block
+                    below only shows up for items the count queues have
+                    already flagged). Its own submit, going through the
+                    same submitCount() the due block and Count 2 use, so it
+                    hits the same pack-pairing/loss-reason prompts. */}
+                {!editLoading && selectedItem.product_type !== 'service' && (
+                  <div className="mt-4 rounded-xl border border-gray-200 overflow-hidden">
+                    <div className="px-3 py-1.5 text-xs font-extrabold text-white bg-gray-700">
+                      MANUAL COUNT
+                    </div>
+                    <div className="p-3 space-y-2 bg-gray-50">
+                      <p className="text-xs text-gray-600">System expects <b>{expected}</b> on the shelf.</p>
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          min="0"
+                          step="any"
+                          value={countQty}
+                          onChange={e => setCountQty(e.target.value)}
+                          placeholder="Counted quantity"
+                          className="flex-1 text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-gray-400"
+                          disabled={countSaving}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setCountQty(String(expected))}
+                          disabled={countSaving}
+                          className="shrink-0 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition disabled:opacity-50"
+                        >
+                          ={expected}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => enteredCount !== null && submitCount(selectedItem, enteredCount)}
+                          disabled={countQty === '' || countSaving}
+                          className={`shrink-0 px-3 py-2 text-white text-sm font-semibold rounded-lg transition disabled:opacity-50 ${countShort ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-700 hover:bg-gray-800'}`}
+                        >
+                          {countSaving ? '…' : countShort ? 'Save as loss' : 'Save Count'}
+                        </button>
+                      </div>
+                      {enteredCount !== null && !isNaN(enteredCount) && (
+                        <p className={`text-xs font-semibold ${countShort ? 'text-red-600' : 'text-emerald-600'}`}>
+                          {countShort
+                            ? `${(expected - enteredCount).toFixed(2).replace(/\.00$/, '')} short of expected — a reason will be requested`
+                            : 'On target'}
+                        </p>
+                      )}
+                      {countError && <p className="text-xs font-semibold text-red-600">{countError}</p>}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex gap-2 pt-4">
                   <button
                     type="button"
-                    onClick={() => { setEditingSelectedItem(false); setEditError('') }}
+                    onClick={() => {
+                      setEditingSelectedItem(false)
+                      setEditError('')
+                      setCountQty('')
+                      setCountError('')
+                    }}
                     disabled={editSaving}
                     className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold rounded-lg transition disabled:opacity-50"
                   >
