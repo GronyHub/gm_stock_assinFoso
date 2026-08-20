@@ -1571,13 +1571,12 @@ function ItemHubPageInner() {
       { label: 'Daily', action: () => pickLossView('dailySummary') },
       { label: 'Alias Wide Table', action: () => { pickLossView('items'); setItemsExtraView('aliasWide') } },
       { label: 'Service Matches', action: () => { pickLossView('items'); setItemsExtraView('serviceMatches') } },
-      // The one-tap sub-rows nested under a CASH_ITEMS row (New Sale/Live
-      // Sale/Log under Sales, New Customer under Customers, ...) aren't
-      // their own CASH_ITEMS entries, so the map above never picks them up
-      // -- listed by hand here instead, same as every other page search
-      // already jumps straight to.
-      { label: 'New Sale', action: () => { pickLossView('sales'); setAddForm('sale') } },
-      { label: 'Live Sale', action: () => { pickLossView('sales'); setAddForm('live') } },
+      // Live Sale's own tabs aren't their own CASH_ITEMS entries, so the
+      // map above never picks them up -- listed by hand here instead, same
+      // as every other page search already jumps straight to. New Sale is
+      // gone (dropped in favor of Sale mode's own tap-a-sale flow), so
+      // there's no entry for it any more.
+      { label: 'Live Sale', action: () => jumpToLiveSaleTab('sale') },
       { label: 'Sale Log', action: () => jumpToLiveSaleTab('log') },
       { label: 'New Customer', action: () => pickLossView('newCustomer') },
       { label: 'Expense Orders', action: () => pickLossView('expenseOrders') },
