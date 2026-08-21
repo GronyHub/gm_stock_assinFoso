@@ -29,11 +29,10 @@ export async function GET(req: NextRequest) {
                COALESCE(i.selling_rate, 0) AS selling_price,
                COALESCE(i.purchase_rate, 0) AS cost_price,
                COALESCE(i.product_type, 'goods') AS product_type,
-               i.updated_at
+               COALESCE(i.updated_at, NOW()) AS updated_at
         FROM active_items i
         LEFT JOIN item_stock_summary s ON s.item_id = i.id
         WHERE LOWER(COALESCE(i.status, '')) != 'service'
-        ${since ? sql`AND i.updated_at > ${since}::timestamp` : sql``}
         ORDER BY i.canonical_name
         LIMIT ${limit}
         OFFSET ${offset}
@@ -50,10 +49,9 @@ export async function GET(req: NextRequest) {
                COALESCE(selling_rate, 0) AS selling_price,
                COALESCE(purchase_rate, 0) AS cost_price,
                COALESCE(product_type, 'goods') AS product_type,
-               updated_at
+               NOW() AS updated_at
         FROM items
         WHERE (status IS NULL OR LOWER(status) NOT IN ('inactive','service'))
-        ${since ? sql`AND updated_at > ${since}::timestamp` : sql``}
         ORDER BY canonical_name
         LIMIT ${limit}
         OFFSET ${offset}
