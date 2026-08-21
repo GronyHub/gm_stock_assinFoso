@@ -1708,8 +1708,12 @@ export default function LiveSalePage(props: any = {}) {
       {/* Sale mode's own item-grid filter -- Loss/Gain/Low SOH plus one pill
           per count-interval label currently in use (see saleFilterFlags).
           Same pill styling as the Count tab's own interval buckets so a
-          cadence bucket reads the same wherever it shows up. */}
-      {(!hideFilterBar || expanded) && (
+          cadence bucket reads the same wherever it shows up. Always
+          rendered (not gated behind hideFilterBar like the type/group
+          select bar above) -- the host page (Item page) merges that bar
+          into its own top row via hideFilterBar, but has no equivalent row
+          for this filter, so gating it the same way left it only reachable
+          in "Large screen" mode. */}
       <div className="px-4 py-2 border-b border-gray-200 bg-white flex items-center gap-1.5 flex-wrap">
         {saleFilterFlags.map(f => (
           <button key={f.key} type="button" onClick={f.onClick}
@@ -1718,7 +1722,6 @@ export default function LiveSalePage(props: any = {}) {
           </button>
         ))}
       </div>
-      )}
 
       {/* Search & Controls -- rendered inline normally, or portaled into a
           slot the host page (Item page) supplies so it can sit compactly
