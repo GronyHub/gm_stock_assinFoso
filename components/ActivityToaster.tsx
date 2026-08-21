@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
+import { usePolling } from '@/lib/usePolling'
 
 type LogRow = { id: number; staff_name: string; action: string; details: string | null; created_at: string }
 
@@ -11,42 +12,38 @@ export default function ActivityToaster() {
   const seededRef = useRef(false)
   const [toasts, setToasts] = useState<LogRow[]>([])
 
-  useEffect(() => {
-    if (status !== 'authenticated') return
-    let cancelled = false
+  async function poll() {
+    try {
+      const url = lastIdRef.current != null ? `/api/logs/recent?after=${lastIdRef.current}` : '/api/logs/recent'
+      const res = await fetch(url)
+      if (!res.ok) return
+      const rows: LogRow[] = await res.json()
+      if (!rows.length) return
 
-    async function poll() {
-      try {
-        const url = lastIdRef.current != null ? `/api/logs/recent?after=${lastIdRef.current}` : '/api/logs/recent'
-        const res = await fetch(url)
-        if (!res.ok) return
-        const rows: LogRow[] = await res.json()
-        if (cancelled || !rows.length) return
-
-        if (!seededRef.current) {
-          // First call just establishes the baseline -- don't toast existing history.
-          lastIdRef.current = rows[0].id
-          seededRef.current = true
-          return
-        }
-
-        lastIdRef.current = rows[rows.length - 1].id
-        const fromOthers = rows.filter(r => (r.staff_name ?? '').toLowerCase() !== username)
-        if (fromOthers.length) {
-          setToasts(prev => [...prev, ...fromOthers].slice(-4))
-          fromOthers.forEach(r => {
-            setTimeout(() => setToasts(prev => prev.filter(t => t.id !== r.id)), 6000)
-          })
-        }
-      } catch {
-        // silent -- a missed poll just means a delayed notification, not worth surfacing
+      if (!seededRef.current) {
+        // First call just establishes the baseline -- don't toast existing history.
+        lastIdRef.current = rows[0].id
+        seededRef.current = true
+        return
       }
-    }
 
-    poll()
-    const id = setInterval(poll, 30000)
-    return () => { cancelled = true; clearInterval(id) }
-  }, [status, username])
+      lastIdRef.current = rows[rows.length - 1].id
+      const fromOthers = rows.filter(r => (r.staff_name ?? '').toLowerCase() !== username)
+      if (fromOthers.length) {
+        setToasts(prev => [...prev, ...fromOthers].slice(-4))
+        fromOthers.forEach(r => {
+          setTimeout(() => setToasts(prev => prev.filter(t => t.id !== r.id)), 6000)
+        })
+      }
+    } catch {
+      // silent -- a missed poll just means a delayed notification, not worth surfacing
+    }
+  }
+
+  useEffect(() => { if (status === 'authenticated') poll() }, [status, username])
+  // Mounted app-wide in the root layout, same story as LivePresence -- was
+  // running unguarded on every open tab all day regardless of visibility.
+  usePolling(poll, 30000, status === 'authenticated')
 
   if (!toasts.length) return null
 

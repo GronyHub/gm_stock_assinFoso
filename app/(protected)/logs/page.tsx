@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
+import { usePolling } from '@/lib/usePolling'
 
 type LogEntry = {
   id: number
@@ -45,11 +46,7 @@ export default function LogsPage() {
   }, [])
 
   // Auto-refresh every 30s
-  useEffect(() => {
-    if (!autoRefresh) return
-    const id = setInterval(load, 30_000)
-    return () => clearInterval(id)
-  }, [autoRefresh])
+  usePolling(load, 30_000, autoRefresh)
 
   const filtered = useMemo(() => {
     if (!search.trim()) return logs
