@@ -154,6 +154,7 @@ export default function LiveSalePage(props: any = {}) {
   // closing the sheet.
   const [editingSelectedItem, setEditingSelectedItem] = useState(false)
   const [editForm, setEditForm] = useState(EMPTY_ITEM_EDIT_FORM)
+  const [editCurrentCountInterval, setEditCurrentCountInterval] = useState<string | null>(null)
   const [editLoading, setEditLoading] = useState(false)
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState('')
@@ -768,6 +769,7 @@ export default function LiveSalePage(props: any = {}) {
     setEditingSelectedItem(true)
     setEditError('')
     setEditLoading(true)
+    setEditCurrentCountInterval(null)
     setCountQty('')
     setCountError('')
     try {
@@ -784,6 +786,7 @@ export default function LiveSalePage(props: any = {}) {
         count_excluded: !!d?.count_excluded,
         count_cadence_days: d?.count_cadence_days != null ? String(d.count_cadence_days) : '',
       })
+      setEditCurrentCountInterval(d?.count_interval ?? null)
     } catch {
       setEditError('Could not load item details.')
     }
@@ -2005,6 +2008,7 @@ export default function LiveSalePage(props: any = {}) {
                     isService={selectedItem.product_type === 'service'}
                     allItems={editAllItemsList}
                     size="large"
+                    currentCountInterval={editCurrentCountInterval}
                   />
                 )}
                 {editError && (

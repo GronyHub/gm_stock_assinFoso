@@ -2,24 +2,32 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { isOwnerLevel } from '@/lib/roles'
-import { ensureCountCadenceColumns } from '@/lib/countRules'
+import { ensureCountCadenceColumns, itemCountIntervalLabels, formatCountInterval } from '@/lib/countRules'
 import { NextResponse } from 'next/server'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+  const itemId = Number(id)
   try {
     await ensureCountCadenceColumns()
-    const [row] = await sql`
-      SELECT i.id, i.canonical_name, i.cf_group, i.selling_rate AS selling_price,
-             i.purchase_rate, i.units_per_pack, i.unit_name, i.converts_to_item_id,
-             i.count_excluded, i.count_cadence_days,
-             COALESCE(s.calculated_soh, 0) AS calculated_soh
-      FROM items i
-      LEFT JOIN item_stock_summary s ON s.item_id = i.id
-      WHERE i.id = ${Number(id)}
-    `
+    const [[row], intervals] = await Promise.all([
+      sql`
+        SELECT i.id, i.canonical_name, i.cf_group, i.selling_rate AS selling_price,
+               i.purchase_rate, i.units_per_pack, i.unit_name, i.converts_to_item_id,
+               i.count_excluded, i.count_cadence_days,
+               COALESCE(s.calculated_soh, 0) AS calculated_soh
+        FROM items i
+        LEFT JOIN item_stock_summary s ON s.item_id = i.id
+        WHERE i.id = ${itemId}
+      `,
+      // The edit form's "Count every" field has no way to show what the
+      // item's cadence currently resolves to without this -- shares the
+      // exact same computation items/all uses, just picking out one item,
+      // so the label here can never drift out of sync with the bulk view.
+      itemCountIntervalLabels().catch(() => new Map<number, string>()),
+    ])
     if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    return NextResponse.json(row)
+    return NextResponse.json({ ...row, count_interval: formatCountInterval(intervals.get(itemId)) })
   } catch {
     const [row] = await sql`
       SELECT id, canonical_name, cf_group, selling_rate AS selling_price, purchase_rate, 0 AS calculated_soh

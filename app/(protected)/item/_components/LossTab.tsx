@@ -948,6 +948,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   const [dayRows, setDayRows] = useState<DayRow[] | null>(null)
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [currentCountInterval, setCurrentCountInterval] = useState<string | null>(null)
   const [aliases, setAliases] = useState<AliasRecord[]>(currentAliases)
   const [matches, setMatches] = useState<MatchRecord[]>(currentMatches)
   const [saving, setSaving] = useState(false)
@@ -1012,6 +1013,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
       converts_to_item_id: item.converts_to_item_id ? String(item.converts_to_item_id) : '',
       count_excluded: false, count_cadence_days: '',
     })
+    setCurrentCountInterval(null)
     setAliases(currentAliases)
     setMatches(currentMatches)
     setEditing(true)
@@ -1020,11 +1022,14 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
     // summary this whole tab is built from) -- fetched separately here so
     // opening the form doesn't need to wait on it first.
     fetch(`/api/items/${item.item_id}`).then(r => r.json())
-      .then(d => setForm(f => ({
-        ...f,
-        count_excluded: !!d?.count_excluded,
-        count_cadence_days: d?.count_cadence_days != null ? String(d.count_cadence_days) : '',
-      })))
+      .then(d => {
+        setForm(f => ({
+          ...f,
+          count_excluded: !!d?.count_excluded,
+          count_cadence_days: d?.count_cadence_days != null ? String(d.count_cadence_days) : '',
+        }))
+        setCurrentCountInterval(d?.count_interval ?? null)
+      })
       .catch(() => {})
   }
 
@@ -1114,7 +1119,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
             <button onClick={saveEdit} disabled={saving} className="text-xs font-semibold text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-lg transition disabled:opacity-50">{saving ? 'Saving…' : 'Save'}</button>
             <button onClick={() => setEditing(false)} className="text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition">✕</button>
           </div>
-          <ItemEditForm form={form} onChange={setForm} groups={groups} itemId={item.item_id} isService={item.product_type === 'service'} allItems={allItems} size="large" />
+          <ItemEditForm form={form} onChange={setForm} groups={groups} itemId={item.item_id} isService={item.product_type === 'service'} allItems={allItems} size="large" currentCountInterval={currentCountInterval} />
           <div>
             <label className="text-[7px] font-bold text-gray-500 block mb-0">Aliases</label>
             <AliasPicker itemId={item.item_id} current={aliases} onChange={setAliases} />

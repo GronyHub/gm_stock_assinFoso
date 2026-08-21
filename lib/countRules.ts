@@ -2,6 +2,20 @@ import sql from '@/lib/db'
 import { PACK_PAIRING_CHAINS } from '@/lib/stockGuard'
 import { once } from '@/lib/once'
 
+// 'excluded'/'dormant'/'daily'/'7'/'15'/'30'/a custom override -> the
+// plain-text label shown next to price/cost/stock in item pickers, and next
+// to the "Count every" field in the item edit form so a user can see the
+// item's current effective cadence before deciding whether to override it.
+// Shared by items/all (bulk) and items/[id] (single item) so both always
+// agree on what an item's label actually is.
+export function formatCountInterval(label: string | undefined): string | null {
+  if (!label) return null
+  if (label === 'excluded') return 'Not counted'
+  if (label === 'dormant') return 'Dormant'
+  if (label === 'daily') return 'Daily'
+  return `Every ${label}d`
+}
+
 // items.count_excluded (set from an item's own edit form) is checked in
 // itemRows/itemNamesOnly below, so it applies uniformly everywhere this
 // file's exports are consumed -- the daily queue, the GMC/overdue queues

@@ -46,10 +46,17 @@ const SIZES = {
   },
 } as const
 
-export function ItemEditForm({ form, onChange, groups, itemId, isService, allItems, size = 'compact' }: {
+export function ItemEditForm({ form, onChange, groups, itemId, isService, allItems, size = 'compact', currentCountInterval }: {
   form: typeof EMPTY_ITEM_EDIT_FORM; onChange: (f: typeof EMPTY_ITEM_EDIT_FORM) => void; groups: string[]
   itemId: number; isService: boolean; allItems: { item_id: number; item_name: string }[]
   size?: 'compact' | 'large'
+  // What this item's cadence actually resolves to right now (e.g. "Every
+  // 15d", "Dormant", "Daily") -- without this, "Count every ___ days" is a
+  // blank field with no way to tell whether leaving it on auto is already
+  // doing what you want. undefined while still loading; null once loaded
+  // if the item genuinely has no interval (a service, or the label lookup
+  // failed) -- both render nothing.
+  currentCountInterval?: string | null
 }) {
   const s = SIZES[size]
   const large = size === 'large'
@@ -118,6 +125,14 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
       {!isService && (
         <div className={s.sectionWrap}>
           <label className={s.sectionLabel}>Stock counts</label>
+          {currentCountInterval && (
+            <p className={large ? 'text-xs text-gray-500 -mt-1 mb-1' : 'text-[8px] text-gray-500 -mt-0.5 mb-0.5'}>
+              Currently: <span className="font-semibold text-gray-700">{currentCountInterval}</span>
+              {!form.count_excluded && !form.count_cadence_days && currentCountInterval !== 'Daily' && (
+                <> (automatic)</>
+              )}
+            </p>
+          )}
           <label className={s.checkboxLabel}>
             <input type="checkbox" checked={form.count_excluded}
               onChange={e => onChange({ ...form, count_excluded: e.target.checked })}

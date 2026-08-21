@@ -1,20 +1,7 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
-import { itemCountIntervalLabels } from '@/lib/countRules'
+import { itemCountIntervalLabels, formatCountInterval } from '@/lib/countRules'
 import { NextResponse, NextRequest } from 'next/server'
-
-// 'excluded'/'dormant'/'daily'/'7'/'15'/'30'/a custom override -> the
-// plain-text label Live Sale shows inline next to price/cost/stock (see
-// itemCountIntervalLabels). 'Dormant' also becomes its own filterable row
-// in Live Sale's laws panel, via the same count-interval mechanism 'Daily'/
-// 'Every 15d'/etc. already use -- see countIntervalFlags there.
-function formatCountInterval(label: string | undefined): string | null {
-  if (!label) return null
-  if (label === 'excluded') return 'Not counted'
-  if (label === 'dormant') return 'Dormant'
-  if (label === 'daily') return 'Daily'
-  return `Every ${label}d`
-}
 
 export async function GET(req: NextRequest) {
   const session = await auth()
