@@ -10,14 +10,8 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url)
   const limit = Math.min(Number(url.searchParams.get('limit')) || 500, 2000)
   const offset = Math.max(Number(url.searchParams.get('offset')) || 0, 0)
-  const since = url.searchParams.get('since')
 
   try {
-    let whereClause = ''
-    if (since) {
-      whereClause = `WHERE updated_at > ${sql.unsafe(`'${since}'`)}`
-    }
-
     const rows = await sql`
       SELECT
         id,
@@ -28,10 +22,8 @@ export async function GET(req: NextRequest) {
         cash_counted,
         (cash_counted - total) AS wnw,
         entered_by,
-        COALESCE(attachments, '[]'::jsonb) AS attachments,
-        updated_at
+        COALESCE(attachments, '[]'::jsonb) AS attachments
       FROM sales_receipts
-      ${since ? sql`WHERE updated_at > ${since}::timestamp` : sql``}
       ORDER BY receipt_date DESC, id DESC
       LIMIT ${limit}
       OFFSET ${offset}
@@ -49,10 +41,8 @@ export async function GET(req: NextRequest) {
         cash_counted,
         (cash_counted - total) AS wnw,
         NULL AS entered_by,
-        COALESCE(attachments, '[]'::jsonb) AS attachments,
-        updated_at
+        COALESCE(attachments, '[]'::jsonb) AS attachments
       FROM sales_receipts
-      ${since ? sql`WHERE updated_at > ${since}::timestamp` : sql``}
       ORDER BY receipt_date DESC, id DESC
       LIMIT ${limit}
       OFFSET ${offset}

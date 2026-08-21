@@ -5,15 +5,22 @@ import { ensureBillAttachmentsColumn } from '@/lib/billAttachments'
 import { NextRequest, NextResponse } from 'next/server'
 import { initializeDatabase } from '@/lib/dbInitialize'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   await initializeDatabase()
   await ensureBillAttachmentsColumn()
+
+  const url = new URL(req.url)
+  const limit = Math.min(Number(url.searchParams.get('limit')) || 500, 2000)
+  const offset = Math.max(Number(url.searchParams.get('offset')) || 0, 0)
+
   try {
     const rows = await sql`
       SELECT id, bill_number, bill_date::date AS bill_date, vendor_name, total, status, entered_by,
              COALESCE(attachments, '[]'::jsonb) AS attachments
       FROM bills
       ORDER BY bill_date DESC, id DESC
+      LIMIT ${limit}
+      OFFSET ${offset}
     `
     return NextResponse.json(rows)
   } catch {
@@ -22,6 +29,8 @@ export async function GET() {
              COALESCE(attachments, '[]'::jsonb) AS attachments
       FROM bills
       ORDER BY bill_date DESC, id DESC
+      LIMIT ${limit}
+      OFFSET ${offset}
     `
     return NextResponse.json(rows)
   }
