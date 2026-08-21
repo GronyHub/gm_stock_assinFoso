@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
+import { ensureDismissedAliasReviews } from '@/lib/dismissedAliasReviews'
 import { NextRequest, NextResponse } from 'next/server'
 
 // Alias text that also exists as a *different* item's own canonical name --
@@ -9,15 +10,7 @@ import { NextRequest, NextResponse } from 'next/server'
 // rows (canonical/sr_variant/etc, from different import sources) share the
 // same text -- the reviewer only needs to see the conflict once.
 export async function GET() {
-  await sql`
-    CREATE TABLE IF NOT EXISTS dismissed_alias_reviews (
-      review_type TEXT NOT NULL,
-      review_key TEXT NOT NULL,
-      dismissed_by TEXT,
-      dismissed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-      PRIMARY KEY (review_type, review_key)
-    )
-  `.catch(() => {})
+  await ensureDismissedAliasReviews()
   const rows = await sql`
     SELECT DISTINCT ON (LOWER(TRIM(a.alias_name)), i.id)
       a.id AS alias_id, a.alias_name, a.alias_type, a.source AS alias_source,

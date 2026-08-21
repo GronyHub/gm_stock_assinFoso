@@ -1,12 +1,17 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
+import { once } from '@/lib/once'
 import { NextRequest, NextResponse } from 'next/server'
+
+const ensureCustomFlagNames = once(async () => {
+  await sql`CREATE TABLE IF NOT EXISTS custom_flag_names (flag_key TEXT, username TEXT, custom_label TEXT, PRIMARY KEY (flag_key, username))`.catch(() => {})
+})
 
 export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({}, { status: 401 })
 
-  await sql`CREATE TABLE IF NOT EXISTS custom_flag_names (flag_key TEXT, username TEXT, custom_label TEXT, PRIMARY KEY (flag_key, username))`.catch(() => {})
+  await ensureCustomFlagNames()
 
   const rows = await sql`SELECT flag_key, custom_label FROM custom_flag_names WHERE username = ${(session.user as { username?: string } | undefined)?.username || 'anonymous'}`
   const map: Record<string, string> = {}
@@ -23,7 +28,7 @@ export async function PATCH(req: NextRequest) {
   const { flagKey, customLabel } = await req.json()
   if (!flagKey) return NextResponse.json({ error: 'flagKey required' }, { status: 400 })
 
-  await sql`CREATE TABLE IF NOT EXISTS custom_flag_names (flag_key TEXT, username TEXT, custom_label TEXT, PRIMARY KEY (flag_key, username))`.catch(() => {})
+  await ensureCustomFlagNames()
 
   const username = (session.user as { username?: string } | undefined)?.username || 'anonymous'
 

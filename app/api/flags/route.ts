@@ -6,6 +6,19 @@ import { ensureSalesAttachmentsColumn } from '@/lib/salesAttachments'
 import { ensureBillAttachmentsColumn } from '@/lib/billAttachments'
 import { NextResponse } from 'next/server'
 import { initializeDatabase } from '@/lib/dbInitialize'
+import { once } from '@/lib/once'
+
+// This route runs ~20 flag checks per call and is polled by the Item page,
+// so its own inline schema-setup was among the last per-request DDL left
+// after 0147cfa. Same once()-per-process treatment as the lib/ ensures.
+const ensurePgTrgm = once(async () => {
+  await sql`CREATE EXTENSION IF NOT EXISTS pg_trgm`.catch(() => {})
+})
+
+const ensureTshirtColumns = once(async () => {
+  await sql`ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS has_company_tshirt BOOLEAN NOT NULL DEFAULT FALSE`.catch(() => {})
+  await sql`ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS tshirt_due_date DATE`.catch(() => {})
+})
 
 export const dynamic = 'force-dynamic'
 
@@ -152,7 +165,7 @@ export async function GET() {
 
     // 3. Duplicate/similar item names (tries pg_trgm similarity; exact-match fallback)
     safeQuery(async () => {
-      try { await sql`CREATE EXTENSION IF NOT EXISTS pg_trgm` } catch {}
+      await ensurePgTrgm()
       try {
         return await sql`
           SELECT a.id AS id1, a.canonical_name AS name1,
@@ -430,8 +443,7 @@ export async function GET() {
   // Closer as not wearing it (per work day), and staff who don't yet own one
   // past their given deadline. Matched in JS against the comma-joined
   // no_tshirt_staff field, same parsing ClosingReportLogView already uses.
-  await sql`ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS has_company_tshirt BOOLEAN NOT NULL DEFAULT FALSE`.catch(() => {})
-  await sql`ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS tshirt_due_date DATE`.catch(() => {})
+  await ensureTshirtColumns()
 
   const [closingTshirtRows, tshirtProfiles] = await Promise.all([
     safeQuery(() => sql`

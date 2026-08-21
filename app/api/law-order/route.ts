@@ -1,6 +1,11 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
+import { once } from '@/lib/once'
 import { NextRequest, NextResponse } from 'next/server'
+
+const ensureLawOrderTable = once(async () => {
+  await sql`CREATE TABLE IF NOT EXISTS law_order (scope_key TEXT, username TEXT, order_json TEXT, PRIMARY KEY (scope_key, username))`.catch(() => {})
+})
 
 // Get custom law ordering for a specific scope
 export async function GET(req: NextRequest) {
@@ -10,7 +15,7 @@ export async function GET(req: NextRequest) {
   const scopeKey = req.nextUrl.searchParams.get('scopeKey')
   if (!scopeKey) return NextResponse.json({ error: 'scopeKey required' }, { status: 400 })
 
-  await sql`CREATE TABLE IF NOT EXISTS law_order (scope_key TEXT, username TEXT, order_json TEXT, PRIMARY KEY (scope_key, username))`.catch(() => {})
+  await ensureLawOrderTable()
 
   const row = await sql`SELECT order_json FROM law_order WHERE scope_key = ${scopeKey} AND username = ${(session.user as { username?: string } | undefined)?.username || 'anonymous'}`
   if (row.length === 0) return NextResponse.json({ order: [] })
@@ -34,7 +39,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'order must be an array of strings' }, { status: 400 })
   }
 
-  await sql`CREATE TABLE IF NOT EXISTS law_order (scope_key TEXT, username TEXT, order_json TEXT, PRIMARY KEY (scope_key, username))`.catch(() => {})
+  await ensureLawOrderTable()
 
   const orderJson = JSON.stringify(order)
   const username = (session.user as { username?: string } | undefined)?.username || 'anonymous'

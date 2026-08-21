@@ -1,4 +1,5 @@
 import sql from './db'
+import { once } from './once'
 
 // Server-only: getUserPermissionsMap queries the database, so this file
 // transitively imports lib/db.ts. Never import this file from a 'use
@@ -15,7 +16,7 @@ import { FEATURE_KEYS, DEFAULT_ON_FEATURES, type RolePermissionsMap } from './pe
 // reads whatever their role currently grants, which is what seeds their
 // checkboxes the first time this runs for them. hasFeature() below looks
 // this map up by username instead of role once a caller passes it in here.
-export async function getUserPermissionsMap(): Promise<RolePermissionsMap> {
+const ensureUserPermissionsTable = once(async () => {
   await sql`
     CREATE TABLE IF NOT EXISTS user_permissions (
       user_id INTEGER NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
@@ -24,6 +25,10 @@ export async function getUserPermissionsMap(): Promise<RolePermissionsMap> {
       PRIMARY KEY (user_id, feature_key)
     )
   `.catch(() => {})
+})
+
+export async function getUserPermissionsMap(): Promise<RolePermissionsMap> {
+  await ensureUserPermissionsTable()
   const [users, roleRows, overrideRows] = await Promise.all([
     sql`SELECT id, username, role FROM app_users`,
     sql`SELECT role_key, feature_key, allowed FROM role_permissions`,

@@ -2,8 +2,9 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
 import { initializeDatabase } from '@/lib/dbInitialize'
+import { once } from '@/lib/once'
 
-async function ensureTable() {
+const ensureTable = once(async () => {
   await sql`
     CREATE TABLE IF NOT EXISTS item_replies (
       id SERIAL PRIMARY KEY,
@@ -15,7 +16,7 @@ async function ensureTable() {
     )
   `.catch(() => {})
   await sql`CREATE INDEX IF NOT EXISTS idx_item_replies ON item_replies (item_type, item_id)`.catch(() => {})
-}
+})
 
 export async function GET(req: NextRequest) {
   const itemType = req.nextUrl.searchParams.get('itemType')

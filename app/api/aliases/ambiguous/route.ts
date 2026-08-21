@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
+import { ensureDismissedAliasReviews } from '@/lib/dismissedAliasReviews'
 import { NextResponse } from 'next/server'
 
 // Alias names that resolve to more than one item -- the exact class of
@@ -10,15 +11,7 @@ export async function GET() {
   const session = await auth()
   if (!session) return NextResponse.json([], { status: 401 })
 
-  await sql`
-    CREATE TABLE IF NOT EXISTS dismissed_alias_reviews (
-      review_type TEXT NOT NULL,
-      review_key TEXT NOT NULL,
-      dismissed_by TEXT,
-      dismissed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-      PRIMARY KEY (review_type, review_key)
-    )
-  `.catch(() => {})
+  await ensureDismissedAliasReviews()
 
   const aliasRows = await sql`
     WITH ambiguous_names AS (

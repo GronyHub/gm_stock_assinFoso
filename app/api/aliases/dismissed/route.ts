@@ -1,26 +1,7 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
+import { ensureDismissedAliasReviews as ensureTable } from '@/lib/dismissedAliasReviews'
 import { NextRequest, NextResponse } from 'next/server'
-
-// "Keep as-is (dismiss)" on the Flagged/Ambiguous/Name Conflicts review
-// screens (AliasesTab.tsx) used to only update local component state -- it
-// looked like it saved, but reloading or navigating away brought every
-// dismissal right back, since nothing was ever written to the database.
-// This is the actual persistence layer: one row per (review_type, key)
-// dismissed, permanent (no "un-dismiss" UI, matching dismissed_duplicates'
-// existing behavior elsewhere in the app), so a review a person has already
-// looked at and decided to leave alone stops resurfacing.
-async function ensureTable() {
-  await sql`
-    CREATE TABLE IF NOT EXISTS dismissed_alias_reviews (
-      review_type TEXT NOT NULL,
-      review_key TEXT NOT NULL,
-      dismissed_by TEXT,
-      dismissed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-      PRIMARY KEY (review_type, review_key)
-    )
-  `.catch(() => {})
-}
 
 export async function GET() {
   const session = await auth()
