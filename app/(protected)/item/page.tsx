@@ -37,7 +37,7 @@ import { MANAGE_LIST_ITEMS, MANAGE_GROUP_LABELS, MANAGE_GROUP_ICONS, GRONY_CHECK
 import { STAFF_PERSONAL_ITEMS, STAFF_TEAM_ITEMS, STAFF_ADMIN_TEAM_ITEMS, type StaffView } from './_components/staffViewData'
 import { CH_ITEMS, CH_CHILD_PERSON, CH_PERSON_VIEW, type CHView } from './_components/chViewData'
 import { useUKData, UK_PEOPLE } from './_components/ukViewData'
-import { SidePaneContainer, SidePaneToggle, SidePaneButton, useSidePaneDisplayMode } from './_components/SidePane'
+import { SidePaneContainer, SidePaneDragHandle, SidePaneToggle, SidePaneButton, useSidePaneDisplayMode } from './_components/SidePane'
 import SettingsPane from './_components/SettingsPane'
 import UKSettingsPanel from './_components/UKSettingsPanel'
 import { applyPaneOrder, buildPaneRuns, flattenPaneRuns, type PaneOrderMap } from './_components/paneOrder'
@@ -1630,6 +1630,10 @@ function ItemHubPageInner() {
   // just the wrong two.
   const paneActive = (cond: boolean) => cond && !settingsOpen
   const paneAccent = PANE_ACCENT[outerTab]
+  // Drag-to-hide the side pane (see SidePaneDragHandle) -- plain in-memory
+  // state, not persisted, since this is a "get it out of my way for now"
+  // gesture rather than a lasting display preference like cashDisplayMode.
+  const [sidePaneHidden, setSidePaneHidden] = useState(false)
 
   // Live Sale takes over the whole content area with its own thing to do
   // (build a cart, tap items, review a log, browse Sales/Bills/Loss by
@@ -1648,6 +1652,7 @@ function ItemHubPageInner() {
           it alongside their own content instead of losing all navigation
           the moment you leave Grony Cash. */}
       <div className="flex-1 min-h-0 flex overflow-hidden">
+        {!sidePaneHidden && (
         <SidePaneContainer mode={cashDisplayMode} accent={paneAccent}
             footer={<>
               <PaneHomeDaily mode={cashDisplayMode}
@@ -1850,6 +1855,8 @@ function ItemHubPageInner() {
                 onClick={() => { if (confirm('Sign out?')) signOut({ callbackUrl: '/login' }) }} />
             </div>
         </SidePaneContainer>
+        )}
+        <SidePaneDragHandle hidden={sidePaneHidden} onToggle={() => setSidePaneHidden(v => !v)} />
 
         {/* UK's own Settings (add a menu / add a column) is a completely
             separate panel from Biz's SettingsPane (Viewing/Team/Users/

@@ -1,5 +1,5 @@
 'use client'
-import { useSyncExternalStore } from 'react'
+import { useRef, useSyncExternalStore } from 'react'
 
 // Shared building blocks for the "always-visible narrow left pane, full-
 // width right pane" navigation pattern used throughout this app (Grony
@@ -224,6 +224,51 @@ export function SidePaneContainer({ mode, footer, children, accent = '#00072d' }
         {children}
       </div>
       {footer}
+    </div>
+  )
+}
+
+// A thin strip sitting right on the side pane's edge -- drag it toward the
+// pane to hide it (the content area, already flex-1, reclaims the width),
+// drag it away from the pane (or just click/tap it) to bring it back. The
+// caller owns the hidden/onToggle state and whether SidePaneContainer itself
+// renders at all; this component is just the handle, so hiding the pane is
+// a plain conditional unmount rather than an animated width collapse.
+//
+// Pointer Events (not native HTML5 drag-and-drop) so touch behaves the same
+// as mouse -- same convention as columnPrefs.tsx's ColResizeHandle, which
+// is this codebase's only other drag gesture.
+export function SidePaneDragHandle({ hidden, onToggle }: { hidden: boolean; onToggle: () => void }) {
+  const startX = useRef<number | null>(null)
+  const dragged = useRef(false)
+  const THRESHOLD = 24
+
+  return (
+    <div
+      onPointerDown={e => {
+        startX.current = e.clientX
+        dragged.current = false
+        e.currentTarget.setPointerCapture(e.pointerId)
+      }}
+      onPointerMove={e => {
+        if (startX.current === null || dragged.current) return
+        const delta = e.clientX - startX.current
+        // Hidden: dragging right (away from the left edge) restores it.
+        // Visible: dragging left (toward the left edge) hides it.
+        if (hidden ? delta > THRESHOLD : delta < -THRESHOLD) {
+          dragged.current = true
+          onToggle()
+        }
+      }}
+      onPointerUp={() => { startX.current = null }}
+      onClick={() => { if (!dragged.current) onToggle() }}
+      title={hidden ? 'Show sidebar' : 'Hide sidebar'}
+      className="relative shrink-0 w-3 flex items-center justify-center cursor-col-resize touch-none select-none group"
+    >
+      <span className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-gray-300 group-hover:bg-blue-400 transition" />
+      <span className="relative z-10 w-4 h-9 rounded-full bg-gray-200 group-hover:bg-blue-500 group-hover:text-white text-gray-500 text-[9px] flex items-center justify-center transition shadow-sm">
+        {hidden ? '▶' : '◀'}
+      </span>
     </div>
   )
 }
