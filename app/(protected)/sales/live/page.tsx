@@ -541,7 +541,7 @@ export default function LiveSalePage(props: any = {}) {
     return counts
   }, [taps])
 
-  // Pills for Sale mode's own item-grid filter (saleFilter above) -- Loss/
+  // Options for Sale mode's own item-grid filter (saleFilter above) -- Loss/
   // Gain/Low SOH plus one per count-interval label currently in use, same
   // buckets and sort order as the Count tab's countIntervalFlags so the two
   // read consistently even though they're built for different modes.
@@ -563,21 +563,15 @@ export default function LiveSalePage(props: any = {}) {
     }
     const intervalFlags = Array.from(intervalCounts.entries())
       .sort(([a], [b]) => sortKey(a) - sortKey(b))
-      .map(([label, count]) => ({
-        key: `interval_${label}`,
-        label,
-        count,
-        active: saleFilter?.kind === 'interval' && saleFilter.label === label,
-        onClick: () => setSaleFilter(saleFilter?.kind === 'interval' && saleFilter.label === label ? null : { kind: 'interval' as const, label }),
-      }))
+      .map(([label, count]) => ({ key: `interval_${label}`, label, count }))
 
     return [
-      { key: 'loss', label: '🔻 Loss', count: lossCount, active: saleFilter?.kind === 'loss', onClick: () => setSaleFilter(saleFilter?.kind === 'loss' ? null : { kind: 'loss' as const }) },
-      { key: 'gain', label: '🔺 Gain', count: gainCount, active: saleFilter?.kind === 'gain', onClick: () => setSaleFilter(saleFilter?.kind === 'gain' ? null : { kind: 'gain' as const }) },
-      { key: 'soh', label: 'Low SOH', count: sohCount, active: saleFilter?.kind === 'soh', onClick: () => setSaleFilter(saleFilter?.kind === 'soh' ? null : { kind: 'soh' as const }) },
+      { key: 'loss', label: '🔻 Loss', count: lossCount },
+      { key: 'gain', label: '🔺 Gain', count: gainCount },
+      { key: 'soh', label: 'Low SOH', count: sohCount },
       ...intervalFlags,
     ]
-  }, [allItems, lossByItemId, saleFilter])
+  }, [allItems, lossByItemId])
 
   // Filter and sort items based on current view and product type
   const catalogueItems = useMemo(() => {
@@ -1705,22 +1699,33 @@ export default function LiveSalePage(props: any = {}) {
       </div>
       )}
 
-      {/* Sale mode's own item-grid filter -- Loss/Gain/Low SOH plus one pill
-          per count-interval label currently in use (see saleFilterFlags).
-          Same pill styling as the Count tab's own interval buckets so a
-          cadence bucket reads the same wherever it shows up. Always
-          rendered (not gated behind hideFilterBar like the type/group
-          select bar above) -- the host page (Item page) merges that bar
-          into its own top row via hideFilterBar, but has no equivalent row
-          for this filter, so gating it the same way left it only reachable
-          in "Large screen" mode. */}
+      {/* Sale mode's own item-grid filter -- Loss/Gain/Low SOH plus one
+          option per count-interval label currently in use (see
+          saleFilterFlags). One dropdown instead of a pill per option so it
+          doesn't wrap onto multiple rows once there are several cadence
+          labels in play. Always rendered (not gated behind hideFilterBar
+          like the type/group select bar above) -- the host page (Item page)
+          merges that bar into its own top row via hideFilterBar, but has no
+          equivalent slot for this filter, so gating it the same way left it
+          only reachable in "Large screen" mode. */}
       <div className="px-4 py-2 border-b border-gray-200 bg-white flex items-center gap-1.5 flex-wrap">
-        {saleFilterFlags.map(f => (
-          <button key={f.key} type="button" onClick={f.onClick}
-            className={`text-xs font-semibold px-2 py-1 rounded-full transition ${f.active ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-            {f.label} ({f.count})
-          </button>
-        ))}
+        <select
+          value={saleFilter ? saleFilter.kind === 'interval' ? `interval:${saleFilter.label}` : saleFilter.kind : ''}
+          onChange={e => {
+            const v = e.target.value
+            if (!v) setSaleFilter(null)
+            else if (v.startsWith('interval:')) setSaleFilter({ kind: 'interval', label: v.slice('interval:'.length) })
+            else setSaleFilter({ kind: v as 'loss' | 'gain' | 'soh' })
+          }}
+          className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
+        >
+          <option value="">Filter: All items</option>
+          {saleFilterFlags.map(f => (
+            <option key={f.key} value={f.key === 'loss' || f.key === 'gain' || f.key === 'soh' ? f.key : `interval:${f.label}`}>
+              {f.label} ({f.count})
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Search & Controls -- rendered inline normally, or portaled into a
