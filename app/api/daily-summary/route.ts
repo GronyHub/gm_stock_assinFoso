@@ -23,20 +23,73 @@ async function computeStockInfo(items: ItemLineRow[], date: string) {
   const ids = Array.from(new Set(items.map(r => r.item_id).filter((id): id is number => id != null)))
   if (ids.length === 0) return new Map<number, StockInfo>()
 
+  const prevDate = shiftDate(date, -1)
   const products = await sql`SELECT id, product_type FROM items WHERE id = ANY(${ids})`
   const productType = new Map(products.map((p: any) => [p.id, p.product_type]))
-  const prevDate = shiftDate(date, -1)
 
-  const entries: [number, StockInfo][] = await Promise.all(ids.map(async (id): Promise<[number, StockInfo]> => {
-    if (productType.get(id) === 'service') return [id, { previousStock: null, currentStock: null }]
-    const [previousStock, currentStock] = await Promise.all([
-      expectedStockAt(id, prevDate),
-      expectedStockAt(id, date),
-    ])
-    return [id, { previousStock, currentStock }]
-  }))
+  // Parallelize both date computations instead of sequential N+1 calls
+  const [prevResults, currResults] = await Promise.all([
+    computeExpectedStockBatch(ids, prevDate),
+    computeExpectedStockBatch(ids, date),
+  ])
 
-  return new Map(entries)
+  const stockByItem = new Map<number, StockInfo>()
+  for (const id of ids) {
+    if (productType.get(id) === 'service') {
+      stockByItem.set(id, { previousStock: null, currentStock: null })
+    } else {
+      stockByItem.set(id, {
+        previousStock: prevResults.get(id) ?? null,
+        currentStock: currResults.get(id) ?? null,
+      })
+    }
+  }
+
+  return stockByItem
+}
+
+// Compute expected stock for all items on a specific date in a single query
+async function computeExpectedStockBatch(itemIds: number[], date: string): Promise<Map<number, number | null>> {
+  const result = new Map<number, number | null>()
+
+  const rows = await sql`
+    WITH last_counts AS (
+      SELECT DISTINCT ON (item_id) item_id, count_date::date AS d, SUM(quantity_counted) AS qty
+      FROM stock_counts
+      WHERE item_id = ANY(${itemIds}) AND count_date::date < ${date}
+      GROUP BY item_id, count_date::date
+      ORDER BY item_id, count_date::date DESC
+    )
+    SELECT lc.item_id, lc.d,
+      COALESCE(lc.qty, 0) +
+      COALESCE((SELECT SUM(bl.quantity) FROM bill_lines bl JOIN bills b ON b.id = bl.bill_id
+                WHERE bl.item_id = lc.item_id AND b.bill_date::date > lc.d AND b.bill_date::date <= ${date}), 0) +
+      COALESCE((SELECT SUM(srl.quantity * COALESCE(i2.units_per_pack, 1)) FROM sales_receipt_lines srl
+                JOIN sales_receipts sr ON sr.id = srl.receipt_id JOIN items i2 ON i2.id = srl.item_id
+                WHERE i2.converts_to_item_id = lc.item_id AND COALESCE(i2.product_type, 'goods') <> 'service'
+                AND sr.customer_name = 'Grony Multimedia as Customer' AND sr.receipt_date::date > lc.d AND sr.receipt_date::date <= ${date}), 0) -
+      COALESCE((SELECT SUM(srl.quantity) FROM sales_receipt_lines srl JOIN sales_receipts sr ON sr.id = srl.receipt_id
+                WHERE srl.item_id = lc.item_id AND sr.receipt_date::date > lc.d AND sr.receipt_date::date <= ${date}), 0) -
+      COALESCE((SELECT SUM(srl.quantity * COALESCE(i2.units_per_pack, 1)) FROM sales_receipt_lines srl
+                JOIN sales_receipts sr ON sr.id = srl.receipt_id JOIN items i2 ON i2.id = srl.item_id
+                WHERE i2.converts_to_item_id = lc.item_id AND i2.product_type = 'service'
+                AND (sr.customer_name IS NULL OR sr.customer_name <> 'Grony Multimedia as Customer')
+                AND sr.receipt_date::date > lc.d AND sr.receipt_date::date <= ${date}), 0) AS expected
+    FROM last_counts lc
+  ` as any[]
+
+  for (const row of rows) {
+    result.set(row.item_id, row.expected != null ? parseFloat(row.expected) : null)
+  }
+
+  // Items with no prior count return null
+  for (const id of itemIds) {
+    if (!result.has(id)) {
+      result.set(id, null)
+    }
+  }
+
+  return result
 }
 
 type ItemMeta = { status: string | null; costPrice: number | null }
