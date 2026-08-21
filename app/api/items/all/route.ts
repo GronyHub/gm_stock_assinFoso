@@ -44,7 +44,10 @@ export async function GET(req: NextRequest) {
         LIMIT ${limit}
         OFFSET ${offset}
       `,
-      itemCountIntervalLabels().catch(() => new Map<number, string>()),
+      itemCountIntervalLabels().catch(e => {
+        console.error('itemCountIntervalLabels failed, every item will show no count_interval:', e instanceof Error ? e.message : String(e))
+        return new Map<number, string>()
+      }),
     ])
     if (rows.length === limit) {
       console.warn(`items/all: hit the ${limit}-row cap -- results may be truncated, raise the cap`)
