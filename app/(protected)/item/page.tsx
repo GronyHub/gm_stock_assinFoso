@@ -2041,12 +2041,14 @@ function ItemHubPageInner() {
                     <div className="w-full overflow-x-auto">
                       <div ref={el => setLiveModeToggleSlotEl(el)} className="flex" />
                     </div>
-                    {/* Everything shown always, no collapse -- sized small
+                    {/* Search box and the item-filter dropdown moved down to
+                        the bottom bar (replacing Biz/UK/C&H there while this
+                        view is open) -- see the bottom bar's own Live Sale
+                        branch below. Everything still here is sized small
                         enough (w-16/w-20 selects, w-5 h-5 icon buttons,
-                        text-[10px]/text-[11px]) that the full set wraps onto
-                        at most 2-3 lines even on a phone-width screen. */}
+                        text-[10px]/text-[11px]) that it wraps onto at most
+                        2-3 lines even on a phone-width screen. */}
                     <div className="flex items-center gap-1 flex-wrap justify-end">
-                      <div ref={el => setLiveSearchSlotEl(el)} className="flex items-center gap-1" />
                       <select
                         value={liveProductTypeFilter}
                         onChange={e => setLiveProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
@@ -2066,7 +2068,6 @@ function ItemHubPageInner() {
                           <option key={g} value={g}>{g}</option>
                         ))}
                       </select>
-                      <div ref={el => setLiveFilterSlotEl(el)} className="flex items-center gap-1" />
                       <LawsToggleBar show={liveSaleLaws.show} setShow={liveSaleLaws.setShow}
                         openForm={liveSaleLaws.openForm} setOpenForm={liveSaleLaws.setOpenForm}
                         hideZeroFlags={liveSaleLaws.hideZeroFlags} setHideZeroFlags={liveSaleLaws.setHideZeroFlags}
@@ -2411,8 +2412,13 @@ function ItemHubPageInner() {
               Grony Cash has nothing to switch to, so those three only show
               once UK and/or C&H access exists. The "+" shortcut menu (see
               AddShortcutButton/handleShortcut) rejoins this row too --
-              always shown, same as when it was its own floating button. */}
-          {addForm !== 'live' && (
+              always shown, same as when it was its own floating button.
+              Live Sale's Sales view takes over this same footer instead
+              (see the branch below) -- the item search box and filter
+              dropdown are what's actually useful to have pinned there while
+              tapping sales, so this row steps aside rather than the two
+              competing for the same strip. */}
+          {addForm !== 'live' && !(outerTab === 'loss' && lossView === 'sales' && !liveExpanded) && (
           <div className="shrink-0 flex items-center justify-evenly py-2 bg-white border-t border-gray-200">
             {(canSeeUK || canSeeCH) && (
               <button onClick={() => changeTab('loss')} title="Biz"
@@ -2448,6 +2454,18 @@ function ItemHubPageInner() {
               📜
             </button>
             <AddShortcutButton onShortcut={handleShortcut} />
+          </div>
+          )}
+          {/* Live Sale's own item search box and item-filter dropdown
+              (Loss/Gain/Low SOH/count interval) -- moved down into this
+              footer, in Biz/UK/C&H's usual spot, while the Sales view is
+              open. Both are portaled in from LiveSaleForm (liveSearchSlotEl/
+              liveFilterSlotEl), same mechanism the mode switcher and the
+              rest of the filter row above already use. */}
+          {addForm !== 'live' && outerTab === 'loss' && lossView === 'sales' && !liveExpanded && (
+          <div className="shrink-0 flex items-center justify-center gap-2 py-2 bg-white border-t border-gray-200">
+            <div ref={el => setLiveSearchSlotEl(el)} className="flex items-center gap-1" />
+            <div ref={el => setLiveFilterSlotEl(el)} className="flex items-center gap-1" />
           </div>
           )}
         </div>
