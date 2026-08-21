@@ -28,6 +28,12 @@ export async function GET(req: NextRequest) {
       LIMIT ${limit}
       OFFSET ${offset}
     `
+    // A full row equal to `limit` means the cap (not the data) decided where
+    // the list stopped -- exactly how the "No items" regression happened
+    // last time, silently. Surface it in the logs instead.
+    if (rows.length === limit) {
+      console.warn(`bills/all-lines: hit the ${limit}-row cap -- results may be truncated, raise the cap`)
+    }
     return NextResponse.json(rows)
   } catch (e) {
     console.error('bills/all-lines error:', e instanceof Error ? e.message : String(e))
