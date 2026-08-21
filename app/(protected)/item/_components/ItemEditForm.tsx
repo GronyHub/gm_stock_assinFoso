@@ -29,8 +29,6 @@ const SIZES = {
     checkboxLabel: 'flex items-center gap-1.5 text-[9px] text-gray-700 cursor-pointer select-none',
     checkbox: 'w-3 h-3 accent-red-600',
     smallText: 'text-[9px] text-gray-500 shrink-0',
-    cadenceInputExtra: ' w-14',
-    cadenceGap: 'gap-1.5',
   },
   large: {
     wrap: 'space-y-4',
@@ -42,10 +40,22 @@ const SIZES = {
     checkboxLabel: 'flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none',
     checkbox: 'w-4 h-4 accent-red-600',
     smallText: 'text-sm text-gray-600 shrink-0',
-    cadenceInputExtra: ' w-24',
-    cadenceGap: 'gap-2',
   },
 } as const
+
+// Fixed cadence choices instead of a free-form number -- covers the
+// cadences the shop actually uses in practice; "Other…" below still opens a
+// plain number input for anything outside this set, and preserves whatever
+// arbitrary value an item was already set to (see customCadence below)
+// instead of silently discarding it because it doesn't match a preset.
+const CADENCE_PRESETS: { value: string; label: string }[] = [
+  { value: '1', label: 'Daily' },
+  { value: '3', label: 'Every 3 Days' },
+  { value: '7', label: 'Every 7 Days' },
+  { value: '15', label: 'Every 15 Days' },
+  { value: '30', label: 'Every 30 Days' },
+  { value: '45', label: 'Every 45 Days' },
+]
 
 export function ItemEditForm({ form, onChange, groups, itemId, isService, allItems, size = 'compact', currentCountInterval, currentSoh }: {
   form: typeof EMPTY_ITEM_EDIT_FORM; onChange: (f: typeof EMPTY_ITEM_EDIT_FORM) => void; groups: string[]
@@ -76,6 +86,12 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
   // its own text box, rather than being lost/misrepresented as blank.
   const presetReasonLabels: string[] = COUNT_EXCLUDED_REASONS.filter(r => r.key !== 'other').map(r => r.label)
   const [customReason, setCustomReason] = useState(!!form.count_excluded_reason && !presetReasonLabels.includes(form.count_excluded_reason))
+  // Same "Other…" pattern -- an item already on a cadence outside the fixed
+  // preset list (set before this dropdown existed, or a genuinely unusual
+  // one) shows up here instead of the select silently falling back to a
+  // preset it doesn't actually match.
+  const presetCadenceValues: string[] = CADENCE_PRESETS.map(p => p.value)
+  const [customCadence, setCustomCadence] = useState(!!form.count_cadence_days && !presetCadenceValues.includes(form.count_cadence_days))
   const stockBlocksExclude = currentSoh != null && Math.abs(currentSoh) > 0.001
   return (
     <div className={s.wrap}>
@@ -182,11 +198,23 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
             </div>
           )}
           {!form.count_excluded && (
-            <div className={`flex items-center ${s.cadenceGap}`}>
-              <span className={s.smallText}>Count every</span>
-              <input type="number" min="1" step="1" placeholder="auto" value={form.count_cadence_days}
-                onChange={set('count_cadence_days')} className={s.input + s.cadenceInputExtra} />
-              <span className={s.smallText}>days (blank = automatic)</span>
+            <div>
+              {large ? <label className={s.label}>Count every</label> : <span className={s.smallText}>Count every</span>}
+              <select
+                value={customCadence ? '__custom__' : form.count_cadence_days}
+                onChange={e => {
+                  if (e.target.value === '__custom__') { setCustomCadence(true); onChange({ ...form, count_cadence_days: '' }) }
+                  else { setCustomCadence(false); onChange({ ...form, count_cadence_days: e.target.value }) }
+                }}
+                className={s.input + (large ? '' : ' mt-0.5')}>
+                <option value="">Automatic (based on item history)</option>
+                {CADENCE_PRESETS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                <option value="__custom__">Other…</option>
+              </select>
+              {customCadence && (
+                <input type="number" min="1" step="1" placeholder="Number of days" value={form.count_cadence_days}
+                  onChange={set('count_cadence_days')} className={s.input + (large ? ' mt-2' : ' mt-1')} />
+              )}
             </div>
           )}
         </div>

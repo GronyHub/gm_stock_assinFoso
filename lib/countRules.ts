@@ -269,6 +269,13 @@ export async function itemCountIntervalLabels(): Promise<Map<number, string>> {
         WHEN i.id = ANY(${DAILY_ITEM_IDS})
              AND i.canonical_name !~* 'cardboard' AND i.canonical_name !~* 'a4\s*sheet' THEN 'daily'
         WHEN i.converts_to_item_id = ANY(${blockingIds}) THEN 'daily'
+        -- A custom cadence of 1 day means the same thing as the hardcoded
+        -- 'daily' items above (count it every single calendar day, zero
+        -- tolerance) -- labeled the same way so lib/countGuard.ts's
+        -- itemsDueForCount gives it the same zero-tolerance treatment
+        -- instead of treating it as a numeric "every Nd" window, which
+        -- would actually grant a 1-day grace period.
+        WHEN i.count_cadence_days = 1 THEN 'daily'
         WHEN i.count_cadence_days IS NOT NULL THEN i.count_cadence_days::text
         WHEN i.id IN (SELECT item_id FROM gmc_items) THEN '7'
         ELSE (CASE
