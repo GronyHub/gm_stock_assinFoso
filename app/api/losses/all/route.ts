@@ -1,7 +1,11 @@
 import sql from '@/lib/db'
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const url = new URL(req.url)
+  const limit = Math.min(Number(url.searchParams.get('limit')) || 2000, 5000)
+  const offset = Math.max(Number(url.searchParams.get('offset')) || 0, 0)
+
   const rows = await sql`
     WITH all_dates AS (
       SELECT item_id, count_date::date AS d FROM stock_counts
@@ -74,6 +78,8 @@ export async function GET() {
     LEFT JOIN daily_sell_price dsp ON dsp.item_id = ad.item_id AND dsp.d = ad.d
     LEFT JOIN daily_cost_price dcp ON dcp.item_id = ad.item_id AND dcp.d = ad.d
     ORDER BY ad.item_id, ad.d ASC
+    LIMIT ${limit}
+    OFFSET ${offset}
   `
   return NextResponse.json(rows)
 }

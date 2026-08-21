@@ -1,7 +1,12 @@
 import sql from '@/lib/db'
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const url = new URL(req.url)
+  const limit = Math.min(Number(url.searchParams.get('limit')) || 1000, 5000)
+  const offset = Math.max(Number(url.searchParams.get('offset')) || 0, 0)
+  const since = url.searchParams.get('since')
+
   const rows = await sql`
     SELECT
       bill_id,
@@ -11,9 +16,13 @@ export async function GET() {
       unit_price,
       item_total,
       usage_unit,
-      COALESCE(unresolved, false) AS unresolved
+      COALESCE(unresolved, false) AS unresolved,
+      updated_at
     FROM bill_lines
+    ${since ? sql`WHERE updated_at > ${since}::timestamp` : sql``}
     ORDER BY bill_id, id
+    LIMIT ${limit}
+    OFFSET ${offset}
   `
   return NextResponse.json(rows)
 }
