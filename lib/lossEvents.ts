@@ -37,6 +37,29 @@ export type LossEvent = {
   reason: string | null
 }
 
+// Every count reconciled against its previous count, whether or not it
+// produced a loss/gain -- computeLossEvents() below filters this down to
+// just the kind-carrying rows; Count Records (sales/live/page.tsx) shows
+// every row, kind or not, alongside the count itself.
+export type ReconciledCount = {
+  item_id: number
+  // The count's own count_date, unshifted -- what a caller joins back
+  // against stock_counts rows on (see reconciliationByCount below).
+  rawDate: string
+  // The date this count is reconciled/reported against -- equal to
+  // rawDate outside the shift window, see SHIFT_START/SHIFT_END above.
+  date: string
+  itemName: string
+  counted: number
+  // null when there's no earlier count to judge this one against.
+  expected: number | null
+  // Signed: positive = loss, negative = gain, null alongside expected.
+  lossQty: number | null
+  lossAmt: number | null
+  kind: 'loss' | 'gain' | null
+  reason: string | null
+}
+
 // stock_counts.notes packs the counter's reason together with the manager
 // acknowledgement and any free-text note the counter also typed -- see
 // /api/stock/count's lossNote/finalNotes construction, e.g.
@@ -48,7 +71,7 @@ function parseLossReason(notes: string | null): string | null {
   return m?.[1]?.trim() || null
 }
 
-export async function computeLossEvents(): Promise<LossEvent[]> {
+async function computeReconciliation(): Promise<ReconciledCount[]> {
   // One row per count event, loss/gain computed against the item's PREVIOUS
   // count -- same cumulative-since-last-count formula as stockGuard's
   // expectedStockAt (prev count + bills + GMC conversions in, minus direct
@@ -82,13 +105,13 @@ export async function computeLossEvents(): Promise<LossEvent[]> {
       FROM daily_counts
     ),
     counts_seq AS (
-      SELECT item_id, eff_d, qty_counted, notes,
+      SELECT item_id, d, eff_d, qty_counted, notes,
              LAG(eff_d) OVER (PARTITION BY item_id ORDER BY d) AS prev_d,
              LAG(qty_counted) OVER (PARTITION BY item_id ORDER BY d) AS prev_count
       FROM dated_counts
     ),
     with_loss AS (
-      SELECT cs.item_id, cs.eff_d::text AS date, cs.qty_counted, cs.notes,
+      SELECT cs.item_id, cs.d::text AS raw_date, cs.eff_d::text AS date, cs.qty_counted, cs.notes,
         CASE WHEN cs.prev_d IS NOT NULL THEN
           (
             cs.prev_count
@@ -123,17 +146,16 @@ export async function computeLossEvents(): Promise<LossEvent[]> {
                   AND (sr.customer_name IS NULL OR sr.customer_name <> 'Grony Multimedia as Customer')
                   AND sr.receipt_date::date > cs.prev_d AND sr.receipt_date::date <= cs.eff_d
               ), 0)
-          ) - cs.qty_counted
-        ELSE NULL END AS loss_qty
+          )
+        ELSE NULL END AS expected
       FROM counts_seq cs
     )
-    SELECT wl.item_id, wl.date, i.canonical_name AS item_name, i.selling_rate, i.product_type,
-           i.units_per_pack, i.converts_to_item_id, wl.loss_qty, wl.qty_counted, wl.notes
+    SELECT wl.item_id, wl.raw_date, wl.date, i.canonical_name AS item_name, i.selling_rate, i.product_type,
+           i.units_per_pack, i.converts_to_item_id, wl.expected, wl.qty_counted, wl.notes
     FROM with_loss wl
     JOIN item_stock_summary iss ON iss.item_id = wl.item_id
     LEFT JOIN items i ON i.id = wl.item_id
-    WHERE wl.loss_qty IS NOT NULL
-      AND iss.item_name NOT ILIKE 'old stop%'
+    WHERE iss.item_name NOT ILIKE 'old stop%'
       AND iss.item_name NOT ILIKE 'old- stop%'
     ORDER BY wl.item_id, wl.date ASC
   ` as any[]
@@ -141,11 +163,14 @@ export async function computeLossEvents(): Promise<LossEvent[]> {
   const paperPacks = new Map<number, number>()
   const paperSingles = new Map<number, boolean>()
 
-  const events: LossEvent[] = []
+  const rows: ReconciledCount[] = []
   for (const row of dayRows) {
-    const lossQty = parseFloat(row.loss_qty ?? '0') || 0
-    const kind = lossQty > 0.001 ? 'loss' : lossQty < -0.001 ? 'gain' : null
+    const expected = row.expected !== null ? parseFloat(row.expected) : null
+    const counted = parseFloat(row.qty_counted ?? '0') || 0
+    const lossQty = expected === null ? null : parseFloat((expected - counted).toFixed(4))
+    const kind: 'loss' | 'gain' | null = lossQty === null ? null : lossQty > 0.001 ? 'loss' : lossQty < -0.001 ? 'gain' : null
 
+    let lossAmt: number | null = null
     if (kind) {
       // Identify paper packs/singles for pricing
       if (row.product_type !== 'service' && row.converts_to_item_id && /4x6/i.test(row.item_name) && /pack/i.test(row.item_name)) {
@@ -161,21 +186,48 @@ export async function computeLossEvents(): Promise<LossEvent[]> {
           ? PAPER_SELL_PRICE
           : parseFloat(row.selling_rate ?? '0') || 0
 
-      const lossAmt = Math.abs(lossQty) * sp
-
-      events.push({
-        date: row.date,
-        item_id: row.item_id,
-        item_name: row.item_name,
-        expected: 0,
-        counted: parseFloat(row.qty_counted ?? '0') || 0,
-        loss_qty: Math.abs(lossQty),
-        loss_amt: lossAmt,
-        kind,
-        reason: parseLossReason(row.notes ?? null),
-      })
+      lossAmt = parseFloat((Math.abs(lossQty!) * sp).toFixed(2))
     }
+
+    rows.push({
+      item_id: row.item_id,
+      rawDate: row.raw_date,
+      date: row.date,
+      itemName: row.item_name,
+      counted,
+      expected,
+      lossQty,
+      lossAmt,
+      kind,
+      reason: parseLossReason(row.notes ?? null),
+    })
   }
 
-  return events
+  return rows
+}
+
+export async function computeLossEvents(): Promise<LossEvent[]> {
+  const rows = await computeReconciliation()
+  return rows.filter((r): r is ReconciledCount & { kind: 'loss' | 'gain' } => r.kind !== null).map(r => ({
+    date: r.date,
+    item_id: r.item_id,
+    item_name: r.itemName,
+    expected: r.expected ?? 0,
+    counted: r.counted,
+    loss_qty: Math.abs(r.lossQty!),
+    loss_amt: r.lossAmt!,
+    kind: r.kind,
+    reason: r.reason,
+  }))
+}
+
+// Keyed by `${item_id}|${rawDate}` (rawDate = stock_counts.count_date, not
+// the shift-adjusted date) so a caller with a raw stock_counts row can look
+// up how it reconciled -- see /api/stock/counts, which enriches Count
+// Records with this. Same-day multiple counts for one item are already
+// summed into a single reconciled row upstream (daily_counts), so every
+// stock_counts row for that item+day gets that one day's shared result.
+export async function reconciliationByCount(): Promise<Map<string, ReconciledCount>> {
+  const rows = await computeReconciliation()
+  return new Map(rows.map(r => [`${r.item_id}|${r.rawDate}`, r]))
 }

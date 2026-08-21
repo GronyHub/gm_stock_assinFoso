@@ -391,16 +391,19 @@ export const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCate
 // they're handled as an early-return special case in goToViolation instead,
 // since they jump into a specific tab of Live Sale (Count 2), not a plain
 // lossView + violation pill the way everything below still works.
-// 'sales'/'bills'/'feed' below aren't real LossViews any more -- each is one
+// 'sales'/'bills'/'count' below aren't real LossViews any more -- each is one
 // of Live Sale's own embedded tabs now, so goToViolation special-cases them
 // into a jumpToLiveSaleTab() call instead of the generic pickLossView(target)
 // fallback every other target here still uses.
-const VIOLATION_HOME: Partial<Record<string, LossView | 'sales' | 'bills' | 'feed'>> = {
+const VIOLATION_HOME: Partial<Record<string, LossView | 'sales' | 'bills' | 'count'>> = {
   neg_soh: 'items', no_sp: 'items', no_cp: 'items', no_group: 'items',
   duplicates: 'items', unlinked_named: 'items', service_violation: 'items',
   alias_prezoho_sales: 'items', alias_prezoho_bills: 'items', alias_prezoho_receipts: 'items', alias_flagged: 'items', alias_ambiguous: 'items',
   alias_name_conflicts: 'items',
-  gains: 'feed',
+  // Gains used to land on the standalone Loss by Date tab ('feed'); that
+  // tab folded into Count's own Count Records (see countRecordFilter in
+  // sales/live/page.tsx), so this now jumps there instead.
+  gains: 'count',
   no_cash: 'sales', missing_days: 'sales', cost_price: 'sales', dup_receipt: 'sales', no_attachment: 'sales', high_wnw: 'sales',
   no_vendor: 'bills', no_items_bills: 'bills', bill_total_mismatch: 'bills', bill_no_attachment: 'bills',
   unchecked_cab: 'cab',
@@ -589,19 +592,18 @@ function ItemHubPageInner() {
   const [liveHelpModalOpen, setLiveHelpModalOpen] = useState(false)
   const [liveSearchSlotEl, setLiveSearchSlotEl] = useState<HTMLDivElement | null>(null)
   const [liveModeToggleSlotEl, setLiveModeToggleSlotEl] = useState<HTMLDivElement | null>(null)
-  // Deep links into a specific Live Sale tab (Sale/Sales/Bills/Loss by
-  // Date/Loss by Tgt/Log) -- the "Sale Log" search result, a "Fix now:
-  // Counts" button, a Daily/7-Day/15-Day Counts violation pill, a Sales/
-  // Bills/Loss-by-Date violation pill, and the global search's Sales/Bills
-  // results all jump here now that none of those is a real LossView any
-  // more (each folded into one of Live Sale's own tabs). Seq is a plain
-  // incrementing counter so the same tab can be jumped to twice in a row
-  // and still fire.
+  // Deep links into a specific Live Sale tab (Sale/Sales/Bills/Count/Loss by
+  // Tgt/Log) -- the "Sale Log" search result, a "Fix now: Counts" button, a
+  // Daily/7-Day/15-Day Counts violation pill, a Sales/Bills/gains violation
+  // pill, and the global search's Sales/Bills results all jump here now
+  // that none of those is a real LossView any more (each folded into one of
+  // Live Sale's own tabs). Seq is a plain incrementing counter so the same
+  // tab can be jumped to twice in a row and still fire.
   const [liveSaleJumpSeq, setLiveSaleJumpSeq] = useState(0)
-  const [liveSaleJumpTab, setLiveSaleJumpTab] = useState<'sale' | 'sales' | 'bills' | 'feed' | 'lossByTarget' | 'log'>('sale')
+  const [liveSaleJumpTab, setLiveSaleJumpTab] = useState<'sale' | 'sales' | 'bills' | 'count' | 'lossByTarget' | 'log'>('sale')
   const [liveSaleJumpViolation, setLiveSaleJumpViolation] = useState<string | null>(null)
   const [liveSaleJumpSearch, setLiveSaleJumpSearch] = useState<string | null>(null)
-  function jumpToLiveSaleTab(tab: 'sale' | 'sales' | 'bills' | 'feed' | 'lossByTarget' | 'log', violation: string | null = null, search: string | null = null) {
+  function jumpToLiveSaleTab(tab: 'sale' | 'sales' | 'bills' | 'count' | 'lossByTarget' | 'log', violation: string | null = null, search: string | null = null) {
     pickLossView('sales')
     setLiveSaleJumpTab(tab)
     setLiveSaleJumpViolation(violation)
@@ -623,7 +625,7 @@ function ItemHubPageInner() {
   // above) -- can't call jumpToLiveSaleTab directly from that initializer
   // since it isn't defined yet that early in the component.
   useEffect(() => {
-    if (rawInitialTab === 'losses') jumpToLiveSaleTab('feed')
+    if (rawInitialTab === 'losses') jumpToLiveSaleTab('count')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -1288,9 +1290,10 @@ function ItemHubPageInner() {
   }, [searchParams])
 
   function goToViolation(key: string) {
-    // The loss-summary rows point at the Loss feed, one of Live Sale's own
-    // embedded tabs now, not a plain lossView.
-    if (key === '__loss_feed') { jumpToLiveSaleTab('feed'); return }
+    // The loss-summary rows point at Count Records (the old Loss by Date
+    // feed folded into it), one of Live Sale's own embedded tabs now, not a
+    // plain lossView.
+    if (key === '__loss_feed') { jumpToLiveSaleTab('count'); return }
     // The Advert section's own checks (audio adverts, jingle, equipment)
     // now route straight to their exact row instead of just landing
     // somewhere in Manage's section generally.
@@ -1308,9 +1311,9 @@ function ItemHubPageInner() {
     if (key === 'daily' || key === '7day' || key === '15day') { jumpToLiveSaleTab('sale'); return }
     const targetView = VIOLATION_HOME[key]
     if (!targetView) return
-    // Sales/Bills/Loss by Date pills all land inside one of Live Sale's own
+    // Sales/Bills/gains pills all land inside one of Live Sale's own
     // embedded tabs now, rather than a plain lossView -- see jumpToLiveSaleTab.
-    if (targetView === 'sales' || targetView === 'bills' || targetView === 'feed') {
+    if (targetView === 'sales' || targetView === 'bills' || targetView === 'count') {
       jumpToLiveSaleTab(targetView, key)
       return
     }

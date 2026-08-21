@@ -25,12 +25,13 @@ const NewItemForm = dynamic(() => import('../../item/_components/NewItemForm'), 
 // was dropped and the classic Sales list's own tap-a-sale case moved here.
 const SalesTab = dynamic(() => import('../../item/_components/SalesTab'), { ssr: false })
 const BillsTab = dynamic(() => import('../../item/_components/BillsTab'), { ssr: false })
-const LossFeedTab = dynamic(() => import('../../item/_components/LossFeedTab'), { ssr: false })
 const NewBillForm = dynamic(() => import('../../bills/new/page'), { ssr: false })
 const SalesAnalyticsSection = dynamic(() => import('../../item/_components/SalesAnalyticsSection'), { ssr: false })
 const BillsAnalyticsSection = dynamic(() => import('../../item/_components/BillsAnalyticsSection'), { ssr: false })
-// Live/Log share one analytics view (same underlying tap data); Loss by
-// Date gets its own, backed by the same loss/gain events LossFeedTab lists.
+// Live/Log share one analytics view (same underlying tap data); Count
+// Records (which folded in the old Loss by Date feed) gets its own, backed
+// by the same reconciliation computeReconciliation() in lib/lossEvents.ts
+// computes for every count.
 const LiveSaleAnalyticsSection = dynamic(() => import('../../item/_components/LiveSaleAnalyticsSection'), { ssr: false })
 const LossFeedAnalyticsSection = dynamic(() => import('../../item/_components/LossFeedAnalyticsSection'), { ssr: false })
 
@@ -41,8 +42,14 @@ type ViolationType = { key: string; label: string; description?: string }
 // Sale mode's due-count queues -- same shape /api/stock/daily,
 // /api/stock/gmc-weekly and /api/stock/overdue already return for CountsTab.
 type DueItem = { item_id: number; item_name: string; cf_group: string | null; calculated_soh: number; last_count_date: string | null; days_overdue: number | null }
-// The Log tab's Count view -- same shape /api/stock/counts already returns for CountsTab's own history table.
-type CountRecord = { id: number; item_id: number | null; item_name: string; count_date: string; quantity_counted: string; notes: string | null; counted_by: string | null; counted_at: string | null; source: string | null; cf_group: string | null }
+// The Log tab's Count view -- same shape /api/stock/counts already returns
+// for CountsTab's own history table. expected/loss_qty/loss_amt/kind are the
+// same reconciliation Loss by Date used to compute on its own -- folded in
+// here (see reconciliationByCount in lib/lossEvents.ts) instead of keeping a
+// second tab walking the same stock_counts rows separately.
+type CountRecord = { id: number; item_id: number | null; item_name: string; count_date: string; quantity_counted: string; notes: string | null; counted_by: string | null; counted_at: string | null; source: string | null; cf_group: string | null; expected: number | null; loss_qty: number | null; loss_amt: number | null; kind: 'loss' | 'gain' | null }
+
+function fmtN(v: number) { return v % 1 === 0 ? String(v) : v.toFixed(2) }
 
 function formatPrice(num: number | string): string {
   const n = Number(num)
@@ -192,7 +199,6 @@ export default function LiveSalePage(props: any = {}) {
   // gets its own laws icon here to reach them, same as Sale mode's own.
   const salesLaws = useLawsPanel('showSalesLaws')
   const billsLaws = useLawsPanel('showBillsLaws')
-  const lossByDateLaws = useLawsPanel('showLossByDateLaws')
   const lossByTargetLaws = useLawsPanel('showLossByTargetLaws')
 
   // The standalone "Count" mode (its own due-count queues/badges/entry-form
@@ -206,10 +212,14 @@ export default function LiveSalePage(props: any = {}) {
   // tab here until its own History/Analytics/free-form counting no longer
   // had anything Sale mode's due-item treatment and Log tab didn't already
   // cover, and it was removed along with the Loss by Item page. 'sales'/
-  // 'bills'/'feed'/'lossByTarget' followed once the classic Sales Receipts
-  // list, Bills, Loss by Date, and Loss by Target lost anything that
-  // justified a separate sidebar destination once "New Sale" was dropped.
-  const [mode, setMode] = useState<'sale' | 'sales' | 'bills' | 'feed' | 'lossByTarget' | 'log' | 'count'>('sale')
+  // 'bills'/'lossByTarget' followed once the classic Sales Receipts list,
+  // Bills, and Loss by Target lost anything that justified a separate
+  // sidebar destination once "New Sale" was dropped. Loss by Date's own
+  // 'feed' mode followed the same way once its data turned out to be a
+  // filtered view of Count's own Count Records (see countRecordFilter) --
+  // folded in as extra columns there instead of a fourth tab walking the
+  // same stock_counts rows a second time.
+  const [mode, setMode] = useState<'sale' | 'sales' | 'bills' | 'lossByTarget' | 'log' | 'count'>('sale')
   const [salesViolationFilter, setSalesViolationFilter] = useState<string | null>(null)
   const [billsViolationFilter, setBillsViolationFilter] = useState<string | null>(null)
   // Count tab's own local navigation -- Daily/Every Nd/Dormant/etc, Count
@@ -227,10 +237,14 @@ export default function LiveSalePage(props: any = {}) {
     setMode(jumpToTab)
     setSalesViolationFilter(jumpToTab === 'sales' ? jumpToTabViolation : null)
     setBillsViolationFilter(jumpToTab === 'bills' ? jumpToTabViolation : null)
-    // The 'gains' violation pill is the one way Loss by Date's own filter
-    // (not a violation key it understands) needs setting on arrival --
-    // every other feed jump defaults back to the Losses side.
-    if (jumpToTab === 'feed') setFeedShowGains(jumpToTabViolation === 'gains')
+    // The 'gains' violation pill is the one way the old Loss by Date's own
+    // filter (not a violation key it understands) needs setting on arrival
+    // -- every other loss-feed jump defaults back to the Losses side, into
+    // Count Records rather than the interval buckets.
+    if (jumpToTab === 'count') {
+      setCountView({ kind: 'records' })
+      setCountRecordFilter(jumpToTabViolation === 'gains' ? 'gain' : 'loss')
+    }
     setEmbeddedSearch(jumpToTabSearch ?? '')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jumpToTabSeq])
@@ -247,9 +261,10 @@ export default function LiveSalePage(props: any = {}) {
   const [editCountQty, setEditCountQty] = useState('')
   const [editCountNotes, setEditCountNotes] = useState('')
   const [editCountSaving, setEditCountSaving] = useState(false)
-  // Loss by Date's own Losses/Gains toggle, same as it had as a standalone
-  // page.
-  const [feedShowGains, setFeedShowGains] = useState(false)
+  // Count Records' All/Losses/Gains filter -- the old Loss by Date tab's own
+  // Losses/Gains toggle, now scoped down to a filter on the same table
+  // instead of a second table walking the same rows.
+  const [countRecordFilter, setCountRecordFilter] = useState<'all' | 'loss' | 'gain'>('all')
   // Bills has no internal "add new" of its own (unlike Sales, which this
   // is a tap-to-sell page already covers) -- it always relied on this
   // page rendering NewBillForm as a sibling, so that comes along with it.
@@ -258,7 +273,7 @@ export default function LiveSalePage(props: any = {}) {
   const [billsShowAnalytics, setBillsShowAnalytics] = useState(false)
   const [liveShowAnalytics, setLiveShowAnalytics] = useState(false)
   const [logShowAnalytics, setLogShowAnalytics] = useState(false)
-  const [feedShowAnalytics, setFeedShowAnalytics] = useState(false)
+  const [countShowAnalytics, setCountShowAnalytics] = useState(false)
 
   const groups = useMemo(() => {
     const uniqueGroups = new Set<string>()
@@ -617,13 +632,46 @@ export default function LiveSalePage(props: any = {}) {
   }, [mode, tapsByDate])
 
   const countsByDate = useMemo(() => {
+    const q = embeddedSearch.trim().toLowerCase()
+    const filtered = countRecords.filter(rec => {
+      if (countRecordFilter === 'loss' && rec.kind !== 'loss') return false
+      if (countRecordFilter === 'gain' && rec.kind !== 'gain') return false
+      if (q && !rec.item_name.toLowerCase().includes(q)) return false
+      return true
+    })
     const groups = new Map<string, typeof countRecords>()
-    for (const rec of countRecords) {
+    for (const rec of filtered) {
       const date = rec.count_date.slice(0, 10)
       if (!groups.has(date)) groups.set(date, [])
       groups.get(date)!.push(rec)
     }
     return Array.from(groups.entries()).sort(([a], [b]) => b.localeCompare(a))
+  }, [countRecords, countRecordFilter, embeddedSearch])
+
+  // All-Time/Yesterday/This Week/Month/Year loss totals -- same period
+  // summary the old Loss by Date tab pinned above its own table, computed
+  // from every record regardless of countRecordFilter/search so it always
+  // reads as the whole picture, not whatever's currently filtered in view.
+  const countLossSummary = useMemo(() => {
+    const fmtLocal = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const today0 = new Date(); today0.setHours(0, 0, 0, 0)
+    const y = new Date(today0); y.setDate(y.getDate() - 1)
+    const weekStart = new Date(today0); weekStart.setDate(weekStart.getDate() - ((today0.getDay() + 6) % 7))
+    const monthStart = `${today0.getFullYear()}-${String(today0.getMonth() + 1).padStart(2, '0')}-01`
+    const yearStart = `${today0.getFullYear()}-01-01`
+    const yesterday = fmtLocal(y), ws = fmtLocal(weekStart)
+    const losses = countRecords.filter(r => r.kind === 'loss')
+    const agg = (pred: (d: string) => boolean) => {
+      const list = losses.filter(r => pred(r.count_date.slice(0, 10)))
+      return { n: list.length, amt: parseFloat(list.reduce((s, r) => s + (r.loss_amt ?? 0), 0).toFixed(2)) }
+    }
+    return [
+      { label: 'All-Time', period: agg(() => true) },
+      { label: 'Yesterday', period: agg(d => d === yesterday) },
+      { label: 'This Week', period: agg(d => d >= ws) },
+      { label: 'This Month', period: agg(d => d >= monthStart) },
+      { label: 'This Year', period: agg(d => d >= yearStart) },
+    ]
   }, [countRecords])
 
   // Sale mode's own due-count callout -- staff mostly live in Sale mode, so
@@ -887,7 +935,6 @@ export default function LiveSalePage(props: any = {}) {
         <button type="button" onClick={() => setMode('log')} title="Log" className={btnCls(mode === 'log', 'bg-gray-700')}>Log</button>
         <button type="button" onClick={() => setMode('sales')} title="Sales" className={btnCls(mode === 'sales', 'bg-emerald-600')}>Sales</button>
         <button type="button" onClick={() => setMode('bills')} title="Bills" className={btnCls(mode === 'bills', 'bg-orange-600')}>Bills</button>
-        <button type="button" onClick={() => setMode('feed')} title="Loss by Date" className={btnCls(mode === 'feed', 'bg-red-600')}>Loss by Date</button>
         <button type="button" onClick={() => setMode('lossByTarget')} title="Loss by Target" className={btnCls(mode === 'lossByTarget', 'bg-pink-600')}>Loss by Tgt</button>
         <button type="button" onClick={() => setMode('count')} title="Count" className={btnCls(mode === 'count', 'bg-indigo-600')}>Count</button>
       </div>
@@ -914,23 +961,29 @@ export default function LiveSalePage(props: any = {}) {
     </>)
   }
 
-  // The count records table -- shared by the Log tab's own Count view and
-  // Sale mode's "Count Records" law view (see currentView.kind ===
-  // 'countRecords' below), so there's one table instead of two copies.
+  // The count records table -- also doubles as the old Loss by Date feed
+  // (see countRecordFilter/countLossSummary above), since that was always
+  // just this same stock_counts history with the reconciliation columns
+  // (Expected/Loss-Gain) added and filtered to the discrepancy rows.
   function renderCountRecordsTable() {
+    const COUNT_RECORDS_GRID = 'grid-cols-[minmax(7rem,1.4fr)_5rem_3rem_4rem_4rem_4rem_5rem_4rem_minmax(6rem,1fr)_5.5rem]'
     return (
       <div className="flex-1 overflow-auto">
-        {countRecords.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-8">No counts recorded</p>
+        {countsByDate.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-8">
+            {countRecords.length === 0 ? 'No counts recorded' : 'No counts match the current filter/search'}
+          </p>
         ) : (
           <div className="inline-block min-w-full">
             {/* Item is frozen (sticky left-0), matching every data row
                 below, so it's still visible after scrolling right through
                 the narrower compact columns. */}
-            <div className="grid grid-cols-[minmax(7rem,1.4fr)_5rem_3rem_4rem_5rem_4rem_minmax(6rem,1fr)_5.5rem] gap-0 bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+            <div className={`grid ${COUNT_RECORDS_GRID} gap-0 bg-gray-50 border-b border-gray-200 sticky top-0 z-10`}>
               <div className="sticky left-0 z-10 bg-gray-50 px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Item</div>
               <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Group</div>
               <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center">Qty</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center" title="What the records expected on this day">Exp</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center" title="Expected minus counted -- a loss when positive, a gain when negative">Loss/Gain</div>
               <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center">Time</div>
               <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">By</div>
               <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Source</div>
@@ -939,14 +992,14 @@ export default function LiveSalePage(props: any = {}) {
             </div>
             {countsByDate.map(([date, dateRecs]) => (
               <div key={date}>
-                <div className="grid grid-cols-[minmax(7rem,1.4fr)_5rem_3rem_4rem_5rem_4rem_minmax(6rem,1fr)_5.5rem] gap-0 bg-amber-50 border-b border-amber-200 sticky top-[26px] z-9">
-                  <div className="col-span-8 px-2 py-1 text-[10px] font-semibold text-amber-700">
+                <div className={`grid ${COUNT_RECORDS_GRID} gap-0 bg-amber-50 border-b border-amber-200 sticky top-[26px] z-9`}>
+                  <div className="col-span-10 px-2 py-1 text-[10px] font-semibold text-amber-700">
                     {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {dateRecs.length} counted
                   </div>
                 </div>
                 {dateRecs.map(rec => (
                   <div key={rec.id}>
-                    <div className="group grid grid-cols-[minmax(7rem,1.4fr)_5rem_3rem_4rem_5rem_4rem_minmax(6rem,1fr)_5.5rem] gap-0 border-b border-gray-100 items-center hover:bg-gray-50 transition">
+                    <div className={`group grid ${COUNT_RECORDS_GRID} gap-0 border-b border-gray-100 items-center hover:bg-gray-50 transition`}>
                       <div className="sticky left-0 z-[1] bg-white group-hover:bg-gray-50 px-2 py-1">
                         <p className="text-xs font-semibold text-gray-900 truncate">{rec.item_name}</p>
                       </div>
@@ -955,6 +1008,18 @@ export default function LiveSalePage(props: any = {}) {
                       </div>
                       <div className="px-2 py-1 text-center">
                         <p className="text-xs font-semibold text-gray-900">{Number(rec.quantity_counted)}</p>
+                      </div>
+                      <div className="px-2 py-1 text-center">
+                        <p className="text-xs text-gray-500">{rec.expected != null ? fmtN(rec.expected) : '—'}</p>
+                      </div>
+                      <div className="px-2 py-1 text-center">
+                        {rec.kind ? (
+                          <p className={`text-xs font-bold ${rec.kind === 'loss' ? 'text-red-600' : 'text-amber-600'}`}>
+                            {rec.kind === 'loss' ? '-' : '+'}{fmtN(Math.abs(rec.loss_qty ?? 0))}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-gray-300">{rec.expected != null ? '0' : '—'}</p>
+                        )}
                       </div>
                       <div className="px-2 py-1 text-center">
                         <p className="text-xs text-gray-500">{fmtTime(rec.counted_at) || '—'}</p>
@@ -1347,84 +1412,6 @@ export default function LiveSalePage(props: any = {}) {
     )
   }
 
-  // Loss by Date tab -- the loss/gain feed.
-  if (mode === 'feed') {
-    return (
-      <>
-      <div className={rootClassName}>
-        {renderModeToggleRow()}
-        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
-          <h2 className="text-sm font-bold text-gray-900">Loss by Date</h2>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={embeddedSearch}
-              onChange={e => setEmbeddedSearch(e.target.value)}
-              placeholder="Search…"
-              className="text-xs px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 w-32"
-            />
-            <div className="inline-flex bg-gray-200 rounded-lg p-0.5">
-              <button type="button" onClick={() => setFeedShowGains(false)}
-                className={`px-2 py-1 text-[10px] font-bold rounded-md transition ${!feedShowGains ? 'bg-red-600 text-white' : 'text-gray-500 hover:text-gray-700'}`}>
-                Losses
-              </button>
-              <button type="button" onClick={() => setFeedShowGains(true)}
-                className={`px-2 py-1 text-[10px] font-bold rounded-md transition ${feedShowGains ? 'bg-amber-600 text-white' : 'text-gray-500 hover:text-gray-700'}`}>
-                🚩 Gains
-              </button>
-            </div>
-            <LawsToggleBar show={lossByDateLaws.show} setShow={lossByDateLaws.setShow}
-              openForm={lossByDateLaws.openForm} setOpenForm={lossByDateLaws.setOpenForm}
-              hideZeroFlags={lossByDateLaws.hideZeroFlags} setHideZeroFlags={lossByDateLaws.setHideZeroFlags}
-              activeFilters={lossByDateLaws.activeFilters} toggleFilter={lossByDateLaws.toggleFilter} dark={false} />
-            <button type="button" onClick={() => setFeedShowAnalytics(a => !a)}
-              title="Analytics"
-              className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${feedShowAnalytics ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-              📊
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowHelpModal(true)}
-              className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 font-semibold text-sm flex items-center justify-center transition"
-              title="Help"
-            >
-              ?
-            </button>
-          </div>
-        </div>
-        {feedShowAnalytics ? (
-          <div className="px-3 pt-3 flex-1 overflow-auto"><LossFeedAnalyticsSection /></div>
-        ) : (<>
-        {lossByDateLaws.show && (
-          <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 overflow-auto max-h-48">
-            <PageLawsList
-              scopeKey="Loss by Date"
-              isItemsLaws={true}
-              onChange={lossByDateLaws.bumpRefresh}
-              flags={[{
-                key: 'gains', label: 'Gains',
-                description: 'Counts that came in ABOVE what the records support. A gain should always be 0 — every one means a bill or GMC take was never recorded, or an earlier count was wrong. Fix the missing record (or correct the count) until this list is empty.',
-                count: violationCounts['gains'] ?? 0,
-                onViewClick: () => setFeedShowGains(true),
-              }]}
-              openForm={lossByDateLaws.openForm}
-              setOpenForm={lossByDateLaws.setOpenForm}
-              hideZeroFlags={lossByDateLaws.hideZeroFlags}
-              setHideZeroFlags={lossByDateLaws.setHideZeroFlags}
-              activeFilters={lossByDateLaws.activeFilters}
-            />
-          </div>
-        )}
-        <div className="flex-1 overflow-auto">
-          <LossFeedTab search={embeddedSearch} kind={feedShowGains ? 'gain' : 'loss'} />
-        </div>
-        </>)}
-      </div>
-      <TrainingGuideModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
-      </>
-    )
-  }
-
   // Loss by Target tab -- still an unimplemented placeholder upstream; kept
   // here purely so its sidebar destination can be retired without losing
   // the (currently empty) spot for whenever it's built.
@@ -1486,14 +1473,48 @@ export default function LiveSalePage(props: any = {}) {
         {renderModeToggleRow()}
         <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
           <h2 className="text-sm font-bold text-gray-900">Count</h2>
-          <button
-            type="button"
-            onClick={() => setShowHelpModal(true)}
-            className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 font-semibold text-sm flex items-center justify-center transition"
-            title="Help"
-          >
-            ?
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Count Records doubles as the old Loss by Date feed -- these
+                controls (search, the All/Losses/Gains filter, and Analytics)
+                only make sense there, not on the interval buckets or the
+                audit log. */}
+            {countView?.kind === 'records' && (<>
+              <input
+                type="text"
+                value={embeddedSearch}
+                onChange={e => setEmbeddedSearch(e.target.value)}
+                placeholder="Search…"
+                className="text-xs px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 w-32"
+              />
+              <div className="inline-flex bg-gray-200 rounded-lg p-0.5">
+                <button type="button" onClick={() => setCountRecordFilter('all')}
+                  className={`px-2 py-1 text-[10px] font-bold rounded-md transition ${countRecordFilter === 'all' ? 'bg-gray-700 text-white' : 'text-gray-500 hover:text-gray-700'}`}>
+                  All
+                </button>
+                <button type="button" onClick={() => setCountRecordFilter('loss')}
+                  className={`px-2 py-1 text-[10px] font-bold rounded-md transition ${countRecordFilter === 'loss' ? 'bg-red-600 text-white' : 'text-gray-500 hover:text-gray-700'}`}>
+                  Losses
+                </button>
+                <button type="button" onClick={() => setCountRecordFilter('gain')}
+                  className={`px-2 py-1 text-[10px] font-bold rounded-md transition ${countRecordFilter === 'gain' ? 'bg-amber-600 text-white' : 'text-gray-500 hover:text-gray-700'}`}>
+                  🚩 Gains
+                </button>
+              </div>
+              <button type="button" onClick={() => setCountShowAnalytics(a => !a)}
+                title="Analytics"
+                className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${countShowAnalytics ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                📊
+              </button>
+            </>)}
+            <button
+              type="button"
+              onClick={() => setShowHelpModal(true)}
+              className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 font-semibold text-sm flex items-center justify-center transition"
+              title="Help"
+            >
+              ?
+            </button>
+          </div>
         </div>
         <div className="px-4 py-2 border-b border-gray-200 bg-white flex items-center gap-1.5 flex-wrap">
           {countIntervalFlags.map(f => (
@@ -1543,7 +1564,21 @@ export default function LiveSalePage(props: any = {}) {
               </table>
             )
           )}
-          {countView?.kind === 'records' && renderCountRecordsTable()}
+          {countView?.kind === 'records' && (
+            countShowAnalytics ? (
+              <div className="px-3 pt-3"><LossFeedAnalyticsSection /></div>
+            ) : (<>
+              <div className="grid grid-cols-5 gap-0.5 px-2 pt-1 shrink-0">
+                {countLossSummary.map(r => (
+                  <div key={r.label} className="bg-white border border-gray-200 rounded px-1 py-0.5 text-center">
+                    <p className="text-[7px] text-gray-400 truncate">{r.label}</p>
+                    <p className={`text-[8px] font-bold ${r.period.n > 0 ? 'text-red-600' : 'text-green-600'}`}>₵{fmtN(r.period.amt)}</p>
+                  </div>
+                ))}
+              </div>
+              {renderCountRecordsTable()}
+            </>)
+          )}
           {countView?.kind === 'history' && (
             <div className="flex-1 min-h-0 flex flex-col px-4 py-4">
               <HistoryPanel keywords={['stock', 'count']} />

@@ -101,8 +101,10 @@ export const SUBMENU_HOME: Record<string, string> = {
   neg_soh: 'Items', no_sp: 'Items', no_cp: 'Items', no_group: 'Items', not_in_inventory: 'Items',
   duplicates: 'Items', unlinked_named: 'Items', service_violation: 'Items',
   alias_prezoho_sales: 'Items', alias_prezoho_bills: 'Items', alias_prezoho_receipts: 'Items', alias_flagged: 'Items', alias_ambiguous: 'Items', alias_name_conflicts: 'Items',
+  // Loss by Date used to be its own submenu; folded into Counts once both
+  // routed to the same Live Sale tab (see VIOLATION_HOME in page.tsx).
   daily: 'Counts', '7day': 'Counts', '15day': 'Counts',
-  gains: 'Loss by Date',
+  gains: 'Counts',
   no_cash: 'Sales', missing_days: 'Sales', cost_price: 'Sales', dup_receipt: 'Sales', no_attachment: 'Sales',
   no_vendor: 'Bills', no_items_bills: 'Bills', bill_total_mismatch: 'Bills', bill_no_attachment: 'Bills',
   high_wnw: 'Sales',
