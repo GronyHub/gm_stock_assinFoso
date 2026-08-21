@@ -15,10 +15,8 @@ export async function GET(req: NextRequest) {
       quantity,
       item_price,
       item_total,
-      usage_unit,
-      updated_at
+      usage_unit
     FROM sales_receipt_lines
-    ${since ? sql`WHERE updated_at > ${since}::timestamp` : sql``}
     ORDER BY receipt_id, id
     LIMIT ${limit}
     OFFSET ${offset}

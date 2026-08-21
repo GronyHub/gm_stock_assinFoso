@@ -16,10 +16,8 @@ export async function GET(req: NextRequest) {
       unit_price,
       item_total,
       usage_unit,
-      COALESCE(unresolved, false) AS unresolved,
-      updated_at
+      COALESCE(unresolved, false) AS unresolved
     FROM bill_lines
-    ${since ? sql`WHERE updated_at > ${since}::timestamp` : sql``}
     ORDER BY bill_id, id
     LIMIT ${limit}
     OFFSET ${offset}
