@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { ensureLiveSaleTapsTable } from '@/lib/liveSales'
+import { itemsDueForCount, countGuardResponseBody } from '@/lib/countGuard'
 import { NextRequest, NextResponse } from 'next/server'
 
 // Ghana is UTC+0 year-round, so an ISO UTC date slice is already the
@@ -40,6 +41,12 @@ export async function POST(req: NextRequest) {
 
     const [item] = await sql`SELECT id, canonical_name, selling_rate FROM items WHERE id = ${Number(itemId)}`
     if (!item) return NextResponse.json({ error: 'Item not found' }, { status: 404 })
+
+    const due = await itemsDueForCount([item.id])
+    if (due.size > 0) {
+      return NextResponse.json(countGuardResponseBody(Array.from(due.values())), { status: 409 })
+    }
+
     const price = customPrice ? Number(customPrice) : (Number(item.selling_rate) || 0)
     if (price <= 0) return NextResponse.json({ error: 'Invalid price' }, { status: 400 })
     const lineAmount = price * qty

@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { ensureBillAttachmentsColumn } from '@/lib/billAttachments'
+import { itemsDueForCount, countGuardResponseBody } from '@/lib/countGuard'
 import { NextRequest, NextResponse } from 'next/server'
 import { initializeDatabase } from '@/lib/dbInitialize'
 
@@ -76,6 +77,14 @@ export async function POST(req: NextRequest) {
     if (!Number.isFinite(qty) || qty <= 0) {
       return NextResponse.json({ error: `"${l.itemName || 'a line'}" needs a valid quantity greater than 0.` }, { status: 400 })
     }
+  }
+
+  // A bill still adds onto whatever the last count established as the
+  // baseline -- if that count is overdue, the baseline itself is
+  // unverified before this bill would build on top of it.
+  const due = await itemsDueForCount(lines.map(l => l.itemId ? Number(l.itemId) : null))
+  if (due.size > 0) {
+    return NextResponse.json(countGuardResponseBody(Array.from(due.values())), { status: 409 })
   }
 
   const enteredBy = session.user?.name || (session.user as any)?.username || null

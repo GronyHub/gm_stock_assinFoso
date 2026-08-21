@@ -4,6 +4,7 @@ import { logActivity } from '@/lib/logger'
 import { createItemFromTypedName } from '@/lib/createItem'
 import { impossibleUsageWarnings } from '@/lib/usageCheck'
 import { negativeStockViolations } from '@/lib/stockGuard'
+import { itemsDueForCount, countGuardResponseBody } from '@/lib/countGuard'
 import { ensureSalesAttachmentsColumn, normalizeAttachments } from '@/lib/salesAttachments'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -57,6 +58,14 @@ export async function POST(req: NextRequest) {
       const violations = await negativeStockViolations(deltas)
       if (violations.length > 0) {
         return NextResponse.json({ error: `Not allowed — this would create negative stock. ${violations.join(' ')}` }, { status: 400 })
+      }
+
+      // A sale keeps assuming the last count was still accurate -- if it's
+      // overdue, that assumption is exactly what's unverified. Block until
+      // a fresh count re-anchors it.
+      const due = await itemsDueForCount(lines.map((l: any) => l.itemId ? Number(l.itemId) : null))
+      if (due.size > 0) {
+        return NextResponse.json(countGuardResponseBody(Array.from(due.values())), { status: 409 })
       }
     }
 
