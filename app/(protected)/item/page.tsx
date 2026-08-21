@@ -500,9 +500,15 @@ function ItemHubPageInner() {
   // Loss by Date is one of its embedded tabs, jumped to via the mount
   // effect below (jumpToLiveSaleTab isn't defined yet this early in the
   // component, so it can't be called directly from this initializer).
+  // A bare /item with no ?view= at all used to default to the Items pane;
+  // Live Sale's own Live/Log/Sales/Bills/Loss switcher now covers what that
+  // pane was for day to day, so this lands there instead. Items is still one
+  // sidebar tap away. Kept in sync with the identical fallback in the
+  // searchParams effect below -- that one re-runs right after mount and
+  // would otherwise snap this straight back to 'items'.
   const [lossView, setLossView]         = useState<LossView>(
     rawInitialTab === 'losses' ? 'sales'
-      : oldTabView ?? initialView ?? (outerTab === 'ch' ? CH_ITEMS[0].key : 'items')
+      : oldTabView ?? initialView ?? (outerTab === 'ch' ? CH_ITEMS[0].key : 'sales')
   )
   const [itemsExtraView, setItemsExtraView] = useState<ItemsExtraView>(initialExtraView ?? 'none')
   // Alias Wide / Service Match only make sense while actually on Items --
@@ -1236,7 +1242,10 @@ function ItemHubPageInner() {
     if (nextTab === 'loss') {
       const rawUrlView = searchParams.get('view')
       const urlExtraView = rawUrlView ? OLD_LOSSVIEW_TO_EXTRA[rawUrlView] : undefined
-      const nextView: LossView = (urlExtraView ? 'items' : rawUrlView) as LossView ?? 'items'
+      // No ?view= at all -> land on Live Sale, matching the initial-state
+      // fallback above. A recognized extra-view link (Alias Wide Table etc.)
+      // still anchors to Items, since that's the pane it actually opens on.
+      const nextView: LossView = (urlExtraView ? 'items' : rawUrlView) as LossView ?? 'sales'
       if (nextView !== lossView) setLossView(nextView)
       if (urlExtraView && urlExtraView !== itemsExtraView) setItemsExtraView(urlExtraView)
       // Backing out of an extra view (e.g. Alias Wide Table) without also
