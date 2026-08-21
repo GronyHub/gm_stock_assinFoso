@@ -15,27 +15,35 @@ export async function GET(req: NextRequest) {
 
   try {
     const rows = await sql`
-      SELECT id, bill_number, bill_date::date AS bill_date, vendor_name, total, status, entered_by,
-             COALESCE(attachments, '[]'::jsonb) AS attachments
+      SELECT id, bill_number, bill_date::date AS bill_date, vendor_name, total, status
       FROM bills
       ORDER BY bill_date DESC, id DESC
       LIMIT ${limit}
       OFFSET ${offset}
     `
-    return NextResponse.json(rows)
+    const withOptional = rows.map((r: any) => ({
+      ...r,
+      entered_by: r.entered_by || null,
+      attachments: r.attachments || null
+    }))
+    return NextResponse.json(withOptional)
   } catch (e) {
     console.error('bills/route.ts GET error:', e instanceof Error ? e.message : String(e))
     try {
       const rows = await sql`
-        SELECT id, bill_number, bill_date::date AS bill_date, vendor_name, total, status, NULL AS entered_by,
-               COALESCE(attachments, '[]'::jsonb) AS attachments
+        SELECT id, bill_number, bill_date::date AS bill_date, vendor_name, total, status
         FROM bills
         ORDER BY bill_date DESC, id DESC
         LIMIT ${limit}
         OFFSET ${offset}
       `
       console.log('bills/route.ts fallback returned', rows.length, 'rows')
-      return NextResponse.json(rows)
+      const withOptional = rows.map((r: any) => ({
+        ...r,
+        entered_by: null,
+        attachments: null
+      }))
+      return NextResponse.json(withOptional)
     } catch (e2) {
       console.error('bills/route.ts fallback error:', e2 instanceof Error ? e2.message : String(e2))
       return NextResponse.json([])

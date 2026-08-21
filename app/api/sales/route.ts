@@ -20,15 +20,19 @@ export async function GET(req: NextRequest) {
         customer_name,
         total AS invoice_amount,
         cash_counted,
-        (cash_counted - total) AS wnw,
-        entered_by,
-        COALESCE(attachments, '[]'::jsonb) AS attachments
+        (cash_counted - total) AS wnw
       FROM sales_receipts
       ORDER BY receipt_date DESC, id DESC
       LIMIT ${limit}
       OFFSET ${offset}
     `
-    return NextResponse.json(rows)
+    // Add optional columns if they exist
+    const withOptional = rows.map((r: any) => ({
+      ...r,
+      entered_by: r.entered_by || null,
+      attachments: r.attachments || null
+    }))
+    return NextResponse.json(withOptional)
   } catch (e) {
     console.error('sales/route.ts GET error:', e instanceof Error ? e.message : String(e))
     // Fallback without entered_by in case column missing
@@ -41,16 +45,19 @@ export async function GET(req: NextRequest) {
           customer_name,
           total AS invoice_amount,
           cash_counted,
-          (cash_counted - total) AS wnw,
-          NULL AS entered_by,
-          COALESCE(attachments, '[]'::jsonb) AS attachments
+          (cash_counted - total) AS wnw
         FROM sales_receipts
         ORDER BY receipt_date DESC, id DESC
         LIMIT ${limit}
         OFFSET ${offset}
       `
       console.log('sales/route.ts fallback returned', rows.length, 'rows')
-      return NextResponse.json(rows)
+      const withOptional = rows.map((r: any) => ({
+        ...r,
+        entered_by: null,
+        attachments: null
+      }))
+      return NextResponse.json(withOptional)
     } catch (e2) {
       console.error('sales/route.ts fallback error:', e2 instanceof Error ? e2.message : String(e2))
       return NextResponse.json([])
