@@ -14,7 +14,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       sql`
         SELECT i.id, i.canonical_name, i.cf_group, i.selling_rate AS selling_price,
                i.purchase_rate, i.units_per_pack, i.unit_name, i.converts_to_item_id,
-               i.count_excluded, i.count_cadence_days,
+               i.count_excluded, i.count_cadence_days, i.count_excluded_reason,
                COALESCE(s.calculated_soh, 0) AS calculated_soh
         FROM items i
         LEFT JOIN item_stock_summary s ON s.item_id = i.id
@@ -68,9 +68,12 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
   await ensureCountCadenceColumns()
   const [current] = await sql`
-    SELECT canonical_name, cf_group, selling_rate, purchase_rate, units_per_pack, unit_name, converts_to_item_id, product_type,
-           count_excluded, count_cadence_days
-    FROM items WHERE id = ${itemId}
+    SELECT i.canonical_name, i.cf_group, i.selling_rate, i.purchase_rate, i.units_per_pack, i.unit_name, i.converts_to_item_id, i.product_type,
+           i.count_excluded, i.count_cadence_days, i.count_excluded_reason,
+           COALESCE(s.calculated_soh, 0) AS calculated_soh
+    FROM items i
+    LEFT JOIN item_stock_summary s ON s.item_id = i.id
+    WHERE i.id = ${itemId}
   `
   if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
@@ -90,6 +93,25 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   // explicit null the same as "not sent" and never let it clear.
   const count_excluded      = has('count_excluded') ? !!body.count_excluded : current.count_excluded
   const count_cadence_days  = has('count_cadence_days') ? body.count_cadence_days : current.count_cadence_days
+  // A reason only ever means something while the item is actually excluded
+  // -- forced back to null the moment count_excluded is false so a
+  // re-included item can't carry a stale "why it was excluded" note that no
+  // longer applies.
+  const count_excluded_reason = count_excluded
+    ? (has('count_excluded_reason') ? (body.count_excluded_reason || null) : current.count_excluded_reason)
+    : null
+
+  // An excluded item is meant for stock that's genuinely gone for good
+  // (discontinued, off the market) -- excluding one that still has real
+  // stock on hand would hide it from every count queue while the shelf
+  // still has it, with nothing left to catch the drift. Checked server-side
+  // (not just in the form) since this is the one thing a stale client
+  // can't be trusted to enforce correctly.
+  if (count_excluded && Math.abs(parseFloat(current.calculated_soh) || 0) > 0.001) {
+    return NextResponse.json({
+      error: `Can't exclude "${current.canonical_name}" from counts -- it still shows ${current.calculated_soh} in stock. Bring it to 0 first (a count, or a sale/bill that clears it out).`,
+    }, { status: 400 })
+  }
 
   const [row] = await sql`
     UPDATE items SET
@@ -103,10 +125,11 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       converts_to_item_id = ${converts_to_item_id ?? null},
       product_type        = ${product_type   ?? 'goods'},
       count_excluded      = ${count_excluded ?? false},
-      count_cadence_days  = ${count_cadence_days ?? null}
+      count_cadence_days  = ${count_cadence_days ?? null},
+      count_excluded_reason = ${count_excluded_reason}
     WHERE id = ${itemId}
     RETURNING id, canonical_name AS item_name, cf_group, selling_rate, purchase_rate, units_per_pack, unit_name, converts_to_item_id, product_type,
-              count_excluded, count_cadence_days
+              count_excluded, count_cadence_days, count_excluded_reason
   `
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 

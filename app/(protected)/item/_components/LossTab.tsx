@@ -949,6 +949,8 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
   const [currentCountInterval, setCurrentCountInterval] = useState<string | null>(null)
+  const [currentSoh, setCurrentSoh] = useState<number | null>(null)
+  const [editError, setEditError] = useState('')
   const [aliases, setAliases] = useState<AliasRecord[]>(currentAliases)
   const [matches, setMatches] = useState<MatchRecord[]>(currentMatches)
   const [saving, setSaving] = useState(false)
@@ -1011,9 +1013,11 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
       item_name: item.item_name, cf_group: item.cf_group ?? '', selling_rate: item.sp ?? '', purchase_rate: item.cp ?? '',
       units_per_pack: item.units_per_pack ?? '', unit_name: '',
       converts_to_item_id: item.converts_to_item_id ? String(item.converts_to_item_id) : '',
-      count_excluded: false, count_cadence_days: '',
+      count_excluded: false, count_cadence_days: '', count_excluded_reason: '',
     })
     setCurrentCountInterval(null)
+    setCurrentSoh(null)
+    setEditError('')
     setAliases(currentAliases)
     setMatches(currentMatches)
     setEditing(true)
@@ -1027,15 +1031,18 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
           ...f,
           count_excluded: !!d?.count_excluded,
           count_cadence_days: d?.count_cadence_days != null ? String(d.count_cadence_days) : '',
+          count_excluded_reason: d?.count_excluded_reason ?? '',
         }))
         setCurrentCountInterval(d?.count_interval ?? null)
+        setCurrentSoh(d?.calculated_soh != null ? parseFloat(d.calculated_soh) : null)
       })
       .catch(() => {})
   }
 
   async function saveEdit() {
     setSaving(true)
-    await fetch(`/api/items/${item.item_id}`, {
+    setEditError('')
+    const res = await fetch(`/api/items/${item.item_id}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         item_name: form.item_name || undefined,
@@ -1047,9 +1054,16 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
         converts_to_item_id: form.converts_to_item_id ? Number(form.converts_to_item_id) : null,
         count_excluded: form.count_excluded,
         count_cadence_days: form.count_cadence_days ? parseInt(form.count_cadence_days, 10) : null,
+        count_excluded_reason: form.count_excluded_reason || null,
       }),
     })
-    setSaving(false); setEditing(false)
+    setSaving(false)
+    if (!res.ok) {
+      const d = await res.json().catch(() => null)
+      setEditError(d?.error ?? 'Could not save changes.')
+      return
+    }
+    setEditing(false)
     onSaved({
       item_name: form.item_name || item.item_name, cf_group: form.cf_group || null, sp: form.selling_rate || item.sp, cp: form.purchase_rate || item.cp,
       units_per_pack: form.units_per_pack || null,
@@ -1119,7 +1133,10 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
             <button onClick={saveEdit} disabled={saving} className="text-xs font-semibold text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-lg transition disabled:opacity-50">{saving ? 'Saving…' : 'Save'}</button>
             <button onClick={() => setEditing(false)} className="text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition">✕</button>
           </div>
-          <ItemEditForm form={form} onChange={setForm} groups={groups} itemId={item.item_id} isService={item.product_type === 'service'} allItems={allItems} size="large" currentCountInterval={currentCountInterval} />
+          {editError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs font-medium text-red-600">{editError}</div>
+          )}
+          <ItemEditForm form={form} onChange={setForm} groups={groups} itemId={item.item_id} isService={item.product_type === 'service'} allItems={allItems} size="large" currentCountInterval={currentCountInterval} currentSoh={currentSoh} />
           <div>
             <label className="text-[7px] font-bold text-gray-500 block mb-0">Aliases</label>
             <AliasPicker itemId={item.item_id} current={aliases} onChange={setAliases} />

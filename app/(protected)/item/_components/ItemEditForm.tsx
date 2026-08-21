@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { COUNT_EXCLUDED_REASONS } from '@/lib/countRules'
 
 // The item-fields-only edit form (name/group/prices/units/conversion/count
 // settings) -- split out of LossTab.tsx so it can be reused anywhere an
@@ -8,7 +9,7 @@ import { useState } from 'react'
 // outside the Loss by Item tab itself.
 export const EMPTY_ITEM_EDIT_FORM = {
   item_name: '', cf_group: '', selling_rate: '', purchase_rate: '', units_per_pack: '', unit_name: '',
-  converts_to_item_id: '', count_excluded: false, count_cadence_days: '',
+  converts_to_item_id: '', count_excluded: false, count_cadence_days: '', count_excluded_reason: '',
 }
 
 // 'compact' is LossTab's original dense inline-table-row styling (unchanged
@@ -46,7 +47,7 @@ const SIZES = {
   },
 } as const
 
-export function ItemEditForm({ form, onChange, groups, itemId, isService, allItems, size = 'compact', currentCountInterval }: {
+export function ItemEditForm({ form, onChange, groups, itemId, isService, allItems, size = 'compact', currentCountInterval, currentSoh }: {
   form: typeof EMPTY_ITEM_EDIT_FORM; onChange: (f: typeof EMPTY_ITEM_EDIT_FORM) => void; groups: string[]
   itemId: number; isService: boolean; allItems: { item_id: number; item_name: string }[]
   size?: 'compact' | 'large'
@@ -57,6 +58,10 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
   // if the item genuinely has no interval (a service, or the label lookup
   // failed) -- both render nothing.
   currentCountInterval?: string | null
+  // The item's live stock-on-hand -- Exclude only actually takes (the PUT
+  // route rejects it server-side otherwise) once this is 0, so shown here
+  // as a heads-up before the user tries, not as the real enforcement.
+  currentSoh?: number | null
 }) {
   const s = SIZES[size]
   const large = size === 'large'
@@ -66,6 +71,12 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
   // "+ New group name…" (same option NewItemForm offers) is what lets you
   // introduce one while editing an item instead of only from New Item.
   const [customGroup, setCustomGroup] = useState(!!form.cf_group && !groups.includes(form.cf_group))
+  // Same pattern as Group's "+ New group name…" -- a reason typed free-hand
+  // that doesn't match one of the fixed options is treated as "Other" with
+  // its own text box, rather than being lost/misrepresented as blank.
+  const presetReasonLabels: string[] = COUNT_EXCLUDED_REASONS.filter(r => r.key !== 'other').map(r => r.label)
+  const [customReason, setCustomReason] = useState(!!form.count_excluded_reason && !presetReasonLabels.includes(form.count_excluded_reason))
+  const stockBlocksExclude = currentSoh != null && Math.abs(currentSoh) > 0.001
   return (
     <div className={s.wrap}>
       <div>
@@ -135,10 +146,41 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
           )}
           <label className={s.checkboxLabel}>
             <input type="checkbox" checked={form.count_excluded}
-              onChange={e => onChange({ ...form, count_excluded: e.target.checked })}
+              onChange={e => onChange({ ...form, count_excluded: e.target.checked, count_excluded_reason: e.target.checked ? form.count_excluded_reason : '' })}
               className={s.checkbox} />
             Exclude from counts entirely
           </label>
+          {form.count_excluded && (
+            <div className={large ? 'space-y-2' : 'space-y-1'}>
+              {stockBlocksExclude ? (
+                <p className={(large ? 'text-xs' : 'text-[9px]') + ' text-red-600 font-semibold'}>
+                  Still shows {currentSoh} in stock -- bring it to 0 (a count, or a sale/bill that clears it out) before this can take effect.
+                </p>
+              ) : currentSoh === 0 ? (
+                <p className={(large ? 'text-xs' : 'text-[9px]') + ' text-green-600'}>Stock is 0 -- ready to exclude.</p>
+              ) : null}
+              <div>
+                {large && <label className={s.label}>Why is it being excluded?</label>}
+                <select
+                  value={customReason ? '__other__' : (form.count_excluded_reason || '')}
+                  onChange={e => {
+                    if (e.target.value === '__other__') { setCustomReason(true); onChange({ ...form, count_excluded_reason: '' }) }
+                    else { setCustomReason(false); onChange({ ...form, count_excluded_reason: e.target.value }) }
+                  }}
+                  className={s.input}>
+                  <option value="">— Select a reason —</option>
+                  {COUNT_EXCLUDED_REASONS.filter(r => r.key !== 'other').map(r => (
+                    <option key={r.key} value={r.label}>{r.label}</option>
+                  ))}
+                  <option value="__other__">Other…</option>
+                </select>
+                {customReason && (
+                  <input value={form.count_excluded_reason} onChange={set('count_excluded_reason')}
+                    placeholder="Describe the reason" className={s.input + (large ? ' mt-2' : ' mt-1')} />
+                )}
+              </div>
+            </div>
+          )}
           {!form.count_excluded && (
             <div className={`flex items-center ${s.cadenceGap}`}>
               <span className={s.smallText}>Count every</span>

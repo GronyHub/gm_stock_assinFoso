@@ -155,6 +155,7 @@ export default function LiveSalePage(props: any = {}) {
   const [editingSelectedItem, setEditingSelectedItem] = useState(false)
   const [editForm, setEditForm] = useState(EMPTY_ITEM_EDIT_FORM)
   const [editCurrentCountInterval, setEditCurrentCountInterval] = useState<string | null>(null)
+  const [editCurrentSoh, setEditCurrentSoh] = useState<number | null>(null)
   const [editLoading, setEditLoading] = useState(false)
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState('')
@@ -770,6 +771,7 @@ export default function LiveSalePage(props: any = {}) {
     setEditError('')
     setEditLoading(true)
     setEditCurrentCountInterval(null)
+    setEditCurrentSoh(null)
     setCountQty('')
     setCountError('')
     try {
@@ -785,8 +787,10 @@ export default function LiveSalePage(props: any = {}) {
         converts_to_item_id: d?.converts_to_item_id ? String(d.converts_to_item_id) : '',
         count_excluded: !!d?.count_excluded,
         count_cadence_days: d?.count_cadence_days != null ? String(d.count_cadence_days) : '',
+        count_excluded_reason: d?.count_excluded_reason ?? '',
       })
       setEditCurrentCountInterval(d?.count_interval ?? null)
+      setEditCurrentSoh(d?.calculated_soh != null ? parseFloat(d.calculated_soh) : null)
     } catch {
       setEditError('Could not load item details.')
     }
@@ -809,6 +813,7 @@ export default function LiveSalePage(props: any = {}) {
         converts_to_item_id: editForm.converts_to_item_id ? Number(editForm.converts_to_item_id) : null,
         count_excluded: editForm.count_excluded,
         count_cadence_days: editForm.count_cadence_days ? parseInt(editForm.count_cadence_days, 10) : null,
+        count_excluded_reason: editForm.count_excluded_reason || null,
       }),
     })
     setEditSaving(false)
@@ -2009,6 +2014,7 @@ export default function LiveSalePage(props: any = {}) {
                     allItems={editAllItemsList}
                     size="large"
                     currentCountInterval={editCurrentCountInterval}
+                    currentSoh={editCurrentSoh}
                   />
                 )}
                 {editError && (
