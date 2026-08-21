@@ -37,10 +37,34 @@ async function ensureCountCadenceColumnsImpl() {
 // on the same request -- memoizing collapses those into one round trip too.
 export const ensureCountCadenceColumns = once(ensureCountCadenceColumnsImpl)
 
+// Dormant, same rule as /api/stock/overdue and /api/stock/gmc-weekly: last
+// 2+ counts all zero with no bill since -- applies here too now, so a
+// dormant item drops off the Daily list the same as everywhere else,
+// regardless of it being one of the fixed DAILY_ITEM_IDS.
 async function itemRows(itemIds: number[]) {
   if (itemIds.length === 0) return []
   await ensureCountCadenceColumns()
   return await sql`
+    WITH ranked AS (
+      SELECT item_id, count_date::date AS d, quantity_counted,
+             ROW_NUMBER() OVER (PARTITION BY item_id ORDER BY count_date DESC, id DESC) AS rn
+      FROM stock_counts
+      WHERE item_id = ANY(${itemIds})
+    ),
+    recent AS (
+      SELECT item_id,
+             COUNT(*) FILTER (WHERE rn <= 2) AS n2,
+             BOOL_AND(quantity_counted = 0) FILTER (WHERE rn <= 2) AS zeros2,
+             MIN(d) FILTER (WHERE rn <= 2) AS since2
+      FROM ranked WHERE rn <= 2
+      GROUP BY item_id
+    ),
+    last_bill AS (
+      SELECT bl.item_id, MAX(b.bill_date::date) AS d
+      FROM bill_lines bl JOIN bills b ON b.id = bl.bill_id
+      WHERE bl.item_id = ANY(${itemIds})
+      GROUP BY bl.item_id
+    )
     SELECT
       s.item_id,
       COALESCE(i.canonical_name, s.item_name) AS item_name,
@@ -58,10 +82,13 @@ async function itemRows(itemIds: number[]) {
       FROM stock_counts
       GROUP BY item_id
     ) c ON c.item_id = s.item_id
+    LEFT JOIN recent r ON r.item_id = s.item_id
+    LEFT JOIN last_bill lb ON lb.item_id = s.item_id
     WHERE s.item_id = ANY(${itemIds})
       AND s.cf_group IS DISTINCT FROM 'Large Format'
       AND COALESCE(i.product_type, 'goods') <> 'service'
       AND COALESCE(i.count_excluded, false) = false
+      AND NOT (COALESCE(r.n2, 0) >= 2 AND COALESCE(r.zeros2, false) AND (lb.d IS NULL OR lb.d <= r.since2))
       AND (c.last_count_date IS NULL OR c.last_count_date::date < CURRENT_DATE)
     ORDER BY COALESCE(i.canonical_name, s.item_name) ASC
   `
@@ -82,17 +109,44 @@ export async function blockingPackDailyIds(): Promise<number[]> {
     .map(r => r.id)
 }
 
+// Excludes dormant items too (see itemRows above) -- this feeds the Opener
+// penalty audit as well as the display list, so a dormant item can't stay
+// invisible in the "what's due" UI while staff still get penalized for not
+// counting something they were never shown.
 async function itemNamesOnly(ids: number[]): Promise<{ id: number; name: string }[]> {
   if (ids.length === 0) return []
   await ensureCountCadenceColumns()
   const rows = await sql`
+    WITH ranked AS (
+      SELECT item_id, count_date::date AS d, quantity_counted,
+             ROW_NUMBER() OVER (PARTITION BY item_id ORDER BY count_date DESC, id DESC) AS rn
+      FROM stock_counts
+      WHERE item_id = ANY(${ids})
+    ),
+    recent AS (
+      SELECT item_id,
+             COUNT(*) FILTER (WHERE rn <= 2) AS n2,
+             BOOL_AND(quantity_counted = 0) FILTER (WHERE rn <= 2) AS zeros2,
+             MIN(d) FILTER (WHERE rn <= 2) AS since2
+      FROM ranked WHERE rn <= 2
+      GROUP BY item_id
+    ),
+    last_bill AS (
+      SELECT bl.item_id, MAX(b.bill_date::date) AS d
+      FROM bill_lines bl JOIN bills b ON b.id = bl.bill_id
+      WHERE bl.item_id = ANY(${ids})
+      GROUP BY bl.item_id
+    )
     SELECT s.item_id AS id, COALESCE(i.canonical_name, s.item_name) AS name
     FROM item_stock_summary s
     LEFT JOIN items i ON i.id = s.item_id
+    LEFT JOIN recent r ON r.item_id = s.item_id
+    LEFT JOIN last_bill lb ON lb.item_id = s.item_id
     WHERE s.item_id = ANY(${ids})
       AND s.cf_group IS DISTINCT FROM 'Large Format'
       AND COALESCE(i.product_type, 'goods') <> 'service'
       AND COALESCE(i.count_excluded, false) = false
+      AND NOT (COALESCE(r.n2, 0) >= 2 AND COALESCE(r.zeros2, false) AND (lb.d IS NULL OR lb.d <= r.since2))
   `
   return rows as unknown as { id: number; name: string }[]
 }
@@ -141,10 +195,12 @@ export async function outstandingDailyItems() {
 // just the ones currently due, unlike the 3 queue endpoints above. Mirrors
 // the exact same rules those endpoints (and their WHERE clauses) use, so
 // the label an item shows here always matches which queue it'll actually
-// show up on: 'excluded' (count_excluded), 'daily' (DAILY_ITEM_IDS minus
-// Cardboard/A4 Sheet, or the pack of a blocking-chain daily item),
-// a fixed number (count_cadence_days override), '7' (GMC history), or the
-// dynamic 15/30-day default (3 identical counts with no bill since -> 30).
+// show up on: 'excluded' (count_excluded), 'dormant' (last 2+ counts all
+// zero with no bill since -- overrides every other cadence below, daily and
+// GMC included), 'daily' (DAILY_ITEM_IDS minus Cardboard/A4 Sheet, or the
+// pack of a blocking-chain daily item), a fixed number (count_cadence_days
+// override), '7' (GMC history), or the dynamic 15/30-day default (3
+// identical counts with no bill since -> 30).
 // Services aren't in the returned map at all -- they're never countable.
 export async function itemCountIntervalLabels(): Promise<Map<number, string>> {
   await ensureCountCadenceColumns()
@@ -157,6 +213,9 @@ export async function itemCountIntervalLabels(): Promise<Map<number, string>> {
     ),
     recent AS (
       SELECT item_id,
+             COUNT(*) FILTER (WHERE rn <= 2) AS n2,
+             BOOL_AND(quantity_counted = 0) FILTER (WHERE rn <= 2) AS zeros2,
+             MIN(d) FILTER (WHERE rn <= 2) AS since2,
              COUNT(*) FILTER (WHERE rn <= 3) AS n3,
              COUNT(DISTINCT quantity_counted) FILTER (WHERE rn <= 3) AS distinct3,
              MIN(d) FILTER (WHERE rn <= 3) AS since3
@@ -178,6 +237,7 @@ export async function itemCountIntervalLabels(): Promise<Map<number, string>> {
       i.id AS item_id,
       CASE
         WHEN COALESCE(i.count_excluded, false) THEN 'excluded'
+        WHEN COALESCE(r.n2, 0) >= 2 AND COALESCE(r.zeros2, false) AND (lb.d IS NULL OR lb.d <= r.since2) THEN 'dormant'
         WHEN i.id = ANY(${DAILY_ITEM_IDS})
              AND i.canonical_name !~* 'cardboard' AND i.canonical_name !~* 'a4\s*sheet' THEN 'daily'
         WHEN i.converts_to_item_id = ANY(${blockingIds}) THEN 'daily'
