@@ -68,13 +68,16 @@ export async function POST(req: NextRequest) {
       VALUES (${poNumber}, ${vendorId ?? null}, ${vendorName ?? null}, ${orderDate}, ${expectedDate ?? null}, 'draft', ${notes ?? null}, ${createdBy})
       RETURNING id
     `
-    for (let i = 0; i < lines.length; i++) {
-      const l = lines[i]
-      await sql`
-        INSERT INTO purchase_order_lines (po_id, item_id, item_name, qty_ordered, unit_price, sort_order)
-        VALUES (${po.id}, ${l.itemId ?? null}, ${l.itemName}, ${l.qty}, ${l.price}, ${i})
-      `
-    }
+
+    // Batch insert all PO lines in parallel
+    await Promise.all(
+      lines.map((l, i) =>
+        sql`
+          INSERT INTO purchase_order_lines (po_id, item_id, item_name, qty_ordered, unit_price, sort_order)
+          VALUES (${po.id}, ${l.itemId ?? null}, ${l.itemName}, ${l.qty}, ${l.price}, ${i})
+        `
+      )
+    )
     await logActivity(createdBy, 'created purchase order', `${poNumber}${vendorName ? ` from ${vendorName}` : ''}`)
     return NextResponse.json({ ok: true, id: po.id, poNumber })
   } catch (e) {

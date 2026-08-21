@@ -1,5 +1,6 @@
 import { computeLossEvents } from '@/lib/lossEvents'
 import { NextRequest, NextResponse } from 'next/server'
+import { getCached } from '@/lib/cacheStore'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,7 +14,9 @@ export const dynamic = 'force-dynamic'
 // be fixed until the list is empty.
 export async function GET(req: NextRequest) {
   const kind = req.nextUrl.searchParams.get('kind') === 'gain' ? 'gain' : 'loss'
-  const events = (await computeLossEvents()).filter(e => e.kind === kind)
+
+  const allEvents = await getCached('losses:events', 14400, () => computeLossEvents())
+  const events = allEvents.filter(e => e.kind === kind)
 
   // Newest detections first; same-day losses sorted biggest ₵ first.
   events.sort((a, b) => b.date.localeCompare(a.date) || b.loss_amt - a.loss_amt)

@@ -2,11 +2,24 @@ import sql from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { isOwnerLevel } from '@/lib/roles'
+import { getCached } from '@/lib/cacheStore'
 
 export async function GET() {
   try {
     const session = await auth()
     const canSeeAmounts = isOwnerLevel(session?.user as any)
+
+    return NextResponse.json(
+      await getCached('analysis:summary', 3600, () => computeSummary(canSeeAmounts))
+    )
+  } catch (e) {
+    console.error('analysis summary error:', e)
+    return NextResponse.json({ error: 'Failed to load analytics' }, { status: 500 })
+  }
+}
+
+async function computeSummary(canSeeAmounts: boolean) {
+  try {
     const [
       monthlyRevenue,
       dailyRevenue30,
@@ -201,15 +214,15 @@ export async function GET() {
       `,
     ])
 
-    return NextResponse.json({
+    return {
       monthlyRevenue, dailyRevenue30, topItemsBySales, cashDiscrepancyTrend,
       monthlyBillSpend, topVendorsBySpend, topItemsByBillSpend,
       monthlyExpenses, expensesByCategory,
       topLossItems, stockValueByGroup, lowStockItems,
       countsPerMonth, mostCountedItems,
-    })
+    }
   } catch (e) {
-    console.error('analysis summary error:', e)
-    return NextResponse.json({ error: 'Failed to load analytics' }, { status: 500 })
+    console.error('analysis summary compute error:', e)
+    throw e
   }
 }

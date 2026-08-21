@@ -55,33 +55,48 @@ export async function POST(req: NextRequest) {
   // column, not a single vendor shared across a whole multi-item bill.
   try {
     const billNumbers: string[] = []
-    for (let i = 0; i < lines.length; i++) {
-      const l = lines[i]
-      const billNumber = `APP-BILL-${date.replace(/-/g, '')}-${Date.now().toString().slice(-4)}-${i}`
-      billNumbers.push(billNumber)
-      const vendorName = l.vendorName || null
+    const billRecords: { id: number; billNumber: string; lineIndex: number }[] = []
 
-      let bill
-      try {
-        [bill] = await sql`
-          INSERT INTO bills (bill_number, bill_date, vendor_name, total, subtotal, status, source, entered_by, zoho_bill_id)
-          VALUES (${billNumber}, ${date}, ${vendorName}, ${l.total}, ${l.total}, 'paid', 'app', ${enteredBy}, ${billNumber})
-          RETURNING id
-        `
-      } catch (e) {
-        console.error('bills insert with entered_by failed, retrying without it:', e)
-        ;[bill] = await sql`
-          INSERT INTO bills (bill_number, bill_date, vendor_name, total, subtotal, status, source, zoho_bill_id)
-          VALUES (${billNumber}, ${date}, ${vendorName}, ${l.total}, ${l.total}, 'paid', 'app', ${billNumber})
-          RETURNING id
-        `
-      }
+    // Insert all bills in parallel (via connection pool), collect IDs and line indices
+    const results = await Promise.all(
+      lines.map(async (l, i) => {
+        const billNumber = `APP-BILL-${date.replace(/-/g, '')}-${Date.now().toString().slice(-4)}-${i}`
+        const vendorName = l.vendorName || null
 
-      await sql`
-        INSERT INTO bill_lines (bill_id, item_id, raw_item_name, resolved_name, quantity, unit_price, item_total, unresolved, source)
-        VALUES (${bill.id}, ${l.itemId}, ${l.itemName}, ${l.itemName}, ${l.qty}, ${l.price}, ${l.total}, false, 'app')
-      `
-    }
+        let bill
+        try {
+          [bill] = await sql`
+            INSERT INTO bills (bill_number, bill_date, vendor_name, total, subtotal, status, source, entered_by, zoho_bill_id)
+            VALUES (${billNumber}, ${date}, ${vendorName}, ${l.total}, ${l.total}, 'paid', 'app', ${enteredBy}, ${billNumber})
+            RETURNING id
+          `
+        } catch (e) {
+          console.error('bills insert with entered_by failed, retrying without it:', e)
+          ;[bill] = await sql`
+            INSERT INTO bills (bill_number, bill_date, vendor_name, total, subtotal, status, source, zoho_bill_id)
+            VALUES (${billNumber}, ${date}, ${vendorName}, ${l.total}, ${l.total}, 'paid', 'app', ${billNumber})
+            RETURNING id
+          `
+        }
+        return { id: bill.id, billNumber, lineIndex: i }
+      })
+    )
+
+    results.forEach(r => {
+      billNumbers.push(r.billNumber)
+      billRecords.push(r)
+    })
+
+    // Batch insert all bill lines in parallel (one per bill, which is efficient)
+    await Promise.all(
+      billRecords.map(br => {
+        const l = lines[br.lineIndex]
+        return sql`
+          INSERT INTO bill_lines (bill_id, item_id, raw_item_name, resolved_name, quantity, unit_price, item_total, unresolved, source)
+          VALUES (${br.id}, ${l.itemId}, ${l.itemName}, ${l.itemName}, ${l.qty}, ${l.price}, ${l.total}, false, 'app')
+        `
+      })
+    )
 
     try {
       const [existing] = await sql`SELECT 1 FROM cash_at_bank WHERE entry_date = ${date}`
