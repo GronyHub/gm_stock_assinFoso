@@ -114,6 +114,11 @@ export default function LiveSalePage(props: any = {}) {
     // row instead of it sharing space with the search box/laws/help/expand
     // icons, where it used to wrap onto a second line.
     modeToggleSlotEl = null,
+    // Portal target for the Sale-mode item filter (saleFilter below) -- same
+    // reasoning as searchSlotEl: the host page merges its own type/group
+    // select row, so this rides along in that same row instead of adding a
+    // fourth line of its own underneath it.
+    filterSlotEl = null,
     // Every "open Live Sale on a specific tab" deep link -- the "Sale Log"
     // search result (jumpToTab: 'log'), "Fix now: Sales/Bills" buttons, a
     // Sales/Bills violation pill (jumpToTab + jumpToTabViolation), and a
@@ -1651,12 +1656,12 @@ export default function LiveSalePage(props: any = {}) {
           behind this page's now-fixed-fullscreen overlay, so it needs its
           own copy here too rather than losing the type/group filters entirely. */}
       {(!hideFilterBar || expanded) && (
-      <div className="bg-green-700 -mx-0 px-4 py-2 flex items-center justify-between">
-          <div className="flex gap-2 items-center">
+      <div className="bg-green-700 -mx-0 px-3 py-1.5 flex items-center justify-between gap-1.5 flex-wrap">
+          <div className="flex gap-1.5 items-center flex-wrap">
             <select
               value={productTypeFilter}
               onChange={e => setProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
-              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
+              className="text-xs px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
             >
               <option value="all">All types</option>
               <option value="goods">Goods</option>
@@ -1665,15 +1670,40 @@ export default function LiveSalePage(props: any = {}) {
             <select
               value={groupFilter || ''}
               onChange={e => setGroupFilter(e.target.value || null)}
-              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
+              className="text-xs px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
             >
               <option value="">All groups</option>
               {groups.map(group => (
                 <option key={group} value={group}>{group}</option>
               ))}
             </select>
+            {/* Sale mode's own item-grid filter (Loss/Gain/Low SOH/count
+                interval, see saleFilterFlags) -- rendered here inline only
+                when there's no host-supplied filterSlotEl to portal into
+                (standalone page, or "Large screen" mode); otherwise it rides
+                along in the host's own merged row below instead of adding a
+                line of its own. */}
+            {!(filterSlotEl && !expanded) && (
+              <select
+                value={saleFilter ? saleFilter.kind === 'interval' ? `interval:${saleFilter.label}` : saleFilter.kind : ''}
+                onChange={e => {
+                  const v = e.target.value
+                  if (!v) setSaleFilter(null)
+                  else if (v.startsWith('interval:')) setSaleFilter({ kind: 'interval', label: v.slice('interval:'.length) })
+                  else setSaleFilter({ kind: v as 'loss' | 'gain' | 'soh' })
+                }}
+                className="text-xs px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
+              >
+                <option value="">Filter: All items</option>
+                {saleFilterFlags.map(f => (
+                  <option key={f.key} value={f.key === 'loss' || f.key === 'gain' || f.key === 'soh' ? f.key : `interval:${f.label}`}>
+                    {f.label} ({f.count})
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-1.5 items-center">
             <div>
               <LawsToggleBar
                 show={liveSaleLaws.show}
@@ -1690,7 +1720,7 @@ export default function LiveSalePage(props: any = {}) {
             <button
               type="button"
               onClick={() => setShowHelpModal(true)}
-              className="w-8 h-8 rounded bg-white text-gray-600 hover:bg-gray-100 font-semibold text-sm flex items-center justify-center transition"
+              className="w-6 h-6 rounded-md bg-white text-gray-600 hover:bg-gray-100 font-semibold text-xs flex items-center justify-center transition"
               title="Help"
             >
               ?
@@ -1699,16 +1729,11 @@ export default function LiveSalePage(props: any = {}) {
       </div>
       )}
 
-      {/* Sale mode's own item-grid filter -- Loss/Gain/Low SOH plus one
-          option per count-interval label currently in use (see
-          saleFilterFlags). One dropdown instead of a pill per option so it
-          doesn't wrap onto multiple rows once there are several cadence
-          labels in play. Always rendered (not gated behind hideFilterBar
-          like the type/group select bar above) -- the host page (Item page)
-          merges that bar into its own top row via hideFilterBar, but has no
-          equivalent slot for this filter, so gating it the same way left it
-          only reachable in "Large screen" mode. */}
-      <div className="px-4 py-2 border-b border-gray-200 bg-white flex items-center gap-1.5 flex-wrap">
+      {/* Portaled copy of the Sale-mode item filter for when the host page
+          supplies a slot (see filterSlotEl above) -- same select as inline
+          above, just rendered into the host's own merged row instead of a
+          fourth line of this page's own. */}
+      {filterSlotEl && !expanded && createPortal(
         <select
           value={saleFilter ? saleFilter.kind === 'interval' ? `interval:${saleFilter.label}` : saleFilter.kind : ''}
           onChange={e => {
@@ -1717,7 +1742,7 @@ export default function LiveSalePage(props: any = {}) {
             else if (v.startsWith('interval:')) setSaleFilter({ kind: 'interval', label: v.slice('interval:'.length) })
             else setSaleFilter({ kind: v as 'loss' | 'gain' | 'soh' })
           }}
-          className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
+          className="text-xs px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
         >
           <option value="">Filter: All items</option>
           {saleFilterFlags.map(f => (
@@ -1725,8 +1750,9 @@ export default function LiveSalePage(props: any = {}) {
               {f.label} ({f.count})
             </option>
           ))}
-        </select>
-      </div>
+        </select>,
+        filterSlotEl
+      )}
 
       {/* Search & Controls -- rendered inline normally, or portaled into a
           slot the host page (Item page) supplies so it can sit compactly
@@ -1742,8 +1768,8 @@ export default function LiveSalePage(props: any = {}) {
                 onChange={e => setItemPickerQuery(e.target.value)}
                 onFocus={() => itemPickerQuery.trim() && setShowItemPicker(true)}
                 placeholder={compactSearch ? 'Search item…' : 'Search & pick item…'}
-                className={`border rounded-lg focus:outline-none focus:ring-1 ${
-                  compactSearch ? 'text-xs px-2 py-1 w-24 bg-white' : 'text-sm px-3 py-1.5 w-48'
+                className={`border focus:outline-none focus:ring-1 ${
+                  compactSearch ? 'text-xs px-2 py-1 w-20 rounded-md bg-white' : 'text-sm px-3 py-1.5 w-48 rounded-lg'
                 } ${
                   pickedItemId !== null
                     ? 'border-green-400 bg-green-50 focus:ring-green-400'
@@ -1792,8 +1818,8 @@ export default function LiveSalePage(props: any = {}) {
                   setPickedItemId(null)
                   setItemPickerQuery('')
                 }}
-                className={`font-semibold bg-green-600 text-white rounded-lg hover:bg-green-700 transition ${
-                  compactSearch ? 'px-1.5 py-1 text-xs' : 'px-2 py-1.5 text-sm'
+                className={`font-semibold bg-green-600 text-white hover:bg-green-700 transition ${
+                  compactSearch ? 'px-1.5 py-1 text-[10px] rounded-md' : 'px-2 py-1.5 text-sm rounded-lg'
                 }`}
               >
                 {compactSearch ? '✕ Item' : 'Clear Item'}
@@ -1804,7 +1830,7 @@ export default function LiveSalePage(props: any = {}) {
                 type="button"
                 onClick={() => setSaleType(t => t === 'WIC' ? 'GMC' : 'WIC')}
                 title="Tap to switch between WIC and GMC"
-                className={`font-semibold rounded transition ${compactSearch ? 'px-2 py-1 text-xs' : 'px-4 py-1.5 text-sm'} ${
+                className={`font-semibold transition ${compactSearch ? 'px-1.5 py-1 text-[10px] rounded-md' : 'px-4 py-1.5 text-sm rounded'} ${
                   saleType === 'GMC'
                     ? 'bg-purple-600 text-white'
                     : 'bg-blue-600 text-white'
@@ -1818,7 +1844,7 @@ export default function LiveSalePage(props: any = {}) {
                 type="button"
                 onClick={() => setLiveShowAnalytics(a => !a)}
                 title="Analytics"
-                className={`shrink-0 font-bold rounded-lg transition ${compactSearch ? 'px-1.5 py-1 text-[10px]' : 'px-2.5 py-1 text-xs'} ${
+                className={`shrink-0 font-bold transition ${compactSearch ? 'px-1.5 py-1 text-[10px] rounded-md' : 'px-2.5 py-1 text-xs rounded-lg'} ${
                   liveShowAnalytics ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >

@@ -592,6 +592,7 @@ function ItemHubPageInner() {
   const [liveHelpModalOpen, setLiveHelpModalOpen] = useState(false)
   const [liveSearchSlotEl, setLiveSearchSlotEl] = useState<HTMLDivElement | null>(null)
   const [liveModeToggleSlotEl, setLiveModeToggleSlotEl] = useState<HTMLDivElement | null>(null)
+  const [liveFilterSlotEl, setLiveFilterSlotEl] = useState<HTMLDivElement | null>(null)
   // Deep links into a specific Live Sale tab (Sale/Sales/Bills/Count/Loss by
   // Tgt/Log) -- the "Sale Log" search result, a "Fix now: Counts" button, a
   // Daily/7-Day/15-Day Counts violation pill, a Sales/Bills/gains violation
@@ -2040,11 +2041,17 @@ function ItemHubPageInner() {
                     <div className="w-full overflow-x-auto">
                       <div ref={el => setLiveModeToggleSlotEl(el)} className="flex" />
                     </div>
+                    {/* Type/group/item-filter selects, search box, and the
+                        laws/help/expand icons all share one wrapping row now
+                        (was two stacked rows) -- everything here is compact
+                        enough that it settles into one or two lines
+                        depending on viewport width instead of always
+                        reserving two. */}
                     <div className="flex items-center gap-1.5 flex-wrap justify-end">
                       <select
                         value={liveProductTypeFilter}
                         onChange={e => setLiveProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
-                        className="text-xs px-2 py-1 rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                        className="text-xs px-2 py-1 rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
                       >
                         <option value="all">All types</option>
                         <option value="goods">Goods</option>
@@ -2053,15 +2060,14 @@ function ItemHubPageInner() {
                       <select
                         value={liveGroupFilter || ''}
                         onChange={e => setLiveGroupFilter(e.target.value || null)}
-                        className="text-xs px-2 py-1 rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                        className="text-xs px-2 py-1 rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
                       >
                         <option value="">All groups</option>
                         {liveGroups.map(g => (
                           <option key={g} value={g}>{g}</option>
                         ))}
                       </select>
-                    </div>
-                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                      <div ref={el => setLiveFilterSlotEl(el)} className="flex items-center gap-1.5" />
                       <div ref={el => setLiveSearchSlotEl(el)} className="flex items-center gap-1.5" />
                       <LawsToggleBar show={liveSaleLaws.show} setShow={liveSaleLaws.setShow}
                         openForm={liveSaleLaws.openForm} setOpenForm={liveSaleLaws.setOpenForm}
@@ -2071,7 +2077,7 @@ function ItemHubPageInner() {
                         type="button"
                         onClick={() => setLiveHelpModalOpen(true)}
                         title="Help"
-                        className="shrink-0 w-6 h-6 rounded-lg text-xs font-semibold border flex items-center justify-center transition bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300"
+                        className="shrink-0 w-6 h-6 rounded-md text-xs font-semibold border flex items-center justify-center transition bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300"
                       >
                         ?
                       </button>
@@ -2079,7 +2085,7 @@ function ItemHubPageInner() {
                         type="button"
                         onClick={() => setLiveExpanded((v) => !v)}
                         title={liveExpanded ? 'Exit large screen' : 'Large screen'}
-                        className={`shrink-0 w-6 h-6 rounded-lg text-xs font-semibold border flex items-center justify-center transition
+                        className={`shrink-0 w-6 h-6 rounded-md text-xs font-semibold border flex items-center justify-center transition
                           ${liveExpanded ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300'}`}
                       >
                         {liveExpanded ? '⤡' : '⤢'}
@@ -2109,6 +2115,7 @@ function ItemHubPageInner() {
             showHelpModal={liveHelpModalOpen}
             onHelpModalChange={setLiveHelpModalOpen}
             searchSlotEl={liveSearchSlotEl}
+            filterSlotEl={liveFilterSlotEl}
             modeToggleSlotEl={liveModeToggleSlotEl}
             jumpToTabSeq={liveSaleJumpSeq}
             jumpToTab={liveSaleJumpTab}
