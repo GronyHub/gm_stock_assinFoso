@@ -1,16 +1,17 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { NextResponse } from 'next/server'
+import { once } from '@/lib/once'
 
 // See app/api/receipts/route.ts -- these columns are added lazily on first
 // use rather than via a separate migration step.
-async function ensureColumns() {
+const ensureColumns = once(async () => {
   await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS document_type TEXT DEFAULT 'Receipt'`.catch(() => {})
   await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS customer_phone TEXT`.catch(() => {})
   await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS customer_organisation TEXT`.catch(() => {})
   await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS customer_town_district TEXT`.catch(() => {})
   await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS customer_region TEXT`.catch(() => {})
-}
+})
 
 const SELECT_FIELDS = `
       i.id, i.invoice_number, i.invoice_date, i.due_date, i.status,

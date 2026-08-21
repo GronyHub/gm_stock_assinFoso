@@ -2,13 +2,14 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
+import { once } from '@/lib/once'
 
-async function ensureCols() {
+const ensureCols = once(async () => {
   await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS entered_by TEXT`.catch(() => {})
   await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS status TEXT`.catch(() => {})
   await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS in_source TEXT`.catch(() => {})
   await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS out_source TEXT`.catch(() => {})
-}
+})
 
 export async function POST(req: NextRequest) {
   const session = await auth()

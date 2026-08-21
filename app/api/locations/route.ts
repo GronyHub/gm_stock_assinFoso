@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
+import { once } from '@/lib/once'
 
 // Locations aren't a separate managed entity -- just the distinct values
 // already saved on customers AND vendors (pooled, since the same town
@@ -66,7 +67,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-async function ensureLocationsTable() {
+const ensureLocationsTable = once(async () => {
   try {
     await sql`
       CREATE TABLE IF NOT EXISTS managed_locations (
@@ -77,4 +78,4 @@ async function ensureLocationsTable() {
   } catch (e) {
     console.error('Error ensuring locations table:', e)
   }
-}
+})

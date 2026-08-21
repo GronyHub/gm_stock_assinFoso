@@ -1,4 +1,10 @@
 import sql from '@/lib/db'
+import { once } from './once'
+
+const ensureSchema = once(async () => {
+  await sql`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS category TEXT`.catch(() => {})
+})
+
 
 // Actions that shouldn't also become a public Announcements post: login/logout
 // fire twice a day per staff member with no real info, 'posted announcement'
@@ -30,7 +36,7 @@ export async function logActivity(staffName: string, action: string, details?: s
       // category = the raw action string, so the Home feed's type filter can
       // match on it exactly instead of parsing it back out of body text.
       // Manually-typed posts (see /api/announcements POST) leave this null.
-      await sql`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS category TEXT`.catch(() => {})
+      await ensureSchema()
       await sql`
         INSERT INTO announcements (body, author, media_urls, category)
         VALUES (${body}, ${staffName}, '[]'::jsonb, ${action})

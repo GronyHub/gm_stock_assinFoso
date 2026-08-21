@@ -3,6 +3,7 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { initializeDatabase } from '@/lib/dbInitialize'
+import { once } from '@/lib/once'
 
 // Older rows (or a pre-migration read) may have media_urls as plain URL strings
 // rather than { url, type } objects -- normalize so the client can rely on the shape.
@@ -11,9 +12,9 @@ function normalizeMedia(media_urls: unknown): { url: string; type: string }[] {
   return media_urls.map((m: any) => (typeof m === 'string' ? { url: m, type: '' } : m)).filter((m: any) => m?.url)
 }
 
-async function ensureCategoryColumn() {
+const ensureCategoryColumn = once(async () => {
   await sql`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS category TEXT`.catch(() => {})
-}
+})
 
 // Cursor-paginated: ?before=<ISO timestamp> fetches the next 30 older than
 // that. Without it, returns the latest 30. The client merges pages instead

@@ -1,18 +1,23 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
+import { once } from '@/lib/once'
 import { NextRequest, NextResponse } from 'next/server'
+
+const ensureAccountsTable = once(async () => {
+  await sql`CREATE TABLE IF NOT EXISTS accounts (
+    id SERIAL PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+  )`.catch(() => {})
+})
 
 export async function GET() {
   const session = await auth()
   if (!session) return NextResponse.json([], { status: 401 })
 
   try {
-    await sql`CREATE TABLE IF NOT EXISTS accounts (
-      id SERIAL PRIMARY KEY,
-      name TEXT UNIQUE NOT NULL,
-      created_at TIMESTAMP DEFAULT NOW(),
-      updated_at TIMESTAMP DEFAULT NOW()
-    )`.catch(() => {})
+    await ensureAccountsTable()
 
     const accounts = await sql`SELECT id, name FROM accounts ORDER BY name ASC`
     return NextResponse.json(accounts)
@@ -34,12 +39,7 @@ export async function POST(req: NextRequest) {
   const trimmedName = name.trim()
 
   try {
-    await sql`CREATE TABLE IF NOT EXISTS accounts (
-      id SERIAL PRIMARY KEY,
-      name TEXT UNIQUE NOT NULL,
-      created_at TIMESTAMP DEFAULT NOW(),
-      updated_at TIMESTAMP DEFAULT NOW()
-    )`.catch(() => {})
+    await ensureAccountsTable()
 
     const [account] = await sql`
       INSERT INTO accounts (name) VALUES (${trimmedName})

@@ -1,6 +1,15 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { NextResponse } from 'next/server'
+import { once } from '@/lib/once'
+
+const ensureSchema = once(async () => {
+  await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS entered_by TEXT`.catch(() => {})
+  await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS status TEXT`.catch(() => {})
+  await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS in_source TEXT`.catch(() => {})
+  await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS out_source TEXT`.catch(() => {})
+})
+
 
 export const dynamic = 'force-dynamic'
 
@@ -9,10 +18,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // Add missing columns if they don't exist yet
-  await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS entered_by TEXT`.catch(() => {})
-  await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS status TEXT`.catch(() => {})
-  await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS in_source TEXT`.catch(() => {})
-  await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS out_source TEXT`.catch(() => {})
+  await ensureSchema()
 
   try {
     const rows = await sql`

@@ -3,11 +3,12 @@ import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { NextRequest, NextResponse } from 'next/server'
 import { initializeDatabase } from '@/lib/dbInitialize'
+import { once } from '@/lib/once'
 
 // Simple key/value content pages for Grony Manage > Training (Tutorial and
 // Company Laws). Anyone logged in can read; only owner-level (Grony/Joe) can
 // edit, matching the confidential/administrative gating used elsewhere.
-async function ensureManageContent() {
+const ensureManageContent = once(async () => {
   await sql`
     CREATE TABLE IF NOT EXISTS manage_content (
       key TEXT PRIMARY KEY,
@@ -16,7 +17,7 @@ async function ensureManageContent() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `.catch(() => {})
-}
+})
 
 // Fallback text shown until someone saves a real version -- keeps the page
 // useful immediately after deploy, before any DB row exists. The Tutorial

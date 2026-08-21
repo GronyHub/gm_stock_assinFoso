@@ -4,6 +4,14 @@ import { isOwnerLevel } from '@/lib/roles'
 import { logActivity } from '@/lib/logger'
 import bcrypt from 'bcryptjs'
 import { NextRequest, NextResponse } from 'next/server'
+import { once } from '@/lib/once'
+
+const ensureSchema = once(async () => {
+  await sql`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE`.catch(() => {})
+  await sql`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS resigned_at DATE`.catch(() => {})
+  await sql`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS deactivation_reason TEXT`.catch(() => {})
+})
+
 
 type Ctx = { params: Promise<{ id: string }> }
 
@@ -74,9 +82,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   const targetIsProtected = target.role === 'owner' || target.username?.toLowerCase() === 'grony'
   if (targetIsProtected) return NextResponse.json({ error: 'The owner account can’t be deactivated' }, { status: 403 })
 
-  await sql`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE`.catch(() => {})
-  await sql`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS resigned_at DATE`.catch(() => {})
-  await sql`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS deactivation_reason TEXT`.catch(() => {})
+  await ensureSchema()
 
   const effectiveResignedAt = active ? null : (resigned_at || new Date().toISOString().slice(0, 10))
   const effectiveReason = active ? null : (reason?.trim() || 'Resigned')

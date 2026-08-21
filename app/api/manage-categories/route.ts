@@ -3,13 +3,14 @@ import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { NextRequest, NextResponse } from 'next/server'
 import { initializeDatabase } from '@/lib/dbInitialize'
+import { once } from '@/lib/once'
 
 // User-added Grony Manage categories -- sit alongside the fixed ones
 // (Advert, Training, etc.) in the drawer, but their content is entirely
 // built from tabs the owner/Joe adds (see manage-category-tabs), not a
 // bespoke component. Anyone can read; only owner-level can create/delete,
 // same gating as everything else that shapes the app's own structure.
-async function ensureTable() {
+const ensureTable = once(async () => {
   await sql`
     CREATE TABLE IF NOT EXISTS manage_categories (
       id SERIAL PRIMARY KEY,
@@ -18,7 +19,7 @@ async function ensureTable() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `.catch(() => {})
-}
+})
 
 export async function GET() {
   await initializeDatabase()

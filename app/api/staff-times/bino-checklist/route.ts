@@ -2,11 +2,12 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
+import { once } from '@/lib/once'
 
 // Bino's own end-of-day checklist against the Advert rules -- shown each
 // time he clocks out (see StaffClient's BinoChecklistModal), one row per
 // day, so there's a record of what he says he did that day.
-async function ensureTable() {
+const ensureTable = once(async () => {
   await sql`
     CREATE TABLE IF NOT EXISTS bino_daily_checklist (
       id SERIAL PRIMARY KEY,
@@ -21,7 +22,7 @@ async function ensureTable() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `.catch(() => {})
-}
+})
 
 export async function GET() {
   const session = await auth()

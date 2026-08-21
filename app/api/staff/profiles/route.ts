@@ -2,6 +2,13 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { NextRequest, NextResponse } from 'next/server'
+import { once } from '@/lib/once'
+
+const ensureSchema = once(async () => {
+  await sql`ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS has_company_tshirt BOOLEAN NOT NULL DEFAULT FALSE`.catch(() => {})
+  await sql`ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS tshirt_due_date DATE`.catch(() => {})
+})
+
 
 export async function GET() {
   const session = await auth()
@@ -13,8 +20,7 @@ export async function GET() {
   // owner and joe see all; others see only their own profile
   const canSeeAll = isOwnerLevel(sessionUser)
 
-  await sql`ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS has_company_tshirt BOOLEAN NOT NULL DEFAULT FALSE`.catch(() => {})
-  await sql`ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS tshirt_due_date DATE`.catch(() => {})
+  await ensureSchema()
 
   const rows = canSeeAll
     ? await sql`
@@ -48,8 +54,7 @@ export async function PUT(req: NextRequest) {
   const isSelf = staff_name?.toLowerCase() === sessionUsername?.toLowerCase()
   if (!isAdmin && !isSelf) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  await sql`ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS has_company_tshirt BOOLEAN NOT NULL DEFAULT FALSE`.catch(() => {})
-  await sql`ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS tshirt_due_date DATE`.catch(() => {})
+  await ensureSchema()
 
   const [row] = await sql`
     UPDATE staff_profiles SET

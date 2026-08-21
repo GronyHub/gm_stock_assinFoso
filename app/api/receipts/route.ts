@@ -3,19 +3,20 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { initializeDatabase } from '@/lib/dbInitialize'
+import { once } from '@/lib/once'
 
 // invoices predates this app's own Receipt/Invoice creation flow (it was
 // built for Zoho-imported data), so these columns don't exist yet on older
 // databases. ADD COLUMN IF NOT EXISTS is cheap once the columns are there,
 // so just ensure them on every request rather than requiring a separate
 // migration step.
-async function ensureColumns() {
+const ensureColumns = once(async () => {
   await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS document_type TEXT DEFAULT 'Receipt'`.catch(() => {})
   await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS customer_phone TEXT`.catch(() => {})
   await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS customer_organisation TEXT`.catch(() => {})
   await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS customer_town_district TEXT`.catch(() => {})
   await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS customer_region TEXT`.catch(() => {})
-}
+})
 
 const SELECT_FIELDS = `
       i.id, i.invoice_number, i.invoice_date, i.due_date, i.status,

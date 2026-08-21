@@ -4,6 +4,12 @@ import bcrypt from 'bcryptjs'
 import sql from './db'
 import { logActivity } from './logger'
 import { IMPERSONATE_COOKIE } from './impersonate-cookie'
+import { once } from './once'
+
+const ensureSchema = once(async () => {
+  await sql`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE`.catch(() => {})
+})
+
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -15,7 +21,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.username || !credentials?.password) return null
         const login = credentials.username as string
-        await sql`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE`.catch(() => {})
+        await ensureSchema()
         const rows = await sql`
           SELECT id, username, display_name, role, password_hash, active
           FROM app_users

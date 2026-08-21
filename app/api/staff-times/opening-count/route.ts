@@ -4,10 +4,11 @@ import { logActivity } from '@/lib/logger'
 import { openerOf } from '@/lib/staffTimes'
 import { outstandingDailyItems } from '@/lib/countRules'
 import { NextResponse } from 'next/server'
+import { once } from '@/lib/once'
 
-async function ensureCol() {
+const ensureCol = once(async () => {
   await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS opening_count_confirmed BOOLEAN NOT NULL DEFAULT FALSE`.catch(() => {})
-}
+})
 
 // The Opener (earliest clock-in of the day) confirms here, once today's
 // daily counts are all done, that their clock-in is fully complete. The

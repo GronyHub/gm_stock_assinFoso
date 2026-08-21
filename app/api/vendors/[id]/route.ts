@@ -2,6 +2,12 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
+import { once } from '@/lib/once'
+
+const ensureSchema = once(async () => {
+  await sql`ALTER TABLE vendors ADD COLUMN IF NOT EXISTS location TEXT`.catch(() => {})
+})
+
 
 // Same fields New Vendor can set, now editable after the fact -- CASE WHEN
 // so a field left out of the request (rather than explicitly cleared to
@@ -14,7 +20,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { company_name, email, phone, location, notes, payment_terms_label } = await req.json()
 
   try {
-    await sql`ALTER TABLE vendors ADD COLUMN IF NOT EXISTS location TEXT`.catch(() => {})
+    await ensureSchema()
 
     const [vendor] = await sql`
       UPDATE vendors SET

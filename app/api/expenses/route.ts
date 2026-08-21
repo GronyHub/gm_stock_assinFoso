@@ -6,6 +6,15 @@ import { logActivity } from '@/lib/logger'
 import { ensureExpensePropertyColumns } from '@/lib/expenseProperties'
 import { NextRequest, NextResponse } from 'next/server'
 import { initializeDatabase } from '@/lib/dbInitialize'
+import { once } from '@/lib/once'
+
+const ensureSchema = once(async () => {
+  await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS expense_group TEXT`.catch(() => {})
+  await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS is_related_expense BOOLEAN DEFAULT false`.catch(() => {})
+  await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS related_to_property_id INTEGER`.catch(() => {})
+  await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS related_expense_reasons TEXT`.catch(() => {})
+})
+
 
 function redact(rows: any[], canSeeAmounts: boolean) {
   if (canSeeAmounts) return rows
@@ -21,10 +30,7 @@ export async function GET() {
   await ensureExpensePropertyColumns()
 
   try {
-    await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS expense_group TEXT`.catch(() => {})
-    await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS is_related_expense BOOLEAN DEFAULT false`.catch(() => {})
-    await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS related_to_property_id INTEGER`.catch(() => {})
-    await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS related_expense_reasons TEXT`.catch(() => {})
+    await ensureSchema()
     const rows = await sql`
       SELECT
         e.id, e.expense_date::date AS expense_date, e.expense_account,
@@ -39,10 +45,7 @@ export async function GET() {
     `
     return NextResponse.json(redact(rows, canSeeAmounts))
   } catch {
-    await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS expense_group TEXT`.catch(() => {})
-    await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS is_related_expense BOOLEAN DEFAULT false`.catch(() => {})
-    await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS related_to_property_id INTEGER`.catch(() => {})
-    await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS related_expense_reasons TEXT`.catch(() => {})
+    await ensureSchema()
     const rows = await sql`
       SELECT
         e.id, e.expense_date::date AS expense_date, e.expense_account,

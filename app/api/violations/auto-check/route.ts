@@ -3,6 +3,13 @@ import { logActivity } from '@/lib/logger'
 import { requiredDailyItemIds } from '@/lib/countRules'
 import { openerOf } from '@/lib/staffTimes'
 import { NextRequest, NextResponse } from 'next/server'
+import { once } from '@/lib/once'
+
+const ensureSchema = once(async () => {
+  await sql`ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS has_company_tshirt BOOLEAN NOT NULL DEFAULT FALSE`.catch(() => {})
+  await sql`ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS tshirt_due_date DATE`.catch(() => {})
+})
+
 
 // Shown as-is in Grony Manage's Opener view's Penalty Points section (see
 // OpenerView.tsx) -- must match the literal string used there.
@@ -313,8 +320,7 @@ export async function GET(req: NextRequest) {
     // Dress code accountability: t-shirt owners the Closer logged as not
     // wearing it, and staff still without one past their given due date.
     try {
-      await sql`ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS has_company_tshirt BOOLEAN NOT NULL DEFAULT FALSE`.catch(() => {})
-      await sql`ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS tshirt_due_date DATE`.catch(() => {})
+      await ensureSchema()
 
       const [closingRows, profileRows] = await Promise.all([
         sql`

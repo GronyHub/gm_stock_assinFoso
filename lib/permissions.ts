@@ -16,7 +16,7 @@ import { FEATURE_KEYS, DEFAULT_ON_FEATURES, type RolePermissionsMap } from './pe
 // reads whatever their role currently grants, which is what seeds their
 // checkboxes the first time this runs for them. hasFeature() below looks
 // this map up by username instead of role once a caller passes it in here.
-const ensureUserPermissionsTable = once(async () => {
+export const ensureUserPermissionsTable = once(async () => {
   await sql`
     CREATE TABLE IF NOT EXISTS user_permissions (
       user_id INTEGER NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,

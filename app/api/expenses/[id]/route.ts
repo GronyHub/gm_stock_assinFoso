@@ -5,6 +5,16 @@ import { hasFeature, getUserPermissionsMap } from '@/lib/permissions'
 import { logActivity } from '@/lib/logger'
 import { ensureExpensePropertyColumns } from '@/lib/expenseProperties'
 import { NextRequest, NextResponse } from 'next/server'
+import { once } from '@/lib/once'
+
+const ensureSchema = once(async () => {
+  await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS related_item_id INTEGER`.catch(() => {})
+  await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS expense_group TEXT`.catch(() => {})
+  await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS is_related_expense BOOLEAN DEFAULT false`.catch(() => {})
+  await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS related_to_property_id INTEGER`.catch(() => {})
+  await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS related_expense_reasons TEXT`.catch(() => {})
+})
+
 
 const AVAILABILITY_VALUES = ['available', 'not_available']
 const WORKING_VALUES = ['working', 'not_working']
@@ -42,11 +52,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
     // sends cf_justify, so whichever one a given caller omits must be left
     // alone rather than nulled out.
     // Ensure related_item_id, expense_group, and related expense columns exist
-    await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS related_item_id INTEGER`.catch(() => {})
-    await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS expense_group TEXT`.catch(() => {})
-    await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS is_related_expense BOOLEAN DEFAULT false`.catch(() => {})
-    await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS related_to_property_id INTEGER`.catch(() => {})
-    await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS related_expense_reasons TEXT`.catch(() => {})
+    await ensureSchema()
 
     const [row] = await sql`
       UPDATE expenses SET

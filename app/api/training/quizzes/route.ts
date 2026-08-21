@@ -1,13 +1,14 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
+import { once } from '@/lib/once'
 import { NextRequest, NextResponse } from 'next/server'
 
 // Multiple-choice quizzes for Grony Manage > Training > Assessment. Owner-
 // level (Grony/Joe) creates them; any logged-in staff member can take one.
 // Correct answers never leave this route -- /api/training/quizzes/[id]
 // strips them before sending questions to be taken.
-export async function ensureTrainingTables() {
+export const ensureTrainingTables = once(async () => {
   await sql`
     CREATE TABLE IF NOT EXISTS training_quizzes (
       id SERIAL PRIMARY KEY,
@@ -36,7 +37,7 @@ export async function ensureTrainingTables() {
       taken_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `.catch(() => {})
-}
+})
 
 export async function GET() {
   const session = await auth()

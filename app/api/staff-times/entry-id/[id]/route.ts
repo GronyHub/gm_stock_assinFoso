@@ -2,6 +2,13 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
+import { once } from '@/lib/once'
+
+const ensureSchema = once(async () => {
+  await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS in_source TEXT`.catch(() => {})
+  await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS out_source TEXT`.catch(() => {})
+})
+
 
 type Ctx = { params: Promise<{ id: string }> }
 
@@ -18,8 +25,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   const { actual_in, actual_out } = await req.json()
   const actor = u?.username ?? u?.name ?? 'Unknown'
 
-  await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS in_source TEXT`.catch(() => {})
-  await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS out_source TEXT`.catch(() => {})
+  await ensureSchema()
 
   // Same as /api/staff-times/entry -- this is the admin's manual grid-edit
   // path, so whichever time comes out of it is tagged 'manual', not 'clock'.

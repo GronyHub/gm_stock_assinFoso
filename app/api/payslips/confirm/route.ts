@@ -3,6 +3,12 @@ import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { logActivity } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
+import { once } from '@/lib/once'
+
+const ensureSchema = once(async () => {
+  await sql`ALTER TABLE payslips ADD COLUMN IF NOT EXISTS excluded_from_payment BOOLEAN NOT NULL DEFAULT FALSE`.catch(() => {})
+})
+
 
 export async function GET() {
   const session = await auth()
@@ -34,7 +40,7 @@ export async function POST(req: NextRequest) {
       }, { status: 400 })
     }
 
-    await sql`ALTER TABLE payslips ADD COLUMN IF NOT EXISTS excluded_from_payment BOOLEAN NOT NULL DEFAULT FALSE`.catch(() => {})
+    await ensureSchema()
 
     // Staff marked excluded_from_payment (see /api/payslips/exclude) keep
     // their generated payslip on record but don't count toward this

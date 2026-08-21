@@ -3,13 +3,14 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { initializeDatabase } from '@/lib/dbInitialize'
+import { once } from '@/lib/once'
 
 // vendors predates a location field -- ADD COLUMN IF NOT EXISTS is cheap
 // once it's there, so just ensure it on every request (same approach as
 // customers' location column).
-async function ensureColumns() {
+const ensureColumns = once(async () => {
   await sql`ALTER TABLE vendors ADD COLUMN IF NOT EXISTS location TEXT`.catch(() => {})
-}
+})
 
 export async function GET() {
   const session = await auth()

@@ -2,12 +2,13 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
+import { once } from '@/lib/once'
 
 // Trade-off notes on the pack-chain table: when a user acts on an OMISSIONS
 // suggestion (e.g. "traded the +1 pack gain off against the -15 loss of
 // 30 Apr"), they record what they did here, stamped with their name.
 // One note per item per row date.
-async function ensureTable() {
+const ensureTable = once(async () => {
   await sql`
     CREATE TABLE IF NOT EXISTS pack_tradeoffs (
       id SERIAL PRIMARY KEY,
@@ -19,7 +20,7 @@ async function ensureTable() {
       UNIQUE (item_id, row_date)
     )
   `.catch(() => {})
-}
+})
 
 export async function GET(req: NextRequest) {
   const session = await auth()

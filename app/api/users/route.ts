@@ -2,14 +2,22 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import bcrypt from 'bcryptjs'
+import { once } from '@/lib/once'
 import { NextRequest, NextResponse } from 'next/server'
+
+// The staff-lifecycle columns. The DROP CONSTRAINT calls further down stay
+// inline deliberately -- they're part of the role-change write path, not
+// schema setup, and those routes aren't polled.
+const ensureUserLifecycleCols = once(async () => {
+  await sql`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE`.catch(() => {})
+  await sql`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS resigned_at DATE`.catch(() => {})
+  await sql`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS deactivation_reason TEXT`.catch(() => {})
+})
 
 export async function GET() {
   const session = await auth()
   if (!isOwnerLevel(session?.user as any)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  await sql`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE`.catch(() => {})
-  await sql`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS resigned_at DATE`.catch(() => {})
-  await sql`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS deactivation_reason TEXT`.catch(() => {})
+  await ensureUserLifecycleCols()
   const rows = await sql`
     SELECT id, username, display_name, email, role, created_at, active, resigned_at::text, deactivation_reason
     FROM app_users ORDER BY id

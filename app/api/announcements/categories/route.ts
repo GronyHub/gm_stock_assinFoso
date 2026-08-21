@@ -1,12 +1,18 @@
 import sql from '@/lib/db'
 import { NextResponse } from 'next/server'
+import { once } from '@/lib/once'
+
+const ensureSchema = once(async () => {
+  await sql`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS category TEXT`.catch(() => {})
+})
+
 
 // Distinct auto-logged activity types that exist in the feed so far --
 // backs the Home feed's "type" filter dropdown. Manually-typed posts have
 // no category (see /api/announcements POST) and never appear here.
 export async function GET() {
   try {
-    await sql`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS category TEXT`.catch(() => {})
+    await ensureSchema()
     const rows = await sql`
       SELECT DISTINCT category FROM announcements
       WHERE category IS NOT NULL

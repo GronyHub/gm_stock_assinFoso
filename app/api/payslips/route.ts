@@ -3,6 +3,12 @@ import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { logActivity } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
+import { once } from '@/lib/once'
+
+const ensureSchema = once(async () => {
+  await sql`ALTER TABLE payslips ADD COLUMN IF NOT EXISTS excluded_from_payment BOOLEAN NOT NULL DEFAULT FALSE`.catch(() => {})
+})
+
 
 export async function GET() {
   const session = await auth()
@@ -18,7 +24,7 @@ export async function GET() {
     joe: 'Joe', bino: 'Bino', james: 'James', rawlings: 'Rawlings',
   }
 
-  await sql`ALTER TABLE payslips ADD COLUMN IF NOT EXISTS excluded_from_payment BOOLEAN NOT NULL DEFAULT FALSE`.catch(() => {})
+  await ensureSchema()
 
   let rows
   if (canSeeAll) {
@@ -81,7 +87,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'pay_month and entries are required' }, { status: 400 })
     }
 
-    await sql`ALTER TABLE payslips ADD COLUMN IF NOT EXISTS excluded_from_payment BOOLEAN NOT NULL DEFAULT FALSE`.catch(() => {})
+    await ensureSchema()
 
     for (const e of entries) {
       if (!e.staff_name) continue

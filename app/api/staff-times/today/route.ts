@@ -5,23 +5,24 @@ import { distanceMeters, SHOP_LAT, SHOP_LNG, ALLOWED_RADIUS_METERS } from '@/lib
 import { openerOf, parseTimeMins } from '@/lib/staffTimes'
 import { ensureClosingReports } from '@/lib/closingReports'
 import { NextRequest, NextResponse } from 'next/server'
+import { once } from '@/lib/once'
 
 // The Opener (earliest clock-in of the day) must confirm today's daily
 // counts before their clock-in counts as fully complete -- see
 // /api/staff-times/opening-count. This never delays or overrides actual_in
 // itself, only this separate confirmation flag.
-async function ensureOpeningCountCol() {
+const ensureOpeningCountCol = once(async () => {
   await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS opening_count_confirmed BOOLEAN NOT NULL DEFAULT FALSE`.catch(() => {})
-}
+})
 
 // in_source/out_source record how each time got there -- 'clock' for the
 // GPS-gated Clock In/Out buttons (set below), 'manual' for the "+ Add
 // Entry"/edit forms (see /api/staff-times/entry and entry-id). Drives the
 // green/red SourceDot next to each displayed time in StaffClient.tsx.
-async function ensureSourceCols() {
+const ensureSourceCols = once(async () => {
   await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS in_source TEXT`.catch(() => {})
   await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS out_source TEXT`.catch(() => {})
-}
+})
 
 export async function GET() {
   const session = await auth()

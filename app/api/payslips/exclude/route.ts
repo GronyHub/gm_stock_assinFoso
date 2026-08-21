@@ -3,10 +3,11 @@ import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { logActivity } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
+import { once } from '@/lib/once'
 
-async function ensureExcludedCol() {
+const ensureExcludedCol = once(async () => {
   await sql`ALTER TABLE payslips ADD COLUMN IF NOT EXISTS excluded_from_payment BOOLEAN NOT NULL DEFAULT FALSE`.catch(() => {})
-}
+})
 
 // Marks an already-generated payslip as excluded from that month's payment
 // run -- the payslip record (and its numbers) stays exactly as built, it

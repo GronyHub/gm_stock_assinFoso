@@ -3,6 +3,7 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { initializeDatabase } from '@/lib/dbInitialize'
+import { once } from '@/lib/once'
 
 // customers predates a location field -- ADD COLUMN IF NOT EXISTS is cheap
 // once it's there, so just ensure it on every request rather than a
@@ -11,13 +12,13 @@ import { initializeDatabase } from '@/lib/dbInitialize'
 // timestamp the moment this runs, not their real signup date, so the
 // "new customers this week" flag will read artificially high for the first
 // week after this ships and settle down after that.
-async function ensureColumns() {
+const ensureColumns = once(async () => {
   await sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS location TEXT`.catch(() => {})
   await sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS whatsapp_group_added BOOLEAN NOT NULL DEFAULT FALSE`.catch(() => {})
   await sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS last_visited DATE`.catch(() => {})
   await sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS service_goods TEXT`.catch(() => {})
   await sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now()`.catch(() => {})
-}
+})
 
 export async function GET() {
   const session = await auth()
