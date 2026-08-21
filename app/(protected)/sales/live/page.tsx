@@ -181,6 +181,12 @@ export default function LiveSalePage(props: any = {}) {
   const rootClassName = `bg-white flex flex-col ${expanded ? 'fixed inset-0 z-50 overflow-y-auto' : 'h-full'}`
   const [currentView, setCurrentView] = useState<{ kind: 'violation' | 'serviceGroup' | 'lossByItem' | 'aliasWide' | 'serviceMatches' | 'newItem' | 'dailySummary'; key?: string; group?: string } | null>(null)
   const [violations, setViolations] = useState<Record<string, number>>({})
+  // Sale mode's own item-grid filter -- Loss/Gain (from lossByItemId below)
+  // and Low SOH (item.soh <= 0) are plain buckets; 'interval' reuses each
+  // item's own count_interval string (the same Daily/Every Nd/Not counted
+  // labels the Count tab's countIntervalFlags buckets by) so a cadence
+  // bucket here can never drift out of sync with the Count tab's own.
+  const [saleFilter, setSaleFilter] = useState<{ kind: 'loss' } | { kind: 'gain' } | { kind: 'soh' } | { kind: 'interval'; label: string } | null>(null)
   const [internalProductTypeFilter, setInternalProductTypeFilter] = useState<'all' | 'goods' | 'services'>('all')
   const productTypeFilter = controlledProductTypeFilter ?? internalProductTypeFilter
   const setProductTypeFilter = onProductTypeFilterChange ?? setInternalProductTypeFilter
@@ -535,6 +541,44 @@ export default function LiveSalePage(props: any = {}) {
     return counts
   }, [taps])
 
+  // Pills for Sale mode's own item-grid filter (saleFilter above) -- Loss/
+  // Gain/Low SOH plus one per count-interval label currently in use, same
+  // buckets and sort order as the Count tab's countIntervalFlags so the two
+  // read consistently even though they're built for different modes.
+  const saleFilterFlags = useMemo(() => {
+    const lossCount = allItems.filter(it => (lossByItemId.get(it.id)?.lossCount ?? 0) > 0).length
+    const gainCount = allItems.filter(it => (lossByItemId.get(it.id)?.gainCount ?? 0) > 0).length
+    const sohCount = allItems.filter(it => it.soh <= 0).length
+
+    const intervalCounts = new Map<string, number>()
+    for (const it of allItems) {
+      if (!it.count_interval) continue
+      intervalCounts.set(it.count_interval, (intervalCounts.get(it.count_interval) ?? 0) + 1)
+    }
+    const sortKey = (label: string) => {
+      if (label === 'Daily') return -1
+      if (label === 'Not counted') return Infinity
+      const m = label.match(/^Every (\d+)d$/)
+      return m ? Number(m[1]) : 999998
+    }
+    const intervalFlags = Array.from(intervalCounts.entries())
+      .sort(([a], [b]) => sortKey(a) - sortKey(b))
+      .map(([label, count]) => ({
+        key: `interval_${label}`,
+        label,
+        count,
+        active: saleFilter?.kind === 'interval' && saleFilter.label === label,
+        onClick: () => setSaleFilter(saleFilter?.kind === 'interval' && saleFilter.label === label ? null : { kind: 'interval' as const, label }),
+      }))
+
+    return [
+      { key: 'loss', label: '🔻 Loss', count: lossCount, active: saleFilter?.kind === 'loss', onClick: () => setSaleFilter(saleFilter?.kind === 'loss' ? null : { kind: 'loss' as const }) },
+      { key: 'gain', label: '🔺 Gain', count: gainCount, active: saleFilter?.kind === 'gain', onClick: () => setSaleFilter(saleFilter?.kind === 'gain' ? null : { kind: 'gain' as const }) },
+      { key: 'soh', label: 'Low SOH', count: sohCount, active: saleFilter?.kind === 'soh', onClick: () => setSaleFilter(saleFilter?.kind === 'soh' ? null : { kind: 'soh' as const }) },
+      ...intervalFlags,
+    ]
+  }, [allItems, lossByItemId, saleFilter])
+
   // Filter and sort items based on current view and product type
   const catalogueItems = useMemo(() => {
     if (allItems.length === 0) return []
@@ -568,6 +612,17 @@ export default function LiveSalePage(props: any = {}) {
       filtered = filtered.filter(item => gmcItemIds.has(item.id))
     }
 
+    // Apply Sale mode's own Loss/Gain/SOH/count-interval filter
+    if (saleFilter?.kind === 'loss') {
+      filtered = filtered.filter(item => (lossByItemId.get(item.id)?.lossCount ?? 0) > 0)
+    } else if (saleFilter?.kind === 'gain') {
+      filtered = filtered.filter(item => (lossByItemId.get(item.id)?.gainCount ?? 0) > 0)
+    } else if (saleFilter?.kind === 'soh') {
+      filtered = filtered.filter(item => item.soh <= 0)
+    } else if (saleFilter?.kind === 'interval') {
+      filtered = filtered.filter(item => item.count_interval === saleFilter.label)
+    }
+
     // Apply view filter
     if (currentView?.kind === 'serviceGroup' && currentView.group) {
       filtered = filtered.filter(item => item.group === currentView.group)
@@ -590,7 +645,7 @@ export default function LiveSalePage(props: any = {}) {
 
     // Sort by sales count (highest to lowest)
     return filtered.sort((a, b) => (salesCounts.get(b.id) ?? 0) - (salesCounts.get(a.id) ?? 0))
-  }, [allItems, salesCounts, currentView, productTypeFilter, groupFilter, pickedItemId, saleType, gmcItemIds, mode])
+  }, [allItems, salesCounts, currentView, productTypeFilter, groupFilter, pickedItemId, saleType, gmcItemIds, mode, saleFilter, lossByItemId])
 
   // Log tab's two histories, grouped by date -- computed unconditionally
   // (not inside the `if (mode === 'log')` branch below) since React
@@ -1647,6 +1702,21 @@ export default function LiveSalePage(props: any = {}) {
               ?
             </button>
           </div>
+      </div>
+      )}
+
+      {/* Sale mode's own item-grid filter -- Loss/Gain/Low SOH plus one pill
+          per count-interval label currently in use (see saleFilterFlags).
+          Same pill styling as the Count tab's own interval buckets so a
+          cadence bucket reads the same wherever it shows up. */}
+      {(!hideFilterBar || expanded) && (
+      <div className="px-4 py-2 border-b border-gray-200 bg-white flex items-center gap-1.5 flex-wrap">
+        {saleFilterFlags.map(f => (
+          <button key={f.key} type="button" onClick={f.onClick}
+            className={`text-xs font-semibold px-2 py-1 rounded-full transition ${f.active ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+            {f.label} ({f.count})
+          </button>
+        ))}
       </div>
       )}
 
