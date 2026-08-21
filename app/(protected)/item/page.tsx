@@ -860,6 +860,9 @@ function ItemHubPageInner() {
   const [globalFlags, setGlobalFlags] = useState<any | null>(null)
   const [pendingCounts, setPendingCounts] = useState<{ daily: number; gmcWeekly: number; overdue: number }>({ daily: 0, gmcWeekly: 0, overdue: 0 })
   const [serviceViolationCount, setServiceViolationCount] = useState(0)
+  // Same filter as serviceViolationCount, just the item ids instead of the
+  // count -- feeds Live Sale's itemsWithViolations (see loadBadgeData below).
+  const [serviceViolationIds, setServiceViolationIds] = useState<number[]>([])
   const [prezohoSalesCount, setPrezohoSalesCount] = useState(0)
   const [prezohoBillsCount, setPrezohoBillsCount] = useState(0)
   const [prezohoReceiptsCount, setPrezohoReceiptsCount] = useState(0)
@@ -887,9 +890,11 @@ function ItemHubPageInner() {
     }).catch(() => {})
     fetch('/api/losses/summary').then(r => r.ok ? r.json() : []).then(d => {
       const list = Array.isArray(d) ? d : []
-      setServiceViolationCount(list.filter((r: any) =>
+      const violating = list.filter((r: any) =>
         r.product_type === 'service' && (Number(r.cnt) !== 0 || Number(r.gmc) !== 0 || Number(r.bl) !== 0)
-      ).length)
+      )
+      setServiceViolationCount(violating.length)
+      setServiceViolationIds(violating.map((r: any) => r.item_id))
     }).catch(() => {})
     Promise.all([
       fetch('/api/aliases/unresolved').then(r => r.json()).catch(() => []),
@@ -2133,6 +2138,11 @@ function ItemHubPageInner() {
               no_sp: items.filter(i => !i.selling_rate || parseFloat(i.selling_rate) === 0).map(i => i.id),
               no_cp: items.filter(i => !i.purchase_rate || parseFloat(i.purchase_rate) === 0).map(i => i.id),
               no_group: items.filter(i => !i.cf_group).map(i => i.id),
+              // Both sides of every non-dismissed duplicate pair -- ids only,
+              // same as the other four keys here.
+              duplicates: [...new Set((globalFlags?.duplicates ?? []).flatMap((d: any) => [d.id1, d.id2]))],
+              unlinked_named: (globalFlags?.unlinkedNamed ?? []).map((r: any) => r.item_id),
+              service_violation: serviceViolationIds,
             }}
           />
         )}

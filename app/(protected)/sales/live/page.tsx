@@ -87,21 +87,29 @@ function formatLoss(l: { lossCount: number; lgAmt: number; gainCount?: number } 
 }
 
 // Bold attention banner for an item's own data-integrity problems -- same
-// idea as the COUNT NOW banner (see countStatus/pinnedDueItems below), just
-// for the checks tracked elsewhere as violations (item/page.tsx's
-// itemsWithViolations: neg_soh, no_sp, no_cp, no_group). Computed straight
-// off the item's own fields already on Item, rather than depending on that
-// prop, since a) those 4 checks only ever need this one item's own data and
-// b) itemsWithViolations only has some of the seven violation keys wired up
-// (duplicates/unlinked_named/service_violation need cross-item data this
-// component doesn't have, so they're not covered here). One banner per
-// card, worst first, matching the existing one-banner convention rather
+// idea as the COUNT NOW banner (see countStatus/pinnedDueItems below), for
+// every check item/page.tsx's own itemsWithViolations tracks. The first four
+// (negative stock/missing SP/missing CP/missing group) are computed straight
+// off the item's own fields already on Item, since they only ever need this
+// one item's own data; the last three (duplicate/unlinked sale/service
+// violation) need cross-item data this component doesn't otherwise have, so
+// they're passed in as id sets built from the itemsWithViolations prop (see
+// duplicateItemIds/unlinkedNamedIds/serviceViolationIds below). One banner
+// per card, worst first, matching the existing one-banner convention rather
 // than stacking every applicable issue.
-function itemAttentionFlag(item: Item): { label: string; bg: string } | null {
+function itemAttentionFlag(
+  item: Item,
+  duplicateItemIds: Set<number>,
+  unlinkedNamedIds: Set<number>,
+  serviceViolationIds: Set<number>
+): { label: string; bg: string } | null {
   const soh = Number(item.soh)
   const sp = parseFloat(String(item.selling_price)) || 0
   const cp = parseFloat(String(item.cost_price)) || 0
   if (item.product_type !== 'service' && soh < 0) return { label: '⚠ NEGATIVE STOCK', bg: 'bg-red-600' }
+  if (duplicateItemIds.has(item.id)) return { label: '⚠ DUPLICATE ITEM', bg: 'bg-red-600' }
+  if (serviceViolationIds.has(item.id)) return { label: '⚠ SERVICE VIOLATION', bg: 'bg-rose-600' }
+  if (unlinkedNamedIds.has(item.id)) return { label: '⚠ UNLINKED SALE', bg: 'bg-orange-600' }
   if (sp <= 0) return { label: '⚠ MISSING SELLING PRICE', bg: 'bg-orange-600' }
   if (cp <= 0) return { label: '⚠ MISSING COST PRICE', bg: 'bg-orange-500' }
   if (!item.group) return { label: '⚠ MISSING GROUP', bg: 'bg-amber-500' }
@@ -497,6 +505,13 @@ export default function LiveSalePage(props: any = {}) {
       })
       .catch(() => {})
   }, [])
+
+  // Id sets for the three itemAttentionFlag checks that need cross-item data
+  // (see the function's own comment) -- built once here off the prop instead
+  // of re-scanning itemsWithViolations on every card's render.
+  const duplicateItemIds = useMemo(() => new Set<number>(itemsWithViolations.duplicates ?? []), [itemsWithViolations])
+  const unlinkedNamedIds = useMemo(() => new Set<number>(itemsWithViolations.unlinked_named ?? []), [itemsWithViolations])
+  const serviceViolationIds = useMemo(() => new Set<number>(itemsWithViolations.service_violation ?? []), [itemsWithViolations])
 
   // Fetch taps
   useEffect(() => {
@@ -2228,7 +2243,7 @@ export default function LiveSalePage(props: any = {}) {
             )}
             {restCatalogueItems.map(item => {
               const count = salesCounts.get(item.id) ?? 0
-              const flag = itemAttentionFlag(item)
+              const flag = itemAttentionFlag(item, duplicateItemIds, unlinkedNamedIds, serviceViolationIds)
               return (
                 <div
                   key={item.id}
@@ -2296,7 +2311,7 @@ export default function LiveSalePage(props: any = {}) {
       {/* Modal */}
       {selectedItem && (() => {
         const due = countStatus.get(selectedItem.id)
-        const flag = itemAttentionFlag(selectedItem)
+        const flag = itemAttentionFlag(selectedItem, duplicateItemIds, unlinkedNamedIds, serviceViolationIds)
         const expected = Number(selectedItem.soh)
         const enteredCount = countQty === '' ? null : Number(countQty)
         const countShort = enteredCount !== null && !isNaN(enteredCount) && enteredCount < expected
