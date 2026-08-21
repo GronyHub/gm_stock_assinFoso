@@ -22,6 +22,9 @@ export type SummaryRow = {
   cp: string | null
   units_per_pack: string | null
   converts_to_item_id: number | null
+  // The one place this table can confirm a "Count every N days" edit
+  // actually saved -- see ItemEditForm's cadence field.
+  count_interval: string | null
   lgAmt: number
   lgQty: number
   lossCount: number
@@ -639,6 +642,7 @@ function rowSortVal(row: SummaryRow, col: SortCol): number | string {
     case 'soh': return parseFloat(row.soh ?? '0') || 0
     case 'sp': return parseFloat(row.sp ?? '0') || 0
     case 'cp': return parseFloat(row.cp ?? '0') || 0
+    case 'count_interval': return (row.count_interval ?? '').toLowerCase()
   }
 }
 
@@ -1060,16 +1064,22 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
       }),
     })
     setSaving(false)
+    const d = await res.json().catch(() => null)
     if (!res.ok) {
-      const d = await res.json().catch(() => null)
       setEditError(d?.error ?? 'Could not save changes.')
       return
     }
     setEditing(false)
+    setCurrentCountInterval(d?.count_interval ?? null)
     onSaved({
       item_name: form.item_name || item.item_name, cf_group: form.cf_group || null, sp: form.selling_rate || item.sp, cp: form.purchase_rate || item.cp,
       units_per_pack: form.units_per_pack || null,
       converts_to_item_id: form.converts_to_item_id ? Number(form.converts_to_item_id) : null,
+      // Without this, the Items table's Count column (and anything else
+      // reading this row) kept showing the pre-edit cadence label until a
+      // full page reload -- the "Count every N days" field's save looked
+      // like it silently did nothing.
+      count_interval: d?.count_interval ?? null,
     })
     onRelationsSaved(aliases, matches)
   }
@@ -1683,6 +1693,12 @@ function renderCell(key: ColKey, row: SummaryRow) {
             row.product_type === 'service' ? 'bg-purple-50 text-purple-600' : 'bg-teal-50 text-teal-600'}`}>
             {row.product_type === 'service' ? 'Service' : 'Good'}
           </span>
+        </td>
+      )
+    case 'count_interval':
+      return (
+        <td key={key} className="text-center py-1.5 text-gray-500 truncate" title={row.count_interval ?? undefined}>
+          {row.count_interval ?? '—'}
         </td>
       )
   }

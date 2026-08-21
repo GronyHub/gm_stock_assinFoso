@@ -133,6 +133,14 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   `
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+  // Callers editing the cadence (ItemEditForm's "Count every" field) need
+  // the freshly-resolved label back to patch their own item list in place --
+  // without this they either show the pre-edit label until their next full
+  // reload, or (worse) never re-fetch at all and look like the save silently
+  // did nothing. Same computation GET above uses, so it can't drift.
+  const intervals = await itemCountIntervalLabels().catch(() => new Map<number, string>())
+  const count_interval = formatCountInterval(intervals.get(itemId))
+
   if (item_name && item_name !== current.canonical_name) {
     // Keep the old name resolvable -- a future sale/bill line still typed
     // with the old spelling should still auto-match this item instead of
@@ -148,7 +156,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     await sql`UPDATE stock_counts SET item_name = ${item_name} WHERE item_id = ${itemId}`
   }
 
-  return NextResponse.json(row)
+  return NextResponse.json({ ...row, count_interval })
 }
 
 // Hard delete -- only Grony/Joe, and only when the item has no real history.

@@ -4,6 +4,7 @@ import { ensureCountRevisions } from '@/lib/countRevisions'
 import { getItemDayRows } from '@/lib/itemDayRows'
 import { computeChainLossSummary } from '@/lib/packChain'
 import { ensureActiveItemsView } from '@/lib/activeItems'
+import { itemCountIntervalLabels, formatCountInterval } from '@/lib/countRules'
 
 export const dynamic = 'force-dynamic'
 
@@ -73,7 +74,7 @@ function aggregateItem(rows: DayRow[], sp: number) {
 export async function GET() {
   await ensureActiveItemsView()
 
-  const [itemRows, dayRows] = await Promise.all([
+  const [itemRows, dayRows, countIntervalLabels] = await Promise.all([
     sql`
       SELECT s.item_id, COALESCE(i.canonical_name, s.item_name) AS item_name,
              COALESCE(i.cf_group, s.cf_group) AS cf_group, s.calculated_soh,
@@ -155,6 +156,7 @@ export async function GET() {
       LEFT JOIN daily_consumed_via_service dcs ON dcs.item_id = ad.item_id AND dcs.d = ad.d
       ORDER BY ad.item_id, ad.d ASC
     `,
+    itemCountIntervalLabels(),
   ])
 
   const items = itemRows as unknown as ItemMeta[]
@@ -227,6 +229,7 @@ export async function GET() {
       cp: item.purchase_rate,
       units_per_pack: item.units_per_pack,
       converts_to_item_id: item.converts_to_item_id,
+      count_interval: formatCountInterval(countIntervalLabels.get(item.item_id)),
       ...agg,
     }
   })
