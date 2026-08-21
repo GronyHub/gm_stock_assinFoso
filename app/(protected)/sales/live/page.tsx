@@ -192,6 +192,11 @@ export default function LiveSalePage(props: any = {}) {
   // labels the Count tab's countIntervalFlags buckets by) so a cadence
   // bucket here can never drift out of sync with the Count tab's own.
   const [saleFilter, setSaleFilter] = useState<{ kind: 'loss' } | { kind: 'gain' } | { kind: 'soh' } | { kind: 'interval'; label: string } | null>(null)
+  // Phone-width priority for this page's own inline green bar (standalone
+  // page, or "Large screen" mode) -- type/group/item-filter selects and
+  // laws/help are real but secondary next to the search box below, tucked
+  // behind this toggle on a phone and always shown from the sm breakpoint up.
+  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false)
   const [internalProductTypeFilter, setInternalProductTypeFilter] = useState<'all' | 'goods' | 'services'>('all')
   const productTypeFilter = controlledProductTypeFilter ?? internalProductTypeFilter
   const setProductTypeFilter = onProductTypeFilterChange ?? setInternalProductTypeFilter
@@ -1656,7 +1661,18 @@ export default function LiveSalePage(props: any = {}) {
           behind this page's now-fixed-fullscreen overlay, so it needs its
           own copy here too rather than losing the type/group filters entirely. */}
       {(!hideFilterBar || expanded) && (
-      <div className="bg-green-700 -mx-0 px-3 py-1.5 flex items-center justify-between gap-1.5 flex-wrap">
+      <div className="bg-green-700 -mx-0 px-3 py-1.5 flex items-center gap-1.5 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setMoreFiltersOpen(v => !v)}
+            title="More filters"
+            className={`sm:hidden shrink-0 w-6 h-6 rounded-md text-xs font-semibold flex items-center justify-center transition ${
+              moreFiltersOpen ? 'bg-white text-green-700' : 'bg-green-800 text-white hover:bg-green-900'
+            }`}
+          >
+            ⋯
+          </button>
+          <div className={`${moreFiltersOpen ? 'flex' : 'hidden'} sm:flex items-center justify-between gap-1.5 flex-wrap flex-1`}>
           <div className="flex gap-1.5 items-center flex-wrap">
             <select
               value={productTypeFilter}
@@ -1726,6 +1742,7 @@ export default function LiveSalePage(props: any = {}) {
               ?
             </button>
           </div>
+          </div>
       </div>
       )}
 
@@ -1769,7 +1786,7 @@ export default function LiveSalePage(props: any = {}) {
                 onFocus={() => itemPickerQuery.trim() && setShowItemPicker(true)}
                 placeholder={compactSearch ? 'Search item…' : 'Search & pick item…'}
                 className={`border focus:outline-none focus:ring-1 ${
-                  compactSearch ? 'text-xs px-2 py-1 w-20 rounded-md bg-white' : 'text-sm px-3 py-1.5 w-48 rounded-lg'
+                  compactSearch ? 'text-xs px-2 py-1 w-20 rounded-md bg-white' : 'text-sm px-3 py-1.5 w-32 sm:w-48 rounded-lg'
                 } ${
                   pickedItemId !== null
                     ? 'border-green-400 bg-green-50 focus:ring-green-400'
