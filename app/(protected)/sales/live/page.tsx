@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import { useSession } from 'next-auth/react'
 import { usePresenceReporter } from '@/lib/usePresenceReporter'
 import { isOwnerLevel } from '@/lib/roles'
+import { fmtTime } from '@/lib/fmtDate'
 import { useLawsPanel } from '@/app/(protected)/item/_components/useLawsPanel'
 import LawsToggleBar from '@/app/(protected)/item/_components/LawsToggleBar'
 import PageLawsList from '@/app/(protected)/item/_components/PageLawsList'
@@ -41,7 +42,7 @@ type ViolationType = { key: string; label: string; description?: string }
 // /api/stock/gmc-weekly and /api/stock/overdue already return for CountsTab.
 type DueItem = { item_id: number; item_name: string; cf_group: string | null; calculated_soh: number; last_count_date: string | null; days_overdue: number | null }
 // The Log tab's Count view -- same shape /api/stock/counts already returns for CountsTab's own history table.
-type CountRecord = { id: number; item_id: number | null; item_name: string; count_date: string; quantity_counted: string; notes: string | null; counted_by: string | null; source: string | null; cf_group: string | null }
+type CountRecord = { id: number; item_id: number | null; item_name: string; count_date: string; quantity_counted: string; notes: string | null; counted_by: string | null; counted_at: string | null; source: string | null; cf_group: string | null }
 
 function formatPrice(num: number | string): string {
   const n = Number(num)
@@ -923,10 +924,11 @@ export default function LiveSalePage(props: any = {}) {
             {/* Item is frozen (sticky left-0), matching every data row
                 below, so it's still visible after scrolling right through
                 the narrower compact columns. */}
-            <div className="grid grid-cols-[minmax(7rem,1.4fr)_5rem_3rem_5rem_4rem_minmax(6rem,1fr)_5.5rem] gap-0 bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+            <div className="grid grid-cols-[minmax(7rem,1.4fr)_5rem_3rem_4rem_5rem_4rem_minmax(6rem,1fr)_5.5rem] gap-0 bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
               <div className="sticky left-0 z-10 bg-gray-50 px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Item</div>
               <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Group</div>
               <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center">Qty</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center">Time</div>
               <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">By</div>
               <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Source</div>
               <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Notes</div>
@@ -934,14 +936,14 @@ export default function LiveSalePage(props: any = {}) {
             </div>
             {countsByDate.map(([date, dateRecs]) => (
               <div key={date}>
-                <div className="grid grid-cols-[minmax(7rem,1.4fr)_5rem_3rem_5rem_4rem_minmax(6rem,1fr)_5.5rem] gap-0 bg-amber-50 border-b border-amber-200 sticky top-[26px] z-9">
-                  <div className="col-span-7 px-2 py-1 text-[10px] font-semibold text-amber-700">
+                <div className="grid grid-cols-[minmax(7rem,1.4fr)_5rem_3rem_4rem_5rem_4rem_minmax(6rem,1fr)_5.5rem] gap-0 bg-amber-50 border-b border-amber-200 sticky top-[26px] z-9">
+                  <div className="col-span-8 px-2 py-1 text-[10px] font-semibold text-amber-700">
                     {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {dateRecs.length} counted
                   </div>
                 </div>
                 {dateRecs.map(rec => (
                   <div key={rec.id}>
-                    <div className="group grid grid-cols-[minmax(7rem,1.4fr)_5rem_3rem_5rem_4rem_minmax(6rem,1fr)_5.5rem] gap-0 border-b border-gray-100 items-center hover:bg-gray-50 transition">
+                    <div className="group grid grid-cols-[minmax(7rem,1.4fr)_5rem_3rem_4rem_5rem_4rem_minmax(6rem,1fr)_5.5rem] gap-0 border-b border-gray-100 items-center hover:bg-gray-50 transition">
                       <div className="sticky left-0 z-[1] bg-white group-hover:bg-gray-50 px-2 py-1">
                         <p className="text-xs font-semibold text-gray-900 truncate">{rec.item_name}</p>
                       </div>
@@ -950,6 +952,9 @@ export default function LiveSalePage(props: any = {}) {
                       </div>
                       <div className="px-2 py-1 text-center">
                         <p className="text-xs font-semibold text-gray-900">{Number(rec.quantity_counted)}</p>
+                      </div>
+                      <div className="px-2 py-1 text-center">
+                        <p className="text-xs text-gray-500">{fmtTime(rec.counted_at) || '—'}</p>
                       </div>
                       <div className="px-2 py-1">
                         <p className="text-xs text-blue-600 font-medium truncate">{rec.counted_by ?? '—'}</p>

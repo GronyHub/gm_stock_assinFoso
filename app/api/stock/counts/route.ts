@@ -8,7 +8,7 @@ export async function GET() {
 
   const rows = await sql`
     SELECT sc.id, sc.item_id, sc.item_name, sc.count_date::text AS count_date,
-           sc.quantity_counted, sc.notes, sc.counted_by, sc.source,
+           sc.quantity_counted, sc.notes, sc.counted_by, sc.source, sc.counted_at::text AS counted_at,
            i.cf_group
     FROM stock_counts sc
     LEFT JOIN items i ON i.id = sc.item_id

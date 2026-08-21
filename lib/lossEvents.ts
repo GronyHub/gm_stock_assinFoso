@@ -62,75 +62,70 @@ function parseLossReason(notes: string | null): string | null {
 }
 
 export async function computeLossEvents(): Promise<LossEvent[]> {
-  // Compute all loss/gain events with loss calculations in SQL (one query instead of 2)
+  // One row per count event, loss/gain computed against the item's PREVIOUS
+  // count -- same cumulative-since-last-count formula as stockGuard's
+  // expectedStockAt (prev count + bills + GMC conversions in, minus direct
+  // sales, minus service consumption, all summed over the *whole* gap since
+  // that previous count), just applied to every count instead of one target
+  // date. This used to be computed per-CALENDAR-DAY instead: prev_count came
+  // from LAG() over every date with ANY activity (counts, sales, bills), not
+  // just count dates, so a sale-only day sitting right before a count made
+  // LAG grab NULL instead of the real previous count -- silently dropping
+  // the loss for that count entirely. And even when prev_count did resolve,
+  // only that single day's own sales/bills were subtracted, not everything
+  // since the last count -- fine for a daily-counted item (yesterday IS the
+  // whole gap) but wrong for anything on a longer cadence, where real
+  // activity on the days in between just never got counted against it.
   const dayRows = await sql`
     WITH daily_counts AS (
       SELECT item_id, count_date::date AS d, SUM(quantity_counted) AS qty_counted, MAX(notes) AS notes
       FROM stock_counts GROUP BY item_id, count_date::date
     ),
-    daily_wic AS (
-      SELECT srl.item_id, sr.receipt_date::date AS d, SUM(srl.quantity) AS qty
-      FROM sales_receipt_lines srl JOIN sales_receipts sr ON sr.id = srl.receipt_id
-      WHERE (sr.customer_name IS NULL OR sr.customer_name <> 'Grony Multimedia as Customer')
-      GROUP BY srl.item_id, sr.receipt_date::date
-    ),
-    daily_gmc AS (
-      SELECT srl.item_id, sr.receipt_date::date AS d, SUM(srl.quantity) AS qty
-      FROM sales_receipt_lines srl JOIN sales_receipts sr ON sr.id = srl.receipt_id
-      WHERE sr.customer_name = 'Grony Multimedia as Customer'
-      GROUP BY srl.item_id, sr.receipt_date::date
-    ),
-    daily_bills AS (
-      SELECT bl.item_id, b.bill_date::date AS d, SUM(bl.quantity) AS qty
-      FROM bill_lines bl JOIN bills b ON b.id = bl.bill_id
-      GROUP BY bl.item_id, b.bill_date::date
-    ),
-    daily_converted_in AS (
-      SELECT i.converts_to_item_id AS item_id, dg.d,
-             SUM(dg.qty * COALESCE(i.units_per_pack, 1)) AS qty
-      FROM daily_gmc dg
-      JOIN items i ON i.id = dg.item_id
-      WHERE i.converts_to_item_id IS NOT NULL
-        AND COALESCE(i.product_type, 'goods') <> 'service'
-      GROUP BY i.converts_to_item_id, dg.d
-    ),
-    daily_consumed_via_service AS (
-      SELECT i.converts_to_item_id AS item_id, dw.d,
-             SUM(dw.qty * COALESCE(i.units_per_pack, 1)) AS qty
-      FROM daily_wic dw
-      JOIN items i ON i.id = dw.item_id
-      WHERE i.converts_to_item_id IS NOT NULL
-        AND i.product_type = 'service'
-      GROUP BY i.converts_to_item_id, dw.d
-    ),
-    all_dates AS (
-      SELECT item_id, d FROM daily_counts
-      UNION SELECT item_id, d FROM daily_wic
-      UNION SELECT item_id, d FROM daily_gmc
-      UNION SELECT item_id, d FROM daily_bills
-      UNION SELECT item_id, d FROM daily_converted_in
-      UNION SELECT item_id, d FROM daily_consumed_via_service
-    ),
-    daily_data AS (
-      SELECT ad.item_id, ad.d, dc.qty_counted, dc.notes,
-             COALESCE(dw.qty, 0) + COALESCE(dcs.qty, 0) AS wic_qty,
-             dg.qty AS gmc_qty, db.qty AS bills_qty,
-             dci.qty AS converted_in_qty,
-             LAG(dc.qty_counted) OVER (PARTITION BY ad.item_id ORDER BY ad.d) AS prev_count
-      FROM all_dates ad
-      LEFT JOIN daily_counts dc ON dc.item_id = ad.item_id AND dc.d = ad.d
-      LEFT JOIN daily_wic    dw ON dw.item_id = ad.item_id AND dw.d = ad.d
-      LEFT JOIN daily_gmc    dg ON dg.item_id = ad.item_id AND dg.d = ad.d
-      LEFT JOIN daily_bills  db ON db.item_id = ad.item_id AND db.d = ad.d
-      LEFT JOIN daily_converted_in dci ON dci.item_id = ad.item_id AND dci.d = ad.d
-      LEFT JOIN daily_consumed_via_service dcs ON dcs.item_id = ad.item_id AND dcs.d = ad.d
+    counts_seq AS (
+      SELECT item_id, d, qty_counted, notes,
+             LAG(d) OVER (PARTITION BY item_id ORDER BY d) AS prev_d,
+             LAG(qty_counted) OVER (PARTITION BY item_id ORDER BY d) AS prev_count
+      FROM daily_counts
     ),
     with_loss AS (
-      SELECT dd.item_id, dd.d::text AS date, dd.qty_counted, dd.notes,
-             CASE WHEN dd.qty_counted IS NOT NULL AND dd.prev_count IS NOT NULL
-               THEN (dd.prev_count - COALESCE(dd.wic_qty,0) - COALESCE(dd.gmc_qty,0) + COALESCE(dd.bills_qty,0)) - dd.qty_counted
-               ELSE NULL END AS loss_qty
-      FROM daily_data dd
+      SELECT cs.item_id, cs.d::text AS date, cs.qty_counted, cs.notes,
+        CASE WHEN cs.prev_d IS NOT NULL THEN
+          (
+            cs.prev_count
+            + COALESCE((
+                SELECT SUM(bl.quantity) FROM bill_lines bl JOIN bills b ON b.id = bl.bill_id
+                WHERE bl.item_id = cs.item_id AND b.bill_date::date > cs.prev_d AND b.bill_date::date <= cs.d
+              ), 0)
+            + COALESCE((
+                SELECT SUM(srl.quantity * COALESCE(i2.units_per_pack, 1))
+                FROM sales_receipt_lines srl
+                JOIN sales_receipts sr ON sr.id = srl.receipt_id
+                JOIN items i2 ON i2.id = srl.item_id
+                WHERE i2.converts_to_item_id = cs.item_id
+                  AND COALESCE(i2.product_type, 'goods') <> 'service'
+                  AND sr.customer_name = 'Grony Multimedia as Customer'
+                  AND sr.receipt_date::date > cs.prev_d AND sr.receipt_date::date <= cs.d
+              ), 0)
+            - COALESCE((
+                SELECT SUM(srl.quantity)
+                FROM sales_receipt_lines srl
+                JOIN sales_receipts sr ON sr.id = srl.receipt_id
+                WHERE srl.item_id = cs.item_id
+                  AND sr.receipt_date::date > cs.prev_d AND sr.receipt_date::date <= cs.d
+              ), 0)
+            - COALESCE((
+                SELECT SUM(srl.quantity * COALESCE(i2.units_per_pack, 1))
+                FROM sales_receipt_lines srl
+                JOIN sales_receipts sr ON sr.id = srl.receipt_id
+                JOIN items i2 ON i2.id = srl.item_id
+                WHERE i2.converts_to_item_id = cs.item_id
+                  AND i2.product_type = 'service'
+                  AND (sr.customer_name IS NULL OR sr.customer_name <> 'Grony Multimedia as Customer')
+                  AND sr.receipt_date::date > cs.prev_d AND sr.receipt_date::date <= cs.d
+              ), 0)
+          ) - cs.qty_counted
+        ELSE NULL END AS loss_qty
+      FROM counts_seq cs
     )
     SELECT wl.item_id, wl.date, i.canonical_name AS item_name, i.selling_rate, i.product_type,
            i.units_per_pack, i.converts_to_item_id, wl.loss_qty, wl.qty_counted, wl.notes
