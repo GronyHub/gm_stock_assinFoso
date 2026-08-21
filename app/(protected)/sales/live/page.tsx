@@ -217,7 +217,10 @@ export default function LiveSalePage(props: any = {}) {
   // panel (as currentView kinds); moved to their own tab with this simpler
   // local state instead of reusing currentView, since that's Sale mode's
   // own overlay mechanism and these views no longer belong there.
-  const [countView, setCountView] = useState<{ kind: 'interval'; label: string } | { kind: 'records' } | { kind: 'history' } | null>(null)
+  // Defaults to Count Records -- that's the landing view for the Count tab,
+  // since a raw list of "what's due" is less useful than seeing what's
+  // actually been counted until you pick a specific category to drill into.
+  const [countView, setCountView] = useState<{ kind: 'interval'; label: string } | { kind: 'records' } | { kind: 'history' } | null>({ kind: 'records' })
   const [embeddedSearch, setEmbeddedSearch] = useState('')
   useEffect(() => {
     if (!jumpToTabSeq || !jumpToTab) return
