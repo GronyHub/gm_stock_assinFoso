@@ -192,11 +192,6 @@ export default function LiveSalePage(props: any = {}) {
   // labels the Count tab's countIntervalFlags buckets by) so a cadence
   // bucket here can never drift out of sync with the Count tab's own.
   const [saleFilter, setSaleFilter] = useState<{ kind: 'loss' } | { kind: 'gain' } | { kind: 'soh' } | { kind: 'interval'; label: string } | null>(null)
-  // Phone-width priority for this page's own inline green bar (standalone
-  // page, or "Large screen" mode) -- type/group/item-filter selects and
-  // laws/help are real but secondary next to the search box below, tucked
-  // behind this toggle on a phone and always shown from the sm breakpoint up.
-  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false)
   const [internalProductTypeFilter, setInternalProductTypeFilter] = useState<'all' | 'goods' | 'services'>('all')
   const productTypeFilter = controlledProductTypeFilter ?? internalProductTypeFilter
   const setProductTypeFilter = onProductTypeFilterChange ?? setInternalProductTypeFilter
@@ -1661,23 +1656,12 @@ export default function LiveSalePage(props: any = {}) {
           behind this page's now-fixed-fullscreen overlay, so it needs its
           own copy here too rather than losing the type/group filters entirely. */}
       {(!hideFilterBar || expanded) && (
-      <div className="bg-green-700 -mx-0 px-3 py-1.5 flex items-center gap-1.5 flex-wrap">
-          <button
-            type="button"
-            onClick={() => setMoreFiltersOpen(v => !v)}
-            title="More filters"
-            className={`sm:hidden shrink-0 w-6 h-6 rounded-md text-xs font-semibold flex items-center justify-center transition ${
-              moreFiltersOpen ? 'bg-white text-green-700' : 'bg-green-800 text-white hover:bg-green-900'
-            }`}
-          >
-            ⋯
-          </button>
-          <div className={`${moreFiltersOpen ? 'flex' : 'hidden'} sm:flex items-center justify-between gap-1.5 flex-wrap flex-1`}>
-          <div className="flex gap-1.5 items-center flex-wrap">
+      <div className="bg-green-700 -mx-0 px-2 py-1 flex items-center justify-between gap-1 flex-wrap">
+          <div className="flex gap-1 items-center flex-wrap">
             <select
               value={productTypeFilter}
               onChange={e => setProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
-              className="text-xs px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
+              className="text-[11px] px-1.5 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white w-[4.5rem]"
             >
               <option value="all">All types</option>
               <option value="goods">Goods</option>
@@ -1686,7 +1670,7 @@ export default function LiveSalePage(props: any = {}) {
             <select
               value={groupFilter || ''}
               onChange={e => setGroupFilter(e.target.value || null)}
-              className="text-xs px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
+              className="text-[11px] px-1.5 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white w-[4.5rem]"
             >
               <option value="">All groups</option>
               {groups.map(group => (
@@ -1708,7 +1692,7 @@ export default function LiveSalePage(props: any = {}) {
                   else if (v.startsWith('interval:')) setSaleFilter({ kind: 'interval', label: v.slice('interval:'.length) })
                   else setSaleFilter({ kind: v as 'loss' | 'gain' | 'soh' })
                 }}
-                className="text-xs px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
+                className="text-[11px] px-1.5 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white w-[4.5rem]"
               >
                 <option value="">Filter: All items</option>
                 {saleFilterFlags.map(f => (
@@ -1719,7 +1703,7 @@ export default function LiveSalePage(props: any = {}) {
               </select>
             )}
           </div>
-          <div className="flex gap-1.5 items-center">
+          <div className="flex gap-1 items-center">
             <div>
               <LawsToggleBar
                 show={liveSaleLaws.show}
@@ -1736,12 +1720,11 @@ export default function LiveSalePage(props: any = {}) {
             <button
               type="button"
               onClick={() => setShowHelpModal(true)}
-              className="w-6 h-6 rounded-md bg-white text-gray-600 hover:bg-gray-100 font-semibold text-xs flex items-center justify-center transition"
+              className="w-5 h-5 rounded-md bg-white text-gray-600 hover:bg-gray-100 font-semibold text-[10px] flex items-center justify-center transition"
               title="Help"
             >
               ?
             </button>
-          </div>
           </div>
       </div>
       )}
@@ -1786,7 +1769,7 @@ export default function LiveSalePage(props: any = {}) {
                 onFocus={() => itemPickerQuery.trim() && setShowItemPicker(true)}
                 placeholder={compactSearch ? 'Search item…' : 'Search & pick item…'}
                 className={`border focus:outline-none focus:ring-1 ${
-                  compactSearch ? 'text-xs px-2 py-1 w-20 rounded-md bg-white' : 'text-sm px-3 py-1.5 w-32 sm:w-48 rounded-lg'
+                  compactSearch ? 'text-[11px] px-1.5 py-0.5 w-16 rounded-md bg-white' : 'text-sm px-3 py-1.5 w-32 sm:w-48 rounded-lg'
                 } ${
                   pickedItemId !== null
                     ? 'border-green-400 bg-green-50 focus:ring-green-400'
@@ -1836,7 +1819,7 @@ export default function LiveSalePage(props: any = {}) {
                   setItemPickerQuery('')
                 }}
                 className={`font-semibold bg-green-600 text-white hover:bg-green-700 transition ${
-                  compactSearch ? 'px-1.5 py-1 text-[10px] rounded-md' : 'px-2 py-1.5 text-sm rounded-lg'
+                  compactSearch ? 'px-1 py-0.5 text-[10px] rounded-md' : 'px-2 py-1.5 text-sm rounded-lg'
                 }`}
               >
                 {compactSearch ? '✕ Item' : 'Clear Item'}
@@ -1847,7 +1830,7 @@ export default function LiveSalePage(props: any = {}) {
                 type="button"
                 onClick={() => setSaleType(t => t === 'WIC' ? 'GMC' : 'WIC')}
                 title="Tap to switch between WIC and GMC"
-                className={`font-semibold transition ${compactSearch ? 'px-1.5 py-1 text-[10px] rounded-md' : 'px-4 py-1.5 text-sm rounded'} ${
+                className={`font-semibold transition ${compactSearch ? 'px-1 py-0.5 text-[10px] rounded-md' : 'px-4 py-1.5 text-sm rounded'} ${
                   saleType === 'GMC'
                     ? 'bg-purple-600 text-white'
                     : 'bg-blue-600 text-white'
@@ -1861,7 +1844,7 @@ export default function LiveSalePage(props: any = {}) {
                 type="button"
                 onClick={() => setLiveShowAnalytics(a => !a)}
                 title="Analytics"
-                className={`shrink-0 font-bold transition ${compactSearch ? 'px-1.5 py-1 text-[10px] rounded-md' : 'px-2.5 py-1 text-xs rounded-lg'} ${
+                className={`shrink-0 font-bold transition ${compactSearch ? 'px-1 py-0.5 text-[10px] rounded-md' : 'px-2.5 py-1 text-xs rounded-lg'} ${
                   liveShowAnalytics ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >

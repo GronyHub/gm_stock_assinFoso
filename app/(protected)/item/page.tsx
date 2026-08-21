@@ -593,12 +593,6 @@ function ItemHubPageInner() {
   const [liveSearchSlotEl, setLiveSearchSlotEl] = useState<HTMLDivElement | null>(null)
   const [liveModeToggleSlotEl, setLiveModeToggleSlotEl] = useState<HTMLDivElement | null>(null)
   const [liveFilterSlotEl, setLiveFilterSlotEl] = useState<HTMLDivElement | null>(null)
-  // Phone-width priority: Search/WIC/Analytics (the search slot) is what
-  // staff actually touch while tapping sales, so it's always visible: type/
-  // group/item-filter selects and the laws/help/expand icons are real but
-  // secondary on a phone, tucked behind this toggle there and only shown
-  // unconditionally from the sm breakpoint up.
-  const [liveMoreOpen, setLiveMoreOpen] = useState(false)
   // Deep links into a specific Live Sale tab (Sale/Sales/Bills/Count/Loss by
   // Tgt/Log) -- the "Sale Log" search result, a "Fix now: Counts" button, a
   // Daily/7-Day/15-Day Counts violation pill, a Sales/Bills/gains violation
@@ -2047,67 +2041,53 @@ function ItemHubPageInner() {
                     <div className="w-full overflow-x-auto">
                       <div ref={el => setLiveModeToggleSlotEl(el)} className="flex" />
                     </div>
-                    {/* Search/WIC/Analytics (the search slot) is what staff
-                        actually touch while tapping sales, so it stays on
-                        screen at every width. Type/group/item-filter and
-                        laws/help/expand are real controls but secondary on a
-                        phone -- tucked behind the "..." toggle there, and
-                        unconditionally visible from the sm breakpoint up
-                        where there's room for all of it on one row anyway. */}
-                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                      <div ref={el => setLiveSearchSlotEl(el)} className="flex items-center gap-1.5" />
+                    {/* Everything shown always, no collapse -- sized small
+                        enough (w-16/w-20 selects, w-5 h-5 icon buttons,
+                        text-[10px]/text-[11px]) that the full set wraps onto
+                        at most 2-3 lines even on a phone-width screen. */}
+                    <div className="flex items-center gap-1 flex-wrap justify-end">
+                      <div ref={el => setLiveSearchSlotEl(el)} className="flex items-center gap-1" />
+                      <select
+                        value={liveProductTypeFilter}
+                        onChange={e => setLiveProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
+                        className="text-[11px] px-1.5 py-0.5 rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 w-[4.5rem]"
+                      >
+                        <option value="all">All types</option>
+                        <option value="goods">Goods</option>
+                        <option value="services">Services</option>
+                      </select>
+                      <select
+                        value={liveGroupFilter || ''}
+                        onChange={e => setLiveGroupFilter(e.target.value || null)}
+                        className="text-[11px] px-1.5 py-0.5 rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 w-[4.5rem]"
+                      >
+                        <option value="">All groups</option>
+                        {liveGroups.map(g => (
+                          <option key={g} value={g}>{g}</option>
+                        ))}
+                      </select>
+                      <div ref={el => setLiveFilterSlotEl(el)} className="flex items-center gap-1" />
+                      <LawsToggleBar show={liveSaleLaws.show} setShow={liveSaleLaws.setShow}
+                        openForm={liveSaleLaws.openForm} setOpenForm={liveSaleLaws.setOpenForm}
+                        hideZeroFlags={liveSaleLaws.hideZeroFlags} setHideZeroFlags={liveSaleLaws.setHideZeroFlags}
+                        activeFilters={liveSaleLaws.activeFilters} toggleFilter={liveSaleLaws.toggleFilter} dark={false} />
                       <button
                         type="button"
-                        onClick={() => setLiveMoreOpen(v => !v)}
-                        title="More filters"
-                        className={`sm:hidden shrink-0 w-6 h-6 rounded-md text-xs font-semibold border flex items-center justify-center transition
-                          ${liveMoreOpen ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300'}`}
+                        onClick={() => setLiveHelpModalOpen(true)}
+                        title="Help"
+                        className="shrink-0 w-5 h-5 rounded-md text-[10px] font-semibold border flex items-center justify-center transition bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300"
                       >
-                        ⋯
+                        ?
                       </button>
-                      <div className={`${liveMoreOpen ? 'flex' : 'hidden'} sm:flex items-center gap-1.5 flex-wrap justify-end`}>
-                        <select
-                          value={liveProductTypeFilter}
-                          onChange={e => setLiveProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
-                          className="text-xs px-2 py-1 rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                        >
-                          <option value="all">All types</option>
-                          <option value="goods">Goods</option>
-                          <option value="services">Services</option>
-                        </select>
-                        <select
-                          value={liveGroupFilter || ''}
-                          onChange={e => setLiveGroupFilter(e.target.value || null)}
-                          className="text-xs px-2 py-1 rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                        >
-                          <option value="">All groups</option>
-                          {liveGroups.map(g => (
-                            <option key={g} value={g}>{g}</option>
-                          ))}
-                        </select>
-                        <div ref={el => setLiveFilterSlotEl(el)} className="flex items-center gap-1.5" />
-                        <LawsToggleBar show={liveSaleLaws.show} setShow={liveSaleLaws.setShow}
-                          openForm={liveSaleLaws.openForm} setOpenForm={liveSaleLaws.setOpenForm}
-                          hideZeroFlags={liveSaleLaws.hideZeroFlags} setHideZeroFlags={liveSaleLaws.setHideZeroFlags}
-                          activeFilters={liveSaleLaws.activeFilters} toggleFilter={liveSaleLaws.toggleFilter} dark={false} />
-                        <button
-                          type="button"
-                          onClick={() => setLiveHelpModalOpen(true)}
-                          title="Help"
-                          className="shrink-0 w-6 h-6 rounded-md text-xs font-semibold border flex items-center justify-center transition bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300"
-                        >
-                          ?
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setLiveExpanded((v) => !v)}
-                          title={liveExpanded ? 'Exit large screen' : 'Large screen'}
-                          className={`shrink-0 w-6 h-6 rounded-md text-xs font-semibold border flex items-center justify-center transition
-                            ${liveExpanded ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300'}`}
-                        >
-                          {liveExpanded ? '⤡' : '⤢'}
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setLiveExpanded((v) => !v)}
+                        title={liveExpanded ? 'Exit large screen' : 'Large screen'}
+                        className={`shrink-0 w-5 h-5 rounded-md text-[10px] font-semibold border flex items-center justify-center transition
+                          ${liveExpanded ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300'}`}
+                      >
+                        {liveExpanded ? '⤡' : '⤢'}
+                      </button>
                     </div>
                   </div>
                 )}
