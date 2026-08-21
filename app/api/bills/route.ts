@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
     const withOptional = rows.map((r: any) => ({
       ...r,
       entered_by: r.entered_by || null,
-      attachments: r.attachments || null
+      attachments: r.attachments || []
     }))
     return NextResponse.json(withOptional)
   } catch (e) {
@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
       const withOptional = rows.map((r: any) => ({
         ...r,
         entered_by: null,
-        attachments: null
+        attachments: []
       }))
       return NextResponse.json(withOptional)
     } catch (e2) {
