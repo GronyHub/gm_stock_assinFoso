@@ -1162,6 +1162,22 @@ export default function LiveSalePage(props: any = {}) {
     return (
       <>
       <div className={rootClassName}>
+      {/* "Large screen" makes this page's own root `fixed inset-0`, covering
+          the host page (Item page) entirely -- including the ⤢/⤡ toggle
+          that opened it, which lives in the host's own header and ends up
+          buried under this overlay with no way back. This floating button
+          is the actual way out once expanded, reachable regardless of which
+          mode is showing or how far the content underneath has scrolled. */}
+      {expanded && (
+        <button
+          type="button"
+          onClick={() => setExpanded(false)}
+          title="Exit large screen"
+          className="fixed top-2 right-2 z-[60] w-8 h-8 rounded-full bg-gray-900/80 text-white text-sm font-bold flex items-center justify-center shadow-lg hover:bg-gray-900 transition"
+        >
+          ✕
+        </button>
+      )}
         {renderModeToggleRow()}
         <div className="flex justify-end px-1.5 py-1 border-b border-gray-100">
           <button
@@ -1318,6 +1334,22 @@ export default function LiveSalePage(props: any = {}) {
     return (
       <>
       <div className={rootClassName}>
+      {/* "Large screen" makes this page's own root `fixed inset-0`, covering
+          the host page (Item page) entirely -- including the ⤢/⤡ toggle
+          that opened it, which lives in the host's own header and ends up
+          buried under this overlay with no way back. This floating button
+          is the actual way out once expanded, reachable regardless of which
+          mode is showing or how far the content underneath has scrolled. */}
+      {expanded && (
+        <button
+          type="button"
+          onClick={() => setExpanded(false)}
+          title="Exit large screen"
+          className="fixed top-2 right-2 z-[60] w-8 h-8 rounded-full bg-gray-900/80 text-white text-sm font-bold flex items-center justify-center shadow-lg hover:bg-gray-900 transition"
+        >
+          ✕
+        </button>
+      )}
         {renderModeToggleRow()}
         <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
           <h2 className="text-sm font-bold text-gray-900">Sales</h2>
@@ -1390,6 +1422,22 @@ export default function LiveSalePage(props: any = {}) {
     return (
       <>
       <div className={rootClassName}>
+      {/* "Large screen" makes this page's own root `fixed inset-0`, covering
+          the host page (Item page) entirely -- including the ⤢/⤡ toggle
+          that opened it, which lives in the host's own header and ends up
+          buried under this overlay with no way back. This floating button
+          is the actual way out once expanded, reachable regardless of which
+          mode is showing or how far the content underneath has scrolled. */}
+      {expanded && (
+        <button
+          type="button"
+          onClick={() => setExpanded(false)}
+          title="Exit large screen"
+          className="fixed top-2 right-2 z-[60] w-8 h-8 rounded-full bg-gray-900/80 text-white text-sm font-bold flex items-center justify-center shadow-lg hover:bg-gray-900 transition"
+        >
+          ✕
+        </button>
+      )}
         {renderModeToggleRow()}
         <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
           <h2 className="text-sm font-bold text-gray-900">Bills</h2>
@@ -1473,6 +1521,22 @@ export default function LiveSalePage(props: any = {}) {
     return (
       <>
       <div className={rootClassName}>
+      {/* "Large screen" makes this page's own root `fixed inset-0`, covering
+          the host page (Item page) entirely -- including the ⤢/⤡ toggle
+          that opened it, which lives in the host's own header and ends up
+          buried under this overlay with no way back. This floating button
+          is the actual way out once expanded, reachable regardless of which
+          mode is showing or how far the content underneath has scrolled. */}
+      {expanded && (
+        <button
+          type="button"
+          onClick={() => setExpanded(false)}
+          title="Exit large screen"
+          className="fixed top-2 right-2 z-[60] w-8 h-8 rounded-full bg-gray-900/80 text-white text-sm font-bold flex items-center justify-center shadow-lg hover:bg-gray-900 transition"
+        >
+          ✕
+        </button>
+      )}
         {renderModeToggleRow()}
         <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
           <h2 className="text-sm font-bold text-gray-900">Loss by Target</h2>
@@ -1524,6 +1588,22 @@ export default function LiveSalePage(props: any = {}) {
     return (
       <>
       <div className={rootClassName}>
+      {/* "Large screen" makes this page's own root `fixed inset-0`, covering
+          the host page (Item page) entirely -- including the ⤢/⤡ toggle
+          that opened it, which lives in the host's own header and ends up
+          buried under this overlay with no way back. This floating button
+          is the actual way out once expanded, reachable regardless of which
+          mode is showing or how far the content underneath has scrolled. */}
+      {expanded && (
+        <button
+          type="button"
+          onClick={() => setExpanded(false)}
+          title="Exit large screen"
+          className="fixed top-2 right-2 z-[60] w-8 h-8 rounded-full bg-gray-900/80 text-white text-sm font-bold flex items-center justify-center shadow-lg hover:bg-gray-900 transition"
+        >
+          ✕
+        </button>
+      )}
         {renderModeToggleRow()}
         <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
           <h2 className="text-sm font-bold text-gray-900">Count</h2>
@@ -1648,6 +1728,22 @@ export default function LiveSalePage(props: any = {}) {
   return (
     <>
     <div className={rootClassName}>
+      {/* "Large screen" makes this page's own root `fixed inset-0`, covering
+          the host page (Item page) entirely -- including the ⤢/⤡ toggle
+          that opened it, which lives in the host's own header and ends up
+          buried under this overlay with no way back. This floating button
+          is the actual way out once expanded, reachable regardless of which
+          mode is showing or how far the content underneath has scrolled. */}
+      {expanded && (
+        <button
+          type="button"
+          onClick={() => setExpanded(false)}
+          title="Exit large screen"
+          className="fixed top-2 right-2 z-[60] w-8 h-8 rounded-full bg-gray-900/80 text-white text-sm font-bold flex items-center justify-center shadow-lg hover:bg-gray-900 transition"
+        >
+          ✕
+        </button>
+      )}
       {renderModeToggleRow()}
 
       {/* Filter Bar - Green bar at top - hidden when the host page (Item page)
