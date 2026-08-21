@@ -3,7 +3,12 @@ import { NextResponse, NextRequest } from 'next/server'
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url)
-  const limit = Math.min(Number(url.searchParams.get('limit')) || 1000, 5000)
+  // Callers (BillsTab) fetch this with no limit/offset -- they want every
+  // line so it can be grouped by bill_id client-side. A low default cap
+  // silently dropped every line past it (ordered oldest-first), so recent
+  // bills showed up with no items at all. Only an explicit ?limit caps
+  // the result now.
+  const limit = Math.min(Number(url.searchParams.get('limit')) || 50000, 50000)
   const offset = Math.max(Number(url.searchParams.get('offset')) || 0, 0)
 
   try {

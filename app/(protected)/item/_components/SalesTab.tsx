@@ -405,24 +405,17 @@ export default function SalesTab({
       fetch('/api/sales').then(r => r.json()),
       fetch('/api/sales/all-lines').then(r => r.json()),
     ]).then(([receiptsData, linesData]) => {
-      console.log('SalesTab: receiptsData', Array.isArray(receiptsData) ? `array(${receiptsData.length})` : typeof receiptsData, receiptsData?.length ?? 'N/A')
-      console.log('SalesTab: linesData', Array.isArray(linesData) ? `array(${linesData.length})` : typeof linesData, linesData?.length ?? 'N/A')
       setReceipts(Array.isArray(receiptsData) ? receiptsData : [])
       const map: Record<number, Line[]> = {}
       if (Array.isArray(linesData)) {
-        console.log('SalesTab: Processing', linesData.length, 'lines')
         for (const l of linesData) {
           if (!map[l.receipt_id]) map[l.receipt_id] = []
           map[l.receipt_id].push(l)
         }
-        console.log('SalesTab: Created map with', Object.keys(map).length, 'receipt groups')
       }
       setLinesMap(map)
       setLoading(false)
-    }).catch((e) => {
-      console.error('SalesTab: loadReceipts error:', e)
-      setLoading(false)
-    })
+    }).catch(() => setLoading(false))
   }
 
   useEffect(() => { loadReceipts() }, [])
