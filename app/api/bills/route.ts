@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
     `
     return NextResponse.json(rows)
   } catch (e) {
-    console.error('bills/route.ts GET error:', e)
+    console.error('bills/route.ts GET error:', e instanceof Error ? e.message : String(e))
     try {
       const rows = await sql`
         SELECT id, bill_number, bill_date::date AS bill_date, vendor_name, total, status, NULL AS entered_by,
@@ -34,9 +34,10 @@ export async function GET(req: NextRequest) {
         LIMIT ${limit}
         OFFSET ${offset}
       `
+      console.log('bills/route.ts fallback returned', rows.length, 'rows')
       return NextResponse.json(rows)
     } catch (e2) {
-      console.error('bills/route.ts fallback error:', e2)
+      console.error('bills/route.ts fallback error:', e2 instanceof Error ? e2.message : String(e2))
       return NextResponse.json([])
     }
   }

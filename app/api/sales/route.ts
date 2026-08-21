@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     `
     return NextResponse.json(rows)
   } catch (e) {
-    console.error('sales/route.ts GET error:', e)
+    console.error('sales/route.ts GET error:', e instanceof Error ? e.message : String(e))
     // Fallback without entered_by in case column missing
     try {
       const rows = await sql`
@@ -49,9 +49,10 @@ export async function GET(req: NextRequest) {
         LIMIT ${limit}
         OFFSET ${offset}
       `
+      console.log('sales/route.ts fallback returned', rows.length, 'rows')
       return NextResponse.json(rows)
     } catch (e2) {
-      console.error('sales/route.ts fallback error:', e2)
+      console.error('sales/route.ts fallback error:', e2 instanceof Error ? e2.message : String(e2))
       return NextResponse.json([])
     }
   }
