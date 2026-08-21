@@ -45,8 +45,8 @@ export default function LogsPage() {
     load()
   }, [])
 
-  // Auto-refresh every 30s
-  usePolling(load, 30_000, autoRefresh)
+  // Auto-refresh every 60s
+  usePolling(load, 60_000, autoRefresh)
 
   const filtered = useMemo(() => {
     if (!search.trim()) return logs

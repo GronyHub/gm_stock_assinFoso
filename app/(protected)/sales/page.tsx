@@ -315,7 +315,7 @@ function SalesPageInner() {
   }
 
   useEffect(() => { loadReceipts() }, [])
-  usePolling(loadReceipts, 60000, editingId === null)
+  usePolling(loadReceipts, 120000, editingId === null)
 
   useEffect(() => {
     if (!autoReceiptId || autoOpened.current || receipts.length === 0) return

@@ -1,17 +1,21 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 
 // Returns staff presence grouped by date: { date: { staff_name, actual_in, actual_out }[] }
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({}, { status: 401 })
+
+  const url = new URL(req.url)
+  const days = Math.min(Math.max(Number(url.searchParams.get('days')) || 30, 1), 365)
 
   try {
     const rows = await sql`
       SELECT staff_name, work_date::text AS date, actual_in, actual_out
       FROM staff_times
       WHERE staff_name <> '__shop_open__'
+        AND work_date >= CURRENT_DATE - INTERVAL '${days} days'
       ORDER BY work_date DESC, staff_name
     `
     // Group by date

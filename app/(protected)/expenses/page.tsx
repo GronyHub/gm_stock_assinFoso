@@ -66,7 +66,7 @@ export default function ExpensesPage() {
   }
 
   useEffect(() => { loadExpenses() }, [])
-  usePolling(loadExpenses, 60000, editId === null && !showForm)
+  usePolling(loadExpenses, 120000, editId === null && !showForm)
 
   const filtered = useMemo(() => {
     let list = expenses

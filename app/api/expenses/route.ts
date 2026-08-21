@@ -21,10 +21,15 @@ function redact(rows: any[], canSeeAmounts: boolean) {
   return rows.map(r => isConfidentialExpense(r.expense_account) ? { ...r, amount: null, amount_hidden: true } : r)
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json([], { status: 401 })
   const canSeeAmounts = hasFeature(session.user as any, 'confidential_expenses', await getUserPermissionsMap())
+
+  const url = new URL(req.url)
+  const limit = Math.min(Number(url.searchParams.get('limit')) || 500, 2000)
+  const offset = Math.max(Number(url.searchParams.get('offset')) || 0, 0)
+  const since = url.searchParams.get('since')
 
   await initializeDatabase()
   await ensureExpensePropertyColumns()
@@ -38,10 +43,14 @@ export async function GET() {
         e.is_property, COALESCE(ep.property_status, 'at_shop') AS property_status,
         ep.property_type, ep.availability, ep.working, ep.location, ep.not_working_reason, ep.not_available_reason,
         e.expense_group, e.entered_by, e.source, e.source_sheet,
-        e.is_related_expense, e.related_to_property_id, e.related_expense_reasons
+        e.is_related_expense, e.related_to_property_id, e.related_expense_reasons,
+        e.updated_at
       FROM expenses e
       LEFT JOIN expense_properties ep ON ep.expense_id = e.id
+      ${since ? sql`WHERE e.updated_at > ${since}::timestamp` : sql``}
       ORDER BY e.expense_date DESC, e.id DESC
+      LIMIT ${limit}
+      OFFSET ${offset}
     `
     return NextResponse.json(redact(rows, canSeeAmounts))
   } catch {
@@ -53,10 +62,14 @@ export async function GET() {
         e.is_property, COALESCE(ep.property_status, 'at_shop') AS property_status,
         ep.property_type, ep.availability, ep.working, ep.location, ep.not_working_reason, ep.not_available_reason,
         e.expense_group, NULL AS entered_by, e.source, e.source_sheet,
-        e.is_related_expense, e.related_to_property_id, e.related_expense_reasons
+        e.is_related_expense, e.related_to_property_id, e.related_expense_reasons,
+        e.updated_at
       FROM expenses e
       LEFT JOIN expense_properties ep ON ep.expense_id = e.id
+      ${since ? sql`WHERE e.updated_at > ${since}::timestamp` : sql``}
       ORDER BY e.expense_date DESC, e.id DESC
+      LIMIT ${limit}
+      OFFSET ${offset}
     `
     return NextResponse.json(redact(rows, canSeeAmounts))
   }
