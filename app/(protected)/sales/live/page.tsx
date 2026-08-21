@@ -94,26 +94,30 @@ function formatLoss(l: { lossCount: number; lgAmt: number; gainCount?: number } 
 // one item's own data; the last three (duplicate/unlinked sale/service
 // violation) need cross-item data this component doesn't otherwise have, so
 // they're passed in as id sets built from the itemsWithViolations prop (see
-// duplicateItemIds/unlinkedNamedIds/serviceViolationIds below). One banner
-// per card, worst first, matching the existing one-banner convention rather
-// than stacking every applicable issue.
-function itemAttentionFlag(
+// duplicateItemIds/unlinkedNamedIds/serviceViolationIds below).
+//
+// Returns every applicable issue, worst first -- callers show just the
+// first as the actual banner (still one banner per card, not a stack) and
+// use the rest to render a "+N more" alongside it, so a genuinely broken
+// item doesn't read as having only one problem.
+function itemAttentionFlags(
   item: Item,
   duplicateItemIds: Set<number>,
   unlinkedNamedIds: Set<number>,
   serviceViolationIds: Set<number>
-): { label: string; bg: string } | null {
+): { label: string; bg: string }[] {
   const soh = Number(item.soh)
   const sp = parseFloat(String(item.selling_price)) || 0
   const cp = parseFloat(String(item.cost_price)) || 0
-  if (item.product_type !== 'service' && soh < 0) return { label: '⚠ NEGATIVE STOCK', bg: 'bg-red-600' }
-  if (duplicateItemIds.has(item.id)) return { label: '⚠ DUPLICATE ITEM', bg: 'bg-red-600' }
-  if (serviceViolationIds.has(item.id)) return { label: '⚠ SERVICE VIOLATION', bg: 'bg-rose-600' }
-  if (unlinkedNamedIds.has(item.id)) return { label: '⚠ UNLINKED SALE', bg: 'bg-orange-600' }
-  if (sp <= 0) return { label: '⚠ MISSING SELLING PRICE', bg: 'bg-orange-600' }
-  if (cp <= 0) return { label: '⚠ MISSING COST PRICE', bg: 'bg-orange-500' }
-  if (!item.group) return { label: '⚠ MISSING GROUP', bg: 'bg-amber-500' }
-  return null
+  const flags: { label: string; bg: string }[] = []
+  if (item.product_type !== 'service' && soh < 0) flags.push({ label: '⚠ NEGATIVE STOCK', bg: 'bg-red-600' })
+  if (duplicateItemIds.has(item.id)) flags.push({ label: '⚠ DUPLICATE ITEM', bg: 'bg-red-600' })
+  if (serviceViolationIds.has(item.id)) flags.push({ label: '⚠ SERVICE VIOLATION', bg: 'bg-rose-600' })
+  if (unlinkedNamedIds.has(item.id)) flags.push({ label: '⚠ UNLINKED SALE', bg: 'bg-orange-600' })
+  if (sp <= 0) flags.push({ label: '⚠ MISSING SELLING PRICE', bg: 'bg-orange-600' })
+  if (cp <= 0) flags.push({ label: '⚠ MISSING COST PRICE', bg: 'bg-orange-500' })
+  if (!item.group) flags.push({ label: '⚠ MISSING GROUP', bg: 'bg-amber-500' })
+  return flags
 }
 
 export default function LiveSalePage(props: any = {}) {
@@ -2243,15 +2247,17 @@ export default function LiveSalePage(props: any = {}) {
             )}
             {restCatalogueItems.map(item => {
               const count = salesCounts.get(item.id) ?? 0
-              const flag = itemAttentionFlag(item, duplicateItemIds, unlinkedNamedIds, serviceViolationIds)
+              const flags = itemAttentionFlags(item, duplicateItemIds, unlinkedNamedIds, serviceViolationIds)
+              const flag = flags[0] ?? null
               return (
                 <div
                   key={item.id}
                   className={`flex flex-col border-r border-b group ${flag ? 'bg-orange-50 border-orange-100' : 'border-gray-100'}`}
                 >
                   {flag && (
-                    <div className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide ${flag.bg}`}>
-                      {flag.label}
+                    <div className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide ${flag.bg} flex items-center justify-between gap-1`}>
+                      <span className="truncate">{flag.label}</span>
+                      {flags.length > 1 && <span className="shrink-0 opacity-90">+{flags.length - 1} more</span>}
                     </div>
                   )}
                   <div className="p-2 flex items-start gap-1 hover:bg-black/5 transition">
@@ -2311,7 +2317,8 @@ export default function LiveSalePage(props: any = {}) {
       {/* Modal */}
       {selectedItem && (() => {
         const due = countStatus.get(selectedItem.id)
-        const flag = itemAttentionFlag(selectedItem, duplicateItemIds, unlinkedNamedIds, serviceViolationIds)
+        const flags = itemAttentionFlags(selectedItem, duplicateItemIds, unlinkedNamedIds, serviceViolationIds)
+        const flag = flags[0] ?? null
         const expected = Number(selectedItem.soh)
         const enteredCount = countQty === '' ? null : Number(countQty)
         const countShort = enteredCount !== null && !isNaN(enteredCount) && enteredCount < expected
@@ -2449,13 +2456,14 @@ export default function LiveSalePage(props: any = {}) {
             ) : (
             <>
             {/* Same negative-stock/missing-price/missing-cost/missing-group
-                banner the grid card shows (see itemAttentionFlag) -- shown
+                banner the grid card shows (see itemAttentionFlags) -- shown
                 here too since the modal is reached directly from a search
                 pick as well as from a grid card, and a searched-and-picked
                 item skips the grid card entirely. */}
             {flag && (
-              <div className={`mx-4 mt-4 px-3 py-1.5 rounded-lg text-xs font-extrabold text-white ${flag.bg}`}>
-                {flag.label}
+              <div className={`mx-4 mt-4 px-3 py-1.5 rounded-lg text-xs font-extrabold text-white flex items-center justify-between gap-2 ${flag.bg}`}>
+                <span>{flag.label}</span>
+                {flags.length > 1 && <span className="opacity-90">+{flags.length - 1} more</span>}
               </div>
             )}
 
