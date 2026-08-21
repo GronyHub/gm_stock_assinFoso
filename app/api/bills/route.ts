@@ -23,16 +23,22 @@ export async function GET(req: NextRequest) {
       OFFSET ${offset}
     `
     return NextResponse.json(rows)
-  } catch {
-    const rows = await sql`
-      SELECT id, bill_number, bill_date::date AS bill_date, vendor_name, total, status, NULL AS entered_by,
-             COALESCE(attachments, '[]'::jsonb) AS attachments
-      FROM bills
-      ORDER BY bill_date DESC, id DESC
-      LIMIT ${limit}
-      OFFSET ${offset}
-    `
-    return NextResponse.json(rows)
+  } catch (e) {
+    console.error('bills/route.ts GET error:', e)
+    try {
+      const rows = await sql`
+        SELECT id, bill_number, bill_date::date AS bill_date, vendor_name, total, status, NULL AS entered_by,
+               COALESCE(attachments, '[]'::jsonb) AS attachments
+        FROM bills
+        ORDER BY bill_date DESC, id DESC
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `
+      return NextResponse.json(rows)
+    } catch (e2) {
+      console.error('bills/route.ts fallback error:', e2)
+      return NextResponse.json([])
+    }
   }
 }
 

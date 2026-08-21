@@ -29,24 +29,30 @@ export async function GET(req: NextRequest) {
       OFFSET ${offset}
     `
     return NextResponse.json(rows)
-  } catch {
+  } catch (e) {
+    console.error('sales/route.ts GET error:', e)
     // Fallback without entered_by in case column missing
-    const rows = await sql`
-      SELECT
-        id,
-        receipt_number,
-        receipt_date::date AS receipt_date,
-        customer_name,
-        total AS invoice_amount,
-        cash_counted,
-        (cash_counted - total) AS wnw,
-        NULL AS entered_by,
-        COALESCE(attachments, '[]'::jsonb) AS attachments
-      FROM sales_receipts
-      ORDER BY receipt_date DESC, id DESC
-      LIMIT ${limit}
-      OFFSET ${offset}
-    `
-    return NextResponse.json(rows)
+    try {
+      const rows = await sql`
+        SELECT
+          id,
+          receipt_number,
+          receipt_date::date AS receipt_date,
+          customer_name,
+          total AS invoice_amount,
+          cash_counted,
+          (cash_counted - total) AS wnw,
+          NULL AS entered_by,
+          COALESCE(attachments, '[]'::jsonb) AS attachments
+        FROM sales_receipts
+        ORDER BY receipt_date DESC, id DESC
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `
+      return NextResponse.json(rows)
+    } catch (e2) {
+      console.error('sales/route.ts fallback error:', e2)
+      return NextResponse.json([])
+    }
   }
 }
