@@ -171,7 +171,7 @@ export default function LiveSalePage(props: any = {}) {
   const expanded = controlledExpanded ?? internalExpanded
   const setExpanded = onExpandedChange ?? setInternalExpanded
   const rootClassName = `bg-white flex flex-col ${expanded ? 'fixed inset-0 z-50 overflow-y-auto' : 'h-full'}`
-  const [currentView, setCurrentView] = useState<{ kind: 'violation' | 'serviceGroup' | 'lossByItem' | 'aliasWide' | 'serviceMatches' | 'newItem' | 'dailySummary' | 'countInterval' | 'countRecords' | 'countHistory'; key?: string; group?: string } | null>(null)
+  const [currentView, setCurrentView] = useState<{ kind: 'violation' | 'serviceGroup' | 'lossByItem' | 'aliasWide' | 'serviceMatches' | 'newItem' | 'dailySummary'; key?: string; group?: string } | null>(null)
   const [violations, setViolations] = useState<Record<string, number>>({})
   const [internalProductTypeFilter, setInternalProductTypeFilter] = useState<'all' | 'goods' | 'services'>('all')
   const productTypeFilter = controlledProductTypeFilter ?? internalProductTypeFilter
@@ -208,9 +208,15 @@ export default function LiveSalePage(props: any = {}) {
   // 'bills'/'feed'/'lossByTarget' followed once the classic Sales Receipts
   // list, Bills, Loss by Date, and Loss by Target lost anything that
   // justified a separate sidebar destination once "New Sale" was dropped.
-  const [mode, setMode] = useState<'sale' | 'sales' | 'bills' | 'feed' | 'lossByTarget' | 'log'>('sale')
+  const [mode, setMode] = useState<'sale' | 'sales' | 'bills' | 'feed' | 'lossByTarget' | 'log' | 'count'>('sale')
   const [salesViolationFilter, setSalesViolationFilter] = useState<string | null>(null)
   const [billsViolationFilter, setBillsViolationFilter] = useState<string | null>(null)
+  // Count tab's own local navigation -- Daily/Every Nd/Dormant/etc, Count
+  // Records, and Count History used to only be reachable through the laws
+  // panel (as currentView kinds); moved to their own tab with this simpler
+  // local state instead of reusing currentView, since that's Sale mode's
+  // own overlay mechanism and these views no longer belong there.
+  const [countView, setCountView] = useState<{ kind: 'interval'; label: string } | { kind: 'records' } | { kind: 'history' } | null>(null)
   const [embeddedSearch, setEmbeddedSearch] = useState('')
   useEffect(() => {
     if (!jumpToTabSeq || !jumpToTab) return
@@ -313,14 +319,14 @@ export default function LiveSalePage(props: any = {}) {
         key: `count_interval_${label}`,
         label,
         count,
-        active: currentView?.kind === 'countInterval' && currentView.key === label,
+        active: countView?.kind === 'interval' && countView.label === label,
         onViewClick: () => {
-          setCurrentView(currentView?.kind === 'countInterval' && currentView.key === label
+          setCountView(countView?.kind === 'interval' && countView.label === label
             ? null
-            : { kind: 'countInterval' as const, key: label })
+            : { kind: 'interval' as const, label })
         }
       }))
-  }, [allItems, currentView])
+  }, [allItems, countView])
 
   // Build flags array with Live Sale callbacks
   const computedFlags = useMemo(() => [
@@ -363,7 +369,6 @@ export default function LiveSalePage(props: any = {}) {
         setBillsViolationFilter(v.key)
       }
     })),
-    ...countIntervalFlags,
     {
       key: 'loss_by_item',
       label: 'Loss by Item',
@@ -404,23 +409,7 @@ export default function LiveSalePage(props: any = {}) {
         setCurrentView(currentView?.kind === 'dailySummary' ? null : { kind: 'dailySummary' as const })
       }
     },
-    {
-      key: 'count_records',
-      label: 'Count Records',
-      count: 0,
-      onViewClick: () => {
-        setCurrentView(currentView?.kind === 'countRecords' ? null : { kind: 'countRecords' as const })
-      }
-    },
-    {
-      key: 'count_history',
-      label: 'Count History',
-      count: 0,
-      onViewClick: () => {
-        setCurrentView(currentView?.kind === 'countHistory' ? null : { kind: 'countHistory' as const })
-      }
-    },
-  ], [violationCounts, violationTypes, serviceGroups, currentView, countIntervalFlags])
+  ], [violationCounts, violationTypes, serviceGroups, currentView])
 
   // Fetch items
   useEffect(() => {
@@ -482,11 +471,11 @@ export default function LiveSalePage(props: any = {}) {
   }, [])
 
   // Count Records -- fetched only once it's actually being looked at, via
-  // Sale mode's own "Count Records" law view (see renderCountRecordsTable),
+  // Count tab's own "Count Records" view (see renderCountRecordsTable),
   // unlike the queues above (this is the full all-time history, not a
   // small due-today list). The Log tab dropped its own Count view since
-  // it's the same table, already reachable from Sale mode.
-  const viewingCountRecords = currentView?.kind === 'countRecords'
+  // it's the same table, reachable from the Count tab instead.
+  const viewingCountRecords = countView?.kind === 'records'
   useEffect(() => {
     if (!viewingCountRecords) return
     fetch('/api/stock/counts')
@@ -578,8 +567,6 @@ export default function LiveSalePage(props: any = {}) {
         const lossB = Math.abs(Number(b.selling_price || 0) - Number(b.cost_price || 0))
         return lossB - lossA
       })
-    } else if (currentView?.kind === 'countInterval' && currentView.key) {
-      filtered = filtered.filter(item => item.count_interval === currentView.key)
     }
 
     // Sort by sales count (highest to lowest)
@@ -898,6 +885,7 @@ export default function LiveSalePage(props: any = {}) {
         <button type="button" onClick={() => setMode('bills')} title="Bills" className={btnCls(mode === 'bills', 'bg-orange-600')}>Bills</button>
         <button type="button" onClick={() => setMode('feed')} title="Loss by Date" className={btnCls(mode === 'feed', 'bg-red-600')}>Loss by Date</button>
         <button type="button" onClick={() => setMode('lossByTarget')} title="Loss by Target" className={btnCls(mode === 'lossByTarget', 'bg-pink-600')}>Loss by Tgt</button>
+        <button type="button" onClick={() => setMode('count')} title="Count" className={btnCls(mode === 'count', 'bg-indigo-600')}>Count</button>
       </div>
     )
   }
@@ -1475,6 +1463,91 @@ export default function LiveSalePage(props: any = {}) {
     )
   }
 
+  // Every count-related view that used to only be reachable through the
+  // laws panel (⚖️) on Sale mode: Daily/Every Nd/Dormant/etc (countIntervalFlags),
+  // Count Records (the full all-time history table), and Count History (the
+  // audit log of who counted/edited/deleted what). Moved to its own tab
+  // since they're audit/browse views, not part of actually tapping a sale.
+  if (mode === 'count') {
+    const intervalItems = countView?.kind === 'interval'
+      ? allItems.filter(it => it.count_interval === countView.label)
+      : []
+    return (
+      <>
+      <div className={rootClassName}>
+        {renderModeToggleRow()}
+        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
+          <h2 className="text-sm font-bold text-gray-900">Count</h2>
+          <button
+            type="button"
+            onClick={() => setShowHelpModal(true)}
+            className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 font-semibold text-sm flex items-center justify-center transition"
+            title="Help"
+          >
+            ?
+          </button>
+        </div>
+        <div className="px-4 py-2 border-b border-gray-200 bg-white flex items-center gap-1.5 flex-wrap">
+          {countIntervalFlags.map(f => (
+            <button key={f.key} type="button" onClick={f.onViewClick}
+              className={`text-xs font-semibold px-2 py-1 rounded-full transition ${f.active ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+              {f.label} ({f.count})
+            </button>
+          ))}
+          <button type="button" onClick={() => setCountView(countView?.kind === 'records' ? null : { kind: 'records' })}
+            className={`text-xs font-semibold px-2 py-1 rounded-full transition ${countView?.kind === 'records' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+            Count Records
+          </button>
+          <button type="button" onClick={() => setCountView(countView?.kind === 'history' ? null : { kind: 'history' })}
+            className={`text-xs font-semibold px-2 py-1 rounded-full transition ${countView?.kind === 'history' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+            Count History
+          </button>
+        </div>
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          {!countView && (
+            <p className="py-16 text-center text-gray-400 text-xs">Pick a category above to view its items.</p>
+          )}
+          {countView?.kind === 'interval' && (
+            intervalItems.length === 0 ? (
+              <p className="py-16 text-center text-gray-400 text-xs">No items in &quot;{countView.label}&quot;.</p>
+            ) : (
+              <table className="w-full text-[11px] border-collapse">
+                <thead className="sticky top-0 bg-gray-100 z-10">
+                  <tr>
+                    <th className="text-left px-2 py-1 font-bold text-gray-600">Item</th>
+                    <th className="text-left px-2 py-1 font-bold text-gray-600">Group</th>
+                    <th className="text-right px-2 py-1 font-bold text-gray-600">SOH</th>
+                    <th className="text-right px-2 py-1 font-bold text-gray-600">SP</th>
+                    <th className="text-right px-2 py-1 font-bold text-gray-600">CP</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {intervalItems.map(it => (
+                    <tr key={it.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="px-2 py-1 text-gray-900 font-medium">{it.name}</td>
+                      <td className="px-2 py-1 text-gray-500">{it.group ?? '—'}</td>
+                      <td className="px-2 py-1 text-right text-gray-700">{it.soh}</td>
+                      <td className="px-2 py-1 text-right text-gray-700">{it.selling_price}</td>
+                      <td className="px-2 py-1 text-right text-gray-700">{it.cost_price}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )
+          )}
+          {countView?.kind === 'records' && renderCountRecordsTable()}
+          {countView?.kind === 'history' && (
+            <div className="flex-1 min-h-0 flex flex-col px-4 py-4">
+              <HistoryPanel keywords={['stock', 'count']} />
+            </div>
+          )}
+        </div>
+      </div>
+      <TrainingGuideModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
+      </>
+    )
+  }
+
   return (
     <>
     <div className={rootClassName}>
@@ -1707,7 +1780,6 @@ export default function LiveSalePage(props: any = {}) {
             {currentView.kind === 'serviceMatches' && `Viewing: Service Matches`}
             {currentView.kind === 'newItem' && `Creating New Item`}
             {currentView.kind === 'dailySummary' && `Daily Sales Summary`}
-            {currentView.kind === 'countInterval' && `Viewing: ${currentView.key} (${catalogueItems.length} items)`}
           </span>
           <button
             type="button"
@@ -1723,22 +1795,6 @@ export default function LiveSalePage(props: any = {}) {
       {currentView?.kind === 'aliasWide' && (
         <div className="flex-1 overflow-y-auto">
           <AliasWidePage />
-        </div>
-      )}
-
-      {/* Count Records View -- same table as the Log tab's own Count view
-          (see renderCountRecordsTable), reachable here too as a law view
-          without needing to switch mode. */}
-      {currentView?.kind === 'countRecords' && renderCountRecordsTable()}
-
-      {/* Count History View -- the audit log (who counted/edited what,
-          reported losses) Count 2's own History panel used to show.
-          Read-only here; unlike Count 2's version this doesn't jump back
-          to a specific record on click, since there's no single "the
-          records list" it would need to scroll within. */}
-      {currentView?.kind === 'countHistory' && (
-        <div className="flex-1 min-h-0 flex flex-col px-4 py-4">
-          <HistoryPanel keywords={['stock', 'count']} />
         </div>
       )}
 
