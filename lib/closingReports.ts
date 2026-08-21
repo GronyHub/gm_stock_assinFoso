@@ -1,11 +1,12 @@
 import sql from '@/lib/db'
+import { once } from '@/lib/once'
 
 // The Closer (last staff member to clock out) must answer end-of-day
 // questions before their clock-out is accepted; answers land here, one row
 // per day. Shared by /api/staff-times/today (writes it) and /api/flags
 // (reads it to compute the "missing closing report" flag for the Closer
 // role tab).
-export async function ensureClosingReports() {
+async function ensureClosingReportsImpl() {
   await sql`
     CREATE TABLE IF NOT EXISTS closing_reports (
       id SERIAL PRIMARY KEY,
@@ -23,3 +24,5 @@ export async function ensureClosingReports() {
     )
   `.catch(() => {})
 }
+
+export const ensureClosingReports = once(ensureClosingReportsImpl)

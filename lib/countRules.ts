@@ -1,5 +1,6 @@
 import sql from '@/lib/db'
 import { PACK_PAIRING_CHAINS } from '@/lib/stockGuard'
+import { once } from '@/lib/once'
 
 // items.count_excluded (set from an item's own edit form) is checked in
 // itemRows/itemNamesOnly below, so it applies uniformly everywhere this
@@ -27,10 +28,14 @@ const EXCLUDED_DAILY_SINGLE_NAMES = [/cardboard/i, /a4\s*sheet/i]
 // request rather than tracking down every consumer route individually
 // (the Opener audit and Today's summary both reach these functions
 // indirectly).
-export async function ensureCountCadenceColumns() {
+async function ensureCountCadenceColumnsImpl() {
   await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS count_excluded BOOLEAN NOT NULL DEFAULT false`.catch(() => {})
   await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS count_cadence_days INTEGER`.catch(() => {})
 }
+
+// Called from three separate entry points in this file, several of which run
+// on the same request -- memoizing collapses those into one round trip too.
+export const ensureCountCadenceColumns = once(ensureCountCadenceColumnsImpl)
 
 async function itemRows(itemIds: number[]) {
   if (itemIds.length === 0) return []

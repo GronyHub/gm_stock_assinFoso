@@ -1,9 +1,10 @@
 import sql from '@/lib/db'
+import { once } from '@/lib/once'
 
 // Shared by /api/manage-logs (the category log itself) and /api/flags (which
 // reads manage_logs to compute the audio jingle / equipment-check flags) --
 // both need the table to exist before querying it.
-export async function ensureManageLogs() {
+async function ensureManageLogsImpl() {
   await sql`
     CREATE TABLE IF NOT EXISTS manage_logs (
       id SERIAL PRIMARY KEY,
@@ -25,3 +26,5 @@ export async function ensureManageLogs() {
       ADD COLUMN IF NOT EXISTS grony_section INTEGER
   `.catch(() => {})
 }
+
+export const ensureManageLogs = once(ensureManageLogsImpl)

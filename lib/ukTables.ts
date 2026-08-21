@@ -1,4 +1,5 @@
 import sql from '@/lib/db'
+import { once } from '@/lib/once'
 
 // Fixed set of log categories for each child -- see ukViewData.ts's
 // UK_PEOPLE, which these `person` values must match exactly. Submenus are
@@ -59,7 +60,7 @@ async function ensureChildLogColumns() {
 // Shared by every /api/uk/* route -- uk_columns' FK needs uk_submenus to
 // already exist, so both are created here in order rather than each route
 // creating only its own table.
-export async function ensureUkTables() {
+async function ensureUkTablesImpl() {
   await sql`
     CREATE TABLE IF NOT EXISTS uk_submenus (
       id SERIAL PRIMARY KEY,
@@ -117,3 +118,5 @@ export async function ensureUkTables() {
   await ensureChildLogSubmenus()
   await ensureChildLogColumns()
 }
+
+export const ensureUkTables = once(ensureUkTablesImpl)

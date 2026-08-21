@@ -1,11 +1,12 @@
 import sql from '@/lib/db'
+import { once } from '@/lib/once'
 
 // Free-text notes scoped to one page (same scope_key namespace as
 // DynamicTasksSection's custom_tasks table) -- split into two rows per page
 // via `kind` ('law' = the fixed rule for this page, 'note' = a day-to-day
 // scratchpad), separate from the formal Company Laws content. Can also be
 // law-specific when law_id is set.
-export async function ensurePageNotesTable() {
+async function ensurePageNotesTableImpl() {
   await sql`
     CREATE TABLE IF NOT EXISTS page_notes (
       scope_key TEXT NOT NULL,
@@ -29,3 +30,5 @@ export async function ensurePageNotesTable() {
   await sql`DROP INDEX IF EXISTS page_notes_law_notes_idx`.catch(() => {})
   await sql`DROP INDEX IF EXISTS page_notes_flag_notes_idx`.catch(() => {})
 }
+
+export const ensurePageNotesTable = once(ensurePageNotesTableImpl)

@@ -1,6 +1,7 @@
 import sql from '@/lib/db'
+import { once } from '@/lib/once'
 
-export async function ensureCustomerZohoColumn() {
+async function ensureCustomerZohoColumnImpl() {
   try {
     // Check if zoho_contact_id column exists and has NOT NULL constraint
     const result = await sql`
@@ -27,3 +28,5 @@ export async function ensureCustomerZohoColumn() {
     // Don't throw - this shouldn't block app startup
   }
 }
+
+export const ensureCustomerZohoColumn = once(ensureCustomerZohoColumnImpl)

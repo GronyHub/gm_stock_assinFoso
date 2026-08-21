@@ -2,6 +2,11 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { NextRequest, NextResponse } from 'next/server'
+import { once } from '@/lib/once'
+
+const ensurePaneHiddenTable = once(async () => {
+  await sql`CREATE TABLE IF NOT EXISTS pane_hidden (item_key TEXT PRIMARY KEY)`.catch(() => {})
+})
 
 // Which pane rows (Grony Cash / Grony Manage / Team) are hidden from the
 // left sidebar, keyed by the row's own stable `key` -- same
@@ -13,7 +18,7 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET() {
   const session = await auth()
   if (!session) return NextResponse.json({}, { status: 401 })
-  await sql`CREATE TABLE IF NOT EXISTS pane_hidden (item_key TEXT PRIMARY KEY)`.catch(() => {})
+  await ensurePaneHiddenTable()
   const rows = await sql`SELECT item_key FROM pane_hidden`
   const map: Record<string, boolean> = {}
   for (const r of rows) map[r.item_key] = true
@@ -26,7 +31,7 @@ export async function PATCH(req: NextRequest) {
 
   const { key, hidden } = await req.json()
   if (typeof key !== 'string' || !key.trim()) return NextResponse.json({ error: 'key is required' }, { status: 400 })
-  await sql`CREATE TABLE IF NOT EXISTS pane_hidden (item_key TEXT PRIMARY KEY)`.catch(() => {})
+  await ensurePaneHiddenTable()
 
   if (hidden) {
     await sql`INSERT INTO pane_hidden (item_key) VALUES (${key}) ON CONFLICT (item_key) DO NOTHING`

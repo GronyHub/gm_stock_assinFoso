@@ -1,10 +1,11 @@
 import sql from '@/lib/db'
+import { once } from '@/lib/once'
 
 // Whether each item/service currently has an audio advert recorded --
 // Grony Manage > Advert > Audio's own rule ("any service or item should
 // have its advert recorded"). Shared by /api/advert-status (marking items)
 // and /api/flags (the "items missing audio adverts" flag).
-export async function ensureAdvertStatusTable() {
+async function ensureAdvertStatusTableImpl() {
   await sql`
     CREATE TABLE IF NOT EXISTS item_audio_advert_status (
       item_id INTEGER PRIMARY KEY REFERENCES items(id) ON DELETE CASCADE,
@@ -15,3 +16,5 @@ export async function ensureAdvertStatusTable() {
     )
   `.catch(() => {})
 }
+
+export const ensureAdvertStatusTable = once(ensureAdvertStatusTableImpl)

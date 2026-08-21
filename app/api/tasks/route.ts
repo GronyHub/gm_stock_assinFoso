@@ -1,9 +1,13 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { initializeDatabase } from '@/lib/dbInitialize'
+import { once } from '@/lib/once'
 import { NextRequest, NextResponse } from 'next/server'
 
-async function ensureCustomTasksTable() {
+// Ten DDL statements, previously re-run on every request to this route --
+// one CREATE plus nine ALTER ... IF NOT EXISTS, each its own round trip to
+// re-confirm migrations that have long since been applied.
+const ensureCustomTasksTable = once(async () => {
   await sql`
     CREATE TABLE IF NOT EXISTS custom_tasks (
       id SERIAL PRIMARY KEY,
@@ -27,10 +31,9 @@ async function ensureCustomTasksTable() {
   await sql`ALTER TABLE custom_tasks ADD COLUMN IF NOT EXISTS task_type TEXT DEFAULT 'General task'`.catch(() => {})
   await sql`ALTER TABLE custom_tasks ADD COLUMN IF NOT EXISTS recurrence_type TEXT`.catch(() => {})
   await sql`ALTER TABLE custom_tasks ADD COLUMN IF NOT EXISTS recurrence_days JSONB`.catch(() => {})
-}
+})
 
 export async function GET(req: NextRequest) {
-  await initializeDatabase()
   await initializeDatabase()
   await ensureCustomTasksTable()
   try {
@@ -95,7 +98,6 @@ export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   await initializeDatabase()
-  await initializeDatabase()
   await ensureCustomTasksTable()
 
   const { title, notes, due_date, submenu, view, law_id, flag_key, assigned_to, task_type, recurrence_type, recurrence_days } = await req.json()
@@ -125,7 +127,6 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  await initializeDatabase()
   await initializeDatabase()
   await ensureCustomTasksTable()
 

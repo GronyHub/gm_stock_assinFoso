@@ -1,6 +1,11 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { NextResponse } from 'next/server'
+import { once } from '@/lib/once'
+
+const ensureActiveColumn = once(async () => {
+  await sql`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE`.catch(() => {})
+})
 
 // Just the active/inactive flag per username -- deliberately not gated to
 // owner-level like /api/users (which also returns email, role, resignation
@@ -11,7 +16,7 @@ export async function GET() {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  await sql`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE`.catch(() => {})
+  await ensureActiveColumn()
 
   try {
     const rows = await sql`SELECT LOWER(username) AS username, active FROM app_users`

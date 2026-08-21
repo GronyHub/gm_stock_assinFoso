@@ -1,7 +1,18 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
+import { once } from '@/lib/once'
 import { NextRequest, NextResponse } from 'next/server'
+
+const ensurePaneGroupsTable = once(async () => {
+  await sql`
+    CREATE TABLE IF NOT EXISTS pane_groups (
+      item_key TEXT PRIMARY KEY,
+      group_name TEXT,
+      standalone BOOLEAN NOT NULL DEFAULT false
+    )
+  `.catch(() => {})
+})
 
 // Per-row section overrides for the Cash pane -- a row's `group` in
 // CASH_ITEMS (item/page.tsx) is its default section, IS its own display
@@ -19,13 +30,7 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET() {
   const session = await auth()
   if (!session) return NextResponse.json({}, { status: 401 })
-  await sql`
-    CREATE TABLE IF NOT EXISTS pane_groups (
-      item_key TEXT PRIMARY KEY,
-      group_name TEXT,
-      standalone BOOLEAN NOT NULL DEFAULT false
-    )
-  `.catch(() => {})
+  await ensurePaneGroupsTable()
   const rows = await sql`SELECT item_key, group_name, standalone FROM pane_groups`
   const map: Record<string, { group_name: string | null; standalone: boolean }> = {}
   for (const r of rows) map[r.item_key] = { group_name: r.group_name, standalone: !!r.standalone }
@@ -38,13 +43,7 @@ export async function PATCH(req: NextRequest) {
 
   const { key, groupName, standalone } = await req.json()
   if (typeof key !== 'string' || !key.trim()) return NextResponse.json({ error: 'key is required' }, { status: 400 })
-  await sql`
-    CREATE TABLE IF NOT EXISTS pane_groups (
-      item_key TEXT PRIMARY KEY,
-      group_name TEXT,
-      standalone BOOLEAN NOT NULL DEFAULT false
-    )
-  `.catch(() => {})
+  await ensurePaneGroupsTable()
 
   const trimmedGroup = typeof groupName === 'string' && groupName.trim() ? groupName.trim() : null
   const standaloneBool = !!standalone

@@ -1,9 +1,10 @@
 import sql from '@/lib/db'
+import { ensureActiveItemsView } from '@/lib/activeItems'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
   try {
-    await sql`CREATE OR REPLACE VIEW active_items AS SELECT * FROM items WHERE status IS NULL OR LOWER(status) != 'inactive'`.catch(() => {})
+    await ensureActiveItemsView()
     const rows = await sql`
       SELECT
         i.id,

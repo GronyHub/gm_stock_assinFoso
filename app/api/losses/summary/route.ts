@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { ensureCountRevisions } from '@/lib/countRevisions'
 import { getItemDayRows } from '@/lib/itemDayRows'
 import { computeChainLossSummary } from '@/lib/packChain'
+import { ensureActiveItemsView } from '@/lib/activeItems'
 
 export const dynamic = 'force-dynamic'
 
@@ -70,8 +71,7 @@ function aggregateItem(rows: DayRow[], sp: number) {
 }
 
 export async function GET() {
-  // Ensure active_items view exists
-  await sql`CREATE OR REPLACE VIEW active_items AS SELECT * FROM items WHERE status IS NULL OR LOWER(status) != 'inactive'`.catch(() => {})
+  await ensureActiveItemsView()
 
   const [itemRows, dayRows] = await Promise.all([
     sql`

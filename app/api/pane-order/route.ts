@@ -2,6 +2,11 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { NextRequest, NextResponse } from 'next/server'
+import { once } from '@/lib/once'
+
+const ensurePaneOrderTable = once(async () => {
+  await sql`CREATE TABLE IF NOT EXISTS pane_order (kind TEXT PRIMARY KEY, order_json TEXT NOT NULL)`.catch(() => {})
+})
 
 // Any authenticated user can read the saved order -- everyone's pane needs
 // it to render Grony Cash/Manage's rows in the right sequence. Only
@@ -10,7 +15,7 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET() {
   const session = await auth()
   if (!session) return NextResponse.json({}, { status: 401 })
-  await sql`CREATE TABLE IF NOT EXISTS pane_order (kind TEXT PRIMARY KEY, order_json TEXT NOT NULL)`.catch(() => {})
+  await ensurePaneOrderTable()
   const rows = await sql`SELECT kind, order_json FROM pane_order`
   const map: Record<string, string[]> = {}
   for (const r of rows) {
@@ -31,7 +36,7 @@ export async function PATCH(req: NextRequest) {
   if (!Array.isArray(order) || !order.every(k => typeof k === 'string')) {
     return NextResponse.json({ error: 'order must be an array of strings' }, { status: 400 })
   }
-  await sql`CREATE TABLE IF NOT EXISTS pane_order (kind TEXT PRIMARY KEY, order_json TEXT NOT NULL)`.catch(() => {})
+  await ensurePaneOrderTable()
   const orderJson = JSON.stringify(order)
   await sql`
     INSERT INTO pane_order (kind, order_json) VALUES (${kind}, ${orderJson})

@@ -2,6 +2,11 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { NextRequest, NextResponse } from 'next/server'
+import { once } from '@/lib/once'
+
+const ensurePaneLabelsTable = once(async () => {
+  await sql`CREATE TABLE IF NOT EXISTS pane_labels (item_key TEXT PRIMARY KEY, label TEXT NOT NULL)`.catch(() => {})
+})
 
 // Purely a display-label override, keyed by the pane row's own stable
 // `key` -- routing, PageToolIcons scopeKey, and task/notes/laws/flag data
@@ -12,7 +17,7 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET() {
   const session = await auth()
   if (!session) return NextResponse.json({}, { status: 401 })
-  await sql`CREATE TABLE IF NOT EXISTS pane_labels (item_key TEXT PRIMARY KEY, label TEXT NOT NULL)`.catch(() => {})
+  await ensurePaneLabelsTable()
   const rows = await sql`SELECT item_key, label FROM pane_labels`
   const map: Record<string, string> = {}
   for (const r of rows) map[r.item_key] = r.label
@@ -25,7 +30,7 @@ export async function PATCH(req: NextRequest) {
 
   const { key, label } = await req.json()
   if (typeof key !== 'string' || !key.trim()) return NextResponse.json({ error: 'key is required' }, { status: 400 })
-  await sql`CREATE TABLE IF NOT EXISTS pane_labels (item_key TEXT PRIMARY KEY, label TEXT NOT NULL)`.catch(() => {})
+  await ensurePaneLabelsTable()
 
   const trimmed = typeof label === 'string' ? label.trim() : ''
   if (!trimmed) {

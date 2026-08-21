@@ -1,4 +1,5 @@
 import sql from '@/lib/db'
+import { once } from '@/lib/once'
 
 // Shared by /api/auth/forgot-password (creates a token) and
 // /api/auth/reset-password (consumes one) -- both need the table to exist
@@ -6,7 +7,7 @@ import sql from '@/lib/db'
 // if it was never created by hand on the live database, every reset
 // request would fail with a generic "Something went wrong" on the client
 // (the route had no try/catch surfacing the real error).
-export async function ensurePasswordResetTokens() {
+async function ensurePasswordResetTokensImpl() {
   await sql`
     CREATE TABLE IF NOT EXISTS password_reset_tokens (
       id SERIAL PRIMARY KEY,
@@ -18,3 +19,5 @@ export async function ensurePasswordResetTokens() {
     )
   `.catch(() => {})
 }
+
+export const ensurePasswordResetTokens = once(ensurePasswordResetTokensImpl)

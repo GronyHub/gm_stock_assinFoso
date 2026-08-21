@@ -1,11 +1,12 @@
 import sql from '@/lib/db'
+import { once } from '@/lib/once'
 
 // A running wishlist of future purchases the shop is still deciding on --
 // separate from the real expenses table, since nothing here has actually
 // been bought yet. expense_name and vendor_name are both free text (backed
 // by a datalist of existing items/vendors in the UI, but never forced to
 // match one) since a wanted item or vendor may not exist in either list yet.
-export async function ensureExpenseOrders() {
+async function ensureExpenseOrdersImpl() {
   await sql`
     CREATE TABLE IF NOT EXISTS expense_orders (
       id SERIAL PRIMARY KEY,
@@ -18,3 +19,5 @@ export async function ensureExpenseOrders() {
     )
   `.catch(() => {})
 }
+
+export const ensureExpenseOrders = once(ensureExpenseOrdersImpl)

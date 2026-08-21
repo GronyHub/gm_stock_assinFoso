@@ -2,6 +2,11 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { NextRequest, NextResponse } from 'next/server'
+import { once } from '@/lib/once'
+
+const ensureAppSettingsTable = once(async () => {
+  await sql`CREATE TABLE IF NOT EXISTS app_settings (setting_key TEXT PRIMARY KEY, value_json TEXT NOT NULL)`.catch(() => {})
+})
 
 // Generic shared-setting store -- one JSON blob per key, readable by
 // everyone, writable by owner-level only. Every "this only applies on my
@@ -20,7 +25,7 @@ export async function GET(req: NextRequest) {
   const key = req.nextUrl.searchParams.get('key')
   if (!key) return NextResponse.json({ error: 'key is required' }, { status: 400 })
 
-  await sql`CREATE TABLE IF NOT EXISTS app_settings (setting_key TEXT PRIMARY KEY, value_json TEXT NOT NULL)`.catch(() => {})
+  await ensureAppSettingsTable()
   const [row] = await sql`SELECT value_json FROM app_settings WHERE setting_key = ${key}`
   if (!row) return NextResponse.json({ value: null })
   try {
@@ -36,7 +41,7 @@ export async function PATCH(req: NextRequest) {
 
   const { key, value } = await req.json()
   if (typeof key !== 'string' || !key.trim()) return NextResponse.json({ error: 'key is required' }, { status: 400 })
-  await sql`CREATE TABLE IF NOT EXISTS app_settings (setting_key TEXT PRIMARY KEY, value_json TEXT NOT NULL)`.catch(() => {})
+  await ensureAppSettingsTable()
 
   const valueJson = JSON.stringify(value ?? null)
   await sql`

@@ -1,10 +1,11 @@
 import sql from '@/lib/db'
+import { once } from '@/lib/once'
 
 // Every change to an existing stock count keeps its previous value here, so
 // the count cell can show what it was before and who counted/changed it.
 // item_id/count_date are denormalized so history survives even if the count
 // row itself is later deleted.
-export async function ensureCountRevisions() {
+async function ensureCountRevisionsImpl() {
   await sql`
     CREATE TABLE IF NOT EXISTS stock_count_revisions (
       id SERIAL PRIMARY KEY,
@@ -21,6 +22,8 @@ export async function ensureCountRevisions() {
   // Tables created before the action column existed.
   await sql`ALTER TABLE stock_count_revisions ADD COLUMN IF NOT EXISTS action TEXT NOT NULL DEFAULT 'changed'`.catch(() => {})
 }
+
+export const ensureCountRevisions = once(ensureCountRevisionsImpl)
 
 export async function recordCountRevision(params: {
   stockCountId: number | null

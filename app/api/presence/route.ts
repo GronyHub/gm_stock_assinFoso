@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
+import { once } from '@/lib/once'
 import { NextRequest, NextResponse } from 'next/server'
 
 // Anything not updated in the last 25s is considered stale (tab closed,
@@ -8,7 +9,10 @@ import { NextRequest, NextResponse } from 'next/server'
 // actively delete it.
 const STALE_SECONDS = 25
 
-async function ensureUserPresenceTable() {
+// This is the app's busiest route (every open tab polls the GET and
+// heartbeats the POST), so re-running the CREATE on every single call was
+// doubling its database traffic to re-confirm a table that already exists.
+const ensureUserPresenceTable = once(async () => {
   await sql`
     CREATE TABLE IF NOT EXISTS user_presence (
       staff_name TEXT PRIMARY KEY,
@@ -16,7 +20,7 @@ async function ensureUserPresenceTable() {
       updated_at TIMESTAMP DEFAULT NOW()
     )
   `.catch(() => {})
-}
+})
 
 export async function GET() {
   try {

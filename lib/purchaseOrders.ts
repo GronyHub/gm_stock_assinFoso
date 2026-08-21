@@ -1,4 +1,5 @@
 import sql from '@/lib/db'
+import { once } from '@/lib/once'
 
 // Purchase Orders -- a request sent to a vendor for goods not yet received,
 // distinct from a Bill (which records a purchase already made). A PO stays
@@ -8,7 +9,7 @@ import sql from '@/lib/db'
 // every line is fully accounted for) and links it back via
 // purchase_order_receipts. Line-level detail for a given receiving batch is
 // read from that Bill's own bill_lines rather than duplicated here.
-export async function ensurePurchaseOrderTables() {
+async function ensurePurchaseOrderTablesImpl() {
   await sql`
     CREATE TABLE IF NOT EXISTS purchase_orders (
       id SERIAL PRIMARY KEY,
@@ -58,3 +59,5 @@ export function receivingState(lines: { qty_ordered: number; qty_received: numbe
   const anyStarted = lines.some(l => l.qty_received > 0.001)
   return anyStarted ? 'partial' : 'not_started'
 }
+
+export const ensurePurchaseOrderTables = once(ensurePurchaseOrderTablesImpl)
