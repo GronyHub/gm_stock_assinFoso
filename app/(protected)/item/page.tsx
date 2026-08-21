@@ -800,7 +800,7 @@ function ItemHubPageInner() {
   }
 
   useEffect(() => { loadItems() }, [])
-  usePolling(loadItems, 60000)
+  usePolling(loadItems, 120000)
 
   // Group filter options -- deliberately NOT derived from `items` above.
   // The Items table (LossTab) is built from item_stock_summary, which can
@@ -816,7 +816,7 @@ function ItemHubPageInner() {
     }).catch(() => {})
   }
   useEffect(() => { loadLossGroups() }, [])
-  usePolling(loadLossGroups, 60000)
+  usePolling(loadLossGroups, 120000)
 
   // Renaming a group from the Group dropdown itself, rather than one item
   // at a time -- applies everywhere via PUT /api/items/groups.
@@ -905,7 +905,7 @@ function ItemHubPageInner() {
   }
 
   useEffect(() => { loadBadgeData() }, [])
-  usePolling(loadBadgeData, 60000)
+  usePolling(loadBadgeData, 120000)
 
   const violationCounts: Record<string, number> = useMemo(() => {
     const negSoh = items.filter(i => Number(i.calculated_soh) < 0 && i.product_type !== 'service').length
@@ -1011,7 +1011,7 @@ function ItemHubPageInner() {
     }).catch(() => {})
   }
   useEffect(() => { loadTaskCounts() }, [])
-  usePolling(loadTaskCounts, 60000)
+  usePolling(loadTaskCounts, 120000)
   const taskCountFor = (scopeKey: string) => taskCounts[scopeKey] ?? 0
   // A few pane rows' PageToolIcons scopeKey differs from their own pane
   // label (either because the label was later shortened for the pane -- see
@@ -1396,7 +1396,7 @@ function ItemHubPageInner() {
   const [paneOrder, setPaneOrder] = useState<PaneOrderMap>({})
   const fetchPaneOrder = () => fetch('/api/pane-order').then(r => r.ok ? r.json() : {}).then(setPaneOrder).catch(() => {})
   useEffect(() => { fetchPaneOrder() }, [])
-  usePolling(fetchPaneOrder, 60000)
+  usePolling(fetchPaneOrder, 120000)
   // Same shared-with-everyone pattern as paneOrder above, but for display
   // labels instead of row order -- see ReorderListsPanel.tsx and
   // /api/pane-labels. Purely cosmetic: a row's `key` (used for routing,
@@ -1405,7 +1405,7 @@ function ItemHubPageInner() {
   const [paneLabels, setPaneLabels] = useState<Record<string, string>>({})
   const fetchPaneLabels = () => fetch('/api/pane-labels').then(r => r.ok ? r.json() : {}).then(setPaneLabels).catch(() => {})
   useEffect(() => { fetchPaneLabels() }, [])
-  usePolling(fetchPaneLabels, 60000)
+  usePolling(fetchPaneLabels, 120000)
   const paneLabel = (key: string, fallback: string) => paneLabels[key] ?? fallback
   // Same shared-with-everyone pattern again, but for which section a Cash
   // row sits in -- see /api/pane-groups and ReorderListsPanel.tsx. A row
@@ -1419,7 +1419,7 @@ function ItemHubPageInner() {
   const [paneGroups, setPaneGroups] = useState<Record<string, { group_name: string | null; standalone: boolean }>>({})
   const fetchPaneGroups = () => fetch('/api/pane-groups').then(r => r.ok ? r.json() : {}).then(setPaneGroups).catch(() => {})
   useEffect(() => { fetchPaneGroups() }, [])
-  usePolling(fetchPaneGroups, 60000)
+  usePolling(fetchPaneGroups, 120000)
   // Same shared-with-everyone pattern again, but for which rows are hidden
   // from the sidebar entirely -- see /api/pane-hidden and
   // ReorderListsPanel.tsx. Purely a visibility override, same guarantee as
@@ -1429,7 +1429,7 @@ function ItemHubPageInner() {
   const [paneHidden, setPaneHidden] = useState<Record<string, boolean>>({})
   const fetchPaneHidden = () => fetch('/api/pane-hidden').then(r => r.ok ? r.json() : {}).then(setPaneHidden).catch(() => {})
   useEffect(() => { fetchPaneHidden() }, [])
-  usePolling(fetchPaneHidden, 60000)
+  usePolling(fetchPaneHidden, 120000)
   // New Sale/Live Sale/Log used to be hardcoded sub-buttons nested under
   // the Sales row, then their own standalone rows. Now Sales, Bills, Loss
   // by Date, and Loss by Target have all folded into Live Sale's own mode
