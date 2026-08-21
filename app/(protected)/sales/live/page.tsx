@@ -86,6 +86,28 @@ function formatLoss(l: { lossCount: number; lgAmt: number; gainCount?: number } 
   return { text: `Loss ${count}${gainSuffix}`, cls: 'text-gray-400' }
 }
 
+// Bold attention banner for an item's own data-integrity problems -- same
+// idea as the COUNT NOW banner (see countStatus/pinnedDueItems below), just
+// for the checks tracked elsewhere as violations (item/page.tsx's
+// itemsWithViolations: neg_soh, no_sp, no_cp, no_group). Computed straight
+// off the item's own fields already on Item, rather than depending on that
+// prop, since a) those 4 checks only ever need this one item's own data and
+// b) itemsWithViolations only has some of the seven violation keys wired up
+// (duplicates/unlinked_named/service_violation need cross-item data this
+// component doesn't have, so they're not covered here). One banner per
+// card, worst first, matching the existing one-banner convention rather
+// than stacking every applicable issue.
+function itemAttentionFlag(item: Item): { label: string; bg: string } | null {
+  const soh = Number(item.soh)
+  const sp = parseFloat(String(item.selling_price)) || 0
+  const cp = parseFloat(String(item.cost_price)) || 0
+  if (item.product_type !== 'service' && soh < 0) return { label: '⚠ NEGATIVE STOCK', bg: 'bg-red-600' }
+  if (sp <= 0) return { label: '⚠ MISSING SELLING PRICE', bg: 'bg-orange-600' }
+  if (cp <= 0) return { label: '⚠ MISSING COST PRICE', bg: 'bg-orange-500' }
+  if (!item.group) return { label: '⚠ MISSING GROUP', bg: 'bg-amber-500' }
+  return null
+}
+
 export default function LiveSalePage(props: any = {}) {
   console.log('LiveSalePage mounted with new item picker')
   usePresenceReporter('live-tapping a sale')
@@ -2206,54 +2228,62 @@ export default function LiveSalePage(props: any = {}) {
             )}
             {restCatalogueItems.map(item => {
               const count = salesCounts.get(item.id) ?? 0
+              const flag = itemAttentionFlag(item)
               return (
                 <div
                   key={item.id}
-                  className="p-2 flex items-start gap-1 hover:bg-gray-50 transition group border-r border-b border-gray-100"
+                  className={`flex flex-col border-r border-b group ${flag ? 'bg-orange-50 border-orange-100' : 'border-gray-100'}`}
                 >
-                  <div className="flex-1 min-w-0">
-                    <button
-                      type="button"
-                      onClick={() => setViewingItemId(item.id)}
-                      className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 leading-tight truncate text-left hover:underline transition"
-                    >
-                      {item.name}
-                    </button>
-                    <p className="text-[9px] text-gray-600 leading-tight">
-                      <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
-                      <span className="text-gray-400"> · </span>
-                      <span className="text-green-600 font-semibold">CP ₵{formatPrice(item.cost_price)}</span>
-                      <span className="text-gray-400"> · </span>
-                      <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
-                      {item.count_interval && (
-                        <>
-                          <span className="text-gray-400"> · </span>
-                          <span className="text-gray-500">{item.count_interval}</span>
-                        </>
+                  {flag && (
+                    <div className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide ${flag.bg}`}>
+                      {flag.label}
+                    </div>
+                  )}
+                  <div className="p-2 flex items-start gap-1 hover:bg-black/5 transition">
+                    <div className="flex-1 min-w-0">
+                      <button
+                        type="button"
+                        onClick={() => setViewingItemId(item.id)}
+                        className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 leading-tight truncate text-left hover:underline transition"
+                      >
+                        {item.name}
+                      </button>
+                      <p className="text-[9px] text-gray-600 leading-tight">
+                        <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
+                        <span className="text-gray-400"> · </span>
+                        <span className="text-green-600 font-semibold">CP ₵{formatPrice(item.cost_price)}</span>
+                        <span className="text-gray-400"> · </span>
+                        <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
+                        {item.count_interval && (
+                          <>
+                            <span className="text-gray-400"> · </span>
+                            <span className="text-gray-500">{item.count_interval}</span>
+                          </>
+                        )}
+                        <span className="text-gray-400"> · </span>
+                        <span className={formatLoss(lossByItemId.get(item.id)).cls}>{formatLoss(lossByItemId.get(item.id)).text}</span>
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      {count > 0 && (
+                        <span className="inline-flex items-center justify-center min-w-3 h-3 px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold">
+                          {count}
+                        </span>
                       )}
-                      <span className="text-gray-400"> · </span>
-                      <span className={formatLoss(lossByItemId.get(item.id)).cls}>{formatLoss(lossByItemId.get(item.id)).text}</span>
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-0.5 shrink-0">
-                    {count > 0 && (
-                      <span className="inline-flex items-center justify-center min-w-3 h-3 px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold">
-                        {count}
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedItem(item)
-                        setDueWhenOpened(false)
-                        setPrice('')
-                        setQty('')
-                        setError('')
-                      }}
-                      className="w-7 h-7 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm flex items-center justify-center transition"
-                    >
-                      +
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedItem(item)
+                          setDueWhenOpened(false)
+                          setPrice('')
+                          setQty('')
+                          setError('')
+                        }}
+                        className="w-7 h-7 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm flex items-center justify-center transition"
+                      >
+                        +
+                      </button>
+                    </div>
                   </div>
                 </div>
               )
@@ -2266,6 +2296,7 @@ export default function LiveSalePage(props: any = {}) {
       {/* Modal */}
       {selectedItem && (() => {
         const due = countStatus.get(selectedItem.id)
+        const flag = itemAttentionFlag(selectedItem)
         const expected = Number(selectedItem.soh)
         const enteredCount = countQty === '' ? null : Number(countQty)
         const countShort = enteredCount !== null && !isNaN(enteredCount) && enteredCount < expected
@@ -2402,6 +2433,17 @@ export default function LiveSalePage(props: any = {}) {
               </div>
             ) : (
             <>
+            {/* Same negative-stock/missing-price/missing-cost/missing-group
+                banner the grid card shows (see itemAttentionFlag) -- shown
+                here too since the modal is reached directly from a search
+                pick as well as from a grid card, and a searched-and-picked
+                item skips the grid card entirely. */}
+            {flag && (
+              <div className={`mx-4 mt-4 px-3 py-1.5 rounded-lg text-xs font-extrabold text-white ${flag.bg}`}>
+                {flag.label}
+              </div>
+            )}
+
             {/* This item is due for a count -- surfaced right inside the
                 sale sheet instead of requiring a separate mode-switch and
                 a separate tap. Still its own field and its own submit,
