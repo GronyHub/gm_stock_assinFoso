@@ -71,10 +71,10 @@ export function buildPackCycles(singlesNewestFirst: ComputedRow[]): PackCycle[] 
    table. */
 export type PackChainRow = {
   date: string
-  packCnt: string | null; packCntBy: string | null; packCntHistory: ItemDayRow['count_history']
+  packCnt: string | null; packCntBy: string | null; packCntAt: string | null; packCntHistory: ItemDayRow['count_history']
   packBl: string | null; packGmc: string | null; packWic: string | null; packSellPrice: string | null
   packExp: number | null; packLoss: number | null; packAliases: string | null
-  singlesCnt: string | null; singlesCntBy: string | null; singlesCntHistory: ItemDayRow['count_history']; singlesConvIn: string | null
+  singlesCnt: string | null; singlesCntBy: string | null; singlesCntAt: string | null; singlesCntHistory: ItemDayRow['count_history']; singlesConvIn: string | null
   singlesBreakdown: { name: string; qty: number; amount: number }[]
   singlesWicQty: string | null; singlesSellPrice: string | null
   singlesUsed: number; singlesExp: number | null; singlesLoss: number | null; singlesAliases: string | null
@@ -83,22 +83,23 @@ export function buildPackChainRows(packRows: ComputedRow[], singlesRows: Compute
   const map = new Map<string, PackChainRow>()
   for (const r of packRows) {
     map.set(r.date, {
-      date: r.date, packCnt: r.qty_counted, packCntBy: r.counted_by, packCntHistory: r.count_history, packBl: r.bills_qty, packGmc: r.gmc_qty, packWic: r.wic_qty, packSellPrice: r.sell_price,
+      date: r.date, packCnt: r.qty_counted, packCntBy: r.counted_by, packCntAt: r.counted_at, packCntHistory: r.count_history, packBl: r.bills_qty, packGmc: r.gmc_qty, packWic: r.wic_qty, packSellPrice: r.sell_price,
       packExp: r.expected_soh, packLoss: r.loss, packAliases: r.aliases,
-      singlesCnt: null, singlesCntBy: null, singlesCntHistory: null, singlesConvIn: null, singlesBreakdown: [],
+      singlesCnt: null, singlesCntBy: null, singlesCntAt: null, singlesCntHistory: null, singlesConvIn: null, singlesBreakdown: [],
       singlesWicQty: null, singlesSellPrice: null,
       singlesUsed: 0, singlesExp: null, singlesLoss: null, singlesAliases: null,
     })
   }
   for (const r of singlesRows) {
     const existing = map.get(r.date) ?? {
-      date: r.date, packCnt: null, packCntBy: null, packCntHistory: null, packBl: null, packGmc: null, packWic: null, packSellPrice: null, packExp: null, packLoss: null, packAliases: null,
-      singlesCnt: null, singlesCntBy: null, singlesCntHistory: null, singlesConvIn: null, singlesBreakdown: [],
+      date: r.date, packCnt: null, packCntBy: null, packCntAt: null, packCntHistory: null, packBl: null, packGmc: null, packWic: null, packSellPrice: null, packExp: null, packLoss: null, packAliases: null,
+      singlesCnt: null, singlesCntBy: null, singlesCntAt: null, singlesCntHistory: null, singlesConvIn: null, singlesBreakdown: [],
       singlesWicQty: null, singlesSellPrice: null,
       singlesUsed: 0, singlesExp: null, singlesLoss: null, singlesAliases: null,
     }
     existing.singlesCnt = r.qty_counted
     existing.singlesCntBy = r.counted_by
+    existing.singlesCntAt = r.counted_at
     existing.singlesCntHistory = r.count_history
     existing.singlesConvIn = r.converted_in_qty
     existing.singlesAliases = r.aliases

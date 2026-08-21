@@ -17,6 +17,22 @@ export function fmtDate(raw: string | null | undefined): string {
   return `${day} ${MON[d.getMonth()]} '${yr}-${DAY[d.getDay()]}`
 }
 
+// "9:14am" -- the clock time a count/event happened, alongside its date
+// rather than replacing it. Ghana runs on UTC year-round with no DST (see
+// daily-summary's own comment on this), so a plain local Date read here
+// lines up with shop time on any device actually in Ghana, same assumption
+// fmtDate above already makes.
+export function fmtTime(raw: string | null | undefined): string {
+  if (!raw) return ''
+  const d = new Date(raw)
+  if (isNaN(d.getTime())) return ''
+  let h = d.getHours()
+  const m = d.getMinutes()
+  const ampm = h >= 12 ? 'pm' : 'am'
+  h = h % 12 || 12
+  return `${h}:${String(m).padStart(2, '0')}${ampm}`
+}
+
 const MON_FULL_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 // "2nd Jun 2026" -- used for the Task Assigned On note on personalized assignment messages.

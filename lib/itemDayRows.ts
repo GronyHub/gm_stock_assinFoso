@@ -6,6 +6,7 @@ export type ItemDayRow = {
   date: string
   qty_counted: string | null
   counted_by: string | null
+  counted_at: string | null
   count_history: CountRevision[] | null
   wic_qty: string | null
   gmc_qty: string | null
@@ -78,8 +79,11 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
       SELECT count_date::date FROM stock_count_revisions WHERE item_id = ${id}
     ),
     daily_counts AS (
+      -- There's normally exactly one stock_counts row per item per day (see
+      -- /api/stock/count's own comment on why a same-day recount replaces
+      -- rather than adds), so these aggregates are just that row's values.
       SELECT count_date::date AS d, SUM(quantity_counted) AS qty_counted,
-             MAX(counted_by) AS counted_by
+             MAX(counted_by) AS counted_by, MAX(counted_at) AS counted_at
       FROM stock_counts
       WHERE item_id = ${id}
       GROUP BY count_date::date
@@ -158,6 +162,7 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
       ad.d::text AS date,
       dc.qty_counted,
       dc.counted_by,
+      dc.counted_at::text AS counted_at,
       dch.history AS count_history,
       COALESCE(dw.qty, 0) + COALESCE(dcs.qty, 0) AS wic_qty,
       dg.qty  AS gmc_qty,

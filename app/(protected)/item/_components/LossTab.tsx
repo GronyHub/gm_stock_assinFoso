@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo, useRef, Fragment, type ReactNode, type CSSProperties } from 'react'
-import { fmtDate } from '@/lib/fmtDate'
+import { fmtDate, fmtTime } from '@/lib/fmtDate'
 import type { ItemDayRow as DayRow, CountRevision } from '@/lib/itemDayRows'
 import {
   numVal, computeRows, buildPackCycles, buildPackChainRows, packSideCedis, realizedCycleCedis,
@@ -83,9 +83,10 @@ function initialOf(name: string | null | undefined): string | null {
 // initial both crossed out); a deleted count keeps its value marked with a
 // red ✗. In both cases the amber initial after it is the staff member who
 // made the change/deletion. The current count (if any) sits below, untouched.
-function CntValue({ qty, countedBy, history, blank }: { qty: string | null; countedBy: string | null; history: CountRevision[] | null | undefined; blank?: boolean }) {
+function CntValue({ qty, countedBy, countedAt, history, blank }: { qty: string | null; countedBy: string | null; countedAt?: string | null; history: CountRevision[] | null | undefined; blank?: boolean }) {
   const text = fmtQs(qty)
   const hist = history ?? []
+  const time = fmtTime(countedAt)
   if (text === '—' && hist.length === 0) return blank ? null : <span className="text-gray-300">—</span>
   return (
     <span className="inline-flex flex-col items-center leading-tight">
@@ -107,9 +108,10 @@ function CntValue({ qty, countedBy, history, blank }: { qty: string | null; coun
         )
       })}
       {text !== '—' && (
-        <span className="whitespace-nowrap">
+        <span className="whitespace-nowrap" title={time ? `Counted at ${time}` : undefined}>
           {text}
           {initialOf(countedBy) && <span className="text-blue-500 text-[6px]"> ({initialOf(countedBy)})</span>}
+          {time && <span className="text-gray-400 text-[6px]"> {time}</span>}
         </span>
       )}
     </span>
@@ -513,7 +515,7 @@ function SingleServicePackChainTable({
                 <td className="text-center py-0 leading-none font-bold border-l border-gray-300 text-gray-600">{blankDash(fmtQs(row.packGmc))}</td>
                 <td className="text-center py-0 font-bold border-l border-gray-300 text-gray-400">{blankDash(fmtN(row.packExp))}</td>
                 <td className="text-center py-0 font-bold border-l border-gray-300 text-gray-900 whitespace-nowrap">
-                  <CntValue qty={row.packCnt} countedBy={row.packCntBy} history={row.packCntHistory} blank />
+                  <CntValue qty={row.packCnt} countedBy={row.packCntBy} countedAt={row.packCntAt} history={row.packCntHistory} blank />
                 </td>
                 <td className="text-center py-0 font-bold border-l border-gray-300">
                   {row.packLoss === null ? null
@@ -588,7 +590,7 @@ function SingleServicePackChainTable({
                 </td>
                 <td className="text-center py-0 font-bold border-l-2 border-l-gray-600 text-gray-400">{blankDash(fmtN(row.singlesExp))}</td>
                 <td className="text-center py-0 font-bold border-l border-gray-300 text-gray-400 whitespace-nowrap">
-                  <CntValue qty={row.singlesCnt} countedBy={row.singlesCntBy} history={row.singlesCntHistory} blank />
+                  <CntValue qty={row.singlesCnt} countedBy={row.singlesCntBy} countedAt={row.singlesCntAt} history={row.singlesCntHistory} blank />
                 </td>
                 <td className="pl-1 py-0 border-l-2 border-l-gray-600 text-purple-700 font-semibold overflow-hidden whitespace-nowrap">
                   <span className="block truncate" title={row.packAliases ?? ''}>{row.packAliases ?? <span className="text-gray-300">—</span>}</span>
@@ -1323,7 +1325,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                       ) : fmtDate(row.date)}
                     </td>
                     <td className="text-center py-0 leading-none font-bold border-l-2 border-l-gray-600 text-gray-900 whitespace-nowrap">
-                      <CntValue qty={row.packCnt} countedBy={row.packCntBy} history={row.packCntHistory} />
+                      <CntValue qty={row.packCnt} countedBy={row.packCntBy} countedAt={row.packCntAt} history={row.packCntHistory} />
                     </td>
                     <td className="text-center py-0 font-bold border-l border-gray-300 text-blue-600">{fmtQs(row.packBl)}</td>
                     <td className="text-center py-0 leading-none font-bold border-l border-gray-300 text-gray-600">{fmtQs(row.packGmc)}</td>
@@ -1393,7 +1395,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                       )
                     })}
                     <td className="text-center py-0 font-bold border-l border-gray-300 text-gray-900 whitespace-nowrap">
-                      <CntValue qty={row.singlesCnt} countedBy={row.singlesCntBy} history={row.singlesCntHistory} />
+                      <CntValue qty={row.singlesCnt} countedBy={row.singlesCntBy} countedAt={row.singlesCntAt} history={row.singlesCntHistory} />
                     </td>
                     <td className="text-center py-0 leading-none font-bold border-l border-gray-300 text-gray-600">{fmtQ(row.singlesUsed)}</td>
                     <td className="text-center py-0 font-bold border-l border-gray-300 text-gray-400">{fmtN(row.singlesExp)}</td>
@@ -1500,7 +1502,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                     ) : fmtDate(row.date)}
                   </td>
                   <td className="px-4 py-2 text-right text-gray-900 whitespace-nowrap">
-                    <CntValue qty={row.qty_counted} countedBy={row.counted_by} history={row.count_history} />
+                    <CntValue qty={row.qty_counted} countedBy={row.counted_by} countedAt={row.counted_at} history={row.count_history} />
                   </td>
                   <td className="px-4 py-2 text-right text-teal-600">{fmtQs(row.converted_in_qty)}</td>
                   <td className="px-4 py-2 text-right font-semibold text-blue-700">{fmtN(row.available)}</td>
@@ -1597,7 +1599,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                       : <span className="text-gray-400">0</span>}
                   </td>
                   <td className="px-4 py-2 text-right text-gray-900 whitespace-nowrap">
-                    <CntValue qty={row.qty_counted} countedBy={row.counted_by} history={row.count_history} />
+                    <CntValue qty={row.qty_counted} countedBy={row.counted_by} countedAt={row.counted_at} history={row.count_history} />
                   </td>
                   <td className="px-4 py-2 text-right text-gray-600">{fmtQs(row.wic_qty)}</td>
                   <td className="px-4 py-2 text-right text-gray-600">{fmtQs(row.gmc_qty)}</td>

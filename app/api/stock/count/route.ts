@@ -4,11 +4,21 @@ import { logActivity } from '@/lib/logger'
 import { recordCountRevision } from '@/lib/countRevisions'
 import { gainViolation, expectedStockAt, packPairingCheck } from '@/lib/stockGuard'
 import { isOwnerLevel } from '@/lib/roles'
+import { once } from '@/lib/once'
 import { NextRequest, NextResponse } from 'next/server'
+
+// count_date stays date-only (every day-level query across the app groups/
+// filters on it) -- the actual clock time a count was taken lives in this
+// separate column instead, so nothing that already relies on count_date
+// meaning "just a date" has to change.
+const ensureCountedAtColumn = once(async () => {
+  await sql`ALTER TABLE stock_counts ADD COLUMN IF NOT EXISTS counted_at TIMESTAMP`.catch(() => {})
+})
 
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  await ensureCountedAtColumn()
   const { itemId, qty, notes, loss_reason, manager_response } = await req.json()
   if (!itemId || qty == null) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
   if (Number(qty) < 0 || isNaN(Number(qty))) {
@@ -94,15 +104,15 @@ export async function POST(req: NextRequest) {
     }
     await sql`
       UPDATE stock_counts
-      SET quantity_counted = ${qty}, notes = ${finalNotes}, source = 'app', counted_by = ${countedBy}
+      SET quantity_counted = ${qty}, notes = ${finalNotes}, source = 'app', counted_by = ${countedBy}, counted_at = NOW()
       WHERE id = ${existing.id}
     `
     await logActivity(countedBy ?? 'Unknown', 'counted stock', `${item[0].canonical_name} · qty ${qty} (replaced today's earlier count)`)
     if (lossNote) await logActivity(countedBy ?? 'Unknown', 'reported count loss', `${item[0].canonical_name} · counted ${qty} vs expected ${expected} — ${lossNote}`)
   } else {
     await sql`
-      INSERT INTO stock_counts (item_id, zoho_item_id, item_name, count_date, quantity_counted, notes, source, counted_by)
-      VALUES (${itemId}, ${item[0].zoho_item_id}, ${item[0].canonical_name}, ${today}, ${qty}, ${finalNotes}, 'app', ${countedBy})
+      INSERT INTO stock_counts (item_id, zoho_item_id, item_name, count_date, quantity_counted, notes, source, counted_by, counted_at)
+      VALUES (${itemId}, ${item[0].zoho_item_id}, ${item[0].canonical_name}, ${today}, ${qty}, ${finalNotes}, 'app', ${countedBy}, NOW())
     `
     await logActivity(countedBy ?? 'Unknown', 'counted stock', `${item[0].canonical_name} · qty ${qty}`)
     if (lossNote) await logActivity(countedBy ?? 'Unknown', 'reported count loss', `${item[0].canonical_name} · counted ${qty} vs expected ${expected} — ${lossNote}`)
