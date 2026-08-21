@@ -4,12 +4,12 @@ import { fmtDate } from '@/lib/fmtDate'
 import { useColumnPrefs, ColumnsPickerButton, ColResizeHandle, type ColumnDef } from './columnPrefs'
 import ItemDetailModal from './ItemDetailModal'
 
-const LOSS_FEED_COL_DEFAULTS: Record<string, number> = { date: 45, item: 90, expected: 35, counted: 35, lossQty: 35, lossAmt: 45 }
+const LOSS_FEED_COL_DEFAULTS: Record<string, number> = { date: 45, item: 90, expected: 35, counted: 35, lossQty: 35, lossAmt: 45, reason: 120 }
 
-// Date + Item stay sticky/always-visible; these four are the only ones the
+// Date + Item stay sticky/always-visible; these are the only ones the
 // picker can hide/reorder/rename. Labels flip between Loss/Gain wording
 // depending on `kind`, same as the header already did.
-type ColKey = 'expected' | 'counted' | 'lossQty' | 'lossAmt'
+type ColKey = 'expected' | 'counted' | 'lossQty' | 'lossAmt' | 'reason'
 
 type LossEvent = {
   date: string
@@ -19,6 +19,7 @@ type LossEvent = {
   counted: number
   loss_qty: number
   loss_amt: number
+  reason: string | null
 }
 
 function fmtN(v: number) { return v % 1 === 0 ? String(v) : v.toFixed(2) }
@@ -38,6 +39,7 @@ export default function LossFeedTab({ search, kind = 'loss' }: { search: string;
     { key: 'counted',  label: 'CNT', title: 'What was physically counted' },
     { key: 'lossQty',  label: isGain ? 'GAIN' : 'LOSS', title: isGain ? 'Counted minus expected — should always be 0' : 'Expected minus counted' },
     { key: 'lossAmt',  label: isGain ? 'GAIN ₵' : 'LOSS ₵', title: 'Valued in cedis (4x6 papers at ₵20/sheet; other items at selling price)' },
+    { key: 'reason',   label: 'REASON', title: "The counter's explanation for this loss, entered when the count was saved" },
   ]
   const colPrefs = useColumnPrefs<ColKey>(`lossFeed_${kind}`, columns)
   const colByKey = new Map(columns.map(c => [c.key, c]))
@@ -164,6 +166,11 @@ export default function LossFeedTab({ search, kind = 'loss' }: { search: string;
                       if (c.key === 'expected') return <td key={c.key} className="px-0.5 py-0.5 text-center text-gray-500 text-[9px]">{fmtN(e.expected)}</td>
                       if (c.key === 'counted') return <td key={c.key} className="px-0.5 py-0.5 text-center text-gray-900 font-semibold text-[9px]">{fmtN(e.counted)}</td>
                       if (c.key === 'lossQty') return <td key={c.key} className={`px-0.5 py-0.5 text-center font-bold ${valueCls} text-[9px]`}>{sign}{fmtN(e.loss_qty)}</td>
+                      if (c.key === 'reason') return (
+                        <td key={c.key} className="px-0.5 py-0.5 text-gray-600 text-[9px] overflow-hidden" title={e.reason ?? undefined}>
+                          <span className="block truncate">{e.reason ?? <span className="text-gray-300">—</span>}</span>
+                        </td>
+                      )
                       return <td key={c.key} className={`px-0.5 py-0.5 text-right font-bold whitespace-nowrap ${valueCls} text-[9px]`}>{sign}₵{fmtN(e.loss_amt)}</td>
                     })}
                   </tr>

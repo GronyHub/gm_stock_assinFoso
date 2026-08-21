@@ -42,13 +42,30 @@ export type LossEvent = {
   date: string; item_id: number; item_name: string
   expected: number; counted: number; loss_qty: number; loss_amt: number
   kind: 'loss' | 'gain'
+  // The counter's plain-text explanation, pulled back out of that day's
+  // stock_counts.notes (see parseLossReason below). null for a gain (never
+  // prompted for a reason -- gains are blocked outright by gainViolation,
+  // so one showing up here at all is from data that predates that guard)
+  // or a loss whose count predates the reason requirement.
+  reason: string | null
+}
+
+// stock_counts.notes packs the counter's reason together with the manager
+// acknowledgement and any free-text note the counter also typed -- see
+// /api/stock/count's lossNote/finalNotes construction, e.g.
+// "[LOSS -3] Reason: spillage (manager counted) · also cleaned the shelf".
+// Pulls just the reason text back out for display.
+function parseLossReason(notes: string | null): string | null {
+  if (!notes) return null
+  const m = notes.match(/\[LOSS[^\]]*\]\s*Reason:\s*(.*?)(?:\s*\(manager counted\)|\s*\|\s*Manager said:|\s*·|$)/)
+  return m?.[1]?.trim() || null
 }
 
 export async function computeLossEvents(): Promise<LossEvent[]> {
   // Compute all loss/gain events with loss calculations in SQL (one query instead of 2)
   const dayRows = await sql`
     WITH daily_counts AS (
-      SELECT item_id, count_date::date AS d, SUM(quantity_counted) AS qty_counted
+      SELECT item_id, count_date::date AS d, SUM(quantity_counted) AS qty_counted, MAX(notes) AS notes
       FROM stock_counts GROUP BY item_id, count_date::date
     ),
     daily_wic AS (
@@ -95,7 +112,7 @@ export async function computeLossEvents(): Promise<LossEvent[]> {
       UNION SELECT item_id, d FROM daily_consumed_via_service
     ),
     daily_data AS (
-      SELECT ad.item_id, ad.d, dc.qty_counted,
+      SELECT ad.item_id, ad.d, dc.qty_counted, dc.notes,
              COALESCE(dw.qty, 0) + COALESCE(dcs.qty, 0) AS wic_qty,
              dg.qty AS gmc_qty, db.qty AS bills_qty,
              dci.qty AS converted_in_qty,
@@ -109,14 +126,14 @@ export async function computeLossEvents(): Promise<LossEvent[]> {
       LEFT JOIN daily_consumed_via_service dcs ON dcs.item_id = ad.item_id AND dcs.d = ad.d
     ),
     with_loss AS (
-      SELECT dd.item_id, dd.d::text AS date, dd.qty_counted,
+      SELECT dd.item_id, dd.d::text AS date, dd.qty_counted, dd.notes,
              CASE WHEN dd.qty_counted IS NOT NULL AND dd.prev_count IS NOT NULL
                THEN (dd.prev_count - COALESCE(dd.wic_qty,0) - COALESCE(dd.gmc_qty,0) + COALESCE(dd.bills_qty,0)) - dd.qty_counted
                ELSE NULL END AS loss_qty
       FROM daily_data dd
     )
     SELECT wl.item_id, wl.date, i.canonical_name AS item_name, i.selling_rate, i.product_type,
-           i.units_per_pack, i.converts_to_item_id, wl.loss_qty, wl.qty_counted
+           i.units_per_pack, i.converts_to_item_id, wl.loss_qty, wl.qty_counted, wl.notes
     FROM with_loss wl
     JOIN item_stock_summary iss ON iss.item_id = wl.item_id
     LEFT JOIN items i ON i.id = wl.item_id
@@ -160,6 +177,7 @@ export async function computeLossEvents(): Promise<LossEvent[]> {
         loss_qty: Math.abs(lossQty),
         loss_amt: lossAmt,
         kind,
+        reason: parseLossReason(row.notes ?? null),
       })
     }
   }
@@ -304,6 +322,7 @@ export async function computeLossEventsLegacy(): Promise<LossEvent[]> {
               loss_qty: qty,
               loss_amt: parseFloat((qty * sp).toFixed(2)),
               kind,
+              reason: null,
             })
           }
           // Baseline going forward always needs to land on "expected as of
