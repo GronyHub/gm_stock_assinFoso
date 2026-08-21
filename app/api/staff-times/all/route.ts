@@ -18,7 +18,11 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const url = new URL(req.url)
-  const limit = Math.min(Number(url.searchParams.get('limit')) || 1000, 5000)
+  // Every caller (staff-times page, review page, StaffClient) fetches this
+  // with no limit/offset -- they render it as the full shared history, so a
+  // low default silently hid the older end of it. Only an explicit ?limit
+  // caps the result now.
+  const limit = Math.min(Number(url.searchParams.get('limit')) || 50000, 50000)
   const offset = Math.max(Number(url.searchParams.get('offset')) || 0, 0)
   const since = url.searchParams.get('since')
 
@@ -33,6 +37,9 @@ export async function GET(req: NextRequest) {
       LIMIT ${limit}
       OFFSET ${offset}
     `
+    if (rows.length === limit) {
+      console.warn(`staff-times/all: hit the ${limit}-row cap -- results may be truncated, raise the cap`)
+    }
     return NextResponse.json(rows)
   } catch (e: any) {
     console.error('[staff-times/all]', e?.message)

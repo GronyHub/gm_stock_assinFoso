@@ -17,7 +17,10 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json([], { status: 401 })
 
   const url = new URL(req.url)
-  const limit = Math.min(Number(url.searchParams.get('limit')) || 1000, 5000)
+  // Every caller (item pickers, aliasing, live sale) fetches this with no
+  // limit/offset -- a picker missing an item mid-sale is a live business
+  // problem, not just a display gap. Only an explicit ?limit caps it now.
+  const limit = Math.min(Number(url.searchParams.get('limit')) || 50000, 50000)
   const offset = Math.max(Number(url.searchParams.get('offset')) || 0, 0)
   const since = url.searchParams.get('since')
 
@@ -39,6 +42,9 @@ export async function GET(req: NextRequest) {
       `,
       itemCountIntervalLabels().catch(() => new Map<number, string>()),
     ])
+    if (rows.length === limit) {
+      console.warn(`items/all: hit the ${limit}-row cap -- results may be truncated, raise the cap`)
+    }
     const withIntervals = (rows as { id: number }[]).map(r => ({ ...r, count_interval: formatCountInterval(intervals.get(r.id)) }))
     return NextResponse.json(withIntervals)
   } catch {
@@ -56,6 +62,9 @@ export async function GET(req: NextRequest) {
         LIMIT ${limit}
         OFFSET ${offset}
       `
+      if (rows.length === limit) {
+        console.warn(`items/all fallback: hit the ${limit}-row cap -- results may be truncated, raise the cap`)
+      }
       return NextResponse.json(rows)
     } catch (e) {
       console.error('items/all fallback error:', e)

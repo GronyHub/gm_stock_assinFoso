@@ -27,7 +27,11 @@ export async function GET(req: NextRequest) {
   const canSeeAmounts = hasFeature(session.user as any, 'confidential_expenses', await getUserPermissionsMap())
 
   const url = new URL(req.url)
-  const limit = Math.min(Number(url.searchParams.get('limit')) || 500, 2000)
+  // Every caller (ExpensesTab, PropertiesPage, expenses/page.tsx) fetches
+  // this with no limit/offset -- they want the full expense history, so a
+  // low default silently hid everything older than the cap. Only an
+  // explicit ?limit caps the result now.
+  const limit = Math.min(Number(url.searchParams.get('limit')) || 50000, 50000)
   const offset = Math.max(Number(url.searchParams.get('offset')) || 0, 0)
   const since = url.searchParams.get('since')
 
@@ -52,6 +56,9 @@ export async function GET(req: NextRequest) {
       LIMIT ${limit}
       OFFSET ${offset}
     `
+    if (rows.length === limit) {
+      console.warn(`expenses: hit the ${limit}-row cap -- results may be truncated, raise the cap`)
+    }
     return NextResponse.json(redact(rows, canSeeAmounts))
   } catch {
     await ensureSchema()

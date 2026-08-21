@@ -3,7 +3,11 @@ import { NextResponse, NextRequest } from 'next/server'
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url)
-  const limit = Math.min(Number(url.searchParams.get('limit')) || 2000, 5000)
+  // ItemsTab fetches this with no limit/offset and groups rows by item_id --
+  // since the query orders by item_id first, a low cap didn't just trim
+  // recent dates, it dropped every item past the cutoff entirely, showing
+  // them as having no loss data at all. Only an explicit ?limit caps it now.
+  const limit = Math.min(Number(url.searchParams.get('limit')) || 50000, 50000)
   const offset = Math.max(Number(url.searchParams.get('offset')) || 0, 0)
 
   const rows = await sql`
@@ -81,5 +85,8 @@ export async function GET(req: NextRequest) {
     LIMIT ${limit}
     OFFSET ${offset}
   `
+  if (rows.length === limit) {
+    console.warn(`losses/all: hit the ${limit}-row cap -- results may be truncated, raise the cap`)
+  }
   return NextResponse.json(rows)
 }

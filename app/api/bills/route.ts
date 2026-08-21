@@ -10,7 +10,11 @@ export async function GET(req: NextRequest) {
   await ensureBillAttachmentsColumn()
 
   const url = new URL(req.url)
-  const limit = Math.min(Number(url.searchParams.get('limit')) || 500, 2000)
+  // BillsTab fetches this with no limit/offset -- it wants every bill (it
+  // derives its year/vendor filters from the full list), so a low default
+  // silently hid everything older than the cap. Only an explicit ?limit
+  // caps the result now.
+  const limit = Math.min(Number(url.searchParams.get('limit')) || 50000, 50000)
   const offset = Math.max(Number(url.searchParams.get('offset')) || 0, 0)
 
   try {
@@ -21,6 +25,9 @@ export async function GET(req: NextRequest) {
       LIMIT ${limit}
       OFFSET ${offset}
     `
+    if (rows.length === limit) {
+      console.warn(`bills: hit the ${limit}-row cap -- results may be truncated, raise the cap`)
+    }
     const withOptional = rows.map((r: any) => ({
       ...r,
       entered_by: r.entered_by || null,

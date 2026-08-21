@@ -8,7 +8,11 @@ export async function GET(req: NextRequest) {
   await ensureSalesAttachmentsColumn()
 
   const url = new URL(req.url)
-  const limit = Math.min(Number(url.searchParams.get('limit')) || 500, 2000)
+  // SalesTab fetches this with no limit/offset -- it wants every receipt
+  // (it derives its year filter and history from the full list), so a low
+  // default silently hid everything older than the cap. Only an explicit
+  // ?limit caps the result now.
+  const limit = Math.min(Number(url.searchParams.get('limit')) || 50000, 50000)
   const offset = Math.max(Number(url.searchParams.get('offset')) || 0, 0)
 
   try {
@@ -26,6 +30,9 @@ export async function GET(req: NextRequest) {
       LIMIT ${limit}
       OFFSET ${offset}
     `
+    if (rows.length === limit) {
+      console.warn(`sales: hit the ${limit}-row cap -- results may be truncated, raise the cap`)
+    }
     // Add optional columns if they exist
     const withOptional = rows.map((r: any) => ({
       ...r,
