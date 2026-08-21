@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { itemCountIntervalLabels } from '@/lib/countRules'
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 
 // 'excluded'/'daily'/'7'/'15'/'30'/a custom override -> the plain-text label
 // Live Sale shows inline next to price/cost/stock (see itemCountIntervalLabels).
@@ -12,9 +12,15 @@ function formatCountInterval(label: string | undefined): string | null {
   return `Every ${label}d`
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json([], { status: 401 })
+
+  const url = new URL(req.url)
+  const limit = Math.min(Number(url.searchParams.get('limit')) || 1000, 5000)
+  const offset = Math.max(Number(url.searchParams.get('offset')) || 0, 0)
+  const since = url.searchParams.get('since')
+
   try {
     const [rows, intervals] = await Promise.all([
       sql`
@@ -22,11 +28,15 @@ export async function GET() {
                COALESCE(s.calculated_soh, 0) AS soh,
                COALESCE(i.selling_rate, 0) AS selling_price,
                COALESCE(i.purchase_rate, 0) AS cost_price,
-               COALESCE(i.product_type, 'goods') AS product_type
+               COALESCE(i.product_type, 'goods') AS product_type,
+               i.updated_at
         FROM active_items i
         LEFT JOIN item_stock_summary s ON s.item_id = i.id
         WHERE LOWER(COALESCE(i.status, '')) != 'service'
+        ${since ? sql`AND i.updated_at > ${since}::timestamp` : sql``}
         ORDER BY i.canonical_name
+        LIMIT ${limit}
+        OFFSET ${offset}
       `,
       itemCountIntervalLabels().catch(() => new Map<number, string>()),
     ])
@@ -39,10 +49,14 @@ export async function GET() {
                0 AS soh,
                COALESCE(selling_rate, 0) AS selling_price,
                COALESCE(purchase_rate, 0) AS cost_price,
-               COALESCE(product_type, 'goods') AS product_type
+               COALESCE(product_type, 'goods') AS product_type,
+               updated_at
         FROM items
-        WHERE status IS NULL OR LOWER(status) NOT IN ('inactive','service')
+        WHERE (status IS NULL OR LOWER(status) NOT IN ('inactive','service'))
+        ${since ? sql`AND updated_at > ${since}::timestamp` : sql``}
         ORDER BY canonical_name
+        LIMIT ${limit}
+        OFFSET ${offset}
       `
       return NextResponse.json(rows)
     } catch (e) {

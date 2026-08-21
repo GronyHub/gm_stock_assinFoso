@@ -32,13 +32,12 @@ export async function GET() {
     ORDER BY an.norm_name, a.item_id
   ` as { alias_id: number; norm_name: string; alias_name: string; item_id: number; canonical_name: string; alias_type: string; source: string }[]
 
-  const salesCounts = await sql`
+  const lineCounts = await sql`
     SELECT LOWER(TRIM(raw_item_name)) AS norm_name, item_id, COUNT(*)::int AS cnt
     FROM sales_receipt_lines
     WHERE item_id IS NOT NULL
     GROUP BY LOWER(TRIM(raw_item_name)), item_id
-  ` as { norm_name: string; item_id: number; cnt: number }[]
-  const billCounts = await sql`
+    UNION ALL
     SELECT LOWER(TRIM(raw_item_name)) AS norm_name, item_id, COUNT(*)::int AS cnt
     FROM bill_lines
     WHERE item_id IS NOT NULL
@@ -46,10 +45,10 @@ export async function GET() {
   ` as { norm_name: string; item_id: number; cnt: number }[]
 
   const countKey = (n: string, id: number) => `${n}::${id}`
-  const lineCounts = new Map<string, number>()
-  for (const r of [...salesCounts, ...billCounts]) {
+  const lineCountMap = new Map<string, number>()
+  for (const r of lineCounts) {
     const k = countKey(r.norm_name, r.item_id)
-    lineCounts.set(k, (lineCounts.get(k) ?? 0) + r.cnt)
+    lineCountMap.set(k, (lineCountMap.get(k) ?? 0) + r.cnt)
   }
 
   type Candidate = { alias_id: number; alias_name: string; item_id: number; canonical_name: string; alias_type: string; source: string; line_count: number }
@@ -63,7 +62,7 @@ export async function GET() {
       canonical_name: r.canonical_name,
       alias_type: r.alias_type,
       source: r.source,
-      line_count: lineCounts.get(countKey(r.norm_name, r.item_id)) ?? 0,
+      line_count: lineCountMap.get(countKey(r.norm_name, r.item_id)) ?? 0,
     })
   }
 
