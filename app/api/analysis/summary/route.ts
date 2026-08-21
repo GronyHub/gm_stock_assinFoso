@@ -9,8 +9,13 @@ export async function GET() {
     const session = await auth()
     const canSeeAmounts = isOwnerLevel(session?.user as any)
 
+    // The page polls this every 90s expecting near-live numbers. A 1-hour
+    // TTL (the original tuning) meant up to ~40 consecutive polls kept
+    // returning the exact same snapshot after a new sale/bill/expense --
+    // stale enough to mislead, not just slightly behind. 5 minutes still
+    // cuts most of the query volume the caching was added for.
     return NextResponse.json(
-      await getCached('analysis:summary', 3600, () => computeSummary(canSeeAmounts))
+      await getCached('analysis:summary', 300, () => computeSummary(canSeeAmounts))
     )
   } catch (e) {
     console.error('analysis summary error:', e)

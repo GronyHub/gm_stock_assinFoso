@@ -15,7 +15,12 @@ export const dynamic = 'force-dynamic'
 export async function GET(req: NextRequest) {
   const kind = req.nextUrl.searchParams.get('kind') === 'gain' ? 'gain' : 'loss'
 
-  const allEvents = await getCached('losses:events', 14400, () => computeLossEvents())
+  // This feed is meant to be acted on the same day (catching real losses,
+  // clearing gain flags after a fix). The original 4-hour TTL meant a fresh
+  // count or a just-applied fix could sit invisible for hours across ~120
+  // consecutive 2-minute polls. 5 minutes still meaningfully cuts query
+  // volume against that polling cadence without hiding same-day changes.
+  const allEvents = await getCached('losses:events', 300, () => computeLossEvents())
   const events = allEvents.filter(e => e.kind === kind)
 
   // Newest detections first; same-day losses sorted biggest ₵ first.

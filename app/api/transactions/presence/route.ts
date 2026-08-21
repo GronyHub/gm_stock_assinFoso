@@ -11,11 +11,16 @@ export async function GET(req: NextRequest) {
   const days = Math.min(Math.max(Number(url.searchParams.get('days')) || 30, 1), 365)
 
   try {
+    // `${days}` inside INTERVAL '...' would interpolate into the quoted
+    // string literal itself rather than bind as a parameter, which Postgres
+    // can't parse as an interval -- every call threw and the catch below
+    // silently returned {}. Multiplying a fixed 1-day interval keeps `days`
+    // as a plain bound value instead.
     const rows = await sql`
       SELECT staff_name, work_date::text AS date, actual_in, actual_out
       FROM staff_times
       WHERE staff_name <> '__shop_open__'
-        AND work_date >= CURRENT_DATE - INTERVAL '${days} days'
+        AND work_date >= CURRENT_DATE - (INTERVAL '1 day' * ${days})
       ORDER BY work_date DESC, staff_name
     `
     // Group by date
@@ -25,7 +30,8 @@ export async function GET(req: NextRequest) {
       byDate[r.date].push({ staff_name: r.staff_name, actual_in: r.actual_in, actual_out: r.actual_out })
     }
     return NextResponse.json(byDate)
-  } catch {
+  } catch (e) {
+    console.error('transactions/presence error:', e instanceof Error ? e.message : String(e))
     return NextResponse.json({})
   }
 }
