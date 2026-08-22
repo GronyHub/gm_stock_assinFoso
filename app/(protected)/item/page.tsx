@@ -729,6 +729,9 @@ function ItemHubPageInner() {
   const [liveCountView, setLiveCountView] = useState<{ kind: 'interval'; label: string } | { kind: 'records' } | { kind: 'history' } | null>(initialLiveCountView)
   const rawLiveEmbeddedSearch = searchParams.get('liveSearch')
   const [liveEmbeddedSearch, setLiveEmbeddedSearch] = useState(rawLiveEmbeddedSearch ?? '')
+  const rawSidePaneHidden = searchParams.get('sidebarHidden')
+  const initialSidePaneHidden = rawSidePaneHidden === '1'
+  const [sidePaneHidden, setSidePaneHidden] = useState(initialSidePaneHidden)
   // Deep links into a specific Live Sale tab (Sale/Sales/Bills/Count/Loss by
   // Tgt/Log) -- the "Sale Log" search result, a "Fix now: Counts" button, a
   // Daily/7-Day/15-Day Counts violation pill, a Sales/Bills/gains violation
@@ -1382,13 +1385,14 @@ function ItemHubPageInner() {
       params.set('liveCountView', countViewValue)
     } else params.delete('liveCountView')
     if (liveEmbeddedSearch) params.set('liveSearch', liveEmbeddedSearch); else params.delete('liveSearch')
+    if (sidePaneHidden) params.set('sidebarHidden', '1'); else params.delete('sidebarHidden')
     const qs = params.toString()
     const target = qs ? `/item?${qs}` : '/item'
     const current = window.location.pathname + window.location.search
     if (target === current) return
     router.push(target, { scroll: false })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [outerTab, lossView, settingsOpen, itemsExtraView, group, productType, violation, showAnalytics, addForm, liveMode, liveProductTypeFilter, liveGroupFilter, liveSalesViolationFilter, liveBillsViolationFilter, liveSaleFilter, liveCountView, liveEmbeddedSearch])
+  }, [outerTab, lossView, settingsOpen, itemsExtraView, group, productType, violation, showAnalytics, addForm, liveMode, liveProductTypeFilter, liveGroupFilter, liveSalesViolationFilter, liveBillsViolationFilter, liveSaleFilter, liveCountView, liveEmbeddedSearch, sidePaneHidden])
 
   // A refresh should land back on the same search instead of resetting it --
   // replace (not push) since typing shouldn't create a history entry per
@@ -1795,10 +1799,7 @@ function ItemHubPageInner() {
   const paneAccent = PANE_ACCENT[outerTab]
   // Hide the side pane -- toggled from the small button floating over
   // SidePaneToggle's own label row (onHide) and, while hidden, from the
-  // small floating restore button below. Plain in-memory state, not
-  // persisted, since this is a "get it out of my way for now" gesture
-  // rather than a lasting display preference like cashDisplayMode.
-  const [sidePaneHidden, setSidePaneHidden] = useState(false)
+  // small floating restore button below. Persisted to URL so it survives refresh.
 
   // Live Sale takes over the whole content area with its own thing to do
   // (build a cart, tap items, review a log, browse Sales/Bills/Loss by
