@@ -347,9 +347,12 @@ type Props = {
   onCloseAdd?: () => void
   jumpToItemId?: number | null
   onJumpDone?: () => void
+  onProductTypeChange?: (type: 'all' | 'goods' | 'services') => void
+  onGroupChange?: (group: string | null) => void
+  groups?: string[]
 }
 
-export default function ItemsTab({ items, group, productType, search, violation, violationLabel, onItemsChanged, showAdd = false, onCloseAdd, jumpToItemId, onJumpDone }: Props) {
+export default function ItemsTab({ items, group, productType, search, violation, violationLabel, onItemsChanged, showAdd = false, onCloseAdd, jumpToItemId, onJumpDone, onProductTypeChange, onGroupChange, groups = [] }: Props) {
   const [lossMap, setLossMap] = useState<Record<number, DayRow[]>>({})
   const [lossLoading, setLossLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -911,12 +914,35 @@ export default function ItemsTab({ items, group, productType, search, violation,
     <div className="flex h-full min-h-0">
       {/* LEFT: compact item cards */}
       <div ref={leftPaneRef} className="w-1/3 border-r-4 border-blue-600 overflow-y-auto min-h-0">
-        <div className="px-2 py-1 border-b border-gray-100 bg-gray-50 sticky top-0 z-10 flex items-center justify-between">
-          <span className="text-[9px] text-gray-400">{filteredItems.length} items</span>
-          <button onClick={() => setFlagsSummary('summary')} title="Item flags -- assign who's responsible for each"
-            className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-700 transition">
-            🚩
-          </button>
+        <div className="border-b border-gray-100 bg-gray-50 sticky top-0 z-10 space-y-1 px-2 py-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] text-gray-400">{filteredItems.length} items</span>
+            <button onClick={() => setFlagsSummary('summary')} title="Item flags -- assign who's responsible for each"
+              className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-700 transition">
+              🚩
+            </button>
+          </div>
+          <div className="flex items-center gap-1 flex-wrap">
+            <select
+              value={productType}
+              onChange={e => onProductTypeChange?.(e.target.value as 'all' | 'goods' | 'services')}
+              className="text-[10px] px-1.5 py-0.5 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
+            >
+              <option value="all">All types</option>
+              <option value="goods">Goods</option>
+              <option value="services">Services</option>
+            </select>
+            <select
+              value={group || ''}
+              onChange={e => onGroupChange?.(e.target.value || null)}
+              className="text-[10px] px-1.5 py-0.5 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
+            >
+              <option value="">All groups</option>
+              {groups.map(g => (
+                <option key={g} value={g}>{g}</option>
+              ))}
+            </select>
+          </div>
         </div>
         {filteredItems.map(item => {
           const soh = Number(item.calculated_soh)

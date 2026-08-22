@@ -3258,6 +3258,29 @@ function ItemHubPageInner() {
                       openForm={itemsLawsOpenForm} setOpenForm={setItemsLawsOpenForm}
                       hideZeroFlags={hideZeroFlags} setHideZeroFlags={setHideZeroFlags}
                       activeFilters={itemsFilters.activeFilters} toggleFilter={itemsFilters.toggleFilter} />
+                    {itemsPageMode === 'catalog' && (
+                      <div className="flex items-center gap-1 ml-auto">
+                        <select
+                          value={productType}
+                          onChange={e => setProductType(e.target.value as 'all' | 'goods' | 'services')}
+                          className="text-[11px] px-1.5 py-0.5 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                        >
+                          <option value="all">All types</option>
+                          <option value="goods">Goods</option>
+                          <option value="services">Services</option>
+                        </select>
+                        <select
+                          value={group || ''}
+                          onChange={e => setGroup(e.target.value || null)}
+                          className="text-[11px] px-1.5 py-0.5 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                        >
+                          <option value="">All groups</option>
+                          {groups.map(g => (
+                            <option key={g} value={g}>{g}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                   </div>
                 )}
                 <div className="flex items-center gap-1.5">
@@ -4929,6 +4952,9 @@ function ItemHubPageInner() {
                       onCloseAdd={() => {}}
                       jumpToItemId={jumpToItemId}
                       onJumpDone={() => setJumpToItemId(null)}
+                      onProductTypeChange={setProductType}
+                      onGroupChange={setGroup}
+                      groups={groups}
                     />
                   </TabErrorBoundary>
                 )
