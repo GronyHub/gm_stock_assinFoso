@@ -1,10 +1,11 @@
 import sql from '@/lib/db'
 import { ensureActiveItemsView } from '@/lib/activeItems'
+import { ensureGmcColumn } from '@/lib/countRules'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
   try {
-    await ensureActiveItemsView()
+    await Promise.all([ensureActiveItemsView(), ensureGmcColumn()])
     const rows = await sql`
       SELECT
         i.id,
@@ -16,7 +17,8 @@ export async function GET() {
         i.unit_name,
         i.converts_to_item_id,
         COALESCE(i.product_type, 'goods') AS product_type,
-        COALESCE(s.calculated_soh, 0) AS calculated_soh
+        COALESCE(s.calculated_soh, 0) AS calculated_soh,
+        COALESCE(i.is_gmc, false) AS is_gmc
       FROM active_items i
       LEFT JOIN item_stock_summary s ON s.item_id = i.id
       ORDER BY cf_group NULLS LAST, i.canonical_name
@@ -34,7 +36,8 @@ export async function GET() {
         i.units_per_pack,
         i.unit_name,
         'goods' AS product_type,
-        COALESCE(s.calculated_soh, 0) AS calculated_soh
+        COALESCE(s.calculated_soh, 0) AS calculated_soh,
+        COALESCE(i.is_gmc, false) AS is_gmc
       FROM items i
       LEFT JOIN item_stock_summary s ON s.item_id = i.id
       WHERE i.status IS NULL OR LOWER(i.status) != 'inactive'

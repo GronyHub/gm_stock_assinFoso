@@ -48,6 +48,12 @@ async function ensureCountCadenceColumnsImpl() {
   await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS count_excluded_reason TEXT`.catch(() => {})
 }
 
+async function ensureGmcColumnImpl() {
+  await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS is_gmc BOOLEAN NOT NULL DEFAULT false`.catch(() => {})
+}
+
+export const ensureGmcColumn = once(ensureGmcColumnImpl)
+
 // Fixed reasons the item edit form offers for "Exclude from counts
 // entirely" -- kept here (not just inline in the form) so the PUT route can
 // validate against the same list a custom "Other" reason has to bypass.

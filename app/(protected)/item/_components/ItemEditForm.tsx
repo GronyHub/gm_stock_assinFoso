@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { COUNT_EXCLUDED_REASONS } from '@/lib/countRules'
+import { GMCBadge } from './GMCBadge'
 
 // The item-fields-only edit form (name/group/prices/units/conversion/count
 // settings) -- split out of LossTab.tsx so it can be reused anywhere an
@@ -10,6 +11,7 @@ import { COUNT_EXCLUDED_REASONS } from '@/lib/countRules'
 export const EMPTY_ITEM_EDIT_FORM = {
   item_name: '', cf_group: '', selling_rate: '', purchase_rate: '', units_per_pack: '', unit_name: '',
   converts_to_item_id: '', count_excluded: false, count_cadence_days: '', count_excluded_reason: '',
+  is_gmc: false,
 }
 
 // 'compact' is LossTab's original dense inline-table-row styling (unchanged
@@ -77,6 +79,8 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
   const large = size === 'large'
   const set = (k: keyof typeof EMPTY_ITEM_EDIT_FORM) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     onChange({ ...form, [k]: e.target.value })
+  const setCheckbox = (k: keyof typeof EMPTY_ITEM_EDIT_FORM) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    onChange({ ...form, [k]: e.target.checked })
   // Existing groups only show up here once some item already uses them --
   // "+ New group name…" (same option NewItemForm offers) is what lets you
   // introduce one while editing an item instead of only from New Item.
@@ -97,7 +101,10 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
     <div className={s.wrap}>
       <div>
         {large && <label className={s.label}>Item name <span className="text-red-600">*</span></label>}
-        <input placeholder="Item name *" value={form.item_name} onChange={set('item_name')} className={s.input} />
+        <div className="flex items-center gap-1">
+          <input placeholder="Item name *" value={form.item_name} onChange={set('item_name')} className={s.input} />
+          <GMCBadge isGmc={form.is_gmc} size={large ? 'medium' : 'small'} />
+        </div>
       </div>
       <div>
         {large && <label className={s.label}>Group</label>}
@@ -148,6 +155,18 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
             <option key={i.item_id} value={i.item_id}>{i.item_name}</option>
           ))}
         </select>
+      </div>
+      <div className={`flex items-center gap-2 ${large ? 'mt-3' : 'mt-1'}`}>
+        <input
+          type="checkbox"
+          id="is_gmc"
+          checked={form.is_gmc}
+          onChange={setCheckbox('is_gmc')}
+          className={s.checkbox}
+        />
+        <label htmlFor="is_gmc" className={s.checkboxLabel.replace('flex items-center gap-', 'gap-')}>
+          GMC Item
+        </label>
       </div>
       {!isService && (
         <div className={s.sectionWrap}>
