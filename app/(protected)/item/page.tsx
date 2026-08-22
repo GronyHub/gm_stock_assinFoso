@@ -1172,7 +1172,7 @@ function ItemHubPageInner() {
     if (t !== 'loss') setProductType('all')
     if (t === 'loss') {
       setLossView('items')
-      setItemsPageMode('catalog')
+      setItemsPageMode('sale')
     }
     if (t === 'ch') setLossView(CH_ITEMS[0].key)
     // Optimistic -- TodayContent marks these read for real as soon as it
@@ -1862,9 +1862,10 @@ function ItemHubPageInner() {
   const [liveMode, setLiveMode] = useState<'sale' | 'sales' | 'bills' | 'lossByTarget' | 'log' | 'count'>('sale')
 
   // Internal tab switcher state -- tracks which view to show within the unified
-  // Catalog/Live Sale interface. Allows switching between catalog management,
-  // transaction recording, and various reporting views without changing the sidebar.
-  const [itemsPageMode, setItemsPageMode] = useState<'catalog' | 'sale' | 'sales' | 'bills' | 'lossByTarget' | 'log' | 'count'>('catalog')
+  // Live Sale interface. Allows switching between transaction recording and
+  // various reporting views without changing the sidebar. Sale mode includes
+  // full catalog management (add, edit, view items).
+  const [itemsPageMode, setItemsPageMode] = useState<'sale' | 'sales' | 'bills' | 'lossByTarget' | 'log' | 'count'>('sale')
 
   const [liveSalesViolationFilter, setLiveSalesViolationFilter] = useState<string | null>(null)
   const [liveBillsViolationFilter, setLiveBillsViolationFilter] = useState<string | null>(null)
@@ -2668,7 +2669,6 @@ function ItemHubPageInner() {
     // second row when there isn't room for all buttons.
     return (
       <div className="flex bg-gray-200 rounded-lg p-0.5 overflow-x-auto max-w-full">
-        <button type="button" onClick={() => setItemsPageMode('catalog')} title="Catalog" className={btnCls(itemsPageMode === 'catalog', 'bg-blue-600')}>Catalog</button>
         <button type="button" onClick={() => { setItemsPageMode('sale'); setLiveMode('sale') }} title="Sale" className={btnCls(itemsPageMode === 'sale', 'bg-blue-600')}>Sale</button>
         <button type="button" onClick={() => { setItemsPageMode('log'); setLiveMode('log') }} title="Log" className={btnCls(itemsPageMode === 'log', 'bg-gray-700')}>Log</button>
         <button type="button" onClick={() => { setItemsPageMode('sales'); setLiveMode('sales') }} title="Sales" className={btnCls(itemsPageMode === 'sales', 'bg-emerald-600')}>Sales</button>
@@ -3258,29 +3258,6 @@ function ItemHubPageInner() {
                       openForm={itemsLawsOpenForm} setOpenForm={setItemsLawsOpenForm}
                       hideZeroFlags={hideZeroFlags} setHideZeroFlags={setHideZeroFlags}
                       activeFilters={itemsFilters.activeFilters} toggleFilter={itemsFilters.toggleFilter} />
-                    {itemsPageMode === 'catalog' && (
-                      <div className="flex items-center gap-1 ml-auto">
-                        <select
-                          value={productType}
-                          onChange={e => setProductType(e.target.value as 'all' | 'goods' | 'services')}
-                          className="text-[11px] px-1.5 py-0.5 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                        >
-                          <option value="all">All types</option>
-                          <option value="goods">Goods</option>
-                          <option value="services">Services</option>
-                        </select>
-                        <select
-                          value={group || ''}
-                          onChange={e => setGroup(e.target.value || null)}
-                          className="text-[11px] px-1.5 py-0.5 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                        >
-                          <option value="">All groups</option>
-                          {groups.map(g => (
-                            <option key={g} value={g}>{g}</option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
                   </div>
                 )}
                 <div className="flex items-center gap-1.5">
@@ -3422,7 +3399,7 @@ function ItemHubPageInner() {
                   </div>
                 )}
 
-                {outerTab === 'loss' && (lossView === 'sales' || (lossView === 'items' && itemsPageMode !== 'catalog')) && (
+                {outerTab === 'loss' && (lossView === 'sales' || lossView === 'items') && (
                   <div className="flex flex-col gap-1.5 ml-auto items-end w-full">
                     {/* Search box and the item-filter dropdown moved down to
                         the bottom bar (replacing Biz/UK/C&H there while this
@@ -3482,7 +3459,7 @@ function ItemHubPageInner() {
 
           {/* ── Content ── */}
           <div className="relative flex-1 min-h-0 overflow-y-auto">
-        {(outerTab === 'loss' && lossView === 'sales') || (outerTab === 'loss' && lossView === 'items' && itemsPageMode !== 'catalog') ? (<>
+        {(outerTab === 'loss' && lossView === 'sales') || (outerTab === 'loss' && lossView === 'items') ? (<>
           {/* Log tab */}
           {liveMode === 'log' && (
             <div className={liveRootClassName}>
@@ -4853,119 +4830,6 @@ function ItemHubPageInner() {
               <ViolationsAnalyticsSection />
             </div>
           </TabErrorBoundary>
-        )}
-        {!showAnalytics && addForm !== 'item' && outerTab === 'loss' && lossView === 'items' && itemsPageMode === 'catalog' && itemsExtraView === 'none' && (
-          <>
-            {showItemsLaws && (
-              <div className="border-b border-gray-200 bg-white px-3 py-2 shadow-md">
-                <TabErrorBoundary key={itemsLawsRefresh}>
-                  <PageLawsList
-                    scopeKey="Items"
-                    isItemsLaws={true}
-                    onChange={() => setItemsLawsRefresh(r => r + 1)}
-                    flags={[
-                      ...ITEMS_FLAG_TYPES.map(({ key, label }) => ({
-                        key,
-                        label,
-                        count: violationCounts[key] ?? 0,
-                        description: ERROR_VIOLATIONS.find(v => v.key === key)?.description,
-                        onViewClick: () => goToViolation(key)
-                      })),
-                      // One shortcut per real item group -- replaces the old
-                      // tall "Services" sidebar list of the same groups
-                      // (Batteries, Cables, ...), which existed only as a
-                      // manual way to visit each group and eyeball it. No
-                      // count (not a violation, just a jump-to-view), so it
-                      // renders 🏳️/gray like every other zero flag -- "Hide
-                      // 0" hides these along with genuine zero-violation
-                      // flags if toggled on. Opens inline, right below this
-                      // panel (see itemsInlineExtra below) -- no page
-                      // navigation, same as every other flag on this page.
-                      ...serviceGroups.map(g => ({
-                        key: `group_${g}`,
-                        label: g,
-                        count: 0,
-                        onViewClick: () => {
-                          if (itemsInlineExtra?.kind === 'serviceGroup' && itemsInlineExtra.group === g) {
-                            setItemsInlineExtra(null)
-                          } else {
-                            setItemsInlineExtra({ kind: 'serviceGroup', group: g })
-                          }
-                        },
-                      })),
-                    ]}
-                    openForm={itemsLawsOpenForm}
-                    setOpenForm={setItemsLawsOpenForm}
-                    hideZeroFlags={hideZeroFlags}
-                    setHideZeroFlags={setHideZeroFlags}
-                    activeFilters={itemsFilters.activeFilters}
-                  />
-                </TabErrorBoundary>
-              </div>
-            )}
-            {/* A group's item table, right below the Law panel instead of
-                its own separate page (see the per-group flags above) --
-                also still carries its own Law/Tasks/Notes, scoped
-                "Services — <group>" same as before this moved inline, so
-                nothing written there under the old separate-page version
-                is orphaned. Selecting a different group replaces this
-                instead of stacking, same as every other flag click. */}
-            {itemsInlineExtra?.kind === 'serviceGroup' && (
-              <div className="px-3 pt-2 pb-4 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-bold text-gray-900">{itemsInlineExtra.group}</p>
-                  <button onClick={() => setItemsInlineExtra(null)}
-                    className="text-xs font-semibold px-2 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 border border-gray-300">×</button>
-                </div>
-                <div className="mt-1.5">
-                  {inlineLaws(`Services — ${itemsInlineExtra.group}`, servicesLaws)}
-                </div>
-                {(() => {
-                  const groupItems = items.filter(i => i.cf_group === itemsInlineExtra.group)
-                  return groupItems.length === 0 ? (
-                    <p className="py-10 text-center text-gray-400 text-xs">No items in this group.</p>
-                  ) : (
-                    <div className="mt-2 space-y-2">
-                      <p className="text-[11px] text-gray-400">
-                        {groupItems.length} item{groupItems.length !== 1 ? 's' : ''}
-                      </p>
-                      <ServicesGroupTable items={groupItems} />
-                    </div>
-                  )
-                })()}
-              </div>
-            )}
-            {violation && pillKeys?.includes(violation) ? (
-              itemsLoading
-                ? <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
-                : (
-                  <TabErrorBoundary>
-                    <ItemsTab
-                      items={items}
-                      group={group}
-                      productType={productType}
-                      search={search}
-                      violation={violation}
-                      violationLabel={ERROR_VIOLATIONS.find(v => v.key === violation)?.label}
-                      onItemsChanged={setItems}
-                      showAdd={false}
-                      onCloseAdd={() => {}}
-                      jumpToItemId={jumpToItemId}
-                      onJumpDone={() => setJumpToItemId(null)}
-                      onProductTypeChange={setProductType}
-                      onGroupChange={setGroup}
-                      groups={groups}
-                    />
-                  </TabErrorBoundary>
-                )
-            ) : (
-              <TabErrorBoundary>
-                <LossTab onOpenItem={() => {}} search={search} group={group} productType={productType}
-                  visibleCols={itemsColPrefs.visibleCols} colOrder={itemsColPrefs.colOrder} columnLabels={itemsColPrefs.columnLabels}
-                  getWidth={itemsColPrefs.getWidth} resizeWidth={itemsColPrefs.resizeWidth} resetWidth={itemsColPrefs.resetWidth} />
-              </TabErrorBoundary>
-            )}
-          </>
         )}
           </div>
           {/* Biz/UK/C&H/Search now live here instead of the left pane's
