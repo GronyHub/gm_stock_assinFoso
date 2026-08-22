@@ -4373,9 +4373,9 @@ function ItemHubPageInner() {
                   {liveCurrentView ? 'No items in this view' : 'No items found'}
                 </p>
               ) : (
-                <div className="grid grid-cols-2 gap-0 p-0">
+                <div className="grid grid-cols-3 gap-0 p-0">
                   {livePinnedDueItems.length > 0 && (
-                    <div className="col-span-2 px-2 py-1 bg-gray-800 text-[9px] font-bold text-white uppercase tracking-wide">
+                    <div className="col-span-3 px-2 py-1 bg-gray-800 text-[9px] font-bold text-white uppercase tracking-wide">
                       {livePinnedDueItems.length} item{livePinnedDueItems.length !== 1 ? 's' : ''} need{livePinnedDueItems.length === 1 ? 's' : ''} counting
                     </div>
                   )}
@@ -4424,7 +4424,7 @@ function ItemHubPageInner() {
                     )
                   })}
                   {livePinnedDueItems.length > 0 && liveRestCatalogueItems.length > 0 && (
-                    <div className="col-span-2 border-b border-gray-200" />
+                    <div className="col-span-3 border-b border-gray-200" />
                   )}
                   {liveRestCatalogueItems.map(item => {
                     const count = liveSalesCounts.get(item.id) ?? 0
