@@ -3303,6 +3303,28 @@ function ItemHubPageInner() {
     )
   }
 
+  function renderLiveItemFlagsFilter() {
+    // Get just the Items violation flags (first 7 from liveComputedFlags)
+    const itemsFlags = liveComputedFlags.slice(0, ITEMS_FLAG_TYPES.length)
+    return (
+      <div className="flex gap-1 flex-wrap items-center">
+        {itemsFlags.map((flag: any) => (
+          <button
+            key={flag.key}
+            onClick={flag.onViewClick}
+            className={`text-[10px] px-2 py-1 rounded border transition ${
+              liveCurrentView?.kind === 'violation' && liveCurrentView.key === flag.key
+                ? 'bg-blue-600 text-white border-blue-700'
+                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+            }`}
+            title={flag.description || ''}
+          >
+            {flag.label} ({flag.count})
+          </button>
+        ))}
+      </div>
+    )
+  }
 
   return (
     <div className="-mx-4 -mt-4 -mb-6 flex flex-col h-[100dvh] md:h-[calc(100dvh-56px)]">
@@ -4224,28 +4246,31 @@ function ItemHubPageInner() {
                 once liveExpanded, so it needs its own copy here too rather
                 than losing the type/group filters entirely). */}
             {liveExpanded && (
-            <div className="bg-green-700 -mx-0 px-2 py-1 flex items-center justify-between gap-1 flex-wrap">
-                <div className="flex gap-1 items-center flex-wrap">
-                  <select
-                    value={liveProductTypeFilter}
-                    onChange={e => setLiveProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
-                    className="text-[11px] px-1.5 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white w-[4.5rem]"
-                  >
-                    <option value="all">All types</option>
-                    <option value="goods">Goods</option>
-                    <option value="services">Services</option>
-                  </select>
-                  <select
-                    value={liveGroupFilter || ''}
-                    onChange={e => setLiveGroupFilter(e.target.value || null)}
-                    className="text-[11px] px-1.5 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white w-[4.5rem]"
-                  >
-                    <option value="">All groups</option>
-                    {liveCatalogueGroups.map(group => (
-                      <option key={group} value={group}>{group}</option>
-                    ))}
-                  </select>
-                  {renderLiveSaleFilterSelect(true)}
+            <div className="bg-green-700 -mx-0 px-2 py-2 flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex gap-2 items-start flex-wrap w-full">
+                  <div className="flex gap-1 items-center">
+                    <select
+                      value={liveProductTypeFilter}
+                      onChange={e => setLiveProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
+                      className="text-[11px] px-1.5 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white w-[4.5rem]"
+                    >
+                      <option value="all">All types</option>
+                      <option value="goods">Goods</option>
+                      <option value="services">Services</option>
+                    </select>
+                    <select
+                      value={liveGroupFilter || ''}
+                      onChange={e => setLiveGroupFilter(e.target.value || null)}
+                      className="text-[11px] px-1.5 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white w-[4.5rem]"
+                    >
+                      <option value="">All groups</option>
+                      {liveCatalogueGroups.map(group => (
+                        <option key={group} value={group}>{group}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {/* Items Violation Flags Filter */}
+                  {renderLiveItemFlagsFilter()}
                 </div>
                 <div className="flex gap-1 items-center">
                   <div>
