@@ -241,7 +241,6 @@ const REPORT_VIEWS = new Set<LossView>([
 // inside these same sections.
 const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: string }[] = [
   { key: 'items',    label: 'Items',    icon: '📦' },
-  { key: 'sales',    label: 'Live Sale',    icon: '⚡' },
   { key: 'purchaseOrders',   label: 'Purchase Ord',   icon: '🛒' },
   { key: 'expenses', label: 'Expenses', icon: '💳' },
   { key: 'vendors',   label: 'Vendors',   icon: '🏭' },
