@@ -4721,45 +4721,6 @@ function ItemHubPageInner() {
         )}
           </div>
         </div>
-
-        {/* Biz/UK/C&H/Search now live here instead of the left pane's
-            footer -- small icons, spaced far apart, pinned outside the
-            scrollable area so they're always reachable without hunting
-            through the narrow left column. Search always shows (it looks
-            across the whole app -- items, customers, vendors, sales,
-            bills, announcements -- unlike the per-view search bars
-            already on most tabs, which only filter what's on screen).
-            Biz/UK/C&H keep the old rule: someone permitted to see only
-            Grony Cash has nothing to switch to, so those three only show
-            once UK and/or C&H access exists. The "+" shortcut menu (see
-            AddShortcutButton/handleShortcut) rejoins this row too --
-            always shown, same as when it was its own floating button.
-            Live Sale's Sales view takes over this same footer instead
-            (see the branch below) -- the item search box and filter
-            dropdown are what's actually useful to have pinned there while
-            tapping sales, so this row steps aside rather than the two
-            competing for the same strip. */}
-        {addForm !== 'live' && !(outerTab === 'loss' && lossView === 'sales' && !liveExpanded) && (
-        <div className="shrink-0 flex items-center gap-2 px-2 py-2 bg-white border-t border-gray-200 overflow-x-auto">
-          <button onClick={() => setGlobalSearchOpen(true)} title="Search"
-            className="w-8 h-8 rounded-full flex items-center justify-center text-lg border-2 border-transparent text-gray-500 opacity-70 hover:opacity-100 transition shrink-0">
-            🔍
-          </button>
-          <div className="flex items-center gap-2 shrink-0">{renderLiveSearchControls(true)}</div>
-        </div>
-        )}
-        {/* Live Sale's own item search box and item-filter dropdown
-            (Loss/Gain/Low SOH/count interval) -- moved down into this
-            footer, in Biz/UK/C&H's usual spot, while the Sales view is
-            open. Only rendered while liveMode === 'sale' -- matches the
-            old LiveSaleForm's own behavior, which only ever portaled
-            content into these two slots from its own Sale-mode return. */}
-        {addForm !== 'live' && outerTab === 'loss' && lossView === 'sales' && !liveExpanded && (
-        <div className="shrink-0 flex items-center gap-2 px-2 py-2 bg-white border-t border-gray-200 overflow-x-auto">
-          <div className="flex items-center gap-2 shrink-0">{liveMode === 'sale' && renderLiveSearchControls(true)}</div>
-          <div className="shrink-0">{liveMode === 'sale' && renderLiveSaleFilterSelect(false)}</div>
-        </div>
-        )}
       </div>
 
       {/* Global search overlay -- click outside/× closes it; each result
@@ -4961,6 +4922,25 @@ function ItemHubPageInner() {
       )}
       {globalSearchViewingItemId != null && (
         <ItemDetailModal itemId={globalSearchViewingItemId} onClose={() => setGlobalSearchViewingItemId(null)} />
+      )}
+
+      {/* Footer bar at bottom -- search controls for Items view */}
+      {addForm !== 'live' && !(outerTab === 'loss' && lossView === 'sales' && !liveExpanded) && (
+      <div className="flex items-center gap-2 px-2 py-2 bg-white border-t border-gray-200 overflow-x-auto">
+        <button onClick={() => setGlobalSearchOpen(true)} title="Search"
+          className="w-8 h-8 rounded-full flex items-center justify-center text-lg border-2 border-transparent text-gray-500 opacity-70 hover:opacity-100 transition shrink-0">
+          🔍
+        </button>
+        <div className="flex items-center gap-2 shrink-0">{renderLiveSearchControls(true)}</div>
+      </div>
+      )}
+
+      {/* Footer bar at bottom -- search controls for Sales view */}
+      {addForm !== 'live' && outerTab === 'loss' && lossView === 'sales' && !liveExpanded && (
+      <div className="flex items-center gap-2 px-2 py-2 bg-white border-t border-gray-200 overflow-x-auto">
+        <div className="flex items-center gap-2 shrink-0">{liveMode === 'sale' && renderLiveSearchControls(true)}</div>
+        <div className="shrink-0">{liveMode === 'sale' && renderLiveSaleFilterSelect(false)}</div>
+      </div>
       )}
     </div>
   )
