@@ -2653,14 +2653,21 @@ function ItemHubPageInner() {
     setLiveGridEditLoading(true)
     setLiveGridEditConfirmDelete(false)
     try {
-      const r = await fetch(`/api/items/${itemId}`)
-      const d = await r.json()
       const item = liveAllItems.find(i => i.id === itemId)
       if (!item) {
         setLiveGridEditError('Item not found')
         setLiveGridEditLoading(false)
         return
       }
+
+      // Fetch all data in parallel
+      const [itemRes, aliasesRes, matchesRes] = await Promise.all([
+        fetch(`/api/items/${itemId}`),
+        fetch('/api/aliases/wide'),
+        fetch('/api/good-service-matches')
+      ])
+
+      const d = await itemRes.json()
       setLiveEditForm({
         item_name: d?.canonical_name ?? item.name,
         cf_group: d?.cf_group ?? '',
@@ -2676,8 +2683,6 @@ function ItemHubPageInner() {
       setLiveEditCurrentCountInterval(d?.count_interval ?? null)
       setLiveEditCurrentSoh(d?.calculated_soh != null ? parseFloat(d.calculated_soh) : null)
 
-      // Load aliases and service matches for this item
-      const aliasesRes = await fetch('/api/aliases/wide')
       const aliasesData = await aliasesRes.json()
       if (Array.isArray(aliasesData)) {
         const itemAliases = aliasesData.find((row: any) => row.item_id === itemId)
@@ -2685,7 +2690,6 @@ function ItemHubPageInner() {
         setLiveGridEditAliases(aliases.map((a: any) => ({ id: a.id, name: a.name })).filter((a: AliasRecord) => a.name))
       }
 
-      const matchesRes = await fetch('/api/good-service-matches')
       const matchesData = await matchesRes.json()
       if (Array.isArray(matchesData)) {
         const itemName = item.name.trim().toLowerCase()
