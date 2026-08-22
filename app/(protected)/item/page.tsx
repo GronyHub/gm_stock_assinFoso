@@ -2951,15 +2951,15 @@ function ItemHubPageInner() {
   function renderLiveSearchControls(compact: boolean) {
     return (
       <>
-        <div className="relative">
+        <div className="relative flex-1 min-w-0">
           <input
             type="text"
             value={liveItemPickerQuery}
             onChange={e => setLiveItemPickerQuery(e.target.value)}
             onFocus={() => liveItemPickerQuery.trim() && setLiveShowItemPicker(true)}
             placeholder={compact ? 'Search item…' : 'Search & pick item…'}
-            className={`border focus:outline-none focus:ring-1 ${
-              compact ? 'text-[11px] px-2 py-1 w-24 rounded-md bg-white' : 'text-sm px-3 py-1.5 w-32 sm:w-48 rounded-lg'
+            className={`border focus:outline-none focus:ring-1 w-full ${
+              compact ? 'text-[11px] px-2 py-1 rounded-md bg-white' : 'text-sm px-3 py-1.5 w-32 sm:w-48 rounded-lg'
             } ${
               livePickedItemId !== null
                 ? 'border-green-400 bg-green-50 focus:ring-green-400'
@@ -3372,11 +3372,52 @@ function ItemHubPageInner() {
                   </div>
                 </div>
               </div>
-              {/* Row 2: search bar + controls — hidden on report-style submenus. */}
+              {/* Row 2: filter bar — hidden on report-style submenus. */}
+              {showControls && (outerTab === 'loss' && (lossView === 'sales' || lossView === 'items')) && (
+                <div className="w-full flex items-center gap-2 px-2 py-1 bg-green-700 border-b border-green-800 flex-wrap">
+                  <select
+                    value={liveProductTypeFilter}
+                    onChange={e => setLiveProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
+                    className="text-[10px] px-2 py-0.5 rounded-md border border-green-500 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 flex-1"
+                  >
+                    <option value="all">All</option>
+                    <option value="goods">Goods</option>
+                    <option value="services">Services</option>
+                  </select>
+                  <select
+                    value={liveGroupFilter || ''}
+                    onChange={e => setLiveGroupFilter(e.target.value || null)}
+                    className="text-[10px] px-2 py-0.5 rounded-md border border-green-500 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 flex-1"
+                  >
+                    <option value="">Groups</option>
+                    {liveGroups.map(g => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind : ''}
+                    onChange={e => {
+                      const v = e.target.value
+                      if (!v) setLiveSaleFilter(null)
+                      else if (v.startsWith('interval:')) setLiveSaleFilter({ kind: 'interval', label: v.slice('interval:'.length) })
+                      else setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'soh' })
+                    }}
+                    className="text-[10px] px-2 py-0.5 border border-green-500 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white flex-1"
+                  >
+                    <option value="">Filter</option>
+                    {liveSaleFilterFlags.map(f => (
+                      <option key={f.key} value={f.key === 'loss' || f.key === 'gain' || f.key === 'soh' ? f.key : `interval:${f.label}`}>
+                        {f.label} ({f.count})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {/* Row 3: search bar + controls — hidden on report-style submenus. */}
               {showControls && (
                 <div className="px-2 py-1 border-b border-green-700">
                   <div className="flex items-center gap-2 justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
                       {(lossView === 'sales' || lossView === 'items') && renderLiveSearchControls(true)}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -3408,7 +3449,7 @@ function ItemHubPageInner() {
           {/* ── Content ── */}
           <div className="relative flex-1 min-h-0 overflow-y-auto">
         {(outerTab === 'loss' && lossView === 'sales') || (outerTab === 'loss' && lossView === 'items') ? (<>
-          {renderAllFiltersBar()}
+          {/* Filter bar moved to green header above */}
           {/* Log tab */}
           {liveMode === 'log' && (
             <div className={liveRootClassName}>
