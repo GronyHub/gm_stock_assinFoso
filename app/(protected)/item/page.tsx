@@ -12,7 +12,7 @@ import { LossDialog, PairingDialog, type LossExtra, type LossPrompt, type Pairin
 import { ItemEditForm, EMPTY_ITEM_EDIT_FORM } from './_components/ItemEditForm'
 import HistoryPanel from './_components/HistoryPanel'
 import { TrainingGuideModal } from './_components/TrainingGuideModal'
-import ItemDetailPanel from './_components/ItemDetailPanel'
+import { AliasPicker, MatchPicker, MergeItemPicker, type AliasRecord, type MatchRecord, type CandidateItem } from './_components/LossTab'
 
 class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boolean; message: string }> {
   state = { error: false, message: '' }
@@ -1839,6 +1839,12 @@ function ItemHubPageInner() {
   const [liveEditingGridItemId, setLiveEditingGridItemId] = useState<number | null>(null)
   const [liveGridEditLoading, setLiveGridEditLoading] = useState(false)
   const [liveGridEditError, setLiveGridEditError] = useState('')
+  const [liveGridEditAliases, setLiveGridEditAliases] = useState<AliasRecord[]>([])
+  const [liveGridEditMatches, setLiveGridEditMatches] = useState<MatchRecord[]>([])
+  const [liveGridEditConfirmDelete, setLiveGridEditConfirmDelete] = useState(false)
+  const [liveGridEditDeleting, setLiveGridEditDeleting] = useState(false)
+  const [liveGridEditDeleteError, setLiveGridEditDeleteError] = useState('')
+  const [liveGridEditSaving, setLiveGridEditSaving] = useState(false)
   const [liveSelectedItem, setLiveSelectedItem] = useState<LiveItem | null>(null)
   // Snapshot of whether liveSelectedItem was due-for-count at the moment its
   // sheet opened -- liveCountStatus itself updates the instant a count is
@@ -2632,6 +2638,7 @@ function ItemHubPageInner() {
     setLiveEditingGridItemId(itemId)
     setLiveGridEditError('')
     setLiveGridEditLoading(true)
+    setLiveGridEditConfirmDelete(false)
     try {
       const r = await fetch(`/api/items/${itemId}`)
       const d = await r.json()
@@ -2655,10 +2662,46 @@ function ItemHubPageInner() {
       })
       setLiveEditCurrentCountInterval(d?.count_interval ?? null)
       setLiveEditCurrentSoh(d?.calculated_soh != null ? parseFloat(d.calculated_soh) : null)
+
+      // Load aliases and service matches for this item
+      const aliasesRes = await fetch('/api/aliases/wide')
+      const aliasesData = await aliasesRes.json()
+      if (Array.isArray(aliasesData)) {
+        const itemAliases = aliasesData.find((row: any) => row.item_id === itemId)
+        const aliases = itemAliases?.aliases ?? []
+        setLiveGridEditAliases(aliases.map((a: any) => ({ id: a.id, name: a.name })).filter((a: AliasRecord) => a.name))
+      }
+
+      const matchesRes = await fetch('/api/good-service-matches')
+      const matchesData = await matchesRes.json()
+      if (Array.isArray(matchesData)) {
+        const itemName = item.name.trim().toLowerCase()
+        const itemMatches = matchesData.filter((row: any) => {
+          const gk = (row.good_name ?? '').trim().toLowerCase()
+          const sk = (row.service_name ?? '').trim().toLowerCase()
+          return gk === itemName || sk === itemName
+        })
+        setLiveGridEditMatches(itemMatches.map((m: any) => ({ id: m.id, name: m.good_name === item.name ? m.service_name : m.good_name })))
+      }
     } catch {
       setLiveGridEditError('Could not load item details.')
     }
     setLiveGridEditLoading(false)
+  }
+
+  async function deleteGridEditItem() {
+    if (!liveEditingGridItemId) return
+    setLiveGridEditDeleting(true)
+    setLiveGridEditDeleteError('')
+    const res = await fetch(`/api/items/${liveEditingGridItemId}`, { method: 'DELETE' })
+    const d = await res.json().catch(() => ({}))
+    setLiveGridEditDeleting(false)
+    if (res.ok) {
+      setLiveEditingGridItemId(null)
+      setLiveGridEditConfirmDelete(false)
+    } else {
+      setLiveGridEditDeleteError(d.error || 'Could not delete item.')
+    }
   }
 
   async function saveEditSelectedItem() {
@@ -4757,10 +4800,83 @@ function ItemHubPageInner() {
                         </div>
                       )}
                     </div>
-                    {editItem && (
+                    {editItem && !liveGridEditLoading && (
                       <div className="bg-gray-50">
-                        <h3 className="px-6 py-3 text-sm font-bold text-gray-900 border-b border-gray-200">Item Details</h3>
-                        <ItemDetailPanel itemId={editItem.id} onItemGone={() => setLiveEditingGridItemId(null)} />
+                        <div className="px-6 py-3 space-y-4">
+                          <div>
+                            <label className="text-[7px] font-bold text-gray-500 block mb-2">Aliases</label>
+                            <AliasPicker itemId={editItem.id} current={liveGridEditAliases} onChange={setLiveGridEditAliases} />
+                          </div>
+                          <div>
+                            <label className="text-[7px] font-bold text-gray-500 block mb-2">
+                              {editItem.product_type === 'service' ? 'Goods used for this service' : 'Services this good is used for'}
+                            </label>
+                            <MatchPicker
+                              itemId={editItem.id}
+                              itemName={editItem.name}
+                              isService={editItem.product_type === 'service'}
+                              current={liveGridEditMatches}
+                              candidatePool={editItem.product_type === 'service' ? Array.from(liveGmcItemIds).map((id: number) => {
+                                const item = liveAllItems.find(i => i.id === id)
+                                return { item_id: id, item_name: item?.name ?? '', product_type: 'good' }
+                              }) : Array.from(liveGmcItemIds).map((id: number) => {
+                                const item = liveAllItems.find(i => i.id === id)
+                                return { item_id: id, item_name: item?.name ?? '', product_type: 'service' }
+                              })}
+                              onChange={setLiveGridEditMatches}
+                            />
+                          </div>
+                          {isOwnerLevel(session?.user as any) && (
+                            <div>
+                              <label className="text-[7px] font-bold text-gray-500 block mb-2">
+                                Merge with another {editItem.product_type === 'service' ? 'service' : 'good'}
+                              </label>
+                              <MergeItemPicker
+                                itemId={editItem.id}
+                                itemName={editItem.name}
+                                typeLabel={editItem.product_type === 'service' ? 'service' : 'good'}
+                                mergePool={liveAllItems.filter(i => i.id !== editItem.id).map(i => ({
+                                  item_id: i.id,
+                                  item_name: i.name,
+                                  product_type: i.product_type
+                                }))}
+                                onMerged={() => setLiveEditingGridItemId(null)}
+                              />
+                            </div>
+                          )}
+                          {isOwnerLevel(session?.user as any) && (
+                            <div>
+                              <label className="text-[7px] font-bold text-gray-500 block mb-2">Delete this item</label>
+                              {!liveGridEditConfirmDelete ? (
+                                <button
+                                  onClick={() => setLiveGridEditConfirmDelete(true)}
+                                  className="w-full bg-gray-100 hover:bg-red-50 text-red-600 text-[10px] font-semibold rounded py-1.5 transition">
+                                  Delete Item
+                                </button>
+                              ) : (
+                                <div className="space-y-2">
+                                  <p className="text-[10px] text-red-600">
+                                    Only possible if it has no sales, bills, or stock counts. This can't be undone -- merge it into another item instead if it has history.
+                                  </p>
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={deleteGridEditItem}
+                                      disabled={liveGridEditDeleting}
+                                      className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
+                                      {liveGridEditDeleting ? 'Deleting…' : 'Yes, Delete Permanently'}
+                                    </button>
+                                    <button
+                                      onClick={() => { setLiveGridEditConfirmDelete(false); setLiveGridEditDeleteError('') }}
+                                      className="px-3 py-1.5 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">
+                                      Cancel
+                                    </button>
+                                  </div>
+                                  {liveGridEditDeleteError && <p className="text-[10px] text-red-600 font-medium">{liveGridEditDeleteError}</p>}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>

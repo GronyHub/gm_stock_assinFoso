@@ -676,7 +676,7 @@ function SortTh({ label, col, sort, onSort, cls = '', style, onResize, onResetWi
 export type AliasRecord = { id: number; name: string }
 type UnresolvedName = { name: string; cnt: number; confirmed: boolean }
 
-function AliasPicker({ itemId, current, onChange }: {
+export function AliasPicker({ itemId, current, onChange }: {
   itemId: number
   current: AliasRecord[]
   onChange: (next: AliasRecord[]) => void
@@ -762,7 +762,7 @@ function AliasPicker({ itemId, current, onChange }: {
 export type MatchRecord = { id: number; name: string }
 export type CandidateItem = { item_id: number; item_name: string; product_type: string | null }
 
-function MatchPicker({ itemId, itemName, isService, current, candidatePool, onChange }: {
+export function MatchPicker({ itemId, itemName, isService, current, candidatePool, onChange }: {
   itemId: number; itemName: string; isService: boolean
   current: MatchRecord[]
   candidatePool: CandidateItem[]
@@ -838,7 +838,7 @@ function MatchPicker({ itemId, itemName, isService, current, candidatePool, onCh
    just an alias for a singles item) is a legitimate merge, not a mistake, so
    it isn't restricted to same-type candidates. Each result is tagged with
    its type so a mixed list stays unambiguous. ── */
-function MergeItemPicker({ itemId, itemName, typeLabel, mergePool, onMerged }: {
+export function MergeItemPicker({ itemId, itemName, typeLabel, mergePool, onMerged }: {
   itemId: number; itemName: string
   typeLabel: 'service' | 'good'
   mergePool: CandidateItem[]
@@ -1131,76 +1131,6 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
     // (w-max) instead of clipping it (overflow-hidden), so the detail panel
     // can scroll sideways while the frozen DATE column stays put.
     <div className={`bg-white border border-gray-200 rounded-lg mt-0 ${isPackChain ? 'w-max min-w-full' : 'overflow-hidden'}`}>
-      {!editing && (
-        <div className="flex items-center justify-end px-3 pt-2">
-          <button onClick={startEdit}
-            className="text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition">
-            ✏️ Edit
-          </button>
-        </div>
-      )}
-      {editing && (
-        <div className="px-3 pt-2 pb-3 space-y-3">
-          <div className="flex items-center justify-end gap-1.5">
-            <button onClick={saveEdit} disabled={saving} className="text-xs font-semibold text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-lg transition disabled:opacity-50">{saving ? 'Saving…' : 'Save'}</button>
-            <button onClick={() => setEditing(false)} className="text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition">✕</button>
-          </div>
-          {editError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs font-medium text-red-600">{editError}</div>
-          )}
-          <ItemEditForm form={form} onChange={setForm} groups={groups} itemId={item.item_id} isService={item.product_type === 'service'} allItems={allItems} size="large" currentCountInterval={currentCountInterval} currentSoh={currentSoh} />
-          <div>
-            <label className="text-[7px] font-bold text-gray-500 block mb-0">Aliases</label>
-            <AliasPicker itemId={item.item_id} current={aliases} onChange={setAliases} />
-          </div>
-          <div>
-            <label className="text-[7px] font-bold text-gray-500 block mb-0">
-              {item.product_type === 'service' ? 'Goods used for this service' : 'Services this good is used for'}
-            </label>
-            <MatchPicker itemId={item.item_id} itemName={item.item_name} isService={item.product_type === 'service'}
-              current={matches} candidatePool={candidatePool} onChange={setMatches} />
-          </div>
-          {isOwnerLevelUser && (
-            <div>
-              <label className="text-[7px] font-bold text-gray-500 block mb-0">
-                Merge with another {item.product_type === 'service' ? 'service' : 'good'}
-              </label>
-              <MergeItemPicker itemId={item.item_id} itemName={item.item_name}
-                typeLabel={item.product_type === 'service' ? 'service' : 'good'} mergePool={mergePool}
-                onMerged={() => { setEditing(false); onMerged() }} />
-            </div>
-          )}
-          {isOwnerLevelUser && (
-            <div>
-              <label className="text-[7px] font-bold text-gray-500 block mb-0">Delete this item</label>
-              {!confirmDelete ? (
-                <button onClick={() => setConfirmDelete(true)}
-                  className="w-full bg-gray-100 hover:bg-red-50 text-red-600 text-[10px] font-semibold rounded py-1.5 transition">
-                  Delete Item
-                </button>
-              ) : (
-                <div className="space-y-1">
-                  <p className="text-[10px] text-red-600">
-                    Only possible if it has no sales, bills, or stock counts. This can't be undone
-                    -- merge it into another item instead if it has history.
-                  </p>
-                  <div className="flex gap-1">
-                    <button onClick={deleteItem} disabled={deleting}
-                      className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
-                      {deleting ? 'Deleting…' : 'Yes, Delete Permanently'}
-                    </button>
-                    <button onClick={() => { setConfirmDelete(false); setDeleteError('') }}
-                      className="px-3 py-1.5 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">
-                      Cancel
-                    </button>
-                  </div>
-                  {deleteError && <p className="text-[10px] text-red-600 font-medium">{deleteError}</p>}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* detail table -- the Available/Used narrative format is only for items
           where 2+ services share stock (e.g. 4x6 singles); every other item
