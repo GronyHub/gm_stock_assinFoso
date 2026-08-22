@@ -4334,6 +4334,18 @@ function ItemHubPageInner() {
             )}
             {renderModeToggleRow()}
 
+            {/* Laws & Tasks button - always visible */}
+            <div className="px-2 py-1 border-b border-green-600 bg-green-700 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setLiveLawsModalOpen(true)}
+                className="px-3 py-1.5 rounded-md bg-white text-green-700 hover:bg-gray-100 font-semibold text-xs transition"
+                title="Laws, Tasks & Notes"
+              >
+                ⚙️ Laws & Tasks
+              </button>
+            </div>
+
             {/* Filter Bar -- Green bar at top, shown only while liveExpanded
                 (this component's own top green bar already covers the
                 type/group filters/laws/help the rest of the time -- see
@@ -4403,14 +4415,6 @@ function ItemHubPageInner() {
                       title="Help"
                     >
                       ?
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setLiveLawsModalOpen(true)}
-                      className="w-5 h-5 rounded-md bg-white text-gray-600 hover:bg-gray-100 font-semibold text-[10px] flex items-center justify-center transition"
-                      title="Laws, Tasks & Notes"
-                    >
-                      ⚙️
                     </button>
                   </div>
                 </div>
