@@ -2983,21 +2983,55 @@ function ItemHubPageInner() {
           ))}
         </select>
         <select
-          value={liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind : ''}
+          value={liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind === 'flag' ? `flag:${liveSaleFilter.key}` : liveSaleFilter.kind : liveCurrentView?.kind === 'violation' ? `violation:${liveCurrentView.key}` : liveCurrentView?.kind === 'aliasWide' ? 'view:aliasWide' : liveCurrentView?.kind === 'serviceMatches' ? 'view:serviceMatches' : ''}
           onChange={e => {
             const v = e.target.value
-            if (!v) setLiveSaleFilter(null)
-            else if (v.startsWith('interval:')) setLiveSaleFilter({ kind: 'interval', label: v.slice('interval:'.length) })
-            else setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'soh' })
+            if (!v) {
+              setLiveSaleFilter(null)
+              setLiveCurrentView(null)
+            } else if (v.startsWith('interval:')) {
+              setLiveCurrentView(null)
+              setLiveSaleFilter({ kind: 'interval', label: v.slice('interval:'.length) })
+            } else if (v.startsWith('violation:')) {
+              setLiveSaleFilter(null)
+              const violationKey = v.slice('violation:'.length)
+              setLiveCurrentView({ kind: 'violation' as const, key: violationKey })
+            } else if (v.startsWith('flag:')) {
+              setLiveCurrentView(null)
+              setLiveSaleFilter({ kind: 'flag', key: v.slice('flag:'.length) })
+            } else if (v.startsWith('view:')) {
+              setLiveSaleFilter(null)
+              const viewKey = v.slice('view:'.length)
+              if (viewKey === 'aliasWide') setLiveCurrentView({ kind: 'aliasWide' as const })
+              else if (viewKey === 'serviceMatches') setLiveCurrentView({ kind: 'serviceMatches' as const })
+            } else {
+              setLiveCurrentView(null)
+              setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'soh' })
+            }
           }}
           className="text-[10px] px-2 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white flex-1"
         >
           <option value="">Filter</option>
-          {liveSaleFilterFlags.map(f => (
-            <option key={f.key} value={f.key === 'loss' || f.key === 'gain' || f.key === 'soh' ? f.key : `interval:${f.label}`}>
-              {f.label} ({f.count})
-            </option>
-          ))}
+          {liveSaleFilterFlags.filter(f => !f.key.startsWith('flag_')).map(f => {
+            let value = f.key
+            if (f.key.startsWith('interval_')) value = `interval:${f.label}`
+            return (
+              <option key={f.key} value={value}>
+                {f.label} ({f.count})
+              </option>
+            )
+          })}
+          <optgroup label="Items">
+            {ITEMS_FLAG_TYPES.map(f => (
+              <option key={f.key} value={`violation:${f.key}`}>
+                {f.label} ({(liveItemsWithViolations as Record<string, number[]>)[f.key]?.length ?? 0})
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label="Views">
+            <option value="view:aliasWide">Alias Wide Table</option>
+            <option value="view:serviceMatches">Service Matches</option>
+          </optgroup>
         </select>
       </div>
     )
@@ -3674,21 +3708,55 @@ function ItemHubPageInner() {
                     ))}
                   </select>
                   <select
-                    value={liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind : ''}
+                    value={liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind === 'flag' ? `flag:${liveSaleFilter.key}` : liveSaleFilter.kind : liveCurrentView?.kind === 'violation' ? `violation:${liveCurrentView.key}` : liveCurrentView?.kind === 'aliasWide' ? 'view:aliasWide' : liveCurrentView?.kind === 'serviceMatches' ? 'view:serviceMatches' : ''}
                     onChange={e => {
                       const v = e.target.value
-                      if (!v) setLiveSaleFilter(null)
-                      else if (v.startsWith('interval:')) setLiveSaleFilter({ kind: 'interval', label: v.slice('interval:'.length) })
-                      else setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'soh' })
+                      if (!v) {
+                        setLiveSaleFilter(null)
+                        setLiveCurrentView(null)
+                      } else if (v.startsWith('interval:')) {
+                        setLiveCurrentView(null)
+                        setLiveSaleFilter({ kind: 'interval', label: v.slice('interval:'.length) })
+                      } else if (v.startsWith('violation:')) {
+                        setLiveSaleFilter(null)
+                        const violationKey = v.slice('violation:'.length)
+                        setLiveCurrentView({ kind: 'violation' as const, key: violationKey })
+                      } else if (v.startsWith('flag:')) {
+                        setLiveCurrentView(null)
+                        setLiveSaleFilter({ kind: 'flag', key: v.slice('flag:'.length) })
+                      } else if (v.startsWith('view:')) {
+                        setLiveSaleFilter(null)
+                        const viewKey = v.slice('view:'.length)
+                        if (viewKey === 'aliasWide') setLiveCurrentView({ kind: 'aliasWide' as const })
+                        else if (viewKey === 'serviceMatches') setLiveCurrentView({ kind: 'serviceMatches' as const })
+                      } else {
+                        setLiveCurrentView(null)
+                        setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'soh' })
+                      }
                     }}
                     className="text-[9px] px-1.5 py-0.5 border border-green-500 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white w-28"
                   >
                     <option value="">Filter</option>
-                    {liveSaleFilterFlags.map(f => (
-                      <option key={f.key} value={f.key === 'loss' || f.key === 'gain' || f.key === 'soh' ? f.key : `interval:${f.label}`}>
-                        {f.label} ({f.count})
-                      </option>
-                    ))}
+                    {liveSaleFilterFlags.filter(f => !f.key.startsWith('flag_')).map(f => {
+                      let value = f.key
+                      if (f.key.startsWith('interval_')) value = `interval:${f.label}`
+                      return (
+                        <option key={f.key} value={value}>
+                          {f.label} ({f.count})
+                        </option>
+                      )
+                    })}
+                    <optgroup label="Items">
+                      {ITEMS_FLAG_TYPES.map(f => (
+                        <option key={f.key} value={`violation:${f.key}`}>
+                          {f.label} ({(liveItemsWithViolations as Record<string, number[]>)[f.key]?.length ?? 0})
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Views">
+                      <option value="view:aliasWide">Alias Wide Table</option>
+                      <option value="view:serviceMatches">Service Matches</option>
+                    </optgroup>
                   </select>
                 </div>
               )}
