@@ -3374,11 +3374,11 @@ function ItemHubPageInner() {
               </div>
               {/* Row 2: filter bar — hidden on report-style submenus. */}
               {showControls && (outerTab === 'loss' && (lossView === 'sales' || lossView === 'items')) && (
-                <div className="w-full flex items-center gap-2 px-2 py-1 bg-green-700 border-b border-green-800 flex-wrap">
+                <div className="w-full flex items-center gap-1 px-2 py-1 bg-green-700 border-b border-green-800">
                   <select
                     value={liveProductTypeFilter}
                     onChange={e => setLiveProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
-                    className="text-[10px] px-2 py-0.5 rounded-md border border-green-500 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 flex-1"
+                    className="text-[9px] px-1.5 py-0.5 rounded-md border border-green-500 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 w-20"
                   >
                     <option value="all">All</option>
                     <option value="goods">Goods</option>
@@ -3387,7 +3387,7 @@ function ItemHubPageInner() {
                   <select
                     value={liveGroupFilter || ''}
                     onChange={e => setLiveGroupFilter(e.target.value || null)}
-                    className="text-[10px] px-2 py-0.5 rounded-md border border-green-500 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 flex-1"
+                    className="text-[9px] px-1.5 py-0.5 rounded-md border border-green-500 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 w-24"
                   >
                     <option value="">Groups</option>
                     {liveGroups.map(g => (
@@ -3402,7 +3402,7 @@ function ItemHubPageInner() {
                       else if (v.startsWith('interval:')) setLiveSaleFilter({ kind: 'interval', label: v.slice('interval:'.length) })
                       else setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'soh' })
                     }}
-                    className="text-[10px] px-2 py-0.5 border border-green-500 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white flex-1"
+                    className="text-[9px] px-1.5 py-0.5 border border-green-500 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white w-28"
                   >
                     <option value="">Filter</option>
                     {liveSaleFilterFlags.map(f => (
