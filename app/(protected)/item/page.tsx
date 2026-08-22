@@ -4829,6 +4829,30 @@ function ItemHubPageInner() {
                     </button>
                   </div>
                   <div className="overflow-y-auto">
+                    <div className="p-6 border-b border-gray-200">
+                      {liveGridEditLoading ? (
+                        <p className="text-center text-gray-500">Loading…</p>
+                      ) : editItem ? (
+                        <ItemEditForm
+                          form={liveEditForm}
+                          onChange={setLiveEditForm}
+                          groups={liveEditGroups}
+                          itemId={editItem.id}
+                          isService={editItem.product_type === 'service'}
+                          allItems={liveEditAllItemsList}
+                          size="large"
+                          currentCountInterval={liveEditCurrentCountInterval}
+                          currentSoh={liveEditCurrentSoh}
+                        />
+                      ) : (
+                        <p className="text-center text-red-600">Item not found</p>
+                      )}
+                      {liveGridEditError && (
+                        <div className="mt-4 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-600 font-medium">
+                          {liveGridEditError}
+                        </div>
+                      )}
+                    </div>
                     {editItem && !liveGridEditLoading && (
                       <div className="p-6 border-b border-gray-200">
                         <div className="space-y-4">
@@ -4879,30 +4903,6 @@ function ItemHubPageInner() {
                         </div>
                       </div>
                     )}
-                    <div className="p-6 border-b border-gray-200">
-                      {liveGridEditLoading ? (
-                        <p className="text-center text-gray-500">Loading…</p>
-                      ) : editItem ? (
-                        <ItemEditForm
-                          form={liveEditForm}
-                          onChange={setLiveEditForm}
-                          groups={liveEditGroups}
-                          itemId={editItem.id}
-                          isService={editItem.product_type === 'service'}
-                          allItems={liveEditAllItemsList}
-                          size="large"
-                          currentCountInterval={liveEditCurrentCountInterval}
-                          currentSoh={liveEditCurrentSoh}
-                        />
-                      ) : (
-                        <p className="text-center text-red-600">Item not found</p>
-                      )}
-                      {liveGridEditError && (
-                        <div className="mt-4 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-600 font-medium">
-                          {liveGridEditError}
-                        </div>
-                      )}
-                    </div>
                     {editItem && !liveGridEditLoading && (
                       <div className="bg-gray-50">
                         <div className="px-6 py-3 space-y-4">
