@@ -4829,6 +4829,56 @@ function ItemHubPageInner() {
                     </button>
                   </div>
                   <div className="overflow-y-auto">
+                    {editItem && !liveGridEditLoading && (
+                      <div className="p-6 border-b border-gray-200">
+                        <div className="space-y-4">
+                          <div>
+                            <div className="bg-orange-100 border border-orange-300 rounded-lg p-3 mb-4">
+                              <p className="text-sm font-semibold text-orange-900">⚠ SALE TAP</p>
+                              <p className="text-sm text-orange-800 mt-1">Quantity (required)</p>
+                            </div>
+                            <div className="flex gap-2 mb-4">
+                              <input
+                                type="number"
+                                inputMode="decimal"
+                                min="1"
+                                step="1"
+                                value={liveQty}
+                                onChange={e => setLiveQty(e.target.value)}
+                                placeholder="Enter quantity"
+                                className="flex-1 text-base font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400"
+                              />
+                              <button
+                                disabled={!liveQty}
+                                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition disabled:opacity-50">
+                                ={liveQty || '?'}
+                              </button>
+                            </div>
+                            <p className="text-sm text-gray-700 mb-2">Price (optional)</p>
+                            <div className="relative mb-3">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">₵</span>
+                              <input
+                                type="number"
+                                inputMode="decimal"
+                                min="0"
+                                step="0.01"
+                                value={livePrice}
+                                onChange={e => setLivePrice(e.target.value)}
+                                placeholder={editItem ? formatPrice(editItem.selling_price) : 'Price'}
+                                className="w-full text-base font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg pl-7 pr-3 py-2 outline-none focus:ring-1 focus:ring-blue-400"
+                              />
+                            </div>
+                            <p className="text-xs text-gray-500 mb-3">Defaults to ₵{editItem ? formatPrice(editItem.selling_price) : '0'}</p>
+                            <button
+                              onClick={recordTap}
+                              disabled={!liveQty || liveSaving}
+                              className="w-full px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition disabled:opacity-50">
+                              {liveSaving ? 'Recording…' : 'Tap'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     <div className="p-6 border-b border-gray-200">
                       {liveGridEditLoading ? (
                         <p className="text-center text-gray-500">Loading…</p>
