@@ -698,9 +698,37 @@ function ItemHubPageInner() {
   const serviceMatchesLaws = useLawsPanel('showServiceMatchesLaws')
   const liveSaleLaws = useLawsPanel('showLiveSaleLaws')
   const [liveExpanded, setLiveExpanded] = useState(false)
-  const [liveProductTypeFilter, setLiveProductTypeFilter] = useState<'all' | 'goods' | 'services'>('all')
-  const [liveGroupFilter, setLiveGroupFilter] = useState<string | null>(null)
+  const rawLiveProductType = searchParams.get('liveType')
+  const initialLiveProductType = (rawLiveProductType === 'goods' || rawLiveProductType === 'services') ? rawLiveProductType : 'all'
+  const [liveProductTypeFilter, setLiveProductTypeFilter] = useState<'all' | 'goods' | 'services'>(initialLiveProductType)
+  const rawLiveGroup = searchParams.get('liveGroup')
+  const [liveGroupFilter, setLiveGroupFilter] = useState<string | null>(rawLiveGroup ?? null)
   const [liveHelpModalOpen, setLiveHelpModalOpen] = useState(false)
+  const rawLiveMode = searchParams.get('mode')
+  const initialLiveMode = (rawLiveMode as 'sale' | 'sales' | 'bills' | 'lossByTarget' | 'log' | 'count' | null) ?? 'sale'
+  const [liveMode, setLiveMode] = useState<'sale' | 'sales' | 'bills' | 'lossByTarget' | 'log' | 'count'>(initialLiveMode)
+  const [itemsPageMode, setItemsPageMode] = useState<'sale' | 'sales' | 'bills' | 'lossByTarget' | 'log' | 'count'>(initialLiveMode)
+  const rawLiveSalesViolation = searchParams.get('liveSalesViolation')
+  const rawLiveBillsViolation = searchParams.get('liveBillsViolation')
+  const [liveSalesViolationFilter, setLiveSalesViolationFilter] = useState<string | null>(rawLiveSalesViolation ?? null)
+  const [liveBillsViolationFilter, setLiveBillsViolationFilter] = useState<string | null>(rawLiveBillsViolation ?? null)
+  const rawLiveSaleFilter = searchParams.get('liveSaleFilter')
+  const initialLiveSaleFilter: { kind: 'loss' } | { kind: 'gain' } | { kind: 'soh' } | { kind: 'interval'; label: string } | null =
+    rawLiveSaleFilter === 'loss' ? { kind: 'loss' } :
+    rawLiveSaleFilter === 'gain' ? { kind: 'gain' } :
+    rawLiveSaleFilter === 'soh' ? { kind: 'soh' } :
+    rawLiveSaleFilter?.startsWith('interval:') ? { kind: 'interval', label: rawLiveSaleFilter.slice(9) } :
+    null
+  const [liveSaleFilter, setLiveSaleFilter] = useState<{ kind: 'loss' } | { kind: 'gain' } | { kind: 'soh' } | { kind: 'interval'; label: string } | null>(initialLiveSaleFilter)
+  const rawLiveCountView = searchParams.get('liveCountView')
+  const initialLiveCountView: { kind: 'interval'; label: string } | { kind: 'records' } | { kind: 'history' } | null =
+    rawLiveCountView === 'records' ? { kind: 'records' } :
+    rawLiveCountView === 'history' ? { kind: 'history' } :
+    rawLiveCountView?.startsWith('interval:') ? { kind: 'interval', label: rawLiveCountView.slice(9) } :
+    { kind: 'records' }
+  const [liveCountView, setLiveCountView] = useState<{ kind: 'interval'; label: string } | { kind: 'records' } | { kind: 'history' } | null>(initialLiveCountView)
+  const rawLiveEmbeddedSearch = searchParams.get('liveSearch')
+  const [liveEmbeddedSearch, setLiveEmbeddedSearch] = useState(rawLiveEmbeddedSearch ?? '')
   // Deep links into a specific Live Sale tab (Sale/Sales/Bills/Count/Loss by
   // Tgt/Log) -- the "Sale Log" search result, a "Fix now: Counts" button, a
   // Daily/7-Day/15-Day Counts violation pill, a Sales/Bills/gains violation
@@ -1339,13 +1367,28 @@ function ItemHubPageInner() {
     if (violation) params.set('violation', violation); else params.delete('violation')
     if (showAnalytics) params.set('analytics', '1'); else params.delete('analytics')
     if (addForm) params.set('form', addForm); else params.delete('form')
+    // Live Sale mode-specific filters
+    if (liveMode) params.set('mode', liveMode); else params.delete('mode')
+    if (liveProductTypeFilter !== 'all') params.set('liveType', liveProductTypeFilter); else params.delete('liveType')
+    if (liveGroupFilter) params.set('liveGroup', liveGroupFilter); else params.delete('liveGroup')
+    if (liveSalesViolationFilter) params.set('liveSalesViolation', liveSalesViolationFilter); else params.delete('liveSalesViolation')
+    if (liveBillsViolationFilter) params.set('liveBillsViolation', liveBillsViolationFilter); else params.delete('liveBillsViolation')
+    if (liveSaleFilter) {
+      const filterValue = liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind
+      params.set('liveSaleFilter', filterValue)
+    } else params.delete('liveSaleFilter')
+    if (liveCountView && liveCountView.kind !== 'records') {
+      const countViewValue = liveCountView.kind === 'interval' ? `interval:${liveCountView.label}` : liveCountView.kind
+      params.set('liveCountView', countViewValue)
+    } else params.delete('liveCountView')
+    if (liveEmbeddedSearch) params.set('liveSearch', liveEmbeddedSearch); else params.delete('liveSearch')
     const qs = params.toString()
     const target = qs ? `/item?${qs}` : '/item'
     const current = window.location.pathname + window.location.search
     if (target === current) return
     router.push(target, { scroll: false })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [outerTab, lossView, settingsOpen, itemsExtraView, group, productType, violation, showAnalytics, addForm])
+  }, [outerTab, lossView, settingsOpen, itemsExtraView, group, productType, violation, showAnalytics, addForm, liveMode, liveProductTypeFilter, liveGroupFilter, liveSalesViolationFilter, liveBillsViolationFilter, liveSaleFilter, liveCountView, liveEmbeddedSearch])
 
   // A refresh should land back on the same search instead of resetting it --
   // replace (not push) since typing shouldn't create a history entry per
@@ -1827,7 +1870,6 @@ function ItemHubPageInner() {
   // each item's own count_interval string (the same Daily/Every Nd/Not
   // counted labels the Count tab's liveCountIntervalFlags buckets by) so a
   // cadence bucket here can never drift out of sync with the Count tab's own.
-  const [liveSaleFilter, setLiveSaleFilter] = useState<{ kind: 'loss' } | { kind: 'gain' } | { kind: 'soh' } | { kind: 'interval'; label: string } | null>(null)
   const [liveItemPickerQuery, setLiveItemPickerQuery] = useState('')
   const [liveItemPickerResults, setLiveItemPickerResults] = useState<LiveItem[]>([])
   const [liveShowItemPicker, setLiveShowItemPicker] = useState(false)
@@ -1859,16 +1901,7 @@ function ItemHubPageInner() {
   // filtered view of Count's own Count Records (see liveCountRecordFilter) --
   // folded in as extra columns there instead of a fourth tab walking the
   // same stock_counts rows a second time.
-  const [liveMode, setLiveMode] = useState<'sale' | 'sales' | 'bills' | 'lossByTarget' | 'log' | 'count'>('sale')
 
-  // Internal tab switcher state -- tracks which view to show within the unified
-  // Live Sale interface. Allows switching between transaction recording and
-  // various reporting views without changing the sidebar. Sale mode includes
-  // full catalog management (add, edit, view items).
-  const [itemsPageMode, setItemsPageMode] = useState<'sale' | 'sales' | 'bills' | 'lossByTarget' | 'log' | 'count'>('sale')
-
-  const [liveSalesViolationFilter, setLiveSalesViolationFilter] = useState<string | null>(null)
-  const [liveBillsViolationFilter, setLiveBillsViolationFilter] = useState<string | null>(null)
   // Count tab's own local navigation -- Daily/Every Nd/Dormant/etc, Count
   // Records, and Count History used to only be reachable through the laws
   // panel (as liveCurrentView kinds); moved to their own tab with this
@@ -1878,8 +1911,6 @@ function ItemHubPageInner() {
   // Count tab, since a raw list of "what's due" is less useful than seeing
   // what's actually been counted until you pick a specific category to
   // drill into.
-  const [liveCountView, setLiveCountView] = useState<{ kind: 'interval'; label: string } | { kind: 'records' } | { kind: 'history' } | null>({ kind: 'records' })
-  const [liveEmbeddedSearch, setLiveEmbeddedSearch] = useState('')
   // Finishes a jumpToLiveSaleTab() call -- moved here as a plain effect
   // keyed on liveSaleJumpSeq (declared above, alongside jumpToLiveSaleTab
   // itself) instead of crossing a prop boundary into a separate component.
