@@ -3286,7 +3286,7 @@ function ItemHubPageInner() {
           {outerTab === 'loss' && (
             <div className="shrink-0 bg-green-800 border-b border-green-900">
               {/* Tab switcher: Items vs Live Sale modes */}
-              <div className="px-2 py-1.5 border-b border-green-700">
+              <div className="px-4 py-1.5 border-b border-green-700">
                 <div className="flex items-center gap-3 justify-between min-w-0">
                   <div className="flex items-center gap-1.5 overflow-x-auto min-w-0">
                     {renderTabSwitcher(true)}
