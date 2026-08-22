@@ -2974,7 +2974,7 @@ function ItemHubPageInner() {
               }
             }}
             placeholder={compact ? 'Search item…' : 'Search & pick item…'}
-            className={`border focus:outline-none focus:ring-1 w-full ${
+            className={`border focus:outline-none focus:ring-1 w-full pr-7 ${
               compact ? 'text-[11px] px-2 py-1 rounded-md bg-white' : 'text-sm px-3 py-1.5 w-32 sm:w-48 rounded-lg'
             } ${
               livePickedItemId !== null
@@ -2983,18 +2983,17 @@ function ItemHubPageInner() {
             }`}
           />
           {(liveItemPickerQuery || livePickedItemId !== null) && (
-            <button
-              type="button"
+            <span
               onClick={() => {
                 setLiveItemPickerQuery('')
                 setLiveItemPickerResults([])
                 setLiveShowItemPicker(false)
                 setLivePickedItemId(null)
               }}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer text-sm"
             >
               ✕
-            </button>
+            </span>
           )}
           {liveShowItemPicker && liveItemPickerResults.length > 0 && (
             <div className={`absolute top-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto ${
