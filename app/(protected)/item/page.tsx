@@ -3312,15 +3312,6 @@ function ItemHubPageInner() {
                   each other for width, squeezing Search down to nothing on a phone. */}
               {showControls && (
                 <div className="flex flex-col px-2 py-0">
-                {/* Sales-specific controls: laws toggle moved here */}
-                {outerTab === 'loss' && (lossView === 'sales' || lossView === 'items') && (
-                  <div className="flex items-center gap-1 flex-wrap py-1">
-                    <LawsToggleBar show={liveSaleLaws.show} setShow={liveSaleLaws.setShow}
-                      openForm={liveSaleLaws.openForm} setOpenForm={liveSaleLaws.setOpenForm}
-                      hideZeroFlags={liveSaleLaws.hideZeroFlags} setHideZeroFlags={liveSaleLaws.setHideZeroFlags}
-                      activeFilters={liveSaleLaws.activeFilters} toggleFilter={liveSaleLaws.toggleFilter} dark={false} />
-                  </div>
-                )}
               </div>
               )}
             </div>
@@ -4908,13 +4899,19 @@ function ItemHubPageInner() {
 
       {/* Footer bar at bottom -- search controls for Items view */}
       {addForm !== 'live' && !(outerTab === 'loss' && lossView === 'sales' && !liveExpanded) && (
-      <div className="flex items-center gap-2 px-2 py-2 bg-white border-t border-gray-200 overflow-x-auto justify-between">
+      <div className="flex items-center gap-2 px-2 py-2 bg-white border-t border-gray-200 overflow-x-auto">
         <div className="flex items-center gap-2">
           <button onClick={() => setGlobalSearchOpen(true)} title="Search"
             className="w-8 h-8 rounded-full flex items-center justify-center text-lg border-2 border-transparent text-gray-500 opacity-70 hover:opacity-100 transition shrink-0">
             🔍
           </button>
           <div className="flex items-center gap-2 shrink-0">{renderLiveSearchControls(true)}</div>
+          {outerTab === 'loss' && (lossView === 'sales' || lossView === 'items') && (
+            <LawsToggleBar show={liveSaleLaws.show} setShow={liveSaleLaws.setShow}
+              openForm={liveSaleLaws.openForm} setOpenForm={liveSaleLaws.setOpenForm}
+              hideZeroFlags={liveSaleLaws.hideZeroFlags} setHideZeroFlags={liveSaleLaws.setHideZeroFlags}
+              activeFilters={liveSaleLaws.activeFilters} toggleFilter={liveSaleLaws.toggleFilter} dark={false} />
+          )}
         </div>
         <button
           type="button"
@@ -4929,10 +4926,14 @@ function ItemHubPageInner() {
 
       {/* Footer bar at bottom -- search controls for Sales view */}
       {addForm !== 'live' && outerTab === 'loss' && lossView === 'sales' && !liveExpanded && (
-      <div className="flex items-center gap-2 px-2 py-2 bg-white border-t border-gray-200 overflow-x-auto justify-between">
+      <div className="flex items-center gap-2 px-2 py-2 bg-white border-t border-gray-200 overflow-x-auto">
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2 shrink-0">{liveMode === 'sale' && renderLiveSearchControls(true)}</div>
           <div className="shrink-0">{liveMode === 'sale' && renderLiveSaleFilterSelect(false)}</div>
+          <LawsToggleBar show={liveSaleLaws.show} setShow={liveSaleLaws.setShow}
+            openForm={liveSaleLaws.openForm} setOpenForm={liveSaleLaws.setOpenForm}
+            hideZeroFlags={liveSaleLaws.hideZeroFlags} setHideZeroFlags={liveSaleLaws.setHideZeroFlags}
+            activeFilters={liveSaleLaws.activeFilters} toggleFilter={liveSaleLaws.toggleFilter} dark={false} />
         </div>
         <button
           type="button"
