@@ -1846,6 +1846,10 @@ function ItemHubPageInner() {
   const [liveGridEditDeleting, setLiveGridEditDeleting] = useState(false)
   const [liveGridEditDeleteError, setLiveGridEditDeleteError] = useState('')
   const [liveGridEditSaving, setLiveGridEditSaving] = useState(false)
+  const [liveGridEditCountQty, setLiveGridEditCountQty] = useState('')
+  const [liveGridEditCountPrice, setLiveGridEditCountPrice] = useState('')
+  const [liveGridEditCountError, setLiveGridEditCountError] = useState('')
+  const [liveGridEditCountSaving, setLiveGridEditCountSaving] = useState(false)
   const [liveSelectedItem, setLiveSelectedItem] = useState<LiveItem | null>(null)
   // Snapshot of whether liveSelectedItem was due-for-count at the moment its
   // sheet opened -- liveCountStatus itself updates the instant a count is
@@ -2702,6 +2706,54 @@ function ItemHubPageInner() {
       setLiveGridEditConfirmDelete(false)
     } else {
       setLiveGridEditDeleteError(d.error || 'Could not delete item.')
+    }
+  }
+
+  async function recordCountFromModal() {
+    if (!liveEditingGridItemId || !liveGridEditCountQty) return
+    setLiveGridEditCountSaving(true)
+    setLiveGridEditCountError('')
+
+    const qtyNum = Number(liveGridEditCountQty)
+    const priceNum = liveGridEditCountPrice ? Number(liveGridEditCountPrice) : undefined
+    const editItem = liveAllItems.find(i => i.id === liveEditingGridItemId)
+    const defaultPrice = editItem ? Number(editItem.selling_price) : 0
+
+    if (qtyNum <= 0) {
+      setLiveGridEditCountError('Quantity must be greater than 0')
+      setLiveGridEditCountSaving(false)
+      return
+    }
+
+    if (priceNum !== undefined && priceNum <= 0) {
+      setLiveGridEditCountError('Price must be greater than 0')
+      setLiveGridEditCountSaving(false)
+      return
+    }
+
+    try {
+      const res = await fetch('/api/sales/live-tap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          itemId: liveEditingGridItemId,
+          quantity: qtyNum,
+          customPrice: priceNum || undefined,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setLiveGridEditCountError(data.error || 'Could not record count')
+        setLiveGridEditCountSaving(false)
+        return
+      }
+      setLiveTaps(prev => [data.tap, ...prev])
+      setLiveGridEditCountQty('')
+      setLiveGridEditCountPrice('')
+    } catch (e) {
+      setLiveGridEditCountError('Network error')
+    } finally {
+      setLiveGridEditCountSaving(false)
     }
   }
 
@@ -4877,6 +4929,48 @@ function ItemHubPageInner() {
                               )}
                             </div>
                           )}
+                          <div>
+                            <label className="text-[7px] font-bold text-gray-500 block mb-2">Manual Count</label>
+                            <div className="space-y-2">
+                              <input
+                                type="number"
+                                inputMode="decimal"
+                                min="1"
+                                step="1"
+                                value={liveGridEditCountQty}
+                                onChange={e => setLiveGridEditCountQty(e.target.value)}
+                                placeholder="Enter quantity"
+                                className="w-full text-sm font-semibold text-gray-900 bg-gray-50 border border-gray-300 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-400"
+                                disabled={liveGridEditCountSaving}
+                              />
+                              <div className="relative">
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-[9px]">₵</span>
+                                <input
+                                  type="number"
+                                  inputMode="decimal"
+                                  min="0"
+                                  step="0.01"
+                                  value={liveGridEditCountPrice}
+                                  onChange={e => setLiveGridEditCountPrice(e.target.value)}
+                                  placeholder={editItem ? formatPrice(editItem.selling_price) : 'Price'}
+                                  className="w-full text-sm font-semibold text-gray-900 bg-gray-50 border border-gray-300 rounded pl-6 pr-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-400"
+                                  disabled={liveGridEditCountSaving}
+                                />
+                              </div>
+                              {liveGridEditCountError && (
+                                <div className="bg-red-50 border border-red-200 rounded px-2 py-1.5 text-[9px] text-red-600">
+                                  {liveGridEditCountError}
+                                </div>
+                              )}
+                              <button
+                                type="button"
+                                onClick={recordCountFromModal}
+                                disabled={!liveGridEditCountQty || liveGridEditCountSaving}
+                                className="w-full px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[9px] font-semibold rounded transition disabled:opacity-50">
+                                {liveGridEditCountSaving ? 'Recording…' : 'Record Count'}
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     )}
