@@ -2075,16 +2075,16 @@ function ItemHubPageInner() {
   // liveServiceViolationIdSet/liveCatalogueItems below instead of crossing
   // a prop boundary.
   const liveItemsWithViolations = useMemo(() => ({
-    neg_soh: items.filter(i => Number(i.calculated_soh) < 0 && i.product_type !== 'service').map(i => i.id),
-    no_sp: items.filter(i => !i.selling_rate || parseFloat(i.selling_rate) === 0).map(i => i.id),
-    no_cp: items.filter(i => !i.purchase_rate || parseFloat(i.purchase_rate) === 0).map(i => i.id),
-    no_group: items.filter(i => !i.cf_group).map(i => i.id),
+    neg_soh: liveAllItems.filter(i => Number(i.soh) < 0 && i.product_type !== 'service').map(i => i.id),
+    no_sp: liveAllItems.filter(i => !i.selling_price || parseFloat(String(i.selling_price)) === 0).map(i => i.id),
+    no_cp: liveAllItems.filter(i => !i.cost_price || parseFloat(String(i.cost_price)) === 0).map(i => i.id),
+    no_group: liveAllItems.filter(i => !i.group).map(i => i.id),
     // Both sides of every non-dismissed duplicate pair -- ids only, same as
     // the other four keys here.
     duplicates: [...new Set((globalFlags?.duplicates ?? []).flatMap((d: any) => [d.id1, d.id2]))] as number[],
     unlinked_named: (globalFlags?.unlinkedNamed ?? []).map((r: any) => r.item_id) as number[],
     service_violation: serviceViolationIds,
-  }), [items, globalFlags, serviceViolationIds])
+  }), [liveAllItems, globalFlags, serviceViolationIds])
 
   // Build flags array with Live Sale callbacks
   const liveComputedFlags = useMemo(() => [
