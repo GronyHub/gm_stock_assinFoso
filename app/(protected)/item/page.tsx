@@ -72,6 +72,7 @@ const CustomersPage  = dynamic(() => import('../customers/page'),             { 
 const PurchaseOrdersPage  = dynamic(() => import('../purchase-orders/page'),        { ssr: false, loading: () => loading('Loading…') })
 const AliasWidePage       = dynamic(() => import('../aliases/wide/page'),           { ssr: false, loading: () => loading('Loading…') })
 const ServiceMatchesPage  = dynamic(() => import('../matches/wide/page'),           { ssr: false, loading: () => loading('Loading…') })
+const PacksPage           = dynamic(() => import('../inventory/packs/page'),           { ssr: false, loading: () => loading('Loading…') })
 const ViewPortalAsButton  = dynamic(() => import('@/components/ViewPortalAsButton'), { ssr: false })
 const StaffContent = dynamic(() => import('./_components/StaffPersonTab'),    { ssr: false, loading: () => loading('Loading…') })
 const StaffMemberPersonalTab = dynamic(() => import('./_components/StaffMemberPersonalTab'), { ssr: false, loading: () => loading('Loading…') })
@@ -141,7 +142,7 @@ type LossView = 'home' | 'items' | 'sales' | 'expenses' | 'pl' | 'cab' | 'vendor
 // they're now reached from inside Items itself (see ItemsExtraView below),
 // so an old '?view=aliasWide'/'serviceMatches' link still needs a home to
 // land on instead of a blank pane.
-type ItemsExtraView = 'none' | 'aliasWide' | 'serviceMatches'
+type ItemsExtraView = 'none' | 'aliasWide' | 'serviceMatches' | 'gmcPacks'
 // Doubles as the current itemsExtraView->?view= mapping (see the URL-sync
 // effect below) and as backward-compat for old '?view=aliasWide' links.
 // Name Conflicts used to live here too -- it's now its own flag pill (see
@@ -1746,6 +1747,7 @@ function ItemHubPageInner() {
       { label: 'Daily', action: () => pickLossView('dailySummary') },
       { label: 'Alias Wide Table', action: () => { pickLossView('items'); setItemsExtraView('aliasWide') } },
       { label: 'Service Matches', action: () => { pickLossView('items'); setItemsExtraView('serviceMatches') } },
+      { label: 'GMC Packs', action: () => { pickLossView('items'); setItemsExtraView('gmcPacks') } },
       // Live Sale's own tabs aren't their own CASH_ITEMS entries, so the
       // map above never picks them up -- listed by hand here instead, same
       // as every other page search already jumps straight to. New Sale is
