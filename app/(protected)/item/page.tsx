@@ -4977,7 +4977,7 @@ function ItemHubPageInner() {
                     {editItem && !liveGridEditLoading && (
                       <div className="bg-gray-50">
                         <h3 className="px-6 py-3 text-sm font-bold text-gray-900 border-b border-gray-200">Item Details</h3>
-                        <ItemDetailPanel itemId={editItem.id} onItemGone={() => setLiveEditingGridItemId(null)} collapsed />
+                        <ItemDetailPanel itemId={editItem.id} onItemGone={() => setLiveEditingGridItemId(null)} />
                       </div>
                     )}
                   </div>
