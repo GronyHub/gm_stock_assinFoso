@@ -3,8 +3,15 @@ import { useState, useEffect, useRef, useMemo, Component, Suspense, Fragment, ty
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { hasFeature, DEFAULT_ON_FEATURES, type FeatureKey, type RolePermissionsMap } from '@/lib/permissionsShared'
+import { usePresenceReporter } from '@/lib/usePresenceReporter'
+import { isOwnerLevel } from '@/lib/roles'
+import { fmtTime } from '@/lib/fmtDate'
 import PageLawsList, { type LawFormKind } from './_components/PageLawsList'
 import ItemDetailModal from './_components/ItemDetailModal'
+import { LossDialog, PairingDialog, type LossExtra, type LossPrompt, type PairingPrompt } from './_components/CountDialogs'
+import { ItemEditForm, EMPTY_ITEM_EDIT_FORM } from './_components/ItemEditForm'
+import HistoryPanel from './_components/HistoryPanel'
+import { TrainingGuideModal } from './_components/TrainingGuideModal'
 
 class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boolean; message: string }> {
   state = { error: false, message: '' }
@@ -49,7 +56,6 @@ const ItemsTab       = dynamic(() => import('./_components/ItemsTab'),        { 
 const ExpensesTab    = dynamic(() => import('./_components/ExpensesTab'),     { ssr: false, loading: () => loading('Loading…') })
 const CABTab         = dynamic(() => import('./_components/CABTab'),          { ssr: false, loading: () => loading('Loading…') })
 const TodayContent   = dynamic(() => import('./_components/TodayContent'),    { ssr: false, loading: () => loading('Loading…') })
-const LiveSaleForm   = dynamic(() => import('../sales/live/page'),            { ssr: false, loading: () => loading('Loading…') })
 const NewExpenseForm = dynamic(() => import('../expenses/new/page'),          { ssr: false, loading: () => loading('Loading…') })
 const NewItemForm    = dynamic(() => import('./_components/NewItemForm'),     { ssr: false, loading: () => loading('Loading…') })
 const ItemsAnalyticsSection      = dynamic(() => import('./_components/ItemsAnalyticsSection'),      { ssr: false, loading: () => loading('Loading analytics…') })
@@ -70,6 +76,21 @@ const StaffMemberPersonalTab = dynamic(() => import('./_components/StaffMemberPe
 const UKTab = dynamic(() => import('./_components/UKTab'), { ssr: false, loading: () => loading('Loading…') })
 const CHTab = dynamic(() => import('./_components/CHTab'), { ssr: false, loading: () => loading('Loading…') })
 const ReorderListsPanel = dynamic(() => import('./_components/ReorderListsPanel'), { ssr: false, loading: () => loading('Loading…') })
+// Sales/Bills/Loss by Date -- folded into Live Sale's own switcher (same
+// treatment Count 2 and Log got) since none of them had anything left
+// that justified a separate sidebar destination once the "New Sale" flow
+// was dropped and the classic Sales list's own tap-a-sale case moved here.
+const SalesTab = dynamic(() => import('./_components/SalesTab'), { ssr: false })
+const BillsTab = dynamic(() => import('./_components/BillsTab'), { ssr: false })
+const NewBillForm = dynamic(() => import('../bills/new/page'), { ssr: false })
+const SalesAnalyticsSection = dynamic(() => import('./_components/SalesAnalyticsSection'), { ssr: false })
+const BillsAnalyticsSection = dynamic(() => import('./_components/BillsAnalyticsSection'), { ssr: false })
+// Live/Log share one analytics view (same underlying tap data); Count
+// Records (which folded in the old Loss by Date feed) gets its own, backed
+// by the same reconciliation computeReconciliation() in lib/lossEvents.ts
+// computes for every count.
+const LiveSaleAnalyticsSection = dynamic(() => import('./_components/LiveSaleAnalyticsSection'), { ssr: false })
+const LossFeedAnalyticsSection = dynamic(() => import('./_components/LossFeedAnalyticsSection'), { ssr: false })
 
 // Every real staff member, including Grony -- the third top-level tab shows
 // whichever one of these matches the logged-in username, and that person's
@@ -401,8 +422,8 @@ const VIOLATION_HOME: Partial<Record<string, LossView | 'sales' | 'bills' | 'cou
   alias_prezoho_sales: 'items', alias_prezoho_bills: 'items', alias_prezoho_receipts: 'items', alias_flagged: 'items', alias_ambiguous: 'items',
   alias_name_conflicts: 'items',
   // Gains used to land on the standalone Loss by Date tab ('feed'); that
-  // tab folded into Count's own Count Records (see countRecordFilter in
-  // sales/live/page.tsx), so this now jumps there instead.
+  // tab folded into Count's own Count Records (see liveCountRecordFilter
+  // above), so this now jumps there instead.
   gains: 'count',
   no_cash: 'sales', missing_days: 'sales', cost_price: 'sales', dup_receipt: 'sales', no_attachment: 'sales', high_wnw: 'sales',
   no_vendor: 'bills', no_items_bills: 'bills', bill_total_mismatch: 'bills', bill_no_attachment: 'bills',
@@ -472,6 +493,96 @@ const VALID_ADD_FORMS = ['item', 'sale', 'live', 'bill', 'expense'] as const
 // just Biz's own home row, not a separate section.
 const PANE_ACCENT: Record<OuterTab, string> = {
   today: '#00072d', loss: '#00072d', uk: '#450a0a', ch: '#052e16',
+}
+
+// ── Live Sale's own module-level types/helpers (folded in from the former
+// sales/live/page.tsx) ── `LiveItem` is named distinctly from this file's
+// own `Item` type above (different shape -- name/group/soh/selling_price/
+// cost_price vs. item_name/cf_group/selling_rate/purchase_rate/
+// calculated_soh -- these are two independently-fetched catalogues, not a
+// dedupe opportunity for this pass).
+type LiveItem = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; product_type: string | null; count_interval?: string | null }
+type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null }
+type ViolationType = { key: string; label: string; description?: string }
+// Sale mode's due-count queues -- same shape /api/stock/daily,
+// /api/stock/gmc-weekly and /api/stock/overdue already return for CountsTab.
+type DueItem = { item_id: number; item_name: string; cf_group: string | null; calculated_soh: number; last_count_date: string | null; days_overdue: number | null }
+// The Log tab's Count view -- same shape /api/stock/counts already returns
+// for CountsTab's own history table. expected/loss_qty/loss_amt/kind are the
+// same reconciliation Loss by Date used to compute on its own -- folded in
+// here (see reconciliationByCount in lib/lossEvents.ts) instead of keeping a
+// second tab walking the same stock_counts rows separately.
+type CountRecord = { id: number; item_id: number | null; item_name: string; count_date: string; quantity_counted: string; notes: string | null; counted_by: string | null; counted_at: string | null; source: string | null; cf_group: string | null; expected: number | null; loss_qty: number | null; loss_amt: number | null; kind: 'loss' | 'gain' | null }
+
+function fmtN(v: number) { return v % 1 === 0 ? String(v) : v.toFixed(2) }
+
+function formatPrice(num: number | string): string {
+  const n = Number(num)
+  return n % 1 === 0 ? n.toFixed(0) : n.toFixed(2)
+}
+
+// The Log tab's Gap column -- minutes between two clock times, shown as
+// "12m" under an hour or "1h05" past it. Negative gaps (a clock-in/out
+// entered wrong, or a tap logged before the shop's own opening time) show
+// as "-12m" rather than being hidden, since that itself is worth noticing.
+function formatGapMins(mins: number): string {
+  const sign = mins < 0 ? '-' : ''
+  const abs = Math.round(Math.abs(mins))
+  if (abs < 60) return `${sign}${abs}m`
+  const h = Math.floor(abs / 60)
+  const m = abs % 60
+  return `${sign}${h}h${m ? String(m).padStart(2, '0') : ''}`
+}
+
+// lgAmt is the NET loss/gain in cedis (positive = net loss, negative = net
+// gain -- same sign convention Item 360's own loss table uses); lossCount/
+// gainCount are how many separate days came up short/over, each
+// independent of the other and of lgAmt's net sign (a item can have both
+// loss days and gain days that partly offset into one net figure).
+function formatLoss(l: { lossCount: number; lgAmt: number; gainCount?: number } | undefined): { text: string; cls: string } {
+  const count = l?.lossCount ?? 0
+  const amt = l?.lgAmt ?? 0
+  const gainCount = l?.gainCount ?? 0
+  const fmtAmt = (v: number) => (v % 1 === 0 ? v.toFixed(0) : v.toFixed(2))
+  const gainSuffix = gainCount > 0 ? ` · Gain ${gainCount}` : ''
+  if (count === 0 && amt === 0 && gainCount === 0) return { text: 'No loss', cls: 'text-gray-400' }
+  if (amt > 0) return { text: `Loss ${count} · -₵${fmtAmt(amt)}${gainSuffix}`, cls: 'text-red-500 font-semibold' }
+  if (amt < 0) return { text: `Loss ${count} · +₵${fmtAmt(Math.abs(amt))}${gainSuffix}`, cls: 'text-green-600 font-semibold' }
+  return { text: `Loss ${count}${gainSuffix}`, cls: 'text-gray-400' }
+}
+
+// Bold attention banner for an item's own data-integrity problems -- same
+// idea as the COUNT NOW banner (see countStatus/pinnedDueItems below), for
+// every check item/page.tsx's own itemsWithViolations tracks. The first four
+// (negative stock/missing SP/missing CP/missing group) are computed straight
+// off the item's own fields already on LiveItem, since they only ever need
+// this one item's own data; the last three (duplicate/unlinked sale/service
+// violation) need cross-item data this needs id sets built from the
+// itemsWithViolations-derived data below (see liveDuplicateItemIds/
+// liveUnlinkedNamedIds/liveServiceViolationIdSet).
+//
+// Returns every applicable issue, worst first -- callers show just the
+// first as the actual banner (still one banner per card, not a stack) and
+// use the rest to render a "+N more" alongside it, so a genuinely broken
+// item doesn't read as having only one problem.
+function itemAttentionFlags(
+  item: LiveItem,
+  duplicateItemIds: Set<number>,
+  unlinkedNamedIds: Set<number>,
+  serviceViolationIds: Set<number>
+): { label: string; bg: string }[] {
+  const soh = Number(item.soh)
+  const sp = parseFloat(String(item.selling_price)) || 0
+  const cp = parseFloat(String(item.cost_price)) || 0
+  const flags: { label: string; bg: string }[] = []
+  if (item.product_type !== 'service' && soh < 0) flags.push({ label: '⚠ NEGATIVE STOCK', bg: 'bg-red-600' })
+  if (duplicateItemIds.has(item.id)) flags.push({ label: '⚠ DUPLICATE ITEM', bg: 'bg-red-600' })
+  if (serviceViolationIds.has(item.id)) flags.push({ label: '⚠ SERVICE VIOLATION', bg: 'bg-rose-600' })
+  if (unlinkedNamedIds.has(item.id)) flags.push({ label: '⚠ UNLINKED SALE', bg: 'bg-orange-600' })
+  if (sp <= 0) flags.push({ label: '⚠ MISSING SELLING PRICE', bg: 'bg-orange-600' })
+  if (cp <= 0) flags.push({ label: '⚠ MISSING COST PRICE', bg: 'bg-orange-500' })
+  if (!item.group) flags.push({ label: '⚠ MISSING GROUP', bg: 'bg-amber-500' })
+  return flags
 }
 
 function ItemHubPageInner() {
@@ -557,8 +668,9 @@ function ItemHubPageInner() {
   // /item?tab=loss&view=sales&jumpDate=...&jumpItem=..., which the
   // URL-sync effect below strips off again on its first run since only
   // tab/view/q are ever written back to the URL.
-  // Fed straight into LiveSaleForm's own jumpToReceiptDate/jumpToReceiptItemName
-  // props now that Sales lives inside Live Sale's own Sales tab.
+  // Read directly by the inlined Live Sale Sales tab below (jumpToDate/
+  // jumpToItemName props on <SalesTab>) now that Sales lives inside Live
+  // Sale's own Sales tab.
   const [jumpToReceiptDate, setJumpToReceiptDate] = useState<string | null>(searchParams.get('jumpDate'))
   const [jumpToReceiptItemName, setJumpToReceiptItemName] = useState<string | null>(searchParams.get('jumpItem'))
   const [showItemsLaws, setShowItemsLaws] = useState(() => {
@@ -590,9 +702,6 @@ function ItemHubPageInner() {
   const [liveProductTypeFilter, setLiveProductTypeFilter] = useState<'all' | 'goods' | 'services'>('all')
   const [liveGroupFilter, setLiveGroupFilter] = useState<string | null>(null)
   const [liveHelpModalOpen, setLiveHelpModalOpen] = useState(false)
-  const [liveSearchSlotEl, setLiveSearchSlotEl] = useState<HTMLDivElement | null>(null)
-  const [liveModeToggleSlotEl, setLiveModeToggleSlotEl] = useState<HTMLDivElement | null>(null)
-  const [liveFilterSlotEl, setLiveFilterSlotEl] = useState<HTMLDivElement | null>(null)
   // Deep links into a specific Live Sale tab (Sale/Sales/Bills/Count/Loss by
   // Tgt/Log) -- the "Sale Log" search result, a "Fix now: Counts" button, a
   // Daily/7-Day/15-Day Counts violation pill, a Sales/Bills/gains violation
@@ -1643,6 +1752,1209 @@ function ItemHubPageInner() {
   // belong to submenus that don't apply here, so they're just clutter.
   const salesFormOpen = lossView === 'sales'
 
+  // ── Live Sale's own state/logic (folded in from the former
+  // sales/live/page.tsx, formerly a separately-mounted <LiveSaleForm>
+  // reached via ~30 drilled props + 3 DOM portal slots) ── every
+  // LiveSaleForm-internal identifier below is `live`-prefixed, continuing
+  // this file's own existing convention (liveExpanded/liveGroups/etc. above)
+  // and avoiding collisions with this component's ~90 other hooks. A
+  // "controlledX ?? internalX" fallback that only ever existed to support
+  // LiveSaleForm being usable stand-alone is deleted outright -- there is
+  // only ever one owner now (this component's own already-existing
+  // liveExpanded/liveProductTypeFilter/liveGroupFilter/liveHelpModalOpen
+  // state, declared above).
+  usePresenceReporter('live-tapping a sale')
+  const liveCanDeleteCounts = isOwnerLevel(session?.user as any)
+
+  const [liveAllItems, setLiveAllItems] = useState<LiveItem[]>([])
+  const [liveItemsLoading, setLiveItemsLoading] = useState(true)
+  const [liveTaps, setLiveTaps] = useState<Tap[]>([])
+  // Shop opening/last-sign-out clock times per date -- backs the Log tab's
+  // Gap column for the first/last tap of each day (see liveDayBounds effect
+  // below and /api/staff-times/day-bounds).
+  const [liveDayBounds, setLiveDayBounds] = useState<Record<string, { openTime: string | null; closeTime: string | null }>>({})
+  const [liveSaleType, setLiveSaleType] = useState<'WIC' | 'GMC'>('WIC')
+  const [liveTapError, setLiveTapError] = useState('')
+  // Tapping an item's name opens its full Item 360 detail (loss/gain
+  // history, pack-chain, aliases, merge) as its own popup -- separate from
+  // liveSelectedItem/the sale-tap sheet, since the two can be open from
+  // different rows at once with no relationship to each other.
+  const [liveViewingItemId, setLiveViewingItemId] = useState<number | null>(null)
+  const [liveSelectedItem, setLiveSelectedItem] = useState<LiveItem | null>(null)
+  // Snapshot of whether liveSelectedItem was due-for-count at the moment its
+  // sheet opened -- liveCountStatus itself updates the instant a count is
+  // saved (the item drops out of the due queues), so comparing "was due
+  // on open" against "still due now" is how the sheet tells "never was
+  // due" apart from "just got counted", regardless of whether that count
+  // went straight through or via the loss/pairing dialogs.
+  const [liveDueWhenOpened, setLiveDueWhenOpened] = useState(false)
+  const [liveQty, setLiveQty] = useState('')
+  const [livePrice, setLivePrice] = useState('')
+  const [liveSaving, setLiveSaving] = useState(false)
+  // Editing the selected item's own fields -- opened from an "Edit" button
+  // inside the same sale-tap sheet instead of navigating to Item 360, so a
+  // quick price/group/count-cadence fix doesn't require leaving the sheet
+  // (or the item picked for a sale). Swaps the sheet's body to the edit
+  // form in place; Cancel returns to the normal sale/count view without
+  // closing the sheet.
+  const [liveEditingSelectedItem, setLiveEditingSelectedItem] = useState(false)
+  const [liveEditForm, setLiveEditForm] = useState(EMPTY_ITEM_EDIT_FORM)
+  const [liveEditCurrentCountInterval, setLiveEditCurrentCountInterval] = useState<string | null>(null)
+  const [liveEditCurrentSoh, setLiveEditCurrentSoh] = useState<number | null>(null)
+  const [liveEditLoading, setLiveEditLoading] = useState(false)
+  const [liveEditSaving, setLiveEditSaving] = useState(false)
+  const [liveEditError, setLiveEditError] = useState('')
+  // "Large screen" -- breaks Live Sale out of the pane/content layout into a
+  // fixed fullscreen overlay, covering this component's own top green bar
+  // and footer (still mounted underneath, just visually hidden) -- so each
+  // mode below renders its own copy of the mode toggle/filter bar/search
+  // box while liveExpanded is true instead of relying on those.
+  const liveRootClassName = `bg-white flex flex-col ${liveExpanded ? 'fixed inset-0 z-50 overflow-y-auto' : 'h-full'}`
+  const [liveCurrentView, setLiveCurrentView] = useState<{ kind: 'violation' | 'serviceGroup' | 'lossByItem' | 'aliasWide' | 'serviceMatches' | 'newItem' | 'dailySummary'; key?: string; group?: string } | null>(null)
+  // Sale mode's own item-grid filter -- Loss/Gain (from liveLossByItemId
+  // below) and Low SOH (item.soh <= 0) are plain buckets; 'interval' reuses
+  // each item's own count_interval string (the same Daily/Every Nd/Not
+  // counted labels the Count tab's liveCountIntervalFlags buckets by) so a
+  // cadence bucket here can never drift out of sync with the Count tab's own.
+  const [liveSaleFilter, setLiveSaleFilter] = useState<{ kind: 'loss' } | { kind: 'gain' } | { kind: 'soh' } | { kind: 'interval'; label: string } | null>(null)
+  const [liveItemPickerQuery, setLiveItemPickerQuery] = useState('')
+  const [liveItemPickerResults, setLiveItemPickerResults] = useState<LiveItem[]>([])
+  const [liveShowItemPicker, setLiveShowItemPicker] = useState(false)
+  const [livePickedItemId, setLivePickedItemId] = useState<number | null>(null)
+  // Sales/Bills/Loss by Date/Loss by Target each kept their own laws/notes/
+  // tasks under their own scopeKey (from back when each was its own page) --
+  // still sitting in the database under those same scope keys, so each tab
+  // gets its own laws icon here to reach them, same as Sale mode's own
+  // (liveSaleLaws, declared above).
+  const salesLaws = useLawsPanel('showSalesLaws')
+  const billsLaws = useLawsPanel('showBillsLaws')
+  const lossByTargetLaws = useLawsPanel('showLossByTargetLaws')
+
+  // The standalone "Count" mode (its own due-count queues/badges/entry-form
+  // as a second grid mode) was removed once Sale mode grew its own pinned
+  // "COUNT NOW" block and inline count field for due items (below) -- those
+  // don't depend on this mode existing, they're Sale-mode-native. 'log' is
+  // the other original tab sharing this switcher -- what used to be a
+  // separate showLog boolean, folded in as a tab rather than its own
+  // sidebar destination since it's just history of Sale mode's own
+  // actions. Count 2 (the full old standalone Counts page) was a third
+  // tab here until its own History/Analytics/free-form counting no longer
+  // had anything Sale mode's due-item treatment and Log tab didn't already
+  // cover, and it was removed along with the Loss by Item page. 'sales'/
+  // 'bills'/'lossByTarget' followed once the classic Sales Receipts list,
+  // Bills, and Loss by Target lost anything that justified a separate
+  // sidebar destination once "New Sale" was dropped. Loss by Date's own
+  // 'feed' mode followed the same way once its data turned out to be a
+  // filtered view of Count's own Count Records (see liveCountRecordFilter) --
+  // folded in as extra columns there instead of a fourth tab walking the
+  // same stock_counts rows a second time.
+  const [liveMode, setLiveMode] = useState<'sale' | 'sales' | 'bills' | 'lossByTarget' | 'log' | 'count'>('sale')
+  const [liveSalesViolationFilter, setLiveSalesViolationFilter] = useState<string | null>(null)
+  const [liveBillsViolationFilter, setLiveBillsViolationFilter] = useState<string | null>(null)
+  // Count tab's own local navigation -- Daily/Every Nd/Dormant/etc, Count
+  // Records, and Count History used to only be reachable through the laws
+  // panel (as liveCurrentView kinds); moved to their own tab with this
+  // simpler local state instead of reusing liveCurrentView, since that's
+  // Sale mode's own overlay mechanism and these views no longer belong
+  // there. Defaults to Count Records -- that's the landing view for the
+  // Count tab, since a raw list of "what's due" is less useful than seeing
+  // what's actually been counted until you pick a specific category to
+  // drill into.
+  const [liveCountView, setLiveCountView] = useState<{ kind: 'interval'; label: string } | { kind: 'records' } | { kind: 'history' } | null>({ kind: 'records' })
+  const [liveEmbeddedSearch, setLiveEmbeddedSearch] = useState('')
+  // Finishes a jumpToLiveSaleTab() call -- moved here as a plain effect
+  // keyed on liveSaleJumpSeq (declared above, alongside jumpToLiveSaleTab
+  // itself) instead of crossing a prop boundary into a separate component.
+  useEffect(() => {
+    if (!liveSaleJumpSeq || !liveSaleJumpTab) return
+    setLiveMode(liveSaleJumpTab)
+    setLiveSalesViolationFilter(liveSaleJumpTab === 'sales' ? liveSaleJumpViolation : null)
+    setLiveBillsViolationFilter(liveSaleJumpTab === 'bills' ? liveSaleJumpViolation : null)
+    // The 'gains' violation pill is the one way the old Loss by Date's own
+    // filter (not a violation key it understands) needs setting on arrival
+    // -- every other loss-feed jump defaults back to the Losses side, into
+    // Count Records rather than the interval buckets.
+    if (liveSaleJumpTab === 'count') {
+      setLiveCountView({ kind: 'records' })
+      setLiveCountRecordFilter(liveSaleJumpViolation === 'gains' ? 'gain' : 'loss')
+    }
+    setLiveEmbeddedSearch(liveSaleJumpSearch ?? '')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveSaleJumpSeq])
+  const [liveDailyItems, setLiveDailyItems] = useState<DueItem[]>([])
+  const [liveGmcWeeklyItems, setLiveGmcWeeklyItems] = useState<DueItem[]>([])
+  const [liveOverdueItems, setLiveOverdueItems] = useState<DueItem[]>([])
+  const [liveCountQty, setLiveCountQty] = useState('')
+  const [liveCountSaving, setLiveCountSaving] = useState(false)
+  const [liveCountError, setLiveCountError] = useState('')
+  const [liveLossPrompt, setLiveLossPrompt] = useState<LossPrompt | null>(null)
+  const [livePairingPrompt, setLivePairingPrompt] = useState<PairingPrompt | null>(null)
+  const [liveCountRecords, setLiveCountRecords] = useState<CountRecord[]>([])
+  const [liveEditingCountId, setLiveEditingCountId] = useState<number | null>(null)
+  const [liveEditCountQty, setLiveEditCountQty] = useState('')
+  const [liveEditCountNotes, setLiveEditCountNotes] = useState('')
+  const [liveEditCountSaving, setLiveEditCountSaving] = useState(false)
+  // Count Records' All/Losses/Gains filter -- the old Loss by Date tab's own
+  // Losses/Gains toggle, now scoped down to a filter on the same table
+  // instead of a second table walking the same rows.
+  const [liveCountRecordFilter, setLiveCountRecordFilter] = useState<'all' | 'loss' | 'gain'>('all')
+  // Bills has no internal "add new" of its own (unlike Sales, which this
+  // tap-to-sell mode already covers) -- it always relied on its own tab
+  // rendering NewBillForm as a sibling, so that comes along with it.
+  const [liveBillsAddingNew, setLiveBillsAddingNew] = useState(false)
+  const [liveSalesShowAnalytics, setLiveSalesShowAnalytics] = useState(false)
+  const [liveBillsShowAnalytics, setLiveBillsShowAnalytics] = useState(false)
+  // Sale mode's own Analytics toggle -- named distinctly from the generic
+  // "live" prefix (source collision: this file's live-prefix convention
+  // would otherwise turn the original `liveShowAnalytics` into a name that
+  // reads like it means "Live Sale generally" rather than "Sale mode
+  // specifically") to keep it visually distinct from liveSalesShowAnalytics
+  // (the Sales tab's own toggle) right above.
+  const [saleModeShowAnalytics, setSaleModeShowAnalytics] = useState(false)
+  const [liveLogShowAnalytics, setLiveLogShowAnalytics] = useState(false)
+  const [liveCountShowAnalytics, setLiveCountShowAnalytics] = useState(false)
+
+  // Item-group options for Live Sale's own filter selects -- built from
+  // liveAllItems (Live Sale's own catalogue fetch), NOT the hub's own
+  // `items`/liveGroups above (a different, separately-fetched catalogue --
+  // not a dedupe opportunity for this pass, see LiveItem's own comment).
+  const liveCatalogueGroups = useMemo(() => {
+    const uniqueGroups = new Set<string>()
+    for (const item of liveAllItems) {
+      if (item.group) uniqueGroups.add(item.group)
+    }
+    return Array.from(uniqueGroups).sort()
+  }, [liveAllItems])
+
+  // SalesTab/BillsTab expect items shaped {id, item_name, cf_group} -- Live
+  // Sale's own item list already uses {id, name, group} for everything
+  // else, so this is just a field-name adapter, not a different data
+  // source (same trick countsTabItems used to use for CountsTab).
+  const liveSalesBillsItems = useMemo(
+    () => liveAllItems.map(i => ({ id: i.id, item_name: i.name, cf_group: i.group })),
+    [liveAllItems]
+  )
+
+  // Merges the 3 due-count queues into one per-item lookup for Count
+  // mode's grid badges -- daily/7-day GMC items are "due", 15-day items
+  // are "overdue" (a stronger color); an item in none of the 3 just isn't
+  // due right now. The queues never overlap the same item in practice
+  // (each excludes the others' item set server-side), so layering order
+  // here only matters as a safety default, not a real precedence rule.
+  const liveCountStatus = useMemo(() => {
+    const map = new Map<number, { level: 'due' | 'overdue'; label: string }>()
+    for (const it of liveDailyItems) {
+      map.set(it.item_id, { level: 'due', label: !it.days_overdue || it.days_overdue <= 0 ? 'Today' : `${it.days_overdue}d` })
+    }
+    for (const it of liveGmcWeeklyItems) {
+      map.set(it.item_id, { level: 'due', label: !it.days_overdue || it.days_overdue <= 0 ? 'Due' : `${it.days_overdue}d` })
+    }
+    for (const it of liveOverdueItems) {
+      map.set(it.item_id, { level: 'overdue', label: `${it.days_overdue ?? '?'}d` })
+    }
+    return map
+  }, [liveDailyItems, liveGmcWeeklyItems, liveOverdueItems])
+
+  // One view per distinct count-interval label actually in use (Daily,
+  // Every 7d, Every 15d, Every 30d, Not counted, or any custom override
+  // someone's set on an item's edit form -- the set isn't fixed to just
+  // those, since count_cadence_days is a free-form number). Built from
+  // liveAllItems rather than liveCatalogueItems so the counts don't shrink/
+  // shift as other filters (product type, group, WIC/GMC) get applied.
+  const liveCountIntervalFlags = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const it of liveAllItems) {
+      if (!it.count_interval) continue
+      counts.set(it.count_interval, (counts.get(it.count_interval) ?? 0) + 1)
+    }
+    const sortKey = (label: string) => {
+      if (label === 'Daily') return -1
+      if (label === 'Not counted') return Infinity
+      const m = label.match(/^Every (\d+)d$/)
+      return m ? Number(m[1]) : 999998
+    }
+    return Array.from(counts.entries())
+      .sort(([a], [b]) => sortKey(a) - sortKey(b))
+      .map(([label, count]) => ({
+        key: `count_interval_${label}`,
+        label,
+        count,
+        active: liveCountView?.kind === 'interval' && liveCountView.label === label,
+        onViewClick: () => {
+          setLiveCountView(liveCountView?.kind === 'interval' && liveCountView.label === label
+            ? null
+            : { kind: 'interval' as const, label })
+        }
+      }))
+  }, [liveAllItems, liveCountView])
+
+  // Same violation-type label/description lists ITEMS_FLAG_TYPES/
+  // SALES_FLAG_TYPES/BILLS_FLAG_TYPES already back for the Items/Sales/Bills
+  // flag icons above -- computed here too (Live Sale's own flags panel,
+  // and the Sales/Bills tabs' own inline law panels below, all read them).
+  const liveViolationTypes: ViolationType[] = ITEMS_FLAG_TYPES.map(({ key, label }) => ({ key, label, description: ERROR_VIOLATIONS.find(v => v.key === key)?.description }))
+  const liveSalesViolationTypes: ViolationType[] = SALES_FLAG_TYPES.map(({ key, label }) => ({ key, label, description: ERROR_VIOLATIONS.find(v => v.key === key)?.description }))
+  const liveBillsViolationTypes: ViolationType[] = BILLS_FLAG_TYPES.map(({ key, label }) => ({ key, label, description: ERROR_VIOLATIONS.find(v => v.key === key)?.description }))
+
+  // Same object literal the old <LiveSaleForm itemsWithViolations={...}/>
+  // call site built inline -- lifted into its own memo since it's now read
+  // directly by liveDuplicateItemIds/liveUnlinkedNamedIds/
+  // liveServiceViolationIdSet/liveCatalogueItems below instead of crossing
+  // a prop boundary.
+  const liveItemsWithViolations = useMemo(() => ({
+    neg_soh: items.filter(i => Number(i.calculated_soh) < 0 && i.product_type !== 'service').map(i => i.id),
+    no_sp: items.filter(i => !i.selling_rate || parseFloat(i.selling_rate) === 0).map(i => i.id),
+    no_cp: items.filter(i => !i.purchase_rate || parseFloat(i.purchase_rate) === 0).map(i => i.id),
+    no_group: items.filter(i => !i.cf_group).map(i => i.id),
+    // Both sides of every non-dismissed duplicate pair -- ids only, same as
+    // the other four keys here.
+    duplicates: [...new Set((globalFlags?.duplicates ?? []).flatMap((d: any) => [d.id1, d.id2]))] as number[],
+    unlinked_named: (globalFlags?.unlinkedNamed ?? []).map((r: any) => r.item_id) as number[],
+    service_violation: serviceViolationIds,
+  }), [items, globalFlags, serviceViolationIds])
+
+  // Build flags array with Live Sale callbacks
+  const liveComputedFlags = useMemo(() => [
+    ...liveViolationTypes.map((v: ViolationType) => ({
+      key: v.key,
+      label: v.label,
+      description: v.description,
+      count: violationCounts[v.key] ?? 0,
+      onViewClick: () => {
+        setLiveCurrentView(liveCurrentView?.kind === 'violation' && liveCurrentView.key === v.key
+          ? null
+          : { kind: 'violation' as const, key: v.key })
+      }
+    })),
+    // Sales'/Bills' own violation flags -- unlike the Items ones above,
+    // clicking one switches the whole tab (there's no "filter the current
+    // grid" option once you're on a different mode's data entirely), and
+    // sets that tab's own violation filter instead of liveCurrentView.
+    ...liveSalesViolationTypes.map((v: ViolationType) => ({
+      key: v.key,
+      label: v.label,
+      description: v.description,
+      count: violationCounts[v.key] ?? 0,
+      active: liveMode === 'sales' && liveSalesViolationFilter === v.key,
+      onViewClick: () => {
+        if (liveMode === 'sales' && liveSalesViolationFilter === v.key) { setLiveSalesViolationFilter(null); return }
+        setLiveMode('sales')
+        setLiveSalesViolationFilter(v.key)
+      }
+    })),
+    ...liveBillsViolationTypes.map((v: ViolationType) => ({
+      key: v.key,
+      label: v.label,
+      description: v.description,
+      count: violationCounts[v.key] ?? 0,
+      active: liveMode === 'bills' && liveBillsViolationFilter === v.key,
+      onViewClick: () => {
+        if (liveMode === 'bills' && liveBillsViolationFilter === v.key) { setLiveBillsViolationFilter(null); return }
+        setLiveMode('bills')
+        setLiveBillsViolationFilter(v.key)
+      }
+    })),
+    {
+      key: 'loss_by_item',
+      label: 'Loss by Item',
+      count: 0,
+      onViewClick: () => {
+        setLiveCurrentView(liveCurrentView?.kind === 'lossByItem' ? null : { kind: 'lossByItem' as const })
+      }
+    },
+    {
+      key: 'alias_wide_table',
+      label: 'Alias Wide Table',
+      count: 0,
+      onViewClick: () => {
+        setLiveCurrentView(liveCurrentView?.kind === 'aliasWide' ? null : { kind: 'aliasWide' as const })
+      }
+    },
+    {
+      key: 'service_matches',
+      label: 'Service Matches',
+      count: 0,
+      onViewClick: () => {
+        setLiveCurrentView(liveCurrentView?.kind === 'serviceMatches' ? null : { kind: 'serviceMatches' as const })
+      }
+    },
+    {
+      key: 'new_item',
+      label: '+ New Item',
+      count: 0,
+      onViewClick: () => {
+        setLiveCurrentView(liveCurrentView?.kind === 'newItem' ? null : { kind: 'newItem' as const })
+      }
+    },
+    {
+      key: 'daily_summary',
+      label: 'Daily Summary',
+      count: 0,
+      onViewClick: () => {
+        setLiveCurrentView(liveCurrentView?.kind === 'dailySummary' ? null : { kind: 'dailySummary' as const })
+      }
+    },
+  ], [violationCounts, liveViolationTypes, liveSalesViolationTypes, liveBillsViolationTypes, liveMode, liveSalesViolationFilter, liveBillsViolationFilter, serviceGroups, liveCurrentView])
+
+  // Fetch items (Live Sale's own catalogue -- see LiveItem's own comment)
+  useEffect(() => {
+    fetch('/api/items/all')
+      .then(r => r.json())
+      .then(d => { setLiveAllItems(Array.isArray(d) ? d : []); setLiveItemsLoading(false) })
+      .catch(() => setLiveItemsLoading(false))
+  }, [])
+
+  // Items with at least one past GMC (internal-use) sale on record -- the
+  // only existing definition of "GMC items" anywhere in the app (see
+  // /api/items/gmc-ids). Fetched once; when liveSaleType flips to GMC the
+  // grid narrows to this set so a walk-in item can't accidentally get
+  // tapped under an internal-use receipt.
+  const [liveGmcItemIds, setLiveGmcItemIds] = useState<Set<number>>(new Set())
+  useEffect(() => {
+    fetch('/api/items/gmc-ids')
+      .then(r => r.json())
+      .then(d => setLiveGmcItemIds(new Set(Array.isArray(d) ? d : [])))
+      .catch(() => {})
+  }, [])
+
+  // Loss count/amount per item -- same numbers Item 360's own loss ranking
+  // is built from (/api/losses/summary), shown inline next to price/cost/
+  // stock/count-interval so a loss-prone item is visible without opening
+  // its Item 360 detail. Fetched once, same as the GMC id set above.
+  const [liveLossByItemId, setLiveLossByItemId] = useState<Map<number, { lossCount: number; lgAmt: number; gainCount: number }>>(new Map())
+  useEffect(() => {
+    fetch('/api/losses/summary')
+      .then(r => r.json())
+      .then((d: { item_id: number; lossCount: number; lgAmt: number; gainCount: number }[]) => {
+        setLiveLossByItemId(new Map(Array.isArray(d) ? d.map(r => [r.item_id, { lossCount: r.lossCount, lgAmt: r.lgAmt, gainCount: r.gainCount }]) : []))
+      })
+      .catch(() => {})
+  }, [])
+
+  // Id sets for the three itemAttentionFlag checks that need cross-item data
+  // (see the function's own comment) -- built once here off
+  // liveItemsWithViolations instead of re-scanning it on every card's
+  // render. Renamed liveServiceViolationIdSet (not serviceViolationIds) --
+  // this component already has its own serviceViolationIds state (feeding
+  // liveItemsWithViolations.service_violation above), so the same name here
+  // would silently shadow it instead of erroring.
+  const liveDuplicateItemIds = useMemo(() => new Set<number>(liveItemsWithViolations.duplicates ?? []), [liveItemsWithViolations])
+  const liveUnlinkedNamedIds = useMemo(() => new Set<number>(liveItemsWithViolations.unlinked_named ?? []), [liveItemsWithViolations])
+  const liveServiceViolationIdSet = useMemo(() => new Set<number>(liveItemsWithViolations.service_violation ?? []), [liveItemsWithViolations])
+
+  // Fetch taps
+  useEffect(() => {
+    fetch('/api/sales/live-taps')
+      .then(r => r.json())
+      .then(d => { setLiveTaps(Array.isArray(d) ? d : []) })
+      .catch(() => {})
+  }, [])
+
+  // Sale mode's 3 due-count queues (COUNT NOW block + inline count field) --
+  // same endpoints CountsTab's own flag pills read from. Fetched once up
+  // front (cheap, and avoids a loading flash the first time a due item
+  // would show up).
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/stock/daily').then(r => r.json()),
+      fetch('/api/stock/gmc-weekly').then(r => r.json()),
+      fetch('/api/stock/overdue').then(r => r.json()),
+    ]).then(([daily, gmcWeekly, overdue]) => {
+      setLiveDailyItems(Array.isArray(daily) ? daily : [])
+      setLiveGmcWeeklyItems(Array.isArray(gmcWeekly) ? gmcWeekly : [])
+      setLiveOverdueItems(Array.isArray(overdue) ? overdue : [])
+    }).catch(() => {})
+  }, [])
+
+  // Count Records -- fetched only once it's actually being looked at, via
+  // Count tab's own "Count Records" view (see renderCountRecordsTable),
+  // unlike the queues above (this is the full all-time history, not a
+  // small due-today list). The Log tab dropped its own Count view since
+  // it's the same table, reachable from the Count tab instead.
+  const liveViewingCountRecords = liveCountView?.kind === 'records'
+  useEffect(() => {
+    if (!liveViewingCountRecords) return
+    fetch('/api/stock/counts')
+      .then(r => r.json())
+      .then(d => setLiveCountRecords(Array.isArray(d) ? d : []))
+      .catch(() => {})
+  }, [liveViewingCountRecords])
+
+  // Search items as user types
+  useEffect(() => {
+    if (!liveItemPickerQuery.trim()) {
+      setLiveItemPickerResults([])
+      setLiveShowItemPicker(false)
+      return
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const r = await fetch(`/api/items/search?q=${encodeURIComponent(liveItemPickerQuery)}`)
+        const results = await r.json()
+        setLiveItemPickerResults(Array.isArray(results) ? results : [])
+        setLiveShowItemPicker(true)
+      } catch (e) {
+        setLiveItemPickerResults([])
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [liveItemPickerQuery])
+
+  // Count sales by item (all historical taps)
+  const liveToday = new Date().toISOString().slice(0, 10)
+  const liveSalesCounts = useMemo(() => {
+    const counts = new Map<number, number>()
+    for (const tap of liveTaps) {
+      if (!tap.undone) {
+        counts.set(tap.item_id, (counts.get(tap.item_id) ?? 0) + tap.quantity)
+      }
+    }
+    return counts
+  }, [liveTaps])
+
+  // Options for Sale mode's own item-grid filter (liveSaleFilter above) --
+  // Loss/Gain/Low SOH plus one per count-interval label currently in use,
+  // same buckets and sort order as the Count tab's liveCountIntervalFlags so
+  // the two read consistently even though they're built for different modes.
+  const liveSaleFilterFlags = useMemo(() => {
+    const lossCount = liveAllItems.filter(it => (liveLossByItemId.get(it.id)?.lossCount ?? 0) > 0).length
+    const gainCount = liveAllItems.filter(it => (liveLossByItemId.get(it.id)?.gainCount ?? 0) > 0).length
+    const sohCount = liveAllItems.filter(it => it.soh <= 0).length
+
+    const intervalCounts = new Map<string, number>()
+    for (const it of liveAllItems) {
+      if (!it.count_interval) continue
+      intervalCounts.set(it.count_interval, (intervalCounts.get(it.count_interval) ?? 0) + 1)
+    }
+    const sortKey = (label: string) => {
+      if (label === 'Daily') return -1
+      if (label === 'Not counted') return Infinity
+      const m = label.match(/^Every (\d+)d$/)
+      return m ? Number(m[1]) : 999998
+    }
+    const intervalFlags = Array.from(intervalCounts.entries())
+      .sort(([a], [b]) => sortKey(a) - sortKey(b))
+      .map(([label, count]) => ({ key: `interval_${label}`, label, count }))
+
+    return [
+      { key: 'loss', label: '🔻 Loss', count: lossCount },
+      { key: 'gain', label: '🔺 Gain', count: gainCount },
+      { key: 'soh', label: 'Low SOH', count: sohCount },
+      ...intervalFlags,
+    ]
+  }, [liveAllItems, liveLossByItemId])
+
+  // Filter and sort items based on current view and product type
+  const liveCatalogueItems = useMemo(() => {
+    if (liveAllItems.length === 0) return []
+
+    let filtered = [...liveAllItems]
+
+    // If an item is picked, show ONLY that item
+    if (livePickedItemId !== null) {
+      filtered = filtered.filter(item => item.id === livePickedItemId)
+      return filtered
+    }
+
+    // Apply product type filter
+    if (liveProductTypeFilter === 'goods') {
+      filtered = filtered.filter(item => item.product_type !== 'service')
+    } else if (liveProductTypeFilter === 'services') {
+      filtered = filtered.filter(item => item.product_type === 'service')
+    }
+
+    // Apply group filter
+    if (liveGroupFilter !== null) {
+      filtered = filtered.filter(item => item.group === liveGroupFilter)
+    }
+
+    // GMC (internal use) only ever taps items with a GMC history -- keeps
+    // the browse grid from offering a normal walk-in item under an
+    // internal-use receipt. Doesn't apply to a deliberately searched-and-
+    // picked item above, since that's how an item gets its first-ever GMC
+    // record in the first place.
+    if (liveMode === 'sale' && liveSaleType === 'GMC') {
+      filtered = filtered.filter(item => liveGmcItemIds.has(item.id))
+    }
+
+    // Apply Sale mode's own Loss/Gain/SOH/count-interval filter
+    if (liveSaleFilter?.kind === 'loss') {
+      filtered = filtered.filter(item => (liveLossByItemId.get(item.id)?.lossCount ?? 0) > 0)
+    } else if (liveSaleFilter?.kind === 'gain') {
+      filtered = filtered.filter(item => (liveLossByItemId.get(item.id)?.gainCount ?? 0) > 0)
+    } else if (liveSaleFilter?.kind === 'soh') {
+      filtered = filtered.filter(item => item.soh <= 0)
+    } else if (liveSaleFilter?.kind === 'interval') {
+      filtered = filtered.filter(item => item.count_interval === liveSaleFilter.label)
+    }
+
+    // Apply view filter
+    if (liveCurrentView?.kind === 'serviceGroup' && liveCurrentView.group) {
+      filtered = filtered.filter(item => item.group === liveCurrentView.group)
+    } else if (liveCurrentView?.kind === 'violation' && liveCurrentView.key) {
+      // Filter items by violation type using pre-computed violation data
+      const violationItemIds = (liveItemsWithViolations as Record<string, number[]>)[liveCurrentView.key]
+      if (violationItemIds) {
+        filtered = filtered.filter(item => violationItemIds.includes(item.id))
+      } else {
+        filtered = []
+      }
+    } else if (liveCurrentView?.kind === 'lossByItem') {
+      // Sort by loss amount when viewing loss by item
+      return filtered.sort((a, b) => {
+        const lossA = Math.abs(Number(a.selling_price || 0) - Number(a.cost_price || 0))
+        const lossB = Math.abs(Number(b.selling_price || 0) - Number(b.cost_price || 0))
+        return lossB - lossA
+      })
+    }
+
+    // Sort by sales count (highest to lowest)
+    return filtered.sort((a, b) => (liveSalesCounts.get(b.id) ?? 0) - (liveSalesCounts.get(a.id) ?? 0))
+  }, [liveAllItems, liveSalesCounts, liveCurrentView, liveProductTypeFilter, liveGroupFilter, livePickedItemId, liveSaleType, liveGmcItemIds, liveMode, liveSaleFilter, liveLossByItemId, liveItemsWithViolations])
+
+  // Log tab's two histories, grouped by date -- computed unconditionally
+  // (not inside an `if (liveMode === 'log')` branch) since every mode
+  // renders from the same mounted component instance, switched by
+  // liveMode; a useMemo that only ran while liveMode==='log' would change
+  // the hook count the moment you switched tabs and crash the page.
+  const liveTapsByDate = useMemo(() => {
+    const groups = new Map<string, typeof liveTaps>()
+    for (const tap of liveTaps) {
+      const date = tap.tapped_at.slice(0, 10)
+      if (!groups.has(date)) groups.set(date, [])
+      groups.get(date)!.push(tap)
+    }
+    return Array.from(groups.entries()).sort(([a], [b]) => b.localeCompare(a))
+  }, [liveTaps])
+
+  // Shop open/close bounds for the Log tab's Gap column -- only fetched
+  // while Log is actually being looked at (same "not until it's viewed"
+  // treatment as Count Records below), and only for dates not already
+  // fetched, so switching back to Log after the first time doesn't refetch
+  // every date again.
+  useEffect(() => {
+    if (liveMode !== 'log') return
+    const dates = liveTapsByDate.map(([date]) => date).filter(d => !(d in liveDayBounds))
+    if (!dates.length) return
+    fetch(`/api/staff-times/day-bounds?dates=${dates.join(',')}`)
+      .then(r => r.json())
+      .then((d: { date: string; openTime: string | null; closeTime: string | null }[]) => {
+        if (!Array.isArray(d)) return
+        setLiveDayBounds(prev => {
+          const next = { ...prev }
+          for (const row of d) next[row.date] = { openTime: row.openTime, closeTime: row.closeTime }
+          return next
+        })
+      })
+      .catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveMode, liveTapsByDate])
+
+  const liveCountsByDate = useMemo(() => {
+    const q = liveEmbeddedSearch.trim().toLowerCase()
+    const filtered = liveCountRecords.filter(rec => {
+      if (liveCountRecordFilter === 'loss' && rec.kind !== 'loss') return false
+      if (liveCountRecordFilter === 'gain' && rec.kind !== 'gain') return false
+      if (q && !rec.item_name.toLowerCase().includes(q)) return false
+      return true
+    })
+    const groups = new Map<string, typeof liveCountRecords>()
+    for (const rec of filtered) {
+      const date = rec.count_date.slice(0, 10)
+      if (!groups.has(date)) groups.set(date, [])
+      groups.get(date)!.push(rec)
+    }
+    return Array.from(groups.entries()).sort(([a], [b]) => b.localeCompare(a))
+  }, [liveCountRecords, liveCountRecordFilter, liveEmbeddedSearch])
+
+  // All-Time/Yesterday/This Week/Month/Year loss totals -- same period
+  // summary the old Loss by Date tab pinned above its own table, computed
+  // from every record regardless of liveCountRecordFilter/search so it
+  // always reads as the whole picture, not whatever's currently filtered
+  // in view.
+  const liveCountLossSummary = useMemo(() => {
+    const fmtLocal = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const today0 = new Date(); today0.setHours(0, 0, 0, 0)
+    const y = new Date(today0); y.setDate(y.getDate() - 1)
+    const weekStart = new Date(today0); weekStart.setDate(weekStart.getDate() - ((today0.getDay() + 6) % 7))
+    const monthStart = `${today0.getFullYear()}-${String(today0.getMonth() + 1).padStart(2, '0')}-01`
+    const yearStart = `${today0.getFullYear()}-01-01`
+    const yesterday = fmtLocal(y), ws = fmtLocal(weekStart)
+    const losses = liveCountRecords.filter(r => r.kind === 'loss')
+    const agg = (pred: (d: string) => boolean) => {
+      const list = losses.filter(r => pred(r.count_date.slice(0, 10)))
+      return { n: list.length, amt: parseFloat(list.reduce((s, r) => s + (r.loss_amt ?? 0), 0).toFixed(2)) }
+    }
+    return [
+      { label: 'All-Time', period: agg(() => true) },
+      { label: 'Yesterday', period: agg(d => d === yesterday) },
+      { label: 'This Week', period: agg(d => d >= ws) },
+      { label: 'This Month', period: agg(d => d >= monthStart) },
+      { label: 'This Year', period: agg(d => d >= yearStart) },
+    ]
+  }, [liveCountRecords])
+
+  // Sale mode's own due-count callout -- staff mostly live in Sale mode, so
+  // a due item needs to be visible right there instead of requiring a trip
+  // to a separate count screen. Pinned as its own block at the very top
+  // (not interleaved into the sales-frequency order below it), so the
+  // normal most-sold-first list staff rely on for fast tapping never
+  // reshuffles just because something unrelated went overdue.
+  const [livePinnedDueItems, liveRestCatalogueItems] = useMemo(() => {
+    if (liveMode !== 'sale') return [[], liveCatalogueItems] as [LiveItem[], LiveItem[]]
+    const due: LiveItem[] = []
+    const rest: LiveItem[] = []
+    for (const item of liveCatalogueItems) {
+      if (liveCountStatus.has(item.id)) due.push(item)
+      else rest.push(item)
+    }
+    const urgency = (item: LiveItem) => {
+      const d = liveCountStatus.get(item.id)!
+      const n = parseInt(d.label, 10)
+      return (d.level === 'overdue' ? 1000 : 0) + (isNaN(n) ? 0 : n)
+    }
+    due.sort((a, b) => urgency(b) - urgency(a))
+    return [due, rest] as [LiveItem[], LiveItem[]]
+  }, [liveCatalogueItems, liveCountStatus, liveMode])
+
+  async function recordTap() {
+    if (!liveSelectedItem || !liveQty) return
+    setLiveSaving(true)
+    setLiveTapError('')
+
+    const qtyNum = Number(liveQty)
+    const priceNum = livePrice ? Number(livePrice) : Number(liveSelectedItem.selling_price)
+
+    if (qtyNum <= 0) {
+      setLiveTapError('Quantity must be greater than 0')
+      setLiveSaving(false)
+      return
+    }
+
+    if (priceNum <= 0) {
+      setLiveTapError('Price must be greater than 0')
+      setLiveSaving(false)
+      return
+    }
+
+    try {
+      const res = await fetch('/api/sales/live-tap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          itemId: liveSelectedItem.id,
+          quantity: qtyNum,
+          customPrice: livePrice ? priceNum : undefined,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setLiveTapError(data.error || 'Could not record tap')
+        setLiveSaving(false)
+        return
+      }
+      setLiveTaps(prev => [data.tap, ...prev])
+      setLiveSelectedItem(null)
+      setLiveQty('')
+      setLivePrice('')
+    } catch (e) {
+      setLiveTapError('Network error')
+    } finally {
+      setLiveSaving(false)
+    }
+  }
+
+  async function undoTap(tapId: number) {
+    try {
+      const res = await fetch(`/api/sales/live-taps/${tapId}?action=undo`, { method: 'POST' })
+      if (res.ok) {
+        setLiveTaps(prev => prev.map(t => t.id === tapId ? { ...t, undone: true } : t))
+      } else {
+        setLiveTapError('Could not undo tap')
+      }
+    } catch (e) {
+      setLiveTapError('Could not undo tap')
+    }
+  }
+
+  // Same /api/stock/count contract CountsTab's own CountRow/ManualCountForm
+  // already submit through -- a pack-pairing or loss-reason requirement
+  // comes back as a 409 with a flag the caller re-submits against once the
+  // prompt is answered, not a plain error, so this mirrors that retry shape
+  // exactly rather than reinventing it. Used by the inline "Count today's
+  // stock" field the Sale sheet grows for a due item (see the modal below).
+  async function submitCount(item: LiveItem, qty: number, lossExtra?: LossExtra) {
+    setLiveCountSaving(true)
+    setLiveCountError('')
+    const res = await fetch('/api/stock/count', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId: item.id, qty, notes: '', ...(lossExtra ?? {}) }),
+    })
+    setLiveCountSaving(false)
+    if (res.ok) {
+      setLiveDailyItems(prev => prev.filter(i => i.item_id !== item.id))
+      setLiveGmcWeeklyItems(prev => prev.filter(i => i.item_id !== item.id))
+      setLiveOverdueItems(prev => prev.filter(i => i.item_id !== item.id))
+      setLiveCountQty('')
+      return
+    }
+    const d = await res.json().catch(() => null)
+    if (res.status === 409 && d?.requires_pack_count) {
+      setLivePairingPrompt({ itemName: item.name, packs: d.packs, retry: () => submitCount(item, qty, lossExtra) })
+      return
+    }
+    if (res.status === 409 && d?.requires_loss_reason) {
+      setLiveLossPrompt({ d, retry: extra => submitCount(item, qty, extra) })
+      return
+    }
+    setLiveCountError(d?.error ?? 'Could not save count.')
+  }
+
+  // Groups/conversion-target list ItemEditForm needs, derived from the
+  // catalogue Live Sale already has loaded rather than a separate fetch.
+  const liveEditGroups = useMemo(() =>
+    Array.from(new Set(liveAllItems.map(i => i.group).filter((g): g is string => !!g))).sort()
+  , [liveAllItems])
+  const liveEditAllItemsList = useMemo(() =>
+    liveAllItems.map(i => ({ item_id: i.id, item_name: i.name }))
+  , [liveAllItems])
+
+  // The sale-tap sheet's own Item fields don't carry cf_group/units_per_pack/
+  // unit_name/converts_to_item_id/count_excluded/count_cadence_days (not
+  // needed for tapping a sale), so opening the edit form fetches the full
+  // item record the same way LossTab's ItemEditForm does.
+  async function startEditSelectedItem() {
+    if (!liveSelectedItem) return
+    setLiveEditingSelectedItem(true)
+    setLiveEditError('')
+    setLiveEditLoading(true)
+    setLiveEditCurrentCountInterval(null)
+    setLiveEditCurrentSoh(null)
+    setLiveCountQty('')
+    setLiveCountError('')
+    try {
+      const r = await fetch(`/api/items/${liveSelectedItem.id}`)
+      const d = await r.json()
+      setLiveEditForm({
+        item_name: d?.canonical_name ?? liveSelectedItem.name,
+        cf_group: d?.cf_group ?? '',
+        selling_rate: d?.selling_price != null ? String(d.selling_price) : '',
+        purchase_rate: d?.purchase_rate != null ? String(d.purchase_rate) : '',
+        units_per_pack: d?.units_per_pack != null ? String(d.units_per_pack) : '',
+        unit_name: d?.unit_name ?? '',
+        converts_to_item_id: d?.converts_to_item_id ? String(d.converts_to_item_id) : '',
+        count_excluded: !!d?.count_excluded,
+        count_cadence_days: d?.count_cadence_days != null ? String(d.count_cadence_days) : '',
+        count_excluded_reason: d?.count_excluded_reason ?? '',
+      })
+      setLiveEditCurrentCountInterval(d?.count_interval ?? null)
+      setLiveEditCurrentSoh(d?.calculated_soh != null ? parseFloat(d.calculated_soh) : null)
+    } catch {
+      setLiveEditError('Could not load item details.')
+    }
+    setLiveEditLoading(false)
+  }
+
+  async function saveEditSelectedItem() {
+    if (!liveSelectedItem) return
+    setLiveEditSaving(true)
+    setLiveEditError('')
+    const res = await fetch(`/api/items/${liveSelectedItem.id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        item_name: liveEditForm.item_name || undefined,
+        cf_group: liveEditForm.cf_group || null,
+        selling_rate: liveEditForm.selling_rate ? parseFloat(liveEditForm.selling_rate) : null,
+        purchase_rate: liveEditForm.purchase_rate ? parseFloat(liveEditForm.purchase_rate) : null,
+        units_per_pack: liveEditForm.units_per_pack ? parseFloat(liveEditForm.units_per_pack) : null,
+        unit_name: liveEditForm.unit_name || null,
+        converts_to_item_id: liveEditForm.converts_to_item_id ? Number(liveEditForm.converts_to_item_id) : null,
+        count_excluded: liveEditForm.count_excluded,
+        count_cadence_days: liveEditForm.count_cadence_days ? parseInt(liveEditForm.count_cadence_days, 10) : null,
+        count_excluded_reason: liveEditForm.count_excluded_reason || null,
+      }),
+    })
+    setLiveEditSaving(false)
+    if (!res.ok) {
+      const d = await res.json().catch(() => null)
+      setLiveEditError(d?.error ?? 'Could not save changes.')
+      return
+    }
+    const updated = await res.json()
+    const itemId = liveSelectedItem.id
+    setLiveSelectedItem(prev => prev && prev.id === itemId ? {
+      ...prev,
+      name: updated.item_name ?? prev.name,
+      selling_price: updated.selling_rate ?? prev.selling_price,
+      cost_price: updated.purchase_rate ?? prev.cost_price,
+    } : prev)
+    // Refetch the full catalogue so this item's price/group/count-interval
+    // label update everywhere else in Live Sale (grid, other views), not
+    // just inside this sheet.
+    fetch('/api/items/all').then(r => r.json()).then(d => setLiveAllItems(Array.isArray(d) ? d : [])).catch(() => {})
+    setLiveEditingSelectedItem(false)
+  }
+
+  // Same edit/delete pair Counts' own list already offers -- kept here so
+  // fixing or removing a count record doesn't require leaving Live Sale
+  // just because that mode still also exists.
+  function startEditCount(r: CountRecord) {
+    setLiveEditCountQty(String(r.quantity_counted))
+    setLiveEditCountNotes(r.notes ?? '')
+    setLiveEditingCountId(r.id)
+  }
+
+  async function saveEditCount(lossExtra?: LossExtra) {
+    if (liveEditingCountId == null) return
+    setLiveEditCountSaving(true)
+    const res = await fetch(`/api/stock/counts/${liveEditingCountId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ quantity_counted: Number(liveEditCountQty), notes: liveEditCountNotes, ...(lossExtra ?? {}) }),
+    })
+    setLiveEditCountSaving(false)
+    if (res.ok) {
+      const updated: CountRecord = await res.json()
+      setLiveCountRecords(prev => prev.map(r => r.id === liveEditingCountId ? { ...r, ...updated } : r))
+      setLiveEditingCountId(null)
+    } else {
+      const d = await res.json().catch(() => null)
+      if (res.status === 409 && d?.requires_loss_reason) {
+        setLiveLossPrompt({ d, retry: extra => saveEditCount(extra) })
+        return
+      }
+      alert(d?.error ?? 'Could not save count.')
+    }
+  }
+
+  async function deleteCountRecord(r: CountRecord) {
+    const dateLabel = new Date(r.count_date.slice(0, 10) + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    if (!confirm(`Delete the count of ${Number(r.quantity_counted)} for "${r.item_name}" on ${dateLabel}? This changes the loss/gain math from that day onward.`)) return
+    const res = await fetch(`/api/stock/counts/${r.id}`, { method: 'DELETE' })
+    if (res.ok) {
+      setLiveCountRecords(prev => prev.filter(x => x.id !== r.id))
+      if (liveEditingCountId === r.id) setLiveEditingCountId(null)
+    } else {
+      alert((await res.json().catch(() => null))?.error ?? 'Could not delete count.')
+    }
+  }
+
+  // The tab switcher shared by every mode's own header, so jumping between
+  // any two of them doesn't require detouring back through the grid first.
+  function renderModeToggle(compact: boolean) {
+    const btnCls = (active: boolean, color: string) =>
+      `font-bold rounded-md transition whitespace-nowrap shrink-0 ${compact ? 'px-1.5 py-1 text-[10px]' : 'px-2 py-1 text-xs'} ${
+        active ? `${color} text-white` : 'text-gray-500 hover:text-gray-700'
+      }`
+    // Always one line -- scrolls horizontally rather than wrapping onto a
+    // second row when there isn't room for all six buttons.
+    return (
+      <div className="flex bg-gray-200 rounded-lg p-0.5 overflow-x-auto max-w-full">
+        <button type="button" onClick={() => setLiveMode('sale')} title="Live Sale" className={btnCls(liveMode === 'sale', 'bg-blue-600')}>Live</button>
+        <button type="button" onClick={() => setLiveMode('log')} title="Log" className={btnCls(liveMode === 'log', 'bg-gray-700')}>Log</button>
+        <button type="button" onClick={() => setLiveMode('sales')} title="Sales" className={btnCls(liveMode === 'sales', 'bg-emerald-600')}>Sales</button>
+        <button type="button" onClick={() => setLiveMode('bills')} title="Bills" className={btnCls(liveMode === 'bills', 'bg-orange-600')}>Bills</button>
+        <button type="button" onClick={() => setLiveMode('lossByTarget')} title="Loss by Target" className={btnCls(liveMode === 'lossByTarget', 'bg-pink-600')}>Loss by Tgt</button>
+        <button type="button" onClick={() => setLiveMode('count')} title="Count" className={btnCls(liveMode === 'count', 'bg-indigo-600')}>Count</button>
+      </div>
+    )
+  }
+
+  // The switcher's permanent home -- its own top row, above every mode's own
+  // header/filter bar, identical on all six modes. Rendered compactly in
+  // this component's own top green bar instead (see the mode-toggle spot
+  // below) while liveExpanded is false; while liveExpanded is true that bar
+  // sits visually hidden behind Live Sale's own `fixed inset-0` overlay
+  // (see liveRootClassName), so each mode's own content renders this full
+  // row up top instead.
+  function renderModeToggleRow() {
+    return (<>
+      {liveExpanded && (
+        <div className="px-2 py-1.5 border-b border-gray-200 bg-gray-50 overflow-x-auto shrink-0">
+          {renderModeToggle(false)}
+        </div>
+      )}
+    </>)
+  }
+
+  // The count records table -- also doubles as the old Loss by Date feed
+  // (see liveCountRecordFilter/liveCountLossSummary above), since that was
+  // always just this same stock_counts history with the reconciliation
+  // columns (Expected/Loss-Gain) added and filtered to the discrepancy rows.
+  function renderCountRecordsTable() {
+    const COUNT_RECORDS_GRID = 'grid-cols-[minmax(7rem,1.4fr)_5rem_3rem_4rem_4rem_4rem_5rem_4rem_minmax(6rem,1fr)_5.5rem]'
+    return (
+      <div className="flex-1 overflow-auto">
+        {liveCountsByDate.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-8">
+            {liveCountRecords.length === 0 ? 'No counts recorded' : 'No counts match the current filter/search'}
+          </p>
+        ) : (
+          <div className="inline-block min-w-full">
+            {/* Item is frozen (sticky left-0), matching every data row
+                below, so it's still visible after scrolling right through
+                the narrower compact columns. */}
+            <div className={`grid ${COUNT_RECORDS_GRID} gap-0 bg-gray-50 border-b border-gray-200 sticky top-0 z-10`}>
+              <div className="sticky left-0 z-10 bg-gray-50 px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Item</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Group</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center">Qty</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center" title="What the records expected on this day">Exp</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center" title="Expected minus counted -- a loss when positive, a gain when negative">Loss/Gain</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center">Time</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">By</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Source</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Notes</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-right">Actions</div>
+            </div>
+            {liveCountsByDate.map(([date, dateRecs]) => (
+              <div key={date}>
+                <div className={`grid ${COUNT_RECORDS_GRID} gap-0 bg-amber-50 border-b border-amber-200 sticky top-[26px] z-9`}>
+                  <div className="col-span-10 px-2 py-1 text-[10px] font-semibold text-amber-700">
+                    {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {dateRecs.length} counted
+                  </div>
+                </div>
+                {dateRecs.map(rec => (
+                  <div key={rec.id}>
+                    <div className={`group grid ${COUNT_RECORDS_GRID} gap-0 border-b border-gray-100 items-center hover:bg-gray-50 transition`}>
+                      <div className="sticky left-0 z-[1] bg-white group-hover:bg-gray-50 px-2 py-1">
+                        <p className="text-xs font-semibold text-gray-900 truncate">{rec.item_name}</p>
+                      </div>
+                      <div className="px-2 py-1">
+                        <p className="text-xs text-gray-600 truncate">{rec.cf_group ?? '—'}</p>
+                      </div>
+                      <div className="px-2 py-1 text-center">
+                        <p className="text-xs font-semibold text-gray-900">{Number(rec.quantity_counted)}</p>
+                      </div>
+                      <div className="px-2 py-1 text-center">
+                        <p className="text-xs text-gray-500">{rec.expected != null ? fmtN(rec.expected) : '—'}</p>
+                      </div>
+                      <div className="px-2 py-1 text-center">
+                        {rec.kind ? (
+                          <p className={`text-xs font-bold ${rec.kind === 'loss' ? 'text-red-600' : 'text-amber-600'}`}>
+                            {rec.kind === 'loss' ? '-' : '+'}{fmtN(Math.abs(rec.loss_qty ?? 0))}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-gray-300">{rec.expected != null ? '0' : '—'}</p>
+                        )}
+                      </div>
+                      <div className="px-2 py-1 text-center">
+                        <p className="text-xs text-gray-500">{fmtTime(rec.counted_at) || '—'}</p>
+                      </div>
+                      <div className="px-2 py-1">
+                        <p className="text-xs text-blue-600 font-medium truncate">{rec.counted_by ?? '—'}</p>
+                      </div>
+                      <div className="px-2 py-1">
+                        <p className="text-xs text-gray-500 truncate">{rec.source ?? '—'}</p>
+                      </div>
+                      <div className="px-2 py-1">
+                        <p className="text-xs text-gray-500 italic truncate">{rec.notes ?? '—'}</p>
+                      </div>
+                      <div className="px-2 py-1">
+                        <div className="flex gap-1 justify-end whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => liveEditingCountId === rec.id ? setLiveEditingCountId(null) : startEditCount(rec)}
+                            className="text-[10px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded-full hover:bg-blue-100 transition"
+                          >
+                            {liveEditingCountId === rec.id ? 'Close' : 'Edit'}
+                          </button>
+                          {liveCanDeleteCounts && (
+                            <button
+                              type="button"
+                              onClick={() => deleteCountRecord(rec)}
+                              className="text-[10px] text-red-600 font-semibold bg-red-50 px-1.5 py-0.5 rounded-full hover:bg-red-100 transition"
+                            >
+                              Del
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {liveEditingCountId === rec.id && (
+                      <div className="bg-blue-50/60 border-b border-gray-100 px-4 py-3 flex items-end gap-3 flex-wrap">
+                        <div>
+                          <p className="text-xs text-gray-400 mb-1">Qty Counted</p>
+                          <input
+                            type="number" min="0" step="any"
+                            value={liveEditCountQty}
+                            onChange={e => setLiveEditCountQty(e.target.value)}
+                            className="w-28 bg-white border border-gray-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-blue-400"
+                          />
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-400 mb-1">Notes</p>
+                          <input
+                            value={liveEditCountNotes}
+                            onChange={e => setLiveEditCountNotes(e.target.value)}
+                            placeholder="Optional"
+                            className="w-48 bg-white border border-gray-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-blue-400"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => saveEditCount()}
+                            disabled={liveEditCountSaving}
+                            className="bg-green-600 hover:bg-green-500 text-white text-sm font-bold rounded-lg px-4 py-1.5 disabled:opacity-40 transition"
+                          >
+                            {liveEditCountSaving ? 'Saving…' : 'Save'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setLiveEditingCountId(null)}
+                            className="px-4 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm font-semibold rounded-lg transition"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Item search box + "Clear Item" + WIC/GMC toggle + Sale mode's own
+  // Analytics button -- rendered compactly in this component's own footer
+  // (in Biz/UK/C&H's usual spot) while liveExpanded is false, or as its own
+  // full-size row up top of the Sale-mode content while liveExpanded is
+  // true (see liveRootClassName's own comment -- the footer is visually
+  // hidden behind the fullscreen overlay in that case). Only ever rendered
+  // while liveMode === 'sale' (both call sites already gate on that), so
+  // the WIC/GMC toggle and Analytics button below don't need their own
+  // liveMode check the way the original LiveSaleForm's searchControlsNode
+  // did (it was one shared function reachable from a slot the host could
+  // in principle request from any mode).
+  function renderLiveSearchControls(compact: boolean) {
+    return (
+      <>
+        <div className="relative">
+          <input
+            type="text"
+            value={liveItemPickerQuery}
+            onChange={e => setLiveItemPickerQuery(e.target.value)}
+            onFocus={() => liveItemPickerQuery.trim() && setLiveShowItemPicker(true)}
+            placeholder={compact ? 'Search item…' : 'Search & pick item…'}
+            className={`border focus:outline-none focus:ring-1 ${
+              compact ? 'text-[11px] px-1.5 py-0.5 w-16 rounded-md bg-white' : 'text-sm px-3 py-1.5 w-32 sm:w-48 rounded-lg'
+            } ${
+              livePickedItemId !== null
+                ? 'border-green-400 bg-green-50 focus:ring-green-400'
+                : 'border-gray-300 focus:ring-blue-400'
+            }`}
+          />
+          {liveItemPickerQuery && (
+            <button
+              type="button"
+              onClick={() => {
+                setLiveItemPickerQuery('')
+                setLiveItemPickerResults([])
+                setLiveShowItemPicker(false)
+              }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              ✕
+            </button>
+          )}
+          {liveShowItemPicker && liveItemPickerResults.length > 0 && (
+            <div className={`absolute top-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto ${
+              compact ? 'left-0 w-56' : 'left-0 right-0'
+            }`}>
+              {liveItemPickerResults.map(item => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    setLivePickedItemId(item.id)
+                    setLiveItemPickerQuery('')
+                    setLiveShowItemPicker(false)
+                  }}
+                  className="w-full text-left px-3 py-2 hover:bg-green-50 border-b border-gray-100 last:border-b-0 text-sm text-gray-700"
+                >
+                  <div className="font-semibold text-gray-900">{item.name}</div>
+                  <div className="text-xs text-gray-500">₵{formatPrice(item.selling_price)} · Stock: {Math.ceil(Number(item.soh))}</div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        {livePickedItemId !== null && (
+          <button
+            type="button"
+            onClick={() => {
+              setLivePickedItemId(null)
+              setLiveItemPickerQuery('')
+            }}
+            className={`font-semibold bg-green-600 text-white hover:bg-green-700 transition ${
+              compact ? 'px-1 py-0.5 text-[10px] rounded-md' : 'px-2 py-1.5 text-sm rounded-lg'
+            }`}
+          >
+            {compact ? '✕ Item' : 'Clear Item'}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => setLiveSaleType(t => t === 'WIC' ? 'GMC' : 'WIC')}
+          title="Tap to switch between WIC and GMC"
+          className={`font-semibold transition ${compact ? 'px-1 py-0.5 text-[10px] rounded-md' : 'px-4 py-1.5 text-sm rounded'} ${
+            liveSaleType === 'GMC'
+              ? 'bg-purple-600 text-white'
+              : 'bg-blue-600 text-white'
+          }`}
+        >
+          {liveSaleType}
+        </button>
+        <button
+          type="button"
+          onClick={() => setSaleModeShowAnalytics(a => !a)}
+          title="Analytics"
+          className={`shrink-0 font-bold transition ${compact ? 'px-1 py-0.5 text-[10px] rounded-md' : 'px-2.5 py-1 text-xs rounded-lg'} ${
+            saleModeShowAnalytics ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          📊
+        </button>
+      </>
+    )
+  }
+
+  // Sale mode's own item-grid filter (Loss/Gain/Low SOH/count interval, see
+  // liveSaleFilterFlags) -- `compact` picks which of the two sizes the old
+  // LiveSaleForm used depending on where it rendered: the smaller one
+  // (w-[4.5rem]) matches its standalone green filter bar (shown here only
+  // while liveExpanded), the larger one matches what it portaled into the
+  // host's own footer row (shown here while !liveExpanded).
+  function renderLiveSaleFilterSelect(compact: boolean) {
+    return (
+      <select
+        value={liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind : ''}
+        onChange={e => {
+          const v = e.target.value
+          if (!v) setLiveSaleFilter(null)
+          else if (v.startsWith('interval:')) setLiveSaleFilter({ kind: 'interval', label: v.slice('interval:'.length) })
+          else setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'soh' })
+        }}
+        className={compact
+          ? 'text-[11px] px-1.5 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white w-[4.5rem]'
+          : 'text-xs px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white'}
+      >
+        <option value="">Filter: All items</option>
+        {liveSaleFilterFlags.map(f => (
+          <option key={f.key} value={f.key === 'loss' || f.key === 'gain' || f.key === 'soh' ? f.key : `interval:${f.label}`}>
+            {f.label} ({f.count})
+          </option>
+        ))}
+      </select>
+    )
+  }
+
+
   return (
     <div className="-mx-4 -mt-4 -mb-6 flex flex-col h-[100dvh] md:h-[calc(100dvh-56px)]">
 
@@ -2069,7 +3381,7 @@ function ItemHubPageInner() {
                         floating restore button, which then occupies this
                         same top-left corner instead. */}
                     <div className={`w-full overflow-x-auto ${sidePaneHidden ? 'pl-8' : ''}`}>
-                      <div ref={el => setLiveModeToggleSlotEl(el)} className="flex" />
+                      {!liveExpanded && renderModeToggle(true)}
                     </div>
                     {/* Search box and the item-filter dropdown moved down to
                         the bottom bar (replacing Biz/UK/C&H there while this
@@ -2129,48 +3441,1224 @@ function ItemHubPageInner() {
 
           {/* ── Content ── */}
           <div className="relative flex-1 min-h-0 overflow-y-auto">
-        {outerTab === 'loss' && lossView === 'sales' && (
-          <LiveSaleForm
-            search={search}
-            lawsPanel={liveSaleLaws}
-            expanded={liveExpanded}
-            setExpanded={setLiveExpanded}
-            hideTopControls={true}
-            hideFilterBar={true}
-            productTypeFilter={liveProductTypeFilter}
-            onProductTypeFilterChange={setLiveProductTypeFilter}
-            groupFilter={liveGroupFilter}
-            onGroupFilterChange={setLiveGroupFilter}
-            showHelpModal={liveHelpModalOpen}
-            onHelpModalChange={setLiveHelpModalOpen}
-            searchSlotEl={liveSearchSlotEl}
-            filterSlotEl={liveFilterSlotEl}
-            modeToggleSlotEl={liveModeToggleSlotEl}
-            jumpToTabSeq={liveSaleJumpSeq}
-            jumpToTab={liveSaleJumpTab}
-            jumpToTabViolation={liveSaleJumpViolation}
-            jumpToTabSearch={liveSaleJumpSearch}
-            jumpToReceiptDate={jumpToReceiptDate}
-            jumpToReceiptItemName={jumpToReceiptItemName}
-            onReceiptJumpDone={() => { setJumpToReceiptDate(null); setJumpToReceiptItemName(null) }}
-            violationCounts={violationCounts}
-            violationTypes={ITEMS_FLAG_TYPES.map(({ key, label }) => ({ key, label, description: ERROR_VIOLATIONS.find(v => v.key === key)?.description }))}
-            salesViolationTypes={SALES_FLAG_TYPES.map(({ key, label }) => ({ key, label, description: ERROR_VIOLATIONS.find(v => v.key === key)?.description }))}
-            billsViolationTypes={BILLS_FLAG_TYPES.map(({ key, label }) => ({ key, label, description: ERROR_VIOLATIONS.find(v => v.key === key)?.description }))}
-            serviceGroups={serviceGroups}
-            itemsWithViolations={{
-              neg_soh: items.filter(i => Number(i.calculated_soh) < 0 && i.product_type !== 'service').map(i => i.id),
-              no_sp: items.filter(i => !i.selling_rate || parseFloat(i.selling_rate) === 0).map(i => i.id),
-              no_cp: items.filter(i => !i.purchase_rate || parseFloat(i.purchase_rate) === 0).map(i => i.id),
-              no_group: items.filter(i => !i.cf_group).map(i => i.id),
-              // Both sides of every non-dismissed duplicate pair -- ids only,
-              // same as the other four keys here.
-              duplicates: [...new Set((globalFlags?.duplicates ?? []).flatMap((d: any) => [d.id1, d.id2]))],
-              unlinked_named: (globalFlags?.unlinkedNamed ?? []).map((r: any) => r.item_id),
-              service_violation: serviceViolationIds,
-            }}
-          />
-        )}
+        {outerTab === 'loss' && lossView === 'sales' && (<>
+          {/* Log tab */}
+          {liveMode === 'log' && (
+            <div className={liveRootClassName}>
+              {/* "Large screen" makes this root `fixed inset-0`, covering
+                  this component's own top green bar/footer -- still mounted
+                  underneath, just visually hidden. This floating button is
+                  the actual way back out, reachable regardless of which mode
+                  is showing or how far the content underneath has scrolled. */}
+              {liveExpanded && (
+                <button
+                  type="button"
+                  onClick={() => setLiveExpanded(false)}
+                  title="Exit large screen"
+                  className="fixed top-2 right-2 z-[60] w-8 h-8 rounded-full bg-gray-900/80 text-white text-sm font-bold flex items-center justify-center shadow-lg hover:bg-gray-900 transition"
+                >
+                  ✕
+                </button>
+              )}
+              {renderModeToggleRow()}
+              <div className="flex justify-end px-1.5 py-1 border-b border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setLiveLogShowAnalytics(a => !a)}
+                  title="Analytics"
+                  className={`shrink-0 font-bold rounded-lg px-2 py-1 text-[10px] transition ${
+                    liveLogShowAnalytics ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  📊
+                </button>
+              </div>
+              {liveLogShowAnalytics ? (
+                <div className="px-3 pt-3 flex-1 overflow-auto"><LiveSaleAnalyticsSection /></div>
+              ) : (
+              <div className="flex-1 overflow-auto">
+                {liveTaps.length === 0 ? (
+                  <p className="text-sm text-gray-400 text-center py-8">No sales recorded</p>
+                ) : (
+                  <div>
+                    {/* Fixed, deliberately tiny column widths (not fr units) plus
+                        zero padding between cells -- the point is fitting all 8
+                        columns on screen at once with nothing to scroll. Item is
+                        still frozen (sticky left-0) as a safety net for very
+                        narrow screens or long item names. */}
+                    <div className="grid grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_1.25rem_2.25rem_1.5rem_2.25rem_1.5rem] gap-0 h-[14px] bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+                      <div className="sticky left-0 z-10 flex items-center bg-gray-50 px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase truncate">Item</div>
+                      <div className="flex items-center justify-end px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">Total</div>
+                      <div className="flex items-center justify-center px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">Time</div>
+                      <div className="flex items-center justify-end px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">SP</div>
+                      <div className="flex items-center justify-center px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">Qty</div>
+                      <div className="flex items-center px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase truncate">Staff</div>
+                      <div className="flex items-center justify-center px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">SOH</div>
+                      <div className="flex items-center justify-end px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase" title="Time since the previous tap -- since shop opening for the day's first, until the last staff signed out for the day's last">Gap</div>
+                      <div className="px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase" />
+                    </div>
+
+                    {/* Table rows grouped by date */}
+                    {liveTapsByDate.map(([date, dateTaps]) => {
+                      const dateTotal = dateTaps.filter(t => !t.undone).reduce((s, t) => s + Number(t.price) * t.quantity, 0)
+                      return (
+                        <div key={date}>
+                          {/* Date header */}
+                          <div className="grid grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_1.25rem_2.25rem_1.5rem_2.25rem_1.5rem] gap-0 h-[14px] bg-green-50 border-b border-green-200 sticky top-[14px] z-9">
+                            <div className="col-span-9 flex items-center px-0.5 text-[8px] leading-none font-semibold text-green-700 truncate">
+                              {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · Total: ₵{formatPrice(dateTotal)}
+                            </div>
+                          </div>
+
+                          {/* Date's taps -- `group` + an explicit bg on the sticky
+                              first cell (not bg-inherit) so scrolled-under columns
+                              don't show through it, same fix as Item 360's table. */}
+                          {/* Row height is min- rather than fixed now -- the Item
+                              cell wraps to 2 lines (line-clamp-2) past ~20
+                              characters instead of truncating, so a long name
+                              doesn't need the column stretched wide to read it;
+                              every other cell stays single-line and centers
+                              within whatever height that Item cell grows the row to. */}
+                          {dateTaps.map((tap, i) => {
+                            // Gap = time since the previous (chronologically
+                            // earlier) tap -- dateTaps is newest-first, so that's
+                            // index i+1. The day's oldest tap (i at the end of the
+                            // array) has no earlier tap to diff against, so it
+                            // uses the shop's opening time instead; the day's
+                            // newest tap (i === 0) additionally gets a second
+                            // reading against when the last staff signed out,
+                            // shown instead of its since-previous-tap gap since
+                            // that's the more useful number for the final sale of
+                            // the day.
+                            const bounds = liveDayBounds[date]
+                            const isOldest = i === dateTaps.length - 1
+                            const isNewest = i === 0
+                            let gapMins: number | null = null
+                            if (isNewest && bounds?.closeTime) {
+                              gapMins = (new Date(bounds.closeTime).getTime() - new Date(tap.tapped_at).getTime()) / 60000
+                            } else if (isOldest && bounds?.openTime) {
+                              gapMins = (new Date(tap.tapped_at).getTime() - new Date(bounds.openTime).getTime()) / 60000
+                            } else {
+                              const prevTap = dateTaps[i + 1]
+                              if (prevTap) gapMins = (new Date(tap.tapped_at).getTime() - new Date(prevTap.tapped_at).getTime()) / 60000
+                            }
+                            return (
+                            <div
+                              key={tap.id}
+                              className={`group grid grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_1.25rem_2.25rem_1.5rem_2.25rem_1.5rem] gap-0 min-h-[15px] hover:bg-gray-50 transition ${
+                                tap.undone ? 'bg-gray-50 opacity-60' : ''
+                              }`}
+                            >
+                              <div className={`sticky left-0 z-[1] flex items-center px-0.5 group-hover:bg-gray-50 ${tap.undone ? 'bg-gray-50' : 'bg-white'}`}>
+                                <span className={`text-[9px] leading-[1.1] font-semibold line-clamp-2 break-words ${tap.undone ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                                  {tap.item_name}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-end px-0.5">
+                                <span className={`text-[9px] leading-none font-semibold truncate ${tap.undone ? 'text-gray-400' : 'text-blue-600'}`}>
+                                  ₵{formatPrice(Number(tap.price) * tap.quantity)}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-center px-0.5">
+                                <span className="text-[8px] leading-none text-gray-500 truncate">{new Date(tap.tapped_at).toLocaleTimeString()}</span>
+                              </div>
+                              <div className="flex items-center justify-end px-0.5">
+                                <span className={`text-[9px] leading-none font-semibold truncate ${tap.undone ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                                  ₵{formatPrice(tap.price)}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-center px-0.5">
+                                <span className={`text-[9px] leading-none font-semibold ${tap.undone ? 'text-gray-400' : 'text-gray-900'}`}>
+                                  {tap.quantity}
+                                </span>
+                              </div>
+                              <div className="flex items-center px-0.5">
+                                <span className="text-[9px] leading-none text-gray-600 truncate">{tap.staff_name}</span>
+                              </div>
+                              <div className="flex items-center justify-center px-0.5">
+                                <span className="text-[9px] leading-none text-gray-500 truncate">{tap.soh !== null && tap.soh !== undefined ? Math.ceil(tap.soh) : '-'}</span>
+                              </div>
+                              <div className="flex items-center justify-end px-0.5" title={isNewest ? 'Until last sign-out' : isOldest ? 'Since shop opening' : 'Since previous tap'}>
+                                <span className="text-[9px] leading-none text-gray-500 truncate">{gapMins !== null ? formatGapMins(gapMins) : '-'}</span>
+                              </div>
+                              <div className="flex items-center justify-center px-0.5">
+                                {!tap.undone && (
+                                  <button
+                                    onClick={() => undoTap(tap.id)}
+                                    title="Undo"
+                                    className="text-[10px] font-bold text-red-600 hover:bg-red-100 rounded leading-none p-0"
+                                  >
+                                    ↩
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            )
+                          })}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+              )}
+            </div>
+          )}
+
+          {/* Sales tab -- the classic Sales Receipts list. Folded in here since it
+              had nothing left that justified its own sidebar destination once the
+              New Sale form was dropped and its own tap-a-sale case moved to Sale mode. */}
+          {liveMode === 'sales' && (
+            <div className={liveRootClassName}>
+              {liveExpanded && (
+                <button
+                  type="button"
+                  onClick={() => setLiveExpanded(false)}
+                  title="Exit large screen"
+                  className="fixed top-2 right-2 z-[60] w-8 h-8 rounded-full bg-gray-900/80 text-white text-sm font-bold flex items-center justify-center shadow-lg hover:bg-gray-900 transition"
+                >
+                  ✕
+                </button>
+              )}
+              {renderModeToggleRow()}
+              <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
+                <h2 className="text-sm font-bold text-gray-900">Sales</h2>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={liveEmbeddedSearch}
+                    onChange={e => setLiveEmbeddedSearch(e.target.value)}
+                    placeholder="Search…"
+                    className="text-xs px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 w-32"
+                  />
+                  <LawsToggleBar show={salesLaws.show} setShow={salesLaws.setShow}
+                    openForm={salesLaws.openForm} setOpenForm={salesLaws.setOpenForm}
+                    hideZeroFlags={salesLaws.hideZeroFlags} setHideZeroFlags={salesLaws.setHideZeroFlags}
+                    activeFilters={salesLaws.activeFilters} toggleFilter={salesLaws.toggleFilter} dark={false} />
+                  <button type="button" onClick={() => setLiveSalesShowAnalytics(a => !a)}
+                    title="Analytics"
+                    className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${liveSalesShowAnalytics ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                    📊
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLiveHelpModalOpen(true)}
+                    className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 font-semibold text-sm flex items-center justify-center transition"
+                    title="Help"
+                  >
+                    ?
+                  </button>
+                </div>
+              </div>
+              {salesLaws.show && (
+                <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 overflow-auto max-h-48">
+                  <PageLawsList
+                    scopeKey="Sales"
+                    isItemsLaws={true}
+                    onChange={salesLaws.bumpRefresh}
+                    flags={liveSalesViolationTypes.map((v: ViolationType) => ({
+                      key: v.key, label: v.label, description: v.description,
+                      count: violationCounts[v.key] ?? 0,
+                      onViewClick: () => setLiveSalesViolationFilter(f => f === v.key ? null : v.key),
+                    }))}
+                    openForm={salesLaws.openForm}
+                    setOpenForm={salesLaws.setOpenForm}
+                    hideZeroFlags={salesLaws.hideZeroFlags}
+                    setHideZeroFlags={salesLaws.setHideZeroFlags}
+                    activeFilters={salesLaws.activeFilters}
+                  />
+                </div>
+              )}
+              {liveSalesShowAnalytics ? (
+                <div className="px-3 pt-3 flex-1 overflow-auto"><SalesAnalyticsSection /></div>
+              ) : (
+                <div className="flex-1 overflow-auto">
+                  <SalesTab items={liveSalesBillsItems} groupFilter={liveGroupFilter} search={liveEmbeddedSearch}
+                    violation={liveSalesViolationFilter}
+                    jumpToDate={jumpToReceiptDate} jumpToItemName={jumpToReceiptItemName}
+                    onJumpDone={() => { setJumpToReceiptDate(null); setJumpToReceiptItemName(null) }} />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Bills tab -- BillsTab itself has no "add new" flow of its own; it always
+              relied on a sibling NewBillForm rendered externally, which now lives
+              inside this tab's own header instead. */}
+          {liveMode === 'bills' && (
+            <div className={liveRootClassName}>
+              {liveExpanded && (
+                <button
+                  type="button"
+                  onClick={() => setLiveExpanded(false)}
+                  title="Exit large screen"
+                  className="fixed top-2 right-2 z-[60] w-8 h-8 rounded-full bg-gray-900/80 text-white text-sm font-bold flex items-center justify-center shadow-lg hover:bg-gray-900 transition"
+                >
+                  ✕
+                </button>
+              )}
+              {renderModeToggleRow()}
+              <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
+                <h2 className="text-sm font-bold text-gray-900">Bills</h2>
+                <div className="flex items-center gap-2">
+                  {!liveBillsAddingNew && (
+                    <input
+                      type="text"
+                      value={liveEmbeddedSearch}
+                      onChange={e => setLiveEmbeddedSearch(e.target.value)}
+                      placeholder="Search…"
+                      className="text-xs px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 w-32"
+                    />
+                  )}
+                  <button type="button" onClick={() => setLiveBillsAddingNew(a => !a)}
+                    className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${liveBillsAddingNew ? 'bg-red-600 text-white' : 'bg-green-600 text-white hover:bg-green-500'}`}>
+                    {liveBillsAddingNew ? 'Cancel' : '+ New Bill'}
+                  </button>
+                  {!liveBillsAddingNew && (
+                    <LawsToggleBar show={billsLaws.show} setShow={billsLaws.setShow}
+                      openForm={billsLaws.openForm} setOpenForm={billsLaws.setOpenForm}
+                      hideZeroFlags={billsLaws.hideZeroFlags} setHideZeroFlags={billsLaws.setHideZeroFlags}
+                      activeFilters={billsLaws.activeFilters} toggleFilter={billsLaws.toggleFilter} dark={false} />
+                  )}
+                  {!liveBillsAddingNew && (
+                    <button type="button" onClick={() => setLiveBillsShowAnalytics(a => !a)}
+                      title="Analytics"
+                      className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${liveBillsShowAnalytics ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                      📊
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setLiveHelpModalOpen(true)}
+                    className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 font-semibold text-sm flex items-center justify-center transition"
+                    title="Help"
+                  >
+                    ?
+                  </button>
+                </div>
+              </div>
+              {!liveBillsAddingNew && billsLaws.show && (
+                <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 overflow-auto max-h-48">
+                  <PageLawsList
+                    scopeKey="Bills"
+                    isItemsLaws={true}
+                    onChange={billsLaws.bumpRefresh}
+                    flags={liveBillsViolationTypes.map((v: ViolationType) => ({
+                      key: v.key, label: v.label, description: v.description,
+                      count: violationCounts[v.key] ?? 0,
+                      onViewClick: () => setLiveBillsViolationFilter(f => f === v.key ? null : v.key),
+                    }))}
+                    openForm={billsLaws.openForm}
+                    setOpenForm={billsLaws.setOpenForm}
+                    hideZeroFlags={billsLaws.hideZeroFlags}
+                    setHideZeroFlags={billsLaws.setHideZeroFlags}
+                    activeFilters={billsLaws.activeFilters}
+                  />
+                </div>
+              )}
+              {liveBillsAddingNew ? (
+                <div className="px-4 flex-1 overflow-auto">
+                  <NewBillForm onSuccess={() => setLiveBillsAddingNew(false)} />
+                </div>
+              ) : liveBillsShowAnalytics ? (
+                <div className="px-3 pt-3 flex-1 overflow-auto"><BillsAnalyticsSection /></div>
+              ) : (
+                <div className="flex-1 overflow-auto">
+                  <BillsTab items={liveSalesBillsItems} groupFilter={liveGroupFilter} search={liveEmbeddedSearch} violation={liveBillsViolationFilter} />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Loss by Target tab -- still an unimplemented placeholder upstream; kept
+              here purely so its sidebar destination can be retired without losing
+              the (currently empty) spot for whenever it's built. */}
+          {liveMode === 'lossByTarget' && (
+            <div className={liveRootClassName}>
+              {liveExpanded && (
+                <button
+                  type="button"
+                  onClick={() => setLiveExpanded(false)}
+                  title="Exit large screen"
+                  className="fixed top-2 right-2 z-[60] w-8 h-8 rounded-full bg-gray-900/80 text-white text-sm font-bold flex items-center justify-center shadow-lg hover:bg-gray-900 transition"
+                >
+                  ✕
+                </button>
+              )}
+              {renderModeToggleRow()}
+              <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
+                <h2 className="text-sm font-bold text-gray-900">Loss by Target</h2>
+                <div className="flex items-center gap-2">
+                  <LawsToggleBar show={lossByTargetLaws.show} setShow={lossByTargetLaws.setShow}
+                    openForm={lossByTargetLaws.openForm} setOpenForm={lossByTargetLaws.setOpenForm}
+                    hideZeroFlags={lossByTargetLaws.hideZeroFlags} setHideZeroFlags={lossByTargetLaws.setHideZeroFlags}
+                    activeFilters={lossByTargetLaws.activeFilters} toggleFilter={lossByTargetLaws.toggleFilter} dark={false} />
+                  <button
+                    type="button"
+                    onClick={() => setLiveHelpModalOpen(true)}
+                    className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 font-semibold text-sm flex items-center justify-center transition"
+                    title="Help"
+                  >
+                    ?
+                  </button>
+                </div>
+              </div>
+              {lossByTargetLaws.show && (
+                <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 overflow-auto max-h-48">
+                  <PageLawsList
+                    scopeKey="Loss by Target"
+                    isItemsLaws={true}
+                    onChange={lossByTargetLaws.bumpRefresh}
+                    openForm={lossByTargetLaws.openForm}
+                    setOpenForm={lossByTargetLaws.setOpenForm}
+                    hideZeroFlags={lossByTargetLaws.hideZeroFlags}
+                    setHideZeroFlags={lossByTargetLaws.setHideZeroFlags}
+                    activeFilters={lossByTargetLaws.activeFilters}
+                  />
+                </div>
+              )}
+              <div className="py-20 text-center text-gray-400 text-xs">Coming soon.</div>
+            </div>
+          )}
+
+          {/* Every count-related view that used to only be reachable through the
+              laws panel (⚖️) on Sale mode: Daily/Every Nd/Dormant/etc
+              (liveCountIntervalFlags), Count Records (the full all-time history
+              table), and Count History (the audit log of who counted/edited/
+              deleted what). Moved to its own tab since they're audit/browse
+              views, not part of actually tapping a sale. */}
+          {liveMode === 'count' && (() => {
+            const intervalItems = liveCountView?.kind === 'interval'
+              ? liveAllItems.filter(it => it.count_interval === liveCountView.label)
+              : []
+            return (
+              <div className={liveRootClassName}>
+                {liveExpanded && (
+                  <button
+                    type="button"
+                    onClick={() => setLiveExpanded(false)}
+                    title="Exit large screen"
+                    className="fixed top-2 right-2 z-[60] w-8 h-8 rounded-full bg-gray-900/80 text-white text-sm font-bold flex items-center justify-center shadow-lg hover:bg-gray-900 transition"
+                  >
+                    ✕
+                  </button>
+                )}
+                {renderModeToggleRow()}
+                <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
+                  <h2 className="text-sm font-bold text-gray-900">Count</h2>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* Count Records doubles as the old Loss by Date feed -- these
+                        controls (search, the All/Losses/Gains filter, and Analytics)
+                        only make sense there, not on the interval buckets or the
+                        audit log. */}
+                    {liveCountView?.kind === 'records' && (<>
+                      <input
+                        type="text"
+                        value={liveEmbeddedSearch}
+                        onChange={e => setLiveEmbeddedSearch(e.target.value)}
+                        placeholder="Search…"
+                        className="text-xs px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 w-32"
+                      />
+                      <div className="inline-flex bg-gray-200 rounded-lg p-0.5">
+                        <button type="button" onClick={() => setLiveCountRecordFilter('all')}
+                          className={`px-2 py-1 text-[10px] font-bold rounded-md transition ${liveCountRecordFilter === 'all' ? 'bg-gray-700 text-white' : 'text-gray-500 hover:text-gray-700'}`}>
+                          All
+                        </button>
+                        <button type="button" onClick={() => setLiveCountRecordFilter('loss')}
+                          className={`px-2 py-1 text-[10px] font-bold rounded-md transition ${liveCountRecordFilter === 'loss' ? 'bg-red-600 text-white' : 'text-gray-500 hover:text-gray-700'}`}>
+                          Losses
+                        </button>
+                        <button type="button" onClick={() => setLiveCountRecordFilter('gain')}
+                          className={`px-2 py-1 text-[10px] font-bold rounded-md transition ${liveCountRecordFilter === 'gain' ? 'bg-amber-600 text-white' : 'text-gray-500 hover:text-gray-700'}`}>
+                          🚩 Gains
+                        </button>
+                      </div>
+                      <button type="button" onClick={() => setLiveCountShowAnalytics(a => !a)}
+                        title="Analytics"
+                        className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${liveCountShowAnalytics ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                        📊
+                      </button>
+                    </>)}
+                    <button
+                      type="button"
+                      onClick={() => setLiveHelpModalOpen(true)}
+                      className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 font-semibold text-sm flex items-center justify-center transition"
+                      title="Help"
+                    >
+                      ?
+                    </button>
+                  </div>
+                </div>
+                <div className="px-4 py-2 border-b border-gray-200 bg-white flex items-center gap-1.5 flex-wrap">
+                  {liveCountIntervalFlags.map(f => (
+                    <button key={f.key} type="button" onClick={f.onViewClick}
+                      className={`text-xs font-semibold px-2 py-1 rounded-full transition ${f.active ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                      {f.label} ({f.count})
+                    </button>
+                  ))}
+                  <button type="button" onClick={() => setLiveCountView(liveCountView?.kind === 'records' ? null : { kind: 'records' })}
+                    className={`text-xs font-semibold px-2 py-1 rounded-full transition ${liveCountView?.kind === 'records' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                    Count Records
+                  </button>
+                  <button type="button" onClick={() => setLiveCountView(liveCountView?.kind === 'history' ? null : { kind: 'history' })}
+                    className={`text-xs font-semibold px-2 py-1 rounded-full transition ${liveCountView?.kind === 'history' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                    Count History
+                  </button>
+                </div>
+                <div className="flex-1 min-h-0 overflow-y-auto">
+                  {!liveCountView && (
+                    <p className="py-16 text-center text-gray-400 text-xs">Pick a category above to view its items.</p>
+                  )}
+                  {liveCountView?.kind === 'interval' && (
+                    intervalItems.length === 0 ? (
+                      <p className="py-16 text-center text-gray-400 text-xs">No items in &quot;{liveCountView.label}&quot;.</p>
+                    ) : (
+                      <table className="w-full text-[11px] border-collapse">
+                        <thead className="sticky top-0 bg-gray-100 z-10">
+                          <tr>
+                            <th className="text-left px-2 py-1 font-bold text-gray-600">Item</th>
+                            <th className="text-left px-2 py-1 font-bold text-gray-600">Group</th>
+                            <th className="text-right px-2 py-1 font-bold text-gray-600">SOH</th>
+                            <th className="text-right px-2 py-1 font-bold text-gray-600">SP</th>
+                            <th className="text-right px-2 py-1 font-bold text-gray-600">CP</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {intervalItems.map(it => (
+                            <tr key={it.id} className="border-b border-gray-100 hover:bg-gray-50">
+                              <td className="px-2 py-1 text-gray-900 font-medium">{it.name}</td>
+                              <td className="px-2 py-1 text-gray-500">{it.group ?? '—'}</td>
+                              <td className="px-2 py-1 text-right text-gray-700">{it.soh}</td>
+                              <td className="px-2 py-1 text-right text-gray-700">{it.selling_price}</td>
+                              <td className="px-2 py-1 text-right text-gray-700">{it.cost_price}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )
+                  )}
+                  {liveCountView?.kind === 'records' && (
+                    liveCountShowAnalytics ? (
+                      <div className="px-3 pt-3"><LossFeedAnalyticsSection /></div>
+                    ) : (<>
+                      <div className="grid grid-cols-5 gap-0.5 px-2 pt-1 shrink-0">
+                        {liveCountLossSummary.map(r => (
+                          <div key={r.label} className="bg-white border border-gray-200 rounded px-1 py-0.5 text-center">
+                            <p className="text-[7px] text-gray-400 truncate">{r.label}</p>
+                            <p className={`text-[8px] font-bold ${r.period.n > 0 ? 'text-red-600' : 'text-green-600'}`}>₵{fmtN(r.period.amt)}</p>
+                          </div>
+                        ))}
+                      </div>
+                      {renderCountRecordsTable()}
+                    </>)
+                  )}
+                  {liveCountView?.kind === 'history' && (
+                    <div className="flex-1 min-h-0 flex flex-col px-4 py-4">
+                      <HistoryPanel keywords={['stock', 'count']} />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* Sale mode (the default/landing mode) */}
+          {liveMode === 'sale' && (<>
+          <div className={liveRootClassName}>
+            {liveExpanded && (
+              <button
+                type="button"
+                onClick={() => setLiveExpanded(false)}
+                title="Exit large screen"
+                className="fixed top-2 right-2 z-[60] w-8 h-8 rounded-full bg-gray-900/80 text-white text-sm font-bold flex items-center justify-center shadow-lg hover:bg-gray-900 transition"
+              >
+                ✕
+              </button>
+            )}
+            {renderModeToggleRow()}
+
+            {/* Filter Bar -- Green bar at top, shown only while liveExpanded
+                (this component's own top green bar already covers the
+                type/group filters/laws/help the rest of the time -- see
+                above -- and is visually hidden behind this fixed overlay
+                once liveExpanded, so it needs its own copy here too rather
+                than losing the type/group filters entirely). */}
+            {liveExpanded && (
+            <div className="bg-green-700 -mx-0 px-2 py-1 flex items-center justify-between gap-1 flex-wrap">
+                <div className="flex gap-1 items-center flex-wrap">
+                  <select
+                    value={liveProductTypeFilter}
+                    onChange={e => setLiveProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
+                    className="text-[11px] px-1.5 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white w-[4.5rem]"
+                  >
+                    <option value="all">All types</option>
+                    <option value="goods">Goods</option>
+                    <option value="services">Services</option>
+                  </select>
+                  <select
+                    value={liveGroupFilter || ''}
+                    onChange={e => setLiveGroupFilter(e.target.value || null)}
+                    className="text-[11px] px-1.5 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white w-[4.5rem]"
+                  >
+                    <option value="">All groups</option>
+                    {liveCatalogueGroups.map(group => (
+                      <option key={group} value={group}>{group}</option>
+                    ))}
+                  </select>
+                  {renderLiveSaleFilterSelect(true)}
+                </div>
+                <div className="flex gap-1 items-center">
+                  <div>
+                    <LawsToggleBar
+                      show={liveSaleLaws.show}
+                      setShow={liveSaleLaws.setShow}
+                      openForm={liveSaleLaws.openForm}
+                      setOpenForm={liveSaleLaws.setOpenForm}
+                      hideZeroFlags={liveSaleLaws.hideZeroFlags}
+                      setHideZeroFlags={liveSaleLaws.setHideZeroFlags}
+                      activeFilters={liveSaleLaws.activeFilters}
+                      toggleFilter={liveSaleLaws.toggleFilter}
+                      dark={true}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLiveHelpModalOpen(true)}
+                    className="w-5 h-5 rounded-md bg-white text-gray-600 hover:bg-gray-100 font-semibold text-[10px] flex items-center justify-center transition"
+                    title="Help"
+                  >
+                    ?
+                  </button>
+                </div>
+            </div>
+            )}
+
+            {/* Search & Controls -- rendered here only while liveExpanded (the
+                fullscreen overlay hides this component's own footer, where
+                these normally live -- see the footer's own Live Sale branch
+                below). */}
+            {liveExpanded && (
+              <div className="px-4 py-3 border-b border-gray-200 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex gap-2 items-center ml-auto">
+                    {renderLiveSearchControls(false)}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {saleModeShowAnalytics ? (
+              <div className="px-3 pt-3 flex-1 overflow-auto"><LiveSaleAnalyticsSection /></div>
+            ) : (<>
+
+            {/* GMC warning -- internal-use recording is easy to mis-tap and hard
+                to catch afterward (it's excluded from revenue/margin and feeds
+                the stock-gain reconciliation checks), so this stays loud and
+                impossible to miss for as long as GMC is selected. */}
+            {liveSaleType === 'GMC' && (
+              <div className="px-4 py-3 bg-red-600 border-b-4 border-red-800">
+                <p className="text-white font-extrabold text-lg leading-tight">
+                  ⚠ GMC MODE — Internal Use, Not a Real Sale
+                </p>
+                <p className="text-red-50 text-xs font-semibold mt-1 leading-snug">
+                  GMC ("Grony Multimedia as Customer") records stock the shop takes for its own internal use —
+                  it is excluded from revenue and profit, and is used to explain stock changes that aren't
+                  walk-in sales. Only tap items actually taken for internal use here. Switch back to WIC for
+                  normal customer sales.
+                </p>
+              </div>
+            )}
+
+            {liveSaleLaws.show && (
+              <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 overflow-auto max-h-48 border-t">
+                <PageLawsList
+                  scopeKey="Items"
+                  isItemsLaws={true}
+                  flags={liveComputedFlags}
+                  onChange={liveSaleLaws.bumpRefresh}
+                  openForm={liveSaleLaws.openForm}
+                  setOpenForm={liveSaleLaws.setOpenForm}
+                  hideZeroFlags={liveSaleLaws.hideZeroFlags}
+                  setHideZeroFlags={liveSaleLaws.setHideZeroFlags}
+                  activeFilters={liveSaleLaws.activeFilters}
+                />
+              </div>
+            )}
+
+            {/* Current View Indicator */}
+            {liveCurrentView && (
+              <div className="px-4 py-2 bg-blue-50 border-b border-blue-200 flex items-center justify-between">
+                <span className="text-xs font-semibold text-blue-700">
+                  {liveCurrentView.kind === 'violation' && `Viewing: Items with "${liveComputedFlags.find(f => f.key === liveCurrentView.key)?.label}"`}
+                  {liveCurrentView.kind === 'lossByItem' && `Viewing: Loss by Item (${liveCatalogueItems.length} items)`}
+                  {liveCurrentView.kind === 'aliasWide' && `Viewing: Alias Wide Table`}
+                  {liveCurrentView.kind === 'serviceMatches' && `Viewing: Service Matches`}
+                  {liveCurrentView.kind === 'newItem' && `Creating New Item`}
+                  {liveCurrentView.kind === 'dailySummary' && `Daily Sales Summary`}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setLiveCurrentView(null)}
+                  className="text-xs font-semibold px-2 py-1 rounded bg-white text-blue-600 hover:bg-blue-100 transition"
+                >
+                  ✕ Clear
+                </button>
+              </div>
+            )}
+
+            {/* Alias Wide Table View */}
+            {liveCurrentView?.kind === 'aliasWide' && (
+              <div className="flex-1 overflow-y-auto">
+                <AliasWidePage />
+              </div>
+            )}
+
+            {/* Service Matches View */}
+            {liveCurrentView?.kind === 'serviceMatches' && (
+              <div className="flex-1 overflow-y-auto">
+                <ServiceMatchesPage />
+              </div>
+            )}
+
+            {/* Daily Summary View */}
+            {liveCurrentView?.kind === 'dailySummary' && (
+              <div className="flex-1 overflow-y-auto px-4 py-4">
+                {(() => {
+                  try {
+                    const validTaps = liveTaps.filter(t => !t.undone)
+                    const todayTaps = validTaps.filter(t => t.tapped_at.startsWith(liveToday))
+                    const totalRevenue = todayTaps.reduce((sum, t) => sum + Number(t.price) * t.quantity, 0)
+                    const totalQuantity = todayTaps.reduce((sum, t) => sum + t.quantity, 0)
+                    const uniqueItems = new Set(todayTaps.map(t => t.item_id)).size
+
+                    const topItemsMap = new Map<number, number>()
+                    for (const tap of todayTaps) {
+                      topItemsMap.set(tap.item_id, (topItemsMap.get(tap.item_id) ?? 0) + tap.quantity)
+                    }
+                    const topItems = Array.from(topItemsMap.entries())
+                      .sort((a, b) => b[1] - a[1])
+                      .slice(0, 5)
+
+                    return (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <p className="text-xs text-blue-600 font-semibold">Total Revenue</p>
+                            <p className="text-2xl font-bold text-blue-900 mt-1">₵{formatPrice(totalRevenue)}</p>
+                          </div>
+                          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                            <p className="text-xs text-green-600 font-semibold">Total Quantity</p>
+                            <p className="text-2xl font-bold text-green-900 mt-1">{totalQuantity}</p>
+                          </div>
+                          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                            <p className="text-xs text-purple-600 font-semibold">Unique Items</p>
+                            <p className="text-2xl font-bold text-purple-900 mt-1">{uniqueItems}</p>
+                          </div>
+                        </div>
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                          <p className="text-xs font-semibold text-gray-600 mb-3">Top Items</p>
+                          <div className="space-y-2">
+                            {topItems.length === 0 ? (
+                              <p className="text-xs text-gray-500">No sales today</p>
+                            ) : (
+                              topItems.map(([itemId, qty]) => {
+                                const item = liveAllItems.find(i => i.id === itemId)
+                                return (
+                                  <div key={itemId} className="flex justify-between text-xs">
+                                    <span className="text-gray-700">{item?.name || '?'}</span>
+                                    <span className="font-semibold text-blue-600">{qty} units</span>
+                                  </div>
+                                )
+                              })
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  } catch (e) {
+                    console.error('Daily summary error:', e)
+                    return (
+                      <div className="text-center py-8">
+                        <p className="text-sm text-red-600 font-medium">Could not load daily summary</p>
+                      </div>
+                    )
+                  }
+                })()}
+              </div>
+            )}
+
+            {/* New Item Form */}
+            {liveCurrentView?.kind === 'newItem' && (
+              <div className="flex-1 overflow-y-auto px-4 py-4">
+                <NewItemForm onSuccess={() => { setLiveCurrentView(null); setLiveAllItems([]) }} />
+              </div>
+            )}
+
+            {/* Items Grid - 2 Columns */}
+            {liveCurrentView?.kind !== 'aliasWide' && liveCurrentView?.kind !== 'serviceMatches' && liveCurrentView?.kind !== 'newItem' && liveCurrentView?.kind !== 'dailySummary' && (
+            <div className="flex-1 overflow-y-auto">
+              {liveItemsLoading ? (
+                <p className="text-xs text-gray-400 text-center py-8">Loading…</p>
+              ) : liveCatalogueItems.length === 0 ? (
+                <p className="text-xs text-gray-400 text-center py-8">
+                  {liveCurrentView ? 'No items in this view' : 'No items found'}
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 gap-0 p-0">
+                  {livePinnedDueItems.length > 0 && (
+                    <div className="col-span-2 px-2 py-1 bg-gray-800 text-[9px] font-bold text-white uppercase tracking-wide">
+                      {livePinnedDueItems.length} item{livePinnedDueItems.length !== 1 ? 's' : ''} need{livePinnedDueItems.length === 1 ? 's' : ''} counting
+                    </div>
+                  )}
+                  {livePinnedDueItems.map(item => {
+                    const count = liveSalesCounts.get(item.id) ?? 0
+                    const due = liveCountStatus.get(item.id)!
+                    const overdue = due.level === 'overdue'
+                    return (
+                      <div
+                        key={item.id}
+                        className={`flex flex-col border-r border-b group ${overdue ? 'bg-red-50 border-red-100' : 'bg-amber-50 border-amber-100'}`}
+                      >
+                        <div className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide ${overdue ? 'bg-red-600' : 'bg-amber-500'}`}>
+                          ⚠ COUNT NOW {overdue ? `· ${due.label} OVERDUE` : `· ${due.label}`}
+                        </div>
+                        <div className="p-2 flex items-start gap-1 hover:bg-black/5 transition">
+                          <div className="flex-1 min-w-0">
+                            <button
+                              type="button"
+                              onClick={() => setLiveViewingItemId(item.id)}
+                              className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 leading-tight truncate text-left hover:underline transition"
+                            >
+                              {item.name}
+                            </button>
+                            <p className="text-[9px] text-gray-600 leading-tight">
+                              <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
+                              <span className="text-gray-400"> · </span>
+                              <span className="text-green-600 font-semibold">CP ₵{formatPrice(item.cost_price)}</span>
+                              <span className="text-gray-400"> · </span>
+                              <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
+                              {item.count_interval && (
+                                <>
+                                  <span className="text-gray-400"> · </span>
+                                  <span className="text-gray-500">{item.count_interval}</span>
+                                </>
+                              )}
+                              <span className="text-gray-400"> · </span>
+                              <span className={formatLoss(liveLossByItemId.get(item.id)).cls}>{formatLoss(liveLossByItemId.get(item.id)).text}</span>
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-0.5 shrink-0">
+                            {count > 0 && (
+                              <span className="inline-flex items-center justify-center min-w-3 h-3 px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold">
+                                {count}
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLiveSelectedItem(item)
+                                setLiveDueWhenOpened(true)
+                                setLivePrice('')
+                                setLiveQty('')
+                                setLiveTapError('')
+                                setLiveCountQty('')
+                                setLiveCountError('')
+                              }}
+                              className={`w-7 h-7 rounded-full text-white font-bold text-sm flex items-center justify-center transition ${overdue ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'}`}
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {livePinnedDueItems.length > 0 && liveRestCatalogueItems.length > 0 && (
+                    <div className="col-span-2 border-b border-gray-200" />
+                  )}
+                  {liveRestCatalogueItems.map(item => {
+                    const count = liveSalesCounts.get(item.id) ?? 0
+                    const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet)
+                    const flag = flags[0] ?? null
+                    return (
+                      <div
+                        key={item.id}
+                        className={`flex flex-col border-r border-b group ${flag ? 'bg-orange-50 border-orange-100' : 'border-gray-100'}`}
+                      >
+                        {flag && (
+                          <div className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide ${flag.bg} flex items-center justify-between gap-1`}>
+                            <span className="truncate">{flag.label}</span>
+                            {flags.length > 1 && <span className="shrink-0 opacity-90">+{flags.length - 1} more</span>}
+                          </div>
+                        )}
+                        <div className="p-2 flex items-start gap-1 hover:bg-black/5 transition">
+                          <div className="flex-1 min-w-0">
+                            <button
+                              type="button"
+                              onClick={() => setLiveViewingItemId(item.id)}
+                              className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 leading-tight truncate text-left hover:underline transition"
+                            >
+                              {item.name}
+                            </button>
+                            <p className="text-[9px] text-gray-600 leading-tight">
+                              <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
+                              <span className="text-gray-400"> · </span>
+                              <span className="text-green-600 font-semibold">CP ₵{formatPrice(item.cost_price)}</span>
+                              <span className="text-gray-400"> · </span>
+                              <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
+                              {item.count_interval && (
+                                <>
+                                  <span className="text-gray-400"> · </span>
+                                  <span className="text-gray-500">{item.count_interval}</span>
+                                </>
+                              )}
+                              <span className="text-gray-400"> · </span>
+                              <span className={formatLoss(liveLossByItemId.get(item.id)).cls}>{formatLoss(liveLossByItemId.get(item.id)).text}</span>
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-0.5 shrink-0">
+                            {count > 0 && (
+                              <span className="inline-flex items-center justify-center min-w-3 h-3 px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold">
+                                {count}
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLiveSelectedItem(item)
+                                setLiveDueWhenOpened(false)
+                                setLivePrice('')
+                                setLiveQty('')
+                                setLiveTapError('')
+                              }}
+                              className="w-7 h-7 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm flex items-center justify-center transition"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+            )}
+
+            {/* Modal */}
+            {liveSelectedItem && (() => {
+              const due = liveCountStatus.get(liveSelectedItem.id)
+              const flags = itemAttentionFlags(liveSelectedItem, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet)
+              const flag = flags[0] ?? null
+              const expected = Number(liveSelectedItem.soh)
+              const enteredCount = liveCountQty === '' ? null : Number(liveCountQty)
+              const countShort = enteredCount !== null && !isNaN(enteredCount) && enteredCount < expected
+              return (
+              <div className="fixed inset-0 bg-black/50 flex items-end z-50">
+                <div className="w-full bg-white rounded-t-2xl shadow-xl max-h-[92dvh] overflow-y-auto">
+                  <div className="px-4 py-4 border-b border-gray-200 flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <h3 className="text-lg font-bold text-gray-900 truncate">{liveSelectedItem.name}</h3>
+                      <p className="text-xs text-gray-500 mt-1">
+                        <span>Selling: ₵{formatPrice(liveSelectedItem.selling_price)}</span>
+                        <span className="text-gray-400"> · </span>
+                        <span>Cost: ₵{formatPrice(liveSelectedItem.cost_price)}</span>
+                        <span className="text-gray-400"> · </span>
+                        <span>Stock: {Math.ceil(Number(liveSelectedItem.soh))} pc</span>
+                      </p>
+                    </div>
+                    {!liveEditingSelectedItem && (
+                      <button
+                        type="button"
+                        onClick={startEditSelectedItem}
+                        className="shrink-0 px-5 py-2.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
+                      >
+                        Edit
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Editing this item's own fields -- opened via the Edit button
+                      above. Replaces the sale/count body below rather than
+                      stacking alongside it, so there's no ambiguity about which
+                      form a tap on Save applies to. Cancel returns to the normal
+                      sheet, it doesn't close it. */}
+                  {liveEditingSelectedItem ? (
+                    <div className="p-4">
+                      {liveEditLoading ? (
+                        <p className="text-xs text-gray-400 text-center py-6">Loading…</p>
+                      ) : (
+                        <ItemEditForm
+                          form={liveEditForm}
+                          onChange={setLiveEditForm}
+                          groups={liveEditGroups}
+                          itemId={liveSelectedItem.id}
+                          isService={liveSelectedItem.product_type === 'service'}
+                          allItems={liveEditAllItemsList}
+                          size="large"
+                          currentCountInterval={liveEditCurrentCountInterval}
+                          currentSoh={liveEditCurrentSoh}
+                        />
+                      )}
+                      {liveEditError && (
+                        <div className="mt-4 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-600 font-medium">
+                          {liveEditError}
+                        </div>
+                      )}
+
+                      {/* Manual count -- lets this item be counted from the edit
+                          view even when it isn't currently due (the due block
+                          below only shows up for items the count queues have
+                          already flagged). Its own submit, going through the
+                          same submitCount() the due block uses, so it hits the
+                          same pack-pairing/loss-reason prompts. */}
+                      {!liveEditLoading && liveSelectedItem.product_type !== 'service' && (
+                        <div className="mt-4 rounded-xl border border-gray-200 overflow-hidden">
+                          <div className="px-3 py-1.5 text-xs font-extrabold text-white bg-gray-700">
+                            MANUAL COUNT
+                          </div>
+                          <div className="p-3 space-y-2 bg-gray-50">
+                            <p className="text-xs text-gray-600">System expects <b>{expected}</b> on the shelf.</p>
+                            <div className="flex gap-2">
+                              <input
+                                type="number"
+                                inputMode="decimal"
+                                min="0"
+                                step="any"
+                                value={liveCountQty}
+                                onChange={e => setLiveCountQty(e.target.value)}
+                                placeholder="Counted quantity"
+                                className="flex-1 text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-gray-400"
+                                disabled={liveCountSaving}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setLiveCountQty(String(expected))}
+                                disabled={liveCountSaving}
+                                className="shrink-0 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition disabled:opacity-50"
+                              >
+                                ={expected}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => enteredCount !== null && submitCount(liveSelectedItem, enteredCount)}
+                                disabled={liveCountQty === '' || liveCountSaving}
+                                className={`shrink-0 px-3 py-2 text-white text-sm font-semibold rounded-lg transition disabled:opacity-50 ${countShort ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-700 hover:bg-gray-800'}`}
+                              >
+                                {liveCountSaving ? '…' : countShort ? 'Save as loss' : 'Save Count'}
+                              </button>
+                            </div>
+                            {enteredCount !== null && !isNaN(enteredCount) && (
+                              <p className={`text-xs font-semibold ${countShort ? 'text-red-600' : 'text-emerald-600'}`}>
+                                {countShort
+                                  ? `${(expected - enteredCount).toFixed(2).replace(/\.00$/, '')} short of expected — a reason will be requested`
+                                  : 'On target'}
+                              </p>
+                            )}
+                            {liveCountError && <p className="text-xs font-semibold text-red-600">{liveCountError}</p>}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex gap-2 pt-4">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLiveEditingSelectedItem(false)
+                            setLiveEditError('')
+                            setLiveCountQty('')
+                            setLiveCountError('')
+                          }}
+                          disabled={liveEditSaving}
+                          className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold rounded-lg transition disabled:opacity-50"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={saveEditSelectedItem}
+                          disabled={liveEditSaving || liveEditLoading || !liveEditForm.item_name.trim()}
+                          className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition disabled:opacity-50"
+                        >
+                          {liveEditSaving ? 'Saving…' : 'Save'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                  <>
+                  {/* Same negative-stock/missing-price/missing-cost/missing-group
+                      banner the grid card shows (see itemAttentionFlags) -- shown
+                      here too since the modal is reached directly from a search
+                      pick as well as from a grid card, and a searched-and-picked
+                      item skips the grid card entirely. */}
+                  {flag && (
+                    <div className={`mx-4 mt-4 px-3 py-1.5 rounded-lg text-xs font-extrabold text-white flex items-center justify-between gap-2 ${flag.bg}`}>
+                      <span>{flag.label}</span>
+                      {flags.length > 1 && <span className="opacity-90">+{flags.length - 1} more</span>}
+                    </div>
+                  )}
+
+                  {/* This item is due for a count -- surfaced right inside the
+                      sale sheet instead of requiring a separate mode-switch and
+                      a separate tap. Still its own field and its own submit,
+                      going to the count endpoint independently of the sale
+                      below, so entering one never gets mistaken for the other. */}
+                  {due && (
+                    <div className={`mx-4 mt-4 rounded-xl border overflow-hidden ${due.level === 'overdue' ? 'border-red-300' : 'border-amber-300'}`}>
+                      <div className={`px-3 py-1.5 text-xs font-extrabold text-white ${due.level === 'overdue' ? 'bg-red-600' : 'bg-amber-500'}`}>
+                        ⚠ COUNT NOW — {due.level === 'overdue' ? `${due.label} overdue` : due.label}
+                      </div>
+                      <div className={`p-3 space-y-2 ${due.level === 'overdue' ? 'bg-red-50' : 'bg-amber-50'}`}>
+                        <p className="text-xs text-gray-600">System expects <b>{expected}</b> on the shelf.</p>
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            min="0"
+                            step="any"
+                            value={liveCountQty}
+                            onChange={e => setLiveCountQty(e.target.value)}
+                            placeholder="Counted quantity"
+                            className="flex-1 text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-amber-400"
+                            disabled={liveCountSaving}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setLiveCountQty(String(expected))}
+                            disabled={liveCountSaving}
+                            className="shrink-0 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition disabled:opacity-50"
+                          >
+                            ={expected}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => enteredCount !== null && submitCount(liveSelectedItem, enteredCount)}
+                            disabled={liveCountQty === '' || liveCountSaving}
+                            className={`shrink-0 px-3 py-2 text-white text-sm font-semibold rounded-lg transition disabled:opacity-50 ${countShort ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'}`}
+                          >
+                            {liveCountSaving ? '…' : countShort ? 'Save as loss' : 'Save Count'}
+                          </button>
+                        </div>
+                        {enteredCount !== null && !isNaN(enteredCount) && (
+                          <p className={`text-xs font-semibold ${countShort ? 'text-red-600' : 'text-emerald-600'}`}>
+                            {countShort
+                              ? `${(expected - enteredCount).toFixed(2).replace(/\.00$/, '')} short of expected — a reason will be requested`
+                              : 'On target'}
+                          </p>
+                        )}
+                        {liveCountError && <p className="text-xs font-semibold text-red-600">{liveCountError}</p>}
+                      </div>
+                    </div>
+                  )}
+                  {!due && liveDueWhenOpened && (
+                    <div className="mx-4 mt-4 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 flex items-center gap-2">
+                      <span className="text-emerald-600 font-bold">✓</span>
+                      <span className="text-sm font-semibold text-emerald-700">Stock counted for today.</span>
+                    </div>
+                  )}
+
+                  <div className="p-4 space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2">
+                        Quantity <span className="text-red-600">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        min="1"
+                        step="1"
+                        value={liveQty}
+                        onChange={e => setLiveQty(e.target.value)}
+                        placeholder="Enter quantity"
+                        className="w-full text-lg font-semibold text-gray-900 bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400"
+                        disabled={liveSaving}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2">
+                        Price (optional)
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">₵</span>
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          min="0"
+                          step="0.01"
+                          value={livePrice}
+                          onChange={e => setLivePrice(e.target.value)}
+                          placeholder={formatPrice(liveSelectedItem.selling_price)}
+                          className="w-full text-lg font-semibold text-gray-900 bg-gray-50 border border-gray-300 rounded-lg pl-7 pr-3 py-2 outline-none focus:ring-1 focus:ring-blue-400"
+                          disabled={liveSaving}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Defaults to ₵{formatPrice(liveSelectedItem.selling_price)}
+                      </p>
+                    </div>
+
+                    {liveTapError && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-600 font-medium">
+                        {liveTapError}
+                      </div>
+                    )}
+
+                    <div className="flex gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLiveSelectedItem(null)
+                          setLiveQty('')
+                          setLivePrice('')
+                          setLiveTapError('')
+                          setLiveCountQty('')
+                          setLiveCountError('')
+                          setLiveEditingSelectedItem(false)
+                          setLiveEditError('')
+                        }}
+                        disabled={liveSaving}
+                        className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold rounded-lg transition disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={recordTap}
+                        disabled={!liveQty || liveSaving}
+                        className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition disabled:opacity-50"
+                      >
+                        {liveSaving ? 'Saving…' : 'Tap'}
+                      </button>
+                    </div>
+                  </div>
+                  </>
+                  )}
+                </div>
+              </div>
+              )
+            })()}
+
+            </>)}
+          </div>
+
+          {/* Item detail popup -- opened by tapping an item's name, instead of
+              navigating to the Loss by Item page (which no longer exists as
+              its own destination). Kept as a sibling outside liveRootClassName
+              (same as LossDialog/PairingDialog below) so it isn't clipped by
+              the overlay's own overflow-y-auto while liveExpanded. Only ever
+              set from Sale mode's own grid, so it (along with the loss/pairing
+              dialogs below) only needs rendering here, not in every mode. */}
+          {liveViewingItemId != null && (
+            <ItemDetailModal itemId={liveViewingItemId} onClose={() => setLiveViewingItemId(null)} />
+          )}
+
+          {liveLossPrompt && <LossDialog prompt={liveLossPrompt} onClose={() => setLiveLossPrompt(null)} />}
+          {livePairingPrompt && <PairingDialog prompt={livePairingPrompt} onClose={() => setLivePairingPrompt(null)} />}
+          </>)}
+
+          <TrainingGuideModal isOpen={liveHelpModalOpen} onClose={() => setLiveHelpModalOpen(false)} />
+        </>)}
         {addForm === 'expense' && outerTab === 'loss' && lossView === 'expenses' && <div className="px-4"><NewExpenseForm onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'item'    && outerTab === 'loss' && lossView === 'items'    && <div className="px-4"><NewItemForm    onSuccess={() => { setAddForm(null); loadItems() }} /></div>}
         {outerTab === 'loss' && lossView === 'pl' && (
@@ -2494,13 +4982,13 @@ function ItemHubPageInner() {
           {/* Live Sale's own item search box and item-filter dropdown
               (Loss/Gain/Low SOH/count interval) -- moved down into this
               footer, in Biz/UK/C&H's usual spot, while the Sales view is
-              open. Both are portaled in from LiveSaleForm (liveSearchSlotEl/
-              liveFilterSlotEl), same mechanism the mode switcher and the
-              rest of the filter row above already use. */}
+              open. Only rendered while liveMode === 'sale' -- matches the
+              old LiveSaleForm's own behavior, which only ever portaled
+              content into these two slots from its own Sale-mode return. */}
           {addForm !== 'live' && outerTab === 'loss' && lossView === 'sales' && !liveExpanded && (
           <div className="shrink-0 flex items-center justify-center gap-2 py-2 bg-white border-t border-gray-200">
-            <div ref={el => setLiveSearchSlotEl(el)} className="flex items-center gap-1" />
-            <div ref={el => setLiveFilterSlotEl(el)} className="flex items-center gap-1" />
+            <div className="flex items-center gap-1">{liveMode === 'sale' && renderLiveSearchControls(true)}</div>
+            <div className="flex items-center gap-1">{liveMode === 'sale' && renderLiveSaleFilterSelect(false)}</div>
           </div>
           )}
         </div>

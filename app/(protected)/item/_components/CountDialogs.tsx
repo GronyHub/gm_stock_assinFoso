@@ -2,10 +2,11 @@
 import { useState } from 'react'
 
 // LossDialog and PairingDialog used to live only inside CountsTab.tsx --
-// pulled out here so Live Sale's own Count mode (sales/live/page.tsx) can
-// reuse them verbatim too, without either duplicating ~150 lines of dialog
-// code or pulling CountsTab's whole module (default export included) into
-// Live Sale's bundle just for these two.
+// pulled out here so Live Sale's own Count mode (now inlined directly into
+// item/page.tsx's ItemHubPageInner) can reuse them verbatim too, without
+// either duplicating ~150 lines of dialog code or pulling CountsTab's whole
+// module (default export included) into item/page.tsx's bundle just for
+// these two.
 
 export type LossExtra = { loss_reason: string; manager_response: string | null }
 export type LossPrompt = { d: any; retry: (extra: LossExtra) => void }
