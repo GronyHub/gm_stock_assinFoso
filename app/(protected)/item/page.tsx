@@ -4286,7 +4286,10 @@ function ItemHubPageInner() {
                           <div className="flex-1 min-w-0">
                             <button
                               type="button"
-                              onClick={() => openEditGridItem(item.id)}
+                              onClick={() => {
+                                setLiveViewingItemId(item.id)
+                                openEditGridItem(item.id)
+                              }}
                               className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 leading-tight truncate text-left hover:underline transition"
                             >
                               {item.name}
@@ -4355,7 +4358,10 @@ function ItemHubPageInner() {
                           <div className="flex-1 min-w-0">
                             <button
                               type="button"
-                              onClick={() => openEditGridItem(item.id)}
+                              onClick={() => {
+                                setLiveViewingItemId(item.id)
+                                openEditGridItem(item.id)
+                              }}
                               className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 leading-tight truncate text-left hover:underline transition"
                             >
                               {item.name}
