@@ -2309,8 +2309,8 @@ function ItemHubPageInner() {
     const duplicateCount = baseFiltered.filter(it => liveDuplicateItemIds.has(it.id)).length
     const serviceViolationCount = baseFiltered.filter(it => liveServiceViolationIdSet.has(it.id)).length
     const unlinkedCount = baseFiltered.filter(it => liveUnlinkedNamedIds.has(it.id)).length
-    const missingSellingPriceCount = baseFiltered.filter(it => !it.selling_price || parseFloat(String(it.selling_price)) === 0).length
-    const missingCostPriceCount = baseFiltered.filter(it => !it.cost_price || parseFloat(String(it.cost_price)) === 0).length
+    const missingSellingPriceCount = baseFiltered.filter(it => (parseFloat(String(it.selling_price)) || 0) <= 0).length
+    const missingCostPriceCount = baseFiltered.filter(it => (parseFloat(String(it.cost_price)) || 0) <= 0).length
     const missingGroupCount = baseFiltered.filter(it => !it.group).length
 
     const intervalCounts = new Map<string, number>()
@@ -2396,9 +2396,9 @@ function ItemHubPageInner() {
       } else if (key === 'flag_unlinked') {
         filtered = filtered.filter(item => liveUnlinkedNamedIds.has(item.id))
       } else if (key === 'flag_missing_selling_price') {
-        filtered = filtered.filter(item => !item.selling_price || parseFloat(String(item.selling_price)) === 0)
+        filtered = filtered.filter(item => (parseFloat(String(item.selling_price)) || 0) <= 0)
       } else if (key === 'flag_missing_cost_price') {
-        filtered = filtered.filter(item => !item.cost_price || parseFloat(String(item.cost_price)) === 0)
+        filtered = filtered.filter(item => (parseFloat(String(item.cost_price)) || 0) <= 0)
       } else if (key === 'flag_missing_group') {
         filtered = filtered.filter(item => !item.group)
       }
