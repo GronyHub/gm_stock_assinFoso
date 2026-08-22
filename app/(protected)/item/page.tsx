@@ -2087,47 +2087,61 @@ function ItemHubPageInner() {
     service_violation: serviceViolationIds,
   }), [liveAllItems, globalFlags, serviceViolationIds])
 
-  // Build flags array with Live Sale callbacks
-  const liveComputedFlags = useMemo(() => [
-    ...liveViolationTypes.map((v: ViolationType) => ({
-      key: v.key,
-      label: v.label,
-      description: v.description,
-      count: violationCounts[v.key] ?? 0,
-      onViewClick: () => {
-        setLiveCurrentView(liveCurrentView?.kind === 'violation' && liveCurrentView.key === v.key
-          ? null
-          : { kind: 'violation' as const, key: v.key })
-      }
-    })),
-    // Sales'/Bills' own violation flags -- unlike the Items ones above,
-    // clicking one switches the whole tab (there's no "filter the current
-    // grid" option once you're on a different mode's data entirely), and
-    // sets that tab's own violation filter instead of liveCurrentView.
-    ...liveSalesViolationTypes.map((v: ViolationType) => ({
-      key: v.key,
-      label: v.label,
-      description: v.description,
-      count: violationCounts[v.key] ?? 0,
-      active: liveMode === 'sales' && liveSalesViolationFilter === v.key,
-      onViewClick: () => {
-        if (liveMode === 'sales' && liveSalesViolationFilter === v.key) { setLiveSalesViolationFilter(null); return }
-        setLiveMode('sales')
-        setLiveSalesViolationFilter(v.key)
-      }
-    })),
-    ...liveBillsViolationTypes.map((v: ViolationType) => ({
-      key: v.key,
-      label: v.label,
-      description: v.description,
-      count: violationCounts[v.key] ?? 0,
-      active: liveMode === 'bills' && liveBillsViolationFilter === v.key,
-      onViewClick: () => {
-        if (liveMode === 'bills' && liveBillsViolationFilter === v.key) { setLiveBillsViolationFilter(null); return }
-        setLiveMode('bills')
-        setLiveBillsViolationFilter(v.key)
-      }
-    })),
+  // Build mode-specific flags array with Live Sale callbacks
+  // Only show flags relevant to the current mode
+  const liveComputedFlags = useMemo(() => {
+    const flags = []
+
+    // Items violation flags (for Sale/Log modes)
+    if (liveMode === 'sale' || liveMode === 'log') {
+      flags.push(...liveViolationTypes.map((v: ViolationType) => ({
+        key: v.key,
+        label: v.label,
+        description: v.description,
+        count: violationCounts[v.key] ?? 0,
+        onViewClick: () => {
+          setLiveCurrentView(liveCurrentView?.kind === 'violation' && liveCurrentView.key === v.key
+            ? null
+            : { kind: 'violation' as const, key: v.key })
+        }
+      })))
+    }
+
+    // Sales violation flags (for Sales mode)
+    if (liveMode === 'sales') {
+      flags.push(...liveSalesViolationTypes.map((v: ViolationType) => ({
+        key: v.key,
+        label: v.label,
+        description: v.description,
+        count: violationCounts[v.key] ?? 0,
+        active: liveSalesViolationFilter === v.key,
+        onViewClick: () => {
+          if (liveSalesViolationFilter === v.key) { setLiveSalesViolationFilter(null); return }
+          setLiveSalesViolationFilter(v.key)
+        }
+      })))
+    }
+
+    // Bills violation flags (for Bills mode)
+    if (liveMode === 'bills') {
+      flags.push(...liveBillsViolationTypes.map((v: ViolationType) => ({
+        key: v.key,
+        label: v.label,
+        description: v.description,
+        count: violationCounts[v.key] ?? 0,
+        active: liveBillsViolationFilter === v.key,
+        onViewClick: () => {
+          if (liveBillsViolationFilter === v.key) { setLiveBillsViolationFilter(null); return }
+          setLiveBillsViolationFilter(v.key)
+        }
+      })))
+    }
+
+    return flags
+  }, [liveMode, violationCounts, liveCurrentView, liveSalesViolationFilter, liveBillsViolationFilter])
+
+  // All available views (shown in all modes)
+  const liveAllViews = useMemo(() => [
     {
       key: 'loss_by_item',
       label: 'Loss by Item',
@@ -2168,7 +2182,7 @@ function ItemHubPageInner() {
         setLiveCurrentView(liveCurrentView?.kind === 'dailySummary' ? null : { kind: 'dailySummary' as const })
       }
     },
-  ], [violationCounts, liveViolationTypes, liveSalesViolationTypes, liveBillsViolationTypes, liveMode, liveSalesViolationFilter, liveBillsViolationFilter, serviceGroups, liveCurrentView])
+  ], [liveCurrentView])
 
   // Fetch items (Live Sale's own catalogue -- see LiveItem's own comment)
   useEffect(() => {
@@ -4337,7 +4351,7 @@ function ItemHubPageInner() {
                 <PageLawsList
                   scopeKey="Items"
                   isItemsLaws={true}
-                  flags={liveComputedFlags}
+                  flags={[...liveComputedFlags, ...liveAllViews]}
                   onChange={liveSaleLaws.bumpRefresh}
                   openForm={liveSaleLaws.openForm}
                   setOpenForm={liveSaleLaws.setOpenForm}
