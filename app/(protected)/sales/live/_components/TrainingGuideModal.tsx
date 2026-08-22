@@ -148,29 +148,71 @@ const TOPICS: Topic[] = [
   },
   {
     id: 'attention-banners',
-    title: 'What do the colored warning banners on an item mean?',
+    title: 'What do the colored warning banners mean, and how do I clear them?',
     group: 'Live tab',
-    keywords: 'negative stock duplicate service violation unlinked sale missing price cost group banner warning flag',
+    keywords: 'negative stock duplicate service violation unlinked sale missing price cost group banner warning flag fix solve resolve merge link edit save tap click where',
     body: (
-      <div className="space-y-3">
-        <p className="text-sm text-gray-700">Besides count-due, an item can carry its own data-integrity warning. Only the single most serious one shows on the card (plus a "+N more" if there’s more than one) — worst first:</p>
-        <div className="space-y-1.5">
-          {[
-            { t: '⚠ NEGATIVE STOCK', bg: 'bg-red-600', d: 'Stock on hand has gone below zero — a bill, GMC record, or count is missing somewhere.' },
-            { t: '⚠ DUPLICATE ITEM', bg: 'bg-red-600', d: 'This item looks like the same product entered twice under a slightly different name, splitting its sales/stock across two records.' },
-            { t: '⚠ SERVICE VIOLATION', bg: 'bg-rose-600', d: 'A service item (which has no physical stock) shows GMC use, a bill, or a stock count against it — something was logged against the wrong item.' },
-            { t: '⚠ UNLINKED SALE', bg: 'bg-orange-600', d: 'A past sale line matches this item by name but was never actually linked to it, so that quantity/revenue is silently missing from its activity.' },
-            { t: '⚠ MISSING SELLING PRICE', bg: 'bg-orange-600', d: 'No selling price set — sales can’t be priced correctly until one is added.' },
-            { t: '⚠ MISSING COST PRICE', bg: 'bg-orange-500', d: 'No cost price set — margin/profit can’t be calculated for this item.' },
-            { t: '⚠ MISSING GROUP', bg: 'bg-amber-500', d: 'Not assigned to a group, which makes it harder to find and filter.' },
-          ].map(r => (
-            <div key={r.t} className="flex items-start gap-2">
-              <MiniBanner text={r.t} bg={r.bg} />
-              <span className="text-xs text-gray-600 flex-1">{r.d}</span>
+      <div className="space-y-4">
+        <p className="text-sm text-gray-700">Besides count-due, an item can carry its own data-integrity warning. Only the single most serious one shows on the card (plus a "+N more" if there’s more than one) — worst first. Each one below has the exact taps to clear it.</p>
+
+        <Callout kind="warn">Tapping one of these flags in Live Sale’s own ⚖️ flags panel only <strong>narrows the grid</strong> down to the affected items — it doesn’t open anything to fix. For Duplicate/Unlinked/Service Violation you have to leave Live Sale and go to the Items screen (steps below) to reach the actual buttons.</Callout>
+
+        <div className="space-y-3">
+          <div>
+            <div className="flex flex-wrap gap-1">
+              <MiniBanner text="⚠ MISSING SELLING PRICE" bg="bg-orange-600" />
+              <MiniBanner text="⚠ MISSING COST PRICE" bg="bg-orange-500" />
+              <MiniBanner text="⚠ MISSING GROUP" bg="bg-amber-500" />
             </div>
-          ))}
+            <p className="text-xs text-gray-600 mt-1">No selling price / cost price / group set on the item.</p>
+            <p className="text-sm text-gray-800 mt-1"><strong>Fix it:</strong></p>
+            <Steps items={[
+              <>Tap the item’s <MiniIconBtn tone="blue">+</MiniIconBtn> button to open its sheet.</>,
+              <>Tap <strong>Edit</strong>.</>,
+              <>Fill in the empty <strong>Selling price</strong> / <strong>Cost price</strong> field, or pick/type a <strong>Group</strong>.</>,
+              <>Tap <strong>Save</strong>. The banner clears immediately.</>,
+            ]} />
+          </div>
+
+          <div>
+            <MiniBanner text="⚠ NEGATIVE STOCK" bg="bg-red-600" />
+            <p className="text-xs text-gray-600 mt-1">Stock on hand has gone below zero — a bill, GMC record, or count is missing somewhere.</p>
+            <p className="text-sm text-gray-800 mt-1"><strong>Fix it:</strong></p>
+            <ul className="space-y-1 text-sm text-gray-700 list-disc list-inside">
+              <li>If the item also shows <strong>COUNT NOW</strong>, count it — tap it, enter what’s really on the shelf, and submit. That alone corrects the number.</li>
+              <li>If it’s not due for a count, the real cause is almost always a restock that was never entered — check the <strong>Bills</strong> tab for a missing purchase, or add one, before the number will make sense again.</li>
+            </ul>
+          </div>
+
+          <div>
+            <MiniBanner text="⚠ DUPLICATE ITEM" bg="bg-red-600" />
+            <p className="text-xs text-gray-600 mt-1">This item looks like the same product entered twice under a slightly different name.</p>
+            <p className="text-sm text-gray-800 mt-1"><strong>Fix it (leave Live Sale for this one):</strong></p>
+            <Steps items={[
+              <>Tap the <strong>Biz</strong> 💰 icon at the bottom, then <strong>Items</strong> in the left pane.</>,
+              <>Open the flags panel (📜) and tap the <strong>Duplicate Items</strong> pill.</>,
+              <>Each pair shows both names side by side with two buttons: <strong>Keep "Name A"</strong> or <strong>Keep "Name B"</strong> — tap whichever one you want to keep. The other’s entire history (sales, bills, counts) merges into it automatically.</>,
+              <>If they’re genuinely two different products, tap <strong>Different — Not a Duplicate</strong> instead, so it stops being flagged.</>,
+            ]} />
+          </div>
+
+          <div>
+            <MiniBanner text="⚠ UNLINKED SALE" bg="bg-orange-600" />
+            <p className="text-xs text-gray-600 mt-1">A past sale line matches this item by name but was never actually linked to it.</p>
+            <p className="text-sm text-gray-800 mt-1"><strong>Fix it (leave Live Sale for this one):</strong></p>
+            <Steps items={[
+              <><strong>Biz</strong> 💰 → <strong>Items</strong> → flags panel (📜) → <strong>Unlinked Sales</strong>.</>,
+              <>Each row shows how many sale lines matched this item and a button reading <strong>"Link N sale(s) to this item"</strong> — tap it to connect them all at once.</>,
+            ]} />
+          </div>
+
+          <div>
+            <MiniBanner text="⚠ SERVICE VIOLATION" bg="bg-rose-600" />
+            <p className="text-xs text-gray-600 mt-1">A service item (no physical stock) shows GMC use, a bill, or a stock count against it.</p>
+            <p className="text-sm text-gray-800 mt-1"><strong>Fix it:</strong></p>
+            <p className="text-sm text-gray-700"><strong>Biz</strong> 💰 → <strong>Items</strong> → flags panel (📜) → <strong>Service Violations</strong> shows which service is affected and by how much — but there’s no one-tap fix here. You need to track down the actual bill, count, or GMC entry that was wrongly logged against the service (in Bills, Count Records, or the Log) and correct or delete it there.</p>
+          </div>
         </div>
-        <p className="text-sm text-gray-700">Tap the item and use <strong>Edit</strong> to fix price/cost/group issues directly. Duplicates, unlinked sales, and service violations need attention on the Items page instead (merge, link, or correct the record).</p>
       </div>
     ),
   },
