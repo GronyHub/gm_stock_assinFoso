@@ -12,7 +12,6 @@ import { LossDialog, PairingDialog, type LossExtra, type LossPrompt, type Pairin
 import { ItemEditForm, EMPTY_ITEM_EDIT_FORM } from './_components/ItemEditForm'
 import HistoryPanel from './_components/HistoryPanel'
 import { TrainingGuideModal } from './_components/TrainingGuideModal'
-import { LawsModal } from './_components/LawsModal'
 import ItemDetailPanel from './_components/ItemDetailPanel'
 import { AliasPicker, MatchPicker, MergeItemPicker, type AliasRecord, type MatchRecord, type CandidateItem } from './_components/LossTab'
 
@@ -707,7 +706,6 @@ function ItemHubPageInner() {
   const rawLiveGroup = searchParams.get('liveGroup')
   const [liveGroupFilter, setLiveGroupFilter] = useState<string | null>(rawLiveGroup ?? null)
   const [liveHelpModalOpen, setLiveHelpModalOpen] = useState(false)
-  const [liveLawsModalOpen, setLiveLawsModalOpen] = useState(false)
   const rawLiveMode = searchParams.get('mode')
   const initialLiveMode = (rawLiveMode as 'sale' | 'sales' | 'bills' | 'lossByTarget' | 'log' | 'count' | null) ?? 'sale'
   const [liveMode, setLiveMode] = useState<'sale' | 'sales' | 'bills' | 'lossByTarget' | 'log' | 'count'>(initialLiveMode)
@@ -4334,18 +4332,6 @@ function ItemHubPageInner() {
             )}
             {renderModeToggleRow()}
 
-            {/* Laws & Tasks button - always visible */}
-            <div className="px-2 py-1 border-b border-green-600 bg-green-700 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setLiveLawsModalOpen(true)}
-                className="px-3 py-1.5 rounded-md bg-white text-green-700 hover:bg-gray-100 font-semibold text-xs transition"
-                title="Laws, Tasks & Notes"
-              >
-                ⚙️ Laws & Tasks
-              </button>
-            </div>
-
             {/* Filter Bar -- Green bar at top, shown only while liveExpanded
                 (this component's own top green bar already covers the
                 type/group filters/laws/help the rest of the time -- see
@@ -5263,8 +5249,7 @@ function ItemHubPageInner() {
           {livePairingPrompt && <PairingDialog prompt={livePairingPrompt} onClose={() => setLivePairingPrompt(null)} />}
           </>)}
 
-          <TrainingGuideModal isOpen={liveHelpModalOpen} onClose={() => setLiveHelpModalOpen(false)} />
-          <LawsModal isOpen={liveLawsModalOpen} onClose={() => setLiveLawsModalOpen(false)} panel={liveSaleLaws} />
+          <TrainingGuideModal isOpen={liveHelpModalOpen} onClose={() => setLiveHelpModalOpen(false)} lawsPanel={liveSaleLaws} />
         </> ) : null}
         {addForm === 'expense' && outerTab === 'loss' && lossView === 'expenses' && <div className="px-4"><NewExpenseForm onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'item'    && outerTab === 'loss' && lossView === 'items'    && <div className="px-4"><NewItemForm    onSuccess={() => { setAddForm(null); loadItems() }} /></div>}
