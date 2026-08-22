@@ -12,6 +12,7 @@ import { LossDialog, PairingDialog, type LossExtra, type LossPrompt, type Pairin
 import { ItemEditForm, EMPTY_ITEM_EDIT_FORM } from './_components/ItemEditForm'
 import HistoryPanel from './_components/HistoryPanel'
 import { TrainingGuideModal } from './_components/TrainingGuideModal'
+import ItemDetailPanel from './_components/ItemDetailPanel'
 import { AliasPicker, MatchPicker, MergeItemPicker, type AliasRecord, type MatchRecord, type CandidateItem } from './_components/LossTab'
 
 class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boolean; message: string }> {
@@ -4877,6 +4878,12 @@ function ItemHubPageInner() {
                             </div>
                           )}
                         </div>
+                      </div>
+                    )}
+                    {editItem && !liveGridEditLoading && (
+                      <div className="bg-gray-50">
+                        <h3 className="px-6 py-3 text-sm font-bold text-gray-900 border-b border-gray-200">Item Details</h3>
+                        <ItemDetailPanel itemId={editItem.id} onItemGone={() => setLiveEditingGridItemId(null)} collapsed />
                       </div>
                     )}
                   </div>
