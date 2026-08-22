@@ -2701,6 +2701,34 @@ function ItemHubPageInner() {
     </>)
   }
 
+  // All filters bar -- type and group dropdowns available on all tabs
+  function renderAllFiltersBar() {
+    return (
+      <div className="flex items-center gap-1 flex-wrap px-2 py-1 bg-gray-100 border-b border-gray-200">
+        <span className="text-[11px] font-semibold text-gray-600 shrink-0">Filter:</span>
+        <select
+          value={liveProductTypeFilter}
+          onChange={e => setLiveProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
+          className="text-[11px] px-1.5 py-0.5 rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 w-[4.5rem]"
+        >
+          <option value="all">All types</option>
+          <option value="goods">Goods</option>
+          <option value="services">Services</option>
+        </select>
+        <select
+          value={liveGroupFilter || ''}
+          onChange={e => setLiveGroupFilter(e.target.value || null)}
+          className="text-[11px] px-1.5 py-0.5 rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 w-[4.5rem]"
+        >
+          <option value="">All groups</option>
+          {liveGroups.map(g => (
+            <option key={g} value={g}>{g}</option>
+          ))}
+        </select>
+      </div>
+    )
+  }
+
   // The count records table -- also doubles as the old Loss by Date feed
   // (see liveCountRecordFilter/liveCountLossSummary above), since that was
   // always just this same stock_counts history with the reconciliation
@@ -3401,33 +3429,9 @@ function ItemHubPageInner() {
 
                 {outerTab === 'loss' && (lossView === 'sales' || lossView === 'items') && (
                   <div className="flex flex-col gap-1.5 ml-auto items-end w-full">
-                    {/* Search box and the item-filter dropdown moved down to
-                        the bottom bar (replacing Biz/UK/C&H there while this
-                        view is open) -- see the bottom bar's own Live Sale
-                        branch below. Everything still here is sized small
-                        enough (w-16/w-20 selects, w-5 h-5 icon buttons,
-                        text-[10px]/text-[11px]) that it wraps onto at most
-                        2-3 lines even on a phone-width screen. */}
+                    {/* Sales-specific controls: laws toggle, help, and large screen button.
+                        Type/group filters moved to the all-filters bar above the content. */}
                     <div className="flex items-center gap-1 flex-wrap justify-end">
-                      <select
-                        value={liveProductTypeFilter}
-                        onChange={e => setLiveProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
-                        className="text-[11px] px-1.5 py-0.5 rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 w-[4.5rem]"
-                      >
-                        <option value="all">All types</option>
-                        <option value="goods">Goods</option>
-                        <option value="services">Services</option>
-                      </select>
-                      <select
-                        value={liveGroupFilter || ''}
-                        onChange={e => setLiveGroupFilter(e.target.value || null)}
-                        className="text-[11px] px-1.5 py-0.5 rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 w-[4.5rem]"
-                      >
-                        <option value="">All groups</option>
-                        {liveGroups.map(g => (
-                          <option key={g} value={g}>{g}</option>
-                        ))}
-                      </select>
                       <LawsToggleBar show={liveSaleLaws.show} setShow={liveSaleLaws.setShow}
                         openForm={liveSaleLaws.openForm} setOpenForm={liveSaleLaws.setOpenForm}
                         hideZeroFlags={liveSaleLaws.hideZeroFlags} setHideZeroFlags={liveSaleLaws.setHideZeroFlags}
@@ -3460,6 +3464,7 @@ function ItemHubPageInner() {
           {/* ── Content ── */}
           <div className="relative flex-1 min-h-0 overflow-y-auto">
         {(outerTab === 'loss' && lossView === 'sales') || (outerTab === 'loss' && lossView === 'items') ? (<>
+          {renderAllFiltersBar()}
           {/* Log tab */}
           {liveMode === 'log' && (
             <div className={liveRootClassName}>
