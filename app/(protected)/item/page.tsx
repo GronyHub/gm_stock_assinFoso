@@ -2949,14 +2949,30 @@ function ItemHubPageInner() {
   // did (it was one shared function reachable from a slot the host could
   // in principle request from any mode).
   function renderLiveSearchControls(compact: boolean) {
+    const pickedItem = livePickedItemId !== null ? liveAllItems.find(i => i.id === livePickedItemId) : null
+    const displayValue = pickedItem ? pickedItem.name : liveItemPickerQuery
     return (
       <>
         <div className="relative flex-1 min-w-0">
           <input
             type="text"
-            value={liveItemPickerQuery}
-            onChange={e => setLiveItemPickerQuery(e.target.value)}
-            onFocus={() => liveItemPickerQuery.trim() && setLiveShowItemPicker(true)}
+            value={displayValue}
+            onChange={e => {
+              if (pickedItem) {
+                setLivePickedItemId(null)
+                setLiveItemPickerQuery(e.target.value)
+              } else {
+                setLiveItemPickerQuery(e.target.value)
+              }
+            }}
+            onFocus={() => {
+              if (pickedItem) {
+                setLivePickedItemId(null)
+                setLiveItemPickerQuery('')
+              } else if (liveItemPickerQuery.trim()) {
+                setLiveShowItemPicker(true)
+              }
+            }}
             placeholder={compact ? 'Search item…' : 'Search & pick item…'}
             className={`border focus:outline-none focus:ring-1 w-full ${
               compact ? 'text-[11px] px-2 py-1 rounded-md bg-white' : 'text-sm px-3 py-1.5 w-32 sm:w-48 rounded-lg'
@@ -2966,13 +2982,14 @@ function ItemHubPageInner() {
                 : 'border-gray-300 focus:ring-blue-400'
             }`}
           />
-          {liveItemPickerQuery && (
+          {(liveItemPickerQuery || livePickedItemId !== null) && (
             <button
               type="button"
               onClick={() => {
                 setLiveItemPickerQuery('')
                 setLiveItemPickerResults([])
                 setLiveShowItemPicker(false)
+                setLivePickedItemId(null)
               }}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
