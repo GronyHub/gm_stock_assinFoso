@@ -2705,7 +2705,6 @@ function ItemHubPageInner() {
   function renderAllFiltersBar() {
     return (
       <div className="flex items-center gap-1 flex-wrap px-2 py-1 bg-gray-100 border-b border-gray-200">
-        <span className="text-[11px] font-semibold text-gray-600 shrink-0">Filter:</span>
         <select
           value={liveProductTypeFilter}
           onChange={e => setLiveProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
@@ -3288,61 +3287,27 @@ function ItemHubPageInner() {
             <div className="shrink-0 bg-green-800 border-b border-green-900">
               {/* Tab switcher: Items vs Live Sale modes */}
               <div className="px-2 py-1.5 border-b border-green-700">
-                <div className="flex overflow-x-auto">
+                <div className="flex items-center gap-1.5 overflow-x-auto">
                   {renderTabSwitcher(true)}
-                </div>
-              </div>
-              {/* Row 2: groups + violations + search — hidden on report-style submenus.
-                  Groups/Search share their own line, and Columns/Analytics/New share a
-                  second one below -- crammed onto one line together they were fighting
-                  each other for width, squeezing Search down to nothing on a phone. */}
-              {showControls && (
-                <div className="flex flex-col gap-1.5 px-2 py-1.5">
-                <div className="flex items-center gap-1.5">
-                  {/* Law icon and Groups/Search removed - now in the all-filters bar */}
-                </div>
-
-                {['items', 'expenses'].includes(lossView) && (
-                  <div className="flex items-center gap-1.5">
-
-                    {/* Columns picker -- Items submenu only, next to New since it's
-                        the same kind of per-view control. Drives LossTab's column
-                        visibility/order (lifted up here, see itemsColPrefs above)
-                        rather than living inside LossTab itself. Alias Wide Table and
-                        Service Matches used to be their own left-pane entries -- now
-                        they're two more on/off switches in this same panel, since
-                        they're just other ways of looking at the same item catalog. */}
-                    {lossView === 'items' && (
+                  {/* Control buttons next to tab switcher */}
+                  {lossView === 'items' && (
+                    <>
                       <ColumnsPickerButton prefs={itemsColPrefs} dark extraToggles={[
                         { key: 'aliasWide', label: 'Alias Wide Table', active: itemsExtraView === 'aliasWide',
                           onToggle: () => setItemsExtraView(v => v === 'aliasWide' ? 'none' : 'aliasWide') },
                         { key: 'serviceMatches', label: 'Service Matches', active: itemsExtraView === 'serviceMatches',
                           onToggle: () => setItemsExtraView(v => v === 'serviceMatches' ? 'none' : 'serviceMatches') },
                       ]} />
-                    )}
-
-                    {/* Analytics toggle -- swaps this submenu's normal list for the
-                        charts/trends that used to live under the removed "Data"
-                        tab. Items also carries Violations' charts (no single tab of
-                        its own to move those into); Loss and Counts get the same
-                        toggle inside their own components instead of here. */}
-                    <button onClick={() => { setShowAnalytics(a => !a); setAddForm(null); setViolation(null) }}
-                      className={`shrink-0 flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg transition
-                        ${showAnalytics ? 'bg-blue-600 text-white' : 'text-white hover:bg-white/10'}`}>
-                      📊 {showAnalytics ? 'List' : 'Ana'}
-                    </button>
-                  </div>
-                )}
-
-                {outerTab === 'loss' && (lossView === 'sales' || lossView === 'items') && (
-                  <div className="flex flex-col gap-1.5 ml-auto items-end w-full">
-                    {/* Sales-specific controls: laws toggle, help, and large screen button.
-                        Type/group filters moved to the all-filters bar above the content. */}
-                    <div className="flex items-center gap-1 flex-wrap justify-end">
-                      <LawsToggleBar show={liveSaleLaws.show} setShow={liveSaleLaws.setShow}
-                        openForm={liveSaleLaws.openForm} setOpenForm={liveSaleLaws.setOpenForm}
-                        hideZeroFlags={liveSaleLaws.hideZeroFlags} setHideZeroFlags={liveSaleLaws.setHideZeroFlags}
-                        activeFilters={liveSaleLaws.activeFilters} toggleFilter={liveSaleLaws.toggleFilter} dark={false} />
+                      <button onClick={() => { setShowAnalytics(a => !a); setAddForm(null); setViolation(null) }}
+                        className={`shrink-0 flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg transition
+                          ${showAnalytics ? 'bg-blue-600 text-white' : 'text-white hover:bg-white/10'}`}>
+                        📊 {showAnalytics ? 'List' : 'Ana'}
+                      </button>
+                    </>
+                  )}
+                  {/* Sales-specific controls in tab row */}
+                  {outerTab === 'loss' && (lossView === 'sales' || lossView === 'items') && (
+                    <>
                       <button
                         type="button"
                         onClick={() => setLiveHelpModalOpen(true)}
@@ -3351,16 +3316,23 @@ function ItemHubPageInner() {
                       >
                         ?
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => setLiveExpanded((v) => !v)}
-                        title={liveExpanded ? 'Exit large screen' : 'Large screen'}
-                        className={`shrink-0 w-5 h-5 rounded-md text-[10px] font-semibold border flex items-center justify-center transition
-                          ${liveExpanded ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300'}`}
-                      >
-                        {liveExpanded ? '⤡' : '⤢'}
-                      </button>
-                    </div>
+                    </>
+                  )}
+                </div>
+              </div>
+              {/* Row 2: groups + violations + search — hidden on report-style submenus.
+                  Groups/Search share their own line, and Columns/Analytics/New share a
+                  second one below -- crammed onto one line together they were fighting
+                  each other for width, squeezing Search down to nothing on a phone. */}
+              {showControls && (
+                <div className="flex flex-col px-2 py-0">
+                {/* Sales-specific controls: laws toggle moved here */}
+                {outerTab === 'loss' && (lossView === 'sales' || lossView === 'items') && (
+                  <div className="flex items-center gap-1 flex-wrap py-1">
+                    <LawsToggleBar show={liveSaleLaws.show} setShow={liveSaleLaws.setShow}
+                      openForm={liveSaleLaws.openForm} setOpenForm={liveSaleLaws.setOpenForm}
+                      hideZeroFlags={liveSaleLaws.hideZeroFlags} setHideZeroFlags={liveSaleLaws.setHideZeroFlags}
+                      activeFilters={liveSaleLaws.activeFilters} toggleFilter={liveSaleLaws.toggleFilter} dark={false} />
                   </div>
                 )}
               </div>
