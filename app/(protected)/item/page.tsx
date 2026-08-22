@@ -3274,7 +3274,7 @@ function ItemHubPageInner() {
   function renderLiveSaleFilterSelect(compact: boolean) {
     return (
       <select
-        value={liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind === 'flag' ? `flag:${liveSaleFilter.key}` : liveSaleFilter.kind : liveCurrentView?.kind === 'violation' ? `violation:${liveCurrentView.key}` : ''}
+        value={liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind === 'flag' ? `flag:${liveSaleFilter.key}` : liveSaleFilter.kind : liveCurrentView?.kind === 'violation' ? `violation:${liveCurrentView.key}` : liveCurrentView?.kind === 'aliasWide' ? 'view:aliasWide' : liveCurrentView?.kind === 'serviceMatches' ? 'view:serviceMatches' : ''}
         onChange={e => {
           const v = e.target.value
           if (!v) {
@@ -3291,6 +3291,11 @@ function ItemHubPageInner() {
           } else if (v.startsWith('flag:')) {
             setLiveCurrentView(null)
             setLiveSaleFilter({ kind: 'flag', key: v.slice('flag:'.length) })
+          } else if (v.startsWith('view:')) {
+            setLiveSaleFilter(null)
+            const viewKey = v.slice('view:'.length)
+            if (viewKey === 'aliasWide') setLiveCurrentView({ kind: 'aliasWide' as const })
+            else if (viewKey === 'serviceMatches') setLiveCurrentView({ kind: 'serviceMatches' as const })
           } else {
             setLiveCurrentView(null)
             setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'soh' })
@@ -3317,6 +3322,11 @@ function ItemHubPageInner() {
               {f.label} ({(liveItemsWithViolations as Record<string, number[]>)[f.key]?.length ?? 0})
             </option>
           ))}
+        </optgroup>
+        {/* Views for managing relationships */}
+        <optgroup label="Views">
+          <option value="view:aliasWide">Alias Wide Table</option>
+          <option value="view:serviceMatches">Service Matches</option>
         </optgroup>
       </select>
     )
