@@ -4861,8 +4861,39 @@ function ItemHubPageInner() {
                         </div>
                       )}
                     </div>
-                    {editItem && !liveGridEditLoading && (
-                      <div ref={liveGridEditSaleTapRef} className="p-2 border-b border-gray-200 bg-orange-50">
+                    {editItem && !liveGridEditLoading && (() => {
+                      const overdueItem = liveOverdueItems.find(i => i.item_id === editItem.id)
+                      return (
+                      <div ref={liveGridEditSaleTapRef} className="p-2 border-b border-gray-200">
+                        {overdueItem && (
+                          <div className="mb-2 p-1.5 bg-red-100 border border-red-300 rounded">
+                            <p className="text-[9px] font-bold text-red-900 mb-1">⚠ COUNT NOW – {overdueItem.days_overdue}d overdue</p>
+                            <p className="text-[8px] text-red-800 mb-1">System expects {overdueItem.calculated_soh} on the shelf.</p>
+                            <div className="flex gap-1">
+                              <input
+                                type="number"
+                                inputMode="decimal"
+                                min="1"
+                                step="1"
+                                value={liveGridEditCountQty}
+                                onChange={e => setLiveGridEditCountQty(e.target.value)}
+                                placeholder="Counted quantity"
+                                className="flex-1 text-xs font-semibold text-gray-900 bg-white border border-gray-300 rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-red-400"
+                              />
+                              <button
+                                disabled={!liveGridEditCountQty}
+                                className="px-1.5 py-0.5 bg-green-600 hover:bg-green-700 text-white text-[8px] font-semibold rounded transition disabled:opacity-50">
+                                ={liveGridEditCountQty || '?'}
+                              </button>
+                              <button
+                                onClick={recordCountFromModal}
+                                disabled={!liveGridEditCountQty || liveGridEditCountSaving}
+                                className="px-2 py-0.5 bg-orange-500 hover:bg-orange-600 text-white text-[8px] font-semibold rounded transition disabled:opacity-50">
+                                {liveGridEditCountSaving ? 'Saving…' : 'Save Count'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
                         <div className="bg-orange-100 border border-orange-300 rounded p-1.5 mb-1">
                           <p className="text-[10px] font-semibold text-orange-900">⚠ SALE TAP</p>
                         </div>
@@ -4908,7 +4939,7 @@ function ItemHubPageInner() {
                           </button>
                         </div>
                       </div>
-                    )}
+                    )})()}
                     {editItem && !liveGridEditLoading && (
                       <div className="bg-gray-50">
                         <div className="px-2 py-1.5 space-y-2">
