@@ -3033,6 +3033,7 @@ function ItemHubPageInner() {
           <optgroup label="Views">
             <option value="view:aliasWide">Alias Wide Table</option>
             <option value="view:serviceMatches">Service Matches</option>
+            <option value="view:gmcPacks">GMC Packs</option>
           </optgroup>
         </select>
       </div>
@@ -3363,6 +3364,7 @@ function ItemHubPageInner() {
         <optgroup label="Views">
           <option value="view:aliasWide">Alias Wide Table</option>
           <option value="view:serviceMatches">Service Matches</option>
+          <option value="view:gmcPacks">GMC Packs</option>
         </optgroup>
       </select>
     )
@@ -3758,6 +3760,7 @@ function ItemHubPageInner() {
                     <optgroup label="Views">
                       <option value="view:aliasWide">Alias Wide Table</option>
                       <option value="view:serviceMatches">Service Matches</option>
+                      <option value="view:gmcPacks">GMC Packs</option>
                     </optgroup>
                   </select>
                 </div>
