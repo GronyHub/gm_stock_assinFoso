@@ -2893,7 +2893,7 @@ function ItemHubPageInner() {
             onFocus={() => liveItemPickerQuery.trim() && setLiveShowItemPicker(true)}
             placeholder={compact ? 'Search item…' : 'Search & pick item…'}
             className={`border focus:outline-none focus:ring-1 ${
-              compact ? 'text-[11px] px-1.5 py-0.5 w-16 rounded-md bg-white' : 'text-sm px-3 py-1.5 w-32 sm:w-48 rounded-lg'
+              compact ? 'text-[11px] px-2 py-1 w-24 rounded-md bg-white' : 'text-sm px-3 py-1.5 w-32 sm:w-48 rounded-lg'
             } ${
               livePickedItemId !== null
                 ? 'border-green-400 bg-green-50 focus:ring-green-400'
@@ -2953,7 +2953,7 @@ function ItemHubPageInner() {
           type="button"
           onClick={() => setLiveSaleType(t => t === 'WIC' ? 'GMC' : 'WIC')}
           title="Tap to switch between WIC and GMC"
-          className={`font-semibold transition ${compact ? 'px-1 py-0.5 text-[10px] rounded-md' : 'px-4 py-1.5 text-sm rounded'} ${
+          className={`font-semibold transition shrink-0 ${compact ? 'px-2 py-1 text-[10px] rounded-md' : 'px-4 py-1.5 text-sm rounded'} ${
             liveSaleType === 'GMC'
               ? 'bg-purple-600 text-white'
               : 'bg-blue-600 text-white'
@@ -2965,7 +2965,7 @@ function ItemHubPageInner() {
           type="button"
           onClick={() => setSaleModeShowAnalytics(a => !a)}
           title="Analytics"
-          className={`shrink-0 font-bold transition ${compact ? 'px-1 py-0.5 text-[10px] rounded-md' : 'px-2.5 py-1 text-xs rounded-lg'} ${
+          className={`shrink-0 font-bold transition ${compact ? 'px-2 py-1 text-sm rounded-md' : 'px-2.5 py-1 text-xs rounded-lg'} ${
             saleModeShowAnalytics ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
           }`}
         >
@@ -4738,12 +4738,12 @@ function ItemHubPageInner() {
               tapping sales, so this row steps aside rather than the two
               competing for the same strip. */}
           {addForm !== 'live' && !(outerTab === 'loss' && lossView === 'sales' && !liveExpanded) && (
-          <div className="shrink-0 flex items-center justify-center gap-2 py-2 bg-white border-t border-gray-200">
+          <div className="shrink-0 flex items-center gap-2 px-2 py-2 bg-white border-t border-gray-200 overflow-x-auto">
             <button onClick={() => setGlobalSearchOpen(true)} title="Search"
-              className="w-9 h-9 rounded-full flex items-center justify-center text-lg border-2 border-transparent text-gray-500 opacity-70 hover:opacity-100 transition">
+              className="w-8 h-8 rounded-full flex items-center justify-center text-lg border-2 border-transparent text-gray-500 opacity-70 hover:opacity-100 transition shrink-0">
               🔍
             </button>
-            <div className="flex-1 max-w-xs">{renderLiveSearchControls(true)}</div>
+            <div className="flex items-center gap-2 shrink-0">{renderLiveSearchControls(true)}</div>
           </div>
           )}
           {/* Live Sale's own item search box and item-filter dropdown
@@ -4753,9 +4753,9 @@ function ItemHubPageInner() {
               old LiveSaleForm's own behavior, which only ever portaled
               content into these two slots from its own Sale-mode return. */}
           {addForm !== 'live' && outerTab === 'loss' && lossView === 'sales' && !liveExpanded && (
-          <div className="shrink-0 flex items-center justify-center gap-2 py-2 bg-white border-t border-gray-200">
-            <div className="flex items-center gap-1">{liveMode === 'sale' && renderLiveSearchControls(true)}</div>
-            <div className="flex items-center gap-1">{liveMode === 'sale' && renderLiveSaleFilterSelect(false)}</div>
+          <div className="shrink-0 flex items-center gap-2 px-2 py-2 bg-white border-t border-gray-200 overflow-x-auto">
+            <div className="flex items-center gap-2 shrink-0">{liveMode === 'sale' && renderLiveSearchControls(true)}</div>
+            <div className="shrink-0">{liveMode === 'sale' && renderLiveSaleFilterSelect(false)}</div>
           </div>
           )}
         </div>
