@@ -715,11 +715,12 @@ function ItemHubPageInner() {
   const [liveSalesViolationFilter, setLiveSalesViolationFilter] = useState<string | null>(rawLiveSalesViolation ?? null)
   const [liveBillsViolationFilter, setLiveBillsViolationFilter] = useState<string | null>(rawLiveBillsViolation ?? null)
   const rawLiveSaleFilter = searchParams.get('liveSaleFilter')
-  const initialLiveSaleFilter: { kind: 'loss' } | { kind: 'gain' } | { kind: 'soh' } | { kind: 'interval'; label: string } | null =
+  const initialLiveSaleFilter: { kind: 'loss' } | { kind: 'gain' } | { kind: 'soh' } | { kind: 'interval'; label: string } | { kind: 'flag'; key: string } | null =
     rawLiveSaleFilter === 'loss' ? { kind: 'loss' } :
     rawLiveSaleFilter === 'gain' ? { kind: 'gain' } :
     rawLiveSaleFilter === 'soh' ? { kind: 'soh' } :
     rawLiveSaleFilter?.startsWith('interval:') ? { kind: 'interval', label: rawLiveSaleFilter.slice(9) } :
+    rawLiveSaleFilter?.startsWith('flag:') ? { kind: 'flag', key: rawLiveSaleFilter.slice(5) } :
     null
   const [liveSaleFilter, setLiveSaleFilter] = useState<{ kind: 'loss' } | { kind: 'gain' } | { kind: 'soh' } | { kind: 'interval'; label: string } | { kind: 'flag'; key: string } | null>(initialLiveSaleFilter)
   const rawLiveCountView = searchParams.get('liveCountView')
