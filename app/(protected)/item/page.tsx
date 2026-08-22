@@ -2701,7 +2701,7 @@ function ItemHubPageInner() {
     </>)
   }
 
-  // All filters bar -- type, group, sale filters, and search available on all tabs
+  // All filters bar -- type, group, sale filters available on all tabs
   function renderAllFiltersBar() {
     return (
       <div className="flex items-center gap-1 flex-wrap px-2 py-1 bg-gray-100 border-b border-gray-200">
@@ -2725,34 +2725,6 @@ function ItemHubPageInner() {
           ))}
         </select>
         {renderLiveSaleFilterSelect(true)}
-        <div className="relative ml-auto min-w-0 flex-1 max-w-[12rem]" ref={searchRef}>
-          <input value={search} onChange={e => setSearch(e.target.value)}
-            onFocus={() => setSearchOpen(true)}
-            placeholder="Search items..." autoComplete="off"
-            className="w-full text-[11px] px-2 py-1 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400" />
-          {search && (
-            <button onClick={() => { setSearch(''); setSearchOpen(false) }} title="Clear search"
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-[11px] leading-none px-0.5">
-              ×
-            </button>
-          )}
-          {searchOpen && searchMatches.length > 0 && (
-            <div className="absolute z-30 left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
-              {searchMatches.map(i => (
-                <button key={i.id} onClick={() => { setSearch(i.item_name); setSearchOpen(false) }}
-                  className="w-full text-left px-2 py-1 text-[11px] text-gray-800 hover:bg-blue-50 border-b border-gray-100 last:border-0">
-                  {i.item_name}
-                  {i.cf_group && <span className="text-gray-400 ml-1">· {i.cf_group}</span>}
-                </button>
-              ))}
-            </div>
-          )}
-          {searchOpen && search.trim() && searchMatches.length === 0 && (
-            <div className="absolute z-30 left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded-md shadow-lg px-2 py-1 text-[11px] text-gray-400">
-              No items found
-            </div>
-          )}
-        </div>
       </div>
     )
   }
@@ -3315,37 +3287,41 @@ function ItemHubPageInner() {
             <div className="shrink-0 bg-green-800 border-b border-green-900">
               {/* Tab switcher: Items vs Live Sale modes */}
               <div className="px-2 py-1.5 border-b border-green-700">
-                <div className="flex items-center gap-1.5 overflow-x-auto">
-                  {renderTabSwitcher(true)}
-                  {/* Control buttons next to tab switcher */}
-                  {lossView === 'items' && (
-                    <>
-                      <ColumnsPickerButton prefs={itemsColPrefs} dark extraToggles={[
-                        { key: 'aliasWide', label: 'Alias Wide Table', active: itemsExtraView === 'aliasWide',
-                          onToggle: () => setItemsExtraView(v => v === 'aliasWide' ? 'none' : 'aliasWide') },
-                        { key: 'serviceMatches', label: 'Service Matches', active: itemsExtraView === 'serviceMatches',
-                          onToggle: () => setItemsExtraView(v => v === 'serviceMatches' ? 'none' : 'serviceMatches') },
-                      ]} />
-                      <button onClick={() => { setShowAnalytics(a => !a); setAddForm(null); setViolation(null) }}
-                        className={`shrink-0 flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg transition
-                          ${showAnalytics ? 'bg-blue-600 text-white' : 'text-white hover:bg-white/10'}`}>
-                        📊 {showAnalytics ? 'List' : 'Ana'}
-                      </button>
-                    </>
-                  )}
-                  {/* Sales-specific controls in tab row */}
-                  {outerTab === 'loss' && (lossView === 'sales' || lossView === 'items') && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => setLiveHelpModalOpen(true)}
-                        title="Help"
-                        className="shrink-0 w-5 h-5 rounded-md text-[10px] font-semibold border flex items-center justify-center transition bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300"
-                      >
-                        ?
-                      </button>
-                    </>
-                  )}
+                <div className="flex items-center gap-3 justify-between">
+                  <div className="flex items-center gap-1.5 overflow-x-auto">
+                    {renderTabSwitcher(true)}
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    {/* Control buttons next to tab switcher */}
+                    {lossView === 'items' && (
+                      <>
+                        <ColumnsPickerButton prefs={itemsColPrefs} dark extraToggles={[
+                          { key: 'aliasWide', label: 'Alias Wide Table', active: itemsExtraView === 'aliasWide',
+                            onToggle: () => setItemsExtraView(v => v === 'aliasWide' ? 'none' : 'aliasWide') },
+                          { key: 'serviceMatches', label: 'Service Matches', active: itemsExtraView === 'serviceMatches',
+                            onToggle: () => setItemsExtraView(v => v === 'serviceMatches' ? 'none' : 'serviceMatches') },
+                        ]} />
+                        <button onClick={() => { setShowAnalytics(a => !a); setAddForm(null); setViolation(null) }}
+                          className={`shrink-0 flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg transition
+                            ${showAnalytics ? 'bg-blue-600 text-white' : 'text-white hover:bg-white/10'}`}>
+                          📊 {showAnalytics ? 'List' : 'Ana'}
+                        </button>
+                      </>
+                    )}
+                    {/* Sales-specific controls in tab row */}
+                    {outerTab === 'loss' && (lossView === 'sales' || lossView === 'items') && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setLiveHelpModalOpen(true)}
+                          title="Help"
+                          className="shrink-0 w-5 h-5 rounded-md text-[10px] font-semibold border flex items-center justify-center transition bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300"
+                        >
+                          ?
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
               {/* Row 2: groups + violations + search — hidden on report-style submenus.
