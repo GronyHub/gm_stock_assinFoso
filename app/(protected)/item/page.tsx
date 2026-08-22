@@ -3397,7 +3397,7 @@ function ItemHubPageInner() {
                   </div>
                 )}
 
-                {outerTab === 'loss' && lossView === 'sales' && (
+                {outerTab === 'loss' && (lossView === 'sales' || (lossView === 'items' && itemsPageMode !== 'items')) && (
                   <div className="flex flex-col gap-1.5 ml-auto items-end w-full">
                     {/* Search box and the item-filter dropdown moved down to
                         the bottom bar (replacing Biz/UK/C&H there while this
