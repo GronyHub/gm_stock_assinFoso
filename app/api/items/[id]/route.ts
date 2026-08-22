@@ -15,7 +15,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         SELECT i.id, i.canonical_name, i.cf_group, i.selling_rate AS selling_price,
                i.purchase_rate, i.units_per_pack, i.unit_name, i.converts_to_item_id,
                i.count_excluded, i.count_cadence_days, i.count_excluded_reason,
-               COALESCE(s.calculated_soh, 0) AS calculated_soh, COALESCE(i.is_gmc, false) AS is_gmc
+               COALESCE(s.calculated_soh, 0) AS calculated_soh, COALESCE(i.gmc_type, '') AS gmc_type
         FROM items i
         LEFT JOIN item_stock_summary s ON s.item_id = i.id
         WHERE i.id = ${itemId}
@@ -69,7 +69,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   await Promise.all([ensureCountCadenceColumns(), ensureGmcColumn()])
   const [current] = await sql`
     SELECT i.canonical_name, i.cf_group, i.selling_rate, i.purchase_rate, i.units_per_pack, i.unit_name, i.converts_to_item_id, i.product_type,
-           i.count_excluded, i.count_cadence_days, i.count_excluded_reason, COALESCE(i.is_gmc, false) AS is_gmc,
+           i.count_excluded, i.count_cadence_days, i.count_excluded_reason, COALESCE(i.gmc_type, '') AS gmc_type,
            COALESCE(s.calculated_soh, 0) AS calculated_soh
     FROM items i
     LEFT JOIN item_stock_summary s ON s.item_id = i.id
@@ -85,7 +85,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const unit_name           = has('unit_name') ? body.unit_name : current.unit_name
   const converts_to_item_id = has('converts_to_item_id') ? body.converts_to_item_id : current.converts_to_item_id
   const product_type        = has('product_type') ? (body.product_type === 'service' ? 'service' : 'goods') : current.product_type
-  const is_gmc              = has('is_gmc') ? !!body.is_gmc : current.is_gmc
+  const gmc_type            = has('gmc_type') ? body.gmc_type : current.gmc_type
   // count_cadence_days genuinely needs a real null to mean "back to
   // automatic" (see /api/stock/gmc-weekly and overdue, which COALESCE
   // this against the computed 7/15/30-day default) -- so, like every
@@ -125,12 +125,12 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       unit_name           = ${unit_name      ?? null},
       converts_to_item_id = ${converts_to_item_id ?? null},
       product_type        = ${product_type   ?? 'goods'},
-      is_gmc              = ${is_gmc         ?? false},
+      gmc_type            = ${gmc_type       ?? ''},
       count_excluded      = ${count_excluded ?? false},
       count_cadence_days  = ${count_cadence_days ?? null},
       count_excluded_reason = ${count_excluded_reason}
     WHERE id = ${itemId}
-    RETURNING id, canonical_name AS item_name, cf_group, selling_rate, purchase_rate, units_per_pack, unit_name, converts_to_item_id, product_type, is_gmc,
+    RETURNING id, canonical_name AS item_name, cf_group, selling_rate, purchase_rate, units_per_pack, unit_name, converts_to_item_id, product_type, gmc_type,
               count_excluded, count_cadence_days, count_excluded_reason
   `
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })

@@ -49,7 +49,7 @@ async function ensureCountCadenceColumnsImpl() {
 }
 
 async function ensureGmcColumnImpl() {
-  await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS is_gmc BOOLEAN NOT NULL DEFAULT false`.catch(() => {})
+  await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS gmc_type TEXT NOT NULL DEFAULT ''`.catch(() => {})
 }
 
 export const ensureGmcColumn = once(ensureGmcColumnImpl)

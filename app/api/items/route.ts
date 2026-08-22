@@ -18,7 +18,7 @@ export async function GET() {
         i.converts_to_item_id,
         COALESCE(i.product_type, 'goods') AS product_type,
         COALESCE(s.calculated_soh, 0) AS calculated_soh,
-        COALESCE(i.is_gmc, false) AS is_gmc
+        COALESCE(i.gmc_type, '') AS gmc_type
       FROM active_items i
       LEFT JOIN item_stock_summary s ON s.item_id = i.id
       ORDER BY cf_group NULLS LAST, i.canonical_name
@@ -37,7 +37,7 @@ export async function GET() {
         i.unit_name,
         'goods' AS product_type,
         COALESCE(s.calculated_soh, 0) AS calculated_soh,
-        COALESCE(i.is_gmc, false) AS is_gmc
+        COALESCE(i.gmc_type, '') AS gmc_type
       FROM items i
       LEFT JOIN item_stock_summary s ON s.item_id = i.id
       WHERE i.status IS NULL OR LOWER(i.status) != 'inactive'

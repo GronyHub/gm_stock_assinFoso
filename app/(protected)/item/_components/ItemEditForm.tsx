@@ -11,7 +11,7 @@ import { GMCBadge } from './GMCBadge'
 export const EMPTY_ITEM_EDIT_FORM = {
   item_name: '', cf_group: '', selling_rate: '', purchase_rate: '', units_per_pack: '', unit_name: '',
   converts_to_item_id: '', count_excluded: false, count_cadence_days: '', count_excluded_reason: '',
-  is_gmc: false,
+  gmc_type: '',
 }
 
 // 'compact' is LossTab's original dense inline-table-row styling (unchanged
@@ -81,6 +81,13 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
     onChange({ ...form, [k]: e.target.value })
   const setCheckbox = (k: keyof typeof EMPTY_ITEM_EDIT_FORM) => (e: React.ChangeEvent<HTMLInputElement>) =>
     onChange({ ...form, [k]: e.target.checked })
+  const gmcOptions = [
+    { value: '', label: '— None —' },
+    { value: 'gmc', label: 'GMC only, no service' },
+    { value: 'service_gmc', label: 'Is both service and GMC' },
+    { value: 'service_using_gmc', label: 'Is service using another GMC' },
+    { value: 'service_no_gmc', label: 'Is service no GMC' },
+  ]
   // Existing groups only show up here once some item already uses them --
   // "+ New group name…" (same option NewItemForm offers) is what lets you
   // introduce one while editing an item instead of only from New Item.
@@ -103,7 +110,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
         {large && <label className={s.label}>Item name <span className="text-red-600">*</span></label>}
         <div className="flex items-center gap-1">
           <input placeholder="Item name *" value={form.item_name} onChange={set('item_name')} className={s.input} />
-          <GMCBadge isGmc={form.is_gmc} size={large ? 'medium' : 'small'} />
+          <GMCBadge gmcType={form.gmc_type} size={large ? 'medium' : 'small'} />
         </div>
       </div>
       <div>
@@ -156,17 +163,13 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
           ))}
         </select>
       </div>
-      <div className={`flex items-center gap-2 ${large ? 'mt-3' : 'mt-1'}`}>
-        <input
-          type="checkbox"
-          id="is_gmc"
-          checked={form.is_gmc}
-          onChange={setCheckbox('is_gmc')}
-          className={s.checkbox}
-        />
-        <label htmlFor="is_gmc" className={s.checkboxLabel.replace('flex items-center gap-', 'gap-')}>
-          GMC Item
-        </label>
+      <div>
+        {large && <label className={s.label}>GMC Type</label>}
+        <select value={form.gmc_type} onChange={set('gmc_type')} className={s.input}>
+          {gmcOptions.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
       </div>
       {!isService && (
         <div className={s.sectionWrap}>

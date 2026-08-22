@@ -2703,7 +2703,7 @@ function ItemHubPageInner() {
         count_excluded: !!d?.count_excluded,
         count_cadence_days: d?.count_cadence_days != null ? String(d.count_cadence_days) : '',
         count_excluded_reason: d?.count_excluded_reason ?? '',
-        is_gmc: !!d?.is_gmc,
+        gmc_type: d?.gmc_type ?? '',
       })
       setLiveEditCurrentCountInterval(d?.count_interval ?? null)
       setLiveEditCurrentSoh(d?.calculated_soh != null ? parseFloat(d.calculated_soh) : null)
@@ -2745,7 +2745,7 @@ function ItemHubPageInner() {
         count_excluded: !!d?.count_excluded,
         count_cadence_days: d?.count_cadence_days != null ? String(d.count_cadence_days) : '',
         count_excluded_reason: d?.count_excluded_reason ?? '',
-        is_gmc: !!d?.is_gmc,
+        gmc_type: d?.gmc_type ?? '',
       })
       setLiveEditCurrentCountInterval(d?.count_interval ?? null)
       setLiveEditCurrentSoh(d?.calculated_soh != null ? parseFloat(d.calculated_soh) : null)
