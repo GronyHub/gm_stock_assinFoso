@@ -2307,13 +2307,7 @@ function ItemHubPageInner() {
 
     const negativeStockCount = baseFiltered.filter(it => it.product_type !== 'service' && Number(it.soh) < 0).length
     const duplicateCount = baseFiltered.filter(it => liveDuplicateItemIds.has(it.id)).length
-    // Service violations: services with any loss/gain records (match itemAttentionFlags logic)
-    const serviceViolationCount = baseFiltered.filter(it =>
-      it.product_type === 'service' && (
-        (liveLossByItemId.get(it.id)?.lossCount ?? 0) > 0 ||
-        (liveLossByItemId.get(it.id)?.gainCount ?? 0) > 0
-      )
-    ).length
+    const serviceViolationCount = baseFiltered.filter(it => liveServiceViolationIdSet.has(it.id)).length
     const unlinkedCount = baseFiltered.filter(it => liveUnlinkedNamedIds.has(it.id)).length
     const missingSellingPriceCount = baseFiltered.filter(it => parseFloat(String(it.selling_price)) || 0 <= 0).length
     const missingCostPriceCount = baseFiltered.filter(it => parseFloat(String(it.cost_price)) || 0 <= 0).length
@@ -2398,12 +2392,7 @@ function ItemHubPageInner() {
       } else if (key === 'flag_duplicate') {
         filtered = filtered.filter(item => liveDuplicateItemIds.has(item.id))
       } else if (key === 'flag_service_violation') {
-        filtered = filtered.filter(item =>
-          item.product_type === 'service' && (
-            (liveLossByItemId.get(item.id)?.lossCount ?? 0) > 0 ||
-            (liveLossByItemId.get(item.id)?.gainCount ?? 0) > 0
-          )
-        )
+        filtered = filtered.filter(item => liveServiceViolationIdSet.has(item.id))
       } else if (key === 'flag_unlinked') {
         filtered = filtered.filter(item => liveUnlinkedNamedIds.has(item.id))
       } else if (key === 'flag_missing_selling_price') {
