@@ -4418,21 +4418,6 @@ function ItemHubPageInner() {
                                 {count}
                               </span>
                             )}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setLiveSelectedItem(item)
-                                setLiveDueWhenOpened(true)
-                                setLivePrice('')
-                                setLiveQty('')
-                                setLiveTapError('')
-                                setLiveCountQty('')
-                                setLiveCountError('')
-                              }}
-                              className={`w-7 h-7 rounded-full text-white font-bold text-sm flex items-center justify-center transition ${overdue ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'}`}
-                            >
-                              +
-                            </button>
                           </div>
                         </div>
                       </div>
@@ -4487,19 +4472,6 @@ function ItemHubPageInner() {
                                 {count}
                               </span>
                             )}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setLiveSelectedItem(item)
-                                setLiveDueWhenOpened(false)
-                                setLivePrice('')
-                                setLiveQty('')
-                                setLiveTapError('')
-                              }}
-                              className="w-7 h-7 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm flex items-center justify-center transition"
-                            >
-                              +
-                            </button>
                           </div>
                         </div>
                       </div>
