@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
 
+type ItemRow = { item_id: number; canonical_name: string; cf_group: string | null; product_type: string; matches: { id: number; name: string }[] }
 type MatchRow = { id: number; service_name: string; service_group: string | null; goods_name: string; goods_group: string | null }
 
 // Unified table view of all good<->service matches
@@ -20,19 +21,61 @@ export default function MatchesWidePage() {
   async function load() {
     setLoading(true)
     try {
-      const matchesData = await fetch('/api/good-service-matches/wide').then(r => r.json())
-      const matchArray = Array.isArray(matchesData) ? matchesData : []
-      setMatches(matchArray)
+      const data = await fetch('/api/good-service-matches/wide').then(r => r.json())
+      const items = Array.isArray(data) ? data : []
 
-      const services = Array.from(new Map(
-        matchArray.map(m => [m.service_name, { name: m.service_name, group: m.service_group }])
-      ).values())
-      const goods = Array.from(new Map(
-        matchArray.map(m => [m.goods_name, { name: m.goods_name, group: m.goods_group }])
-      ).values())
+      // Transform nested structure into flat match rows
+      const flatMatches: MatchRow[] = []
+      const servicesList: { name: string; group: string | null }[] = []
+      const goodsList: { name: string; group: string | null }[] = []
+      const seenServices = new Set<string>()
+      const seenGoods = new Set<string>()
 
-      setAllServices(services)
-      setAllGoods(goods)
+      for (const item of items) {
+        if (item.product_type === 'service') {
+          // This is a service, its matches are goods
+          if (!seenServices.has(item.canonical_name)) {
+            servicesList.push({ name: item.canonical_name, group: item.cf_group })
+            seenServices.add(item.canonical_name)
+          }
+          for (const match of item.matches) {
+            flatMatches.push({
+              id: match.id,
+              service_name: item.canonical_name,
+              service_group: item.cf_group,
+              goods_name: match.name,
+              goods_group: null, // We don't have goods group from this structure
+            })
+            if (!seenGoods.has(match.name)) {
+              goodsList.push({ name: match.name, group: null })
+              seenGoods.add(match.name)
+            }
+          }
+        } else {
+          // This is a good, its matches are services
+          if (!seenGoods.has(item.canonical_name)) {
+            goodsList.push({ name: item.canonical_name, group: item.cf_group })
+            seenGoods.add(item.canonical_name)
+          }
+          for (const match of item.matches) {
+            flatMatches.push({
+              id: match.id,
+              service_name: match.name,
+              service_group: null,
+              goods_name: item.canonical_name,
+              goods_group: item.cf_group,
+            })
+            if (!seenServices.has(match.name)) {
+              servicesList.push({ name: match.name, group: null })
+              seenServices.add(match.name)
+            }
+          }
+        }
+      }
+
+      setMatches(flatMatches)
+      setAllServices(servicesList)
+      setAllGoods(goodsList)
     } catch (e) {
       console.error('Error loading data:', e)
     }
