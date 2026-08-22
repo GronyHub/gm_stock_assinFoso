@@ -4242,54 +4242,56 @@ function ItemHubPageInner() {
                 once liveExpanded, so it needs its own copy here too rather
                 than losing the type/group filters entirely). */}
             {liveExpanded && (
-            <div className="bg-green-700 -mx-0 px-2 py-3 space-y-2">
-                <div className="flex gap-1 items-center flex-wrap">
-                  <select
-                    value={liveProductTypeFilter}
-                    onChange={e => setLiveProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
-                    className="text-[11px] px-1.5 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white w-[4.5rem]"
-                  >
-                    <option value="all">All types</option>
-                    <option value="goods">Goods</option>
-                    <option value="services">Services</option>
-                  </select>
-                  <select
-                    value={liveGroupFilter || ''}
-                    onChange={e => setLiveGroupFilter(e.target.value || null)}
-                    className="text-[11px] px-1.5 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white w-[4.5rem]"
-                  >
-                    <option value="">All groups</option>
-                    {liveCatalogueGroups.map(group => (
-                      <option key={group} value={group}>{group}</option>
-                    ))}
-                  </select>
+            <div className="bg-green-700 -mx-0 px-2 py-1 flex flex-col gap-1">
+                <div className="flex items-center justify-between gap-1 flex-wrap">
+                  <div className="flex gap-1 items-center">
+                    <select
+                      value={liveProductTypeFilter}
+                      onChange={e => setLiveProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
+                      className="text-[11px] px-1.5 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white w-[4.5rem]"
+                    >
+                      <option value="all">All types</option>
+                      <option value="goods">Goods</option>
+                      <option value="services">Services</option>
+                    </select>
+                    <select
+                      value={liveGroupFilter || ''}
+                      onChange={e => setLiveGroupFilter(e.target.value || null)}
+                      className="text-[11px] px-1.5 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white w-[4.5rem]"
+                    >
+                      <option value="">All groups</option>
+                      {liveCatalogueGroups.map(group => (
+                        <option key={group} value={group}>{group}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex gap-1 items-center">
+                    <div>
+                      <LawsToggleBar
+                        show={liveSaleLaws.show}
+                        setShow={liveSaleLaws.setShow}
+                        openForm={liveSaleLaws.openForm}
+                        setOpenForm={liveSaleLaws.setOpenForm}
+                        hideZeroFlags={liveSaleLaws.hideZeroFlags}
+                        setHideZeroFlags={liveSaleLaws.setHideZeroFlags}
+                        activeFilters={liveSaleLaws.activeFilters}
+                        toggleFilter={liveSaleLaws.toggleFilter}
+                        dark={true}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setLiveHelpModalOpen(true)}
+                      className="w-5 h-5 rounded-md bg-white text-gray-600 hover:bg-gray-100 font-semibold text-[10px] flex items-center justify-center transition"
+                      title="Help"
+                    >
+                      ?
+                    </button>
+                  </div>
                 </div>
                 {/* Items Violation Flags Filter */}
-                <div className="flex gap-1 flex-wrap">
+                <div className="flex gap-1 flex-wrap px-0">
                   {renderLiveItemFlagsFilter()}
-                </div>
-                <div className="flex gap-1 items-center">
-                  <div>
-                    <LawsToggleBar
-                      show={liveSaleLaws.show}
-                      setShow={liveSaleLaws.setShow}
-                      openForm={liveSaleLaws.openForm}
-                      setOpenForm={liveSaleLaws.setOpenForm}
-                      hideZeroFlags={liveSaleLaws.hideZeroFlags}
-                      setHideZeroFlags={liveSaleLaws.setHideZeroFlags}
-                      activeFilters={liveSaleLaws.activeFilters}
-                      toggleFilter={liveSaleLaws.toggleFilter}
-                      dark={true}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setLiveHelpModalOpen(true)}
-                    className="w-5 h-5 rounded-md bg-white text-gray-600 hover:bg-gray-100 font-semibold text-[10px] flex items-center justify-center transition"
-                    title="Help"
-                  >
-                    ?
-                  </button>
                 </div>
             </div>
             )}
