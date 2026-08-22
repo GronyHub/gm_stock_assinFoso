@@ -1838,6 +1838,7 @@ function ItemHubPageInner() {
   // different rows at once with no relationship to each other.
   const [liveViewingItemId, setLiveViewingItemId] = useState<number | null>(null)
   const [liveEditingGridItemId, setLiveEditingGridItemId] = useState<number | null>(null)
+  const liveGridEditSaleTapRef = useRef<HTMLDivElement>(null)
   const [liveGridEditLoading, setLiveGridEditLoading] = useState(false)
   const [liveGridEditError, setLiveGridEditError] = useState('')
   const [liveGridEditAliases, setLiveGridEditAliases] = useState<AliasRecord[]>([])
@@ -1874,6 +1875,13 @@ function ItemHubPageInner() {
   const [liveEditLoading, setLiveEditLoading] = useState(false)
   const [liveEditSaving, setLiveEditSaving] = useState(false)
   const [liveEditError, setLiveEditError] = useState('')
+  useEffect(() => {
+    if (liveEditingGridItemId != null && liveGridEditSaleTapRef.current) {
+      setTimeout(() => {
+        liveGridEditSaleTapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 100)
+    }
+  }, [liveEditingGridItemId])
   // "Large screen" -- breaks Live Sale out of the pane/content layout into a
   // fixed fullscreen overlay, covering this component's own top green bar
   // and footer (still mounted underneath, just visually hidden) -- so each
@@ -4854,7 +4862,7 @@ function ItemHubPageInner() {
                       )}
                     </div>
                     {editItem && !liveGridEditLoading && (
-                      <div className="p-6 border-b border-gray-200">
+                      <div ref={liveGridEditSaleTapRef} className="p-6 border-b border-gray-200">
                         <div className="space-y-4">
                           <div>
                             <div className="bg-orange-100 border border-orange-300 rounded-lg p-3 mb-4">
