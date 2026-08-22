@@ -1835,6 +1835,9 @@ function ItemHubPageInner() {
   // liveSelectedItem/the sale-tap sheet, since the two can be open from
   // different rows at once with no relationship to each other.
   const [liveViewingItemId, setLiveViewingItemId] = useState<number | null>(null)
+  const [liveEditingGridItemId, setLiveEditingGridItemId] = useState<number | null>(null)
+  const [liveGridEditLoading, setLiveGridEditLoading] = useState(false)
+  const [liveGridEditError, setLiveGridEditError] = useState('')
   const [liveSelectedItem, setLiveSelectedItem] = useState<LiveItem | null>(null)
   // Snapshot of whether liveSelectedItem was due-for-count at the moment its
   // sheet opened -- liveCountStatus itself updates the instant a count is
@@ -2622,6 +2625,39 @@ function ItemHubPageInner() {
       setLiveEditError('Could not load item details.')
     }
     setLiveEditLoading(false)
+  }
+
+  async function openEditGridItem(itemId: number) {
+    setLiveEditingGridItemId(itemId)
+    setLiveGridEditError('')
+    setLiveGridEditLoading(true)
+    try {
+      const r = await fetch(`/api/items/${itemId}`)
+      const d = await r.json()
+      const item = liveAllItems.find(i => i.id === itemId)
+      if (!item) {
+        setLiveGridEditError('Item not found')
+        setLiveGridEditLoading(false)
+        return
+      }
+      setLiveEditForm({
+        item_name: d?.canonical_name ?? item.name,
+        cf_group: d?.cf_group ?? '',
+        selling_rate: d?.selling_price != null ? String(d.selling_price) : '',
+        purchase_rate: d?.purchase_rate != null ? String(d.purchase_rate) : '',
+        units_per_pack: d?.units_per_pack != null ? String(d.units_per_pack) : '',
+        unit_name: d?.unit_name ?? '',
+        converts_to_item_id: d?.converts_to_item_id ? String(d.converts_to_item_id) : '',
+        count_excluded: !!d?.count_excluded,
+        count_cadence_days: d?.count_cadence_days != null ? String(d.count_cadence_days) : '',
+        count_excluded_reason: d?.count_excluded_reason ?? '',
+      })
+      setLiveEditCurrentCountInterval(d?.count_interval ?? null)
+      setLiveEditCurrentSoh(d?.calculated_soh != null ? parseFloat(d.calculated_soh) : null)
+    } catch {
+      setLiveGridEditError('Could not load item details.')
+    }
+    setLiveGridEditLoading(false)
   }
 
   async function saveEditSelectedItem() {
@@ -4250,7 +4286,7 @@ function ItemHubPageInner() {
                           <div className="flex-1 min-w-0">
                             <button
                               type="button"
-                              onClick={() => setLiveViewingItemId(item.id)}
+                              onClick={() => openEditGridItem(item.id)}
                               className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 leading-tight truncate text-left hover:underline transition"
                             >
                               {item.name}
@@ -4319,7 +4355,7 @@ function ItemHubPageInner() {
                           <div className="flex-1 min-w-0">
                             <button
                               type="button"
-                              onClick={() => setLiveViewingItemId(item.id)}
+                              onClick={() => openEditGridItem(item.id)}
                               className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 leading-tight truncate text-left hover:underline transition"
                             >
                               {item.name}
@@ -4676,6 +4712,50 @@ function ItemHubPageInner() {
           {liveViewingItemId != null && (
             <ItemDetailModal itemId={liveViewingItemId} onClose={() => setLiveViewingItemId(null)} />
           )}
+
+          {liveEditingGridItemId != null && (() => {
+            const editItem = liveAllItems.find(i => i.id === liveEditingGridItemId)
+            return (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                  <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
+                    <h2 className="text-lg font-bold text-gray-900">Edit Item</h2>
+                    <button
+                      type="button"
+                      onClick={() => setLiveEditingGridItemId(null)}
+                      className="text-gray-500 hover:text-gray-700 text-2xl font-light"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div className="p-6">
+                    {liveGridEditLoading ? (
+                      <p className="text-center text-gray-500">Loading…</p>
+                    ) : editItem ? (
+                      <ItemEditForm
+                        form={liveEditForm}
+                        onChange={setLiveEditForm}
+                        groups={liveEditGroups}
+                        itemId={editItem.id}
+                        isService={editItem.product_type === 'service'}
+                        allItems={liveEditAllItemsList}
+                        size="large"
+                        currentCountInterval={liveEditCurrentCountInterval}
+                        currentSoh={liveEditCurrentSoh}
+                      />
+                    ) : (
+                      <p className="text-center text-red-600">Item not found</p>
+                    )}
+                    {liveGridEditError && (
+                      <div className="mt-4 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-600 font-medium">
+                        {liveGridEditError}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
 
           {liveLossPrompt && <LossDialog prompt={liveLossPrompt} onClose={() => setLiveLossPrompt(null)} />}
           {livePairingPrompt && <PairingDialog prompt={livePairingPrompt} onClose={() => setLivePairingPrompt(null)} />}
