@@ -2064,8 +2064,11 @@ function ItemHubPageInner() {
                         line (scrolls horizontally rather than wrapping) so
                         it reads as a single control instead of splitting
                         into two rows the way it did sharing space with the
-                        laws/help/expand icons below. */}
-                    <div className="w-full overflow-x-auto">
+                        laws/help/expand icons below. Shifted right while the
+                        side pane is hidden so it doesn't sit under the
+                        floating restore button, which then occupies this
+                        same top-left corner instead. */}
+                    <div className={`w-full overflow-x-auto ${sidePaneHidden ? 'pl-8' : ''}`}>
                       <div ref={el => setLiveModeToggleSlotEl(el)} className="flex" />
                     </div>
                     {/* Search box and the item-filter dropdown moved down to
