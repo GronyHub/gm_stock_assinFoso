@@ -3282,18 +3282,17 @@ function ItemHubPageInner() {
           : 'text-xs px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white'}
       >
         <option value="">Filter</option>
-        {liveSaleFilterFlags.map(f => {
+        {liveSaleFilterFlags.filter(f => !f.key.startsWith('flag_')).map(f => {
           let value = f.key
           if (f.key.startsWith('interval_')) value = `interval:${f.label}`
-          else if (f.key.startsWith('flag_')) value = `flag:${f.key}`
           return (
             <option key={f.key} value={value}>
               {f.label} ({f.count})
             </option>
           )
         })}
-        {/* Items violation flags from ITEMS_FLAG_TYPES */}
-        <optgroup label="Flag Categories">
+        {/* Items violation flags - use ITEMS_FLAG_TYPES with violation filtering (same as law icons) */}
+        <optgroup label="Items">
           {ITEMS_FLAG_TYPES.map(f => (
             <option key={f.key} value={`violation:${f.key}`}>
               {f.label} ({(liveItemsWithViolations as Record<string, number[]>)[f.key]?.length ?? 0})
