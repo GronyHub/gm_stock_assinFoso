@@ -2290,20 +2290,31 @@ function ItemHubPageInner() {
   // same buckets and sort order as the Count tab's liveCountIntervalFlags so
   // the two read consistently even though they're built for different modes.
   const liveSaleFilterFlags = useMemo(() => {
-    const lossCount = liveAllItems.filter(it => (liveLossByItemId.get(it.id)?.lossCount ?? 0) > 0).length
-    const gainCount = liveAllItems.filter(it => (liveLossByItemId.get(it.id)?.gainCount ?? 0) > 0).length
-    const sohCount = liveAllItems.filter(it => it.soh <= 0).length
+    // Apply product type and group filters first so counts reflect actual available items
+    let baseFiltered = [...liveAllItems]
+    if (liveProductTypeFilter === 'goods') {
+      baseFiltered = baseFiltered.filter(item => item.product_type !== 'service')
+    } else if (liveProductTypeFilter === 'services') {
+      baseFiltered = baseFiltered.filter(item => item.product_type === 'service')
+    }
+    if (liveGroupFilter !== null) {
+      baseFiltered = baseFiltered.filter(item => item.group === liveGroupFilter)
+    }
 
-    const negativeStockCount = liveAllItems.filter(it => it.product_type !== 'service' && Number(it.soh) < 0).length
-    const duplicateCount = liveDuplicateItemIds.size
-    const serviceViolationCount = liveServiceViolationIdSet.size
-    const unlinkedCount = liveUnlinkedNamedIds.size
-    const missingSellingPriceCount = liveAllItems.filter(it => parseFloat(String(it.selling_price)) || 0 <= 0).length
-    const missingCostPriceCount = liveAllItems.filter(it => parseFloat(String(it.cost_price)) || 0 <= 0).length
-    const missingGroupCount = liveAllItems.filter(it => !it.group).length
+    const lossCount = baseFiltered.filter(it => (liveLossByItemId.get(it.id)?.lossCount ?? 0) > 0).length
+    const gainCount = baseFiltered.filter(it => (liveLossByItemId.get(it.id)?.gainCount ?? 0) > 0).length
+    const sohCount = baseFiltered.filter(it => it.soh <= 0).length
+
+    const negativeStockCount = baseFiltered.filter(it => it.product_type !== 'service' && Number(it.soh) < 0).length
+    const duplicateCount = baseFiltered.filter(it => liveDuplicateItemIds.has(it.id)).length
+    const serviceViolationCount = baseFiltered.filter(it => liveServiceViolationIdSet.has(it.id)).length
+    const unlinkedCount = baseFiltered.filter(it => liveUnlinkedNamedIds.has(it.id)).length
+    const missingSellingPriceCount = baseFiltered.filter(it => parseFloat(String(it.selling_price)) || 0 <= 0).length
+    const missingCostPriceCount = baseFiltered.filter(it => parseFloat(String(it.cost_price)) || 0 <= 0).length
+    const missingGroupCount = baseFiltered.filter(it => !it.group).length
 
     const intervalCounts = new Map<string, number>()
-    for (const it of liveAllItems) {
+    for (const it of baseFiltered) {
       if (!it.count_interval) continue
       intervalCounts.set(it.count_interval, (intervalCounts.get(it.count_interval) ?? 0) + 1)
     }
@@ -2330,7 +2341,7 @@ function ItemHubPageInner() {
       { key: 'flag_missing_cost_price', label: '⚠ Missing Cost Price', count: missingCostPriceCount },
       { key: 'flag_missing_group', label: '⚠ Missing Group', count: missingGroupCount },
     ]
-  }, [liveAllItems, liveLossByItemId, liveDuplicateItemIds, liveServiceViolationIdSet, liveUnlinkedNamedIds])
+  }, [liveAllItems, liveLossByItemId, liveProductTypeFilter, liveGroupFilter, liveDuplicateItemIds, liveServiceViolationIdSet, liveUnlinkedNamedIds])
 
   // Filter and sort items based on current view and product type
   const liveCatalogueItems = useMemo(() => {
