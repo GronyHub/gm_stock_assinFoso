@@ -3257,6 +3257,7 @@ function ItemHubPageInner() {
         value={liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind === 'flag' ? `flag:${liveSaleFilter.key}` : liveSaleFilter.kind : ''}
         onChange={e => {
           const v = e.target.value
+          setLiveCurrentView(null)  // Clear view when changing filter
           if (!v) setLiveSaleFilter(null)
           else if (v.startsWith('interval:')) setLiveSaleFilter({ kind: 'interval', label: v.slice('interval:'.length) })
           else if (v.startsWith('flag:')) setLiveSaleFilter({ kind: 'flag', key: v.slice('flag:'.length) })
