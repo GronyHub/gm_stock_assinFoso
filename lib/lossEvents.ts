@@ -39,8 +39,8 @@ export type LossEvent = {
 
 // Every count reconciled against its previous count, whether or not it
 // produced a loss/gain -- computeLossEvents() below filters this down to
-// just the kind-carrying rows; Count Records (sales/live/page.tsx) shows
-// every row, kind or not, alongside the count itself.
+// just the kind-carrying rows; Count Records (item/page.tsx's inlined Live
+// Sale Count tab) shows every row, kind or not, alongside the count itself.
 export type ReconciledCount = {
   item_id: number
   // The count's own count_date, unshifted -- what a caller joins back
