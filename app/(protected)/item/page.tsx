@@ -1858,6 +1858,12 @@ function ItemHubPageInner() {
   // folded in as extra columns there instead of a fourth tab walking the
   // same stock_counts rows a second time.
   const [liveMode, setLiveMode] = useState<'sale' | 'sales' | 'bills' | 'lossByTarget' | 'log' | 'count'>('sale')
+
+  // Internal Items page tab switcher state -- tracks which view to show when
+  // lossView === 'items'. Allows switching between items table and Live Sale
+  // modes without changing the sidebar's active entry.
+  const [itemsPageMode, setItemsPageMode] = useState<'items' | 'sale' | 'sales' | 'bills' | 'lossByTarget' | 'log' | 'count'>('items')
+
   const [liveSalesViolationFilter, setLiveSalesViolationFilter] = useState<string | null>(null)
   const [liveBillsViolationFilter, setLiveBillsViolationFilter] = useState<string | null>(null)
   // Count tab's own local navigation -- Daily/Every Nd/Dormant/etc, Count
@@ -2649,8 +2655,8 @@ function ItemHubPageInner() {
     }
   }
 
-  // The tab switcher for both Items and Live Sale modes -- shared header
-  // so users can navigate between views without leaving the page.
+  // The tab switcher for Items page internal navigation -- allows switching
+  // between the items table and Live Sale modes without changing the sidebar.
   function renderTabSwitcher(compact: boolean) {
     const btnCls = (active: boolean, color: string) =>
       `font-bold rounded-md transition whitespace-nowrap shrink-0 ${compact ? 'px-1.5 py-1 text-[10px]' : 'px-2 py-1 text-xs'} ${
@@ -2660,13 +2666,13 @@ function ItemHubPageInner() {
     // second row when there isn't room for all buttons.
     return (
       <div className="flex bg-gray-200 rounded-lg p-0.5 overflow-x-auto max-w-full">
-        <button type="button" onClick={() => setLossView('items')} title="Items" className={btnCls(lossView === 'items', 'bg-blue-600')}>Items</button>
-        <button type="button" onClick={() => { setLossView('sales'); setLiveMode('sale') }} title="Live Sale" className={btnCls(lossView === 'sales' && liveMode === 'sale', 'bg-blue-600')}>Live</button>
-        <button type="button" onClick={() => { setLossView('sales'); setLiveMode('log') }} title="Log" className={btnCls(lossView === 'sales' && liveMode === 'log', 'bg-gray-700')}>Log</button>
-        <button type="button" onClick={() => { setLossView('sales'); setLiveMode('sales') }} title="Sales" className={btnCls(lossView === 'sales' && liveMode === 'sales', 'bg-emerald-600')}>Sales</button>
-        <button type="button" onClick={() => { setLossView('sales'); setLiveMode('bills') }} title="Bills" className={btnCls(lossView === 'sales' && liveMode === 'bills', 'bg-orange-600')}>Bills</button>
-        <button type="button" onClick={() => { setLossView('sales'); setLiveMode('lossByTarget') }} title="Loss by Target" className={btnCls(lossView === 'sales' && liveMode === 'lossByTarget', 'bg-pink-600')}>Loss by Tgt</button>
-        <button type="button" onClick={() => { setLossView('sales'); setLiveMode('count') }} title="Count" className={btnCls(lossView === 'sales' && liveMode === 'count', 'bg-indigo-600')}>Count</button>
+        <button type="button" onClick={() => setItemsPageMode('items')} title="Items" className={btnCls(itemsPageMode === 'items', 'bg-blue-600')}>Items</button>
+        <button type="button" onClick={() => { setItemsPageMode('sale'); setLiveMode('sale') }} title="Live Sale" className={btnCls(itemsPageMode === 'sale', 'bg-blue-600')}>Live</button>
+        <button type="button" onClick={() => { setItemsPageMode('log'); setLiveMode('log') }} title="Log" className={btnCls(itemsPageMode === 'log', 'bg-gray-700')}>Log</button>
+        <button type="button" onClick={() => { setItemsPageMode('sales'); setLiveMode('sales') }} title="Sales" className={btnCls(itemsPageMode === 'sales', 'bg-emerald-600')}>Sales</button>
+        <button type="button" onClick={() => { setItemsPageMode('bills'); setLiveMode('bills') }} title="Bills" className={btnCls(itemsPageMode === 'bills', 'bg-orange-600')}>Bills</button>
+        <button type="button" onClick={() => { setItemsPageMode('lossByTarget'); setLiveMode('lossByTarget') }} title="Loss by Target" className={btnCls(itemsPageMode === 'lossByTarget', 'bg-pink-600')}>Loss by Tgt</button>
+        <button type="button" onClick={() => { setItemsPageMode('count'); setLiveMode('count') }} title="Count" className={btnCls(itemsPageMode === 'count', 'bg-indigo-600')}>Count</button>
       </div>
     )
   }
@@ -3451,7 +3457,7 @@ function ItemHubPageInner() {
 
           {/* ── Content ── */}
           <div className="relative flex-1 min-h-0 overflow-y-auto">
-        {outerTab === 'loss' && lossView === 'sales' && (<>
+        {(outerTab === 'loss' && lossView === 'sales') || (outerTab === 'loss' && lossView === 'items' && itemsPageMode !== 'items') ? (<>
           {/* Log tab */}
           {liveMode === 'log' && (
             <div className={liveRootClassName}>
@@ -4668,7 +4674,7 @@ function ItemHubPageInner() {
           </>)}
 
           <TrainingGuideModal isOpen={liveHelpModalOpen} onClose={() => setLiveHelpModalOpen(false)} />
-        </>)}
+        </> ) : null}
         {addForm === 'expense' && outerTab === 'loss' && lossView === 'expenses' && <div className="px-4"><NewExpenseForm onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'item'    && outerTab === 'loss' && lossView === 'items'    && <div className="px-4"><NewItemForm    onSuccess={() => { setAddForm(null); loadItems() }} /></div>}
         {outerTab === 'loss' && lossView === 'pl' && (
@@ -4823,7 +4829,7 @@ function ItemHubPageInner() {
             </div>
           </TabErrorBoundary>
         )}
-        {!showAnalytics && addForm !== 'item' && outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'none' && (
+        {!showAnalytics && addForm !== 'item' && outerTab === 'loss' && lossView === 'items' && itemsPageMode === 'items' && itemsExtraView === 'none' && (
           <>
             {showItemsLaws && (
               <div className="border-b border-gray-200 bg-white px-3 py-2 shadow-md">
