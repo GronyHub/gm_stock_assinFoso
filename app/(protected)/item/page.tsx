@@ -4441,22 +4441,6 @@ function ItemHubPageInner() {
               </div>
             )}
 
-            {liveSaleLaws.show && (
-              <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 overflow-auto max-h-48 border-t">
-                <PageLawsList
-                  scopeKey="Items"
-                  isItemsLaws={true}
-                  flags={[...liveComputedFlags, ...liveAllViews]}
-                  onChange={liveSaleLaws.bumpRefresh}
-                  openForm={liveSaleLaws.openForm}
-                  setOpenForm={liveSaleLaws.setOpenForm}
-                  hideZeroFlags={liveSaleLaws.hideZeroFlags}
-                  setHideZeroFlags={liveSaleLaws.setHideZeroFlags}
-                  activeFilters={liveSaleLaws.activeFilters}
-                />
-              </div>
-            )}
-
             {/* Current View Indicator */}
             {liveCurrentView && (
               <div className="px-4 py-2 bg-blue-50 border-b border-blue-200 flex items-center justify-between">

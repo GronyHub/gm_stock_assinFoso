@@ -543,10 +543,10 @@ export function TrainingGuideModal({ isOpen, onClose, lawsPanel }: {
             </>
           ) : (
             /* Laws & Tasks tab */
-            <div className="flex-1 min-w-0 overflow-y-auto">
-              {lawsPanel && (
+            <div className="flex-1 min-w-0 overflow-y-auto p-4">
+              {lawsPanel ? (
                 <PageLawsList
-                  scopeKey="liveSale"
+                  scopeKey="Items"
                   isItemsLaws={true}
                   onChange={lawsPanel.bumpRefresh}
                   openForm={lawsPanel.openForm}
@@ -555,6 +555,8 @@ export function TrainingGuideModal({ isOpen, onClose, lawsPanel }: {
                   setHideZeroFlags={lawsPanel.setHideZeroFlags}
                   activeFilters={lawsPanel.activeFilters}
                 />
+              ) : (
+                <p className="text-sm text-gray-500">Laws & Tasks not available</p>
               )}
             </div>
           )}
