@@ -721,7 +721,7 @@ function ItemHubPageInner() {
     rawLiveSaleFilter === 'soh' ? { kind: 'soh' } :
     rawLiveSaleFilter?.startsWith('interval:') ? { kind: 'interval', label: rawLiveSaleFilter.slice(9) } :
     null
-  const [liveSaleFilter, setLiveSaleFilter] = useState<{ kind: 'loss' } | { kind: 'gain' } | { kind: 'soh' } | { kind: 'interval'; label: string } | null>(initialLiveSaleFilter)
+  const [liveSaleFilter, setLiveSaleFilter] = useState<{ kind: 'loss' } | { kind: 'gain' } | { kind: 'soh' } | { kind: 'interval'; label: string } | { kind: 'flag'; key: string } | null>(initialLiveSaleFilter)
   const rawLiveCountView = searchParams.get('liveCountView')
   const initialLiveCountView: { kind: 'interval'; label: string } | { kind: 'records' } | { kind: 'history' } | null =
     rawLiveCountView === 'records' ? { kind: 'records' } :
@@ -2294,6 +2294,14 @@ function ItemHubPageInner() {
     const gainCount = liveAllItems.filter(it => (liveLossByItemId.get(it.id)?.gainCount ?? 0) > 0).length
     const sohCount = liveAllItems.filter(it => it.soh <= 0).length
 
+    const negativeStockCount = liveAllItems.filter(it => it.product_type !== 'service' && Number(it.soh) < 0).length
+    const duplicateCount = liveDuplicateItemIds.size
+    const serviceViolationCount = liveServiceViolationIdSet.size
+    const unlinkedCount = liveUnlinkedNamedIds.size
+    const missingSellingPriceCount = liveAllItems.filter(it => parseFloat(String(it.selling_price)) || 0 <= 0).length
+    const missingCostPriceCount = liveAllItems.filter(it => parseFloat(String(it.cost_price)) || 0 <= 0).length
+    const missingGroupCount = liveAllItems.filter(it => !it.group).length
+
     const intervalCounts = new Map<string, number>()
     for (const it of liveAllItems) {
       if (!it.count_interval) continue
@@ -2314,8 +2322,15 @@ function ItemHubPageInner() {
       { key: 'gain', label: '🔺 Gain', count: gainCount },
       { key: 'soh', label: 'Low SOH', count: sohCount },
       ...intervalFlags,
+      { key: 'flag_negative_stock', label: '⚠ Negative Stock', count: negativeStockCount },
+      { key: 'flag_duplicate', label: '⚠ Duplicate Item', count: duplicateCount },
+      { key: 'flag_service_violation', label: '⚠ Service Violation', count: serviceViolationCount },
+      { key: 'flag_unlinked', label: '⚠ Unlinked Sale', count: unlinkedCount },
+      { key: 'flag_missing_selling_price', label: '⚠ Missing Selling Price', count: missingSellingPriceCount },
+      { key: 'flag_missing_cost_price', label: '⚠ Missing Cost Price', count: missingCostPriceCount },
+      { key: 'flag_missing_group', label: '⚠ Missing Group', count: missingGroupCount },
     ]
-  }, [liveAllItems, liveLossByItemId])
+  }, [liveAllItems, liveLossByItemId, liveDuplicateItemIds, liveServiceViolationIdSet, liveUnlinkedNamedIds])
 
   // Filter and sort items based on current view and product type
   const liveCatalogueItems = useMemo(() => {
@@ -2350,7 +2365,7 @@ function ItemHubPageInner() {
       filtered = filtered.filter(item => liveGmcItemIds.has(item.id))
     }
 
-    // Apply Sale mode's own Loss/Gain/SOH/count-interval filter
+    // Apply Sale mode's own Loss/Gain/SOH/count-interval/flag filter
     if (liveSaleFilter?.kind === 'loss') {
       filtered = filtered.filter(item => (liveLossByItemId.get(item.id)?.lossCount ?? 0) > 0)
     } else if (liveSaleFilter?.kind === 'gain') {
@@ -2359,6 +2374,23 @@ function ItemHubPageInner() {
       filtered = filtered.filter(item => item.soh <= 0)
     } else if (liveSaleFilter?.kind === 'interval') {
       filtered = filtered.filter(item => item.count_interval === liveSaleFilter.label)
+    } else if (liveSaleFilter?.kind === 'flag') {
+      const key = liveSaleFilter.key
+      if (key === 'flag_negative_stock') {
+        filtered = filtered.filter(item => item.product_type !== 'service' && Number(item.soh) < 0)
+      } else if (key === 'flag_duplicate') {
+        filtered = filtered.filter(item => liveDuplicateItemIds.has(item.id))
+      } else if (key === 'flag_service_violation') {
+        filtered = filtered.filter(item => liveServiceViolationIdSet.has(item.id))
+      } else if (key === 'flag_unlinked') {
+        filtered = filtered.filter(item => liveUnlinkedNamedIds.has(item.id))
+      } else if (key === 'flag_missing_selling_price') {
+        filtered = filtered.filter(item => parseFloat(String(item.selling_price)) || 0 <= 0)
+      } else if (key === 'flag_missing_cost_price') {
+        filtered = filtered.filter(item => parseFloat(String(item.cost_price)) || 0 <= 0)
+      } else if (key === 'flag_missing_group') {
+        filtered = filtered.filter(item => !item.group)
+      }
     }
 
     // Apply view filter
@@ -2383,7 +2415,7 @@ function ItemHubPageInner() {
 
     // Sort by sales count (highest to lowest)
     return filtered.sort((a, b) => (liveSalesCounts.get(b.id) ?? 0) - (liveSalesCounts.get(a.id) ?? 0))
-  }, [liveAllItems, liveSalesCounts, liveCurrentView, liveProductTypeFilter, liveGroupFilter, livePickedItemId, liveSaleType, liveGmcItemIds, liveMode, liveSaleFilter, liveLossByItemId, liveItemsWithViolations])
+  }, [liveAllItems, liveSalesCounts, liveCurrentView, liveProductTypeFilter, liveGroupFilter, livePickedItemId, liveSaleType, liveGmcItemIds, liveMode, liveSaleFilter, liveLossByItemId, liveItemsWithViolations, liveDuplicateItemIds, liveServiceViolationIdSet, liveUnlinkedNamedIds])
 
   // Log tab's two histories, grouped by date -- computed unconditionally
   // (not inside an `if (liveMode === 'log')` branch) since every mode
@@ -3211,11 +3243,12 @@ function ItemHubPageInner() {
   function renderLiveSaleFilterSelect(compact: boolean) {
     return (
       <select
-        value={liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind : ''}
+        value={liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind === 'flag' ? `flag:${liveSaleFilter.key}` : liveSaleFilter.kind : ''}
         onChange={e => {
           const v = e.target.value
           if (!v) setLiveSaleFilter(null)
           else if (v.startsWith('interval:')) setLiveSaleFilter({ kind: 'interval', label: v.slice('interval:'.length) })
+          else if (v.startsWith('flag:')) setLiveSaleFilter({ kind: 'flag', key: v.slice('flag:'.length) })
           else setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'soh' })
         }}
         className={compact
@@ -3223,11 +3256,16 @@ function ItemHubPageInner() {
           : 'text-xs px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white'}
       >
         <option value="">Filter</option>
-        {liveSaleFilterFlags.map(f => (
-          <option key={f.key} value={f.key === 'loss' || f.key === 'gain' || f.key === 'soh' ? f.key : `interval:${f.label}`}>
-            {f.label} ({f.count})
-          </option>
-        ))}
+        {liveSaleFilterFlags.map(f => {
+          let value = f.key
+          if (f.key.startsWith('interval_')) value = `interval:${f.label}`
+          else if (f.key.startsWith('flag_')) value = `flag:${f.key}`
+          return (
+            <option key={f.key} value={value}>
+              {f.label} ({f.count})
+            </option>
+          )
+        })}
       </select>
     )
   }
