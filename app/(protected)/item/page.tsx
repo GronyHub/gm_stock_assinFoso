@@ -4386,44 +4386,40 @@ function ItemHubPageInner() {
                     return (
                       <div
                         key={item.id}
-                        className={`flex flex-col border-r border-b group ${overdue ? 'bg-red-50 border-red-100' : 'bg-amber-50 border-amber-100'}`}
+                        className={`relative flex flex-col border-r border-b group ${overdue ? 'bg-red-50 border-red-100' : 'bg-amber-50 border-amber-100'}`}
                       >
                         <div className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide ${overdue ? 'bg-red-600' : 'bg-amber-500'}`}>
                           ⚠ COUNT NOW {overdue ? `· ${due.label} OVERDUE` : `· ${due.label}`}
                         </div>
-                        <div className="p-2 flex items-start gap-1 hover:bg-black/5 transition">
-                          <div className="flex-1 min-w-0">
-                            <button
-                              type="button"
-                              onClick={() => openEditGridItem(item.id)}
-                              className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 leading-tight truncate text-left hover:underline transition"
-                            >
-                              {item.name}
-                            </button>
-                            <p className="text-[9px] text-gray-600 leading-tight">
-                              <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
-                              <span className="text-gray-400"> · </span>
-                              <span className="text-green-600 font-semibold">CP ₵{formatPrice(item.cost_price)}</span>
-                              <span className="text-gray-400"> · </span>
-                              <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
-                              {item.count_interval && (
-                                <>
-                                  <span className="text-gray-400"> · </span>
-                                  <span className="text-gray-500">{item.count_interval}</span>
-                                </>
-                              )}
-                              <span className="text-gray-400"> · </span>
-                              <span className={formatLoss(liveLossByItemId.get(item.id)).cls}>{formatLoss(liveLossByItemId.get(item.id)).text}</span>
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-0.5 shrink-0">
-                            {count > 0 && (
-                              <span className="inline-flex items-center justify-center min-w-3 h-3 px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold">
-                                {count}
-                              </span>
+                        <div className="px-1 py-0.5 flex flex-col hover:bg-black/5 transition">
+                          <button
+                            type="button"
+                            onClick={() => openEditGridItem(item.id)}
+                            className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 leading-tight truncate text-left hover:underline transition"
+                          >
+                            {item.name}
+                          </button>
+                          <p className="text-[9px] text-gray-600 leading-tight">
+                            <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
+                            <span className="text-gray-400"> · </span>
+                            <span className="text-green-600 font-semibold">CP ₵{formatPrice(item.cost_price)}</span>
+                            <span className="text-gray-400"> · </span>
+                            <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
+                            {item.count_interval && (
+                              <>
+                                <span className="text-gray-400"> · </span>
+                                <span className="text-gray-500">{item.count_interval}</span>
+                              </>
                             )}
-                          </div>
+                            <span className="text-gray-400"> · </span>
+                            <span className={formatLoss(liveLossByItemId.get(item.id)).cls}>{formatLoss(liveLossByItemId.get(item.id)).text}</span>
+                          </p>
                         </div>
+                        {count > 0 && (
+                          <span className="absolute top-1 right-1 inline-flex items-center justify-center min-w-3 h-3 px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold">
+                            {count}
+                          </span>
+                        )}
                       </div>
                     )
                   })}
@@ -4437,7 +4433,7 @@ function ItemHubPageInner() {
                     return (
                       <div
                         key={item.id}
-                        className={`flex flex-col border-r border-b group ${flag ? 'bg-orange-50 border-orange-100' : 'border-gray-100'}`}
+                        className={`relative flex flex-col border-r border-b group ${flag ? 'bg-orange-50 border-orange-100' : 'border-gray-100'}`}
                       >
                         {flag && (
                           <div className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide ${flag.bg} flex items-center justify-between gap-1`}>
@@ -4445,39 +4441,35 @@ function ItemHubPageInner() {
                             {flags.length > 1 && <span className="shrink-0 opacity-90">+{flags.length - 1} more</span>}
                           </div>
                         )}
-                        <div className="p-2 flex items-start gap-1 hover:bg-black/5 transition">
-                          <div className="flex-1 min-w-0">
-                            <button
-                              type="button"
-                              onClick={() => openEditGridItem(item.id)}
-                              className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 leading-tight truncate text-left hover:underline transition"
-                            >
-                              {item.name}
-                            </button>
-                            <p className="text-[9px] text-gray-600 leading-tight">
-                              <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
-                              <span className="text-gray-400"> · </span>
-                              <span className="text-green-600 font-semibold">CP ₵{formatPrice(item.cost_price)}</span>
-                              <span className="text-gray-400"> · </span>
-                              <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
-                              {item.count_interval && (
-                                <>
-                                  <span className="text-gray-400"> · </span>
-                                  <span className="text-gray-500">{item.count_interval}</span>
-                                </>
-                              )}
-                              <span className="text-gray-400"> · </span>
-                              <span className={formatLoss(liveLossByItemId.get(item.id)).cls}>{formatLoss(liveLossByItemId.get(item.id)).text}</span>
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-0.5 shrink-0">
-                            {count > 0 && (
-                              <span className="inline-flex items-center justify-center min-w-3 h-3 px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold">
-                                {count}
-                              </span>
+                        <div className="px-1 py-0.5 flex flex-col hover:bg-black/5 transition">
+                          <button
+                            type="button"
+                            onClick={() => openEditGridItem(item.id)}
+                            className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 leading-tight truncate text-left hover:underline transition"
+                          >
+                            {item.name}
+                          </button>
+                          <p className="text-[9px] text-gray-600 leading-tight">
+                            <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
+                            <span className="text-gray-400"> · </span>
+                            <span className="text-green-600 font-semibold">CP ₵{formatPrice(item.cost_price)}</span>
+                            <span className="text-gray-400"> · </span>
+                            <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
+                            {item.count_interval && (
+                              <>
+                                <span className="text-gray-400"> · </span>
+                                <span className="text-gray-500">{item.count_interval}</span>
+                              </>
                             )}
-                          </div>
+                            <span className="text-gray-400"> · </span>
+                            <span className={formatLoss(liveLossByItemId.get(item.id)).cls}>{formatLoss(liveLossByItemId.get(item.id)).text}</span>
+                          </p>
                         </div>
+                        {count > 0 && (
+                          <span className="absolute top-1 right-1 inline-flex items-center justify-center min-w-3 h-3 px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold">
+                            {count}
+                          </span>
+                        )}
                       </div>
                     )
                   })}
