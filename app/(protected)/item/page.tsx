@@ -2701,7 +2701,7 @@ function ItemHubPageInner() {
     </>)
   }
 
-  // All filters bar -- type, group, and sale filters available on all tabs
+  // All filters bar -- type, group, sale filters, and search available on all tabs
   function renderAllFiltersBar() {
     return (
       <div className="flex items-center gap-1 flex-wrap px-2 py-1 bg-gray-100 border-b border-gray-200">
@@ -2726,6 +2726,34 @@ function ItemHubPageInner() {
           ))}
         </select>
         {renderLiveSaleFilterSelect(true)}
+        <div className="relative ml-auto min-w-0 flex-1 max-w-[12rem]" ref={searchRef}>
+          <input value={search} onChange={e => setSearch(e.target.value)}
+            onFocus={() => setSearchOpen(true)}
+            placeholder="Search items..." autoComplete="off"
+            className="w-full text-[11px] px-2 py-1 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400" />
+          {search && (
+            <button onClick={() => { setSearch(''); setSearchOpen(false) }} title="Clear search"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-[11px] leading-none px-0.5">
+              ×
+            </button>
+          )}
+          {searchOpen && searchMatches.length > 0 && (
+            <div className="absolute z-30 left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+              {searchMatches.map(i => (
+                <button key={i.id} onClick={() => { setSearch(i.item_name); setSearchOpen(false) }}
+                  className="w-full text-left px-2 py-1 text-[11px] text-gray-800 hover:bg-blue-50 border-b border-gray-100 last:border-0">
+                  {i.item_name}
+                  {i.cf_group && <span className="text-gray-400 ml-1">· {i.cf_group}</span>}
+                </button>
+              ))}
+            </div>
+          )}
+          {searchOpen && search.trim() && searchMatches.length === 0 && (
+            <div className="absolute z-30 left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded-md shadow-lg px-2 py-1 text-[11px] text-gray-400">
+              No items found
+            </div>
+          )}
+        </div>
       </div>
     )
   }
@@ -3290,96 +3318,7 @@ function ItemHubPageInner() {
                   </div>
                 )}
                 <div className="flex items-center gap-1.5">
-
-                  {/* Groups dropdown - Hidden when viewing Live Sale */}
-                  {lossView !== 'sales' && (
-                  <div className="relative shrink-0" ref={groupRef}>
-                    <button onClick={() => setGroupOpen(o => !o)}
-                      className={`text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap flex items-center gap-1 transition
-                        ${(group || productType !== 'all') ? 'bg-white text-green-800' : 'text-white hover:bg-white/10'}`}>
-                      {groupLabel} <span className="text-[10px]">▾</span>
-                    </button>
-                    {groupOpen && (
-                      <div className="absolute top-full left-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg z-30 min-w-[140px] max-h-64 overflow-y-auto">
-                        {groups.map(g => renamingGroup === g ? (
-                          <div key={g} className="flex items-center gap-1 px-2 py-1">
-                            <input autoFocus value={renameGroupValue} onChange={e => setRenameGroupValue(e.target.value)}
-                              onClick={e => e.stopPropagation()}
-                              onKeyDown={e => { if (e.key === 'Enter') submitGroupRename(); if (e.key === 'Escape') setRenamingGroup(null) }}
-                              className="flex-1 min-w-0 text-xs border border-gray-300 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
-                            <button onClick={e => { e.stopPropagation(); submitGroupRename() }} disabled={renameGroupBusy} title="Save"
-                              className="shrink-0 text-green-600 hover:text-green-700 disabled:opacity-40 px-1 text-xs font-bold">✓</button>
-                            <button onClick={e => { e.stopPropagation(); setRenamingGroup(null) }} title="Cancel"
-                              className="shrink-0 text-gray-400 hover:text-gray-600 px-1 text-xs font-bold">×</button>
-                          </div>
-                        ) : (
-                          <div key={g} className="flex items-center">
-                            <button onClick={() => { setGroup(g === 'All Groups' ? null : g); setGroupOpen(false) }}
-                              className={`flex-1 min-w-0 text-left px-3 py-1.5 text-xs hover:bg-blue-50 transition truncate
-                                ${(g === 'All Groups' && !group) || g === group ? 'text-blue-600 font-semibold' : 'text-gray-700'}`}>
-                              {g}
-                            </button>
-                            {g !== 'All Groups' && g !== 'Ungrouped' && (
-                              <button onClick={e => { e.stopPropagation(); setRenamingGroup(g); setRenameGroupValue(g) }} title="Rename group"
-                                className="shrink-0 px-2 text-gray-300 hover:text-gray-600">✎</button>
-                            )}
-                          </div>
-                        ))}
-                        {/* New groups only ever come from naming one on an item
-                            (New Item's own "+ New group name…" option) -- a group
-                            with no items has nowhere to live, so this jumps
-                            straight to that flow instead of pretending an empty
-                            group can be created here. */}
-                        <button onClick={() => { changeTab('loss'); setAddForm('item'); setGroupOpen(false) }}
-                          className="w-full text-left px-3 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-50 border-t border-gray-100">
-                          + New group…
-                        </button>
-                        <div className="border-t border-gray-100 mt-0.5 pt-0.5">
-                          <p className="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Type</p>
-                          {(['all', 'goods', 'services'] as const).map(t => (
-                            <button key={t} onClick={() => { setProductType(t); setGroupOpen(false) }}
-                              className={`w-full text-left px-3 py-1.5 text-xs hover:bg-blue-50 transition capitalize
-                                ${productType === t ? 'text-blue-600 font-semibold' : 'text-gray-700'}`}>
-                              {t === 'all' ? 'All Types' : t.charAt(0).toUpperCase() + t.slice(1)}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  )}
-
-                  {/* Search - Hidden when viewing Live Sale */}
-                  {lossView !== 'sales' && (
-                  <div className="relative min-w-0 flex-1 max-w-xs" ref={searchRef}>
-                    <input value={search} onChange={e => setSearch(e.target.value)}
-                      onFocus={() => setSearchOpen(true)}
-                      placeholder={`Search ${CASH_LABEL.get(lossView) ?? ''}`} autoComplete="off"
-                      className="w-full text-xs bg-white border border-green-900 rounded-lg pl-2 pr-6 py-1 outline-none focus:ring-1 focus:ring-blue-400" />
-                    {search && (
-                      <button onClick={() => { setSearch(''); setSearchOpen(false) }} title="Clear search"
-                        className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm leading-none px-0.5">
-                        ×
-                      </button>
-                    )}
-                    {searchOpen && searchMatches.length > 0 && (
-                      <div className="absolute z-30 left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
-                        {searchMatches.map(i => (
-                          <button key={i.id} onClick={() => { setSearch(i.item_name); setSearchOpen(false) }}
-                            className="w-full text-left px-3 py-1.5 text-xs text-gray-800 hover:bg-blue-50 border-b border-gray-100 last:border-0">
-                            {i.item_name}
-                            {i.cf_group && <span className="text-gray-400 ml-1.5">· {i.cf_group}</span>}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {searchOpen && search.trim() && searchMatches.length === 0 && (
-                      <div className="absolute z-30 left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-1.5 text-xs text-gray-400">
-                        No matching items
-                      </div>
-                    )}
-                  </div>
-                  )}
+                  {/* Groups and Search removed - now in the all-filters bar */}
                 </div>
 
                 {['items', 'expenses'].includes(lossView) && (
