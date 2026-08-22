@@ -1170,7 +1170,10 @@ function ItemHubPageInner() {
     setShowAnalytics(false)
     setSettingsOpen(false)
     if (t !== 'loss') setProductType('all')
-    if (t === 'loss') setLossView('items')
+    if (t === 'loss') {
+      setLossView('items')
+      setItemsPageMode('catalog')
+    }
     if (t === 'ch') setLossView(CH_ITEMS[0].key)
     // Optimistic -- TodayContent marks these read for real as soon as it
     // mounts, but that round-trip shouldn't leave the badge lingering.
@@ -1858,10 +1861,10 @@ function ItemHubPageInner() {
   // same stock_counts rows a second time.
   const [liveMode, setLiveMode] = useState<'sale' | 'sales' | 'bills' | 'lossByTarget' | 'log' | 'count'>('sale')
 
-  // Internal Items page tab switcher state -- tracks which view to show when
-  // lossView === 'items'. Allows switching between items table and Live Sale
-  // modes without changing the sidebar's active entry.
-  const [itemsPageMode, setItemsPageMode] = useState<'items' | 'sale' | 'sales' | 'bills' | 'lossByTarget' | 'log' | 'count'>('items')
+  // Internal tab switcher state -- tracks which view to show within the unified
+  // Catalog/Live Sale interface. Allows switching between catalog management,
+  // transaction recording, and various reporting views without changing the sidebar.
+  const [itemsPageMode, setItemsPageMode] = useState<'catalog' | 'sale' | 'sales' | 'bills' | 'lossByTarget' | 'log' | 'count'>('catalog')
 
   const [liveSalesViolationFilter, setLiveSalesViolationFilter] = useState<string | null>(null)
   const [liveBillsViolationFilter, setLiveBillsViolationFilter] = useState<string | null>(null)
@@ -2665,8 +2668,8 @@ function ItemHubPageInner() {
     // second row when there isn't room for all buttons.
     return (
       <div className="flex bg-gray-200 rounded-lg p-0.5 overflow-x-auto max-w-full">
-        <button type="button" onClick={() => setItemsPageMode('items')} title="Items" className={btnCls(itemsPageMode === 'items', 'bg-blue-600')}>Items</button>
-        <button type="button" onClick={() => { setItemsPageMode('sale'); setLiveMode('sale') }} title="Live Sale" className={btnCls(itemsPageMode === 'sale', 'bg-blue-600')}>Live</button>
+        <button type="button" onClick={() => setItemsPageMode('catalog')} title="Catalog" className={btnCls(itemsPageMode === 'catalog', 'bg-blue-600')}>Catalog</button>
+        <button type="button" onClick={() => { setItemsPageMode('sale'); setLiveMode('sale') }} title="Sale" className={btnCls(itemsPageMode === 'sale', 'bg-blue-600')}>Sale</button>
         <button type="button" onClick={() => { setItemsPageMode('log'); setLiveMode('log') }} title="Log" className={btnCls(itemsPageMode === 'log', 'bg-gray-700')}>Log</button>
         <button type="button" onClick={() => { setItemsPageMode('sales'); setLiveMode('sales') }} title="Sales" className={btnCls(itemsPageMode === 'sales', 'bg-emerald-600')}>Sales</button>
         <button type="button" onClick={() => { setItemsPageMode('bills'); setLiveMode('bills') }} title="Bills" className={btnCls(itemsPageMode === 'bills', 'bg-orange-600')}>Bills</button>
@@ -3396,7 +3399,7 @@ function ItemHubPageInner() {
                   </div>
                 )}
 
-                {outerTab === 'loss' && (lossView === 'sales' || (lossView === 'items' && itemsPageMode !== 'items')) && (
+                {outerTab === 'loss' && (lossView === 'sales' || (lossView === 'items' && itemsPageMode !== 'catalog')) && (
                   <div className="flex flex-col gap-1.5 ml-auto items-end w-full">
                     {/* Search box and the item-filter dropdown moved down to
                         the bottom bar (replacing Biz/UK/C&H there while this
@@ -3456,7 +3459,7 @@ function ItemHubPageInner() {
 
           {/* ── Content ── */}
           <div className="relative flex-1 min-h-0 overflow-y-auto">
-        {(outerTab === 'loss' && lossView === 'sales') || (outerTab === 'loss' && lossView === 'items' && itemsPageMode !== 'items') ? (<>
+        {(outerTab === 'loss' && lossView === 'sales') || (outerTab === 'loss' && lossView === 'items' && itemsPageMode !== 'catalog') ? (<>
           {/* Log tab */}
           {liveMode === 'log' && (
             <div className={liveRootClassName}>
@@ -4828,7 +4831,7 @@ function ItemHubPageInner() {
             </div>
           </TabErrorBoundary>
         )}
-        {!showAnalytics && addForm !== 'item' && outerTab === 'loss' && lossView === 'items' && itemsPageMode === 'items' && itemsExtraView === 'none' && (
+        {!showAnalytics && addForm !== 'item' && outerTab === 'loss' && lossView === 'items' && itemsPageMode === 'catalog' && itemsExtraView === 'none' && (
           <>
             {showItemsLaws && (
               <div className="border-b border-gray-200 bg-white px-3 py-2 shadow-md">
