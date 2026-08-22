@@ -4821,25 +4821,25 @@ function ItemHubPageInner() {
           {liveEditingGridItemId != null && (() => {
             const editItem = liveAllItems.find(i => i.id === liveEditingGridItemId)
             return (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2">
                 <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                  <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
-                    <h2 className="text-lg font-bold text-red-600">{editItem?.name.toUpperCase()}</h2>
+                  <div className="px-3 py-2 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
+                    <h2 className="text-sm font-bold text-red-600">{editItem?.name.toUpperCase()}</h2>
                     <button
                       type="button"
                       onClick={() => {
                         setLiveEditingGridItemId(null)
                         setLiveViewingItemId(null)
                       }}
-                      className="text-gray-500 hover:text-gray-700 text-2xl font-light"
+                      className="text-gray-500 hover:text-gray-700 text-xl font-light"
                     >
                       ×
                     </button>
                   </div>
                   <div className="overflow-y-auto">
-                    <div className="p-6 border-b border-gray-200">
+                    <div className="p-2 border-b border-gray-200">
                       {liveGridEditLoading ? (
-                        <p className="text-center text-gray-500">Loading…</p>
+                        <p className="text-center text-gray-500 text-xs">Loading…</p>
                       ) : editItem ? (
                         <ItemEditForm
                           form={liveEditForm}
@@ -4848,79 +4848,77 @@ function ItemHubPageInner() {
                           itemId={editItem.id}
                           isService={editItem.product_type === 'service'}
                           allItems={liveEditAllItemsList}
-                          size="large"
+                          size="compact"
                           currentCountInterval={liveEditCurrentCountInterval}
                           currentSoh={liveEditCurrentSoh}
                         />
                       ) : (
-                        <p className="text-center text-red-600">Item not found</p>
+                        <p className="text-center text-red-600 text-xs">Item not found</p>
                       )}
                       {liveGridEditError && (
-                        <div className="mt-4 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-600 font-medium">
+                        <div className="mt-1 bg-red-50 border border-red-200 rounded px-2 py-1 text-xs text-red-600 font-medium">
                           {liveGridEditError}
                         </div>
                       )}
                     </div>
                     {editItem && !liveGridEditLoading && (
-                      <div ref={liveGridEditSaleTapRef} className="p-6 border-b border-gray-200">
-                        <div className="space-y-4">
-                          <div>
-                            <div className="bg-orange-100 border border-orange-300 rounded-lg p-3 mb-4">
-                              <p className="text-sm font-semibold text-orange-900">⚠ SALE TAP</p>
-                              <p className="text-sm text-orange-800 mt-1">Quantity (required)</p>
-                            </div>
-                            <div className="flex gap-2 mb-4">
-                              <input
-                                type="number"
-                                inputMode="decimal"
-                                min="1"
-                                step="1"
-                                value={liveQty}
-                                onChange={e => setLiveQty(e.target.value)}
-                                placeholder="Enter quantity"
-                                className="flex-1 text-base font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400"
-                              />
-                              <button
-                                disabled={!liveQty}
-                                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition disabled:opacity-50">
-                                ={liveQty || '?'}
-                              </button>
-                            </div>
-                            <p className="text-sm text-gray-700 mb-2">Price (optional)</p>
-                            <div className="relative mb-3">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">₵</span>
-                              <input
-                                type="number"
-                                inputMode="decimal"
-                                min="0"
-                                step="0.01"
-                                value={livePrice}
-                                onChange={e => setLivePrice(e.target.value)}
-                                placeholder={editItem ? formatPrice(editItem.selling_price) : 'Price'}
-                                className="w-full text-base font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg pl-7 pr-3 py-2 outline-none focus:ring-1 focus:ring-blue-400"
-                              />
-                            </div>
-                            <p className="text-xs text-gray-500 mb-3">Defaults to ₵{editItem ? formatPrice(editItem.selling_price) : '0'}</p>
+                      <div ref={liveGridEditSaleTapRef} className="p-2 border-b border-gray-200 bg-orange-50">
+                        <div className="bg-orange-100 border border-orange-300 rounded p-1.5 mb-1">
+                          <p className="text-[10px] font-semibold text-orange-900">⚠ SALE TAP</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[9px] text-gray-700 font-medium">Qty</p>
+                          <div className="flex gap-1">
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              min="1"
+                              step="1"
+                              value={liveQty}
+                              onChange={e => setLiveQty(e.target.value)}
+                              placeholder="Qty"
+                              className="flex-1 text-xs font-semibold text-gray-900 bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400"
+                            />
                             <button
-                              onClick={recordTap}
-                              disabled={!liveQty || liveSaving}
-                              className="w-full px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition disabled:opacity-50">
-                              {liveSaving ? 'Recording…' : 'Tap'}
+                              disabled={!liveQty}
+                              className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-[9px] font-semibold rounded transition disabled:opacity-50">
+                              ={liveQty || '?'}
                             </button>
                           </div>
+                          <p className="text-[9px] text-gray-700 font-medium">Price</p>
+                          <div className="relative">
+                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-[9px]">₵</span>
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              min="0"
+                              step="0.01"
+                              value={livePrice}
+                              onChange={e => setLivePrice(e.target.value)}
+                              placeholder={editItem ? formatPrice(editItem.selling_price) : 'Price'}
+                              className="w-full text-xs font-semibold text-gray-900 bg-white border border-gray-300 rounded pl-5 pr-2 py-1 outline-none focus:ring-1 focus:ring-blue-400"
+                            />
+                          </div>
+                          <p className="text-[8px] text-gray-500">Defaults to ₵{editItem ? formatPrice(editItem.selling_price) : '0'}</p>
+                          <button
+                            onClick={recordTap}
+                            disabled={!liveQty || liveSaving}
+                            className="w-full px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white text-[9px] font-semibold rounded transition disabled:opacity-50">
+                            {liveSaving ? 'Recording…' : 'Tap'}
+                          </button>
                         </div>
                       </div>
                     )}
                     {editItem && !liveGridEditLoading && (
                       <div className="bg-gray-50">
-                        <div className="px-6 py-3 space-y-4">
+                        <div className="px-2 py-1.5 space-y-2">
                           <div>
-                            <label className="text-[7px] font-bold text-gray-500 block mb-2">Aliases</label>
+                            <label className="text-[7px] font-bold text-gray-500 block mb-1">Aliases</label>
                             <AliasPicker itemId={editItem.id} current={liveGridEditAliases} onChange={setLiveGridEditAliases} />
                           </div>
                           <div>
-                            <label className="text-[7px] font-bold text-gray-500 block mb-2">
-                              {editItem.product_type === 'service' ? 'Goods used for this service' : 'Services this good is used for'}
+                            <label className="text-[7px] font-bold text-gray-500 block mb-1">
+                              {editItem.product_type === 'service' ? 'Goods used' : 'Services used'}
                             </label>
                             <MatchPicker
                               itemId={editItem.id}
@@ -4939,9 +4937,7 @@ function ItemHubPageInner() {
                           </div>
                           {isOwnerLevel(session?.user as any) && (
                             <div>
-                              <label className="text-[7px] font-bold text-gray-500 block mb-2">
-                                Merge with another {editItem.product_type === 'service' ? 'service' : 'good'}
-                              </label>
+                              <label className="text-[7px] font-bold text-gray-500 block mb-1">Merge</label>
                               <MergeItemPicker
                                 itemId={editItem.id}
                                 itemName={editItem.name}
@@ -4957,39 +4953,36 @@ function ItemHubPageInner() {
                           )}
                           {isOwnerLevel(session?.user as any) && (
                             <div>
-                              <label className="text-[7px] font-bold text-gray-500 block mb-2">Delete this item</label>
                               {!liveGridEditConfirmDelete ? (
                                 <button
                                   onClick={() => setLiveGridEditConfirmDelete(true)}
-                                  className="w-full bg-gray-100 hover:bg-red-50 text-red-600 text-[10px] font-semibold rounded py-1.5 transition">
-                                  Delete Item
+                                  className="w-full bg-gray-100 hover:bg-red-50 text-red-600 text-[9px] font-semibold rounded py-1 transition">
+                                  Delete
                                 </button>
                               ) : (
-                                <div className="space-y-2">
-                                  <p className="text-[10px] text-red-600">
-                                    Only possible if it has no sales, bills, or stock counts. This can't be undone -- merge it into another item instead if it has history.
-                                  </p>
-                                  <div className="flex gap-2">
+                                <div className="space-y-1">
+                                  <p className="text-[8px] text-red-600">No sales/bills/counts?</p>
+                                  <div className="flex gap-1">
                                     <button
                                       onClick={deleteGridEditItem}
                                       disabled={liveGridEditDeleting}
-                                      className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
-                                      {liveGridEditDeleting ? 'Deleting…' : 'Yes, Delete Permanently'}
+                                      className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-[8px] font-semibold rounded py-1 transition">
+                                      {liveGridEditDeleting ? 'Deleting…' : 'Confirm'}
                                     </button>
                                     <button
                                       onClick={() => { setLiveGridEditConfirmDelete(false); setLiveGridEditDeleteError('') }}
-                                      className="px-3 py-1.5 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">
+                                      className="px-2 py-1 bg-gray-100 text-gray-600 text-[8px] font-semibold rounded">
                                       Cancel
                                     </button>
                                   </div>
-                                  {liveGridEditDeleteError && <p className="text-[10px] text-red-600 font-medium">{liveGridEditDeleteError}</p>}
+                                  {liveGridEditDeleteError && <p className="text-[8px] text-red-600 font-medium">{liveGridEditDeleteError}</p>}
                                 </div>
                               )}
                             </div>
                           )}
                           <div>
-                            <label className="text-[7px] font-bold text-gray-500 block mb-2">Manual Count</label>
-                            <div className="space-y-2">
+                            <label className="text-[7px] font-bold text-gray-500 block mb-1">Manual Count</label>
+                            <div className="space-y-1">
                               <input
                                 type="number"
                                 inputMode="decimal"
@@ -4997,12 +4990,12 @@ function ItemHubPageInner() {
                                 step="1"
                                 value={liveGridEditCountQty}
                                 onChange={e => setLiveGridEditCountQty(e.target.value)}
-                                placeholder="Enter quantity"
-                                className="w-full text-sm font-semibold text-gray-900 bg-gray-50 border border-gray-300 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-400"
+                                placeholder="Qty"
+                                className="w-full text-xs font-semibold text-gray-900 bg-white border border-gray-300 rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-blue-400"
                                 disabled={liveGridEditCountSaving}
                               />
                               <div className="relative">
-                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-[9px]">₵</span>
+                                <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-gray-500 text-[8px]">₵</span>
                                 <input
                                   type="number"
                                   inputMode="decimal"
@@ -5011,12 +5004,12 @@ function ItemHubPageInner() {
                                   value={liveGridEditCountPrice}
                                   onChange={e => setLiveGridEditCountPrice(e.target.value)}
                                   placeholder={editItem ? formatPrice(editItem.selling_price) : 'Price'}
-                                  className="w-full text-sm font-semibold text-gray-900 bg-gray-50 border border-gray-300 rounded pl-6 pr-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-400"
+                                  className="w-full text-xs font-semibold text-gray-900 bg-white border border-gray-300 rounded pl-4 pr-1.5 py-0.5 outline-none focus:ring-1 focus:ring-blue-400"
                                   disabled={liveGridEditCountSaving}
                                 />
                               </div>
                               {liveGridEditCountError && (
-                                <div className="bg-red-50 border border-red-200 rounded px-2 py-1.5 text-[9px] text-red-600">
+                                <div className="bg-red-50 border border-red-200 rounded px-1.5 py-0.5 text-[8px] text-red-600">
                                   {liveGridEditCountError}
                                 </div>
                               )}
@@ -5024,8 +5017,8 @@ function ItemHubPageInner() {
                                 type="button"
                                 onClick={recordCountFromModal}
                                 disabled={!liveGridEditCountQty || liveGridEditCountSaving}
-                                className="w-full px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[9px] font-semibold rounded transition disabled:opacity-50">
-                                {liveGridEditCountSaving ? 'Recording…' : 'Record Count'}
+                                className="w-full px-2 py-0.5 bg-blue-600 hover:bg-blue-700 text-white text-[8px] font-semibold rounded transition disabled:opacity-50">
+                                {liveGridEditCountSaving ? 'Recording…' : 'Record'}
                               </button>
                             </div>
                           </div>
@@ -5034,7 +5027,7 @@ function ItemHubPageInner() {
                     )}
                     {editItem && !liveGridEditLoading && (
                       <div className="bg-gray-50">
-                        <h3 className="px-6 py-3 text-sm font-bold text-gray-900 border-b border-gray-200">Item Details</h3>
+                        <h3 className="px-2 py-1 text-[9px] font-bold text-gray-900 border-b border-gray-200">Details</h3>
                         <ItemDetailPanel itemId={editItem.id} onItemGone={() => setLiveEditingGridItemId(null)} />
                       </div>
                     )}
