@@ -2137,8 +2137,13 @@ function ItemHubPageInner() {
       })))
     }
 
+    // Count interval flags (for Count mode)
+    if (liveMode === 'count') {
+      flags.push(...liveCountIntervalFlags)
+    }
+
     return flags
-  }, [liveMode, violationCounts, liveCurrentView, liveSalesViolationFilter, liveBillsViolationFilter])
+  }, [liveMode, violationCounts, liveCurrentView, liveSalesViolationFilter, liveBillsViolationFilter, liveCountIntervalFlags])
 
   // All available views (shown in all modes)
   const liveAllViews = useMemo(() => [
