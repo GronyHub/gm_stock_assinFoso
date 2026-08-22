@@ -1303,12 +1303,21 @@ function ItemHubPageInner() {
     // to stay explicit, or a bare /item on refresh would land back on Loss
     // instead of wherever Today's own state actually was.
     if (outerTab !== 'loss') params.set('tab', outerTab); else params.delete('tab')
-    if (outerTab === 'loss' && lossView !== 'items') params.set('view', lossView)
     // Alias Wide Table/Service Matches/Name Conflicts are sub-views of
     // Items itself (lossView stays 'items') -- they still need their own
     // ?view= entry, or leaving/refreshing on one of them silently drops
     // you back on the plain item list instead of where you actually were.
-    else if (outerTab === 'loss' && lossView === 'items' && itemsExtraView !== 'none') params.set('view', itemsExtraView)
+    if (outerTab === 'loss' && lossView === 'items' && itemsExtraView !== 'none') params.set('view', itemsExtraView)
+    // 'sales' (Live Sale) is the default landing view now (see lossView's
+    // initial state above and the searchParams-sync effect below, both of
+    // which treat a missing ?view= as 'sales') -- so 'sales' is the one
+    // that gets to omit ?view= for a clean URL. This used to check
+    // `lossView !== 'items'` instead, back when Items was still the
+    // default landing view -- that default flipped to Live Sale, but this
+    // check was never updated to match, so navigating to Items would
+    // write a URL with no ?view=, which the sync-back effect below then
+    // misread as "no view specified" and silently bounced back to Sales.
+    else if (outerTab === 'loss' && lossView !== 'sales') params.set('view', lossView)
     // C&H's own rows are picked via pickCHView, which -- unlike pickLossView
     // -- never touches outerTab, so this needs its own branch to still land
     // the selected row (e.g. 'ch_kuukua') in the URL for refresh/back.
