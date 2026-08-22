@@ -3322,11 +3322,33 @@ function ItemHubPageInner() {
                   </div>
                 </div>
               </div>
-              {/* Row 2: search bar — hidden on report-style submenus. */}
+              {/* Row 2: search bar + controls — hidden on report-style submenus. */}
               {showControls && (
                 <div className="px-2 py-1 border-b border-green-700">
-                  <div className="flex items-center gap-2">
-                    {(lossView === 'sales' || lossView === 'items') && renderLiveSearchControls(true)}
+                  <div className="flex items-center gap-2 justify-between">
+                    <div className="flex items-center gap-2">
+                      {(lossView === 'sales' || lossView === 'items') && renderLiveSearchControls(true)}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button onClick={() => setGlobalSearchOpen(true)} title="Search"
+                        className="w-6 h-6 rounded-full flex items-center justify-center text-sm border-2 border-transparent text-white opacity-70 hover:opacity-100 transition shrink-0">
+                        🔍
+                      </button>
+                      {(lossView === 'sales' || lossView === 'items') && (
+                        <LawsToggleBar show={liveSaleLaws.show} setShow={liveSaleLaws.setShow}
+                          openForm={liveSaleLaws.openForm} setOpenForm={liveSaleLaws.setOpenForm}
+                          hideZeroFlags={liveSaleLaws.hideZeroFlags} setHideZeroFlags={liveSaleLaws.setHideZeroFlags}
+                          activeFilters={liveSaleLaws.activeFilters} toggleFilter={liveSaleLaws.toggleFilter} dark={true} />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setLiveHelpModalOpen(true)}
+                        title="Help"
+                        className="shrink-0 w-5 h-5 rounded-md text-[10px] font-semibold border flex items-center justify-center transition bg-gray-200 text-gray-700 hover:bg-gray-300 border-gray-400"
+                      >
+                        ?
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -4913,52 +4935,6 @@ function ItemHubPageInner() {
         <ItemDetailModal itemId={globalSearchViewingItemId} onClose={() => setGlobalSearchViewingItemId(null)} />
       )}
 
-      {/* Footer bar at bottom -- laws toggle and help for Items view */}
-      {addForm !== 'live' && !(outerTab === 'loss' && lossView === 'sales' && !liveExpanded) && (
-      <div className="flex items-center gap-2 px-2 py-2 bg-white border-t border-gray-200">
-        <div className="flex items-center gap-2">
-          <button onClick={() => setGlobalSearchOpen(true)} title="Search"
-            className="w-8 h-8 rounded-full flex items-center justify-center text-lg border-2 border-transparent text-gray-500 opacity-70 hover:opacity-100 transition shrink-0">
-            🔍
-          </button>
-          {outerTab === 'loss' && (lossView === 'sales' || lossView === 'items') && (
-            <LawsToggleBar show={liveSaleLaws.show} setShow={liveSaleLaws.setShow}
-              openForm={liveSaleLaws.openForm} setOpenForm={liveSaleLaws.setOpenForm}
-              hideZeroFlags={liveSaleLaws.hideZeroFlags} setHideZeroFlags={liveSaleLaws.setHideZeroFlags}
-              activeFilters={liveSaleLaws.activeFilters} toggleFilter={liveSaleLaws.toggleFilter} dark={false} />
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={() => setLiveHelpModalOpen(true)}
-          title="Help"
-          className="shrink-0 w-6 h-6 rounded text-xs font-semibold border flex items-center justify-center transition bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300"
-        >
-          ?
-        </button>
-      </div>
-      )}
-
-      {/* Footer bar at bottom -- laws toggle and help for Sales view */}
-      {addForm !== 'live' && outerTab === 'loss' && lossView === 'sales' && !liveExpanded && (
-      <div className="flex items-center gap-2 px-2 py-2 bg-white border-t border-gray-200">
-        <div className="flex items-center gap-2">
-          <div className="shrink-0">{liveMode === 'sale' && renderLiveSaleFilterSelect(false)}</div>
-          <LawsToggleBar show={liveSaleLaws.show} setShow={liveSaleLaws.setShow}
-            openForm={liveSaleLaws.openForm} setOpenForm={liveSaleLaws.setOpenForm}
-            hideZeroFlags={liveSaleLaws.hideZeroFlags} setHideZeroFlags={liveSaleLaws.setHideZeroFlags}
-            activeFilters={liveSaleLaws.activeFilters} toggleFilter={liveSaleLaws.toggleFilter} dark={false} />
-        </div>
-        <button
-          type="button"
-          onClick={() => setLiveHelpModalOpen(true)}
-          title="Help"
-          className="shrink-0 w-6 h-6 rounded text-xs font-semibold border flex items-center justify-center transition bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-300"
-        >
-          ?
-        </button>
-      </div>
-      )}
     </div>
   )
 }
