@@ -12,6 +12,7 @@ import { LossDialog, PairingDialog, type LossExtra, type LossPrompt, type Pairin
 import { ItemEditForm, EMPTY_ITEM_EDIT_FORM } from './_components/ItemEditForm'
 import HistoryPanel from './_components/HistoryPanel'
 import { TrainingGuideModal } from './_components/TrainingGuideModal'
+import ItemDetailPanel from './_components/ItemDetailPanel'
 
 class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boolean; message: string }> {
   state = { error: false, message: '' }
@@ -4286,10 +4287,7 @@ function ItemHubPageInner() {
                           <div className="flex-1 min-w-0">
                             <button
                               type="button"
-                              onClick={() => {
-                                setLiveViewingItemId(item.id)
-                                openEditGridItem(item.id)
-                              }}
+                              onClick={() => openEditGridItem(item.id)}
                               className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 leading-tight truncate text-left hover:underline transition"
                             >
                               {item.name}
@@ -4358,10 +4356,7 @@ function ItemHubPageInner() {
                           <div className="flex-1 min-w-0">
                             <button
                               type="button"
-                              onClick={() => {
-                                setLiveViewingItemId(item.id)
-                                openEditGridItem(item.id)
-                              }}
+                              onClick={() => openEditGridItem(item.id)}
                               className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 leading-tight truncate text-left hover:underline transition"
                             >
                               {item.name}
@@ -4724,37 +4719,48 @@ function ItemHubPageInner() {
             return (
               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                 <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                  <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
+                  <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
                     <h2 className="text-lg font-bold text-gray-900">Edit Item</h2>
                     <button
                       type="button"
-                      onClick={() => setLiveEditingGridItemId(null)}
+                      onClick={() => {
+                        setLiveEditingGridItemId(null)
+                        setLiveViewingItemId(null)
+                      }}
                       className="text-gray-500 hover:text-gray-700 text-2xl font-light"
                     >
                       ×
                     </button>
                   </div>
-                  <div className="p-6">
-                    {liveGridEditLoading ? (
-                      <p className="text-center text-gray-500">Loading…</p>
-                    ) : editItem ? (
-                      <ItemEditForm
-                        form={liveEditForm}
-                        onChange={setLiveEditForm}
-                        groups={liveEditGroups}
-                        itemId={editItem.id}
-                        isService={editItem.product_type === 'service'}
-                        allItems={liveEditAllItemsList}
-                        size="large"
-                        currentCountInterval={liveEditCurrentCountInterval}
-                        currentSoh={liveEditCurrentSoh}
-                      />
-                    ) : (
-                      <p className="text-center text-red-600">Item not found</p>
-                    )}
-                    {liveGridEditError && (
-                      <div className="mt-4 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-600 font-medium">
-                        {liveGridEditError}
+                  <div className="overflow-y-auto">
+                    <div className="p-6 border-b border-gray-200">
+                      {liveGridEditLoading ? (
+                        <p className="text-center text-gray-500">Loading…</p>
+                      ) : editItem ? (
+                        <ItemEditForm
+                          form={liveEditForm}
+                          onChange={setLiveEditForm}
+                          groups={liveEditGroups}
+                          itemId={editItem.id}
+                          isService={editItem.product_type === 'service'}
+                          allItems={liveEditAllItemsList}
+                          size="large"
+                          currentCountInterval={liveEditCurrentCountInterval}
+                          currentSoh={liveEditCurrentSoh}
+                        />
+                      ) : (
+                        <p className="text-center text-red-600">Item not found</p>
+                      )}
+                      {liveGridEditError && (
+                        <div className="mt-4 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-600 font-medium">
+                          {liveGridEditError}
+                        </div>
+                      )}
+                    </div>
+                    {editItem && (
+                      <div className="bg-gray-50">
+                        <h3 className="px-6 py-3 text-sm font-bold text-gray-900 border-b border-gray-200">Item Details</h3>
+                        <ItemDetailPanel itemId={editItem.id} onItemGone={() => setLiveEditingGridItemId(null)} />
                       </div>
                     )}
                   </div>
