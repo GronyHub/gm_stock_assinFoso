@@ -2701,7 +2701,7 @@ function ItemHubPageInner() {
     </>)
   }
 
-  // All filters bar -- type and group dropdowns available on all tabs
+  // All filters bar -- type, group, and sale filters available on all tabs
   function renderAllFiltersBar() {
     return (
       <div className="flex items-center gap-1 flex-wrap px-2 py-1 bg-gray-100 border-b border-gray-200">
@@ -2725,6 +2725,7 @@ function ItemHubPageInner() {
             <option key={g} value={g}>{g}</option>
           ))}
         </select>
+        {renderLiveSaleFilterSelect(true)}
       </div>
     )
   }
