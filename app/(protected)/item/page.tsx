@@ -3255,14 +3255,27 @@ function ItemHubPageInner() {
   function renderLiveSaleFilterSelect(compact: boolean) {
     return (
       <select
-        value={liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind === 'flag' ? `flag:${liveSaleFilter.key}` : liveSaleFilter.kind : ''}
+        value={liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind === 'flag' ? `flag:${liveSaleFilter.key}` : liveSaleFilter.kind : liveCurrentView?.kind === 'violation' ? `violation:${liveCurrentView.key}` : ''}
         onChange={e => {
           const v = e.target.value
-          setLiveCurrentView(null)  // Clear view when changing filter
-          if (!v) setLiveSaleFilter(null)
-          else if (v.startsWith('interval:')) setLiveSaleFilter({ kind: 'interval', label: v.slice('interval:'.length) })
-          else if (v.startsWith('flag:')) setLiveSaleFilter({ kind: 'flag', key: v.slice('flag:'.length) })
-          else setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'soh' })
+          if (!v) {
+            setLiveSaleFilter(null)
+            setLiveCurrentView(null)
+          } else if (v.startsWith('interval:')) {
+            setLiveCurrentView(null)
+            setLiveSaleFilter({ kind: 'interval', label: v.slice('interval:'.length) })
+          } else if (v.startsWith('violation:')) {
+            // Use the law icon's filtering mechanism for flag filters
+            setLiveSaleFilter(null)
+            const violationKey = v.slice('violation:'.length)
+            setLiveCurrentView({ kind: 'violation' as const, key: violationKey })
+          } else if (v.startsWith('flag:')) {
+            setLiveCurrentView(null)
+            setLiveSaleFilter({ kind: 'flag', key: v.slice('flag:'.length) })
+          } else {
+            setLiveCurrentView(null)
+            setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'soh' })
+          }
         }}
         className={compact
           ? 'text-[10px] px-1 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white shrink-0'
@@ -3279,6 +3292,14 @@ function ItemHubPageInner() {
             </option>
           )
         })}
+        {/* Items violation flags from ITEMS_FLAG_TYPES */}
+        <optgroup label="Flag Categories">
+          {ITEMS_FLAG_TYPES.map(f => (
+            <option key={f.key} value={`violation:${f.key}`}>
+              {f.label} ({(liveItemsWithViolations as Record<string, number[]>)[f.key]?.length ?? 0})
+            </option>
+          ))}
+        </optgroup>
       </select>
     )
   }
