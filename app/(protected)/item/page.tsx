@@ -2649,25 +2649,31 @@ function ItemHubPageInner() {
     }
   }
 
-  // The tab switcher shared by every mode's own header, so jumping between
-  // any two of them doesn't require detouring back through the grid first.
-  function renderModeToggle(compact: boolean) {
+  // The tab switcher for both Items and Live Sale modes -- shared header
+  // so users can navigate between views without leaving the page.
+  function renderTabSwitcher(compact: boolean) {
     const btnCls = (active: boolean, color: string) =>
       `font-bold rounded-md transition whitespace-nowrap shrink-0 ${compact ? 'px-1.5 py-1 text-[10px]' : 'px-2 py-1 text-xs'} ${
         active ? `${color} text-white` : 'text-gray-500 hover:text-gray-700'
       }`
     // Always one line -- scrolls horizontally rather than wrapping onto a
-    // second row when there isn't room for all six buttons.
+    // second row when there isn't room for all buttons.
     return (
       <div className="flex bg-gray-200 rounded-lg p-0.5 overflow-x-auto max-w-full">
-        <button type="button" onClick={() => setLiveMode('sale')} title="Live Sale" className={btnCls(liveMode === 'sale', 'bg-blue-600')}>Live</button>
-        <button type="button" onClick={() => setLiveMode('log')} title="Log" className={btnCls(liveMode === 'log', 'bg-gray-700')}>Log</button>
-        <button type="button" onClick={() => setLiveMode('sales')} title="Sales" className={btnCls(liveMode === 'sales', 'bg-emerald-600')}>Sales</button>
-        <button type="button" onClick={() => setLiveMode('bills')} title="Bills" className={btnCls(liveMode === 'bills', 'bg-orange-600')}>Bills</button>
-        <button type="button" onClick={() => setLiveMode('lossByTarget')} title="Loss by Target" className={btnCls(liveMode === 'lossByTarget', 'bg-pink-600')}>Loss by Tgt</button>
-        <button type="button" onClick={() => setLiveMode('count')} title="Count" className={btnCls(liveMode === 'count', 'bg-indigo-600')}>Count</button>
+        <button type="button" onClick={() => setLossView('items')} title="Items" className={btnCls(lossView === 'items', 'bg-blue-600')}>Items</button>
+        <button type="button" onClick={() => { setLossView('sales'); setLiveMode('sale') }} title="Live Sale" className={btnCls(lossView === 'sales' && liveMode === 'sale', 'bg-blue-600')}>Live</button>
+        <button type="button" onClick={() => { setLossView('sales'); setLiveMode('log') }} title="Log" className={btnCls(lossView === 'sales' && liveMode === 'log', 'bg-gray-700')}>Log</button>
+        <button type="button" onClick={() => { setLossView('sales'); setLiveMode('sales') }} title="Sales" className={btnCls(lossView === 'sales' && liveMode === 'sales', 'bg-emerald-600')}>Sales</button>
+        <button type="button" onClick={() => { setLossView('sales'); setLiveMode('bills') }} title="Bills" className={btnCls(lossView === 'sales' && liveMode === 'bills', 'bg-orange-600')}>Bills</button>
+        <button type="button" onClick={() => { setLossView('sales'); setLiveMode('lossByTarget') }} title="Loss by Target" className={btnCls(lossView === 'sales' && liveMode === 'lossByTarget', 'bg-pink-600')}>Loss by Tgt</button>
+        <button type="button" onClick={() => { setLossView('sales'); setLiveMode('count') }} title="Count" className={btnCls(lossView === 'sales' && liveMode === 'count', 'bg-indigo-600')}>Count</button>
       </div>
     )
+  }
+
+  // Deprecated: use renderTabSwitcher instead. Kept for any remaining references.
+  function renderModeToggle(compact: boolean) {
+    return renderTabSwitcher(compact)
   }
 
   // The switcher's permanent home -- its own top row, above every mode's own
@@ -3215,6 +3221,12 @@ function ItemHubPageInner() {
         <div className="relative flex-1 min-w-0 min-h-0 flex flex-col">
           {outerTab === 'loss' && (
             <div className="shrink-0 bg-green-800 border-b border-green-900">
+              {/* Tab switcher: Items vs Live Sale modes */}
+              <div className="px-2 py-1.5 border-b border-green-700">
+                <div className="flex overflow-x-auto">
+                  {renderTabSwitcher(true)}
+                </div>
+              </div>
               {/* Row 2: groups + violations + search — hidden on report-style submenus.
                   Groups/Search share their own line, and Columns/Analytics/New share a
                   second one below -- crammed onto one line together they were fighting
@@ -3381,17 +3393,6 @@ function ItemHubPageInner() {
 
                 {outerTab === 'loss' && lossView === 'sales' && (
                   <div className="flex flex-col gap-1.5 ml-auto items-end w-full">
-                    {/* Mode switcher -- pinned to its own top row, always one
-                        line (scrolls horizontally rather than wrapping) so
-                        it reads as a single control instead of splitting
-                        into two rows the way it did sharing space with the
-                        laws/help/expand icons below. Shifted right while the
-                        side pane is hidden so it doesn't sit under the
-                        floating restore button, which then occupies this
-                        same top-left corner instead. */}
-                    <div className={`w-full overflow-x-auto ${sidePaneHidden ? 'pl-8' : ''}`}>
-                      {!liveExpanded && renderModeToggle(true)}
-                    </div>
                     {/* Search box and the item-filter dropdown moved down to
                         the bottom bar (replacing Biz/UK/C&H there while this
                         view is open) -- see the bottom bar's own Live Sale
