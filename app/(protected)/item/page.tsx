@@ -3772,12 +3772,6 @@ function ItemHubPageInner() {
                         className="w-6 h-6 rounded-full flex items-center justify-center text-sm border-2 border-transparent text-white opacity-70 hover:opacity-100 transition shrink-0">
                         🔍
                       </button>
-                      {(lossView === 'sales' || lossView === 'items') && (
-                        <LawsToggleBar show={liveSaleLaws.show} setShow={liveSaleLaws.setShow}
-                          openForm={liveSaleLaws.openForm} setOpenForm={liveSaleLaws.setOpenForm}
-                          hideZeroFlags={liveSaleLaws.hideZeroFlags} setHideZeroFlags={liveSaleLaws.setHideZeroFlags}
-                          activeFilters={liveSaleLaws.activeFilters} toggleFilter={liveSaleLaws.toggleFilter} dark={true} />
-                      )}
                       <button
                         type="button"
                         onClick={() => setLiveHelpModalOpen(true)}
