@@ -3298,27 +3298,8 @@ function ItemHubPageInner() {
                   each other for width, squeezing Search down to nothing on a phone. */}
               {showControls && (
                 <div className="flex flex-col gap-1.5 px-2 py-1.5">
-                {/* Top row: this page's Law/Notes/Tasks icons + its own
-                    individual flag pills, both above Groups/Search now
-                    instead of the pills sitting below Columns/Analytics/New
-                    and Law/Notes/Tasks not being reachable from this list at
-                    all. Pills are sorted by count descending each render --
-                    whichever violation is worst right now leads, instead of
-                    a fixed N/S/C/G/... order that doesn't reflect what
-                    actually needs attention. Kept to one line -- scrolls
-                    horizontally instead of wrapping once there are more
-                    pills than fit, so this row never pushes Groups/Search
-                    further down the screen. */}
-                {lossView === 'items' && (
-                  <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
-                    <LawsToggleBar show={showItemsLaws} setShow={setShowItemsLaws}
-                      openForm={itemsLawsOpenForm} setOpenForm={setItemsLawsOpenForm}
-                      hideZeroFlags={hideZeroFlags} setHideZeroFlags={setHideZeroFlags}
-                      activeFilters={itemsFilters.activeFilters} toggleFilter={itemsFilters.toggleFilter} />
-                  </div>
-                )}
                 <div className="flex items-center gap-1.5">
-                  {/* Groups and Search removed - now in the all-filters bar */}
+                  {/* Law icon and Groups/Search removed - now in the all-filters bar */}
                 </div>
 
                 {['items', 'expenses'].includes(lossView) && (
@@ -3350,20 +3331,6 @@ function ItemHubPageInner() {
                         ${showAnalytics ? 'bg-blue-600 text-white' : 'text-white hover:bg-white/10'}`}>
                       📊 {showAnalytics ? 'List' : 'Ana'}
                     </button>
-
-                    {/* New button — Items/Expenses/PO submenus only; Sales/Bills' own New
-                        flows live inside Live Sale's own Sales/Bills tabs now, and report-
-                        style submenus have no add-form, so neither shows a button here. */}
-                    {!showAnalytics && (() => {
-                      const formKey = lossView === 'items' ? 'item' : 'expense'
-                      return (
-                        <button onClick={() => setAddForm(addForm === formKey ? null : formKey)}
-                          className={`shrink-0 ml-auto text-xs font-semibold px-3 py-1 rounded-lg transition
-                            ${addForm ? 'bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
-                          {addForm ? '×' : 'New'}
-                        </button>
-                      )
-                    })()}
                   </div>
                 )}
 
