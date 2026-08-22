@@ -3247,6 +3247,34 @@ function ItemHubPageInner() {
               <SidePaneButton icon="🚪" label="Sign out" mode={cashDisplayMode} active={false} divider={canOpenThisSettings}
                 onClick={() => { if (confirm('Sign out?')) signOut({ callbackUrl: '/login' }) }} />
             </div>
+
+            {/* Biz/UK/C&H navigation buttons at bottom of sidebar */}
+            <div className="mt-1 pt-1 border-t border-white/30 flex flex-col gap-1">
+              {(canSeeUK || canSeeCH) && (
+                <button onClick={() => changeTab('loss')} title="Biz"
+                  style={{ color: PANE_ACCENT.loss }}
+                  className={`w-full text-left px-3 py-2 text-xs font-semibold rounded-lg flex items-center gap-2 transition
+                    ${outerTab === 'loss' ? 'bg-white/10 border-2 border-current' : 'border-2 border-transparent text-white/40 hover:text-white/70'}`}>
+                  💰 Biz
+                </button>
+              )}
+              {canSeeUK && (
+                <button onClick={() => changeTab('uk')} title="UK"
+                  style={{ color: PANE_ACCENT.uk }}
+                  className={`w-full text-left px-3 py-2 text-xs font-semibold rounded-lg flex items-center gap-2 transition
+                    ${outerTab === 'uk' ? 'bg-white/10 border-2 border-current' : 'border-2 border-transparent text-white/40 hover:text-white/70'}`}>
+                  🇬🇧 UK
+                </button>
+              )}
+              {canSeeCH && (
+                <button onClick={() => changeTab('ch')} title="C&H"
+                  style={{ color: PANE_ACCENT.ch }}
+                  className={`w-full text-left px-3 py-2 text-xs font-semibold rounded-lg flex items-center gap-2 transition
+                    ${outerTab === 'ch' ? 'bg-white/10 border-2 border-current' : 'border-2 border-transparent text-white/40 hover:text-white/70'}`}>
+                  🏢 C&H
+                </button>
+              )}
+            </div>
         </SidePaneContainer>
         )}
         {/* Restore button while the pane is hidden -- floats over the
@@ -4734,41 +4762,12 @@ function ItemHubPageInner() {
               tapping sales, so this row steps aside rather than the two
               competing for the same strip. */}
           {addForm !== 'live' && !(outerTab === 'loss' && lossView === 'sales' && !liveExpanded) && (
-          <div className="shrink-0 flex items-center justify-evenly py-2 bg-white border-t border-gray-200">
-            {(canSeeUK || canSeeCH) && (
-              <button onClick={() => changeTab('loss')} title="Biz"
-                style={{ color: PANE_ACCENT.loss }}
-                className={`w-9 h-9 rounded-full flex items-center justify-center text-lg border-2 transition
-                  ${outerTab === 'loss' ? 'border-current' : 'border-transparent opacity-40 hover:opacity-70'}`}>
-                💰
-              </button>
-            )}
-            {canSeeUK && (
-              <button onClick={() => changeTab('uk')} title="UK"
-                style={{ color: PANE_ACCENT.uk }}
-                className={`w-9 h-9 rounded-full flex items-center justify-center text-lg border-2 transition
-                  ${outerTab === 'uk' ? 'border-current' : 'border-transparent opacity-40 hover:opacity-70'}`}>
-                🇬🇧
-              </button>
-            )}
-            {canSeeCH && (
-              <button onClick={() => changeTab('ch')} title="C&H"
-                style={{ color: PANE_ACCENT.ch }}
-                className={`w-9 h-9 rounded-full flex items-center justify-center text-lg border-2 transition
-                  ${outerTab === 'ch' ? 'border-current' : 'border-transparent opacity-40 hover:opacity-70'}`}>
-                🏢
-              </button>
-            )}
+          <div className="shrink-0 flex items-center justify-center gap-2 py-2 bg-white border-t border-gray-200">
             <button onClick={() => setGlobalSearchOpen(true)} title="Search"
               className="w-9 h-9 rounded-full flex items-center justify-center text-lg border-2 border-transparent text-gray-500 opacity-70 hover:opacity-100 transition">
               🔍
             </button>
-            <button onClick={() => toggleAllLaws()} title="Toggle all laws"
-              className={`w-9 h-9 rounded-full flex items-center justify-center text-lg border-2 text-gray-500 transition
-                ${areAllLawsShown() ? 'border-gray-500 opacity-100' : 'border-transparent opacity-40 hover:opacity-70'}`}>
-              📜
-            </button>
-            <AddShortcutButton onShortcut={handleShortcut} />
+            <div className="flex-1 max-w-xs">{renderLiveSearchControls(true)}</div>
           </div>
           )}
           {/* Live Sale's own item search box and item-filter dropdown
