@@ -2930,7 +2930,7 @@ function ItemHubPageInner() {
             </button>
           )}
           {liveShowItemPicker && liveItemPickerResults.length > 0 && (
-            <div className={`absolute bottom-full mb-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto ${
+            <div className={`absolute top-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto ${
               compact ? 'left-0 w-56' : 'left-0 right-0'
             }`}>
               {liveItemPickerResults.map(item => (
