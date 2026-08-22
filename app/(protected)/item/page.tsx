@@ -2704,11 +2704,11 @@ function ItemHubPageInner() {
   // All filters bar -- type, group, sale filters available on all tabs
   function renderAllFiltersBar() {
     return (
-      <div className="flex items-center gap-2 px-2 py-1 bg-gray-100 border-b border-gray-200">
+      <div className="w-full flex items-center gap-2 px-2 py-1 bg-gray-100 border-b border-gray-200 flex-wrap">
         <select
           value={liveProductTypeFilter}
           onChange={e => setLiveProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
-          className="text-[10px] px-2 py-0.5 rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 flex-1 min-w-0"
+          className="text-[10px] px-2 py-0.5 rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 flex-1"
         >
           <option value="all">All</option>
           <option value="goods">Goods</option>
@@ -2717,14 +2717,30 @@ function ItemHubPageInner() {
         <select
           value={liveGroupFilter || ''}
           onChange={e => setLiveGroupFilter(e.target.value || null)}
-          className="text-[10px] px-2 py-0.5 rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 flex-1 min-w-0"
+          className="text-[10px] px-2 py-0.5 rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 flex-1"
         >
           <option value="">Groups</option>
           {liveGroups.map(g => (
             <option key={g} value={g}>{g}</option>
           ))}
         </select>
-        <div className="flex-1 min-w-0">{renderLiveSaleFilterSelect(true)}</div>
+        <select
+          value={liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind : ''}
+          onChange={e => {
+            const v = e.target.value
+            if (!v) setLiveSaleFilter(null)
+            else if (v.startsWith('interval:')) setLiveSaleFilter({ kind: 'interval', label: v.slice('interval:'.length) })
+            else setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'soh' })
+          }}
+          className="text-[10px] px-2 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white flex-1"
+        >
+          <option value="">Filter</option>
+          {liveSaleFilterFlags.map(f => (
+            <option key={f.key} value={f.key === 'loss' || f.key === 'gain' || f.key === 'soh' ? f.key : `interval:${f.label}`}>
+              {f.label} ({f.count})
+            </option>
+          ))}
+        </select>
       </div>
     )
   }
@@ -3286,7 +3302,7 @@ function ItemHubPageInner() {
           {outerTab === 'loss' && (
             <div className="shrink-0 bg-green-800 border-b border-green-900">
               {/* Tab switcher: Items vs Live Sale modes */}
-              <div className="px-4 py-1.5 border-b border-green-700">
+              <div className="px-6 py-1.5 border-b border-green-700">
                 <div className="flex items-center gap-3 justify-between min-w-0">
                   <div className="flex items-center gap-1.5 overflow-x-auto min-w-0">
                     {renderTabSwitcher(true)}
