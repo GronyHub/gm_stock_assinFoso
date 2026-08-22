@@ -2464,8 +2464,26 @@ function ItemHubPageInner() {
       return (d.level === 'overdue' ? 1000 : 0) + (isNaN(n) ? 0 : n)
     }
     due.sort((a, b) => urgency(b) - urgency(a))
-    return [due, rest] as [LiveItem[], LiveItem[]]
-  }, [liveCatalogueItems, liveCountStatus, liveMode])
+
+    // Split rest into flagged (multiple), flagged (single), and unflagged
+    const multipleFlags: LiveItem[] = []
+    const singleFlag: LiveItem[] = []
+    const noFlags: LiveItem[] = []
+    for (const item of rest) {
+      const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet)
+      if (flags.length > 1) multipleFlags.push(item)
+      else if (flags.length === 1) singleFlag.push(item)
+      else noFlags.push(item)
+    }
+    // Sort each group by sales count (highest first)
+    const sortBySales = (a: LiveItem, b: LiveItem) => (liveSalesCounts.get(b.id) ?? 0) - (liveSalesCounts.get(a.id) ?? 0)
+    multipleFlags.sort(sortBySales)
+    singleFlag.sort(sortBySales)
+    noFlags.sort(sortBySales)
+
+    const restSorted = [...multipleFlags, ...singleFlag, ...noFlags]
+    return [due, restSorted] as [LiveItem[], LiveItem[]]
+  }, [liveCatalogueItems, liveCountStatus, liveMode, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveSalesCounts])
 
   async function recordTap() {
     if (!liveSelectedItem || !liveQty) return
