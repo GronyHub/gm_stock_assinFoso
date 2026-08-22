@@ -2704,11 +2704,11 @@ function ItemHubPageInner() {
   // All filters bar -- type, group, sale filters available on all tabs
   function renderAllFiltersBar() {
     return (
-      <div className="flex items-center gap-1 px-2 py-1 bg-gray-100 border-b border-gray-200 overflow-x-auto">
+      <div className="flex items-center gap-2 px-2 py-1 bg-gray-100 border-b border-gray-200">
         <select
           value={liveProductTypeFilter}
           onChange={e => setLiveProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
-          className="text-[10px] px-1 py-0.5 rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 shrink-0"
+          className="text-[10px] px-2 py-0.5 rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 flex-1 min-w-0"
         >
           <option value="all">All</option>
           <option value="goods">Goods</option>
@@ -2717,14 +2717,14 @@ function ItemHubPageInner() {
         <select
           value={liveGroupFilter || ''}
           onChange={e => setLiveGroupFilter(e.target.value || null)}
-          className="text-[10px] px-1 py-0.5 rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 shrink-0"
+          className="text-[10px] px-2 py-0.5 rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 flex-1 min-w-0"
         >
           <option value="">Groups</option>
           {liveGroups.map(g => (
             <option key={g} value={g}>{g}</option>
           ))}
         </select>
-        {renderLiveSaleFilterSelect(true)}
+        <div className="flex-1 min-w-0">{renderLiveSaleFilterSelect(true)}</div>
       </div>
     )
   }
