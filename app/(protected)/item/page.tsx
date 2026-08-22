@@ -4295,19 +4295,37 @@ function ItemHubPageInner() {
                     </select>
                   </div>
                   <div className="flex gap-1 items-center">
-                    <div>
-                      <LawsToggleBar
-                        show={liveSaleLaws.show}
-                        setShow={liveSaleLaws.setShow}
-                        openForm={liveSaleLaws.openForm}
-                        setOpenForm={liveSaleLaws.setOpenForm}
-                        hideZeroFlags={liveSaleLaws.hideZeroFlags}
-                        setHideZeroFlags={liveSaleLaws.setHideZeroFlags}
-                        activeFilters={liveSaleLaws.activeFilters}
-                        toggleFilter={liveSaleLaws.toggleFilter}
-                        dark={true}
-                      />
-                    </div>
+                    <select
+                      value={liveCurrentView?.kind === 'violation' ? `violation:${liveCurrentView.key}` : liveCurrentView?.kind === 'lossByItem' ? 'view:lossByItem' : liveCurrentView?.kind === 'dailySummary' ? 'view:dailySummary' : ''}
+                      onChange={e => {
+                        const v = e.target.value
+                        if (!v) {
+                          setLiveCurrentView(null)
+                        } else if (v.startsWith('violation:')) {
+                          const violationKey = v.slice('violation:'.length)
+                          setLiveCurrentView({ kind: 'violation' as const, key: violationKey })
+                        } else if (v.startsWith('view:')) {
+                          const viewKey = v.slice('view:'.length)
+                          if (viewKey === 'lossByItem') setLiveCurrentView({ kind: 'lossByItem' as const })
+                          else if (viewKey === 'dailySummary') setLiveCurrentView({ kind: 'dailySummary' as const })
+                        }
+                      }}
+                      title="Flags & Views"
+                      className="text-[10px] px-1.5 py-0.5 border border-white rounded-md focus:outline-none focus:ring-1 focus:ring-blue-300 bg-white/80 text-gray-800 hover:bg-white shrink-0"
+                    >
+                      <option value="">⚖️ Flags</option>
+                      <optgroup label={liveMode === 'sale' || liveMode === 'log' ? 'Items' : (liveMode === 'sales' ? 'Sales' : (liveMode === 'bills' ? 'Bills' : 'Count'))}>
+                        {liveComputedFlags.filter(f => f.key.startsWith('flag_') || f.key.startsWith('violation_')).map(f => (
+                          <option key={f.key} value={`violation:${f.key}`}>
+                            {f.label} ({f.count})
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Views">
+                        <option value="view:lossByItem">Loss by Item</option>
+                        <option value="view:dailySummary">Daily Summary</option>
+                      </optgroup>
+                    </select>
                     <button
                       type="button"
                       onClick={() => setLiveHelpModalOpen(true)}
