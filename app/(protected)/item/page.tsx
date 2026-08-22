@@ -12,6 +12,7 @@ import { LossDialog, PairingDialog, type LossExtra, type LossPrompt, type Pairin
 import { ItemEditForm, EMPTY_ITEM_EDIT_FORM } from './_components/ItemEditForm'
 import HistoryPanel from './_components/HistoryPanel'
 import { TrainingGuideModal } from './_components/TrainingGuideModal'
+import { LawsModal } from './_components/LawsModal'
 import ItemDetailPanel from './_components/ItemDetailPanel'
 import { AliasPicker, MatchPicker, MergeItemPicker, type AliasRecord, type MatchRecord, type CandidateItem } from './_components/LossTab'
 
@@ -706,6 +707,7 @@ function ItemHubPageInner() {
   const rawLiveGroup = searchParams.get('liveGroup')
   const [liveGroupFilter, setLiveGroupFilter] = useState<string | null>(rawLiveGroup ?? null)
   const [liveHelpModalOpen, setLiveHelpModalOpen] = useState(false)
+  const [liveLawsModalOpen, setLiveLawsModalOpen] = useState(false)
   const rawLiveMode = searchParams.get('mode')
   const initialLiveMode = (rawLiveMode as 'sale' | 'sales' | 'bills' | 'lossByTarget' | 'log' | 'count' | null) ?? 'sale'
   const [liveMode, setLiveMode] = useState<'sale' | 'sales' | 'bills' | 'lossByTarget' | 'log' | 'count'>(initialLiveMode)
@@ -4402,6 +4404,14 @@ function ItemHubPageInner() {
                     >
                       ?
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setLiveLawsModalOpen(true)}
+                      className="w-5 h-5 rounded-md bg-white text-gray-600 hover:bg-gray-100 font-semibold text-[10px] flex items-center justify-center transition"
+                      title="Laws, Tasks & Notes"
+                    >
+                      ⚙️
+                    </button>
                   </div>
                 </div>
                 {/* Items Violation Flags Filter */}
@@ -5250,6 +5260,7 @@ function ItemHubPageInner() {
           </>)}
 
           <TrainingGuideModal isOpen={liveHelpModalOpen} onClose={() => setLiveHelpModalOpen(false)} />
+          <LawsModal isOpen={liveLawsModalOpen} onClose={() => setLiveLawsModalOpen(false)} panel={liveSaleLaws} />
         </> ) : null}
         {addForm === 'expense' && outerTab === 'loss' && lossView === 'expenses' && <div className="px-4"><NewExpenseForm onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'item'    && outerTab === 'loss' && lossView === 'items'    && <div className="px-4"><NewItemForm    onSuccess={() => { setAddForm(null); loadItems() }} /></div>}
