@@ -4738,7 +4738,7 @@ function ItemHubPageInner() {
               tapping sales, so this row steps aside rather than the two
               competing for the same strip. */}
           {addForm !== 'live' && !(outerTab === 'loss' && lossView === 'sales' && !liveExpanded) && (
-          <div className="shrink-0 flex items-center gap-2 px-2 py-2 bg-white border-t border-gray-200 overflow-x-auto">
+          <div className="sticky bottom-0 flex items-center gap-2 px-2 py-2 bg-white border-t border-gray-200 overflow-x-auto z-10">
             <button onClick={() => setGlobalSearchOpen(true)} title="Search"
               className="w-8 h-8 rounded-full flex items-center justify-center text-lg border-2 border-transparent text-gray-500 opacity-70 hover:opacity-100 transition shrink-0">
               🔍
@@ -4753,7 +4753,7 @@ function ItemHubPageInner() {
               old LiveSaleForm's own behavior, which only ever portaled
               content into these two slots from its own Sale-mode return. */}
           {addForm !== 'live' && outerTab === 'loss' && lossView === 'sales' && !liveExpanded && (
-          <div className="shrink-0 flex items-center gap-2 px-2 py-2 bg-white border-t border-gray-200 overflow-x-auto">
+          <div className="sticky bottom-0 flex items-center gap-2 px-2 py-2 bg-white border-t border-gray-200 overflow-x-auto z-10">
             <div className="flex items-center gap-2 shrink-0">{liveMode === 'sale' && renderLiveSearchControls(true)}</div>
             <div className="shrink-0">{liveMode === 'sale' && renderLiveSaleFilterSelect(false)}</div>
           </div>
