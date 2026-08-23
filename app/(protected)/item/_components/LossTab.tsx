@@ -1082,6 +1082,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
       // full page reload -- the "Count every N days" field's save looked
       // like it silently did nothing.
       count_interval: d?.count_interval ?? null,
+      gmc_type: form.gmc_type || null,
     })
     onRelationsSaved(aliases, matches)
   }
