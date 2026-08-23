@@ -2290,7 +2290,17 @@ function ItemHubPageInner() {
       try {
         const r = await fetch(`/api/items/search?q=${encodeURIComponent(liveItemPickerQuery)}`)
         const results = await r.json()
-        setLiveItemPickerResults(Array.isArray(results) ? results : [])
+        if (Array.isArray(results)) {
+          const sorted = results.sort((a, b) => {
+            const aHasSoh = Number(a.soh) > 0
+            const bHasSoh = Number(b.soh) > 0
+            if (aHasSoh === bHasSoh) return 0
+            return aHasSoh ? -1 : 1
+          })
+          setLiveItemPickerResults(sorted)
+        } else {
+          setLiveItemPickerResults([])
+        }
         setLiveShowItemPicker(true)
       } catch (e) {
         setLiveItemPickerResults([])
@@ -2576,8 +2586,13 @@ function ItemHubPageInner() {
       else if (flags.length === 1) singleFlag.push(item)
       else noFlags.push(item)
     }
-    // Sort each group by sales count (highest first)
-    const sortBySales = (a: LiveItem, b: LiveItem) => (liveSalesCounts.get(b.id) ?? 0) - (liveSalesCounts.get(a.id) ?? 0)
+    // Sort each group by sales count (highest first), with 0 SOH items last
+    const sortBySales = (a: LiveItem, b: LiveItem) => {
+      const aHasSoh = Number(a.soh) > 0
+      const bHasSoh = Number(b.soh) > 0
+      if (aHasSoh !== bHasSoh) return aHasSoh ? -1 : 1
+      return (liveSalesCounts.get(b.id) ?? 0) - (liveSalesCounts.get(a.id) ?? 0)
+    }
     multipleFlags.sort(sortBySales)
     singleFlag.sort(sortBySales)
     noFlags.sort(sortBySales)
@@ -3388,7 +3403,7 @@ function ItemHubPageInner() {
                   }}
                   className="w-full text-left px-2 py-1 hover:bg-green-50 border-b border-gray-100 last:border-b-0 text-[11px] text-gray-700 flex items-center justify-between gap-2"
                 >
-                  <span className="font-semibold text-gray-900 truncate">{item.name}</span>
+                  <span className={`font-semibold truncate ${Number(item.soh) === 0 ? 'line-through text-gray-400' : 'text-gray-900'}`}>{item.name}</span>
                   <span className="text-[9px] text-gray-500 shrink-0">₵{formatPrice(item.selling_price)} S:{Math.ceil(Number(item.soh))}</span>
                 </button>
               ))}
@@ -4795,7 +4810,7 @@ function ItemHubPageInner() {
                           <button
                             type="button"
                             onClick={() => openEditGridItem(item.id)}
-                            className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 leading-tight truncate text-left hover:underline transition"
+                            className={`text-[11px] font-semibold leading-tight truncate text-left transition ${Number(item.soh) === 0 ? 'line-through text-gray-400 hover:text-gray-500' : 'text-blue-600 hover:text-blue-700 hover:underline'}`}
                           >
                             {item.name}
                           </button>
@@ -4866,7 +4881,7 @@ function ItemHubPageInner() {
                           <button
                             type="button"
                             onClick={() => openEditGridItem(item.id)}
-                            className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 leading-tight truncate text-left hover:underline transition"
+                            className={`text-[11px] font-semibold leading-tight truncate text-left transition ${Number(item.soh) === 0 ? 'line-through text-gray-400 hover:text-gray-500' : 'text-blue-600 hover:text-blue-700 hover:underline'}`}
                           >
                             {item.name}
                           </button>
