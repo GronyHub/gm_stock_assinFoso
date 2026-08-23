@@ -1892,7 +1892,7 @@ function ItemHubPageInner() {
   // mode below renders its own copy of the mode toggle/filter bar/search
   // box while liveExpanded is true instead of relying on those.
   const liveRootClassName = `bg-white flex flex-col ${liveExpanded ? 'fixed inset-0 z-50 overflow-y-auto' : 'h-full'}`
-  const [liveCurrentView, setLiveCurrentView] = useState<{ kind: 'violation' | 'serviceGroup' | 'lossByItem' | 'aliasWide' | 'serviceMatches' | 'newItem' | 'dailySummary'; key?: string; group?: string } | null>(null)
+  const [liveCurrentView, setLiveCurrentView] = useState<{ kind: 'violation' | 'serviceGroup' | 'lossByItem' | 'aliasWide' | 'serviceMatches' | 'newItem' | 'dailySummary' | 'gmcPacks'; key?: string; group?: string } | null>(null)
   // Sale mode's own item-grid filter -- Loss/Gain (from liveLossByItemId
   // below) and Low SOH (item.soh <= 0) are plain buckets; 'interval' reuses
   // each item's own count_interval string (the same Daily/Every Nd/Not
@@ -3027,7 +3027,7 @@ function ItemHubPageInner() {
           ))}
         </select>
         <select
-          value={liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind === 'flag' ? `flag:${liveSaleFilter.key}` : liveSaleFilter.kind : liveCurrentView?.kind === 'violation' ? `violation:${liveCurrentView.key}` : liveCurrentView?.kind === 'aliasWide' ? 'view:aliasWide' : liveCurrentView?.kind === 'serviceMatches' ? 'view:serviceMatches' : ''}
+          value={liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind === 'flag' ? `flag:${liveSaleFilter.key}` : liveSaleFilter.kind : liveCurrentView?.kind === 'violation' ? `violation:${liveCurrentView.key}` : liveCurrentView?.kind === 'aliasWide' ? 'view:aliasWide' : liveCurrentView?.kind === 'serviceMatches' ? 'view:serviceMatches' : liveCurrentView?.kind === 'gmcPacks' ? 'view:gmcPacks' : ''}
           onChange={e => {
             const v = e.target.value
             if (!v) {
@@ -3048,6 +3048,7 @@ function ItemHubPageInner() {
               const viewKey = v.slice('view:'.length)
               if (viewKey === 'aliasWide') setLiveCurrentView({ kind: 'aliasWide' as const })
               else if (viewKey === 'serviceMatches') setLiveCurrentView({ kind: 'serviceMatches' as const })
+              else if (viewKey === 'gmcPacks') setLiveCurrentView({ kind: 'gmcPacks' as const })
             } else {
               setLiveCurrentView(null)
               setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'soh' })
@@ -3353,7 +3354,7 @@ function ItemHubPageInner() {
   function renderLiveSaleFilterSelect(compact: boolean) {
     return (
       <select
-        value={liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind === 'flag' ? `flag:${liveSaleFilter.key}` : liveSaleFilter.kind : liveCurrentView?.kind === 'violation' ? `violation:${liveCurrentView.key}` : liveCurrentView?.kind === 'aliasWide' ? 'view:aliasWide' : liveCurrentView?.kind === 'serviceMatches' ? 'view:serviceMatches' : ''}
+        value={liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind === 'flag' ? `flag:${liveSaleFilter.key}` : liveSaleFilter.kind : liveCurrentView?.kind === 'violation' ? `violation:${liveCurrentView.key}` : liveCurrentView?.kind === 'aliasWide' ? 'view:aliasWide' : liveCurrentView?.kind === 'serviceMatches' ? 'view:serviceMatches' : liveCurrentView?.kind === 'gmcPacks' ? 'view:gmcPacks' : ''}
         onChange={e => {
           const v = e.target.value
           if (!v) {
@@ -3375,6 +3376,7 @@ function ItemHubPageInner() {
             const viewKey = v.slice('view:'.length)
             if (viewKey === 'aliasWide') setLiveCurrentView({ kind: 'aliasWide' as const })
             else if (viewKey === 'serviceMatches') setLiveCurrentView({ kind: 'serviceMatches' as const })
+            else if (viewKey === 'gmcPacks') setLiveCurrentView({ kind: 'gmcPacks' as const })
           } else {
             setLiveCurrentView(null)
             setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'soh' })
@@ -3754,7 +3756,7 @@ function ItemHubPageInner() {
                     ))}
                   </select>
                   <select
-                    value={liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind === 'flag' ? `flag:${liveSaleFilter.key}` : liveSaleFilter.kind : liveCurrentView?.kind === 'violation' ? `violation:${liveCurrentView.key}` : liveCurrentView?.kind === 'aliasWide' ? 'view:aliasWide' : liveCurrentView?.kind === 'serviceMatches' ? 'view:serviceMatches' : ''}
+                    value={liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind === 'flag' ? `flag:${liveSaleFilter.key}` : liveSaleFilter.kind : liveCurrentView?.kind === 'violation' ? `violation:${liveCurrentView.key}` : liveCurrentView?.kind === 'aliasWide' ? 'view:aliasWide' : liveCurrentView?.kind === 'serviceMatches' ? 'view:serviceMatches' : liveCurrentView?.kind === 'gmcPacks' ? 'view:gmcPacks' : ''}
                     onChange={e => {
                       const v = e.target.value
                       if (!v) {
@@ -3775,6 +3777,7 @@ function ItemHubPageInner() {
                         const viewKey = v.slice('view:'.length)
                         if (viewKey === 'aliasWide') setLiveCurrentView({ kind: 'aliasWide' as const })
                         else if (viewKey === 'serviceMatches') setLiveCurrentView({ kind: 'serviceMatches' as const })
+                        else if (viewKey === 'gmcPacks') setLiveCurrentView({ kind: 'gmcPacks' as const })
                       } else {
                         setLiveCurrentView(null)
                         setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'soh' })
@@ -4520,6 +4523,13 @@ function ItemHubPageInner() {
             {liveCurrentView?.kind === 'serviceMatches' && (
               <div className="flex-1 overflow-y-auto">
                 <ServiceMatchesPage />
+              </div>
+            )}
+
+            {/* GMC Packs View */}
+            {liveCurrentView?.kind === 'gmcPacks' && (
+              <div className="flex-1 overflow-y-auto">
+                <GmcPacksPage />
               </div>
             )}
 
