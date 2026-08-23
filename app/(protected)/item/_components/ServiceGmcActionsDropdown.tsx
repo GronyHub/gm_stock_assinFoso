@@ -4,10 +4,11 @@ import { useState } from 'react'
 interface ActionResult {
   success: boolean
   message: string
-  results: any[]
+  results?: any[]
+  services?: any[]
 }
 
-type ActionType = 'migrate' | 'fix-losses' | 'add-constraints' | null
+type ActionType = 'migrate' | 'fix-losses' | 'add-constraints' | 'clear-costs' | null
 
 export default function ServiceGmcActionsDropdown() {
   const [open, setOpen] = useState(false)
@@ -34,6 +35,10 @@ export default function ServiceGmcActionsDropdown() {
       case 'add-constraints':
         endpoint = '/api/add-service-gmc-constraints'
         confirmMsg = 'Add database constraints to enforce service GMC data integrity?\n\nThis will prevent:\n- Cost prices on services\n- Stock counts on services\n- Bills on services\n- Sales on services'
+        break
+      case 'clear-costs':
+        endpoint = '/api/clear-service-gmc-costs'
+        confirmMsg = 'Clear cost prices from services using GMC?\n\nCost pricing information should only exist on the target GMC items, not on the services themselves.'
         break
     }
 
@@ -69,6 +74,8 @@ export default function ServiceGmcActionsDropdown() {
         return 'Fix Service Loss Records'
       case 'add-constraints':
         return 'Add Service GMC Constraints'
+      case 'clear-costs':
+        return 'Clear Service Cost Prices'
       default:
         return 'Service GMC'
     }
@@ -92,13 +99,13 @@ export default function ServiceGmcActionsDropdown() {
         )}
 
         {results && (
-          <div className={`border rounded p-2 space-y-2 ${currentAction === 'add-constraints' ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-200'}`}>
-            <p className={`text-[9px] font-bold ${currentAction === 'add-constraints' ? 'text-green-700' : 'text-blue-700'}`}>
+          <div className={`border rounded p-2 space-y-2 ${currentAction === 'add-constraints' || currentAction === 'clear-costs' ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-200'}`}>
+            <p className={`text-[9px] font-bold ${currentAction === 'add-constraints' || currentAction === 'clear-costs' ? 'text-green-700' : 'text-blue-700'}`}>
               ✓ {results.message}
             </p>
-            {results.results && results.results.length > 0 && (
+            {(results.results || results.services) && (results.results?.length ?? results.services?.length ?? 0) > 0 && (
               <div className="space-y-1 max-h-[300px] overflow-y-auto text-[8px]">
-                {results.results.map((r: any, idx: number) => (
+                {(results.results || results.services || []).map((r: any, idx: number) => (
                   <div key={idx} className="bg-white border rounded p-1.5 text-gray-700">
                     {r.service_name && (
                       <>
@@ -117,13 +124,19 @@ export default function ServiceGmcActionsDropdown() {
                         <p>Status: {r.status}</p>
                       </>
                     )}
+                    {r.name && r.cost_price_cleared !== undefined && (
+                      <>
+                        <p className="font-semibold">"{r.name}"</p>
+                        <p>Cost price cleared: ₵{r.cost_price_cleared || 0}</p>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
             )}
             <button
               onClick={() => { setResults(null); setError(null); setCurrentAction(null); setOpen(false) }}
-              className={`text-[8px] font-semibold underline ${currentAction === 'add-constraints' ? 'text-green-600 hover:text-green-700' : 'text-blue-600 hover:text-blue-700'}`}
+              className={`text-[8px] font-semibold underline ${currentAction === 'add-constraints' || currentAction === 'clear-costs' ? 'text-green-600 hover:text-green-700' : 'text-blue-600 hover:text-blue-700'}`}
             >
               Done
             </button>
@@ -161,10 +174,17 @@ export default function ServiceGmcActionsDropdown() {
           </button>
           <button
             onClick={() => runAction('add-constraints')}
-            className="w-full text-left text-[9px] px-3 py-2 hover:bg-red-50 transition"
+            className="w-full text-left text-[9px] px-3 py-2 hover:bg-red-50 border-b border-gray-100 transition"
           >
             <p className="font-semibold text-red-700">🔒 Add Constraints</p>
             <p className="text-[8px] text-gray-600">Enforce data integrity at database level</p>
+          </button>
+          <button
+            onClick={() => runAction('clear-costs')}
+            className="w-full text-left text-[9px] px-3 py-2 hover:bg-green-50 transition"
+          >
+            <p className="font-semibold text-green-700">💰 Clear Cost Prices</p>
+            <p className="text-[8px] text-gray-600">Remove cost prices from services using GMC</p>
           </button>
         </div>
       )}
