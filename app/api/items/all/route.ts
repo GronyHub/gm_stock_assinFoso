@@ -28,9 +28,12 @@ export async function GET(req: NextRequest) {
                COALESCE(i.purchase_rate, 0) AS cost_price,
                COALESCE(i.product_type, 'goods') AS product_type,
                COALESCE(i.gmc_type, '') AS gmc_type,
+               i.converts_to_item_id,
+               target.canonical_name AS converts_to_name,
                NOW() AS updated_at
         FROM active_items i
         LEFT JOIN item_stock_summary s ON s.item_id = i.id
+        LEFT JOIN items target ON target.id = i.converts_to_item_id
         WHERE LOWER(COALESCE(i.status, '')) != 'service'
         ORDER BY i.canonical_name
         LIMIT ${limit}
@@ -50,16 +53,19 @@ export async function GET(req: NextRequest) {
     console.error('items/all primary query failed, falling back to items table (no soh/count_interval):', e instanceof Error ? e.message : String(e))
     try {
       const rows = await sql`
-        SELECT id, canonical_name AS name, cf_group AS "group",
+        SELECT i.id, i.canonical_name AS name, i.cf_group AS "group",
                0 AS soh,
-               COALESCE(selling_rate, 0) AS selling_price,
-               COALESCE(purchase_rate, 0) AS cost_price,
-               COALESCE(product_type, 'goods') AS product_type,
-               COALESCE(gmc_type, '') AS gmc_type,
+               COALESCE(i.selling_rate, 0) AS selling_price,
+               COALESCE(i.purchase_rate, 0) AS cost_price,
+               COALESCE(i.product_type, 'goods') AS product_type,
+               COALESCE(i.gmc_type, '') AS gmc_type,
+               i.converts_to_item_id,
+               target.canonical_name AS converts_to_name,
                NOW() AS updated_at
-        FROM items
-        WHERE (status IS NULL OR LOWER(status) NOT IN ('inactive','service'))
-        ORDER BY canonical_name
+        FROM items i
+        LEFT JOIN items target ON target.id = i.converts_to_item_id
+        WHERE (i.status IS NULL OR LOWER(i.status) NOT IN ('inactive','service'))
+        ORDER BY i.canonical_name
         LIMIT ${limit}
         OFFSET ${offset}
       `

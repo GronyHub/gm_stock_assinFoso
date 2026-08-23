@@ -504,7 +504,7 @@ const PANE_ACCENT: Record<OuterTab, string> = {
 // cost_price vs. item_name/cf_group/selling_rate/purchase_rate/
 // calculated_soh -- these are two independently-fetched catalogues, not a
 // dedupe opportunity for this pass).
-type LiveItem = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; product_type: string | null; gmc_type?: string | null; count_interval?: string | null }
+type LiveItem = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; product_type: string | null; gmc_type?: string | null; count_interval?: string | null; converts_to_item_id?: number | null; converts_to_name?: string | null }
 type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null }
 type ViolationType = { key: string; label: string; description?: string }
 // Sale mode's due-count queues -- same shape /api/stock/daily,
@@ -4738,6 +4738,7 @@ function ItemHubPageInner() {
                                 <span className="text-gray-400"> · </span>
                                 <span className="inline-block rounded bg-purple-100 px-1 py-0.5 text-[7px] font-bold text-purple-700">
                                   {item.gmc_type === 'gmc' ? 'GMC' : item.gmc_type === 'service_gmc' ? 'SVC+GMC' : item.gmc_type === 'service_gmc_serving' ? 'SVC/GMC→' : item.gmc_type === 'pack_to_gmc' ? 'PKG→GMC' : 'SVC/GMC'}
+                                  {item.converts_to_name && ` → ${item.converts_to_name}`}
                                 </span>
                               </>
                             )}
@@ -4796,6 +4797,7 @@ function ItemHubPageInner() {
                                 <span className="text-gray-400"> · </span>
                                 <span className="inline-block rounded bg-purple-100 px-1 py-0.5 text-[7px] font-bold text-purple-700">
                                   {item.gmc_type === 'gmc' ? 'GMC' : item.gmc_type === 'service_gmc' ? 'SVC+GMC' : item.gmc_type === 'service_gmc_serving' ? 'SVC/GMC→' : item.gmc_type === 'pack_to_gmc' ? 'PKG→GMC' : 'SVC/GMC'}
+                                  {item.converts_to_name && ` → ${item.converts_to_name}`}
                                 </span>
                               </>
                             )}
