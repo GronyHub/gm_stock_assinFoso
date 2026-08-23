@@ -21,6 +21,29 @@ export async function POST(req: Request) {
   try {
     const results: any[] = []
 
+    // Pre-flight: Clear any remaining cost_price values on services using GMC
+    const servicesToClean = await sql`
+      SELECT COUNT(*)::int as cnt
+      FROM items
+      WHERE gmc_type = 'service_using_gmc'
+        AND purchase_rate IS NOT NULL
+        AND status IS NULL
+    `
+
+    if (servicesToClean[0]?.cnt > 0) {
+      await sql`
+        UPDATE items
+        SET purchase_rate = NULL
+        WHERE gmc_type = 'service_using_gmc'
+          AND purchase_rate IS NOT NULL
+          AND status IS NULL
+      `
+      results.push({
+        step: 'cleanup',
+        message: `Cleared cost prices from ${servicesToClean[0].cnt} service${servicesToClean[0].cnt !== 1 ? 's' : ''}`,
+      })
+    }
+
     // Constraint 1: Services using GMC must have NULL cost_price
     try {
       await sql`
