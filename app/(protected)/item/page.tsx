@@ -2882,37 +2882,31 @@ function ItemHubPageInner() {
   // without waiting for the full form save or closing the edit mode.
   async function saveGmcTypeOnly(gmcType: string) {
     if (!liveSelectedItem) {
-      console.warn('No liveSelectedItem to save')
-      return
+      throw new Error('No item selected')
     }
-    console.log('Saving GMC type:', gmcType, 'for item:', liveSelectedItem.id)
     try {
       const res = await fetch(`/api/items/${liveSelectedItem.id}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ gmc_type: gmcType || null }),
       })
       if (!res.ok) {
-        const error = await res.json().catch(() => ({}))
-        console.error('API error:', error)
-        return
+        const error = await res.json().catch(() => ({ error: 'API error' }))
+        throw new Error(error.error || 'Failed to save GMC type')
       }
       const updated = await res.json()
-      console.log('Save successful, updated:', updated)
       const itemId = liveSelectedItem.id
       setLiveSelectedItem(prev => {
         if (prev && prev.id === itemId) {
-          const newState = {
+          return {
             ...prev,
             gmc_type: updated.gmc_type ?? prev.gmc_type,
           }
-          console.log('Updated liveSelectedItem state:', newState)
-          return newState
         }
         return prev
       })
       fetch('/api/items/all').then(r => r.json()).then(d => setLiveAllItems(Array.isArray(d) ? d : [])).catch(() => {})
     } catch (e) {
-      console.error('Error saving GMC type:', e)
+      throw e
     }
   }
 

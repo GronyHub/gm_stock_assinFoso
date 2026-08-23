@@ -81,16 +81,24 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
   const large = size === 'large'
   const [gmcSaving, setGmcSaving] = useState(false)
   const [gmcSaved, setGmcSaved] = useState(false)
+  const [gmcError, setGmcError] = useState('')
   const gmcSavedTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const gmcErrorTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const handleGmcTypeSave = async () => {
     if (!onGmcTypeSave) return
     setGmcSaving(true)
+    setGmcError('')
     try {
       await onGmcTypeSave(form.gmc_type)
       setGmcSaved(true)
       if (gmcSavedTimeoutRef.current) clearTimeout(gmcSavedTimeoutRef.current)
       gmcSavedTimeoutRef.current = setTimeout(() => setGmcSaved(false), 2000)
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to save GMC type'
+      setGmcError(message)
+      if (gmcErrorTimeoutRef.current) clearTimeout(gmcErrorTimeoutRef.current)
+      gmcErrorTimeoutRef.current = setTimeout(() => setGmcError(''), 3000)
     } finally {
       setGmcSaving(false)
     }
@@ -99,6 +107,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
   useEffect(() => {
     return () => {
       if (gmcSavedTimeoutRef.current) clearTimeout(gmcSavedTimeoutRef.current)
+      if (gmcErrorTimeoutRef.current) clearTimeout(gmcErrorTimeoutRef.current)
     }
   }, [])
 
@@ -219,6 +228,16 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
             </button>
           )}
         </div>
+        {gmcError && (
+          <div className={`mt-1 ${large ? 'text-sm' : 'text-[9px]'} text-red-600 font-semibold`}>
+            ✗ {gmcError}
+          </div>
+        )}
+        {gmcSaved && (
+          <div className={`mt-1 ${large ? 'text-sm' : 'text-[9px]'} text-green-600 font-semibold`}>
+            ✓ GMC Type saved
+          </div>
+        )}
       </div>
       {!isService && (
         <div className={s.sectionWrap}>
