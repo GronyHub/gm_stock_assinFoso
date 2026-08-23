@@ -77,6 +77,27 @@ export default function GmcPacksPage() {
     service_using_gmc: 'Service uses GMC',
   }
 
+  // Group by target item to show continuous linkage
+  const groupedByTarget = packs.reduce((acc, pack) => {
+    const targetKey = `${pack.converts_to_item_id}-${pack.converts_to_name}`
+    if (!acc[targetKey]) {
+      acc[targetKey] = {
+        target_id: pack.converts_to_item_id,
+        target_name: pack.converts_to_name,
+        sources: []
+      }
+    }
+    acc[targetKey].sources.push({
+      item_name: pack.item_name,
+      gmc_type: pack.gmc_type,
+      units_per_pack: pack.units_per_pack,
+      product_type: pack.product_type
+    })
+    return acc
+  }, {} as Record<string, any>)
+
+  const groupedRows = Object.values(groupedByTarget)
+
   const sourceItem = sourceItemId ? allItems.find(i => i.id === sourceItemId) : null
   const targetItem = targetItemId ? allItems.find(i => i.id === targetItemId) : null
   const isComplete = sourceItemId && gmcType && targetItemId && unitsPack
@@ -189,35 +210,35 @@ export default function GmcPacksPage() {
         <thead>
           <tr className="border-b-2 border-gray-300 bg-gray-50">
             <th className="border border-gray-200 px-4 py-2 text-left font-semibold text-gray-700">
-              Source Item / Service
-            </th>
-            <th className="border border-gray-200 px-4 py-2 text-left font-semibold text-gray-700">
-              GMC Type
-            </th>
-            <th className="border border-gray-200 px-4 py-2 text-left font-semibold text-gray-700">
               Target Item / Service
             </th>
-            <th className="border border-gray-200 px-4 py-2 text-center font-semibold text-gray-700">
-              Units/Pack
+            <th className="border border-gray-200 px-4 py-2 text-left font-semibold text-gray-700">
+              Source Items / Services (Continuous Linkage)
             </th>
           </tr>
         </thead>
         <tbody>
-          {packs.map((pack) => (
-            <tr key={pack.id} className="hover:bg-blue-50">
-              <td className="border border-gray-200 px-4 py-2 text-gray-900">
-                {pack.item_name}
+          {groupedRows.map((row: any, idx: number) => (
+            <tr key={idx} className="hover:bg-blue-50">
+              <td className="border border-gray-200 px-4 py-2 text-gray-900 font-semibold">
+                {row.target_name || '(unresolved)'}
               </td>
               <td className="border border-gray-200 px-4 py-2">
-                <span className="inline-block rounded bg-blue-100 px-2 py-1 text-sm font-medium text-blue-800">
-                  {gmcTypeLabels[pack.gmc_type] || pack.gmc_type}
-                </span>
-              </td>
-              <td className="border border-gray-200 px-4 py-2 text-gray-900">
-                {pack.converts_to_name || '(unresolved)'}
-              </td>
-              <td className="border border-gray-200 px-4 py-2 text-center text-gray-900">
-                {pack.units_per_pack !== null ? pack.units_per_pack : '—'}
+                <div className="space-y-2">
+                  {row.sources.map((source: any, sourceIdx: number) => (
+                    <div key={sourceIdx} className="flex items-center gap-2 text-sm">
+                      <span className="text-gray-900">{source.item_name}</span>
+                      <span className="inline-block rounded bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800">
+                        {gmcTypeLabels[source.gmc_type] || source.gmc_type}
+                      </span>
+                      {source.units_per_pack && (
+                        <span className="text-gray-600 text-xs">
+                          ({source.units_per_pack} units)
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </td>
             </tr>
           ))}
