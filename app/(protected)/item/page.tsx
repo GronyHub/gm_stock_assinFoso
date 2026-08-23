@@ -2880,12 +2880,14 @@ function ItemHubPageInner() {
 
   // Save only the GMC type field immediately when the tick button is clicked,
   // without waiting for the full form save or closing the edit mode.
+  // Works for both sale-tap sheet and grid edit modal items.
   async function saveGmcTypeOnly(gmcType: string) {
-    if (!liveSelectedItem) {
-      throw new Error('No item selected')
+    const itemId = liveSelectedItem?.id || liveEditingGridItemId
+    if (!itemId) {
+      throw new Error('No item to save')
     }
     try {
-      const res = await fetch(`/api/items/${liveSelectedItem.id}`, {
+      const res = await fetch(`/api/items/${itemId}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ gmc_type: gmcType || null }),
       })
@@ -2894,16 +2896,19 @@ function ItemHubPageInner() {
         throw new Error(error.error || 'Failed to save GMC type')
       }
       const updated = await res.json()
-      const itemId = liveSelectedItem.id
-      setLiveSelectedItem(prev => {
-        if (prev && prev.id === itemId) {
-          return {
-            ...prev,
-            gmc_type: updated.gmc_type ?? prev.gmc_type,
+      // Update the selected item in sale-tap sheet
+      if (liveSelectedItem && liveSelectedItem.id === itemId) {
+        setLiveSelectedItem(prev => {
+          if (prev && prev.id === itemId) {
+            return {
+              ...prev,
+              gmc_type: updated.gmc_type ?? prev.gmc_type,
+            }
           }
-        }
-        return prev
-      })
+          return prev
+        })
+      }
+      // Refresh the item list so grid shows updated values
       fetch('/api/items/all').then(r => r.json()).then(d => setLiveAllItems(Array.isArray(d) ? d : [])).catch(() => {})
     } catch (e) {
       throw e
