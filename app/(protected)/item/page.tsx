@@ -719,14 +719,15 @@ function ItemHubPageInner() {
   const [liveSalesViolationFilter, setLiveSalesViolationFilter] = useState<string | null>(rawLiveSalesViolation ?? null)
   const [liveBillsViolationFilter, setLiveBillsViolationFilter] = useState<string | null>(rawLiveBillsViolation ?? null)
   const rawLiveSaleFilter = searchParams.get('liveSaleFilter')
-  const initialLiveSaleFilter: { kind: 'loss' } | { kind: 'gain' } | { kind: 'soh' } | { kind: 'interval'; label: string } | { kind: 'flag'; key: string } | null =
+  const initialLiveSaleFilter: { kind: 'loss' } | { kind: 'gain' } | { kind: 'count_0' } | { kind: 'count_1' } | { kind: 'interval'; label: string } | { kind: 'flag'; key: string } | null =
     rawLiveSaleFilter === 'loss' ? { kind: 'loss' } :
     rawLiveSaleFilter === 'gain' ? { kind: 'gain' } :
-    rawLiveSaleFilter === 'soh' ? { kind: 'soh' } :
+    rawLiveSaleFilter === 'count_0' ? { kind: 'count_0' } :
+    rawLiveSaleFilter === 'count_1' ? { kind: 'count_1' } :
     rawLiveSaleFilter?.startsWith('interval:') ? { kind: 'interval', label: rawLiveSaleFilter.slice(9) } :
     rawLiveSaleFilter?.startsWith('flag:') ? { kind: 'flag', key: rawLiveSaleFilter.slice(5) } :
     null
-  const [liveSaleFilter, setLiveSaleFilter] = useState<{ kind: 'loss' } | { kind: 'gain' } | { kind: 'soh' } | { kind: 'interval'; label: string } | { kind: 'flag'; key: string } | null>(initialLiveSaleFilter)
+  const [liveSaleFilter, setLiveSaleFilter] = useState<{ kind: 'loss' } | { kind: 'gain' } | { kind: 'count_0' } | { kind: 'count_1' } | { kind: 'interval'; label: string } | { kind: 'flag'; key: string } | null>(initialLiveSaleFilter)
   const rawLiveCountView = searchParams.get('liveCountView')
   const initialLiveCountView: { kind: 'interval'; label: string } | { kind: 'records' } | { kind: 'history' } | null =
     rawLiveCountView === 'records' ? { kind: 'records' } :
@@ -2339,7 +2340,8 @@ function ItemHubPageInner() {
 
     const lossCount = baseFiltered.filter(it => (liveLossByItemId.get(it.id)?.lossCount ?? 0) > 0).length
     const gainCount = baseFiltered.filter(it => (liveLossByItemId.get(it.id)?.gainCount ?? 0) > 0).length
-    const sohCount = baseFiltered.filter(it => it.soh <= 0).length
+    const countZeroSoh = baseFiltered.filter(it => Number(it.soh) === 0).length
+    const countOneSoh = baseFiltered.filter(it => Number(it.soh) === 1).length
 
     const negativeStockCount = baseFiltered.filter(it => it.product_type !== 'service' && Number(it.soh) < 0).length
     const duplicateCount = baseFiltered.filter(it => liveDuplicateItemIds.has(it.id)).length
@@ -2367,7 +2369,8 @@ function ItemHubPageInner() {
     return [
       { key: 'loss', label: '🔻 Loss', count: lossCount },
       { key: 'gain', label: '🔺 Gain', count: gainCount },
-      { key: 'soh', label: 'Low SOH', count: sohCount },
+      { key: 'count_0', label: 'Count of 0', count: countZeroSoh },
+      { key: 'count_1', label: 'Count of 1', count: countOneSoh },
       ...intervalFlags,
       { key: 'flag_negative_stock', label: '⚠ Negative Stock', count: negativeStockCount },
       { key: 'flag_duplicate', label: '⚠ Duplicate Item', count: duplicateCount },
@@ -2421,13 +2424,15 @@ function ItemHubPageInner() {
       filtered = filtered.filter(item => liveGmcItemIds.has(item.id))
     }
 
-    // Apply Sale mode's own Loss/Gain/SOH/count-interval/flag filter
+    // Apply Sale mode's own Loss/Gain/Count/count-interval/flag filter
     if (liveSaleFilter?.kind === 'loss') {
       filtered = filtered.filter(item => (liveLossByItemId.get(item.id)?.lossCount ?? 0) > 0)
     } else if (liveSaleFilter?.kind === 'gain') {
       filtered = filtered.filter(item => (liveLossByItemId.get(item.id)?.gainCount ?? 0) > 0)
-    } else if (liveSaleFilter?.kind === 'soh') {
-      filtered = filtered.filter(item => item.soh <= 0)
+    } else if (liveSaleFilter?.kind === 'count_0') {
+      filtered = filtered.filter(item => Number(item.soh) === 0)
+    } else if (liveSaleFilter?.kind === 'count_1') {
+      filtered = filtered.filter(item => Number(item.soh) === 1)
     } else if (liveSaleFilter?.kind === 'interval') {
       filtered = filtered.filter(item => item.count_interval === liveSaleFilter.label)
     } else if (liveSaleFilter?.kind === 'flag') {
@@ -3156,7 +3161,7 @@ function ItemHubPageInner() {
               else if (viewKey === 'gmcPacks') setLiveCurrentView({ kind: 'gmcPacks' as const })
             } else {
               setLiveCurrentView(null)
-              setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'soh' })
+              setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'count_0' | 'count_1' })
             }
           }}
           className="text-[10px] px-2 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white flex-1"
@@ -3484,7 +3489,7 @@ function ItemHubPageInner() {
             else if (viewKey === 'gmcPacks') setLiveCurrentView({ kind: 'gmcPacks' as const })
           } else {
             setLiveCurrentView(null)
-            setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'soh' })
+            setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'count_0' | 'count_1' })
           }
         }}
         className={compact
@@ -3934,7 +3939,7 @@ function ItemHubPageInner() {
                       } else {
                         setLiveCurrentView(null)
                         setLiveGmcTypeFilter(null)
-                        setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'soh' })
+                        setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'count_0' | 'count_1' })
                       }
                     }}
                     className="text-[9px] px-1.5 py-0.5 border border-green-500 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white w-28"
