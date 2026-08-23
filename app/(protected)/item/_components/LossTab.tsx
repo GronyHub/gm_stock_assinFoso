@@ -1020,7 +1020,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
       item_name: item.item_name, cf_group: item.cf_group ?? '', selling_rate: item.sp ?? '', purchase_rate: item.cp ?? '',
       units_per_pack: item.units_per_pack ?? '', unit_name: '',
       converts_to_item_id: item.converts_to_item_id ? String(item.converts_to_item_id) : '',
-      count_excluded: false, count_cadence_days: '', count_excluded_reason: '', gmc_type: item.gmc_type ?? '',
+      count_excluded: false, count_cadence_days: '', count_excluded_reason: '', gmc_type: item.gmc_type ?? '', product_type: item.product_type ?? '',
     })
     setCurrentCountInterval(null)
     setCurrentSoh(null)

@@ -11,7 +11,7 @@ import { GMCBadge } from './GMCBadge'
 export const EMPTY_ITEM_EDIT_FORM = {
   item_name: '', cf_group: '', selling_rate: '', purchase_rate: '', units_per_pack: '', unit_name: '',
   converts_to_item_id: '', count_excluded: false, count_cadence_days: '', count_excluded_reason: '',
-  gmc_type: '',
+  gmc_type: '', product_type: '',
 }
 
 // 'compact' is LossTab's original dense inline-table-row styling (unchanged
@@ -165,6 +165,14 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
           <input value={form.cf_group} onChange={set('cf_group')} placeholder="Type new group name"
             className={s.input + (large ? ' mt-2' : '')} />
         )}
+      </div>
+      <div>
+        {large && <label className={s.label}>Type</label>}
+        <select value={form.product_type} onChange={set('product_type')} className={s.input}>
+          <option value="">— Select type —</option>
+          <option value="goods">Good</option>
+          <option value="services">Service</option>
+        </select>
       </div>
       <div className={`grid grid-cols-2 ${s.fieldGap}`}>
         <div>

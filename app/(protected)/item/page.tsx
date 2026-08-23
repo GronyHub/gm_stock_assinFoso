@@ -2717,6 +2717,7 @@ function ItemHubPageInner() {
         count_cadence_days: d?.count_cadence_days != null ? String(d.count_cadence_days) : '',
         count_excluded_reason: d?.count_excluded_reason ?? '',
         gmc_type: d?.gmc_type ?? '',
+        product_type: d?.product_type ?? '',
       })
       setLiveEditCurrentCountInterval(d?.count_interval ?? null)
       setLiveEditCurrentSoh(d?.calculated_soh != null ? parseFloat(d.calculated_soh) : null)
@@ -2759,6 +2760,7 @@ function ItemHubPageInner() {
         count_cadence_days: d?.count_cadence_days != null ? String(d.count_cadence_days) : '',
         count_excluded_reason: d?.count_excluded_reason ?? '',
         gmc_type: d?.gmc_type ?? '',
+        product_type: d?.product_type ?? '',
       })
       setLiveEditCurrentCountInterval(d?.count_interval ?? null)
       setLiveEditCurrentSoh(d?.calculated_soh != null ? parseFloat(d.calculated_soh) : null)
