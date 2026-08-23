@@ -210,61 +210,61 @@ export default function GmcPacksPage() {
 
       {/* Existing Packs Table */}
       <div>
-        <h3 className="text-lg font-bold text-gray-900 mb-2">Configured GMC Packs</h3>
+        <h3 className="text-xs font-bold text-gray-900 mb-1">Configured GMC Packs</h3>
         <div className="overflow-x-auto">
-      <table className="w-full border-collapse">
+      <table className="w-full border-collapse text-[10px]">
         <thead>
-          <tr className="border-b-2 border-gray-300 bg-gray-50">
-            <th className="border border-gray-200 px-4 py-2 text-left font-semibold text-gray-700">
+          <tr className="border-b border-gray-300 bg-gray-100">
+            <th className="border border-gray-200 px-1.5 py-0.5 text-left font-semibold text-gray-700">
               Pack → GMC
             </th>
-            <th className="border border-gray-200 px-4 py-2 text-center font-semibold text-gray-700">
-              Target Item / Service
+            <th className="border border-gray-200 px-1.5 py-0.5 text-center font-semibold text-gray-700">
+              Target
             </th>
-            <th className="border border-gray-200 px-4 py-2 text-left font-semibold text-gray-700">
+            <th className="border border-gray-200 px-1.5 py-0.5 text-left font-semibold text-gray-700">
               Service Uses GMC
             </th>
           </tr>
         </thead>
         <tbody>
           {groupedRows.map((row: any, idx: number) => (
-            <tr key={idx} className="hover:bg-blue-50">
-              <td className="border border-gray-200 px-4 py-2">
-                <div className="space-y-2">
+            <tr key={idx} className="hover:bg-blue-50 border-b border-gray-200">
+              <td className="border border-gray-200 px-1.5 py-0.5">
+                <div className="space-y-0.5">
                   {row.packToGmc.length > 0 ? (
                     row.packToGmc.map((source: any, sourceIdx: number) => (
-                      <div key={sourceIdx} className="flex items-center gap-2 text-sm">
+                      <div key={sourceIdx} className="flex items-center gap-1 text-[9px]">
                         <span className="text-gray-900">{source.item_name}</span>
                         {source.units_per_pack && (
-                          <span className="text-gray-600 text-xs">
-                            ({source.units_per_pack} units)
+                          <span className="text-gray-500 text-[8px]">
+                            ({source.units_per_pack}u)
                           </span>
                         )}
                       </div>
                     ))
                   ) : (
-                    <span className="text-gray-400 text-xs italic">—</span>
+                    <span className="text-gray-400 text-[8px] italic">—</span>
                   )}
                 </div>
               </td>
-              <td className="border border-gray-200 px-4 py-2 text-center text-gray-900 font-semibold">
-                {row.target_name || '(unresolved)'}
+              <td className="border border-gray-200 px-1.5 py-0.5 text-center text-gray-900 font-semibold">
+                <div className="text-[9px]">{row.target_name || '?'}</div>
               </td>
-              <td className="border border-gray-200 px-4 py-2">
-                <div className="space-y-2">
+              <td className="border border-gray-200 px-1.5 py-0.5">
+                <div className="space-y-0.5">
                   {row.serviceUsingGmc.length > 0 ? (
                     row.serviceUsingGmc.map((source: any, sourceIdx: number) => (
-                      <div key={sourceIdx} className="flex items-center gap-2 text-sm">
+                      <div key={sourceIdx} className="flex items-center gap-1 text-[9px]">
                         <span className="text-gray-900">{source.item_name}</span>
                         {source.units_per_pack && (
-                          <span className="text-gray-600 text-xs">
-                            ({source.units_per_pack} units)
+                          <span className="text-gray-500 text-[8px]">
+                            ({source.units_per_pack}u)
                           </span>
                         )}
                       </div>
                     ))
                   ) : (
-                    <span className="text-gray-400 text-xs italic">—</span>
+                    <span className="text-gray-400 text-[8px] italic">—</span>
                   )}
                 </div>
               </td>
