@@ -2881,21 +2881,39 @@ function ItemHubPageInner() {
   // Save only the GMC type field immediately when the tick button is clicked,
   // without waiting for the full form save or closing the edit mode.
   async function saveGmcTypeOnly(gmcType: string) {
-    if (!liveSelectedItem) return
+    if (!liveSelectedItem) {
+      console.warn('No liveSelectedItem to save')
+      return
+    }
+    console.log('Saving GMC type:', gmcType, 'for item:', liveSelectedItem.id)
     try {
       const res = await fetch(`/api/items/${liveSelectedItem.id}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ gmc_type: gmcType || null }),
       })
-      if (!res.ok) return
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}))
+        console.error('API error:', error)
+        return
+      }
       const updated = await res.json()
+      console.log('Save successful, updated:', updated)
       const itemId = liveSelectedItem.id
-      setLiveSelectedItem(prev => prev && prev.id === itemId ? {
-        ...prev,
-        gmc_type: updated.gmc_type ?? prev.gmc_type,
-      } : prev)
+      setLiveSelectedItem(prev => {
+        if (prev && prev.id === itemId) {
+          const newState = {
+            ...prev,
+            gmc_type: updated.gmc_type ?? prev.gmc_type,
+          }
+          console.log('Updated liveSelectedItem state:', newState)
+          return newState
+        }
+        return prev
+      })
       fetch('/api/items/all').then(r => r.json()).then(d => setLiveAllItems(Array.isArray(d) ? d : [])).catch(() => {})
-    } catch {}
+    } catch (e) {
+      console.error('Error saving GMC type:', e)
+    }
   }
 
   // Same edit/delete pair Counts' own list already offers -- kept here so

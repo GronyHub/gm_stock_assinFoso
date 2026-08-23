@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { COUNT_EXCLUDED_REASONS } from '@/lib/countRules'
 import { GMCBadge } from './GMCBadge'
 
@@ -79,6 +79,29 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
 }) {
   const s = SIZES[size]
   const large = size === 'large'
+  const [gmcSaving, setGmcSaving] = useState(false)
+  const [gmcSaved, setGmcSaved] = useState(false)
+  const gmcSavedTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  const handleGmcTypeSave = async () => {
+    if (!onGmcTypeSave) return
+    setGmcSaving(true)
+    try {
+      await onGmcTypeSave(form.gmc_type)
+      setGmcSaved(true)
+      if (gmcSavedTimeoutRef.current) clearTimeout(gmcSavedTimeoutRef.current)
+      gmcSavedTimeoutRef.current = setTimeout(() => setGmcSaved(false), 2000)
+    } finally {
+      setGmcSaving(false)
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (gmcSavedTimeoutRef.current) clearTimeout(gmcSavedTimeoutRef.current)
+    }
+  }, [])
+
   const set = (k: keyof typeof EMPTY_ITEM_EDIT_FORM) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     onChange({ ...form, [k]: e.target.value })
   const setCheckbox = (k: keyof typeof EMPTY_ITEM_EDIT_FORM) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -178,14 +201,21 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
           {onGmcTypeSave && (
             <button
               type="button"
-              onClick={() => onGmcTypeSave(form.gmc_type)}
+              onClick={handleGmcTypeSave}
+              disabled={gmcSaving}
               className={`shrink-0 font-bold text-white rounded transition ${
                 large
-                  ? 'bg-green-600 hover:bg-green-700 px-3 py-2.5 text-base'
-                  : 'bg-green-600 hover:bg-green-700 px-1.5 py-0.5 text-xs'
+                  ? 'px-3 py-2.5 text-base'
+                  : 'px-1.5 py-0.5 text-xs'
+              } ${
+                gmcSaved
+                  ? 'bg-green-700'
+                  : gmcSaving
+                  ? 'bg-blue-600 opacity-75 cursor-not-allowed'
+                  : 'bg-green-600 hover:bg-green-700'
               }`}
-              title="Save GMC Type">
-              ✓
+              title={gmcSaving ? 'Saving...' : gmcSaved ? 'Saved!' : 'Save GMC Type'}>
+              {gmcSaving ? '⏳' : gmcSaved ? '✓' : '✓'}
             </button>
           )}
         </div>
