@@ -186,19 +186,21 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
           <input placeholder="Unit" value={form.unit_name} onChange={set('unit_name')} className={s.input} />
         </div>
       </div>
-      <div>
-        <label className={large ? s.label : 'text-[7px] font-bold text-gray-500 block mb-0'}>
-          {isService
-            ? 'On sale (WIC), deduct "Units/pack" of this service from:'
-            : 'On GMC, credit "Units/pack" of this item into:'}
-        </label>
-        <select value={form.converts_to_item_id} onChange={set('converts_to_item_id')} className={s.input}>
-          <option value="">— No conversion —</option>
-          {allItems.filter(i => i.item_id !== itemId).map(i => (
-            <option key={i.item_id} value={i.item_id}>{i.item_name}</option>
-          ))}
-        </select>
-      </div>
+      {(isService || form.gmc_type === 'pack_to_gmc') && (
+        <div>
+          <label className={large ? s.label : 'text-[7px] font-bold text-gray-500 block mb-0'}>
+            {isService
+              ? 'On sale (WIC), deduct "Units/pack" of this service from:'
+              : 'On GMC, credit "Units/pack" of this item into:'}
+          </label>
+          <select value={form.converts_to_item_id} onChange={set('converts_to_item_id')} className={s.input}>
+            <option value="">— No conversion —</option>
+            {allItems.filter(i => i.item_id !== itemId).map(i => (
+              <option key={i.item_id} value={i.item_id}>{i.item_name}</option>
+            ))}
+          </select>
+        </div>
+      )}
       <div>
         {large && <label className={s.label}>GMC Type</label>}
         <div className="flex items-center gap-1">
