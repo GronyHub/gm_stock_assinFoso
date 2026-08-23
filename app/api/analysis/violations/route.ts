@@ -20,7 +20,7 @@ export async function GET() {
     const itemList = Array.isArray(items) ? items : []
     const negSoh = itemList.filter((i: any) => Number(i.calculated_soh) < 0 && i.product_type !== 'service').length
     const noSp = itemList.filter((i: any) => !i.selling_rate || parseFloat(i.selling_rate) === 0).length
-    const noCp = itemList.filter((i: any) => !i.purchase_rate || parseFloat(i.purchase_rate) === 0).length
+    const noCp = itemList.filter((i: any) => i.product_type !== 'service' && (!i.purchase_rate || parseFloat(i.purchase_rate) === 0)).length
 
     const lossList = Array.isArray(lossSummary) ? lossSummary : []
     const serviceViolation = lossList.filter((r: any) =>
