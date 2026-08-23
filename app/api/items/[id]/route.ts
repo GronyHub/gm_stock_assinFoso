@@ -15,7 +15,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         SELECT i.id, i.canonical_name, i.cf_group, i.selling_rate AS selling_price,
                i.purchase_rate, i.units_per_pack, i.unit_name, i.converts_to_item_id,
                i.count_excluded, i.count_cadence_days, i.count_excluded_reason,
-               COALESCE(s.calculated_soh, 0) AS calculated_soh, COALESCE(i.gmc_type, '') AS gmc_type
+               COALESCE(s.calculated_soh, 0) AS calculated_soh, COALESCE(i.gmc_type, '') AS gmc_type,
+               COALESCE(i.product_type, 'goods') AS product_type
         FROM items i
         LEFT JOIN item_stock_summary s ON s.item_id = i.id
         WHERE i.id = ${itemId}
