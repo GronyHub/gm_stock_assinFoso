@@ -186,12 +186,12 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
           <input placeholder="Unit" value={form.unit_name} onChange={set('unit_name')} className={s.input} />
         </div>
       </div>
-      {((isService && form.gmc_type === 'service_using_gmc') || form.gmc_type === 'pack_to_gmc') && (
+      {(form.gmc_type === 'service_using_gmc' || form.gmc_type === 'pack_to_gmc') && (
         <div>
           <label className={`${large ? s.label : 'text-[7px] font-bold text-gray-500 block mb-0'} ${form.gmc_type === 'service_using_gmc' && !form.converts_to_item_id ? 'text-red-600' : ''}`}>
-            {isService
-              ? 'On sale (WIC), deduct "Units/pack" of this service from:'
-              : 'On GMC, credit "Units/pack" of this item into:'}
+            {form.gmc_type === 'pack_to_gmc'
+              ? 'On GMC, credit "Units/pack" of this item into:'
+              : 'Uses this GMC:'}
             {form.gmc_type === 'service_using_gmc' && <span className="text-red-600">*</span>}
           </label>
           <select
