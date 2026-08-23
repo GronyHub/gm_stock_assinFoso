@@ -123,6 +123,53 @@ function FixRow({ label, sub, children }: { label: React.ReactNode; sub?: React.
   )
 }
 
+function RecentMergeFix({ r, onUnmerged }: { r: any; onUnmerged: () => void }) {
+  const [unmerging, setUnmerging] = useState(false)
+  const [confirmDialog, setConfirmDialog] = useState(false)
+
+  async function undoMerge() {
+    setUnmerging(true)
+    try {
+      const res = await fetch('/api/items/unmerge', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ loser_id: r.loser_id, winner_id: r.winner_id }),
+      })
+      if (res.ok) {
+        setConfirmDialog(false)
+        onUnmerged()
+      }
+    } catch (err) {
+      console.error('Unmerge failed:', err)
+    }
+    setUnmerging(false)
+  }
+
+  return (
+    <FixRow label={`"${r.loser_original_name}" ← "${r.winner_name || 'Unknown'}"`} sub={`Merged ${fmtDate(r.merged_at)} by ${r.merged_by || 'Unknown'}`}>
+      {confirmDialog ? (
+        <>
+          <p className="text-[10px] text-gray-600">Are you sure? This will restore the original item and separate its merged data.</p>
+          <div className="grid grid-cols-2 gap-1.5">
+            <button onClick={() => setConfirmDialog(false)} disabled={unmerging}
+              className="w-full bg-gray-600 hover:bg-gray-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
+              Cancel
+            </button>
+            <button onClick={undoMerge} disabled={unmerging}
+              className="w-full bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
+              {unmerging ? 'Unmerging…' : 'Confirm Undo'}
+            </button>
+          </div>
+        </>
+      ) : (
+        <button onClick={() => setConfirmDialog(true)} disabled={unmerging}
+          className="w-full bg-orange-600 hover:bg-orange-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
+          Undo Merge
+        </button>
+      )}
+    </FixRow>
+  )
+}
+
 function DuplicateFix({ r, onFixed, onOpenItem360 }: { r: any; onFixed: (id1: number, id2: number) => void; onOpenItem360?: (itemId: number) => void }) {
   const [saving, setSaving] = useState(false)
   const [merging, setMerging] = useState<number | null>(null)
@@ -402,6 +449,9 @@ export default function ItemsTab({ items, group, productType, search, violation,
     | 'neg_soh' | 'no_sp' | 'no_cp' | 'unlinked_named' | 'service_violation'>(null)
   const effectiveViolation = violation ?? (flagsSummary && flagsSummary !== 'summary' ? flagsSummary : null)
 
+  const [recentMerges, setRecentMerges] = useState<any[]>([])
+  const [recentMergesLoading, setRecentMergesLoading] = useState(false)
+
   const needsFlags = flagsSummary !== null || effectiveViolation === 'no_group' || effectiveViolation === 'duplicates' || effectiveViolation === 'unlinked_named'
   const needsNameRes = violation === 'inv_done' || violation === 'inv_todo'
   const needsLossSummary = flagsSummary !== null || effectiveViolation === 'service_violation'
@@ -512,6 +562,17 @@ export default function ItemsTab({ items, group, productType, search, violation,
       r.product_type === 'service' && (Number(r.cnt) !== 0 || Number(r.gmc) !== 0 || Number(r.bl) !== 0)
     )
   }, [lossSummary])
+
+  useEffect(() => {
+    if ((effectiveViolation === 'duplicates' || flagsSummary === 'duplicates') && !recentMergesLoading) {
+      setRecentMergesLoading(true)
+      const itemIds = items.map(i => i.id).join(',')
+      fetch(`/api/items/recent-merges?item_ids=${itemIds}`)
+        .then(r => r.ok ? r.json() : Promise.reject())
+        .then(d => { setRecentMerges(Array.isArray(d.merges) ? d.merges : []); setRecentMergesLoading(false) })
+        .catch(() => { setRecentMerges([]); setRecentMergesLoading(false) })
+    }
+  }, [effectiveViolation, flagsSummary, items, recentMergesLoading])
 
   const activeDups = flags ? flags.duplicates.filter((r: any) => {
     const lo = Math.min(r.id1, r.id2), hi = Math.max(r.id1, r.id2)
@@ -736,6 +797,19 @@ export default function ItemsTab({ items, group, productType, search, violation,
             className="mx-2 mb-1 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-red-600 text-white transition">
             ← Back to Flags
           </button>
+        )}
+        {!recentMergesLoading && recentMerges.length > 0 && (
+          <div className="px-2 mb-2">
+            <p className="text-[10px] text-gray-400 mb-1">Recent merges (can be undone):</p>
+            <div className="bg-white border border-orange-200 rounded-lg divide-y divide-orange-100 overflow-hidden">
+              {recentMerges.map((r: any) => (
+                <RecentMergeFix key={r.id} r={r} onUnmerged={() => {
+                  setRecentMerges((prev: any[]) => prev.filter(m => m.id !== r.id))
+                  setFlags((prev: any) => prev ? { ...prev } : null)
+                }} />
+              ))}
+            </div>
+          </div>
         )}
         <div className="flex items-center justify-between px-2 mb-1 gap-2">
           <p className="text-[10px] text-gray-400">

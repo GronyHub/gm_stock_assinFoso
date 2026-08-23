@@ -36,21 +36,23 @@ export async function GET(req: Request) {
     // Fetch recent merges (7 days) where either loser or winner is in the item list
     const merges = await sql`
       SELECT
-        id,
-        loser_id,
-        winner_id,
-        loser_original_name,
-        sales_moved_count,
-        bills_moved_count,
-        counts_moved_count,
-        merged_at,
-        merged_by,
-        reversed_at
-      FROM merge_audit
-      WHERE reversed_at IS NULL
-        AND merged_at > NOW() - INTERVAL '7 days'
-        AND (loser_id = ANY(${itemIds}) OR winner_id = ANY(${itemIds}))
-      ORDER BY merged_at DESC
+        ma.id,
+        ma.loser_id,
+        ma.winner_id,
+        ma.loser_original_name,
+        i.canonical_name as winner_name,
+        ma.sales_moved_count,
+        ma.bills_moved_count,
+        ma.counts_moved_count,
+        ma.merged_at,
+        ma.merged_by,
+        ma.reversed_at
+      FROM merge_audit ma
+      LEFT JOIN items i ON i.id = ma.winner_id
+      WHERE ma.reversed_at IS NULL
+        AND ma.merged_at > NOW() - INTERVAL '7 days'
+        AND (ma.loser_id = ANY(${itemIds}) OR ma.winner_id = ANY(${itemIds}))
+      ORDER BY ma.merged_at DESC
     `.catch(() => [])
 
     return NextResponse.json({ merges })
