@@ -84,7 +84,6 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
   const [gmcSaving, setGmcSaving] = useState(false)
   const [gmcSaved, setGmcSaved] = useState(false)
   const [gmcError, setGmcError] = useState('')
-  const [selectedGmcTypeFilter, setSelectedGmcTypeFilter] = useState<'gmc' | 'service_gmc' | 'service_gmc_serving' | null>(null)
   const gmcSavedTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const gmcErrorTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -212,52 +211,11 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
             {allItems.filter(i => {
               if (i.item_id === itemId) return false
               if (!['gmc', 'service_gmc', 'service_gmc_serving'].includes(i.gmc_type || '')) return false
-              if (selectedGmcTypeFilter && i.gmc_type !== selectedGmcTypeFilter) return false
               return true
             }).map(i => (
               <option key={i.item_id} value={String(i.item_id)}>{i.item_name}</option>
             ))}
           </select>
-        </div>
-      )}
-      {form.gmc_type === 'service_using_gmc' && (
-        <div className={s.sectionWrap}>
-          <label className={s.sectionLabel}>Filter by GMC type:</label>
-          <div className={`space-y-2 ${large ? 'space-y-2' : 'space-y-1'}`}>
-            <label className={s.checkboxLabel}>
-              <input
-                type="radio"
-                name="gmcTypeFilter"
-                value="gmc"
-                checked={selectedGmcTypeFilter === 'gmc'}
-                onChange={(e) => setSelectedGmcTypeFilter(e.target.value as 'gmc')}
-                className="w-4 h-4 accent-blue-600"
-              />
-              <span>GMC only, no service</span>
-            </label>
-            <label className={s.checkboxLabel}>
-              <input
-                type="radio"
-                name="gmcTypeFilter"
-                value="service_gmc"
-                checked={selectedGmcTypeFilter === 'service_gmc'}
-                onChange={(e) => setSelectedGmcTypeFilter(e.target.value as 'service_gmc')}
-                className="w-4 h-4 accent-blue-600"
-              />
-              <span>Is both service and GMC alone</span>
-            </label>
-            <label className={s.checkboxLabel}>
-              <input
-                type="radio"
-                name="gmcTypeFilter"
-                value="service_gmc_serving"
-                checked={selectedGmcTypeFilter === 'service_gmc_serving'}
-                onChange={(e) => setSelectedGmcTypeFilter(e.target.value as 'service_gmc_serving')}
-                className="w-4 h-4 accent-blue-600"
-              />
-              <span>Is Service and GMC serving other services</span>
-            </label>
-          </div>
         </div>
       )}
       <div>
