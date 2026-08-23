@@ -75,7 +75,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
   // as a heads-up before the user tries, not as the real enforcement.
   currentSoh?: number | null
   // Called when the user clicks the tick button next to GMC Type dropdown
-  onGmcTypeSave?: (gmcType: string) => void
+  onGmcTypeSave?: (gmcType: string) => void | Promise<void>
 }) {
   const s = SIZES[size]
   const large = size === 'large'
