@@ -56,7 +56,7 @@ export default function GmcPacksPage() {
   }
 
   return (
-    <div className="overflow-x-auto p-4">
+    <div className="w-full h-full overflow-x-auto overflow-y-auto p-4">
       <table className="w-full border-collapse">
         <thead>
           <tr className="border-b-2 border-gray-300 bg-gray-50">

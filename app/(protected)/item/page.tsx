@@ -4499,6 +4499,7 @@ function ItemHubPageInner() {
                   {liveCurrentView.kind === 'lossByItem' && `Viewing: Loss by Item (${liveCatalogueItems.length} items)`}
                   {liveCurrentView.kind === 'aliasWide' && `Viewing: Alias Wide Table`}
                   {liveCurrentView.kind === 'serviceMatches' && `Viewing: Service Matches`}
+                  {liveCurrentView.kind === 'gmcPacks' && `Viewing: GMC Packs`}
                   {liveCurrentView.kind === 'newItem' && `Creating New Item`}
                   {liveCurrentView.kind === 'dailySummary' && `Daily Sales Summary`}
                 </span>
