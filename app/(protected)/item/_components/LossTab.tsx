@@ -1062,6 +1062,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
         count_excluded: form.count_excluded,
         count_cadence_days: form.count_cadence_days ? parseInt(form.count_cadence_days, 10) : null,
         count_excluded_reason: form.count_excluded_reason || null,
+        gmc_type: form.gmc_type || null,
       }),
     })
     setSaving(false)

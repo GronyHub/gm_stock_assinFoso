@@ -2853,6 +2853,7 @@ function ItemHubPageInner() {
         count_excluded: liveEditForm.count_excluded,
         count_cadence_days: liveEditForm.count_cadence_days ? parseInt(liveEditForm.count_cadence_days, 10) : null,
         count_excluded_reason: liveEditForm.count_excluded_reason || null,
+        gmc_type: liveEditForm.gmc_type || null,
       }),
     })
     setLiveEditSaving(false)
