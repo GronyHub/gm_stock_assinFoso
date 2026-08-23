@@ -3819,6 +3819,7 @@ function ItemHubPageInner() {
                           { key: 'serviceMatches', label: 'Service Matches', active: itemsExtraView === 'serviceMatches',
                             onToggle: () => setItemsExtraView(v => v === 'serviceMatches' ? 'none' : 'serviceMatches') },
                         ]} />
+                        {isOwnerLevel(session?.user as any) && <MigrateServiceGmcButton />}
                       </>
                     )}
                   </div>
