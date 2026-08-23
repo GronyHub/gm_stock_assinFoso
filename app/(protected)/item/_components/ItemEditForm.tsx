@@ -188,13 +188,17 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
       </div>
       {(isService || form.gmc_type === 'pack_to_gmc') && (
         <div>
-          <label className={large ? s.label : 'text-[7px] font-bold text-gray-500 block mb-0'}>
+          <label className={`${large ? s.label : 'text-[7px] font-bold text-gray-500 block mb-0'} ${form.gmc_type === 'service_using_gmc' && !form.converts_to_item_id ? 'text-red-600' : ''}`}>
             {isService
               ? 'On sale (WIC), deduct "Units/pack" of this service from:'
               : 'On GMC, credit "Units/pack" of this item into:'}
+            {form.gmc_type === 'service_using_gmc' && <span className="text-red-600">*</span>}
           </label>
-          <select value={form.converts_to_item_id} onChange={set('converts_to_item_id')} className={s.input}>
-            <option value="">— No conversion —</option>
+          <select
+            value={form.converts_to_item_id}
+            onChange={set('converts_to_item_id')}
+            className={`${s.input} ${form.gmc_type === 'service_using_gmc' && !form.converts_to_item_id ? 'border-red-500 bg-red-50' : ''}`}>
+            <option value="">{form.gmc_type === 'service_using_gmc' ? '⚠ Required — Choose an item' : '— No conversion —'}</option>
             {allItems.filter(i => i.item_id !== itemId).map(i => (
               <option key={i.item_id} value={i.item_id}>{i.item_name}</option>
             ))}
