@@ -464,7 +464,7 @@ const SALES_FLAG_TYPES: { key: string; letter: string; label: string }[] = [
 // Joe/Bino's Role Bar panel like the rest of ASSIGNABLE_VIOLATIONS.
 const ITEMS_FLAG_TYPES: { key: string; letter: string; label: string }[] = [
   { key: 'neg_soh', letter: 'N', label: 'Negative Stock Items' },
-  { key: 'no_sp', letter: 'S', label: 'Missing Selling Prices' },
+  { key: 'no_sp', letter: 'S', label: 'No/Zero Selling Prices' },
   { key: 'no_cp', letter: 'C', label: 'Missing Cost Prices' },
   { key: 'no_group', letter: 'G', label: 'Item Groups' },
   { key: 'duplicates', letter: 'D', label: 'Duplicate Items' },
@@ -2376,7 +2376,7 @@ function ItemHubPageInner() {
       { key: 'flag_duplicate', label: '⚠ Duplicate Item', count: duplicateCount },
       { key: 'flag_service_violation', label: '⚠ Service Violation', count: serviceViolationCount },
       { key: 'flag_unlinked', label: '⚠ Unlinked Sale', count: unlinkedCount },
-      { key: 'flag_missing_selling_price', label: '⚠ Missing Selling Price', count: missingSellingPriceCount },
+      { key: 'flag_missing_selling_price', label: '⚠ No/Zero Selling Price', count: missingSellingPriceCount },
       { key: 'flag_missing_cost_price', label: '⚠ Missing Cost Price', count: missingCostPriceCount },
       { key: 'flag_missing_group', label: '⚠ Missing Group', count: missingGroupCount },
     ]
