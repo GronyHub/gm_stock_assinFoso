@@ -503,7 +503,7 @@ const PANE_ACCENT: Record<OuterTab, string> = {
 // cost_price vs. item_name/cf_group/selling_rate/purchase_rate/
 // calculated_soh -- these are two independently-fetched catalogues, not a
 // dedupe opportunity for this pass).
-type LiveItem = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; product_type: string | null; count_interval?: string | null }
+type LiveItem = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; product_type: string | null; gmc_type?: string | null; count_interval?: string | null }
 type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null }
 type ViolationType = { key: string; label: string; description?: string }
 // Sale mode's due-count queues -- same shape /api/stock/daily,
@@ -2869,6 +2869,7 @@ function ItemHubPageInner() {
       name: updated.item_name ?? prev.name,
       selling_price: updated.selling_rate ?? prev.selling_price,
       cost_price: updated.purchase_rate ?? prev.cost_price,
+      gmc_type: updated.gmc_type ?? prev.gmc_type,
     } : prev)
     // Refetch the full catalogue so this item's price/group/count-interval
     // label update everywhere else in Live Sale (grid, other views), not
