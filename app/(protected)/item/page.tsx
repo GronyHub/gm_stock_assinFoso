@@ -4806,19 +4806,16 @@ function ItemHubPageInner() {
                     return (
                       <div
                         key={item.id}
-                        className={`relative flex flex-col border-r border-b group ${overdue ? 'bg-red-50 border-red-100' : 'bg-amber-50 border-amber-100'}`}
+                        onClick={() => openEditGridItem(item.id)}
+                        className={`relative flex flex-col border-r border-b group cursor-pointer ${overdue ? 'bg-red-50 border-red-100 hover:bg-red-100' : 'bg-amber-50 border-amber-100 hover:bg-amber-100'} transition`}
                       >
                         <div className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide ${overdue ? 'bg-red-600' : 'bg-amber-500'}`}>
                           ⚠ COUNT NOW {overdue ? `· ${due.label} OVERDUE` : `· ${due.label}`}
                         </div>
-                        <div className="px-1 py-0.5 flex flex-col hover:bg-black/5 transition">
-                          <button
-                            type="button"
-                            onClick={() => openEditGridItem(item.id)}
-                            className={`text-[11px] font-semibold leading-tight truncate text-left transition ${Number(item.soh) === 0 ? 'line-through text-gray-400 hover:text-gray-500' : 'text-blue-600 hover:text-blue-700 hover:underline'}`}
-                          >
+                        <div className="px-1 py-0.5 flex flex-col">
+                          <div className={`text-[11px] font-semibold leading-tight truncate text-left ${Number(item.soh) === 0 ? 'line-through text-gray-400' : 'text-blue-600'}`}>
                             {item.name}
-                          </button>
+                          </div>
                           <p className="text-[9px] text-gray-600 leading-tight">
                             <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
                             <span className="text-gray-400"> · </span>
@@ -4874,7 +4871,8 @@ function ItemHubPageInner() {
                     return (
                       <div
                         key={item.id}
-                        className={`relative flex flex-col border-r border-b group ${flag ? 'bg-orange-50 border-orange-100' : 'border-gray-100'}`}
+                        onClick={() => openEditGridItem(item.id)}
+                        className={`relative flex flex-col border-r border-b group cursor-pointer ${flag ? 'bg-orange-50 border-orange-100 hover:bg-orange-100' : 'border-gray-100 hover:bg-gray-50'} transition`}
                       >
                         {flag && (
                           <div className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide ${flag.bg} flex items-center justify-between gap-1`}>
@@ -4882,14 +4880,10 @@ function ItemHubPageInner() {
                             {flags.length > 1 && <span className="shrink-0 opacity-90">+{flags.length - 1} more</span>}
                           </div>
                         )}
-                        <div className="px-1 py-0.5 flex flex-col hover:bg-black/5 transition">
-                          <button
-                            type="button"
-                            onClick={() => openEditGridItem(item.id)}
-                            className={`text-[11px] font-semibold leading-tight truncate text-left transition ${Number(item.soh) === 0 ? 'line-through text-gray-400 hover:text-gray-500' : 'text-blue-600 hover:text-blue-700 hover:underline'}`}
-                          >
+                        <div className="px-1 py-0.5 flex flex-col">
+                          <div className={`text-[11px] font-semibold leading-tight truncate text-left ${Number(item.soh) === 0 ? 'line-through text-gray-400' : 'text-blue-600'}`}>
                             {item.name}
-                          </button>
+                          </div>
                           <p className="text-[9px] text-gray-600 leading-tight">
                             <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
                             <span className="text-gray-400"> · </span>
