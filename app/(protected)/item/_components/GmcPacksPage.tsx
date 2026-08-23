@@ -77,22 +77,28 @@ export default function GmcPacksPage() {
     service_using_gmc: 'Service uses GMC',
   }
 
-  // Group by target item to show continuous linkage
+  // Group by target item, separating pack_to_gmc from service_using_gmc
   const groupedByTarget = packs.reduce((acc, pack) => {
     const targetKey = `${pack.converts_to_item_id}-${pack.converts_to_name}`
     if (!acc[targetKey]) {
       acc[targetKey] = {
         target_id: pack.converts_to_item_id,
         target_name: pack.converts_to_name,
-        sources: []
+        packToGmc: [],
+        serviceUsingGmc: []
       }
     }
-    acc[targetKey].sources.push({
+    const source = {
       item_name: pack.item_name,
       gmc_type: pack.gmc_type,
       units_per_pack: pack.units_per_pack,
       product_type: pack.product_type
-    })
+    }
+    if (pack.gmc_type === 'pack_to_gmc') {
+      acc[targetKey].packToGmc.push(source)
+    } else if (pack.gmc_type === 'service_using_gmc') {
+      acc[targetKey].serviceUsingGmc.push(source)
+    }
     return acc
   }, {} as Record<string, any>)
 
@@ -210,34 +216,56 @@ export default function GmcPacksPage() {
         <thead>
           <tr className="border-b-2 border-gray-300 bg-gray-50">
             <th className="border border-gray-200 px-4 py-2 text-left font-semibold text-gray-700">
+              Pack → GMC
+            </th>
+            <th className="border border-gray-200 px-4 py-2 text-center font-semibold text-gray-700">
               Target Item / Service
             </th>
             <th className="border border-gray-200 px-4 py-2 text-left font-semibold text-gray-700">
-              Source Items / Services (Continuous Linkage)
+              Service Uses GMC
             </th>
           </tr>
         </thead>
         <tbody>
           {groupedRows.map((row: any, idx: number) => (
             <tr key={idx} className="hover:bg-blue-50">
-              <td className="border border-gray-200 px-4 py-2 text-gray-900 font-semibold">
+              <td className="border border-gray-200 px-4 py-2">
+                <div className="space-y-2">
+                  {row.packToGmc.length > 0 ? (
+                    row.packToGmc.map((source: any, sourceIdx: number) => (
+                      <div key={sourceIdx} className="flex items-center gap-2 text-sm">
+                        <span className="text-gray-900">{source.item_name}</span>
+                        {source.units_per_pack && (
+                          <span className="text-gray-600 text-xs">
+                            ({source.units_per_pack} units)
+                          </span>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <span className="text-gray-400 text-xs italic">—</span>
+                  )}
+                </div>
+              </td>
+              <td className="border border-gray-200 px-4 py-2 text-center text-gray-900 font-semibold">
                 {row.target_name || '(unresolved)'}
               </td>
               <td className="border border-gray-200 px-4 py-2">
                 <div className="space-y-2">
-                  {row.sources.map((source: any, sourceIdx: number) => (
-                    <div key={sourceIdx} className="flex items-center gap-2 text-sm">
-                      <span className="text-gray-900">{source.item_name}</span>
-                      <span className="inline-block rounded bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800">
-                        {gmcTypeLabels[source.gmc_type] || source.gmc_type}
-                      </span>
-                      {source.units_per_pack && (
-                        <span className="text-gray-600 text-xs">
-                          ({source.units_per_pack} units)
-                        </span>
-                      )}
-                    </div>
-                  ))}
+                  {row.serviceUsingGmc.length > 0 ? (
+                    row.serviceUsingGmc.map((source: any, sourceIdx: number) => (
+                      <div key={sourceIdx} className="flex items-center gap-2 text-sm">
+                        <span className="text-gray-900">{source.item_name}</span>
+                        {source.units_per_pack && (
+                          <span className="text-gray-600 text-xs">
+                            ({source.units_per_pack} units)
+                          </span>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <span className="text-gray-400 text-xs italic">—</span>
+                  )}
                 </div>
               </td>
             </tr>
