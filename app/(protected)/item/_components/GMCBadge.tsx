@@ -15,6 +15,7 @@ export function GMCBadge({ gmcType, size = 'small' }: { gmcType: string; size?: 
     'service_gmc_serving': { label: 'SG+', title: 'Service & GMC serving others', bgColor: 'bg-pink-600' },
     'service_using_gmc': { label: 'S→G', title: 'Service using GMC', bgColor: 'bg-blue-600' },
     'service_no_gmc': { label: 'S', title: 'Service only', bgColor: 'bg-gray-600' },
+    'pack_to_gmc': { label: 'P→G', title: 'Pack converts to GMC', bgColor: 'bg-amber-600' },
   }
 
   const config = badgeConfig[gmcType]

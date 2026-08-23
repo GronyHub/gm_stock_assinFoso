@@ -88,6 +88,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
     { value: 'service_gmc_serving', label: 'Is Service and GMC serving other services' },
     { value: 'service_using_gmc', label: 'Is service using another GMC' },
     { value: 'service_no_gmc', label: 'Is service no GMC' },
+    { value: 'pack_to_gmc', label: 'Pack here, I convert to a GMC' },
   ]
   // Existing groups only show up here once some item already uses them --
   // "+ New group name…" (same option NewItemForm offers) is what lets you
