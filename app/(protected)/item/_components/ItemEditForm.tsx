@@ -171,7 +171,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
         <select value={form.product_type} onChange={set('product_type')} className={s.input}>
           <option value="">— Select type —</option>
           <option value="goods">Good</option>
-          <option value="services">Service</option>
+          <option value="service">Service</option>
         </select>
       </div>
       <div className={`grid grid-cols-2 ${s.fieldGap}`}>
