@@ -3811,43 +3811,40 @@ function ItemHubPageInner() {
                     ))}
                   </select>
                   <select
-                    value={liveGmcTypeFilter || ''}
-                    onChange={e => setLiveGmcTypeFilter(e.target.value || null)}
-                    className="text-[6.5px] px-1.5 py-0.5 rounded-md border border-green-500 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 w-32"
-                  >
-                    <option value="">GMC Types</option>
-                    <option value="none">None</option>
-                    <option value="gmc">GMC only, no service</option>
-                    <option value="service_gmc">Is both service and GMC alone</option>
-                    <option value="service_gmc_serving">Is Service and GMC serving other services</option>
-                    <option value="pack_to_gmc">Pack → GMC</option>
-                    <option value="service_using_gmc">Service uses GMC</option>
-                  </select>
-                  <select
-                    value={liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind === 'flag' ? `flag:${liveSaleFilter.key}` : liveSaleFilter.kind : liveCurrentView?.kind === 'violation' ? `violation:${liveCurrentView.key}` : liveCurrentView?.kind === 'aliasWide' ? 'view:aliasWide' : liveCurrentView?.kind === 'serviceMatches' ? 'view:serviceMatches' : liveCurrentView?.kind === 'gmcPacks' ? 'view:gmcPacks' : ''}
+                    value={liveGmcTypeFilter ? `gmc:${liveGmcTypeFilter}` : liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind === 'flag' ? `flag:${liveSaleFilter.key}` : liveSaleFilter.kind : liveCurrentView?.kind === 'violation' ? `violation:${liveCurrentView.key}` : liveCurrentView?.kind === 'aliasWide' ? 'view:aliasWide' : liveCurrentView?.kind === 'serviceMatches' ? 'view:serviceMatches' : liveCurrentView?.kind === 'gmcPacks' ? 'view:gmcPacks' : ''}
                     onChange={e => {
                       const v = e.target.value
                       if (!v) {
                         setLiveSaleFilter(null)
                         setLiveCurrentView(null)
+                        setLiveGmcTypeFilter(null)
                       } else if (v.startsWith('interval:')) {
                         setLiveCurrentView(null)
+                        setLiveGmcTypeFilter(null)
                         setLiveSaleFilter({ kind: 'interval', label: v.slice('interval:'.length) })
                       } else if (v.startsWith('violation:')) {
                         setLiveSaleFilter(null)
+                        setLiveGmcTypeFilter(null)
                         const violationKey = v.slice('violation:'.length)
                         setLiveCurrentView({ kind: 'violation' as const, key: violationKey })
                       } else if (v.startsWith('flag:')) {
                         setLiveCurrentView(null)
+                        setLiveGmcTypeFilter(null)
                         setLiveSaleFilter({ kind: 'flag', key: v.slice('flag:'.length) })
                       } else if (v.startsWith('view:')) {
                         setLiveSaleFilter(null)
+                        setLiveGmcTypeFilter(null)
                         const viewKey = v.slice('view:'.length)
                         if (viewKey === 'aliasWide') setLiveCurrentView({ kind: 'aliasWide' as const })
                         else if (viewKey === 'serviceMatches') setLiveCurrentView({ kind: 'serviceMatches' as const })
                         else if (viewKey === 'gmcPacks') setLiveCurrentView({ kind: 'gmcPacks' as const })
+                      } else if (v.startsWith('gmc:')) {
+                        setLiveSaleFilter(null)
+                        setLiveCurrentView(null)
+                        setLiveGmcTypeFilter(v.slice('gmc:'.length))
                       } else {
                         setLiveCurrentView(null)
+                        setLiveGmcTypeFilter(null)
                         setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'soh' })
                       }
                     }}
@@ -3874,6 +3871,14 @@ function ItemHubPageInner() {
                       <option value="view:aliasWide">Alias Wide Table</option>
                       <option value="view:serviceMatches">Service Matches</option>
                       <option value="view:gmcPacks">GMC Packs</option>
+                    </optgroup>
+                    <optgroup label="GMC Types">
+                      <option value="gmc:none">None</option>
+                      <option value="gmc:gmc">GMC only, no service</option>
+                      <option value="gmc:service_gmc">Is both service and GMC alone</option>
+                      <option value="gmc:service_gmc_serving">Is Service and GMC serving other services</option>
+                      <option value="gmc:pack_to_gmc">Pack → GMC</option>
+                      <option value="gmc:service_using_gmc">Service uses GMC</option>
                     </optgroup>
                   </select>
                 </div>
@@ -4472,19 +4477,6 @@ function ItemHubPageInner() {
                       {liveCatalogueGroups.map(group => (
                         <option key={group} value={group}>{group}</option>
                       ))}
-                    </select>
-                    <select
-                      value={liveGmcTypeFilter || ''}
-                      onChange={e => setLiveGmcTypeFilter(e.target.value || null)}
-                      className="text-[6.5px] px-1.5 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white w-[7rem]"
-                    >
-                      <option value="">GMC Types</option>
-                      <option value="none">None</option>
-                      <option value="gmc">GMC only, no service</option>
-                      <option value="service_gmc">Is both service and GMC alone</option>
-                      <option value="service_gmc_serving">Is Service and GMC serving other services</option>
-                      <option value="pack_to_gmc">Pack → GMC</option>
-                      <option value="service_using_gmc">Service uses GMC</option>
                     </select>
                   </div>
                   <div className="flex gap-1 items-center">
