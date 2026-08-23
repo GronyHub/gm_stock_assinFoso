@@ -291,7 +291,7 @@ export function useViolations(counts?: Record<string, number>) {
     if (c['no_sp'] > 0) list.push({ type: 'no_sp', label: `item${s(c['no_sp'])} with no selling price`, count: c['no_sp'], days: null })
     if (c['no_cp'] > 0) list.push({ type: 'no_cp', label: `item${s(c['no_cp'])} with no cost price`, count: c['no_cp'], days: null })
     if (c['unlinked_named'] > 0) list.push({ type: 'unlinked_named', label: `sale line${s(c['unlinked_named'])} not linked to their item`, count: c['unlinked_named'], days: null })
-    if (c['service_violation'] > 0) list.push({ type: 'service_violation', label: `service${s(c['service_violation'])} with stock activity recorded`, count: c['service_violation'], days: null })
+    if (c['service_violation'] > 0) list.push({ type: 'service_violation', label: `service${s(c['service_violation'])} awaiting GMC data migration`, count: c['service_violation'], days: null })
     if (c['gains'] > 0) list.push({ type: 'gains', label: `gain${s(c['gains'])} on record — every gain is a missing bill/GMC or count error`, count: c['gains'], days: null })
     const active = new Set(list.map(v => v.type))
     for (const t of ALL_ERROR_TYPES) {

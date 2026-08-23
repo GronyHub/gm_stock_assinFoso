@@ -845,7 +845,7 @@ export default function ItemsTab({ items, group, productType, search, violation,
       { type: 'no_sp', count: items.filter(i => !i.selling_rate || parseFloat(i.selling_rate) === 0).length, label: 'item(s) with no selling price', assignable: false, viewable: true, loading: false },
       { type: 'no_cp', count: items.filter(i => !i.purchase_rate || parseFloat(i.purchase_rate) === 0).length, label: 'item(s) with no cost price', assignable: false, viewable: true, loading: false },
       { type: 'unlinked_named', count: flags?.unlinkedNamed?.length ?? 0, label: 'sale name(s) not linked to their item', assignable: false, viewable: true, loading: flagsLoading || !flags },
-      { type: 'service_violation', count: serviceViolations.length, label: 'service item(s) with count/GMC/bill activity', assignable: false, viewable: true, loading: lossSummaryLoading || !lossSummary },
+      { type: 'service_violation', count: serviceViolations.length, label: 'service item(s) awaiting GMC data migration', assignable: false, viewable: true, loading: lossSummaryLoading || !lossSummary },
     ]
     const toolsPanelFlags = [
       { key: 'neg_soh', letter: 'N', label: 'Negative Stock Items', count: rows.find(r => r.type === 'neg_soh')?.count ?? 0, description: 'Item(s) with negative stock on hand' },
@@ -854,7 +854,7 @@ export default function ItemsTab({ items, group, productType, search, violation,
       { key: 'no_group', letter: 'G', label: 'Item Groups', count: rows.find(r => r.type === 'no_group')?.count ?? 0, description: 'Item(s) with no group assigned' },
       { key: 'duplicates', letter: 'D', label: 'Duplicate Items', count: rows.find(r => r.type === 'duplicates')?.count ?? 0, description: 'Possible duplicate item pair(s)' },
       { key: 'unlinked_named', letter: 'U', label: 'Unlinked Sales', count: rows.find(r => r.type === 'unlinked_named')?.count ?? 0, description: 'Sale name(s) not linked to their item' },
-      { key: 'service_violation', letter: 'V', label: 'Service Violations', count: rows.find(r => r.type === 'service_violation')?.count ?? 0, description: 'Service item(s) with count/GMC/bill activity' },
+      { key: 'service_violation', letter: 'V', label: 'Service Violations', count: rows.find(r => r.type === 'service_violation')?.count ?? 0, description: 'Service item(s) awaiting GMC data migration' },
     ]
     return (
       <div className="flex flex-col h-full min-h-0">
