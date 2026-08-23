@@ -116,23 +116,26 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   }
 
   // Validate conversion target when setting converts_to_item_id
+  // Client-side validation in ItemEditForm already filters options, but validate server-side too
   if (has('converts_to_item_id') && converts_to_item_id) {
-    const [targetItem] = await sql`
-      SELECT id, canonical_name, gmc_type, product_type FROM items WHERE id = ${converts_to_item_id}
-    `.catch(() => [])
-    if (!targetItem) {
-      return NextResponse.json({
-        error: 'Selected item does not exist',
-      }, { status: 400 })
-    }
-    // If converting to this item, validate that it has a compatible gmc_type
-    // For service_using_gmc or pack_to_gmc, target must be a good with gmc or service_no_gmc
-    const newGmcType = gmc_type || current.gmc_type
-    if ((newGmcType === 'service_using_gmc' || newGmcType === 'pack_to_gmc') &&
-        !['gmc', 'service_no_gmc'].includes(targetItem.gmc_type || '')) {
-      return NextResponse.json({
-        error: `"${targetItem.canonical_name}" is not compatible -- it must be marked as GMC or Service (no GMC)`,
-      }, { status: 400 })
+    try {
+      const [targetItem] = await sql`
+        SELECT id, canonical_name, gmc_type, product_type FROM items WHERE id = ${converts_to_item_id}
+      `.catch(() => [])
+      if (!targetItem) {
+        return NextResponse.json({
+          error: 'Selected item does not exist',
+        }, { status: 400 })
+      }
+      const newGmcType = gmc_type || current.gmc_type
+      if ((newGmcType === 'service_using_gmc' || newGmcType === 'pack_to_gmc') &&
+          !['gmc', 'service_no_gmc'].includes(targetItem.gmc_type || '')) {
+        return NextResponse.json({
+          error: `"${targetItem.canonical_name}" is not compatible -- it must be marked as GMC or Service (no GMC)`,
+        }, { status: 400 })
+      }
+    } catch (e) {
+      console.error('Failed to validate conversion target:', e)
     }
   }
 
