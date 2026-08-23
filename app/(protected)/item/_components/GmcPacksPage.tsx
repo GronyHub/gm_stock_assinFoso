@@ -96,7 +96,7 @@ export default function GmcPacksPage() {
     }
     if (pack.gmc_type === 'pack_to_gmc') {
       acc[targetKey].packToGmc.push(source)
-    } else if (pack.gmc_type === 'service_using_gmc') {
+    } else if (pack.gmc_type === 'service_using_gmc' || pack.gmc_type === 'service_gmc_serving') {
       acc[targetKey].serviceUsingGmc.push(source)
     }
     return acc
