@@ -471,7 +471,7 @@ export default function ItemsTab({ items, group, productType, search, violation,
     })
     if (effectiveViolation === 'neg_soh') list = list.filter(i => Number(i.calculated_soh) < 0 && i.product_type !== 'service')
     if (effectiveViolation === 'no_sp') list = list.filter(i => !i.selling_rate || parseFloat(i.selling_rate) === 0)
-    if (effectiveViolation === 'no_cp') list = list.filter(i => !i.purchase_rate || parseFloat(i.purchase_rate) === 0)
+    if (effectiveViolation === 'no_cp') list = list.filter(i => (i.gmc_type !== 'service_using_gmc') && (!i.purchase_rate || parseFloat(i.purchase_rate) === 0))
     return list
   }, [items, group, productType, search, effectiveViolation])
 
@@ -843,7 +843,7 @@ export default function ItemsTab({ items, group, productType, search, violation,
       { type: 'not_in_inventory', count: flags?.notInInventory?.length ?? 0, label: 'item name(s) not found in inventory', assignable: true, viewable: false, loading: flagsLoading || !flags },
       { type: 'neg_soh', count: items.filter(i => Number(i.calculated_soh) < 0 && i.product_type !== 'service').length, label: 'item(s) with negative stock on hand', assignable: false, viewable: true, loading: false },
       { type: 'no_sp', count: items.filter(i => !i.selling_rate || parseFloat(i.selling_rate) === 0).length, label: 'item(s) with no selling price', assignable: false, viewable: true, loading: false },
-      { type: 'no_cp', count: items.filter(i => !i.purchase_rate || parseFloat(i.purchase_rate) === 0).length, label: 'item(s) with no cost price', assignable: false, viewable: true, loading: false },
+      { type: 'no_cp', count: items.filter(i => (i.gmc_type !== 'service_using_gmc') && (!i.purchase_rate || parseFloat(i.purchase_rate) === 0)).length, label: 'item(s) with no cost price', assignable: false, viewable: true, loading: false },
       { type: 'unlinked_named', count: flags?.unlinkedNamed?.length ?? 0, label: 'sale name(s) not linked to their item', assignable: false, viewable: true, loading: flagsLoading || !flags },
       { type: 'service_violation', count: serviceViolations.length, label: 'service item(s) awaiting GMC data migration', assignable: false, viewable: true, loading: lossSummaryLoading || !lossSummary },
     ]
