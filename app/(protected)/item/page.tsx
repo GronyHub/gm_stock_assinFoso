@@ -73,6 +73,7 @@ const PurchaseOrdersPage  = dynamic(() => import('../purchase-orders/page'),    
 const AliasWidePage       = dynamic(() => import('../aliases/wide/page'),           { ssr: false, loading: () => loading('Loading…') })
 const ServiceMatchesPage  = dynamic(() => import('../matches/wide/page'),           { ssr: false, loading: () => loading('Loading…') })
 const PacksPage           = dynamic(() => import('../inventory/packs/page'),           { ssr: false, loading: () => loading('Loading…') })
+const GmcPacksPage        = dynamic(() => import('./_components/GmcPacksPage'),   { ssr: false, loading: () => loading('Loading…') })
 const ViewPortalAsButton  = dynamic(() => import('@/components/ViewPortalAsButton'), { ssr: false })
 const StaffContent = dynamic(() => import('./_components/StaffPersonTab'),    { ssr: false, loading: () => loading('Loading…') })
 const StaffMemberPersonalTab = dynamic(() => import('./_components/StaffMemberPersonalTab'), { ssr: false, loading: () => loading('Loading…') })
@@ -5421,6 +5422,11 @@ function ItemHubPageInner() {
         {outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'serviceMatches' && (
           <TabErrorBoundary>
             <div className="px-4 pt-4 space-y-2">{inlineLaws('Service Matches', serviceMatchesLaws)}<ServiceMatchesPage /></div>
+          </TabErrorBoundary>
+        )}
+        {outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'gmcPacks' && (
+          <TabErrorBoundary>
+            <GmcPacksPage />
           </TabErrorBoundary>
         )}
         {showAnalytics && outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'none' && (
