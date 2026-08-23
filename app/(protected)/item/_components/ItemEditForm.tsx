@@ -59,7 +59,7 @@ const CADENCE_PRESETS: { value: string; label: string }[] = [
   { value: '45', label: 'Every 45 Days' },
 ]
 
-export function ItemEditForm({ form, onChange, groups, itemId, isService, allItems, size = 'compact', currentCountInterval, currentSoh }: {
+export function ItemEditForm({ form, onChange, groups, itemId, isService, allItems, size = 'compact', currentCountInterval, currentSoh, onGmcTypeSave }: {
   form: typeof EMPTY_ITEM_EDIT_FORM; onChange: (f: typeof EMPTY_ITEM_EDIT_FORM) => void; groups: string[]
   itemId: number; isService: boolean; allItems: { item_id: number; item_name: string }[]
   size?: 'compact' | 'large'
@@ -74,6 +74,8 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
   // route rejects it server-side otherwise) once this is 0, so shown here
   // as a heads-up before the user tries, not as the real enforcement.
   currentSoh?: number | null
+  // Called when the user clicks the tick button next to GMC Type dropdown
+  onGmcTypeSave?: (gmcType: string) => void
 }) {
   const s = SIZES[size]
   const large = size === 'large'
@@ -167,11 +169,26 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
       </div>
       <div>
         {large && <label className={s.label}>GMC Type</label>}
-        <select value={form.gmc_type} onChange={set('gmc_type')} className={s.input}>
-          {gmcOptions.map(opt => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
+        <div className="flex items-center gap-1">
+          <select value={form.gmc_type} onChange={set('gmc_type')} className={s.input}>
+            {gmcOptions.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+          {onGmcTypeSave && (
+            <button
+              type="button"
+              onClick={() => onGmcTypeSave(form.gmc_type)}
+              className={`shrink-0 font-bold text-white rounded transition ${
+                large
+                  ? 'bg-green-600 hover:bg-green-700 px-3 py-2.5 text-base'
+                  : 'bg-green-600 hover:bg-green-700 px-1.5 py-0.5 text-xs'
+              }`}
+              title="Save GMC Type">
+              ✓
+            </button>
+          )}
+        </div>
       </div>
       {!isService && (
         <div className={s.sectionWrap}>

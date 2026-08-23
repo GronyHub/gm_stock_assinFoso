@@ -2878,6 +2878,26 @@ function ItemHubPageInner() {
     setLiveEditingSelectedItem(false)
   }
 
+  // Save only the GMC type field immediately when the tick button is clicked,
+  // without waiting for the full form save or closing the edit mode.
+  async function saveGmcTypeOnly(gmcType: string) {
+    if (!liveSelectedItem) return
+    try {
+      const res = await fetch(`/api/items/${liveSelectedItem.id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gmc_type: gmcType || null }),
+      })
+      if (!res.ok) return
+      const updated = await res.json()
+      const itemId = liveSelectedItem.id
+      setLiveSelectedItem(prev => prev && prev.id === itemId ? {
+        ...prev,
+        gmc_type: updated.gmc_type ?? prev.gmc_type,
+      } : prev)
+      fetch('/api/items/all').then(r => r.json()).then(d => setLiveAllItems(Array.isArray(d) ? d : [])).catch(() => {})
+    } catch {}
+  }
+
   // Same edit/delete pair Counts' own list already offers -- kept here so
   // fixing or removing a count record doesn't require leaving Live Sale
   // just because that mode still also exists.
@@ -4727,6 +4747,7 @@ function ItemHubPageInner() {
                           size="large"
                           currentCountInterval={liveEditCurrentCountInterval}
                           currentSoh={liveEditCurrentSoh}
+                          onGmcTypeSave={saveGmcTypeOnly}
                         />
                       )}
                       {liveEditError && (
@@ -5015,6 +5036,7 @@ function ItemHubPageInner() {
                           size="compact"
                           currentCountInterval={liveEditCurrentCountInterval}
                           currentSoh={liveEditCurrentSoh}
+                          onGmcTypeSave={saveGmcTypeOnly}
                         />
                       ) : (
                         <p className="text-center text-red-600 text-xs">Item not found</p>
