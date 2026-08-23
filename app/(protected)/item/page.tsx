@@ -4609,7 +4609,7 @@ function ItemHubPageInner() {
             )}
 
             {/* Items Grid - 2 Columns */}
-            {liveCurrentView?.kind !== 'aliasWide' && liveCurrentView?.kind !== 'serviceMatches' && liveCurrentView?.kind !== 'newItem' && liveCurrentView?.kind !== 'dailySummary' && (
+            {liveCurrentView?.kind !== 'aliasWide' && liveCurrentView?.kind !== 'serviceMatches' && liveCurrentView?.kind !== 'newItem' && liveCurrentView?.kind !== 'dailySummary' && liveCurrentView?.kind !== 'gmcPacks' && (
             <div className="flex-1 overflow-y-auto">
               {liveItemsLoading ? (
                 <p className="text-xs text-gray-400 text-center py-8">Loading…</p>
