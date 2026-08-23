@@ -4735,7 +4735,7 @@ function ItemHubPageInner() {
                               <>
                                 <span className="text-gray-400"> · </span>
                                 <span className="inline-block rounded bg-purple-100 px-1 py-0.5 text-[7px] font-bold text-purple-700">
-                                  {item.gmc_type === 'gmc' ? 'GMC' : item.gmc_type === 'service_gmc' ? 'SVC+GMC' : item.gmc_type === 'service_gmc_serving' ? 'SVC/GMC→' : item.gmc_type === 'service_no_gmc' ? 'SVC only' : item.gmc_type === 'pack_to_gmc' ? 'PKG→GMC' : 'SVC/GMC'}
+                                  {item.gmc_type === 'gmc' ? 'GMC' : item.gmc_type === 'service_no_gmc' ? 'SVC only' : item.gmc_type === 'pack_to_gmc' ? 'PKG→GMC' : 'SVC/GMC'}
                                   {item.converts_to_name && ` → ${item.converts_to_name}`}
                                 </span>
                               </>
@@ -4794,7 +4794,7 @@ function ItemHubPageInner() {
                               <>
                                 <span className="text-gray-400"> · </span>
                                 <span className="inline-block rounded bg-purple-100 px-1 py-0.5 text-[7px] font-bold text-purple-700">
-                                  {item.gmc_type === 'gmc' ? 'GMC' : item.gmc_type === 'service_gmc' ? 'SVC+GMC' : item.gmc_type === 'service_gmc_serving' ? 'SVC/GMC→' : item.gmc_type === 'service_no_gmc' ? 'SVC only' : item.gmc_type === 'pack_to_gmc' ? 'PKG→GMC' : 'SVC/GMC'}
+                                  {item.gmc_type === 'gmc' ? 'GMC' : item.gmc_type === 'service_no_gmc' ? 'SVC only' : item.gmc_type === 'pack_to_gmc' ? 'PKG→GMC' : 'SVC/GMC'}
                                   {item.converts_to_name && ` → ${item.converts_to_name}`}
                                 </span>
                               </>

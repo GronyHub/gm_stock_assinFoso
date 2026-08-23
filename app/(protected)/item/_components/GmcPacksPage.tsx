@@ -71,8 +71,7 @@ export default function GmcPacksPage() {
 
   const gmcTypeLabels: Record<string, string> = {
     gmc: 'GMC only, no service',
-    service_gmc: 'Is both service and GMC alone',
-    service_gmc_serving: 'Is Service and GMC serving other services',
+    service_no_gmc: 'Service only',
     pack_to_gmc: 'Pack → GMC',
     service_using_gmc: 'Service uses GMC',
   }
@@ -96,7 +95,7 @@ export default function GmcPacksPage() {
     }
     if (pack.gmc_type === 'pack_to_gmc') {
       acc[targetKey].packToGmc.push(source)
-    } else if (pack.gmc_type === 'service_using_gmc' || pack.gmc_type === 'service_gmc_serving') {
+    } else if (pack.gmc_type === 'service_using_gmc') {
       acc[targetKey].serviceUsingGmc.push(source)
     }
     return acc
@@ -176,7 +175,7 @@ export default function GmcPacksPage() {
             >
               <option value="">Select item...</option>
               {allItems
-                .filter(i => i.id !== sourceItemId && ['gmc', 'service_gmc', 'service_gmc_serving'].includes(i.gmc_type || ''))
+                .filter(i => i.id !== sourceItemId && ['gmc', 'service_no_gmc'].includes(i.gmc_type || ''))
                 .map(item => (
                   <option key={item.id} value={item.id}>{item.name}</option>
                 ))}
