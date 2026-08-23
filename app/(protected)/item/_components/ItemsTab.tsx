@@ -33,6 +33,7 @@ type Item = {
   unit_name: string | null
   product_type: string
   calculated_soh: number
+  gmc_type: string
 }
 
 type DayRow = {

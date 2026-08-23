@@ -15,6 +15,7 @@ type Item = {
   unit_name: string | null
   product_type: string
   calculated_soh: number
+  gmc_type: string
 }
 
 // The views a self-created task can be pinned to -- unlike

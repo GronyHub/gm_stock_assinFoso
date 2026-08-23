@@ -16,6 +16,7 @@ type Item = {
   unit_name: string | null
   product_type: string
   calculated_soh: number
+  gmc_type: string
 }
 
 // Which existing tab already knows how to render a filtered "fix this" view
