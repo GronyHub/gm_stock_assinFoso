@@ -84,7 +84,8 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
   const gmcOptions = [
     { value: '', label: '— None —' },
     { value: 'gmc', label: 'GMC only, no service' },
-    { value: 'service_gmc', label: 'Is both service and GMC' },
+    { value: 'service_gmc', label: 'Is both service and GMC alone' },
+    { value: 'service_gmc_serving', label: 'Is Service and GMC serving other services' },
     { value: 'service_using_gmc', label: 'Is service using another GMC' },
     { value: 'service_no_gmc', label: 'Is service no GMC' },
   ]
