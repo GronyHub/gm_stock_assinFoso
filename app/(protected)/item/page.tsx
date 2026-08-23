@@ -14,7 +14,6 @@ import HistoryPanel from './_components/HistoryPanel'
 import { TrainingGuideModal } from './_components/TrainingGuideModal'
 import ItemDetailPanel from './_components/ItemDetailPanel'
 import { AliasPicker, MatchPicker, MergeItemPicker, type AliasRecord, type MatchRecord, type CandidateItem } from './_components/LossTab'
-import ServiceGmcActionsDropdown from './_components/ServiceGmcActionsDropdown'
 
 class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boolean; message: string }> {
   state = { error: false, message: '' }
@@ -3848,10 +3847,50 @@ function ItemHubPageInner() {
                     value={liveGmcTypeFilter ? `gmc:${liveGmcTypeFilter}` : liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind === 'flag' ? `flag:${liveSaleFilter.key}` : liveSaleFilter.kind : liveCurrentView?.kind === 'violation' ? `violation:${liveCurrentView.key}` : liveCurrentView?.kind === 'aliasWide' ? 'view:aliasWide' : liveCurrentView?.kind === 'serviceMatches' ? 'view:serviceMatches' : liveCurrentView?.kind === 'gmcPacks' ? 'view:gmcPacks' : liveCurrentView?.kind === 'newItem' ? 'view:newItem' : ''}
                     onChange={e => {
                       const v = e.target.value
+                      const selectEl = e.target as HTMLSelectElement
                       if (!v) {
                         setLiveSaleFilter(null)
                         setLiveCurrentView(null)
                         setLiveGmcTypeFilter(null)
+                      } else if (v.startsWith('action:')) {
+                        const action = v.slice('action:'.length)
+                        let endpoint = ''
+                        let confirmMsg = ''
+
+                        switch (action) {
+                          case 'migrate-gmc':
+                            endpoint = '/api/items/migrate-service-gmc-data'
+                            confirmMsg = 'Migrate all services using GMC?\n\nThis will transfer counts, bills, and sales from services to their target GMC items, then clear cost prices from the services.'
+                            break
+                          case 'fix-gmc-losses':
+                            endpoint = '/api/fix-service-gmc-loss-records'
+                            confirmMsg = 'Transfer loss revision records from services using GMC to their target items?\n\nThis will move the audit trail of deletions from services to the actual inventory items.'
+                            break
+                          case 'add-gmc-constraints':
+                            endpoint = '/api/add-service-gmc-constraints'
+                            confirmMsg = 'Add database constraints to enforce service GMC data integrity?\n\nThis will prevent:\n- Cost prices on services\n- Stock counts on services\n- Bills on services\n- Sales on services'
+                            break
+                          case 'clear-gmc-costs':
+                            endpoint = '/api/clear-service-gmc-costs'
+                            confirmMsg = 'Clear cost prices from services using GMC?\n\nCost pricing information should only exist on the target GMC items, not on the services themselves.'
+                            break
+                        }
+
+                        if (confirm(confirmMsg)) {
+                          fetch(endpoint, { method: 'POST' })
+                            .then(r => r.json())
+                            .then(data => {
+                              if (!data.error) {
+                                alert(`✓ ${data.message || 'Operation completed'}`)
+                              } else {
+                                alert(`✗ Error: ${data.error}`)
+                              }
+                            })
+                            .catch(e => alert(`✗ Error: ${e.message}`))
+                            .finally(() => selectEl.value = '')
+                        } else {
+                          selectEl.value = ''
+                        }
                       } else if (v.startsWith('interval:')) {
                         setLiveCurrentView(null)
                         setLiveGmcTypeFilter(null)
@@ -3915,8 +3954,15 @@ function ItemHubPageInner() {
                       <option value="gmc:pack_to_gmc">Pack → GMC</option>
                       <option value="gmc:service_using_gmc">Service uses GMC</option>
                     </optgroup>
+                    {isOwnerLevel(session?.user as any) && (
+                      <optgroup label="Service GMC">
+                        <option value="action:migrate-gmc">↻ Migrate Service GMC Data</option>
+                        <option value="action:fix-gmc-losses">→ Fix Service Loss Records</option>
+                        <option value="action:add-gmc-constraints">🔒 Add Service GMC Constraints</option>
+                        <option value="action:clear-gmc-costs">💰 Clear Service Cost Prices</option>
+                      </optgroup>
+                    )}
                   </select>
-                  {isOwnerLevel(session?.user as any) && <div className="ml-auto"><ServiceGmcActionsDropdown /></div>}
                 </div>
               )}
               {/* Row 3: search bar + controls — hidden on report-style submenus. */}
