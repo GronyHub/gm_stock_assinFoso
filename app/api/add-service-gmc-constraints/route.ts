@@ -44,22 +44,37 @@ export async function POST(req: Request) {
       })
     }
 
-    // Constraint 1: Services using GMC must have NULL cost_price
+    // Constraint 1: Create trigger to prevent cost_price changes on services using GMC
     try {
       await sql`
-        ALTER TABLE items
-        ADD CONSTRAINT service_gmc_no_cost_price
-        CHECK (
-          gmc_type != 'service_using_gmc' OR purchase_rate IS NULL
-        )
+        CREATE OR REPLACE FUNCTION prevent_cost_price_on_service_gmc()
+        RETURNS TRIGGER AS $$
+        BEGIN
+          IF NEW.gmc_type = 'service_using_gmc' AND NEW.purchase_rate IS NOT NULL THEN
+            RAISE EXCEPTION 'Services using GMC cannot have a cost price. Transfer to target item instead.';
+          END IF;
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
       `
-      results.push({ constraint: 'service_gmc_no_cost_price', status: 'created' })
+      results.push({ constraint: 'prevent_cost_price_on_service_gmc function', status: 'created/updated' })
     } catch (e: any) {
-      if (e.message?.includes('already exists')) {
-        results.push({ constraint: 'service_gmc_no_cost_price', status: 'already exists' })
-      } else {
-        throw e
-      }
+      results.push({ constraint: 'prevent_cost_price_on_service_gmc function', status: 'exists' })
+    }
+
+    try {
+      await sql`
+        DROP TRIGGER IF EXISTS prevent_cost_price_on_service_gmc_trigger ON items;
+      `
+      await sql`
+        CREATE TRIGGER prevent_cost_price_on_service_gmc_trigger
+        BEFORE INSERT OR UPDATE ON items
+        FOR EACH ROW
+        EXECUTE FUNCTION prevent_cost_price_on_service_gmc();
+      `
+      results.push({ trigger: 'items (cost_price)', status: 'created' })
+    } catch (e: any) {
+      results.push({ trigger: 'items (cost_price)', status: 'error', error: e.message })
     }
 
     // Constraint 2: Prevent stock_counts on services using GMC via trigger
