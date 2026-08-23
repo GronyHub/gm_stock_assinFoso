@@ -2869,6 +2869,7 @@ function ItemHubPageInner() {
         count_cadence_days: liveEditForm.count_cadence_days ? parseInt(liveEditForm.count_cadence_days, 10) : null,
         count_excluded_reason: liveEditForm.count_excluded_reason || null,
         gmc_type: liveEditForm.gmc_type || null,
+        product_type: liveEditForm.product_type || null,
       }),
     })
     setLiveEditSaving(false)
@@ -2958,6 +2959,39 @@ function ItemHubPageInner() {
       setLiveEditError(errorMsg)
       setLiveGridEditError(errorMsg)
     }
+  }
+
+  async function saveGridEditItem() {
+    if (!liveEditingGridItemId) return
+    setLiveEditSaving(true)
+    setLiveGridEditError('')
+    const res = await fetch(`/api/items/${liveEditingGridItemId}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        item_name: liveEditForm.item_name || undefined,
+        cf_group: liveEditForm.cf_group || null,
+        selling_rate: liveEditForm.selling_rate ? parseFloat(liveEditForm.selling_rate) : null,
+        purchase_rate: liveEditForm.purchase_rate ? parseFloat(liveEditForm.purchase_rate) : null,
+        units_per_pack: liveEditForm.units_per_pack ? parseFloat(liveEditForm.units_per_pack) : null,
+        unit_name: liveEditForm.unit_name || null,
+        converts_to_item_id: liveEditForm.converts_to_item_id ? Number(liveEditForm.converts_to_item_id) : null,
+        count_excluded: liveEditForm.count_excluded,
+        count_cadence_days: liveEditForm.count_cadence_days ? parseInt(liveEditForm.count_cadence_days, 10) : null,
+        count_excluded_reason: liveEditForm.count_excluded_reason || null,
+        gmc_type: liveEditForm.gmc_type || null,
+        product_type: liveEditForm.product_type || null,
+      }),
+    })
+    setLiveEditSaving(false)
+    if (!res.ok) {
+      const d = await res.json().catch(() => null)
+      setLiveGridEditError(d?.error ?? 'Could not save changes.')
+      return
+    }
+    // Refresh items list so grid shows updated values everywhere
+    fetch('/api/items/all').then(r => r.json()).then(d => setLiveAllItems(Array.isArray(d) ? d : [])).catch(() => {})
+    setLiveEditingGridItemId(null)
+    setLiveViewingItemId(null)
   }
 
   // Same edit/delete pair Counts' own list already offers -- kept here so
@@ -5133,16 +5167,26 @@ function ItemHubPageInner() {
                 <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                   <div className="px-3 py-2 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
                     <h2 className="text-sm font-bold text-red-600">{editItem?.name.toUpperCase()}</h2>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setLiveEditingGridItemId(null)
-                        setLiveViewingItemId(null)
-                      }}
-                      className="text-gray-500 hover:text-gray-700 text-xl font-light"
-                    >
-                      ×
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={saveGridEditItem}
+                        disabled={liveEditSaving || liveGridEditLoading}
+                        className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs font-semibold rounded transition"
+                      >
+                        {liveEditSaving ? 'Saving…' : 'Save'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLiveEditingGridItemId(null)
+                          setLiveViewingItemId(null)
+                        }}
+                        className="text-gray-500 hover:text-gray-700 text-xl font-light"
+                      >
+                        ×
+                      </button>
+                    </div>
                   </div>
                   <div className="overflow-y-auto">
                     <div className="p-2 border-b border-gray-200">
