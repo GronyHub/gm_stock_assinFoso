@@ -13,10 +13,18 @@ import { recordCountRevision } from '@/lib/countRevisions'
 // If finalName is given and differs from winner's current name, the winner is
 // renamed to it and its previous name is kept as an alias (so old receipts/
 // aliases referencing either original name still resolve to the merged item).
-export async function mergeItems(loserId: number, winnerId: number, finalName?: string): Promise<{ merged: string; into: string }> {
+export async function mergeItems(loserId: number, winnerId: number, finalName?: string, mergedBy?: string): Promise<{ merged: string; into: string }> {
   const [loser] = await sql`SELECT id, canonical_name FROM items WHERE id = ${loserId}`
   const [winner] = await sql`SELECT id, canonical_name FROM items WHERE id = ${winnerId}`
   if (!loser || !winner) throw new Error('Item not found')
+
+  // Count data to be moved for audit trail
+  const salesCount = await sql`SELECT COUNT(*) as cnt FROM sales_receipt_lines WHERE item_id = ${loserId}`
+  const billsCount = await sql`SELECT COUNT(*) as cnt FROM bill_lines WHERE item_id = ${loserId}`
+  const countsCount = await sql`SELECT COUNT(*) as cnt FROM stock_counts WHERE item_id = ${loserId}`
+  const salesMoved = Number(salesCount[0]?.cnt ?? 0)
+  const billsMoved = Number(billsCount[0]?.cnt ?? 0)
+  const countsMoved = Number(countsCount[0]?.cnt ?? 0)
 
   await sql`
     INSERT INTO item_aliases (item_id, alias_name, alias_type, source)
@@ -110,6 +118,28 @@ export async function mergeItems(loserId: number, winnerId: number, finalName?: 
     `
     finalMergedName = trimmedFinalName
   }
+
+  // Record merge in audit table for potential unmerge
+  await sql`
+    CREATE TABLE IF NOT EXISTS merge_audit (
+      id SERIAL PRIMARY KEY,
+      loser_id INTEGER NOT NULL,
+      winner_id INTEGER NOT NULL,
+      loser_original_name VARCHAR(255) NOT NULL,
+      sales_moved_count INTEGER DEFAULT 0,
+      bills_moved_count INTEGER DEFAULT 0,
+      counts_moved_count INTEGER DEFAULT 0,
+      merged_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      merged_by VARCHAR(255),
+      reversed_at TIMESTAMP,
+      UNIQUE(loser_id, winner_id, merged_at)
+    )
+  `.catch(() => {})
+
+  await sql`
+    INSERT INTO merge_audit (loser_id, winner_id, loser_original_name, sales_moved_count, bills_moved_count, counts_moved_count, merged_by)
+    VALUES (${loserId}, ${winnerId}, ${loser.canonical_name}, ${salesMoved}, ${billsMoved}, ${countsMoved}, ${mergedBy})
+  `.catch(() => {})
 
   return { merged: loser.canonical_name, into: finalMergedName }
 }

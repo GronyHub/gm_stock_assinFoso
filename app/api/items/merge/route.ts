@@ -14,13 +14,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid ids' }, { status: 400 })
 
   let result
+  const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
   try {
-    result = await mergeItems(loser_id, winner_id, final_name)
+    result = await mergeItems(loser_id, winner_id, final_name, actor)
   } catch {
     return NextResponse.json({ error: 'Item not found' }, { status: 404 })
   }
-
-  const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
   await logActivity(actor, 'merged items', `"${result.merged}" → "${result.into}"`)
 
   return NextResponse.json({ ok: true, merged: result.merged, into: result.into })
