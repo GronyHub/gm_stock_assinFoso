@@ -2674,7 +2674,7 @@ function ItemHubPageInner() {
     Array.from(new Set(liveAllItems.map(i => i.group).filter((g): g is string => !!g))).sort()
   , [liveAllItems])
   const liveEditAllItemsList = useMemo(() =>
-    liveAllItems.map(i => ({ item_id: i.id, item_name: i.name }))
+    liveAllItems.map(i => ({ item_id: i.id, item_name: i.name, gmc_type: i.gmc_type }))
   , [liveAllItems])
 
   // The sale-tap sheet's own Item fields don't carry cf_group/units_per_pack/

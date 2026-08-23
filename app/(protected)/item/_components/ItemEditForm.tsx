@@ -61,7 +61,7 @@ const CADENCE_PRESETS: { value: string; label: string }[] = [
 
 export function ItemEditForm({ form, onChange, groups, itemId, isService, allItems, size = 'compact', currentCountInterval, currentSoh, onGmcTypeSave }: {
   form: typeof EMPTY_ITEM_EDIT_FORM; onChange: (f: typeof EMPTY_ITEM_EDIT_FORM) => void; groups: string[]
-  itemId: number; isService: boolean; allItems: { item_id: number; item_name: string }[]
+  itemId: number; isService: boolean; allItems: { item_id: number; item_name: string; gmc_type?: string | null }[]
   size?: 'compact' | 'large'
   // What this item's cadence actually resolves to right now (e.g. "Every
   // 15d", "Dormant", "Daily") -- without this, "Count every ___ days" is a
@@ -186,7 +186,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
           <input placeholder="Unit" value={form.unit_name} onChange={set('unit_name')} className={s.input} />
         </div>
       </div>
-      {(isService || form.gmc_type === 'pack_to_gmc') && (
+      {((isService && form.gmc_type === 'service_using_gmc') || form.gmc_type === 'pack_to_gmc') && (
         <div>
           <label className={`${large ? s.label : 'text-[7px] font-bold text-gray-500 block mb-0'} ${form.gmc_type === 'service_using_gmc' && !form.converts_to_item_id ? 'text-red-600' : ''}`}>
             {isService
@@ -199,7 +199,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
             onChange={set('converts_to_item_id')}
             className={`${s.input} ${form.gmc_type === 'service_using_gmc' && !form.converts_to_item_id ? 'border-red-500 bg-red-50' : ''}`}>
             <option value="">{form.gmc_type === 'service_using_gmc' ? '⚠ Required — Choose an item' : '— No conversion —'}</option>
-            {allItems.filter(i => i.item_id !== itemId).map(i => (
+            {allItems.filter(i => i.item_id !== itemId && ['gmc', 'service_gmc', 'service_gmc_serving'].includes(i.gmc_type || '')).map(i => (
               <option key={i.item_id} value={i.item_id}>{i.item_name}</option>
             ))}
           </select>
