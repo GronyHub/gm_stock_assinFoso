@@ -157,7 +157,7 @@ const TOPICS: Topic[] = [
       <div className="space-y-4">
         <p className="text-sm text-gray-700">Besides count-due, an item can carry its own data-integrity warning. Only the single most serious one shows on the card (plus a "+N more" if there’s more than one) — worst first. Each one below has the exact taps to clear it.</p>
 
-        <Callout kind="warn">Tapping one of these flags in Live Sale’s own ⚖️ flags panel only <strong>narrows the grid</strong> down to the affected items — it doesn’t open anything to fix. For Duplicate/Unlinked/Service Violation, switch to the Items tab (no need to leave the page) to reach the fix buttons.</Callout>
+        <Callout kind="warn">Tapping one of these flags in the current view’s ⚖️ flags panel only <strong>narrows the grid</strong> down to the affected items — it doesn’t open anything to fix. For Duplicate/Unlinked/Service Violation, switch to the Items view (in the same page) to reach the fix buttons.</Callout>
 
         <div className="space-y-3">
           <div>
@@ -191,7 +191,7 @@ const TOPICS: Topic[] = [
             <p className="text-xs text-gray-600 mt-1">This item looks like the same product entered twice under a slightly different name.</p>
             <p className="text-sm text-gray-800 mt-1"><strong>Fix it:</strong></p>
             <Steps items={[
-              <>Switch to the <strong>Items</strong> tab.</>,
+              <>Switch to the <strong>Items</strong> view.</>,
               <>Open the flags panel (📜) and tap the <strong>Duplicate Items</strong> pill.</>,
               <>Each pair shows both names side by side with two buttons: <strong>Keep "Name A"</strong> or <strong>Keep "Name B"</strong> — tap whichever one you want to keep. The other’s entire history (sales, bills, counts) merges into it automatically.</>,
               <>If they’re genuinely two different products, tap <strong>Different — Not a Duplicate</strong> instead, so it stops being flagged.</>,
@@ -203,7 +203,7 @@ const TOPICS: Topic[] = [
             <p className="text-xs text-gray-600 mt-1">A past sale line matches this item by name but was never actually linked to it.</p>
             <p className="text-sm text-gray-800 mt-1"><strong>Fix it:</strong></p>
             <Steps items={[
-              <>Switch to the <strong>Items</strong> tab, open the flags panel (📜), and tap <strong>Unlinked Sales</strong>.</>,
+              <>Switch to the <strong>Items</strong> view, open the flags panel (📜), and tap <strong>Unlinked Sales</strong>.</>,
               <>Each row shows how many sale lines matched this item and a button reading <strong>"Link N sale(s) to this item"</strong> — tap it to connect them all at once.</>,
             ]} />
           </div>
@@ -212,7 +212,19 @@ const TOPICS: Topic[] = [
             <MiniBanner text="⚠ SERVICE VIOLATION" bg="bg-rose-600" />
             <p className="text-xs text-gray-600 mt-1">A service item (no physical stock) shows GMC use, a bill, or a stock count against it.</p>
             <p className="text-sm text-gray-800 mt-1"><strong>Fix it:</strong></p>
-            <p className="text-sm text-gray-700">Switch to the <strong>Items</strong> tab, open the flags panel (📜), and tap <strong>Service Violations</strong> to see which service is affected and by how much — but there’s no one-tap fix here. You need to track down the actual bill, count, or GMC entry that was wrongly logged against the service (in Bills, Count Records, or the Log) and correct or delete it there.</p>
+            <Steps items={[
+              <>Switch to the <strong>Items</strong> view, open the flags panel (📜), and tap <strong>Service Violations</strong> to see which services are affected and what data they’re carrying.</>,
+              <>Tap the <strong>⚙️ Service GMC</strong> button near the top to open the Service GMC actions dropdown.</>,
+              <>Use one of these actions:
+                <ul className="list-disc list-inside ml-2 text-sm">
+                  <li><strong>Migrate Data</strong> — transfers counts, bills, and sales from services to their target GMC items (if configured).</li>
+                  <li><strong>Fix Loss Records</strong> — moves the audit trail of deletions from services to their target items.</li>
+                  <li><strong>Clear Cost Prices</strong> — removes cost prices from services (owner-level only).</li>
+                  <li><strong>Add Constraints</strong> — enforces database rules to prevent new violations (owner-level only).</li>
+                </ul>
+              </>,
+              <>If the service doesn’t have a target GMC item, track down the wrongly-logged bill, count, or GMC entry (in Bills, Count Records, or the Log) and correct or delete it there.</>,
+            ]} />
           </div>
         </div>
       </div>
