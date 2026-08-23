@@ -3811,7 +3811,7 @@ function ItemHubPageInner() {
                     ))}
                   </select>
                   <select
-                    value={liveGmcTypeFilter ? `gmc:${liveGmcTypeFilter}` : liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind === 'flag' ? `flag:${liveSaleFilter.key}` : liveSaleFilter.kind : liveCurrentView?.kind === 'violation' ? `violation:${liveCurrentView.key}` : liveCurrentView?.kind === 'aliasWide' ? 'view:aliasWide' : liveCurrentView?.kind === 'serviceMatches' ? 'view:serviceMatches' : liveCurrentView?.kind === 'gmcPacks' ? 'view:gmcPacks' : ''}
+                    value={liveGmcTypeFilter ? `gmc:${liveGmcTypeFilter}` : liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind === 'flag' ? `flag:${liveSaleFilter.key}` : liveSaleFilter.kind : liveCurrentView?.kind === 'violation' ? `violation:${liveCurrentView.key}` : liveCurrentView?.kind === 'aliasWide' ? 'view:aliasWide' : liveCurrentView?.kind === 'serviceMatches' ? 'view:serviceMatches' : liveCurrentView?.kind === 'gmcPacks' ? 'view:gmcPacks' : liveCurrentView?.kind === 'newItem' ? 'view:newItem' : ''}
                     onChange={e => {
                       const v = e.target.value
                       if (!v) {
@@ -3838,6 +3838,7 @@ function ItemHubPageInner() {
                         if (viewKey === 'aliasWide') setLiveCurrentView({ kind: 'aliasWide' as const })
                         else if (viewKey === 'serviceMatches') setLiveCurrentView({ kind: 'serviceMatches' as const })
                         else if (viewKey === 'gmcPacks') setLiveCurrentView({ kind: 'gmcPacks' as const })
+                        else if (viewKey === 'newItem') setLiveCurrentView({ kind: 'newItem' as const })
                       } else if (v.startsWith('gmc:')) {
                         setLiveSaleFilter(null)
                         setLiveCurrentView(null)
@@ -3871,6 +3872,7 @@ function ItemHubPageInner() {
                       <option value="view:aliasWide">Alias Wide Table</option>
                       <option value="view:serviceMatches">Service Matches</option>
                       <option value="view:gmcPacks">GMC Packs</option>
+                      <option value="view:newItem">+ New Item</option>
                     </optgroup>
                     <optgroup label="GMC Types">
                       <option value="gmc:none">None</option>
