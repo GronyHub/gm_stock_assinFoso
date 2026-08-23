@@ -2916,6 +2916,36 @@ function ItemHubPageInner() {
     }
   }
 
+  async function saveConversionTargetOnly(convertToItemId: string | null) {
+    // Works for both sale-tap sheet (liveSelectedItem) and grid edit modal (liveEditingGridItemId)
+    const itemId = liveSelectedItem?.id || liveEditingGridItemId
+    if (!itemId) return
+    try {
+      const res = await fetch(`/api/items/${itemId}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ converts_to_item_id: convertToItemId ? Number(convertToItemId) : null }),
+      })
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ error: 'API error' }))
+        const errorMsg = error.error || 'Failed to save conversion target'
+        setLiveEditError(errorMsg)
+        setLiveGridEditError(errorMsg)
+        return
+      }
+      const updated = await res.json()
+      setLiveEditForm(prev => ({ ...prev, converts_to_item_id: updated.converts_to_item_id ? String(updated.converts_to_item_id) : '' }))
+      // Clear errors on success
+      setLiveEditError('')
+      setLiveGridEditError('')
+      // Refresh items list
+      fetch('/api/items/all').then(r => r.json()).then(d => setLiveAllItems(Array.isArray(d) ? d : [])).catch(() => {})
+    } catch (e) {
+      const errorMsg = e instanceof Error ? e.message : 'Failed to save conversion target'
+      setLiveEditError(errorMsg)
+      setLiveGridEditError(errorMsg)
+    }
+  }
+
   // Same edit/delete pair Counts' own list already offers -- kept here so
   // fixing or removing a count record doesn't require leaving Live Sale
   // just because that mode still also exists.
@@ -4777,6 +4807,7 @@ function ItemHubPageInner() {
                           currentCountInterval={liveEditCurrentCountInterval}
                           currentSoh={liveEditCurrentSoh}
                           onGmcTypeSave={saveGmcTypeOnly}
+                          onConversionTargetSave={saveConversionTargetOnly}
                         />
                       )}
                       {liveEditError && (
@@ -5066,6 +5097,7 @@ function ItemHubPageInner() {
                           currentCountInterval={liveEditCurrentCountInterval}
                           currentSoh={liveEditCurrentSoh}
                           onGmcTypeSave={saveGmcTypeOnly}
+                          onConversionTargetSave={saveConversionTargetOnly}
                         />
                       ) : (
                         <p className="text-center text-red-600 text-xs">Item not found</p>

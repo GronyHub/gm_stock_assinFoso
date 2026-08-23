@@ -59,7 +59,7 @@ const CADENCE_PRESETS: { value: string; label: string }[] = [
   { value: '45', label: 'Every 45 Days' },
 ]
 
-export function ItemEditForm({ form, onChange, groups, itemId, isService, allItems, size = 'compact', currentCountInterval, currentSoh, onGmcTypeSave }: {
+export function ItemEditForm({ form, onChange, groups, itemId, isService, allItems, size = 'compact', currentCountInterval, currentSoh, onGmcTypeSave, onConversionTargetSave }: {
   form: typeof EMPTY_ITEM_EDIT_FORM; onChange: (f: typeof EMPTY_ITEM_EDIT_FORM) => void; groups: string[]
   itemId: number; isService: boolean; allItems: { item_id: number; item_name: string; gmc_type?: string | null }[]
   size?: 'compact' | 'large'
@@ -76,6 +76,8 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
   currentSoh?: number | null
   // Called when the user clicks the tick button next to GMC Type dropdown
   onGmcTypeSave?: (gmcType: string) => void | Promise<void>
+  // Called when the user selects a conversion target to save it immediately
+  onConversionTargetSave?: (convertToItemId: string | null) => void | Promise<void>
 }) {
   const s = SIZES[size]
   const large = size === 'large'
@@ -196,7 +198,14 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
           </label>
           <select
             value={form.converts_to_item_id}
-            onChange={set('converts_to_item_id')}
+            onChange={(e) => {
+              const value = e.target.value
+              onChange({ ...form, converts_to_item_id: value })
+              // Auto-save the selection
+              if (onConversionTargetSave) {
+                onConversionTargetSave(value || null)
+              }
+            }}
             className={`${s.input} ${form.gmc_type === 'service_using_gmc' && !form.converts_to_item_id ? 'border-red-500 bg-red-50' : ''}`}>
             <option value="">{form.gmc_type === 'service_using_gmc' ? '⚠ Required — Choose an item' : '— No conversion —'}</option>
             {allItems.filter(i => i.item_id !== itemId && ['gmc', 'service_gmc', 'service_gmc_serving'].includes(i.gmc_type || '')).map(i => (
