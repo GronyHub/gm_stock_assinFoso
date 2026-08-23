@@ -296,7 +296,7 @@ export const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCate
   },
   {
     key: 'no_cp', label: 'No CP', category: 'loss',
-    description: 'This item has no cost/purchase price set (or it is ₵0), so profit and loss on it cannot be calculated. Open the item and enter what it actually costs to buy or produce.',
+    description: 'This good has no cost/purchase price set (or it is ₵0), so profit and loss on it cannot be calculated. Open the item and enter what it actually costs to buy or produce. (Services do not require cost prices.)',
   },
   {
     key: 'no_group', label: 'No Group', category: 'loss',
@@ -465,7 +465,7 @@ const SALES_FLAG_TYPES: { key: string; letter: string; label: string }[] = [
 const ITEMS_FLAG_TYPES: { key: string; letter: string; label: string }[] = [
   { key: 'neg_soh', letter: 'N', label: 'Negative Stock Items' },
   { key: 'no_sp', letter: 'S', label: 'No/Zero Selling Prices' },
-  { key: 'no_cp', letter: 'C', label: 'Missing Cost Prices' },
+  { key: 'no_cp', letter: 'C', label: 'No/Zero Cost Prices (Goods)' },
   { key: 'no_group', letter: 'G', label: 'Item Groups' },
   { key: 'duplicates', letter: 'D', label: 'Duplicate Items' },
   { key: 'unlinked_named', letter: 'U', label: 'Unlinked Sales' },
@@ -1071,7 +1071,7 @@ function ItemHubPageInner() {
   const violationCounts: Record<string, number> = useMemo(() => {
     const negSoh = items.filter(i => Number(i.calculated_soh) < 0 && i.product_type !== 'service').length
     const noSp = items.filter(i => !i.selling_rate || parseFloat(i.selling_rate) === 0).length
-    const noCp = items.filter(i => !i.purchase_rate || parseFloat(i.purchase_rate) === 0).length
+    const noCp = items.filter(i => i.product_type !== 'service' && (!i.purchase_rate || parseFloat(i.purchase_rate) === 0)).length
     const f = globalFlags
     return {
       neg_soh: negSoh,
@@ -2085,7 +2085,7 @@ function ItemHubPageInner() {
   const liveItemsWithViolations = useMemo(() => ({
     neg_soh: liveAllItems.filter(i => Number(i.soh) < 0 && i.product_type !== 'service').map(i => i.id),
     no_sp: liveAllItems.filter(i => !i.selling_price || parseFloat(String(i.selling_price)) === 0).map(i => i.id),
-    no_cp: liveAllItems.filter(i => !i.cost_price || parseFloat(String(i.cost_price)) === 0).map(i => i.id),
+    no_cp: liveAllItems.filter(i => i.product_type !== 'service' && (!i.cost_price || parseFloat(String(i.cost_price)) === 0)).map(i => i.id),
     no_group: liveAllItems.filter(i => !i.group).map(i => i.id),
     // Both sides of every non-dismissed duplicate pair -- ids only, same as
     // the other four keys here.
@@ -2377,7 +2377,7 @@ function ItemHubPageInner() {
       { key: 'flag_service_violation', label: '⚠ Service Violation', count: serviceViolationCount },
       { key: 'flag_unlinked', label: '⚠ Unlinked Sale', count: unlinkedCount },
       { key: 'flag_missing_selling_price', label: '⚠ No/Zero Selling Price', count: missingSellingPriceCount },
-      { key: 'flag_missing_cost_price', label: '⚠ Missing Cost Price', count: missingCostPriceCount },
+      { key: 'flag_missing_cost_price', label: '⚠ No/Zero Cost Price (Goods)', count: missingCostPriceCount },
       { key: 'flag_missing_group', label: '⚠ Missing Group', count: missingGroupCount },
     ]
   }, [liveAllItems, liveLossByItemId, liveProductTypeFilter, liveGroupFilter, liveDuplicateItemIds, liveServiceViolationIdSet, liveUnlinkedNamedIds])
