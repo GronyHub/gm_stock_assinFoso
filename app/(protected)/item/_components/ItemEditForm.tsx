@@ -210,7 +210,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
             <option value="">{form.gmc_type === 'service_using_gmc' ? '⚠ Required — Choose an item' : '— No conversion —'}</option>
             {allItems.filter(i => {
               if (i.item_id === itemId) return false
-              if (!['gmc', 'service_gmc', 'service_gmc_serving'].includes(i.gmc_type || '')) return false
+              if (!['gmc', 'service_gmc', 'service_gmc_serving', 'service_no_gmc'].includes(i.gmc_type || '')) return false
               return true
             }).map(i => (
               <option key={i.item_id} value={String(i.item_id)}>{i.item_name}</option>

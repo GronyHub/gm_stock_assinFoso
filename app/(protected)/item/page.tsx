@@ -3879,6 +3879,7 @@ function ItemHubPageInner() {
                       <option value="gmc:gmc">GMC only, no service</option>
                       <option value="gmc:service_gmc">Is both service and GMC alone</option>
                       <option value="gmc:service_gmc_serving">Is Service and GMC serving other services</option>
+                      <option value="gmc:service_no_gmc">Service only</option>
                       <option value="gmc:pack_to_gmc">Pack → GMC</option>
                       <option value="gmc:service_using_gmc">Service uses GMC</option>
                     </optgroup>
