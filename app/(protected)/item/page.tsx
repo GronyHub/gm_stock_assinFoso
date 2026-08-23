@@ -4764,16 +4764,20 @@ function ItemHubPageInner() {
                                 <span className="text-gray-400"> · </span>
                               </>
                             )}
-                            <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
-                            {item.count_interval && (
+                            {item.product_type !== 'service' && (
                               <>
+                                <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
+                                {item.count_interval && (
+                                  <>
+                                    <span className="text-gray-400"> · </span>
+                                    <span className="text-gray-500">{item.count_interval}</span>
+                                  </>
+                                )}
                                 <span className="text-gray-400"> · </span>
-                                <span className="text-gray-500">{item.count_interval}</span>
                               </>
                             )}
                             {item.product_type !== 'service' && (
                               <>
-                                <span className="text-gray-400"> · </span>
                                 <span className={formatLoss(liveLossByItemId.get(item.id)).cls}>{formatLoss(liveLossByItemId.get(item.id)).text}</span>
                               </>
                             )}
@@ -4831,16 +4835,20 @@ function ItemHubPageInner() {
                                 <span className="text-gray-400"> · </span>
                               </>
                             )}
-                            <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
-                            {item.count_interval && (
+                            {item.product_type !== 'service' && (
                               <>
+                                <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
+                                {item.count_interval && (
+                                  <>
+                                    <span className="text-gray-400"> · </span>
+                                    <span className="text-gray-500">{item.count_interval}</span>
+                                  </>
+                                )}
                                 <span className="text-gray-400"> · </span>
-                                <span className="text-gray-500">{item.count_interval}</span>
                               </>
                             )}
                             {item.product_type !== 'service' && (
                               <>
-                                <span className="text-gray-400"> · </span>
                                 <span className={formatLoss(liveLossByItemId.get(item.id)).cls}>{formatLoss(liveLossByItemId.get(item.id)).text}</span>
                               </>
                             )}

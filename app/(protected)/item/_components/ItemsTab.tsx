@@ -1085,7 +1085,7 @@ export default function ItemsTab({ items, group, productType, search, violation,
                     <div className="min-w-0 flex-1">
                       <p className="text-[10px] font-bold text-white truncate">{item.item_name}</p>
                       <p className="text-[9px] text-blue-200">
-                        {item.cf_group ?? 'No group'} · SOH: {Number(item.calculated_soh)} ·{' '}
+                        {item.cf_group ?? 'No group'}{item.product_type !== 'service' && <> · SOH: {Number(item.calculated_soh)}</>} ·{' '}
                         <span className={item.product_type === 'service' ? 'text-purple-200' : 'text-teal-200'}>
                           {item.product_type === 'service' ? 'Service' : 'Good'}
                         </span>
