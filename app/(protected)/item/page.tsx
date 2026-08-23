@@ -3812,15 +3812,12 @@ function ItemHubPageInner() {
                   <div className="flex items-center gap-3 shrink-0">
                     {/* Control buttons next to tab switcher */}
                     {lossView === 'items' && (
-                      <>
                         <ColumnsPickerButton prefs={itemsColPrefs} dark extraToggles={[
                           { key: 'aliasWide', label: 'Alias Wide Table', active: itemsExtraView === 'aliasWide',
                             onToggle: () => setItemsExtraView(v => v === 'aliasWide' ? 'none' : 'aliasWide') },
                           { key: 'serviceMatches', label: 'Service Matches', active: itemsExtraView === 'serviceMatches',
                             onToggle: () => setItemsExtraView(v => v === 'serviceMatches' ? 'none' : 'serviceMatches') },
                         ]} />
-                        {isOwnerLevel(session?.user as any) && <ServiceGmcActionsDropdown />}
-                      </>
                     )}
                   </div>
                 </div>
@@ -3919,6 +3916,7 @@ function ItemHubPageInner() {
                       <option value="gmc:service_using_gmc">Service uses GMC</option>
                     </optgroup>
                   </select>
+                  {isOwnerLevel(session?.user as any) && <div className="ml-auto"><ServiceGmcActionsDropdown /></div>}
                 </div>
               )}
               {/* Row 3: search bar + controls — hidden on report-style submenus. */}
