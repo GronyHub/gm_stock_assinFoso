@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
                COALESCE(i.selling_rate, 0) AS selling_price,
                COALESCE(i.purchase_rate, 0) AS cost_price,
                COALESCE(i.product_type, 'goods') AS product_type,
+               COALESCE(i.gmc_type, '') AS gmc_type,
                NOW() AS updated_at
         FROM active_items i
         LEFT JOIN item_stock_summary s ON s.item_id = i.id
@@ -54,6 +55,7 @@ export async function GET(req: NextRequest) {
                COALESCE(selling_rate, 0) AS selling_price,
                COALESCE(purchase_rate, 0) AS cost_price,
                COALESCE(product_type, 'goods') AS product_type,
+               COALESCE(gmc_type, '') AS gmc_type,
                NOW() AS updated_at
         FROM items
         WHERE (status IS NULL OR LOWER(status) NOT IN ('inactive','service'))
