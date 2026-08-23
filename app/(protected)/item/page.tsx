@@ -707,6 +707,8 @@ function ItemHubPageInner() {
   const [liveProductTypeFilter, setLiveProductTypeFilter] = useState<'all' | 'goods' | 'services'>(initialLiveProductType)
   const rawLiveGroup = searchParams.get('liveGroup')
   const [liveGroupFilter, setLiveGroupFilter] = useState<string | null>(rawLiveGroup ?? null)
+  const rawLiveGmcType = searchParams.get('liveGmcType')
+  const [liveGmcTypeFilter, setLiveGmcTypeFilter] = useState<string | null>(rawLiveGmcType ?? null)
   const [liveHelpModalOpen, setLiveHelpModalOpen] = useState(false)
   const rawLiveMode = searchParams.get('mode')
   const initialLiveMode = (rawLiveMode as 'sale' | 'sales' | 'bills' | 'lossByTarget' | 'log' | 'count' | null) ?? 'sale'
@@ -1379,6 +1381,7 @@ function ItemHubPageInner() {
     if (liveMode) params.set('mode', liveMode); else params.delete('mode')
     if (liveProductTypeFilter !== 'all') params.set('liveType', liveProductTypeFilter); else params.delete('liveType')
     if (liveGroupFilter) params.set('liveGroup', liveGroupFilter); else params.delete('liveGroup')
+    if (liveGmcTypeFilter) params.set('liveGmcType', liveGmcTypeFilter); else params.delete('liveGmcType')
     if (liveSalesViolationFilter) params.set('liveSalesViolation', liveSalesViolationFilter); else params.delete('liveSalesViolation')
     if (liveBillsViolationFilter) params.set('liveBillsViolation', liveBillsViolationFilter); else params.delete('liveBillsViolation')
     if (liveSaleFilter) {
@@ -1397,7 +1400,7 @@ function ItemHubPageInner() {
     if (target === current) return
     router.push(target, { scroll: false })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [outerTab, lossView, settingsOpen, itemsExtraView, group, productType, violation, showAnalytics, addForm, liveMode, liveProductTypeFilter, liveGroupFilter, liveSalesViolationFilter, liveBillsViolationFilter, liveSaleFilter, liveCountView, liveEmbeddedSearch, sidePaneHidden])
+  }, [outerTab, lossView, settingsOpen, itemsExtraView, group, productType, violation, showAnalytics, addForm, liveMode, liveProductTypeFilter, liveGroupFilter, liveGmcTypeFilter, liveSalesViolationFilter, liveBillsViolationFilter, liveSaleFilter, liveCountView, liveEmbeddedSearch, sidePaneHidden])
 
   // A refresh should land back on the same search instead of resetting it --
   // replace (not push) since typing shouldn't create a history entry per
@@ -2390,6 +2393,15 @@ function ItemHubPageInner() {
       filtered = filtered.filter(item => item.group === liveGroupFilter)
     }
 
+    // Apply GMC type filter
+    if (liveGmcTypeFilter !== null) {
+      if (liveGmcTypeFilter === 'none') {
+        filtered = filtered.filter(item => !item.gmc_type || item.gmc_type === '')
+      } else {
+        filtered = filtered.filter(item => item.gmc_type === liveGmcTypeFilter)
+      }
+    }
+
     // GMC (internal use) only ever taps items with a GMC history -- keeps
     // the browse grid from offering a normal walk-in item under an
     // internal-use receipt. Doesn't apply to a deliberately searched-and-
@@ -2449,7 +2461,7 @@ function ItemHubPageInner() {
 
     // Sort by sales count (highest to lowest)
     return filtered.sort((a, b) => (liveSalesCounts.get(b.id) ?? 0) - (liveSalesCounts.get(a.id) ?? 0))
-  }, [liveAllItems, liveSalesCounts, liveCurrentView, liveProductTypeFilter, liveGroupFilter, livePickedItemId, liveSaleType, liveGmcItemIds, liveMode, liveSaleFilter, liveLossByItemId, liveItemsWithViolations, liveDuplicateItemIds, liveServiceViolationIdSet, liveUnlinkedNamedIds])
+  }, [liveAllItems, liveSalesCounts, liveCurrentView, liveProductTypeFilter, liveGroupFilter, liveGmcTypeFilter, livePickedItemId, liveSaleType, liveGmcItemIds, liveMode, liveSaleFilter, liveLossByItemId, liveItemsWithViolations, liveDuplicateItemIds, liveServiceViolationIdSet, liveUnlinkedNamedIds])
 
   // Log tab's two histories, grouped by date -- computed unconditionally
   // (not inside an `if (liveMode === 'log')` branch) since every mode
@@ -3055,6 +3067,19 @@ function ItemHubPageInner() {
           {liveGroups.map(g => (
             <option key={g} value={g}>{g}</option>
           ))}
+        </select>
+        <select
+          value={liveGmcTypeFilter || ''}
+          onChange={e => setLiveGmcTypeFilter(e.target.value || null)}
+          className="text-[10px] px-2 py-0.5 rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 flex-1"
+        >
+          <option value="">GMC Types</option>
+          <option value="none">None</option>
+          <option value="gmc">GMC</option>
+          <option value="service_gmc">SVC+GMC</option>
+          <option value="service_gmc_serving">SVC/GMC→</option>
+          <option value="pack_to_gmc">PKG→GMC</option>
+          <option value="service_using_gmc">SVC/GMC</option>
         </select>
         <select
           value={liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind === 'flag' ? `flag:${liveSaleFilter.key}` : liveSaleFilter.kind : liveCurrentView?.kind === 'violation' ? `violation:${liveCurrentView.key}` : liveCurrentView?.kind === 'aliasWide' ? 'view:aliasWide' : liveCurrentView?.kind === 'serviceMatches' ? 'view:serviceMatches' : liveCurrentView?.kind === 'gmcPacks' ? 'view:gmcPacks' : ''}
