@@ -4688,6 +4688,14 @@ function ItemHubPageInner() {
                             )}
                             <span className="text-gray-400"> · </span>
                             <span className={formatLoss(liveLossByItemId.get(item.id)).cls}>{formatLoss(liveLossByItemId.get(item.id)).text}</span>
+                            {item.gmc_type && (
+                              <>
+                                <span className="text-gray-400"> · </span>
+                                <span className="inline-block rounded bg-purple-100 px-1 py-0.5 text-[7px] font-bold text-purple-700">
+                                  {item.gmc_type === 'gmc' ? 'GMC' : item.gmc_type === 'service_gmc' ? 'SVC+GMC' : item.gmc_type === 'service_gmc_serving' ? 'SVC/GMC→' : item.gmc_type === 'pack_to_gmc' ? 'PKG→GMC' : 'SVC/GMC'}
+                                </span>
+                              </>
+                            )}
                           </p>
                         </div>
                         {count > 0 && (
@@ -4738,6 +4746,14 @@ function ItemHubPageInner() {
                             )}
                             <span className="text-gray-400"> · </span>
                             <span className={formatLoss(liveLossByItemId.get(item.id)).cls}>{formatLoss(liveLossByItemId.get(item.id)).text}</span>
+                            {item.gmc_type && (
+                              <>
+                                <span className="text-gray-400"> · </span>
+                                <span className="inline-block rounded bg-purple-100 px-1 py-0.5 text-[7px] font-bold text-purple-700">
+                                  {item.gmc_type === 'gmc' ? 'GMC' : item.gmc_type === 'service_gmc' ? 'SVC+GMC' : item.gmc_type === 'service_gmc_serving' ? 'SVC/GMC→' : item.gmc_type === 'pack_to_gmc' ? 'PKG→GMC' : 'SVC/GMC'}
+                                </span>
+                              </>
+                            )}
                           </p>
                         </div>
                         {count > 0 && (
