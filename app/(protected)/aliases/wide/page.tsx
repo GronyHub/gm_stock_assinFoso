@@ -3,42 +3,25 @@ import { useState, useEffect, useMemo } from 'react'
 
 type Alias = { id: number; name: string; type: string }
 type Row = { item_id: number; canonical_name: string; cf_group: string | null; aliases: Alias[] }
+type TableRow = { item_id: number; canonical_name: string; group: string | null; alias_name: string; alias_type: string; alias_id: number | null }
 
 export default function AliasEditorPage() {
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
-  const [selected, setSelected] = useState<Row | null>(null)
   const [search, setSearch] = useState('')
   const [group, setGroup] = useState<string | null>(null)
-
-  // Add alias
-  const [newAlias, setNewAlias] = useState('')
-  const [newType, setNewType] = useState('sr_variant')
-  const [adding, setAdding] = useState(false)
-  const [addError, setAddError] = useState('')
-
-  // Delete
-  const [deletingId, setDeletingId] = useState<number | null>(null)
-
-  // Move alias
-  const [movingAlias, setMovingAlias] = useState<Alias | null>(null)
+  const [movingAlias, setMovingAlias] = useState<{ id: number; name: string; fromItemId: number } | null>(null)
   const [moveSearch, setMoveSearch] = useState('')
   const [moving, setMoving] = useState(false)
-
-  // Merge canonical items
-  const [mergeMode, setMergeMode] = useState(false)
-  const [mergeSearch, setMergeSearch] = useState('')
-  const [merging, setMerging] = useState(false)
-  const [mergeResult, setMergeResult] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [merging, setMerging] = useState<number | null>(null)
 
   useEffect(() => { load() }, [])
 
   async function load() {
     setLoading(true)
     const d = await fetch('/api/aliases/wide').then(r => r.json())
-    const updated = Array.isArray(d) ? d : []
-    setRows(updated)
-    setSelected(prev => prev ? (updated.find((r: Row) => r.item_id === prev.item_id) ?? null) : null)
+    setRows(Array.isArray(d) ? d : [])
     setLoading(false)
   }
 
@@ -47,59 +30,37 @@ export default function AliasEditorPage() {
     [rows]
   )
 
-  const filtered = useMemo(() => {
+  const tableRows: TableRow[] = useMemo(() => {
     const q = search.toLowerCase()
-    return rows.filter(r => {
-      const matchGroup = !group || group === 'All' ? true : (r.cf_group ?? 'Ungrouped') === group
-      const matchSearch = !q ||
-        r.canonical_name.toLowerCase().includes(q) ||
-        r.aliases.some(a => a.name.toLowerCase().includes(q))
-      return matchGroup && matchSearch
+    const matchesSearch = (r: Row) => !q ||
+      r.canonical_name.toLowerCase().includes(q) ||
+      r.aliases.some(a => a.name.toLowerCase().includes(q))
+
+    const matchesGroup = (r: Row) => !group || group === 'All' ? true : (r.cf_group ?? 'Ungrouped') === group
+
+    const result: TableRow[] = []
+    rows.forEach(r => {
+      if (matchesSearch(r) && matchesGroup(r)) {
+        if (r.aliases.length === 0) {
+          result.push({ item_id: r.item_id, canonical_name: r.canonical_name, group: r.cf_group, alias_name: '—', alias_type: '—', alias_id: null })
+        } else {
+          r.aliases.forEach(a => {
+            result.push({ item_id: r.item_id, canonical_name: r.canonical_name, group: r.cf_group, alias_name: a.name, alias_type: a.type, alias_id: a.id })
+          })
+        }
+      }
     })
+    return result
   }, [rows, search, group])
 
   const moveTargets = useMemo(() => {
     const q = moveSearch.toLowerCase()
-    if (!q) return rows.filter(r => r.item_id !== selected?.item_id).slice(0, 40)
+    if (!movingAlias || !q) return rows.filter(r => r.item_id !== movingAlias?.fromItemId).slice(0, 40)
     return rows
-      .filter(r => r.item_id !== selected?.item_id &&
+      .filter(r => r.item_id !== movingAlias?.fromItemId &&
         (r.canonical_name.toLowerCase().includes(q) || (r.cf_group ?? '').toLowerCase().includes(q)))
       .slice(0, 40)
-  }, [rows, moveSearch, selected])
-
-  const mergeTargets = useMemo(() => {
-    const q = mergeSearch.toLowerCase()
-    if (!q) return rows.filter(r => r.item_id !== selected?.item_id).slice(0, 40)
-    return rows
-      .filter(r => r.item_id !== selected?.item_id &&
-        (r.canonical_name.toLowerCase().includes(q) || (r.cf_group ?? '').toLowerCase().includes(q)))
-      .slice(0, 40)
-  }, [rows, mergeSearch, selected])
-
-  function selectRow(r: Row) {
-    setSelected(r)
-    setNewAlias(''); setAddError('')
-    setMovingAlias(null); setMoveSearch('')
-    setMergeMode(false); setMergeSearch(''); setMergeResult(null)
-  }
-
-  async function addAlias(force = false) {
-    if (!selected || !newAlias.trim()) return
-    setAdding(true); setAddError('')
-    const res = await fetch('/api/aliases/confirm', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ alias_name: newAlias.trim(), item_id: selected.item_id, alias_type: newType, force }),
-    })
-    setAdding(false)
-    if (res.ok) { setNewAlias(''); await load(); return }
-    const d = await res.json().catch(() => null)
-    if (res.status === 409 && d?.requires_confirmation) {
-      if (window.confirm(`${d.warning}\n\nMatch anyway?`)) addAlias(true)
-      return
-    }
-    setAddError('Failed — alias may already exist for this item')
-  }
+  }, [rows, moveSearch, movingAlias])
 
   async function deleteAlias(aliasId: number, name: string) {
     if (!confirm(`Delete alias "${name}"?`)) return
@@ -125,231 +86,118 @@ export default function AliasEditorPage() {
       }
       return
     }
-    setMovingAlias(null); setMoveSearch('')
+    setMovingAlias(null)
+    setMoveSearch('')
     await load()
-  }
-
-  async function mergeInto(winnerId: number, winnerName: string) {
-    if (!selected) return
-    setMerging(true)
-    const res = await fetch('/api/items/merge', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ loser_id: selected.item_id, winner_id: winnerId }),
-    })
-    setMerging(false)
-    if (res.ok) {
-      setMergeResult(`"${selected.canonical_name}" merged into "${winnerName}"`)
-      setMergeMode(false); setMergeSearch('')
-      setSelected(null)
-      await load()
-    }
   }
 
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
 
   return (
-    <div className="-mx-4 -mt-4 flex flex-col" style={{ height: 'calc(100dvh - 56px - 60px)' }}>
-
+    <div className="flex flex-col h-full gap-2 p-2">
       {/* Top bar */}
-      <div className="shrink-0 border-b border-gray-200 bg-white">
-        <div className="flex items-center gap-2 px-2 py-1.5">
-          <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder={`Search ${rows.length} items or aliases…`}
-            className="flex-1 text-[10px] bg-gray-50 border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400 text-gray-900 placeholder-gray-300" />
-          <span className="text-[9px] text-gray-400 shrink-0">{filtered.length} shown</span>
-        </div>
-        <div className="flex gap-1 px-2 pb-1.5 overflow-x-auto">
+      <div className="space-y-2 shrink-0">
+        <input value={search} onChange={e => setSearch(e.target.value)}
+          placeholder={`Search ${rows.length} items or aliases…`}
+          className="w-full text-[10px] bg-white border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400 text-gray-900 placeholder-gray-300" />
+        <div className="flex gap-1 overflow-x-auto">
           {groups.map(g => (
             <button key={g} onClick={() => setGroup(g === 'All' ? null : g)}
               className={`shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded-full transition
-                ${(g === 'All' && !group) || g === group ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                ${(g === 'All' && !group) || g === group ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
               {g}
             </button>
           ))}
         </div>
+        <p className="text-[9px] text-gray-400">{tableRows.length} shown</p>
       </div>
 
-      {/* Merge result toast */}
-      {mergeResult && (
-        <div className="shrink-0 px-3 py-1.5 bg-green-50 border-b border-green-200 flex items-center justify-between">
-          <p className="text-[9px] text-green-700 font-semibold">✓ {mergeResult}</p>
-          <button onClick={() => setMergeResult(null)} className="text-green-400 text-xs font-bold">×</button>
+      {/* Move modal */}
+      {movingAlias && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2">
+          <div className="bg-white rounded-lg max-w-sm w-full shadow-xl">
+            <div className="px-3 py-2 bg-orange-50 border-b border-orange-200">
+              <p className="text-[9px] text-orange-600 font-bold uppercase">Move Alias</p>
+              <p className="text-[10px] font-semibold text-gray-900 mt-0.5 truncate">"{movingAlias.name}"</p>
+            </div>
+            <div className="p-2 space-y-2">
+              <input value={moveSearch} onChange={e => setMoveSearch(e.target.value)}
+                placeholder="Search canonical items…" autoFocus
+                className="w-full text-[10px] bg-gray-50 border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-orange-400" />
+              <div className="max-h-[300px] overflow-y-auto border border-gray-200 rounded">
+                {moveTargets.length === 0 ? (
+                  <p className="text-[9px] text-gray-400 p-2 text-center">No items found</p>
+                ) : (
+                  moveTargets.map(r => (
+                    <button key={r.item_id}
+                      onClick={() => !moving && moveAlias(r.item_id)}
+                      disabled={moving}
+                      className="w-full text-left px-2 py-1 border-b border-gray-100 hover:bg-orange-50 text-[10px] transition disabled:opacity-50">
+                      <p className="font-semibold text-gray-900">{r.canonical_name}</p>
+                      {r.cf_group && <p className="text-[8px] text-gray-400">{r.cf_group}</p>}
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+            <div className="px-3 py-2 border-t border-gray-200 flex gap-1">
+              <button onClick={() => { setMovingAlias(null); setMoveSearch('') }}
+                className="flex-1 text-[9px] font-semibold text-gray-600 bg-gray-100 rounded py-1 hover:bg-gray-200 transition">
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
-      <div className="flex flex-1 min-h-0">
-
-        {/* LEFT: canonical items */}
-        <div className="w-1/2 border-r border-gray-200 overflow-y-auto min-h-0">
-          <table className="w-full border-collapse text-[10px]">
-            <thead className="sticky top-0 bg-gray-100 z-10">
+      {/* Table */}
+      <div className="flex-1 overflow-auto min-h-0 border border-gray-200 rounded">
+        <table className="w-full border-collapse text-[9px]">
+          <thead className="sticky top-0 bg-gray-100 z-10">
+            <tr>
+              <th className="px-1.5 py-1 text-left font-semibold text-gray-600 border-b border-gray-300 whitespace-nowrap">Canonical</th>
+              <th className="px-1.5 py-1 text-left font-semibold text-gray-600 border-b border-gray-300 whitespace-nowrap">Group</th>
+              <th className="px-1.5 py-1 text-left font-semibold text-gray-600 border-b border-gray-300">Alias</th>
+              <th className="px-1.5 py-1 text-left font-semibold text-gray-600 border-b border-gray-300 whitespace-nowrap">Type</th>
+              <th className="px-1.5 py-1 text-right font-semibold text-gray-600 border-b border-gray-300 whitespace-nowrap">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tableRows.length === 0 ? (
               <tr>
-                <th className="text-left px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">CANONICAL NAME</th>
-                <th className="text-right px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">#</th>
+                <td colSpan={5} className="px-2 py-4 text-center text-gray-400">No items found</td>
               </tr>
-            </thead>
-            <tbody>
-              {filtered.map(r => (
-                <tr key={r.item_id} onClick={() => selectRow(r)}
-                  className={`cursor-pointer border-b border-gray-100 transition ${selected?.item_id === r.item_id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-                  <td className="px-1 py-0.5">
-                    <p className="text-gray-900 font-semibold truncate max-w-[160px]">{r.canonical_name}</p>
-                    {r.cf_group && <p className="text-[9px] text-gray-400">{r.cf_group}</p>}
+            ) : (
+              tableRows.map((row, idx) => (
+                <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50 transition">
+                  <td className="px-1.5 py-0.5 text-gray-900 font-semibold truncate max-w-[200px]">{row.canonical_name}</td>
+                  <td className="px-1.5 py-0.5 text-gray-500 text-[8px] truncate max-w-[80px]">{row.group ?? '—'}</td>
+                  <td className="px-1.5 py-0.5 text-gray-700 truncate max-w-[250px]">{row.alias_name}</td>
+                  <td className="px-1.5 py-0.5 text-gray-400 text-[8px] whitespace-nowrap">{row.alias_type}</td>
+                  <td className="px-1.5 py-0.5 text-right whitespace-nowrap">
+                    {row.alias_id && (
+                      <>
+                        <button onClick={() => { setMovingAlias({ id: row.alias_id!, name: row.alias_name, fromItemId: row.item_id }); setMoveSearch('') }}
+                          className="text-[8px] text-orange-600 font-bold hover:text-orange-700 mr-1.5 transition">
+                          Move
+                        </button>
+                        <button onClick={() => deleteAlias(row.alias_id!, row.alias_name)} disabled={deletingId === row.alias_id}
+                          className="text-gray-300 hover:text-red-500 font-bold text-xs transition disabled:opacity-40">
+                          {deletingId === row.alias_id ? '…' : '×'}
+                        </button>
+                      </>
+                    )}
                   </td>
-                  <td className="px-1 py-0.5 text-right text-gray-400">{r.aliases.length}</td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
 
-        {/* RIGHT */}
-        <div className="w-1/2 overflow-y-auto min-h-0 bg-white flex flex-col">
-          {!selected ? (
-            <p className="text-[10px] text-gray-400 text-center py-10">Select an item to edit its aliases</p>
-          ) : movingAlias ? (
-
-            /* ── MOVE ALIAS MODE ── */
-            <div className="flex flex-col h-full">
-              <div className="px-2 py-1.5 bg-orange-50 border-b border-orange-200 shrink-0">
-                <p className="text-[9px] text-orange-500 font-semibold uppercase">Moving alias</p>
-                <p className="text-[10px] font-bold text-gray-900 break-words">{movingAlias.name}</p>
-                <p className="text-[9px] text-gray-400 mt-0.5">Pick the correct canonical item below</p>
-              </div>
-              <div className="px-2 py-1.5 border-b border-gray-100 shrink-0">
-                <input value={moveSearch} onChange={e => setMoveSearch(e.target.value)}
-                  placeholder="Search canonical items…" autoFocus
-                  className="w-full text-[10px] bg-gray-50 border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-orange-400 text-gray-900" />
-              </div>
-              <div className="flex-1 overflow-y-auto min-h-0">
-                {moveTargets.map(r => (
-                  <div key={r.item_id} onClick={() => !moving && moveAlias(r.item_id)}
-                    className="px-2 py-1.5 border-b border-gray-100 cursor-pointer hover:bg-orange-50 transition">
-                    <p className="text-[10px] font-semibold text-gray-900">{r.canonical_name}</p>
-                    {r.cf_group && <p className="text-[9px] text-gray-400">{r.cf_group}</p>}
-                  </div>
-                ))}
-              </div>
-              <div className="px-2 py-1.5 border-t border-gray-200 shrink-0">
-                <button onClick={() => { setMovingAlias(null); setMoveSearch('') }}
-                  className="w-full text-[10px] font-semibold text-gray-600 bg-gray-100 rounded py-1 hover:bg-gray-200 transition">
-                  Cancel
-                </button>
-              </div>
-            </div>
-
-          ) : mergeMode ? (
-
-            /* ── MERGE CANONICAL MODE ── */
-            <div className="flex flex-col h-full">
-              <div className="px-2 py-1.5 bg-red-50 border-b border-red-200 shrink-0">
-                <p className="text-[9px] text-red-500 font-semibold uppercase">Merging item</p>
-                <p className="text-[10px] font-bold text-gray-900 break-words">{selected.canonical_name}</p>
-                <p className="text-[9px] text-gray-400 mt-0.5">
-                  This item will become an alias of whichever you pick. All its sales/bill lines and existing aliases will move to the winner. It will be marked Inactive.
-                </p>
-              </div>
-              <div className="px-2 py-1.5 border-b border-gray-100 shrink-0">
-                <input value={mergeSearch} onChange={e => setMergeSearch(e.target.value)}
-                  placeholder="Search for the correct canonical item…" autoFocus
-                  className="w-full text-[10px] bg-gray-50 border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-red-400 text-gray-900" />
-              </div>
-              <div className="flex-1 overflow-y-auto min-h-0">
-                {mergeTargets.map(r => (
-                  <div key={r.item_id}
-                    onClick={() => !merging && mergeInto(r.item_id, r.canonical_name)}
-                    className="px-2 py-1.5 border-b border-gray-100 cursor-pointer hover:bg-red-50 transition">
-                    <p className="text-[10px] font-semibold text-gray-900">{r.canonical_name}</p>
-                    {r.cf_group && <p className="text-[9px] text-gray-400">{r.cf_group}</p>}
-                    <p className="text-[9px] text-gray-300">{r.aliases.length} aliases</p>
-                  </div>
-                ))}
-              </div>
-              <div className="px-2 py-1.5 border-t border-gray-200 shrink-0">
-                <button onClick={() => { setMergeMode(false); setMergeSearch('') }}
-                  className="w-full text-[10px] font-semibold text-gray-600 bg-gray-100 rounded py-1 hover:bg-gray-200 transition">
-                  Cancel
-                </button>
-              </div>
-            </div>
-
-          ) : (
-
-            /* ── NORMAL MODE ── */
-            <>
-              {/* Header */}
-              <div className="px-2 py-1.5 bg-gray-50 border-b border-gray-200 shrink-0">
-                <p className="text-[11px] font-bold text-gray-900">{selected.canonical_name}</p>
-                <p className="text-[9px] text-gray-400">{selected.cf_group ?? 'No group'} · {selected.aliases.length} alias{selected.aliases.length !== 1 ? 'es' : ''}</p>
-                {/* Merge button */}
-                <button onClick={() => { setMergeMode(true); setMergeSearch('') }}
-                  className="mt-1 text-[9px] font-semibold text-red-500 bg-red-50 px-2 py-0.5 rounded hover:bg-red-100 transition">
-                  Merge into another item →
-                </button>
-              </div>
-
-              {/* Add alias */}
-              <div className="px-2 py-1.5 border-b border-gray-200 shrink-0 space-y-1">
-                <p className="text-[9px] font-semibold text-gray-500 uppercase">Add alias</p>
-                <input value={newAlias} onChange={e => setNewAlias(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && addAlias()}
-                  placeholder="Type alias name…"
-                  className="w-full text-[10px] bg-gray-50 border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400 text-gray-900" />
-                <div className="flex gap-1">
-                  <select value={newType} onChange={e => setNewType(e.target.value)}
-                    className="text-[9px] bg-gray-50 border border-gray-200 rounded px-1 py-0.5 outline-none text-gray-600">
-                    <option value="sr_variant">sr_variant</option>
-                    <option value="canonical">canonical</option>
-                    <option value="wic_service">wic_service</option>
-                    <option value="gmc_service">gmc_service</option>
-                    <option value="old_stop">old_stop</option>
-                  </select>
-                  <button onClick={() => addAlias()} disabled={!newAlias.trim() || adding}
-                    className="flex-1 bg-blue-600 text-white text-[10px] font-bold rounded py-0.5 disabled:opacity-40 hover:bg-blue-500 transition">
-                    {adding ? 'Adding…' : '+ Add'}
-                  </button>
-                </div>
-                {addError && <p className="text-[9px] text-red-500">{addError}</p>}
-              </div>
-
-              {/* Alias list */}
-              <div className="flex-1 overflow-y-auto min-h-0">
-                {selected.aliases.length === 0 ? (
-                  <p className="text-[10px] text-gray-400 text-center py-6">No aliases yet</p>
-                ) : (
-                  <table className="w-full border-collapse text-[10px]">
-                    <thead className="sticky top-0 bg-gray-100 z-10">
-                      <tr>
-                        <th className="text-left px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">ALIAS NAME</th>
-                        <th className="text-left px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">TYPE</th>
-                        <th className="px-1.5 py-1 border-b border-gray-200 text-right font-semibold text-gray-500">ACTIONS</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selected.aliases.map(a => (
-                        <tr key={a.id} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="px-1.5 py-0.5 text-gray-900 break-words">{a.name}</td>
-                          <td className="px-1.5 py-0.5 text-gray-400 whitespace-nowrap">{a.type}</td>
-                          <td className="px-1.5 py-0.5 text-right whitespace-nowrap">
-                            <button onClick={() => { setMovingAlias(a); setMoveSearch('') }}
-                              className="text-[9px] text-orange-500 font-semibold hover:text-orange-600 mr-2 transition">
-                              Move
-                            </button>
-                            <button onClick={() => deleteAlias(a.id, a.name)} disabled={deletingId === a.id}
-                              className="text-gray-300 hover:text-red-500 font-bold text-xs transition disabled:opacity-40">
-                              {deletingId === a.id ? '…' : '×'}
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </>
-          )}
-        </div>
+      {/* Footer info */}
+      <div className="text-[8px] text-gray-400 shrink-0">
+        <p>Click Move to reassign an alias to a different canonical item • × to delete an alias</p>
       </div>
     </div>
   )
