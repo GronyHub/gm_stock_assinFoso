@@ -120,8 +120,6 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
   const gmcOptions = [
     { value: '', label: '— None —' },
     { value: 'gmc', label: 'GMC only, no service' },
-    { value: 'service_gmc', label: 'Is both service and GMC alone' },
-    { value: 'service_gmc_serving', label: 'Is Service and GMC serving other services' },
     { value: 'service_using_gmc', label: 'Is service using another GMC' },
     { value: 'service_no_gmc', label: 'Is service no GMC' },
     { value: 'pack_to_gmc', label: 'Pack here, I convert to a GMC' },
@@ -210,7 +208,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
             <option value="">{form.gmc_type === 'service_using_gmc' ? '⚠ Required — Choose an item' : '— No conversion —'}</option>
             {allItems.filter(i => {
               if (i.item_id === itemId) return false
-              if (!['gmc', 'service_gmc', 'service_gmc_serving', 'service_no_gmc'].includes(i.gmc_type || '')) return false
+              if (!['gmc', 'service_no_gmc'].includes(i.gmc_type || '')) return false
               return true
             }).map(i => (
               <option key={i.item_id} value={String(i.item_id)}>{i.item_name}</option>

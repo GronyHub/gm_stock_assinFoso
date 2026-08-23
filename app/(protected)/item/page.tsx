@@ -3076,8 +3076,7 @@ function ItemHubPageInner() {
           <option value="">GMC Types</option>
           <option value="none">None</option>
           <option value="gmc">GMC</option>
-          <option value="service_gmc">SVC+GMC</option>
-          <option value="service_gmc_serving">SVC/GMC→</option>
+          <option value="service_no_gmc">Service only</option>
           <option value="pack_to_gmc">PKG→GMC</option>
           <option value="service_using_gmc">SVC/GMC</option>
         </select>
@@ -3877,8 +3876,6 @@ function ItemHubPageInner() {
                     <optgroup label="GMC Types">
                       <option value="gmc:none">None</option>
                       <option value="gmc:gmc">GMC only, no service</option>
-                      <option value="gmc:service_gmc">Is both service and GMC alone</option>
-                      <option value="gmc:service_gmc_serving">Is Service and GMC serving other services</option>
                       <option value="gmc:service_no_gmc">Service only</option>
                       <option value="gmc:pack_to_gmc">Pack → GMC</option>
                       <option value="gmc:service_using_gmc">Service uses GMC</option>
