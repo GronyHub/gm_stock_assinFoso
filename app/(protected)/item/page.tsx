@@ -15,6 +15,7 @@ import { TrainingGuideModal } from './_components/TrainingGuideModal'
 import ItemDetailPanel from './_components/ItemDetailPanel'
 import { AliasPicker, MatchPicker, MergeItemPicker, type AliasRecord, type MatchRecord, type CandidateItem } from './_components/LossTab'
 import MigrateServiceGmcButton from './_components/MigrateServiceGmcButton'
+import FixServiceGmcLossRecordsButton from './_components/FixServiceGmcLossRecordsButton'
 
 class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boolean; message: string }> {
   state = { error: false, message: '' }
@@ -3820,6 +3821,7 @@ function ItemHubPageInner() {
                             onToggle: () => setItemsExtraView(v => v === 'serviceMatches' ? 'none' : 'serviceMatches') },
                         ]} />
                         {isOwnerLevel(session?.user as any) && <MigrateServiceGmcButton />}
+                        {isOwnerLevel(session?.user as any) && <FixServiceGmcLossRecordsButton />}
                       </>
                     )}
                   </div>
