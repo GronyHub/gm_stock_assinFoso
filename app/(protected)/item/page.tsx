@@ -4758,8 +4758,12 @@ function ItemHubPageInner() {
                           <p className="text-[9px] text-gray-600 leading-tight">
                             <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
                             <span className="text-gray-400"> · </span>
-                            <span className="text-green-600 font-semibold">CP ₵{formatPrice(item.cost_price)}</span>
-                            <span className="text-gray-400"> · </span>
+                            {item.product_type !== 'service' && (
+                              <>
+                                <span className="text-green-600 font-semibold">CP ₵{formatPrice(item.cost_price)}</span>
+                                <span className="text-gray-400"> · </span>
+                              </>
+                            )}
                             <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
                             {item.count_interval && (
                               <>
@@ -4767,8 +4771,12 @@ function ItemHubPageInner() {
                                 <span className="text-gray-500">{item.count_interval}</span>
                               </>
                             )}
-                            <span className="text-gray-400"> · </span>
-                            <span className={formatLoss(liveLossByItemId.get(item.id)).cls}>{formatLoss(liveLossByItemId.get(item.id)).text}</span>
+                            {item.product_type !== 'service' && (
+                              <>
+                                <span className="text-gray-400"> · </span>
+                                <span className={formatLoss(liveLossByItemId.get(item.id)).cls}>{formatLoss(liveLossByItemId.get(item.id)).text}</span>
+                              </>
+                            )}
                             {item.gmc_type && (
                               <>
                                 <span className="text-gray-400"> · </span>
@@ -4817,8 +4825,12 @@ function ItemHubPageInner() {
                           <p className="text-[9px] text-gray-600 leading-tight">
                             <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
                             <span className="text-gray-400"> · </span>
-                            <span className="text-green-600 font-semibold">CP ₵{formatPrice(item.cost_price)}</span>
-                            <span className="text-gray-400"> · </span>
+                            {item.product_type !== 'service' && (
+                              <>
+                                <span className="text-green-600 font-semibold">CP ₵{formatPrice(item.cost_price)}</span>
+                                <span className="text-gray-400"> · </span>
+                              </>
+                            )}
                             <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
                             {item.count_interval && (
                               <>
@@ -4826,8 +4838,12 @@ function ItemHubPageInner() {
                                 <span className="text-gray-500">{item.count_interval}</span>
                               </>
                             )}
-                            <span className="text-gray-400"> · </span>
-                            <span className={formatLoss(liveLossByItemId.get(item.id)).cls}>{formatLoss(liveLossByItemId.get(item.id)).text}</span>
+                            {item.product_type !== 'service' && (
+                              <>
+                                <span className="text-gray-400"> · </span>
+                                <span className={formatLoss(liveLossByItemId.get(item.id)).cls}>{formatLoss(liveLossByItemId.get(item.id)).text}</span>
+                              </>
+                            )}
                             {item.gmc_type && (
                               <>
                                 <span className="text-gray-400"> · </span>
