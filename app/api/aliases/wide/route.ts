@@ -6,18 +6,24 @@ export async function GET() {
   if (error) return error
 
   try {
+    // Fetch items with their aliases, including full alias details (name and type)
     const rows = await sql`
-      SELECT item_id, canonical_name, ARRAY_AGG(DISTINCT alias_name) AS alias_names, COUNT(*)::int AS cnt
-      FROM (
-        SELECT i.id AS item_id, i.canonical_name, a.alias_name
-        FROM items i
-        JOIN item_aliases a ON a.item_id = i.id
-        WHERE i.status IS NULL OR LOWER(i.status) <> 'inactive'
-      ) active
-      GROUP BY item_id, canonical_name
-      HAVING COUNT(*) > 1
+      SELECT
+        i.id AS item_id,
+        i.canonical_name,
+        i.cf_group,
+        COALESCE(ARRAY_AGG(
+          JSON_BUILD_OBJECT('id', a.id, 'name', a.alias_name, 'type', COALESCE(a.alias_type, 'other'))
+          ORDER BY a.id DESC
+        ) FILTER (WHERE a.id IS NOT NULL), ARRAY[]::json[]) AS aliases,
+        COUNT(a.id)::int AS cnt
+      FROM items i
+      LEFT JOIN item_aliases a ON a.item_id = i.id
+      WHERE i.status IS NULL OR LOWER(i.status) <> 'inactive'
+      GROUP BY i.id, i.canonical_name, i.cf_group
+      HAVING COUNT(a.id) > 0
       ORDER BY cnt DESC
-    ` as { item_id: number; canonical_name: string; alias_names: string[]; cnt: number }[]
+    ` as unknown as { item_id: number; canonical_name: string; cf_group: string | null; aliases: { id: number; name: string; type: string }[]; cnt: number }[]
 
     return success(rows)
   } catch (e) {
