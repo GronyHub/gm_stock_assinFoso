@@ -1,10 +1,10 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 export async function GET(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({}, { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return error
 
   try {
     const rows = await sql`
@@ -15,9 +15,8 @@ export async function GET(req: NextRequest) {
       WHERE is_property = true AND property_type = 'Printer'
       ORDER BY expense_date DESC
     `
-    return NextResponse.json(rows)
+    return success(rows)
   } catch (e) {
-    console.error('Printers fetch error:', e)
-    return NextResponse.json([], { status: 500 })
+    return handleError('printers GET', e)
   }
 }

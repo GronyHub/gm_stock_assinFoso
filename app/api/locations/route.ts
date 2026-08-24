@@ -1,6 +1,6 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { once } from '@/lib/once'
 
 // Locations aren't a separate managed entity -- just the distinct values
@@ -9,8 +9,8 @@ import { once } from '@/lib/once'
 // location gets picked from what's already in use (or added as a
 // genuinely new one) instead of a free-typed near-duplicate variant.
 export async function GET() {
-  const session = await auth()
-  if (!session) return NextResponse.json([], { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return error
 
   await sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS location TEXT`.catch(() => {})
   await sql`ALTER TABLE vendors ADD COLUMN IF NOT EXISTS location TEXT`.catch(() => {})
@@ -31,21 +31,21 @@ export async function GET() {
     if (r.location) allLocations.add(r.location)
   })
 
-  return NextResponse.json(Array.from(allLocations).sort())
+  return success(Array.from(allLocations).sort())
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return error
 
   const { location } = await req.json()
   if (!location || typeof location !== 'string') {
-    return NextResponse.json({ error: 'Location is required.' }, { status: 400 })
+    return badRequest('Location is required.')
   }
 
   const name = location.trim()
   if (!name) {
-    return NextResponse.json({ error: 'Location cannot be empty.' }, { status: 400 })
+    return badRequest('Location cannot be empty.')
   }
 
   try {
@@ -54,16 +54,14 @@ export async function POST(req: NextRequest) {
     // Check if already exists
     const existing = await sql`SELECT 1 FROM managed_locations WHERE location = ${name}`
     if (existing.length > 0) {
-      return NextResponse.json({ error: 'This location already exists.' }, { status: 400 })
+      return badRequest('This location already exists.')
     }
 
     // Add new location
     await sql`INSERT INTO managed_locations (location) VALUES (${name})`
-    return NextResponse.json({ location: name })
+    return success({ location: name })
   } catch (e) {
-    console.error('Error adding location:', e)
-    const detail = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: `Could not add location: ${detail}` }, { status: 500 })
+    return handleError('add location', e)
   }
 }
 

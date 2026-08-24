@@ -1,29 +1,28 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
-  const session = await auth()
-  if (!session) return NextResponse.json([], { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return error
 
   try {
     const rows = await sql`
       SELECT id, good_name, service_name FROM good_service_matches ORDER BY good_name, service_name
     `
-    return NextResponse.json(rows)
+    return success(rows)
   } catch (e) {
-    console.error('good-service-matches GET error:', e)
-    return NextResponse.json([])
+    return handleError('good-service-matches GET', e)
   }
 }
 
 // POST { good_name, service_name } -- add a single pair
 export async function POST(req: Request) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return error
 
   const { good_name, service_name } = await req.json()
-  if (!good_name || !service_name) return NextResponse.json({ error: 'good_name and service_name required' }, { status: 400 })
+  if (!good_name || !service_name) return badRequest('good_name and service_name required')
 
   try {
     const [row] = await sql`
@@ -32,10 +31,8 @@ export async function POST(req: Request) {
       ON CONFLICT (good_name, service_name) DO NOTHING
       RETURNING id, good_name, service_name
     `
-    return NextResponse.json(row ?? { ok: true })
+    return success(row ?? { ok: true })
   } catch (e) {
-    console.error('good-service-matches POST error:', e)
-    const detail = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: `Could not add match: ${detail}` }, { status: 500 })
+    return handleError('good-service-matches POST', e)
   }
 }

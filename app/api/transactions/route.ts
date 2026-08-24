@@ -1,13 +1,12 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { isConfidentialExpense } from '@/lib/roles'
 import { hasFeature, getUserPermissionsMap } from '@/lib/permissions'
-import { NextResponse } from 'next/server'
 
 export async function GET() {
   try {
-    const session = await auth()
-    if (!session) return NextResponse.json([], { status: 401 })
+    const { session, error } = await requireAuth()
+    if (error) return error
     const canSeeAmounts = hasFeature(session.user as any, 'confidential_expenses', await getUserPermissionsMap())
 
     const results: any[] = []
@@ -71,9 +70,8 @@ export async function GET() {
       return Number(b.id ?? 0) - Number(a.id ?? 0)
     })
 
-    return NextResponse.json(results)
+    return success(results)
   } catch (e) {
-    console.error('transactions route error:', e)
-    return NextResponse.json([])
+    return handleError('transactions GET', e)
   }
 }

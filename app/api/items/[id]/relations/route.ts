@@ -1,6 +1,5 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, notFound, ok, handleError } from '@/lib/api'
 import sql from '@/lib/db'
-import { NextResponse } from 'next/server'
 
 // PUT { aliases?: string[], matches?: string[] }
 // Fully replaces this item's alias list and/or good-service match list with
@@ -8,15 +7,15 @@ import { NextResponse } from 'next/server'
 // is a Good, or Goods if this item is a Service) -- direction is inferred
 // from the item's own product_type.
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return error
 
   const { id } = await params
   const itemId = Number(id)
   const { aliases, matches } = await req.json()
 
   const [item] = await sql`SELECT canonical_name, product_type FROM items WHERE id = ${itemId}`
-  if (!item) return NextResponse.json({ error: 'Item not found' }, { status: 404 })
+  if (!item) return notFound()
 
   try {
     if (Array.isArray(aliases)) {
@@ -57,10 +56,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       }
     }
 
-    return NextResponse.json({ ok: true })
+    return ok()
   } catch (e) {
-    console.error('item relations PUT error:', e)
-    const detail = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: `Could not save: ${detail}` }, { status: 500 })
+    return handleError('item relations PUT', e)
   }
 }

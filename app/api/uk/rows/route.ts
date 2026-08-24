@@ -1,7 +1,7 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success } from '@/lib/api'
 import sql from '@/lib/db'
 import { ensureUkTables } from '@/lib/ukTables'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 function isAllowed(session: any) {
   const username = ((session?.user as any)?.username as string | undefined)?.toLowerCase()
@@ -19,12 +19,13 @@ function shapeRows(rows: { id: number; submenu_id: number; sort_order: number; c
 }
 
 export async function GET(req: NextRequest) {
-  const session = await auth()
-  if (!session || !isAllowed(session)) return NextResponse.json([], { status: 403 })
+  const { session, error } = await requireAuth()
+  if (error) return error
+  if (!isAllowed(session)) return success([])
   await ensureUkTables()
 
   const submenuId = req.nextUrl.searchParams.get('submenu_id')
-  if (!submenuId) return NextResponse.json({ error: 'Missing submenu_id' }, { status: 400 })
+  if (!submenuId) return badRequest('Missing submenu_id')
 
   const rows = await sql`
     SELECT id, submenu_id, sort_order, created_at
@@ -36,16 +37,17 @@ export async function GET(req: NextRequest) {
   const cells = rowIds.length
     ? await sql`SELECT row_id, column_id, value FROM uk_cells WHERE row_id = ANY(${rowIds})`
     : []
-  return NextResponse.json(shapeRows(rows as any, cells as any))
+  return success(shapeRows(rows as any, cells as any))
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session || !isAllowed(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const { session, error } = await requireAuth()
+  if (error) return error
+  if (!isAllowed(session)) return badRequest('Forbidden')
   await ensureUkTables()
 
   const { submenu_id, values } = await req.json()
-  if (!submenu_id) return NextResponse.json({ error: 'Missing submenu_id' }, { status: 400 })
+  if (!submenu_id) return badRequest('Missing submenu_id')
 
   const [{ next_order }] = await sql`SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_order FROM uk_rows WHERE submenu_id = ${submenu_id}`
   const [row] = await sql`
@@ -60,5 +62,5 @@ export async function POST(req: NextRequest) {
     await sql`INSERT INTO uk_cells (row_id, column_id, value) VALUES (${row.id}, ${Number(columnId)}, ${text})`
   }
 
-  return NextResponse.json({ ...row, values: Object.fromEntries(entries.map(([k, v]) => [Number(k), v])) }, { status: 201 })
+  return success({ ...row, values: Object.fromEntries(entries.map(([k, v]) => [Number(k), v])) })
 }

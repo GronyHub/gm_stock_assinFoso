@@ -1,7 +1,7 @@
+import { badRequest, success } from '@/lib/api'
 import sql from '@/lib/db'
 import { ensureActiveItemsView } from '@/lib/activeItems'
 import { ensureGmcColumn } from '@/lib/countRules'
-import { NextResponse } from 'next/server'
 
 export async function GET() {
   try {
@@ -23,7 +23,7 @@ export async function GET() {
       LEFT JOIN item_stock_summary s ON s.item_id = i.id
       ORDER BY cf_group NULLS LAST, i.canonical_name
     `
-    return NextResponse.json(rows)
+    return success(rows)
   } catch {
     // Fallback if status column is unavailable for any reason
     const rows = await sql`
@@ -43,7 +43,7 @@ export async function GET() {
       WHERE i.status IS NULL OR LOWER(i.status) != 'inactive'
       ORDER BY cf_group NULLS LAST, i.canonical_name
     `
-    return NextResponse.json(rows)
+    return success(rows)
   }
 }
 
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
   const { item_name, cf_group, selling_rate, purchase_rate, units_per_pack, unit_name, product_type } = body
 
   if (!item_name?.trim()) {
-    return NextResponse.json({ error: 'item_name required' }, { status: 400 })
+    return badRequest('item_name required')
   }
 
   const type = product_type === 'service' ? 'service' : 'goods'
@@ -73,5 +73,5 @@ export async function POST(req: Request) {
     )
     RETURNING id, canonical_name AS item_name, cf_group, selling_rate, purchase_rate, units_per_pack, unit_name, product_type
   `
-  return NextResponse.json(row, { status: 201 })
+  return success(row)
 }

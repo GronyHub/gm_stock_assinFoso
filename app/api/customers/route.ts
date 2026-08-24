@@ -1,7 +1,7 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success, handleError, getActorName } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { initializeDatabase } from '@/lib/dbInitialize'
 import { once } from '@/lib/once'
 
@@ -21,8 +21,8 @@ const ensureColumns = once(async () => {
 })
 
 export async function GET() {
-  const session = await auth()
-  if (!session) return NextResponse.json([], { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return error
 
   await initializeDatabase()
   await ensureColumns()
@@ -45,12 +45,12 @@ export async function GET() {
     GROUP BY c.id
     ORDER BY receipt_total DESC
   `
-  return NextResponse.json(customers)
+  return success(customers)
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   const {
     display_name, company_name, first_name, last_name,
@@ -59,14 +59,14 @@ export async function POST(req: NextRequest) {
   } = await req.json()
 
   if (!display_name || !String(display_name).trim()) {
-    return NextResponse.json({ error: 'Customer name is required' }, { status: 400 })
+    return badRequest('Customer name is required')
   }
 
-  const enteredBy = session.user?.name || (session.user as any)?.username || null
+  const enteredBy = getActorName(session)
 
   try {
     await initializeDatabase()
-  await ensureColumns()
+    await ensureColumns()
     const [customer] = await sql`
       INSERT INTO customers
         (display_name, company_name, first_name, last_name, email, phone, location,
@@ -83,15 +83,13 @@ export async function POST(req: NextRequest) {
         whatsapp_group_added, last_visited::text AS last_visited, service_goods, created_at::text AS created_at
     `
 
-    await logActivity(enteredBy ?? 'Unknown', 'added customer', customer.display_name)
-    return NextResponse.json({
+    await logActivity(enteredBy, 'added customer', customer.display_name)
+    return success({
       ...customer,
       receipt_count: 0, receipt_total: '0', receipt_balance: '0',
       invoice_count: 0, invoice_total: '0', invoice_outstanding: '0',
     })
   } catch (e) {
-    console.error('customer insert error:', e)
-    const detail = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: `Could not save customer: ${detail}` }, { status: 500 })
+    return handleError('customer insert', e)
   }
 }

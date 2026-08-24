@@ -1,7 +1,7 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success, handleError, getActorName } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { initializeDatabase } from '@/lib/dbInitialize'
 import { once } from '@/lib/once'
 
@@ -28,7 +28,7 @@ const ensureCategoryColumn = once(async () => {
 export async function GET(req: NextRequest) {
   try {
     await initializeDatabase()
-  await ensureCategoryColumn()
+    await ensureCategoryColumn()
     const before = req.nextUrl.searchParams.get('before')
     const q = req.nextUrl.searchParams.get('q')
     const category = req.nextUrl.searchParams.get('category')
@@ -49,24 +49,23 @@ export async function GET(req: NextRequest) {
       ORDER BY a.created_at DESC
       LIMIT 30
     `
-    return NextResponse.json(rows.map((r: any) => ({ ...r, media_urls: normalizeMedia(r.media_urls) })))
+    return success(rows.map((r: any) => ({ ...r, media_urls: normalizeMedia(r.media_urls) })))
   } catch (e) {
-    console.error('announcements GET error:', e)
-    return NextResponse.json([])
+    return handleError('announcements GET', e)
   }
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   const { body, media_urls, reply_to_id } = await req.json()
   const text = typeof body === 'string' ? body.trim() : ''
   const media = normalizeMedia(media_urls)
-  if (!text && media.length === 0) return NextResponse.json({ error: 'Message or media is required' }, { status: 400 })
+  if (!text && media.length === 0) return badRequest('Message or media is required')
   const replyToId = Number.isInteger(reply_to_id) ? reply_to_id : null
 
-  const actor = session.user?.name || (session.user as any)?.username || 'Unknown'
+  const actor = getActorName(session)
 
   try {
     const [row] = await sql`
@@ -75,23 +74,21 @@ export async function POST(req: NextRequest) {
       RETURNING id, author, body, media_urls, created_at, reply_to_id
     `
     await logActivity(actor, 'posted announcement', text || `${media.length} attachment(s)`)
-    return NextResponse.json({ ...row, media_urls: normalizeMedia(row.media_urls) })
+    return success({ ...row, media_urls: normalizeMedia(row.media_urls) })
   } catch (e) {
-    console.error('announcements POST error:', e)
-    const detail = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: `Could not post: ${detail}` }, { status: 500 })
+    return handleError('announcements POST', e)
   }
 }
 
 export async function DELETE(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
   const role = (session.user as any)?.role
   if (!['owner', 'manager'].includes(role)) {
-    return NextResponse.json({ error: 'Only owner or manager can remove announcements' }, { status: 403 })
+    return badRequest('Only owner or manager can remove announcements')
   }
 
   const { id } = await req.json()
   await sql`DELETE FROM announcements WHERE id = ${Number(id)}`
-  return NextResponse.json({ ok: true })
+  return success({ ok: true })
 }

@@ -1,8 +1,8 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, notFound, success, handleError, getActorName } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { ensurePurchaseOrderTables } from '@/lib/purchaseOrders'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -31,7 +31,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         ORDER BY r.received_date DESC, r.id DESC
       `,
     ])
-    if (!po) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!po) return notFound()
 
     const billIds = (receipts as any[]).map(r => r.bill_id).filter(Boolean)
     const receiptLines = billIds.length > 0
@@ -47,18 +47,17 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     }
     const receiptsWithLines = (receipts as any[]).map(r => ({ ...r, lines: linesByBill.get(r.bill_id) ?? [] }))
 
-    return NextResponse.json({ ...po, lines, receipts: receiptsWithLines })
+    return success({ ...po, lines, receipts: receiptsWithLines })
   } catch (e) {
-    console.error('purchase-order GET error:', e)
-    return NextResponse.json({ error: 'Failed to load purchase order' }, { status: 500 })
+    return handleError('purchase-order GET', e)
   }
 }
 
 type LineInput = { itemId: number | null; itemName: string; qty: number; price: number }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
   const { id } = await params
   const poId = Number(id)
   const { status, notes, expectedDate, orderDate, vendorId, vendorName, lines } = await req.json() as {
@@ -68,7 +67,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   if (status && !['draft', 'sent', 'cancelled'].includes(status)) {
-    return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+    return badRequest('Invalid status')
   }
 
   try {
@@ -77,15 +76,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     // so swapping the whole item list out is safe.
     if (lines) {
       const [po] = await sql`SELECT status FROM purchase_orders WHERE id = ${poId}`
-      if (!po) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      if (!po) return notFound()
       if (po.status !== 'draft') {
-        return NextResponse.json({ error: 'Only a draft purchase order can have its items changed -- cancel it and start a new one instead.' }, { status: 400 })
+        return badRequest('Only a draft purchase order can have its items changed -- cancel it and start a new one instead.')
       }
-      if (!lines.length) return NextResponse.json({ error: 'A purchase order needs at least one item.' }, { status: 400 })
+      if (!lines.length) return badRequest('A purchase order needs at least one item.')
       for (const l of lines) {
         const qty = Number(l.qty)
         if (!Number.isFinite(qty) || qty <= 0) {
-          return NextResponse.json({ error: `"${l.itemName || 'a line'}" needs a valid quantity greater than 0.` }, { status: 400 })
+          return badRequest(`"${l.itemName || 'a line'}" needs a valid quantity greater than 0.`)
         }
       }
       await sql`DELETE FROM purchase_order_lines WHERE po_id = ${poId}`
@@ -110,15 +109,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       WHERE id = ${poId}
       RETURNING id, po_number, status, vendor_name
     `
-    if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!row) return notFound()
 
-    const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
+    const actor = getActorName(session)
     if (status) await logActivity(actor, 'updated purchase order', `${row.po_number} → ${status}`)
     else if (lines) await logActivity(actor, 'edited purchase order', row.po_number)
-    return NextResponse.json(row)
+    return success(row)
   } catch (e) {
-    console.error('purchase-order PATCH error:', e)
-    return NextResponse.json({ error: 'Failed to update purchase order' }, { status: 500 })
+    return handleError('purchase-order PATCH', e)
   }
 }
 
@@ -126,26 +124,25 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 // deleted -- once something's been sent or received, cancel it instead so
 // the record (and any Bills already created from it) stays intact.
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return error
   const { id } = await params
 
   try {
     const [po] = await sql`SELECT status FROM purchase_orders WHERE id = ${Number(id)}`
-    if (!po) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!po) return notFound()
     if (po.status !== 'draft') {
-      return NextResponse.json({ error: 'Only a draft purchase order can be deleted -- cancel it instead.' }, { status: 400 })
+      return badRequest('Only a draft purchase order can be deleted -- cancel it instead.')
     }
     const [{ received }] = await sql`
       SELECT COALESCE(SUM(qty_received), 0) AS received FROM purchase_order_lines WHERE po_id = ${Number(id)}
     `
     if (Number(received) > 0) {
-      return NextResponse.json({ error: 'This purchase order already has items received -- cancel it instead.' }, { status: 400 })
+      return badRequest('This purchase order already has items received -- cancel it instead.')
     }
     await sql`DELETE FROM purchase_orders WHERE id = ${Number(id)}`
-    return NextResponse.json({ ok: true })
+    return success({ ok: true })
   } catch (e) {
-    console.error('purchase-order DELETE error:', e)
-    return NextResponse.json({ error: 'Failed to delete purchase order' }, { status: 500 })
+    return handleError('purchase-order DELETE', e)
   }
 }

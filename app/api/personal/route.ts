@@ -1,7 +1,6 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success } from '@/lib/api'
 import sql from '@/lib/db'
 import { ensurePersonalSubcategoryColumn } from '@/lib/personalLedger'
-import { NextResponse } from 'next/server'
 import { initializeDatabase } from '@/lib/dbInitialize'
 
 function isAllowed(session: any) {
@@ -11,8 +10,9 @@ function isAllowed(session: any) {
 }
 
 export async function GET() {
-  const session = await auth()
-  if (!session || !isAllowed(session)) return NextResponse.json([], { status: 403 })
+  const { session, error } = await requireAuth()
+  if (error) return error
+  if (!isAllowed(session)) return success([])
 
   await initializeDatabase()
   await ensurePersonalSubcategoryColumn()
@@ -21,16 +21,17 @@ export async function GET() {
     FROM grony_personal_ledger
     ORDER BY entry_date DESC, id DESC
   `
-  return NextResponse.json(entries)
+  return success(entries)
 }
 
 export async function POST(req: Request) {
-  const session = await auth()
-  if (!session || !isAllowed(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const { session, error } = await requireAuth()
+  if (error) return error
+  if (!isAllowed(session)) return badRequest('Forbidden')
 
   const { entry_date, description, amount, direction, category, subcategory, notes, needs_review } = await req.json()
   if (!entry_date || !description || !amount || !direction) {
-    return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+    return badRequest('Missing fields')
   }
   await initializeDatabase()
   await ensurePersonalSubcategoryColumn()
@@ -39,15 +40,16 @@ export async function POST(req: Request) {
     VALUES (${entry_date}, ${description}, ${amount}, ${direction}, ${category ?? 'Other'}, ${subcategory ?? null}, ${notes ?? null}, ${needs_review ?? false}, 'app')
     RETURNING id
   `
-  return NextResponse.json({ id: row.id })
+  return success({ id: row.id })
 }
 
 export async function PUT(req: Request) {
-  const session = await auth()
-  if (!session || !isAllowed(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const { session, error } = await requireAuth()
+  if (error) return error
+  if (!isAllowed(session)) return badRequest('Forbidden')
 
   const { id, category, subcategory, notes, description, amount, needs_review } = await req.json()
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+  if (!id) return badRequest('Missing id')
 
   await initializeDatabase()
   await ensurePersonalSubcategoryColumn()
@@ -61,16 +63,17 @@ export async function PUT(req: Request) {
         needs_review = COALESCE(${needs_review ?? null}, needs_review)
     WHERE id = ${id}
   `
-  return NextResponse.json({ ok: true })
+  return success({ ok: true })
 }
 
 export async function DELETE(req: Request) {
-  const session = await auth()
-  if (!session || !isAllowed(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const { session, error } = await requireAuth()
+  if (error) return error
+  if (!isAllowed(session)) return badRequest('Forbidden')
 
   const { id } = await req.json()
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+  if (!id) return badRequest('Missing id')
 
   await sql`DELETE FROM grony_personal_ledger WHERE id = ${id}`
-  return NextResponse.json({ ok: true })
+  return success({ ok: true })
 }
