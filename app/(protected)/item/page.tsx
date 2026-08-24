@@ -3409,7 +3409,7 @@ function ItemHubPageInner() {
                   }}
                   className="w-full text-left px-2 py-1 hover:bg-green-50 border-b border-gray-100 last:border-b-0 text-[11px] text-gray-700 flex items-center justify-between gap-2"
                 >
-                  <span className={`font-semibold truncate ${(item as any).status ? 'line-through text-gray-400' : item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : 'text-gray-900'}`}>{item.name}</span>
+                  <span className={`font-semibold truncate ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : 'text-gray-900'}`}>{item.name}</span>
                   <span className="text-[9px] text-gray-500 shrink-0">₵{formatPrice(item.selling_price)} S:{Math.ceil(Number(item.soh))}</span>
                 </button>
               ))}
@@ -4814,7 +4814,7 @@ function ItemHubPageInner() {
                           ⚠ COUNT NOW {overdue ? `· ${due.label} OVERDUE` : `· ${due.label}`}
                         </div>
                         <div className="px-1 py-0.5 flex flex-col">
-                          <div className={`text-[11px] font-semibold leading-tight truncate text-left ${(item as any).status ? 'line-through text-gray-400' : item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : 'text-blue-600'}`}>
+                          <div className={`text-[11px] font-semibold leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : 'text-blue-600'}`}>
                             {item.name}
                           </div>
                           <p className="text-[9px] text-gray-600 leading-tight">
@@ -4882,7 +4882,7 @@ function ItemHubPageInner() {
                           </div>
                         )}
                         <div className="px-1 py-0.5 flex flex-col">
-                          <div className={`text-[11px] font-semibold leading-tight truncate text-left ${(item as any).status ? 'line-through text-gray-400' : item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : 'text-blue-600'}`}>
+                          <div className={`text-[11px] font-semibold leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : 'text-blue-600'}`}>
                             {item.name}
                           </div>
                           <p className="text-[9px] text-gray-600 leading-tight">
