@@ -1,4 +1,4 @@
-import { requireAuth, badRequest, success } from '@/lib/api'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { NextRequest } from 'next/server'
@@ -18,11 +18,15 @@ const ensurePaneHiddenTable = once(async () => {
 export async function GET() {
   const { session, error } = await requireAuth()
   if (error) return error
-  await ensurePaneHiddenTable()
-  const rows = await sql`SELECT item_key FROM pane_hidden`
-  const map: Record<string, boolean> = {}
-  for (const r of rows) map[r.item_key] = true
-  return success(map)
+  try {
+    await ensurePaneHiddenTable()
+    const rows = await sql`SELECT item_key FROM pane_hidden`
+    const map: Record<string, boolean> = {}
+    for (const r of rows) map[r.item_key] = true
+    return success(map)
+  } catch (e) {
+    return handleError('pane-hidden GET', e)
+  }
 }
 
 export async function PATCH(req: NextRequest) {
@@ -32,12 +36,17 @@ export async function PATCH(req: NextRequest) {
 
   const { key, hidden } = await req.json()
   if (typeof key !== 'string' || !key.trim()) return badRequest('key is required')
-  await ensurePaneHiddenTable()
 
-  if (hidden) {
-    await sql`INSERT INTO pane_hidden (item_key) VALUES (${key}) ON CONFLICT (item_key) DO NOTHING`
-  } else {
-    await sql`DELETE FROM pane_hidden WHERE item_key = ${key}`
+  try {
+    await ensurePaneHiddenTable()
+
+    if (hidden) {
+      await sql`INSERT INTO pane_hidden (item_key) VALUES (${key}) ON CONFLICT (item_key) DO NOTHING`
+    } else {
+      await sql`DELETE FROM pane_hidden WHERE item_key = ${key}`
+    }
+    return success({ ok: true })
+  } catch (e) {
+    return handleError('pane-hidden PATCH', e)
   }
-  return success({ ok: true })
 }

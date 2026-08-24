@@ -1,4 +1,4 @@
-import { requireAuth, badRequest, success } from '@/lib/api'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { NextRequest } from 'next/server'
@@ -17,11 +17,15 @@ const ensurePaneLabelsTable = once(async () => {
 export async function GET() {
   const { session, error } = await requireAuth()
   if (error) return error
-  await ensurePaneLabelsTable()
-  const rows = await sql`SELECT item_key, label FROM pane_labels`
-  const map: Record<string, string> = {}
-  for (const r of rows) map[r.item_key] = r.label
-  return success(map)
+  try {
+    await ensurePaneLabelsTable()
+    const rows = await sql`SELECT item_key, label FROM pane_labels`
+    const map: Record<string, string> = {}
+    for (const r of rows) map[r.item_key] = r.label
+    return success(map)
+  } catch (e) {
+    return handleError('pane-labels GET', e)
+  }
 }
 
 export async function PATCH(req: NextRequest) {
@@ -31,18 +35,23 @@ export async function PATCH(req: NextRequest) {
 
   const { key, label } = await req.json()
   if (typeof key !== 'string' || !key.trim()) return badRequest('key is required')
-  await ensurePaneLabelsTable()
 
-  const trimmed = typeof label === 'string' ? label.trim() : ''
-  if (!trimmed) {
-    // Empty label = reset to the item's default -- same convention as
-    // columnPrefs.tsx's renameColumn.
-    await sql`DELETE FROM pane_labels WHERE item_key = ${key}`
-  } else {
-    await sql`
-      INSERT INTO pane_labels (item_key, label) VALUES (${key}, ${trimmed})
-      ON CONFLICT (item_key) DO UPDATE SET label = ${trimmed}
-    `
+  try {
+    await ensurePaneLabelsTable()
+
+    const trimmed = typeof label === 'string' ? label.trim() : ''
+    if (!trimmed) {
+      // Empty label = reset to the item's default -- same convention as
+      // columnPrefs.tsx's renameColumn.
+      await sql`DELETE FROM pane_labels WHERE item_key = ${key}`
+    } else {
+      await sql`
+        INSERT INTO pane_labels (item_key, label) VALUES (${key}, ${trimmed})
+        ON CONFLICT (item_key) DO UPDATE SET label = ${trimmed}
+      `
+    }
+    return success({ ok: true })
+  } catch (e) {
+    return handleError('pane-labels PATCH', e)
   }
-  return success({ ok: true })
 }

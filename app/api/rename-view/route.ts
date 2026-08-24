@@ -1,4 +1,4 @@
-import { requireAuth, badRequest, success } from '@/lib/api'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { NextRequest } from 'next/server'
 import { once } from '@/lib/once'
@@ -12,14 +12,18 @@ export async function GET(req: NextRequest) {
   const { session, error } = await requireAuth()
   if (error) return error
 
-  await ensureSchema()
+  try {
+    await ensureSchema()
 
-  const rows = await sql`SELECT view_key, custom_label FROM custom_view_names WHERE username = ${(session!.user as { username?: string } | undefined)?.username || 'anonymous'}`
-  const map: Record<string, string> = {}
-  for (const r of rows) {
-    map[r.view_key] = r.custom_label
+    const rows = await sql`SELECT view_key, custom_label FROM custom_view_names WHERE username = ${(session!.user as { username?: string } | undefined)?.username || 'anonymous'}`
+    const map: Record<string, string> = {}
+    for (const r of rows) {
+      map[r.view_key] = r.custom_label
+    }
+    return success(map)
+  } catch (e) {
+    return handleError('rename-view GET', e)
   }
-  return success(map)
 }
 
 export async function PATCH(req: NextRequest) {
@@ -29,18 +33,22 @@ export async function PATCH(req: NextRequest) {
   const { viewKey, customLabel } = await req.json()
   if (!viewKey) return badRequest('viewKey required')
 
-  await ensureSchema()
+  try {
+    await ensureSchema()
 
-  const username = (session!.user as { username?: string } | undefined)?.username || 'anonymous'
+    const username = (session!.user as { username?: string } | undefined)?.username || 'anonymous'
 
-  if (!customLabel || customLabel.trim() === '') {
-    await sql`DELETE FROM custom_view_names WHERE view_key = ${viewKey} AND username = ${username}`
-  } else {
-    await sql`
-      INSERT INTO custom_view_names (view_key, username, custom_label) VALUES (${viewKey}, ${username}, ${customLabel.trim()})
-      ON CONFLICT (view_key, username) DO UPDATE SET custom_label = ${customLabel.trim()}
-    `
+    if (!customLabel || customLabel.trim() === '') {
+      await sql`DELETE FROM custom_view_names WHERE view_key = ${viewKey} AND username = ${username}`
+    } else {
+      await sql`
+        INSERT INTO custom_view_names (view_key, username, custom_label) VALUES (${viewKey}, ${username}, ${customLabel.trim()})
+        ON CONFLICT (view_key, username) DO UPDATE SET custom_label = ${customLabel.trim()}
+      `
+    }
+
+    return success({ ok: true })
+  } catch (e) {
+    return handleError('rename-view PATCH', e)
   }
-
-  return success({ ok: true })
 }

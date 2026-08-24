@@ -1,4 +1,4 @@
-import { requireAuth, success } from '@/lib/api'
+import { requireAuth, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { hasFeature, getUserPermissionsMap } from '@/lib/permissions'
 import { CH_ITEMS } from '@/app/(protected)/item/_components/chViewData'
@@ -22,15 +22,16 @@ export async function GET(req: NextRequest) {
   const { session, error } = await requireAuth()
   if (error) return error
 
-  const q = (req.nextUrl.searchParams.get('q') ?? '').trim()
-  if (q.length < 2) return success({})
-  const like = `%${q}%`
+  try {
+    const q = (req.nextUrl.searchParams.get('q') ?? '').trim()
+    if (q.length < 2) return success({})
+    const like = `%${q}%`
 
-  const permissionsMap = await getUserPermissionsMap()
-  const user = session!.user as { role?: string | null; username?: string | null; name?: string | null }
-  const canSeeCash = hasFeature(user, 'cash', permissionsMap)
-  const canSeeUK = hasFeature(user, 'uk', permissionsMap)
-  const canSeeCH = hasFeature(user, 'ch', permissionsMap)
+    const permissionsMap = await getUserPermissionsMap()
+    const user = session!.user as { role?: string | null; username?: string | null; name?: string | null }
+    const canSeeCash = hasFeature(user, 'cash', permissionsMap)
+    const canSeeUK = hasFeature(user, 'uk', permissionsMap)
+    const canSeeCH = hasFeature(user, 'ch', permissionsMap)
 
   const [items, customers, vendors, sales, bills, announcements] = canSeeCash
     ? await Promise.all([
@@ -108,5 +109,8 @@ export async function GET(req: NextRequest) {
   const chLogs = (chLogsRaw as { id: number; category: string; notes: string; log_date: string; logged_by: string }[])
     .map(l => ({ ...l, category_label: chLabelByCategory.get(l.category) ?? l.category }))
 
-  return success({ items, customers, vendors, sales, bills, announcements, ukSubmenus, ukEntries, chLogs })
+    return success({ items, customers, vendors, sales, bills, announcements, ukSubmenus, ukEntries, chLogs })
+  } catch (e) {
+    return handleError('search GET', e)
+  }
 }

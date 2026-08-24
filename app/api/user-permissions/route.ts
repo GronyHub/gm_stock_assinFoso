@@ -1,4 +1,4 @@
-import { requireAuth, badRequest, success } from '@/lib/api'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { getUserPermissionsMap, ensureUserPermissionsTable } from '@/lib/permissions'
@@ -10,8 +10,12 @@ import { NextRequest } from 'next/server'
 export async function GET() {
   const { error } = await requireAuth()
   if (error) return error
-  const map = await getUserPermissionsMap()
-  return success(map)
+  try {
+    const map = await getUserPermissionsMap()
+    return success(map)
+  } catch (e) {
+    return handleError('user-permissions GET', e)
+  }
 }
 
 export async function PATCH(req: NextRequest) {
@@ -23,11 +27,16 @@ export async function PATCH(req: NextRequest) {
   if (!user_id || !feature_key || typeof allowed !== 'boolean') {
     return badRequest('user_id, feature_key, allowed required')
   }
-  await ensureUserPermissionsTable()
-  await sql`
-    INSERT INTO user_permissions (user_id, feature_key, allowed)
-    VALUES (${user_id}, ${feature_key}, ${allowed})
-    ON CONFLICT (user_id, feature_key) DO UPDATE SET allowed = ${allowed}
-  `
-  return success({ ok: true })
+
+  try {
+    await ensureUserPermissionsTable()
+    await sql`
+      INSERT INTO user_permissions (user_id, feature_key, allowed)
+      VALUES (${user_id}, ${feature_key}, ${allowed})
+      ON CONFLICT (user_id, feature_key) DO UPDATE SET allowed = ${allowed}
+    `
+    return success({ ok: true })
+  } catch (e) {
+    return handleError('user-permissions PATCH', e)
+  }
 }

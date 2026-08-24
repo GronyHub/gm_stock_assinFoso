@@ -1,4 +1,4 @@
-import { requireAuth, badRequest, success, unauthorized } from '@/lib/api'
+import { requireAuth, badRequest, success, unauthorized, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { FEATURE_KEYS, DEFAULT_ON_FEATURES } from '@/lib/permissions'
@@ -7,8 +7,12 @@ import { NextRequest } from 'next/server'
 export async function GET() {
   const { error } = await requireAuth()
   if (error) return unauthorized()
-  const rows = await sql`SELECT key, label, created_at FROM roles ORDER BY created_at`
-  return success(rows)
+  try {
+    const rows = await sql`SELECT key, label, created_at FROM roles ORDER BY created_at`
+    return success(rows)
+  } catch (e) {
+    return handleError('roles GET', e)
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -24,14 +28,18 @@ export async function POST(req: NextRequest) {
   const key = label.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
   if (!key) return badRequest('label must contain at least one letter or number')
 
-  const [existing] = await sql`SELECT key FROM roles WHERE key = ${key}`
-  if (existing) return badRequest('A role with that name already exists')
+  try {
+    const [existing] = await sql`SELECT key FROM roles WHERE key = ${key}`
+    if (existing) return badRequest('A role with that name already exists')
 
-  const [row] = await sql`INSERT INTO roles (key, label) VALUES (${key}, ${label.trim()}) RETURNING key, label, created_at`
-  for (const feature of FEATURE_KEYS) {
-    await sql`INSERT INTO role_permissions (role_key, feature_key, allowed) VALUES (${key}, ${feature}, ${DEFAULT_ON_FEATURES.has(feature)})`
+    const [row] = await sql`INSERT INTO roles (key, label) VALUES (${key}, ${label.trim()}) RETURNING key, label, created_at`
+    for (const feature of FEATURE_KEYS) {
+      await sql`INSERT INTO role_permissions (role_key, feature_key, allowed) VALUES (${key}, ${feature}, ${DEFAULT_ON_FEATURES.has(feature)})`
+    }
+    return success(row)
+  } catch (e) {
+    return handleError('roles POST', e)
   }
-  return success(row)
 }
 
 export async function DELETE(req: NextRequest) {
@@ -46,10 +54,15 @@ export async function DELETE(req: NextRequest) {
   if (['owner', 'manager', 'staff'].includes(key)) {
     return badRequest('Cannot delete a built-in role')
   }
-  const [inUse] = await sql`SELECT COUNT(*) FROM app_users WHERE role = ${key}`
-  if (Number(inUse.count) > 0) {
-    return badRequest(`${inUse.count} user(s) still have this role -- reassign them first`)
+
+  try {
+    const [inUse] = await sql`SELECT COUNT(*) FROM app_users WHERE role = ${key}`
+    if (Number(inUse.count) > 0) {
+      return badRequest(`${inUse.count} user(s) still have this role -- reassign them first`)
+    }
+    await sql`DELETE FROM roles WHERE key = ${key}`
+    return success({ ok: true })
+  } catch (e) {
+    return handleError('roles DELETE', e)
   }
-  await sql`DELETE FROM roles WHERE key = ${key}`
-  return success({ ok: true })
 }
