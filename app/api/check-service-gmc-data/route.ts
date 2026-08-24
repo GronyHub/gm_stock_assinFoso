@@ -1,7 +1,10 @@
+import { requireAuth, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
-import { NextResponse } from 'next/server'
 
 export async function GET() {
+  const { error } = await requireAuth()
+  if (error) return error
+
   try {
     const services = await sql`
       SELECT
@@ -45,12 +48,12 @@ export async function GET() {
 
     const problemServices = results.filter(r => r.has_problems)
 
-    return NextResponse.json({
+    return success({
       total_services: results.length,
       services_with_issues: problemServices.length,
       services: results,
     })
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : 'Unknown error' }, { status: 500 })
+    return handleError('check-service-gmc-data', e)
   }
 }

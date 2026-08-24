@@ -2,7 +2,7 @@ import { requireAuth, badRequest, success, unauthorized } from '@/lib/api'
 import { ensureDbInitialized } from '@/lib/api/dbInitCache'
 import sql from '@/lib/db'
 import { ensurePageLawsTable } from '@/lib/pageLaws'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 export async function GET(req: NextRequest) {
   const { error } = await requireAuth()
@@ -30,5 +30,5 @@ export async function POST(req: NextRequest) {
     INSERT INTO page_laws (scope_key, text) VALUES (${scopeKey}, ${text.trim()})
     RETURNING id, text, created_at
   `
-  return NextResponse.json(row, { status: 201 })
+  return success(row)
 }

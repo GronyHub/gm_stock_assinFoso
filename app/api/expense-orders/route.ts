@@ -3,11 +3,11 @@ import { ensureDbInitialized } from '@/lib/api/dbInitCache'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { ensureExpenseOrders } from '@/lib/expenseOrders'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 export async function GET() {
   const { error } = await requireAuth()
-  if (error) return NextResponse.json([], { status: 401 })
+  if (error) return error
 
   try {
     await ensureDbInitialized()

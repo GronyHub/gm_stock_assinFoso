@@ -1,9 +1,11 @@
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
-import { NextResponse } from 'next/server'
 
 export async function GET() {
+  const { error } = await requireAuth()
+  if (error) return error
+
   try {
-    // Get the target item ID for "Passport Picture"
     const [ppService] = await sql`
       SELECT id, canonical_name, converts_to_item_id
       FROM items
@@ -12,7 +14,7 @@ export async function GET() {
     `
 
     if (!ppService) {
-      return NextResponse.json({ error: 'Passport Picture service not found' }, { status: 404 })
+      return badRequest('Passport Picture service not found')
     }
 
     const [targetItem] = await sql`
@@ -20,10 +22,9 @@ export async function GET() {
     `
 
     if (!targetItem) {
-      return NextResponse.json({ error: 'Target item not found' }, { status: 404 })
+      return badRequest('Target item not found')
     }
 
-    // Get all sales for the target item (these are the transferred sales)
     const sales = await sql`
       SELECT
         srl.id,
@@ -44,7 +45,7 @@ export async function GET() {
       LIMIT 50
     `
 
-    return NextResponse.json({
+    return success({
       transferred_from: ppService.canonical_name,
       transferred_to: targetItem.canonical_name,
       total_sales_lines: sales.length,
@@ -60,6 +61,6 @@ export async function GET() {
       })),
     })
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : 'Unknown error' }, { status: 500 })
+    return handleError('show-transferred-sales', e)
   }
 }
