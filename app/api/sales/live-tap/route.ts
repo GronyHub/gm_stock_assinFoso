@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
     // If this is a service using GMC, check if the target GMC item has stock
     if (item.product_type === 'service' && item.gmc_type && item.converts_to_item_id) {
       const [targetItem] = await sql`
-        SELECT canonical_name, calculated_soh
+        SELECT item_name, calculated_soh
         FROM item_stock_summary
         WHERE item_id = ${item.converts_to_item_id}
       `
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
       }
       const soh = parseFloat(targetItem.calculated_soh || '0')
       if (soh <= 0) {
-        return badRequest(`Cannot record sale: ${item.canonical_name} uses ${targetItem.canonical_name} which is out of stock`)
+        return badRequest(`Cannot record sale: ${item.canonical_name} uses ${targetItem.item_name} which is out of stock`)
       }
     }
 
