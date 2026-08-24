@@ -1891,6 +1891,8 @@ function ItemHubPageInner() {
   const [liveEditingTapId, setLiveEditingTapId] = useState<number | null>(null)
   const [liveEditingTapTime, setLiveEditingTapTime] = useState('')
   const [liveEditingTapSaving, setLiveEditingTapSaving] = useState(false)
+  const [liveEditingCountTime, setLiveEditingCountTime] = useState('')
+  const [liveEditingCountTimeSaving, setLiveEditingCountTimeSaving] = useState(false)
   useEffect(() => {
     if (liveEditingGridItemId != null && liveGridEditSaleTapRef.current) {
       setTimeout(() => {
@@ -3164,6 +3166,31 @@ function ItemHubPageInner() {
     }
   }
 
+  async function saveEditingCountTime() {
+    if (!liveEditingCountId || !liveEditingCountTime) return
+    setLiveEditingCountTimeSaving(true)
+    try {
+      const countDateTime = new Date(liveEditingCountTime + ':00Z')
+      const res = await fetch(`/api/stock/counts/${liveEditingCountId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ counted_at: countDateTime.toISOString() }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setLiveCountRecords(prev => prev.map(r => r.id === liveEditingCountId ? { ...r, counted_at: data.counted_at } : r))
+        setLiveEditingCountId(null)
+        setLiveEditingCountTime('')
+      } else {
+        alert('Could not save count time')
+      }
+    } catch (e) {
+      alert('Could not save count time')
+    } finally {
+      setLiveEditingCountTimeSaving(false)
+    }
+  }
+
   // The tab switcher for Items page internal navigation -- allows switching
   // between the items table and Live Sale modes without changing the sidebar.
   function renderTabSwitcher(compact: boolean) {
@@ -3373,6 +3400,19 @@ function ItemHubPageInner() {
                       </div>
                       <div className="px-2 py-1">
                         <div className="flex gap-1 justify-end whitespace-nowrap">
+                          {rec.counted_at && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLiveEditingCountId(rec.id)
+                                setLiveEditingCountTime(rec.counted_at!.slice(0, 16))
+                              }}
+                              title="Edit time"
+                              className="text-[10px] font-bold text-blue-600 hover:bg-blue-100 rounded leading-none px-1.5 py-0.5"
+                            >
+                              🕐
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => liveEditingCountId === rec.id ? setLiveEditingCountId(null) : startEditCount(rec)}
@@ -4324,6 +4364,39 @@ function ItemHubPageInner() {
                     className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded transition disabled:opacity-50"
                   >
                     {liveEditingTapSaving ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Edit count time modal */}
+          {liveEditingCountId != null && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2">
+              <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-4">
+                <h3 className="text-sm font-bold text-gray-900 mb-3">Edit Count Time</h3>
+                <input
+                  type="datetime-local"
+                  value={liveEditingCountTime}
+                  onChange={e => setLiveEditingCountTime(e.target.value)}
+                  className="w-full text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400 mb-4"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setLiveEditingCountId(null)
+                      setLiveEditingCountTime('')
+                    }}
+                    className="flex-1 px-3 py-2 bg-gray-300 hover:bg-gray-400 text-gray-900 text-sm font-semibold rounded transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={saveEditingCountTime}
+                    disabled={liveEditingCountTimeSaving}
+                    className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded transition disabled:opacity-50"
+                  >
+                    {liveEditingCountTimeSaving ? 'Saving…' : 'Save'}
                   </button>
                 </div>
               </div>

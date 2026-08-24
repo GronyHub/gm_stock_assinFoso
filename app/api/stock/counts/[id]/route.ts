@@ -12,7 +12,19 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (error) return error
 
   const countId = await getIdParam(params)
-  const { quantity_counted, notes, loss_reason, manager_response } = await req.json()
+  const { quantity_counted, notes, loss_reason, manager_response, counted_at } = await req.json()
+
+  if (counted_at) {
+    const [updated] = await sql`
+      UPDATE stock_counts
+      SET count_date = ${counted_at}
+      WHERE id = ${countId}
+      RETURNING count_date::text AS counted_at
+    `
+    if (!updated) return notFound()
+    return success({ counted_at: updated.counted_at })
+  }
+
   if (quantity_counted == null) return badRequest('Missing qty')
   if (Number(quantity_counted) < 0 || isNaN(Number(quantity_counted))) {
     return badRequest('Not allowed — a count can never be negative. Stock on hand must be 0 or more.')
