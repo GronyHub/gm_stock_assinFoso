@@ -1,8 +1,8 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success } from '@/lib/api'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { once } from '@/lib/once'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 const ensurePaneGroupsTable = once(async () => {
   await sql`
@@ -28,21 +28,22 @@ const ensurePaneGroupsTable = once(async () => {
 // indicator rather than a "real" multi-row group) regardless of whether
 // group_name is set. A row can have either, both, or neither.
 export async function GET() {
-  const session = await auth()
-  if (!session) return NextResponse.json({}, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
   await ensurePaneGroupsTable()
   const rows = await sql`SELECT item_key, group_name, standalone FROM pane_groups`
   const map: Record<string, { group_name: string | null; standalone: boolean }> = {}
   for (const r of rows) map[r.item_key] = { group_name: r.group_name, standalone: !!r.standalone }
-  return NextResponse.json(map)
+  return success(map)
 }
 
 export async function PATCH(req: NextRequest) {
-  const session = await auth()
-  if (!isOwnerLevel(session?.user as { role?: string; username?: string } | undefined)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const { session, error } = await requireAuth()
+  if (error) return error
+  if (!isOwnerLevel(session?.user as { role?: string; username?: string } | undefined)) return badRequest('Forbidden')
 
   const { key, groupName, standalone } = await req.json()
-  if (typeof key !== 'string' || !key.trim()) return NextResponse.json({ error: 'key is required' }, { status: 400 })
+  if (typeof key !== 'string' || !key.trim()) return badRequest('key is required')
   await ensurePaneGroupsTable()
 
   const trimmedGroup = typeof groupName === 'string' && groupName.trim() ? groupName.trim() : null
@@ -57,5 +58,5 @@ export async function PATCH(req: NextRequest) {
       ON CONFLICT (item_key) DO UPDATE SET group_name = ${trimmedGroup}, standalone = ${standaloneBool}
     `
   }
-  return NextResponse.json({ ok: true })
+  return success({ ok: true })
 }

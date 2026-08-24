@@ -1,15 +1,15 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success } from '@/lib/api'
 import sql from '@/lib/db'
 import { once } from '@/lib/once'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 const ensureCustomFlagNames = once(async () => {
   await sql`CREATE TABLE IF NOT EXISTS custom_flag_names (flag_key TEXT, username TEXT, custom_label TEXT, PRIMARY KEY (flag_key, username))`.catch(() => {})
 })
 
 export async function GET(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({}, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   await ensureCustomFlagNames()
 
@@ -18,15 +18,15 @@ export async function GET(req: NextRequest) {
   for (const r of rows) {
     map[r.flag_key] = r.custom_label
   }
-  return NextResponse.json(map)
+  return success(map)
 }
 
 export async function PATCH(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   const { flagKey, customLabel } = await req.json()
-  if (!flagKey) return NextResponse.json({ error: 'flagKey required' }, { status: 400 })
+  if (!flagKey) return badRequest('flagKey required')
 
   await ensureCustomFlagNames()
 
@@ -41,5 +41,5 @@ export async function PATCH(req: NextRequest) {
     `
   }
 
-  return NextResponse.json({ ok: true })
+  return success({ ok: true })
 }

@@ -1,7 +1,7 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success } from '@/lib/api'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { once } from '@/lib/once'
 
 const ensurePaneLabelsTable = once(async () => {
@@ -15,21 +15,22 @@ const ensurePaneLabelsTable = once(async () => {
 // See ReorderListsPanel.tsx, which handles both reorder and rename in one
 // place, same as columnPrefs.tsx already does for table columns.
 export async function GET() {
-  const session = await auth()
-  if (!session) return NextResponse.json({}, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
   await ensurePaneLabelsTable()
   const rows = await sql`SELECT item_key, label FROM pane_labels`
   const map: Record<string, string> = {}
   for (const r of rows) map[r.item_key] = r.label
-  return NextResponse.json(map)
+  return success(map)
 }
 
 export async function PATCH(req: NextRequest) {
-  const session = await auth()
-  if (!isOwnerLevel(session?.user as { role?: string; username?: string } | undefined)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const { session, error } = await requireAuth()
+  if (error) return error
+  if (!isOwnerLevel(session?.user as { role?: string; username?: string } | undefined)) return badRequest('Forbidden')
 
   const { key, label } = await req.json()
-  if (typeof key !== 'string' || !key.trim()) return NextResponse.json({ error: 'key is required' }, { status: 400 })
+  if (typeof key !== 'string' || !key.trim()) return badRequest('key is required')
   await ensurePaneLabelsTable()
 
   const trimmed = typeof label === 'string' ? label.trim() : ''
@@ -43,5 +44,5 @@ export async function PATCH(req: NextRequest) {
       ON CONFLICT (item_key) DO UPDATE SET label = ${trimmed}
     `
   }
-  return NextResponse.json({ ok: true })
+  return success({ ok: true })
 }

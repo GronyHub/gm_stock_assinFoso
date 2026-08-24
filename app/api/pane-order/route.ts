@@ -1,7 +1,7 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success } from '@/lib/api'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { once } from '@/lib/once'
 
 const ensurePaneOrderTable = once(async () => {
@@ -13,8 +13,8 @@ const ensurePaneOrderTable = once(async () => {
 // owner-level can change it, same as Roles & Permissions -- this reorders
 // shared app structure, not a per-person grant.
 export async function GET() {
-  const session = await auth()
-  if (!session) return NextResponse.json({}, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
   await ensurePaneOrderTable()
   const rows = await sql`SELECT kind, order_json FROM pane_order`
   const map: Record<string, string[]> = {}
@@ -24,17 +24,18 @@ export async function GET() {
       if (Array.isArray(parsed)) map[r.kind] = parsed
     } catch { /* ignore malformed row, treat as unset */ }
   }
-  return NextResponse.json(map)
+  return success(map)
 }
 
 export async function PATCH(req: NextRequest) {
-  const session = await auth()
-  if (!isOwnerLevel(session?.user as { role?: string; username?: string } | undefined)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const { session, error } = await requireAuth()
+  if (error) return error
+  if (!isOwnerLevel(session?.user as { role?: string; username?: string } | undefined)) return badRequest('Forbidden')
 
   const { kind, order } = await req.json()
-  if (kind !== 'cash' && kind !== 'manage') return NextResponse.json({ error: 'kind must be "cash" or "manage"' }, { status: 400 })
+  if (kind !== 'cash' && kind !== 'manage') return badRequest('kind must be "cash" or "manage"')
   if (!Array.isArray(order) || !order.every(k => typeof k === 'string')) {
-    return NextResponse.json({ error: 'order must be an array of strings' }, { status: 400 })
+    return badRequest('order must be an array of strings')
   }
   await ensurePaneOrderTable()
   const orderJson = JSON.stringify(order)
@@ -42,5 +43,5 @@ export async function PATCH(req: NextRequest) {
     INSERT INTO pane_order (kind, order_json) VALUES (${kind}, ${orderJson})
     ON CONFLICT (kind) DO UPDATE SET order_json = ${orderJson}
   `
-  return NextResponse.json({ ok: true })
+  return success({ ok: true })
 }

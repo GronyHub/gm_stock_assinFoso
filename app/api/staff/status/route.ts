@@ -1,6 +1,5 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
-import { NextResponse } from 'next/server'
 import { once } from '@/lib/once'
 
 const ensureActiveColumn = once(async () => {
@@ -13,16 +12,15 @@ const ensureActiveColumn = once(async () => {
 // which columns of the shared history grid to hide, same as it already sees
 // everyone else's clock times there.
 export async function GET() {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return error
 
   await ensureActiveColumn()
 
   try {
     const rows = await sql`SELECT LOWER(username) AS username, active FROM app_users`
-    return NextResponse.json(rows)
+    return success(rows)
   } catch (e) {
-    console.error('staff/status GET error:', e)
-    return NextResponse.json([])
+    return handleError('staff/status GET', e)
   }
 }

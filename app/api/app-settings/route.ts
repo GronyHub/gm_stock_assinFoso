@@ -1,7 +1,7 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success } from '@/lib/api'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { once } from '@/lib/once'
 
 const ensureAppSettingsTable = once(async () => {
@@ -20,27 +20,28 @@ const ensureAppSettingsTable = once(async () => {
 // the generic version of that same pattern for anything that doesn't
 // warrant its own dedicated table.
 export async function GET(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ value: null }, { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return error
   const key = req.nextUrl.searchParams.get('key')
-  if (!key) return NextResponse.json({ error: 'key is required' }, { status: 400 })
+  if (!key) return badRequest('key is required')
 
   await ensureAppSettingsTable()
   const [row] = await sql`SELECT value_json FROM app_settings WHERE setting_key = ${key}`
-  if (!row) return NextResponse.json({ value: null })
+  if (!row) return success({ value: null })
   try {
-    return NextResponse.json({ value: JSON.parse(row.value_json) })
+    return success({ value: JSON.parse(row.value_json) })
   } catch {
-    return NextResponse.json({ value: null })
+    return success({ value: null })
   }
 }
 
 export async function PATCH(req: NextRequest) {
-  const session = await auth()
-  if (!isOwnerLevel(session?.user as { role?: string; username?: string } | undefined)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const { session, error } = await requireAuth()
+  if (error) return error
+  if (!isOwnerLevel(session?.user as { role?: string; username?: string } | undefined)) return badRequest('Forbidden')
 
   const { key, value } = await req.json()
-  if (typeof key !== 'string' || !key.trim()) return NextResponse.json({ error: 'key is required' }, { status: 400 })
+  if (typeof key !== 'string' || !key.trim()) return badRequest('key is required')
   await ensureAppSettingsTable()
 
   const valueJson = JSON.stringify(value ?? null)
@@ -48,5 +49,5 @@ export async function PATCH(req: NextRequest) {
     INSERT INTO app_settings (setting_key, value_json) VALUES (${key}, ${valueJson})
     ON CONFLICT (setting_key) DO UPDATE SET value_json = ${valueJson}
   `
-  return NextResponse.json({ ok: true })
+  return success({ ok: true })
 }

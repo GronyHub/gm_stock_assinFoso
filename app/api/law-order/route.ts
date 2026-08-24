@@ -1,7 +1,7 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success } from '@/lib/api'
 import sql from '@/lib/db'
 import { once } from '@/lib/once'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 const ensureLawOrderTable = once(async () => {
   await sql`CREATE TABLE IF NOT EXISTS law_order (scope_key TEXT, username TEXT, order_json TEXT, PRIMARY KEY (scope_key, username))`.catch(() => {})
@@ -9,34 +9,34 @@ const ensureLawOrderTable = once(async () => {
 
 // Get custom law ordering for a specific scope
 export async function GET(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({}, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   const scopeKey = req.nextUrl.searchParams.get('scopeKey')
-  if (!scopeKey) return NextResponse.json({ error: 'scopeKey required' }, { status: 400 })
+  if (!scopeKey) return badRequest('scopeKey required')
 
   await ensureLawOrderTable()
 
   const row = await sql`SELECT order_json FROM law_order WHERE scope_key = ${scopeKey} AND username = ${(session.user as { username?: string } | undefined)?.username || 'anonymous'}`
-  if (row.length === 0) return NextResponse.json({ order: [] })
+  if (row.length === 0) return success({ order: [] })
 
   try {
     const parsed = JSON.parse(row[0].order_json)
-    if (Array.isArray(parsed)) return NextResponse.json({ order: parsed })
+    if (Array.isArray(parsed)) return success({ order: parsed })
   } catch { /* ignore malformed row */ }
 
-  return NextResponse.json({ order: [] })
+  return success({ order: [] })
 }
 
 // Save custom law ordering for a specific scope
 export async function PATCH(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   const { scopeKey, order } = await req.json()
-  if (!scopeKey) return NextResponse.json({ error: 'scopeKey required' }, { status: 400 })
+  if (!scopeKey) return badRequest('scopeKey required')
   if (!Array.isArray(order) || !order.every(k => typeof k === 'string')) {
-    return NextResponse.json({ error: 'order must be an array of strings' }, { status: 400 })
+    return badRequest('order must be an array of strings')
   }
 
   await ensureLawOrderTable()
@@ -48,5 +48,5 @@ export async function PATCH(req: NextRequest) {
     ON CONFLICT (scope_key, username) DO UPDATE SET order_json = ${orderJson}
   `
 
-  return NextResponse.json({ ok: true })
+  return success({ ok: true })
 }

@@ -1,7 +1,7 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success } from '@/lib/api'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { once } from '@/lib/once'
 
 const ensurePaneHiddenTable = once(async () => {
@@ -16,21 +16,22 @@ const ensurePaneHiddenTable = once(async () => {
 // untouched, so hiding it can never orphan or move any of that data, and
 // un-hiding it later brings it straight back with everything intact.
 export async function GET() {
-  const session = await auth()
-  if (!session) return NextResponse.json({}, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
   await ensurePaneHiddenTable()
   const rows = await sql`SELECT item_key FROM pane_hidden`
   const map: Record<string, boolean> = {}
   for (const r of rows) map[r.item_key] = true
-  return NextResponse.json(map)
+  return success(map)
 }
 
 export async function PATCH(req: NextRequest) {
-  const session = await auth()
-  if (!isOwnerLevel(session?.user as { role?: string; username?: string } | undefined)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const { session, error } = await requireAuth()
+  if (error) return error
+  if (!isOwnerLevel(session?.user as { role?: string; username?: string } | undefined)) return badRequest('Forbidden')
 
   const { key, hidden } = await req.json()
-  if (typeof key !== 'string' || !key.trim()) return NextResponse.json({ error: 'key is required' }, { status: 400 })
+  if (typeof key !== 'string' || !key.trim()) return badRequest('key is required')
   await ensurePaneHiddenTable()
 
   if (hidden) {
@@ -38,5 +39,5 @@ export async function PATCH(req: NextRequest) {
   } else {
     await sql`DELETE FROM pane_hidden WHERE item_key = ${key}`
   }
-  return NextResponse.json({ ok: true })
+  return success({ ok: true })
 }
