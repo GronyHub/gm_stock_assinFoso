@@ -1,8 +1,8 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
-import { NextRequest, NextResponse } from 'next/server'
-import { initializeDatabase } from '@/lib/dbInitialize'
+import { ensureDbInitialized } from '@/lib/api/dbInitCache'
+import { NextRequest } from 'next/server'
 import { once } from '@/lib/once'
 
 // Simple key/value content pages for Grony Manage > Training (Tutorial and
@@ -136,46 +136,46 @@ No rules have been added here yet -- the owner will add them.`,
 }
 
 export async function GET(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return error
 
   const key = req.nextUrl.searchParams.get('key')
-  if (!key) return NextResponse.json({ error: 'Missing key' }, { status: 400 })
+  if (!key) return badRequest('Missing key')
 
   try {
-    await initializeDatabase()
-  await ensureManageContent()
+    await ensureDbInitialized()
+    await ensureManageContent()
     const [row] = await sql`SELECT key, body, updated_by, updated_at FROM manage_content WHERE key = ${key}`
-    if (row) return NextResponse.json(row)
-    return NextResponse.json({ key, body: DEFAULTS[key] ?? '', updated_by: null, updated_at: null })
+    if (row) return success(row)
+    return success({ key, body: DEFAULTS[key] ?? '', updated_by: null, updated_at: null })
   } catch (e) {
     console.error('manage-content GET error:', e)
-    return NextResponse.json({ key, body: DEFAULTS[key] ?? '', updated_by: null, updated_at: null })
+    return success({ key, body: DEFAULTS[key] ?? '', updated_by: null, updated_at: null })
   }
 }
 
 export async function PUT(req: NextRequest) {
-  const session = await auth()
+  const { session, error } = await requireAuth()
+  if (error) return error
   if (!isOwnerLevel(session?.user as any)) {
-    return NextResponse.json({ error: 'Only the owner or Joe can edit this page' }, { status: 403 })
+    return badRequest('Only the owner or Joe can edit this page')
   }
 
   const { key, body } = await req.json()
-  if (!key || typeof body !== 'string') return NextResponse.json({ error: 'Missing key or body' }, { status: 400 })
+  if (!key || typeof body !== 'string') return badRequest('Missing key or body')
 
-  const updatedBy = (session!.user as any)?.username || session!.user?.name || 'Unknown'
+  const updatedBy = (session?.user as any)?.username || session?.user?.name || 'Unknown'
 
   try {
-    await initializeDatabase()
-  await ensureManageContent()
+    await ensureDbInitialized()
+    await ensureManageContent()
     await sql`
       INSERT INTO manage_content (key, body, updated_by, updated_at)
       VALUES (${key}, ${body}, ${updatedBy}, now())
       ON CONFLICT (key) DO UPDATE SET body = ${body}, updated_by = ${updatedBy}, updated_at = now()
     `
-    return NextResponse.json({ ok: true })
+    return success({ ok: true })
   } catch (e) {
-    console.error('manage-content PUT error:', e)
-    return NextResponse.json({ error: 'Failed to save' }, { status: 500 })
+    return handleError('manage-content PUT', e)
   }
 }

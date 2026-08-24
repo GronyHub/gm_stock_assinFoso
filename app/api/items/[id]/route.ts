@@ -1,9 +1,8 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, notFound, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { isOwnerLevel } from '@/lib/roles'
 import { ensureCountCadenceColumns, ensureGmcColumn, itemCountIntervalLabels, formatCountInterval } from '@/lib/countRules'
-import { NextResponse } from 'next/server'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -27,15 +26,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       // so the label here can never drift out of sync with the bulk view.
       itemCountIntervalLabels().catch(() => new Map<number, string>()),
     ])
-    if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    return NextResponse.json({ ...row, count_interval: formatCountInterval(intervals.get(itemId)) })
+    if (!row) return notFound()
+    return success({ ...row, count_interval: formatCountInterval(intervals.get(itemId)) })
   } catch {
     const [row] = await sql`
       SELECT id, canonical_name, cf_group, selling_rate AS selling_price, purchase_rate, 0 AS calculated_soh, COALESCE(is_gmc, false) AS is_gmc
       FROM items WHERE id = ${Number(id)}
     `
-    if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    return NextResponse.json(row)
+    if (!row) return notFound()
+    return success(row)
   }
 }
 
@@ -59,8 +58,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 // include -- fixes that while keeping the "clear this field" behavior the
 // full edit forms (ItemsTab/LossTab) rely on when a field is left blank.
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   try {
     const { id } = await params
@@ -77,7 +76,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       LEFT JOIN item_stock_summary s ON s.item_id = i.id
       WHERE i.id = ${itemId}
     `
-    if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!current) return notFound()
 
     const item_name           = has('item_name') ? body.item_name : undefined
     const cf_group            = has('cf_group') ? body.cf_group : current.cf_group
@@ -95,9 +94,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       : null
 
     if (count_excluded && Math.abs(parseFloat(current.calculated_soh) || 0) > 0.001) {
-      return NextResponse.json({
-        error: `Can't exclude "${current.canonical_name}" from counts -- it still shows ${current.calculated_soh} in stock. Bring it to 0 first (a count, or a sale/bill that clears it out).`,
-      }, { status: 400 })
+      return badRequest(`Can't exclude "${current.canonical_name}" from counts -- it still shows ${current.calculated_soh} in stock. Bring it to 0 first (a count, or a sale/bill that clears it out).`)
     }
 
     if (has('converts_to_item_id') && converts_to_item_id) {
@@ -106,16 +103,12 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
           SELECT id, canonical_name, gmc_type, product_type FROM items WHERE id = ${converts_to_item_id}
         `.catch(() => [])
         if (!targetItem) {
-          return NextResponse.json({
-            error: 'Selected item does not exist',
-          }, { status: 400 })
+          return badRequest('Selected item does not exist')
         }
         const newGmcType = gmc_type || current.gmc_type
         if ((newGmcType === 'service_using_gmc' || newGmcType === 'pack_to_gmc') &&
             !['gmc', 'service_no_gmc'].includes(targetItem.gmc_type || '')) {
-          return NextResponse.json({
-            error: `"${targetItem.canonical_name}" is not compatible -- it must be marked as GMC or Service (no GMC)`,
-          }, { status: 400 })
+          return badRequest(`"${targetItem.canonical_name}" is not compatible -- it must be marked as GMC or Service (no GMC)`)
         }
       } catch (e) {
         console.error('Failed to validate conversion target:', e)
@@ -141,7 +134,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       RETURNING id, canonical_name AS item_name, cf_group, selling_rate, purchase_rate, units_per_pack, unit_name, converts_to_item_id, product_type, gmc_type,
                 count_excluded, count_cadence_days, count_excluded_reason
     `
-    if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!row) return notFound()
 
     const intervals = await itemCountIntervalLabels().catch(() => new Map<number, string>())
     const count_interval = formatCountInterval(intervals.get(itemId))
@@ -157,11 +150,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       await sql`UPDATE stock_counts SET item_name = ${item_name} WHERE item_id = ${itemId}`
     }
 
-    return NextResponse.json({ ...row, count_interval })
+    return success({ ...row, count_interval })
   } catch (error) {
-    console.error('Error updating item:', error)
-    const message = error instanceof Error ? error.message : 'Failed to update item'
-    return NextResponse.json({ error: message }, { status: 500 })
+    return handleError('items PUT', error)
   }
 }
 
@@ -169,43 +160,45 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 // Everything else (a used-once item, a slightly-wrong duplicate) should be
 // merged into another item instead, which preserves the history.
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!isOwnerLevel(session.user as any)) {
-    return NextResponse.json({ error: 'Only Grony or Joe can delete an item' }, { status: 403 })
+  const { session, error } = await requireAuth()
+  if (error) return error
+  if (!isOwnerLevel(session?.user as any)) {
+    return badRequest('Only Grony or Joe can delete an item')
   }
 
-  const { id } = await params
-  const itemId = Number(id)
+  try {
+    const { id } = await params
+    const itemId = Number(id)
 
-  const [item] = await sql`SELECT id, canonical_name FROM items WHERE id = ${itemId}`
-  if (!item) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    const [item] = await sql`SELECT id, canonical_name FROM items WHERE id = ${itemId}`
+    if (!item) return notFound()
 
-  const [[sales], [bills], [counts], [dependents]] = await Promise.all([
-    sql`SELECT COUNT(*)::int AS n FROM sales_receipt_lines WHERE item_id = ${itemId}`,
-    sql`SELECT COUNT(*)::int AS n FROM bill_lines WHERE item_id = ${itemId}`,
-    sql`SELECT COUNT(*)::int AS n FROM stock_counts WHERE item_id = ${itemId}`,
-    sql`SELECT COUNT(*)::int AS n FROM items WHERE converts_to_item_id = ${itemId}`,
-  ])
+    const [[sales], [bills], [counts], [dependents]] = await Promise.all([
+      sql`SELECT COUNT(*)::int AS n FROM sales_receipt_lines WHERE item_id = ${itemId}`,
+      sql`SELECT COUNT(*)::int AS n FROM bill_lines WHERE item_id = ${itemId}`,
+      sql`SELECT COUNT(*)::int AS n FROM stock_counts WHERE item_id = ${itemId}`,
+      sql`SELECT COUNT(*)::int AS n FROM items WHERE converts_to_item_id = ${itemId}`,
+    ])
 
-  const blockers: string[] = []
-  if (sales.n > 0) blockers.push(`${sales.n} sale line${sales.n !== 1 ? 's' : ''}`)
-  if (bills.n > 0) blockers.push(`${bills.n} bill line${bills.n !== 1 ? 's' : ''}`)
-  if (counts.n > 0) blockers.push(`${counts.n} stock count${counts.n !== 1 ? 's' : ''}`)
-  if (dependents.n > 0) blockers.push(`${dependents.n} other item${dependents.n !== 1 ? 's' : ''} converting into it`)
+    const blockers: string[] = []
+    if (sales.n > 0) blockers.push(`${sales.n} sale line${sales.n !== 1 ? 's' : ''}`)
+    if (bills.n > 0) blockers.push(`${bills.n} bill line${bills.n !== 1 ? 's' : ''}`)
+    if (counts.n > 0) blockers.push(`${counts.n} stock count${counts.n !== 1 ? 's' : ''}`)
+    if (dependents.n > 0) blockers.push(`${dependents.n} other item${dependents.n !== 1 ? 's' : ''} converting into it`)
 
-  if (blockers.length > 0) {
-    return NextResponse.json({
-      error: `Can't delete "${item.canonical_name}" -- it still has ${blockers.join(', ')}. Merge it into another item instead.`,
-    }, { status: 409 })
+    if (blockers.length > 0) {
+      return badRequest(`Can't delete "${item.canonical_name}" -- it still has ${blockers.join(', ')}. Merge it into another item instead.`)
+    }
+
+    await sql`DELETE FROM item_aliases WHERE item_id = ${itemId}`
+    await sql`DELETE FROM dismissed_duplicates WHERE item_id1 = ${itemId} OR item_id2 = ${itemId}`
+    await sql`DELETE FROM items WHERE id = ${itemId}`
+
+    const actor = (session?.user as any)?.username || session?.user?.name || 'Unknown'
+    await logActivity(actor, 'deleted item', item.canonical_name)
+
+    return success({ ok: true })
+  } catch (error) {
+    return handleError('items DELETE', error)
   }
-
-  await sql`DELETE FROM item_aliases WHERE item_id = ${itemId}`
-  await sql`DELETE FROM dismissed_duplicates WHERE item_id1 = ${itemId} OR item_id2 = ${itemId}`
-  await sql`DELETE FROM items WHERE id = ${itemId}`
-
-  const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
-  await logActivity(actor, 'deleted item', item.canonical_name)
-
-  return NextResponse.json({ ok: true })
 }

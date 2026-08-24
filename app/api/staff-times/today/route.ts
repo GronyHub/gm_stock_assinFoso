@@ -1,10 +1,10 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { distanceMeters, SHOP_LAT, SHOP_LNG, ALLOWED_RADIUS_METERS } from '@/lib/geo'
 import { openerOf, parseTimeMins } from '@/lib/staffTimes'
 import { ensureClosingReports } from '@/lib/closingReports'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { once } from '@/lib/once'
 
 // The Opener (earliest clock-in of the day) must confirm today's daily
@@ -25,9 +25,10 @@ const ensureSourceCols = once(async () => {
 })
 
 export async function GET() {
-  const session = await auth()
+  const { session, error } = await requireAuth()
+  if (error) return success({ today: [], mine: null, recent: [], opener: null, openerConfirmed: null, closer: null })
+
   const sessionUser = session?.user as any
-  if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {
     const today = new Date().toISOString().slice(0, 10)
@@ -50,7 +51,7 @@ export async function GET() {
       `
     }
 
-    const username = sessionUser.username ?? sessionUser.name
+    const username = sessionUser?.username ?? sessionUser?.name
     await ensureOpeningCountCol()
     let mine: any
     try {
@@ -101,7 +102,7 @@ export async function GET() {
       } catch { openerConfirmed = null }
     }
 
-    return NextResponse.json({
+    return success({
       today: todayRows,
       mine: mine ?? null,
       recent,
@@ -111,20 +112,21 @@ export async function GET() {
     })
   } catch (e) {
     console.error('staff-times GET error:', e)
-    return NextResponse.json({ today: [], mine: null, recent: [], opener: null, openerConfirmed: null, closer: null })
+    return success({ today: [], mine: null, recent: [], opener: null, openerConfirmed: null, closer: null })
   }
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
+  const { session, error } = await requireAuth()
+  if (error) return error
+
   const sessionUser = session?.user as any
-  if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { action, time, latitude, longitude, closing_report } = await req.json()
-  if (!action || !time) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
-  if (!['in', 'out'].includes(action)) return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
+  if (!action || !time) return badRequest('Missing fields')
+  if (!['in', 'out'].includes(action)) return badRequest('Invalid action')
 
-  const username = sessionUser.username ?? sessionUser.name
+  const username = sessionUser?.username ?? sessionUser?.name
   const today = new Date().toISOString().slice(0, 10)
   const enteredBy = session?.user?.name || (session?.user as any)?.username || null
 
@@ -146,10 +148,10 @@ export async function POST(req: NextRequest) {
   await ensureOpeningCountCol()
 
   if (!hasLocation) {
-    return NextResponse.json({ error: 'Location is required to clock in/out. Please enable location services and try again.' }, { status: 400 })
+    return badRequest('Location is required to clock in/out. Please enable location services and try again.')
   }
   if (!accepted) {
-    return NextResponse.json({ error: `You're too far from the shop to clock in/out (about ${Math.round(distance!)}m away).` }, { status: 400 })
+    return badRequest(`You're too far from the shop to clock in/out (about ${Math.round(distance!)}m away).`)
   }
 
   try {
@@ -173,9 +175,7 @@ export async function POST(req: NextRequest) {
         const openerMins = parseTimeMins(openerTime)
         const thisMins = parseTimeMins(time)
         if (openerMins !== null && thisMins !== null && thisMins < openerMins) {
-          return NextResponse.json({
-            error: `${currentOpener} is already today's Opener (clocked in at ${openerTime}) — you can't clock in with an earlier time than that.`,
-          }, { status: 400 })
+          return badRequest(`${currentOpener} is already today's Opener (clocked in at ${openerTime}) — you can't clock in with an earlier time than that.`)
         }
       }
     }
@@ -185,7 +185,7 @@ export async function POST(req: NextRequest) {
         SELECT actual_in FROM staff_times WHERE staff_name = ${username} AND work_date = ${today}
       `
       if (!existing?.actual_in) {
-        return NextResponse.json({ error: 'You must record Time In first' }, { status: 400 })
+        return badRequest('You must record Time In first')
       }
 
       // Closer = the last staff member to clock out: everyone else who clocked
@@ -207,11 +207,11 @@ export async function POST(req: NextRequest) {
           const yesNoKeys = ['advert_played', 'property_issue', 'speaker_brought_in', 'new_customer', 'unfortunate_event'] as const
           const valid = cr && typeof cr === 'object' && yesNoKeys.every(k => typeof cr[k] === 'boolean')
           if (!valid) {
-            return NextResponse.json({
+            return success({
               requires_closing_report: true,
               present_staff: presentToday.map((r: any) => r.staff_name),
               error: 'You are the Closer for today — please answer the closing questions before clocking out.',
-            }, { status: 409 })
+            })
           }
 
           const noTshirt = (Array.isArray(cr.no_tshirt_staff) ? cr.no_tshirt_staff : [])
@@ -314,15 +314,13 @@ export async function POST(req: NextRequest) {
       isOpener ? `${time} — Opener for today` : (action === 'out' && isCloser ? `${time} — Closer for today` : time)
     )
 
-    return NextResponse.json({
+    return success({
       ...updated,
       is_opener: isOpener,
       is_closer: action === 'out' && isCloser,
       closing_report_saved: closerReportJustSaved,
     })
   } catch (e) {
-    console.error('staff-times POST error:', e)
-    const detail = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: `Could not save your time: ${detail}` }, { status: 500 })
+    return handleError('staff-times POST', e)
   }
 }

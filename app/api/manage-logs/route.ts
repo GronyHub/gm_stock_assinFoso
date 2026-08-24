@@ -1,9 +1,9 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { ensureManageLogs } from '@/lib/manageLogs'
-import { NextRequest, NextResponse } from 'next/server'
-import { initializeDatabase } from '@/lib/dbInitialize'
+import { ensureDbInitialized } from '@/lib/api/dbInitCache'
+import { NextRequest } from 'next/server'
 
 // Daily checklist/log entries for the Grony Manage categories that have no
 // existing data behind them (Arrangement, Cleanliness, Future, Customer
@@ -15,8 +15,8 @@ import { initializeDatabase } from '@/lib/dbInitialize'
 // GronyManageTab.
 
 export async function GET(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json([], { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return success([])
 
   const view = req.nextUrl.searchParams.get('view')
   const category = req.nextUrl.searchParams.get('category')
@@ -24,8 +24,8 @@ export async function GET(req: NextRequest) {
   // Grid view: fetch latest entry for each grony section + check type combination
   if (view === 'grony_checks') {
     try {
-      await initializeDatabase()
-  await ensureManageLogs()
+      await ensureDbInitialized()
+      await ensureManageLogs()
       const rows = await sql`
         SELECT DISTINCT ON (grony_section, category)
           grony_section, category, log_date::text, created_at
@@ -60,19 +60,19 @@ export async function GET(req: NextRequest) {
         }
       })
 
-      return NextResponse.json(status)
+      return success(status)
     } catch (e) {
       console.error('manage-logs grony_checks error:', e)
-      return NextResponse.json({})
+      return success({})
     }
   }
 
   // Regular category view
-  if (!category) return NextResponse.json({ error: 'Missing category' }, { status: 400 })
+  if (!category) return badRequest('Missing category')
 
   try {
-    await initializeDatabase()
-  await ensureManageLogs()
+    await ensureDbInitialized()
+    await ensureManageLogs()
     const rows = await sql`
       SELECT id, category, log_date::text, notes, photo_url, logged_by, created_at,
         attendees, start_time::text, end_time::text, grony_section
@@ -81,30 +81,30 @@ export async function GET(req: NextRequest) {
       ORDER BY log_date DESC, created_at DESC
       LIMIT 90
     `
-    return NextResponse.json(rows)
+    return success(rows)
   } catch (e) {
     console.error('manage-logs GET error:', e)
-    return NextResponse.json([])
+    return success([])
   }
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   const { category, notes, photo_url, attendees, start_time, end_time } = await req.json()
   if (!category || typeof category !== 'string') {
-    return NextResponse.json({ error: 'Missing category' }, { status: 400 })
+    return badRequest('Missing category')
   }
   if (!notes && !photo_url) {
-    return NextResponse.json({ error: 'Add a note or a photo' }, { status: 400 })
+    return badRequest('Add a note or a photo')
   }
 
-  const loggedBy = (session.user as any)?.username || session.user?.name || 'Unknown'
+  const loggedBy = (session?.user as any)?.username || session?.user?.name || 'Unknown'
 
   try {
-    await initializeDatabase()
-  await ensureManageLogs()
+    await ensureDbInitialized()
+    await ensureManageLogs()
     const [row] = await sql`
       INSERT INTO manage_logs (category, notes, photo_url, logged_by, attendees, start_time, end_time)
       VALUES (${category}, ${notes || null}, ${photo_url || null}, ${loggedBy},
@@ -113,25 +113,23 @@ export async function POST(req: NextRequest) {
         attendees, start_time::text, end_time::text
     `
     await logActivity(loggedBy, `logged ${category.replace(/_/g, ' ')}`, notes || '(photo only)')
-    return NextResponse.json(row)
+    return success(row)
   } catch (e) {
-    console.error('manage-logs POST error:', e)
-    return NextResponse.json({ error: 'Failed to save log entry' }, { status: 500 })
+    return handleError('manage-logs POST', e)
   }
 }
 
 export async function DELETE(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return error
 
   const id = req.nextUrl.searchParams.get('id')
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+  if (!id) return badRequest('Missing id')
 
   try {
     await sql`DELETE FROM manage_logs WHERE id = ${id}`
-    return NextResponse.json({ ok: true })
+    return success({ ok: true })
   } catch (e) {
-    console.error('manage-logs DELETE error:', e)
-    return NextResponse.json({ error: 'Failed to delete' }, { status: 500 })
+    return handleError('manage-logs DELETE', e)
   }
 }
