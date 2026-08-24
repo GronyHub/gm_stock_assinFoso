@@ -1873,6 +1873,8 @@ function ItemHubPageInner() {
   const [liveQty, setLiveQty] = useState('')
   const [livePrice, setLivePrice] = useState('')
   const [liveSaving, setLiveSaving] = useState(false)
+  const [liveGmcTargetItem, setLiveGmcTargetItem] = useState<{ id: number; name: string; soh: number } | null>(null)
+  const [liveGmcCountSaving, setLiveGmcCountSaving] = useState(false)
   const [liveTapStatus, setLiveTapStatus] = useState<string[]>([])
   const [liveTapTime, setLiveTapTime] = useState(() => {
     const now = new Date()
@@ -2559,6 +2561,37 @@ function ItemHubPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveMode, liveTapsByDate])
 
+  // Fetch target GMC item info when a service using GMC is selected
+  useEffect(() => {
+    if (!liveSelectedItem) {
+      setLiveGmcTargetItem(null)
+      return
+    }
+
+    const isGmcService = liveSelectedItem.product_type === 'service' &&
+                          liveSelectedItem.gmc_type &&
+                          liveSelectedItem.converts_to_item_id
+
+    if (!isGmcService) {
+      setLiveGmcTargetItem(null)
+      return
+    }
+
+    // Fetch target item info including SOH
+    fetch(`/api/items/${liveSelectedItem.converts_to_item_id}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.canonical_name && data.calculated_soh !== undefined) {
+          setLiveGmcTargetItem({
+            id: liveSelectedItem.converts_to_item_id!,
+            name: data.canonical_name,
+            soh: parseFloat(data.calculated_soh) || 0,
+          })
+        }
+      })
+      .catch(() => setLiveGmcTargetItem(null))
+  }, [liveSelectedItem])
+
   const liveCountsByDate = useMemo(() => {
     const q = liveEmbeddedSearch.trim().toLowerCase()
     const filtered = liveCountRecords.filter(rec => {
@@ -2777,6 +2810,85 @@ function ItemHubPageInner() {
       addTapStatus('Cleanup - done')
       clearTimeout(timeoutId)
       setLiveSaving(false)
+    }
+  }
+
+  async function recordCountAndSale() {
+    if (!liveSelectedItem || !liveGmcTargetItem || !liveQty) {
+      showToast('Missing required data', 'error')
+      return
+    }
+
+    const qtyNum = Number(liveQty)
+    if (qtyNum <= 0) {
+      showToast('Quantity must be greater than 0', 'error')
+      return
+    }
+
+    setLiveGmcCountSaving(true)
+    setLiveTapError('')
+
+    try {
+      // First, record the sale tap
+      const tapRes = await fetch('/api/sales/live-tap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          itemId: liveSelectedItem.id,
+          quantity: qtyNum,
+          customPrice: livePrice ? Number(livePrice) : undefined,
+          isGMC: liveSaleType === 'GMC',
+          tapTime: liveTapTime,
+        }),
+      })
+
+      const tapData = await tapRes.json()
+      if (!tapRes.ok) {
+        setLiveTapError(tapData.error || 'Failed to record sale')
+        showToast(tapData.error || 'Failed to record sale', 'error')
+        setLiveGmcCountSaving(false)
+        return
+      }
+
+      if (tapData.requires_count) {
+        setLiveCountGuardItems(tapData.items || [])
+        setLiveTapError(tapData.error || 'Item must be counted before sale')
+        setLiveGmcCountSaving(false)
+        return
+      }
+
+      // Then, record a stock count for the target GMC item
+      const remainingQty = Math.max(0, liveGmcTargetItem.soh - qtyNum)
+      const countRes = await fetch('/api/stock/count', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          itemId: liveGmcTargetItem.id,
+          qty: remainingQty,
+          notes: `Auto-counted when ${liveSelectedItem.name} service was recorded`,
+        }),
+      })
+
+      const countData = await countRes.json()
+      if (!countRes.ok) {
+        // Sale was recorded successfully, but count failed. Show warning but continue.
+        showToast(`Sale recorded, but count failed: ${countData.error || 'Unknown error'}`, 'info')
+      } else {
+        showToast(`✓ ${liveSelectedItem.name} sale & ${liveGmcTargetItem.name} count recorded`, 'success')
+      }
+
+      // Clear the form on success
+      setLiveTaps(prev => [tapData.tap, ...prev])
+      setLiveSelectedItem(null)
+      setLiveQty('')
+      setLivePrice('')
+      setLiveGmcTargetItem(null)
+    } catch (e) {
+      const errMsg = e instanceof Error ? e.message : 'Network error'
+      setLiveTapError(errMsg)
+      showToast(errMsg, 'error')
+    } finally {
+      setLiveGmcCountSaving(false)
     }
   }
 
@@ -5570,6 +5682,20 @@ function ItemHubPageInner() {
                       </p>
                     </div>
 
+                    {liveGmcTargetItem && (
+                      <div className="bg-blue-50 border border-blue-300 rounded-lg px-3 py-3">
+                        <p className="text-xs font-semibold text-blue-900 mb-1">Material Tracking: {liveGmcTargetItem.name}</p>
+                        <p className="text-sm font-bold text-blue-700 mb-2">
+                          Current: <span className="text-blue-900">{liveGmcTargetItem.soh.toFixed(2)}</span> units
+                        </p>
+                        {liveQty && (
+                          <p className="text-sm text-blue-700">
+                            Remaining after sale: <span className="font-bold text-blue-900">{Math.max(0, liveGmcTargetItem.soh - Number(liveQty)).toFixed(2)}</span> units
+                          </p>
+                        )}
+                      </div>
+                    )}
+
                     {liveTapError && (
                       <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-600 font-medium">
                         {liveTapError}
@@ -5633,32 +5759,45 @@ function ItemHubPageInner() {
                       </div>
                     )}
 
-                    <div className="flex gap-2 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setLiveSelectedItem(null)
-                          setLiveQty('')
-                          setLivePrice('')
-                          setLiveTapError('')
-                          setLiveCountQty('')
-                          setLiveCountError('')
-                          setLiveEditingSelectedItem(false)
-                          setLiveEditError('')
-                        }}
-                        disabled={liveSaving}
-                        className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold rounded-lg transition disabled:opacity-50"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => recordTap()}
-                        disabled={!liveQty || liveSaving}
-                        className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition disabled:opacity-50"
-                      >
-                        {liveSaving ? 'Saving…' : 'Tap'}
-                      </button>
+                    <div className="flex flex-col gap-2 pt-2">
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLiveSelectedItem(null)
+                            setLiveQty('')
+                            setLivePrice('')
+                            setLiveTapError('')
+                            setLiveCountQty('')
+                            setLiveCountError('')
+                            setLiveEditingSelectedItem(false)
+                            setLiveEditError('')
+                            setLiveGmcTargetItem(null)
+                          }}
+                          disabled={liveSaving || liveGmcCountSaving}
+                          className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold rounded-lg transition disabled:opacity-50"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => recordTap()}
+                          disabled={!liveQty || liveSaving || liveGmcCountSaving}
+                          className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition disabled:opacity-50"
+                        >
+                          {liveSaving ? 'Saving…' : 'Tap'}
+                        </button>
+                      </div>
+                      {liveGmcTargetItem && (
+                        <button
+                          type="button"
+                          onClick={() => recordCountAndSale()}
+                          disabled={!liveQty || liveSaving || liveGmcCountSaving}
+                          className="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition disabled:opacity-50"
+                        >
+                          {liveGmcCountSaving ? 'Saving…' : 'Count & Save'}
+                        </button>
+                      )}
                     </div>
                   </div>
                   </>
