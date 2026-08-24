@@ -1,32 +1,30 @@
-import { auth } from '@/lib/auth'
+import { getAuthUser, badRequest, success } from '@/lib/api'
 import sql from '@/lib/db'
 import bcrypt from 'bcryptjs'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 export async function GET() {
-  const session = await auth()
-  const sessionUser = session?.user as any
-  if (!sessionUser?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { user, error } = await getAuthUser()
+  if (error) return error
 
-  const [user] = await sql`
+  const [userData] = await sql`
     SELECT id, username, display_name, email, phone, role, created_at
-    FROM app_users WHERE id = ${sessionUser.id}
+    FROM app_users WHERE id = ${user.id}
   `
-  return NextResponse.json(user)
+  return success(userData)
 }
 
 export async function PUT(req: NextRequest) {
-  const session = await auth()
-  const sessionUser = session?.user as any
-  if (!sessionUser?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { user, error } = await getAuthUser()
+  if (error) return error
 
   const { display_name, email, phone, password, confirm } = await req.json()
 
   if (password) {
-    if (password.length < 6) return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 })
-    if (password !== confirm) return NextResponse.json({ error: 'Passwords do not match' }, { status: 400 })
+    if (password.length < 6) return badRequest('Password must be at least 6 characters')
+    if (password !== confirm) return badRequest('Passwords do not match')
     const hash = await bcrypt.hash(password, 12)
-    await sql`UPDATE app_users SET password_hash = ${hash} WHERE id = ${sessionUser.id}`
+    await sql`UPDATE app_users SET password_hash = ${hash} WHERE id = ${user.id}`
   }
 
   await sql`
@@ -34,12 +32,12 @@ export async function PUT(req: NextRequest) {
     SET display_name = ${display_name},
         email = ${email || null},
         phone = ${phone || null}
-    WHERE id = ${sessionUser.id}
+    WHERE id = ${user.id}
   `
 
   const [updated] = await sql`
     SELECT id, username, display_name, email, phone, role, created_at
-    FROM app_users WHERE id = ${sessionUser.id}
+    FROM app_users WHERE id = ${user.id}
   `
-  return NextResponse.json(updated)
+  return success(updated)
 }

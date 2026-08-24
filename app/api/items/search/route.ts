@@ -1,10 +1,10 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, success, unauthorized } from '@/lib/api'
 import sql from '@/lib/db'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 export async function GET(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json([], { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return unauthorized()
   const q = req.nextUrl.searchParams.get('q') || ''
   const rows = await sql`
     SELECT i.id, i.canonical_name AS name, i.cf_group AS "group",
@@ -16,5 +16,5 @@ export async function GET(req: NextRequest) {
     ORDER BY i.canonical_name
     LIMIT 50
   `
-  return NextResponse.json(rows)
+  return success(rows)
 }

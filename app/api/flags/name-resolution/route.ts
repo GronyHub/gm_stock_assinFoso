@@ -1,6 +1,6 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success } from '@/lib/api'
 import sql from '@/lib/db'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 export async function GET() {
   const [unmatched, matched, items] = await Promise.all([
@@ -33,16 +33,16 @@ export async function GET() {
       ORDER BY canonical_name
     `,
   ])
-  return NextResponse.json({ unmatched, matched, items })
+  return success({ unmatched, matched, items })
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return error
 
   const { raw_name, item_id, canonical_name } = await req.json()
   if (!raw_name || !item_id || !canonical_name) {
-    return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+    return badRequest('Missing fields')
   }
 
   await sql`
@@ -51,5 +51,5 @@ export async function POST(req: NextRequest) {
     WHERE LOWER(COALESCE(resolved_name, raw_item_name)) = LOWER(${raw_name})
   `
 
-  return NextResponse.json({ ok: true })
+  return success({ ok: true })
 }

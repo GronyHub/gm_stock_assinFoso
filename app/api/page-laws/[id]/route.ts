@@ -1,26 +1,27 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, notFound, success } from '@/lib/api'
+import { getIdParam } from '@/lib/api/params'
 import sql from '@/lib/db'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return error
 
-  const { id } = await params
+  const lawId = await getIdParam(params)
   const { text } = await req.json()
   const trimmed = typeof text === 'string' ? text.trim() : ''
-  if (!trimmed) return NextResponse.json({ error: 'text is required' }, { status: 400 })
+  if (!trimmed) return badRequest('text is required')
 
-  const [row] = await sql`UPDATE page_laws SET text = ${trimmed} WHERE id = ${Number(id)} RETURNING id, text, created_at`
-  if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  return NextResponse.json(row)
+  const [row] = await sql`UPDATE page_laws SET text = ${trimmed} WHERE id = ${lawId} RETURNING id, text, created_at`
+  if (!row) return notFound()
+  return success(row)
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return error
 
-  const { id } = await params
-  await sql`DELETE FROM page_laws WHERE id = ${Number(id)}`
-  return NextResponse.json({ ok: true })
+  const lawId = await getIdParam(params)
+  await sql`DELETE FROM page_laws WHERE id = ${lawId}`
+  return success({ ok: true })
 }

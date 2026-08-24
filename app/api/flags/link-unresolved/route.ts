@@ -1,23 +1,20 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, getActorName, badRequest, success } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
-// Links every sales_receipt_line whose name matches an item by text but has
-// item_id = null (see the "unlinkedNamed" flag in /api/flags) to that item.
-// Accepts either a single { item_name, item_id } or a bulk { items: [...] }.
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   const body = await req.json()
-  const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
+  const actor = getActorName(session)
 
   const items: { item_name: string; item_id: number }[] = Array.isArray(body.items)
     ? body.items.filter((i: any) => i.item_name && i.item_id)
     : (body.item_name && body.item_id) ? [{ item_name: body.item_name, item_id: body.item_id }] : []
 
-  if (!items.length) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+  if (!items.length) return badRequest('Missing fields')
 
   let totalLinked = 0
   const breakdown: string[] = []
@@ -34,5 +31,5 @@ export async function POST(req: NextRequest) {
   }
 
   await logActivity(actor, 'linked unresolved sales lines to item', `${totalLinked} line${totalLinked !== 1 ? 's' : ''}: ${breakdown.join(', ')}`)
-  return NextResponse.json({ ok: true, linked: totalLinked, breakdown })
+  return success({ ok: true, linked: totalLinked, breakdown })
 }

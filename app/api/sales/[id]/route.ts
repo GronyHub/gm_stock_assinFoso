@@ -1,11 +1,11 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, getActorName, notFound, success, handleError } from '@/lib/api'
+import { getIdParam } from '@/lib/api/params'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { ensureSalesAttachmentsColumn, normalizeAttachments } from '@/lib/salesAttachments'
-import { NextResponse } from 'next/server'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
+  const receiptId = await getIdParam(params)
   const lines = await sql`
     SELECT
       id,
@@ -17,18 +17,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       item_total,
       usage_unit
     FROM sales_receipt_lines
-    WHERE receipt_id = ${Number(id)}
+    WHERE receipt_id = ${receiptId}
     ORDER BY id
   `
-  return NextResponse.json(lines)
+  return success(lines)
 }
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
+  const receiptId = await getIdParam(params)
   const { receipt_date, customer_name, invoice_amount, cash_counted, attachments } = await req.json()
-  // undefined (key omitted, e.g. NoCashFix's minimal PUT) leaves attachments
-  // untouched via COALESCE; an explicit [] (every attachment removed) still
-  // updates, since JSON.stringify([]) is the truthy string '[]', not null.
   const attachmentsJson = attachments !== undefined ? JSON.stringify(normalizeAttachments(attachments)) : null
 
   try {
@@ -41,40 +38,35 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         total         = COALESCE(${invoice_amount ?? null}, total),
         cash_counted  = COALESCE(${cash_counted ?? null}, cash_counted),
         attachments   = COALESCE(${attachmentsJson}::jsonb, attachments)
-      WHERE id = ${Number(id)}
+      WHERE id = ${receiptId}
       RETURNING id, receipt_date::date AS receipt_date, customer_name, total AS invoice_amount, cash_counted,
                 (cash_counted - total) AS wnw, COALESCE(attachments, '[]'::jsonb) AS attachments
     `
-    if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    return NextResponse.json(row)
+    if (!row) return notFound()
+    return success(row)
   } catch (e) {
-    console.error('sales receipt PUT error:', e)
-    const detail = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: `Could not save changes: ${detail}` }, { status: 500 })
+    return handleError('sales receipt PUT', e)
   }
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
-  const { id } = await params
-  const receiptId = Number(id)
+  const receiptId = await getIdParam(params)
 
   try {
     const [receipt] = await sql`SELECT receipt_number, total FROM sales_receipts WHERE id = ${receiptId}`
-    if (!receipt) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!receipt) return notFound()
 
     await sql`DELETE FROM sales_receipt_lines WHERE receipt_id = ${receiptId}`
     await sql`DELETE FROM sales_receipts WHERE id = ${receiptId}`
 
-    const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
+    const actor = getActorName(session)
     await logActivity(actor, 'deleted sale receipt', `${receipt.receipt_number} · ₵${Number(receipt.total).toFixed(2)}`)
 
-    return NextResponse.json({ ok: true })
+    return success({ ok: true })
   } catch (e) {
-    console.error('sales receipt DELETE error:', e)
-    const detail = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: `Could not delete receipt: ${detail}` }, { status: 500 })
+    return handleError('sales receipt DELETE', e)
   }
 }
