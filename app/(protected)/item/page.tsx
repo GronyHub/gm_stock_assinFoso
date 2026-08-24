@@ -4798,7 +4798,16 @@ function ItemHubPageInner() {
                   )}
                   {liveCountView?.kind === 'history' && (
                     <div className="flex-1 min-h-0 flex flex-col px-4 py-4">
-                      <HistoryPanel keywords={['stock', 'count']} />
+                      <HistoryPanel
+                        keywords={['stock', 'count']}
+                        onEntryClick={(log) => {
+                          if (!log.details) return
+                          // Extract item name from details (format: "Item Name · rest" or "Item Name by rest")
+                          const itemName = log.details.split(/\s*·|\s+by\s+/)[0].trim()
+                          const item = liveAllItems.find(it => it.name.toLowerCase() === itemName.toLowerCase())
+                          if (item) setLiveViewingItemId(item.id)
+                        }}
+                      />
                     </div>
                   )}
                   {liveCountView?.kind === 'postponed' && (() => {
