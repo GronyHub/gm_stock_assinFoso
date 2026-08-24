@@ -44,13 +44,29 @@ export async function POST(req: NextRequest) {
     await ensureLiveSaleTapsTable()
     console.log('[live-tap] Table ensured')
 
-    const [item] = await sql`SELECT id, canonical_name, selling_rate, product_type FROM items WHERE id = ${Number(itemId)}`
+    const [item] = await sql`SELECT id, canonical_name, selling_rate, product_type, gmc_type, converts_to_item_id FROM items WHERE id = ${Number(itemId)}`
     console.log('[live-tap] Item fetched:', item?.canonical_name)
     if (!item) return badRequest('Item not found')
 
     const due = await itemsDueForCount([item.id])
     if (due.size > 0 && item.product_type !== 'service') {
       return success(countGuardResponseBody(Array.from(due.values())))
+    }
+
+    // If this is a service using GMC, check if the target GMC item has stock
+    if (item.product_type === 'service' && item.gmc_type && item.converts_to_item_id) {
+      const [targetItem] = await sql`
+        SELECT id, canonical_name, calculated_soh
+        FROM item_stock_summary
+        WHERE item_id = ${item.converts_to_item_id}
+      `
+      if (!targetItem) {
+        return badRequest(`Target GMC item not found for ${item.canonical_name}`)
+      }
+      const soh = parseFloat(targetItem.calculated_soh || '0')
+      if (soh <= 0) {
+        return badRequest(`Cannot record sale: ${item.canonical_name} uses ${targetItem.canonical_name} which is out of stock`)
+      }
     }
 
     const price = customPrice ? Number(customPrice) : (Number(item.selling_rate) || 0)
