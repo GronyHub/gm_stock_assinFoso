@@ -2627,6 +2627,9 @@ function ItemHubPageInner() {
       return
     }
 
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 15000)
+
     try {
       const res = await fetch('/api/sales/live-tap', {
         method: 'POST',
@@ -2637,32 +2640,53 @@ function ItemHubPageInner() {
           customPrice: livePrice ? priceNum : undefined,
           isGMC: liveSaleType === 'GMC',
         }),
+        signal: controller.signal,
       })
-      const data = await res.json()
-      if (!res.ok) {
-        setLiveTapError(data.error || 'Could not record tap')
+
+      let data
+      try {
+        data = await res.json()
+      } catch {
+        setLiveTapError(`Server error: ${res.status} ${res.statusText}`)
         setLiveSaving(false)
+        clearTimeout(timeoutId)
         return
       }
+
+      if (!res.ok) {
+        setLiveTapError(data.error || `Server error: ${res.status}`)
+        setLiveSaving(false)
+        clearTimeout(timeoutId)
+        return
+      }
+
       if (data.requires_count) {
         setLiveTapError(data.error || 'Item must be counted before sale')
         setLiveSaving(false)
+        clearTimeout(timeoutId)
         return
       }
+
       if (!data.tap) {
-        console.error('Unexpected response format:', data)
-        setLiveTapError('Unexpected server response')
+        setLiveTapError('Server returned invalid response - no tap data')
         setLiveSaving(false)
+        clearTimeout(timeoutId)
         return
       }
+
       setLiveTaps(prev => [data.tap, ...prev])
       if (!item) setLiveSelectedItem(null)
       setLiveQty('')
       setLivePrice('')
+      setLiveTapError('')
     } catch (e) {
-      console.error('Tap error:', e)
-      setLiveTapError(e instanceof Error ? e.message : 'Network error')
+      if (e instanceof Error && e.name === 'AbortError') {
+        setLiveTapError('Request timed out - server not responding')
+      } else {
+        setLiveTapError(e instanceof Error ? e.message : 'Network error - check connection')
+      }
     } finally {
+      clearTimeout(timeoutId)
       setLiveSaving(false)
     }
   }
