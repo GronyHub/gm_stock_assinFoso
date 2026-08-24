@@ -1,11 +1,11 @@
-import { requireAuth, getActorName, badRequest, notFound, success } from '@/lib/api'
+import { requireAuth, getActorName, badRequest, notFound, success, handleError } from '@/lib/api'
 import { getIdParam } from '@/lib/api/params'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { isOwnerLevel } from '@/lib/roles'
 import { recordCountRevision } from '@/lib/countRevisions'
 import { gainViolation, expectedStockAt } from '@/lib/stockGuard'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { session, error } = await requireAuth()
@@ -26,12 +26,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     FROM stock_counts WHERE id = ${countId}
   `
 
-  // Gains are not allowed on edits either: the corrected value must still be
-  // explainable by the records as of that date.
   let lossNote: string | null = null
   if (before?.item_id && before.count_date) {
     const gainErr = await gainViolation(before.item_id, Number(quantity_counted), before.count_date)
-    if (gainErr) return NextResponse.json({ error: gainErr }, { status: 400 })
+    if (gainErr) return badRequest(gainErr)
 
     // Deepening a loss (or creating one) on edit needs the same acknowledgement
     // as a fresh count: a reason, plus the manager's response for non-managers.
@@ -41,18 +39,18 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const worsens = Number(quantity_counted) < Number(before.quantity_counted)
     if (expected !== null && lossQty > 0.001 && worsens) {
       if (!loss_reason || !String(loss_reason).trim()) {
-        return NextResponse.json({
+        return success({
           requires_loss_reason: true,
           expected, counted: Number(quantity_counted), loss: lossQty, is_manager: isManager,
           error: `Loss detected: expected ${expected}, counted ${quantity_counted} (-${lossQty}). A reason is required before this count can be saved.`,
-        }, { status: 409 })
+        })
       }
       if (!isManager && (!manager_response || !String(manager_response).trim())) {
-        return NextResponse.json({
+        return success({
           requires_loss_reason: true,
           expected, counted: Number(quantity_counted), loss: lossQty, is_manager: isManager,
           error: `Inform the manager of this loss and enter what the manager said before saving.`,
-        }, { status: 409 })
+        })
       }
       lossNote = `[LOSS -${lossQty}] Reason: ${String(loss_reason).trim()}`
         + (isManager ? ' (manager counted)' : ` | Manager said: ${String(manager_response).trim()}`)
@@ -86,7 +84,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const { session, error } = await requireAuth()
   if (error) return error
   if (!isOwnerLevel(session.user as any)) {
-    return NextResponse.json({ error: 'Only Grony or Joe can delete a count' }, { status: 403 })
+    return badRequest('Only Grony or Joe can delete a count')
   }
 
   const countId = await getIdParam(params)

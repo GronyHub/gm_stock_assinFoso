@@ -1,5 +1,5 @@
+import { requireAuth, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
-import { NextResponse } from 'next/server'
 
 type DayRow = {
   item_id: number
@@ -45,6 +45,9 @@ function aggregateItem(rows: DayRow[]) {
 }
 
 export async function GET() {
+  const { error } = await requireAuth()
+  if (error) return error
+
   try {
     const [itemRows, dayRows] = await Promise.all([
       sql`
@@ -162,9 +165,8 @@ export async function GET() {
       .map(([cf_group, value]) => ({ cf_group, value: Math.round(value * 100) / 100 }))
       .sort((a, b) => b.value - a.value)
 
-    return NextResponse.json({ monthlyLoss, topByValue, topByQty, leastByValue, lossByGroup })
+    return success({ monthlyLoss, topByValue, topByQty, leastByValue, lossByGroup })
   } catch (e) {
-    console.error('loss-trends error:', e)
-    return NextResponse.json({ error: 'Failed to load loss trends' }, { status: 500 })
+    return handleError('analysis/loss-trends', e)
   }
 }

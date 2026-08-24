@@ -1,5 +1,5 @@
+import { requireAuth, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
-import { NextResponse } from 'next/server'
 import { ensureCountRevisions } from '@/lib/countRevisions'
 import { getItemDayRows } from '@/lib/itemDayRows'
 import { computeChainLossSummary } from '@/lib/packChain'
@@ -72,7 +72,11 @@ function aggregateItem(rows: DayRow[], sp: number) {
 }
 
 export async function GET() {
-  await ensureActiveItemsView()
+  const { error } = await requireAuth()
+  if (error) return error
+
+  try {
+    await ensureActiveItemsView()
 
   const [itemRows, dayRows, countIntervalLabels] = await Promise.all([
     sql`
@@ -234,5 +238,8 @@ export async function GET() {
     }
   })
 
-  return NextResponse.json(result)
+    return success(result)
+  } catch (e) {
+    return handleError('losses/summary', e)
+  }
 }

@@ -1,8 +1,9 @@
+import { requireAuth, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { requiredDailyItemIds } from '@/lib/countRules'
 import { openerOf } from '@/lib/staffTimes'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { once } from '@/lib/once'
 
 const ensureSchema = once(async () => {
@@ -182,10 +183,8 @@ const AUTO_TYPES = [
 ]
 
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get('authorization')
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const { error } = await requireAuth()
+  if (error) return error
 
   try {
     const [settingsRows, assignmentRows] = await Promise.all([
@@ -402,9 +401,8 @@ export async function GET(req: NextRequest) {
       console.error('dress code penalty check failed:', e)
     }
 
-    return NextResponse.json({ ok: true, created, summary })
+    return success({ ok: true, created, summary })
   } catch (e) {
-    console.error('violations auto-check error:', e)
-    return NextResponse.json({ error: 'Failed' }, { status: 500 })
+    return handleError('violations auto-check', e)
   }
 }

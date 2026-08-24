@@ -1,7 +1,6 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
-import { NextResponse } from 'next/server'
 
 interface MigrationResult {
   service_id: number
@@ -15,10 +14,10 @@ interface MigrationResult {
 }
 
 export async function POST(req: Request) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
   if (!isOwnerLevel(session.user as any)) {
-    return NextResponse.json({ error: 'Only Grony or Joe can perform migrations' }, { status: 403 })
+    return badRequest('Only Grony or Joe can perform migrations')
   }
 
   try {
@@ -104,14 +103,12 @@ export async function POST(req: Request) {
       })
     }
 
-    return NextResponse.json({
-      success: true,
+    return success({
       migrated: results.length,
       results,
       message: `Successfully migrated ${results.length} service${results.length !== 1 ? 's' : ''} using GMC`,
     })
   } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Unknown error'
-    return NextResponse.json({ error: msg }, { status: 500 })
+    return handleError('items/migrate-service-gmc-data', e)
   }
 }

@@ -1,7 +1,7 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 type ReceiveLine = { poLineId: number; qty: number; price: number }
 
@@ -12,22 +12,23 @@ type ReceiveLine = { poLineId: number; qty: number; price: number }
 // order is simply received more than once, each time with only the lines
 // (and quantities) that actually showed up.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const { id } = await params
-  const poId = Number(id)
-
-  const { date, lines } = await req.json() as { date?: string; lines?: ReceiveLine[] }
-  if (!date || !lines?.length) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
-
-  const received = lines.filter(l => Number(l.qty) > 0)
-  if (received.length === 0) return NextResponse.json({ error: 'Enter a quantity for at least one item.' }, { status: 400 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   try {
+    const { id } = await params
+    const poId = Number(id)
+
+    const { date, lines } = await req.json() as { date?: string; lines?: ReceiveLine[] }
+    if (!date || !lines?.length) return badRequest('Missing fields')
+
+    const received = lines.filter(l => Number(l.qty) > 0)
+    if (received.length === 0) return badRequest('Enter a quantity for at least one item.')
+
     const [po] = await sql`SELECT id, po_number, vendor_id, vendor_name, status FROM purchase_orders WHERE id = ${poId}`
-    if (!po) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!po) return badRequest('Not found')
     if (po.status !== 'sent') {
-      return NextResponse.json({ error: 'Only a sent purchase order can receive items -- send it first.' }, { status: 400 })
+      return badRequest('Only a sent purchase order can receive items -- send it first.')
     }
 
     const poLines = await sql`SELECT id, item_id, item_name, qty_ordered, qty_received FROM purchase_order_lines WHERE po_id = ${poId}` as
@@ -36,10 +37,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     for (const l of received) {
       const line = poLineById.get(l.poLineId)
-      if (!line) return NextResponse.json({ error: 'One of these lines no longer exists on this order.' }, { status: 400 })
+      if (!line) return badRequest('One of these lines no longer exists on this order.')
       const remaining = Number(line.qty_ordered) - Number(line.qty_received)
       if (Number(l.qty) > remaining + 0.001) {
-        return NextResponse.json({ error: `"${line.item_name}" only has ${remaining} left to receive.` }, { status: 400 })
+        return badRequest(`"${line.item_name}" only has ${remaining} left to receive.`)
       }
     }
 
@@ -88,10 +89,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     await logActivity(actor, 'received purchase order items', `${po.po_number} · ₵${total.toFixed(2)} → ${billNumber}`)
-    return NextResponse.json({ ok: true, billId: bill.id, billNumber })
+    return success({ ok: true, billId: bill.id, billNumber })
   } catch (e) {
-    console.error('purchase-order receive error:', e)
-    const detail = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: `Could not receive items: ${detail}` }, { status: 500 })
+    return handleError('purchase-orders/[id]/receive', e)
   }
 }

@@ -1,25 +1,20 @@
+import { requireAuth, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
-import { NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
 import { isOwnerLevel } from '@/lib/roles'
 import { getCached } from '@/lib/cacheStore'
 
 export async function GET() {
+  const { session, error } = await requireAuth()
+  if (error) return error
+
   try {
-    const session = await auth()
     const canSeeAmounts = isOwnerLevel(session?.user as any)
 
-    // The page polls this every 90s expecting near-live numbers. A 1-hour
-    // TTL (the original tuning) meant up to ~40 consecutive polls kept
-    // returning the exact same snapshot after a new sale/bill/expense --
-    // stale enough to mislead, not just slightly behind. 5 minutes still
-    // cuts most of the query volume the caching was added for.
-    return NextResponse.json(
+    return success(
       await getCached('analysis:summary', 300, () => computeSummary(canSeeAmounts))
     )
   } catch (e) {
-    console.error('analysis summary error:', e)
-    return NextResponse.json({ error: 'Failed to load analytics' }, { status: 500 })
+    return handleError('analysis/summary', e)
   }
 }
 

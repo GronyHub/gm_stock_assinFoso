@@ -1,9 +1,9 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { ensureLiveSaleTapsTable } from '@/lib/liveSales'
 import { itemsDueForCount, countGuardResponseBody } from '@/lib/countGuard'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 // Ghana is UTC+0 year-round, so an ISO UTC date slice is already the
 // correct local calendar date -- same convention the rest of Sales uses.
@@ -26,29 +26,29 @@ function todayStr() {
 // line/receipt to merge by hand, exactly like the existing dup_receipt
 // flag already catches for manually-entered receipts.
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const { itemId, quantity, customPrice } = await req.json()
-  if (!itemId) return NextResponse.json({ error: 'Missing itemId' }, { status: 400 })
-  const qty = Math.max(1, Math.floor(Number(quantity) || 1))
-
-  const staffName = session.user?.name || (session.user as { username?: string })?.username || 'Unknown'
-  const date = todayStr()
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   try {
+    const { itemId, quantity, customPrice } = await req.json()
+    if (!itemId) return badRequest('Missing itemId')
+    const qty = Math.max(1, Math.floor(Number(quantity) || 1))
+
+    const staffName = session.user?.name || (session.user as { username?: string })?.username || 'Unknown'
+    const date = todayStr()
+
     await ensureLiveSaleTapsTable()
 
     const [item] = await sql`SELECT id, canonical_name, selling_rate FROM items WHERE id = ${Number(itemId)}`
-    if (!item) return NextResponse.json({ error: 'Item not found' }, { status: 404 })
+    if (!item) return badRequest('Item not found')
 
     const due = await itemsDueForCount([item.id])
     if (due.size > 0) {
-      return NextResponse.json(countGuardResponseBody(Array.from(due.values())), { status: 409 })
+      return success(countGuardResponseBody(Array.from(due.values())))
     }
 
     const price = customPrice ? Number(customPrice) : (Number(item.selling_rate) || 0)
-    if (price <= 0) return NextResponse.json({ error: 'Invalid price' }, { status: 400 })
+    if (price <= 0) return badRequest('Invalid price')
     const lineAmount = price * qty
 
     let [receipt] = await sql`
@@ -111,10 +111,8 @@ export async function POST(req: NextRequest) {
 
     await logActivity(staffName, 'live sale tap', `${item.canonical_name} × ${qty} · ₵${lineAmount.toFixed(2)}`)
 
-    return NextResponse.json({ tap, lineQuantity: line.quantity, lineTotal: line.item_total })
+    return success({ tap, lineQuantity: line.quantity, lineTotal: line.item_total })
   } catch (e) {
-    console.error('live-tap POST error:', e)
-    const detail = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: `Could not record tap: ${detail}` }, { status: 500 })
+    return handleError('sales/live-tap', e)
   }
 }

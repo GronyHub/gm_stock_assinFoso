@@ -1,6 +1,6 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 // ── Staff config ────────────────────────────────────────────────────────────
 const FULL_TIME = ['Joe', 'James', 'Rawlings']
@@ -59,8 +59,8 @@ type RotaEntry = {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   const { year, month, leaveStaff } = await req.json()
   // leaveStaff: array of staff names who are on paid leave this month (170h target)
@@ -195,5 +195,5 @@ export async function POST(req: NextRequest) {
     `
   }
 
-  return NextResponse.json({ ok: true, count: entries.length })
+  return success({ ok: true, count: entries.length })
 }
