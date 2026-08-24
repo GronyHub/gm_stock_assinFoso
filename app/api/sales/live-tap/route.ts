@@ -39,11 +39,11 @@ export async function POST(req: NextRequest) {
 
     await ensureLiveSaleTapsTable()
 
-    const [item] = await sql`SELECT id, canonical_name, selling_rate FROM items WHERE id = ${Number(itemId)}`
+    const [item] = await sql`SELECT id, canonical_name, selling_rate, product_type FROM items WHERE id = ${Number(itemId)}`
     if (!item) return badRequest('Item not found')
 
     const due = await itemsDueForCount([item.id])
-    if (due.size > 0) {
+    if (due.size > 0 && item.product_type !== 'service') {
       return success(countGuardResponseBody(Array.from(due.values())))
     }
 
