@@ -1870,6 +1870,7 @@ function ItemHubPageInner() {
   const [liveQty, setLiveQty] = useState('')
   const [livePrice, setLivePrice] = useState('')
   const [liveSaving, setLiveSaving] = useState(false)
+  const [liveTapStatus, setLiveTapStatus] = useState<string[]>([])
   // Editing the selected item's own fields -- opened from an "Edit" button
   // inside the same sale-tap sheet instead of navigating to Item 360, so a
   // quick price/group/count-cadence fix doesn't require leaving the sheet
@@ -2606,15 +2607,21 @@ function ItemHubPageInner() {
     return [due, restSorted] as [LiveItem[], LiveItem[]]
   }, [liveCatalogueItems, liveCountStatus, liveMode, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveSalesCounts])
 
+  function addTapStatus(msg: string) {
+    console.log('[recordTap]', msg)
+    setLiveTapStatus(prev => [...prev.slice(-4), `${new Date().toLocaleTimeString()}: ${msg}`])
+  }
+
   async function recordTap(item?: LiveItem) {
-    console.log('[recordTap] STARTED', { item, liveSelectedItem, liveQty, liveSaleType })
+    addTapStatus('STARTED - checking item & quantity')
     const tapItem = item || liveSelectedItem
     if (!tapItem || !liveQty) {
-      console.log('[recordTap] EARLY RETURN - missing tapItem or liveQty', { tapItem: !!tapItem, liveQty })
-      alert(`Missing: ${!tapItem ? 'item' : 'quantity'}`)
+      const missing = !tapItem ? 'item' : 'quantity'
+      addTapStatus(`ERROR: Missing ${missing}`)
+      alert(`Missing: ${missing}`)
       return
     }
-    console.log('[recordTap] Proceeding with tap', { tapItem: tapItem.name, qty: liveQty })
+    addTapStatus(`✓ Item: ${tapItem.name}, Qty: ${liveQty}`)
     setLiveSaving(true)
     setLiveTapError('')
 
@@ -2622,12 +2629,14 @@ function ItemHubPageInner() {
     const priceNum = livePrice ? Number(livePrice) : Number(tapItem.selling_price)
 
     if (qtyNum <= 0) {
+      addTapStatus('ERROR: Quantity must be > 0')
       setLiveTapError('Quantity must be greater than 0')
       setLiveSaving(false)
       return
     }
 
     if (priceNum <= 0) {
+      addTapStatus('ERROR: Price must be > 0')
       setLiveTapError('Price must be greater than 0')
       setLiveSaving(false)
       return
@@ -2637,7 +2646,7 @@ function ItemHubPageInner() {
     const timeoutId = setTimeout(() => controller.abort(), 15000)
 
     try {
-      console.log('[recordTap] Sending fetch to /api/sales/live-tap', { tapItem: tapItem.name, qtyNum, priceNum })
+      addTapStatus('Sending to API...')
       const res = await fetch('/api/sales/live-tap', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2650,14 +2659,14 @@ function ItemHubPageInner() {
         signal: controller.signal,
       })
 
-      console.log('[recordTap] Fetch completed, status:', res.status, res.statusText)
+      addTapStatus(`API responded: ${res.status} ${res.statusText}`)
       let data
       try {
         data = await res.json()
-        console.log('[recordTap] Response JSON parsed:', data)
+        addTapStatus('Parsed response JSON')
       } catch (parseErr) {
-        console.error('[recordTap] JSON parse error:', parseErr)
-        const errMsg = `Server error: ${res.status} ${res.statusText}`
+        const errMsg = `JSON parse error: ${res.status} ${res.statusText}`
+        addTapStatus(`ERROR: ${errMsg}`)
         setLiveTapError(errMsg)
         alert(errMsg)
         setLiveSaving(false)
@@ -2666,8 +2675,8 @@ function ItemHubPageInner() {
       }
 
       if (!res.ok) {
-        console.log('[recordTap] Response not OK, error:', data.error)
         const errMsg = data.error || `Server error: ${res.status}`
+        addTapStatus(`ERROR: ${errMsg}`)
         setLiveTapError(errMsg)
         alert(errMsg)
         setLiveSaving(false)
@@ -2676,8 +2685,8 @@ function ItemHubPageInner() {
       }
 
       if (data.requires_count) {
-        console.log('[recordTap] Count guard triggered:', data.error)
         const errMsg = data.error || 'Item must be counted before sale'
+        addTapStatus(`COUNT GUARD: ${errMsg}`)
         setLiveTapError(errMsg)
         alert(errMsg)
         setLiveSaving(false)
@@ -2686,8 +2695,8 @@ function ItemHubPageInner() {
       }
 
       if (!data.tap) {
-        console.error('[recordTap] No tap in response:', data)
         const errMsg = 'Server returned invalid response - no tap data'
+        addTapStatus(`ERROR: ${errMsg}`)
         setLiveTapError(errMsg)
         alert(errMsg)
         setLiveSaving(false)
@@ -2695,21 +2704,22 @@ function ItemHubPageInner() {
         return
       }
 
-      console.log('[recordTap] SUCCESS - Tap recorded:', data.tap)
+      addTapStatus(`✓✓✓ SUCCESS - Tap recorded!`)
       setLiveTaps(prev => [data.tap, ...prev])
       if (!item) setLiveSelectedItem(null)
       setLiveQty('')
       setLivePrice('')
+      setTimeout(() => setLiveTapStatus([]), 2000)
       alert(`✓ Tap Recorded!\n${tapItem.name} × ${qtyNum}`)
     } catch (e) {
-      console.error('[recordTap] Caught exception:', e instanceof Error ? e.message : String(e))
       const errMsg = e instanceof Error && e.name === 'AbortError'
         ? 'Request timed out - server not responding'
         : e instanceof Error ? e.message : 'Network error - check connection'
+      addTapStatus(`ERROR: ${errMsg}`)
       setLiveTapError(errMsg)
       alert(errMsg)
     } finally {
-      console.log('[recordTap] Finally block - cleaning up')
+      addTapStatus('Cleanup - done')
       clearTimeout(timeoutId)
       setLiveSaving(false)
     }
@@ -2814,6 +2824,7 @@ function ItemHubPageInner() {
     setLiveGridEditError('')
     setLiveGridEditLoading(true)
     setLiveGridEditConfirmDelete(false)
+    setLiveTapStatus([])
     try {
       const item = liveAllItems.find(i => i.id === itemId)
       if (!item) {
@@ -5455,6 +5466,13 @@ function ItemHubPageInner() {
                         <div className="bg-orange-100 border border-orange-300 rounded p-1.5 mb-1">
                           <p className="text-[10px] font-semibold text-orange-900">⚠ SALE TAP</p>
                         </div>
+                        {liveTapStatus.length > 0 && (
+                          <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded text-[8px] font-mono text-blue-900 max-h-24 overflow-y-auto">
+                            {liveTapStatus.map((msg, i) => (
+                              <div key={i}>{msg}</div>
+                            ))}
+                          </div>
+                        )}
                         <div className="space-y-1">
                           <p className="text-[9px] text-gray-700 font-medium">Qty</p>
                           <div className="flex gap-1">
