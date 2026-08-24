@@ -2412,6 +2412,15 @@ function ItemHubPageInner() {
       return filtered
     }
 
+    // Apply search query filter - filter table in real-time as user types
+    if (liveItemPickerQuery.trim()) {
+      const query = liveItemPickerQuery.toLowerCase()
+      filtered = filtered.filter(item =>
+        item.name.toLowerCase().includes(query) ||
+        item.group?.toLowerCase().includes(query)
+      )
+    }
+
     // Apply product type filter
     if (liveProductTypeFilter === 'goods') {
       filtered = filtered.filter(item => item.product_type !== 'service')
@@ -2494,7 +2503,7 @@ function ItemHubPageInner() {
 
     // Sort by sales count (highest to lowest)
     return filtered.sort((a, b) => (liveSalesCounts.get(b.id) ?? 0) - (liveSalesCounts.get(a.id) ?? 0))
-  }, [liveAllItems, liveSalesCounts, liveCurrentView, liveProductTypeFilter, liveGroupFilter, liveGmcTypeFilter, livePickedItemId, liveSaleType, liveGmcItemIds, liveMode, liveSaleFilter, liveLossByItemId, liveItemsWithViolations, liveDuplicateItemIds, liveServiceViolationIdSet, liveUnlinkedNamedIds])
+  }, [liveAllItems, liveSalesCounts, liveCurrentView, liveProductTypeFilter, liveGroupFilter, liveGmcTypeFilter, livePickedItemId, liveSaleType, liveGmcItemIds, liveMode, liveSaleFilter, liveLossByItemId, liveItemsWithViolations, liveDuplicateItemIds, liveServiceViolationIdSet, liveUnlinkedNamedIds, liveItemPickerQuery])
 
   // Log tab's two histories, grouped by date -- computed unconditionally
   // (not inside an `if (liveMode === 'log')` branch) since every mode
@@ -3544,8 +3553,6 @@ function ItemHubPageInner() {
               if (pickedItem) {
                 setLivePickedItemId(null)
                 setLiveItemPickerQuery('')
-              } else if (liveItemPickerQuery.trim()) {
-                setLiveShowItemPicker(true)
               }
             }}
             placeholder={compact ? 'Search item…' : 'Search & pick item…'}
@@ -3569,27 +3576,6 @@ function ItemHubPageInner() {
             >
               ✕
             </span>
-          )}
-          {liveShowItemPicker && liveItemPickerResults.length > 0 && (
-            <div className={`absolute top-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto ${
-              compact ? 'left-0 w-56' : 'left-0 right-0'
-            }`}>
-              {liveItemPickerResults.map(item => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    setLivePickedItemId(item.id)
-                    setLiveItemPickerQuery('')
-                    setLiveShowItemPicker(false)
-                  }}
-                  className="w-full text-left px-2 py-1 hover:bg-green-50 border-b border-gray-100 last:border-b-0 text-[11px] text-gray-700 flex items-center justify-between gap-2"
-                >
-                  <span className={`font-semibold truncate ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : 'text-gray-900'}`}>{item.name}</span>
-                  <span className="text-[9px] text-gray-500 shrink-0">₵{formatPrice(item.selling_price)} S:{Math.ceil(Number(item.soh))}</span>
-                </button>
-              ))}
-            </div>
           )}
         </div>
         {livePickedItemId !== null && (
