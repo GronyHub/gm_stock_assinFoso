@@ -1,11 +1,11 @@
+import { requireAuth, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
-import { NextResponse } from 'next/server'
 
 export async function GET() {
+  const { error } = await requireAuth()
+  if (error) return error
+
   try {
-    // WIC = any real customer sale, i.e. everything except GMC (internal use,
-    // customer_name = 'Grony Multimedia as Customer') -- same classification
-    // used everywhere else in the app (monthly revenue, dup-receipts, losses).
     const [daily, monthly] = await Promise.all([
       sql`
         SELECT
@@ -32,9 +32,8 @@ export async function GET() {
         GROUP BY 1 ORDER BY 1
       `,
     ])
-    return NextResponse.json({ daily, monthly })
+    return success({ daily, monthly })
   } catch (e) {
-    console.error('cash trends error:', e)
-    return NextResponse.json({ error: 'Failed to load cash trends' }, { status: 500 })
+    return handleError('analysis/cash-trends', e)
   }
 }

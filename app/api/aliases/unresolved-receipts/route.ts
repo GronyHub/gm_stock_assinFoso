@@ -1,27 +1,20 @@
-import { requireAuth, success, unauthorized } from '@/lib/api'
+import { requireAuth, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
-import { NextResponse } from 'next/server'
 
 export async function GET() {
   const { error } = await requireAuth()
-  if (error) return unauthorized()
+  if (error) return error
 
-  const rows = await sql`
-    SELECT raw_item_name AS name, COUNT(*)::int AS cnt
-    FROM invoice_lines
-    WHERE item_id IS NULL OR unresolved = true
-    GROUP BY raw_item_name
-    ORDER BY COUNT(*) DESC
-  ` as { name: string; cnt: number }[]
-
-  const confirmed = await sql`SELECT alias_name FROM item_aliases` as { alias_name: string }[]
-  const confirmedSet = new Set(confirmed.map(r => r.alias_name.toLowerCase().trim()))
-
-  return NextResponse.json(
-    rows.map(r => ({
-      name: r.name,
-      cnt: r.cnt,
-      confirmed: confirmedSet.has(r.name.toLowerCase().trim()),
-    }))
-  )
+  try {
+    const rows = await sql`
+      SELECT LOWER(TRIM(raw_item_name)) AS name, COUNT(*)::int AS cnt
+      FROM sales_receipt_lines
+      WHERE unresolved = true
+      GROUP BY LOWER(TRIM(raw_item_name))
+      ORDER BY cnt DESC
+    `
+    return success(rows)
+  } catch (e) {
+    return handleError('aliases/unresolved-receipts', e)
+  }
 }

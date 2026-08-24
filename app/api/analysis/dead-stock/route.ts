@@ -1,52 +1,38 @@
+import { requireAuth, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
-import { NextResponse } from 'next/server'
 
 export async function GET() {
+  const { error } = await requireAuth()
+  if (error) return error
+
   try {
     const rows = await sql`
-      WITH last_wic AS (
-        SELECT srl.item_id, MAX(sr.receipt_date) AS last_sale_date
-        FROM sales_receipt_lines srl
-        JOIN sales_receipts sr ON sr.id = srl.receipt_id
-        WHERE sr.customer_name IS DISTINCT FROM 'Grony Multimedia as Customer'
-        GROUP BY srl.item_id
+      WITH last_movement AS (
+        SELECT item_id, MAX(receipt_date) AS last_date
+        FROM sales_receipt_lines
+        WHERE item_id IS NOT NULL
+        GROUP BY item_id
+        UNION ALL
+        SELECT item_id, MAX(bill_date)
+        FROM bill_lines bl
+        JOIN bills b ON b.id = bl.bill_id
+        WHERE item_id IS NOT NULL
+        GROUP BY item_id
       )
-      SELECT s.item_id, s.item_name, s.cf_group, s.calculated_soh,
-             i.purchase_rate, lw.last_sale_date::text AS last_sale_date
-      FROM item_stock_summary s
-      LEFT JOIN items i ON i.id = s.item_id
-      LEFT JOIN last_wic lw ON lw.item_id = s.item_id
-      WHERE COALESCE(i.product_type, 'goods') <> 'service'
-        AND COALESCE(s.calculated_soh, 0) > 0
-        AND s.item_name NOT ILIKE 'old stop%'
-        AND s.item_name NOT ILIKE 'old- stop%'
+      SELECT
+        i.id, i.canonical_name,
+        MAX(lm.last_date)::date AS last_movement,
+        (CURRENT_DATE - MAX(lm.last_date)::date)::int AS days_since
+      FROM items i
+      LEFT JOIN last_movement lm ON lm.item_id = i.id
+      WHERE (i.status IS NULL OR LOWER(i.status) <> 'inactive')
+        AND i.product_type <> 'service'
+      GROUP BY i.id, i.canonical_name
+      HAVING (CURRENT_DATE - MAX(lm.last_date)::date) > 90 OR MAX(lm.last_date) IS NULL
+      ORDER BY days_since DESC NULLS LAST
     `
-
-    const today = Date.now()
-    const items = (rows as any[]).map(r => {
-      const soh = parseFloat(r.calculated_soh ?? '0') || 0
-      const cp = parseFloat(r.purchase_rate ?? '0') || 0
-      const daysSince = r.last_sale_date
-        ? Math.floor((today - new Date(r.last_sale_date + 'T00:00:00').getTime()) / 86400000)
-        : null
-      return {
-        item_id: r.item_id,
-        item_name: r.item_name,
-        cf_group: r.cf_group,
-        soh,
-        stock_value: Math.round(soh * cp * 100) / 100,
-        last_sale_date: r.last_sale_date,
-        days_since_sale: daysSince,
-      }
-    }).sort((a, b) => {
-      const av = a.days_since_sale ?? Infinity
-      const bv = b.days_since_sale ?? Infinity
-      return bv - av
-    })
-
-    return NextResponse.json({ items })
+    return success(rows)
   } catch (e) {
-    console.error('dead-stock error:', e)
-    return NextResponse.json({ error: 'Failed to load dead stock analysis' }, { status: 500 })
+    return handleError('analysis/dead-stock', e)
   }
 }
