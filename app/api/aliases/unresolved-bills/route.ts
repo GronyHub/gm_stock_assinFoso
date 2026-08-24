@@ -1,15 +1,11 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, success, unauthorized } from '@/lib/api'
 import sql from '@/lib/db'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
-  const session = await auth()
-  if (!session) return NextResponse.json([], { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return unauthorized()
 
-  // Bills with a total but no item list at all (see the "No Items" flag on
-  // the Bills page) have no real item name to resolve -- their line, if any,
-  // is just a placeholder like "Goods from X = 5390". Excluded here so they
-  // don't show up as unresolved names to match against inventory.
   const rows = await sql`
     SELECT bl.raw_item_name AS name, COUNT(*)::int AS cnt
     FROM bill_lines bl

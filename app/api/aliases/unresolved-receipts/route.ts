@@ -1,13 +1,10 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, success, unauthorized } from '@/lib/api'
 import sql from '@/lib/db'
 import { NextResponse } from 'next/server'
 
-// Same shape as /api/aliases/unresolved(-bills), for invoice_lines (the
-// Receipts page) -- this table had no review/fix screen at all until now,
-// unlike sales and bills.
 export async function GET() {
-  const session = await auth()
-  if (!session) return NextResponse.json([], { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return unauthorized()
 
   const rows = await sql`
     SELECT raw_item_name AS name, COUNT(*)::int AS cnt

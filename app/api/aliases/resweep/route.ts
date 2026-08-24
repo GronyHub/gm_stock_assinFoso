@@ -1,17 +1,9 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, success } from '@/lib/api'
 import sql from '@/lib/db'
-import { NextResponse } from 'next/server'
 
-// Aliases only backfill matching lines at the moment they're created or
-// moved (see /api/aliases/confirm and /api/aliases/[id] PATCH) -- nothing
-// re-applies them to lines that show up afterward (a later import using the
-// same raw text, or a stale `unresolved` flag that never got cleared). This
-// re-runs every existing alias against current sales/bill lines so that gap
-// doesn't require manually re-discovering and re-confirming names that are
-// already mapped.
 export async function POST() {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return error
 
   // An alias_name that maps to more than one distinct item is ambiguous --
   // skip it rather than guess which item wins (the unique constraint on
@@ -56,7 +48,7 @@ export async function POST() {
     RETURNING v.id
   `
 
-  return NextResponse.json({
+  return success({
     salesLinesUpdated: salesUpdated.length,
     billLinesUpdated: billsUpdated.length,
     invoiceLinesUpdated: invoicesUpdated.length,
