@@ -2634,6 +2634,7 @@ function ItemHubPageInner() {
           itemId: liveSelectedItem.id,
           quantity: qtyNum,
           customPrice: livePrice ? priceNum : undefined,
+          isGMC: liveSaleType === 'GMC',
         }),
       })
       const data = await res.json()

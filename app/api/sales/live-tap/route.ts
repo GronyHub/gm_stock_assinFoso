@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   if (error) return error
 
   try {
-    const { itemId, quantity, customPrice } = await req.json()
+    const { itemId, quantity, customPrice, isGMC } = await req.json()
     if (!itemId) return badRequest('Missing itemId')
     const qty = Math.max(1, Math.floor(Number(quantity) || 1))
 
@@ -51,23 +51,24 @@ export async function POST(req: NextRequest) {
     if (price <= 0) return badRequest('Invalid price')
     const lineAmount = price * qty
 
+    const customerName = isGMC ? 'Grony Multimedia as Customer' : null
     let [receipt] = await sql`
       SELECT id FROM sales_receipts
-      WHERE receipt_date::date = ${date} AND customer_name IS DISTINCT FROM 'Grony Multimedia as Customer'
+      WHERE receipt_date::date = ${date} AND customer_name ${isGMC ? '=' : 'IS DISTINCT FROM'} ${customerName}
     `
     if (!receipt) {
       const receiptNumber = `APP-${date.replace(/-/g, '')}-${Date.now().toString().slice(-4)}`
       try {
         [receipt] = await sql`
           INSERT INTO sales_receipts (receipt_number, receipt_date, customer_name, total, source, entered_by)
-          VALUES (${receiptNumber}, ${date}, NULL, 0, 'live_sale', ${staffName})
+          VALUES (${receiptNumber}, ${date}, ${customerName}, 0, 'live_sale', ${staffName})
           RETURNING id
         `
       } catch (e) {
         console.error('sales_receipts insert with entered_by failed, retrying without it:', e)
         ;[receipt] = await sql`
           INSERT INTO sales_receipts (receipt_number, receipt_date, customer_name, total, source)
-          VALUES (${receiptNumber}, ${date}, NULL, 0, 'live_sale')
+          VALUES (${receiptNumber}, ${date}, ${customerName}, 0, 'live_sale')
           RETURNING id
         `
       }
