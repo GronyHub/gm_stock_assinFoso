@@ -36,10 +36,13 @@ export async function POST(req: NextRequest) {
 
     const staffName = session.user?.name || (session.user as { username?: string })?.username || 'Unknown'
     const date = todayStr()
+    console.log('[live-tap] Starting tap:', { itemId, qty, staffName, date })
 
     await ensureLiveSaleTapsTable()
+    console.log('[live-tap] Table ensured')
 
     const [item] = await sql`SELECT id, canonical_name, selling_rate, product_type FROM items WHERE id = ${Number(itemId)}`
+    console.log('[live-tap] Item fetched:', item?.canonical_name)
     if (!item) return badRequest('Item not found')
 
     const due = await itemsDueForCount([item.id])
@@ -111,9 +114,11 @@ export async function POST(req: NextRequest) {
     `
 
     await logActivity(staffName, 'live sale tap', `${item.canonical_name} × ${qty} · ₵${lineAmount.toFixed(2)}`)
+    console.log('[live-tap] Success, returning tap:', tap?.id)
 
     return success({ tap, lineQuantity: line.quantity, lineTotal: line.item_total })
   } catch (e) {
+    console.error('[live-tap] Error:', e instanceof Error ? e.message : String(e))
     return handleError('sales/live-tap', e)
   }
 }
