@@ -16,19 +16,18 @@ export async function POST(req: NextRequest) {
 
   if (!items.length) return badRequest('Missing fields')
 
-  let totalLinked = 0
-  const breakdown: string[] = []
-  for (const { item_name, item_id } of items) {
-    const linked = await sql`
+  const results = await Promise.all(items.map(({ item_name, item_id }) =>
+    sql`
       UPDATE sales_receipt_lines
       SET item_id = ${item_id}
       WHERE item_id IS NULL
         AND LOWER(COALESCE(resolved_name, raw_item_name)) = LOWER(${item_name})
       RETURNING id
-    `
-    totalLinked += linked.length
-    if (linked.length > 0) breakdown.push(`${item_name} (${linked.length})`)
-  }
+    `.then(linked => ({ item_name, count: linked.length }))
+  ))
+
+  const totalLinked = results.reduce((sum, r) => sum + r.count, 0)
+  const breakdown = results.filter(r => r.count > 0).map(r => `${r.item_name} (${r.count})`)
 
   await logActivity(actor, 'linked unresolved sales lines to item', `${totalLinked} line${totalLinked !== 1 ? 's' : ''}: ${breakdown.join(', ')}`)
   return success({ ok: true, linked: totalLinked, breakdown })

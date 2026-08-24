@@ -8,46 +8,42 @@ export async function POST(req: Request) {
   if (!isOwnerLevel(session!.user as any)) return badRequest('Only Grony or Joe can perform this operation')
 
   try {
-    const results: any[] = []
-
-    // Find all services using GMC that have loss revision records
-    const services = await sql`
-      SELECT DISTINCT i.id, i.canonical_name, i.converts_to_item_id
+    // Find all services with GMC loss revision records, joined with target items and counts
+    const serviceData = await sql`
+      SELECT
+        i.id,
+        i.canonical_name,
+        i.converts_to_item_id,
+        target.id as target_id,
+        target.canonical_name as target_name,
+        COUNT(scr.id)::int as record_count
       FROM items i
       JOIN stock_count_revisions scr ON i.id = scr.item_id
+      LEFT JOIN items target ON i.converts_to_item_id = target.id
       WHERE i.gmc_type = 'service_using_gmc'
         AND i.status IS NULL
+      GROUP BY i.id, i.canonical_name, i.converts_to_item_id, target.id, target.canonical_name
     `
 
-    for (const service of services) {
-      const target = await sql`SELECT id, canonical_name FROM items WHERE id = ${service.converts_to_item_id}`
-      if (!target || target.length === 0) continue
+    const results: any[] = []
+    const toTransfer = serviceData.filter(s => s.target_id && s.record_count > 0)
 
-      const targetId = target[0].id
-
-      // Count loss records to transfer
-      const [countResult] = await sql`
-        SELECT COUNT(*)::int as cnt FROM stock_count_revisions WHERE item_id = ${service.id}
-      `
-      const recordsToTransfer = countResult?.cnt || 0
-
-      if (recordsToTransfer > 0) {
-        // Transfer the loss revision records to the target item
-        await sql`
-          UPDATE stock_count_revisions
-          SET item_id = ${targetId}
-          WHERE item_id = ${service.id}
-        `
-
+    // Transfer records in parallel for all services
+    await Promise.all(toTransfer.map(s =>
+      sql`
+        UPDATE stock_count_revisions
+        SET item_id = ${s.target_id}
+        WHERE item_id = ${s.id}
+      `.then(() => {
         results.push({
-          service_id: service.id,
-          service_name: service.canonical_name,
-          target_id: targetId,
-          target_name: target[0].canonical_name,
-          loss_records_transferred: recordsToTransfer,
+          service_id: s.id,
+          service_name: s.canonical_name,
+          target_id: s.target_id,
+          target_name: s.target_name,
+          loss_records_transferred: s.record_count,
         })
-      }
-    }
+      })
+    ))
 
     return success({
       success: true,

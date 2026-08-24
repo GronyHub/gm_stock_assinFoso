@@ -72,14 +72,14 @@ export async function POST(req: NextRequest) {
     }
 
     if (settings && typeof settings === 'object') {
-      for (const [key, value] of Object.entries(settings)) {
-        const [existing] = await sql`SELECT 1 FROM violation_settings WHERE key = ${key}`
-        if (existing) {
-          await sql`UPDATE violation_settings SET value = ${String(value)} WHERE key = ${key}`
-        } else {
-          await sql`INSERT INTO violation_settings (key, value) VALUES (${key}, ${String(value)})`
-        }
-      }
+      await Promise.all(
+        Object.entries(settings).map(([key, value]) =>
+          sql`
+            INSERT INTO violation_settings (key, value) VALUES (${key}, ${String(value)})
+            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+          `
+        )
+      )
     }
 
     return NextResponse.json({ ok: true })
