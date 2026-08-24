@@ -1,4 +1,4 @@
-import { requireAuth, badRequest, success } from '@/lib/api'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { NextRequest } from 'next/server'
@@ -25,13 +25,17 @@ export async function GET(req: NextRequest) {
   const key = req.nextUrl.searchParams.get('key')
   if (!key) return badRequest('key is required')
 
-  await ensureAppSettingsTable()
-  const [row] = await sql`SELECT value_json FROM app_settings WHERE setting_key = ${key}`
-  if (!row) return success({ value: null })
   try {
-    return success({ value: JSON.parse(row.value_json) })
-  } catch {
-    return success({ value: null })
+    await ensureAppSettingsTable()
+    const [row] = await sql`SELECT value_json FROM app_settings WHERE setting_key = ${key}`
+    if (!row) return success({ value: null })
+    try {
+      return success({ value: JSON.parse(row.value_json) })
+    } catch {
+      return success({ value: null })
+    }
+  } catch (e) {
+    return handleError('app-settings GET', e)
   }
 }
 
@@ -42,12 +46,17 @@ export async function PATCH(req: NextRequest) {
 
   const { key, value } = await req.json()
   if (typeof key !== 'string' || !key.trim()) return badRequest('key is required')
-  await ensureAppSettingsTable()
 
-  const valueJson = JSON.stringify(value ?? null)
-  await sql`
-    INSERT INTO app_settings (setting_key, value_json) VALUES (${key}, ${valueJson})
-    ON CONFLICT (setting_key) DO UPDATE SET value_json = ${valueJson}
-  `
-  return success({ ok: true })
+  try {
+    await ensureAppSettingsTable()
+
+    const valueJson = JSON.stringify(value ?? null)
+    await sql`
+      INSERT INTO app_settings (setting_key, value_json) VALUES (${key}, ${valueJson})
+      ON CONFLICT (setting_key) DO UPDATE SET value_json = ${valueJson}
+    `
+    return success({ ok: true })
+  } catch (e) {
+    return handleError('app-settings PATCH', e)
+  }
 }

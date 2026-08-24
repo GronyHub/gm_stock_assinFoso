@@ -89,6 +89,10 @@ export async function DELETE(req: NextRequest) {
   }
 
   const { id } = await req.json()
-  await sql`DELETE FROM announcements WHERE id = ${Number(id)}`
-  return success({ ok: true })
+  try {
+    await sql`DELETE FROM announcements WHERE id = ${Number(id)}`
+    return success({ ok: true })
+  } catch (e) {
+    return handleError('announcements DELETE', e)
+  }
 }
