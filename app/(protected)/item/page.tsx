@@ -2729,6 +2729,17 @@ function ItemHubPageInner() {
       setLivePrice('')
       setTimeout(() => setLiveTapStatus([]), 2000)
       showToast(`✓ ${tapItem.name} × ${qtyNum} recorded`, 'success')
+
+      // Check if target GMC item SOH reached 0
+      if (data.targetSohAfterReduction !== undefined && data.targetSohAfterReduction !== null) {
+        const gmcItemName = data.targetItemName || tapItem.name
+        if (Math.abs(data.targetSohAfterReduction) < 0.001) {
+          showToast(`⚠ Stock depleted! Restock "${gmcItemName}" now`, 'error')
+        } else if (data.targetSohAfterReduction < 5) {
+          showToast(`⚠ Low stock: "${gmcItemName}" (${data.targetSohAfterReduction} left)`, 'info')
+        }
+      }
+
       alert(`✓ Tap Recorded!\n${tapItem.name} × ${qtyNum}`)
     } catch (e) {
       const errMsg = e instanceof Error && e.name === 'AbortError'

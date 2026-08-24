@@ -134,10 +134,47 @@ export async function POST(req: NextRequest) {
       RETURNING id, item_id, item_name, price, staff_name, tapped_at, undone, quantity, soh
     `
 
+    // If this is a service using GMC, reduce the target item's inventory
+    let targetSohAfterReduction: number | null = null
+    let targetItemName: string | null = null
+    if (item.product_type === 'service' && item.gmc_type === 'service_using_gmc' && item.converts_to_item_id) {
+      try {
+        // Fetch target item info for the notification
+        const [targetItemInfo] = await sql`
+          SELECT canonical_name FROM items WHERE id = ${item.converts_to_item_id}
+        `
+        targetItemName = targetItemInfo?.canonical_name || null
+
+        // Create a negative bill line for the target item to record material consumption
+        const [bill] = await sql`
+          SELECT id FROM bills WHERE bill_date::date = ${date} AND vendor_name = 'Internal Consumption' LIMIT 1
+        `
+        const billId = bill?.id || (await sql`
+          INSERT INTO bills (bill_number, bill_date, vendor_name, total, subtotal, status, source)
+          VALUES (${'INTERNAL-' + date.replace(/-/g, '') + '-' + Date.now().toString().slice(-4)}, ${date}, 'Internal Consumption', 0, 0, 'paid', 'live_sale')
+          RETURNING id
+        ` as any)[0]?.id
+
+        await sql`
+          INSERT INTO bill_lines (bill_id, item_id, raw_item_name, resolved_name, quantity, unit_price, item_total, unresolved, source)
+          VALUES (${billId}, ${item.converts_to_item_id}, ${targetItemName || 'Material'}, ${targetItemName || 'Material'}, ${-qty}, 0, 0, false, 'live_sale')
+        `
+
+        // Fetch the target item's new SOH
+        const [targetItemData] = await sql`SELECT calculated_soh FROM item_stock_summary WHERE item_id = ${item.converts_to_item_id}`
+        if (targetItemData?.calculated_soh !== null && targetItemData?.calculated_soh !== undefined) {
+          targetSohAfterReduction = parseFloat(targetItemData.calculated_soh)
+        }
+        console.log('[live-tap] Target GMC item SOH reduced:', { targetItemId: item.converts_to_item_id, targetName: targetItemName, newSOH: targetSohAfterReduction })
+      } catch (e) {
+        console.error('[live-tap] Failed to reduce target item SOH:', e instanceof Error ? e.message : String(e))
+      }
+    }
+
     await logActivity(staffName, 'live sale tap', `${item.canonical_name} × ${qty} · ₵${lineAmount.toFixed(2)}`)
     console.log('[live-tap] Success, returning tap:', tap?.id)
 
-    return success({ tap, lineQuantity: line.quantity, lineTotal: line.item_total })
+    return success({ tap, lineQuantity: line.quantity, lineTotal: line.item_total, targetSohAfterReduction, targetItemName })
   } catch (e) {
     console.error('[live-tap] Error:', e instanceof Error ? e.message : String(e))
     return handleError('sales/live-tap', e)
