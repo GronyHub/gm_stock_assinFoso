@@ -2678,7 +2678,8 @@ function ItemHubPageInner() {
       if (!item) setLiveSelectedItem(null)
       setLiveQty('')
       setLivePrice('')
-      setLiveTapError('')
+      setLiveTapError(`✓ Recorded: ${tapItem.name} × ${qtyNum}`)
+      setTimeout(() => setLiveTapError(''), 3000)
     } catch (e) {
       if (e instanceof Error && e.name === 'AbortError') {
         setLiveTapError('Request timed out - server not responding')
