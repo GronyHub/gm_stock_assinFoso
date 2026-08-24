@@ -1888,6 +1888,9 @@ function ItemHubPageInner() {
   const [liveEditLoading, setLiveEditLoading] = useState(false)
   const [liveEditSaving, setLiveEditSaving] = useState(false)
   const [liveEditError, setLiveEditError] = useState('')
+  const [liveEditingTapId, setLiveEditingTapId] = useState<number | null>(null)
+  const [liveEditingTapTime, setLiveEditingTapTime] = useState('')
+  const [liveEditingTapSaving, setLiveEditingTapSaving] = useState(false)
   useEffect(() => {
     if (liveEditingGridItemId != null && liveGridEditSaleTapRef.current) {
       setTimeout(() => {
@@ -2740,6 +2743,31 @@ function ItemHubPageInner() {
       }
     } catch (e) {
       setLiveTapError('Could not undo tap')
+    }
+  }
+
+  async function saveEditingTapTime() {
+    if (!liveEditingTapId || !liveEditingTapTime) return
+    setLiveEditingTapSaving(true)
+    try {
+      const tapDateTime = new Date(liveEditingTapTime + ':00Z')
+      const res = await fetch(`/api/sales/live-taps/${liveEditingTapId}?action=update-time`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tappedAt: tapDateTime.toISOString() }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setLiveTaps(prev => prev.map(t => t.id === liveEditingTapId ? { ...t, tapped_at: data.tapped_at } : t))
+        setLiveEditingTapId(null)
+        setLiveEditingTapTime('')
+      } else {
+        setLiveTapError('Could not save tap time')
+      }
+    } catch (e) {
+      setLiveTapError('Could not save tap time')
+    } finally {
+      setLiveEditingTapSaving(false)
     }
   }
 
@@ -4233,15 +4261,27 @@ function ItemHubPageInner() {
                               <div className="flex items-center justify-end px-0.5" title={isNewest ? 'Until last sign-out' : isOldest ? 'Since shop opening' : 'Since previous tap'}>
                                 <span className="text-[9px] leading-none text-gray-500 truncate">{gapMins !== null ? formatGapMins(gapMins) : '-'}</span>
                               </div>
-                              <div className="flex items-center justify-center px-0.5">
+                              <div className="flex items-center justify-center gap-1 px-0.5">
                                 {!tap.undone && (
-                                  <button
-                                    onClick={() => undoTap(tap.id)}
-                                    title="Undo"
-                                    className="text-[10px] font-bold text-red-600 hover:bg-red-100 rounded leading-none p-0"
-                                  >
-                                    ↩
-                                  </button>
+                                  <>
+                                    <button
+                                      onClick={() => {
+                                        setLiveEditingTapId(tap.id)
+                                        setLiveEditingTapTime(tap.tapped_at.slice(0, 16))
+                                      }}
+                                      title="Edit time"
+                                      className="text-[10px] font-bold text-blue-600 hover:bg-blue-100 rounded leading-none p-0"
+                                    >
+                                      🕐
+                                    </button>
+                                    <button
+                                      onClick={() => undoTap(tap.id)}
+                                      title="Undo"
+                                      className="text-[10px] font-bold text-red-600 hover:bg-red-100 rounded leading-none p-0"
+                                    >
+                                      ↩
+                                    </button>
+                                  </>
                                 )}
                               </div>
                             </div>
@@ -4254,6 +4294,39 @@ function ItemHubPageInner() {
                 )}
               </div>
               )}
+            </div>
+          )}
+
+          {/* Edit tap time modal */}
+          {liveEditingTapId != null && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2">
+              <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-4">
+                <h3 className="text-sm font-bold text-gray-900 mb-3">Edit Tap Time</h3>
+                <input
+                  type="datetime-local"
+                  value={liveEditingTapTime}
+                  onChange={e => setLiveEditingTapTime(e.target.value)}
+                  className="w-full text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400 mb-4"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setLiveEditingTapId(null)
+                      setLiveEditingTapTime('')
+                    }}
+                    className="flex-1 px-3 py-2 bg-gray-300 hover:bg-gray-400 text-gray-900 text-sm font-semibold rounded transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={saveEditingTapTime}
+                    disabled={liveEditingTapSaving}
+                    className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded transition disabled:opacity-50"
+                  >
+                    {liveEditingTapSaving ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 

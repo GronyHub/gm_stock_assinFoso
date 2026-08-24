@@ -21,6 +21,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return success({ success: true })
     }
 
+    if (action === 'update-time') {
+      const body = await req.json()
+      const { tappedAt } = body
+      if (!tappedAt) return badRequest('Missing tappedAt')
+
+      await sql`UPDATE live_sale_taps SET tapped_at = ${tappedAt} WHERE id = ${id}`
+      const [tap] = await sql`SELECT tapped_at FROM live_sale_taps WHERE id = ${id}`
+      return success({ tapped_at: tap?.tapped_at })
+    }
+
     return badRequest('Unknown action')
   } catch (e) {
     return handleError('sales/live-taps/[id]', e)
