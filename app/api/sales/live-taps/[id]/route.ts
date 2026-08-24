@@ -1,29 +1,28 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { ensureLiveSaleTapsTable } from '@/lib/liveSales'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return error
 
   const { id: idStr } = await params
   const action = req.nextUrl.searchParams.get('action') || 'undo'
   const id = parseInt(idStr)
 
-  if (!id) return NextResponse.json({ error: 'Invalid tap ID' }, { status: 400 })
+  if (!id) return badRequest('Invalid tap ID')
 
   try {
     await ensureLiveSaleTapsTable()
 
     if (action === 'undo') {
       await sql`UPDATE live_sale_taps SET undone = true WHERE id = ${id}`
-      return NextResponse.json({ success: true })
+      return success({ success: true })
     }
 
-    return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
+    return badRequest('Unknown action')
   } catch (e) {
-    console.error('live-taps undo error:', e)
-    return NextResponse.json({ error: 'Failed to undo tap' }, { status: 500 })
+    return handleError('sales/live-taps/[id]', e)
   }
 }

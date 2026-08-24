@@ -1,24 +1,18 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, getActorName, notFound, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
-// Undo -- used both by the quick "Undo" that appears right after your own
-// tap, and by the audit log for reversing a tap noticed later. Never a hard
-// delete: the tap row stays, just marked `undone`, so the log keeps an
-// honest record of what was tapped and later reversed instead of it just
-// vanishing. Idempotent -- undoing an already-undone tap is a no-op, not
-// an error, so a double-tap on the Undo button itself can't decrement twice.
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   const { id } = await params
 
   try {
     const [tap] = await sql`SELECT * FROM live_sale_taps WHERE id = ${Number(id)}`
-    if (!tap) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    if (tap.undone) return NextResponse.json({ ok: true, alreadyUndone: true })
+    if (!tap) return notFound()
+    if (tap.undone) return success({ ok: true, alreadyUndone: true })
 
     await sql`UPDATE live_sale_taps SET undone = true WHERE id = ${tap.id}`
 
@@ -43,13 +37,11 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
       }
     }
 
-    const actor = session.user?.name || (session.user as { username?: string })?.username || 'Unknown'
+    const actor = getActorName(session)
     await logActivity(actor, 'undid live sale tap', `${tap.item_name} × ${qty} · ₵${lineAmount.toFixed(2)} (tapped by ${tap.staff_name})`)
 
-    return NextResponse.json({ ok: true })
+    return success({ ok: true })
   } catch (e) {
-    console.error('live-tap undo error:', e)
-    const detail = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: `Could not undo tap: ${detail}` }, { status: 500 })
+    return handleError('sales/live-tap/[id]', e)
   }
 }

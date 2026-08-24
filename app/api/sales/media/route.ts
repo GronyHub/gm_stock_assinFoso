@@ -23,7 +23,6 @@ export async function GET(req: NextRequest) {
       },
     })
   } catch (e) {
-    console.error('sales media fetch error:', e)
     return badRequest('Could not load attachment')
   }
 }

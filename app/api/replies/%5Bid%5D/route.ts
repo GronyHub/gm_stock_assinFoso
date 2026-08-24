@@ -1,21 +1,19 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 export async function DELETE(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return error
 
   const pathId = req.nextUrl.pathname.split('/').pop()
   const id = parseInt(pathId || '0')
-  if (!id) return NextResponse.json({ error: 'Reply ID required' }, { status: 400 })
+  if (!id) return badRequest('Reply ID required')
 
   try {
     await sql`DELETE FROM item_replies WHERE id = ${id}`
-    return NextResponse.json({ ok: true })
+    return success({ ok: true })
   } catch (e) {
-    console.error('reply DELETE error:', e)
-    const detail = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: `Could not delete reply: ${detail}` }, { status: 500 })
+    return handleError('replies/[id]', e)
   }
 }

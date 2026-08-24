@@ -1,10 +1,10 @@
-import { requireAuth, getActorName, notFound, success } from '@/lib/api'
+import { requireAuth, getActorName, notFound, success, unauthorized } from '@/lib/api'
 import { getIdParam } from '@/lib/api/params'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { isOwnerLevel } from '@/lib/roles'
 import { ensureBillAttachmentsColumn, normalizeAttachments } from '@/lib/billAttachments'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const billId = await getIdParam(params)
@@ -53,7 +53,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const { session, error } = await requireAuth()
   if (error) return error
   if (!isOwnerLevel(session.user as any)) {
-    return NextResponse.json({ error: 'Only Grony or Joe can delete a bill' }, { status: 403 })
+    return unauthorized()
   }
 
   const billId = await getIdParam(params)
