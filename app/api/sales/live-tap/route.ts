@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
     // If this is a service using GMC, check if the target GMC item has stock
     if (item.product_type === 'service' && item.gmc_type && item.converts_to_item_id) {
       const [targetItem] = await sql`
-        SELECT id, canonical_name, calculated_soh
+        SELECT canonical_name, calculated_soh
         FROM item_stock_summary
         WHERE item_id = ${item.converts_to_item_id}
       `
