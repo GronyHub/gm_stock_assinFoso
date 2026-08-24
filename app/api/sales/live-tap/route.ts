@@ -153,11 +153,22 @@ export async function POST(req: NextRequest) {
         if (existingBill?.id) {
           billId = existingBill.id
         } else {
-          const [newBill] = await sql`
-            INSERT INTO bills (bill_number, bill_date, vendor_name, total, subtotal, status, source)
-            VALUES (${'INTERNAL-' + date.replace(/-/g, '') + '-' + Date.now().toString().slice(-4)}, ${date}, 'Internal Consumption', 0, 0, 'paid', 'live_sale')
-            RETURNING id
-          `
+          const billNumber = 'INTERNAL-' + date.replace(/-/g, '') + '-' + Date.now().toString().slice(-4)
+          let newBill
+          try {
+            [newBill] = await sql`
+              INSERT INTO bills (bill_number, bill_date, vendor_name, total, subtotal, status, source, zoho_bill_id)
+              VALUES (${billNumber}, ${date}, 'Internal Consumption', 0, 0, 'paid', 'live_sale', ${billNumber})
+              RETURNING id
+            `
+          } catch (e) {
+            console.error('[live-tap] Bills insert with zoho_bill_id failed, retrying without:', e)
+            ;[newBill] = await sql`
+              INSERT INTO bills (bill_number, bill_date, vendor_name, total, subtotal, status, source)
+              VALUES (${billNumber}, ${date}, 'Internal Consumption', 0, 0, 'paid', 'live_sale')
+              RETURNING id
+            `
+          }
           billId = newBill.id
         }
 
