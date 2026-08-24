@@ -2606,13 +2606,14 @@ function ItemHubPageInner() {
     return [due, restSorted] as [LiveItem[], LiveItem[]]
   }, [liveCatalogueItems, liveCountStatus, liveMode, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveSalesCounts])
 
-  async function recordTap() {
-    if (!liveSelectedItem || !liveQty) return
+  async function recordTap(item?: LiveItem) {
+    const tapItem = item || liveSelectedItem
+    if (!tapItem || !liveQty) return
     setLiveSaving(true)
     setLiveTapError('')
 
     const qtyNum = Number(liveQty)
-    const priceNum = livePrice ? Number(livePrice) : Number(liveSelectedItem.selling_price)
+    const priceNum = livePrice ? Number(livePrice) : Number(tapItem.selling_price)
 
     if (qtyNum <= 0) {
       setLiveTapError('Quantity must be greater than 0')
@@ -2631,7 +2632,7 @@ function ItemHubPageInner() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          itemId: liveSelectedItem.id,
+          itemId: tapItem.id,
           quantity: qtyNum,
           customPrice: livePrice ? priceNum : undefined,
           isGMC: liveSaleType === 'GMC',
@@ -2644,7 +2645,7 @@ function ItemHubPageInner() {
         return
       }
       setLiveTaps(prev => [data.tap, ...prev])
-      setLiveSelectedItem(null)
+      if (!item) setLiveSelectedItem(null)
       setLiveQty('')
       setLivePrice('')
     } catch (e) {
@@ -5274,7 +5275,7 @@ function ItemHubPageInner() {
                       </button>
                       <button
                         type="button"
-                        onClick={recordTap}
+                        onClick={() => recordTap()}
                         disabled={!liveQty || liveSaving}
                         className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition disabled:opacity-50"
                       >
@@ -5429,7 +5430,7 @@ function ItemHubPageInner() {
                           </div>
                           <p className="text-[8px] text-gray-500">Defaults to ₵{editItem ? formatPrice(editItem.selling_price) : '0'}</p>
                           <button
-                            onClick={recordTap}
+                            onClick={() => recordTap(editItem)}
                             disabled={!liveQty || liveSaving}
                             className="w-full px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white text-[9px] font-semibold rounded transition disabled:opacity-50">
                             {liveSaving ? 'Recording…' : 'Tap'}
