@@ -1904,6 +1904,19 @@ function ItemHubPageInner() {
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000)
   }
 
+  function renderClickableItemName(itemName: string, className?: string) {
+    const item = liveAllItems.find(it => it.name.toLowerCase() === itemName.toLowerCase())
+    if (!item) return <span className={className}>{itemName}</span>
+    return (
+      <span
+        onClick={() => setLiveViewingItemId(item.id)}
+        className={`cursor-pointer text-blue-600 hover:text-blue-800 hover:underline transition ${className || ''}`}
+      >
+        {itemName}
+      </span>
+    )
+  }
+
   useEffect(() => {
     if (liveEditingGridItemId != null && liveGridEditSaleTapRef.current) {
       setTimeout(() => {
@@ -3431,7 +3444,7 @@ function ItemHubPageInner() {
                   <div key={rec.id}>
                     <div className={`group grid ${COUNT_RECORDS_GRID} gap-0 border-b border-gray-100 items-center hover:bg-gray-50 transition`}>
                       <div className="sticky left-0 z-[1] bg-white group-hover:bg-gray-50 px-2 py-1">
-                        <p className="text-xs font-semibold text-gray-900 truncate">{rec.item_name}</p>
+                        <p className="text-xs font-semibold truncate">{renderClickableItemName(rec.item_name, 'text-gray-900')}</p>
                       </div>
                       <div className="px-2 py-1">
                         <p className="text-xs text-gray-600 truncate">{rec.cf_group ?? '—'}</p>
@@ -4312,9 +4325,13 @@ function ItemHubPageInner() {
                               }`}
                             >
                               <div className={`sticky left-0 z-[1] flex items-center px-0.5 group-hover:bg-gray-50 ${tap.undone ? 'bg-gray-50' : 'bg-white'}`}>
-                                <span className={`text-[9px] leading-[1.1] font-semibold line-clamp-2 break-words ${tap.undone ? 'line-through text-gray-400' : 'text-gray-900'}`}>
-                                  {tap.item_name}
-                                </span>
+                                {tap.undone ? (
+                                  <span className="text-[9px] leading-[1.1] font-semibold line-clamp-2 break-words line-through text-gray-400">
+                                    {tap.item_name}
+                                  </span>
+                                ) : (
+                                  renderClickableItemName(tap.item_name, 'text-[9px] leading-[1.1] font-semibold line-clamp-2 break-words text-gray-900')
+                                )}
                               </div>
                               <div className="flex items-center justify-end px-0.5">
                                 <span className={`text-[9px] leading-none font-semibold truncate ${tap.undone ? 'text-gray-400' : 'text-blue-600'}`}>
@@ -4770,7 +4787,7 @@ function ItemHubPageInner() {
                         <tbody>
                           {intervalItems.map(it => (
                             <tr key={it.id} className="border-b border-gray-100 hover:bg-gray-50">
-                              <td className="px-2 py-1 text-gray-900 font-medium">{it.name}</td>
+                              <td className="px-2 py-1 font-medium">{renderClickableItemName(it.name, 'text-gray-900')}</td>
                               <td className="px-2 py-1 text-gray-500">{it.group ?? '—'}</td>
                               <td className="px-2 py-1 text-right text-gray-700">{it.soh}</td>
                               <td className="px-2 py-1 text-right text-gray-700">{it.selling_price}</td>
@@ -4827,7 +4844,7 @@ function ItemHubPageInner() {
                         <tbody>
                           {postponedItems.map(it => (
                             <tr key={it.id} className="border-b border-gray-100 hover:bg-gray-50">
-                              <td className="px-2 py-1 text-gray-900 font-medium">{it.name}</td>
+                              <td className="px-2 py-1 font-medium">{renderClickableItemName(it.name, 'text-gray-900')}</td>
                               <td className="px-2 py-1 text-gray-500">{it.group ?? '—'}</td>
                               <td className="px-2 py-1 text-right text-gray-700">{it.soh}</td>
                               <td className="px-2 py-1 text-center text-gray-700">{it.count_postponed_until}</td>
@@ -5119,8 +5136,8 @@ function ItemHubPageInner() {
                           ⚠ COUNT NOW {overdue ? `· ${due.label} OVERDUE` : `· ${due.label}`}
                         </div>
                         <div className="px-1 py-0.5 flex flex-col">
-                          <div className={`text-[11px] font-semibold leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : 'text-blue-600'}`}>
-                            {item.name}
+                          <div className={`text-[11px] font-semibold leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : ''}`}>
+                            {renderClickableItemName(item.name, `text-[11px] leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : 'text-blue-600'}`)}
                           </div>
                           <p className="text-[9px] text-gray-600 leading-tight">
                             <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
@@ -5187,8 +5204,8 @@ function ItemHubPageInner() {
                           </div>
                         )}
                         <div className="px-1 py-0.5 flex flex-col">
-                          <div className={`text-[11px] font-semibold leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : 'text-blue-600'}`}>
-                            {item.name}
+                          <div className={`text-[11px] font-semibold leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : ''}`}>
+                            {renderClickableItemName(item.name, `text-[11px] leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : 'text-blue-600'}`)}
                           </div>
                           <p className="text-[9px] text-gray-600 leading-tight">
                             <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
