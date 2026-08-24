@@ -1,6 +1,6 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success } from '@/lib/api'
 import sql from '@/lib/db'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { once } from '@/lib/once'
 
 const ensureSchema = once(async () => {
@@ -9,29 +9,29 @@ const ensureSchema = once(async () => {
 
 
 export async function GET(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({}, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   await ensureSchema()
 
-  const rows = await sql`SELECT view_key, custom_label FROM custom_view_names WHERE username = ${(session.user as { username?: string } | undefined)?.username || 'anonymous'}`
+  const rows = await sql`SELECT view_key, custom_label FROM custom_view_names WHERE username = ${(session!.user as { username?: string } | undefined)?.username || 'anonymous'}`
   const map: Record<string, string> = {}
   for (const r of rows) {
     map[r.view_key] = r.custom_label
   }
-  return NextResponse.json(map)
+  return success(map)
 }
 
 export async function PATCH(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   const { viewKey, customLabel } = await req.json()
-  if (!viewKey) return NextResponse.json({ error: 'viewKey required' }, { status: 400 })
+  if (!viewKey) return badRequest('viewKey required')
 
   await ensureSchema()
 
-  const username = (session.user as { username?: string } | undefined)?.username || 'anonymous'
+  const username = (session!.user as { username?: string } | undefined)?.username || 'anonymous'
 
   if (!customLabel || customLabel.trim() === '') {
     await sql`DELETE FROM custom_view_names WHERE view_key = ${viewKey} AND username = ${username}`
@@ -42,5 +42,5 @@ export async function PATCH(req: NextRequest) {
     `
   }
 
-  return NextResponse.json({ ok: true })
+  return success({ ok: true })
 }

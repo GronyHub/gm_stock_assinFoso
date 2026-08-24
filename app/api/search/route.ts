@@ -1,8 +1,8 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, success } from '@/lib/api'
 import sql from '@/lib/db'
 import { hasFeature, getUserPermissionsMap } from '@/lib/permissions'
 import { CH_ITEMS } from '@/app/(protected)/item/_components/chViewData'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 // Backs the global search (top row, next to Grony Cash/Grony Manage) --
 // separate from the per-view search bars already on most tabs, which only
@@ -19,15 +19,15 @@ import { NextRequest, NextResponse } from 'next/server'
 // business/private-family data that shouldn't round-trip to a browser that
 // isn't allowed to see it in the first place.
 export async function GET(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({}, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   const q = (req.nextUrl.searchParams.get('q') ?? '').trim()
-  if (q.length < 2) return NextResponse.json({})
+  if (q.length < 2) return success({})
   const like = `%${q}%`
 
   const permissionsMap = await getUserPermissionsMap()
-  const user = session.user as { role?: string | null; username?: string | null; name?: string | null }
+  const user = session!.user as { role?: string | null; username?: string | null; name?: string | null }
   const canSeeCash = hasFeature(user, 'cash', permissionsMap)
   const canSeeUK = hasFeature(user, 'uk', permissionsMap)
   const canSeeCH = hasFeature(user, 'ch', permissionsMap)
@@ -108,5 +108,5 @@ export async function GET(req: NextRequest) {
   const chLogs = (chLogsRaw as { id: number; category: string; notes: string; log_date: string; logged_by: string }[])
     .map(l => ({ ...l, category_label: chLabelByCategory.get(l.category) ?? l.category }))
 
-  return NextResponse.json({ items, customers, vendors, sales, bills, announcements, ukSubmenus, ukEntries, chLogs })
+  return success({ items, customers, vendors, sales, bills, announcements, ukSubmenus, ukEntries, chLogs })
 }

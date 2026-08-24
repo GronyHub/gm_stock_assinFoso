@@ -1,10 +1,9 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, success } from '@/lib/api'
 import sql from '@/lib/db'
-import { NextResponse } from 'next/server'
 
 export async function GET() {
-  const session = await auth()
-  if (!session) return NextResponse.json([], { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return error
 
   try {
     const properties = await sql`
@@ -13,9 +12,9 @@ export async function GET() {
       WHERE is_property = true
       ORDER BY expense_account ASC
     `
-    return NextResponse.json(properties)
+    return success(properties)
   } catch (e) {
     console.error('Failed to fetch properties:', e)
-    return NextResponse.json([], { status: 500 })
+    return success([])
   }
 }

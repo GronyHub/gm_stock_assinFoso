@@ -1,7 +1,7 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { once } from '@/lib/once'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 const ensureAccountsTable = once(async () => {
   await sql`CREATE TABLE IF NOT EXISTS accounts (
@@ -13,27 +13,27 @@ const ensureAccountsTable = once(async () => {
 })
 
 export async function GET() {
-  const session = await auth()
-  if (!session) return NextResponse.json([], { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return error
 
   try {
     await ensureAccountsTable()
 
     const accounts = await sql`SELECT id, name FROM accounts ORDER BY name ASC`
-    return NextResponse.json(accounts)
+    return success(accounts)
   } catch (e) {
     console.error('Failed to fetch accounts:', e)
-    return NextResponse.json([], { status: 500 })
+    return success([])
   }
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return error
 
   const { name } = await req.json()
   if (!name || typeof name !== 'string' || !name.trim()) {
-    return NextResponse.json({ error: 'Account name is required' }, { status: 400 })
+    return badRequest('Account name is required')
   }
 
   const trimmedName = name.trim()
@@ -46,13 +46,8 @@ export async function POST(req: NextRequest) {
       ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
       RETURNING id, name
     `
-    return NextResponse.json(account)
+    return success(account)
   } catch (e) {
-    console.error('Failed to create account:', e)
-    const message = e instanceof Error ? e.message : String(e)
-    if (message.includes('duplicate key')) {
-      return NextResponse.json({ error: 'Account already exists' }, { status: 409 })
-    }
-    return NextResponse.json({ error: `Failed to create account: ${message}` }, { status: 500 })
+    return handleError('accounts POST', e)
   }
 }

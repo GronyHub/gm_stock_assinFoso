@@ -1,14 +1,14 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success } from '@/lib/api'
 import sql from '@/lib/db'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 export async function GET(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return error
   const { searchParams } = new URL(req.url)
   const year = searchParams.get('year')
   const month = searchParams.get('month')
-  if (!year || !month) return NextResponse.json({ error: 'year and month required' }, { status: 400 })
+  if (!year || !month) return badRequest('year and month required')
 
   const rows = await sql`
     SELECT id, staff_name, rota_date::text AS rota_date, sched_in, sched_out, is_off, role
@@ -17,12 +17,12 @@ export async function GET(req: NextRequest) {
       AND EXTRACT(MONTH FROM rota_date) = ${month}
     ORDER BY rota_date, staff_name
   `
-  return NextResponse.json(rows)
+  return success(rows)
 }
 
 export async function PUT(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return error
   const { id, sched_in, sched_out, is_off, role } = await req.json()
   const row = await sql`
     UPDATE staff_rota SET sched_in=${sched_in||null}, sched_out=${sched_out||null},
@@ -30,5 +30,5 @@ export async function PUT(req: NextRequest) {
     WHERE id=${id}
     RETURNING id, staff_name, rota_date::text AS rota_date, sched_in, sched_out, is_off, role
   `
-  return NextResponse.json(row[0])
+  return success(row[0])
 }

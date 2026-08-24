@@ -1,9 +1,9 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { expectedStockAt } from '@/lib/stockGuard'
 import { verifySaleLine, type VerifyStatus } from '@/lib/saleVerify'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 function shiftDate(date: string, days: number) {
   const d = new Date(date + 'T00:00:00')
@@ -140,8 +140,8 @@ function attachChecks(items: ItemLineRow[], stockInfo: Map<number, StockInfo>, m
 // once that day's sales receipt(s) have been entered -- hasReceipt tells the
 // client whether that's true yet so it can warn if not.
 export async function GET(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   const date = req.nextUrl.searchParams.get('date') || new Date().toISOString().slice(0, 10)
   const canSeeAmounts = isOwnerLevel(session.user as any)
@@ -222,7 +222,7 @@ export async function GET(req: NextRequest) {
     const grossMarginWIC = itemsWICChecked.reduce((s, r) => s + (r.margin ?? 0), 0)
     const grossMarginIncomplete = itemsWICChecked.some(r => r.margin == null)
 
-    return NextResponse.json({
+    return success({
       date,
       staff,
       dailyCount,
@@ -241,7 +241,6 @@ export async function GET(req: NextRequest) {
       canSeeAmounts,
     })
   } catch (e) {
-    console.error('daily-summary error:', e)
-    return NextResponse.json({ error: 'Failed to load daily summary' }, { status: 500 })
+    return handleError('daily-summary GET', e)
   }
 }

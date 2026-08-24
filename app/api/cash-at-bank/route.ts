@@ -1,14 +1,14 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { ensureCashAtBankDeficitColumn } from '@/lib/cashAtBank'
-import { NextRequest, NextResponse } from 'next/server'
-import { initializeDatabase } from '@/lib/dbInitialize'
+import { NextRequest } from 'next/server'
+import { ensureDbInitialized } from '@/lib/api/dbInitCache'
 
 export async function GET() {
-  const session = await auth()
+  const { session, error } = await requireAuth()
   const role = (session?.user as any)?.role
-  if (!session || role === 'staff') return NextResponse.json([], { status: 401 })
+  if (error || role === 'staff') return error || badRequest('Forbidden')
 
   const rows = await sql`
     SELECT entry_date, cash_counted, grony_personal_cash_in, debtors_cash_in,
@@ -20,7 +20,7 @@ export async function GET() {
     LIMIT 90
   `
 
-  return NextResponse.json(rows)
+  return success(rows)
 }
 
 // Records a Cash at Bank confirmation for a single day -- cab_bank/cab_momo/
@@ -31,24 +31,24 @@ export async function GET() {
 // its own. deficit needs that day's computed running_cash_at_bank, which
 // only the view exposes.
 export async function POST(req: NextRequest) {
-  const session = await auth()
+  const { session, error } = await requireAuth()
   const role = (session?.user as any)?.role
-  if (!session || role === 'staff') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (error || role === 'staff') return error || badRequest('Forbidden')
 
   const { entry_date, cab_bank, cab_momo, cab_physical } = await req.json()
   if (!entry_date || cab_bank == null || cab_momo == null || cab_physical == null) {
-    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    return badRequest('Missing required fields')
   }
 
   const bank = Number(cab_bank), momo = Number(cab_momo), physical = Number(cab_physical)
   if ([bank, momo, physical].some(Number.isNaN)) {
-    return NextResponse.json({ error: 'Bank, MoMo, and Physical must be numbers' }, { status: 400 })
+    return badRequest('Bank, MoMo, and Physical must be numbers')
   }
   const total = parseFloat((bank + momo + physical).toFixed(2))
 
   try {
-    await initializeDatabase()
-  await ensureCashAtBankDeficitColumn()
+    await ensureDbInitialized()
+    await ensureCashAtBankDeficitColumn()
 
     const [existing] = await sql`SELECT 1 FROM cash_at_bank WHERE entry_date = ${entry_date}`
     if (!existing) await sql`INSERT INTO cash_at_bank (entry_date) VALUES (${entry_date})`
@@ -66,13 +66,11 @@ export async function POST(req: NextRequest) {
       WHERE entry_date = ${entry_date}
     `
 
-    const actor = session.user?.name || (session.user as any)?.username || 'Unknown'
+    const actor = session!.user?.name || (session!.user as any)?.username || 'Unknown'
     await logActivity(actor, 'confirmed cash at bank', `₵${total.toFixed(2)} on ${entry_date}`)
 
-    return NextResponse.json({ ok: true, entry_date, cab_bank: bank, cab_momo: momo, cab_physical: physical, cab_total: total, deficit })
+    return success({ ok: true, entry_date, cab_bank: bank, cab_momo: momo, cab_physical: physical, cab_total: total, deficit })
   } catch (e) {
-    console.error('cash-at-bank confirm error:', e)
-    const detail = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: `Could not save confirmation: ${detail}` }, { status: 500 })
+    return handleError('cash-at-bank POST', e)
   }
 }

@@ -1,14 +1,11 @@
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
-import { auth } from '@/lib/auth'
 import { isOwnerLevel } from '@/lib/roles'
-import { NextResponse } from 'next/server'
 
 export async function POST(req: Request) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!isOwnerLevel(session.user as any)) {
-    return NextResponse.json({ error: 'Only Grony or Joe can clear costs' }, { status: 403 })
-  }
+  const { session, error } = await requireAuth()
+  if (error) return error
+  if (!isOwnerLevel(session!.user as any)) return badRequest('Only Grony or Joe can clear costs')
 
   try {
     // Find services using GMC with non-null cost_price
@@ -21,7 +18,7 @@ export async function POST(req: Request) {
     `
 
     if (services.length === 0) {
-      return NextResponse.json({
+      return success({
         success: true,
         cleared: 0,
         message: 'No services with cost prices found',
@@ -37,7 +34,7 @@ export async function POST(req: Request) {
         AND status IS NULL
     `
 
-    return NextResponse.json({
+    return success({
       success: true,
       cleared: services.length,
       services: services.map(s => ({
@@ -48,7 +45,6 @@ export async function POST(req: Request) {
       message: `Cleared cost prices from ${services.length} service${services.length !== 1 ? 's' : ''}`,
     })
   } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Unknown error'
-    return NextResponse.json({ error: msg }, { status: 500 })
+    return handleError('clear-service-gmc-costs POST', e)
   }
 }

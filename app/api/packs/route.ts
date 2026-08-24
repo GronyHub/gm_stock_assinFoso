@@ -1,10 +1,9 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, success } from '@/lib/api'
 import sql from '@/lib/db'
-import { NextResponse } from 'next/server'
 
 export async function GET() {
-  const session = await auth()
-  if (!session) return NextResponse.json([], { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return error
 
   const packs = await sql`
     SELECT
@@ -22,5 +21,5 @@ export async function GET() {
     ORDER BY pack.cf_group NULLS LAST, pack.canonical_name
   `
 
-  return NextResponse.json(packs)
+  return success(packs)
 }

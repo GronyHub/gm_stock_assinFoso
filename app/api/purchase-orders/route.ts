@@ -1,14 +1,14 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { ensurePurchaseOrderTables } from '@/lib/purchaseOrders'
-import { NextRequest, NextResponse } from 'next/server'
-import { initializeDatabase } from '@/lib/dbInitialize'
+import { NextRequest } from 'next/server'
+import { ensureDbInitialized } from '@/lib/api/dbInitCache'
 
 export async function GET() {
   try {
-    await initializeDatabase()
-  await ensurePurchaseOrderTables()
+    await ensureDbInitialized()
+    await ensurePurchaseOrderTables()
     const [pos, lines] = await Promise.all([
       sql`
         SELECT po.id, po.po_number, po.vendor_id,
@@ -31,38 +31,38 @@ export async function GET() {
       linesByPo.get(l.po_id)!.push(l)
     }
     const result = (pos as any[]).map(po => ({ ...po, lines: linesByPo.get(po.id) ?? [] }))
-    return NextResponse.json(result)
+    return success(result)
   } catch (e) {
     console.error('purchase-orders GET error:', e)
-    return NextResponse.json([])
+    return success([])
   }
 }
 
 type LineInput = { itemId: number | null; itemName: string; qty: number; price: number }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   const { orderDate, expectedDate, vendorId, vendorName, notes, lines } = await req.json() as {
     orderDate?: string; expectedDate?: string | null; vendorId?: number | null; vendorName?: string | null
     notes?: string | null; lines?: LineInput[]
   }
-  if (!orderDate || !lines?.length) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+  if (!orderDate || !lines?.length) return badRequest('Missing fields')
 
   for (const l of lines) {
     const qty = Number(l.qty)
     if (!Number.isFinite(qty) || qty <= 0) {
-      return NextResponse.json({ error: `"${l.itemName || 'a line'}" needs a valid quantity greater than 0.` }, { status: 400 })
+      return badRequest(`"${l.itemName || 'a line'}" needs a valid quantity greater than 0.`)
     }
   }
 
-  const createdBy = (session.user as any)?.username || session.user?.name || 'Unknown'
+  const createdBy = (session!.user as any)?.username || session!.user?.name || 'Unknown'
   const poNumber = `PO-${orderDate.replace(/-/g, '')}-${Date.now().toString().slice(-4)}`
 
   try {
-    await initializeDatabase()
-  await ensurePurchaseOrderTables()
+    await ensureDbInitialized()
+    await ensurePurchaseOrderTables()
     const [po] = await sql`
       INSERT INTO purchase_orders (po_number, vendor_id, vendor_name, order_date, expected_date, status, notes, created_by)
       VALUES (${poNumber}, ${vendorId ?? null}, ${vendorName ?? null}, ${orderDate}, ${expectedDate ?? null}, 'draft', ${notes ?? null}, ${createdBy})
@@ -79,10 +79,8 @@ export async function POST(req: NextRequest) {
       )
     )
     await logActivity(createdBy, 'created purchase order', `${poNumber}${vendorName ? ` from ${vendorName}` : ''}`)
-    return NextResponse.json({ ok: true, id: po.id, poNumber })
+    return success({ ok: true, id: po.id, poNumber })
   } catch (e) {
-    console.error('purchase-orders POST error:', e)
-    const detail = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: `Could not save purchase order: ${detail}` }, { status: 500 })
+    return handleError('purchase-orders POST', e)
   }
 }
