@@ -2607,8 +2607,14 @@ function ItemHubPageInner() {
   }, [liveCatalogueItems, liveCountStatus, liveMode, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveSalesCounts])
 
   async function recordTap(item?: LiveItem) {
+    console.log('[recordTap] STARTED', { item, liveSelectedItem, liveQty, liveSaleType })
     const tapItem = item || liveSelectedItem
-    if (!tapItem || !liveQty) return
+    if (!tapItem || !liveQty) {
+      console.log('[recordTap] EARLY RETURN - missing tapItem or liveQty', { tapItem: !!tapItem, liveQty })
+      alert(`Missing: ${!tapItem ? 'item' : 'quantity'}`)
+      return
+    }
+    console.log('[recordTap] Proceeding with tap', { tapItem: tapItem.name, qty: liveQty })
     setLiveSaving(true)
     setLiveTapError('')
 
@@ -2631,6 +2637,7 @@ function ItemHubPageInner() {
     const timeoutId = setTimeout(() => controller.abort(), 15000)
 
     try {
+      console.log('[recordTap] Sending fetch to /api/sales/live-tap', { tapItem: tapItem.name, qtyNum, priceNum })
       const res = await fetch('/api/sales/live-tap', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2643,50 +2650,66 @@ function ItemHubPageInner() {
         signal: controller.signal,
       })
 
+      console.log('[recordTap] Fetch completed, status:', res.status, res.statusText)
       let data
       try {
         data = await res.json()
-      } catch {
-        setLiveTapError(`Server error: ${res.status} ${res.statusText}`)
+        console.log('[recordTap] Response JSON parsed:', data)
+      } catch (parseErr) {
+        console.error('[recordTap] JSON parse error:', parseErr)
+        const errMsg = `Server error: ${res.status} ${res.statusText}`
+        setLiveTapError(errMsg)
+        alert(errMsg)
         setLiveSaving(false)
         clearTimeout(timeoutId)
         return
       }
 
       if (!res.ok) {
-        setLiveTapError(data.error || `Server error: ${res.status}`)
+        console.log('[recordTap] Response not OK, error:', data.error)
+        const errMsg = data.error || `Server error: ${res.status}`
+        setLiveTapError(errMsg)
+        alert(errMsg)
         setLiveSaving(false)
         clearTimeout(timeoutId)
         return
       }
 
       if (data.requires_count) {
-        setLiveTapError(data.error || 'Item must be counted before sale')
+        console.log('[recordTap] Count guard triggered:', data.error)
+        const errMsg = data.error || 'Item must be counted before sale'
+        setLiveTapError(errMsg)
+        alert(errMsg)
         setLiveSaving(false)
         clearTimeout(timeoutId)
         return
       }
 
       if (!data.tap) {
-        setLiveTapError('Server returned invalid response - no tap data')
+        console.error('[recordTap] No tap in response:', data)
+        const errMsg = 'Server returned invalid response - no tap data'
+        setLiveTapError(errMsg)
+        alert(errMsg)
         setLiveSaving(false)
         clearTimeout(timeoutId)
         return
       }
 
+      console.log('[recordTap] SUCCESS - Tap recorded:', data.tap)
       setLiveTaps(prev => [data.tap, ...prev])
       if (!item) setLiveSelectedItem(null)
       setLiveQty('')
       setLivePrice('')
-      setLiveTapError(`✓ Recorded: ${tapItem.name} × ${qtyNum}`)
-      setTimeout(() => setLiveTapError(''), 3000)
+      alert(`✓ Tap Recorded!\n${tapItem.name} × ${qtyNum}`)
     } catch (e) {
-      if (e instanceof Error && e.name === 'AbortError') {
-        setLiveTapError('Request timed out - server not responding')
-      } else {
-        setLiveTapError(e instanceof Error ? e.message : 'Network error - check connection')
-      }
+      console.error('[recordTap] Caught exception:', e instanceof Error ? e.message : String(e))
+      const errMsg = e instanceof Error && e.name === 'AbortError'
+        ? 'Request timed out - server not responding'
+        : e instanceof Error ? e.message : 'Network error - check connection'
+      setLiveTapError(errMsg)
+      alert(errMsg)
     } finally {
+      console.log('[recordTap] Finally block - cleaning up')
       clearTimeout(timeoutId)
       setLiveSaving(false)
     }
