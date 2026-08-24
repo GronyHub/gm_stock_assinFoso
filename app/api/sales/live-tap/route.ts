@@ -55,10 +55,12 @@ export async function POST(req: NextRequest) {
     const lineAmount = price * qty
 
     const customerName = isGMC ? 'Grony Multimedia as Customer' : null
-    let [receipt] = await sql`
-      SELECT id FROM sales_receipts
-      WHERE receipt_date::date = ${date} AND customer_name ${isGMC ? '=' : 'IS DISTINCT FROM'} ${customerName}
-    `
+    let receipt
+    if (isGMC) {
+      [receipt] = await sql`SELECT id FROM sales_receipts WHERE receipt_date::date = ${date} AND customer_name = ${customerName}`
+    } else {
+      [receipt] = await sql`SELECT id FROM sales_receipts WHERE receipt_date::date = ${date} AND customer_name IS NULL`
+    }
     if (!receipt) {
       const receiptNumber = `APP-${date.replace(/-/g, '')}-${Date.now().toString().slice(-4)}`
       try {
