@@ -4999,7 +4999,7 @@ function ItemHubPageInner() {
                       )}
 
                       {/* Quick tap while editing */}
-                      {!liveEditLoading && (
+                      {!liveEditLoading && liveSelectedItem && (
                         <div className="mt-4 rounded-xl border border-blue-200 overflow-hidden bg-blue-50">
                           <div className="px-3 py-1.5 text-xs font-extrabold text-white bg-blue-600">
                             QUICK TAP
@@ -5030,7 +5030,7 @@ function ItemHubPageInner() {
                                   step="0.01"
                                   value={livePrice}
                                   onChange={e => setLivePrice(e.target.value)}
-                                  placeholder={formatPrice(liveSelectedItem.selling_price)}
+                                  placeholder={formatPrice(liveSelectedItem?.selling_price || 0)}
                                   className="w-full text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg pl-7 pr-3 py-2 outline-none focus:ring-1 focus:ring-blue-400"
                                   disabled={liveSaving}
                                 />
@@ -5043,7 +5043,10 @@ function ItemHubPageInner() {
                             )}
                             <button
                               type="button"
-                              onClick={recordTap}
+                              onClick={() => {
+                                recordTap()
+                                setLiveEditingSelectedItem(false)
+                              }}
                               disabled={liveQty === '' || liveSaving}
                               className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition disabled:opacity-50"
                             >
