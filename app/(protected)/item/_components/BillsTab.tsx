@@ -1,5 +1,5 @@
 'use client'
-import { Fragment, useState, useEffect, useMemo } from 'react'
+import { Fragment, useState, useEffect, useMemo, memo } from 'react'
 import { useSession } from 'next-auth/react'
 import { isOwnerLevel } from '@/lib/roles'
 import { usePolling } from '@/lib/usePolling'
@@ -171,7 +171,7 @@ type Props = {
   violation?: string | null
 }
 
-export default function BillsTab({ items, groupFilter, search, violation = null }: Props) {
+function BillsTab({ items, groupFilter, search, violation = null }: Props) {
   const { data: session } = useSession()
   const isOwnerLevelUser = isOwnerLevel(session?.user as any)
   const [bills, setBills] = useState<Bill[]>([])
@@ -726,3 +726,5 @@ export default function BillsTab({ items, groupFilter, search, violation = null 
     </div>
   )
 }
+
+export default memo(BillsTab)

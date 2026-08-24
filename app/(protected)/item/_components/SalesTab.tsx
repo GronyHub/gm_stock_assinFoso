@@ -1,5 +1,5 @@
 'use client'
-import { Fragment, useState, useEffect, useMemo } from 'react'
+import { Fragment, useState, useEffect, useMemo, memo } from 'react'
 import { fmtDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
@@ -335,7 +335,7 @@ type Props = {
   onJumpDone?: () => void
 }
 
-export default function SalesTab({
+function SalesTab({
   items, groupFilter, search, violation, jumpToDate, jumpToItemName, onJumpDone,
 }: Props) {
   const [receipts, setReceipts] = useState<Receipt[]>([])
@@ -1242,3 +1242,5 @@ export default function SalesTab({
     </div>
   )
 }
+
+export default memo(SalesTab)

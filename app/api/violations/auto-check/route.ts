@@ -206,35 +206,56 @@ export async function GET(req: NextRequest) {
     let created = 0
     const summary: string[] = []
 
+    // Batch-collect all violation instances and check which are new
+    type ToCreate = { type: string; staff: string; label: string; inst: Instance }
+    const toCreate: ToCreate[] = []
+
     for (const type of AUTO_TYPES) {
       const assignedStaff = assignments[type]
       if (!assignedStaff) continue
 
-      // A per-assignment deadline (once set) replaces the rolling threshold_days
-      // check: the assignment is only overdue the day after that fixed date passes.
       const deadline = deadlines[type]
-
       const { label, instances } = await getInstances(type)
+
       for (const inst of instances) {
         const overdue = deadline ? daysSince(deadline) >= 1 : daysSince(inst.date) >= thresholdDays
-        if (!overdue) continue
+        if (overdue) toCreate.push({ type, staff: assignedStaff, label, inst })
+      }
+    }
 
-        const [already] = await sql`
-          SELECT 1 FROM auto_penalty_log WHERE violation_type = ${type} AND instance_key = ${inst.key}
+    // Batch-check which are already logged
+    if (toCreate.length > 0) {
+      const alreadyLogged = new Set<string>()
+      const checkKeys = toCreate.map(t => ({ type: t.type, key: t.inst.key }))
+      for (const ck of checkKeys) {
+        const [found] = await sql`
+          SELECT 1 FROM auto_penalty_log WHERE violation_type = ${ck.type} AND instance_key = ${ck.key}
         `
-        if (already) continue
+        if (found) alreadyLogged.add(`${ck.type}|${ck.key}`)
+      }
 
-        await sql`
-          INSERT INTO staff_violations (staff_name, violation, details, severity, points, recorded_by)
-          VALUES (${assignedStaff}, ${label}, ${inst.details}, 'major', ${points}, 'system-auto')
-        `
-        await sql`
-          INSERT INTO auto_penalty_log (violation_type, instance_key, staff_name)
-          VALUES (${type}, ${inst.key}, ${assignedStaff})
-        `
-        await logActivity('system-auto', 'auto-penalized', `${assignedStaff} \u2014 ${label} (${inst.details})`)
+      // Create violations for new instances in parallel
+      const violations = toCreate
+        .filter(t => !alreadyLogged.has(`${t.type}|${t.inst.key}`))
+        .map(({ type, staff, label, inst }) => ({
+          insertViolation: sql`
+            INSERT INTO staff_violations (staff_name, violation, details, severity, points, recorded_by)
+            VALUES (${staff}, ${label}, ${inst.details}, 'major', ${points}, 'system-auto')
+          `,
+          insertLog: sql`
+            INSERT INTO auto_penalty_log (violation_type, instance_key, staff_name)
+            VALUES (${type}, ${inst.key}, ${staff})
+          `,
+          staff,
+          label,
+          inst,
+        }))
+
+      for (const v of violations) {
+        await Promise.all([v.insertViolation, v.insertLog])
+        await logActivity('system-auto', 'auto-penalized', `${v.staff} \u2014 ${v.label} (${v.inst.details})`)
         created++
-        summary.push(`${assignedStaff}: ${label} (${inst.details})`)
+        summary.push(`${v.staff}: ${v.label} (${v.inst.details})`)
       }
     }
 
@@ -248,7 +269,7 @@ export async function GET(req: NextRequest) {
       const requiredIds = requiredItems.map(r => r.id)
 
       if (requiredIds.length > 0) {
-        const [staffRows, countRows, noWorkRows] = await Promise.all([
+        const [staffRows, countRows, noWorkRows, loggedDates] = await Promise.all([
           sql`
             SELECT staff_name, work_date::text AS work_date, actual_in
             FROM staff_times
@@ -266,6 +287,9 @@ export async function GET(req: NextRequest) {
             SELECT work_date::text AS work_date FROM no_work_days
             WHERE work_date >= CURRENT_DATE - INTERVAL '30 days' AND work_date < CURRENT_DATE
           `,
+          sql`
+            SELECT instance_key FROM auto_penalty_log WHERE violation_type = ${OPENER_VIOLATION_TYPE}
+          `,
         ])
 
         const staffByDate = new Map<string, { staff_name: string; actual_in: string }[]>()
@@ -279,21 +303,18 @@ export async function GET(req: NextRequest) {
           countedByDate.get(r.date)!.add(r.item_id)
         }
         const noWorkDates = new Set((noWorkRows as { work_date: string }[]).map(r => r.work_date))
+        const alreadyLoggedOpeners = new Set((loggedDates as { instance_key: string }[]).map(r => r.instance_key))
 
         for (const [date, staffToday] of staffByDate) {
           if (noWorkDates.has(date)) continue
           if (new Date(date + 'T00:00:00').getDay() === 0) continue // Sunday -- shop closed
+          if (alreadyLoggedOpeners.has(date)) continue
 
           const opener = openerOf(staffToday)
           if (!opener) continue
 
           const countedN = countedByDate.get(date)?.size ?? 0
           if (countedN >= requiredIds.length) continue
-
-          const [already] = await sql`
-            SELECT 1 FROM auto_penalty_log WHERE violation_type = ${OPENER_VIOLATION_TYPE} AND instance_key = ${date}
-          `
-          if (already) continue
 
           const details = countedN === 0
             ? `${date}: did not perform any count at all`
@@ -321,7 +342,7 @@ export async function GET(req: NextRequest) {
     try {
       await ensureSchema()
 
-      const [closingRows, profileRows] = await Promise.all([
+      const [closingRows, profileRows, shirtLoggedRecords] = await Promise.all([
         sql`
           SELECT work_date::text AS work_date, no_tshirt_staff
           FROM closing_reports
@@ -329,7 +350,16 @@ export async function GET(req: NextRequest) {
           ORDER BY work_date
         `,
         sql`SELECT staff_name, has_company_tshirt, tshirt_due_date::text AS tshirt_due_date FROM staff_profiles`,
+        sql`
+          SELECT violation_type, instance_key FROM auto_penalty_log
+          WHERE violation_type IN (${SHIRT_NOT_WORN_TYPE}, ${SHIRT_OVERDUE_TYPE})
+        `,
       ])
+
+      const shirtLogged = new Set<string>()
+      for (const r of shirtLoggedRecords as { violation_type: string; instance_key: string }[]) {
+        shirtLogged.add(`${r.violation_type}|${r.instance_key}`)
+      }
 
       const tshirtOwners = new Set(
         (profileRows as any[]).filter(p => p.has_company_tshirt).map(p => p.staff_name.toLowerCase())
@@ -354,10 +384,7 @@ export async function GET(req: NextRequest) {
           if (countInWindow < SHIRT_THRESHOLD) continue
 
           const instanceKey = `${staffName}|${date}`
-          const [already] = await sql`
-            SELECT 1 FROM auto_penalty_log WHERE violation_type = ${SHIRT_NOT_WORN_TYPE} AND instance_key = ${instanceKey}
-          `
-          if (already) continue
+          if (shirtLogged.has(`${SHIRT_NOT_WORN_TYPE}|${instanceKey}`)) continue
 
           const details = `${date}: did not wear company t-shirt (${countInWindow} lapses in the last ${SHIRT_WINDOW_DAYS} days)`
           await sql`
@@ -379,10 +406,7 @@ export async function GET(req: NextRequest) {
         if (p.has_company_tshirt || !p.tshirt_due_date || p.tshirt_due_date >= todayStr) continue
 
         const instanceKey = `${p.staff_name}|${p.tshirt_due_date}`
-        const [already] = await sql`
-          SELECT 1 FROM auto_penalty_log WHERE violation_type = ${SHIRT_OVERDUE_TYPE} AND instance_key = ${instanceKey}
-        `
-        if (already) continue
+        if (shirtLogged.has(`${SHIRT_OVERDUE_TYPE}|${instanceKey}`)) continue
 
         const details = `T-shirt still not given, was due ${p.tshirt_due_date}`
         await sql`

@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useMemo, useRef, Fragment, type ReactNode, type CSSProperties } from 'react'
+import { useState, useEffect, useMemo, useRef, Fragment, memo, type ReactNode, type CSSProperties } from 'react'
 import { fmtDate, fmtTime } from '@/lib/fmtDate'
 import type { ItemDayRow as DayRow, CountRevision } from '@/lib/itemDayRows'
 import {
@@ -94,11 +94,11 @@ function CntValue({ qty, countedBy, countedAt, history, blank }: { qty: string |
   if (text === '—' && hist.length === 0) return blank ? null : <span className="text-gray-300">—</span>
   return (
     <span className="inline-flex flex-col items-center leading-tight">
-      {hist.map((h, i) => {
+      {hist.map((h) => {
         const deleted = h.action === 'deleted'
         const oldText = fmtQs(h.old_qty == null ? null : String(h.old_qty))
         return (
-          <span key={i} className="whitespace-nowrap"
+          <span key={`${h.changed_at}|${h.changed_by}`} className="whitespace-nowrap"
             title={`${deleted ? 'Deleted' : 'Changed'} by ${h.changed_by ?? 'unknown'} on ${fmtDate(h.changed_at)}`}>
             {deleted && <span className="text-red-600">✗</span>}
             <span className={deleted ? 'text-red-600' : 'line-through text-gray-400'}>
@@ -502,7 +502,7 @@ function SingleServicePackChainTable({
             const cCedis = cyc ? realizedCycleCedis(cyc, sheetPrice) : null
             const totalCedisRow = pCedis === null && cCedis === null ? null : (pCedis ?? 0) + (cCedis ?? 0)
             return (
-              <tr key={i} className={`border-b border-gray-200 ${rowHasLoss(row, packCyclesByStart) ? 'bg-red-50' : rowHasGain(row, packCyclesByStart) ? 'bg-orange-50' : 'bg-white'}`}>
+              <tr key={row.date} className={`border-b border-gray-200 ${rowHasLoss(row, packCyclesByStart) ? 'bg-red-50' : rowHasGain(row, packCyclesByStart) ? 'bg-orange-50' : 'bg-white'}`}>
                 <td className="pl-0.5 py-0 leading-none font-bold text-gray-500 whitespace-nowrap sticky left-0 bg-inherit">
                   {onDateClick ? (
                     <button onClick={() => onDateClick(row.date, item.item_name)} className="text-blue-600 hover:underline">{fmtDate(row.date)}</button>
@@ -1256,10 +1256,10 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                 </tr>
               </thead>
               <tbody>
-                {packChainRows.map((row, i) => {
+                {packChainRows.map((row) => {
                   const omissions = packChainOmissionsByDate.get(row.date) ?? []
                   return (
-                  <tr key={i} className={`border-b border-gray-200 ${(row.singlesLoss ?? 0) > 0.001 || (row.packLoss ?? 0) > 0.001 ? 'bg-red-50' : omissions.length > 0 ? 'bg-orange-50' : 'bg-white'}`}>
+                  <tr key={row.date} className={`border-b border-gray-200 ${(row.singlesLoss ?? 0) > 0.001 || (row.packLoss ?? 0) > 0.001 ? 'bg-red-50' : omissions.length > 0 ? 'bg-orange-50' : 'bg-white'}`}>
                     <td className="pl-0.5 py-0 font-bold text-gray-500 whitespace-nowrap sticky left-0 bg-inherit">
                       {onDateClick ? (
                         <button onClick={() => onDateClick(row.date, item.item_name)} className="text-blue-600 hover:underline">
@@ -1428,10 +1428,10 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {displayedRows!.map((row, i) => {
+            {displayedRows!.map((row) => {
               const lossVal = row.loss !== null ? row.loss * sp : null
               return (
-                <tr key={i} className={`group transition-colors ${row.loss !== null && row.loss > 0.001 ? 'bg-red-50 hover:bg-red-100/70' : 'hover:bg-gray-50'}`}>
+                <tr key={row.date} className={`group transition-colors ${row.loss !== null && row.loss > 0.001 ? 'bg-red-50 hover:bg-red-100/70' : 'hover:bg-gray-50'}`}>
                   {/* Sticky cells need an explicit opaque background, not
                       bg-inherit -- a plain row has no background class of
                       its own (relies on the white card behind it), so
@@ -1513,10 +1513,10 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {displayedRows!.map((row, i) => {
+            {displayedRows!.map((row) => {
               const lossVal = row.loss !== null ? row.loss * sp : null
               return (
-                <tr key={i} className={`group transition-colors ${row.loss !== null && row.loss > 0.001 ? 'bg-red-50 hover:bg-red-100/70' : 'hover:bg-gray-50'}`}>
+                <tr key={row.date} className={`group transition-colors ${row.loss !== null && row.loss > 0.001 ? 'bg-red-50 hover:bg-red-100/70' : 'hover:bg-gray-50'}`}>
                   {/* Sticky cells need an explicit opaque background, not
                       bg-inherit -- a plain row has no background class of
                       its own (relies on the white card behind it), so
@@ -1638,7 +1638,7 @@ function renderCell(key: ColKey, row: SummaryRow) {
 }
 
 /* ── main LossTab ── */
-export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 'All', productType = 'all', visibleCols, colOrder, columnLabels = {}, getWidth, resizeWidth, resetWidth }: {
+function LossTab({ onOpenItem: _onOpenItem, search = '', group = 'All', productType = 'all', visibleCols, colOrder, columnLabels = {}, getWidth, resizeWidth, resetWidth }: {
   onOpenItem: (itemId: number) => void
   search?: string
   group?: string | null
@@ -1806,3 +1806,5 @@ export default function LossTab({ onOpenItem: _onOpenItem, search = '', group = 
     </div>
   )
 }
+
+export default memo(LossTab)

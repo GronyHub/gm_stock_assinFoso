@@ -185,14 +185,16 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Upsert all entries
-  for (const e of entries) {
-    await sql`
-      INSERT INTO staff_rota (staff_name, rota_date, sched_in, sched_out, is_off, role)
-      VALUES (${e.staff_name}, ${e.rota_date}, ${e.sched_in}, ${e.sched_out}, ${e.is_off}, ${e.role})
-      ON CONFLICT (staff_name, rota_date) DO UPDATE
-        SET sched_in=${e.sched_in}, sched_out=${e.sched_out}, is_off=${e.is_off}, role=${e.role}
-    `
+  // Batch upsert all entries in parallel
+  if (entries.length > 0) {
+    await Promise.all(entries.map(e =>
+      sql`
+        INSERT INTO staff_rota (staff_name, rota_date, sched_in, sched_out, is_off, role)
+        VALUES (${e.staff_name}, ${e.rota_date}, ${e.sched_in}, ${e.sched_out}, ${e.is_off}, ${e.role})
+        ON CONFLICT (staff_name, rota_date) DO UPDATE
+          SET sched_in=EXCLUDED.sched_in, sched_out=EXCLUDED.sched_out, is_off=EXCLUDED.is_off, role=EXCLUDED.role
+      `
+    ))
   }
 
   return success({ ok: true, count: entries.length })

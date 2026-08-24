@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, memo } from 'react'
 import { fmtDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
 import { usePresenceReporter } from '@/lib/usePresenceReporter'
@@ -400,7 +400,7 @@ type Props = {
   groups?: string[]
 }
 
-export default function ItemsTab({ items, group, productType, search, violation, violationLabel, onItemsChanged, showAdd = false, onCloseAdd, jumpToItemId, onJumpDone, onProductTypeChange, onGroupChange, groups = [] }: Props) {
+function ItemsTab({ items, group, productType, search, violation, violationLabel, onItemsChanged, showAdd = false, onCloseAdd, jumpToItemId, onJumpDone, onProductTypeChange, onGroupChange, groups = [] }: Props) {
   const [lossMap, setLossMap] = useState<Record<number, DayRow[]>>({})
   const [lossLoading, setLossLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -1121,11 +1121,11 @@ export default function ItemsTab({ items, group, productType, search, violation,
                           </tr>
                         </thead>
                         <tbody>
-                          {lossRows.map((row, i) => {
+                          {lossRows.map((row) => {
                             const sp = item.selling_rate ? parseFloat(String(item.selling_rate)) : null
                             const lossVal = row.loss !== null && sp !== null ? row.loss * sp : null
                             return (
-                            <tr key={i} className={`border-b-2 border-gray-300 ${row.loss !== null && row.loss > 0.001 ? 'bg-red-50' : ''}`}>
+                            <tr key={row.date} className={`border-b-2 border-gray-300 ${row.loss !== null && row.loss > 0.001 ? 'bg-red-50' : ''}`}>
                               <td className="pr-1 py-0.5 font-bold text-gray-500 whitespace-nowrap">{fmtDate(row.date)}</td>
                               <td className="px-0 py-0.5 text-center font-bold border-l-2 border-l-gray-400">
                                 {lossVal === null ? <span className="text-gray-300">—</span>
@@ -1179,3 +1179,5 @@ export default function ItemsTab({ items, group, productType, search, violation,
     </div>
   )
 }
+
+export default memo(ItemsTab)

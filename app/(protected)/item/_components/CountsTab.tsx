@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, memo } from 'react'
 import { useSession } from 'next-auth/react'
 import dynamic from 'next/dynamic'
 import { usePolling } from '@/lib/usePolling'
@@ -242,7 +242,7 @@ const COUNTS_FLAG_TYPES: { key: 'daily' | '7day' | '15day'; letter: string; labe
   { key: '15day', letter: '15', label: '15-Day Counts' },
 ]
 
-export default function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoToViolation }: Props) {
+function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoToViolation }: Props) {
   const { data: session } = useSession()
   const canDelete = isOwnerLevel(session?.user as any)
   const [records, setRecords] = useState<CountRecord[]>([])
@@ -613,3 +613,5 @@ export default function CountsTab({ items, groupFilter, search, violation, onFix
     </div>
   )
 }
+
+export default memo(CountsTab)
