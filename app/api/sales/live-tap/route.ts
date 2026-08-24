@@ -30,13 +30,16 @@ export async function POST(req: NextRequest) {
   if (error) return error
 
   try {
-    const { itemId, quantity, customPrice, isGMC } = await req.json()
+    const { itemId, quantity, customPrice, isGMC, tapTime } = await req.json()
     if (!itemId) return badRequest('Missing itemId')
     const qty = Math.max(1, Math.floor(Number(quantity) || 1))
 
     const staffName = session.user?.name || (session.user as { username?: string })?.username || 'Unknown'
-    const date = todayStr()
-    console.log('[live-tap] Starting tap:', { itemId, qty, staffName, date })
+    // Use provided tapTime or current time. tapTime is in format "2026-08-24T14:30" (datetime-local)
+    const tapDateTime = tapTime ? new Date(tapTime + ':00Z') : new Date()
+    const date = tapDateTime.toISOString().slice(0, 10)
+    const time = tapDateTime.toISOString().slice(11, 19)
+    console.log('[live-tap] Starting tap:', { itemId, qty, staffName, date, time })
 
     await ensureLiveSaleTapsTable()
     console.log('[live-tap] Table ensured')
@@ -110,8 +113,8 @@ export async function POST(req: NextRequest) {
     }
 
     const [tap] = await sql`
-      INSERT INTO live_sale_taps (item_id, item_name, price, staff_name, receipt_id, receipt_line_id, quantity, soh)
-      VALUES (${item.id}, ${item.canonical_name}, ${price}, ${staffName}, ${receipt.id}, ${line.id}, ${qty}, ${soh})
+      INSERT INTO live_sale_taps (item_id, item_name, price, staff_name, receipt_id, receipt_line_id, quantity, soh, tapped_at)
+      VALUES (${item.id}, ${item.canonical_name}, ${price}, ${staffName}, ${receipt.id}, ${line.id}, ${qty}, ${soh}, ${tapDateTime.toISOString()})
       RETURNING id, item_id, item_name, price, staff_name, tapped_at, undone, quantity, soh
     `
 

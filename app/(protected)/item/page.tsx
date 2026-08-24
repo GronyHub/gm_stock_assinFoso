@@ -1871,6 +1871,10 @@ function ItemHubPageInner() {
   const [livePrice, setLivePrice] = useState('')
   const [liveSaving, setLiveSaving] = useState(false)
   const [liveTapStatus, setLiveTapStatus] = useState<string[]>([])
+  const [liveTapTime, setLiveTapTime] = useState(() => {
+    const now = new Date()
+    return now.toISOString().slice(0, 16)
+  })
   // Editing the selected item's own fields -- opened from an "Edit" button
   // inside the same sale-tap sheet instead of navigating to Item 360, so a
   // quick price/group/count-cadence fix doesn't require leaving the sheet
@@ -2655,6 +2659,7 @@ function ItemHubPageInner() {
           quantity: qtyNum,
           customPrice: livePrice ? priceNum : undefined,
           isGMC: liveSaleType === 'GMC',
+          tapTime: liveTapTime,
         }),
         signal: controller.signal,
       })
@@ -5507,6 +5512,14 @@ function ItemHubPageInner() {
                             />
                           </div>
                           <p className="text-[8px] text-gray-500">Defaults to ₵{editItem ? formatPrice(editItem.selling_price) : '0'}</p>
+                          <p className="text-[9px] text-gray-700 font-medium mt-2">Time</p>
+                          <input
+                            type="datetime-local"
+                            value={liveTapTime}
+                            onChange={e => setLiveTapTime(e.target.value)}
+                            className="w-full text-xs font-semibold text-gray-900 bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400"
+                          />
+                          <p className="text-[8px] text-gray-500">When was this sale made?</p>
                           <button
                             onClick={() => recordTap(editItem)}
                             disabled={!liveQty || liveSaving}
