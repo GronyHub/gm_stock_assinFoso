@@ -2649,12 +2649,19 @@ function ItemHubPageInner() {
         setLiveSaving(false)
         return
       }
+      if (!data.tap) {
+        console.error('Unexpected response format:', data)
+        setLiveTapError('Unexpected server response')
+        setLiveSaving(false)
+        return
+      }
       setLiveTaps(prev => [data.tap, ...prev])
       if (!item) setLiveSelectedItem(null)
       setLiveQty('')
       setLivePrice('')
     } catch (e) {
-      setLiveTapError('Network error')
+      console.error('Tap error:', e)
+      setLiveTapError(e instanceof Error ? e.message : 'Network error')
     } finally {
       setLiveSaving(false)
     }
