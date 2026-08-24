@@ -80,15 +80,22 @@ export async function GET() {
 
   const [itemRows, dayRows, countIntervalLabels] = await Promise.all([
     sql`
-      SELECT s.item_id, COALESCE(i.canonical_name, s.item_name) AS item_name,
-             COALESCE(i.cf_group, s.cf_group) AS cf_group, s.calculated_soh,
+      SELECT DISTINCT i.id AS item_id, i.canonical_name AS item_name,
+             i.cf_group, s.calculated_soh,
              i.selling_rate, i.purchase_rate, i.product_type,
              i.units_per_pack, i.converts_to_item_id
-      FROM item_stock_summary s
-      LEFT JOIN active_items i ON i.id = s.item_id
-      WHERE s.item_name NOT ILIKE 'old stop%'
-        AND s.item_name NOT ILIKE 'old- stop%'
-      ORDER BY s.item_name ASC
+      FROM active_items i
+      LEFT JOIN item_stock_summary s ON s.item_id = i.id
+      WHERE EXISTS (
+        SELECT 1 FROM sales_receipt_lines WHERE item_id = i.id
+        UNION ALL
+        SELECT 1 FROM stock_counts WHERE item_id = i.id
+        UNION ALL
+        SELECT 1 FROM bill_lines WHERE item_id = i.id
+      )
+        AND i.canonical_name NOT ILIKE 'old stop%'
+        AND i.canonical_name NOT ILIKE 'old- stop%'
+      ORDER BY i.canonical_name ASC
     `,
     // A good with converts_to_item_id set is credited into its target when it's GMC'd
     // (internal use) -- e.g. taking one "4x6 packs" pack for shop use credits 50 (its
