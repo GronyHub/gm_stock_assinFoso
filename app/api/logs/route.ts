@@ -1,5 +1,5 @@
+import { success } from '@/lib/api'
 import sql from '@/lib/db'
-import { NextResponse } from 'next/server'
 
 export async function GET() {
   const rows = await sql`
@@ -8,5 +8,5 @@ export async function GET() {
     ORDER BY created_at DESC
     LIMIT 500
   `
-  return NextResponse.json(rows)
+  return success(rows)
 }

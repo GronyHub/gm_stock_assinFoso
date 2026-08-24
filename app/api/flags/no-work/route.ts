@@ -1,16 +1,16 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, getActorName, badRequest, success } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   const { work_date, reason } = await req.json()
-  if (!work_date || !reason) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+  if (!work_date || !reason) return badRequest('Missing fields')
 
-  const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
+  const actor = getActorName(session)
 
   await sql`
     INSERT INTO no_work_days (work_date, reason, recorded_by)
@@ -19,5 +19,5 @@ export async function POST(req: NextRequest) {
   `
 
   await logActivity(actor, 'marked no-work day', `${work_date} — ${reason}`)
-  return NextResponse.json({ ok: true })
+  return success({ ok: true })
 }

@@ -1,21 +1,18 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, notFound, success } from '@/lib/api'
 import sql from '@/lib/db'
 import { aliasMismatchWarning } from '@/lib/aliasSanity'
 import { NextResponse } from 'next/server'
 
-// POST { raw_name, item_id, source: 'zoho_sales' | 'zoho_bills', force? }
-// Corrects a wrong match: updates all matching lines + upserts alias
-// force: bypass the singles/pack sanity warning after the caller has seen it
 export async function POST(req: Request) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return error
 
   const { raw_name, item_id, source, force = false } = await req.json()
   if (!raw_name || !item_id || !source)
-    return NextResponse.json({ error: 'raw_name, item_id and source required' }, { status: 400 })
+    return badRequest('raw_name, item_id and source required')
 
   const [item] = await sql`SELECT canonical_name FROM items WHERE id = ${item_id}`
-  if (!item) return NextResponse.json({ error: 'Item not found' }, { status: 404 })
+  if (!item) return notFound()
 
   if (!force) {
     const warning = aliasMismatchWarning(raw_name, item.canonical_name)
@@ -38,12 +35,11 @@ export async function POST(req: Request) {
     `
   }
 
-  // Upsert alias so future imports resolve automatically
   await sql`
     INSERT INTO item_aliases (item_id, alias_name, alias_type, source)
     VALUES (${item_id}, ${raw_name}, 'sr_variant', 'zoho_correction')
     ON CONFLICT (item_id, alias_name, alias_type) DO NOTHING
   `
 
-  return NextResponse.json({ ok: true })
+  return success({ ok: true })
 }

@@ -1,4 +1,5 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, getActorName, notFound, success } from '@/lib/api'
+import { getIdParam } from '@/lib/api/params'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { isOwnerLevel } from '@/lib/roles'
@@ -6,7 +7,7 @@ import { ensureBillAttachmentsColumn, normalizeAttachments } from '@/lib/billAtt
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
+  const billId = await getIdParam(params)
   const lines = await sql`
     SELECT
       COALESCE(resolved_name, raw_item_name) AS item_name,
@@ -15,28 +16,19 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       item_total,
       usage_unit
     FROM bill_lines
-    WHERE bill_id = ${Number(id)}
+    WHERE bill_id = ${billId}
     ORDER BY id
   `
-  return NextResponse.json(lines)
+  return success(lines)
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
-  const { id } = await params
+  const billId = await getIdParam(params)
   const { bill_date, vendor_name, status, attachments } = await req.json()
-  // undefined (key omitted) leaves attachments untouched via COALESCE; an
-  // explicit [] (every attachment removed) still updates, since
-  // JSON.stringify([]) is the truthy string '[]', not null.
   const attachmentsJson = attachments !== undefined ? JSON.stringify(normalizeAttachments(attachments)) : null
-  // vendor_name is the one field a user can legitimately want to blank out
-  // (clearing it entirely), so it can't reuse the plain
-  // COALESCE(new ?? null, old) pattern the other fields use -- that would
-  // silently keep the old value forever since COALESCE(null, old) = old.
-  // A dedicated "was this key even sent" flag lets omitted (leave as-is)
-  // and explicitly-cleared (set to null) be told apart.
   const vendorNameProvided = vendor_name !== undefined
 
   await ensureBillAttachmentsColumn()
@@ -47,34 +39,33 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       vendor_name = CASE WHEN ${vendorNameProvided} THEN ${vendor_name ?? null} ELSE vendor_name END,
       status = COALESCE(${status ?? null}, status),
       attachments = COALESCE(${attachmentsJson}::jsonb, attachments)
-    WHERE id = ${Number(id)}
+    WHERE id = ${billId}
     RETURNING id, bill_number, bill_date::date AS bill_date, vendor_name, total, status, entered_by,
               COALESCE(attachments, '[]'::jsonb) AS attachments
   `
-  if (!row) return NextResponse.json({ error: 'Bill not found' }, { status: 404 })
-  const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
-  await logActivity(actor, 'edited bill', `Bill #${id}${row.vendor_name ? ` — ${row.vendor_name}` : ''}`)
-  return NextResponse.json(row)
+  if (!row) return notFound()
+  const actor = getActorName(session)
+  await logActivity(actor, 'edited bill', `Bill #${billId}${row.vendor_name ? ` — ${row.vendor_name}` : ''}`)
+  return success(row)
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
   if (!isOwnerLevel(session.user as any)) {
     return NextResponse.json({ error: 'Only Grony or Joe can delete a bill' }, { status: 403 })
   }
 
-  const { id } = await params
-  const billId = Number(id)
+  const billId = await getIdParam(params)
 
   const [bill] = await sql`SELECT id, bill_number, vendor_name FROM bills WHERE id = ${billId}`
-  if (!bill) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!bill) return notFound()
 
   await sql`DELETE FROM bill_lines WHERE bill_id = ${billId}`
   await sql`DELETE FROM bills WHERE id = ${billId}`
 
-  const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
+  const actor = getActorName(session)
   await logActivity(actor, 'deleted bill', `Bill #${billId}${bill.vendor_name ? ` — ${bill.vendor_name}` : ''}`)
 
-  return NextResponse.json({ ok: true })
+  return success({ ok: true })
 }

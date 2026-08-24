@@ -1,20 +1,17 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, notFound, success } from '@/lib/api'
 import sql from '@/lib/db'
 import { aliasMismatchWarning } from '@/lib/aliasSanity'
 import { NextResponse } from 'next/server'
 
-// POST { alias_name, item_id, alias_type?, source?, force? }
-// source: 'sales' (default) | 'bills' | 'invoices'
-// force: bypass the singles/pack sanity warning after the caller has seen it
 export async function POST(req: Request) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return error
 
   const { alias_name, item_id, alias_type = 'sr_variant', source = 'sales', force = false } = await req.json()
-  if (!alias_name || !item_id) return NextResponse.json({ error: 'alias_name and item_id required' }, { status: 400 })
+  if (!alias_name || !item_id) return badRequest('alias_name and item_id required')
 
   const [target] = await sql`SELECT canonical_name FROM items WHERE id = ${item_id}`
-  if (!target) return NextResponse.json({ error: 'Item not found' }, { status: 404 })
+  if (!target) return notFound()
   if (!force) {
     const warning = aliasMismatchWarning(alias_name, target.canonical_name)
     if (warning) return NextResponse.json({ requires_confirmation: true, warning }, { status: 409 })
@@ -49,5 +46,5 @@ export async function POST(req: Request) {
     `
   }
 
-  return NextResponse.json({ ok: true })
+  return success({ ok: true })
 }

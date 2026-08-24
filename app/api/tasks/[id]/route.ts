@@ -1,21 +1,18 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, notFound, success } from '@/lib/api'
+import { getIdParam } from '@/lib/api/params'
 import sql from '@/lib/db'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
-// Several real callers send a partial body -- the checkbox toggle sends
-// only { done }, the edit form could send only { title } -- so only
-// override keys actually present, same pattern as PUT /api/items/[id].
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return error
 
-  const { id } = await params
-  const taskId = Number(id)
+  const taskId = await getIdParam(params)
   const body = await req.json()
   const has = (k: string) => Object.prototype.hasOwnProperty.call(body, k)
 
   const [current] = await sql`SELECT title, notes, due_date, submenu, view, done, task_type, assigned_to, recurrence_type, recurrence_days FROM custom_tasks WHERE id = ${taskId}`
-  if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!current) return notFound()
 
   const title             = has('title') ? body.title : current.title
   const notes             = has('notes') ? body.notes : current.notes
@@ -37,14 +34,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     WHERE id = ${taskId}
     RETURNING id, title, notes, due_date, submenu, view, done, created_by, created_at, completed_at, law_id, flag_key, task_type, recurrence_type, recurrence_days, assigned_to, completed_by
   `
-  return NextResponse.json(row)
+  return success(row)
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return error
 
-  const { id } = await params
-  await sql`DELETE FROM custom_tasks WHERE id = ${Number(id)}`
-  return NextResponse.json({ ok: true })
+  const taskId = await getIdParam(params)
+  await sql`DELETE FROM custom_tasks WHERE id = ${taskId}`
+  return success({ ok: true })
 }
