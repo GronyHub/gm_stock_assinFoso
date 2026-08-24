@@ -16,10 +16,17 @@ export async function POST(req: Request) {
     const currentCadence = item.count_cadence_days || 0
     const newCadence = currentCadence + days
 
-    await sql`UPDATE items SET count_cadence_days = ${newCadence} WHERE id = ${Number(itemId)}`
+    // Calculate postponed_until date: today + days
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const postponedUntilDate = new Date(today)
+    postponedUntilDate.setDate(postponedUntilDate.getDate() + days)
+    const postponedUntilStr = postponedUntilDate.toISOString().split('T')[0]
+
+    await sql`UPDATE items SET count_cadence_days = ${newCadence}, count_postponed_until = ${postponedUntilStr} WHERE id = ${Number(itemId)}`
 
     const actor = (session?.user as any)?.username || session?.user?.name || 'Unknown'
-    await logActivity(actor, 'postponed count', `${item.canonical_name} by ${days} days (${currentCadence} → ${newCadence} days)`)
+    await logActivity(actor, 'postponed count', `${item.canonical_name} by ${days} days until ${postponedUntilStr} (${currentCadence} → ${newCadence} days)`)
 
     return success({
       ok: true,
@@ -27,6 +34,7 @@ export async function POST(req: Request) {
       itemName: item.canonical_name,
       previousCadence: currentCadence,
       newCadence,
+      postponedUntil: postponedUntilStr,
       message: `Count postponed by ${days} days`,
     })
   } catch (e) {
