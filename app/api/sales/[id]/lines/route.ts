@@ -1,13 +1,12 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { createItemFromTypedName } from '@/lib/createItem'
 import { impossibleUsageWarnings } from '@/lib/usageCheck'
 import { negativeStockViolations } from '@/lib/stockGuard'
-import { NextResponse } from 'next/server'
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   const { id } = await params
   const receiptId = Number(id)
@@ -24,7 +23,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     for (const line of lines) {
       const qty = parseFloat(line.quantity)
       if (!Number.isFinite(qty) || qty <= 0) {
-        return NextResponse.json({ error: `"${line.item_name || 'a line'}" needs a valid quantity greater than 0.` }, { status: 400 })
+        return badRequest(`"${line.item_name || 'a line'}" needs a valid quantity greater than 0.`)
       }
     }
 
@@ -48,7 +47,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       }
       const violations = await negativeStockViolations(deltas)
       if (violations.length > 0) {
-        return NextResponse.json({ error: `Not allowed — this would create negative stock. ${violations.join(' ')}` }, { status: 400 })
+        return badRequest(`Not allowed — this would create negative stock. ${violations.join(' ')}`)
       }
     }
 
@@ -121,10 +120,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     // recorded). The save still succeeds -- the warning says what's missing.
     const { receipt_date_str, ...row } = updated[0] ?? {}
     const warnings = receipt_date_str ? await impossibleUsageWarnings(receipt_date_str) : []
-    return NextResponse.json({ ...row, warnings })
+    return success({ ...row, warnings })
   } catch (e) {
-    console.error('sales lines PUT error:', e)
-    const detail = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: `Could not save items: ${detail}` }, { status: 500 })
+    return handleError('sales lines PUT', e)
   }
 }

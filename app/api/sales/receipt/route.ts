@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { createItemFromTypedName } from '@/lib/createItem'
@@ -6,17 +6,17 @@ import { impossibleUsageWarnings } from '@/lib/usageCheck'
 import { negativeStockViolations } from '@/lib/stockGuard'
 import { itemsDueForCount, countGuardResponseBody } from '@/lib/countGuard'
 import { ensureSalesAttachmentsColumn, normalizeAttachments } from '@/lib/salesAttachments'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   const { date, cashCounted, lines, total: directTotal, customerName, customerId, attachments } = await req.json()
   const attachmentsList = normalizeAttachments(attachments)
-  if (!date) return NextResponse.json({ error: 'Missing date' }, { status: 400 })
+  if (!date) return badRequest('Missing date')
   const hasLines = Array.isArray(lines) && lines.length > 0
-  if (!hasLines && directTotal == null) return NextResponse.json({ error: 'Provide lines or total' }, { status: 400 })
+  if (!hasLines && directTotal == null) return badRequest('Provide lines or total')
 
   // A line with no real quantity isn't a transaction -- it's a phantom row
   // that pollutes per-date aliases and other displays while contributing
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     for (const l of lines) {
       const qty = Number(l.qty)
       if (!Number.isFinite(qty) || qty <= 0) {
-        return NextResponse.json({ error: `"${l.itemName || 'a line'}" needs a valid quantity greater than 0.` }, { status: 400 })
+        return badRequest(`"${l.itemName || 'a line'}" needs a valid quantity greater than 0.`)
       }
     }
   }
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
       }
       const violations = await negativeStockViolations(deltas)
       if (violations.length > 0) {
-        return NextResponse.json({ error: `Not allowed — this would create negative stock. ${violations.join(' ')}` }, { status: 400 })
+        return badRequest(`Not allowed — this would create negative stock. ${violations.join(' ')}`)
       }
 
       // A sale keeps assuming the last count was still accurate -- if it's
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
       // a fresh count re-anchors it.
       const due = await itemsDueForCount(lines.map((l: any) => l.itemId ? Number(l.itemId) : null))
       if (due.size > 0) {
-        return NextResponse.json(countGuardResponseBody(Array.from(due.values())), { status: 409 })
+        return success(countGuardResponseBody(Array.from(due.values())))
       }
     }
 
@@ -75,9 +75,7 @@ export async function POST(req: NextRequest) {
         AND (CASE WHEN customer_name = 'Grony Multimedia as Customer' THEN 'GMC' ELSE 'WIC' END) = ${customerType}
     `
     if (existingReceipt) {
-      return NextResponse.json({
-        error: `A ${customerType} sales receipt already exists for ${date} (${existingReceipt.receipt_number}). Edit that receipt to add items instead of creating a new one.`,
-      }, { status: 409 })
+      return badRequest(`A ${customerType} sales receipt already exists for ${date} (${existingReceipt.receipt_number}). Edit that receipt to add items instead of creating a new one.`)
     }
 
     const customerIdVal = customerId ? Number(customerId) : null
@@ -135,10 +133,8 @@ export async function POST(req: NextRequest) {
     // existed (e.g. papers used with no GMC pack recorded). The save still
     // succeeds -- the warning tells the user what record is missing.
     const warnings = await impossibleUsageWarnings(date)
-    return NextResponse.json({ ok: true, receiptNumber, warnings })
+    return success({ ok: true, receiptNumber, warnings })
   } catch (e) {
-    console.error('sales receipt POST error:', e)
-    const detail = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: `Could not save receipt: ${detail}` }, { status: 500 })
+    return handleError('sales receipt POST', e)
   }
 }

@@ -1,7 +1,7 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
-import { NextRequest, NextResponse } from 'next/server'
-import { initializeDatabase } from '@/lib/dbInitialize'
+import { NextRequest } from 'next/server'
+import { ensureDbInitialized } from '@/lib/api/dbInitCache'
 import { once } from '@/lib/once'
 
 const ensureTable = once(async () => {
@@ -23,10 +23,10 @@ export async function GET(req: NextRequest) {
   const itemId = req.nextUrl.searchParams.get('itemId')
 
   if (!itemType || !itemId) {
-    return NextResponse.json({ error: 'itemType and itemId required' }, { status: 400 })
+    return badRequest('itemType and itemId required')
   }
 
-  await initializeDatabase()
+  await ensureDbInitialized()
   await ensureTable()
   try {
     const replies = await sql`
@@ -35,25 +35,25 @@ export async function GET(req: NextRequest) {
       WHERE item_type = ${itemType} AND item_id = ${parseInt(itemId)}
       ORDER BY created_at ASC
     `
-    return NextResponse.json(replies)
+    return success(replies)
   } catch (e) {
     console.error('replies GET error:', e)
-    return NextResponse.json([])
+    return success([])
   }
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  await initializeDatabase()
+  const { session, error } = await requireAuth()
+  if (error) return error
+  await ensureDbInitialized()
   await ensureTable()
 
   const { itemType, itemId, replyText } = await req.json()
   if (!itemType || !itemId || !replyText) {
-    return NextResponse.json({ error: 'itemType, itemId, and replyText required' }, { status: 400 })
+    return badRequest('itemType, itemId, and replyText required')
   }
 
-  const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
+  const actor = (session!.user as any)?.username || session!.user?.name || 'Unknown'
 
   try {
     const [row] = await sql`
@@ -61,10 +61,8 @@ export async function POST(req: NextRequest) {
       VALUES (${itemType}, ${parseInt(itemId)}, ${replyText.trim()}, ${actor})
       RETURNING id, item_type, item_id, reply_text, created_by, created_at
     `
-    return NextResponse.json(row, { status: 201 })
+    return success(row)
   } catch (e) {
-    console.error('replies POST error:', e)
-    const detail = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: `Could not save reply: ${detail}` }, { status: 500 })
+    return handleError('replies POST', e)
   }
 }

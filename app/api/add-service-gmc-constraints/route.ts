@@ -1,7 +1,6 @@
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
-import { auth } from '@/lib/auth'
 import { isOwnerLevel } from '@/lib/roles'
-import { NextResponse } from 'next/server'
 
 /**
  * Creates database constraints and triggers to enforce that services using GMC:
@@ -12,11 +11,9 @@ import { NextResponse } from 'next/server'
  * - Cannot have stock_count_revision records
  */
 export async function POST(req: Request) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!isOwnerLevel(session.user as any)) {
-    return NextResponse.json({ error: 'Only Grony or Joe can add constraints' }, { status: 403 })
-  }
+  const { session, error } = await requireAuth()
+  if (error) return error
+  if (!isOwnerLevel(session!.user as any)) return badRequest('Only Grony or Joe can add constraints')
 
   try {
     const results: any[] = []
@@ -188,13 +185,12 @@ export async function POST(req: Request) {
       results.push({ trigger: 'sales_receipt_lines', status: 'error', error: e.message })
     }
 
-    return NextResponse.json({
+    return success({
       success: true,
       message: 'Database constraints and triggers applied successfully',
       results,
     })
   } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Unknown error'
-    return NextResponse.json({ error: msg }, { status: 500 })
+    return handleError('add-service-gmc-constraints POST', e)
   }
 }

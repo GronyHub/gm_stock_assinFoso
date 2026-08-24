@@ -1,14 +1,11 @@
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
-import { auth } from '@/lib/auth'
 import { isOwnerLevel } from '@/lib/roles'
-import { NextResponse } from 'next/server'
 
 export async function POST(req: Request) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!isOwnerLevel(session.user as any)) {
-    return NextResponse.json({ error: 'Only Grony or Joe can perform this operation' }, { status: 403 })
-  }
+  const { session, error } = await requireAuth()
+  if (error) return error
+  if (!isOwnerLevel(session!.user as any)) return badRequest('Only Grony or Joe can perform this operation')
 
   try {
     const results: any[] = []
@@ -52,14 +49,13 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json({
+    return success({
       success: true,
       transferred: results.length,
       results,
       message: `Successfully transferred loss records from ${results.length} service${results.length !== 1 ? 's' : ''}`,
     })
   } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Unknown error'
-    return NextResponse.json({ error: msg }, { status: 500 })
+    return handleError('fix-service-gmc-loss-records POST', e)
   }
 }

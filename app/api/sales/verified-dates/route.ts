@@ -1,6 +1,5 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, success } from '@/lib/api'
 import sql from '@/lib/db'
-import { NextResponse } from 'next/server'
 
 // Which receipt dates have every sale line recorded correctly (linked to a
 // real, active item, positive quantity, amount present) -- the same rule as
@@ -8,8 +7,8 @@ import { NextResponse } from 'next/server'
 // only needs a per-date boolean, not per-item detail. A date with no lines
 // at all (an empty receipt) is left out, so it reads as unverified.
 export async function GET() {
-  const session = await auth()
-  if (!session) return NextResponse.json([], { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return error
 
   try {
     const rows = await sql`
@@ -25,11 +24,11 @@ export async function GET() {
       LEFT JOIN items i ON i.id = srl.item_id
       GROUP BY sr.receipt_date::date
     `
-    return NextResponse.json(
+    return success(
       rows.filter((r: any) => r.verified).map((r: any) => r.date)
     )
   } catch (e) {
     console.error('sales verified-dates error:', e)
-    return NextResponse.json([])
+    return success([])
   }
 }
