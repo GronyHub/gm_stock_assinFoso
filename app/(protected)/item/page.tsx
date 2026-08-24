@@ -2561,29 +2561,35 @@ function ItemHubPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveMode, liveTapsByDate])
 
-  // Fetch target GMC item info when a service using GMC is selected
+  // Fetch target GMC item info when a GMC service is selected
+  // Handles two cases:
+  // 1. GMC item as its own service (no converts_to_item_id) - track its own SOH
+  // 2. Service using GMC material (has converts_to_item_id) - track the material's SOH
   useEffect(() => {
     if (!liveSelectedItem) {
       setLiveGmcTargetItem(null)
       return
     }
 
-    const isGmcService = liveSelectedItem.product_type === 'service' &&
-                          liveSelectedItem.gmc_type &&
-                          liveSelectedItem.converts_to_item_id
+    const isGmcService = liveSelectedItem.product_type === 'service' && liveSelectedItem.gmc_type
 
     if (!isGmcService) {
       setLiveGmcTargetItem(null)
       return
     }
 
+    // Determine which item to track:
+    // - If converts_to_item_id exists, track the material being consumed
+    // - Otherwise, track the GMC item's own SOH
+    const targetItemId = liveSelectedItem.converts_to_item_id || liveSelectedItem.id
+
     // Fetch target item info including SOH
-    fetch(`/api/items/${liveSelectedItem.converts_to_item_id}`)
+    fetch(`/api/items/${targetItemId}`)
       .then(r => r.json())
       .then(data => {
         if (data && data.canonical_name && data.calculated_soh !== undefined) {
           setLiveGmcTargetItem({
-            id: liveSelectedItem.converts_to_item_id!,
+            id: targetItemId,
             name: data.canonical_name,
             soh: parseFloat(data.calculated_soh) || 0,
           })
