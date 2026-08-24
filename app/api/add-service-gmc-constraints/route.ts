@@ -149,12 +149,13 @@ export async function POST(req: Request) {
     }
 
     // Constraint 4: Prevent sales_receipt_lines on services using GMC via trigger
+    // (Allow live_sale source which properly records material consumption)
     try {
       await sql`
         CREATE OR REPLACE FUNCTION prevent_sale_on_service_gmc()
         RETURNS TRIGGER AS $$
         BEGIN
-          IF EXISTS (
+          IF NEW.source != 'live_sale' AND EXISTS (
             SELECT 1 FROM items
             WHERE id = NEW.item_id
               AND gmc_type = 'service_using_gmc'
