@@ -1,4 +1,4 @@
-type SessionUserLike = { role?: string; username?: string; name?: string | null } | null | undefined
+type SessionUserLike = { role?: string | null; username?: string | null; name?: string | null } | null | undefined
 
 // Owner (Grony) and Joe hold equivalent administrative rights throughout the app.
 export function isOwnerLevel(user: SessionUserLike): boolean {

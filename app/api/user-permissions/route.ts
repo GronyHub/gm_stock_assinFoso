@@ -21,7 +21,7 @@ export async function GET() {
 export async function PATCH(req: NextRequest) {
   const { session, error } = await requireAuth()
   if (error) return error
-  if (!isOwnerLevel(session!.user as any)) return badRequest('Forbidden')
+  if (!isOwnerLevel(session!.user)) return badRequest('Forbidden')
 
   const { user_id, feature_key, allowed } = await req.json()
   if (!user_id || !feature_key || typeof allowed !== 'boolean') {

@@ -1,4 +1,5 @@
 import { auth } from '@/lib/auth'
+import type { Session } from 'next-auth'
 import { NextResponse } from 'next/server'
 
 export async function requireAuth() {
@@ -11,14 +12,12 @@ export async function requireAuth() {
 
 export async function getAuthUser() {
   const session = await auth()
-  const user = session?.user as any
-  if (!user?.id) {
+  if (!session?.user?.id) {
     return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
   }
-  return { user, session }
+  return { user: session.user, session }
 }
 
-export function getActorName(session: any): string {
-  const user = session?.user as any
-  return user?.username || user?.name || 'Unknown'
+export function getActorName(session: Session | null): string {
+  return session?.user?.username || session?.user?.name || 'Unknown'
 }

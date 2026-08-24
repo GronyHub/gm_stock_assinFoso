@@ -18,7 +18,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const { session, error } = await requireAuth()
   if (error) return error
-  if (!isOwnerLevel(session?.user as { role?: string; username?: string } | undefined)) {
+  if (!isOwnerLevel(session?.user)) {
     return badRequest('Forbidden')
   }
 
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const { session, error } = await requireAuth()
   if (error) return error
-  if (!isOwnerLevel(session?.user as { role?: string; username?: string } | undefined)) {
+  if (!isOwnerLevel(session?.user)) {
     return badRequest('Forbidden')
   }
 
