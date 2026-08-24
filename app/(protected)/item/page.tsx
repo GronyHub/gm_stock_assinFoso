@@ -2644,6 +2644,11 @@ function ItemHubPageInner() {
         setLiveSaving(false)
         return
       }
+      if (data.requires_count) {
+        setLiveTapError(data.error || 'Item must be counted before sale')
+        setLiveSaving(false)
+        return
+      }
       setLiveTaps(prev => [data.tap, ...prev])
       if (!item) setLiveSelectedItem(null)
       setLiveQty('')
