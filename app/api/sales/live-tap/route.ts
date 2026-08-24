@@ -146,14 +146,20 @@ export async function POST(req: NextRequest) {
         targetItemName = targetItemInfo?.canonical_name || null
 
         // Create a negative bill line for the target item to record material consumption
-        const [bill] = await sql`
+        const [existingBill] = await sql`
           SELECT id FROM bills WHERE bill_date::date = ${date} AND vendor_name = 'Internal Consumption' LIMIT 1
         `
-        const billId = bill?.id || (await sql`
-          INSERT INTO bills (bill_number, bill_date, vendor_name, total, subtotal, status, source)
-          VALUES (${'INTERNAL-' + date.replace(/-/g, '') + '-' + Date.now().toString().slice(-4)}, ${date}, 'Internal Consumption', 0, 0, 'paid', 'live_sale')
-          RETURNING id
-        ` as any)[0]?.id
+        let billId: number
+        if (existingBill?.id) {
+          billId = existingBill.id
+        } else {
+          const [newBill] = await sql`
+            INSERT INTO bills (bill_number, bill_date, vendor_name, total, subtotal, status, source)
+            VALUES (${'INTERNAL-' + date.replace(/-/g, '') + '-' + Date.now().toString().slice(-4)}, ${date}, 'Internal Consumption', 0, 0, 'paid', 'live_sale')
+            RETURNING id
+          `
+          billId = newBill.id
+        }
 
         await sql`
           INSERT INTO bill_lines (bill_id, item_id, raw_item_name, resolved_name, quantity, unit_price, item_total, unresolved, source)
