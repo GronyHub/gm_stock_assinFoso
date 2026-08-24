@@ -1,7 +1,7 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, notFound, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { once } from '@/lib/once'
 
 const ensureSchema = once(async () => {
@@ -29,8 +29,8 @@ async function checkCustomerRelations(customerId: number) {
 // COALESCE against the existing value so a field left out of the request
 // (rather than explicitly cleared to "") is untouched, not wiped.
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   const { id } = await params
   const {
@@ -61,21 +61,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         status, payment_terms_label, opening_balance, credit_limit, notes, is_internal,
         whatsapp_group_added, last_visited::text AS last_visited, service_goods, created_at::text AS created_at
     `
-    if (!customer) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!customer) return notFound()
 
     const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
     await logActivity(actor, 'edited customer', customer.display_name)
-    return NextResponse.json(customer)
+    return success(customer)
   } catch (e) {
-    console.error('customer PATCH error:', e)
-    const detail = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: `Could not save customer: ${detail}` }, { status: 500 })
+    return handleError('customer PATCH', e)
   }
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   const { id } = await params
   const customerId = Number(id)
@@ -85,15 +83,13 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const relatedCount = await checkCustomerRelations(customerId)
 
     if (relatedCount > 0) {
-      return NextResponse.json({
-        error: `Cannot delete customer: has ${relatedCount} related transaction(s) (sales/invoices). Delete related records first or mark as inactive.`
-      }, { status: 400 })
+      return badRequest(`Cannot delete customer: has ${relatedCount} related transaction(s) (sales/invoices). Delete related records first or mark as inactive.`)
     }
 
     // Get customer name before deletion for logging
     const [customer] = await sql`SELECT display_name FROM customers WHERE id = ${customerId}`
     if (!customer) {
-      return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
+      return notFound()
     }
 
     // Delete the customer
@@ -102,10 +98,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
     await logActivity(actor, 'deleted customer', customer.display_name)
 
-    return NextResponse.json({ success: true, message: `Customer '${customer.display_name}' deleted` })
+    return success({ success: true, message: `Customer '${customer.display_name}' deleted` })
   } catch (e) {
-    console.error('customer DELETE error:', e)
-    const detail = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: `Could not delete customer: ${detail}` }, { status: 500 })
+    return handleError('customer DELETE', e)
   }
 }

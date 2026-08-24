@@ -1,10 +1,10 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, notFound, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { isConfidentialExpense } from '@/lib/roles'
 import { hasFeature, getUserPermissionsMap } from '@/lib/permissions'
 import { logActivity } from '@/lib/logger'
 import { ensureExpensePropertyColumns } from '@/lib/expenseProperties'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { once } from '@/lib/once'
 
 const ensureSchema = once(async () => {
@@ -32,8 +32,8 @@ function describeExpense(account: string, amount: string | number, date: string)
 }
 
 export async function PUT(req: NextRequest, { params }: Ctx) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   const { id } = await params
   const { expense_date, expense_account, description, cf_justify, vendor_name, amount, cf_expense_type, is_property, propertyType, relatedItemId, expense_group, availability, working, location, notWorkingReason, notAvailableReason, is_related_expense, related_to_property_id, related_expense_reasons } = await req.json()
@@ -41,7 +41,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   if (!hasFeature(session.user as any, 'confidential_expenses', await getUserPermissionsMap())) {
     const [existing] = await sql`SELECT expense_account FROM expenses WHERE id = ${Number(id)}`
     if (existing && (isConfidentialExpense(existing.expense_account) || isConfidentialExpense(expense_account))) {
-      return NextResponse.json({ error: 'You do not have access to edit a Salaries expense' }, { status: 403 })
+      return badRequest('You do not have access to edit a Salaries expense')
     }
   }
 
@@ -75,15 +75,14 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
                 vendor_name, amount, cf_expense_type, is_property, related_item_id, expense_group,
                 is_related_expense, related_to_property_id, related_expense_reasons
     `
-    if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!row) return notFound()
 
     // Ensure property row exists if is_property toggled on
     if (row.is_property) {
       try {
         await ensureExpensePropertyColumns()
       } catch (e) {
-        console.error('ensureExpensePropertyColumns error:', e)
-        return NextResponse.json({ error: `Failed to ensure property columns: ${e instanceof Error ? e.message : String(e)}` }, { status: 500 })
+        return handleError('PUT /api/expenses/[id] ensureExpensePropertyColumns', e)
       }
 
       try {
@@ -101,8 +100,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
             updated_at = NOW()
         `
       } catch (e) {
-        console.error('property update error:', e)
-        return NextResponse.json({ error: `Failed to update property: ${e instanceof Error ? e.message : String(e)}` }, { status: 500 })
+        return handleError('PUT /api/expenses/[id] property update', e)
       }
     }
 
@@ -110,23 +108,22 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
     await logActivity(actor, 'edited expense', describeExpense(row.expense_account, row.amount, row.expense_date))
 
     const [ep] = await sql`SELECT property_status, property_type, availability, working, location, not_working_reason, not_available_reason FROM expense_properties WHERE expense_id = ${row.id}`
-    return NextResponse.json({ ...row, property_status: ep?.property_status ?? null, property_type: ep?.property_type ?? null, availability: ep?.availability ?? null, working: ep?.working ?? null, location: ep?.location ?? null, not_working_reason: ep?.not_working_reason ?? null, not_available_reason: ep?.not_available_reason ?? null, is_related_expense: row.is_related_expense ?? false, related_to_property_id: row.related_to_property_id ?? null, related_expense_reasons: row.related_expense_reasons ?? null })
+    return success({ ...row, property_status: ep?.property_status ?? null, property_type: ep?.property_type ?? null, availability: ep?.availability ?? null, working: ep?.working ?? null, location: ep?.location ?? null, not_working_reason: ep?.not_working_reason ?? null, not_available_reason: ep?.not_available_reason ?? null, is_related_expense: row.is_related_expense ?? false, related_to_property_id: row.related_to_property_id ?? null, related_expense_reasons: row.related_expense_reasons ?? null })
   } catch (e) {
-    console.error('PUT /api/expenses/[id] error:', e)
-    return NextResponse.json({ error: `Server error: ${e instanceof Error ? e.message : String(e)}` }, { status: 500 })
+    return handleError('PUT /api/expenses/[id]', e)
   }
 }
 
 export async function DELETE(_req: NextRequest, { params }: Ctx) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   const { id } = await params
 
   if (!hasFeature(session.user as any, 'confidential_expenses', await getUserPermissionsMap())) {
     const [existing] = await sql`SELECT expense_account FROM expenses WHERE id = ${Number(id)}`
     if (existing && isConfidentialExpense(existing.expense_account)) {
-      return NextResponse.json({ error: 'You do not have access to delete a Salaries expense' }, { status: 403 })
+      return badRequest('You do not have access to delete a Salaries expense')
     }
   }
 
@@ -135,17 +132,17 @@ export async function DELETE(_req: NextRequest, { params }: Ctx) {
     DELETE FROM expenses WHERE id = ${Number(id)}
     RETURNING id, expense_account, amount, expense_date::date AS expense_date
   `
-  if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!row) return notFound()
 
   const actor = session.user?.name || (session.user as any)?.username || 'Unknown'
   await logActivity(actor, 'deleted expense', describeExpense(row.expense_account, row.amount, row.expense_date))
 
-  return NextResponse.json({ ok: true })
+  return success({ ok: true })
 }
 
 export async function PATCH(req: NextRequest, { params }: Ctx) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   const { id } = await params
   const body = await req.json() as {
@@ -164,7 +161,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   // only ever touches its own columns, so neither can clobber the other.
   if (body.property_status !== undefined) {
     if (!['at_shop', 'not_at_shop', 'spoilt'].includes(body.property_status)) {
-      return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+      return badRequest('Invalid status')
     }
     await sql`
       INSERT INTO expense_properties (expense_id, property_status, updated_at)
@@ -179,15 +176,15 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         `${describeExpense(expense.expense_account, expense.amount, expense.expense_date)} — property status → ${body.property_status}`)
     }
 
-    return NextResponse.json({ ok: true, property_status: body.property_status })
+    return success({ ok: true, property_status: body.property_status })
   }
 
   const { availability, working, location, notWorkingReason, notAvailableReason } = body
   if (!availability || !AVAILABILITY_VALUES.includes(availability)) {
-    return NextResponse.json({ error: 'Invalid availability' }, { status: 400 })
+    return badRequest('Invalid availability')
   }
   if (working != null && !WORKING_VALUES.includes(working)) {
-    return NextResponse.json({ error: 'Invalid working status' }, { status: 400 })
+    return badRequest('Invalid working status')
   }
 
   await ensureExpensePropertyColumns()
@@ -214,7 +211,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       `${describeExpense(expense.expense_account, expense.amount, expense.expense_date)} — ${parts.join(', ')}`)
   }
 
-  return NextResponse.json({
+  return success({
     ok: true, availability, working: working ?? null, location: location ?? null,
     not_working_reason: notWorkingReason ?? null, not_available_reason: notAvailableReason ?? null,
   })

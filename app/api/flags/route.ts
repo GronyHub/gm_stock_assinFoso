@@ -4,8 +4,8 @@ import { ensureManageLogs } from '@/lib/manageLogs'
 import { ensureClosingReports } from '@/lib/closingReports'
 import { ensureSalesAttachmentsColumn } from '@/lib/salesAttachments'
 import { ensureBillAttachmentsColumn } from '@/lib/billAttachments'
-import { NextResponse } from 'next/server'
-import { initializeDatabase } from '@/lib/dbInitialize'
+import { success } from '@/lib/api'
+import { ensureDbInitialized } from '@/lib/api/dbInitCache'
 import { once } from '@/lib/once'
 
 // This route runs ~20 flag checks per call and is polled by the Item page,
@@ -396,7 +396,7 @@ export async function GET() {
   `)
 
   // 11. Items/services with no audio advert recorded (Grony Manage > Advert > Audio's own rule)
-  await initializeDatabase()
+  await ensureDbInitialized()
   await ensureAdvertStatusTable()
   const noAdvert = await safeQuery(() => sql`
     SELECT i.id AS item_id, i.canonical_name AS item_name, COALESCE(i.product_type, 'goods') AS product_type
@@ -472,7 +472,7 @@ export async function GET() {
     .filter((p: any) => !p.has_company_tshirt && p.tshirt_due_date && p.tshirt_due_date < todayStr)
     .map((p: any) => ({ staff_name: p.staff_name, due_date: p.tshirt_due_date }))
 
-  return NextResponse.json({
+  return success({
     noCash, missingDays, duplicates: filteredDups, costGteSell, notInInventory, noGroup, noStaffTimes,
     uncheckedCab, dupReceipts, unlinkedNamed, groupNames: groupNames.map((r: any) => r.group_name),
     noAdvert, jingleOverdue, equipmentCheckOverdue, missingClosingReports,

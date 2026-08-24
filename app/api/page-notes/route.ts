@@ -1,14 +1,14 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
-import { initializeDatabase } from '@/lib/dbInitialize'
-import { NextRequest, NextResponse } from 'next/server'
+import { ensureDbInitialized } from '@/lib/api/dbInitCache'
+import { NextRequest } from 'next/server'
 
 export async function GET(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json(null, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   const scopeKey = req.nextUrl.searchParams.get('scopeKey')
-  if (!scopeKey) return NextResponse.json({ error: 'Missing scopeKey' }, { status: 400 })
+  if (!scopeKey) return badRequest('Missing scopeKey')
   const kind = req.nextUrl.searchParams.get('kind') === 'note' ? 'note' : 'law'
   const lawId = req.nextUrl.searchParams.get('lawId')
   const flagKey = req.nextUrl.searchParams.get('flagKey')
@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
   const flagKeys = req.nextUrl.searchParams.get('flagKeys')
 
   try {
-    await initializeDatabase()
+    await ensureDbInitialized()
     if (lawIds || flagKeys) {
       // Batched form for PageLawsList -- see /api/tasks for why. Only
       // returns rows that actually have a note; the caller fills in the
@@ -27,16 +27,16 @@ export async function GET(req: NextRequest) {
         SELECT law_id, flag_key, notes, topic, note_date, tagged_staff FROM page_notes
         WHERE scope_key = ${scopeKey} AND kind = ${kind} AND (law_id = ANY(${lawIdList}::int[]) OR flag_key = ANY(${flagKeyList}::text[]))
       `
-      return NextResponse.json(rows.map((row: any) => ({
+      return success(rows.map((row: any) => ({
         lawId: row.law_id, flagKey: row.flag_key,
         notes: row.notes ?? '', topic: row.topic ?? '', noteDate: row.note_date ?? '',
         taggedStaff: row.tagged_staff ? JSON.parse(row.tagged_staff) : [],
       })))
     } else if (lawId) {
       const lawIdNum = parseInt(lawId, 10)
-      if (isNaN(lawIdNum)) return NextResponse.json({ notes: '', topic: '', noteDate: '', taggedStaff: [] })
+      if (isNaN(lawIdNum)) return success({ notes: '', topic: '', noteDate: '', taggedStaff: [] })
       const [row] = await sql`SELECT notes, topic, note_date, tagged_staff FROM page_notes WHERE scope_key = ${scopeKey} AND kind = ${kind} AND law_id = ${lawIdNum}`
-      return NextResponse.json({
+      return success({
         notes: row?.notes ?? '',
         topic: row?.topic ?? '',
         noteDate: row?.note_date ?? '',
@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
       })
     } else if (flagKey) {
       const [row] = await sql`SELECT notes, topic, note_date, tagged_staff FROM page_notes WHERE scope_key = ${scopeKey} AND kind = ${kind} AND flag_key = ${flagKey}`
-      return NextResponse.json({
+      return success({
         notes: row?.notes ?? '',
         topic: row?.topic ?? '',
         noteDate: row?.note_date ?? '',
@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
       })
     } else {
       const [row] = await sql`SELECT notes, topic, note_date, tagged_staff FROM page_notes WHERE scope_key = ${scopeKey} AND kind = ${kind} AND law_id IS NULL AND flag_key IS NULL`
-      return NextResponse.json({
+      return success({
         notes: row?.notes ?? '',
         topic: row?.topic ?? '',
         noteDate: row?.note_date ?? '',
@@ -61,22 +61,22 @@ export async function GET(req: NextRequest) {
     }
   } catch (e) {
     console.error('page-notes GET error:', e)
-    return NextResponse.json({
+    return success({
       notes: '', topic: '', noteDate: '', taggedStaff: []
     })
   }
 }
 
 export async function PUT(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   const { scopeKey, kind, notes, law_id, flag_key, topic, noteDate, taggedStaff } = await req.json()
-  if (!scopeKey) return NextResponse.json({ error: 'Missing scopeKey' }, { status: 400 })
+  if (!scopeKey) return badRequest('Missing scopeKey')
   const k = kind === 'note' ? 'note' : 'law'
 
   try {
-    await initializeDatabase()
+    await ensureDbInitialized()
     if (law_id) {
       const [existing] = await sql`SELECT 1 FROM page_notes WHERE scope_key = ${scopeKey} AND kind = ${k} AND law_id = ${law_id}`
       if (existing) {
@@ -120,10 +120,8 @@ export async function PUT(req: NextRequest) {
         `
       }
     }
-    return NextResponse.json({ ok: true })
+    return success({ ok: true })
   } catch (e) {
-    console.error('page-notes PUT error:', e)
-    const detail = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: `Could not save note: ${detail}` }, { status: 500 })
+    return handleError('page-notes PUT', e)
   }
 }

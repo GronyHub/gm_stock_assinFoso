@@ -1,6 +1,5 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, notFound, success } from '@/lib/api'
 import sql from '@/lib/db'
-import { NextResponse } from 'next/server'
 import { once } from '@/lib/once'
 
 // See app/api/receipts/route.ts -- these columns are added lazily on first
@@ -39,8 +38,8 @@ const SELECT_FIELDS = `
 `
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   const { id } = await params
   await ensureColumns()
@@ -50,6 +49,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     GROUP BY i.id, c.display_name
   `, [Number(id)])
 
-  if (!receipt) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  return NextResponse.json(receipt)
+  if (!receipt) return notFound()
+  return success(receipt)
 }

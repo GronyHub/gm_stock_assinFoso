@@ -1,7 +1,7 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { once } from '@/lib/once'
 
 const ensureCols = once(async () => {
@@ -12,15 +12,15 @@ const ensureCols = once(async () => {
 })
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   const { staff_name, work_date, actual_in, actual_out, status } = await req.json()
   if (!staff_name || !work_date) {
-    return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+    return badRequest('Missing fields')
   }
   if (!actual_in && !status) {
-    return NextResponse.json({ error: 'Provide either a time or a status' }, { status: 400 })
+    return badRequest('Provide either a time or a status')
   }
 
   await ensureCols()
@@ -60,9 +60,8 @@ export async function POST(req: NextRequest) {
       ? `${staff_name} · ${status} on ${work_date}`
       : `${staff_name} · in ${actual_in}${actual_out ? ` out ${actual_out}` : ''} on ${work_date}`
     await logActivity(enteredBy ?? 'Unknown', 'entered time', desc)
-    return NextResponse.json({ ok: true })
+    return success({ ok: true })
   } catch (e) {
-    console.error('staff-times entry POST error:', e)
-    return NextResponse.json({ error: 'Could not save time entry. Please try again.' }, { status: 500 })
+    return handleError('staff-times entry POST', e)
   }
 }

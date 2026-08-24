@@ -1,8 +1,8 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
-import { initializeDatabase } from '@/lib/dbInitialize'
+import { ensureDbInitialized } from '@/lib/api/dbInitCache'
 import { once } from '@/lib/once'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 // Ten DDL statements, previously re-run on every request to this route --
 // one CREATE plus nine ALTER ... IF NOT EXISTS, each its own round trip to
@@ -34,7 +34,7 @@ const ensureCustomTasksTable = once(async () => {
 })
 
 export async function GET(req: NextRequest) {
-  await initializeDatabase()
+  await ensureDbInitialized()
   await ensureCustomTasksTable()
   try {
     const lawId = req.nextUrl.searchParams.get('lawId')
@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
         WHERE (law_id = ANY(${lawIdList}::int[]) OR flag_key = ANY(${flagKeyList}::text[]))
         ORDER BY done ASC, created_at DESC
       `
-      return NextResponse.json(rows)
+      return success(rows)
     } else if (lawId) {
       const rows = await sql`
         SELECT id, title, notes, due_date, submenu, view, law_id, flag_key, task_type, recurrence_type, recurrence_days, done, created_by, created_at, completed_at, assigned_to, completed_by
@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
         WHERE law_id = ${parseInt(lawId)}
         ORDER BY done ASC, created_at DESC
       `
-      return NextResponse.json(rows)
+      return success(rows)
     } else if (flagKey) {
       const rows = await sql`
         SELECT id, title, notes, due_date, submenu, view, law_id, flag_key, task_type, recurrence_type, recurrence_days, done, created_by, created_at, completed_at, assigned_to, completed_by
@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
         WHERE flag_key = ${flagKey}
         ORDER BY done ASC, created_at DESC
       `
-      return NextResponse.json(rows)
+      return success(rows)
     } else if (submenu) {
       const rows = await sql`
         SELECT id, title, notes, due_date, submenu, view, law_id, flag_key, task_type, recurrence_type, recurrence_days, done, created_by, created_at, completed_at, assigned_to, completed_by
@@ -79,25 +79,25 @@ export async function GET(req: NextRequest) {
         WHERE submenu = ${submenu} AND law_id IS NULL AND flag_key IS NULL
         ORDER BY done ASC, due_date NULLS LAST, created_at DESC
       `
-      return NextResponse.json(rows)
+      return success(rows)
     } else {
       const rows = await sql`
         SELECT id, title, notes, due_date, submenu, view, law_id, flag_key, task_type, recurrence_type, recurrence_days, done, created_by, created_at, completed_at, assigned_to, completed_by
         FROM custom_tasks
         ORDER BY done ASC, due_date NULLS LAST, created_at DESC
       `
-      return NextResponse.json(rows)
+      return success(rows)
     }
   } catch (e) {
     console.error('tasks GET error:', e)
-    return NextResponse.json([])
+    return success([])
   }
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  await initializeDatabase()
+  const { session, error } = await requireAuth()
+  if (error) return error
+  await ensureDbInitialized()
   await ensureCustomTasksTable()
 
   const { title, notes, due_date, submenu, view, law_id, flag_key, assigned_to, task_type, recurrence_type, recurrence_days } = await req.json()
@@ -105,8 +105,8 @@ export async function POST(req: NextRequest) {
   const submenuText = typeof submenu === 'string' ? submenu.trim() : ''
   const viewText = typeof view === 'string' ? view.trim() : ''
   const assignedToText = typeof assigned_to === 'string' ? assigned_to.trim() : null
-  if (!text) return NextResponse.json({ error: 'Title is required' }, { status: 400 })
-  if (!submenuText) return NextResponse.json({ error: 'Submenu is required' }, { status: 400 })
+  if (!text) return badRequest('Title is required')
+  if (!submenuText) return badRequest('Submenu is required')
 
   const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
 
@@ -116,22 +116,20 @@ export async function POST(req: NextRequest) {
       VALUES (${text}, ${typeof notes === 'string' && notes.trim() ? notes.trim() : null}, ${due_date || null}, ${submenuText}, ${viewText || null}, ${law_id || null}, ${flag_key || null}, ${assignedToText}, ${task_type || 'General +'}, ${recurrence_type || null}, ${recurrence_days ? JSON.stringify(recurrence_days) : null}, ${actor})
       RETURNING id, title, notes, due_date, submenu, view, law_id, flag_key, task_type, recurrence_type, recurrence_days, assigned_to, done, created_by, created_at, completed_at, completed_by
     `
-    return NextResponse.json(row, { status: 201 })
+    return success(row)
   } catch (e) {
-    console.error('tasks POST error:', e)
-    const detail = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: `Could not save task: ${detail}` }, { status: 500 })
+    return handleError('tasks POST', e)
   }
 }
 
 export async function PATCH(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  await initializeDatabase()
+  const { session, error } = await requireAuth()
+  if (error) return error
+  await ensureDbInitialized()
   await ensureCustomTasksTable()
 
   const { id, done } = await req.json()
-  if (!id) return NextResponse.json({ error: 'Task ID is required' }, { status: 400 })
+  if (!id) return badRequest('Task ID is required')
 
   const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
 
@@ -142,11 +140,9 @@ export async function PATCH(req: NextRequest) {
       WHERE id = ${id}
       RETURNING id, title, notes, due_date, submenu, view, law_id, flag_key, task_type, recurrence_type, recurrence_days, assigned_to, done, created_by, created_at, completed_at, completed_by
     `
-    return NextResponse.json(row)
+    return success(row)
   } catch (e) {
-    console.error('tasks PATCH error:', e)
-    const detail = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: `Could not update task: ${detail}` }, { status: 500 })
+    return handleError('tasks PATCH', e)
   }
 }
 

@@ -1,7 +1,7 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, notFound, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { once } from '@/lib/once'
 
 const ensureSchema = once(async () => {
@@ -13,8 +13,8 @@ const ensureSchema = once(async () => {
 // so a field left out of the request (rather than explicitly cleared to
 // "") is untouched, not wiped (same pattern as customers' PATCH route).
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   const { id } = await params
   const { company_name, email, phone, location, notes, payment_terms_label } = await req.json()
@@ -33,14 +33,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       WHERE id = ${Number(id)}
       RETURNING id, display_name, company_name, email, phone, location, status, payment_terms_label, is_internal, notes
     `
-    if (!vendor) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!vendor) return notFound()
 
     const actor = (session.user as { username?: string })?.username || session.user?.name || 'Unknown'
     await logActivity(actor, 'edited vendor', vendor.display_name)
-    return NextResponse.json(vendor)
+    return success(vendor)
   } catch (e) {
-    console.error('vendor PATCH error:', e)
-    const detail = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: `Could not save vendor: ${detail}` }, { status: 500 })
+    return handleError('vendor PATCH', e)
   }
 }

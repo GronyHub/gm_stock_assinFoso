@@ -1,9 +1,9 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, notFound, success } from '@/lib/api'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { logActivity } from '@/lib/logger'
 import bcrypt from 'bcryptjs'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { once } from '@/lib/once'
 
 const ensureSchema = once(async () => {
@@ -16,7 +16,8 @@ const ensureSchema = once(async () => {
 type Ctx = { params: Promise<{ id: string }> }
 
 export async function PUT(req: NextRequest, { params }: Ctx) {
-  const session = await auth()
+  const { session, error } = await requireAuth()
+  if (error) return error
   const sessionUser = session?.user as any
   const { id } = await params
   const userId = Number(id)
@@ -24,22 +25,22 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
 
   // Owner and Joe can edit anyone; everyone else can only edit themselves
   if (!isOwnerLevel(sessionUser) && !isSelf) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return badRequest('Forbidden')
   }
 
   const [target] = await sql`SELECT username, role FROM app_users WHERE id = ${userId}`
-  if (!target) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!target) return notFound()
 
   // The owner account itself can only be edited by the real owner, not by Joe's owner-level access
   const targetIsProtected = target.role === 'owner' || target.username?.toLowerCase() === 'grony'
   const canEditTarget = isSelf || sessionUser?.role === 'owner' || (isOwnerLevel(sessionUser) && !targetIsProtected)
-  if (!canEditTarget) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!canEditTarget) return badRequest('Forbidden')
 
   const { display_name, email, role, password } = await req.json()
 
   if (display_name !== undefined) {
     const [row] = await sql`UPDATE app_users SET display_name = ${display_name} WHERE id = ${userId} RETURNING id`
-    if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!row) return notFound()
   }
   if (email !== undefined) {
     await sql`UPDATE app_users SET email = ${email || null} WHERE id = ${userId}`
@@ -55,7 +56,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   const [updated] = await sql`
     SELECT id, username, display_name, email, role, created_at FROM app_users WHERE id = ${userId}
   `
-  return NextResponse.json(updated)
+  return success(updated)
 }
 
 // Deactivating blocks the account's login immediately (see lib/auth.ts's
@@ -63,24 +64,25 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
 // historical data (payslips, times, violations all stay exactly as they
 // are) -- for a staff member who's resigned, not someone being edited.
 export async function PATCH(req: NextRequest, { params }: Ctx) {
-  const session = await auth()
+  const { session, error } = await requireAuth()
+  if (error) return error
   const sessionUser = session?.user as any
-  if (!isOwnerLevel(sessionUser)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!isOwnerLevel(sessionUser)) return badRequest('Forbidden')
 
   const { id } = await params
   const userId = Number(id)
   if (String(sessionUser?.id) === id) {
-    return NextResponse.json({ error: 'You can’t deactivate your own account' }, { status: 400 })
+    return badRequest('You can\'t deactivate your own account')
   }
 
   const { active, resigned_at, reason } = await req.json() as { active: boolean; resigned_at?: string | null; reason?: string | null }
-  if (typeof active !== 'boolean') return NextResponse.json({ error: 'active is required' }, { status: 400 })
+  if (typeof active !== 'boolean') return badRequest('active is required')
 
   const [target] = await sql`SELECT username, role FROM app_users WHERE id = ${userId}`
-  if (!target) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!target) return notFound()
 
   const targetIsProtected = target.role === 'owner' || target.username?.toLowerCase() === 'grony'
-  if (targetIsProtected) return NextResponse.json({ error: 'The owner account can’t be deactivated' }, { status: 403 })
+  if (targetIsProtected) return badRequest('The owner account can\'t be deactivated')
 
   await ensureSchema()
 
@@ -100,5 +102,5 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     active ? target.username : `${target.username} — ${effectiveReason} (${effectiveResignedAt})`
   )
 
-  return NextResponse.json(row)
+  return success(row)
 }

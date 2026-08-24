@@ -1,8 +1,8 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { logActivity } from '@/lib/logger'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { once } from '@/lib/once'
 
 const ensureSchema = once(async () => {
@@ -11,8 +11,8 @@ const ensureSchema = once(async () => {
 
 
 export async function GET() {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   const username = (session.user as any)?.username
 
@@ -38,7 +38,7 @@ export async function GET() {
     `
   } else {
     const staffName = nameMap[username] ?? null
-    if (!staffName) return NextResponse.json([])
+    if (!staffName) return success([])
     rows = await sql`
       SELECT id, staff_name, pay_month::text AS pay_month, payment_period,
              hours_worked, pay_for_hours, overtime_hours, pay_for_overtime,
@@ -50,7 +50,7 @@ export async function GET() {
     `
   }
 
-  return NextResponse.json(rows)
+  return success(rows)
 }
 
 type PayslipEntry = {
@@ -75,16 +75,16 @@ type PayslipEntry = {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
   if (!isOwnerLevel(session.user as any)) {
-    return NextResponse.json({ error: 'Only the owner or Joe can save payslips' }, { status: 403 })
+    return badRequest('Only the owner or Joe can save payslips')
   }
 
   try {
     const { pay_month, entries } = await req.json() as { pay_month: string; entries: PayslipEntry[] }
     if (!pay_month || !Array.isArray(entries) || !entries.length) {
-      return NextResponse.json({ error: 'pay_month and entries are required' }, { status: 400 })
+      return badRequest('pay_month and entries are required')
     }
 
     await ensureSchema()
@@ -122,10 +122,8 @@ export async function POST(req: NextRequest) {
     const actor = session.user?.name || (session.user as any)?.username || 'Unknown'
     await logActivity(actor, 'built payslips', `${entries.length} staff for ${pay_month}`)
 
-    return NextResponse.json({ ok: true })
+    return success({ ok: true })
   } catch (e) {
-    console.error('payslips POST error:', e)
-    const detail = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: `Could not save: ${detail}` }, { status: 500 })
+    return handleError('payslips POST', e)
   }
 }

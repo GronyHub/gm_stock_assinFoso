@@ -1,8 +1,8 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
-import { NextRequest, NextResponse } from 'next/server'
-import { initializeDatabase } from '@/lib/dbInitialize'
+import { NextRequest } from 'next/server'
+import { ensureDbInitialized } from '@/lib/api/dbInitCache'
 import { once } from '@/lib/once'
 
 // invoices predates this app's own Receipt/Invoice creation flow (it was
@@ -44,31 +44,31 @@ const SELECT_FIELDS = `
 `
 
 export async function GET() {
-  const session = await auth()
-  if (!session) return NextResponse.json([], { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
-  await initializeDatabase()
+  await ensureDbInitialized()
   await ensureColumns()
   const receipts = await sql.query(`
     SELECT ${SELECT_FIELDS}
     GROUP BY i.id, c.display_name
     ORDER BY i.invoice_date DESC, i.invoice_number DESC
   `)
-  return NextResponse.json(receipts)
+  return success(receipts)
 }
 
 // Every receipt here is paid in full once issued -- no draft/overdue/balance
 // tracking, so new receipts are always created as fully settled.
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   const {
     invoice_number, invoice_date, customer_name, customer_id, notes, lines, document_type,
     customer_phone, customer_organisation, customer_town_district, customer_region,
   } = await req.json()
   if (!invoice_number || !invoice_date || !customer_name) {
-    return NextResponse.json({ error: 'Receipt number, date, and customer name are required' }, { status: 400 })
+    return badRequest('Receipt number, date, and customer name are required')
   }
   const docType = document_type === 'Invoice' ? 'Invoice' : 'Receipt'
 
@@ -93,15 +93,15 @@ export async function POST(req: NextRequest) {
     }))
     .filter((l: any) => l.item && l.qty > 0)
   if (cleanLines.length === 0) {
-    return NextResponse.json({ error: 'At least one valid item is required' }, { status: 400 })
+    return badRequest('At least one valid item is required')
   }
 
   const subtotal = cleanLines.reduce((s: number, l: any) => s + l.qty * l.price, 0)
   const enteredBy = session.user?.name || (session.user as any)?.username || null
 
   try {
-    await initializeDatabase()
-  await ensureColumns()
+    await ensureDbInitialized()
+    await ensureColumns()
 
     // zoho_invoice_id is NOT NULL (the column was built for Zoho-imported
     // invoices) but receipts created here have no Zoho id, so synthesize a
@@ -135,10 +135,8 @@ export async function POST(req: NextRequest) {
     `, [invoice.id])
 
     await logActivity(enteredBy ?? 'Unknown', 'added receipt', `${invoice_number} · ₵${subtotal.toFixed(2)} for ${resolvedCustomerName}`)
-    return NextResponse.json(created)
+    return success(created)
   } catch (e) {
-    console.error('receipt insert error:', e)
-    const detail = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: `Could not save receipt: ${detail}` }, { status: 500 })
+    return handleError('receipt POST', e)
   }
 }
