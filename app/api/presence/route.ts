@@ -1,7 +1,7 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success } from '@/lib/api'
 import sql from '@/lib/db'
 import { once } from '@/lib/once'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 // Anything not updated in the last 25s is considered stale (tab closed,
 // crashed, navigated away without the unmount cleanup firing) and is
@@ -31,21 +31,21 @@ export async function GET() {
       WHERE updated_at > NOW() - (${STALE_SECONDS} * INTERVAL '1 second')
       ORDER BY updated_at DESC
     `
-    return NextResponse.json(rows)
+    return success(rows)
   } catch (e) {
-    return NextResponse.json([])
+    return success([])
   }
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
-  const staffName = (session.user as any)?.username ?? session.user?.name
-  if (!staffName) return NextResponse.json({ error: 'No identity' }, { status: 400 })
+  const staffName = (session!.user as any)?.username ?? session!.user?.name
+  if (!staffName) return badRequest('No identity')
 
   const { activity } = await req.json()
-  if (!activity) return NextResponse.json({ error: 'Missing activity' }, { status: 400 })
+  if (!activity) return badRequest('Missing activity')
 
   // Presence is a "who's online" nicety, not real data -- a DB hiccup here
   // shouldn't 500 out of whatever the user was actually doing, so fail the
@@ -60,19 +60,19 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     console.error('presence POST error:', e)
   }
-  return NextResponse.json({ ok: true })
+  return success({ ok: true })
 }
 
 export async function DELETE(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
-  const staffName = (session.user as any)?.username ?? session.user?.name
+  const staffName = (session!.user as any)?.username ?? session!.user?.name
   try {
     await ensureUserPresenceTable()
     await sql`DELETE FROM user_presence WHERE staff_name = ${staffName}`
   } catch (e) {
     console.error('presence DELETE error:', e)
   }
-  return NextResponse.json({ ok: true })
+  return success({ ok: true })
 }

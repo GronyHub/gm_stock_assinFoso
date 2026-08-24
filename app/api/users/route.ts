@@ -1,9 +1,9 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, notFound, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import bcrypt from 'bcryptjs'
 import { once } from '@/lib/once'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 // The staff-lifecycle columns. The DROP CONSTRAINT calls further down stay
 // inline deliberately -- they're part of the role-change write path, not
@@ -15,29 +15,31 @@ const ensureUserLifecycleCols = once(async () => {
 })
 
 export async function GET() {
-  const session = await auth()
-  if (!isOwnerLevel(session?.user as any)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const { session, error } = await requireAuth()
+  if (error) return error
+  if (!isOwnerLevel(session?.user as any)) return badRequest('Forbidden')
   await ensureUserLifecycleCols()
   const rows = await sql`
     SELECT id, username, display_name, email, role, created_at, active, resigned_at::text, deactivation_reason
     FROM app_users ORDER BY id
   `
-  return NextResponse.json(rows)
+  return success(rows)
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!isOwnerLevel(session?.user as any)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const { session, error } = await requireAuth()
+  if (error) return error
+  if (!isOwnerLevel(session?.user as any)) return badRequest('Forbidden')
 
   try {
     const { username, display_name, email, role, password } = await req.json()
-    if (!username || !password || !role) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+    if (!username || !password || !role) return badRequest('Missing fields')
 
     const [existing] = await sql`SELECT id FROM app_users WHERE username = ${username}`
-    if (existing) return NextResponse.json({ error: `Username "${username}" is already taken` }, { status: 409 })
+    if (existing) return badRequest(`Username "${username}" is already taken`)
 
     const [roleRow] = await sql`SELECT key FROM roles WHERE key = ${role}`
-    if (!roleRow) return NextResponse.json({ error: `Role "${role}" does not exist` }, { status: 400 })
+    if (!roleRow) return badRequest(`Role "${role}" does not exist`)
 
     // Leftover from before custom roles existed -- app_users.role was
     // originally CHECK-constrained to the three built-in values, so any
@@ -52,35 +54,34 @@ export async function POST(req: NextRequest) {
       VALUES (${username}, ${display_name ?? username}, ${email ?? null}, ${role}, ${hash})
       RETURNING id, username, display_name, email, role, created_at
     `
-    return NextResponse.json(row)
+    return success(row)
   } catch (e) {
-    console.error('users POST error:', e)
-    const detail = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: `Could not create user: ${detail}` }, { status: 500 })
+    return handleError('users POST', e)
   }
 }
 
 export async function PATCH(req: NextRequest) {
-  const session = await auth()
+  const { session, error } = await requireAuth()
+  if (error) return error
   const sessionUser = session?.user as any
-  if (!isOwnerLevel(sessionUser)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!isOwnerLevel(sessionUser)) return badRequest('Forbidden')
   const { id, role } = await req.json()
-  if (!id || !role) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+  if (!id || !role) return badRequest('Missing fields')
 
   const [target] = await sql`SELECT username, role FROM app_users WHERE id = ${id}`
-  if (!target) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!target) return notFound()
   const targetIsProtected = target.role === 'owner' || target.username?.toLowerCase() === 'grony'
   if (targetIsProtected && sessionUser?.role !== 'owner') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return badRequest('Forbidden')
   }
 
   const [roleRow] = await sql`SELECT key FROM roles WHERE key = ${role}`
-  if (!roleRow) return NextResponse.json({ error: `Role "${role}" does not exist` }, { status: 400 })
+  if (!roleRow) return badRequest(`Role "${role}" does not exist`)
   await sql`ALTER TABLE app_users DROP CONSTRAINT IF EXISTS app_users_role_check`.catch(() => {})
 
   const [row] = await sql`
     UPDATE app_users SET role = ${role} WHERE id = ${id}
     RETURNING id, username, display_name, role
   `
-  return NextResponse.json(row)
+  return success(row)
 }

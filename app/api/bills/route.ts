@@ -1,13 +1,13 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { ensureBillAttachmentsColumn } from '@/lib/billAttachments'
 import { itemsDueForCount, countGuardResponseBody } from '@/lib/countGuard'
-import { NextRequest, NextResponse } from 'next/server'
-import { initializeDatabase } from '@/lib/dbInitialize'
+import { ensureDbInitialized } from '@/lib/api/dbInitCache'
+import { NextRequest } from 'next/server'
 
 export async function GET(req: NextRequest) {
-  await initializeDatabase()
+  await ensureDbInitialized()
   await ensureBillAttachmentsColumn()
 
   const url = new URL(req.url)
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
       entered_by: r.entered_by || null,
       attachments: r.attachments || []
     }))
-    return NextResponse.json(withOptional)
+    return success(withOptional)
   } catch (e) {
     console.error('bills/route.ts GET error:', e instanceof Error ? e.message : String(e))
     try {
@@ -51,23 +51,23 @@ export async function GET(req: NextRequest) {
         entered_by: null,
         attachments: []
       }))
-      return NextResponse.json(withOptional)
+      return success(withOptional)
     } catch (e2) {
       console.error('bills/route.ts fallback error:', e2 instanceof Error ? e2.message : String(e2))
-      return NextResponse.json([])
+      return success([])
     }
   }
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   const { date, lines } = (await req.json()) as {
     date: string
     lines: { itemId: number; itemName: string; qty: number; price: number; total: number; vendorName: string | null }[]
   }
-  if (!date || !lines?.length) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+  if (!date || !lines?.length) return badRequest('Missing fields')
 
   // A line with no real quantity isn't a transaction -- it's a phantom row
   // that pollutes per-date aliases and other displays while contributing
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
   for (const l of lines) {
     const qty = Number(l.qty)
     if (!Number.isFinite(qty) || qty <= 0) {
-      return NextResponse.json({ error: `"${l.itemName || 'a line'}" needs a valid quantity greater than 0.` }, { status: 400 })
+      return badRequest(`"${l.itemName || 'a line'}" needs a valid quantity greater than 0.`)
     }
   }
 
@@ -84,10 +84,10 @@ export async function POST(req: NextRequest) {
   // unverified before this bill would build on top of it.
   const due = await itemsDueForCount(lines.map(l => l.itemId ? Number(l.itemId) : null))
   if (due.size > 0) {
-    return NextResponse.json(countGuardResponseBody(Array.from(due.values())), { status: 409 })
+    return success(countGuardResponseBody(Array.from(due.values())))
   }
 
-  const enteredBy = session.user?.name || (session.user as any)?.username || null
+  const enteredBy = session!.user?.name || (session!.user as any)?.username || null
   const grandTotal = lines.reduce((s: number, l) => s + Number(l.total), 0)
 
   // Each item line becomes its own bills row (one bill_lines child each),
@@ -148,10 +148,8 @@ export async function POST(req: NextRequest) {
     const vendorsUsed = Array.from(new Set(lines.map(l => l.vendorName).filter(Boolean)))
     const vendorNote = vendorsUsed.length === 1 ? ` from ${vendorsUsed[0]}` : vendorsUsed.length > 1 ? ` from ${vendorsUsed.length} vendors` : ''
     await logActivity(enteredBy ?? 'Unknown', 'added bill', `${lines.length} line${lines.length > 1 ? 's' : ''} · ₵${grandTotal.toFixed(2)}${vendorNote}`)
-    return NextResponse.json({ ok: true, billNumbers })
+    return success({ ok: true, billNumbers })
   } catch (e) {
-    console.error('bills POST error:', e)
-    const detail = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: `Could not save bill: ${detail}` }, { status: 500 })
+    return handleError('bills POST', e)
   }
 }

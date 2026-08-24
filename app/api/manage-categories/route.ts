@@ -1,8 +1,8 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
-import { NextRequest, NextResponse } from 'next/server'
-import { initializeDatabase } from '@/lib/dbInitialize'
+import { ensureDbInitialized } from '@/lib/api/dbInitCache'
+import { NextRequest } from 'next/server'
 import { once } from '@/lib/once'
 
 // User-added Grony Manage categories -- sit alongside the fixed ones
@@ -22,28 +22,29 @@ const ensureTable = once(async () => {
 })
 
 export async function GET() {
-  await initializeDatabase()
+  await ensureDbInitialized()
   await ensureTable()
   try {
     const rows = await sql`SELECT id, label, created_by, created_at FROM manage_categories ORDER BY created_at ASC`
-    return NextResponse.json(rows)
+    return success(rows)
   } catch (e) {
     console.error('manage-categories GET error:', e)
-    return NextResponse.json([])
+    return success([])
   }
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
+  const { session, error } = await requireAuth()
+  if (error) return error
   if (!isOwnerLevel(session?.user as any)) {
-    return NextResponse.json({ error: 'Only the owner or Joe can add a category' }, { status: 403 })
+    return badRequest('Only the owner or Joe can add a category')
   }
-  await initializeDatabase()
+  await ensureDbInitialized()
   await ensureTable()
 
   const { label } = await req.json()
   const text = typeof label === 'string' ? label.trim() : ''
-  if (!text) return NextResponse.json({ error: 'Label is required' }, { status: 400 })
+  if (!text) return badRequest('Label is required')
 
   const actor = (session!.user as any)?.username || session!.user?.name || 'Unknown'
   try {
@@ -52,27 +53,26 @@ export async function POST(req: NextRequest) {
       VALUES (${text}, ${actor})
       RETURNING id, label, created_by, created_at
     `
-    return NextResponse.json(row, { status: 201 })
+    return success(row)
   } catch (e) {
-    console.error('manage-categories POST error:', e)
-    return NextResponse.json({ error: 'Could not save category' }, { status: 500 })
+    return handleError('manage-categories POST', e)
   }
 }
 
 export async function DELETE(req: NextRequest) {
-  const session = await auth()
+  const { session, error } = await requireAuth()
+  if (error) return error
   if (!isOwnerLevel(session?.user as any)) {
-    return NextResponse.json({ error: 'Only the owner or Joe can delete a category' }, { status: 403 })
+    return badRequest('Only the owner or Joe can delete a category')
   }
   const id = req.nextUrl.searchParams.get('id')
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+  if (!id) return badRequest('Missing id')
 
   try {
     await sql`DELETE FROM manage_category_tabs WHERE category_id = ${Number(id)}`.catch(() => {})
     await sql`DELETE FROM manage_categories WHERE id = ${Number(id)}`
-    return NextResponse.json({ ok: true })
+    return success({ ok: true })
   } catch (e) {
-    console.error('manage-categories DELETE error:', e)
-    return NextResponse.json({ error: 'Could not delete category' }, { status: 500 })
+    return handleError('manage-categories DELETE', e)
   }
 }

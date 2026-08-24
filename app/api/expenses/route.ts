@@ -1,11 +1,11 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { isConfidentialExpense } from '@/lib/roles'
 import { hasFeature, getUserPermissionsMap } from '@/lib/permissions'
 import { logActivity } from '@/lib/logger'
 import { ensureExpensePropertyColumns } from '@/lib/expenseProperties'
-import { NextRequest, NextResponse } from 'next/server'
-import { initializeDatabase } from '@/lib/dbInitialize'
+import { ensureDbInitialized } from '@/lib/api/dbInitCache'
+import { NextRequest } from 'next/server'
 import { once } from '@/lib/once'
 
 const ensureSchema = once(async () => {
@@ -22,9 +22,9 @@ function redact(rows: any[], canSeeAmounts: boolean) {
 }
 
 export async function GET(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json([], { status: 401 })
-  const canSeeAmounts = hasFeature(session.user as any, 'confidential_expenses', await getUserPermissionsMap())
+  const { session, error } = await requireAuth()
+  if (error) return success([])
+  const canSeeAmounts = hasFeature(session!.user as any, 'confidential_expenses', await getUserPermissionsMap())
 
   const url = new URL(req.url)
   // Every caller (ExpensesTab, PropertiesPage, expenses/page.tsx) fetches
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
   const offset = Math.max(Number(url.searchParams.get('offset')) || 0, 0)
   const since = url.searchParams.get('since')
 
-  await initializeDatabase()
+  await ensureDbInitialized()
   await ensureExpensePropertyColumns()
 
   try {
@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
     if (rows.length === limit) {
       console.warn(`expenses: hit the ${limit}-row cap -- results may be truncated, raise the cap`)
     }
-    return NextResponse.json(redact(rows, canSeeAmounts))
+    return success(redact(rows, canSeeAmounts))
   } catch {
     await ensureSchema()
     const rows = await sql`
@@ -78,20 +78,20 @@ export async function GET(req: NextRequest) {
       LIMIT ${limit}
       OFFSET ${offset}
     `
-    return NextResponse.json(redact(rows, canSeeAmounts))
+    return success(redact(rows, canSeeAmounts))
   }
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { session, error } = await requireAuth()
+  if (error) return error
 
   const { expense_date, expense_account, description, cf_justify, vendor_name, amount, cf_expense_type, is_property, expense_group, is_related_expense, related_to_property_id, related_expense_reasons } = await req.json()
   if (!expense_date || !expense_account || !amount) {
-    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    return badRequest('Missing required fields')
   }
-  if (isConfidentialExpense(expense_account) && !hasFeature(session.user as any, 'confidential_expenses', await getUserPermissionsMap())) {
-    return NextResponse.json({ error: 'You do not have access to record a Salaries expense' }, { status: 403 })
+  if (isConfidentialExpense(expense_account) && !hasFeature(session!.user as any, 'confidential_expenses', await getUserPermissionsMap())) {
+    return badRequest('You do not have access to record a Salaries expense')
   }
 
   const entry = await sql`
@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
   const zohoExpenseId = `APP-${Date.now()}-${entryNumber}`
   const isProp = is_property ?? false
 
-  const enteredBy = session.user?.name || (session.user as any)?.username || null
+  const enteredBy = session!.user?.name || (session!.user as any)?.username || null
 
   try {
     let row
@@ -149,10 +149,8 @@ export async function POST(req: NextRequest) {
     const confidential = isConfidentialExpense(expense_account)
     await logActivity(enteredBy ?? 'Unknown', 'added expense',
       confidential ? `${expense_account} on ${expense_date}` : `${expense_account} · ₵${Number(amount).toFixed(2)} on ${expense_date}`)
-    return NextResponse.json({ ...row, property_status: isProp ? 'at_shop' : null })
+    return success({ ...row, property_status: isProp ? 'at_shop' : null })
   } catch (e) {
-    console.error('expenses POST error:', e)
-    const detail = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: `Could not save expense: ${detail}` }, { status: 500 })
+    return handleError('expenses POST', e)
   }
 }

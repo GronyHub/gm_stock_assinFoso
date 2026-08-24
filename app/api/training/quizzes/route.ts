@@ -1,8 +1,8 @@
-import { auth } from '@/lib/auth'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { once } from '@/lib/once'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 // Multiple-choice quizzes for Grony Manage > Training > Assessment. Owner-
 // level (Grony/Joe) creates them; any logged-in staff member can take one.
@@ -40,8 +40,8 @@ export const ensureTrainingTables = once(async () => {
 })
 
 export async function GET() {
-  const session = await auth()
-  if (!session) return NextResponse.json([], { status: 401 })
+  const { error } = await requireAuth()
+  if (error) return success([])
 
   try {
     await ensureTrainingTables()
@@ -51,32 +51,33 @@ export async function GET() {
       FROM training_quizzes q
       ORDER BY q.created_at DESC
     `
-    return NextResponse.json(rows)
+    return success(rows)
   } catch (e) {
     console.error('training quizzes GET error:', e)
-    return NextResponse.json([])
+    return success([])
   }
 }
 
 type QuestionInput = { question: string; options: string[]; correct_index: number }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
+  const { session, error } = await requireAuth()
+  if (error) return error
   if (!isOwnerLevel(session?.user as any)) {
-    return NextResponse.json({ error: 'Only the owner or Joe can create quizzes' }, { status: 403 })
+    return badRequest('Only the owner or Joe can create quizzes')
   }
 
   const { title, questions } = await req.json() as { title?: string; questions?: QuestionInput[] }
-  if (!title?.trim()) return NextResponse.json({ error: 'Title is required' }, { status: 400 })
+  if (!title?.trim()) return badRequest('Title is required')
   if (!Array.isArray(questions) || questions.length === 0) {
-    return NextResponse.json({ error: 'Add at least one question' }, { status: 400 })
+    return badRequest('Add at least one question')
   }
   for (const q of questions) {
     if (!q.question?.trim() || !Array.isArray(q.options) || q.options.filter(o => o.trim()).length < 2) {
-      return NextResponse.json({ error: 'Each question needs text and at least 2 options' }, { status: 400 })
+      return badRequest('Each question needs text and at least 2 options')
     }
     if (q.correct_index == null || q.correct_index < 0 || q.correct_index >= q.options.length) {
-      return NextResponse.json({ error: 'Each question needs a valid correct answer' }, { status: 400 })
+      return badRequest('Each question needs a valid correct answer')
     }
   }
 
@@ -95,9 +96,8 @@ export async function POST(req: NextRequest) {
         VALUES (${quiz.id}, ${q.question.trim()}, ${JSON.stringify(q.options.map(o => o.trim()))}, ${q.correct_index}, ${i})
       `
     }
-    return NextResponse.json({ ok: true, id: quiz.id })
+    return success({ ok: true, id: quiz.id })
   } catch (e) {
-    console.error('training quizzes POST error:', e)
-    return NextResponse.json({ error: 'Failed to create quiz' }, { status: 500 })
+    return handleError('training quizzes POST', e)
   }
 }
