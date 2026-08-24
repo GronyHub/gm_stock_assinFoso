@@ -1893,6 +1893,14 @@ function ItemHubPageInner() {
   const [liveEditingTapSaving, setLiveEditingTapSaving] = useState(false)
   const [liveEditingCountTime, setLiveEditingCountTime] = useState('')
   const [liveEditingCountTimeSaving, setLiveEditingCountTimeSaving] = useState(false)
+  const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: 'success' | 'error' | 'info' }>>([])
+
+  function showToast(message: string, type: 'success' | 'error' | 'info' = 'info') {
+    const id = Math.random().toString(36).slice(2, 9)
+    setToasts(prev => [...prev, { id, message, type }])
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000)
+  }
+
   useEffect(() => {
     if (liveEditingGridItemId != null && liveGridEditSaleTapRef.current) {
       setTimeout(() => {
@@ -2720,6 +2728,7 @@ function ItemHubPageInner() {
       setLiveQty('')
       setLivePrice('')
       setTimeout(() => setLiveTapStatus([]), 2000)
+      showToast(`✓ ${tapItem.name} × ${qtyNum} recorded`, 'success')
       alert(`✓ Tap Recorded!\n${tapItem.name} × ${qtyNum}`)
     } catch (e) {
       const errMsg = e instanceof Error && e.name === 'AbortError'
@@ -2763,11 +2772,14 @@ function ItemHubPageInner() {
         setLiveTaps(prev => prev.map(t => t.id === liveEditingTapId ? { ...t, tapped_at: data.tapped_at } : t))
         setLiveEditingTapId(null)
         setLiveEditingTapTime('')
+        showToast('Tap time updated', 'success')
       } else {
         setLiveTapError('Could not save tap time')
+        showToast('Could not save tap time', 'error')
       }
     } catch (e) {
       setLiveTapError('Could not save tap time')
+      showToast('Could not save tap time', 'error')
     } finally {
       setLiveEditingTapSaving(false)
     }
@@ -2793,6 +2805,7 @@ function ItemHubPageInner() {
       setLiveGmcWeeklyItems(prev => prev.filter(i => i.item_id !== item.id))
       setLiveOverdueItems(prev => prev.filter(i => i.item_id !== item.id))
       setLiveCountQty('')
+      showToast(`✓ ${item.name} counted`, 'success')
       return
     }
     const d = await res.json().catch(() => null)
@@ -2804,7 +2817,9 @@ function ItemHubPageInner() {
       setLiveLossPrompt({ d, retry: extra => submitCount(item, qty, extra) })
       return
     }
-    setLiveCountError(d?.error ?? 'Could not save count.')
+    const errMsg = d?.error ?? 'Could not save count.'
+    setLiveCountError(errMsg)
+    showToast(errMsg, 'error')
   }
 
   // Groups/conversion-target list ItemEditForm needs, derived from the
@@ -3144,13 +3159,15 @@ function ItemHubPageInner() {
       const updated: CountRecord = await res.json()
       setLiveCountRecords(prev => prev.map(r => r.id === liveEditingCountId ? { ...r, ...updated } : r))
       setLiveEditingCountId(null)
+      showToast('Count updated', 'success')
     } else {
       const d = await res.json().catch(() => null)
       if (res.status === 409 && d?.requires_loss_reason) {
         setLiveLossPrompt({ d, retry: extra => saveEditCount(extra) })
         return
       }
-      alert(d?.error ?? 'Could not save count.')
+      const errMsg = d?.error ?? 'Could not save count.'
+      showToast(errMsg, 'error')
     }
   }
 
@@ -3161,8 +3178,10 @@ function ItemHubPageInner() {
     if (res.ok) {
       setLiveCountRecords(prev => prev.filter(x => x.id !== r.id))
       if (liveEditingCountId === r.id) setLiveEditingCountId(null)
+      showToast('Count deleted', 'success')
     } else {
-      alert((await res.json().catch(() => null))?.error ?? 'Could not delete count.')
+      const errMsg = (await res.json().catch(() => null))?.error ?? 'Could not delete count.'
+      showToast(errMsg, 'error')
     }
   }
 
@@ -3181,11 +3200,12 @@ function ItemHubPageInner() {
         setLiveCountRecords(prev => prev.map(r => r.id === liveEditingCountId ? { ...r, counted_at: data.counted_at } : r))
         setLiveEditingCountId(null)
         setLiveEditingCountTime('')
+        showToast('Count time updated', 'success')
       } else {
-        alert('Could not save count time')
+        showToast('Could not save count time', 'error')
       }
     } catch (e) {
-      alert('Could not save count time')
+      showToast('Could not save count time', 'error')
     } finally {
       setLiveEditingCountTimeSaving(false)
     }
@@ -6172,6 +6192,24 @@ function ItemHubPageInner() {
       {globalSearchViewingItemId != null && (
         <ItemDetailModal itemId={globalSearchViewingItemId} onClose={() => setGlobalSearchViewingItemId(null)} />
       )}
+
+      {/* Global toast notifications */}
+      <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none">
+        {toasts.map(toast => (
+          <div
+            key={toast.id}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold text-white shadow-lg pointer-events-auto animate-in fade-in slide-in-from-right-4 duration-300 ${
+              toast.type === 'success' ? 'bg-green-600' :
+              toast.type === 'error' ? 'bg-red-600' :
+              'bg-blue-600'
+            }`}
+          >
+            {toast.type === 'success' && '✓ '}
+            {toast.type === 'error' && '✗ '}
+            {toast.message}
+          </div>
+        ))}
+      </div>
 
     </div>
   )
