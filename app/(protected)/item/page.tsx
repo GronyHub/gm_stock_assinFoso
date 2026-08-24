@@ -997,7 +997,7 @@ function ItemHubPageInner() {
         loadItems()
       } else {
         const d = await res.json().catch(() => ({}))
-        alert(d.error || 'Could not rename group.')
+        showToast(d.error || 'Could not rename group.', 'error')
       }
     } finally {
       setRenameGroupBusy(false)
@@ -2635,7 +2635,7 @@ function ItemHubPageInner() {
     if (!tapItem || !liveQty) {
       const missing = !tapItem ? 'item' : 'quantity'
       addTapStatus(`ERROR: Missing ${missing}`)
-      alert(`Missing: ${missing}`)
+      showToast(`Missing: ${missing}`, 'error')
       return
     }
     addTapStatus(`✓ Item: ${tapItem.name}, Qty: ${liveQty}`)
@@ -2686,7 +2686,7 @@ function ItemHubPageInner() {
         const errMsg = `JSON parse error: ${res.status} ${res.statusText}`
         addTapStatus(`ERROR: ${errMsg}`)
         setLiveTapError(errMsg)
-        alert(errMsg)
+        showToast(errMsg, 'error')
         setLiveSaving(false)
         clearTimeout(timeoutId)
         return
@@ -2696,7 +2696,7 @@ function ItemHubPageInner() {
         const errMsg = data.error || `Server error: ${res.status}`
         addTapStatus(`ERROR: ${errMsg}`)
         setLiveTapError(errMsg)
-        alert(errMsg)
+        showToast(errMsg, 'error')
         setLiveSaving(false)
         clearTimeout(timeoutId)
         return
@@ -2706,7 +2706,7 @@ function ItemHubPageInner() {
         const errMsg = data.error || 'Item must be counted before sale'
         addTapStatus(`COUNT GUARD: ${errMsg}`)
         setLiveTapError(errMsg)
-        alert(errMsg)
+        showToast(errMsg, 'error')
         setLiveSaving(false)
         clearTimeout(timeoutId)
         return
@@ -2716,7 +2716,7 @@ function ItemHubPageInner() {
         const errMsg = 'Server returned invalid response - no tap data'
         addTapStatus(`ERROR: ${errMsg}`)
         setLiveTapError(errMsg)
-        alert(errMsg)
+        showToast(errMsg, 'error')
         setLiveSaving(false)
         clearTimeout(timeoutId)
         return
@@ -2736,7 +2736,7 @@ function ItemHubPageInner() {
         : e instanceof Error ? e.message : 'Network error - check connection'
       addTapStatus(`ERROR: ${errMsg}`)
       setLiveTapError(errMsg)
-      alert(errMsg)
+      showToast(errMsg, 'error')
     } finally {
       addTapStatus('Cleanup - done')
       clearTimeout(timeoutId)
@@ -4067,12 +4067,12 @@ function ItemHubPageInner() {
                             .then(r => r.json())
                             .then(data => {
                               if (!data.error) {
-                                alert(`✓ ${data.message || 'Operation completed'}`)
+                                showToast(data.message || 'Operation completed', 'success')
                               } else {
-                                alert(`✗ Error: ${data.error}`)
+                                showToast(data.error, 'error')
                               }
                             })
-                            .catch(e => alert(`✗ Error: ${e.message}`))
+                            .catch(e => showToast(e.message || 'Operation failed', 'error'))
                             .finally(() => selectEl.value = '')
                         } else {
                           selectEl.value = ''
