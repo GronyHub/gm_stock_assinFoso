@@ -1,4 +1,4 @@
-import { requireAuth, badRequest, success, handleError } from '@/lib/api'
+import { requireAuth, badRequest, success, handleError, serverError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { recordCountRevision } from '@/lib/countRevisions'
@@ -21,14 +21,27 @@ export async function POST(req: NextRequest) {
 
   try {
     await ensureCountedAtColumn()
-    const { itemId, qty, notes, loss_reason, manager_response } = await req.json()
+    let body: any
+    try {
+      body = await req.json()
+    } catch (parseError) {
+      console.error('Failed to parse request JSON:', parseError)
+      return badRequest('Invalid JSON in request body')
+    }
+    const { itemId, qty, notes, loss_reason, manager_response } = body
     if (!itemId || qty == null) return badRequest('Missing fields')
     if (Number(qty) < 0 || isNaN(Number(qty))) {
       return badRequest('Not allowed — a count can never be negative. Stock on hand must be 0 or more.')
     }
 
     const today = new Date().toISOString().slice(0, 10)
-    const item = await sql`SELECT zoho_item_id, canonical_name, product_type, cf_group FROM items WHERE id = ${itemId}`
+    let item: any[]
+    try {
+      item = await sql`SELECT zoho_item_id, canonical_name, product_type, cf_group FROM items WHERE id = ${itemId}`
+    } catch (dbError) {
+      console.error('Database query error for items:', dbError)
+      return serverError('Database error', String(dbError))
+    }
     if (!item.length) return badRequest('Item not found')
 
     if (item[0].product_type === 'service' || /^service/i.test(item[0].cf_group ?? '')) {
@@ -73,36 +86,48 @@ export async function POST(req: NextRequest) {
     const countedBy = session.user?.name || (session.user as any)?.username || null
     const finalNotes = [lossNote, (notes && String(notes).trim()) || null].filter(Boolean).join(' · ') || null
 
-    const [existing] = await sql`
-      SELECT id, quantity_counted, counted_by FROM stock_counts
-      WHERE item_id = ${itemId} AND count_date::date = ${today}
-      ORDER BY id DESC LIMIT 1
-    `
-    if (existing) {
-      if (Number(existing.quantity_counted) !== Number(qty)) {
-        await recordCountRevision({
-          stockCountId: existing.id,
-          itemId: Number(itemId),
-          countDate: today,
-          oldQty: existing.quantity_counted,
-          oldCountedBy: existing.counted_by,
-          changedBy: countedBy,
-        })
+    let existing: any
+    try {
+      const result = await sql`
+        SELECT id, quantity_counted, counted_by FROM stock_counts
+        WHERE item_id = ${itemId} AND count_date::date = ${today}
+        ORDER BY id DESC LIMIT 1
+      `
+      existing = result[0] ?? null
+    } catch (dbError) {
+      console.error('Database query error for stock_counts:', dbError)
+      return serverError('Database error', String(dbError))
+    }
+    try {
+      if (existing) {
+        if (Number(existing.quantity_counted) !== Number(qty)) {
+          await recordCountRevision({
+            stockCountId: existing.id,
+            itemId: Number(itemId),
+            countDate: today,
+            oldQty: existing.quantity_counted,
+            oldCountedBy: existing.counted_by,
+            changedBy: countedBy,
+          })
+        }
+        await sql`
+          UPDATE stock_counts
+          SET quantity_counted = ${qty}, notes = ${finalNotes}, source = 'app', counted_by = ${countedBy}, counted_at = NOW()
+          WHERE id = ${existing.id}
+        `
+        await logActivity(countedBy ?? 'Unknown', 'counted stock', `${item[0].canonical_name} · qty ${qty} (replaced today's earlier count)`)
+        if (lossNote) await logActivity(countedBy ?? 'Unknown', 'reported count loss', `${item[0].canonical_name} · counted ${qty} vs expected ${expected} — ${lossNote}`)
+      } else {
+        await sql`
+          INSERT INTO stock_counts (item_id, zoho_item_id, item_name, count_date, quantity_counted, notes, source, counted_by, counted_at)
+          VALUES (${itemId}, ${item[0].zoho_item_id}, ${item[0].canonical_name}, ${today}, ${qty}, ${finalNotes}, 'app', ${countedBy}, NOW())
+        `
+        await logActivity(countedBy ?? 'Unknown', 'counted stock', `${item[0].canonical_name} · qty ${qty}`)
+        if (lossNote) await logActivity(countedBy ?? 'Unknown', 'reported count loss', `${item[0].canonical_name} · counted ${qty} vs expected ${expected} — ${lossNote}`)
       }
-      await sql`
-        UPDATE stock_counts
-        SET quantity_counted = ${qty}, notes = ${finalNotes}, source = 'app', counted_by = ${countedBy}, counted_at = NOW()
-        WHERE id = ${existing.id}
-      `
-      await logActivity(countedBy ?? 'Unknown', 'counted stock', `${item[0].canonical_name} · qty ${qty} (replaced today's earlier count)`)
-      if (lossNote) await logActivity(countedBy ?? 'Unknown', 'reported count loss', `${item[0].canonical_name} · counted ${qty} vs expected ${expected} — ${lossNote}`)
-    } else {
-      await sql`
-        INSERT INTO stock_counts (item_id, zoho_item_id, item_name, count_date, quantity_counted, notes, source, counted_by, counted_at)
-        VALUES (${itemId}, ${item[0].zoho_item_id}, ${item[0].canonical_name}, ${today}, ${qty}, ${finalNotes}, 'app', ${countedBy}, NOW())
-      `
-      await logActivity(countedBy ?? 'Unknown', 'counted stock', `${item[0].canonical_name} · qty ${qty}`)
-      if (lossNote) await logActivity(countedBy ?? 'Unknown', 'reported count loss', `${item[0].canonical_name} · counted ${qty} vs expected ${expected} — ${lossNote}`)
+    } catch (dbError) {
+      console.error('Database insert/update error:', dbError)
+      return serverError('Failed to save count', String(dbError))
     }
   return success({
     ok: true,
