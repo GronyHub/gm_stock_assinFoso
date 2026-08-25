@@ -142,40 +142,40 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
   const stockBlocksExclude = currentSoh != null && Math.abs(currentSoh) > 0.001
   return (
     <div className={s.wrap}>
-      {/* Item name is now edited inline in the modal header via ItemDetailPanel */}
-      <div>
-        {large && <label className={s.label}>Item name <span className="text-red-600">*</span></label>}
-        <div className="flex items-center gap-1">
-          {!large && <input placeholder="Item name *" value={form.item_name} onChange={set('item_name')} className={s.input} />}
-          <GMCBadge gmcType={form.gmc_type} size={large ? 'medium' : 'small'} />
+      <div className="grid grid-cols-3 gap-2">
+        {/* Item name is now edited inline in the modal header via ItemDetailPanel */}
+        <div>
+          {large && <label className={s.label}>Item name <span className="text-red-600">*</span></label>}
+          <div className="flex items-center gap-1">
+            {!large && <input placeholder="Item name *" value={form.item_name} onChange={set('item_name')} className={s.input} />}
+            <GMCBadge gmcType={form.gmc_type} size={large ? 'medium' : 'small'} />
+          </div>
         </div>
-      </div>
-      <div>
-        {large && <label className={s.label}>Group</label>}
-        <select value={customGroup ? '__custom__' : form.cf_group}
-          onChange={e => {
-            if (e.target.value === '__custom__') { setCustomGroup(true); onChange({ ...form, cf_group: '' }) }
-            else { setCustomGroup(false); onChange({ ...form, cf_group: e.target.value }) }
-          }}
-          className={s.input}>
-          <option value="">— No group —</option>
-          {groups.map(g => <option key={g} value={g}>{g}</option>)}
-          <option value="__custom__">+ New group name…</option>
-        </select>
-        {customGroup && (
-          <input value={form.cf_group} onChange={set('cf_group')} placeholder="Type new group name"
-            className={s.input + (large ? ' mt-2' : '')} />
-        )}
-      </div>
-      <div>
-        {large && <label className={s.label}>Type</label>}
-        <select value={form.product_type} onChange={set('product_type')} className={s.input}>
-          <option value="">— Select type —</option>
-          <option value="goods">Good</option>
-          <option value="service">Service</option>
-        </select>
-      </div>
-      <div className={`grid grid-cols-2 ${s.fieldGap}`}>
+        <div>
+          {large && <label className={s.label}>Group</label>}
+          <select value={customGroup ? '__custom__' : form.cf_group}
+            onChange={e => {
+              if (e.target.value === '__custom__') { setCustomGroup(true); onChange({ ...form, cf_group: '' }) }
+              else { setCustomGroup(false); onChange({ ...form, cf_group: e.target.value }) }
+            }}
+            className={s.input}>
+            <option value="">— No group —</option>
+            {groups.map(g => <option key={g} value={g}>{g}</option>)}
+            <option value="__custom__">+ New group name…</option>
+          </select>
+          {customGroup && (
+            <input value={form.cf_group} onChange={set('cf_group')} placeholder="Type new group name"
+              className={s.input + (large ? ' mt-2' : '')} />
+          )}
+        </div>
+        <div>
+          {large && <label className={s.label}>Type</label>}
+          <select value={form.product_type} onChange={set('product_type')} className={s.input}>
+            <option value="">— Select type —</option>
+            <option value="goods">Good</option>
+            <option value="service">Service</option>
+          </select>
+        </div>
         <div>
           {large && <label className={s.label}>Selling price</label>}
           <input placeholder="SP" type="number" value={form.selling_rate} onChange={set('selling_rate')} className={s.input} />
@@ -184,12 +184,12 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
           {large && <label className={s.label}>Cost price</label>}
           <input placeholder="CP" type="number" value={form.purchase_rate} onChange={set('purchase_rate')} className={s.input} />
         </div>
-      </div>
-      <div className={`grid grid-cols-2 ${s.fieldGap}`}>
         <div>
           {large && <label className={s.label}>Units per pack</label>}
           <input placeholder="Units/pack" type="number" value={form.units_per_pack} onChange={set('units_per_pack')} className={s.input} />
         </div>
+      </div>
+      <div className={`grid grid-cols-2 gap-2 ${s.fieldGap}`}>
         <div>
           {large && <label className={s.label}>Unit name</label>}
           <input placeholder="Unit" value={form.unit_name} onChange={set('unit_name')} className={s.input} />
