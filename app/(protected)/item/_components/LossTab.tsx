@@ -953,26 +953,6 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   maxRows?: number
 }) {
   const [dayRows, setDayRows] = useState<DayRow[] | null>(null)
-  const [editing, setEditing] = useState(false)
-  const [form, setForm] = useState(EMPTY_FORM)
-  const [currentCountInterval, setCurrentCountInterval] = useState<string | null>(null)
-  const [currentSoh, setCurrentSoh] = useState<number | null>(null)
-  const [editError, setEditError] = useState('')
-  const [aliases, setAliases] = useState<AliasRecord[]>(currentAliases)
-  const [matches, setMatches] = useState<MatchRecord[]>(currentMatches)
-  const [saving, setSaving] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const [deleteError, setDeleteError] = useState('')
-
-  async function deleteItem() {
-    setDeleting(true); setDeleteError('')
-    const res = await fetch(`/api/items/${item.item_id}`, { method: 'DELETE' })
-    const d = await res.json().catch(() => ({}))
-    setDeleting(false)
-    if (res.ok) { setEditing(false); onMerged() }
-    else setDeleteError(d.error || 'Could not delete item.')
-  }
 
   useEffect(() => {
     fetch(`/api/losses/${item.item_id}`).then(r => r.json())
@@ -980,19 +960,9 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
       .catch(() => setDayRows([]))
   }, [item.item_id])
 
-  // Combined view for any pack-style GOOD that converts into a singles item
-  // (4x6 packs, envelope packs, ...): its row expands into a single table
-  // spanning packs -> singles -> whatever draws on those singles, so lapses
-  // anywhere in the chain are visible in one place.
   const isPackChain = item.product_type !== 'service' && item.converts_to_item_id != null
   const [targetDayRows, setTargetDayRows] = useState<DayRow[] | null>(null)
-
-  // Per-single ₵ value for this chain: the singles item's own selling price
-  // (e.g. ₵2 per envelope), falling back to the ₵20 photo-paper rule when the
-  // target has no price set.
   const [sheetPrice, setSheetPrice] = useState<number>(PAPER_SELL_PRICE)
-  // Singles item's own purchase rate -- for the WIC BOUGHT CP/PROFIT columns
-  // on the single-service pack-chain layout.
   const [sheetCP, setSheetCP] = useState<number>(0)
 
   useEffect(() => {
@@ -1014,78 +984,6 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
       .catch(() => setTargetDayRows([]))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPackChain, item.converts_to_item_id])
-
-  function startEdit() {
-    setForm({
-      item_name: item.item_name, cf_group: item.cf_group ?? '', selling_rate: item.sp ?? '', purchase_rate: item.cp ?? '',
-      units_per_pack: item.units_per_pack ?? '', unit_name: '',
-      converts_to_item_id: item.converts_to_item_id ? String(item.converts_to_item_id) : '',
-      count_excluded: false, count_cadence_days: '', count_excluded_reason: '', gmc_type: item.gmc_type ?? '', product_type: item.product_type ?? '',
-    })
-    setCurrentCountInterval(null)
-    setCurrentSoh(null)
-    setEditError('')
-    setAliases(currentAliases)
-    setMatches(currentMatches)
-    setEditing(true)
-    // The Loss ranking row this form starts from doesn't carry
-    // count_excluded/count_cadence_days (they're not part of the loss
-    // summary this whole tab is built from) -- fetched separately here so
-    // opening the form doesn't need to wait on it first.
-    fetch(`/api/items/${item.item_id}`).then(r => r.json())
-      .then(d => {
-        setForm(f => ({
-          ...f,
-          count_excluded: !!d?.count_excluded,
-          count_cadence_days: d?.count_cadence_days != null ? String(d.count_cadence_days) : '',
-          count_excluded_reason: d?.count_excluded_reason ?? '',
-        }))
-        setCurrentCountInterval(d?.count_interval ?? null)
-        setCurrentSoh(d?.calculated_soh != null ? parseFloat(d.calculated_soh) : null)
-      })
-      .catch(() => {})
-  }
-
-  async function saveEdit() {
-    setSaving(true)
-    setEditError('')
-    const res = await fetch(`/api/items/${item.item_id}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        item_name: form.item_name || undefined,
-        cf_group: form.cf_group || null,
-        selling_rate: form.selling_rate ? parseFloat(form.selling_rate) : null,
-        purchase_rate: form.purchase_rate ? parseFloat(form.purchase_rate) : null,
-        units_per_pack: form.units_per_pack ? parseFloat(form.units_per_pack) : null,
-        unit_name: form.unit_name || null,
-        converts_to_item_id: form.converts_to_item_id ? Number(form.converts_to_item_id) : null,
-        count_excluded: form.count_excluded,
-        count_cadence_days: form.count_cadence_days ? parseInt(form.count_cadence_days, 10) : null,
-        count_excluded_reason: form.count_excluded_reason || null,
-        gmc_type: form.gmc_type || null,
-      }),
-    })
-    setSaving(false)
-    const d = await res.json().catch(() => null)
-    if (!res.ok) {
-      setEditError(d?.error ?? 'Could not save changes.')
-      return
-    }
-    setEditing(false)
-    setCurrentCountInterval(d?.count_interval ?? null)
-    onSaved({
-      item_name: form.item_name || item.item_name, cf_group: form.cf_group || null, sp: form.selling_rate || item.sp, cp: form.purchase_rate || item.cp,
-      units_per_pack: form.units_per_pack || null,
-      converts_to_item_id: form.converts_to_item_id ? Number(form.converts_to_item_id) : null,
-      // Without this, the Items table's Count column (and anything else
-      // reading this row) kept showing the pre-edit cadence label until a
-      // full page reload -- the "Count every N days" field's save looked
-      // like it silently did nothing.
-      count_interval: d?.count_interval ?? null,
-      gmc_type: form.gmc_type || null,
-    })
-    onRelationsSaved(aliases, matches)
-  }
 
   const computed = dayRows ? computeRows(dayRows) : null
   const isService = item.product_type === 'service'
@@ -1575,53 +1473,6 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
               ...and {computed!.length - maxRows!} more rows
             </div>
           )}
-          </div>
-        </div>
-      )}
-      {/* Edit button and modal overlay */}
-      <div className="px-3 py-2 border-t border-gray-200 bg-white">
-        <button onClick={startEdit}
-          className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition">
-          ✏️ Edit Item
-        </button>
-      </div>
-      {editing && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setEditing(false)}>
-          <div className="bg-white rounded-lg shadow-2xl max-h-[90vh] w-[90vw] max-w-2xl overflow-y-auto"
-            onClick={e => e.stopPropagation()}>
-            <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
-              <h3 className="text-lg font-bold text-gray-900">Edit {item.item_name}</h3>
-              <button onClick={() => setEditing(false)}
-                className="text-2xl font-bold text-gray-400 hover:text-gray-600 transition">×</button>
-            </div>
-            <div className="p-4">
-              <ItemEditForm
-                form={form}
-                onChange={setForm}
-                groups={groups}
-                itemId={item.item_id}
-                isService={item.product_type === 'service'}
-                allItems={allItems}
-                size="compact"
-                currentCountInterval={currentCountInterval}
-                currentSoh={currentSoh}
-              />
-              {editError && (
-                <div className="mt-4 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-600 font-medium">
-                  {editError}
-                </div>
-              )}
-              <div className="mt-4 flex gap-2">
-                <button onClick={saveEdit} disabled={saving}
-                  className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition disabled:opacity-50">
-                  {saving ? 'Saving...' : 'Save Changes'}
-                </button>
-                <button onClick={() => setEditing(false)} disabled={saving}
-                  className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold rounded-lg transition disabled:opacity-50">
-                  Cancel
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       )}
