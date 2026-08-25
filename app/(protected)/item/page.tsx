@@ -2970,32 +2970,40 @@ function ItemHubPageInner() {
   async function submitCount(item: LiveItem, qty: number, lossExtra?: LossExtra) {
     setLiveCountSaving(true)
     setLiveCountError('')
-    const res = await fetch('/api/stock/count', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ itemId: item.id, qty, notes: '', ...(lossExtra ?? {}) }),
-    })
-    setLiveCountSaving(false)
-    if (res.ok) {
-      setLiveDailyItems(prev => prev.filter(i => i.item_id !== item.id))
-      setLiveGmcWeeklyItems(prev => prev.filter(i => i.item_id !== item.id))
-      setLiveOverdueItems(prev => prev.filter(i => i.item_id !== item.id))
-      setLiveCountQty('')
-      showToast(`✓ ${item.name} counted`, 'success')
-      return
+    try {
+      const res = await fetch('/api/stock/count', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemId: item.id, qty, notes: '', ...(lossExtra ?? {}) }),
+      })
+      setLiveCountSaving(false)
+      if (res.ok) {
+        setLiveDailyItems(prev => prev.filter(i => i.item_id !== item.id))
+        setLiveGmcWeeklyItems(prev => prev.filter(i => i.item_id !== item.id))
+        setLiveOverdueItems(prev => prev.filter(i => i.item_id !== item.id))
+        setLiveCountQty('')
+        showToast(`✓ ${item.name} counted`, 'success')
+        return
+      }
+      const d = await res.json().catch(() => null)
+      if (res.status === 409 && d?.requires_pack_count) {
+        setLivePairingPrompt({ itemName: item.name, packs: d.packs, retry: () => submitCount(item, qty, lossExtra) })
+        return
+      }
+      if (res.status === 409 && d?.requires_loss_reason) {
+        setLiveLossPrompt({ d, retry: extra => submitCount(item, qty, extra) })
+        return
+      }
+      const errMsg = d?.error ?? 'Could not save count.'
+      setLiveCountError(errMsg)
+      showToast(errMsg, 'error')
+    } catch (error) {
+      setLiveCountSaving(false)
+      const errMsg = error instanceof Error ? error.message : 'Network error - could not save count'
+      setLiveCountError(errMsg)
+      showToast(errMsg, 'error')
+      console.error('submitCount error:', error)
     }
-    const d = await res.json().catch(() => null)
-    if (res.status === 409 && d?.requires_pack_count) {
-      setLivePairingPrompt({ itemName: item.name, packs: d.packs, retry: () => submitCount(item, qty, lossExtra) })
-      return
-    }
-    if (res.status === 409 && d?.requires_loss_reason) {
-      setLiveLossPrompt({ d, retry: extra => submitCount(item, qty, extra) })
-      return
-    }
-    const errMsg = d?.error ?? 'Could not save count.'
-    setLiveCountError(errMsg)
-    showToast(errMsg, 'error')
   }
 
   // Groups/conversion-target list ItemEditForm needs, derived from the
