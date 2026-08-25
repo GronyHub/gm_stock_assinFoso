@@ -1578,6 +1578,53 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
           </div>
         </div>
       )}
+      {/* Edit button and modal overlay */}
+      <div className="px-3 py-2 border-t border-gray-200 bg-white">
+        <button onClick={startEdit}
+          className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition">
+          ✏️ Edit Item
+        </button>
+      </div>
+      {editing && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setEditing(false)}>
+          <div className="bg-white rounded-lg shadow-2xl max-h-[90vh] w-[90vw] max-w-2xl overflow-y-auto"
+            onClick={e => e.stopPropagation()}>
+            <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
+              <h3 className="text-lg font-bold text-gray-900">Edit {item.item_name}</h3>
+              <button onClick={() => setEditing(false)}
+                className="text-2xl font-bold text-gray-400 hover:text-gray-600 transition">×</button>
+            </div>
+            <div className="p-4">
+              <ItemEditForm
+                form={form}
+                onChange={setForm}
+                groups={groups}
+                itemId={item.item_id}
+                isService={item.product_type === 'service'}
+                allItems={allItems}
+                size="compact"
+                currentCountInterval={currentCountInterval}
+                currentSoh={currentSoh}
+              />
+              {editError && (
+                <div className="mt-4 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-600 font-medium">
+                  {editError}
+                </div>
+              )}
+              <div className="mt-4 flex gap-2">
+                <button onClick={saveEdit} disabled={saving}
+                  className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition disabled:opacity-50">
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </button>
+                <button onClick={() => setEditing(false)} disabled={saving}
+                  className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold rounded-lg transition disabled:opacity-50">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
