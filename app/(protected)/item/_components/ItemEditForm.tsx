@@ -142,10 +142,11 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
   const stockBlocksExclude = currentSoh != null && Math.abs(currentSoh) > 0.001
   return (
     <div className={s.wrap}>
+      {/* Item name is now edited inline in the modal header via ItemDetailPanel */}
       <div>
         {large && <label className={s.label}>Item name <span className="text-red-600">*</span></label>}
         <div className="flex items-center gap-1">
-          <input placeholder="Item name *" value={form.item_name} onChange={set('item_name')} className={s.input} />
+          {!large && <input placeholder="Item name *" value={form.item_name} onChange={set('item_name')} className={s.input} />}
           <GMCBadge gmcType={form.gmc_type} size={large ? 'medium' : 'small'} />
         </div>
       </div>
