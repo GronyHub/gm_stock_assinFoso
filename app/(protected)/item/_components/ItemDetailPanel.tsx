@@ -37,6 +37,8 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
   const [gainOnly, setGainOnly] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [dataFetched, setDataFetched] = useState(false)
+  const [editingName, setEditingName] = useState(false)
+  const [editNameValue, setEditNameValue] = useState('')
 
   useEffect(() => {
     if (collapsed && !expanded) return
@@ -113,15 +115,71 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
     onExpand?.()
   }
 
+  async function saveItemName() {
+    if (!editNameValue.trim() || editNameValue === item?.item_name) {
+      setEditingName(false)
+      return
+    }
+    if (!item) return
+    try {
+      const res = await fetch(`/api/items/${item.item_id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ item_name: editNameValue })
+      })
+      if (res.ok) {
+        setRows(prev => prev.map(r => r.item_id === item.item_id ? { ...r, item_name: editNameValue } : r))
+        setEditingName(false)
+      }
+    } catch (e) {
+      console.error('Failed to save item name:', e)
+    }
+  }
+
+  function startEditName() {
+    if (!item) return
+    setEditNameValue(item.item_name)
+    setEditingName(true)
+  }
+
   return (
     <div className="overflow-x-auto">
       <div className="px-3 py-3 bg-white border-b border-gray-200 flex items-center justify-between">
-        <p className="text-lg font-bold text-red-600 truncate">{item.item_name}</p>
-        {collapsed && !expanded && (
-          <button onClick={handleExpand}
-            className="text-xs font-semibold text-blue-600 hover:underline whitespace-nowrap ml-2">
-            Expand ▼
-          </button>
+        {editingName ? (
+          <div className="flex items-center gap-2 flex-1">
+            <input
+              autoFocus
+              type="text"
+              value={editNameValue}
+              onChange={e => setEditNameValue(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') saveItemName()
+                if (e.key === 'Escape') setEditingName(false)
+              }}
+              className="flex-1 text-lg font-bold text-red-600 bg-white border border-red-400 rounded px-2 py-1 outline-none focus:ring-2 focus:ring-red-400"
+            />
+            <button onClick={saveItemName} className="text-sm font-semibold text-green-600 hover:text-green-700">✓</button>
+            <button onClick={() => setEditingName(false)} className="text-sm font-semibold text-gray-400 hover:text-gray-600">✕</button>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center gap-2">
+              <p className="text-lg font-bold text-red-600 truncate">{item.item_name}</p>
+              <button
+                onClick={startEditName}
+                title="Edit item name"
+                className="text-xs font-bold text-gray-400 hover:text-blue-600 hover:bg-blue-50 w-6 h-6 rounded flex items-center justify-center transition"
+              >
+                ✎
+              </button>
+            </div>
+            {collapsed && !expanded && (
+              <button onClick={handleExpand}
+                className="text-xs font-semibold text-blue-600 hover:underline whitespace-nowrap ml-2">
+                Expand ▼
+              </button>
+            )}
+          </>
         )}
       </div>
       {showFilters && (
