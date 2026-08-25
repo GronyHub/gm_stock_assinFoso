@@ -5250,8 +5250,8 @@ function ItemHubPageInner() {
                         onClick={() => openEditGridItem(item.id)}
                         className={`relative flex flex-col border-r border-b group cursor-pointer ${overdue ? 'bg-red-50 border-red-100 hover:bg-red-100' : 'bg-amber-50 border-amber-100 hover:bg-amber-100'} transition`}
                       >
-                        <div className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide ${overdue ? 'bg-red-600' : 'bg-amber-500'}`}>
-                          ⚠ COUNT NOW {overdue ? `· ${due.label} OVERDUE` : `· ${due.label}`}
+                        <div className={`px-2 py-1 text-[8px] font-extrabold text-white tracking-wide flex items-center justify-between gap-2 whitespace-nowrap ${overdue ? 'bg-red-600' : 'bg-amber-500'}`}>
+                          <span className="truncate">⚠ COUNT NOW · {due.label} {overdue ? 'OVERDUE' : ''}</span>
                         </div>
                         <div className="px-1 py-0.5 flex flex-col">
                           <div className={`text-[11px] font-semibold leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : ''}`}>
@@ -5595,8 +5595,8 @@ function ItemHubPageInner() {
                       below, so entering one never gets mistaken for the other. */}
                   {due && (
                     <div className={`mx-4 mt-4 rounded-xl border overflow-hidden ${due.level === 'overdue' ? 'border-red-300' : 'border-amber-300'}`}>
-                      <div className={`px-3 py-1.5 text-xs font-extrabold text-white ${due.level === 'overdue' ? 'bg-red-600' : 'bg-amber-500'}`}>
-                        ⚠ COUNT NOW — {due.level === 'overdue' ? `${due.label} overdue` : due.label}
+                      <div className={`px-3 py-1.5 text-xs font-extrabold text-white flex items-center justify-between gap-2 whitespace-nowrap ${due.level === 'overdue' ? 'bg-red-600' : 'bg-amber-500'}`}>
+                        <span className="truncate">⚠ COUNT NOW · {due.label} {due.level === 'overdue' ? 'OVERDUE' : ''}</span>
                       </div>
                       <div className={`p-3 space-y-2 ${due.level === 'overdue' ? 'bg-red-50' : 'bg-amber-50'}`}>
                         <p className="text-xs text-gray-600">System expects <b>{expected}</b> on the shelf.</p>
