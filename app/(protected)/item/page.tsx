@@ -2282,8 +2282,11 @@ function ItemHubPageInner() {
   useEffect(() => {
     fetch('/api/sales/live-taps')
       .then(r => r.json())
-      .then(d => { setLiveTaps(Array.isArray(d) ? d : []) })
-      .catch(() => {})
+      .then(d => {
+        const taps = Array.isArray(d) ? d.filter((t): t is Tap => t != null) : []
+        setLiveTaps(taps)
+      })
+      .catch(() => setLiveTaps([]))
   }, [])
 
   // Sale mode's 3 due-count queues (COUNT NOW block + inline count field) --
@@ -5163,9 +5166,9 @@ function ItemHubPageInner() {
               <div className="flex-1 overflow-y-auto px-4 py-4">
                 {(() => {
                   try {
-                    const validTaps = liveTaps.filter(t => !t.undone)
+                    const validTaps = (liveTaps || []).filter((t): t is Tap => t != null && !t.undone)
                     const todayTaps = validTaps.filter(t => t.tapped_at.startsWith(liveToday))
-                    const totalRevenue = todayTaps.reduce((sum, t) => sum + Number(t.price) * t.quantity, 0)
+                    const totalRevenue = (todayTaps || []).reduce((sum, t) => t ? sum + Number(t.price) * t.quantity : sum, 0)
                     const totalQuantity = todayTaps.reduce((sum, t) => sum + t.quantity, 0)
                     const uniqueItems = new Set(todayTaps.map(t => t.item_id)).size
 
