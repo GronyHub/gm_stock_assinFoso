@@ -167,10 +167,10 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
               <p className="text-lg font-bold text-red-600 truncate">{item.item_name}</p>
               <button
                 onClick={startEditName}
-                title="Tap to edit item name"
-                className="text-2xl font-bold text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1 rounded transition"
+                title="Click to edit item name"
+                className="text-xl font-bold text-red-600 hover:text-red-800 hover:bg-red-100 px-2 py-1 rounded transition whitespace-nowrap"
               >
-                ✎ EDIT
+                ✎
               </button>
             </div>
             {collapsed && !expanded && (
