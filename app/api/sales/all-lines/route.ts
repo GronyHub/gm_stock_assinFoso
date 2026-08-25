@@ -15,16 +15,17 @@ export async function GET(req: NextRequest) {
   try {
     const rows = await sql`
       SELECT
-        id,
-        receipt_id,
-        item_id,
-        COALESCE(resolved_name, raw_item_name) AS item_name,
-        quantity,
-        item_price,
-        item_total,
-        usage_unit
-      FROM sales_receipt_lines
-      ORDER BY receipt_id, id
+        srl.id,
+        srl.receipt_id,
+        srl.item_id,
+        COALESCE(i.canonical_name, srl.resolved_name, srl.raw_item_name) AS item_name,
+        srl.quantity,
+        srl.item_price,
+        srl.item_total,
+        srl.usage_unit
+      FROM sales_receipt_lines srl
+      LEFT JOIN items i ON i.id = srl.item_id
+      ORDER BY srl.receipt_id, srl.id
       LIMIT ${limit}
       OFFSET ${offset}
     `
