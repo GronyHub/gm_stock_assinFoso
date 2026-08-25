@@ -1473,7 +1473,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                       : lossVal < -0.01 ? <span className="text-green-600">+{fmtN(Math.abs(lossVal))}</span>
                       : <span className="text-gray-400">0</span>}
                   </td>}
-                  <td className="px-1 py-0 text-right text-gray-600">{fmtQs(row.gmc_qty)}</td>
+                  {!isService && <td className="px-1 py-0 text-right text-gray-600">{fmtQs(row.gmc_qty)}</td>}
                   {!isService && <td className="px-1 py-0 text-right text-blue-500">{fmtQs(row.sell_price)}</td>}
                   {!isService && <td className="px-1 py-0 text-right text-blue-600">{fmtQs(row.bills_qty)}</td>}
                   <td className="px-1 py-0 text-purple-700 font-medium">
@@ -1514,7 +1514,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
               {!isService && <th className="px-1 py-0 text-right">L/G</th>}
               {!isService && <th className="px-1 py-0 text-right">Cnt</th>}
               <th className="px-1 py-0 text-right">WIC</th>
-              <th className="px-1 py-0 text-right">GMC</th>
+              {!isService && <th className="px-1 py-0 text-right">GMC</th>}
               {!isService && <th className="px-1 py-0 text-right">SP</th>}
               {!isService && <th className="px-1 py-0 text-right">BL</th>}
               {!isService && <th className="px-1 py-0 text-right" title="Converted in from another item's GMC take">CNV</th>}
