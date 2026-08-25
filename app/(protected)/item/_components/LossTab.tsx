@@ -376,7 +376,7 @@ function SingleServicePackChainTable({
   return (
     <>
       <p className="text-[8px] font-bold text-gray-500 px-1.5 py-1 bg-gray-50 border-b border-gray-200">
-        Combined view: {item.item_name} → {targetName} → service
+        Pack chain: → {targetName} → service
       </p>
       {/* width: max-content (not a manually-summed pixel value, and not left
           unset) -- table-layout: fixed with width:auto doesn't reliably
@@ -405,7 +405,7 @@ function SingleServicePackChainTable({
         <thead className="sticky top-0 z-10">
           <tr className="text-gray-800 font-bold">
             <th rowSpan={2} className="py-0.5 border-b-2 border-gray-500 text-left pl-0.5 align-bottom sticky left-0 z-20 bg-slate-600 text-white">DATE</th>
-            <th colSpan={packColSpan} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-amber-600 bg-amber-500">{item.item_name}</th>
+            <th colSpan={packColSpan} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-amber-600 bg-amber-500">Packs</th>
             <th colSpan={singlesColSpan} className="py-0.5 border-b border-gray-400 text-center border-l-2 border-l-indigo-600 bg-indigo-500 text-white">{targetName}</th>
             <th rowSpan={2} className="py-0.5 border-b-2 border-gray-500 text-center align-bottom border-l-2 border-l-gray-600 leading-tight bg-slate-600 text-white"
               title={`TOTAL LOSS/GAIN AMOUNT — combined ₵ for the row: pack side (packs × singles-per-pack × ₵${sheetPrice}) plus the singles side's own USED/PACK cycle ₵.`}>
@@ -1160,7 +1160,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
         ) : (
           <>
             <p className="text-[7px] font-bold text-gray-500 px-1 py-0.5 bg-gray-50 border-b border-gray-200">
-              Combined view: {item.item_name} <span className="text-gray-400">(ID: {item.item_id})</span> → {targetName} → services
+              Pack chain: → {targetName} → services
             </p>
             <table className="table-fixed border-collapse text-[7px]"
               style={{ width: `${48 + 2 * 40 + 10 * 28 + packChainBreakdownNames.length * 48 + 44 + 48 + 56 + 48 + 2 * 56}px` }}>
@@ -1192,7 +1192,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                 <tr className="bg-amber-500 text-gray-800 font-bold">
                   <th rowSpan={2} className="py-0 border-b border-gray-400 text-left pl-0.5 align-bottom sticky left-0 z-20 bg-amber-500 text-[6px]">DATE</th>
                   <th colSpan={7} className="py-0 border-b border-gray-400 text-center border-l border-l-gray-600 text-[6px]">
-                    {item.item_name} <span className="text-gray-400">(ID: {item.item_id})</span>
+                    Packs
                   </th>
                   <th colSpan={8 + packChainBreakdownNames.length} className="py-0 border-b border-gray-400 text-center border-l border-l-gray-600 text-[6px]">
                     {targetName}
