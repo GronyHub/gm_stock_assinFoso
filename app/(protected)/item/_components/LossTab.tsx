@@ -1406,9 +1406,6 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
         <p className="text-sm text-gray-400 text-center py-6">No activity.</p>
       ) : showBreakdown ? (
         <div>
-          <p className="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-50 border-b border-gray-200">
-            {item.item_name} <span className="text-gray-400 font-normal">(ID: {item.item_id})</span>
-          </p>
           <div className={`overflow-x-auto rounded-b-lg ${maxRows ? 'overflow-y-auto max-h-96' : ''}`}>
           <table className="w-full border-collapse text-[9px] tabular-nums">
           <thead>
@@ -1502,9 +1499,6 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
         </div>
       ) : (
         <div>
-          <p className="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-50 border-b border-gray-200">
-            {item.item_name} <span className="text-gray-400 font-normal">(ID: {item.item_id})</span>
-          </p>
           <div className={`overflow-x-auto rounded-b-lg ${maxRows ? 'overflow-y-auto max-h-96' : ''}`}>
           <table className="w-full border-collapse text-[9px] tabular-nums">
             <thead>
