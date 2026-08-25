@@ -2353,8 +2353,8 @@ function ItemHubPageInner() {
   const liveToday = new Date().toISOString().slice(0, 10)
   const liveSalesCounts = useMemo(() => {
     const counts = new Map<number, number>()
-    for (const tap of liveTaps) {
-      if (!tap.undone) {
+    for (const tap of (liveTaps || [])) {
+      if (tap && !tap.undone) {
         counts.set(tap.item_id, (counts.get(tap.item_id) ?? 0) + tap.quantity)
       }
     }
@@ -4404,7 +4404,7 @@ function ItemHubPageInner() {
 
                     {/* Table rows grouped by date */}
                     {liveTapsByDate.map(([date, dateTaps]) => {
-                      const dateTotal = dateTaps.filter(t => !t.undone).reduce((s, t) => s + Number(t.price) * t.quantity, 0)
+                      const dateTotal = (dateTaps || []).filter((t): t is Tap => t != null && !t.undone).reduce((s, t) => s + Number(t.price) * t.quantity, 0)
                       return (
                         <div key={date}>
                           {/* Date header */}
@@ -4423,7 +4423,7 @@ function ItemHubPageInner() {
                               doesn't need the column stretched wide to read it;
                               every other cell stays single-line and centers
                               within whatever height that Item cell grows the row to. */}
-                          {dateTaps.map((tap, i) => {
+                          {(dateTaps || []).filter((t): t is Tap => t != null).map((tap, i) => {
                             // Gap = time since the previous (chronologically
                             // earlier) tap -- dateTaps is newest-first, so that's
                             // index i+1. The day's oldest tap (i at the end of the
@@ -4434,8 +4434,9 @@ function ItemHubPageInner() {
                             // shown instead of its since-previous-tap gap since
                             // that's the more useful number for the final sale of
                             // the day.
+                            const filteredTaps = (dateTaps || []).filter((t): t is Tap => t != null)
                             const bounds = liveDayBounds[date]
-                            const isOldest = i === dateTaps.length - 1
+                            const isOldest = i === filteredTaps.length - 1
                             const isNewest = i === 0
                             let gapMins: number | null = null
                             if (isNewest && bounds?.closeTime) {
@@ -4443,7 +4444,7 @@ function ItemHubPageInner() {
                             } else if (isOldest && bounds?.openTime) {
                               gapMins = (new Date(tap.tapped_at).getTime() - new Date(bounds.openTime).getTime()) / 60000
                             } else {
-                              const prevTap = dateTaps[i + 1]
+                              const prevTap = filteredTaps[i + 1]
                               if (prevTap) gapMins = (new Date(tap.tapped_at).getTime() - new Date(prevTap.tapped_at).getTime()) / 60000
                             }
                             return (
