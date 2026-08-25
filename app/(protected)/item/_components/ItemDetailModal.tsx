@@ -15,9 +15,6 @@ export default function ItemDetailModal({ itemId, onClose }: { itemId: number; o
         className="w-full bg-white rounded-t-2xl shadow-xl max-h-[92dvh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
-        <div className="px-4 py-2 bg-yellow-300 border-b border-yellow-500">
-          <p className="text-sm font-bold text-red-900">⚠️ THIS IS ItemDetailModal - Claude is working on THIS modal ✓</p>
-        </div>
         <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
           <h3 className="text-sm font-bold text-gray-900">Item Details</h3>
           <button
