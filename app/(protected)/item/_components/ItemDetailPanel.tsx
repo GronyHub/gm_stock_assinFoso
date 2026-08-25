@@ -143,13 +143,17 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto border-8 border-red-600">
+      <div className="px-3 py-2 bg-red-600 text-white text-sm font-bold">
+        🔴 ITEMDETAILPANEL DEBUG - THIS SHOULD SHOW RED BOX AROUND ENTIRE PANEL 🔴
+      </div>
       <div className="px-3 py-1 bg-red-100 border-b border-red-300 text-red-700 text-xs font-bold">
         [DEBUG] ItemDetailPanel Loaded ✓
       </div>
-      <div className="px-3 py-3 bg-white border-b border-gray-200 flex items-center justify-between">
+      <div className="px-3 py-3 bg-white border-b-8 border-b-cyan-500 flex items-center justify-between">
+        <div className="text-xs font-bold text-cyan-600 mb-2">✏️ PENCIL EDIT SECTION - SHOULD SHOW CYAN BORDER ✏️</div>
         {editingName ? (
-          <div className="flex items-center gap-2 flex-1">
+          <div className="flex items-center gap-2 flex-1 bg-pink-100 p-2 rounded border-2 border-pink-500">
             <input
               autoFocus
               type="text"
@@ -166,12 +170,12 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
           </div>
         ) : (
           <>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 bg-cyan-50 p-2 rounded border-2 border-cyan-300">
               <p className="text-lg font-bold text-red-600 truncate">{item.item_name}</p>
               <button
                 onClick={startEditName}
-                title="Edit item name"
-                className="text-xs font-bold text-gray-400 hover:text-blue-600 hover:bg-blue-50 w-6 h-6 rounded flex items-center justify-center transition"
+                title="Edit item name - CLICK ME TO EDIT"
+                className="text-lg font-bold text-blue-600 hover:text-blue-800 hover:bg-blue-100 w-8 h-8 rounded flex items-center justify-center transition border-2 border-blue-400"
               >
                 ✎
               </button>
