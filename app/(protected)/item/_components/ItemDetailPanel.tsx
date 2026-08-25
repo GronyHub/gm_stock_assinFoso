@@ -144,6 +144,9 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
 
   return (
     <div className="overflow-x-auto">
+      <div className="px-3 py-1 bg-red-100 border-b border-red-300 text-red-700 text-xs font-bold">
+        [DEBUG] ItemDetailPanel Loaded ✓
+      </div>
       <div className="px-3 py-3 bg-white border-b border-gray-200 flex items-center justify-between">
         {editingName ? (
           <div className="flex items-center gap-2 flex-1">

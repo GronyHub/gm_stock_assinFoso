@@ -1135,6 +1135,9 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
     // (w-max) instead of clipping it (overflow-hidden), so the detail panel
     // can scroll sideways while the frozen DATE column stays put.
     <div className={`bg-white border border-gray-200 rounded-lg mt-0 ${isPackChain ? 'w-max min-w-full' : 'overflow-hidden'}`}>
+      <div className="px-3 py-1 bg-blue-100 border-b border-blue-300 text-blue-700 text-xs font-bold">
+        [DEBUG] ItemDetail Loaded ✓
+      </div>
 
       {/* detail table -- the Available/Used narrative format is only for items
           where 2+ services share stock (e.g. 4x6 singles); every other item
