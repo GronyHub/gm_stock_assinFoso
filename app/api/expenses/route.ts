@@ -35,7 +35,6 @@ export async function GET(req: NextRequest) {
     // explicit ?limit caps the result now.
     const limit = Math.min(Number(url.searchParams.get('limit')) || 50000, 50000)
     const offset = Math.max(Number(url.searchParams.get('offset')) || 0, 0)
-    const since = url.searchParams.get('since')
 
     await ensureDbInitialized()
     await ensureExpensePropertyColumns()
@@ -49,11 +48,9 @@ export async function GET(req: NextRequest) {
           e.is_property, COALESCE(ep.property_status, 'at_shop') AS property_status,
           ep.property_type, ep.availability, ep.working, ep.location, ep.not_working_reason, ep.not_available_reason,
           e.expense_group, e.entered_by, e.source, e.source_sheet,
-          e.is_related_expense, e.related_to_property_id, e.related_expense_reasons,
-          e.updated_at
+          e.is_related_expense, e.related_to_property_id, e.related_expense_reasons
         FROM expenses e
         LEFT JOIN expense_properties ep ON ep.expense_id = e.id
-        ${since ? sql`WHERE e.updated_at > ${since}::timestamp` : sql``}
         ORDER BY e.expense_date DESC, e.id DESC
         LIMIT ${limit}
         OFFSET ${offset}
@@ -72,11 +69,9 @@ export async function GET(req: NextRequest) {
           e.is_property, COALESCE(ep.property_status, 'at_shop') AS property_status,
           ep.property_type, ep.availability, ep.working, ep.location, ep.not_working_reason, ep.not_available_reason,
           e.expense_group, NULL AS entered_by, e.source, e.source_sheet,
-          e.is_related_expense, e.related_to_property_id, e.related_expense_reasons,
-          e.updated_at
+          e.is_related_expense, e.related_to_property_id, e.related_expense_reasons
         FROM expenses e
         LEFT JOIN expense_properties ep ON ep.expense_id = e.id
-        ${since ? sql`WHERE e.updated_at > ${since}::timestamp` : sql``}
         ORDER BY e.expense_date DESC, e.id DESC
         LIMIT ${limit}
         OFFSET ${offset}
