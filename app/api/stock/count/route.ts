@@ -85,18 +85,18 @@ export async function POST(req: NextRequest) {
           itemId: Number(itemId),
           countDate: today,
           oldQty: existing.quantity_counted,
-        oldCountedBy: existing.counted_by,
-        changedBy: countedBy,
-      })
-    }
-    await sql`
-      UPDATE stock_counts
-      SET quantity_counted = ${qty}, notes = ${finalNotes}, source = 'app', counted_by = ${countedBy}, counted_at = NOW()
-      WHERE id = ${existing.id}
-    `
-    await logActivity(countedBy ?? 'Unknown', 'counted stock', `${item[0].canonical_name} · qty ${qty} (replaced today's earlier count)`)
-    if (lossNote) await logActivity(countedBy ?? 'Unknown', 'reported count loss', `${item[0].canonical_name} · counted ${qty} vs expected ${expected} — ${lossNote}`)
-  } else {
+          oldCountedBy: existing.counted_by,
+          changedBy: countedBy,
+        })
+      }
+      await sql`
+        UPDATE stock_counts
+        SET quantity_counted = ${qty}, notes = ${finalNotes}, source = 'app', counted_by = ${countedBy}, counted_at = NOW()
+        WHERE id = ${existing.id}
+      `
+      await logActivity(countedBy ?? 'Unknown', 'counted stock', `${item[0].canonical_name} · qty ${qty} (replaced today's earlier count)`)
+      if (lossNote) await logActivity(countedBy ?? 'Unknown', 'reported count loss', `${item[0].canonical_name} · counted ${qty} vs expected ${expected} — ${lossNote}`)
+    } else {
     await sql`
       INSERT INTO stock_counts (item_id, zoho_item_id, item_name, count_date, quantity_counted, notes, source, counted_by, counted_at)
       VALUES (${itemId}, ${item[0].zoho_item_id}, ${item[0].canonical_name}, ${today}, ${qty}, ${finalNotes}, 'app', ${countedBy}, NOW())
