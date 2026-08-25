@@ -24,61 +24,69 @@ function redact(rows: any[], canSeeAmounts: boolean) {
 export async function GET(req: NextRequest) {
   const { session, error } = await requireAuth()
   if (error) return success([])
-  const canSeeAmounts = hasFeature(session!.user as any, 'confidential_expenses', await getUserPermissionsMap())
-
-  const url = new URL(req.url)
-  // Every caller (ExpensesTab, PropertiesPage, expenses/page.tsx) fetches
-  // this with no limit/offset -- they want the full expense history, so a
-  // low default silently hid everything older than the cap. Only an
-  // explicit ?limit caps the result now.
-  const limit = Math.min(Number(url.searchParams.get('limit')) || 50000, 50000)
-  const offset = Math.max(Number(url.searchParams.get('offset')) || 0, 0)
-  const since = url.searchParams.get('since')
-
-  await ensureDbInitialized()
-  await ensureExpensePropertyColumns()
 
   try {
-    await ensureSchema()
-    const rows = await sql`
-      SELECT
-        e.id, e.expense_date::date AS expense_date, e.expense_account,
-        e.description, e.cf_justify, e.vendor_name, e.amount, e.cf_expense_type,
-        e.is_property, COALESCE(ep.property_status, 'at_shop') AS property_status,
-        ep.property_type, ep.availability, ep.working, ep.location, ep.not_working_reason, ep.not_available_reason,
-        e.expense_group, e.entered_by, e.source, e.source_sheet,
-        e.is_related_expense, e.related_to_property_id, e.related_expense_reasons,
-        e.updated_at
-      FROM expenses e
-      LEFT JOIN expense_properties ep ON ep.expense_id = e.id
-      ${since ? sql`WHERE e.updated_at > ${since}::timestamp` : sql``}
-      ORDER BY e.expense_date DESC, e.id DESC
-      LIMIT ${limit}
-      OFFSET ${offset}
-    `
-    if (rows.length === limit) {
-      console.warn(`expenses: hit the ${limit}-row cap -- results may be truncated, raise the cap`)
+    const canSeeAmounts = hasFeature(session!.user as any, 'confidential_expenses', await getUserPermissionsMap())
+
+    const url = new URL(req.url)
+    // Every caller (ExpensesTab, PropertiesPage, expenses/page.tsx) fetches
+    // this with no limit/offset -- they want the full expense history, so a
+    // low default silently hid everything older than the cap. Only an
+    // explicit ?limit caps the result now.
+    const limit = Math.min(Number(url.searchParams.get('limit')) || 50000, 50000)
+    const offset = Math.max(Number(url.searchParams.get('offset')) || 0, 0)
+    const since = url.searchParams.get('since')
+
+    await ensureDbInitialized()
+    await ensureExpensePropertyColumns()
+
+    try {
+      await ensureSchema()
+      const rows = await sql`
+        SELECT
+          e.id, e.expense_date::date AS expense_date, e.expense_account,
+          e.description, e.cf_justify, e.vendor_name, e.amount, e.cf_expense_type,
+          e.is_property, COALESCE(ep.property_status, 'at_shop') AS property_status,
+          ep.property_type, ep.availability, ep.working, ep.location, ep.not_working_reason, ep.not_available_reason,
+          e.expense_group, e.entered_by, e.source, e.source_sheet,
+          e.is_related_expense, e.related_to_property_id, e.related_expense_reasons,
+          e.updated_at
+        FROM expenses e
+        LEFT JOIN expense_properties ep ON ep.expense_id = e.id
+        ${since ? sql`WHERE e.updated_at > ${since}::timestamp` : sql``}
+        ORDER BY e.expense_date DESC, e.id DESC
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `
+      if (rows.length === limit) {
+        console.warn(`expenses: hit the ${limit}-row cap -- results may be truncated, raise the cap`)
+      }
+      return success(redact(rows, canSeeAmounts))
+    } catch (e) {
+      console.error('First query failed, retrying without entered_by:', e)
+      await ensureSchema()
+      const rows = await sql`
+        SELECT
+          e.id, e.expense_date::date AS expense_date, e.expense_account,
+          e.description, e.cf_justify, e.vendor_name, e.amount, e.cf_expense_type,
+          e.is_property, COALESCE(ep.property_status, 'at_shop') AS property_status,
+          ep.property_type, ep.availability, ep.working, ep.location, ep.not_working_reason, ep.not_available_reason,
+          e.expense_group, NULL AS entered_by, e.source, e.source_sheet,
+          e.is_related_expense, e.related_to_property_id, e.related_expense_reasons,
+          e.updated_at
+        FROM expenses e
+        LEFT JOIN expense_properties ep ON ep.expense_id = e.id
+        ${since ? sql`WHERE e.updated_at > ${since}::timestamp` : sql``}
+        ORDER BY e.expense_date DESC, e.id DESC
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `
+      return success(redact(rows, canSeeAmounts))
     }
-    return success(redact(rows, canSeeAmounts))
-  } catch {
-    await ensureSchema()
-    const rows = await sql`
-      SELECT
-        e.id, e.expense_date::date AS expense_date, e.expense_account,
-        e.description, e.cf_justify, e.vendor_name, e.amount, e.cf_expense_type,
-        e.is_property, COALESCE(ep.property_status, 'at_shop') AS property_status,
-        ep.property_type, ep.availability, ep.working, ep.location, ep.not_working_reason, ep.not_available_reason,
-        e.expense_group, NULL AS entered_by, e.source, e.source_sheet,
-        e.is_related_expense, e.related_to_property_id, e.related_expense_reasons,
-        e.updated_at
-      FROM expenses e
-      LEFT JOIN expense_properties ep ON ep.expense_id = e.id
-      ${since ? sql`WHERE e.updated_at > ${since}::timestamp` : sql``}
-      ORDER BY e.expense_date DESC, e.id DESC
-      LIMIT ${limit}
-      OFFSET ${offset}
-    `
-    return success(redact(rows, canSeeAmounts))
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e)
+    console.error('Expenses GET failed:', message)
+    return handleError('expenses GET', e)
   }
 }
 

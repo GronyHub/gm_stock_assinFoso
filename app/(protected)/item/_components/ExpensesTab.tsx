@@ -667,6 +667,7 @@ type PropTab = 'all' | 'available' | 'away'
 export default function ExpensesTab({ search, onFlagCountChange }: Props) {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [groupBy, setGroupBy] = useState<'none' | 'account' | 'vendor'>('none')
   const [showHistory, setShowHistory] = useState(false)
   const [showAccountsManager, setShowAccountsManager] = useState(false)
@@ -718,9 +719,25 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
 
   function loadExpenses() {
     fetch('/api/expenses')
-      .then(r => r.json())
-      .then(data => { setExpenses(Array.isArray(data) ? data : []); setLoading(false) })
-      .catch(() => setLoading(false))
+      .then(async r => {
+        const data = await r.json()
+        if (!r.ok) {
+          console.error('Expenses API error:', r.status, data)
+          setError(typeof data?.error === 'string' ? data.error : `API error: ${r.status}`)
+          setExpenses([])
+          setLoading(false)
+          return
+        }
+        setExpenses(Array.isArray(data) ? data : [])
+        setError(null)
+        setLoading(false)
+      })
+      .catch(err => {
+        console.error('Expenses fetch failed:', err)
+        setError(`Connection error: ${err instanceof Error ? err.message : String(err)}`)
+        setExpenses([])
+        setLoading(false)
+      })
   }
 
   function saveCustomViewName(viewKey: string, customLabel: string) {
@@ -1082,6 +1099,17 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
   }
 
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
+
+  if (error) return (
+    <div className="p-4 m-4 bg-red-50 border border-red-200 rounded-lg">
+      <p className="text-sm font-semibold text-red-900 mb-2">Unable to Load Expenses</p>
+      <p className="text-xs text-red-700 font-mono bg-red-100 p-2 rounded mb-2">{error}</p>
+      <button onClick={() => { setError(null); setLoading(true); loadExpenses() }}
+        className="px-3 py-1 text-xs font-semibold bg-red-600 text-white rounded hover:bg-red-700">
+        Retry
+      </button>
+    </div>
+  )
 
   const flagButtons: { key: 'similar' | 'bundled' | 'no_vendor' | 'properties_no_location'; letter: string; label: string; description: string }[] = [
     { key: 'similar', letter: 'S', label: 'Similar Account Names', description: 'Account names that are close variations of each other (e.g., "Office Expense" vs "Office Expenses") — likely duplicates entered different ways.' },
