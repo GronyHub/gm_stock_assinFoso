@@ -5622,7 +5622,11 @@ function ItemHubPageInner() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => enteredCount !== null && submitCount(liveSelectedItem, enteredCount)}
+                            onClick={() => {
+                              if (enteredCount !== null && !isNaN(enteredCount)) {
+                                submitCount(liveSelectedItem, enteredCount)
+                              }
+                            }}
                             disabled={liveCountQty === '' || liveCountSaving}
                             className={`shrink-0 px-3 py-2 text-white text-sm font-semibold rounded-lg transition disabled:opacity-50 ${countShort ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'}`}
                           >
