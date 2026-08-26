@@ -300,6 +300,12 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
   const promptLoss = (d: any, retry: (extra: LossExtra) => void) => setLossPrompt({ d, retry })
   const [pairingPrompt, setPairingPrompt] = useState<PairingPrompt | null>(null)
   const promptPairing = (itemName: string, packs: PackRef[], retry: () => void) => setPairingPrompt({ itemName, packs, retry })
+    
+  // Check if there are any items that can be counted (exclude services)
+  const hasCountableItems = useMemo(() => {
+    return items.some(i => i.product_type !== 'service' && !/^service/i.test(i.cf_group ?? '') && !/^service/i.test(i.item_name))
+  }, [items])
+
   const [debugLogs, setDebugLogs] = useState<string[]>([])
   const addLog = (msg: string) => {
     console.log(msg)
@@ -421,10 +427,12 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
         {lossPrompt && <LossDialog prompt={lossPrompt} onClose={() => setLossPrompt(null)} onFixRecords={onFixRecords} />}
         {pairingPrompt && <PairingDialog prompt={pairingPrompt} onClose={() => setPairingPrompt(null)} />}
         <div className="flex justify-end px-2 pb-1">
-          <button onClick={() => setShowManual(v => !v)}
-            className="text-[9px] font-semibold px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-500 transition">
-            {showManual ? '× Close' : '+ Manual Count'}
-          </button>
+          {hasCountableItems && (
+            <button onClick={() => setShowManual(v => !v)}
+              className="text-[9px] font-semibold px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-500 transition">
+              {showManual ? '× Close' : '+ Manual Count'}
+            </button>
+          )}
         </div>
         {showManual && (
           <ManualCountForm items={items} onClose={() => setShowManual(false)} onLoss={promptLoss} onPairing={promptPairing}
