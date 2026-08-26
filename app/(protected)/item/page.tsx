@@ -5928,6 +5928,14 @@ async function recordCountFromModal() {
                           </div>
                         ) : (
                           <div className="space-y-2">
+                            <div className="flex justify-end">
+                              <button
+                                onClick={saveGridEditItem}
+                                disabled={liveEditSaving}
+                                className="shrink-0 text-[9px] font-semibold px-2 py-1 rounded bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white transition whitespace-nowrap">
+                                {liveEditSaving ? 'Saving…' : '✓ Save'}
+                              </button>
+                            </div>
                             <div className="grid grid-cols-3 gap-1.5">
                               <div className="min-w-0">
                                 <p className="text-[8px] font-bold text-gray-600 mb-1 uppercase truncate">Aliases</p>
@@ -5986,8 +5994,8 @@ async function recordCountFromModal() {
                           size="compact"
                           currentCountInterval={liveEditCurrentCountInterval}
                           currentSoh={liveEditCurrentSoh}
-                          onGmcTypeSave={saveGmcTypeOnly}
                           onConversionTargetSave={saveConversionTargetOnly}
+                          hideGmcTick
                           editMode={liveGridEditRelationsOpen}
                           onEditModeChange={setLiveGridEditRelationsOpen}
                           hideEditButton

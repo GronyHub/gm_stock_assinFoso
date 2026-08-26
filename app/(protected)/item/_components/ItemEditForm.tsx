@@ -59,7 +59,7 @@ const CADENCE_PRESETS: { value: string; label: string }[] = [
   { value: '45', label: 'Every 45 Days' },
 ]
 
-export function ItemEditForm({ form, onChange, groups, itemId, isService, allItems, size = 'compact', currentCountInterval, currentSoh, onGmcTypeSave, onConversionTargetSave, editMode: controlledEditMode, onEditModeChange, hideEditButton }: {
+export function ItemEditForm({ form, onChange, groups, itemId, isService, allItems, size = 'compact', currentCountInterval, currentSoh, onGmcTypeSave, onConversionTargetSave, editMode: controlledEditMode, onEditModeChange, hideEditButton, hideGmcTick }: {
   form: typeof EMPTY_ITEM_EDIT_FORM; onChange: (f: typeof EMPTY_ITEM_EDIT_FORM) => void; groups: string[]
   itemId: number; isService: boolean; allItems: { item_id: number; item_name: string; gmc_type?: string | null }[]
   size?: 'compact' | 'large'
@@ -86,6 +86,11 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
   editMode?: boolean
   onEditModeChange?: (next: boolean) => void
   hideEditButton?: boolean
+  // Hides the GMC Type tick when a caller's own Edit/Save toggle (driven by
+  // editMode/onEditModeChange above) already saves this field as part of a
+  // full save, making a second, separate "save just this field" button
+  // redundant.
+  hideGmcTick?: boolean
 }) {
   const s = SIZES[size]
   const large = size === 'large'
@@ -104,10 +109,6 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
       setGmcSaved(true)
       if (gmcSavedTimeoutRef.current) clearTimeout(gmcSavedTimeoutRef.current)
       gmcSavedTimeoutRef.current = setTimeout(() => setGmcSaved(false), 2000)
-      // This tick is the only confirm/close action left once the standalone
-      // "Done" bar is gone -- closing edit mode here as well as saving GMC
-      // type means there's one button, not two, for "I'm finished editing".
-      setEditMode(false)
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Failed to save GMC type'
       setGmcError(message)
@@ -299,7 +300,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
-          {onGmcTypeSave && (
+          {onGmcTypeSave && !hideGmcTick && (
             <button
               type="button"
               onClick={handleGmcTypeSave}
