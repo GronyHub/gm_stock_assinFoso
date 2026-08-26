@@ -351,25 +351,22 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
         <div className={s.sectionWrap}>
           <label className={s.sectionLabel}>Stock counts</label>
           {currentCountInterval && (
-            <p className={large ? 'text-xs text-gray-500 -mt-1 mb-1' : 'text-[8px] text-gray-500 -mt-0.5 mb-0.5'}>
+            <p className={large ? 'text-xs text-gray-500' : 'text-[9px] text-gray-500'}>
               Currently: <span className="font-semibold text-gray-700">{currentCountInterval}</span>
               {!form.count_excluded && !form.count_cadence_days && currentCountInterval !== 'Daily' && (
                 <> (automatic)</>
               )}
             </p>
           )}
-          <div className={large ? 'grid grid-cols-3 gap-3' : 'grid grid-cols-3 gap-2'}>
-            <div>
-              <label className={`${s.label} text-transparent select-none`}>Exclude</label>
-              <label className={`${s.checkboxLabel} ${large ? '' : 'h-full'}`}>
+          {editMode && (
+            <div className={large ? 'space-y-3 pt-1' : 'space-y-2 pt-1'}>
+              <label className={s.checkboxLabel}>
                 <input type="checkbox" checked={form.count_excluded}
                   onChange={e => onChange({ ...form, count_excluded: e.target.checked, count_excluded_reason: e.target.checked ? form.count_excluded_reason : '' })}
                   className={s.checkbox} />
                 Exclude from counts entirely
               </label>
-            </div>
-            {!form.count_excluded && (
-              <>
+              {!form.count_excluded ? (
                 <div>
                   <label className={s.label}>Count every</label>
                   <select
@@ -378,49 +375,48 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
                       if (e.target.value === '__custom__') { setCustomCadence(true); onChange({ ...form, count_cadence_days: '' }) }
                       else { setCustomCadence(false); onChange({ ...form, count_cadence_days: e.target.value }) }
                     }}
-                    className={s.input + (large ? '' : ' mt-0.5')}>
+                    className={s.input}>
                     <option value="">Automatic (based on item history)</option>
                     {CADENCE_PRESETS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
                     <option value="__custom__">Other…</option>
                   </select>
+                  {customCadence && (
+                    <input type="number" min="1" step="1" placeholder="Number of days" value={form.count_cadence_days}
+                      onChange={set('count_cadence_days')} className={s.input + ' mt-2'} />
+                  )}
                 </div>
-                {customCadence && (
-                  <input type="number" min="1" step="1" placeholder="Number of days" value={form.count_cadence_days}
-                    onChange={set('count_cadence_days')} className={s.input + (large ? ' mt-6' : ' mt-5')} />
-                )}
-              </>
-            )}
-            {form.count_excluded && (
-              <div className="col-span-2">
-                <label className={s.label}>Why is it being excluded?</label>
-                {stockBlocksExclude && (
-                  <p className={(large ? 'text-xs' : 'text-[9px]') + ' text-red-600 font-semibold mb-1'}>
-                    Still shows {currentSoh} in stock -- bring it to 0 first.
-                  </p>
-                )}
-                {currentSoh === 0 && (
-                  <p className={(large ? 'text-xs' : 'text-[9px]') + ' text-green-600 mb-1'}>Stock is 0 -- ready to exclude.</p>
-                )}
-                <select
-                  value={customReason ? '__other__' : (form.count_excluded_reason || '')}
-                  onChange={e => {
-                    if (e.target.value === '__other__') { setCustomReason(true); onChange({ ...form, count_excluded_reason: '' }) }
-                    else { setCustomReason(false); onChange({ ...form, count_excluded_reason: e.target.value }) }
-                  }}
-                  className={s.input}>
-                  <option value="">— Select a reason —</option>
-                  {COUNT_EXCLUDED_REASONS.filter(r => r.key !== 'other').map(r => (
-                    <option key={r.key} value={r.label}>{r.label}</option>
-                  ))}
-                  <option value="__other__">Other…</option>
-                </select>
-                {customReason && (
-                  <input value={form.count_excluded_reason} onChange={set('count_excluded_reason')}
-                    placeholder="Describe the reason" className={s.input + (large ? ' mt-2' : ' mt-1')} />
-                )}
-              </div>
-            )}
-          </div>
+              ) : (
+                <div>
+                  <label className={s.label}>Why is it being excluded?</label>
+                  {stockBlocksExclude && (
+                    <p className={(large ? 'text-xs' : 'text-[9px]') + ' text-red-600 font-semibold mb-1'}>
+                      Still shows {currentSoh} in stock -- bring it to 0 first.
+                    </p>
+                  )}
+                  {currentSoh === 0 && (
+                    <p className={(large ? 'text-xs' : 'text-[9px]') + ' text-green-600 mb-1'}>Stock is 0 -- ready to exclude.</p>
+                  )}
+                  <select
+                    value={customReason ? '__other__' : (form.count_excluded_reason || '')}
+                    onChange={e => {
+                      if (e.target.value === '__other__') { setCustomReason(true); onChange({ ...form, count_excluded_reason: '' }) }
+                      else { setCustomReason(false); onChange({ ...form, count_excluded_reason: e.target.value }) }
+                    }}
+                    className={s.input}>
+                    <option value="">— Select a reason —</option>
+                    {COUNT_EXCLUDED_REASONS.filter(r => r.key !== 'other').map(r => (
+                      <option key={r.key} value={r.label}>{r.label}</option>
+                    ))}
+                    <option value="__other__">Other…</option>
+                  </select>
+                  {customReason && (
+                    <input value={form.count_excluded_reason} onChange={set('count_excluded_reason')}
+                      placeholder="Describe the reason" className={s.input + ' mt-2'} />
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
