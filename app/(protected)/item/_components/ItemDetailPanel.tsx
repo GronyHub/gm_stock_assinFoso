@@ -57,7 +57,11 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
 
   useEffect(() => {
     if (collapsed && !expanded) return
-    fetch('/api/aliases/wide').then(r => r.json())
+    // Scoped to this one item -- fetching the whole aliases-wide table
+    // (an aggregate over every item+alias in the system) just to pick out
+    // one item's row was why this popup could be slow to open as the
+    // catalogue grew.
+    fetch(`/api/aliases/wide?itemId=${itemId}`).then(r => r.json())
       .then((d: any[]) => {
         if (!Array.isArray(d)) return
         const map: Record<number, AliasRecord[]> = {}
@@ -68,11 +72,15 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
         setAliasRecords(map)
       })
       .catch(() => {})
-  }, [collapsed, expanded])
+  }, [collapsed, expanded, itemId])
 
   useEffect(() => {
     if (collapsed && !expanded) return
-    fetch('/api/good-service-matches').then(r => r.json())
+    // Needs the item's own name (from the /api/losses/summary rows) before
+    // it can scope the query -- runs again once that arrives.
+    const itemName = rows.find(r => r.item_id === itemId)?.item_name
+    if (!itemName) return
+    fetch(`/api/good-service-matches?name=${encodeURIComponent(itemName)}`).then(r => r.json())
       .then((d: { id: number; good_name: string; service_name: string }[]) => {
         if (!Array.isArray(d)) return
         const acc: Record<string, MatchRecord[]> = {}
@@ -87,7 +95,7 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
         setMatchRecords(acc)
       })
       .catch(() => {})
-  }, [collapsed, expanded])
+  }, [collapsed, expanded, itemId, rows])
 
   const item = rows.find(r => r.item_id === itemId)
 
