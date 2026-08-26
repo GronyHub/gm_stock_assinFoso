@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useMemo, memo } from 'react'
+import React, { useState, useEffect, useMemo, memo, ReactNode } from 'react'
 import { useSession } from 'next-auth/react'
 import dynamic from 'next/dynamic'
 import { usePolling } from '@/lib/usePolling'
@@ -626,4 +626,46 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
   )
 }
 
-export default memo(CountsTab)
+class CountsTabErrorBoundary extends React.Component<
+  { children: ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props)
+    this.state = { hasError: false, error: null }
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error }
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('CountsTab error:', error, errorInfo)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="bg-red-50 border border-red-200 rounded p-4 m-4">
+          <p className="text-sm font-semibold text-red-700">Error in Counts</p>
+          <p className="text-xs text-red-600 mt-2">{this.state.error?.message || 'An unexpected error occurred'}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-3 px-3 py-1 bg-red-600 text-white text-xs font-semibold rounded hover:bg-red-700"
+          >
+            Reload Page
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
+const CountsTabWithErrorBoundary = (props: Props) => (
+  <CountsTabErrorBoundary>
+    <CountsTab {...props} />
+  </CountsTabErrorBoundary>
+)
+
+export default memo(CountsTabWithErrorBoundary)
