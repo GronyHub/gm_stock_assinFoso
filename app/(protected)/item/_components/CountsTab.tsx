@@ -74,23 +74,37 @@ function CountRow({ item, onSaved, onLoss, onPairing }: {
   const soh = Number(item.calculated_soh)
 
   async function submit(qty: number, lossExtra?: LossExtra) {
+    console.log('CountRow submit called, item:', item.item_id, 'qty:', qty)
     setSaving(true)
-    const res = await fetch('/api/stock/count', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ itemId: item.item_id, qty, notes: '', ...(lossExtra ?? {}) }),
-    })
-    setSaving(false)
-    if (res.ok) { onSaved(item.item_id); return }
-    const d = await res.json().catch(() => null)
-    if (res.status === 409 && d?.requires_pack_count) {
-      onPairing(item.item_name, d.packs, () => submit(qty, lossExtra))
-      return
+    try {
+      console.log('Sending count to API:', { itemId: item.item_id, qty, notes: '' })
+      const res = await fetch('/api/stock/count', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemId: item.item_id, qty, notes: '', ...(lossExtra ?? {}) }),
+      })
+      setSaving(false)
+      console.log('Count API response status:', res.status, 'ok:', res.ok)
+      if (res.ok) {
+        console.log('Count saved successfully for item', item.item_id)
+        onSaved(item.item_id);
+        return
+      }
+      const d = await res.json().catch(() => null)
+      console.log('Count API error response:', d)
+      if (res.status === 409 && d?.requires_pack_count) {
+        onPairing(item.item_name, d.packs, () => submit(qty, lossExtra))
+        return
+      }
+      if (res.status === 409 && d?.requires_loss_reason) {
+        onLoss(d, extra => { submit(qty, extra) })
+        return
+      }
+      alert(d?.error ?? 'Could not save count.')
+    } catch (e) {
+      setSaving(false)
+      console.error('Count submit error:', e)
+      alert(`Error saving count: ${e instanceof Error ? e.message : String(e)}`)
     }
-    if (res.status === 409 && d?.requires_loss_reason) {
-      onLoss(d, extra => { submit(qty, extra) })
-      return
-    }
-    alert(d?.error ?? 'Could not save count.')
   }
 
   const overdue = item.days_overdue
@@ -155,9 +169,11 @@ function ManualCountForm({ items, onSaved, onClose, onLoss, onPairing }: {
   }, [q, items])
 
   async function save(lossExtra?: LossExtra) {
-    if (!sel || qty === '') return
+    console.log('Save function called, sel:', sel, 'qty:', qty)
+    if (!sel || qty === '') { console.log('Early return: sel or qty missing'); return }
     setSaving(true); setError('')
     try {
+      console.log('Sending count to API:', { itemId: sel.id, qty: Number(qty) })
       const res = await fetch('/api/stock/count', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ itemId: sel.id, qty: Number(qty), notes: notes.trim() || 'Manual count', ...(lossExtra ?? {}) }),
