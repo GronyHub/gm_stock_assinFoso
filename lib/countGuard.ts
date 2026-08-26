@@ -16,8 +16,7 @@ export type CountDueInfo = {
 // drifting silently away from what's actually on the shelf; letting a
 // transaction through on stale information is exactly the gap this closes.
 //
-// Three deliberate carve-outs, the first two already implied by
-// itemCountIntervalLabels:
+// Two deliberate carve-outs, both already implied by itemCountIntervalLabels:
 // - 'excluded'/'dormant' items are never due -- they're explicitly opted
 //   out of counting (dormant additionally requires a bill before it's ever
 //   counted again, so gating a bill on THAT would be circular).
@@ -29,19 +28,12 @@ export type CountDueInfo = {
 //   no established baseline yet for a sale to threaten either, same
 //   reasoning stockGuard's expectedStockAt already uses (no earlier count
 //   = nothing to judge against, so no guard applies).
-// - An item already tagged with a GMC type (gmc/service_using_gmc/
-//   service_no_gmc/pack_to_gmc) is exempt outright. GMC items already have
-//   their own weekly count queue (see itemCountIntervalLabels' '7' label)
-//   tracking their own cadence -- gating internal-use consumption entries
-//   (New GMC Receipt, Live Sale's GMC taps) on a separate "is it overdue"
-//   check on top of that queue is the same kind of circularity dormant
-//   items are already exempted from, not an extra safety net.
 export async function itemsDueForCount(itemIds: (number | null | undefined)[]): Promise<Map<number, CountDueInfo>> {
   const uniqueIds = Array.from(new Set(itemIds.filter((id): id is number => typeof id === 'number' && Number.isFinite(id))))
   const result = new Map<number, CountDueInfo>()
   if (uniqueIds.length === 0) return result
 
-  const [labels, lastCounts, items] = await Promise.all([
+  const [labels, lastCounts, names] = await Promise.all([
     itemCountIntervalLabels(),
     sql`
       SELECT item_id, MAX(count_date::date)::text AS d
@@ -49,19 +41,17 @@ export async function itemsDueForCount(itemIds: (number | null | undefined)[]): 
       WHERE item_id = ANY(${uniqueIds})
       GROUP BY item_id
     ` as unknown as Promise<{ item_id: number; d: string }[]>,
-    sql`SELECT id, canonical_name, gmc_type FROM items WHERE id = ANY(${uniqueIds})` as unknown as Promise<{ id: number; canonical_name: string; gmc_type: string | null }[]>,
+    sql`SELECT id, canonical_name FROM items WHERE id = ANY(${uniqueIds})` as unknown as Promise<{ id: number; canonical_name: string }[]>,
   ])
 
   const lastCountByItem = new Map(lastCounts.map(r => [r.item_id, r.d]))
-  const nameByItem = new Map(items.map(r => [r.id, r.canonical_name]))
-  const gmcTypeByItem = new Map(items.map(r => [r.id, r.gmc_type]))
+  const nameByItem = new Map(names.map(r => [r.id, r.canonical_name]))
   const todayStr = new Date().toISOString().slice(0, 10)
   const todayMs = Date.parse(todayStr + 'T00:00:00Z')
 
   for (const id of uniqueIds) {
     const label = labels.get(id)
     if (!label || label === 'excluded' || label === 'dormant') continue
-    if (gmcTypeByItem.get(id)) continue // GMC items are exempt -- see carve-out above
 
     const lastCountDate = lastCountByItem.get(id)
     if (!lastCountDate) continue // never counted -- see carve-out above
