@@ -3156,8 +3156,8 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
 
     const qtyNum = Number(liveGridEditCountQty)
 
-    if (qtyNum <= 0) {
-      setLiveGridEditCountError('Quantity must be greater than 0')
+    if (qtyNum < 0 || isNaN(qtyNum)) {
+      setLiveGridEditCountError('Quantity cannot be negative')
       setLiveGridEditCountSaving(false)
       return
     }
@@ -6126,7 +6126,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                                     <input
                                       type="number"
                                       inputMode="decimal"
-                                      min="1"
+                                      min="0"
                                       step="1"
                                       value={liveGridEditCountQty}
                                       onChange={e => setLiveGridEditCountQty(e.target.value)}
@@ -6162,7 +6162,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                                       <input
                                         type="number"
                                         inputMode="decimal"
-                                        min="1"
+                                        min="0"
                                         step="1"
                                         value={liveGridEditCountQty}
                                         onChange={e => setLiveGridEditCountQty(e.target.value)}
