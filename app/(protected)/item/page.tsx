@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef, useMemo, Component, Suspense, Fragment, type ReactNode } from 'react'
+import { useState, useEffect, useRef, useMemo, Component, Suspense, Fragment, type ReactNode, type CSSProperties } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { hasFeature, DEFAULT_ON_FEATURES, type FeatureKey, type RolePermissionsMap } from '@/lib/permissionsShared'
@@ -552,6 +552,21 @@ function formatLoss(l: { lossCount: number; lgAmt: number; gainCount?: number } 
   if (amt > 0) return { text: `Loss ${count} · -₵${fmtAmt(amt)}${gainSuffix}`, cls: 'text-red-500 font-semibold' }
   if (amt < 0) return { text: `Loss ${count} · +₵${fmtAmt(Math.abs(amt))}${gainSuffix}`, cls: 'text-green-600 font-semibold' }
   return { text: `Loss ${count}${gainSuffix}`, cls: 'text-gray-400' }
+}
+
+// Compact filter-bar <select> styling, shared by the type/group/flags
+// dropdowns in the green header bars. `appearance-none` matters here more
+// than it looks -- iOS Safari ignores an author font-size/padding on a
+// closed <select> and substitutes its own oversized system chrome unless
+// the native appearance is turned off, which is why those bars render far
+// bigger on a phone than the (already small) Tailwind classes suggest. The
+// custom chevron below replaces the native arrow that appearance-none also
+// removes.
+const COMPACT_SELECT_CLS = 'appearance-none truncate text-[8px] leading-tight px-1 py-0.5 pr-3 border rounded bg-no-repeat focus:outline-none focus:ring-1 focus:ring-blue-400'
+const COMPACT_SELECT_STYLE: CSSProperties = {
+  backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%234b5563'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E\")",
+  backgroundPosition: 'right 2px center',
+  backgroundSize: '6px 6px',
 }
 
 // Bold attention banner for an item's own data-integrity problems -- same
@@ -4225,11 +4240,12 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
               </div>
               {/* Row 2: filter bar — hidden on report-style submenus. */}
               {showControls && (outerTab === 'loss' && (lossView === 'sales' || lossView === 'items')) && (
-                <div className="w-full flex items-center gap-1 px-2 py-1 bg-green-700 border-b border-green-800">
+                <div className="w-full flex items-center gap-0.5 px-1.5 py-0.5 bg-green-700 border-b border-green-800">
                   <select
                     value={liveProductTypeFilter}
                     onChange={e => setLiveProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
-                    className="text-[9px] px-1.5 py-0.5 rounded-md border border-green-500 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 w-20"
+                    className={`${COMPACT_SELECT_CLS} border-green-500 bg-white text-gray-900 w-11`}
+                    style={COMPACT_SELECT_STYLE}
                   >
                     <option value="all">All</option>
                     <option value="goods">Goods</option>
@@ -4238,7 +4254,8 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                   <select
                     value={liveGroupFilter || ''}
                     onChange={e => setLiveGroupFilter(e.target.value || null)}
-                    className="text-[9px] px-1.5 py-0.5 rounded-md border border-green-500 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 w-24"
+                    className={`${COMPACT_SELECT_CLS} border-green-500 bg-white text-gray-900 w-14`}
+                    style={COMPACT_SELECT_STYLE}
                   >
                     <option value="">Groups</option>
                     {liveGroups.map(g => (
@@ -4332,7 +4349,8 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                         setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'count_0' | 'count_1' })
                       }
                     }}
-                    className="text-[9px] px-1.5 py-0.5 border border-green-500 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white w-28"
+                    className={`${COMPACT_SELECT_CLS} border-green-500 bg-white text-gray-900 w-14`}
+                    style={COMPACT_SELECT_STYLE}
                   >
                     <option value="">Filter</option>
                     {liveSaleFilterFlags.filter(f => !f.key.startsWith('flag_')).map(f => {
@@ -5083,13 +5101,14 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                 once liveExpanded, so it needs its own copy here too rather
                 than losing the type/group filters entirely). */}
             {liveExpanded && (
-            <div className="bg-green-700 -mx-0 px-2 py-1 flex flex-col gap-1">
-                <div className="flex items-center justify-between gap-1 flex-wrap">
-                  <div className="flex gap-1 items-center">
+            <div className="bg-green-700 -mx-0 px-1.5 py-0.5 flex flex-col gap-0.5">
+                <div className="flex items-center justify-between gap-0.5 flex-wrap">
+                  <div className="flex gap-0.5 items-center">
                     <select
                       value={liveProductTypeFilter}
                       onChange={e => setLiveProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
-                      className="text-[11px] px-1.5 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white w-[4.5rem]"
+                      className={`${COMPACT_SELECT_CLS} border-gray-300 bg-white text-gray-900 w-11`}
+                      style={COMPACT_SELECT_STYLE}
                     >
                       <option value="all">All types</option>
                       <option value="goods">Goods</option>
@@ -5098,7 +5117,8 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                     <select
                       value={liveGroupFilter || ''}
                       onChange={e => setLiveGroupFilter(e.target.value || null)}
-                      className="text-[11px] px-1.5 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white w-[4.5rem]"
+                      className={`${COMPACT_SELECT_CLS} border-gray-300 bg-white text-gray-900 w-14`}
+                      style={COMPACT_SELECT_STYLE}
                     >
                       <option value="">All groups</option>
                       {liveCatalogueGroups.map(group => (
@@ -5128,7 +5148,8 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                         }
                       }}
                       title="Flags & Views"
-                      className="text-[10px] px-1.5 py-0.5 border border-white rounded-md focus:outline-none focus:ring-1 focus:ring-blue-300 bg-white/80 text-gray-800 hover:bg-white shrink-0"
+                      className={`${COMPACT_SELECT_CLS} border-white text-gray-800 bg-white/80 hover:bg-white shrink-0 w-14`}
+                      style={COMPACT_SELECT_STYLE}
                     >
                       <option value="">⚖️ Flags</option>
                       <optgroup label={liveMode === 'sale' || liveMode === 'log' ? 'Items' : (liveMode === 'sales' ? 'Sales' : (liveMode === 'bills' ? 'Bills' : 'Count'))}>
