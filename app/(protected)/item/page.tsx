@@ -5976,6 +5976,35 @@ async function recordCountFromModal() {
                                 </div>
                               )}
                             </div>
+                            {isOwnerLevel(session?.user as any) && (
+                              <div>
+                                {!liveGridEditConfirmDelete ? (
+                                  <button
+                                    onClick={() => setLiveGridEditConfirmDelete(true)}
+                                    className="w-full bg-gray-100 hover:bg-red-50 text-red-600 text-[9px] font-semibold rounded py-1 transition">
+                                    Delete
+                                  </button>
+                                ) : (
+                                  <div className="space-y-1">
+                                    <p className="text-[8px] text-red-600">No sales/bills/counts?</p>
+                                    <div className="flex gap-1">
+                                      <button
+                                        onClick={deleteGridEditItem}
+                                        disabled={liveGridEditDeleting}
+                                        className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-[8px] font-semibold rounded py-1 transition">
+                                        {liveGridEditDeleting ? 'Deleting…' : 'Confirm'}
+                                      </button>
+                                      <button
+                                        onClick={() => { setLiveGridEditConfirmDelete(false); setLiveGridEditDeleteError('') }}
+                                        className="px-2 py-1 bg-gray-100 text-gray-600 text-[8px] font-semibold rounded">
+                                        Cancel
+                                      </button>
+                                    </div>
+                                    {liveGridEditDeleteError && <p className="text-[8px] text-red-600 font-medium">{liveGridEditDeleteError}</p>}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -6109,35 +6138,6 @@ async function recordCountFromModal() {
                     {editItem && !liveGridEditLoading && (
                       <div className="bg-gray-50">
                         <div className="px-2 py-1.5 space-y-2">
-                          {isOwnerLevel(session?.user as any) && (
-                            <div>
-                              {!liveGridEditConfirmDelete ? (
-                                <button
-                                  onClick={() => setLiveGridEditConfirmDelete(true)}
-                                  className="w-full bg-gray-100 hover:bg-red-50 text-red-600 text-[9px] font-semibold rounded py-1 transition">
-                                  Delete
-                                </button>
-                              ) : (
-                                <div className="space-y-1">
-                                  <p className="text-[8px] text-red-600">No sales/bills/counts?</p>
-                                  <div className="flex gap-1">
-                                    <button
-                                      onClick={deleteGridEditItem}
-                                      disabled={liveGridEditDeleting}
-                                      className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-[8px] font-semibold rounded py-1 transition">
-                                      {liveGridEditDeleting ? 'Deleting…' : 'Confirm'}
-                                    </button>
-                                    <button
-                                      onClick={() => { setLiveGridEditConfirmDelete(false); setLiveGridEditDeleteError('') }}
-                                      className="px-2 py-1 bg-gray-100 text-gray-600 text-[8px] font-semibold rounded">
-                                      Cancel
-                                    </button>
-                                  </div>
-                                  {liveGridEditDeleteError && <p className="text-[8px] text-red-600 font-medium">{liveGridEditDeleteError}</p>}
-                                </div>
-                              )}
-                            </div>
-                          )}
                           <div>
                             <label className="text-[7px] font-bold text-gray-500 block mb-1">Manual Count</label>
                             <div className="space-y-1">
