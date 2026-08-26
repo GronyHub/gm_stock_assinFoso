@@ -186,16 +186,16 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
             </div>
           ) : (
             <div className="space-y-2">
-              <div className="grid grid-cols-3 gap-2">
-                <div className="col-span-3 sm:col-span-1">
-                  <p className="text-[8px] font-bold text-gray-600 mb-1 uppercase">Aliases</p>
+              <div className="grid grid-cols-3 gap-1.5">
+                <div className="min-w-0">
+                  <p className="text-[8px] font-bold text-gray-600 mb-1 uppercase truncate">Aliases</p>
                   <AliasPicker
                     itemId={item.item_id}
                     current={aliasRecords[item.item_id] ?? []}
                     onChange={(next) => setAliasRecords(prev => ({ ...prev, [item.item_id]: next }))} />
                 </div>
-                <div className="col-span-3 sm:col-span-1">
-                  <p className="text-[8px] font-bold text-gray-600 mb-1 uppercase">Services Used</p>
+                <div className="min-w-0">
+                  <p className="text-[8px] font-bold text-gray-600 mb-1 uppercase truncate">Services Used</p>
                   <MatchPicker
                     itemId={item.item_id}
                     itemName={item.item_name}
@@ -204,8 +204,8 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
                     candidatePool={item.product_type === 'service' ? goodsPool : servicesPool}
                     onChange={(next) => setMatchRecords(prev => ({ ...prev, [item.item_name.trim().toLowerCase()]: next }))} />
                 </div>
-                <div className="col-span-3 sm:col-span-1">
-                  <p className="text-[8px] font-bold text-gray-600 mb-1 uppercase">Merge</p>
+                <div className="min-w-0">
+                  <p className="text-[8px] font-bold text-gray-600 mb-1 uppercase truncate">Merge</p>
                   <MergeItemPicker
                     itemId={item.item_id}
                     itemName={item.item_name}

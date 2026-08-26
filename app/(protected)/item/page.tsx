@@ -5928,13 +5928,13 @@ async function recordCountFromModal() {
                           </div>
                         ) : (
                           <div className="space-y-2">
-                            <div className="grid grid-cols-3 gap-2">
-                              <div className="col-span-3 sm:col-span-1">
-                                <p className="text-[8px] font-bold text-gray-600 mb-1 uppercase">Aliases</p>
+                            <div className="grid grid-cols-3 gap-1.5">
+                              <div className="min-w-0">
+                                <p className="text-[8px] font-bold text-gray-600 mb-1 uppercase truncate">Aliases</p>
                                 <AliasPicker itemId={editItem.id} current={liveGridEditAliases} onChange={setLiveGridEditAliases} />
                               </div>
-                              <div className="col-span-3 sm:col-span-1">
-                                <p className="text-[8px] font-bold text-gray-600 mb-1 uppercase">
+                              <div className="min-w-0">
+                                <p className="text-[8px] font-bold text-gray-600 mb-1 uppercase truncate">
                                   {editItem.product_type === 'service' ? 'Goods Used' : 'Services Used'}
                                 </p>
                                 <MatchPicker
@@ -5953,8 +5953,8 @@ async function recordCountFromModal() {
                                 />
                               </div>
                               {isOwnerLevel(session?.user as any) && (
-                                <div className="col-span-3 sm:col-span-1">
-                                  <p className="text-[8px] font-bold text-gray-600 mb-1 uppercase">Merge</p>
+                                <div className="min-w-0">
+                                  <p className="text-[8px] font-bold text-gray-600 mb-1 uppercase truncate">Merge</p>
                                   <MergeItemPicker
                                     itemId={editItem.id}
                                     itemName={editItem.name}
