@@ -5862,26 +5862,16 @@ async function recordCountFromModal() {
                 <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                   <div className="px-3 py-2 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
                     <h2 className="text-sm font-bold text-red-600">{editItem?.name.toUpperCase()}</h2>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={saveGridEditItem}
-                        disabled={liveEditSaving || liveGridEditLoading}
-                        className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs font-semibold rounded transition"
-                      >
-                        {liveEditSaving ? 'Saving…' : 'Save'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setLiveEditingGridItemId(null)
-                          setLiveViewingItemId(null)
-                        }}
-                        className="text-gray-500 hover:text-gray-700 text-xl font-light"
-                      >
-                        ×
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLiveEditingGridItemId(null)
+                        setLiveViewingItemId(null)
+                      }}
+                      className="text-gray-500 hover:text-gray-700 text-xl font-light"
+                    >
+                      ×
+                    </button>
                   </div>
                   <div className="overflow-y-auto">
                     {editItem && !liveGridEditLoading && (
