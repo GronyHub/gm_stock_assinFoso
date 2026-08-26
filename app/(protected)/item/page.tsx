@@ -5956,8 +5956,8 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
             return (
               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2">
                 <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                  <div className="px-3 py-2 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
-                    <h2 className="text-sm font-bold text-red-600">{editItem?.name.toUpperCase()}</h2>
+                  <div className="px-2 py-1 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
+                    <h2 className="text-xs font-bold text-red-600 truncate">{editItem?.name.toUpperCase()}</h2>
                     <button
                       type="button"
                       onClick={() => {
@@ -5971,10 +5971,10 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                   </div>
                   <div className="overflow-y-auto">
                     {editItem && !liveGridEditLoading && (
-                      <div className="border-b border-gray-200 bg-gray-50 px-2 py-1.5">
+                      <div className="border-b border-gray-200 bg-gray-50 px-1.5 py-1">
                         {!liveGridEditRelationsOpen ? (
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex flex-wrap gap-2 flex-1 items-center text-[9px]">
+                          <div className="flex items-center justify-between gap-1.5">
+                            <div className="flex flex-wrap gap-1.5 flex-1 items-center text-[8px]">
                               <div className="flex items-center gap-1">
                                 <span className="font-semibold text-gray-600">Aliases:</span>
                                 {liveGridEditAliases.length === 0 ? (
@@ -6008,27 +6008,28 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                             </div>
                             <button
                               onClick={() => setLiveGridEditRelationsOpen(true)}
-                              className="shrink-0 text-[9px] font-semibold px-2 py-1 rounded bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 transition whitespace-nowrap">
+                              className="shrink-0 text-[8px] font-semibold px-1.5 py-0.5 rounded bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 transition whitespace-nowrap">
                               ✎ Edit
                             </button>
                           </div>
                         ) : (
-                          <div className="space-y-2">
-                            <div className="flex justify-end">
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between gap-1.5">
+                              <p className="text-[8px] font-bold text-blue-700 uppercase tracking-wide">Editing</p>
                               <button
                                 onClick={saveGridEditItem}
                                 disabled={liveEditSaving}
-                                className="shrink-0 text-[9px] font-semibold px-2 py-1 rounded bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white transition whitespace-nowrap">
+                                className="shrink-0 text-[8px] font-semibold px-1.5 py-0.5 rounded bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white transition whitespace-nowrap">
                                 {liveEditSaving ? 'Saving…' : '✓ Save'}
                               </button>
                             </div>
-                            <div className="grid grid-cols-3 gap-1.5">
+                            <div className="grid grid-cols-3 gap-1">
                               <div className="min-w-0">
-                                <p className="text-[8px] font-bold text-gray-600 mb-1 uppercase truncate">Aliases</p>
+                                <p className="text-[7px] font-bold text-gray-600 mb-0.5 uppercase truncate">Aliases</p>
                                 <AliasPicker itemId={editItem.id} current={liveGridEditAliases} onChange={setLiveGridEditAliases} />
                               </div>
                               <div className="min-w-0">
-                                <p className="text-[8px] font-bold text-gray-600 mb-1 uppercase truncate">
+                                <p className="text-[7px] font-bold text-gray-600 mb-0.5 uppercase truncate">
                                   {editItem.product_type === 'service' ? 'Goods Used' : 'Services Used'}
                                 </p>
                                 <MatchPicker
@@ -6048,7 +6049,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                               </div>
                               {isOwnerLevel(session?.user as any) && (
                                 <div className="min-w-0">
-                                  <p className="text-[8px] font-bold text-gray-600 mb-1 uppercase truncate">Merge</p>
+                                  <p className="text-[7px] font-bold text-gray-600 mb-0.5 uppercase truncate">Merge</p>
                                   <MergeItemPicker
                                     itemId={editItem.id}
                                     itemName={editItem.name}
@@ -6063,30 +6064,28 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                               )}
                             </div>
                             {isOwnerLevel(session?.user as any) && (
-                              <div>
+                              <div className="flex justify-end">
                                 {!liveGridEditConfirmDelete ? (
                                   <button
                                     onClick={() => setLiveGridEditConfirmDelete(true)}
-                                    className="w-full bg-gray-100 hover:bg-red-50 text-red-600 text-[9px] font-semibold rounded py-1 transition">
+                                    className="bg-gray-100 hover:bg-red-50 text-red-600 text-[8px] font-semibold rounded px-2 py-0.5 transition">
                                     Delete
                                   </button>
                                 ) : (
-                                  <div className="space-y-1">
+                                  <div className="flex items-center gap-1 flex-wrap justify-end">
                                     <p className="text-[8px] text-red-600">No sales/bills/counts?</p>
-                                    <div className="flex gap-1">
-                                      <button
-                                        onClick={deleteGridEditItem}
-                                        disabled={liveGridEditDeleting}
-                                        className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-[8px] font-semibold rounded py-1 transition">
-                                        {liveGridEditDeleting ? 'Deleting…' : 'Confirm'}
-                                      </button>
-                                      <button
-                                        onClick={() => { setLiveGridEditConfirmDelete(false); setLiveGridEditDeleteError('') }}
-                                        className="px-2 py-1 bg-gray-100 text-gray-600 text-[8px] font-semibold rounded">
-                                        Cancel
-                                      </button>
-                                    </div>
-                                    {liveGridEditDeleteError && <p className="text-[8px] text-red-600 font-medium">{liveGridEditDeleteError}</p>}
+                                    <button
+                                      onClick={deleteGridEditItem}
+                                      disabled={liveGridEditDeleting}
+                                      className="bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-[8px] font-semibold rounded px-2 py-0.5 transition">
+                                      {liveGridEditDeleting ? 'Deleting…' : 'Confirm'}
+                                    </button>
+                                    <button
+                                      onClick={() => { setLiveGridEditConfirmDelete(false); setLiveGridEditDeleteError('') }}
+                                      className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[8px] font-semibold rounded">
+                                      Cancel
+                                    </button>
+                                    {liveGridEditDeleteError && <p className="text-[8px] text-red-600 font-medium w-full text-right">{liveGridEditDeleteError}</p>}
                                   </div>
                                 )}
                               </div>
@@ -6095,9 +6094,9 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                         )}
                       </div>
                     )}
-                    <div className="p-2 border-b border-gray-200">
+                    <div className="border-b border-gray-200">
                       {liveGridEditLoading ? (
-                        <p className="text-center text-gray-500 text-xs">Loading…</p>
+                        <p className="text-center text-gray-500 text-xs py-2">Loading…</p>
                       ) : editItem ? (
                         <ItemEditForm
                           form={liveEditForm}
@@ -6116,10 +6115,10 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                           hideEditButton
                         />
                       ) : (
-                        <p className="text-center text-red-600 text-xs">Item not found</p>
+                        <p className="text-center text-red-600 text-xs py-2">Item not found</p>
                       )}
                       {liveGridEditError && (
-                        <div className="mt-1 bg-red-50 border border-red-200 rounded px-2 py-1 text-xs text-red-600 font-medium">
+                        <div className="mx-1.5 mb-1.5 bg-red-50 border border-red-200 rounded px-2 py-1 text-xs text-red-600 font-medium">
                           {liveGridEditError}
                         </div>
                       )}

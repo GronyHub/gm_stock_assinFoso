@@ -23,18 +23,25 @@ export const EMPTY_ITEM_EDIT_FORM = {
 // rest of that sheet (Quantity/Price fields) rather than a table cell.
 const SIZES = {
   compact: {
-    wrap: 'space-y-3 p-3 bg-gray-50 border-b border-gray-200',
-    input: 'w-full bg-white border border-gray-300 rounded-md px-2 py-1.5 text-[11px] text-gray-900 outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition',
-    label: 'text-[8px] font-bold text-gray-500 uppercase tracking-wide block mb-1',
-    fieldGap: 'gap-2',
-    sectionLabel: 'text-[8px] font-bold text-gray-500 uppercase tracking-wide block',
-    sectionWrap: 'pt-2 border-t border-gray-200 space-y-2',
-    checkboxLabel: 'flex items-center gap-1.5 text-[10px] text-gray-700 cursor-pointer select-none',
-    checkbox: 'w-3.5 h-3.5 accent-red-600',
+    wrap: 'space-y-1 p-1.5 bg-gray-50 border-b border-gray-200',
+    input: 'w-full bg-white border border-gray-300 rounded-md px-1.5 py-1 text-[10px] text-gray-900 outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition',
+    // Read-only (not editMode) display -- deliberately NOT the same look as
+    // `input` above. A field styled like an open text box even while locked
+    // reads as editable when it isn't; plain text with no border makes
+    // "you have to press Edit first" obvious at a glance instead of just
+    // true-but-invisible.
+    readOnly: 'truncate text-[10px] text-gray-700 leading-tight py-0.5',
+    label: 'text-[7px] font-bold text-gray-500 uppercase tracking-wide block leading-none mb-0.5',
+    fieldGap: 'gap-1',
+    sectionLabel: 'text-[7px] font-bold text-gray-500 uppercase tracking-wide block',
+    sectionWrap: 'pt-1 border-t border-gray-200 space-y-1',
+    checkboxLabel: 'flex items-center gap-1 text-[9px] text-gray-700 cursor-pointer select-none',
+    checkbox: 'w-3 h-3 accent-red-600',
   },
   large: {
     wrap: 'space-y-4',
     input: 'w-full text-base text-gray-900 bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 outline-none focus:ring-1 focus:ring-blue-400',
+    readOnly: 'bg-gray-100 rounded px-3 py-2.5 text-base text-gray-900',
     label: 'block text-xs font-semibold text-gray-700 mb-1.5',
     fieldGap: 'gap-3',
     sectionLabel: 'text-xs font-bold text-gray-500 block mb-2',
@@ -161,7 +168,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
   return (
     <div className={s.wrap}>
       <div className={`flex items-start justify-between gap-3 ${large ? 'mb-4' : ''}`}>
-      <div className={large ? 'grid grid-cols-3 gap-3 flex-1' : `grid grid-cols-3 ${s.fieldGap} flex-1`}>
+      <div className={large ? 'grid grid-cols-3 gap-3 flex-1' : `grid grid-cols-4 ${s.fieldGap} flex-1`}>
         {/* Item name is now edited inline in the modal header via ItemDetailPanel */}
         <div>
           <label className={s.label}>Item name <span className="text-red-600">*</span></label>
@@ -171,7 +178,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
               <GMCBadge gmcType={form.gmc_type} size={large ? 'medium' : 'small'} />
             </div>
           ) : (
-            <div className={`${large ? 'bg-gray-100 rounded px-3 py-2.5 text-base text-gray-900' : s.input} flex items-center gap-1`}>
+            <div className={`${s.readOnly} flex items-center gap-1`}>
               <span>{form.item_name || '—'}</span>
               <GMCBadge gmcType={form.gmc_type} size={large ? 'medium' : 'small'} />
             </div>
@@ -197,7 +204,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
               )}
             </>
           ) : (
-            <div className={large ? 'bg-gray-100 rounded px-3 py-2.5 text-base text-gray-900' : s.input}>
+            <div className={s.readOnly}>
               {form.cf_group || '—'}
             </div>
           )}
@@ -211,7 +218,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
               <option value="service">Service</option>
             </select>
           ) : (
-            <div className={large ? 'bg-gray-100 rounded px-3 py-2.5 text-base text-gray-900' : s.input}>
+            <div className={s.readOnly}>
               {form.product_type === 'goods' ? 'Good' : form.product_type === 'service' ? 'Service' : '—'}
             </div>
           )}
@@ -221,7 +228,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
           {editMode ? (
             <input placeholder="SP" type="number" value={form.selling_rate} onChange={set('selling_rate')} className={s.input} />
           ) : (
-            <div className={large ? 'bg-gray-100 rounded px-3 py-2.5 text-base text-gray-900' : s.input}>
+            <div className={s.readOnly}>
               {form.selling_rate || '—'}
             </div>
           )}
@@ -231,7 +238,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
           {editMode ? (
             <input placeholder="CP" type="number" value={form.purchase_rate} onChange={set('purchase_rate')} className={s.input} />
           ) : (
-            <div className={large ? 'bg-gray-100 rounded px-3 py-2.5 text-base text-gray-900' : s.input}>
+            <div className={s.readOnly}>
               {form.purchase_rate || '—'}
             </div>
           )}
@@ -241,7 +248,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
           {editMode ? (
             <input placeholder="Units/pack" type="number" value={form.units_per_pack} onChange={set('units_per_pack')} className={s.input} />
           ) : (
-            <div className={large ? 'bg-gray-100 rounded px-3 py-2.5 text-base text-gray-900' : s.input}>
+            <div className={s.readOnly}>
               {form.units_per_pack || '—'}
             </div>
           )}
@@ -251,7 +258,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
           {editMode ? (
             <input placeholder="Unit" value={form.unit_name} onChange={set('unit_name')} className={s.input} />
           ) : (
-            <div className={large ? 'bg-gray-100 rounded px-3 py-2.5 text-base text-gray-900' : s.input}>
+            <div className={s.readOnly}>
               {form.unit_name || '—'}
             </div>
           )}
@@ -287,7 +294,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
               )}
             </div>
           ) : (
-            <div className={large ? 'bg-gray-100 rounded px-3 py-2.5 text-base text-gray-900' : s.input}>
+            <div className={s.readOnly}>
               {gmcOptions.find(o => o.value === form.gmc_type)?.label ?? '—'}
             </div>
           )}
@@ -332,7 +339,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
                 ))}
               </select>
             ) : (
-              <div className={large ? 'bg-gray-100 rounded px-3 py-2.5 text-base text-gray-900' : s.input}>
+              <div className={s.readOnly}>
                 {allItems.find(i => String(i.item_id) === form.converts_to_item_id)?.item_name ?? '—'}
               </div>
             )}
@@ -342,7 +349,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
       {!hideEditButton && (
         <button
           onClick={() => setEditMode(!editMode)}
-          className={`shrink-0 ${editMode ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white'} font-semibold rounded px-3 py-2 text-sm transition ${large ? 'mt-7' : 'mt-1'}`}>
+          className={`shrink-0 ${editMode ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white'} font-semibold rounded transition ${large ? 'px-3 py-2 text-sm mt-7' : 'px-1.5 py-0.5 text-[9px] mt-0.5'}`}>
           {editMode ? '✓ Done' : '✎ Edit'}
         </button>
       )}
@@ -351,7 +358,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
         <div className={s.sectionWrap}>
           <label className={s.sectionLabel}>Stock counts</label>
           {currentCountInterval && (
-            <p className={large ? 'text-xs text-gray-500' : 'text-[9px] text-gray-500'}>
+            <p className={large ? 'text-xs text-gray-500' : 'text-[8px] text-gray-500 leading-tight'}>
               Currently: <span className="font-semibold text-gray-700">{currentCountInterval}</span>
               {!form.count_excluded && !form.count_cadence_days && currentCountInterval !== 'Daily' && (
                 <> (automatic)</>
@@ -359,7 +366,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
             </p>
           )}
           {editMode && (
-            <div className={large ? 'space-y-3 pt-1' : 'space-y-2 pt-1'}>
+            <div className={large ? 'space-y-3 pt-1' : 'space-y-1 pt-0.5'}>
               <label className={s.checkboxLabel}>
                 <input type="checkbox" checked={form.count_excluded}
                   onChange={e => onChange({ ...form, count_excluded: e.target.checked, count_excluded_reason: e.target.checked ? form.count_excluded_reason : '' })}
@@ -389,12 +396,12 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
                 <div>
                   <label className={s.label}>Why is it being excluded?</label>
                   {stockBlocksExclude && (
-                    <p className={(large ? 'text-xs' : 'text-[9px]') + ' text-red-600 font-semibold mb-1'}>
+                    <p className={(large ? 'text-xs' : 'text-[8px]') + ' text-red-600 font-semibold mb-0.5'}>
                       Still shows {currentSoh} in stock -- bring it to 0 first.
                     </p>
                   )}
                   {currentSoh === 0 && (
-                    <p className={(large ? 'text-xs' : 'text-[9px]') + ' text-green-600 mb-1'}>Stock is 0 -- ready to exclude.</p>
+                    <p className={(large ? 'text-xs' : 'text-[8px]') + ' text-green-600 mb-0.5'}>Stock is 0 -- ready to exclude.</p>
                   )}
                   <select
                     value={customReason ? '__other__' : (form.count_excluded_reason || '')}
