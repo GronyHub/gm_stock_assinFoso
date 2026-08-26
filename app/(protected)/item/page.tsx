@@ -1847,6 +1847,7 @@ function ItemHubPageInner() {
   const [liveViewingItemId, setLiveViewingItemId] = useState<number | null>(null)
   const [liveEditingGridItemId, setLiveEditingGridItemId] = useState<number | null>(null)
   const liveGridEditSaleTapRef = useRef<HTMLDivElement>(null)
+  const liveGridEditQtyInputRef = useRef<HTMLInputElement>(null)
   const [liveGridEditLoading, setLiveGridEditLoading] = useState(false)
   const [liveGridEditError, setLiveGridEditError] = useState('')
   const [liveGridEditAliases, setLiveGridEditAliases] = useState<AliasRecord[]>([])
@@ -1920,6 +1921,10 @@ function ItemHubPageInner() {
     if (liveEditingGridItemId != null && liveGridEditSaleTapRef.current) {
       setTimeout(() => {
         liveGridEditSaleTapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        // Land straight in the Qty box with the numeric keypad already up --
+        // tapping an item here means "I'm about to tap a sale," so typing
+        // the quantity shouldn't need an extra tap to focus the field first.
+        liveGridEditQtyInputRef.current?.focus()
       }, 100)
     }
   }, [liveEditingGridItemId])
@@ -6045,6 +6050,7 @@ async function recordCountFromModal() {
                             <div className="flex-1 min-w-0 flex flex-col">
                               <p className="text-[9px] text-gray-700 font-medium mb-1">Qty</p>
                               <input
+                                ref={liveGridEditQtyInputRef}
                                 type="number"
                                 inputMode="decimal"
                                 min="1"
