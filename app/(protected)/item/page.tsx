@@ -3149,6 +3149,7 @@ function ItemHubPageInner() {
     addCountLog(`recordCountFromModal called: itemId=${liveEditingGridItemId}, qty=${liveGridEditCountQty}`)
     if (!liveEditingGridItemId || !liveGridEditCountQty) {
       alert('Early return: itemId or qty missing')
+      addCountLog('Early return: itemId or qty missing')
       return
     }
     setLiveGridEditCountSaving(true)
@@ -3160,18 +3161,22 @@ function ItemHubPageInner() {
     const defaultPrice = editItem ? Number(editItem.selling_price) : 0
 
     if (qtyNum <= 0) {
+      alert('Quantity must be > 0')
       setLiveGridEditCountError('Quantity must be greater than 0')
       setLiveGridEditCountSaving(false)
       return
     }
 
     if (priceNum !== undefined && priceNum <= 0) {
+      alert('Price must be > 0')
       setLiveGridEditCountError('Price must be greater than 0')
       setLiveGridEditCountSaving(false)
       return
     }
 
     try {
+      alert('About to fetch /api/sales/live-tap')
+      addCountLog('About to fetch /api/sales/live-tap')
       const res = await fetch('/api/sales/live-tap', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -3181,16 +3186,24 @@ function ItemHubPageInner() {
           customPrice: priceNum || undefined,
         }),
       })
+      alert(`Fetch response: status=${res.status}, ok=${res.ok}`)
+      addCountLog(`Fetch response: status=${res.status}, ok=${res.ok}`)
       const data = await res.json()
       if (!res.ok) {
+        alert(`Error: ${data.error}`)
+        addCountLog(`API error: ${data.error}`)
         setLiveGridEditCountError(data.error || 'Could not record count')
         setLiveGridEditCountSaving(false)
         return
       }
+      alert('✓ Success! Updating state...')
+      addCountLog('✓ Success')
       setLiveTaps(prev => [data.tap, ...prev])
       setLiveGridEditCountQty('')
       setLiveGridEditCountPrice('')
     } catch (e) {
+      alert(`Exception: ${e instanceof Error ? e.message : String(e)}`)
+      addCountLog(`Exception: ${e instanceof Error ? e.message : String(e)}`)
       setLiveGridEditCountError('Network error')
     } finally {
       setLiveGridEditCountSaving(false)
