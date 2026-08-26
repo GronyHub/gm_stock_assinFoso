@@ -33,7 +33,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     if (!force) {
       const warning = aliasMismatchWarning(alias.alias_name, item.canonical_name)
-      if (warning) return success({ requires_confirmation: true, warning })
+      if (warning) return success({ requires_confirmation: true, warning }, 409)
     }
 
     await sql`UPDATE item_aliases SET item_id = ${item_id} WHERE id = ${aliasId}`

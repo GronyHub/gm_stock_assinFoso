@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     if (!target) return notFound()
     if (!force) {
       const warning = aliasMismatchWarning(alias_name, target.canonical_name)
-      if (warning) return success({ requires_confirmation: true, warning })
+      if (warning) return success({ requires_confirmation: true, warning }, 409)
     }
 
     await sql`

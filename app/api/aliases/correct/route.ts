@@ -16,7 +16,7 @@ export async function POST(req: Request) {
 
     if (!force) {
       const warning = aliasMismatchWarning(raw_name, item.canonical_name)
-      if (warning) return success({ requires_confirmation: true, warning })
+      if (warning) return success({ requires_confirmation: true, warning }, 409)
     }
 
     if (source === 'zoho_bills') {
