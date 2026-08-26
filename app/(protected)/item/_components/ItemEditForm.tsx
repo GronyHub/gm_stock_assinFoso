@@ -1,7 +1,6 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import { COUNT_EXCLUDED_REASONS } from '@/lib/countRules'
-import { GMCBadge } from './GMCBadge'
 
 // The item-fields-only edit form (name/group/prices/units/conversion/count
 // settings) -- split out of LossTab.tsx so it can be reused anywhere an
@@ -169,21 +168,10 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
     <div className={s.wrap}>
       <div className={`flex items-start justify-between gap-3 ${large ? 'mb-4' : ''}`}>
       <div className={large ? 'grid grid-cols-3 gap-3 flex-1' : `grid grid-cols-4 ${s.fieldGap} flex-1`}>
-        {/* Item name is now edited inline in the modal header via ItemDetailPanel */}
-        <div>
-          <label className={s.label}>Item name <span className="text-red-600">*</span></label>
-          {editMode ? (
-            <div className="flex items-center gap-1">
-              {!large && <input placeholder="Item name *" value={form.item_name} onChange={set('item_name')} className={s.input} />}
-              <GMCBadge gmcType={form.gmc_type} size={large ? 'medium' : 'small'} />
-            </div>
-          ) : (
-            <div className={`${s.readOnly} flex items-center gap-1`}>
-              <span>{form.item_name || '—'}</span>
-              <GMCBadge gmcType={form.gmc_type} size={large ? 'medium' : 'small'} />
-            </div>
-          )}
-        </div>
+        {/* Item name isn't a field in this grid -- the grid-edit sheet
+            renames it inline via its own red title bar instead (see
+            item/page.tsx), so there's no separate "Item name" box
+            duplicating what's already shown right above this form. */}
         <div>
           <label className={s.label}>Group</label>
           {editMode ? (

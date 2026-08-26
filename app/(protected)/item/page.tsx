@@ -5956,8 +5956,17 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
             return (
               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2">
                 <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                  <div className="px-2 py-1 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
-                    <h2 className="text-xs font-bold text-red-600 truncate">{editItem?.name.toUpperCase()}</h2>
+                  <div className="px-2 py-1 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10 gap-2">
+                    {liveGridEditRelationsOpen ? (
+                      <input
+                        value={liveEditForm.item_name}
+                        onChange={e => setLiveEditForm({ ...liveEditForm, item_name: e.target.value })}
+                        placeholder="Item name *"
+                        className="min-w-0 flex-1 text-xs font-bold text-red-600 uppercase bg-red-50 border border-red-200 rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-red-400"
+                      />
+                    ) : (
+                      <h2 className="text-xs font-bold text-red-600 truncate">{editItem?.name.toUpperCase()}</h2>
+                    )}
                     <button
                       type="button"
                       onClick={() => {
