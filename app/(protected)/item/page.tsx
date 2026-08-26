@@ -3426,9 +3426,9 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
         <button type="button" onClick={() => { setItemsPageMode('sale'); setLiveMode('sale') }} title="Sale" className={btnCls(itemsPageMode === 'sale', 'bg-blue-600')}>Sale</button>
         <button type="button" onClick={() => { setItemsPageMode('log'); setLiveMode('log') }} title="Log" className={btnCls(itemsPageMode === 'log', 'bg-gray-700')}>Log</button>
         <button type="button" onClick={() => { setItemsPageMode('sales'); setLiveMode('sales') }} title="Sales" className={btnCls(itemsPageMode === 'sales', 'bg-emerald-600')}>Sales</button>
+        <button type="button" onClick={() => { setItemsPageMode('count'); setLiveMode('count') }} title="Count" className={btnCls(itemsPageMode === 'count', 'bg-indigo-600')}>Count</button>
         <button type="button" onClick={() => { setItemsPageMode('bills'); setLiveMode('bills') }} title="Bills" className={btnCls(itemsPageMode === 'bills', 'bg-orange-600')}>Bills</button>
         <button type="button" onClick={() => { setItemsPageMode('lossByTarget'); setLiveMode('lossByTarget') }} title="Loss by Target" className={btnCls(itemsPageMode === 'lossByTarget', 'bg-pink-600')}>Loss by Tgt</button>
-        <button type="button" onClick={() => { setItemsPageMode('count'); setLiveMode('count') }} title="Count" className={btnCls(itemsPageMode === 'count', 'bg-indigo-600')}>Count</button>
       </div>
     )
   }
