@@ -157,22 +157,34 @@ function ManualCountForm({ items, onSaved, onClose, onLoss, onPairing }: {
   async function save(lossExtra?: LossExtra) {
     if (!sel || qty === '') return
     setSaving(true); setError('')
-    const res = await fetch('/api/stock/count', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ itemId: sel.id, qty: Number(qty), notes: notes.trim() || 'Manual count', ...(lossExtra ?? {}) }),
-    })
-    setSaving(false)
-    if (res.ok) { onSaved(); onClose(); return }
-    const d = await res.json().catch(() => null)
-    if (res.status === 409 && d?.requires_pack_count) {
-      onPairing(sel.item_name, d.packs, () => save(lossExtra))
-      return
+    try {
+      const res = await fetch('/api/stock/count', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemId: sel.id, qty: Number(qty), notes: notes.trim() || 'Manual count', ...(lossExtra ?? {}) }),
+      })
+      setSaving(false)
+      if (res.ok) {
+        try {
+          onSaved(); onClose()
+        } catch (e) {
+          setError(`Error after saving: ${e instanceof Error ? e.message : String(e)}`)
+        }
+        return
+      }
+      const d = await res.json().catch(() => null)
+      if (res.status === 409 && d?.requires_pack_count) {
+        onPairing(sel.item_name, d.packs, () => save(lossExtra))
+        return
+      }
+      if (res.status === 409 && d?.requires_loss_reason) {
+        onLoss(d, extra => { save(extra) })
+        return
+      }
+      setError(d?.error ?? 'Could not save count.')
+    } catch (e) {
+      setSaving(false)
+      setError(`Error saving count: ${e instanceof Error ? e.message : String(e)}`)
     }
-    if (res.status === 409 && d?.requires_loss_reason) {
-      onLoss(d, extra => { save(extra) })
-      return
-    }
-    setError(d?.error ?? 'Could not save count.')
   }
 
   return (
