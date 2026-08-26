@@ -6063,10 +6063,7 @@ async function recordCountFromModal() {
                                 ={liveGridEditCountQty || '?'}
                               </button>
                               <button
-                                onClick={() => {
-                                  alert(`Orange button clicked! liveGridEditCountQty='${liveGridEditCountQty}'`)
-                                  recordCountFromModal()
-                                }}
+                                onClick={recordCountFromModal}
                                 disabled={!liveGridEditCountQty || liveGridEditCountSaving}
                                 className="px-2 py-0.5 bg-purple-600 hover:bg-purple-700 text-white text-[8px] font-semibold rounded transition disabled:opacity-50">
                                 {liveGridEditCountSaving ? 'Saving…' : 'Save Count'}
