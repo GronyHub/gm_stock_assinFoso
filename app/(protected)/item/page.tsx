@@ -3145,7 +3145,12 @@ function ItemHubPageInner() {
   }
 
   async function recordCountFromModal() {
-    if (!liveEditingGridItemId || !liveGridEditCountQty) return
+    alert(`recordCountFromModal called! itemId=${liveEditingGridItemId}, qty=${liveGridEditCountQty}`)
+    addCountLog(`recordCountFromModal called: itemId=${liveEditingGridItemId}, qty=${liveGridEditCountQty}`)
+    if (!liveEditingGridItemId || !liveGridEditCountQty) {
+      alert('Early return: itemId or qty missing')
+      return
+    }
     setLiveGridEditCountSaving(true)
     setLiveGridEditCountError('')
 
@@ -5943,9 +5948,12 @@ function ItemHubPageInner() {
                                 ={liveGridEditCountQty || '?'}
                               </button>
                               <button
-                                onClick={recordCountFromModal}
+                                onClick={() => {
+                                  alert(`Orange button clicked! liveGridEditCountQty='${liveGridEditCountQty}'`)
+                                  recordCountFromModal()
+                                }}
                                 disabled={!liveGridEditCountQty || liveGridEditCountSaving}
-                                className="px-2 py-0.5 bg-orange-500 hover:bg-orange-600 text-white text-[8px] font-semibold rounded transition disabled:opacity-50">
+                                className="px-2 py-0.5 bg-purple-600 hover:bg-purple-700 text-white text-[8px] font-semibold rounded transition disabled:opacity-50">
                                 {liveGridEditCountSaving ? 'Saving…' : 'Save Count'}
                               </button>
                             </div>
