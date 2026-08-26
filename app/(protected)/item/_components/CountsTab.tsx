@@ -271,7 +271,7 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
   const colPrefs = useColumnPrefs<ColKey>('countsTable', COUNTS_COLUMNS)
 
   function loadRecords() {
-    fetch('/api/stock/counts').then(r => r.json()).then(d => { setRecords(d); setLoading(false) })
+    fetch('/api/stock/counts').then(r => r.json()).then(d => { setRecords(Array.isArray(d) ? d : []); setLoading(false) }).catch(() => { setRecords([]); setLoading(false) })
   }
   function loadDaily() {
     Promise.all([
@@ -279,8 +279,8 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
       fetch('/api/stock/gmc-weekly').then(r => r.json()),
       fetch('/api/stock/overdue').then(r => r.json()),
     ]).then(([daily, gmcWeekly, overdue]) => {
-      setDailyItems(daily); setGmcWeeklyItems(gmcWeekly); setOverdueItems(overdue); setDailyLoading(false)
-    })
+      setDailyItems(Array.isArray(daily) ? daily : []); setGmcWeeklyItems(Array.isArray(gmcWeekly) ? gmcWeekly : []); setOverdueItems(Array.isArray(overdue) ? overdue : []); setDailyLoading(false)
+    }).catch(() => { setDailyItems([]); setGmcWeeklyItems([]); setOverdueItems([]); setDailyLoading(false) })
   }
 
   useEffect(() => { loadRecords() }, [])
