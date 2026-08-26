@@ -564,10 +564,9 @@ function formatLoss(l: { lossCount: number; lgAmt: number; gainCount?: number } 
 // itemsWithViolations-derived data below (see liveDuplicateItemIds/
 // liveUnlinkedNamedIds/liveServiceViolationIdSet).
 //
-// Returns every applicable issue, worst first -- callers show just the
-// first as the actual banner (still one banner per card, not a stack) and
-// use the rest to render a "+N more" alongside it, so a genuinely broken
-// item doesn't read as having only one problem.
+// Returns every applicable issue, worst first -- callers stack one banner
+// per flag (not just the worst one collapsed behind a "+N more"), so a
+// genuinely broken item visibly shows everything wrong with it at a glance.
 function itemAttentionFlags(
   item: LiveItem,
   duplicateItemIds: Set<number>,
@@ -5380,12 +5379,11 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                         onClick={() => openEditGridItem(item.id)}
                         className={`relative flex flex-col border-r border-b group cursor-pointer ${flag ? 'bg-orange-50 border-orange-100 hover:bg-orange-100' : 'border-gray-100 hover:bg-gray-50'} transition`}
                       >
-                        {flag && (
-                          <div className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide ${flag.bg} flex items-center justify-between gap-1`}>
-                            <span className="truncate">{flag.label}</span>
-                            {flags.length > 1 && <span className="shrink-0 opacity-90">+{flags.length - 1} more</span>}
+                        {flags.map((f, i) => (
+                          <div key={i} className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide truncate ${f.bg}`}>
+                            {f.label}
                           </div>
-                        )}
+                        ))}
                         <div className="px-1 py-0.5 flex flex-col">
                           <div className={`text-[11px] font-semibold leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : ''}`}>
                             {renderClickableItemName(item.name, `text-[11px] leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : 'text-blue-600'}`)}
@@ -5444,7 +5442,6 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
             {liveSelectedItem && (() => {
               const due = liveCountStatus.get(liveSelectedItem.id)
               const flags = itemAttentionFlags(liveSelectedItem, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet)
-              const flag = flags[0] ?? null
               const expected = Number(liveSelectedItem.soh)
               const enteredCount = liveCountQty === '' ? null : Number(liveCountQty)
               const countShort = enteredCount !== null && !isNaN(enteredCount) && enteredCount < expected
@@ -5645,16 +5642,17 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                   ) : (
                   <>
                   {/* Same negative-stock/missing-price/missing-cost/missing-group
-                      banner the grid card shows (see itemAttentionFlags) -- shown
+                      banners the grid card shows (see itemAttentionFlags) -- shown
                       here too since the modal is reached directly from a search
                       pick as well as from a grid card, and a searched-and-picked
-                      item skips the grid card entirely. */}
-                  {flag && (
-                    <div className={`mx-4 mt-4 px-3 py-1.5 rounded-lg text-xs font-extrabold text-white flex items-center justify-between gap-2 ${flag.bg}`}>
-                      <span>{flag.label}</span>
-                      {flags.length > 1 && <span className="opacity-90">+{flags.length - 1} more</span>}
+                      item skips the grid card entirely. Every flag gets its own
+                      line (not just the worst one) so a genuinely broken item
+                      doesn't read as having only one problem. */}
+                  {flags.map((f, i) => (
+                    <div key={i} className={`mx-4 ${i === 0 ? 'mt-4' : 'mt-1.5'} px-3 py-1.5 rounded-lg text-xs font-extrabold text-white ${f.bg}`}>
+                      {f.label}
                     </div>
-                  )}
+                  ))}
 
                   {/* This item is due for a count -- surfaced right inside the
                       sale sheet instead of requiring a separate mode-switch and
