@@ -964,6 +964,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   const [targetDayRows, setTargetDayRows] = useState<DayRow[] | null>(null)
   const [sheetPrice, setSheetPrice] = useState<number>(PAPER_SELL_PRICE)
   const [sheetCP, setSheetCP] = useState<number>(0)
+  const [editMode, setEditMode] = useState(false)
 
   useEffect(() => {
     if (!isPackChain || item.converts_to_item_id == null) return
@@ -1474,6 +1475,86 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
             </div>
           )}
           </div>
+        </div>
+      )}
+
+      {isOwnerLevelUser && (
+        <div className="border-t border-gray-200 bg-gray-50 px-3 py-2">
+          {!editMode ? (
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-wrap gap-2 flex-1 items-center text-[9px]">
+                <div className="flex items-center gap-1">
+                  <span className="font-semibold text-gray-600">Aliases:</span>
+                  {currentAliases.length === 0 ? (
+                    <span className="text-gray-400">—</span>
+                  ) : (
+                    <div className="flex flex-wrap gap-1">
+                      {currentAliases.map(a => (
+                        <span key={a.id} className="inline-block bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full text-[8px] font-semibold">
+                          {a.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="font-semibold text-gray-600">Services used:</span>
+                  {currentMatches.length === 0 ? (
+                    <span className="text-gray-400">—</span>
+                  ) : (
+                    <div className="flex flex-wrap gap-1">
+                      {currentMatches.map(m => (
+                        <span key={m.id} className="inline-block bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded-full text-[8px] font-semibold">
+                          {m.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => setEditMode(true)}
+                className="shrink-0 text-[9px] font-semibold px-2 py-1 rounded bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 transition whitespace-nowrap">
+                ✎ Edit
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="grid grid-cols-3 gap-2">
+                <div className="col-span-3 sm:col-span-1">
+                  <p className="text-[8px] font-bold text-gray-600 mb-1 uppercase">Aliases</p>
+                  <AliasPicker
+                    itemId={item.item_id}
+                    current={currentAliases}
+                    onChange={(next) => onRelationsSaved(next, currentMatches)} />
+                </div>
+                <div className="col-span-3 sm:col-span-1">
+                  <p className="text-[8px] font-bold text-gray-600 mb-1 uppercase">Services Used</p>
+                  <MatchPicker
+                    itemId={item.item_id}
+                    itemName={item.item_name}
+                    isService={item.product_type === 'service'}
+                    current={currentMatches}
+                    candidatePool={candidatePool}
+                    onChange={(next) => onRelationsSaved(currentAliases, next)} />
+                </div>
+                <div className="col-span-3 sm:col-span-1">
+                  <p className="text-[8px] font-bold text-gray-600 mb-1 uppercase">Merge</p>
+                  <MergeItemPicker
+                    itemId={item.item_id}
+                    itemName={item.item_name}
+                    typeLabel={item.product_type === 'service' ? 'service' : 'good'}
+                    mergePool={mergePool}
+                    onMerged={() => { setEditMode(false); onMerged() }} />
+                </div>
+              </div>
+              <button
+                onClick={() => setEditMode(false)}
+                className="w-full text-[9px] font-semibold px-2 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white transition">
+                ✓ Done
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
