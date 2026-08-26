@@ -6118,8 +6118,14 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                           <div>
                             {overdueItem ? (
                               <div className="p-1.5 bg-red-100 border border-red-300 rounded space-y-1">
-                                <p className="text-[9px] font-bold text-red-900">⚠ COUNT NOW – {overdueItem.days_overdue}d overdue</p>
-                                <p className="text-[8px] text-red-800">System expects {overdueItem.calculated_soh} on the shelf.</p>
+                                <p className="text-[9px] font-bold text-red-900">
+                                  ⚠ COUNT NOW{overdueItem.days_overdue != null ? ` – ${overdueItem.days_overdue}d overdue` : ' – never counted'}
+                                </p>
+                                <p className="text-[8px] text-red-800">
+                                  {Number(overdueItem.calculated_soh) < 0
+                                    ? `System shows ${overdueItem.calculated_soh} -- there's no earlier count to check against, so just enter what's actually on the shelf.`
+                                    : `System expects ${overdueItem.calculated_soh} on the shelf.`}
+                                </p>
                                 <div className="flex gap-1.5 items-stretch">
                                   <div className="flex-1 min-w-0 flex flex-col">
                                     <p className="text-[8px] text-red-800 font-medium mb-1">Quantity</p>
