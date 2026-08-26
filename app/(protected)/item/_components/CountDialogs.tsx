@@ -11,6 +11,24 @@ import { useState } from 'react'
 export type LossExtra = { loss_reason: string; manager_response: string | null }
 export type LossPrompt = { d: any; retry: (extra: LossExtra) => void }
 
+// Common reasons a physical count comes in under what the system expects --
+// picking one is faster and more consistent than typing a reason from
+// scratch every time. 'other' keeps the free-text box for anything that
+// doesn't fit, same "preset dropdown + Other…" pattern as
+// COUNT_EXCLUDED_REASONS in lib/countRules.ts.
+export const LOSS_REASONS = [
+  { key: 'theft', label: 'Theft / stolen' },
+  { key: 'damaged', label: 'Damaged or broken' },
+  { key: 'wastage', label: 'Wastage during printing/production' },
+  { key: 'expired', label: 'Expired or spoiled' },
+  { key: 'given_away', label: 'Given away / sample' },
+  { key: 'staff_use', label: 'Used internally by staff' },
+  { key: 'wrong_sale_qty', label: 'A sale was recorded with the wrong quantity' },
+  { key: 'misplaced', label: 'Misplaced / moved without a record' },
+  { key: 'miscount', label: 'An earlier count was wrong' },
+  { key: 'other', label: 'Other' },
+] as const
+
 // A count that reveals a loss is not saved silently. This dialog first offers
 // the tools that usually explain a "loss" -- a mistyped sale, a missing bill,
 // an earlier miscount -- so records can be fixed and the item recounted.
@@ -21,15 +39,20 @@ export function LossDialog({ prompt: lp, onClose, onFixRecords }: {
   onClose: () => void
   onFixRecords?: (view: 'sales' | 'bills' | 'counts') => void
 }) {
-  const [reason, setReason] = useState('')
+  const [reasonKey, setReasonKey] = useState('')
+  const [customReason, setCustomReason] = useState('')
   const [mgr, setMgr] = useState('')
   const [err, setErr] = useState('')
   const d = lp.d
 
+  const finalReason = reasonKey === 'other'
+    ? customReason.trim()
+    : (LOSS_REASONS.find(r => r.key === reasonKey)?.label ?? '')
+
   function confirmLoss() {
-    if (!reason.trim()) { setErr('A reason for the loss is required.'); return }
+    if (!finalReason) { setErr('A reason for the loss is required.'); return }
     if (!d.is_manager && !mgr.trim()) { setErr("Inform the manager and enter what the manager said."); return }
-    lp.retry({ loss_reason: reason.trim(), manager_response: d.is_manager ? null : mgr.trim() })
+    lp.retry({ loss_reason: finalReason, manager_response: d.is_manager ? null : mgr.trim() })
     onClose()
   }
 
@@ -70,9 +93,16 @@ export function LossDialog({ prompt: lp, onClose, onFixRecords }: {
 
         <div className="border-t border-gray-100 pt-2 space-y-1.5">
           <p className="text-xs font-semibold text-gray-700">Or confirm it is a real loss:</p>
-          <textarea value={reason} onChange={e => setReason(e.target.value)} rows={2}
-            placeholder="Why did this loss happen? (required)"
-            className="w-full bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-red-300" />
+          <select value={reasonKey} onChange={e => setReasonKey(e.target.value)}
+            className="w-full bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-red-300">
+            <option value="">Why did this loss happen? (required)</option>
+            {LOSS_REASONS.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
+          </select>
+          {reasonKey === 'other' && (
+            <textarea value={customReason} onChange={e => setCustomReason(e.target.value)} rows={2}
+              placeholder="Describe the reason (required)"
+              className="w-full bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-red-300" />
+          )}
           {!d.is_manager && (
             <textarea value={mgr} onChange={e => setMgr(e.target.value)} rows={2}
               placeholder="Inform the manager now — what did the manager say? (required)"
