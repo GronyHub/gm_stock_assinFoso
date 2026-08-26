@@ -1,14 +1,27 @@
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
+import { NextRequest } from 'next/server'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const { error } = await requireAuth()
   if (error) return error
 
+  // Optional ?name= scopes this down to just the pairs involving one item,
+  // instead of every good/service match in the system -- same reasoning as
+  // aliases/wide's ?itemId=, for the same caller (opening a single item
+  // shouldn't cost a full-table fetch). Unscoped default is unchanged.
+  const name = req.nextUrl.searchParams.get('name')
+
   try {
-    const rows = await sql`
-      SELECT id, good_name, service_name FROM good_service_matches ORDER BY good_name, service_name
-    `
+    const rows = name
+      ? await sql`
+          SELECT id, good_name, service_name FROM good_service_matches
+          WHERE LOWER(TRIM(good_name)) = LOWER(TRIM(${name})) OR LOWER(TRIM(service_name)) = LOWER(TRIM(${name}))
+          ORDER BY good_name, service_name
+        `
+      : await sql`
+          SELECT id, good_name, service_name FROM good_service_matches ORDER BY good_name, service_name
+        `
     return success(rows)
   } catch (e) {
     return handleError('good-service-matches GET', e)

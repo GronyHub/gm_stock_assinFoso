@@ -3138,6 +3138,12 @@ function ItemHubPageInner() {
     setLiveGridEditConfirmDelete(false)
     setLiveGridEditRelationsOpen(false)
     setLiveTapStatus([])
+    // Reset from whatever the previously-opened item left behind -- these
+    // only get set below if the fetch actually finds rows for THIS item, so
+    // without this an item with zero aliases/matches would keep showing the
+    // last item's aliases/matches instead of "—".
+    setLiveGridEditAliases([])
+    setLiveGridEditMatches([])
     try {
       const item = liveAllItems.find(i => i.id === itemId)
       if (!item) {
@@ -3146,11 +3152,14 @@ function ItemHubPageInner() {
         return
       }
 
-      // Fetch all data in parallel
+      // Scoped to this one item (?itemId=/?name=) rather than the whole
+      // aliases/matches tables -- opening an item used to cost a full-table
+      // fetch+aggregate just to find this one item's own rows, which is why
+      // this sheet could take a while to appear as the catalogue grew.
       const [itemRes, aliasesRes, matchesRes] = await Promise.all([
         fetch(`/api/items/${itemId}`),
-        fetch('/api/aliases/wide'),
-        fetch('/api/good-service-matches')
+        fetch(`/api/aliases/wide?itemId=${itemId}`),
+        fetch(`/api/good-service-matches?name=${encodeURIComponent(item.name)}`)
       ])
 
       const d = await itemRes.json()
@@ -3180,13 +3189,7 @@ function ItemHubPageInner() {
 
       const matchesData = await matchesRes.json()
       if (Array.isArray(matchesData)) {
-        const itemName = item.name.trim().toLowerCase()
-        const itemMatches = matchesData.filter((row: any) => {
-          const gk = (row.good_name ?? '').trim().toLowerCase()
-          const sk = (row.service_name ?? '').trim().toLowerCase()
-          return gk === itemName || sk === itemName
-        })
-        setLiveGridEditMatches(itemMatches.map((m: any) => ({ id: m.id, name: m.good_name === item.name ? m.service_name : m.good_name })))
+        setLiveGridEditMatches(matchesData.map((m: any) => ({ id: m.id, name: m.good_name === item.name ? m.service_name : m.good_name })))
       }
     } catch {
       setLiveGridEditError('Could not load item details.')
