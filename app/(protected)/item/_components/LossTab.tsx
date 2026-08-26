@@ -686,6 +686,8 @@ export function AliasPicker({ itemId, current, onChange }: {
   const [billNames, setBillNames] = useState<UnresolvedName[] | null>(null)
   const [query, setQuery] = useState('')
   const [busy, setBusy] = useState(false)
+  const [showAll, setShowAll] = useState(false)
+  const VISIBLE_COUNT = 2
 
   useEffect(() => {
     fetch('/api/aliases/unresolved').then(r => r.json()).then(d => setSalesNames(Array.isArray(d) ? d : []))
@@ -730,13 +732,20 @@ export function AliasPicker({ itemId, current, onChange }: {
   return (
     <div className="space-y-1">
       {current.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {current.map(a => (
+        <div className="flex flex-wrap items-center gap-1">
+          {(showAll ? current : current.slice(0, VISIBLE_COUNT)).map(a => (
             <span key={a.id} className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-[8px] font-semibold px-1.5 py-0.5 rounded-full">
               {a.name}
               <button onClick={() => remove(a)} disabled={busy} className="text-blue-400 hover:text-red-500 font-bold">×</button>
             </span>
           ))}
+          {current.length > VISIBLE_COUNT && (
+            <button
+              onClick={() => setShowAll(v => !v)}
+              className="text-[8px] font-semibold text-blue-600 hover:text-blue-800 underline whitespace-nowrap">
+              {showAll ? 'Show less' : `+${current.length - VISIBLE_COUNT} more`}
+            </button>
+          )}
         </div>
       )}
       <input value={query} onChange={e => setQuery(e.target.value)}

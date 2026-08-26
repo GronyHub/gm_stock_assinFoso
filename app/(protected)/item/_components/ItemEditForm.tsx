@@ -14,23 +14,23 @@ export const EMPTY_ITEM_EDIT_FORM = {
   gmc_type: '', product_type: '',
 }
 
-// 'compact' is LossTab's original dense inline-table-row styling (unchanged
-// -- that context has many rows on screen at once and needs to stay small).
+// 'compact' is the dense form used inside the Live Sale grid-edit sheet --
+// small, but every field carries its own label so it still reads as a
+// proper form rather than a bare grid of boxes.
 // 'large' is a full-size form for contexts where this is the only thing on
 // screen, like Live Sale's sale-tap sheet -- real labels above each field
 // instead of relying on placeholder text, and input sizing that matches the
 // rest of that sheet (Quantity/Price fields) rather than a table cell.
 const SIZES = {
   compact: {
-    wrap: 'space-y-1 p-2 bg-gray-50 border-b border-gray-200',
-    input: 'w-full bg-gray-100 border border-gray-200 rounded px-1.5 py-0.5 text-[9px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400',
-    label: '',
-    fieldGap: 'gap-1',
-    sectionLabel: 'text-[7px] font-bold text-gray-500 block',
-    sectionWrap: 'pt-1 border-t border-gray-200 space-y-1',
-    checkboxLabel: 'flex items-center gap-1.5 text-[9px] text-gray-700 cursor-pointer select-none',
-    checkbox: 'w-3 h-3 accent-red-600',
-    smallText: 'text-[9px] text-gray-500 shrink-0',
+    wrap: 'space-y-3 p-3 bg-gray-50 border-b border-gray-200',
+    input: 'w-full bg-white border border-gray-300 rounded-md px-2 py-1.5 text-[11px] text-gray-900 outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition',
+    label: 'text-[8px] font-bold text-gray-500 uppercase tracking-wide block mb-1',
+    fieldGap: 'gap-2',
+    sectionLabel: 'text-[8px] font-bold text-gray-500 uppercase tracking-wide block',
+    sectionWrap: 'pt-2 border-t border-gray-200 space-y-2',
+    checkboxLabel: 'flex items-center gap-1.5 text-[10px] text-gray-700 cursor-pointer select-none',
+    checkbox: 'w-3.5 h-3.5 accent-red-600',
   },
   large: {
     wrap: 'space-y-4',
@@ -41,7 +41,6 @@ const SIZES = {
     sectionWrap: 'pt-4 border-t border-gray-200 space-y-3',
     checkboxLabel: 'flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none',
     checkbox: 'w-4 h-4 accent-red-600',
-    smallText: 'text-sm text-gray-600 shrink-0',
   },
 } as const
 
@@ -162,24 +161,24 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
   return (
     <div className={s.wrap}>
       <div className={`flex items-start justify-between gap-3 ${large ? 'mb-4' : ''}`}>
-      <div className="grid grid-cols-3 gap-2 flex-1">
+      <div className={large ? 'grid grid-cols-3 gap-3 flex-1' : `grid grid-cols-3 ${s.fieldGap} flex-1`}>
         {/* Item name is now edited inline in the modal header via ItemDetailPanel */}
         <div>
-          {large && <label className={s.label}>Item name <span className="text-red-600">*</span></label>}
+          <label className={s.label}>Item name <span className="text-red-600">*</span></label>
           {editMode ? (
             <div className="flex items-center gap-1">
               {!large && <input placeholder="Item name *" value={form.item_name} onChange={set('item_name')} className={s.input} />}
               <GMCBadge gmcType={form.gmc_type} size={large ? 'medium' : 'small'} />
             </div>
           ) : (
-            <div className={`${large ? 'bg-gray-100 rounded px-3 py-2.5' : 'text-[9px] text-gray-700'} flex items-center gap-1`}>
-              <span className={large ? 'text-base text-gray-900' : ''}>{form.item_name || '—'}</span>
+            <div className={`${large ? 'bg-gray-100 rounded px-3 py-2.5 text-base text-gray-900' : s.input} flex items-center gap-1`}>
+              <span>{form.item_name || '—'}</span>
               <GMCBadge gmcType={form.gmc_type} size={large ? 'medium' : 'small'} />
             </div>
           )}
         </div>
         <div>
-          {large && <label className={s.label}>Group</label>}
+          <label className={s.label}>Group</label>
           {editMode ? (
             <>
               <select value={customGroup ? '__custom__' : form.cf_group}
@@ -194,17 +193,17 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
               </select>
               {customGroup && (
                 <input value={form.cf_group} onChange={set('cf_group')} placeholder="Type new group name"
-                  className={s.input + (large ? ' mt-2' : '')} />
+                  className={s.input + ' mt-2'} />
               )}
             </>
           ) : (
-            <div className={large ? 'bg-gray-100 rounded px-3 py-2.5 text-base text-gray-900' : 'text-[9px] text-gray-700'}>
+            <div className={large ? 'bg-gray-100 rounded px-3 py-2.5 text-base text-gray-900' : s.input}>
               {form.cf_group || '—'}
             </div>
           )}
         </div>
         <div>
-          {large && <label className={s.label}>Type</label>}
+          <label className={s.label}>Type</label>
           {editMode ? (
             <select value={form.product_type} onChange={set('product_type')} className={s.input}>
               <option value="">— Select type —</option>
@@ -212,41 +211,115 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
               <option value="service">Service</option>
             </select>
           ) : (
-            <div className={large ? 'bg-gray-100 rounded px-3 py-2.5 text-base text-gray-900' : 'text-[9px] text-gray-700'}>
+            <div className={large ? 'bg-gray-100 rounded px-3 py-2.5 text-base text-gray-900' : s.input}>
               {form.product_type === 'goods' ? 'Good' : form.product_type === 'service' ? 'Service' : '—'}
             </div>
           )}
         </div>
         <div>
-          {large && <label className={s.label}>Selling price</label>}
+          <label className={s.label}>Selling price</label>
           {editMode ? (
             <input placeholder="SP" type="number" value={form.selling_rate} onChange={set('selling_rate')} className={s.input} />
           ) : (
-            <div className={large ? 'bg-gray-100 rounded px-3 py-2.5 text-base text-gray-900' : 'text-[9px] text-gray-700'}>
+            <div className={large ? 'bg-gray-100 rounded px-3 py-2.5 text-base text-gray-900' : s.input}>
               {form.selling_rate || '—'}
             </div>
           )}
         </div>
         <div>
-          {large && <label className={s.label}>Cost price</label>}
+          <label className={s.label}>Cost price</label>
           {editMode ? (
             <input placeholder="CP" type="number" value={form.purchase_rate} onChange={set('purchase_rate')} className={s.input} />
           ) : (
-            <div className={large ? 'bg-gray-100 rounded px-3 py-2.5 text-base text-gray-900' : 'text-[9px] text-gray-700'}>
+            <div className={large ? 'bg-gray-100 rounded px-3 py-2.5 text-base text-gray-900' : s.input}>
               {form.purchase_rate || '—'}
             </div>
           )}
         </div>
         <div>
-          {large && <label className={s.label}>Units per pack</label>}
+          <label className={s.label}>Units per pack</label>
           {editMode ? (
             <input placeholder="Units/pack" type="number" value={form.units_per_pack} onChange={set('units_per_pack')} className={s.input} />
           ) : (
-            <div className={large ? 'bg-gray-100 rounded px-3 py-2.5 text-base text-gray-900' : 'text-[9px] text-gray-700'}>
+            <div className={large ? 'bg-gray-100 rounded px-3 py-2.5 text-base text-gray-900' : s.input}>
               {form.units_per_pack || '—'}
             </div>
           )}
         </div>
+        <div>
+          <label className={s.label}>Unit name</label>
+          <input placeholder="Unit" value={form.unit_name} onChange={set('unit_name')} className={s.input} />
+        </div>
+        <div>
+          <label className={s.label}>GMC Type</label>
+          <div className="flex items-center gap-1">
+            <select value={form.gmc_type} onChange={set('gmc_type')} className={s.input}>
+              {gmcOptions.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            {onGmcTypeSave && !hideGmcTick && (
+              <button
+                type="button"
+                onClick={handleGmcTypeSave}
+                disabled={gmcSaving}
+                className={`shrink-0 font-bold text-white rounded transition ${
+                  large
+                    ? 'px-3 py-2.5 text-base'
+                    : 'px-1.5 py-0.5 text-xs'
+                } ${
+                  gmcSaved
+                    ? 'bg-green-700'
+                    : gmcSaving
+                    ? 'bg-blue-600 opacity-75 cursor-not-allowed'
+                    : 'bg-green-600 hover:bg-green-700'
+                }`}
+                title={gmcSaving ? 'Saving...' : gmcSaved ? 'Saved!' : 'Save GMC Type'}>
+                {gmcSaving ? '⏳' : gmcSaved ? '✓' : '✓'}
+              </button>
+            )}
+          </div>
+          {gmcError && (
+            <div className={`mt-1 ${large ? 'text-sm' : 'text-[9px]'} text-red-600 font-semibold`}>
+              ✗ {gmcError}
+            </div>
+          )}
+          {gmcSaved && (
+            <div className={`mt-1 ${large ? 'text-sm' : 'text-[9px]'} text-green-600 font-semibold`}>
+              ✓ GMC Type saved
+            </div>
+          )}
+        </div>
+        {(form.gmc_type === 'service_using_gmc' || form.gmc_type === 'pack_to_gmc') && (
+          <div>
+            <label className={`${s.label} ${form.gmc_type === 'service_using_gmc' && !form.converts_to_item_id ? 'text-red-600' : ''}`}>
+              {form.gmc_type === 'pack_to_gmc'
+                ? 'Credit units/pack into'
+                : 'Uses this GMC'}
+              {form.gmc_type === 'service_using_gmc' && <span className="text-red-600">*</span>}
+            </label>
+            <select
+              value={form.converts_to_item_id}
+              onChange={(e) => {
+                const value = e.target.value
+                onChange({ ...form, converts_to_item_id: value })
+                // Auto-save the selection
+                if (onConversionTargetSave) {
+                  onConversionTargetSave(value || null)
+                }
+              }}
+              className={`${s.input} ${form.gmc_type === 'service_using_gmc' && !form.converts_to_item_id ? 'border-red-500 bg-red-50' : ''}`}>
+              <option value="">{form.gmc_type === 'service_using_gmc' ? '⚠ Required — Choose an item' : '— No conversion —'}</option>
+              {allItems.filter(i => {
+                if (i.item_id === itemId) return false
+                if (!['gmc', 'service_no_gmc'].includes(i.gmc_type || '')) return false
+                return true
+              }).map(i => (
+                <option key={i.item_id} value={String(i.item_id)}>{i.item_name}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
       {!hideEditButton && (
         <button
@@ -256,82 +329,6 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
         </button>
       )}
     </div>
-      <div className={`grid grid-cols-2 gap-2 ${s.fieldGap}`}>
-        <div>
-          {large && <label className={s.label}>Unit name</label>}
-          <input placeholder="Unit" value={form.unit_name} onChange={set('unit_name')} className={s.input} />
-        </div>
-      </div>
-      {(form.gmc_type === 'service_using_gmc' || form.gmc_type === 'pack_to_gmc') && (
-        <div>
-          <label className={`${large ? s.label : 'text-[7px] font-bold text-gray-500 block mb-0'} ${form.gmc_type === 'service_using_gmc' && !form.converts_to_item_id ? 'text-red-600' : ''}`}>
-            {form.gmc_type === 'pack_to_gmc'
-              ? 'On GMC, credit "Units/pack" of this item into:'
-              : 'Uses this GMC:'}
-            {form.gmc_type === 'service_using_gmc' && <span className="text-red-600">*</span>}
-          </label>
-          <select
-            value={form.converts_to_item_id}
-            onChange={(e) => {
-              const value = e.target.value
-              onChange({ ...form, converts_to_item_id: value })
-              // Auto-save the selection
-              if (onConversionTargetSave) {
-                onConversionTargetSave(value || null)
-              }
-            }}
-            className={`${s.input} ${form.gmc_type === 'service_using_gmc' && !form.converts_to_item_id ? 'border-red-500 bg-red-50' : ''}`}>
-            <option value="">{form.gmc_type === 'service_using_gmc' ? '⚠ Required — Choose an item' : '— No conversion —'}</option>
-            {allItems.filter(i => {
-              if (i.item_id === itemId) return false
-              if (!['gmc', 'service_no_gmc'].includes(i.gmc_type || '')) return false
-              return true
-            }).map(i => (
-              <option key={i.item_id} value={String(i.item_id)}>{i.item_name}</option>
-            ))}
-          </select>
-        </div>
-      )}
-      <div>
-        {large && <label className={s.label}>GMC Type</label>}
-        <div className="flex items-center gap-1">
-          <select value={form.gmc_type} onChange={set('gmc_type')} className={s.input}>
-            {gmcOptions.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
-          {onGmcTypeSave && !hideGmcTick && (
-            <button
-              type="button"
-              onClick={handleGmcTypeSave}
-              disabled={gmcSaving}
-              className={`shrink-0 font-bold text-white rounded transition ${
-                large
-                  ? 'px-3 py-2.5 text-base'
-                  : 'px-1.5 py-0.5 text-xs'
-              } ${
-                gmcSaved
-                  ? 'bg-green-700'
-                  : gmcSaving
-                  ? 'bg-blue-600 opacity-75 cursor-not-allowed'
-                  : 'bg-green-600 hover:bg-green-700'
-              }`}
-              title={gmcSaving ? 'Saving...' : gmcSaved ? 'Saved!' : 'Save GMC Type'}>
-              {gmcSaving ? '⏳' : gmcSaved ? '✓' : '✓'}
-            </button>
-          )}
-        </div>
-        {gmcError && (
-          <div className={`mt-1 ${large ? 'text-sm' : 'text-[9px]'} text-red-600 font-semibold`}>
-            ✗ {gmcError}
-          </div>
-        )}
-        {gmcSaved && (
-          <div className={`mt-1 ${large ? 'text-sm' : 'text-[9px]'} text-green-600 font-semibold`}>
-            ✓ GMC Type saved
-          </div>
-        )}
-      </div>
       {!isService && (
         <div className={s.sectionWrap}>
           <label className={s.sectionLabel}>Stock counts</label>
@@ -353,7 +350,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
             {!form.count_excluded && (
               <>
                 <div>
-                  {large ? <label className={s.label}>Count every</label> : <span className={s.smallText}>Count every</span>}
+                  <label className={s.label}>Count every</label>
                   <select
                     value={customCadence ? '__custom__' : form.count_cadence_days}
                     onChange={e => {
@@ -373,8 +370,8 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
               </>
             )}
             {form.count_excluded && (
-              <div className={large ? 'col-span-2' : 'col-span-2'}>
-                {large && <label className={s.label}>Why is it being excluded?</label>}
+              <div className="col-span-2">
+                <label className={s.label}>Why is it being excluded?</label>
                 {stockBlocksExclude && (
                   <p className={(large ? 'text-xs' : 'text-[9px]') + ' text-red-600 font-semibold mb-1'}>
                     Still shows {currentSoh} in stock -- bring it to 0 first.
