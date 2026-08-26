@@ -663,9 +663,6 @@ function ItemHubPageInner() {
   // at Shop"/"Properties not at Shop" rows under Expenses (see below).
   const [propertiesInitialTab, setPropertiesInitialTab] = useState<'available' | 'away' | null>(null)
   const [jumpToItemId, setJumpToItemId]   = useState<number | null>(null)
-  // Global search's own "Items" result -- opens the item detail popup
-  // directly instead of navigating to the Loss by Item page.
-  const [globalSearchViewingItemId, setGlobalSearchViewingItemId] = useState<number | null>(null)
   // Seeded from ?jumpDate=/?jumpItem= -- an item's detail popup (see
   // ItemDetailPanel's onDateClick) opens this in a new tab via
   // /item?tab=loss&view=sales&jumpDate=...&jumpItem=..., which the
@@ -6334,7 +6331,7 @@ function ItemHubPageInner() {
                     <div>
                       <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Items</p>
                       {r.items.map(i => (
-                        <button key={i.id} onClick={() => { setGlobalSearchViewingItemId(i.id); closeGlobalSearch() }}
+                        <button key={i.id} onClick={() => { setLiveViewingItemId(i.id); closeGlobalSearch() }}
                           className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
                           {i.name}
                           {i.cf_group && <span className="text-gray-400 text-xs ml-1.5">· {i.cf_group}</span>}
@@ -6485,9 +6482,6 @@ function ItemHubPageInner() {
             </div>
           </div>
         </div>
-      )}
-      {globalSearchViewingItemId != null && (
-        <ItemDetailModal itemId={globalSearchViewingItemId} onClose={() => setGlobalSearchViewingItemId(null)} />
       )}
 
       {/* Global toast notifications */}
