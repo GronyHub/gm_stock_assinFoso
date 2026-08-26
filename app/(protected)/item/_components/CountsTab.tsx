@@ -63,34 +63,36 @@ function fmtShort(dateStr: string) {
 
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
 
-function CountRow({ item, onSaved, onLoss, onPairing }: {
+function CountRow({ item, onSaved, onLoss, onPairing, onLog }: {
   item: DailyItem
   onSaved: (id: number) => void
   onLoss: (d: any, retry: (extra: LossExtra) => void) => void
   onPairing: (itemName: string, packs: PackRef[], retry: () => void) => void
+  onLog?: (msg: string) => void
 }) {
   const [customQty, setCustomQty] = useState('')
   const [saving, setSaving] = useState(false)
   const soh = Number(item.calculated_soh)
 
   async function submit(qty: number, lossExtra?: LossExtra) {
-    console.log('CountRow submit called, item:', item.item_id, 'qty:', qty)
+    const log = (msg: string) => { if (onLog) onLog(msg); console.log(msg) }
+    log(`CountRow submit called, item: ${item.item_id}, qty: ${qty}`)
     setSaving(true)
     try {
-      console.log('Sending count to API:', { itemId: item.item_id, qty, notes: '' })
+      log(`Sending count to API: itemId=${item.item_id}, qty=${qty}`)
       const res = await fetch('/api/stock/count', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ itemId: item.item_id, qty, notes: '', ...(lossExtra ?? {}) }),
       })
       setSaving(false)
-      console.log('Count API response status:', res.status, 'ok:', res.ok)
+      log(`Count API response: status=${res.status}, ok=${res.ok}`)
       if (res.ok) {
-        console.log('Count saved successfully for item', item.item_id)
+        log(`✓ Count saved successfully`)
         onSaved(item.item_id);
         return
       }
       const d = await res.json().catch(() => null)
-      console.log('Count API error response:', d)
+      log(`✗ Count API error: ${d?.error ?? 'unknown error'}`)
       if (res.status === 409 && d?.requires_pack_count) {
         onPairing(item.item_name, d.packs, () => submit(qty, lossExtra))
         return
@@ -102,7 +104,7 @@ function CountRow({ item, onSaved, onLoss, onPairing }: {
       alert(d?.error ?? 'Could not save count.')
     } catch (e) {
       setSaving(false)
-      console.error('Count submit error:', e)
+      log(`✗ Count error: ${e instanceof Error ? e.message : String(e)}`)
       alert(`Error saving count: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
@@ -293,14 +295,17 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
   const [overdueItems, setOverdueItems] = useState<DailyItem[]>([])
   const [dailyLoading, setDailyLoading] = useState(true)
   const [showManual, setShowManual] = useState(false)
-  // Trend charts that used to live under the removed "Data" tab's "Counts"
-  // section -- shown here since CountsTab is the shared component behind
-  // both the Grony Cash lossView and the standalone /counts page.
   const [showAnalytics, setShowAnalytics] = useState(false)
   const [lossPrompt, setLossPrompt] = useState<LossPrompt | null>(null)
   const promptLoss = (d: any, retry: (extra: LossExtra) => void) => setLossPrompt({ d, retry })
   const [pairingPrompt, setPairingPrompt] = useState<PairingPrompt | null>(null)
   const promptPairing = (itemName: string, packs: PackRef[], retry: () => void) => setPairingPrompt({ itemName, packs, retry })
+  const [debugLogs, setDebugLogs] = useState<string[]>([])
+  const addLog = (msg: string) => {
+    console.log(msg)
+    setDebugLogs(prev => [...prev, msg])
+    setTimeout(() => setDebugLogs(prev => prev.slice(1)), 5000)
+  }
   const colPrefs = useColumnPrefs<ColKey>('countsTable', COUNTS_COLUMNS)
 
   function loadRecords() {
@@ -408,6 +413,11 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
     const label = violation === 'daily' ? 'daily' : violation === '7day' ? '7-day GMC' : '15-day overdue'
     return (
       <div className="overflow-y-auto h-full py-2">
+        {debugLogs.length > 0 && (
+          <div className="fixed top-4 right-4 bg-black text-white text-[11px] rounded px-3 py-2 max-w-xs z-50 shadow-lg">
+            {debugLogs.map((log, i) => <div key={i} className="whitespace-normal break-words">{log}</div>)}
+          </div>
+        )}
         {lossPrompt && <LossDialog prompt={lossPrompt} onClose={() => setLossPrompt(null)} onFixRecords={onFixRecords} />}
         {pairingPrompt && <PairingDialog prompt={pairingPrompt} onClose={() => setPairingPrompt(null)} />}
         <div className="flex justify-end px-2 pb-1">
@@ -440,7 +450,7 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
             </thead>
             <tbody>
               {countItems.map(item => (
-                <CountRow key={item.item_id} item={item} onLoss={promptLoss} onPairing={promptPairing}
+                <CountRow key={item.item_id} item={item} onLoss={promptLoss} onPairing={promptPairing} onLog={addLog}
                   onSaved={id => {
                     if (violation === 'daily') setDailyItems(prev => prev.filter(i => i.item_id !== id))
                     else if (violation === '7day') setGmcWeeklyItems(prev => prev.filter(i => i.item_id !== id))
