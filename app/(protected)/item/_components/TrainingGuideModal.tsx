@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import PageLawsList, { type LawFormKind } from './PageLawsList'
 import type { LawFilterKey } from './useLawsPanel'
 
@@ -432,7 +432,7 @@ const TOPICS: Topic[] = [
   },
 ]
 
-export function TrainingGuideModal({ isOpen, onClose, lawsPanel }: {
+export function TrainingGuideModal({ isOpen, onClose, lawsPanel, initialTab = 'help' }: {
   isOpen: boolean
   onClose: () => void
   lawsPanel?: {
@@ -446,9 +446,18 @@ export function TrainingGuideModal({ isOpen, onClose, lawsPanel }: {
     toggleFilter: (key: LawFilterKey) => void
     bumpRefresh: () => void
   }
+  // Which of the two tabs to land on -- the modal stays mounted (just
+  // hidden) between opens, so its own tab state would otherwise carry over
+  // from whichever tab was open last instead of respecting where the
+  // caller (e.g. the Filter dropdown's "Laws & Tasks" entry) meant to go.
+  initialTab?: 'help' | 'laws'
 }) {
   const [query, setQuery] = useState('')
   const [activeTab, setActiveTab] = useState<'help' | 'laws'>('help')
+
+  useEffect(() => {
+    if (isOpen) setActiveTab(initialTab)
+  }, [isOpen, initialTab])
   // null = no explicit pick yet -- desktop still shows a topic (falls back to
   // the first one below), but on phone this is what makes the list the
   // starting view instead of jumping straight into a topic's detail.

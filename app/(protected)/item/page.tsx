@@ -706,6 +706,7 @@ function ItemHubPageInner() {
   const rawLiveGmcType = searchParams.get('liveGmcType')
   const [liveGmcTypeFilter, setLiveGmcTypeFilter] = useState<string | null>(rawLiveGmcType ?? null)
   const [liveHelpModalOpen, setLiveHelpModalOpen] = useState(false)
+  const [liveHelpInitialTab, setLiveHelpInitialTab] = useState<'help' | 'laws'>('help')
   const rawLiveMode = searchParams.get('mode')
   const initialLiveMode = (rawLiveMode as 'sale' | 'sales' | 'bills' | 'lossByTarget' | 'log' | 'count' | null) ?? 'sale'
   const [liveMode, setLiveMode] = useState<'sale' | 'sales' | 'bills' | 'lossByTarget' | 'log' | 'count'>(initialLiveMode)
@@ -4302,6 +4303,14 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                         setLiveSaleFilter(null)
                         setLiveCurrentView(null)
                         setLiveGmcTypeFilter(v.slice('gmc:'.length))
+                      } else if (v.startsWith('help:')) {
+                        // Opens the guide as an overlay rather than changing
+                        // what the grid shows -- reset the select right back
+                        // to blank instead of leaving "Help"/"Laws & Tasks"
+                        // sitting there as if it were the active filter.
+                        setLiveHelpInitialTab(v.slice('help:'.length) as 'help' | 'laws')
+                        setLiveHelpModalOpen(true)
+                        selectEl.value = ''
                       } else {
                         setLiveCurrentView(null)
                         setLiveGmcTypeFilter(null)
@@ -4348,6 +4357,10 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                         <option value="action:clear-gmc-costs">💰 Clear Service Cost Prices</option>
                       </optgroup>
                     )}
+                    <optgroup label="Help">
+                      <option value="help:help">❓ Help Guide</option>
+                      <option value="help:laws">⚖️ Laws & Tasks</option>
+                    </optgroup>
                   </select>
                 </div>
               )}
@@ -4362,14 +4375,6 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                       <button onClick={() => setGlobalSearchOpen(true)} title="Search"
                         className="w-6 h-6 rounded-full flex items-center justify-center text-sm border-2 border-transparent text-white opacity-70 hover:opacity-100 transition shrink-0">
                         🔍
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setLiveHelpModalOpen(true)}
-                        title="Help"
-                        className="shrink-0 w-5 h-5 rounded-md text-[10px] font-semibold border flex items-center justify-center transition bg-gray-200 text-gray-700 hover:bg-gray-300 border-gray-400"
-                      >
-                        ?
                       </button>
                     </div>
                   </div>
@@ -6248,7 +6253,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
           {livePairingPrompt && <PairingDialog prompt={livePairingPrompt} onClose={() => setLivePairingPrompt(null)} />}
           </>)}
 
-          <TrainingGuideModal isOpen={liveHelpModalOpen} onClose={() => setLiveHelpModalOpen(false)} lawsPanel={liveSaleLaws} />
+          <TrainingGuideModal isOpen={liveHelpModalOpen} onClose={() => setLiveHelpModalOpen(false)} lawsPanel={liveSaleLaws} initialTab={liveHelpInitialTab} />
         </> ) : null}
         {addForm === 'expense' && outerTab === 'loss' && lossView === 'expenses' && <div className="px-4"><NewExpenseForm onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'item'    && outerTab === 'loss' && lossView === 'items'    && <div className="px-4"><NewItemForm    onSuccess={() => { setAddForm(null); loadItems() }} /></div>}
