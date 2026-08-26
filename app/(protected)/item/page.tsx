@@ -5564,7 +5564,7 @@ function ItemHubPageInner() {
                                   enteredCount !== null && submitCount(liveSelectedItem, enteredCount)
                                 }}
                                 disabled={liveCountQty === '' || liveCountSaving}
-                                className={`shrink-0 px-3 py-2 text-white text-sm font-semibold rounded-lg transition disabled:opacity-50 ${countShort ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-700 hover:bg-gray-800'}`}
+                                className={`shrink-0 px-3 py-2 text-white text-sm font-semibold rounded-lg transition disabled:opacity-50 bg-purple-600 hover:bg-purple-700`}
                               >
                                 {liveCountSaving ? '…' : countShort ? 'Save as loss' : 'Save Count'}
                               </button>
@@ -5660,7 +5660,7 @@ function ItemHubPageInner() {
                               }
                             }}
                             disabled={liveCountQty === '' || liveCountSaving}
-                            className={`shrink-0 px-3 py-2 text-white text-sm font-semibold rounded-lg transition disabled:opacity-50 ${countShort ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'}`}
+                            className={`shrink-0 px-3 py-2 text-white text-sm font-semibold rounded-lg transition disabled:opacity-50 bg-purple-600 hover:bg-purple-700`}
                           >
                             {liveCountSaving ? '…' : countShort ? 'Save as loss' : 'Save Count'}
                           </button>
