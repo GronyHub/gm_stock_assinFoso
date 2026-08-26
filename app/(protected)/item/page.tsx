@@ -542,16 +542,18 @@ function formatGapMins(mins: number): string {
 // gainCount are how many separate days came up short/over, each
 // independent of the other and of lgAmt's net sign (a item can have both
 // loss days and gain days that partly offset into one net figure).
+// Gain count is deliberately NOT shown here anymore -- it has its own
+// "STOCK GAIN" attention banner (see itemAttentionFlags) with its own count,
+// so repeating it in this loss line was the same number shown twice.
 function formatLoss(l: { lossCount: number; lgAmt: number; gainCount?: number } | undefined): { text: string; cls: string } {
   const count = l?.lossCount ?? 0
   const amt = l?.lgAmt ?? 0
   const gainCount = l?.gainCount ?? 0
   const fmtAmt = (v: number) => (v % 1 === 0 ? v.toFixed(0) : v.toFixed(2))
-  const gainSuffix = gainCount > 0 ? ` · Gain ${gainCount}` : ''
   if (count === 0 && amt === 0 && gainCount === 0) return { text: 'No loss', cls: 'text-gray-400' }
-  if (amt > 0) return { text: `Loss ${count} · -₵${fmtAmt(amt)}${gainSuffix}`, cls: 'text-red-500 font-semibold' }
-  if (amt < 0) return { text: `Loss ${count} · +₵${fmtAmt(Math.abs(amt))}${gainSuffix}`, cls: 'text-green-600 font-semibold' }
-  return { text: `Loss ${count}${gainSuffix}`, cls: 'text-gray-400' }
+  if (amt > 0) return { text: `Loss ${count} · -₵${fmtAmt(amt)}`, cls: 'text-red-500 font-semibold' }
+  if (amt < 0) return { text: `Loss ${count} · +₵${fmtAmt(Math.abs(amt))}`, cls: 'text-green-600 font-semibold' }
+  return { text: `Loss ${count}`, cls: 'text-gray-400' }
 }
 
 // Compact filter-bar <select> styling, shared by the type/group/flags
@@ -587,7 +589,7 @@ function itemAttentionFlags(
   duplicateItemIds: Set<number>,
   unlinkedNamedIds: Set<number>,
   serviceViolationIds: Set<number>,
-  gainItemIds: Set<number>
+  gainCountByItemId: Map<number, number>
 ): { label: string; bg: string }[] {
   const soh = Number(item.soh)
   const sp = parseFloat(String(item.selling_price)) || 0
@@ -598,8 +600,11 @@ function itemAttentionFlags(
   // violation as a loss -- it always means a bill/GMC take was never
   // entered or an earlier count was wrong. It doesn't fix itself, so it
   // has to surface the same way negative stock/duplicates do until a
-  // staff member finds the missing record (or corrects the count).
-  if (gainItemIds.has(item.id)) flags.push({ label: '🔺 STOCK GAIN', bg: 'bg-red-600' })
+  // staff member finds the missing record (or corrects the count). The
+  // count rides along on the banner itself -- it used to also show as
+  // "Gain N" in the CP/SP/loss line, which just repeated the same number.
+  const gainCount = gainCountByItemId.get(item.id) ?? 0
+  if (gainCount > 0) flags.push({ label: `🔺 STOCK GAIN: ${gainCount}`, bg: 'bg-red-600' })
   if (duplicateItemIds.has(item.id)) flags.push({ label: '⚠ DUPLICATE ITEM', bg: 'bg-red-600' })
   if (serviceViolationIds.has(item.id)) flags.push({ label: '⚠ SERVICE VIOLATION', bg: 'bg-rose-600' })
   if (unlinkedNamedIds.has(item.id)) flags.push({ label: '⚠ UNLINKED SALE', bg: 'bg-orange-600' })
@@ -2310,11 +2315,13 @@ function ItemHubPageInner() {
   const liveServiceViolationIdSet = useMemo(() => new Set<number>(liveItemsWithViolations.service_violation ?? []), [liveItemsWithViolations])
   // Fourth cross-item check: any item with an outstanding count gain (see
   // liveLossByItemId above), fed straight off the same per-item loss/gain
-  // map the grid already fetches for its Loss/Gain badge.
-  const liveGainItemIds = useMemo(() => {
-    const ids = new Set<number>()
-    liveLossByItemId.forEach((v, id) => { if ((v.gainCount ?? 0) > 0) ids.add(id) })
-    return ids
+  // map the grid already fetches for its Loss/Gain badge. Keeps the actual
+  // count (not just a Set of flagged ids) so the STOCK GAIN banner can show
+  // "STOCK GAIN: N" instead of just flagging the item.
+  const liveGainCountByItemId = useMemo(() => {
+    const counts = new Map<number, number>()
+    liveLossByItemId.forEach((v, id) => { if ((v.gainCount ?? 0) > 0) counts.set(id, v.gainCount ?? 0) })
+    return counts
   }, [liveLossByItemId])
 
   // Fetch taps
@@ -2711,7 +2718,7 @@ function ItemHubPageInner() {
     const singleFlag: LiveItem[] = []
     const noFlags: LiveItem[] = []
     for (const item of rest) {
-      const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainItemIds)
+      const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId)
       if (flags.length > 1) multipleFlags.push(item)
       else if (flags.length === 1) singleFlag.push(item)
       else noFlags.push(item)
@@ -2729,7 +2736,7 @@ function ItemHubPageInner() {
 
     const restSorted = [...multipleFlags, ...singleFlag, ...noFlags]
     return [due, restSorted] as [LiveItem[], LiveItem[]]
-  }, [liveCatalogueItems, liveCountStatus, liveMode, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainItemIds, liveSalesCounts])
+  }, [liveCatalogueItems, liveCountStatus, liveMode, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveSalesCounts])
 
   function addTapStatus(msg: string) {
     console.log('[recordTap]', msg)
@@ -5355,7 +5362,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                     // gain, a duplicate...) -- surface those the same way
                     // the rest of the grid does instead of letting the
                     // COUNT NOW banner hide them.
-                    const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainItemIds)
+                    const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId)
                     return (
                       <div
                         key={item.id}
@@ -5424,7 +5431,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                   )}
                   {liveRestCatalogueItems.map(item => {
                     const count = liveSalesCounts.get(item.id) ?? 0
-                    const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainItemIds)
+                    const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId)
                     const flag = flags[0] ?? null
                     return (
                       <div
@@ -5494,7 +5501,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
             {/* Modal */}
             {liveSelectedItem && (() => {
               const due = liveCountStatus.get(liveSelectedItem.id)
-              const flags = itemAttentionFlags(liveSelectedItem, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainItemIds)
+              const flags = itemAttentionFlags(liveSelectedItem, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId)
               const expected = Number(liveSelectedItem.soh)
               const enteredCount = liveCountQty === '' ? null : Number(liveCountQty)
               const countShort = enteredCount !== null && !isNaN(enteredCount) && enteredCount < expected
