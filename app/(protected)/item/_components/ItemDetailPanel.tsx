@@ -19,9 +19,15 @@ interface ItemDetailPanelProps {
   // to on its own, since it's now opened from many different pages, not
   // just its own standalone destination.
   onItemGone?: () => void
+  // The Live Sale grid-edit sheet embeds this panel as its own "Details"
+  // section but renders its own Aliases/Services/Merge editor up top
+  // (backed by that sheet's own alias/match state, kept in sync with its
+  // Save button) -- showing this panel's separate copy underneath as well
+  // would just be two editors for the same data going in and out of sync.
+  showRelationsEditor?: boolean
 }
 
-export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGone }: ItemDetailPanelProps) {
+export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGone, showRelationsEditor = true }: ItemDetailPanelProps) {
   const { data: session } = useSession()
   const isOwnerLevelUser = isOwnerLevel(session?.user as any)
 
@@ -138,7 +144,7 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
           </button>
         </div>
       )}
-      {isOwnerLevelUser && (
+      {showRelationsEditor && isOwnerLevelUser && (
         <div className="border-t border-b border-gray-200 bg-gray-50 px-3 py-2">
           {!editMode ? (
             <div className="flex items-center justify-between gap-2">

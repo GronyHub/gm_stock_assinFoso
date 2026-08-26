@@ -1851,6 +1851,7 @@ function ItemHubPageInner() {
   const [liveGridEditError, setLiveGridEditError] = useState('')
   const [liveGridEditAliases, setLiveGridEditAliases] = useState<AliasRecord[]>([])
   const [liveGridEditMatches, setLiveGridEditMatches] = useState<MatchRecord[]>([])
+  const [liveGridEditRelationsOpen, setLiveGridEditRelationsOpen] = useState(false)
   const [liveGridEditConfirmDelete, setLiveGridEditConfirmDelete] = useState(false)
   const [liveGridEditDeleting, setLiveGridEditDeleting] = useState(false)
   const [liveGridEditDeleteError, setLiveGridEditDeleteError] = useState('')
@@ -3072,6 +3073,7 @@ function ItemHubPageInner() {
     setLiveGridEditError('')
     setLiveGridEditLoading(true)
     setLiveGridEditConfirmDelete(false)
+    setLiveGridEditRelationsOpen(false)
     setLiveTapStatus([])
     try {
       const item = liveAllItems.find(i => i.id === itemId)
@@ -5882,6 +5884,99 @@ async function recordCountFromModal() {
                     </div>
                   </div>
                   <div className="overflow-y-auto">
+                    {editItem && !liveGridEditLoading && (
+                      <div className="border-b border-gray-200 bg-gray-50 px-2 py-1.5">
+                        {!liveGridEditRelationsOpen ? (
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex flex-wrap gap-2 flex-1 items-center text-[9px]">
+                              <div className="flex items-center gap-1">
+                                <span className="font-semibold text-gray-600">Aliases:</span>
+                                {liveGridEditAliases.length === 0 ? (
+                                  <span className="text-gray-400">—</span>
+                                ) : (
+                                  <div className="flex flex-wrap gap-1">
+                                    {liveGridEditAliases.map(a => (
+                                      <span key={a.id} className="inline-block bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full text-[8px] font-semibold">
+                                        {a.name}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="font-semibold text-gray-600">
+                                  {editItem.product_type === 'service' ? 'Goods used:' : 'Services used:'}
+                                </span>
+                                {liveGridEditMatches.length === 0 ? (
+                                  <span className="text-gray-400">—</span>
+                                ) : (
+                                  <div className="flex flex-wrap gap-1">
+                                    {liveGridEditMatches.map(m => (
+                                      <span key={m.id} className="inline-block bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded-full text-[8px] font-semibold">
+                                        {m.name}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => setLiveGridEditRelationsOpen(true)}
+                              className="shrink-0 text-[9px] font-semibold px-2 py-1 rounded bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 transition whitespace-nowrap">
+                              ✎ Edit
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-3 gap-2">
+                              <div className="col-span-3 sm:col-span-1">
+                                <p className="text-[8px] font-bold text-gray-600 mb-1 uppercase">Aliases</p>
+                                <AliasPicker itemId={editItem.id} current={liveGridEditAliases} onChange={setLiveGridEditAliases} />
+                              </div>
+                              <div className="col-span-3 sm:col-span-1">
+                                <p className="text-[8px] font-bold text-gray-600 mb-1 uppercase">
+                                  {editItem.product_type === 'service' ? 'Goods Used' : 'Services Used'}
+                                </p>
+                                <MatchPicker
+                                  itemId={editItem.id}
+                                  itemName={editItem.name}
+                                  isService={editItem.product_type === 'service'}
+                                  current={liveGridEditMatches}
+                                  candidatePool={editItem.product_type === 'service' ? Array.from(liveGmcItemIds).map((id: number) => {
+                                    const it = liveAllItems.find(i => i.id === id)
+                                    return { item_id: id, item_name: it?.name ?? '', product_type: 'good' }
+                                  }) : Array.from(liveGmcItemIds).map((id: number) => {
+                                    const it = liveAllItems.find(i => i.id === id)
+                                    return { item_id: id, item_name: it?.name ?? '', product_type: 'service' }
+                                  })}
+                                  onChange={setLiveGridEditMatches}
+                                />
+                              </div>
+                              {isOwnerLevel(session?.user as any) && (
+                                <div className="col-span-3 sm:col-span-1">
+                                  <p className="text-[8px] font-bold text-gray-600 mb-1 uppercase">Merge</p>
+                                  <MergeItemPicker
+                                    itemId={editItem.id}
+                                    itemName={editItem.name}
+                                    typeLabel={editItem.product_type === 'service' ? 'service' : 'good'}
+                                    mergePool={liveAllItems.filter(i => i.id !== editItem.id).map(i => ({
+                                      item_id: i.id,
+                                      item_name: i.name,
+                                      product_type: i.product_type
+                                    }))}
+                                    onMerged={() => { setLiveGridEditRelationsOpen(false); setLiveEditingGridItemId(null) }} />
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => setLiveGridEditRelationsOpen(false)}
+                              className="w-full text-[9px] font-semibold px-2 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white transition">
+                              ✓ Done
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     <div className="p-2 border-b border-gray-200">
                       {liveGridEditLoading ? (
                         <p className="text-center text-gray-500 text-xs">Loading…</p>
@@ -6008,45 +6103,6 @@ async function recordCountFromModal() {
                     {editItem && !liveGridEditLoading && (
                       <div className="bg-gray-50">
                         <div className="px-2 py-1.5 space-y-2">
-                          <div>
-                            <label className="text-[7px] font-bold text-gray-500 block mb-1">Aliases</label>
-                            <AliasPicker itemId={editItem.id} current={liveGridEditAliases} onChange={setLiveGridEditAliases} />
-                          </div>
-                          <div>
-                            <label className="text-[7px] font-bold text-gray-500 block mb-1">
-                              {editItem.product_type === 'service' ? 'Goods used' : 'Services used'}
-                            </label>
-                            <MatchPicker
-                              itemId={editItem.id}
-                              itemName={editItem.name}
-                              isService={editItem.product_type === 'service'}
-                              current={liveGridEditMatches}
-                              candidatePool={editItem.product_type === 'service' ? Array.from(liveGmcItemIds).map((id: number) => {
-                                const item = liveAllItems.find(i => i.id === id)
-                                return { item_id: id, item_name: item?.name ?? '', product_type: 'good' }
-                              }) : Array.from(liveGmcItemIds).map((id: number) => {
-                                const item = liveAllItems.find(i => i.id === id)
-                                return { item_id: id, item_name: item?.name ?? '', product_type: 'service' }
-                              })}
-                              onChange={setLiveGridEditMatches}
-                            />
-                          </div>
-                          {isOwnerLevel(session?.user as any) && (
-                            <div>
-                              <label className="text-[7px] font-bold text-gray-500 block mb-1">Merge</label>
-                              <MergeItemPicker
-                                itemId={editItem.id}
-                                itemName={editItem.name}
-                                typeLabel={editItem.product_type === 'service' ? 'service' : 'good'}
-                                mergePool={liveAllItems.filter(i => i.id !== editItem.id).map(i => ({
-                                  item_id: i.id,
-                                  item_name: i.name,
-                                  product_type: i.product_type
-                                }))}
-                                onMerged={() => setLiveEditingGridItemId(null)}
-                              />
-                            </div>
-                          )}
                           {isOwnerLevel(session?.user as any) && (
                             <div>
                               {!liveGridEditConfirmDelete ? (
@@ -6124,7 +6180,7 @@ async function recordCountFromModal() {
                     {editItem && !liveGridEditLoading && (
                       <div className="bg-gray-50">
                         <h3 className="px-2 py-1 text-[9px] font-bold text-gray-900 border-b border-gray-200">Details</h3>
-                        <ItemDetailPanel itemId={editItem.id} onItemGone={() => setLiveEditingGridItemId(null)} />
+                        <ItemDetailPanel itemId={editItem.id} onItemGone={() => setLiveEditingGridItemId(null)} showRelationsEditor={false} />
                       </div>
                     )}
                   </div>
