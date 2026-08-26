@@ -6041,53 +6041,58 @@ async function recordCountFromModal() {
                           </div>
                         )}
                         <div className="space-y-1">
-                          <p className="text-[9px] text-gray-700 font-medium">Qty</p>
-                          <div className="flex gap-1">
-                            <input
-                              type="number"
-                              inputMode="decimal"
-                              min="1"
-                              step="1"
-                              value={liveQty}
-                              onChange={e => setLiveQty(e.target.value)}
-                              placeholder="Qty"
-                              className="flex-1 text-xs font-semibold text-gray-900 bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400"
-                            />
-                            <button
-                              disabled={!liveQty}
-                              className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-[9px] font-semibold rounded transition disabled:opacity-50">
-                              ={liveQty || '?'}
-                            </button>
+                          <div className="flex gap-1.5 items-stretch">
+                            <div className="flex-1 min-w-0 flex flex-col">
+                              <p className="text-[9px] text-gray-700 font-medium mb-1">Qty</p>
+                              <input
+                                type="number"
+                                inputMode="decimal"
+                                min="1"
+                                step="1"
+                                value={liveQty}
+                                onChange={e => setLiveQty(e.target.value)}
+                                placeholder="Qty"
+                                className="w-full flex-1 text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-1 py-4 outline-none focus:ring-1 focus:ring-blue-400 text-center"
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0 flex flex-col">
+                              <p className="text-[9px] text-gray-700 font-medium mb-1">Price</p>
+                              <div className="relative flex-1">
+                                <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-gray-500 text-[9px]">₵</span>
+                                <input
+                                  type="number"
+                                  inputMode="decimal"
+                                  min="0"
+                                  step="0.01"
+                                  value={livePrice}
+                                  onChange={e => setLivePrice(e.target.value)}
+                                  placeholder={editItem ? formatPrice(editItem.selling_price) : 'Price'}
+                                  className="w-full h-full text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg pl-4 pr-1 py-4 outline-none focus:ring-1 focus:ring-blue-400"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0 flex flex-col">
+                              <p className="text-[9px] text-gray-700 font-medium mb-1">Time</p>
+                              <input
+                                type="datetime-local"
+                                value={liveTapTime}
+                                onChange={e => setLiveTapTime(e.target.value)}
+                                className="w-full flex-1 text-[9px] font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-1 py-4 outline-none focus:ring-1 focus:ring-blue-400"
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0 flex flex-col">
+                              <p className="text-[9px] text-transparent font-medium mb-1 select-none">Tap</p>
+                              <button
+                                onClick={() => recordTap(editItem)}
+                                disabled={!liveQty || liveSaving}
+                                className="w-full flex-1 px-1 py-4 bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-semibold rounded-lg transition disabled:opacity-50">
+                                {liveSaving ? '…' : 'Tap'}
+                              </button>
+                            </div>
                           </div>
-                          <p className="text-[9px] text-gray-700 font-medium">Price</p>
-                          <div className="relative">
-                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-[9px]">₵</span>
-                            <input
-                              type="number"
-                              inputMode="decimal"
-                              min="0"
-                              step="0.01"
-                              value={livePrice}
-                              onChange={e => setLivePrice(e.target.value)}
-                              placeholder={editItem ? formatPrice(editItem.selling_price) : 'Price'}
-                              className="w-full text-xs font-semibold text-gray-900 bg-white border border-gray-300 rounded pl-5 pr-2 py-1 outline-none focus:ring-1 focus:ring-blue-400"
-                            />
-                          </div>
-                          <p className="text-[8px] text-gray-500">Defaults to ₵{editItem ? formatPrice(editItem.selling_price) : '0'}</p>
-                          <p className="text-[9px] text-gray-700 font-medium mt-2">Time</p>
-                          <input
-                            type="datetime-local"
-                            value={liveTapTime}
-                            onChange={e => setLiveTapTime(e.target.value)}
-                            className="w-full text-xs font-semibold text-gray-900 bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400"
-                          />
-                          <p className="text-[8px] text-gray-500">When was this sale made?</p>
-                          <button
-                            onClick={() => recordTap(editItem)}
-                            disabled={!liveQty || liveSaving}
-                            className="w-full px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white text-[9px] font-semibold rounded transition disabled:opacity-50">
-                            {liveSaving ? 'Recording…' : 'Tap'}
-                          </button>
+                          <p className="text-[8px] text-gray-500">
+                            Defaults to ₵{editItem ? formatPrice(editItem.selling_price) : '0'} · When was this sale made?
+                          </p>
                         </div>
                       </div>
                     )})()}
@@ -6101,57 +6106,73 @@ async function recordCountFromModal() {
                               <div className="p-1.5 bg-red-100 border border-red-300 rounded space-y-1">
                                 <p className="text-[9px] font-bold text-red-900">⚠ COUNT NOW – {overdueItem.days_overdue}d overdue</p>
                                 <p className="text-[8px] text-red-800">System expects {overdueItem.calculated_soh} on the shelf.</p>
-                                <input
-                                  type="number"
-                                  inputMode="decimal"
-                                  min="1"
-                                  step="1"
-                                  value={liveGridEditCountQty}
-                                  onChange={e => setLiveGridEditCountQty(e.target.value)}
-                                  placeholder="Counted quantity"
-                                  className="w-full text-xs font-semibold text-gray-900 bg-white border border-gray-300 rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-red-400"
-                                  disabled={liveGridEditCountSaving}
-                                />
+                                <div className="flex gap-1.5 items-stretch">
+                                  <div className="flex-1 min-w-0 flex flex-col">
+                                    <p className="text-[8px] text-red-800 font-medium mb-1">Quantity</p>
+                                    <input
+                                      type="number"
+                                      inputMode="decimal"
+                                      min="1"
+                                      step="1"
+                                      value={liveGridEditCountQty}
+                                      onChange={e => setLiveGridEditCountQty(e.target.value)}
+                                      placeholder="Qty"
+                                      className="w-full flex-1 text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-1 py-4 outline-none focus:ring-1 focus:ring-red-400 text-center"
+                                      disabled={liveGridEditCountSaving}
+                                    />
+                                  </div>
+                                  <div className="flex-1 min-w-0 flex flex-col">
+                                    <p className="text-[8px] text-transparent font-medium mb-1 select-none">Save</p>
+                                    <button
+                                      type="button"
+                                      onClick={recordCountFromModal}
+                                      disabled={!liveGridEditCountQty || liveGridEditCountSaving}
+                                      className="w-full flex-1 px-1 py-4 bg-purple-600 hover:bg-purple-700 text-white text-[10px] font-semibold rounded-lg transition disabled:opacity-50">
+                                      {liveGridEditCountSaving ? 'Saving…' : 'Save Count'}
+                                    </button>
+                                  </div>
+                                </div>
                                 {liveGridEditCountError && (
                                   <div className="bg-red-50 border border-red-200 rounded px-1.5 py-0.5 text-[8px] text-red-600">
                                     {liveGridEditCountError}
                                   </div>
                                 )}
-                                <button
-                                  type="button"
-                                  onClick={recordCountFromModal}
-                                  disabled={!liveGridEditCountQty || liveGridEditCountSaving}
-                                  className="w-full px-2 py-0.5 bg-purple-600 hover:bg-purple-700 text-white text-[8px] font-semibold rounded transition disabled:opacity-50">
-                                  {liveGridEditCountSaving ? 'Saving…' : 'Save Count'}
-                                </button>
                               </div>
                             ) : (
                               <>
                                 <label className="text-[7px] font-bold text-gray-500 block mb-1">Manual Count</label>
                                 <div className="space-y-1">
-                                  <input
-                                    type="number"
-                                    inputMode="decimal"
-                                    min="1"
-                                    step="1"
-                                    value={liveGridEditCountQty}
-                                    onChange={e => setLiveGridEditCountQty(e.target.value)}
-                                    placeholder="Qty"
-                                    className="w-full text-xs font-semibold text-gray-900 bg-white border border-gray-300 rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-blue-400"
-                                    disabled={liveGridEditCountSaving}
-                                  />
+                                  <div className="flex gap-1.5 items-stretch">
+                                    <div className="flex-1 min-w-0 flex flex-col">
+                                      <p className="text-[8px] text-gray-500 font-medium mb-1">Quantity</p>
+                                      <input
+                                        type="number"
+                                        inputMode="decimal"
+                                        min="1"
+                                        step="1"
+                                        value={liveGridEditCountQty}
+                                        onChange={e => setLiveGridEditCountQty(e.target.value)}
+                                        placeholder="Qty"
+                                        className="w-full flex-1 text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-1 py-4 outline-none focus:ring-1 focus:ring-blue-400 text-center"
+                                        disabled={liveGridEditCountSaving}
+                                      />
+                                    </div>
+                                    <div className="flex-1 min-w-0 flex flex-col">
+                                      <p className="text-[8px] text-transparent font-medium mb-1 select-none">Record</p>
+                                      <button
+                                        type="button"
+                                        onClick={recordCountFromModal}
+                                        disabled={!liveGridEditCountQty || liveGridEditCountSaving}
+                                        className="w-full flex-1 px-1 py-4 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-semibold rounded-lg transition disabled:opacity-50">
+                                        {liveGridEditCountSaving ? 'Recording…' : 'Record'}
+                                      </button>
+                                    </div>
+                                  </div>
                                   {liveGridEditCountError && (
                                     <div className="bg-red-50 border border-red-200 rounded px-1.5 py-0.5 text-[8px] text-red-600">
                                       {liveGridEditCountError}
                                     </div>
                                   )}
-                                  <button
-                                    type="button"
-                                    onClick={recordCountFromModal}
-                                    disabled={!liveGridEditCountQty || liveGridEditCountSaving}
-                                    className="w-full px-2 py-0.5 bg-blue-600 hover:bg-blue-700 text-white text-[8px] font-semibold rounded transition disabled:opacity-50">
-                                    {liveGridEditCountSaving ? 'Recording…' : 'Record'}
-                                  </button>
                                 </div>
                               </>
                             )}
