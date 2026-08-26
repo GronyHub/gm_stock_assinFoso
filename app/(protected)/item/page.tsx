@@ -5350,6 +5350,12 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                     const count = liveSalesCounts.get(item.id) ?? 0
                     const due = liveCountStatus.get(item.id)!
                     const overdue = due.level === 'overdue'
+                    // Being due for a count doesn't rule out having some
+                    // other data-integrity problem too (negative stock, a
+                    // gain, a duplicate...) -- surface those the same way
+                    // the rest of the grid does instead of letting the
+                    // COUNT NOW banner hide them.
+                    const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainItemIds)
                     return (
                       <div
                         key={item.id}
@@ -5359,6 +5365,11 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                         <div className={`px-2 py-1 text-[8px] font-extrabold text-white tracking-wide flex items-center justify-between gap-2 whitespace-nowrap ${overdue ? 'bg-red-600' : 'bg-amber-500'}`}>
                           <span className="truncate">⚠ COUNT NOW · {due.label} {overdue ? 'OVERDUE' : ''}</span>
                         </div>
+                        {flags.map((f, i) => (
+                          <div key={i} className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide truncate ${f.bg}`}>
+                            {f.label}
+                          </div>
+                        ))}
                         <div className="px-1 py-0.5 flex flex-col">
                           <div className={`text-[11px] font-semibold leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : ''}`}>
                             {renderClickableItemName(item.name, `text-[11px] leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : 'text-blue-600'}`)}
