@@ -2531,6 +2531,7 @@ function ItemHubPageInner() {
   const liveTapsByDate = useMemo(() => {
     const groups = new Map<string, typeof liveTaps>()
     for (const tap of liveTaps) {
+      if (!tap || !tap.tapped_at) continue
       const date = tap.tapped_at.slice(0, 10)
       if (!groups.has(date)) groups.set(date, [])
       groups.get(date)!.push(tap)
