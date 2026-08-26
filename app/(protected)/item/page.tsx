@@ -1896,6 +1896,7 @@ function ItemHubPageInner() {
   const [liveEditingTapSaving, setLiveEditingTapSaving] = useState(false)
   const [liveEditingCountTime, setLiveEditingCountTime] = useState('')
   const [liveEditingCountTimeSaving, setLiveEditingCountTimeSaving] = useState(false)
+  const [liveReconcilingTaps, setLiveReconcilingTaps] = useState(false)
   const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: 'success' | 'error' | 'info' }>>([])
 
   function showToast(message: string, type: 'success' | 'error' | 'info' = 'info') {
@@ -2920,6 +2921,28 @@ function ItemHubPageInner() {
       }
     } catch (e) {
       setLiveTapError('Could not undo tap')
+    }
+  }
+
+  // One-off fix for taps undone before undo actually reversed the receipt
+  // line it fed into (see reverseTapReceiptEffect in lib/liveSales.ts) --
+  // those still show their full quantity in Sales/stock totals. Safe to
+  // run more than once; a second run finds nothing left to reverse.
+  async function reconcileUndoneTaps() {
+    if (!confirm('Fix past undone sales that were never removed from totals? This only affects taps already undone in the Log.')) return
+    setLiveReconcilingTaps(true)
+    try {
+      const res = await fetch('/api/sales/live-taps/reconcile', { method: 'POST' })
+      const d = await res.json().catch(() => null)
+      if (res.ok) {
+        showToast(d?.message ?? 'Done', 'success')
+      } else {
+        showToast(d?.error ?? 'Could not run the fix', 'error')
+      }
+    } catch (e) {
+      showToast('Could not run the fix', 'error')
+    } finally {
+      setLiveReconcilingTaps(false)
     }
   }
 
@@ -4379,7 +4402,18 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                 </button>
               )}
               {renderModeToggleRow()}
-              <div className="flex justify-end px-1.5 py-1 border-b border-gray-100">
+              <div className="flex justify-end items-center gap-1.5 px-1.5 py-1 border-b border-gray-100">
+                {isOwnerLevel(session?.user as any) && (
+                  <button
+                    type="button"
+                    onClick={reconcileUndoneTaps}
+                    disabled={liveReconcilingTaps}
+                    title="Fix past undone sales that were never removed from totals"
+                    className="shrink-0 font-bold rounded-lg px-2 py-1 text-[10px] bg-gray-100 text-gray-600 hover:bg-gray-200 transition disabled:opacity-50"
+                  >
+                    {liveReconcilingTaps ? '…' : 'Fix undone sales'}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setLiveLogShowAnalytics(a => !a)}
