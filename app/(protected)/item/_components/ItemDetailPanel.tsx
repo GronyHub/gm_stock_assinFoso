@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { isOwnerLevel } from '@/lib/roles'
-import { ItemDetail, type SummaryRow, type AliasRecord, type MatchRecord, type CandidateItem } from './LossTab'
+import { ItemDetail, AliasPicker, MatchPicker, MergeItemPicker, type SummaryRow, type AliasRecord, type MatchRecord, type CandidateItem } from './LossTab'
 
 // Standalone home for the same pack-chain/edit/alias/merge detail view that
 // used to open inline under a row on the Items list -- reused here on the
@@ -29,6 +29,7 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
   const [loading, setLoading] = useState(!collapsed)
   const [aliasRecords, setAliasRecords] = useState<Record<number, AliasRecord[]>>({})
   const [matchRecords, setMatchRecords] = useState<Record<string, MatchRecord[]>>({})
+  const [editMode, setEditMode] = useState(false)
   // Same three filters the pack-chain table's submenu used to offer back
   // when it lived inline under a row on the Items list. Loss/Gain Only are
   // mutually exclusive -- turning one on turns the other off.
@@ -135,6 +136,85 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
               ${gainOnly ? 'bg-orange-500 text-white' : 'bg-white border border-orange-200 text-orange-700 hover:bg-orange-100'}`}>
             🔺 Gain Only
           </button>
+        </div>
+      )}
+      {isOwnerLevelUser && (
+        <div className="border-t border-b border-gray-200 bg-gray-50 px-3 py-2">
+          {!editMode ? (
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-wrap gap-2 flex-1 items-center text-[9px]">
+                <div className="flex items-center gap-1">
+                  <span className="font-semibold text-gray-600">Aliases:</span>
+                  {aliasRecords[item.item_id]?.length === 0 ? (
+                    <span className="text-gray-400">—</span>
+                  ) : (
+                    <div className="flex flex-wrap gap-1">
+                      {(aliasRecords[item.item_id] ?? []).map(a => (
+                        <span key={a.id} className="inline-block bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full text-[8px] font-semibold">
+                          {a.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="font-semibold text-gray-600">Services used:</span>
+                  {matchRecords[item.item_name.trim().toLowerCase()]?.length === 0 ? (
+                    <span className="text-gray-400">—</span>
+                  ) : (
+                    <div className="flex flex-wrap gap-1">
+                      {(matchRecords[item.item_name.trim().toLowerCase()] ?? []).map(m => (
+                        <span key={m.id} className="inline-block bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded-full text-[8px] font-semibold">
+                          {m.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => setEditMode(true)}
+                className="shrink-0 text-[9px] font-semibold px-2 py-1 rounded bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 transition whitespace-nowrap">
+                ✎ Edit
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="grid grid-cols-3 gap-2">
+                <div className="col-span-3 sm:col-span-1">
+                  <p className="text-[8px] font-bold text-gray-600 mb-1 uppercase">Aliases</p>
+                  <AliasPicker
+                    itemId={item.item_id}
+                    current={aliasRecords[item.item_id] ?? []}
+                    onChange={(next) => setAliasRecords(prev => ({ ...prev, [item.item_id]: next }))} />
+                </div>
+                <div className="col-span-3 sm:col-span-1">
+                  <p className="text-[8px] font-bold text-gray-600 mb-1 uppercase">Services Used</p>
+                  <MatchPicker
+                    itemId={item.item_id}
+                    itemName={item.item_name}
+                    isService={item.product_type === 'service'}
+                    current={matchRecords[item.item_name.trim().toLowerCase()] ?? []}
+                    candidatePool={item.product_type === 'service' ? goodsPool : servicesPool}
+                    onChange={(next) => setMatchRecords(prev => ({ ...prev, [item.item_name.trim().toLowerCase()]: next }))} />
+                </div>
+                <div className="col-span-3 sm:col-span-1">
+                  <p className="text-[8px] font-bold text-gray-600 mb-1 uppercase">Merge</p>
+                  <MergeItemPicker
+                    itemId={item.item_id}
+                    itemName={item.item_name}
+                    typeLabel={item.product_type === 'service' ? 'service' : 'good'}
+                    mergePool={[...goodsPool, ...servicesPool].filter(i => i.item_id !== item.item_id)}
+                    onMerged={() => { setEditMode(false); onItemGone?.() }} />
+                </div>
+              </div>
+              <button
+                onClick={() => setEditMode(false)}
+                className="w-full text-[9px] font-semibold px-2 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white transition">
+                ✓ Done
+              </button>
+            </div>
+          )}
         </div>
       )}
       <ItemDetail item={item} groups={groupNames} allItems={allItemsList}
