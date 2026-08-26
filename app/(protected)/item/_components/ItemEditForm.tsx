@@ -341,12 +341,15 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
             </p>
           )}
           <div className={large ? 'grid grid-cols-3 gap-3' : 'grid grid-cols-3 gap-2'}>
-            <label className={s.checkboxLabel}>
-              <input type="checkbox" checked={form.count_excluded}
-                onChange={e => onChange({ ...form, count_excluded: e.target.checked, count_excluded_reason: e.target.checked ? form.count_excluded_reason : '' })}
-                className={s.checkbox} />
-              Exclude from counts entirely
-            </label>
+            <div>
+              <label className={`${s.label} text-transparent select-none`}>Exclude</label>
+              <label className={`${s.checkboxLabel} ${large ? '' : 'h-full'}`}>
+                <input type="checkbox" checked={form.count_excluded}
+                  onChange={e => onChange({ ...form, count_excluded: e.target.checked, count_excluded_reason: e.target.checked ? form.count_excluded_reason : '' })}
+                  className={s.checkbox} />
+                Exclude from counts entirely
+              </label>
+            </div>
             {!form.count_excluded && (
               <>
                 <div>
