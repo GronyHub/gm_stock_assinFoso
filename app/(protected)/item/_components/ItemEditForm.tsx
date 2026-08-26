@@ -140,55 +140,102 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
   const presetCadenceValues: string[] = CADENCE_PRESETS.map(p => p.value)
   const [customCadence, setCustomCadence] = useState(!!form.count_cadence_days && !presetCadenceValues.includes(form.count_cadence_days))
   const stockBlocksExclude = currentSoh != null && Math.abs(currentSoh) > 0.001
+  const [editMode, setEditMode] = useState(false)
   return (
     <div className={s.wrap}>
-      <div className="grid grid-cols-3 gap-2">
+      <div className={`flex items-start justify-between gap-3 ${large ? 'mb-4' : ''}`}>
+      <div className="grid grid-cols-3 gap-2 flex-1">
         {/* Item name is now edited inline in the modal header via ItemDetailPanel */}
         <div>
           {large && <label className={s.label}>Item name <span className="text-red-600">*</span></label>}
-          <div className="flex items-center gap-1">
-            {!large && <input placeholder="Item name *" value={form.item_name} onChange={set('item_name')} className={s.input} />}
-            <GMCBadge gmcType={form.gmc_type} size={large ? 'medium' : 'small'} />
-          </div>
+          {editMode ? (
+            <div className="flex items-center gap-1">
+              {!large && <input placeholder="Item name *" value={form.item_name} onChange={set('item_name')} className={s.input} />}
+              <GMCBadge gmcType={form.gmc_type} size={large ? 'medium' : 'small'} />
+            </div>
+          ) : (
+            <div className={`${large ? 'bg-gray-100 rounded px-3 py-2.5' : 'text-[9px] text-gray-700'} flex items-center gap-1`}>
+              <span className={large ? 'text-base text-gray-900' : ''}>{form.item_name || '—'}</span>
+              <GMCBadge gmcType={form.gmc_type} size={large ? 'medium' : 'small'} />
+            </div>
+          )}
         </div>
         <div>
           {large && <label className={s.label}>Group</label>}
-          <select value={customGroup ? '__custom__' : form.cf_group}
-            onChange={e => {
-              if (e.target.value === '__custom__') { setCustomGroup(true); onChange({ ...form, cf_group: '' }) }
-              else { setCustomGroup(false); onChange({ ...form, cf_group: e.target.value }) }
-            }}
-            className={s.input}>
-            <option value="">— No group —</option>
-            {groups.map(g => <option key={g} value={g}>{g}</option>)}
-            <option value="__custom__">+ New group name…</option>
-          </select>
-          {customGroup && (
-            <input value={form.cf_group} onChange={set('cf_group')} placeholder="Type new group name"
-              className={s.input + (large ? ' mt-2' : '')} />
+          {editMode ? (
+            <>
+              <select value={customGroup ? '__custom__' : form.cf_group}
+                onChange={e => {
+                  if (e.target.value === '__custom__') { setCustomGroup(true); onChange({ ...form, cf_group: '' }) }
+                  else { setCustomGroup(false); onChange({ ...form, cf_group: e.target.value }) }
+                }}
+                className={s.input}>
+                <option value="">— No group —</option>
+                {groups.map(g => <option key={g} value={g}>{g}</option>)}
+                <option value="__custom__">+ New group name…</option>
+              </select>
+              {customGroup && (
+                <input value={form.cf_group} onChange={set('cf_group')} placeholder="Type new group name"
+                  className={s.input + (large ? ' mt-2' : '')} />
+              )}
+            </>
+          ) : (
+            <div className={large ? 'bg-gray-100 rounded px-3 py-2.5 text-base text-gray-900' : 'text-[9px] text-gray-700'}>
+              {form.cf_group || '—'}
+            </div>
           )}
         </div>
         <div>
           {large && <label className={s.label}>Type</label>}
-          <select value={form.product_type} onChange={set('product_type')} className={s.input}>
-            <option value="">— Select type —</option>
-            <option value="goods">Good</option>
-            <option value="service">Service</option>
-          </select>
+          {editMode ? (
+            <select value={form.product_type} onChange={set('product_type')} className={s.input}>
+              <option value="">— Select type —</option>
+              <option value="goods">Good</option>
+              <option value="service">Service</option>
+            </select>
+          ) : (
+            <div className={large ? 'bg-gray-100 rounded px-3 py-2.5 text-base text-gray-900' : 'text-[9px] text-gray-700'}>
+              {form.product_type === 'goods' ? 'Good' : form.product_type === 'service' ? 'Service' : '—'}
+            </div>
+          )}
         </div>
         <div>
           {large && <label className={s.label}>Selling price</label>}
-          <input placeholder="SP" type="number" value={form.selling_rate} onChange={set('selling_rate')} className={s.input} />
+          {editMode ? (
+            <input placeholder="SP" type="number" value={form.selling_rate} onChange={set('selling_rate')} className={s.input} />
+          ) : (
+            <div className={large ? 'bg-gray-100 rounded px-3 py-2.5 text-base text-gray-900' : 'text-[9px] text-gray-700'}>
+              {form.selling_rate || '—'}
+            </div>
+          )}
         </div>
         <div>
           {large && <label className={s.label}>Cost price</label>}
-          <input placeholder="CP" type="number" value={form.purchase_rate} onChange={set('purchase_rate')} className={s.input} />
+          {editMode ? (
+            <input placeholder="CP" type="number" value={form.purchase_rate} onChange={set('purchase_rate')} className={s.input} />
+          ) : (
+            <div className={large ? 'bg-gray-100 rounded px-3 py-2.5 text-base text-gray-900' : 'text-[9px] text-gray-700'}>
+              {form.purchase_rate || '—'}
+            </div>
+          )}
         </div>
         <div>
           {large && <label className={s.label}>Units per pack</label>}
-          <input placeholder="Units/pack" type="number" value={form.units_per_pack} onChange={set('units_per_pack')} className={s.input} />
+          {editMode ? (
+            <input placeholder="Units/pack" type="number" value={form.units_per_pack} onChange={set('units_per_pack')} className={s.input} />
+          ) : (
+            <div className={large ? 'bg-gray-100 rounded px-3 py-2.5 text-base text-gray-900' : 'text-[9px] text-gray-700'}>
+              {form.units_per_pack || '—'}
+            </div>
+          )}
         </div>
       </div>
+      <button
+        onClick={() => setEditMode(!editMode)}
+        className={`shrink-0 ${editMode ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white'} font-semibold rounded px-3 py-2 text-sm transition ${large ? 'mt-7' : 'mt-1'}`}>
+        {editMode ? '✓ Done' : '✎ Edit'}
+      </button>
+    </div>
       <div className={`grid grid-cols-2 gap-2 ${s.fieldGap}`}>
         <div>
           {large && <label className={s.label}>Unit name</label>}
