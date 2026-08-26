@@ -5968,11 +5968,6 @@ async function recordCountFromModal() {
                                 </div>
                               )}
                             </div>
-                            <button
-                              onClick={() => setLiveGridEditRelationsOpen(false)}
-                              className="w-full text-[9px] font-semibold px-2 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white transition">
-                              ✓ Done
-                            </button>
                           </div>
                         )}
                       </div>

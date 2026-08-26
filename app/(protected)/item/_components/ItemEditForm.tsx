@@ -104,6 +104,10 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
       setGmcSaved(true)
       if (gmcSavedTimeoutRef.current) clearTimeout(gmcSavedTimeoutRef.current)
       gmcSavedTimeoutRef.current = setTimeout(() => setGmcSaved(false), 2000)
+      // This tick is the only confirm/close action left once the standalone
+      // "Done" bar is gone -- closing edit mode here as well as saving GMC
+      // type means there's one button, not two, for "I'm finished editing".
+      setEditMode(false)
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Failed to save GMC type'
       setGmcError(message)
