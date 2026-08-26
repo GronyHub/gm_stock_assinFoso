@@ -19,9 +19,10 @@ interface ItemDetailPanelProps {
   // to on its own, since it's now opened from many different pages, not
   // just its own standalone destination.
   onItemGone?: () => void
+  hideHeader?: boolean
 }
 
-export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGone }: ItemDetailPanelProps) {
+export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGone, hideHeader }: ItemDetailPanelProps) {
   const { data: session } = useSession()
   const isOwnerLevelUser = isOwnerLevel(session?.user as any)
 
@@ -144,6 +145,7 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
 
   return (
     <div className="overflow-x-auto">
+      {!hideHeader && (
       <div className="px-3 py-3 bg-white border-b border-gray-200 flex items-center justify-between gap-4">
         {editingName ? (
           <div className="flex items-center gap-2 flex-1">
@@ -182,6 +184,7 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
           </>
         )}
       </div>
+      )}
       {showFilters && (
         <div className="flex items-center gap-2 px-3 pb-3 flex-wrap">
           <button onClick={() => setShowPrices(p => !p)}

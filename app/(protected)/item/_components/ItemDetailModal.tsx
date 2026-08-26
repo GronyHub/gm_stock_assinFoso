@@ -1,5 +1,6 @@
 'use client'
 import dynamic from 'next/dynamic'
+import { useState, useEffect } from 'react'
 
 const ItemDetailPanel = dynamic(() => import('./ItemDetailPanel'), { ssr: false })
 
@@ -9,6 +10,20 @@ const ItemDetailPanel = dynamic(() => import('./ItemDetailPanel'), { ssr: false 
 // in place instead of navigating to the Loss by Item page, which no
 // longer exists as its own destination.
 export default function ItemDetailModal({ itemId, onClose }: { itemId: number; onClose: () => void }) {
+  const [itemName, setItemName] = useState<string>('')
+
+  useEffect(() => {
+    fetch('/api/losses/summary')
+      .then(r => r.json())
+      .then(d => {
+        if (Array.isArray(d)) {
+          const item = d.find((i: any) => i.item_id === itemId)
+          if (item) setItemName(item.item_name)
+        }
+      })
+      .catch(() => {})
+  }, [itemId])
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-end z-50" onClick={onClose}>
       <div
@@ -16,7 +31,7 @@ export default function ItemDetailModal({ itemId, onClose }: { itemId: number; o
         onClick={e => e.stopPropagation()}
       >
         <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
-          <h3 className="text-sm font-bold text-gray-900">Item Details</h3>
+          <p className="text-lg font-bold text-red-600 truncate">{itemName}</p>
           <button
             type="button"
             onClick={onClose}
@@ -25,7 +40,7 @@ export default function ItemDetailModal({ itemId, onClose }: { itemId: number; o
             ×
           </button>
         </div>
-        <ItemDetailPanel itemId={itemId} onItemGone={onClose} />
+        <ItemDetailPanel itemId={itemId} onItemGone={onClose} hideHeader />
       </div>
     </div>
   )
