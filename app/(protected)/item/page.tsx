@@ -2975,6 +2975,7 @@ function ItemHubPageInner() {
   // exactly rather than reinventing it. Used by the inline "Count today's
   // stock" field the Sale sheet grows for a due item (see the modal below).
   async function submitCount(item: LiveItem, qty: number, lossExtra?: LossExtra) {
+    alert(`DEBUG: submitCount called for item ${item.id}, qty ${qty}`)
     addCountLog(`submitCount called: item=${item.id}, qty=${qty}`)
     setLiveCountSaving(true)
     setLiveCountError('')
