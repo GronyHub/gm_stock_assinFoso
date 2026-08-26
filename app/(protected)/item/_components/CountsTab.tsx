@@ -163,15 +163,19 @@ function ManualCountForm({ items, onSaved, onClose, onLoss, onPairing }: {
         body: JSON.stringify({ itemId: sel.id, qty: Number(qty), notes: notes.trim() || 'Manual count', ...(lossExtra ?? {}) }),
       })
       setSaving(false)
+      console.log('Count API response status:', res.status, 'ok:', res.ok)
       if (res.ok) {
+        console.log('Count saved successfully')
         try {
           onSaved(); onClose()
         } catch (e) {
+          console.error('Error after saving:', e)
           setError(`Error after saving: ${e instanceof Error ? e.message : String(e)}`)
         }
         return
       }
       const d = await res.json().catch(() => null)
+      console.log('Count API error response:', d)
       if (res.status === 409 && d?.requires_pack_count) {
         onPairing(sel.item_name, d.packs, () => save(lossExtra))
         return
@@ -183,6 +187,7 @@ function ManualCountForm({ items, onSaved, onClose, onLoss, onPairing }: {
       setError(d?.error ?? 'Could not save count.')
     } catch (e) {
       setSaving(false)
+      console.error('Count save error:', e)
       setError(`Error saving count: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
