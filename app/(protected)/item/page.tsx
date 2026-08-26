@@ -5096,6 +5096,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                       value={liveCurrentView?.kind === 'violation' ? `violation:${liveCurrentView.key}` : liveCurrentView?.kind === 'lossByItem' ? 'view:lossByItem' : liveCurrentView?.kind === 'dailySummary' ? 'view:dailySummary' : ''}
                       onChange={e => {
                         const v = e.target.value
+                        const selectEl = e.target as HTMLSelectElement
                         if (!v) {
                           setLiveCurrentView(null)
                         } else if (v.startsWith('violation:')) {
@@ -5105,6 +5106,10 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                           const viewKey = v.slice('view:'.length)
                           if (viewKey === 'lossByItem') setLiveCurrentView({ kind: 'lossByItem' as const })
                           else if (viewKey === 'dailySummary') setLiveCurrentView({ kind: 'dailySummary' as const })
+                        } else if (v.startsWith('help:')) {
+                          setLiveHelpInitialTab(v.slice('help:'.length) as 'help' | 'laws')
+                          setLiveHelpModalOpen(true)
+                          selectEl.value = ''
                         }
                       }}
                       title="Flags & Views"
@@ -5122,15 +5127,11 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                         <option value="view:lossByItem">Loss by Item</option>
                         <option value="view:dailySummary">Daily Summary</option>
                       </optgroup>
+                      <optgroup label="Help">
+                        <option value="help:help">❓ Help Guide</option>
+                        <option value="help:laws">⚖️ Laws & Tasks</option>
+                      </optgroup>
                     </select>
-                    <button
-                      type="button"
-                      onClick={() => setLiveHelpModalOpen(true)}
-                      className="w-5 h-5 rounded-md bg-white text-gray-600 hover:bg-gray-100 font-semibold text-[10px] flex items-center justify-center transition"
-                      title="Help"
-                    >
-                      ?
-                    </button>
                   </div>
                 </div>
                 {/* Items Violation Flags Filter */}
