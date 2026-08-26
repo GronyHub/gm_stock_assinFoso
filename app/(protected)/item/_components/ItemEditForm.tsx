@@ -248,37 +248,49 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
         </div>
         <div>
           <label className={s.label}>Unit name</label>
-          <input placeholder="Unit" value={form.unit_name} onChange={set('unit_name')} className={s.input} />
+          {editMode ? (
+            <input placeholder="Unit" value={form.unit_name} onChange={set('unit_name')} className={s.input} />
+          ) : (
+            <div className={large ? 'bg-gray-100 rounded px-3 py-2.5 text-base text-gray-900' : s.input}>
+              {form.unit_name || '—'}
+            </div>
+          )}
         </div>
         <div>
           <label className={s.label}>GMC Type</label>
-          <div className="flex items-center gap-1">
-            <select value={form.gmc_type} onChange={set('gmc_type')} className={s.input}>
-              {gmcOptions.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-            {onGmcTypeSave && !hideGmcTick && (
-              <button
-                type="button"
-                onClick={handleGmcTypeSave}
-                disabled={gmcSaving}
-                className={`shrink-0 font-bold text-white rounded transition ${
-                  large
-                    ? 'px-3 py-2.5 text-base'
-                    : 'px-1.5 py-0.5 text-xs'
-                } ${
-                  gmcSaved
-                    ? 'bg-green-700'
-                    : gmcSaving
-                    ? 'bg-blue-600 opacity-75 cursor-not-allowed'
-                    : 'bg-green-600 hover:bg-green-700'
-                }`}
-                title={gmcSaving ? 'Saving...' : gmcSaved ? 'Saved!' : 'Save GMC Type'}>
-                {gmcSaving ? '⏳' : gmcSaved ? '✓' : '✓'}
-              </button>
-            )}
-          </div>
+          {editMode ? (
+            <div className="flex items-center gap-1">
+              <select value={form.gmc_type} onChange={set('gmc_type')} className={s.input}>
+                {gmcOptions.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              {onGmcTypeSave && !hideGmcTick && (
+                <button
+                  type="button"
+                  onClick={handleGmcTypeSave}
+                  disabled={gmcSaving}
+                  className={`shrink-0 font-bold text-white rounded transition ${
+                    large
+                      ? 'px-3 py-2.5 text-base'
+                      : 'px-1.5 py-0.5 text-xs'
+                  } ${
+                    gmcSaved
+                      ? 'bg-green-700'
+                      : gmcSaving
+                      ? 'bg-blue-600 opacity-75 cursor-not-allowed'
+                      : 'bg-green-600 hover:bg-green-700'
+                  }`}
+                  title={gmcSaving ? 'Saving...' : gmcSaved ? 'Saved!' : 'Save GMC Type'}>
+                  {gmcSaving ? '⏳' : gmcSaved ? '✓' : '✓'}
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className={large ? 'bg-gray-100 rounded px-3 py-2.5 text-base text-gray-900' : s.input}>
+              {gmcOptions.find(o => o.value === form.gmc_type)?.label ?? '—'}
+            </div>
+          )}
           {gmcError && (
             <div className={`mt-1 ${large ? 'text-sm' : 'text-[9px]'} text-red-600 font-semibold`}>
               ✗ {gmcError}
@@ -298,26 +310,32 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
                 : 'Uses this GMC'}
               {form.gmc_type === 'service_using_gmc' && <span className="text-red-600">*</span>}
             </label>
-            <select
-              value={form.converts_to_item_id}
-              onChange={(e) => {
-                const value = e.target.value
-                onChange({ ...form, converts_to_item_id: value })
-                // Auto-save the selection
-                if (onConversionTargetSave) {
-                  onConversionTargetSave(value || null)
-                }
-              }}
-              className={`${s.input} ${form.gmc_type === 'service_using_gmc' && !form.converts_to_item_id ? 'border-red-500 bg-red-50' : ''}`}>
-              <option value="">{form.gmc_type === 'service_using_gmc' ? '⚠ Required — Choose an item' : '— No conversion —'}</option>
-              {allItems.filter(i => {
-                if (i.item_id === itemId) return false
-                if (!['gmc', 'service_no_gmc'].includes(i.gmc_type || '')) return false
-                return true
-              }).map(i => (
-                <option key={i.item_id} value={String(i.item_id)}>{i.item_name}</option>
-              ))}
-            </select>
+            {editMode ? (
+              <select
+                value={form.converts_to_item_id}
+                onChange={(e) => {
+                  const value = e.target.value
+                  onChange({ ...form, converts_to_item_id: value })
+                  // Auto-save the selection
+                  if (onConversionTargetSave) {
+                    onConversionTargetSave(value || null)
+                  }
+                }}
+                className={`${s.input} ${form.gmc_type === 'service_using_gmc' && !form.converts_to_item_id ? 'border-red-500 bg-red-50' : ''}`}>
+                <option value="">{form.gmc_type === 'service_using_gmc' ? '⚠ Required — Choose an item' : '— No conversion —'}</option>
+                {allItems.filter(i => {
+                  if (i.item_id === itemId) return false
+                  if (!['gmc', 'service_no_gmc'].includes(i.gmc_type || '')) return false
+                  return true
+                }).map(i => (
+                  <option key={i.item_id} value={String(i.item_id)}>{i.item_name}</option>
+                ))}
+              </select>
+            ) : (
+              <div className={large ? 'bg-gray-100 rounded px-3 py-2.5 text-base text-gray-900' : s.input}>
+                {allItems.find(i => String(i.item_id) === form.converts_to_item_id)?.item_name ?? '—'}
+              </div>
+            )}
           </div>
         )}
       </div>
