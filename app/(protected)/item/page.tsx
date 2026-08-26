@@ -5993,6 +5993,9 @@ async function recordCountFromModal() {
                           currentSoh={liveEditCurrentSoh}
                           onGmcTypeSave={saveGmcTypeOnly}
                           onConversionTargetSave={saveConversionTargetOnly}
+                          editMode={liveGridEditRelationsOpen}
+                          onEditModeChange={setLiveGridEditRelationsOpen}
+                          hideEditButton
                         />
                       ) : (
                         <p className="text-center text-red-600 text-xs">Item not found</p>

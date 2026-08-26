@@ -59,7 +59,7 @@ const CADENCE_PRESETS: { value: string; label: string }[] = [
   { value: '45', label: 'Every 45 Days' },
 ]
 
-export function ItemEditForm({ form, onChange, groups, itemId, isService, allItems, size = 'compact', currentCountInterval, currentSoh, onGmcTypeSave, onConversionTargetSave }: {
+export function ItemEditForm({ form, onChange, groups, itemId, isService, allItems, size = 'compact', currentCountInterval, currentSoh, onGmcTypeSave, onConversionTargetSave, editMode: controlledEditMode, onEditModeChange, hideEditButton }: {
   form: typeof EMPTY_ITEM_EDIT_FORM; onChange: (f: typeof EMPTY_ITEM_EDIT_FORM) => void; groups: string[]
   itemId: number; isService: boolean; allItems: { item_id: number; item_name: string; gmc_type?: string | null }[]
   size?: 'compact' | 'large'
@@ -78,6 +78,14 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
   onGmcTypeSave?: (gmcType: string) => void | Promise<void>
   // Called when the user selects a conversion target to save it immediately
   onConversionTargetSave?: (convertToItemId: string | null) => void | Promise<void>
+  // Lets a caller that already shows its own Edit toggle for other fields
+  // (e.g. the Live Sale grid-edit sheet's Aliases/Services/Merge editor)
+  // drive this form's edit mode too, so one button switches both instead of
+  // showing two "Edit" buttons for what looks like one item-edit screen.
+  // Uncontrolled (internal state) when omitted, same as before.
+  editMode?: boolean
+  onEditModeChange?: (next: boolean) => void
+  hideEditButton?: boolean
 }) {
   const s = SIZES[size]
   const large = size === 'large'
@@ -140,7 +148,12 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
   const presetCadenceValues: string[] = CADENCE_PRESETS.map(p => p.value)
   const [customCadence, setCustomCadence] = useState(!!form.count_cadence_days && !presetCadenceValues.includes(form.count_cadence_days))
   const stockBlocksExclude = currentSoh != null && Math.abs(currentSoh) > 0.001
-  const [editMode, setEditMode] = useState(false)
+  const [internalEditMode, setInternalEditMode] = useState(false)
+  const editMode = controlledEditMode ?? internalEditMode
+  const setEditMode = (next: boolean) => {
+    if (onEditModeChange) onEditModeChange(next)
+    else setInternalEditMode(next)
+  }
   return (
     <div className={s.wrap}>
       <div className={`flex items-start justify-between gap-3 ${large ? 'mb-4' : ''}`}>
@@ -230,11 +243,13 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
           )}
         </div>
       </div>
-      <button
-        onClick={() => setEditMode(!editMode)}
-        className={`shrink-0 ${editMode ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white'} font-semibold rounded px-3 py-2 text-sm transition ${large ? 'mt-7' : 'mt-1'}`}>
-        {editMode ? '✓ Done' : '✎ Edit'}
-      </button>
+      {!hideEditButton && (
+        <button
+          onClick={() => setEditMode(!editMode)}
+          className={`shrink-0 ${editMode ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white'} font-semibold rounded px-3 py-2 text-sm transition ${large ? 'mt-7' : 'mt-1'}`}>
+          {editMode ? '✓ Done' : '✎ Edit'}
+        </button>
+      )}
     </div>
       <div className={`grid grid-cols-2 gap-2 ${s.fieldGap}`}>
         <div>
