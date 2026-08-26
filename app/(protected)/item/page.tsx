@@ -2001,6 +2001,12 @@ function ItemHubPageInner() {
   const [liveCountQty, setLiveCountQty] = useState('')
   const [liveCountSaving, setLiveCountSaving] = useState(false)
   const [liveCountError, setLiveCountError] = useState('')
+  const [liveDebugLogs, setLiveDebugLogs] = useState<string[]>([])
+  const addCountLog = (msg: string) => {
+    console.log(msg)
+    setLiveDebugLogs(prev => [...prev, msg])
+    setTimeout(() => setLiveDebugLogs(prev => prev.slice(1)), 5000)
+  }
   const [liveLossPrompt, setLiveLossPrompt] = useState<LossPrompt | null>(null)
   const [livePairingPrompt, setLivePairingPrompt] = useState<PairingPrompt | null>(null)
   const [liveCountRecords, setLiveCountRecords] = useState<CountRecord[]>([])
@@ -2969,16 +2975,20 @@ function ItemHubPageInner() {
   // exactly rather than reinventing it. Used by the inline "Count today's
   // stock" field the Sale sheet grows for a due item (see the modal below).
   async function submitCount(item: LiveItem, qty: number, lossExtra?: LossExtra) {
+    addCountLog(`submitCount called: item=${item.id}, qty=${qty}`)
     setLiveCountSaving(true)
     setLiveCountError('')
     try {
+      addCountLog(`Sending count to API: itemId=${item.id}, qty=${qty}`)
       const res = await fetch('/api/stock/count', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ itemId: item.id, qty, notes: '', ...(lossExtra ?? {}) }),
       })
       setLiveCountSaving(false)
+      addCountLog(`Count API response: status=${res.status}, ok=${res.ok}`)
       if (res.ok) {
+        addCountLog(`✓ Count saved successfully`)
         setLiveDailyItems(prev => prev.filter(i => i.item_id !== item.id))
         setLiveGmcWeeklyItems(prev => prev.filter(i => i.item_id !== item.id))
         setLiveOverdueItems(prev => prev.filter(i => i.item_id !== item.id))
@@ -2987,6 +2997,7 @@ function ItemHubPageInner() {
         return
       }
       const d = await res.json().catch(() => null)
+      addCountLog(`✗ Count API error: ${d?.error ?? 'unknown error'}`)
       if (res.status === 409 && d?.requires_pack_count) {
         setLivePairingPrompt({ itemName: item.name, packs: d.packs, retry: () => submitCount(item, qty, lossExtra) })
         return
@@ -3000,6 +3011,7 @@ function ItemHubPageInner() {
       showToast(errMsg, 'error')
     } catch (error) {
       setLiveCountSaving(false)
+      addCountLog(`✗ submitCount error: ${error instanceof Error ? error.message : String(error)}`)
       const errMsg = error instanceof Error ? error.message : 'Network error - could not save count'
       setLiveCountError(errMsg)
       showToast(errMsg, 'error')
@@ -4989,6 +5001,11 @@ function ItemHubPageInner() {
 
           {/* Sale mode (the default/landing mode) */}
           {liveMode === 'sale' && (<>
+          {liveDebugLogs.length > 0 && (
+            <div className="fixed top-4 right-4 bg-black text-white text-[11px] rounded px-3 py-2 max-w-xs z-50 shadow-lg">
+              {liveDebugLogs.map((log, i) => <div key={i} className="whitespace-normal break-words">{log}</div>)}
+            </div>
+          )}
           <div className={liveRootClassName}>
             {liveExpanded && (
               <button
