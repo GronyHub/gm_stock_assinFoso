@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
         requires_pack_count: true,
         packs: pairing.packs,
         error: `"${item[0].canonical_name}" is paired with ${pairing.packs.map(p => p.name).join(' / ')} — count the pack too before this can be saved.`,
-      })
+      }, 409)
     }
 
     const isManager = isOwnerLevel(session.user as any)
@@ -70,14 +70,14 @@ export async function POST(req: NextRequest) {
           requires_loss_reason: true,
           expected, counted: Number(qty), loss: lossQty, is_manager: isManager,
           error: `Loss detected: expected ${expected}, counted ${qty} (-${lossQty}). A reason is required before this count can be saved.`,
-        })
+        }, 409)
       }
       if (!isManager && (!manager_response || !String(manager_response).trim())) {
         return success({
           requires_loss_reason: true,
           expected, counted: Number(qty), loss: lossQty, is_manager: isManager,
           error: `Inform the manager of this loss and enter what the manager said before saving.`,
-        })
+        }, 409)
       }
       lossNote = `[LOSS -${lossQty}] Reason: ${String(loss_reason).trim()}`
         + (isManager ? ' (manager counted)' : ` | Manager said: ${String(manager_response).trim()}`)

@@ -55,14 +55,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
           requires_loss_reason: true,
           expected, counted: Number(quantity_counted), loss: lossQty, is_manager: isManager,
           error: `Loss detected: expected ${expected}, counted ${quantity_counted} (-${lossQty}). A reason is required before this count can be saved.`,
-        })
+        }, 409)
       }
       if (!isManager && (!manager_response || !String(manager_response).trim())) {
         return success({
           requires_loss_reason: true,
           expected, counted: Number(quantity_counted), loss: lossQty, is_manager: isManager,
           error: `Inform the manager of this loss and enter what the manager said before saving.`,
-        })
+        }, 409)
       }
       lossNote = `[LOSS -${lossQty}] Reason: ${String(loss_reason).trim()}`
         + (isManager ? ' (manager counted)' : ` | Manager said: ${String(manager_response).trim()}`)

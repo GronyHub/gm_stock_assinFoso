@@ -2980,7 +2980,6 @@ function ItemHubPageInner() {
   // exactly rather than reinventing it. Used by the inline "Count today's
   // stock" field the Sale sheet grows for a due item (see the modal below).
   async function submitCount(item: LiveItem, qty: number, lossExtra?: LossExtra) {
-    alert(`DEBUG: submitCount called for item ${item.id}, qty ${qty}`)
     addCountLog(`submitCount called: item=${item.id}, qty=${qty}`)
     setLiveCountSaving(true)
     setLiveCountError('')
@@ -3150,7 +3149,7 @@ function ItemHubPageInner() {
     }
   }
 
-async function recordCountFromModal() {
+async function recordCountFromModal(lossExtra?: LossExtra) {
     if (!liveEditingGridItemId || !liveGridEditCountQty) return
     setLiveGridEditCountSaving(true)
     setLiveGridEditCountError('')
@@ -3171,12 +3170,21 @@ async function recordCountFromModal() {
           itemId: liveEditingGridItemId,
           qty: qtyNum,
           notes: 'Grid count',
+          ...(lossExtra ?? {}),
         }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
+        if (res.status === 409 && data?.requires_pack_count) {
+          const itemName = liveAllItems.find(i => i.id === liveEditingGridItemId)?.name ?? ''
+          setLivePairingPrompt({ itemName, packs: data.packs, retry: () => recordCountFromModal(lossExtra) })
+          return
+        }
+        if (res.status === 409 && data?.requires_loss_reason) {
+          setLiveLossPrompt({ d: data, retry: extra => recordCountFromModal(extra) })
+          return
+        }
         setLiveGridEditCountError(data.error || 'Could not record count')
-        setLiveGridEditCountSaving(false)
         return
       }
       setLiveGridEditCountQty('')
@@ -6131,7 +6139,7 @@ async function recordCountFromModal() {
                                     <p className="text-[8px] text-transparent font-medium mb-1 select-none">Save</p>
                                     <button
                                       type="button"
-                                      onClick={recordCountFromModal}
+                                      onClick={() => recordCountFromModal()}
                                       disabled={!liveGridEditCountQty || liveGridEditCountSaving}
                                       className="w-full flex-1 px-1 py-4 bg-purple-600 hover:bg-purple-700 text-white text-[10px] font-semibold rounded-lg transition disabled:opacity-50">
                                       {liveGridEditCountSaving ? 'Saving…' : 'Save Count'}
@@ -6167,7 +6175,7 @@ async function recordCountFromModal() {
                                       <p className="text-[8px] text-transparent font-medium mb-1 select-none">Record</p>
                                       <button
                                         type="button"
-                                        onClick={recordCountFromModal}
+                                        onClick={() => recordCountFromModal()}
                                         disabled={!liveGridEditCountQty || liveGridEditCountSaving}
                                         className="w-full flex-1 px-1 py-4 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-semibold rounded-lg transition disabled:opacity-50">
                                         {liveGridEditCountSaving ? 'Recording…' : 'Record'}

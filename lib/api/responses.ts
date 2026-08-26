@@ -17,8 +17,8 @@ export function serverError(message: string, detail?: string): NextResponse {
   return NextResponse.json({ error: fullMessage }, { status: 500 })
 }
 
-export function success<T>(data: T): NextResponse {
-  return NextResponse.json(data)
+export function success<T>(data: T, status: number = 200): NextResponse {
+  return NextResponse.json(data, { status })
 }
 
 export function ok(): NextResponse {
