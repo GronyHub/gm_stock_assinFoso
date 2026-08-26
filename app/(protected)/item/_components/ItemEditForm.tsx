@@ -276,23 +276,46 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
               )}
             </p>
           )}
-          <label className={s.checkboxLabel}>
-            <input type="checkbox" checked={form.count_excluded}
-              onChange={e => onChange({ ...form, count_excluded: e.target.checked, count_excluded_reason: e.target.checked ? form.count_excluded_reason : '' })}
-              className={s.checkbox} />
-            Exclude from counts entirely
-          </label>
-          {form.count_excluded && (
-            <div className={large ? 'space-y-2' : 'space-y-1'}>
-              {stockBlocksExclude ? (
-                <p className={(large ? 'text-xs' : 'text-[9px]') + ' text-red-600 font-semibold'}>
-                  Still shows {currentSoh} in stock -- bring it to 0 (a count, or a sale/bill that clears it out) before this can take effect.
-                </p>
-              ) : currentSoh === 0 ? (
-                <p className={(large ? 'text-xs' : 'text-[9px]') + ' text-green-600'}>Stock is 0 -- ready to exclude.</p>
-              ) : null}
-              <div>
+          <div className={large ? 'grid grid-cols-3 gap-3' : 'grid grid-cols-3 gap-2'}>
+            <label className={s.checkboxLabel}>
+              <input type="checkbox" checked={form.count_excluded}
+                onChange={e => onChange({ ...form, count_excluded: e.target.checked, count_excluded_reason: e.target.checked ? form.count_excluded_reason : '' })}
+                className={s.checkbox} />
+              Exclude from counts entirely
+            </label>
+            {!form.count_excluded && (
+              <>
+                <div>
+                  {large ? <label className={s.label}>Count every</label> : <span className={s.smallText}>Count every</span>}
+                  <select
+                    value={customCadence ? '__custom__' : form.count_cadence_days}
+                    onChange={e => {
+                      if (e.target.value === '__custom__') { setCustomCadence(true); onChange({ ...form, count_cadence_days: '' }) }
+                      else { setCustomCadence(false); onChange({ ...form, count_cadence_days: e.target.value }) }
+                    }}
+                    className={s.input + (large ? '' : ' mt-0.5')}>
+                    <option value="">Automatic (based on item history)</option>
+                    {CADENCE_PRESETS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                    <option value="__custom__">Other…</option>
+                  </select>
+                </div>
+                {customCadence && (
+                  <input type="number" min="1" step="1" placeholder="Number of days" value={form.count_cadence_days}
+                    onChange={set('count_cadence_days')} className={s.input + (large ? ' mt-6' : ' mt-5')} />
+                )}
+              </>
+            )}
+            {form.count_excluded && (
+              <div className={large ? 'col-span-2' : 'col-span-2'}>
                 {large && <label className={s.label}>Why is it being excluded?</label>}
+                {stockBlocksExclude && (
+                  <p className={(large ? 'text-xs' : 'text-[9px]') + ' text-red-600 font-semibold mb-1'}>
+                    Still shows {currentSoh} in stock -- bring it to 0 first.
+                  </p>
+                )}
+                {currentSoh === 0 && (
+                  <p className={(large ? 'text-xs' : 'text-[9px]') + ' text-green-600 mb-1'}>Stock is 0 -- ready to exclude.</p>
+                )}
                 <select
                   value={customReason ? '__other__' : (form.count_excluded_reason || '')}
                   onChange={e => {
@@ -311,28 +334,8 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
                     placeholder="Describe the reason" className={s.input + (large ? ' mt-2' : ' mt-1')} />
                 )}
               </div>
-            </div>
-          )}
-          {!form.count_excluded && (
-            <div>
-              {large ? <label className={s.label}>Count every</label> : <span className={s.smallText}>Count every</span>}
-              <select
-                value={customCadence ? '__custom__' : form.count_cadence_days}
-                onChange={e => {
-                  if (e.target.value === '__custom__') { setCustomCadence(true); onChange({ ...form, count_cadence_days: '' }) }
-                  else { setCustomCadence(false); onChange({ ...form, count_cadence_days: e.target.value }) }
-                }}
-                className={s.input + (large ? '' : ' mt-0.5')}>
-                <option value="">Automatic (based on item history)</option>
-                {CADENCE_PRESETS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-                <option value="__custom__">Other…</option>
-              </select>
-              {customCadence && (
-                <input type="number" min="1" step="1" placeholder="Number of days" value={form.count_cadence_days}
-                  onChange={set('count_cadence_days')} className={s.input + (large ? ' mt-2' : ' mt-1')} />
-              )}
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
     </div>
