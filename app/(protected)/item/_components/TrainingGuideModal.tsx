@@ -40,18 +40,17 @@ const TOPICS: Topic[] = [
     id: 'overview',
     title: 'What is Live Sale, and what do the tabs do?',
     group: 'Overview',
-    keywords: 'overview tabs switch live log sales bills loss target count mode',
+    keywords: 'overview tabs switch live log sales bills count mode',
     body: (
       <div className="space-y-3">
         <p className="text-sm text-gray-700">Live Sale is where every walk-in sale, GMC (internal-use) take, count, and bill gets recorded, one item at a time, as it happens — instead of writing a receipt out at the end of the day.</p>
-        <p className="text-sm text-gray-700">The row of pills at the top switches between six views. They all work on the same underlying data, just filtered/arranged differently:</p>
+        <p className="text-sm text-gray-700">The row of pills at the top switches between five views. They all work on the same underlying data, just filtered/arranged differently:</p>
         <div className="grid grid-cols-2 gap-2">
           {[
             { p: 'Live', d: 'The tap-to-sell grid — the main screen you spend most of your time on.' },
             { p: 'Log', d: 'Every tap you’ve made today and on past days, in one history.' },
             { p: 'Sales', d: 'The classic list of daily sales receipts.' },
             { p: 'Bills', d: 'Purchases/restocks recorded as bills, plus a New Bill form.' },
-            { p: 'Loss by Tgt', d: 'Reserved for a future breakdown by target/goal — not built yet.' },
             { p: 'Count', d: 'Everything about stock counts: what’s due, past records, and history.' },
           ].map(r => (
             <div key={r.p} className="border border-gray-200 rounded-lg p-2">
@@ -339,13 +338,6 @@ const TOPICS: Topic[] = [
     group: 'Other tabs',
     keywords: 'bills purchase restock new bill vendor',
     body: <p className="text-sm text-gray-700">Lists recorded bills (restocks/purchases) and includes a New Bill form. A bill is what brings stock back onto the shelf and is one of the records the count-reconciliation math checks against.</p>,
-  },
-  {
-    id: 'loss-by-target',
-    title: 'Loss by Target',
-    group: 'Other tabs',
-    keywords: 'loss target coming soon placeholder',
-    body: <p className="text-sm text-gray-700">Reserved for a future breakdown of loss by target/goal. Not built yet — the tab exists so its spot isn’t lost once it is.</p>,
   },
   {
     id: 'count-tab-overview',

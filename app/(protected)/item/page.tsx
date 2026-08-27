@@ -122,9 +122,8 @@ type OuterTab = 'today' | 'loss' | 'uk' | 'ch'
 type LossView = 'home' | 'items' | 'sales' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'dailySummary'
   | 'purchaseOrders' | 'services'
   // Cust. Receipts and New Customer folded into Customers' own tabs (same
-  // treatment Sales/Bills/Loss by Date/Loss by Target got inside Live
-  // Sale) -- see jumpToCustomersTab, since neither is a real LossView any
-  // more.
+  // treatment Sales/Bills/Loss by Date got inside Live Sale) -- see
+  // jumpToCustomersTab, since neither is a real LossView any more.
   // Same reasoning as 'newCustomer' used to be above -- Expense Orders was a
   // showOrders toggle living inside ExpensesTab itself, invisible to
   // page.tsx, so the pane button could never actually know whether it was
@@ -216,12 +215,14 @@ const REPORT_VIEWS = new Set<LossView>([
 // Loss by Date/Item/Target used to be one 'feed' entry with its own internal
 // pill row (LossOverviewTab) switching between the three. 'feed' kept its
 // key (and the gains violation deep-link that already points at it) but is
-// relabeled to "Loss by Date", with Loss by Target following right after as
-// its own lossView. Loss by Item moved twice more since -- first to a flag
-// on Items itself, then folded into Item 360 as its landing table, then Item
-// 360 itself was removed once its detail popup (ItemDetailModal) was
-// reachable from everywhere that needed it -- Live Sale's own "Loss by
-// Item" law view (sorts its grid by loss) covers what this row used to.
+// relabeled to "Loss by Date". Loss by Item moved twice more since -- first
+// to a flag on Items itself, then folded into Item 360 as its landing
+// table, then Item 360 itself was removed once its detail popup
+// (ItemDetailModal) was reachable from everywhere that needed it -- Live
+// Sale's own "Loss by Item" law view (sorts its grid by loss) covers what
+// this row used to. Loss by Target became its own Live Sale tab and stayed
+// an unbuilt "Coming soon." placeholder there the whole time, until it was
+// removed outright for having never gained any real content.
 //
 // Tasks used to live on the bottom Role Bar (Joe's tab), bundled together
 // with Grony Manage's own violations (the "former Bino bucket" -- staff
@@ -742,8 +743,8 @@ function ItemHubPageInner() {
   // Orders, ...) each get their own inline law panel too, same as Items
   // above -- one useLawsPanel() per scope, rendered through the
   // inlineLaws() helper below instead of hand-rolling the toggle+panel
-  // JSX repeatedly. Sales/Bills/Loss by Date/Loss by Target no longer need
-  // one of their own -- all four live inside Live Sale's own laws panel now.
+  // JSX repeatedly. Sales/Bills/Loss by Date no longer need one of their
+  // own -- all three live inside Live Sale's own laws panel now.
   const plLaws = useLawsPanel('showPLLaws')
   const homeLaws = useLawsPanel('showHomeLaws')
   const dailyLaws = useLawsPanel('showDailyLaws')
@@ -774,9 +775,9 @@ function ItemHubPageInner() {
   const [liveItemSortOrder, setLiveItemSortOrder] = useState<ItemSortKey[]>(DEFAULT_ITEM_SORT_ORDER)
   const [liveSortOrderModalOpen, setLiveSortOrderModalOpen] = useState(false)
   const rawLiveMode = searchParams.get('mode')
-  const initialLiveMode = (rawLiveMode as 'sale' | 'sales' | 'bills' | 'lossByTarget' | 'log' | 'count' | null) ?? 'sale'
-  const [liveMode, setLiveMode] = useState<'sale' | 'sales' | 'bills' | 'lossByTarget' | 'log' | 'count'>(initialLiveMode)
-  const [itemsPageMode, setItemsPageMode] = useState<'sale' | 'sales' | 'bills' | 'lossByTarget' | 'log' | 'count'>(initialLiveMode)
+  const initialLiveMode = (rawLiveMode as 'sale' | 'sales' | 'bills' | 'log' | 'count' | null) ?? 'sale'
+  const [liveMode, setLiveMode] = useState<'sale' | 'sales' | 'bills' | 'log' | 'count'>(initialLiveMode)
+  const [itemsPageMode, setItemsPageMode] = useState<'sale' | 'sales' | 'bills' | 'log' | 'count'>(initialLiveMode)
   const rawLiveSalesViolation = searchParams.get('liveSalesViolation')
   const rawLiveBillsViolation = searchParams.get('liveBillsViolation')
   const [liveSalesViolationFilter, setLiveSalesViolationFilter] = useState<string | null>(rawLiveSalesViolation ?? null)
@@ -812,10 +813,10 @@ function ItemHubPageInner() {
   // Live Sale's own tabs). Seq is a plain incrementing counter so the same
   // tab can be jumped to twice in a row and still fire.
   const [liveSaleJumpSeq, setLiveSaleJumpSeq] = useState(0)
-  const [liveSaleJumpTab, setLiveSaleJumpTab] = useState<'sale' | 'sales' | 'bills' | 'count' | 'lossByTarget' | 'log'>('sale')
+  const [liveSaleJumpTab, setLiveSaleJumpTab] = useState<'sale' | 'sales' | 'bills' | 'count' | 'log'>('sale')
   const [liveSaleJumpViolation, setLiveSaleJumpViolation] = useState<string | null>(null)
   const [liveSaleJumpSearch, setLiveSaleJumpSearch] = useState<string | null>(null)
-  function jumpToLiveSaleTab(tab: 'sale' | 'sales' | 'bills' | 'count' | 'lossByTarget' | 'log', violation: string | null = null, search: string | null = null) {
+  function jumpToLiveSaleTab(tab: 'sale' | 'sales' | 'bills' | 'count' | 'log', violation: string | null = null, search: string | null = null) {
     pickLossView('sales')
     setLiveSaleJumpTab(tab)
     setLiveSaleJumpViolation(violation)
@@ -1240,8 +1241,8 @@ function ItemHubPageInner() {
   const taskCountFor = (scopeKey: string) => taskCounts[scopeKey] ?? 0
   // A few pane rows' PageToolIcons scopeKey differs from their own pane
   // label (either because the label was later shortened for the pane -- see
-  // 'Loss by Tgt'/'Purchase Ord' -- or because the content page hardcodes
-  // its own scopeKey independent of CASH_LABEL) -- see each page's own
+  // 'Purchase Ord' -- or because the content page hardcodes its own
+  // scopeKey independent of CASH_LABEL) -- see each page's own
   // <PageToolIcons scopeKey=.../> call for the authoritative string.
   const CASH_TASK_SCOPE_OVERRIDES: Partial<Record<LossView, string>> = {
     purchaseOrders: 'Purchase Orders',
@@ -1573,7 +1574,7 @@ function ItemHubPageInner() {
     'showDailyLaws', 'showDressCodeLaws', 'showExpenseOrdersLaws', 'showExpensesLaws',
     'showGronyChecksLaws', 'showHomeLaws', 'showItem360Laws', 'showItemsFlagsLaws',
     'showItemsLaws', 'showLiveSaleLaws', 'showLossByDateLaws', 'showLossByItemLaws',
-    'showLossByTargetLaws', 'showNewCustomerLaws', 'showNewSaleLaws', 'showOpenerLaws',
+    'showNewCustomerLaws', 'showNewSaleLaws', 'showOpenerLaws',
     'showPayslipsLaws', 'showPLLaws', 'showProfileLaws', 'showPropertiesLaws',
     'showPurchaseOrdersLaws', 'showReceiptsLaws', 'showReorderListsLaws', 'showSalesLaws',
     'showServiceMatchesLaws', 'showServicesLaws', 'showStaffAnalyticsLaws', 'showTeamAssessmentLaws',
@@ -1689,12 +1690,12 @@ function ItemHubPageInner() {
   useEffect(() => { fetchPaneHidden() }, [])
   usePolling(fetchPaneHidden, 120000)
   // New Sale/Live Sale/Log used to be hardcoded sub-buttons nested under
-  // the Sales row, then their own standalone rows. Now Sales, Bills, Loss
-  // by Date, and Loss by Target have all folded into Live Sale's own mode
-  // switcher (Sale/Sales/Bills/Loss by Date/Loss by Tgt/Log) the same way
-  // Count 2 and Log did before them, so the 'sales' CASH_ITEMS row (now
-  // labeled "Live Sale") is a plain row again like any other -- no more
-  // addForm-based sub-item special-casing needed.
+  // the Sales row, then their own standalone rows. Now Sales, Bills, and
+  // Loss by Date have all folded into Live Sale's own mode switcher
+  // (Sale/Sales/Bills/Loss by Date/Log) the same way Count 2 and Log did
+  // before them, so the 'sales' CASH_ITEMS row (now labeled "Live Sale") is
+  // a plain row again like any other -- no more addForm-based sub-item
+  // special-casing needed.
   function cashItemActive(key: string) {
     return lossView === key
   }
@@ -1877,8 +1878,8 @@ function ItemHubPageInner() {
 
   // Live Sale takes over the whole content area with its own thing to do
   // (build a cart, tap items, review a log, browse Sales/Bills/Loss by
-  // Date/Loss by Tgt) -- the Analytics toggle and flag badges above it
-  // belong to submenus that don't apply here, so they're just clutter.
+  // Date) -- the Analytics toggle and flag badges above it belong to
+  // submenus that don't apply here, so they're just clutter.
   const salesFormOpen = lossView === 'sales'
 
   // ── Live Sale's own state/logic (folded in from the former
@@ -2011,14 +2012,13 @@ function ItemHubPageInner() {
   const [liveItemPickerResults, setLiveItemPickerResults] = useState<LiveItem[]>([])
   const [liveShowItemPicker, setLiveShowItemPicker] = useState(false)
   const [livePickedItemId, setLivePickedItemId] = useState<number | null>(null)
-  // Sales/Bills/Loss by Date/Loss by Target each kept their own laws/notes/
-  // tasks under their own scopeKey (from back when each was its own page) --
-  // still sitting in the database under those same scope keys, so each tab
-  // gets its own laws icon here to reach them, same as Sale mode's own
+  // Sales/Bills/Loss by Date each kept their own laws/notes/tasks under
+  // their own scopeKey (from back when each was its own page) -- still
+  // sitting in the database under those same scope keys, so each tab gets
+  // its own laws icon here to reach them, same as Sale mode's own
   // (liveSaleLaws, declared above).
   const salesLaws = useLawsPanel('showSalesLaws')
   const billsLaws = useLawsPanel('showBillsLaws')
-  const lossByTargetLaws = useLawsPanel('showLossByTargetLaws')
 
   // The standalone "Count" mode (its own due-count queues/badges/entry-form
   // as a second grid mode) was removed once Sale mode grew its own pinned
@@ -2031,9 +2031,9 @@ function ItemHubPageInner() {
   // tab here until its own History/Analytics/free-form counting no longer
   // had anything Sale mode's due-item treatment and Log tab didn't already
   // cover, and it was removed along with the Loss by Item page. 'sales'/
-  // 'bills'/'lossByTarget' followed once the classic Sales Receipts list,
-  // Bills, and Loss by Target lost anything that justified a separate
-  // sidebar destination once "New Sale" was dropped. Loss by Date's own
+  // 'bills' followed once the classic Sales Receipts list and Bills lost
+  // anything that justified a separate sidebar destination once "New Sale"
+  // was dropped. Loss by Date's own
   // 'feed' mode followed the same way once its data turned out to be a
   // filtered view of Count's own Count Records (see liveCountRecordFilter) --
   // folded in as extra columns there instead of a fourth tab walking the
@@ -3579,7 +3579,6 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
         <button type="button" onClick={() => { setItemsPageMode('sales'); setLiveMode('sales') }} title="Sales" className={btnCls(itemsPageMode === 'sales', 'bg-emerald-600')}>Sales</button>
         <button type="button" onClick={() => { setItemsPageMode('count'); setLiveMode('count') }} title="Count" className={btnCls(itemsPageMode === 'count', 'bg-indigo-600')}>Count</button>
         <button type="button" onClick={() => { setItemsPageMode('bills'); setLiveMode('bills') }} title="Bills" className={btnCls(itemsPageMode === 'bills', 'bg-orange-600')}>Bills</button>
-        <button type="button" onClick={() => { setItemsPageMode('lossByTarget'); setLiveMode('lossByTarget') }} title="Loss by Target" className={btnCls(itemsPageMode === 'lossByTarget', 'bg-pink-600')}>Loss by Tgt</button>
       </div>
     )
   }
@@ -4943,57 +4942,6 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                   <BillsTab items={liveSalesBillsItems} groupFilter={liveGroupFilter} search={liveEmbeddedSearch} violation={liveBillsViolationFilter} />
                 </div>
               )}
-            </div>
-          )}
-
-          {/* Loss by Target tab -- still an unimplemented placeholder upstream; kept
-              here purely so its sidebar destination can be retired without losing
-              the (currently empty) spot for whenever it's built. */}
-          {liveMode === 'lossByTarget' && (
-            <div className={liveRootClassName}>
-              {liveExpanded && (
-                <button
-                  type="button"
-                  onClick={() => setLiveExpanded(false)}
-                  title="Exit large screen"
-                  className="fixed top-2 right-2 z-[60] w-8 h-8 rounded-full bg-gray-900/80 text-white text-sm font-bold flex items-center justify-center shadow-lg hover:bg-gray-900 transition"
-                >
-                  ✕
-                </button>
-              )}
-              {renderModeToggleRow()}
-              <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
-                <h2 className="text-sm font-bold text-gray-900">Loss by Target</h2>
-                <div className="flex items-center gap-2">
-                  <LawsToggleBar show={lossByTargetLaws.show} setShow={lossByTargetLaws.setShow}
-                    openForm={lossByTargetLaws.openForm} setOpenForm={lossByTargetLaws.setOpenForm}
-                    hideZeroFlags={lossByTargetLaws.hideZeroFlags} setHideZeroFlags={lossByTargetLaws.setHideZeroFlags}
-                    activeFilters={lossByTargetLaws.activeFilters} toggleFilter={lossByTargetLaws.toggleFilter} dark={false} />
-                  <button
-                    type="button"
-                    onClick={() => setLiveHelpModalOpen(true)}
-                    className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 font-semibold text-sm flex items-center justify-center transition"
-                    title="Help"
-                  >
-                    ?
-                  </button>
-                </div>
-              </div>
-              {lossByTargetLaws.show && (
-                <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 overflow-auto max-h-48">
-                  <PageLawsList
-                    scopeKey="Loss by Target"
-                    isItemsLaws={true}
-                    onChange={lossByTargetLaws.bumpRefresh}
-                    openForm={lossByTargetLaws.openForm}
-                    setOpenForm={lossByTargetLaws.setOpenForm}
-                    hideZeroFlags={lossByTargetLaws.hideZeroFlags}
-                    setHideZeroFlags={lossByTargetLaws.setHideZeroFlags}
-                    activeFilters={lossByTargetLaws.activeFilters}
-                  />
-                </div>
-              )}
-              <div className="py-20 text-center text-gray-400 text-xs">Coming soon.</div>
             </div>
           )}
 
