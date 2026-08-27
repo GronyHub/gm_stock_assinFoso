@@ -1350,18 +1350,18 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
           <thead>
             <tr className="bg-gray-50 text-gray-500 text-[8px] font-bold uppercase tracking-tighter border-b border-gray-200">
               <th className="pl-1 pr-1 py-0 text-left whitespace-nowrap sticky left-0 z-10 bg-gray-50 border-r border-gray-200">Date</th>
-              <th className="px-1 py-0 text-right" title="Physical count taken that day">Cnt</th>
               <th className="px-1 py-0 text-right" title="Converted in from another item's GMC take">CNV</th>
+              <th className="px-1 py-0 text-right text-blue-500" title="Used = sold/consumed that day">Used</th>
+              <th className="px-1 py-0 text-right" title="Expected = Available − Used">Exp</th>
               <th className="px-1 py-0 text-right text-blue-500" title="Available = previous stock + bills received + converted in">Avail</th>
+              <th className="px-1 py-0 text-right" title="Physical count taken that day">Cnt</th>
+              <th className="px-1 py-0 text-right" title="Count Loss = Expected − actual count (only on count days)">Loss</th>
+              <th className="px-1 py-0 text-right" title="Loss valued at selling price">₵</th>
               {breakdownNames.map(n => (
                 <th key={n} title={n} className="px-1 py-0 text-right">
                   {shortSourceName(n)}
                 </th>
               ))}
-              <th className="px-1 py-0 text-right text-blue-500" title="Used = sold/consumed that day">Used</th>
-              <th className="px-1 py-0 text-right" title="Expected = Available − Used">Exp</th>
-              <th className="px-1 py-0 text-right" title="Count Loss = Expected − actual count (only on count days)">Loss</th>
-              <th className="px-1 py-0 text-right" title="Loss valued at selling price">₵</th>
               <th className="px-1 py-0 text-right" title="Direct GMC (internal use) on this item itself">GMC</th>
               <th className="px-1 py-0 text-right" title="Average direct sale price that day">SP</th>
               <th className="px-1 py-0 text-right" title="Direct bills/purchases received">BL</th>
@@ -1385,16 +1385,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                       </button>
                     ) : shortItemDate(row.date)}
                   </td>
-                  {!isService && <td className="px-1 py-0 text-right text-gray-900 whitespace-nowrap">
-                    <CntValue qty={row.qty_counted} countedBy={row.counted_by} countedAt={row.counted_at} history={row.count_history} />
-                  </td>}
                   {!isService && <td className="px-1 py-0 text-right text-teal-600">{fmtQs(row.converted_in_qty)}</td>}
-                  <td className="px-1 py-0 text-right font-semibold text-blue-700">{fmtN(row.available)}</td>
-                  {breakdownNames.map(n => (
-                    <td key={n} className="px-1 py-0 text-right text-gray-600">
-                      {fmtQ(row.wic_breakdown?.find(b => b.name === n)?.qty ?? 0)}
-                    </td>
-                  ))}
                   {/* row.used (feeding the real Expected/Loss math below) no
                       longer folds in the per-service breakdown amounts --
                       that used to double-count them against the negative
@@ -1406,6 +1397,10 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                     {fmtQ(row.used + (row.wic_breakdown ?? []).reduce((s, b) => s + b.qty, 0))}
                   </td>
                   {!isService && <td className="px-1 py-0 text-right text-gray-400">{fmtN(row.expected_soh)}</td>}
+                  <td className="px-1 py-0 text-right font-semibold text-blue-700">{fmtN(row.available)}</td>
+                  {!isService && <td className="px-1 py-0 text-right text-gray-900 whitespace-nowrap">
+                    <CntValue qty={row.qty_counted} countedBy={row.counted_by} countedAt={row.counted_at} history={row.count_history} />
+                  </td>}
                   {!isService && <td className="px-1 py-0 text-right font-semibold">
                     {row.loss === null ? <span className="text-gray-300">—</span>
                       : row.loss > 0.001 ? <span className="text-red-500">-{fmtN(row.loss)}</span>
@@ -1418,6 +1413,11 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                       : lossVal < -0.01 ? <span className="text-green-600">+{fmtN(Math.abs(lossVal))}</span>
                       : <span className="text-gray-400">0</span>}
                   </td>}
+                  {breakdownNames.map(n => (
+                    <td key={n} className="px-1 py-0 text-right text-gray-600">
+                      {fmtQ(row.wic_breakdown?.find(b => b.name === n)?.qty ?? 0)}
+                    </td>
+                  ))}
                   {!isService && <td className="px-1 py-0 text-right text-gray-600">{fmtQs(row.gmc_qty)}</td>}
                   {!isService && <td className="px-1 py-0 text-right text-blue-500">{fmtQs(row.sell_price)}</td>}
                   {!isService && <td className="px-1 py-0 text-right text-blue-600">{fmtQs(row.bills_qty)}</td>}
@@ -1431,10 +1431,10 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
           <tfoot>
             <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
               <td className="pl-1 pr-1 py-0 text-gray-600 sticky left-0 z-10 bg-gray-50 border-r border-gray-200">Total</td>
-              <td colSpan={5 + breakdownNames.length} />
+              <td colSpan={5} />
               <td className={lgCls}>{totalLoss > 0.001 ? `-${fmtN(totalLoss)}` : totalLoss < -0.001 ? `+${fmtN(Math.abs(totalLoss))}` : '0'}</td>
               <td className={lgCls}>{totalCost > 0.01 ? `-₵${fmtN(totalCost)}` : totalCost < -0.01 ? `+₵${fmtN(Math.abs(totalCost))}` : '0'}</td>
-              <td colSpan={4} />
+              <td colSpan={4 + breakdownNames.length} />
             </tr>
           </tfoot>
         </table>
