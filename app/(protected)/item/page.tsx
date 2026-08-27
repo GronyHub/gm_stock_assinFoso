@@ -4381,6 +4381,10 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                     style={COMPACT_SELECT_STYLE}
                   >
                     <option value="">Filter</option>
+                    <optgroup label="Help">
+                      <option value="help:help">❓ Help Guide</option>
+                      <option value="help:laws">⚖️ Laws & Tasks</option>
+                    </optgroup>
                     {liveSaleFilterFlags.filter(f => !f.key.startsWith('flag_')).map(f => {
                       let value = f.key
                       if (f.key.startsWith('interval_')) value = `interval:${f.label}`
@@ -4418,10 +4422,6 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                         <option value="action:clear-gmc-costs">💰 Clear Service Cost Prices</option>
                       </optgroup>
                     )}
-                    <optgroup label="Help">
-                      <option value="help:help">❓ Help Guide</option>
-                      <option value="help:laws">⚖️ Laws & Tasks</option>
-                    </optgroup>
                   </select>
                 </div>
               )}
@@ -5180,6 +5180,10 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                       style={COMPACT_SELECT_STYLE}
                     >
                       <option value="">⚖️ Flags</option>
+                      <optgroup label="Help">
+                        <option value="help:help">❓ Help Guide</option>
+                        <option value="help:laws">⚖️ Laws & Tasks</option>
+                      </optgroup>
                       <optgroup label={liveMode === 'sale' || liveMode === 'log' ? 'Items' : (liveMode === 'sales' ? 'Sales' : (liveMode === 'bills' ? 'Bills' : 'Count'))}>
                         {liveComputedFlags.filter(f => f.key.startsWith('flag_') || f.key.startsWith('violation_')).map(f => (
                           <option key={f.key} value={`violation:${f.key}`}>
@@ -5190,10 +5194,6 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                       <optgroup label="Views">
                         <option value="view:lossByItem">Loss by Item</option>
                         <option value="view:dailySummary">Daily Summary</option>
-                      </optgroup>
-                      <optgroup label="Help">
-                        <option value="help:help">❓ Help Guide</option>
-                        <option value="help:laws">⚖️ Laws & Tasks</option>
                       </optgroup>
                     </select>
                   </div>
