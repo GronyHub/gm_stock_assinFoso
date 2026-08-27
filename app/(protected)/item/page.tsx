@@ -524,6 +524,19 @@ function formatPrice(num: number | string): string {
   return n % 1 === 0 ? n.toFixed(0) : n.toFixed(2)
 }
 
+// The three criteria the Sale-mode grid can prioritize items by (see the
+// Arrange Order picker) -- kept in sync by hand with app/api/item-sort-order/
+// route.ts's own copy of these same names/order rather than importing from
+// it, since that file also imports the DB client and isn't meant to be
+// pulled into client bundles.
+type ItemSortKey = 'count_status' | 'violations' | 'badge'
+const DEFAULT_ITEM_SORT_ORDER: ItemSortKey[] = ['count_status', 'violations', 'badge']
+const ITEM_SORT_LABELS: Record<ItemSortKey, string> = {
+  count_status: 'Count Status (due / overdue)',
+  violations: 'Violations (attention flags)',
+  badge: "Today's Sales (badge count)",
+}
+
 // Squeezes lib/countRules.ts's formatCountInterval() strings ("Every 7d",
 // "Dormant", ...) down for the grid card's tight CP/SP/SOH line -- the
 // underlying item.count_interval value itself is left alone (it's also used
@@ -752,6 +765,14 @@ function ItemHubPageInner() {
   const [liveGmcTypeFilter, setLiveGmcTypeFilter] = useState<string | null>(rawLiveGmcType ?? null)
   const [liveHelpModalOpen, setLiveHelpModalOpen] = useState(false)
   const [liveHelpInitialTab, setLiveHelpInitialTab] = useState<'help' | 'laws'>('help')
+  // Priority order the Sale-mode grid arranges items in -- shared across
+  // every staff member via /api/item-sort-order (any staff can change it,
+  // not just owner), so a reorder here changes what everyone else's app
+  // shows too, next time they load it. Starts at the same default the grid
+  // always used (count status first, then violations, then today's sales)
+  // until the real value loads.
+  const [liveItemSortOrder, setLiveItemSortOrder] = useState<ItemSortKey[]>(DEFAULT_ITEM_SORT_ORDER)
+  const [liveSortOrderModalOpen, setLiveSortOrderModalOpen] = useState(false)
   const rawLiveMode = searchParams.get('mode')
   const initialLiveMode = (rawLiveMode as 'sale' | 'sales' | 'bills' | 'lossByTarget' | 'log' | 'count' | null) ?? 'sale'
   const [liveMode, setLiveMode] = useState<'sale' | 'sales' | 'bills' | 'lossByTarget' | 'log' | 'count'>(initialLiveMode)
@@ -2307,6 +2328,35 @@ function ItemHubPageInner() {
       .catch(() => {})
   }, [])
 
+  // Shared across every staff member -- see /api/item-sort-order.
+  useEffect(() => {
+    fetch('/api/item-sort-order')
+      .then(r => r.json())
+      .then((d: { order?: ItemSortKey[] }) => {
+        if (Array.isArray(d?.order) && d.order.length === DEFAULT_ITEM_SORT_ORDER.length) setLiveItemSortOrder(d.order)
+      })
+      .catch(() => {})
+  }, [])
+
+  // Persists immediately (no separate Save step) -- any staff member can
+  // write this, so there's no confirm/cancel flow to gate; the swap is its
+  // own confirmation. Optimistic: the grid re-sorts right away, the fetch
+  // just makes it stick for everyone else too.
+  function moveItemSortKey(key: ItemSortKey, dir: -1 | 1) {
+    setLiveItemSortOrder(prev => {
+      const i = prev.indexOf(key)
+      const j = i + dir
+      if (i < 0 || j < 0 || j >= prev.length) return prev
+      const next = [...prev]
+      ;[next[i], next[j]] = [next[j], next[i]]
+      fetch('/api/item-sort-order', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order: next }),
+      }).catch(() => {})
+      return next
+    })
+  }
+
   // Loss count/amount per item -- same numbers Item 360's own loss ranking
   // is built from (/api/losses/summary), shown inline next to price/cost/
   // stock/count-interval so a loss-prone item is visible without opening
@@ -2712,49 +2762,69 @@ function ItemHubPageInner() {
 
   // Sale mode's own due-count callout -- staff mostly live in Sale mode, so
   // a due item needs to be visible right there instead of requiring a trip
-  // to a separate count screen. Pinned as its own block at the very top
-  // (not interleaved into the sales-frequency order below it), so the
-  // normal most-sold-first list staff rely on for fast tapping never
-  // reshuffles just because something unrelated went overdue.
-  const [livePinnedDueItems, liveRestCatalogueItems] = useMemo(() => {
-    if (liveMode !== 'sale') return [[], liveCatalogueItems] as [LiveItem[], LiveItem[]]
-    const due: LiveItem[] = []
-    const rest: LiveItem[] = []
+  // to a separate count screen. Which of count status/violations/today's
+  // sales takes priority (and whether due items end up pinned as their own
+  // block up top at all) is configurable now -- see liveItemSortOrder and
+  // the Arrange Order picker below.
+  //
+  // Violation count per item, precomputed once rather than recomputed
+  // inside the sort comparator below (which would call itemAttentionFlags
+  // O(n log n) times instead of O(n)) -- render still calls it again per
+  // card since it needs the actual flag list, not just the count.
+  const liveViolationCountByItemId = useMemo(() => {
+    const m = new Map<number, number>()
     for (const item of liveCatalogueItems) {
-      if (liveCountStatus.has(item.id)) due.push(item)
-      else rest.push(item)
+      m.set(item.id, itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId).length)
     }
-    const urgency = (item: LiveItem) => {
-      const d = liveCountStatus.get(item.id)!
-      const n = parseInt(d.label, 10)
-      return (d.level === 'overdue' ? 1000 : 0) + (isNaN(n) ? 0 : n)
-    }
-    due.sort((a, b) => urgency(b) - urgency(a))
+    return m
+  }, [liveCatalogueItems, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId])
 
-    // Split rest into flagged (multiple), flagged (single), and unflagged
-    const multipleFlags: LiveItem[] = []
-    const singleFlag: LiveItem[] = []
-    const noFlags: LiveItem[] = []
-    for (const item of rest) {
-      const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId)
-      if (flags.length > 1) multipleFlags.push(item)
-      else if (flags.length === 1) singleFlag.push(item)
-      else noFlags.push(item)
+  // The Sale-mode grid's arrangement -- a single list sorted by whichever
+  // priority order liveItemSortOrder currently holds (see the Arrange
+  // Order picker, shared across every staff member via
+  // /api/item-sort-order), rather than a hardcoded due-items-always-first
+  // split. Each criterion resolves to a score where higher sorts earlier;
+  // ties fall through to the next criterion in the configured order.
+  const liveSortedCatalogueItems = useMemo(() => {
+    if (liveMode !== 'sale') return liveCatalogueItems
+    const scoreFns: Record<ItemSortKey, (item: LiveItem) => number> = {
+      count_status: item => {
+        const d = liveCountStatus.get(item.id)
+        if (!d) return 0
+        const n = parseInt(d.label, 10)
+        return (d.level === 'overdue' ? 1000 : 0) + (isNaN(n) ? 0 : n)
+      },
+      violations: item => liveViolationCountByItemId.get(item.id) ?? 0,
+      // Folds in the old "0 SOH sorts last" tie-break as part of this one
+      // criterion's own score, rather than a separate sort pass.
+      badge: item => {
+        const hasSoh = Number(item.soh) > 0
+        const sales = liveSalesCounts.get(item.id) ?? 0
+        return hasSoh ? 1_000_000 + sales : sales
+      },
     }
-    // Sort each group by sales count (highest first), with 0 SOH items last
-    const sortBySales = (a: LiveItem, b: LiveItem) => {
-      const aHasSoh = Number(a.soh) > 0
-      const bHasSoh = Number(b.soh) > 0
-      if (aHasSoh !== bHasSoh) return aHasSoh ? -1 : 1
-      return (liveSalesCounts.get(b.id) ?? 0) - (liveSalesCounts.get(a.id) ?? 0)
-    }
-    multipleFlags.sort(sortBySales)
-    singleFlag.sort(sortBySales)
-    noFlags.sort(sortBySales)
+    return [...liveCatalogueItems].sort((a, b) => {
+      for (const key of liveItemSortOrder) {
+        const diff = scoreFns[key](b) - scoreFns[key](a)
+        if (diff !== 0) return diff
+      }
+      return 0
+    })
+  }, [liveCatalogueItems, liveCountStatus, liveMode, liveViolationCountByItemId, liveSalesCounts, liveItemSortOrder])
 
-    const restSorted = [...multipleFlags, ...singleFlag, ...noFlags]
-    return [due, restSorted] as [LiveItem[], LiveItem[]]
-  }, [liveCatalogueItems, liveCountStatus, liveMode, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveSalesCounts])
+  // How many leading items are due for a count -- only meaningful (and only
+  // used to draw the "N items need counting" header + divider) when count
+  // status is the TOP-priority criterion, since that's the only ordering
+  // where due items are guaranteed to land as a contiguous prefix rather
+  // than scattered through the list.
+  const liveDueCatalogueCount = useMemo(() => {
+    if (liveItemSortOrder[0] !== 'count_status') return 0
+    let count = 0
+    for (const item of liveSortedCatalogueItems) {
+      if (liveCountStatus.has(item.id)) count++
+    }
+    return count
+  }, [liveSortedCatalogueItems, liveCountStatus, liveItemSortOrder])
 
   function addTapStatus(msg: string) {
     console.log('[recordTap]', msg)
@@ -4371,6 +4441,9 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                         setLiveHelpInitialTab(v.slice('help:'.length) as 'help' | 'laws')
                         setLiveHelpModalOpen(true)
                         selectEl.value = ''
+                      } else if (v === 'settings:sortorder') {
+                        setLiveSortOrderModalOpen(true)
+                        selectEl.value = ''
                       } else {
                         setLiveCurrentView(null)
                         setLiveGmcTypeFilter(null)
@@ -4384,6 +4457,9 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                     <optgroup label="Help">
                       <option value="help:help">❓ Help Guide</option>
                       <option value="help:laws">⚖️ Laws & Tasks</option>
+                    </optgroup>
+                    <optgroup label="Settings">
+                      <option value="settings:sortorder">⇅ Arrange Item Order</option>
                     </optgroup>
                     {liveSaleFilterFlags.filter(f => !f.key.startsWith('flag_')).map(f => {
                       let value = f.key
@@ -5173,6 +5249,9 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                           setLiveHelpInitialTab(v.slice('help:'.length) as 'help' | 'laws')
                           setLiveHelpModalOpen(true)
                           selectEl.value = ''
+                        } else if (v === 'settings:sortorder') {
+                          setLiveSortOrderModalOpen(true)
+                          selectEl.value = ''
                         }
                       }}
                       title="Flags & Views"
@@ -5183,6 +5262,9 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                       <optgroup label="Help">
                         <option value="help:help">❓ Help Guide</option>
                         <option value="help:laws">⚖️ Laws & Tasks</option>
+                      </optgroup>
+                      <optgroup label="Settings">
+                        <option value="settings:sortorder">⇅ Arrange Item Order</option>
                       </optgroup>
                       <optgroup label={liveMode === 'sale' || liveMode === 'log' ? 'Items' : (liveMode === 'sales' ? 'Sales' : (liveMode === 'bills' ? 'Bills' : 'Count'))}>
                         {liveComputedFlags.filter(f => f.key.startsWith('flag_') || f.key.startsWith('violation_')).map(f => (
@@ -5369,149 +5451,91 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                 </p>
               ) : (
                 <div className="grid grid-cols-3 gap-0 p-0">
-                  {livePinnedDueItems.length > 0 && (
-                    <div className="col-span-3 px-2 py-1 bg-gray-800 text-[9px] font-bold text-white uppercase tracking-wide">
-                      {livePinnedDueItems.length} item{livePinnedDueItems.length !== 1 ? 's' : ''} need{livePinnedDueItems.length === 1 ? 's' : ''} counting
-                    </div>
-                  )}
-                  {livePinnedDueItems.map(item => {
+                  {liveSortedCatalogueItems.map((item, idx) => {
                     const count = liveSalesCounts.get(item.id) ?? 0
-                    const due = liveCountStatus.get(item.id)!
-                    const overdue = due.level === 'overdue'
+                    const due = liveCountStatus.get(item.id)
+                    const overdue = due?.level === 'overdue'
                     // Being due for a count doesn't rule out having some
                     // other data-integrity problem too (negative stock, a
                     // gain, a duplicate...) -- surface those the same way
-                    // the rest of the grid does instead of letting the
-                    // COUNT NOW banner hide them.
+                    // regardless of whether this item is also due, instead
+                    // of letting the COUNT NOW banner hide them.
                     const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId)
+                    const cardBgCls = due
+                      ? (overdue ? 'bg-red-50 border-red-100 hover:bg-red-100' : 'bg-amber-50 border-amber-100 hover:bg-amber-100')
+                      : (flags.length > 0 ? 'bg-orange-50 border-orange-100 hover:bg-orange-100' : 'border-gray-100 hover:bg-gray-50')
                     return (
-                      <div
-                        key={item.id}
-                        onClick={() => openEditGridItem(item.id)}
-                        className={`relative flex flex-col border-r border-b group cursor-pointer ${overdue ? 'bg-red-50 border-red-100 hover:bg-red-100' : 'bg-amber-50 border-amber-100 hover:bg-amber-100'} transition`}
-                      >
-                        <div className={`px-2 py-1 text-[8px] font-extrabold text-white tracking-wide flex items-center justify-between gap-2 whitespace-nowrap ${overdue ? 'bg-red-600' : 'bg-amber-500'}`}>
-                          <span className="truncate">⚠ COUNT NOW · {due.label} {overdue ? 'OVERDUE' : ''}</span>
-                        </div>
-                        {flags.map((f, i) => (
-                          <div key={i} className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide truncate ${f.bg}`}>
-                            {f.label}
+                      <Fragment key={item.id}>
+                        {idx === 0 && liveDueCatalogueCount > 0 && (
+                          <div className="col-span-3 px-2 py-1 bg-gray-800 text-[9px] font-bold text-white uppercase tracking-wide">
+                            {liveDueCatalogueCount} item{liveDueCatalogueCount !== 1 ? 's' : ''} need{liveDueCatalogueCount === 1 ? 's' : ''} counting
                           </div>
-                        ))}
-                        <div className="px-1 py-0.5 flex flex-col">
-                          <div className={`text-[11px] font-semibold leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : ''}`}>
-                            {renderClickableItemName(item.name, `text-[11px] leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : 'text-blue-600'}`)}
-                          </div>
-                          <p className="text-[9px] text-gray-600 leading-tight">
-                            <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
-                            <span className="text-gray-400"> · </span>
-                            {item.product_type !== 'service' && (
-                              <>
-                                <span className="text-green-600 font-semibold">CP ₵{formatPrice(item.cost_price)}</span>
-                                <span className="text-gray-400"> · </span>
-                              </>
-                            )}
-                            {item.product_type !== 'service' && (
-                              <>
-                                <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
-                                {item.count_interval && (
-                                  <>
-                                    <span className="text-gray-400"> · </span>
-                                    <span className="text-gray-500">{shortCountInterval(item.count_interval)}</span>
-                                  </>
-                                )}
-                                <span className="text-gray-400"> · </span>
-                              </>
-                            )}
-                            {item.product_type !== 'service' && (
-                              <>
-                                <span className={formatLoss(liveLossByItemId.get(item.id)).cls}>{formatLoss(liveLossByItemId.get(item.id)).text}</span>
-                              </>
-                            )}
-                            {item.gmc_type && (
-                              <>
-                                <span className="text-gray-400"> · </span>
-                                <span className="inline-block rounded bg-purple-100 px-1 py-0.5 text-[7px] font-bold text-purple-700">
-                                  {item.gmc_type === 'gmc' ? 'GMC' : item.gmc_type === 'service_no_gmc' ? 'SVC only' : item.gmc_type === 'pack_to_gmc' ? 'PKG→GMC' : 'SVC/GMC'}
-                                  {item.converts_to_name && ` → ${item.converts_to_name}`}
-                                </span>
-                              </>
-                            )}
-                          </p>
-                        </div>
-                        {count > 0 && (
-                          <span className="absolute top-1 right-1 inline-flex items-center justify-center min-w-3 h-3 px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold">
-                            {count}
-                          </span>
                         )}
-                      </div>
-                    )
-                  })}
-                  {livePinnedDueItems.length > 0 && liveRestCatalogueItems.length > 0 && (
-                    <div className="col-span-3 border-b border-gray-200" />
-                  )}
-                  {liveRestCatalogueItems.map(item => {
-                    const count = liveSalesCounts.get(item.id) ?? 0
-                    const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId)
-                    const flag = flags[0] ?? null
-                    return (
-                      <div
-                        key={item.id}
-                        onClick={() => openEditGridItem(item.id)}
-                        className={`relative flex flex-col border-r border-b group cursor-pointer ${flag ? 'bg-orange-50 border-orange-100 hover:bg-orange-100' : 'border-gray-100 hover:bg-gray-50'} transition`}
-                      >
-                        {flags.map((f, i) => (
-                          <div key={i} className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide truncate ${f.bg}`}>
-                            {f.label}
+                        <div
+                          onClick={() => openEditGridItem(item.id)}
+                          className={`relative flex flex-col border-r border-b group cursor-pointer ${cardBgCls} transition`}
+                        >
+                          {due && (
+                            <div className={`px-2 py-1 text-[8px] font-extrabold text-white tracking-wide flex items-center justify-between gap-2 whitespace-nowrap ${overdue ? 'bg-red-600' : 'bg-amber-500'}`}>
+                              <span className="truncate">⚠ COUNT NOW · {due.label} {overdue ? 'OVERDUE' : ''}</span>
+                            </div>
+                          )}
+                          {flags.map((f, i) => (
+                            <div key={i} className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide truncate ${f.bg}`}>
+                              {f.label}
+                            </div>
+                          ))}
+                          <div className="px-1 py-0.5 flex flex-col">
+                            <div className={`text-[11px] font-semibold leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : ''}`}>
+                              {renderClickableItemName(item.name, `text-[11px] leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : 'text-blue-600'}`)}
+                            </div>
+                            <p className="text-[9px] text-gray-600 leading-tight">
+                              <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
+                              <span className="text-gray-400"> · </span>
+                              {item.product_type !== 'service' && (
+                                <>
+                                  <span className="text-green-600 font-semibold">CP ₵{formatPrice(item.cost_price)}</span>
+                                  <span className="text-gray-400"> · </span>
+                                </>
+                              )}
+                              {item.product_type !== 'service' && (
+                                <>
+                                  <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
+                                  {item.count_interval && (
+                                    <>
+                                      <span className="text-gray-400"> · </span>
+                                      <span className="text-gray-500">{shortCountInterval(item.count_interval)}</span>
+                                    </>
+                                  )}
+                                  <span className="text-gray-400"> · </span>
+                                </>
+                              )}
+                              {item.product_type !== 'service' && (
+                                <>
+                                  <span className={formatLoss(liveLossByItemId.get(item.id)).cls}>{formatLoss(liveLossByItemId.get(item.id)).text}</span>
+                                </>
+                              )}
+                              {item.gmc_type && (
+                                <>
+                                  <span className="text-gray-400"> · </span>
+                                  <span className="inline-block rounded bg-purple-100 px-1 py-0.5 text-[7px] font-bold text-purple-700">
+                                    {item.gmc_type === 'gmc' ? 'GMC' : item.gmc_type === 'service_no_gmc' ? 'SVC only' : item.gmc_type === 'pack_to_gmc' ? 'PKG→GMC' : 'SVC/GMC'}
+                                    {item.converts_to_name && ` → ${item.converts_to_name}`}
+                                  </span>
+                                </>
+                              )}
+                            </p>
                           </div>
-                        ))}
-                        <div className="px-1 py-0.5 flex flex-col">
-                          <div className={`text-[11px] font-semibold leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : ''}`}>
-                            {renderClickableItemName(item.name, `text-[11px] leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : 'text-blue-600'}`)}
-                          </div>
-                          <p className="text-[9px] text-gray-600 leading-tight">
-                            <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
-                            <span className="text-gray-400"> · </span>
-                            {item.product_type !== 'service' && (
-                              <>
-                                <span className="text-green-600 font-semibold">CP ₵{formatPrice(item.cost_price)}</span>
-                                <span className="text-gray-400"> · </span>
-                              </>
-                            )}
-                            {item.product_type !== 'service' && (
-                              <>
-                                <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
-                                {item.count_interval && (
-                                  <>
-                                    <span className="text-gray-400"> · </span>
-                                    <span className="text-gray-500">{shortCountInterval(item.count_interval)}</span>
-                                  </>
-                                )}
-                                <span className="text-gray-400"> · </span>
-                              </>
-                            )}
-                            {item.product_type !== 'service' && (
-                              <>
-                                <span className={formatLoss(liveLossByItemId.get(item.id)).cls}>{formatLoss(liveLossByItemId.get(item.id)).text}</span>
-                              </>
-                            )}
-                            {item.gmc_type && (
-                              <>
-                                <span className="text-gray-400"> · </span>
-                                <span className="inline-block rounded bg-purple-100 px-1 py-0.5 text-[7px] font-bold text-purple-700">
-                                  {item.gmc_type === 'gmc' ? 'GMC' : item.gmc_type === 'service_no_gmc' ? 'SVC only' : item.gmc_type === 'pack_to_gmc' ? 'PKG→GMC' : 'SVC/GMC'}
-                                  {item.converts_to_name && ` → ${item.converts_to_name}`}
-                                </span>
-                              </>
-                            )}
-                          </p>
+                          {count > 0 && (
+                            <span className="absolute top-1 right-1 inline-flex items-center justify-center min-w-3 h-3 px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold">
+                              {count}
+                            </span>
+                          )}
                         </div>
-                        {count > 0 && (
-                          <span className="absolute top-1 right-1 inline-flex items-center justify-center min-w-3 h-3 px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold">
-                            {count}
-                          </span>
+                        {liveDueCatalogueCount > 0 && idx === liveDueCatalogueCount - 1 && liveDueCatalogueCount < liveSortedCatalogueItems.length && (
+                          <div className="col-span-3 border-b border-gray-200" />
                         )}
-                      </div>
+                      </Fragment>
                     )
                   })}
                 </div>
@@ -6338,6 +6362,40 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
           </>)}
 
           <TrainingGuideModal isOpen={liveHelpModalOpen} onClose={() => setLiveHelpModalOpen(false)} lawsPanel={liveSaleLaws} initialTab={liveHelpInitialTab} />
+
+          {liveSortOrderModalOpen && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setLiveSortOrderModalOpen(false)}>
+              <div className="bg-white rounded-lg shadow-xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
+                <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                  <h2 className="text-sm font-bold text-gray-900">Arrange Item Order</h2>
+                  <button type="button" onClick={() => setLiveSortOrderModalOpen(false)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+                </div>
+                <div className="p-4 space-y-3">
+                  <p className="text-xs text-gray-500">
+                    Sets the priority order the Sale grid arranges items in -- top wins ties
+                    against the ones below it. This is shared: whoever changes it changes
+                    what every staff member's app shows, not just yours.
+                  </p>
+                  <div className="space-y-1.5">
+                    {liveItemSortOrder.map((key, i) => (
+                      <div key={key} className="flex items-center justify-between gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                        <span className="text-sm text-gray-800">
+                          <span className="text-gray-400 font-mono mr-2">{i + 1}.</span>
+                          {ITEM_SORT_LABELS[key]}
+                        </span>
+                        <div className="flex gap-1 shrink-0">
+                          <button type="button" disabled={i === 0} onClick={() => moveItemSortKey(key, -1)}
+                            className="w-6 h-6 rounded bg-white border border-gray-300 text-gray-600 disabled:opacity-30 hover:bg-gray-100 flex items-center justify-center text-xs">▲</button>
+                          <button type="button" disabled={i === liveItemSortOrder.length - 1} onClick={() => moveItemSortKey(key, 1)}
+                            className="w-6 h-6 rounded bg-white border border-gray-300 text-gray-600 disabled:opacity-30 hover:bg-gray-100 flex items-center justify-center text-xs">▼</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </> ) : null}
         {addForm === 'expense' && outerTab === 'loss' && lossView === 'expenses' && <div className="px-4"><NewExpenseForm onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'item'    && outerTab === 'loss' && lossView === 'items'    && <div className="px-4"><NewItemForm    onSuccess={() => { setAddForm(null); loadItems() }} /></div>}
