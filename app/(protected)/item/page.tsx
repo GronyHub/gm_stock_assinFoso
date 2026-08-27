@@ -524,6 +524,19 @@ function formatPrice(num: number | string): string {
   return n % 1 === 0 ? n.toFixed(0) : n.toFixed(2)
 }
 
+// Squeezes lib/countRules.ts's formatCountInterval() strings ("Every 7d",
+// "Dormant", ...) down for the grid card's tight CP/SP/SOH line -- the
+// underlying item.count_interval value itself is left alone (it's also used
+// as a filter-match key elsewhere), this only shortens what's displayed.
+function shortCountInterval(label: string | null | undefined): string {
+  if (!label) return ''
+  if (label === 'Daily') return 'DL'
+  if (label === 'Dormant') return 'DM'
+  if (label === 'Not counted') return 'NC'
+  const m = label.match(/^Every (\d+)d$/)
+  return m ? `${m[1]}D` : label
+}
+
 // The Log tab's Gap column -- minutes between two clock times, shown as
 // "12m" under an hour or "1h05" past it. Negative gaps (a clock-in/out
 // entered wrong, or a tap logged before the shop's own opening time) show
@@ -5399,7 +5412,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                                 {item.count_interval && (
                                   <>
                                     <span className="text-gray-400"> · </span>
-                                    <span className="text-gray-500">{item.count_interval}</span>
+                                    <span className="text-gray-500">{shortCountInterval(item.count_interval)}</span>
                                   </>
                                 )}
                                 <span className="text-gray-400"> · </span>
@@ -5466,7 +5479,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                                 {item.count_interval && (
                                   <>
                                     <span className="text-gray-400"> · </span>
-                                    <span className="text-gray-500">{item.count_interval}</span>
+                                    <span className="text-gray-500">{shortCountInterval(item.count_interval)}</span>
                                   </>
                                 )}
                                 <span className="text-gray-400"> · </span>
