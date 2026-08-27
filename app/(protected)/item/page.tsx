@@ -507,7 +507,7 @@ const PANE_ACCENT: Record<OuterTab, string> = {
 // cost_price vs. item_name/cf_group/selling_rate/purchase_rate/
 // calculated_soh -- these are two independently-fetched catalogues, not a
 // dedupe opportunity for this pass).
-type LiveItem = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; product_type: string | null; gmc_type?: string | null; count_interval?: string | null; converts_to_item_id?: number | null; converts_to_name?: string | null }
+type LiveItem = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; product_type: string | null; gmc_type?: string | null; count_interval?: string | null; converts_to_item_id?: number | null; converts_to_name?: string | null; units_per_pack?: string | number | null }
 type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null }
 type ViolationType = { key: string; label: string; description?: string }
 // Sale mode's due-count queues -- same shape /api/stock/daily,
@@ -2151,9 +2151,25 @@ function ItemHubPageInner() {
   // Item id -> cost price, for the Log tab's CP/Profit columns -- a tap only
   // carries its own sale price, not the item's cost, so this looks it up
   // from the same catalogue fetch everything else here already uses.
+  // Services never carry their own cost_price (it's cleared/zeroed by
+  // design -- cost pricing belongs on the GMC material they actually
+  // consume, see migrate-service-gmc-data), so a service's cost is instead
+  // however many units of its converts_to_item_id material one tap uses
+  // (units_per_pack) times THAT item's own cost price.
   const liveCostPriceByItemId = useMemo(() => {
+    const byId = new Map<number, LiveItem>()
+    for (const item of liveAllItems) byId.set(item.id, item)
     const m = new Map<number, number>()
-    for (const item of liveAllItems) m.set(item.id, parseFloat(String(item.cost_price)) || 0)
+    for (const item of liveAllItems) {
+      if (item.product_type === 'service' && item.converts_to_item_id) {
+        const target = byId.get(item.converts_to_item_id)
+        const targetCost = target ? parseFloat(String(target.cost_price)) || 0 : 0
+        const perTap = parseFloat(String(item.units_per_pack)) || 1
+        m.set(item.id, perTap * targetCost)
+      } else {
+        m.set(item.id, parseFloat(String(item.cost_price)) || 0)
+      }
+    }
     return m
   }, [liveAllItems])
 

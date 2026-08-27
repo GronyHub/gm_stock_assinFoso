@@ -30,6 +30,7 @@ export async function GET(req: NextRequest) {
                COALESCE(i.gmc_type, '') AS gmc_type,
                i.converts_to_item_id,
                target.canonical_name AS converts_to_name,
+               COALESCE(i.units_per_pack, 1) AS units_per_pack,
                NOW() AS updated_at
         FROM active_items i
         LEFT JOIN item_stock_summary s ON s.item_id = i.id
@@ -61,6 +62,7 @@ export async function GET(req: NextRequest) {
                COALESCE(i.gmc_type, '') AS gmc_type,
                i.converts_to_item_id,
                target.canonical_name AS converts_to_name,
+               COALESCE(i.units_per_pack, 1) AS units_per_pack,
                NOW() AS updated_at
         FROM items i
         LEFT JOIN items target ON target.id = i.converts_to_item_id
