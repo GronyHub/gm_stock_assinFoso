@@ -4326,13 +4326,18 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
         <div className="relative flex-1 min-w-0 min-h-0 flex flex-col">
           {outerTab === 'loss' && (
             <div className="shrink-0 bg-green-800 border-b border-green-900">
-              {/* Tab switcher: Items vs Live Sale modes */}
+              {/* Tab switcher: Items vs Live Sale modes -- a 3-column grid
+                  (rather than flex+justify-between) so the tabs stay
+                  centered in the row even when the right-side controls
+                  aren't there (most lossViews) or are (Items' columns
+                  picker), instead of always hugging the left edge. */}
               <div className="px-6 py-1.5 border-b border-green-700">
-                <div className="flex items-center gap-3 justify-between min-w-0">
-                  <div className="flex items-center gap-1.5 overflow-x-auto min-w-0">
+                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 min-w-0">
+                  <div />
+                  <div className="flex items-center gap-1.5 overflow-x-auto min-w-0 justify-self-center">
                     {renderTabSwitcher(true)}
                   </div>
-                  <div className="flex items-center gap-3 shrink-0">
+                  <div className="flex items-center gap-3 shrink-0 justify-self-end">
                     {/* Control buttons next to tab switcher */}
                     {lossView === 'items' && (
                         <ColumnsPickerButton prefs={itemsColPrefs} dark extraToggles={[
