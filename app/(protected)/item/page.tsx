@@ -506,7 +506,7 @@ const PANE_ACCENT: Record<OuterTab, string> = {
 // cost_price vs. item_name/cf_group/selling_rate/purchase_rate/
 // calculated_soh -- these are two independently-fetched catalogues, not a
 // dedupe opportunity for this pass).
-type LiveItem = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; product_type: string | null; gmc_type?: string | null; count_interval?: string | null; converts_to_item_id?: number | null; converts_to_name?: string | null; count_postponed_until?: string | null }
+type LiveItem = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; product_type: string | null; gmc_type?: string | null; count_interval?: string | null; converts_to_item_id?: number | null; converts_to_name?: string | null }
 type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null }
 type ViolationType = { key: string; label: string; description?: string }
 // Sale mode's due-count queues -- same shape /api/stock/daily,
@@ -815,13 +815,12 @@ function ItemHubPageInner() {
     null
   const [liveSaleFilter, setLiveSaleFilter] = useState<{ kind: 'loss' } | { kind: 'gain' } | { kind: 'count_0' } | { kind: 'count_1' } | { kind: 'interval'; label: string } | { kind: 'flag'; key: string } | null>(initialLiveSaleFilter)
   const rawLiveCountView = searchParams.get('liveCountView')
-  const initialLiveCountView: { kind: 'interval'; label: string } | { kind: 'records' } | { kind: 'history' } | { kind: 'postponed' } | null =
+  const initialLiveCountView: { kind: 'interval'; label: string } | { kind: 'records' } | { kind: 'history' } | null =
     rawLiveCountView === 'records' ? { kind: 'records' } :
     rawLiveCountView === 'history' ? { kind: 'history' } :
-    rawLiveCountView === 'postponed' ? { kind: 'postponed' } :
     rawLiveCountView?.startsWith('interval:') ? { kind: 'interval', label: rawLiveCountView.slice(9) } :
     { kind: 'records' }
-  const [liveCountView, setLiveCountView] = useState<{ kind: 'interval'; label: string } | { kind: 'records' } | { kind: 'history' } | { kind: 'postponed' } | null>(initialLiveCountView)
+  const [liveCountView, setLiveCountView] = useState<{ kind: 'interval'; label: string } | { kind: 'records' } | { kind: 'history' } | null>(initialLiveCountView)
   const rawLiveEmbeddedSearch = searchParams.get('liveSearch')
   const [liveEmbeddedSearch, setLiveEmbeddedSearch] = useState(rawLiveEmbeddedSearch ?? '')
   const rawSidePaneHidden = searchParams.get('sidebarHidden')
@@ -5046,10 +5045,6 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                     className={`text-xs font-semibold px-2 py-1 rounded-full transition ${liveCountView?.kind === 'history' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
                     Count History
                   </button>
-                  <button type="button" onClick={() => setLiveCountView(liveCountView?.kind === 'postponed' ? null : { kind: 'postponed' })}
-                    className={`text-xs font-semibold px-2 py-1 rounded-full transition ${liveCountView?.kind === 'postponed' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                    Postponed
-                  </button>
                 </div>
                 <div className="flex-1 min-h-0 overflow-y-auto">
                   {!liveCountView && (
@@ -5112,33 +5107,6 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                       />
                     </div>
                   )}
-                  {liveCountView?.kind === 'postponed' && (() => {
-                    const postponedItems = liveAllItems.filter(it => it.count_postponed_until && new Date(it.count_postponed_until) > new Date())
-                    return postponedItems.length === 0 ? (
-                      <p className="py-16 text-center text-gray-400 text-xs">No postponed counts.</p>
-                    ) : (
-                      <table className="w-full text-[11px] border-collapse">
-                        <thead className="sticky top-0 bg-gray-100 z-10">
-                          <tr>
-                            <th className="text-left px-2 py-1 font-bold text-gray-600">Item</th>
-                            <th className="text-left px-2 py-1 font-bold text-gray-600">Group</th>
-                            <th className="text-right px-2 py-1 font-bold text-gray-600">SOH</th>
-                            <th className="text-center px-2 py-1 font-bold text-gray-600">Postponed Until</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {postponedItems.map(it => (
-                            <tr key={it.id} className="border-b border-gray-100 hover:bg-gray-50">
-                              <td className="px-2 py-1 font-medium">{renderClickableItemName(it.name, 'text-gray-900')}</td>
-                              <td className="px-2 py-1 text-gray-500">{it.group ?? '—'}</td>
-                              <td className="px-2 py-1 text-right text-gray-700">{it.soh}</td>
-                              <td className="px-2 py-1 text-center text-gray-700">{it.count_postponed_until}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )
-                  })()}
                 </div>
               </div>
             )

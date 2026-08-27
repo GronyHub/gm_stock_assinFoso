@@ -46,7 +46,6 @@ async function ensureCountCadenceColumnsImpl() {
   await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS count_excluded BOOLEAN NOT NULL DEFAULT false`.catch(() => {})
   await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS count_cadence_days INTEGER`.catch(() => {})
   await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS count_excluded_reason TEXT`.catch(() => {})
-  await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS count_postponed_until DATE`.catch(() => {})
 }
 
 async function ensureGmcColumnImpl() {
