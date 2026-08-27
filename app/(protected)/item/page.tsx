@@ -631,7 +631,8 @@ function itemAttentionFlags(
   duplicateItemIds: Set<number>,
   unlinkedNamedIds: Set<number>,
   serviceViolationIds: Set<number>,
-  gainCountByItemId: Map<number, number>
+  gainCountByItemId: Map<number, number>,
+  emptyRowCountByItemId: Map<number, number>
 ): { label: string; bg: string }[] {
   const soh = Number(item.soh)
   const sp = parseFloat(String(item.selling_price)) || 0
@@ -658,6 +659,12 @@ function itemAttentionFlags(
   if (sp <= 0) flags.push({ label: '⚠ MISSING SELLING PRICE', bg: 'bg-orange-600' })
   if (item.product_type !== 'service' && cp <= 0) flags.push({ label: '⚠ MISSING COST PRICE', bg: 'bg-orange-500' })
   if (!item.group) flags.push({ label: '⚠ MISSING GROUP', bg: 'bg-amber-500' })
+  // A day row that made it into the item's own history but ended up with
+  // every field blank/zero -- a phantom date with no real activity behind
+  // it (e.g. a zero-quantity bill line). Doesn't affect stock math, but is
+  // dead weight in the item's own record that's worth cleaning up.
+  const emptyRowCount = emptyRowCountByItemId.get(item.id) ?? 0
+  if (emptyRowCount > 0) flags.push({ label: `⚠ EMPTY DATA: ${emptyRowCount}`, bg: 'bg-gray-500' })
   return flags
 }
 
@@ -2376,12 +2383,12 @@ function ItemHubPageInner() {
   // is built from (/api/losses/summary), shown inline next to price/cost/
   // stock/count-interval so a loss-prone item is visible without opening
   // its Item 360 detail. Fetched once, same as the GMC id set above.
-  const [liveLossByItemId, setLiveLossByItemId] = useState<Map<number, { lossCount: number; lgAmt: number; gainCount: number }>>(new Map())
+  const [liveLossByItemId, setLiveLossByItemId] = useState<Map<number, { lossCount: number; lgAmt: number; gainCount: number; emptyRowCount: number }>>(new Map())
   useEffect(() => {
     fetch('/api/losses/summary')
       .then(r => r.json())
-      .then((d: { item_id: number; lossCount: number; lgAmt: number; gainCount: number }[]) => {
-        setLiveLossByItemId(new Map(Array.isArray(d) ? d.map(r => [r.item_id, { lossCount: r.lossCount, lgAmt: r.lgAmt, gainCount: r.gainCount }]) : []))
+      .then((d: { item_id: number; lossCount: number; lgAmt: number; gainCount: number; emptyRowCount: number }[]) => {
+        setLiveLossByItemId(new Map(Array.isArray(d) ? d.map(r => [r.item_id, { lossCount: r.lossCount, lgAmt: r.lgAmt, gainCount: r.gainCount, emptyRowCount: r.emptyRowCount }]) : []))
       })
       .catch(() => {})
   }, [])
@@ -2418,6 +2425,14 @@ function ItemHubPageInner() {
   const liveGainCountByItemId = useMemo(() => {
     const counts = new Map<number, number>()
     liveLossByItemId.forEach((v, id) => { if ((v.gainCount ?? 0) > 0) counts.set(id, v.gainCount ?? 0) })
+    return counts
+  }, [liveLossByItemId])
+  // Fifth cross-item check: any item with day rows that are entirely
+  // blank/zero (count, WIC, GMC, bills, converted-in all empty) -- a
+  // phantom date with no real data behind it. Same map, same reasoning.
+  const liveEmptyRowCountByItemId = useMemo(() => {
+    const counts = new Map<number, number>()
+    liveLossByItemId.forEach((v, id) => { if ((v.emptyRowCount ?? 0) > 0) counts.set(id, v.emptyRowCount ?? 0) })
     return counts
   }, [liveLossByItemId])
 
@@ -2803,10 +2818,10 @@ function ItemHubPageInner() {
   const liveViolationCountByItemId = useMemo(() => {
     const m = new Map<number, number>()
     for (const item of liveCatalogueItems) {
-      m.set(item.id, itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId).length)
+      m.set(item.id, itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveEmptyRowCountByItemId).length)
     }
     return m
-  }, [liveCatalogueItems, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId])
+  }, [liveCatalogueItems, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveEmptyRowCountByItemId])
 
   // The Sale-mode grid's arrangement -- a single list sorted by whichever
   // priority order liveItemSortOrder currently holds (see the Arrange
@@ -5452,7 +5467,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                     // gain, a duplicate...) -- surface those the same way
                     // regardless of whether this item is also due, instead
                     // of letting the COUNT NOW banner hide them.
-                    const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId)
+                    const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveEmptyRowCountByItemId)
                     // Darker, thicker borders than the *-100 shades used
                     // before -- those were nearly invisible against the
                     // white/near-white card backgrounds, so items ran
@@ -5555,7 +5570,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
             {/* Modal */}
             {liveSelectedItem && (() => {
               const due = liveCountStatus.get(liveSelectedItem.id)
-              const flags = itemAttentionFlags(liveSelectedItem, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId)
+              const flags = itemAttentionFlags(liveSelectedItem, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveEmptyRowCountByItemId)
               const expected = Number(liveSelectedItem.soh)
               const enteredCount = liveCountQty === '' ? null : Number(liveCountQty)
               const countShort = enteredCount !== null && !isNaN(enteredCount) && enteredCount < expected

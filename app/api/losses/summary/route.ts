@@ -34,10 +34,15 @@ function n(v: string | null) { return parseFloat(v ?? '0') || 0 }
 
 function aggregateItem(rows: DayRow[], sp: number) {
   let prev: number | null = null
-  let lgQty = 0, gainQty = 0, cnt = 0, wic = 0, gmc = 0, bl = 0, cnv = 0, lossCount = 0, gainCount = 0
+  let lgQty = 0, gainQty = 0, cnt = 0, wic = 0, gmc = 0, bl = 0, cnv = 0, lossCount = 0, gainCount = 0, emptyRowCount = 0
   for (const row of rows) {
     const counted = row.qty_counted !== null ? parseFloat(row.qty_counted) : null
     const bills = n(row.bills_qty), w = n(row.wic_qty), g = n(row.gmc_qty), c = n(row.converted_in_qty)
+    // A date only needs ONE kind of activity to land in all_dates, but
+    // every field on it can still come out 0/blank (e.g. a bill line
+    // entered with quantity 0) -- that's a phantom day with no real data
+    // behind it at all, worth flagging on the item.
+    if ((counted === null || counted === 0) && bills === 0 && w === 0 && g === 0 && c === 0) emptyRowCount++
     if (prev === null) {
       if (counted !== null) prev = counted
     } else {
@@ -63,6 +68,7 @@ function aggregateItem(rows: DayRow[], sp: number) {
     lossCount,
     gainAmt: parseFloat((gainQty * sp).toFixed(2)),
     gainCount,
+    emptyRowCount,
     cnt: parseFloat(cnt.toFixed(4)),
     wic: parseFloat(wic.toFixed(4)),
     gmc: parseFloat(gmc.toFixed(4)),
