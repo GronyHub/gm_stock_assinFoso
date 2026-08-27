@@ -5453,9 +5453,13 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                     // regardless of whether this item is also due, instead
                     // of letting the COUNT NOW banner hide them.
                     const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId)
+                    // Darker, thicker borders than the *-100 shades used
+                    // before -- those were nearly invisible against the
+                    // white/near-white card backgrounds, so items ran
+                    // together with no visible separation between them.
                     const cardBgCls = due
-                      ? (overdue ? 'bg-red-50 border-red-100 hover:bg-red-100' : 'bg-amber-50 border-amber-100 hover:bg-amber-100')
-                      : (flags.length > 0 ? 'bg-orange-50 border-orange-100 hover:bg-orange-100' : 'border-gray-100 hover:bg-gray-50')
+                      ? (overdue ? 'bg-red-50 border-red-300 hover:bg-red-100' : 'bg-amber-50 border-amber-300 hover:bg-amber-100')
+                      : (flags.length > 0 ? 'bg-orange-50 border-orange-300 hover:bg-orange-100' : 'border-gray-300 hover:bg-gray-50')
                     return (
                       <Fragment key={item.id}>
                         {idx === 0 && liveDueCatalogueCount > 0 && (
@@ -5465,7 +5469,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                         )}
                         <div
                           onClick={() => openEditGridItem(item.id)}
-                          className={`relative flex flex-col border-r border-b group cursor-pointer ${cardBgCls} transition`}
+                          className={`relative flex flex-col border-r-2 border-b-2 group cursor-pointer ${cardBgCls} transition`}
                         >
                           {due && (
                             <div className={`px-2 py-1 text-[8px] font-extrabold text-white tracking-wide flex items-center justify-between gap-2 whitespace-nowrap ${overdue ? 'bg-red-600' : 'bg-amber-500'}`}>
