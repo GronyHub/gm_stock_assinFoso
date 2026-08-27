@@ -1927,8 +1927,6 @@ function ItemHubPageInner() {
   const [liveDayBounds, setLiveDayBounds] = useState<Record<string, { openTime: string | null; closeTime: string | null }>>({})
   const [liveSaleType, setLiveSaleType] = useState<'WIC' | 'GMC'>('WIC')
   const [liveTapError, setLiveTapError] = useState('')
-  const [liveCountGuardItems, setLiveCountGuardItems] = useState<Array<{ itemId: number; itemName: string; daysOverdue: number; cadenceLabel: string }>>([])
-  const [livePostponingItemId, setLivePostponingItemId] = useState<number | null>(null)
   // Tapping an item's name opens its full Item 360 detail (loss/gain
   // history, pack-chain, aliases, merge) as its own popup -- separate from
   // liveSelectedItem/the sale-tap sheet, since the two can be open from
@@ -2954,16 +2952,6 @@ function ItemHubPageInner() {
         return
       }
 
-      if (data.requires_count) {
-        const errMsg = data.error || 'Item must be counted before sale'
-        addTapStatus(`COUNT GUARD: ${errMsg}`)
-        setLiveCountGuardItems(data.items || [])
-        showToast(errMsg, 'error')
-        setLiveSaving(false)
-        clearTimeout(timeoutId)
-        return
-      }
-
       if (!data.tap) {
         const errMsg = 'Server returned invalid response - no tap data'
         addTapStatus(`ERROR: ${errMsg}`)
@@ -3040,13 +3028,6 @@ function ItemHubPageInner() {
       if (!tapRes.ok) {
         setLiveTapError(tapData.error || 'Failed to record sale')
         showToast(tapData.error || 'Failed to record sale', 'error')
-        setLiveGmcCountSaving(false)
-        return
-      }
-
-      if (tapData.requires_count) {
-        setLiveCountGuardItems(tapData.items || [])
-        setLiveTapError(tapData.error || 'Item must be counted before sale')
         setLiveGmcCountSaving(false)
         return
       }
@@ -3146,28 +3127,6 @@ function ItemHubPageInner() {
       showToast('Could not save tap time', 'error')
     } finally {
       setLiveEditingTapSaving(false)
-    }
-  }
-
-  async function postponeCount(itemId: number, itemName: string) {
-    setLivePostponingItemId(itemId)
-    try {
-      const res = await fetch('/api/postpone-count', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ itemId, days: 3 }),
-      })
-      const data = await res.json()
-      if (res.ok) {
-        showToast(`Count postponed: ${itemName} now due in 3 days`, 'success')
-        setLiveCountGuardItems(prev => prev.filter(item => item.itemId !== itemId))
-      } else {
-        showToast(`Failed to postpone: ${data.error || 'Unknown error'}`, 'error')
-      }
-    } catch (e) {
-      showToast('Could not postpone count', 'error')
-    } finally {
-      setLivePostponingItemId(null)
     }
   }
 
@@ -5905,63 +5864,6 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                     {liveTapError && (
                       <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-600 font-medium">
                         {liveTapError}
-                      </div>
-                    )}
-
-                    {liveCountGuardItems.length > 0 && (
-                      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-                        <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full mx-4">
-                          <h3 className="text-lg font-bold text-gray-900 mb-4">Count Required</h3>
-                          <p className="text-sm text-gray-600 mb-4">The following items need to be counted before continuing:</p>
-                          <div className="space-y-3 mb-6 max-h-48 overflow-y-auto">
-                            {liveCountGuardItems.map(item => (
-                              <div key={item.itemId} className="bg-gray-50 rounded p-3">
-                                <p className="font-medium text-gray-900">{item.itemName}</p>
-                                <p className="text-xs text-gray-600 mt-1">
-                                  {item.daysOverdue} day{item.daysOverdue === 1 ? '' : 's'} overdue
-                                  {item.cadenceLabel && ` (${item.cadenceLabel})`}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setLiveCountGuardItems([])}
-                              className="flex-1 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
-                            >
-                              Dismiss
-                            </button>
-                            {liveCountGuardItems.length === 1 && (
-                              <button
-                                type="button"
-                                onClick={() => postponeCount(liveCountGuardItems[0].itemId, liveCountGuardItems[0].itemName)}
-                                disabled={livePostponingItemId === liveCountGuardItems[0].itemId}
-                                className="flex-1 px-3 py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 rounded-lg transition"
-                              >
-                                {livePostponingItemId === liveCountGuardItems[0].itemId ? 'Postponing...' : 'Postpone 3 Days'}
-                              </button>
-                            )}
-                          </div>
-                          {liveCountGuardItems.length > 1 && (
-                            <div className="mt-4 pt-4 border-t border-gray-200">
-                              <p className="text-xs text-gray-600 mb-2">Postpone individual items:</p>
-                              <div className="space-y-2">
-                                {liveCountGuardItems.map(item => (
-                                  <button
-                                    key={item.itemId}
-                                    type="button"
-                                    onClick={() => postponeCount(item.itemId, item.itemName)}
-                                    disabled={livePostponingItemId === item.itemId}
-                                    className="w-full px-3 py-2 text-xs font-medium text-blue-600 hover:bg-blue-50 disabled:text-gray-400 rounded transition"
-                                  >
-                                    {livePostponingItemId === item.itemId ? `Postponing ${item.itemName}...` : `Postpone ${item.itemName}`}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
                       </div>
                     )}
 

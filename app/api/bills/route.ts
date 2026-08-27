@@ -2,7 +2,6 @@ import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { ensureBillAttachmentsColumn } from '@/lib/billAttachments'
-import { itemsDueForCount, countGuardResponseBody } from '@/lib/countGuard'
 import { ensureDbInitialized } from '@/lib/api/dbInitCache'
 import { NextRequest } from 'next/server'
 
@@ -100,14 +99,6 @@ export async function POST(req: NextRequest) {
       const names = gmcOnlyItems.map(i => `"${i.canonical_name}"`).join(', ')
       return badRequest(`${names} ${gmcOnlyItems.length === 1 ? 'is a' : 'are'} "GMC only, no service" item${gmcOnlyItems.length === 1 ? '' : 's'} -- these are never bought directly, only credited from a pack's GMC conversion. Check the item picked.`)
     }
-  }
-
-  // A bill still adds onto whatever the last count established as the
-  // baseline -- if that count is overdue, the baseline itself is
-  // unverified before this bill would build on top of it.
-  const due = await itemsDueForCount(lines.map(l => l.itemId ? Number(l.itemId) : null))
-  if (due.size > 0) {
-    return success(countGuardResponseBody(Array.from(due.values())))
   }
 
   const enteredBy = session!.user?.name || (session!.user as any)?.username || null

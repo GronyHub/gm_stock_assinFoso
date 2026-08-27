@@ -101,13 +101,6 @@ export default function NewReceiptPage({ onSuccess, groupFilter }: { onSuccess?:
       })
       const d = await res.json().catch(() => ({}))
       setSaving(false)
-      // requires_count comes back with res.ok true (it's not an error, it's
-      // a "not saved yet, here's why" response) -- checked before the ok
-      // branch below so this doesn't get treated as a successful save.
-      if (d.requires_count) {
-        setError(d.error || 'An item needs to be counted before this can be recorded.')
-        return
-      }
       if (res.ok) {
         const w: string[] = Array.isArray(d.warnings) ? d.warnings : []
         setWarnings(w)

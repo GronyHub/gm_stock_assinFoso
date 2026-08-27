@@ -2,7 +2,6 @@ import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { ensureLiveSaleTapsTable } from '@/lib/liveSales'
-import { itemsDueForCount, countGuardResponseBody } from '@/lib/countGuard'
 import { NextRequest } from 'next/server'
 
 // Ghana is UTC+0 year-round, so an ISO UTC date slice is already the
@@ -47,11 +46,6 @@ export async function POST(req: NextRequest) {
     const [item] = await sql`SELECT id, canonical_name, selling_rate, product_type, gmc_type, converts_to_item_id FROM items WHERE id = ${Number(itemId)}`
     console.log('[live-tap] Item fetched:', item?.canonical_name)
     if (!item) return badRequest('Item not found')
-
-    const due = await itemsDueForCount([item.id])
-    if (due.size > 0 && item.product_type !== 'service') {
-      return success(countGuardResponseBody(Array.from(due.values())))
-    }
 
     // If this is a service using GMC, check if the target GMC item has stock
     if (item.product_type === 'service' && item.gmc_type && item.converts_to_item_id) {

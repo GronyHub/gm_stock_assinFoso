@@ -4,7 +4,6 @@ import { logActivity } from '@/lib/logger'
 import { createItemFromTypedName } from '@/lib/createItem'
 import { impossibleUsageWarnings } from '@/lib/usageCheck'
 import { negativeStockViolations } from '@/lib/stockGuard'
-import { itemsDueForCount, countGuardResponseBody } from '@/lib/countGuard'
 import { ensureSalesAttachmentsColumn, normalizeAttachments } from '@/lib/salesAttachments'
 import { NextRequest } from 'next/server'
 
@@ -58,21 +57,6 @@ export async function POST(req: NextRequest) {
       const violations = await negativeStockViolations(deltas)
       if (violations.length > 0) {
         return badRequest(`Not allowed — this would create negative stock. ${violations.join(' ')}`)
-      }
-
-      // A sale keeps assuming the last count was still accurate -- if it's
-      // overdue, that assumption is exactly what's unverified. Block until
-      // a fresh count re-anchors it. Exception: a GMC receipt entered in
-      // arrears (catching up a missed internal-use record for a past date,
-      // e.g. via the "+G" backfill button) isn't asserting anything about
-      // today's count freshness -- it's a historical correction for a date
-      // that's already gone, so today's guard doesn't apply to it.
-      const isBackdatedGmc = customerType === 'GMC' && date < new Date().toISOString().slice(0, 10)
-      if (!isBackdatedGmc) {
-        const due = await itemsDueForCount(lines.map((l: any) => l.itemId ? Number(l.itemId) : null))
-        if (due.size > 0) {
-          return success(countGuardResponseBody(Array.from(due.values())))
-        }
       }
     }
 
