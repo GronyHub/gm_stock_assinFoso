@@ -1374,7 +1374,16 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                       {fmtQ(row.wic_breakdown?.find(b => b.name === n)?.qty ?? 0)}
                     </td>
                   ))}
-                  <td className="px-1 py-0 text-right font-semibold text-blue-700">{fmtQ(row.used)}</td>
+                  {/* row.used (feeding the real Expected/Loss math below) no
+                      longer folds in the per-service breakdown amounts --
+                      that used to double-count them against the negative
+                      bill line /api/sales/live-tap already records for the
+                      same consumption (see lib/itemDayRows.ts). This
+                      column stays a genuine total, display-only, by adding
+                      the breakdown back on top of it here. */}
+                  <td className="px-1 py-0 text-right font-semibold text-blue-700">
+                    {fmtQ(row.used + (row.wic_breakdown ?? []).reduce((s, b) => s + b.qty, 0))}
+                  </td>
                   {!isService && <td className="px-1 py-0 text-right text-gray-400">{fmtN(row.expected_soh)}</td>}
                   {!isService && <td className="px-1 py-0 text-right font-semibold">
                     {row.loss === null ? <span className="text-gray-300">—</span>

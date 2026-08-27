@@ -164,7 +164,16 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
       dc.counted_by,
       dc.counted_at::text AS counted_at,
       dch.history AS count_history,
-      COALESCE(dw.qty, 0) + COALESCE(dcs.qty, 0) AS wic_qty,
+      -- dcs.qty (consumed via service) is deliberately NOT folded in here --
+      -- /api/sales/live-tap already records that exact same consumption as
+      -- a negative bill_lines row against this item (regardless of whether
+      -- the tap was WIC or GMC), which daily_bills below already picks up.
+      -- Adding dcs.qty on top double-counted every WIC-attributed service
+      -- sale (GMC-attributed ones were already correctly excluded by
+      -- daily_consumed_via_service's own WHERE clause). dcs.breakdown is
+      -- still surfaced below for the per-service display -- just no longer
+      -- fed into the actual used/expected math.
+      COALESCE(dw.qty, 0) AS wic_qty,
       dg.qty  AS gmc_qty,
       db.qty  AS bills_qty,
       dsp.sp  AS sell_price,

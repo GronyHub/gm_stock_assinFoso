@@ -161,7 +161,12 @@ export async function GET() {
       )
       SELECT ad.item_id, ad.d::text AS date,
              dc.qty_counted,
-             COALESCE(dw.qty, 0) + COALESCE(dcs.qty, 0) AS wic_qty,
+             -- dcs.qty (consumed via service) deliberately excluded -- see
+             -- lib/itemDayRows.ts's own copy of this query for why: it
+             -- double-counted every WIC-attributed service sale against
+             -- the negative bill_lines row /api/sales/live-tap already
+             -- records for that same consumption.
+             COALESCE(dw.qty, 0) AS wic_qty,
              dg.qty AS gmc_qty, db.qty AS bills_qty,
              dci.qty AS converted_in_qty
       FROM all_dates ad
@@ -199,11 +204,18 @@ export async function GET() {
 
   const itemsById = new Map<number, ItemMeta>(items.map(it => [it.item_id, it]))
 
-  // Pack items (a Good with converts_to_item_id set) get their Loss Amount
-  // and Num. of Losses from the same chain-aware ledger the pack-chain
-  // dropdown already shows -- the TOTAL ₵ column there, summed -- instead
-  // of the naive per-item count-vs-expected diff, because that diff ignores
-  // the USED/PACK cycle overrun/underrun on the singles side entirely.
+  // Pack items used to get their Loss Amount and Num. of Losses from the
+  // chain-aware USED/PACK cycle ledger below (comparing what a pack gave
+  // against what the singles side recorded as used) instead of the plain
+  // per-item count-vs-expected diff every other item gets -- but that
+  // ledger is the singles item's own economics computed onto the pack's
+  // page, the exact thing the pack's Item 360 view itself stopped doing
+  // (see LossTab.tsx's showPackChainTable). Hardcoded off here for the
+  // same reason and the same way -- a pack's own STOCK GAIN/loss figures
+  // should only ever reflect its own counts/bills/GMC, not the singles
+  // side's cycle math. The ledger itself (chainSummaries below) is left
+  // computed but unused, same reversible pattern as showPackChainTable.
+  const useChainLossOverride = false
   const packItems = items.filter(it =>
     (it.product_type ?? 'goods') !== 'service' && it.converts_to_item_id != null)
 
@@ -235,7 +247,7 @@ export async function GET() {
     const rows = byItem.get(item.item_id) ?? []
     const agg = aggregateItem(rows, sp)
     const chain = chainSummaries.get(item.item_id)
-    if (chain) { agg.lgAmt = chain.lossAmt; agg.lossCount = chain.lossCount; agg.gainAmt = chain.gainAmt; agg.gainCount = chain.gainCount }
+    if (chain && useChainLossOverride) { agg.lgAmt = chain.lossAmt; agg.lossCount = chain.lossCount; agg.gainAmt = chain.gainAmt; agg.gainCount = chain.gainCount }
     return {
       item_id: item.item_id,
       item_name: item.item_name,
