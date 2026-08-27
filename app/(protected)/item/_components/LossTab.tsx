@@ -146,6 +146,21 @@ function CntValue({ qty, countedBy, countedAt, history, blank }: { qty: string |
   )
 }
 
+// CNV column cell -- the converted-in quantity plus, when it came through a
+// Live Sale tap (not every conversion did -- see daily_converted_in_time's
+// own comment in lib/itemDayRows.ts), the clock time it was tapped in.
+function CnvValue({ qty, time }: { qty: string | null; time?: string | null }) {
+  const text = fmtQs(qty)
+  const t = fmtTime(time)
+  if (text === '—') return <span className="text-gray-300">—</span>
+  return (
+    <span className="flex flex-col items-center" title={t ? `Converted in at ${t}` : undefined}>
+      <span className="whitespace-nowrap">{text}</span>
+      {t && <span className="text-gray-400 text-[6px] whitespace-nowrap">{t}</span>}
+    </span>
+  )
+}
+
 /* Omissions: records that should exist but don't, found by cross-checking the
    singles side against the packs side of the same row AND against earlier
    rows. A gain on singles (counted more than expected, e.g. 3 → 46 overnight)
@@ -1388,7 +1403,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                       </button>
                     ) : shortItemDate(row.date)}
                   </td>
-                  {!isService && <td className="px-1 py-0 text-right text-teal-600">{fmtQs(row.converted_in_qty)}</td>}
+                  {!isService && <td className="px-1 py-0 text-right text-teal-600"><CnvValue qty={row.converted_in_qty} time={row.converted_in_time} /></td>}
                   {/* row.used (feeding the real Expected/Loss math below) no
                       longer folds in the per-service breakdown amounts --
                       that used to double-count them against the negative
@@ -1503,7 +1518,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                   <td className="px-1 py-0 text-right text-gray-600">{fmtQs(row.gmc_qty)}</td>
                   <td className="px-1 py-0 text-right text-blue-500">{fmtQs(row.sell_price)}</td>
                   <td className="px-1 py-0 text-right text-blue-600">{fmtQs(row.bills_qty)}</td>
-                  <td className="px-1 py-0 text-right text-teal-600">{fmtQs(row.converted_in_qty)}</td>
+                  <td className="px-1 py-0 text-right text-teal-600"><CnvValue qty={row.converted_in_qty} time={row.converted_in_time} /></td>
                   <td className="px-1 py-0 text-right text-gray-400">{fmtN(row.expected_soh)}</td>
                   <td className="px-1 py-0 text-purple-700 font-medium">
                     <span className="block truncate max-w-[180px]" title={row.aliases ?? ''}>{row.aliases ?? <span className="text-gray-300">—</span>}</span>

@@ -14,6 +14,7 @@ export type ItemDayRow = {
   sell_price: string | null
   aliases: string | null
   converted_in_qty: string | null
+  converted_in_time: string | null
   wic_breakdown: { name: string; qty: number; amount: number }[] | null
 }
 
@@ -35,6 +36,20 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
         AND COALESCE(src.product_type, 'goods') <> 'service'
         AND sr.customer_name = 'Grony Multimedia as Customer'
       GROUP BY sr.receipt_date::date
+    ),
+    daily_converted_in_time AS (
+      -- The actual clock time the conversion was tapped in Live Sale, for
+      -- display next to the CNV column -- undone taps are excluded (they
+      -- carry no qty in daily_converted_in above either) and a day with more
+      -- than one tap shows the latest one. Only live-sale-tapped conversions
+      -- have a time at all; anything entered another way just shows no time.
+      SELECT t.tapped_at::date AS d, MAX(t.tapped_at) AS tapped_at
+      FROM live_sale_taps t
+      JOIN items src ON src.id = t.item_id
+      WHERE src.converts_to_item_id = ${id}
+        AND COALESCE(src.product_type, 'goods') <> 'service'
+        AND t.undone = false
+      GROUP BY t.tapped_at::date
     ),
     daily_consumed_by_service AS (
       -- Deduction from another service's own real (WIC) sales, if that service declares
@@ -179,6 +194,7 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
       dsp.sp  AS sell_price,
       da.aliases,
       dci.qty AS converted_in_qty,
+      dcit.tapped_at::text AS converted_in_time,
       dcs.breakdown AS wic_breakdown
     FROM all_dates ad
     LEFT JOIN daily_counts dc ON dc.d = ad.d
@@ -188,6 +204,7 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
     LEFT JOIN daily_sp    dsp ON dsp.d = ad.d
     LEFT JOIN daily_aliases da ON da.d = ad.d
     LEFT JOIN daily_converted_in dci ON dci.d = ad.d
+    LEFT JOIN daily_converted_in_time dcit ON dcit.d = ad.d
     LEFT JOIN daily_consumed_via_service dcs ON dcs.d = ad.d
     LEFT JOIN daily_count_history dch ON dch.d = ad.d
     ORDER BY ad.d ASC
