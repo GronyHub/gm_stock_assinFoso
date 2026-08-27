@@ -2796,9 +2796,15 @@ function ItemHubPageInner() {
       },
       violations: item => liveViolationCountByItemId.get(item.id) ?? 0,
       // Folds in the old "0 SOH sorts last" tie-break as part of this one
-      // criterion's own score, rather than a separate sort pass.
+      // criterion's own score, rather than a separate sort pass. That
+      // tie-break only makes sense for goods -- services aren't physical
+      // stock, so their soh is always 0 and would otherwise get every
+      // single service demoted below every good with any stock at all,
+      // splitting goods and services into two solid blocks regardless of
+      // actual sales. Services are treated as always "in stock" here so
+      // they interleave with goods purely by sales count instead.
       badge: item => {
-        const hasSoh = Number(item.soh) > 0
+        const hasSoh = item.product_type === 'service' || Number(item.soh) > 0
         const sales = liveSalesCounts.get(item.id) ?? 0
         return hasSoh ? 1_000_000 + sales : sales
       },
