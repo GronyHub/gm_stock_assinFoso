@@ -3572,14 +3572,18 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
   // The tab switcher for Items page internal navigation -- allows switching
   // between the items table and Live Sale modes without changing the sidebar.
   function renderTabSwitcher(compact: boolean) {
+    // Each tab is its own standalone button (own background/border) rather
+    // than a segment inside one shared pill -- an inactive tab used to be
+    // just plain text sitting on the container's own gray-200 background,
+    // which read as one continuous switch instead of separate buttons.
     const btnCls = (active: boolean, color: string) =>
-      `font-bold rounded-md transition whitespace-nowrap shrink-0 ${compact ? 'px-1.5 py-1 text-[10px]' : 'px-2 py-1 text-xs'} ${
-        active ? `${color} text-white` : 'text-gray-500 hover:text-gray-700'
+      `font-bold rounded-md border transition whitespace-nowrap shrink-0 ${compact ? 'px-1.5 py-1 text-[10px]' : 'px-2 py-1 text-xs'} ${
+        active ? `${color} text-white border-transparent` : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'
       }`
     // Always one line -- scrolls horizontally rather than wrapping onto a
     // second row when there isn't room for all buttons.
     return (
-      <div className="flex gap-1.5 bg-gray-200 rounded-lg p-0.5 overflow-x-auto max-w-full">
+      <div className="flex gap-1.5 overflow-x-auto max-w-full">
         <button type="button" onClick={() => { setItemsPageMode('sale'); setLiveMode('sale') }} title="Sale" className={btnCls(itemsPageMode === 'sale', 'bg-blue-600')}>Sale</button>
         <button type="button" onClick={() => { setItemsPageMode('log'); setLiveMode('log') }} title="Log" className={btnCls(itemsPageMode === 'log', 'bg-gray-700')}>Log</button>
         <button type="button" onClick={() => { setItemsPageMode('sales'); setLiveMode('sales') }} title="Sales" className={btnCls(itemsPageMode === 'sales', 'bg-emerald-600')}>Sales</button>
