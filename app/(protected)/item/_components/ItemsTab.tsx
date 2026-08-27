@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo, useRef, memo } from 'react'
 import { fmtDate } from '@/lib/fmtDate'
+import { trimZeros } from '@/lib/fmtNumber'
 import { usePolling } from '@/lib/usePolling'
 import { usePresenceReporter } from '@/lib/usePresenceReporter'
 import AliasesTab, { type Tab as AliasTab } from './AliasesTab'
@@ -75,7 +76,7 @@ function fmtQ(val: string | null) {
 function fmt(val: string | null) {
   if (!val) return '—'
   const n = parseFloat(val)
-  return isNaN(n) ? val : n % 1 === 0 ? n.toString() : n.toFixed(2)
+  return isNaN(n) ? val : trimZeros(n)
 }
 
 function computeRows(rows: DayRow[]): ComputedRow[] {
@@ -694,13 +695,13 @@ function ItemsTab({ items, group, productType, search, violation, violationLabel
                       <td className="py-1 text-gray-500 truncate overflow-hidden">{item.cf_group ?? <span className="text-red-400">—</span>}</td>
                       <td className={`text-center py-1 font-bold tabular-nums ${soh <= 0 ? 'text-red-600' : 'text-gray-700'}`}>{soh % 1 === 0 ? soh : soh.toFixed(2)}</td>
                       <td className={`text-center py-1 tabular-nums ${!item.selling_rate || parseFloat(item.selling_rate) === 0 ? 'text-red-500 font-bold' : 'text-blue-600'}`}>
-                        {item.selling_rate && parseFloat(item.selling_rate) !== 0 ? parseFloat(item.selling_rate).toFixed(2) : '—'}
+                        {item.selling_rate && parseFloat(item.selling_rate) !== 0 ? trimZeros(item.selling_rate) : '—'}
                       </td>
                       <td className={`text-center py-1 tabular-nums ${!item.purchase_rate || parseFloat(item.purchase_rate) === 0 ? 'text-red-500 font-bold' : 'text-green-600'}`}>
-                        {item.purchase_rate && parseFloat(item.purchase_rate) !== 0 ? parseFloat(item.purchase_rate).toFixed(2) : '—'}
+                        {item.purchase_rate && parseFloat(item.purchase_rate) !== 0 ? trimZeros(item.purchase_rate) : '—'}
                       </td>
                       <td className="text-center py-1 text-gray-500">
-                        {item.units_per_pack ? `${item.units_per_pack}${item.unit_name ? ' ' + item.unit_name : ''}` : '—'}
+                        {item.units_per_pack ? `${trimZeros(item.units_per_pack)}${item.unit_name ? ' ' + item.unit_name : ''}` : '—'}
                       </td>
                       <td className="text-center py-1">
                         {isEditing ? (

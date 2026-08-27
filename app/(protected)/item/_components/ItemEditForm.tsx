@@ -1,6 +1,7 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import { COUNT_EXCLUDED_REASONS } from '@/lib/countRules'
+import { trimZeros } from '@/lib/fmtNumber'
 
 // The item-fields-only edit form (name/group/prices/units/conversion/count
 // settings) -- split out of LossTab.tsx so it can be reused anywhere an
@@ -217,7 +218,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
             <input placeholder="SP" type="number" value={form.selling_rate} onChange={set('selling_rate')} className={s.input} />
           ) : (
             <div className={s.readOnly}>
-              {form.selling_rate || '—'}
+              {form.selling_rate ? trimZeros(form.selling_rate) : '—'}
             </div>
           )}
         </div>
@@ -227,7 +228,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
             <input placeholder="CP" type="number" value={form.purchase_rate} onChange={set('purchase_rate')} className={s.input} />
           ) : (
             <div className={s.readOnly}>
-              {form.purchase_rate || '—'}
+              {form.purchase_rate ? trimZeros(form.purchase_rate) : '—'}
             </div>
           )}
         </div>
@@ -237,7 +238,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
             <input placeholder="Units/pack" type="number" value={form.units_per_pack} onChange={set('units_per_pack')} className={s.input} />
           ) : (
             <div className={s.readOnly}>
-              {form.units_per_pack || '—'}
+              {form.units_per_pack ? trimZeros(form.units_per_pack) : '—'}
             </div>
           )}
         </div>

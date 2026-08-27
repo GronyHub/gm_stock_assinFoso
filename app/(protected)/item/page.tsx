@@ -6,6 +6,7 @@ import { hasFeature, DEFAULT_ON_FEATURES, type FeatureKey, type RolePermissionsM
 import { usePresenceReporter } from '@/lib/usePresenceReporter'
 import { isOwnerLevel } from '@/lib/roles'
 import { fmtTime } from '@/lib/fmtDate'
+import { trimZeros } from '@/lib/fmtNumber'
 import PageLawsList, { type LawFormKind } from './_components/PageLawsList'
 import ItemDetailModal from './_components/ItemDetailModal'
 import { LossDialog, PairingDialog, type LossExtra, type LossPrompt, type PairingPrompt } from './_components/CountDialogs'
@@ -521,8 +522,7 @@ type CountRecord = { id: number; item_id: number | null; item_name: string; coun
 function fmtN(v: number) { return v % 1 === 0 ? String(v) : v.toFixed(2) }
 
 function formatPrice(num: number | string): string {
-  const n = Number(num)
-  return n % 1 === 0 ? n.toFixed(0) : n.toFixed(2)
+  return trimZeros(num) || '0'
 }
 
 // The three criteria the Sale-mode grid can prioritize items by (see the
