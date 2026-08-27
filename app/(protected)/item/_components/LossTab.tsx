@@ -114,15 +114,18 @@ function CntValue({ qty, countedBy, countedAt, history, blank }: { qty: string |
         const deleted = h.action === 'deleted'
         const oldText = fmtQs(h.old_qty == null ? null : String(h.old_qty))
         return (
-          <span key={`${h.changed_at}|${h.changed_by}`} className="whitespace-nowrap"
+          // Value, old-by initial, and changed-by initial each sit on their
+          // own line -- same width-for-height trade as the current-value
+          // block below, so multi-name cells don't force the column wide.
+          <span key={`${h.changed_at}|${h.changed_by}`} className="flex flex-col items-center"
             title={`${deleted ? 'Deleted' : 'Changed'} by ${h.changed_by ?? 'unknown'} on ${fmtDate(h.changed_at)}`}>
-            {deleted && <span className="text-red-600">✗</span>}
-            <span className={deleted ? 'text-red-600' : 'line-through text-gray-400'}>
+            <span className={`whitespace-nowrap ${deleted ? 'text-red-600' : 'line-through text-gray-400'}`}>
+              {deleted && <span className="text-red-600">✗</span>}
               {oldText}
-              {initialOf(h.old_by) && <span className="text-[6px]"> ({initialOf(h.old_by)})</span>}
             </span>
+            {initialOf(h.old_by) && <span className="text-[6px] whitespace-nowrap">({initialOf(h.old_by)})</span>}
             {initialOf(h.changed_by) && (
-              <span className="text-amber-600 text-[6px] font-bold"> {initialOf(h.changed_by)}</span>
+              <span className="text-amber-600 text-[6px] font-bold whitespace-nowrap">{initialOf(h.changed_by)}</span>
             )}
           </span>
         )
