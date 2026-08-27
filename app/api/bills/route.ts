@@ -79,6 +79,21 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // A "GMC only, no service" item is never bought directly -- its only
+  // stock-in path is a pack_to_gmc item's conversion credit. A bill
+  // against one is always a mis-click (the wrong item was picked), not a
+  // real restock, so it's blocked here rather than silently accepted.
+  const itemIds = lines.map(l => l.itemId).filter((id): id is number => !!id)
+  if (itemIds.length > 0) {
+    const gmcOnlyItems = await sql`
+      SELECT id, canonical_name FROM items WHERE id = ANY(${itemIds}) AND gmc_type = 'gmc'
+    ` as unknown as { id: number; canonical_name: string }[]
+    if (gmcOnlyItems.length > 0) {
+      const names = gmcOnlyItems.map(i => `"${i.canonical_name}"`).join(', ')
+      return badRequest(`${names} ${gmcOnlyItems.length === 1 ? 'is a' : 'are'} "GMC only, no service" item${gmcOnlyItems.length === 1 ? '' : 's'} -- these are never bought directly, only credited from a pack's GMC conversion. Check the item picked.`)
+    }
+  }
+
   // A bill still adds onto whatever the last count established as the
   // baseline -- if that count is overdue, the baseline itself is
   // unverified before this bill would build on top of it.
