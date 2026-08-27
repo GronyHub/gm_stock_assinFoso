@@ -551,6 +551,21 @@ function shortCountInterval(label: string | null | undefined): string {
   return m ? `${m[1]}D` : label
 }
 
+// "12 Aug '24" -- compact enough for the grid card's own sale-history line
+// (first/last sale date, days since) alongside CP/SP/SOH.
+function fmtShortSaleDate(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00Z')
+  if (isNaN(d.getTime())) return dateStr
+  const day = d.getUTCDate()
+  const month = d.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })
+  const year = String(d.getUTCFullYear()).slice(-2)
+  return `${day} ${month} '${year}`
+}
+
+function daysSince(dateStr: string): number {
+  return Math.max(0, Math.floor((Date.now() - Date.parse(dateStr + 'T00:00:00Z')) / 86400000))
+}
+
 // The Log tab's Gap column -- minutes between two clock times, shown as
 // "12m" under an hour or "1h05" past it. Negative gaps (a clock-in/out
 // entered wrong, or a tap logged before the shop's own opening time) show
@@ -2367,6 +2382,20 @@ function ItemHubPageInner() {
       .then(r => r.json())
       .then((d: { item_id: number; lossCount: number; lgAmt: number; gainCount: number }[]) => {
         setLiveLossByItemId(new Map(Array.isArray(d) ? d.map(r => [r.item_id, { lossCount: r.lossCount, lgAmt: r.lgAmt, gainCount: r.gainCount }]) : []))
+      })
+      .catch(() => {})
+  }, [])
+
+  // First/last recorded sale date and average monthly quantity per item --
+  // off the item's full sales_receipt_lines history (see
+  // /api/items/sale-history), shown next to CP/SP/SOH same as the loss
+  // figures above. Fetched once, same pattern.
+  const [liveSaleHistoryByItemId, setLiveSaleHistoryByItemId] = useState<Map<number, { firstSaleDate: string; lastSaleDate: string; avgMonthlyQty: number }>>(new Map())
+  useEffect(() => {
+    fetch('/api/items/sale-history')
+      .then(r => r.json())
+      .then((d: { item_id: number; first_sale_date: string; last_sale_date: string; avg_monthly_qty: number }[]) => {
+        setLiveSaleHistoryByItemId(new Map(Array.isArray(d) ? d.map(r => [r.item_id, { firstSaleDate: r.first_sale_date, lastSaleDate: r.last_sale_date, avgMonthlyQty: r.avg_monthly_qty }]) : []))
       })
       .catch(() => {})
   }, [])
@@ -5488,6 +5517,19 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                                 </>
                               )}
                             </p>
+                            {(() => {
+                              const hist = liveSaleHistoryByItemId.get(item.id)
+                              if (!hist) return null
+                              return (
+                                <p className="text-[8px] text-gray-500 leading-tight">
+                                  <span>1st {fmtShortSaleDate(hist.firstSaleDate)}</span>
+                                  <span className="text-gray-400"> · </span>
+                                  <span>Last {fmtShortSaleDate(hist.lastSaleDate)} ({daysSince(hist.lastSaleDate)}d ago)</span>
+                                  <span className="text-gray-400"> · </span>
+                                  <span>Avg {hist.avgMonthlyQty}/mo</span>
+                                </p>
+                              )
+                            })()}
                           </div>
                           {count > 0 && (
                             <span className="absolute top-1 right-1 inline-flex items-center justify-center min-w-3 h-3 px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold">
