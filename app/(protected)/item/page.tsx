@@ -4347,7 +4347,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                   <select
                     value={liveProductTypeFilter}
                     onChange={e => setLiveProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
-                    className={`${COMPACT_SELECT_CLS} border-green-500 bg-white text-gray-900 w-11`}
+                    className={`${COMPACT_SELECT_CLS} border-green-500 bg-white text-gray-900 flex-1 min-w-0`}
                     style={COMPACT_SELECT_STYLE}
                   >
                     <option value="all">All</option>
@@ -4357,7 +4357,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                   <select
                     value={liveGroupFilter || ''}
                     onChange={e => setLiveGroupFilter(e.target.value || null)}
-                    className={`${COMPACT_SELECT_CLS} border-green-500 bg-white text-gray-900 w-14`}
+                    className={`${COMPACT_SELECT_CLS} border-green-500 bg-white text-gray-900 flex-1 min-w-0`}
                     style={COMPACT_SELECT_STYLE}
                   >
                     <option value="">Groups</option>
@@ -4455,7 +4455,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                         setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'count_0' | 'count_1' })
                       }
                     }}
-                    className={`${COMPACT_SELECT_CLS} border-green-500 bg-white text-gray-900 w-14`}
+                    className={`${COMPACT_SELECT_CLS} border-green-500 bg-white text-gray-900 flex-1 min-w-0`}
                     style={COMPACT_SELECT_STYLE}
                   >
                     <option value="">Filter</option>
