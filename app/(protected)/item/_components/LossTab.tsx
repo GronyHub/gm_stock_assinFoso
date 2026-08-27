@@ -67,8 +67,24 @@ function fmtAmt(v: number) {
 // Strips the "—" placeholder these fmt* helpers return for empty/zero
 // values, for cells that should render fully blank instead.
 function blankDash(s: string) { return s === '—' ? '' : s }
+// 3 letters -- these head a column that only ever holds a 1-2 digit
+// number, so a long service name as the header just wastes width the
+// data itself doesn't need.
 function shortSourceName(name: string) {
-  return name.replace(/^service\s*-\s*/i, '').slice(0, 10)
+  return name.replace(/^service\s*-\s*/i, '').slice(0, 3)
+}
+const SHORT_MON = ['Ja', 'Fe', 'Mr', 'Ap', 'My', 'Jn', 'Jl', 'Au', 'Se', 'Oc', 'No', 'De']
+const SHORT_DAY = ['Su', 'M', 'Tu', 'W', 'Th', 'F', 'Sa']
+// "26 Au '26-W" -- a tighter DATE column for these day-tables specifically
+// (as many columns as possible need to fit on screen at once), separate
+// from the shared fmtDate() used everywhere else in the app (tooltips,
+// task notes, ...) where the fuller "26 Aug. '26-W" reads better.
+function shortItemDate(raw: string | null | undefined): string {
+  if (!raw) return '—'
+  const d = new Date(raw.length === 10 ? raw + 'T00:00:00' : raw)
+  if (isNaN(d.getTime())) return String(raw)
+  const yr = String(d.getFullYear()).slice(-2)
+  return `${d.getDate()} ${SHORT_MON[d.getMonth()]} '${yr}-${SHORT_DAY[d.getDay()]}`
 }
 // Initial of the staff member who took the count, shown in brackets beside
 // the CNT value (same style as the ₵ amounts on the service cells). James and
@@ -112,10 +128,15 @@ function CntValue({ qty, countedBy, countedAt, history, blank }: { qty: string |
         )
       })}
       {text !== '—' && (
-        <span className="whitespace-nowrap" title={time ? `Counted at ${time}` : undefined}>
-          {text}
-          {initialOf(countedBy) && <span className="text-blue-500 text-[6px]"> ({initialOf(countedBy)})</span>}
-          {time && <span className="text-gray-400 text-[6px]"> {time}</span>}
+        // Value+staff-initial and the time sit on their own lines --
+        // trades a bit of height for width, which is what this column
+        // actually needs to give back to fit more columns on screen.
+        <span className="flex flex-col items-center" title={time ? `Counted at ${time}` : undefined}>
+          <span className="whitespace-nowrap">
+            {text}
+            {initialOf(countedBy) && <span className="text-blue-500 text-[6px]"> ({initialOf(countedBy)})</span>}
+          </span>
+          {time && <span className="text-gray-400 text-[6px] whitespace-nowrap">{time}</span>}
         </span>
       )}
     </span>
@@ -505,8 +526,8 @@ function SingleServicePackChainTable({
               <tr key={row.date} className={`border-b border-gray-200 ${rowHasLoss(row, packCyclesByStart) ? 'bg-red-50' : rowHasGain(row, packCyclesByStart) ? 'bg-orange-50' : 'bg-white'}`}>
                 <td className="pl-0.5 py-0 leading-none font-bold text-gray-500 whitespace-nowrap sticky left-0 bg-inherit">
                   {onDateClick ? (
-                    <button onClick={() => onDateClick(row.date, item.item_name)} className="text-blue-600 hover:underline">{fmtDate(row.date)}</button>
-                  ) : fmtDate(row.date)}
+                    <button onClick={() => onDateClick(row.date, item.item_name)} className="text-blue-600 hover:underline">{shortItemDate(row.date)}</button>
+                  ) : shortItemDate(row.date)}
                 </td>
                 <td className="text-center py-0 leading-none font-bold border-l-2 border-l-amber-600 text-blue-600">{blankDash(fmtQs(row.packBl))}</td>
                 <td className="text-center py-0 leading-none font-bold border-l border-gray-300 text-gray-600">{blankDash(fmtQs(row.packWic))}</td>
@@ -1182,9 +1203,9 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                     <td className="pl-0.5 py-0 font-bold text-gray-500 whitespace-nowrap sticky left-0 bg-inherit">
                       {onDateClick ? (
                         <button onClick={() => onDateClick(row.date, item.item_name)} className="text-blue-600 hover:underline">
-                          {fmtDate(row.date)}
+                          {shortItemDate(row.date)}
                         </button>
-                      ) : fmtDate(row.date)}
+                      ) : shortItemDate(row.date)}
                     </td>
                     <td className="text-center py-0 leading-none font-bold border-l-2 border-l-gray-600 text-gray-900 whitespace-nowrap">
                       <CntValue qty={row.packCnt} countedBy={row.packCntBy} countedAt={row.packCntAt} history={row.packCntHistory} />
@@ -1360,9 +1381,9 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                   <td className={`pl-2 pr-2 py-0 text-gray-700 font-medium whitespace-nowrap sticky left-0 z-10 border-r border-gray-200 ${row.loss !== null && row.loss > 0.001 ? 'bg-red-50 group-hover:bg-red-100/70' : 'bg-white group-hover:bg-gray-50'}`}>
                     {onDateClick ? (
                       <button onClick={() => onDateClick(row.date, item.item_name)} className="text-blue-600 hover:underline">
-                        {fmtDate(row.date)}
+                        {shortItemDate(row.date)}
                       </button>
-                    ) : fmtDate(row.date)}
+                    ) : shortItemDate(row.date)}
                   </td>
                   {!isService && <td className="px-1 py-0 text-right text-gray-900 whitespace-nowrap">
                     <CntValue qty={row.qty_counted} countedBy={row.counted_by} countedAt={row.counted_at} history={row.count_history} />
@@ -1456,9 +1477,9 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                   <td className={`pl-2 pr-2 py-0 text-gray-700 font-medium whitespace-nowrap sticky left-0 z-10 border-r border-gray-200 ${row.loss !== null && row.loss > 0.001 ? 'bg-red-50 group-hover:bg-red-100/70' : 'bg-white group-hover:bg-gray-50'}`}>
                     {onDateClick ? (
                       <button onClick={() => onDateClick(row.date, item.item_name)} className="text-blue-600 hover:underline">
-                        {fmtDate(row.date)}
+                        {shortItemDate(row.date)}
                       </button>
-                    ) : fmtDate(row.date)}
+                    ) : shortItemDate(row.date)}
                   </td>
                   <td className="px-1 py-0 text-right font-semibold">
                     {lossVal === null ? <span className="text-gray-300">—</span>
