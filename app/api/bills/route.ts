@@ -22,6 +22,13 @@ export async function GET(req: NextRequest) {
     const rows = await sql`
       SELECT id, bill_number, bill_date::date AS bill_date, vendor_name, total, status
       FROM bills
+      -- 'live_sale' bills are /api/sales/live-tap's own "Internal
+      -- Consumption" stock-adjustment records (see that route) -- they
+      -- exist purely to keep the target item's live stock number in sync
+      -- when a GMC-linked service is tapped, not to be seen as a real
+      -- vendor bill. Item 360's own history already shows that
+      -- consumption from the sales side; this list is for real bills only.
+      WHERE source IS DISTINCT FROM 'live_sale'
       ORDER BY bill_date DESC, id DESC
       LIMIT ${limit}
       OFFSET ${offset}
@@ -41,6 +48,7 @@ export async function GET(req: NextRequest) {
       const rows = await sql`
         SELECT id, bill_number, bill_date::date AS bill_date, vendor_name, total, status
         FROM bills
+        WHERE source IS DISTINCT FROM 'live_sale'
         ORDER BY bill_date DESC, id DESC
         LIMIT ${limit}
         OFFSET ${offset}

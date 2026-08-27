@@ -15,17 +15,21 @@ export async function GET(req: NextRequest) {
   try {
     const rows = await sql`
       SELECT
-        id,
-        bill_id,
-        item_id,
-        COALESCE(resolved_name, raw_item_name) AS item_name,
-        quantity,
-        unit_price,
-        item_total,
-        usage_unit,
-        COALESCE(unresolved, false) AS unresolved
-      FROM bill_lines
-      ORDER BY bill_id, id
+        bl.id,
+        bl.bill_id,
+        bl.item_id,
+        COALESCE(bl.resolved_name, bl.raw_item_name) AS item_name,
+        bl.quantity,
+        bl.unit_price,
+        bl.item_total,
+        bl.usage_unit,
+        COALESCE(bl.unresolved, false) AS unresolved
+      FROM bill_lines bl
+      -- Skip lines belonging to /api/sales/live-tap's "Internal
+      -- Consumption" bills -- see /api/bills' own GET for why those are
+      -- excluded from the Bills tab entirely, same reasoning here.
+      JOIN bills b ON b.id = bl.bill_id AND b.source IS DISTINCT FROM 'live_sale'
+      ORDER BY bl.bill_id, bl.id
       LIMIT ${limit}
       OFFSET ${offset}
     `
