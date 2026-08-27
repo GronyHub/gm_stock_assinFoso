@@ -3573,7 +3573,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
     // Always one line -- scrolls horizontally rather than wrapping onto a
     // second row when there isn't room for all buttons.
     return (
-      <div className="flex bg-gray-200 rounded-lg p-0.5 overflow-x-auto max-w-full">
+      <div className="flex gap-0.5 bg-gray-200 rounded-lg p-0.5 overflow-x-auto max-w-full">
         <button type="button" onClick={() => { setItemsPageMode('sale'); setLiveMode('sale') }} title="Sale" className={btnCls(itemsPageMode === 'sale', 'bg-blue-600')}>Sale</button>
         <button type="button" onClick={() => { setItemsPageMode('log'); setLiveMode('log') }} title="Log" className={btnCls(itemsPageMode === 'log', 'bg-gray-700')}>Log</button>
         <button type="button" onClick={() => { setItemsPageMode('sales'); setLiveMode('sales') }} title="Sales" className={btnCls(itemsPageMode === 'sales', 'bg-emerald-600')}>Sales</button>
