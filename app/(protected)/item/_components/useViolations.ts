@@ -144,6 +144,7 @@ export function useViolations(counts?: Record<string, number>) {
 
   useEffect(() => { loadFlags(); loadAssignments() }, [])
   usePolling(loadFlags, 30000)
+  usePolling(loadAssignments, 30000)
 
   const violations = useMemo<Violation[]>(() => {
     if (!flags) return []

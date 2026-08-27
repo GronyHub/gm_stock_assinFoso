@@ -39,6 +39,7 @@ import { useViolations } from './_components/useViolations'
 import PaneHomeDaily from './_components/PaneHomeDaily'
 import AddShortcutButton, { type ShortcutKey } from './_components/AddShortcutButton'
 import { MyAssignmentsSummary } from './_components/MyAssignmentsSummary'
+import AssignWidget from './_components/AssignWidget'
 import LawsToggleBar from './_components/LawsToggleBar'
 import { useLawsPanel, useLawFilterState } from './_components/useLawsPanel'
 import { COLUMNS, type ColKey } from './_components/lossTabColumns'
@@ -3617,17 +3618,22 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
 
   // "Corrected/worked on today" summary, one line per mode, shown above the
   // tab switcher. Only modes with a real, existing notion of "today's total"
-  // get a number -- right now that's just Count (every countable item has a
-  // known cadence and stock_counts rows are dated, so total/doneToday are
-  // both real). Sale/Log/Sales/Bills have no such total (their violations
-  // are open-ended backlogs, not a fixed today's-list), so they render
-  // nothing rather than a fake/misleading count.
+  // get a number -- right now that's just the count-cadence flags task
+  // (every countable item has a known cadence and stock_counts rows are
+  // dated, so total/doneToday are both real), labeled "Flags" since "Count"
+  // alone reads as a page name rather than a task. Sale/Log/Sales/Bills have
+  // no such total (their violations are open-ended backlogs, not a fixed
+  // today's-list), so they render nothing rather than a fake/misleading
+  // count. Whoever's assigned to it (see AssignWidget type="flags" on the
+  // Count mode's own page) shows right alongside the number.
   function renderModeProgressSummary(compact: boolean, dark: boolean) {
     if (!liveCountProgress || liveCountProgress.total === 0) return null
+    const assignee = assignments['flags']
     return (
       <div className={`flex items-center justify-center gap-2 ${compact ? 'text-[9px]' : 'text-[10px]'} ${dark ? 'text-white/70' : 'text-gray-500'}`}>
-        <span className={`font-semibold ${dark ? 'text-white/90' : 'text-gray-700'}`}>Count</span>
+        <span className={`font-semibold ${dark ? 'text-white/90' : 'text-gray-700'}`}>Flags</span>
         <span>({liveCountProgress.doneToday}/{liveCountProgress.total})</span>
+        {assignee && <span className="capitalize">— {assignee}</span>}
       </div>
     )
   }
@@ -5064,6 +5070,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                     </button>
                   </div>
                 </div>
+                <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 shrink-0"><AssignWidget type="flags" /></div>
                 <div className="px-4 py-2 border-b border-gray-200 bg-white flex items-center gap-1.5 flex-wrap">
                   {liveCountIntervalFlags.map(f => (
                     <button key={f.key} type="button" onClick={f.onViewClick}

@@ -15,6 +15,7 @@ export const ASSIGNABLE_VIOLATIONS: { type: string; label: string; auto: boolean
   { type: 'duplicates', label: 'Possible duplicate item pairs', auto: false },
   { type: 'not_in_inventory', label: 'Item names not found in inventory', auto: false },
   { type: 'dup_receipts', label: 'Days with duplicate WIC/GMC receipts', auto: true },
+  { type: 'flags', label: 'Daily Flags (item counting) progress', auto: false },
 ]
 
 export const ASSIGNABLE_STAFF = ['joe', 'bino', 'james', 'rawlings', 'grony']
