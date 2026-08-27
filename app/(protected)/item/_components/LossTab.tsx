@@ -970,6 +970,17 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   }, [item.item_id])
 
   const isPackChain = item.product_type !== 'service' && item.converts_to_item_id != null
+  // A "Pack here, I convert to a GMC" item's own Item 360 page should only
+  // ever account for ITS OWN physical stock (count/loss/gain) -- the
+  // singles it converts into is a separate, independent item with its own
+  // full Item 360 record already (it has no converts_to_item_id of its
+  // own, so isPackChain is never true when viewing IT). The dual pack/
+  // singles table below (SingleServicePackChainTable and its multi-service
+  // variant) was smearing the singles item's own conversion economics onto
+  // the pack's page too -- hardcoded off here rather than removing that
+  // code, since nothing else needs it deleted yet. Flip back to
+  // `isPackChain` below to restore the old combined view.
+  const showPackChainTable = false
   const [targetDayRows, setTargetDayRows] = useState<DayRow[] | null>(null)
   const [sheetPrice, setSheetPrice] = useState<number>(PAPER_SELL_PRICE)
   const [sheetCP, setSheetCP] = useState<number>(0)
@@ -1041,14 +1052,14 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
     // For the pack-chain view the wrapper grows to the table's full width
     // (w-max) instead of clipping it (overflow-hidden), so the detail panel
     // can scroll sideways while the frozen DATE column stays put.
-    <div className={`bg-white border border-gray-200 rounded-lg mt-0 ${isPackChain ? 'w-max min-w-full' : 'overflow-hidden'}`}>
+    <div className={`bg-white border border-gray-200 rounded-lg mt-0 ${showPackChainTable ? 'w-max min-w-full' : 'overflow-hidden'}`}>
 
       {/* detail table -- the Available/Used narrative format is only for items
           where 2+ services share stock (e.g. 4x6 singles); every other item
           keeps the original DATE/₵/L-G/WIC/GMC/SP/BL/CNV/EXP layout. */}
-      {!dayRows || (isPackChain && !targetDayRows) ? (
+      {!dayRows || (showPackChainTable && !targetDayRows) ? (
         <p className="text-sm text-gray-400 text-center py-6">Loading…</p>
-      ) : isPackChain ? (
+      ) : showPackChainTable ? (
         packChainRows.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-6">No activity.</p>
         ) : singleServiceChain ? (
