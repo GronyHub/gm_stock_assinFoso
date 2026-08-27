@@ -614,6 +614,11 @@ const COMPACT_SELECT_STYLE: CSSProperties = {
   backgroundSize: '6px 6px',
 }
 
+// Log tab's table -- header row, date-header row, and every tap row all
+// share this same column layout, so it's one constant rather than 3 copies
+// that could quietly drift apart when a column gets added/resized.
+const LOG_GRID_COLS = 'grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_2rem_2.25rem_1.25rem_2.25rem_1.5rem_2.25rem_1.5rem]'
+
 // Bold attention banner for an item's own data-integrity problems -- same
 // idea as the COUNT NOW banner (see countStatus/pinnedDueItems below), for
 // every check item/page.tsx's own itemsWithViolations tracks. The first four
@@ -2141,6 +2146,15 @@ function ItemHubPageInner() {
       if (item.group) uniqueGroups.add(item.group)
     }
     return Array.from(uniqueGroups).sort()
+  }, [liveAllItems])
+
+  // Item id -> cost price, for the Log tab's CP/Profit columns -- a tap only
+  // carries its own sale price, not the item's cost, so this looks it up
+  // from the same catalogue fetch everything else here already uses.
+  const liveCostPriceByItemId = useMemo(() => {
+    const m = new Map<number, number>()
+    for (const item of liveAllItems) m.set(item.id, parseFloat(String(item.cost_price)) || 0)
+    return m
   }, [liveAllItems])
 
   // SalesTab/BillsTab expect items shaped {id, item_name, cf_group} -- Live
@@ -4631,15 +4645,17 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                 ) : (
                   <div>
                     {/* Fixed, deliberately tiny column widths (not fr units) plus
-                        zero padding between cells -- the point is fitting all 8
+                        zero padding between cells -- the point is fitting all 10
                         columns on screen at once with nothing to scroll. Item is
                         still frozen (sticky left-0) as a safety net for very
                         narrow screens or long item names. */}
-                    <div className="grid grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_1.25rem_2.25rem_1.5rem_2.25rem_1.5rem] gap-0 h-[14px] bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+                    <div className={`grid ${LOG_GRID_COLS} gap-0 h-[14px] bg-gray-50 border-b border-gray-200 sticky top-0 z-10`}>
                       <div className="sticky left-0 z-10 flex items-center bg-gray-50 px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase truncate">Item</div>
                       <div className="flex items-center justify-end px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">Total</div>
                       <div className="flex items-center justify-center px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">Time</div>
                       <div className="flex items-center justify-end px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">SP</div>
+                      <div className="flex items-center justify-end px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">CP</div>
+                      <div className="flex items-center justify-end px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">PF</div>
                       <div className="flex items-center justify-center px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">Qty</div>
                       <div className="flex items-center px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase truncate">Staff</div>
                       <div className="flex items-center justify-center px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">SOH</div>
@@ -4653,8 +4669,8 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                       return (
                         <div key={date}>
                           {/* Date header */}
-                          <div className="grid grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_1.25rem_2.25rem_1.5rem_2.25rem_1.5rem] gap-0 h-[14px] bg-green-50 border-b border-green-200 sticky top-[14px] z-9">
-                            <div className="col-span-9 flex items-center px-0.5 text-[8px] leading-none font-semibold text-green-700 truncate">
+                          <div className={`grid ${LOG_GRID_COLS} gap-0 h-[14px] bg-green-50 border-b border-green-200 sticky top-[14px] z-9`}>
+                            <div className="col-span-11 flex items-center px-0.5 text-[8px] leading-none font-semibold text-green-700 truncate">
                               {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · Total: ₵{formatPrice(dateTotal)}
                             </div>
                           </div>
@@ -4692,10 +4708,12 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                               const prevTap = filteredTaps[i + 1]
                               if (prevTap) gapMins = (new Date(tap.tapped_at).getTime() - new Date(prevTap.tapped_at).getTime()) / 60000
                             }
+                            const tapCostPrice = liveCostPriceByItemId.get(tap.item_id) ?? 0
+                            const tapProfit = (Number(tap.price) - tapCostPrice) * tap.quantity
                             return (
                             <div
                               key={tap.id}
-                              className={`group grid grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_1.25rem_2.25rem_1.5rem_2.25rem_1.5rem] gap-0 min-h-[15px] hover:bg-gray-50 transition ${
+                              className={`group grid ${LOG_GRID_COLS} gap-0 min-h-[15px] hover:bg-gray-50 transition ${
                                 tap.undone ? 'bg-gray-50 opacity-60' : ''
                               }`}
                             >
@@ -4719,6 +4737,16 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                               <div className="flex items-center justify-end px-0.5">
                                 <span className={`text-[9px] leading-none font-semibold truncate ${tap.undone ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
                                   ₵{formatPrice(tap.price)}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-end px-0.5">
+                                <span className={`text-[9px] leading-none font-semibold truncate ${tap.undone ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                                  ₵{formatPrice(tapCostPrice)}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-end px-0.5">
+                                <span className={`text-[9px] leading-none font-semibold truncate ${tap.undone ? 'text-gray-400' : tapProfit < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                                  ₵{formatPrice(tapProfit)}
                                 </span>
                               </div>
                               <div className="flex items-center justify-center px-0.5">
