@@ -2089,6 +2089,11 @@ function ItemHubPageInner() {
   const [liveDailyItems, setLiveDailyItems] = useState<DueItem[]>([])
   const [liveGmcWeeklyItems, setLiveGmcWeeklyItems] = useState<DueItem[]>([])
   const [liveOverdueItems, setLiveOverdueItems] = useState<DueItem[]>([])
+  // "Count(2/2000)" summary above the tab switcher -- total items expected
+  // to be counted at some point vs. how many already have a count logged
+  // today. null until first loaded, so the summary stays hidden rather than
+  // flashing "Count(0/0)".
+  const [liveCountProgress, setLiveCountProgress] = useState<{ total: number; doneToday: number } | null>(null)
   const [liveCountQty, setLiveCountQty] = useState('')
   const [liveCountSaving, setLiveCountSaving] = useState(false)
   const [liveCountError, setLiveCountError] = useState('')
@@ -2459,6 +2464,15 @@ function ItemHubPageInner() {
       setLiveOverdueItems(Array.isArray(overdue) ? overdue : [])
     }).catch(() => {})
   }, [])
+
+  function loadCountProgress() {
+    fetch('/api/stock/count-progress')
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(d => setLiveCountProgress({ total: d.total ?? 0, doneToday: d.doneToday ?? 0 }))
+      .catch(() => {})
+  }
+  useEffect(loadCountProgress, [])
+  usePolling(loadCountProgress, 60000)
 
   // Count Records -- fetched only once it's actually being looked at, via
   // Count tab's own "Count Records" view (see renderCountRecordsTable),
@@ -3153,6 +3167,7 @@ function ItemHubPageInner() {
         setLiveDailyItems(prev => prev.filter(i => i.item_id !== item.id))
         setLiveGmcWeeklyItems(prev => prev.filter(i => i.item_id !== item.id))
         setLiveOverdueItems(prev => prev.filter(i => i.item_id !== item.id))
+        loadCountProgress()
         setLiveCountQty('')
         showToast(`✓ ${item.name} counted`, 'success')
         return
@@ -3600,6 +3615,23 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
     return renderTabSwitcher(compact)
   }
 
+  // "Corrected/worked on today" summary, one line per mode, shown above the
+  // tab switcher. Only modes with a real, existing notion of "today's total"
+  // get a number -- right now that's just Count (every countable item has a
+  // known cadence and stock_counts rows are dated, so total/doneToday are
+  // both real). Sale/Log/Sales/Bills have no such total (their violations
+  // are open-ended backlogs, not a fixed today's-list), so they render
+  // nothing rather than a fake/misleading count.
+  function renderModeProgressSummary(compact: boolean, dark: boolean) {
+    if (!liveCountProgress || liveCountProgress.total === 0) return null
+    return (
+      <div className={`flex items-center justify-center gap-2 ${compact ? 'text-[9px]' : 'text-[10px]'} ${dark ? 'text-white/70' : 'text-gray-500'}`}>
+        <span className={`font-semibold ${dark ? 'text-white/90' : 'text-gray-700'}`}>Count</span>
+        <span>({liveCountProgress.doneToday}/{liveCountProgress.total})</span>
+      </div>
+    )
+  }
+
   // The switcher's permanent home -- its own top row, above every mode's own
   // header/filter bar, identical on all six modes. Rendered compactly in
   // this component's own top green bar instead (see the mode-toggle spot
@@ -3611,6 +3643,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
     return (<>
       {liveExpanded && (
         <div className="px-2 py-1.5 border-b border-gray-200 bg-gray-50 overflow-x-auto shrink-0">
+          {renderModeProgressSummary(false, false)}
           {renderModeToggle(false)}
         </div>
       )}
@@ -4334,6 +4367,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                   aren't there (most lossViews) or are (Items' columns
                   picker), instead of always hugging the left edge. */}
               <div className="px-6 py-1.5 border-b border-green-700">
+                {renderModeProgressSummary(true, true)}
                 <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 min-w-0">
                   <div />
                   <div className="flex items-center gap-1.5 overflow-x-auto min-w-0 justify-self-center">
