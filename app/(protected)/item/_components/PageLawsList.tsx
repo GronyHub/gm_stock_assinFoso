@@ -1097,11 +1097,21 @@ export default function PageLawsList({
                     </div>
                   </div>
                 )}
-                {otherFlags.filter(f => !hideZeroFlags || f.count > 0).map((f, i) => (
-            <div key={f.key} className={`flex items-start gap-1 px-1 py-0.5 transition ${f.active ? 'bg-blue-100 ring-2 ring-inset ring-blue-400' : 'bg-red-50/30'}`}
+                {otherFlags.filter(f => !hideZeroFlags || f.count > 0).map((f, i) => {
+                  // Sales' own flags read as a solid red bar (name + count
+                  // together, white bold text) instead of plain text with a
+                  // small count pill -- same visual weight Live Sale's own
+                  // per-item attention banners already use (see
+                  // itemAttentionFlags' render in item/page.tsx). Only when
+                  // there's actually something to flag; a 0-count row stays
+                  // in the plain/quiet style, same as every other scope.
+                  const isRedBar = scopeKey === 'Sales' && f.count > 0 && editingFlagKey !== f.key
+                  const flagLabel = VIEW_KEYS.includes(f.key) ? (customViewNames[f.key] || f.label) : (customFlagNames[f.key] || f.label)
+                  return (
+            <div key={f.key} className={`flex items-start gap-1 px-1 py-0.5 transition ${isRedBar ? 'bg-red-600' : f.active ? 'bg-blue-100 ring-2 ring-inset ring-blue-400' : 'bg-red-50/30'}`}
               onMouseDown={() => flagPress.onMouseDown(f.key)} onMouseUp={flagPress.onMouseUp}
               onTouchStart={() => flagPress.onTouchStart(f.key)} onTouchEnd={flagPress.onTouchEnd}>
-              <span className="shrink-0 text-[8px] font-bold text-gray-300">{visibleLaws.length + (propertyTypeFlags.length > 0 ? 2 : 1) + i}</span>
+              <span className={`shrink-0 text-[8px] font-bold ${isRedBar ? 'text-white/70' : 'text-gray-300'}`}>{visibleLaws.length + (propertyTypeFlags.length > 0 ? 2 : 1) + i}</span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1 flex-wrap leading-none">
                   {editingFlagKey === f.key ? (
@@ -1118,35 +1128,35 @@ export default function PageLawsList({
                         className="shrink-0 text-gray-400 hover:text-gray-600 px-0.5 text-[8px] font-bold">×</button>
                     </>
                   ) : (
-                    <button type="button" onClick={f.onViewClick} className={`text-[9px] font-medium transition ${f.active ? 'text-blue-900 font-bold' : 'text-gray-800 hover:text-blue-600 hover:underline'}`}>
-                      {VIEW_KEYS.includes(f.key) ? (customViewNames[f.key] || f.label) : (customFlagNames[f.key] || f.label)}
+                    <button type="button" onClick={f.onViewClick} className={`text-[9px] font-medium transition ${isRedBar ? 'text-white font-extrabold tracking-wide' : f.active ? 'text-blue-900 font-bold' : 'text-gray-800 hover:text-blue-600 hover:underline'}`}>
+                      {flagLabel}{isRedBar && `: ${f.count}`}
                     </button>
                   )}
                   {editingFlagKey !== f.key && f.description && (
                     <button type="button" onClick={() => setExpandedFlagDesc(expandedFlagDesc === f.key ? null : f.key)}
                       title="Show description"
-                      className="text-gray-400 hover:text-gray-600 text-[8px] font-bold shrink-0">ⓘ</button>
+                      className={`text-[8px] font-bold shrink-0 ${isRedBar ? 'text-white/80 hover:text-white' : 'text-gray-400 hover:text-gray-600'}`}>ⓘ</button>
                   )}
-                  {editingFlagKey !== f.key && (
+                  {editingFlagKey !== f.key && !isRedBar && (
                     <span className="text-[8px] bg-red-100 text-red-700 font-bold px-1 py-0 rounded text-center">{f.count}</span>
                   )}
                   {editingFlagKey !== f.key && menuFlagKey === f.key ? (
                     <>
-                      <button type="button" onClick={() => moveLawInOrder(f.key, 'up')} title="Move up" className="text-gray-500 hover:text-gray-700 text-[8px] font-semibold">▲</button>
-                      <button type="button" onClick={() => moveLawInOrder(f.key, 'down')} title="Move down" className="text-gray-500 hover:text-gray-700 text-[8px] font-semibold">▼</button>
-                      <button type="button" onClick={() => startEditFlag(f)} title="Rename" className="text-gray-500 hover:text-gray-700 text-[8px] font-semibold">✎</button>
+                      <button type="button" onClick={() => moveLawInOrder(f.key, 'up')} title="Move up" className={`text-[8px] font-semibold ${isRedBar ? 'text-white/80 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}>▲</button>
+                      <button type="button" onClick={() => moveLawInOrder(f.key, 'down')} title="Move down" className={`text-[8px] font-semibold ${isRedBar ? 'text-white/80 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}>▼</button>
+                      <button type="button" onClick={() => startEditFlag(f)} title="Rename" className={`text-[8px] font-semibold ${isRedBar ? 'text-white/80 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}>✎</button>
                       {taskForFlag !== f.key && (
                         <>
-                          <button type="button" onClick={() => { setTaskForFlag(f.key); fetchTasksForFlag(f.key) }} title="Add task for this flag" className="text-blue-500 hover:text-blue-600 font-semibold text-[8px]">✓ +</button>
+                          <button type="button" onClick={() => { setTaskForFlag(f.key); fetchTasksForFlag(f.key) }} title="Add task for this flag" className={`font-semibold text-[8px] ${isRedBar ? 'text-white/80 hover:text-white' : 'text-blue-500 hover:text-blue-600'}`}>✓ +</button>
                         </>
                       )}
                     </>
                   ) : editingFlagKey !== f.key && (
-                    <button type="button" onClick={() => setMenuFlagKey(f.key)} className="text-gray-400 hover:text-gray-600 text-[8px] font-semibold">⋯</button>
+                    <button type="button" onClick={() => setMenuFlagKey(f.key)} className={`text-[8px] font-semibold ${isRedBar ? 'text-white/80 hover:text-white' : 'text-gray-400 hover:text-gray-600'}`}>⋯</button>
                   )}
                 </div>
                 {expandedFlagDesc === f.key && f.description && (
-                  <p className="text-[8px] text-gray-600 leading-tight">{f.description}</p>
+                  <p className={`text-[8px] leading-tight ${isRedBar ? 'text-white/90' : 'text-gray-600'}`}>{f.description}</p>
                 )}
                 {taskForFlag === f.key
                   ? renderAddTaskForm(taskTitleForFlag, setTaskTitleForFlag, taskTypeForFlag, setTaskTypeForFlag, taskAssignedToFlag, setTaskAssignedToFlag, addTaskForFlag, () => setTaskForFlag(null),
@@ -1154,7 +1164,8 @@ export default function PageLawsList({
                   : renderAttachedItems(tasksByFlagKey[f.key], undefined, f.key)}
               </div>
             </div>
-          ))}
+                  )
+                })}
               </>
             )
           })()}
