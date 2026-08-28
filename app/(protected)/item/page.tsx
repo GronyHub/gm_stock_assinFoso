@@ -4699,6 +4699,8 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                     {/* Table rows grouped by date */}
                     {liveTapsByDate.map(([date, dateTaps]) => {
                       const dateTotal = (dateTaps || []).filter((t): t is Tap => t != null && !t.undone).reduce((s, t) => s + Number(t.price) * t.quantity, 0)
+                      const dateProfitTotal = (dateTaps || []).filter((t): t is Tap => t != null && !t.undone)
+                        .reduce((s, t) => s + (Number(t.price) - (liveCostPriceByItemId.get(t.item_id) ?? 0)) * t.quantity, 0)
                       const dateTimeTotal = (dateTaps || []).filter((t): t is Tap => t != null && !t.undone)
                         .reduce((s, t) => s + (liveUnitTimeByItemId.get(t.item_id) ?? 0) * t.quantity, 0)
                       return (
@@ -4707,6 +4709,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                           <div className={`grid ${LOG_GRID_COLS} gap-0 h-[14px] bg-green-50 border-b border-green-200 sticky top-[14px] z-9`}>
                             <div className="col-span-12 flex items-center px-0.5 text-[8px] leading-none font-semibold text-green-700 truncate">
                               {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · Total: ₵{formatPrice(dateTotal)}
+                              {' · PF: '}<span className={dateProfitTotal < 0 ? 'text-red-600' : ''}>₵{formatPrice(dateProfitTotal)}</span>
                               {dateTimeTotal > 0 && <> · Time: {formatDuration(dateTimeTotal)}</>}
                             </div>
                           </div>
