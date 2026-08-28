@@ -639,7 +639,8 @@ function itemAttentionFlags(
   unlinkedNamedIds: Set<number>,
   serviceViolationIds: Set<number>,
   gainCountByItemId: Map<number, number>,
-  emptyRowCountByItemId: Map<number, number>
+  emptyRowCountByItemId: Map<number, number>,
+  soldBelowCostItemIds: Set<number>
 ): { label: string; bg: string }[] {
   const soh = Number(item.soh)
   const sp = parseFloat(String(item.selling_price)) || 0
@@ -663,6 +664,14 @@ function itemAttentionFlags(
   // breaks even or loses money, which is worse than a missing price, not
   // an alternative to it.
   if (item.product_type !== 'service' && sp > 0 && cp > 0 && cp >= sp) flags.push({ label: '⚠ COST ≥ SELLING PRICE', bg: 'bg-red-600' })
+  // Distinct from the current-pricing check above -- this fires off actual
+  // past sale lines (Sales tab's own "Cost ≥ Selling Price" flag, /api/flags'
+  // costGteSell) rather than the item's catalog fields, so it still shows
+  // even after today's prices were fixed and the item no longer trips the
+  // check above. Compares each sale's own price against TODAY's cost price
+  // (there's no historical cost-price record), so "once" really means
+  // "at some point sold at or under what it costs right now."
+  if (soldBelowCostItemIds.has(item.id)) flags.push({ label: '⚠ SOLD BELOW COST (history)', bg: 'bg-red-700' })
   if (sp <= 0) flags.push({ label: '⚠ MISSING SELLING PRICE', bg: 'bg-orange-600' })
   if (item.product_type !== 'service' && cp <= 0) flags.push({ label: '⚠ MISSING COST PRICE', bg: 'bg-orange-500' })
   if (!item.group) flags.push({ label: '⚠ MISSING GROUP', bg: 'bg-amber-500' })
@@ -2462,6 +2471,14 @@ function ItemHubPageInner() {
   const liveDuplicateItemIds = useMemo(() => new Set<number>(liveItemsWithViolations.duplicates ?? []), [liveItemsWithViolations])
   const liveUnlinkedNamedIds = useMemo(() => new Set<number>(liveItemsWithViolations.unlinked_named ?? []), [liveItemsWithViolations])
   const liveServiceViolationIdSet = useMemo(() => new Set<number>(liveItemsWithViolations.service_violation ?? []), [liveItemsWithViolations])
+  // Items with at least one past sale line at or under today's cost price --
+  // the same data source (/api/flags' costGteSell) as the Sales tab's own
+  // "Cost ≥ Selling Price" flag, which only points at the receipt, not which
+  // item on it was the problem. Surfacing it here puts the flag on the
+  // specific item itself instead.
+  const liveSoldBelowCostItemIds = useMemo(() =>
+    new Set<number>((globalFlags?.costGteSell ?? []).map((r: any) => r.item_id)),
+  [globalFlags])
   // Fourth cross-item check: any item with an outstanding count gain (see
   // liveLossByItemId above), fed straight off the same per-item loss/gain
   // map the grid already fetches for its Loss/Gain badge. Keeps the actual
@@ -2872,7 +2889,7 @@ function ItemHubPageInner() {
   const liveViolationCountByItemId = useMemo(() => {
     const m = new Map<number, number>()
     for (const item of liveCatalogueItems) {
-      m.set(item.id, itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveEmptyRowCountByItemId).length)
+      m.set(item.id, itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostItemIds).length)
     }
     return m
   }, [liveCatalogueItems, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveEmptyRowCountByItemId])
@@ -5513,7 +5530,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                     // gain, a duplicate...) -- surface those the same way
                     // regardless of whether this item is also due, instead
                     // of letting the COUNT NOW banner hide them.
-                    const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveEmptyRowCountByItemId)
+                    const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostItemIds)
                     // Darker, thicker borders than the *-100 shades used
                     // before -- those were nearly invisible against the
                     // white/near-white card backgrounds, so items ran
@@ -5616,7 +5633,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
             {/* Modal */}
             {liveSelectedItem && (() => {
               const due = liveCountStatus.get(liveSelectedItem.id)
-              const flags = itemAttentionFlags(liveSelectedItem, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveEmptyRowCountByItemId)
+              const flags = itemAttentionFlags(liveSelectedItem, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostItemIds)
               const expected = Number(liveSelectedItem.soh)
               const enteredCount = liveCountQty === '' ? null : Number(liveCountQty)
               const countShort = enteredCount !== null && !isNaN(enteredCount) && enteredCount < expected
