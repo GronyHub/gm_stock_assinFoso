@@ -4411,7 +4411,12 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
         )}
 
         <div className="relative flex-1 min-w-0 min-h-0 flex flex-col">
-          {outerTab === 'loss' && (
+          {/* Sale/Log/Sales/Count/Bills only belong to Items (lossView
+              'items' -- the sidebar row -- and 'sales', the same screen's
+              default landing view) -- every other lossView (Vendors,
+              Expenses, CAB, Opener, etc.) has nothing to do with this
+              switcher, so it no longer shows there. */}
+          {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales') && (
             <div className="shrink-0 bg-green-800 border-b border-green-900">
               {/* Tab switcher: Items vs Live Sale modes -- a 3-column grid
                   (rather than flex+justify-between) so the tabs stay
