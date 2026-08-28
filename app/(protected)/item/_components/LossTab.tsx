@@ -1046,6 +1046,11 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
 
   const computed = dayRows ? computeRows(dayRows) : null
   const isService = item.product_type === 'service'
+  // CNV (converted-in from another item's GMC take) can only ever be
+  // non-zero for the item a pack_to_gmc good actually converts into --
+  // every other item's converted_in_qty is always null, so showing the
+  // column there is a permanently-empty column, not real information.
+  const isGmcItem = item.gmc_type === 'gmc'
   const sp = parseFloat(item.sp ?? '0') || 0
   const totalLoss = computed ? parseFloat(computed.reduce((s, r) => s + (r.loss ?? 0), 0).toFixed(4)) : 0
   const totalCost = parseFloat((totalLoss * sp).toFixed(2))
@@ -1478,7 +1483,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
               {!isService && <th className="px-1 py-0 text-right">GMC</th>}
               {!isService && <th className="px-1 py-0 text-right">SP</th>}
               {!isService && <th className="px-1 py-0 text-right">BL</th>}
-              {!isService && <th className="px-1 py-0 text-right" title="Converted in from another item's GMC take">CNV</th>}
+              {!isService && isGmcItem && <th className="px-1 py-0 text-right" title="Converted in from another item's GMC take">CNV</th>}
               {!isService && <th className="px-1 py-0 text-right">Exp</th>}
               <th className="px-1 py-0 text-left">Alias</th>
             </tr>
@@ -1520,7 +1525,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                   <td className="px-1 py-0 text-right text-gray-600">{fmtQs(row.gmc_qty)}</td>
                   <td className="px-1 py-0 text-right text-blue-500">{fmtQs(row.sell_price)}</td>
                   <td className="px-1 py-0 text-right text-blue-600">{fmtQs(row.bills_qty)}</td>
-                  <td className="px-1 py-0 text-right text-teal-600"><CnvValue qty={row.converted_in_qty} time={row.converted_in_time} /></td>
+                  {!isService && isGmcItem && <td className="px-1 py-0 text-right text-teal-600"><CnvValue qty={row.converted_in_qty} time={row.converted_in_time} /></td>}
                   <td className="px-1 py-0 text-right text-gray-400">{fmtN(row.expected_soh)}</td>
                   <td className="px-1 py-0 text-purple-700 font-medium">
                     <span className="block truncate max-w-[180px]" title={row.aliases ?? ''}>{row.aliases ?? <span className="text-gray-300">—</span>}</span>
