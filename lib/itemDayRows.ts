@@ -16,6 +16,7 @@ export type ItemDayRow = {
   converted_in_qty: string | null
   converted_in_time: string | null
   wic_breakdown: { name: string; qty: number; amount: number }[] | null
+  sold_below_cost: boolean
 }
 
 // Per-item day-level activity (counts, WIC/GMC sales, bills, pack-chain
@@ -150,6 +151,23 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
         AND (sr.customer_name IS NULL OR sr.customer_name <> 'Grony Multimedia as Customer')
       GROUP BY sr.receipt_date::date
     ),
+    daily_below_cost AS (
+      -- Same condition as /api/flags' costGteSell check (Sales tab's own
+      -- "Cost >= Selling Price" flag) and Live Sale's item-card "SOLD BELOW
+      -- COST (history)" banner -- compares each WIC sale line against this
+      -- item's CURRENT cost price (there's no historical cost-price record),
+      -- so a day can flag here even if pricing was fine back when it sold.
+      SELECT sr.receipt_date::date AS d, true AS below_cost
+      FROM sales_receipt_lines srl
+      JOIN sales_receipts sr ON sr.id = srl.receipt_id
+      JOIN items i ON i.id = srl.item_id
+      WHERE srl.item_id = ${id}
+        AND i.purchase_rate IS NOT NULL
+        AND srl.item_price IS NOT NULL
+        AND i.purchase_rate >= srl.item_price
+        AND srl.item_price > 0
+      GROUP BY sr.receipt_date::date
+    ),
     daily_aliases AS (
       -- Only from lines with a real, non-zero quantity -- an empty-shell
       -- line (raw name recorded but no quantity/customer, i.e. not an
@@ -195,7 +213,8 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
       da.aliases,
       dci.qty AS converted_in_qty,
       dcit.tapped_at::text AS converted_in_time,
-      dcs.breakdown AS wic_breakdown
+      dcs.breakdown AS wic_breakdown,
+      COALESCE(dbc.below_cost, false) AS sold_below_cost
     FROM all_dates ad
     LEFT JOIN daily_counts dc ON dc.d = ad.d
     LEFT JOIN daily_wic    dw ON dw.d = ad.d
@@ -207,6 +226,7 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
     LEFT JOIN daily_converted_in_time dcit ON dcit.d = ad.d
     LEFT JOIN daily_consumed_via_service dcs ON dcs.d = ad.d
     LEFT JOIN daily_count_history dch ON dch.d = ad.d
+    LEFT JOIN daily_below_cost dbc ON dbc.d = ad.d
     ORDER BY ad.d ASC
   `
 

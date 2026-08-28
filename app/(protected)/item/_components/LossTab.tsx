@@ -1390,13 +1390,14 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
             {displayedRows!.map((row) => {
               const lossVal = row.loss !== null ? row.loss * sp : null
               return (
-                <tr key={row.date} className={`group transition-colors ${row.loss !== null && row.loss > 0.001 ? 'bg-red-50 hover:bg-red-100/70' : 'hover:bg-gray-50'}`}>
+                <tr key={row.date} title={row.sold_below_cost ? 'Sold at or under cost price this day' : undefined}
+                  className={`group transition-colors ${row.sold_below_cost ? 'bg-purple-100 hover:bg-purple-200/70' : row.loss !== null && row.loss > 0.001 ? 'bg-red-50 hover:bg-red-100/70' : 'hover:bg-gray-50'}`}>
                   {/* Sticky cells need an explicit opaque background, not
                       bg-inherit -- a plain row has no background class of
                       its own (relies on the white card behind it), so
                       "inherit" resolved to transparent and let the
                       scrolled-under columns show through on scroll. */}
-                  <td className={`pl-2 pr-2 py-0 text-gray-700 font-medium whitespace-nowrap sticky left-0 z-10 border-r border-gray-200 ${row.loss !== null && row.loss > 0.001 ? 'bg-red-50 group-hover:bg-red-100/70' : 'bg-white group-hover:bg-gray-50'}`}>
+                  <td className={`pl-2 pr-2 py-0 text-gray-700 font-medium whitespace-nowrap sticky left-0 z-10 border-r border-gray-200 ${row.sold_below_cost ? 'bg-purple-100 group-hover:bg-purple-200/70' : row.loss !== null && row.loss > 0.001 ? 'bg-red-50 group-hover:bg-red-100/70' : 'bg-white group-hover:bg-gray-50'}`}>
                     {onDateClick ? (
                       <button onClick={() => onDateClick(row.date, item.item_name)} className="text-blue-600 hover:underline">
                         {shortItemDate(row.date)}
@@ -1486,13 +1487,14 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
             {displayedRows!.map((row) => {
               const lossVal = row.loss !== null ? row.loss * sp : null
               return (
-                <tr key={row.date} className={`group transition-colors ${row.loss !== null && row.loss > 0.001 ? 'bg-red-50 hover:bg-red-100/70' : 'hover:bg-gray-50'}`}>
+                <tr key={row.date} title={row.sold_below_cost ? 'Sold at or under cost price this day' : undefined}
+                  className={`group transition-colors ${row.sold_below_cost ? 'bg-purple-100 hover:bg-purple-200/70' : row.loss !== null && row.loss > 0.001 ? 'bg-red-50 hover:bg-red-100/70' : 'hover:bg-gray-50'}`}>
                   {/* Sticky cells need an explicit opaque background, not
                       bg-inherit -- a plain row has no background class of
                       its own (relies on the white card behind it), so
                       "inherit" resolved to transparent and let the
                       scrolled-under columns show through on scroll. */}
-                  <td className={`pl-2 pr-2 py-0 text-gray-700 font-medium whitespace-nowrap sticky left-0 z-10 border-r border-gray-200 ${row.loss !== null && row.loss > 0.001 ? 'bg-red-50 group-hover:bg-red-100/70' : 'bg-white group-hover:bg-gray-50'}`}>
+                  <td className={`pl-2 pr-2 py-0 text-gray-700 font-medium whitespace-nowrap sticky left-0 z-10 border-r border-gray-200 ${row.sold_below_cost ? 'bg-purple-100 group-hover:bg-purple-200/70' : row.loss !== null && row.loss > 0.001 ? 'bg-red-50 group-hover:bg-red-100/70' : 'bg-white group-hover:bg-gray-50'}`}>
                     {onDateClick ? (
                       <button onClick={() => onDateClick(row.date, item.item_name)} className="text-blue-600 hover:underline">
                         {shortItemDate(row.date)}

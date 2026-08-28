@@ -640,7 +640,7 @@ function itemAttentionFlags(
   serviceViolationIds: Set<number>,
   gainCountByItemId: Map<number, number>,
   emptyRowCountByItemId: Map<number, number>,
-  soldBelowCostItemIds: Set<number>
+  soldBelowCostDatesByItemId: Map<number, string[]>
 ): { label: string; bg: string }[] {
   const soh = Number(item.soh)
   const sp = parseFloat(String(item.selling_price)) || 0
@@ -670,8 +670,15 @@ function itemAttentionFlags(
   // even after today's prices were fixed and the item no longer trips the
   // check above. Compares each sale's own price against TODAY's cost price
   // (there's no historical cost-price record), so "once" really means
-  // "at some point sold at or under what it costs right now."
-  if (soldBelowCostItemIds.has(item.id)) flags.push({ label: '⚠ SOLD BELOW COST (history)', bg: 'bg-red-700' })
+  // "at some point sold at or under what it costs right now." The affected
+  // dates ride along on the label itself, same as the STOCK GAIN count above,
+  // so the banner says exactly which day(s) to go check in Item 360.
+  const belowCostDates = soldBelowCostDatesByItemId.get(item.id) ?? []
+  if (belowCostDates.length > 0) {
+    const shown = belowCostDates.slice(0, 3).map(fmtShortSaleDate).join(', ')
+    const more = belowCostDates.length > 3 ? ` +${belowCostDates.length - 3} more` : ''
+    flags.push({ label: `⚠ SOLD BELOW COST (history): ${shown}${more}`, bg: 'bg-red-700' })
+  }
   if (sp <= 0) flags.push({ label: '⚠ MISSING SELLING PRICE', bg: 'bg-orange-600' })
   if (item.product_type !== 'service' && cp <= 0) flags.push({ label: '⚠ MISSING COST PRICE', bg: 'bg-orange-500' })
   if (!item.group) flags.push({ label: '⚠ MISSING GROUP', bg: 'bg-amber-500' })
@@ -2471,14 +2478,22 @@ function ItemHubPageInner() {
   const liveDuplicateItemIds = useMemo(() => new Set<number>(liveItemsWithViolations.duplicates ?? []), [liveItemsWithViolations])
   const liveUnlinkedNamedIds = useMemo(() => new Set<number>(liveItemsWithViolations.unlinked_named ?? []), [liveItemsWithViolations])
   const liveServiceViolationIdSet = useMemo(() => new Set<number>(liveItemsWithViolations.service_violation ?? []), [liveItemsWithViolations])
-  // Items with at least one past sale line at or under today's cost price --
-  // the same data source (/api/flags' costGteSell) as the Sales tab's own
-  // "Cost ≥ Selling Price" flag, which only points at the receipt, not which
-  // item on it was the problem. Surfacing it here puts the flag on the
-  // specific item itself instead.
-  const liveSoldBelowCostItemIds = useMemo(() =>
-    new Set<number>((globalFlags?.costGteSell ?? []).map((r: any) => r.item_id)),
-  [globalFlags])
+  // Item id -> every date it had a past sale line at or under today's cost
+  // price -- the same data source (/api/flags' costGteSell) as the Sales
+  // tab's own "Cost ≥ Selling Price" flag, which only points at the
+  // receipt, not which item on it was the problem or when. Surfacing it
+  // here puts the flag (and the actual dates) on the specific item itself.
+  const liveSoldBelowCostDatesByItemId = useMemo(() => {
+    const m = new Map<number, string[]>()
+    for (const r of globalFlags?.costGteSell ?? []) {
+      const date = r.receipt_date?.slice(0, 10)
+      if (!date) continue
+      if (!m.has(r.item_id)) m.set(r.item_id, [])
+      if (!m.get(r.item_id)!.includes(date)) m.get(r.item_id)!.push(date)
+    }
+    for (const dates of m.values()) dates.sort()
+    return m
+  }, [globalFlags])
   // Fourth cross-item check: any item with an outstanding count gain (see
   // liveLossByItemId above), fed straight off the same per-item loss/gain
   // map the grid already fetches for its Loss/Gain badge. Keeps the actual
@@ -2889,7 +2904,7 @@ function ItemHubPageInner() {
   const liveViolationCountByItemId = useMemo(() => {
     const m = new Map<number, number>()
     for (const item of liveCatalogueItems) {
-      m.set(item.id, itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostItemIds).length)
+      m.set(item.id, itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId).length)
     }
     return m
   }, [liveCatalogueItems, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveEmptyRowCountByItemId])
@@ -5530,7 +5545,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                     // gain, a duplicate...) -- surface those the same way
                     // regardless of whether this item is also due, instead
                     // of letting the COUNT NOW banner hide them.
-                    const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostItemIds)
+                    const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId)
                     // Darker, thicker borders than the *-100 shades used
                     // before -- those were nearly invisible against the
                     // white/near-white card backgrounds, so items ran
@@ -5633,7 +5648,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
             {/* Modal */}
             {liveSelectedItem && (() => {
               const due = liveCountStatus.get(liveSelectedItem.id)
-              const flags = itemAttentionFlags(liveSelectedItem, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostItemIds)
+              const flags = itemAttentionFlags(liveSelectedItem, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId)
               const expected = Number(liveSelectedItem.soh)
               const enteredCount = liveCountQty === '' ? null : Number(liveCountQty)
               const countShort = enteredCount !== null && !isNaN(enteredCount) && enteredCount < expected
