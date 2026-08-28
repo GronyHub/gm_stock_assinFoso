@@ -3695,7 +3695,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
     return (<>
       {liveExpanded && (
         <div className="px-2 py-1.5 border-b border-gray-200 bg-gray-50 overflow-x-auto shrink-0">
-          {lossView === 'sales' && renderModeProgressSummary(false, false)}
+          {(lossView === 'items' || lossView === 'sales') && renderModeProgressSummary(false, false)}
           {renderModeToggle(false)}
         </div>
       )}
@@ -4424,7 +4424,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                   aren't there (most lossViews) or are (Items' columns
                   picker), instead of always hugging the left edge. */}
               <div className="px-6 py-1.5 border-b border-green-700">
-                {lossView === 'sales' && renderModeProgressSummary(true, true)}
+                {(lossView === 'items' || lossView === 'sales') && renderModeProgressSummary(true, true)}
                 <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 min-w-0">
                   <div />
                   <div className="flex items-center gap-1.5 overflow-x-auto min-w-0 justify-self-center">
