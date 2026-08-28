@@ -7,6 +7,7 @@ import { usePresenceReporter } from '@/lib/usePresenceReporter'
 import { isOwnerLevel } from '@/lib/roles'
 import { fmtTime } from '@/lib/fmtDate'
 import { trimZeros } from '@/lib/fmtNumber'
+import { formatDuration } from '@/lib/fmtDuration'
 import PageLawsList, { type LawFormKind } from './_components/PageLawsList'
 import ItemDetailModal from './_components/ItemDetailModal'
 import { LossDialog, PairingDialog, type LossExtra, type LossPrompt, type PairingPrompt } from './_components/CountDialogs'
@@ -507,7 +508,7 @@ const PANE_ACCENT: Record<OuterTab, string> = {
 // cost_price vs. item_name/cf_group/selling_rate/purchase_rate/
 // calculated_soh -- these are two independently-fetched catalogues, not a
 // dedupe opportunity for this pass).
-type LiveItem = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; product_type: string | null; gmc_type?: string | null; count_interval?: string | null; converts_to_item_id?: number | null; converts_to_name?: string | null; units_per_pack?: string | number | null }
+type LiveItem = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; product_type: string | null; gmc_type?: string | null; count_interval?: string | null; converts_to_item_id?: number | null; converts_to_name?: string | null; units_per_pack?: string | number | null; unit_time_seconds?: string | number | null }
 type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null }
 type ViolationType = { key: string; label: string; description?: string }
 // Sale mode's due-count queues -- same shape /api/stock/daily,
@@ -617,7 +618,7 @@ const COMPACT_SELECT_STYLE: CSSProperties = {
 // Log tab's table -- header row, date-header row, and every tap row all
 // share this same column layout, so it's one constant rather than 3 copies
 // that could quietly drift apart when a column gets added/resized.
-const LOG_GRID_COLS = 'grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_2rem_2.25rem_1.25rem_2.25rem_1.5rem_2.25rem_1.5rem]'
+const LOG_GRID_COLS = 'grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_2rem_2.25rem_1.25rem_2.5rem_2.25rem_1.5rem_2.25rem_1.5rem]'
 
 // Bold attention banner for an item's own data-integrity problems -- same
 // idea as the COUNT NOW banner (see countStatus/pinnedDueItems below), for
@@ -2173,6 +2174,17 @@ function ItemHubPageInner() {
     return m
   }, [liveAllItems])
 
+  // Item id -> max seconds to serve one unit (item edit form's Time/unit
+  // field), for the Log tab's Time column -- null when the item has none
+  // set, so the column can tell "not tracked" apart from a real 0.
+  const liveUnitTimeByItemId = useMemo(() => {
+    const m = new Map<number, number | null>()
+    for (const item of liveAllItems) {
+      m.set(item.id, item.unit_time_seconds != null && item.unit_time_seconds !== '' ? parseFloat(String(item.unit_time_seconds)) : null)
+    }
+    return m
+  }, [liveAllItems])
+
   // SalesTab/BillsTab expect items shaped {id, item_name, cf_group} -- Live
   // Sale's own item list already uses {id, name, group} for everything
   // else, so this is just a field-name adapter, not a different data
@@ -3258,6 +3270,7 @@ function ItemHubPageInner() {
         purchase_rate: d?.purchase_rate != null ? String(d.purchase_rate) : '',
         units_per_pack: d?.units_per_pack != null ? String(d.units_per_pack) : '',
         unit_name: d?.unit_name ?? '',
+        unit_time_seconds: d?.unit_time_seconds != null ? String(d.unit_time_seconds) : '',
         converts_to_item_id: d?.converts_to_item_id ? String(d.converts_to_item_id) : '',
         count_excluded: !!d?.count_excluded,
         count_cadence_days: d?.count_cadence_days != null ? String(d.count_cadence_days) : '',
@@ -3312,6 +3325,7 @@ function ItemHubPageInner() {
         purchase_rate: d?.purchase_rate != null ? String(d.purchase_rate) : '',
         units_per_pack: d?.units_per_pack != null ? String(d.units_per_pack) : '',
         unit_name: d?.unit_name ?? '',
+        unit_time_seconds: d?.unit_time_seconds != null ? String(d.unit_time_seconds) : '',
         converts_to_item_id: d?.converts_to_item_id ? String(d.converts_to_item_id) : '',
         count_excluded: !!d?.count_excluded,
         count_cadence_days: d?.count_cadence_days != null ? String(d.count_cadence_days) : '',
@@ -3413,6 +3427,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
         purchase_rate: liveEditForm.purchase_rate ? parseFloat(liveEditForm.purchase_rate) : null,
         units_per_pack: liveEditForm.units_per_pack ? parseFloat(liveEditForm.units_per_pack) : null,
         unit_name: liveEditForm.unit_name || null,
+        unit_time_seconds: liveEditForm.unit_time_seconds ? parseInt(liveEditForm.unit_time_seconds, 10) : null,
         converts_to_item_id: liveEditForm.converts_to_item_id ? Number(liveEditForm.converts_to_item_id) : null,
         count_excluded: liveEditForm.count_excluded,
         count_cadence_days: liveEditForm.count_cadence_days ? parseInt(liveEditForm.count_cadence_days, 10) : null,
@@ -3523,6 +3538,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
         purchase_rate: liveEditForm.purchase_rate ? parseFloat(liveEditForm.purchase_rate) : null,
         units_per_pack: liveEditForm.units_per_pack ? parseFloat(liveEditForm.units_per_pack) : null,
         unit_name: liveEditForm.unit_name || null,
+        unit_time_seconds: liveEditForm.unit_time_seconds ? parseInt(liveEditForm.unit_time_seconds, 10) : null,
         converts_to_item_id: liveEditForm.converts_to_item_id ? Number(liveEditForm.converts_to_item_id) : null,
         count_excluded: liveEditForm.count_excluded,
         count_cadence_days: liveEditForm.count_cadence_days ? parseInt(liveEditForm.count_cadence_days, 10) : null,
@@ -4673,6 +4689,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                       <div className="flex items-center justify-end px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">CP</div>
                       <div className="flex items-center justify-end px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">PF</div>
                       <div className="flex items-center justify-center px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">Qty</div>
+                      <div className="flex items-center justify-end px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase" title="Estimated staff time: item's Time/unit x Qty">Dur</div>
                       <div className="flex items-center px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase truncate">Staff</div>
                       <div className="flex items-center justify-center px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">SOH</div>
                       <div className="flex items-center justify-end px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase" title="Time since the previous tap -- since shop opening for the day's first, until the last staff signed out for the day's last">Gap</div>
@@ -4682,12 +4699,15 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                     {/* Table rows grouped by date */}
                     {liveTapsByDate.map(([date, dateTaps]) => {
                       const dateTotal = (dateTaps || []).filter((t): t is Tap => t != null && !t.undone).reduce((s, t) => s + Number(t.price) * t.quantity, 0)
+                      const dateTimeTotal = (dateTaps || []).filter((t): t is Tap => t != null && !t.undone)
+                        .reduce((s, t) => s + (liveUnitTimeByItemId.get(t.item_id) ?? 0) * t.quantity, 0)
                       return (
                         <div key={date}>
                           {/* Date header */}
                           <div className={`grid ${LOG_GRID_COLS} gap-0 h-[14px] bg-green-50 border-b border-green-200 sticky top-[14px] z-9`}>
-                            <div className="col-span-11 flex items-center px-0.5 text-[8px] leading-none font-semibold text-green-700 truncate">
+                            <div className="col-span-12 flex items-center px-0.5 text-[8px] leading-none font-semibold text-green-700 truncate">
                               {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · Total: ₵{formatPrice(dateTotal)}
+                              {dateTimeTotal > 0 && <> · Time: {formatDuration(dateTimeTotal)}</>}
                             </div>
                           </div>
 
@@ -4726,6 +4746,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                             }
                             const tapCostPrice = liveCostPriceByItemId.get(tap.item_id) ?? 0
                             const tapProfit = (Number(tap.price) - tapCostPrice) * tap.quantity
+                            const tapUnitTime = liveUnitTimeByItemId.get(tap.item_id) ?? null
                             return (
                             <div
                               key={tap.id}
@@ -4768,6 +4789,11 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                               <div className="flex items-center justify-center px-0.5">
                                 <span className={`text-[9px] leading-none font-semibold ${tap.undone ? 'text-gray-400' : 'text-gray-900'}`}>
                                   {tap.quantity}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-end px-0.5">
+                                <span className={`text-[8px] leading-none truncate ${tap.undone ? 'text-gray-300' : 'text-gray-500'}`}>
+                                  {tapUnitTime != null ? formatDuration(tapUnitTime * tap.quantity) : ''}
                                 </span>
                               </div>
                               <div className="flex items-center px-0.5">

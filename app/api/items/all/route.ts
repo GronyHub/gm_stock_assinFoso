@@ -1,6 +1,6 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
-import { itemCountIntervalLabels, formatCountInterval } from '@/lib/countRules'
+import { itemCountIntervalLabels, formatCountInterval, ensureUnitTimeColumn } from '@/lib/countRules'
 import { NextResponse, NextRequest } from 'next/server'
 
 export async function GET(req: NextRequest) {
@@ -15,6 +15,10 @@ export async function GET(req: NextRequest) {
   const offset = Math.max(Number(url.searchParams.get('offset')) || 0, 0)
 
   try {
+    // Column may not exist yet on first deploy -- both the primary and
+    // fallback queries below select it, so it has to be there before either
+    // runs, not just before whichever one happens to succeed.
+    await ensureUnitTimeColumn()
     const [rows, intervals] = await Promise.all([
       // items.updated_at doesn't reliably exist (same missing-column class
       // as sales_receipts/bills/staff_times earlier) -- selecting it was
@@ -31,6 +35,7 @@ export async function GET(req: NextRequest) {
                i.converts_to_item_id,
                target.canonical_name AS converts_to_name,
                COALESCE(i.units_per_pack, 1) AS units_per_pack,
+               i.unit_time_seconds,
                NOW() AS updated_at
         FROM active_items i
         LEFT JOIN item_stock_summary s ON s.item_id = i.id
@@ -63,6 +68,7 @@ export async function GET(req: NextRequest) {
                i.converts_to_item_id,
                target.canonical_name AS converts_to_name,
                COALESCE(i.units_per_pack, 1) AS units_per_pack,
+               i.unit_time_seconds,
                NOW() AS updated_at
         FROM items i
         LEFT JOIN items target ON target.id = i.converts_to_item_id

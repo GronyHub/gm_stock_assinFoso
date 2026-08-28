@@ -2,18 +2,18 @@ import { requireAuth, badRequest, notFound, success, handleError } from '@/lib/a
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { isOwnerLevel } from '@/lib/roles'
-import { ensureCountCadenceColumns, ensureGmcColumn, itemCountIntervalLabels, formatCountInterval } from '@/lib/countRules'
+import { ensureCountCadenceColumns, ensureGmcColumn, ensureUnitTimeColumn, itemCountIntervalLabels, formatCountInterval } from '@/lib/countRules'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const itemId = Number(id)
   try {
-    await Promise.all([ensureCountCadenceColumns(), ensureGmcColumn()])
+    await Promise.all([ensureCountCadenceColumns(), ensureGmcColumn(), ensureUnitTimeColumn()])
     const [[row], intervals] = await Promise.all([
       sql`
         SELECT i.id, i.canonical_name, i.cf_group, i.selling_rate AS selling_price,
                i.purchase_rate, i.units_per_pack, i.unit_name, i.converts_to_item_id,
-               i.count_excluded, i.count_cadence_days, i.count_excluded_reason,
+               i.count_excluded, i.count_cadence_days, i.count_excluded_reason, i.unit_time_seconds,
                COALESCE(s.calculated_soh, 0) AS calculated_soh, COALESCE(i.gmc_type, '') AS gmc_type,
                COALESCE(i.product_type, 'goods') AS product_type
         FROM items i
@@ -67,10 +67,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const body = await req.json()
     const has = (k: string) => Object.prototype.hasOwnProperty.call(body, k)
 
-    await Promise.all([ensureCountCadenceColumns(), ensureGmcColumn()])
+    await Promise.all([ensureCountCadenceColumns(), ensureGmcColumn(), ensureUnitTimeColumn()])
     const [current] = await sql`
       SELECT i.canonical_name, i.cf_group, i.selling_rate, i.purchase_rate, i.units_per_pack, i.unit_name, i.converts_to_item_id, i.product_type,
-             i.count_excluded, i.count_cadence_days, i.count_excluded_reason, COALESCE(i.gmc_type, '') AS gmc_type,
+             i.count_excluded, i.count_cadence_days, i.count_excluded_reason, i.unit_time_seconds, COALESCE(i.gmc_type, '') AS gmc_type,
              COALESCE(s.calculated_soh, 0) AS calculated_soh
       FROM items i
       LEFT JOIN item_stock_summary s ON s.item_id = i.id
@@ -84,6 +84,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const purchase_rate       = has('purchase_rate') ? body.purchase_rate : current.purchase_rate
     const units_per_pack      = has('units_per_pack') ? body.units_per_pack : current.units_per_pack
     const unit_name           = has('unit_name') ? body.unit_name : current.unit_name
+    const unit_time_seconds   = has('unit_time_seconds') ? body.unit_time_seconds : current.unit_time_seconds
     const converts_to_item_id = has('converts_to_item_id') ? body.converts_to_item_id : current.converts_to_item_id
     const product_type        = has('product_type') ? (body.product_type === 'service' ? 'service' : 'goods') : current.product_type
     const gmc_type            = has('gmc_type') ? body.gmc_type : current.gmc_type
@@ -124,6 +125,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         purchase_rate       = ${purchase_rate  ?? null},
         units_per_pack      = ${units_per_pack ?? null},
         unit_name           = ${unit_name      ?? null},
+        unit_time_seconds   = ${unit_time_seconds ?? null},
         converts_to_item_id = ${converts_to_item_id ?? null},
         product_type        = ${product_type   ?? 'goods'},
         gmc_type            = ${gmc_type       ?? ''},
@@ -131,7 +133,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         count_cadence_days  = ${count_cadence_days ?? null},
         count_excluded_reason = ${count_excluded_reason}
       WHERE id = ${itemId}
-      RETURNING id, canonical_name AS item_name, cf_group, selling_rate, purchase_rate, units_per_pack, unit_name, converts_to_item_id, product_type, gmc_type,
+      RETURNING id, canonical_name AS item_name, cf_group, selling_rate, purchase_rate, units_per_pack, unit_name, unit_time_seconds, converts_to_item_id, product_type, gmc_type,
                 count_excluded, count_cadence_days, count_excluded_reason
     `
     if (!row) return notFound()

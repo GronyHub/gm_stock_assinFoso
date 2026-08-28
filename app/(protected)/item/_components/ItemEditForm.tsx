@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { COUNT_EXCLUDED_REASONS } from '@/lib/countRules'
 import { trimZeros } from '@/lib/fmtNumber'
+import { formatDuration } from '@/lib/fmtDuration'
 
 // The item-fields-only edit form (name/group/prices/units/conversion/count
 // settings) -- split out of LossTab.tsx so it can be reused anywhere an
@@ -10,6 +11,7 @@ import { trimZeros } from '@/lib/fmtNumber'
 // outside the Loss by Item tab itself.
 export const EMPTY_ITEM_EDIT_FORM = {
   item_name: '', cf_group: '', selling_rate: '', purchase_rate: '', units_per_pack: '', unit_name: '',
+  unit_time_seconds: '',
   converts_to_item_id: '', count_excluded: false, count_cadence_days: '', count_excluded_reason: '',
   gmc_type: '', product_type: '',
 }
@@ -249,6 +251,38 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
           ) : (
             <div className={s.readOnly}>
               {form.unit_name || '—'}
+            </div>
+          )}
+        </div>
+        <div>
+          <label className={s.label}>Time/unit</label>
+          {editMode ? (
+            <div className="flex items-center gap-1">
+              <input
+                type="number" min="0" placeholder="Min"
+                value={form.unit_time_seconds ? Math.floor(parseInt(form.unit_time_seconds, 10) / 60) : ''}
+                onChange={e => {
+                  const min = Math.max(0, parseInt(e.target.value, 10) || 0)
+                  const sec = form.unit_time_seconds ? parseInt(form.unit_time_seconds, 10) % 60 : 0
+                  onChange({ ...form, unit_time_seconds: String(min * 60 + sec) })
+                }}
+                className={s.input}
+              />
+              <span className="text-gray-400">:</span>
+              <input
+                type="number" min="0" max="59" placeholder="Sec"
+                value={form.unit_time_seconds ? parseInt(form.unit_time_seconds, 10) % 60 : ''}
+                onChange={e => {
+                  const min = form.unit_time_seconds ? Math.floor(parseInt(form.unit_time_seconds, 10) / 60) : 0
+                  const sec = Math.max(0, Math.min(59, parseInt(e.target.value, 10) || 0))
+                  onChange({ ...form, unit_time_seconds: String(min * 60 + sec) })
+                }}
+                className={s.input}
+              />
+            </div>
+          ) : (
+            <div className={s.readOnly}>
+              {form.unit_time_seconds ? formatDuration(parseInt(form.unit_time_seconds, 10)) : '—'}
             </div>
           )}
         </div>

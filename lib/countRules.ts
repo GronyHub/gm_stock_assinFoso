@@ -54,6 +54,16 @@ async function ensureGmcColumnImpl() {
 
 export const ensureGmcColumn = once(ensureGmcColumnImpl)
 
+// Max staff time (in seconds) to serve one unit of this item -- set from the
+// item edit form's Time/unit field, applies to goods and services alike.
+// The Log tab multiplies this by a tap's own quantity to estimate time
+// spent per sale line (see item/page.tsx's liveUnitTimeByItemId).
+async function ensureUnitTimeColumnImpl() {
+  await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS unit_time_seconds INTEGER`.catch(() => {})
+}
+
+export const ensureUnitTimeColumn = once(ensureUnitTimeColumnImpl)
+
 // Fixed reasons the item edit form offers for "Exclude from counts
 // entirely" -- kept here (not just inline in the form) so the PUT route can
 // validate against the same list a custom "Other" reason has to bypass.
