@@ -189,27 +189,6 @@ export function SidePaneButton({ icon, label, active, mode, onClick, badge, task
           ? <span className="block w-full -mx-1 truncate text-[8px] font-extrabold text-white bg-[var(--pane-accent)] uppercase tracking-wide px-2 py-1 opacity-80">{label}</span>
           : <span className="w-full truncate">{label}</span>
       )}
-      {/* Both badges share the top-right corner now (flags used to sit at
-          top-left) -- no background shape on either, a filled circle
-          sitting on top of the label was covering some of its lettering,
-          especially in `both` mode where icon and label share limited
-          vertical space. Bare bold numbers instead, with a white
-          text-shadow (not a solid fill) so they still read clearly
-          regardless of which pane accent color they're sitting on. */}
-      {((!!badge && badge > 0) || (!!taskBadge && taskBadge > 0)) && (
-        <span className="absolute top-0.5 right-0.5 flex items-center gap-1">
-          {!!badge && badge > 0 && (
-            <span className="min-w-[14px] text-[9px] font-black leading-none text-red-600 [text-shadow:0_0_2px_white,0_0_2px_white,0_0_2px_white]">
-              {badge > 99 ? '99+' : badge}
-            </span>
-          )}
-          {!!taskBadge && taskBadge > 0 && (
-            <span className="min-w-[14px] text-[9px] font-black leading-none text-green-600 [text-shadow:0_0_2px_white,0_0_2px_white,0_0_2px_white]">
-              {taskBadge > 99 ? '99+' : taskBadge}
-            </span>
-          )}
-        </span>
-      )}
     </button>
   )
 }
