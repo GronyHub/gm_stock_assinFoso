@@ -36,12 +36,6 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
   const [aliasRecords, setAliasRecords] = useState<Record<number, AliasRecord[]>>({})
   const [matchRecords, setMatchRecords] = useState<Record<string, MatchRecord[]>>({})
   const [editMode, setEditMode] = useState(false)
-  // Same three filters the pack-chain table's submenu used to offer back
-  // when it lived inline under a row on the Items list. Loss/Gain Only are
-  // mutually exclusive -- turning one on turns the other off.
-  const [showPrices, setShowPrices] = useState(true)
-  const [lossOnly, setLossOnly] = useState(false)
-  const [gainOnly, setGainOnly] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [dataFetched, setDataFetched] = useState(false)
 
@@ -119,7 +113,6 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
   if (loading) return <div className="py-10 text-center text-gray-400 text-xs">Loading…</div>
   if (!item) return null
 
-  const showFilters = !collapsed || expanded
   const displayMode = collapsed && !expanded ? 'collapsed' : undefined
   const maxRows = displayMode === 'collapsed' ? 10 : undefined
 
@@ -130,28 +123,6 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
 
   return (
     <div className="overflow-x-auto">
-      {showFilters && (
-        <div className="flex items-center gap-2 px-3 pb-3 flex-wrap">
-          <button onClick={() => setShowPrices(p => !p)}
-            title="Show/hide the SP, AMOUNT, CP and PROFIT columns on the pack-chain detail table"
-            className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap transition
-              ${showPrices ? 'bg-blue-600 text-white' : 'bg-white border border-blue-200 text-blue-700 hover:bg-blue-100'}`}>
-            💲 Prices {showPrices ? '▾' : '▸'}
-          </button>
-          <button onClick={() => setLossOnly(o => { const v = !o; if (v) setGainOnly(false); return v })}
-            title="Show only rows with an actual loss on the pack-chain detail table"
-            className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap transition
-              ${lossOnly ? 'bg-red-600 text-white' : 'bg-white border border-red-200 text-red-700 hover:bg-red-100'}`}>
-            🔻 Loss Only
-          </button>
-          <button onClick={() => setGainOnly(o => { const v = !o; if (v) setLossOnly(false); return v })}
-            title="Show only rows with an actual gain on the pack-chain detail table"
-            className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap transition
-              ${gainOnly ? 'bg-orange-500 text-white' : 'bg-white border border-orange-200 text-orange-700 hover:bg-orange-100'}`}>
-            🔺 Gain Only
-          </button>
-        </div>
-      )}
       {showRelationsEditor && isOwnerLevelUser && (
         <div className="border-t border-b border-gray-200 bg-gray-50 px-3 py-2">
           {!editMode ? (
@@ -249,9 +220,6 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
         // whatever the user was doing there.
         onDateClick={(date, itemName) =>
           window.open(`/item?tab=loss&view=sales&jumpDate=${encodeURIComponent(date)}&jumpItem=${encodeURIComponent(itemName)}`, '_blank')}
-        showPrices={showPrices}
-        lossOnly={lossOnly}
-        gainOnly={gainOnly}
         maxRows={maxRows} />
     </div>
   )
