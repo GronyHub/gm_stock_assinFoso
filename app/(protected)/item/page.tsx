@@ -6145,43 +6145,57 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                             <div className={`text-[11px] font-semibold leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : ''}`}>
                               {renderClickableItemName(item.name, `text-[11px] leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : 'text-blue-600'}`)}
                             </div>
-                            <p className="text-[9px] text-gray-600 leading-tight">
-                              <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
-                              <span className="text-gray-400"> · </span>
-                              {item.product_type !== 'service' && (
-                                <>
-                                  <span className="text-green-600 font-semibold">ACP ₵{formatPrice(item.acp_price ?? item.cost_price)}</span>
-                                  <span className="text-gray-400"> · </span>
-                                </>
-                              )}
-                              {item.product_type !== 'service' && (
-                                <>
-                                  <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
-                                  {item.count_interval && (
-                                    <>
-                                      <span className="text-gray-400"> · </span>
-                                      <span className="text-gray-500">{shortCountInterval(item.count_interval)}</span>
-                                    </>
-                                  )}
-                                  <span className="text-gray-400"> · </span>
-                                </>
-                              )}
-                              {item.product_type !== 'service' && (
-                                <>
-                                  <span className={formatLoss(liveLossByItemId.get(item.id)).cls}>{formatLoss(liveLossByItemId.get(item.id)).text}</span>
-                                </>
-                              )}
-                              {item.gmc_type && (
-                                <>
-                                  <span className="text-gray-400"> · </span>
-                                  <span className="inline-block rounded bg-purple-100 px-1 py-0.5 text-[7px] font-bold text-purple-700">
-                                    {item.gmc_type === 'gmc' ? 'GMC' : item.gmc_type === 'service_no_gmc' ? 'SVC only' : item.gmc_type === 'pack_to_gmc' ? 'PKG→GMC' : 'SVC/GMC'}
-                                    {item.converts_to_name && ` → ${item.converts_to_name}`}
-                                  </span>
-                                </>
-                              )}
-                            </p>
-                            {(() => {
+                            {liveSaleViolationFilter === 'noViolations' ? (
+                              <p className="text-[9px] text-gray-600 leading-tight">
+                                <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
+                                {item.product_type !== 'service' && (
+                                  <>
+                                    <span className="text-gray-400"> · </span>
+                                    <span className="text-green-600 font-semibold">ACP ₵{formatPrice(item.acp_price ?? item.cost_price)}</span>
+                                    <span className="text-gray-400"> · </span>
+                                    <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
+                                  </>
+                                )}
+                              </p>
+                            ) : (
+                              <p className="text-[9px] text-gray-600 leading-tight">
+                                <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
+                                <span className="text-gray-400"> · </span>
+                                {item.product_type !== 'service' && (
+                                  <>
+                                    <span className="text-green-600 font-semibold">ACP ₵{formatPrice(item.acp_price ?? item.cost_price)}</span>
+                                    <span className="text-gray-400"> · </span>
+                                  </>
+                                )}
+                                {item.product_type !== 'service' && (
+                                  <>
+                                    <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
+                                    {item.count_interval && (
+                                      <>
+                                        <span className="text-gray-400"> · </span>
+                                        <span className="text-gray-500">{shortCountInterval(item.count_interval)}</span>
+                                      </>
+                                    )}
+                                    <span className="text-gray-400"> · </span>
+                                  </>
+                                )}
+                                {item.product_type !== 'service' && (
+                                  <>
+                                    <span className={formatLoss(liveLossByItemId.get(item.id)).cls}>{formatLoss(liveLossByItemId.get(item.id)).text}</span>
+                                  </>
+                                )}
+                                {item.gmc_type && (
+                                  <>
+                                    <span className="text-gray-400"> · </span>
+                                    <span className="inline-block rounded bg-purple-100 px-1 py-0.5 text-[7px] font-bold text-purple-700">
+                                      {item.gmc_type === 'gmc' ? 'GMC' : item.gmc_type === 'service_no_gmc' ? 'SVC only' : item.gmc_type === 'pack_to_gmc' ? 'PKG→GMC' : 'SVC/GMC'}
+                                      {item.converts_to_name && ` → ${item.converts_to_name}`}
+                                    </span>
+                                  </>
+                                )}
+                              </p>
+                            )}
+                            {liveSaleViolationFilter !== 'noViolations' && (() => {
                               const hist = liveSaleHistoryByItemId.get(item.id)
                               if (!hist) return null
                               return (
