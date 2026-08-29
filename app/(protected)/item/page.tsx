@@ -4859,7 +4859,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <input type="checkbox" checked={liveShowAcpGtSpOnly} onChange={() => setLiveShowAcpGtSpOnly(d => !d)} className="cursor-pointer" />
                     ⚠ ACP &gt; SP {liveAcpGtSpCount > 0 && <span className="ml-1 font-bold">({liveAcpGtSpCount})</span>}
                   </label>
-                  <div className="flex gap-1.5">
+                  <div className="flex flex-wrap gap-1.5">
                     <button
                       onClick={() => setLiveCountDisplayFilter('all')}
                       className={`px-3 py-1.5 rounded font-semibold text-xs transition whitespace-nowrap ${liveCountDisplayFilter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-800 hover:bg-gray-400'}`}
