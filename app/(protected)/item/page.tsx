@@ -4902,41 +4902,41 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <input type="checkbox" checked={liveShowAcpGtSpOnly} onChange={() => { setLiveShowAcpGtSpOnly(d => !d); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
                     <span>ACP &gt; SP{liveAcpGtSpCount > 0 && ` (${liveAcpGtSpCount})`}</span>
                   </label>
-                  <span className="text-gray-400 px-1">·</span>
+                  {liveDuplicateCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
                     <input type="checkbox" checked={liveShowDuplicatesOnly} onChange={() => { setLiveShowDuplicatesOnly(d => !d); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
-                    <span>Duplicates{liveDuplicateCount > 0 && ` (${liveDuplicateCount})`}</span>
-                  </label>
-                  <span className="text-gray-400 px-1">·</span>
+                    <span>Duplicates ({liveDuplicateCount})</span>
+                  </label></>)}
+                  {liveUnlinkedCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
                     <input type="checkbox" checked={liveShowUnlinkedOnly} onChange={() => { setLiveShowUnlinkedOnly(d => !d); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
-                    <span>Unlinked{liveUnlinkedCount > 0 && ` (${liveUnlinkedCount})`}</span>
-                  </label>
-                  <span className="text-gray-400 px-1">·</span>
+                    <span>Unlinked ({liveUnlinkedCount})</span>
+                  </label></>)}
+                  {liveServiceViolationCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
                     <input type="checkbox" checked={liveShowServiceViolationOnly} onChange={() => { setLiveShowServiceViolationOnly(d => !d); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
-                    <span>Service{liveServiceViolationCount > 0 && ` (${liveServiceViolationCount})`}</span>
-                  </label>
-                  <span className="text-gray-400 px-1">·</span>
+                    <span>Service ({liveServiceViolationCount})</span>
+                  </label></>)}
+                  {liveGainCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
                     <input type="checkbox" checked={liveShowGainsOnly} onChange={() => { setLiveShowGainsOnly(d => !d); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
-                    <span>Gains{liveGainCount > 0 && ` (${liveGainCount})`}</span>
-                  </label>
-                  <span className="text-gray-400 px-1">·</span>
+                    <span>Gains ({liveGainCount})</span>
+                  </label></>)}
+                  {liveSoldBelowCostCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
                     <input type="checkbox" checked={liveShowSoldBelowCostOnly} onChange={() => { setLiveShowSoldBelowCostOnly(d => !d); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
-                    <span>Sold Below Cost{liveSoldBelowCostCount > 0 && ` (${liveSoldBelowCostCount})`}</span>
-                  </label>
-                  <span className="text-gray-400 px-1">·</span>
+                    <span>Sold Below Cost ({liveSoldBelowCostCount})</span>
+                  </label></>)}
+                  {liveVcpJumpCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
                     <input type="checkbox" checked={liveShowVcpJumpOnly} onChange={() => { setLiveShowVcpJumpOnly(d => !d); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
-                    <span>VCP Jump{liveVcpJumpCount > 0 && ` (${liveVcpJumpCount})`}</span>
-                  </label>
-                  <span className="text-gray-400 px-1">·</span>
+                    <span>VCP Jump ({liveVcpJumpCount})</span>
+                  </label></>)}
+                  {liveEmptyRowCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
                     <input type="checkbox" checked={liveShowEmptyRowOnly} onChange={() => { setLiveShowEmptyRowOnly(d => !d); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
-                    <span>Empty Row{liveEmptyRowCount > 0 && ` (${liveEmptyRowCount})`}</span>
-                  </label>
+                    <span>Empty Row ({liveEmptyRowCount})</span>
+                  </label></>)}
                   <span className="text-gray-400 px-1">·</span>
                   <button
                     type="button"
