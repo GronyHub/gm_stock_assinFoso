@@ -125,6 +125,75 @@ export function LossDialog({ prompt: lp, onClose, onFixRecords }: {
   )
 }
 
+export type GainExtra = { loss_reason: string }
+export type GainPrompt = { d: any; retry: (extra: GainExtra) => void }
+
+const GAIN_REASONS = [
+  { key: 'received_unreported', label: 'Stock received that wasn\'t recorded in a bill' },
+  { key: 'miscount_earlier', label: 'An earlier count was wrong' },
+  { key: 'found_stock', label: 'Found stock that was misplaced or lost' },
+  { key: 'inventory_adjustment', label: 'Inventory adjustment from management' },
+  { key: 'other', label: 'Other' },
+] as const
+
+export function GainDialog({ prompt: gp, onClose }: {
+  prompt: GainPrompt
+  onClose: () => void
+}) {
+  const [reasonKey, setReasonKey] = useState('')
+  const [customReason, setCustomReason] = useState('')
+  const [err, setErr] = useState('')
+  const d = gp.d
+
+  const finalReason = reasonKey === 'other'
+    ? customReason.trim()
+    : (GAIN_REASONS.find(r => r.key === reasonKey)?.label ?? '')
+
+  function confirmGain() {
+    if (!finalReason) { setErr('A reason for the gain is required.'); return }
+    gp.retry({ loss_reason: finalReason })
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-[200] bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl max-h-[92dvh] overflow-y-auto p-4 space-y-3">
+        <div className="bg-blue-50 border border-blue-200 rounded-xl px-3 py-2">
+          <p className="text-sm font-bold text-blue-700">📊 Gain detected — count not saved yet</p>
+          <p className="text-xs text-blue-800 mt-0.5">
+            Expected <b>{d.expected}</b>, counted <b>{d.counted}</b> → gain of <b>+{d.gain}</b>.
+          </p>
+        </div>
+
+        <div className="border-t border-gray-100 pt-2 space-y-1.5">
+          <p className="text-xs font-semibold text-gray-700">Please investigate and confirm:</p>
+          <select value={reasonKey} onChange={e => setReasonKey(e.target.value)}
+            className="w-full bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-300">
+            <option value="">What caused this gain? (required)</option>
+            {GAIN_REASONS.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
+          </select>
+          {reasonKey === 'other' && (
+            <textarea value={customReason} onChange={e => setCustomReason(e.target.value)} rows={2}
+              placeholder="Describe the reason (required)"
+              className="w-full bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-300" />
+          )}
+          {err && <p className="text-xs text-red-600">{err}</p>}
+          <div className="flex gap-2">
+            <button onClick={confirmGain}
+              className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-xl py-2.5 transition">
+              Save as Gain
+            </button>
+            <button onClick={onClose}
+              className="px-4 py-2.5 bg-gray-100 text-gray-600 text-sm font-semibold rounded-xl">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export type PackRef = { id: number; name: string }
 export type PairingPrompt = { itemName: string; packs: PackRef[]; retry: () => void }
 

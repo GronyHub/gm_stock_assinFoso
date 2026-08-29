@@ -48,8 +48,8 @@ export async function POST(req: NextRequest) {
       return badRequest(`"${item[0].canonical_name}" is a service — services cannot be counted.`)
     }
 
-    const gainErr = await gainViolation(Number(itemId), Number(qty), today)
-    if (gainErr) return badRequest(gainErr)
+    const isManager = isOwnerLevel(session.user as any)
+    const expected = await expectedStockAt(Number(itemId), today)
 
     const pairing = await packPairingCheck(Number(itemId), item[0].canonical_name, today)
     if (pairing?.blocking) {
@@ -60,11 +60,24 @@ export async function POST(req: NextRequest) {
       }, 409)
     }
 
-    const isManager = isOwnerLevel(session.user as any)
-    const expected = await expectedStockAt(Number(itemId), today)
     const lossQty = expected !== null ? parseFloat((expected - Number(qty)).toFixed(4)) : 0
+    const gainQty = expected !== null ? parseFloat((Number(qty) - expected).toFixed(4)) : 0
     let lossNote: string | null = null
-    if (expected !== null && lossQty > 0.001) {
+    let gainNote: string | null = null
+
+    // Handle gain (more stock than expected)
+    if (expected !== null && gainQty > 0.001) {
+      if (!loss_reason || !String(loss_reason).trim()) {
+        return success({
+          requires_gain_confirmation: true,
+          expected, counted: Number(qty), gain: gainQty, is_manager: isManager,
+          error: `Gain detected: expected ${expected}, counted ${qty} (+${gainQty}). A confirmation is required before this count can be saved.`,
+        }, 409)
+      }
+      gainNote = `[GAIN +${gainQty}] Reason: ${String(loss_reason).trim()}` + (isManager ? ' (manager counted)' : '')
+    }
+    // Handle loss (less stock than expected)
+    else if (expected !== null && lossQty > 0.001) {
       if (!loss_reason || !String(loss_reason).trim()) {
         return success({
           requires_loss_reason: true,
@@ -84,7 +97,7 @@ export async function POST(req: NextRequest) {
     }
 
     const countedBy = session.user?.name || (session.user as any)?.username || null
-    const finalNotes = [lossNote, (notes && String(notes).trim()) || null].filter(Boolean).join(' · ') || null
+    const finalNotes = [gainNote || lossNote, (notes && String(notes).trim()) || null].filter(Boolean).join(' · ') || null
 
     let existing: any
     try {
@@ -116,6 +129,7 @@ export async function POST(req: NextRequest) {
           WHERE id = ${existing.id}
         `
         await logActivity(countedBy ?? 'Unknown', 'counted stock', `${item[0].canonical_name} · qty ${qty} (replaced today's earlier count)`)
+        if (gainNote) await logActivity(countedBy ?? 'Unknown', 'reported count gain', `${item[0].canonical_name} · counted ${qty} vs expected ${expected} — ${gainNote}`)
         if (lossNote) await logActivity(countedBy ?? 'Unknown', 'reported count loss', `${item[0].canonical_name} · counted ${qty} vs expected ${expected} — ${lossNote}`)
       } else {
         await sql`
@@ -123,6 +137,7 @@ export async function POST(req: NextRequest) {
           VALUES (${itemId}, ${item[0].zoho_item_id}, ${item[0].canonical_name}, ${today}, ${qty}, ${finalNotes}, 'app', ${countedBy}, NOW())
         `
         await logActivity(countedBy ?? 'Unknown', 'counted stock', `${item[0].canonical_name} · qty ${qty}`)
+        if (gainNote) await logActivity(countedBy ?? 'Unknown', 'reported count gain', `${item[0].canonical_name} · counted ${qty} vs expected ${expected} — ${gainNote}`)
         if (lossNote) await logActivity(countedBy ?? 'Unknown', 'reported count loss', `${item[0].canonical_name} · counted ${qty} vs expected ${expected} — ${lossNote}`)
       }
     } catch (dbError) {

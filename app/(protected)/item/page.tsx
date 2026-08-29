@@ -10,7 +10,7 @@ import { trimZeros } from '@/lib/fmtNumber'
 import { formatGapMins } from '@/lib/fmtGap'
 import PageLawsList, { type LawFormKind } from './_components/PageLawsList'
 import ItemDetailModal from './_components/ItemDetailModal'
-import { LossDialog, PairingDialog, type LossExtra, type LossPrompt, type PairingPrompt } from './_components/CountDialogs'
+import { LossDialog, GainDialog, PairingDialog, type LossExtra, type LossPrompt, type GainExtra, type GainPrompt, type PairingPrompt } from './_components/CountDialogs'
 import { ItemEditForm, EMPTY_ITEM_EDIT_FORM } from './_components/ItemEditForm'
 import HistoryPanel from './_components/HistoryPanel'
 import { TrainingGuideModal } from './_components/TrainingGuideModal'
@@ -2137,6 +2137,7 @@ function ItemHubPageInner() {
     setTimeout(() => setLiveDebugLogs(prev => prev.slice(1)), 5000)
   }
   const [liveLossPrompt, setLiveLossPrompt] = useState<LossPrompt | null>(null)
+  const [liveGainPrompt, setLiveGainPrompt] = useState<GainPrompt | null>(null)
   const [livePairingPrompt, setLivePairingPrompt] = useState<PairingPrompt | null>(null)
   const [liveCountRecords, setLiveCountRecords] = useState<CountRecord[]>([])
   const [liveEditingCountId, setLiveEditingCountId] = useState<number | null>(null)
@@ -3426,7 +3427,7 @@ function ItemHubPageInner() {
     }
   }
 
-async function recordCountFromModal(lossExtra?: LossExtra) {
+async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra) {
     if (!liveEditingGridItemId || !liveGridEditCountQty) return
     setLiveGridEditCountSaving(true)
     setLiveGridEditCountError('')
@@ -3448,17 +3449,22 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
           qty: qtyNum,
           notes: 'Grid count',
           ...(lossExtra ?? {}),
+          ...(gainExtra ?? {}),
         }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
         if (res.status === 409 && data?.requires_pack_count) {
           const itemName = liveAllItems.find(i => i.id === liveEditingGridItemId)?.name ?? ''
-          setLivePairingPrompt({ itemName, packs: data.packs, retry: () => recordCountFromModal(lossExtra) })
+          setLivePairingPrompt({ itemName, packs: data.packs, retry: () => recordCountFromModal(lossExtra, gainExtra) })
+          return
+        }
+        if (res.status === 409 && data?.requires_gain_confirmation) {
+          setLiveGainPrompt({ d: data, retry: extra => recordCountFromModal(lossExtra, extra) })
           return
         }
         if (res.status === 409 && data?.requires_loss_reason) {
-          setLiveLossPrompt({ d: data, retry: extra => recordCountFromModal(extra) })
+          setLiveLossPrompt({ d: data, retry: extra => recordCountFromModal(extra, gainExtra) })
           return
         }
         setLiveGridEditCountError(data.error || 'Could not record count')
@@ -6462,6 +6468,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
           })()}
 
           {liveLossPrompt && <LossDialog prompt={liveLossPrompt} onClose={() => setLiveLossPrompt(null)} />}
+          {liveGainPrompt && <GainDialog prompt={liveGainPrompt} onClose={() => setLiveGainPrompt(null)} />}
           {livePairingPrompt && <PairingDialog prompt={livePairingPrompt} onClose={() => setLivePairingPrompt(null)} />}
           </>)}
 
