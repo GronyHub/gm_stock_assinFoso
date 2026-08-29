@@ -29,7 +29,23 @@ export function LawsTasksModal({ isOpen, onClose, lawsPanel }: {
         {/* Header */}
         <div className="shrink-0 border-b border-gray-200 px-4 py-3 flex items-center gap-2">
           <h2 className="text-lg font-bold text-gray-900">Laws & Tasks</h2>
-          <button onClick={onClose} className="shrink-0 text-gray-400 hover:text-gray-600 text-xl font-light leading-none px-1 ml-auto" aria-label="Close">✕</button>
+          <div className="flex gap-2 ml-auto">
+            <button
+              onClick={() => lawsPanel?.setOpenForm('law')}
+              className="text-sm px-3 py-1.5 rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200 font-semibold transition"
+              title="Insert new law"
+            >
+              + Law
+            </button>
+            <button
+              onClick={() => lawsPanel?.setOpenForm('task')}
+              className="text-sm px-3 py-1.5 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 font-semibold transition"
+              title="Insert new task"
+            >
+              + Task
+            </button>
+            <button onClick={onClose} className="shrink-0 text-gray-400 hover:text-gray-600 text-xl font-light leading-none px-1" aria-label="Close">✕</button>
+          </div>
         </div>
 
         {/* Body */}
