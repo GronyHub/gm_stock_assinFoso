@@ -4,6 +4,19 @@ import { useSession } from 'next-auth/react'
 import { isOwnerLevel } from '@/lib/roles'
 import { ItemDetail, AliasPicker, MatchPicker, MergeItemPicker, type SummaryRow, type AliasRecord, type MatchRecord, type CandidateItem } from './LossTab'
 
+interface CountRecord {
+  id: number
+  item_id: number
+  item_name: string
+  count_date: string
+  quantity_counted: number
+  expected: number | null
+  loss_qty: number | null
+  gain_qty: number | null
+  kind?: string
+  notes: string | null
+}
+
 // Standalone home for the same pack-chain/edit/alias/merge detail view that
 // used to open inline under a row on the Items list -- reused here on the
 // Item 360 page so it's reachable without going through that list. Builds
@@ -38,6 +51,8 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
   const [editMode, setEditMode] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [dataFetched, setDataFetched] = useState(false)
+  const [countRecords, setCountRecords] = useState<CountRecord[]>([])
+  const [countRecordsLoading, setCountRecordsLoading] = useState(false)
 
   useEffect(() => {
     if (collapsed && !expanded) return
@@ -90,6 +105,21 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
       })
       .catch(() => {})
   }, [collapsed, expanded, itemId, rows])
+
+  useEffect(() => {
+    if (collapsed && !expanded) return
+    setCountRecordsLoading(true)
+    fetch('/api/stock/counts').then(r => r.json())
+      .then((d: any[]) => {
+        if (!Array.isArray(d)) return
+        const itemCounts = d.filter((r: any) => r.item_id === itemId).sort((a: any, b: any) =>
+          new Date(b.count_date).getTime() - new Date(a.count_date).getTime()
+        )
+        setCountRecords(itemCounts)
+      })
+      .catch(() => {})
+      .finally(() => setCountRecordsLoading(false))
+  }, [collapsed, expanded, itemId])
 
   const item = rows.find(r => r.item_id === itemId)
 
@@ -200,6 +230,31 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
               </button>
             </div>
           )}
+        </div>
+      )}
+      {countRecords.length > 0 && (
+        <div className="border-t border-gray-200 bg-amber-50 px-3 py-2">
+          <p className="text-[9px] font-bold text-amber-900 mb-2 uppercase">Trade-Off Records</p>
+          <div className="space-y-1">
+            {countRecords.map((rec) => {
+              const isLoss = (rec.loss_qty ?? 0) > 0
+              const isGain = (rec.gain_qty ?? 0) > 0
+              const qty = isLoss ? rec.loss_qty : isGain ? rec.gain_qty : rec.quantity_counted
+              const kind = isLoss ? 'Loss' : isGain ? 'Gain' : 'OK'
+              const kindColor = isLoss ? 'text-red-600' : isGain ? 'text-green-600' : 'text-gray-600'
+              const kindBg = isLoss ? 'bg-red-50' : isGain ? 'bg-green-50' : 'bg-gray-50'
+              return (
+                <div key={rec.id} className={`flex items-center justify-between gap-2 ${kindBg} px-2 py-1 rounded text-[8px]`}>
+                  <div className="flex-1">
+                    <span className="font-semibold">{new Date(rec.count_date).toLocaleDateString()}</span>
+                    <span className={`ml-2 font-bold ${kindColor}`}>{kind}</span>
+                    <span className="ml-2 font-semibold">{qty !== null ? Math.abs(qty).toFixed(2) : '—'}</span>
+                    {rec.notes && <span className="ml-2 text-gray-600 italic">"{rec.notes}"</span>}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
       <ItemDetail item={item} groups={groupNames} allItems={allItemsList}
