@@ -2801,19 +2801,6 @@ function ItemHubPageInner() {
     return Array.from(groups.entries()).sort(([a], [b]) => b.localeCompare(a))
   }, [liveTaps])
 
-  // Item column width, sized to the longest name actually loaded so it
-  // never needs to truncate or wrap -- `ch` sizes off character count
-  // directly, with a little headroom since most letters are wider than
-  // the "0" glyph `ch` measures against. Computed once here (not per grid
-  // instance) since the header/date-header/tap rows are 3 separate grid
-  // divs, not one real <table> -- they'd otherwise size independently and
-  // drift out of alignment with each other.
-  const logItemColWidth = useMemo(() => {
-    const longest = liveTaps.reduce((max, t) => Math.max(max, t?.item_name?.length ?? 0), 8)
-    return `${Math.ceil(longest * 1.15)}ch`
-  }, [liveTaps])
-  const logGridTemplateColumns = `${logItemColWidth} 2.5rem 2.75rem 2rem 2rem 2.25rem 1.25rem 2.25rem 1.5rem 2.25rem 1.5rem`
-
   // Shop open/close bounds for the Log tab's Gap column -- only fetched
   // while Log is actually being looked at (same "not until it's viewed"
   // treatment as Count Records below), and only for dates not already
@@ -4757,49 +4744,49 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                 {liveTaps.length === 0 ? (
                   <p className="text-sm text-gray-400 text-center py-8">No sales recorded</p>
                 ) : (
-                  <div>
-                    {/* Every column but Item is a fixed, deliberately tiny
-                        width with zero padding between cells -- Item itself
-                        is sized to the longest loaded name (logItemColWidth)
-                        so it never truncates or wraps. On a narrow screen or
-                        a long name that pushes the row past the viewport,
-                        this container scrolls horizontally; Item stays
-                        frozen (sticky left-0) so it's never what scrolls
-                        out of view. */}
-                    <div className="grid gap-0 h-[14px] bg-gray-50 border-b border-gray-200 sticky top-0 z-10" style={{ gridTemplateColumns: logGridTemplateColumns }}>
-                      <div className="sticky left-0 z-10 flex items-center bg-gray-50 px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase truncate">Item</div>
-                      <div className="flex items-center justify-end px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">Total</div>
-                      <div className="flex items-center justify-center px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">Time</div>
-                      <div className="flex items-center justify-end px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">SP</div>
-                      <div className="flex items-center justify-end px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">CP</div>
-                      <div className="flex items-center justify-end px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">PF</div>
-                      <div className="flex items-center justify-center px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">Qty</div>
-                      <div className="flex items-center px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase truncate">Staff</div>
-                      <div className="flex items-center justify-center px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">SOH</div>
-                      <div className="flex items-center justify-end px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase" title="Time since the previous tap -- since shop opening for the day's first, until the last staff signed out for the day's last">Gap</div>
-                      <div className="px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase" />
-                    </div>
-
-                    {/* Table rows grouped by date */}
+                  // A real <table> instead of independent per-row grid divs --
+                  // table-layout:auto sizes each column to exactly the widest
+                  // cell actually in it (no wasted gap on rows with a shorter
+                  // item name than others), while still keeping every column
+                  // aligned down the page, which independent grids can't do
+                  // on their own. Item's <th>/<td>s stay sticky left-0, the
+                  // header row stays sticky top-0, and each date header
+                  // spans the full row via a real colSpan -- all standard
+                  // table equivalents of what the grid version did by hand.
+                  <table className="border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-200">
+                        <th className="sticky left-0 top-0 z-20 bg-gray-50 h-[14px] px-1 text-[8px] leading-none font-semibold text-gray-600 uppercase text-left whitespace-nowrap">Item</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[14px] px-1 text-[8px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap">Total</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[14px] px-1 text-[8px] leading-none font-semibold text-gray-600 uppercase whitespace-nowrap">Time</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[14px] px-1 text-[8px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap">SP</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[14px] px-1 text-[8px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap">CP</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[14px] px-1 text-[8px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap">PF</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[14px] px-1 text-[8px] leading-none font-semibold text-gray-600 uppercase whitespace-nowrap">Qty</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[14px] px-1 text-[8px] leading-none font-semibold text-gray-600 uppercase text-left whitespace-nowrap">Staff</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[14px] px-1 text-[8px] leading-none font-semibold text-gray-600 uppercase whitespace-nowrap">SOH</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[14px] px-1 text-[8px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap" title="Time since the previous tap -- since shop opening for the day's first, until the last staff signed out for the day's last">Gap</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[14px] px-1" />
+                      </tr>
+                    </thead>
+                    <tbody>
                     {liveTapsByDate.map(([date, dateTaps]) => {
                       const dateTotal = (dateTaps || []).filter((t): t is Tap => t != null && !t.undone).reduce((s, t) => s + Number(t.price) * t.quantity, 0)
                       const dateProfitTotal = (dateTaps || []).filter((t): t is Tap => t != null && !t.undone)
                         .reduce((s, t) => s + (Number(t.price) - (liveCostPriceByItemId.get(t.item_id) ?? 0)) * t.quantity, 0)
                       return (
-                        <div key={date}>
+                        <Fragment key={date}>
                           {/* Date header */}
-                          <div className="grid gap-0 h-[14px] bg-green-50 border-b border-green-200 sticky top-[14px] z-9" style={{ gridTemplateColumns: logGridTemplateColumns }}>
-                            <div className="col-span-11 flex items-center px-0.5 text-[8px] leading-none font-semibold text-green-700 truncate">
+                          <tr className="bg-green-50 border-b border-green-200">
+                            <td colSpan={11} className="sticky top-[14px] z-10 bg-green-50 h-[14px] px-1 text-[8px] leading-none font-semibold text-green-700 whitespace-nowrap">
                               {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · Total: ₵{formatPrice(dateTotal)}
                               {' · PF: '}<span className={dateProfitTotal < 0 ? 'text-red-600' : ''}>₵{formatPrice(dateProfitTotal)}</span>
-                            </div>
-                          </div>
+                            </td>
+                          </tr>
 
                           {/* Date's taps -- `group` + an explicit bg on the sticky
                               first cell (not bg-inherit) so scrolled-under columns
                               don't show through it, same fix as Item 360's table. */}
-                          {/* Item name stays single-line (truncated with an
-                              ellipsis), same as every other cell in this row. */}
                           {(dateTaps || []).filter((t): t is Tap => t != null).map((tap, i) => {
                             // Gap = time since the previous (chronologically
                             // earlier) tap -- dateTaps is newest-first, so that's
@@ -4827,14 +4814,13 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                             const tapCostPrice = liveCostPriceByItemId.get(tap.item_id) ?? 0
                             const tapProfit = (Number(tap.price) - tapCostPrice) * tap.quantity
                             return (
-                            <div
+                            <tr
                               key={tap.id}
-                              className={`group grid gap-0 min-h-[15px] hover:bg-gray-50 transition ${
+                              className={`group hover:bg-gray-50 transition ${
                                 tap.undone ? 'bg-gray-50 opacity-60' : ''
                               }`}
-                              style={{ gridTemplateColumns: logGridTemplateColumns }}
                             >
-                              <div className={`sticky left-0 z-[1] flex items-center px-0.5 group-hover:bg-gray-50 ${tap.undone ? 'bg-gray-50' : 'bg-white'}`}>
+                              <td className={`sticky left-0 z-[1] h-[15px] px-1 group-hover:bg-gray-50 ${tap.undone ? 'bg-gray-50' : 'bg-white'}`}>
                                 {tap.undone ? (
                                   <span className="text-[9px] leading-none font-semibold whitespace-nowrap line-through text-gray-400">
                                     {tap.item_name}
@@ -4842,74 +4828,77 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                                 ) : (
                                   renderClickableItemName(tap.item_name, 'text-[9px] leading-none font-semibold whitespace-nowrap text-gray-900')
                                 )}
-                              </div>
-                              <div className="flex items-center justify-end px-0.5">
-                                <span className={`text-[9px] leading-none font-semibold truncate ${tap.undone ? 'text-gray-400' : 'text-blue-600'}`}>
+                              </td>
+                              <td className="h-[15px] px-1 text-right">
+                                <span className={`text-[9px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-gray-400' : 'text-blue-600'}`}>
                                   ₵{formatPrice(Number(tap.price) * tap.quantity)}
                                 </span>
-                              </div>
-                              <div className="flex items-center justify-center px-0.5">
-                                <span className="text-[8px] leading-none text-gray-500 truncate">{new Date(tap.tapped_at).toLocaleTimeString()}</span>
-                              </div>
-                              <div className="flex items-center justify-end px-0.5">
-                                <span className={`text-[9px] leading-none font-semibold truncate ${tap.undone ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                              </td>
+                              <td className="h-[15px] px-1 text-center">
+                                <span className="text-[8px] leading-none text-gray-500 whitespace-nowrap">{new Date(tap.tapped_at).toLocaleTimeString()}</span>
+                              </td>
+                              <td className="h-[15px] px-1 text-right">
+                                <span className={`text-[9px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
                                   ₵{formatPrice(tap.price)}
                                 </span>
-                              </div>
-                              <div className="flex items-center justify-end px-0.5">
-                                <span className={`text-[9px] leading-none font-semibold truncate ${tap.undone ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                              </td>
+                              <td className="h-[15px] px-1 text-right">
+                                <span className={`text-[9px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
                                   ₵{formatPrice(tapCostPrice)}
                                 </span>
-                              </div>
-                              <div className="flex items-center justify-end px-0.5">
-                                <span className={`text-[9px] leading-none font-semibold truncate ${tap.undone ? 'text-gray-400' : tapProfit < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                              </td>
+                              <td className="h-[15px] px-1 text-right">
+                                <span className={`text-[9px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-gray-400' : tapProfit < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
                                   ₵{formatPrice(tapProfit)}
                                 </span>
-                              </div>
-                              <div className="flex items-center justify-center px-0.5">
+                              </td>
+                              <td className="h-[15px] px-1 text-center">
                                 <span className={`text-[9px] leading-none font-semibold ${tap.undone ? 'text-gray-400' : 'text-gray-900'}`}>
                                   {tap.quantity}
                                 </span>
-                              </div>
-                              <div className="flex items-center px-0.5">
-                                <span className="text-[9px] leading-none text-gray-600 truncate">{tap.staff_name}</span>
-                              </div>
-                              <div className="flex items-center justify-center px-0.5">
-                                <span className="text-[9px] leading-none text-gray-500 truncate">{tap.soh !== null && tap.soh !== undefined ? Math.ceil(tap.soh) : '-'}</span>
-                              </div>
-                              <div className="flex items-center justify-end px-0.5" title={isNewest ? 'Until last sign-out' : isOldest ? 'Since shop opening' : 'Since previous tap'}>
-                                <span className="text-[9px] leading-none text-gray-500 truncate">{gapMins !== null ? formatGapMins(gapMins) : '-'}</span>
-                              </div>
-                              <div className="flex items-center justify-center gap-1 px-0.5">
-                                {!tap.undone && (
-                                  <>
-                                    <button
-                                      onClick={() => {
-                                        setLiveEditingTapId(tap.id)
-                                        setLiveEditingTapTime(tap.tapped_at.slice(0, 16))
-                                      }}
-                                      title="Edit time"
-                                      className="text-[10px] font-bold text-blue-600 hover:bg-blue-100 rounded leading-none p-0"
-                                    >
-                                      🕐
-                                    </button>
-                                    <button
-                                      onClick={() => undoTap(tap.id)}
-                                      title="Undo"
-                                      className="text-[10px] font-bold text-red-600 hover:bg-red-100 rounded leading-none p-0"
-                                    >
-                                      ↩
-                                    </button>
-                                  </>
-                                )}
-                              </div>
-                            </div>
+                              </td>
+                              <td className="h-[15px] px-1">
+                                <span className="text-[9px] leading-none text-gray-600 whitespace-nowrap">{tap.staff_name}</span>
+                              </td>
+                              <td className="h-[15px] px-1 text-center">
+                                <span className="text-[9px] leading-none text-gray-500 whitespace-nowrap">{tap.soh !== null && tap.soh !== undefined ? Math.ceil(tap.soh) : '-'}</span>
+                              </td>
+                              <td className="h-[15px] px-1 text-right" title={isNewest ? 'Until last sign-out' : isOldest ? 'Since shop opening' : 'Since previous tap'}>
+                                <span className="text-[9px] leading-none text-gray-500 whitespace-nowrap">{gapMins !== null ? formatGapMins(gapMins) : '-'}</span>
+                              </td>
+                              <td className="h-[15px] px-1">
+                                <div className="flex items-center justify-center gap-1">
+                                  {!tap.undone && (
+                                    <>
+                                      <button
+                                        onClick={() => {
+                                          setLiveEditingTapId(tap.id)
+                                          setLiveEditingTapTime(tap.tapped_at.slice(0, 16))
+                                        }}
+                                        title="Edit time"
+                                        className="text-[10px] font-bold text-blue-600 hover:bg-blue-100 rounded leading-none p-0"
+                                      >
+                                        🕐
+                                      </button>
+                                      <button
+                                        onClick={() => undoTap(tap.id)}
+                                        title="Undo"
+                                        className="text-[10px] font-bold text-red-600 hover:bg-red-100 rounded leading-none p-0"
+                                      >
+                                        ↩
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
                             )
                           })}
-                        </div>
+                        </Fragment>
                       )
                     })}
-                  </div>
+                    </tbody>
+                  </table>
                 )}
               </div>
               )}
