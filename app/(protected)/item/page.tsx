@@ -4862,6 +4862,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <input type="checkbox" checked={liveShowAcpGtSpOnly} onChange={() => setLiveShowAcpGtSpOnly(d => !d)} className="cursor-pointer" />
                     ⚠ ACP &gt; SP {liveAcpGtSpCount > 0 && <span className="ml-1 font-bold">({liveAcpGtSpCount})</span>}
                   </label>
+                  <span className="px-3 py-1.5 rounded font-semibold text-xs bg-blue-600 text-white whitespace-nowrap">
+                    📊 Count {liveSaleCountRecords.length > 0 && <span className="ml-1 font-bold">({liveSaleCountRecords.length})</span>}
+                  </span>
                 </div>
               )}
               {/* Row 3: search bar + controls — hidden on report-style submenus. */}
