@@ -6349,15 +6349,24 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                     )})()}
                     {editItem && !liveGridEditLoading && (() => {
                       const overdueItem = liveOverdueItems.find(i => i.item_id === editItem.id)
+                      const currentCount = overdueItem ? Math.ceil(Number(overdueItem.calculated_soh)) : null
                       return (
                       <div className="bg-gray-50">
                         <div className="px-2 py-1.5 space-y-2">
                           <div>
                             {overdueItem ? (
                               <div className="p-1.5 bg-red-100 border border-red-300 rounded space-y-1">
-                                <p className="text-[9px] font-bold text-red-900">
-                                  ⚠ COUNT NOW{overdueItem.days_overdue != null ? ` – ${overdueItem.days_overdue}d overdue` : ' – never counted'}
-                                </p>
+                                <div className="flex items-center justify-between gap-2">
+                                  <div>
+                                    <p className="text-[9px] font-bold text-red-900">
+                                      ⚠ COUNT NOW{overdueItem.days_overdue != null ? ` – ${overdueItem.days_overdue}d overdue` : ' – never counted'}
+                                    </p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-[8px] text-red-800 font-semibold">System Count</p>
+                                    <p className="text-xl font-bold text-red-900">{currentCount}</p>
+                                  </div>
+                                </div>
                                 <p className="text-[8px] text-red-800">
                                   {Number(overdueItem.calculated_soh) < 0
                                     ? `System shows ${overdueItem.calculated_soh} -- there's no earlier count to check against, so just enter what's actually on the shelf.`
@@ -6398,7 +6407,13 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                             ) : (
                               <>
                                 <div className="bg-blue-600 text-white rounded-lg px-4 py-3 mb-2">
-                                  <h3 className="text-lg font-bold">Enter Count here</h3>
+                                  <div className="flex items-center justify-between gap-4">
+                                    <h3 className="text-lg font-bold">Enter Count here</h3>
+                                    <div className="text-right">
+                                      <p className="text-sm opacity-90">Current Count</p>
+                                      <p className="text-2xl font-bold">{currentCount ?? '—'}</p>
+                                    </div>
+                                  </div>
                                 </div>
                                 <div className="space-y-1">
                                   <div className="flex gap-1.5 items-stretch">
