@@ -563,6 +563,17 @@ function daysSince(dateStr: string): number {
   return Math.max(0, Math.floor((Date.now() - Date.parse(dateStr + 'T00:00:00Z')) / 86400000))
 }
 
+// The sales log's Staff column shows initials to save width -- first letter
+// of the first two words for a multi-word name ("James Mensah" -> "JM"),
+// or just the first two letters of a single-word name ("James" -> "JA"),
+// always exactly 2 letters either way. Full name still shows on hover via
+// the cell's own title attribute.
+function staffInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+  return (parts[0] ?? '').slice(0, 2).toUpperCase()
+}
+
 // lgAmt is the NET loss/gain in cedis (positive = net loss, negative = net
 // gain -- same sign convention Item 360's own loss table uses); lossCount/
 // gainCount are how many separate days came up short/over, each
@@ -4857,8 +4868,8 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                                   {tap.quantity}
                                 </span>
                               </td>
-                              <td className="h-[15px] px-1">
-                                <span className="text-[9px] leading-none text-gray-600 whitespace-nowrap">{tap.staff_name}</span>
+                              <td className="h-[15px] px-1" title={tap.staff_name}>
+                                <span className="text-[9px] leading-none text-gray-600 whitespace-nowrap">{staffInitials(tap.staff_name)}</span>
                               </td>
                               <td className="h-[15px] px-1 text-center">
                                 <span className="text-[9px] leading-none text-gray-500 whitespace-nowrap">{tap.soh !== null && tap.soh !== undefined ? Math.ceil(tap.soh) : '-'}</span>
