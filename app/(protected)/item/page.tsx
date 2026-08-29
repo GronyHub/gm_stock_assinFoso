@@ -2892,6 +2892,34 @@ function ItemHubPageInner() {
     return Array.from(groups.entries()).sort(([a], [b]) => b.localeCompare(a))
   }, [liveCountRecords, liveCountRecordFilter, liveEmbeddedSearch])
 
+  // Sale mode count records display (filtered by the three checkboxes)
+  const liveSaleCountRecords = useMemo(() => {
+    if (!liveShowCountedNoLoss && !liveShowCountedWithLoss && !liveShowCountedWithGains) return []
+    const q = liveEmbeddedSearch.trim().toLowerCase()
+    const filtered = liveCountRecords.filter(rec => {
+      // Include record if its kind matches any of the enabled filters
+      const isNoLoss = rec.kind !== 'loss' && rec.kind !== 'gain'
+      const isLoss = rec.kind === 'loss'
+      const isGain = rec.kind === 'gain'
+
+      let matchesFilter = false
+      if (liveShowCountedNoLoss && isNoLoss) matchesFilter = true
+      if (liveShowCountedWithLoss && isLoss) matchesFilter = true
+      if (liveShowCountedWithGains && isGain) matchesFilter = true
+
+      if (!matchesFilter) return false
+      if (q && !rec.item_name.toLowerCase().includes(q)) return false
+      return true
+    })
+    const groups = new Map<string, typeof liveCountRecords>()
+    for (const rec of filtered) {
+      const date = rec.count_date.slice(0, 10)
+      if (!groups.has(date)) groups.set(date, [])
+      groups.get(date)!.push(rec)
+    }
+    return Array.from(groups.entries()).sort(([a], [b]) => b.localeCompare(a))
+  }, [liveCountRecords, liveShowCountedNoLoss, liveShowCountedWithLoss, liveShowCountedWithGains, liveEmbeddedSearch])
+
   // All-Time/Yesterday/This Week/Month/Year loss totals -- same period
   // summary the old Loss by Date tab pinned above its own table, computed
   // from every record regardless of liveCountRecordFilter/search so it
@@ -5462,8 +5490,48 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               </div>
             )}
 
+            {/* Count Records Display - shown when any count checkbox is enabled */}
+            {(liveShowCountedNoLoss || liveShowCountedWithLoss || liveShowCountedWithGains) && liveSaleCountRecords.length > 0 && (
+              <div className="flex-1 overflow-y-auto">
+                <div className="px-2 pt-2 pb-1 text-xs font-bold text-gray-600 sticky top-0 bg-gray-50">
+                  Count Records
+                </div>
+                {liveSaleCountRecords.map(([date, dateRecs]) => (
+                  <div key={date} className="border-b border-gray-200">
+                    <div className="px-2 py-1 bg-gray-100 text-[10px] font-bold text-gray-700 sticky top-6">
+                      {date}
+                    </div>
+                    <table className="w-full text-[11px]">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th className="text-left px-2 py-1 font-bold">Item</th>
+                          <th className="text-right px-2 py-1 font-bold">SOH</th>
+                          <th className="text-right px-2 py-1 font-bold">Count</th>
+                          <th className="text-center px-2 py-1 font-bold">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dateRecs.map((rec, idx) => (
+                          <tr key={idx} className="border-t border-gray-100 hover:bg-gray-50">
+                            <td className="px-2 py-1 text-gray-800">{rec.item_name}</td>
+                            <td className="px-2 py-1 text-right text-gray-600">{rec.expected}</td>
+                            <td className="px-2 py-1 text-right text-gray-600">{rec.quantity_counted}</td>
+                            <td className="px-2 py-1 text-center">
+                              {rec.kind === 'loss' && <span className="text-red-600 font-bold">📉 Loss</span>}
+                              {rec.kind === 'gain' && <span className="text-amber-600 font-bold">🚩 Gain</span>}
+                              {!rec.kind && <span className="text-gray-500">✓ OK</span>}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Items Grid - 2 Columns */}
-            {liveCurrentView?.kind !== 'aliasWide' && liveCurrentView?.kind !== 'serviceMatches' && liveCurrentView?.kind !== 'newItem' && liveCurrentView?.kind !== 'dailySummary' && liveCurrentView?.kind !== 'gmcPacks' && (
+            {liveCurrentView?.kind !== 'aliasWide' && liveCurrentView?.kind !== 'serviceMatches' && liveCurrentView?.kind !== 'newItem' && liveCurrentView?.kind !== 'dailySummary' && liveCurrentView?.kind !== 'gmcPacks' && !(liveShowCountedNoLoss || liveShowCountedWithLoss || liveShowCountedWithGains) && (
             <div className="flex-1 overflow-y-auto">
               {liveItemsLoading ? (
                 <p className="text-xs text-gray-400 text-center py-8">Loading…</p>
