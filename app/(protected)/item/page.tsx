@@ -858,6 +858,7 @@ function ItemHubPageInner() {
   const [liveCountView, setLiveCountView] = useState<{ kind: 'interval'; label: string } | { kind: 'records' } | { kind: 'history' } | null>(initialLiveCountView)
   const rawLiveEmbeddedSearch = searchParams.get('liveSearch')
   const [liveEmbeddedSearch, setLiveEmbeddedSearch] = useState(rawLiveEmbeddedSearch ?? '')
+  const [liveShowCountFullPage, setLiveShowCountFullPage] = useState(false)
   const [liveShowOnlyDueForCount, setLiveShowOnlyDueForCount] = useState(false)
   const [liveCountDisplayFilter, setLiveCountDisplayFilter] = useState<'all' | 'counted' | 'loss' | 'gains'>('all')
   const [liveShowTradeOffOnly, setLiveShowTradeOffOnly] = useState(false)
@@ -4851,20 +4852,24 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               {showControls && liveMode === 'sale' && (
                 <div className="px-2 py-1 border-b border-green-700 flex flex-wrap items-center gap-2">
                   <label className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-amber-400 hover:bg-amber-500 text-amber-900 font-semibold text-xs cursor-pointer transition whitespace-nowrap">
-                    <input type="checkbox" checked={liveShowOnlyDueForCount} onChange={() => setLiveShowOnlyDueForCount(d => !d)} className="cursor-pointer" />
+                    <input type="checkbox" checked={liveShowOnlyDueForCount} onChange={() => { setLiveShowOnlyDueForCount(d => !d); setLiveShowCountFullPage(false) }} className="cursor-pointer" />
                     🔄 Due
                   </label>
                   <label className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-purple-400 hover:bg-purple-500 text-purple-900 font-semibold text-xs cursor-pointer transition whitespace-nowrap">
-                    <input type="checkbox" checked={liveShowTradeOffOnly} onChange={() => setLiveShowTradeOffOnly(d => !d)} className="cursor-pointer" />
+                    <input type="checkbox" checked={liveShowTradeOffOnly} onChange={() => { setLiveShowTradeOffOnly(d => !d); setLiveShowCountFullPage(false) }} className="cursor-pointer" />
                     ↔ Trade Off {liveItemsWithTradeOffs.length > 0 && <span className="ml-1 font-bold">({liveItemsWithTradeOffs.length})</span>}
                   </label>
                   <label className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-red-400 hover:bg-red-500 text-red-900 font-semibold text-xs cursor-pointer transition whitespace-nowrap">
-                    <input type="checkbox" checked={liveShowAcpGtSpOnly} onChange={() => setLiveShowAcpGtSpOnly(d => !d)} className="cursor-pointer" />
+                    <input type="checkbox" checked={liveShowAcpGtSpOnly} onChange={() => { setLiveShowAcpGtSpOnly(d => !d); setLiveShowCountFullPage(false) }} className="cursor-pointer" />
                     ⚠ ACP &gt; SP {liveAcpGtSpCount > 0 && <span className="ml-1 font-bold">({liveAcpGtSpCount})</span>}
                   </label>
-                  <span className="px-3 py-1.5 rounded font-semibold text-xs bg-blue-600 text-white whitespace-nowrap">
+                  <button
+                    type="button"
+                    onClick={() => setLiveShowCountFullPage(true)}
+                    className="px-3 py-1.5 rounded font-semibold text-xs bg-blue-600 hover:bg-blue-700 text-white whitespace-nowrap cursor-pointer transition"
+                  >
                     📊 Count {liveSaleCountRecords.length > 0 && <span className="ml-1 font-bold">({liveSaleCountRecords.length})</span>}
-                  </span>
+                  </button>
                 </div>
               )}
               {/* Row 3: search bar + controls — hidden on report-style submenus. */}
@@ -5475,6 +5480,122 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   <div className="flex gap-2 items-center ml-auto">
                     {renderLiveSearchControls(false)}
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Count Records Full Page Overlay */}
+            {liveShowCountFullPage && liveMode === 'sale' && (
+              <div className="fixed inset-0 z-50 bg-white flex flex-col">
+                <div className="bg-green-700 px-4 py-3 border-b border-green-800 flex items-center justify-between">
+                  <h2 className="text-white font-bold text-lg">Count Records & Trade-Off Suggestions</h2>
+                  <button
+                    type="button"
+                    onClick={() => setLiveShowCountFullPage(false)}
+                    className="text-white font-bold text-xl hover:opacity-80 transition"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                  {liveSaleCountRecords.length > 0 ? (
+                    <table className="w-full text-sm border-collapse">
+                      <thead>
+                        <tr className="bg-gray-100 sticky top-0 z-10 border-b border-gray-300">
+                          <th className="text-left px-3 py-2 font-bold text-gray-700">Item</th>
+                          <th className="text-center px-3 py-2 font-bold text-gray-700 whitespace-nowrap">Count Time</th>
+                          <th className="text-center px-3 py-2 font-bold text-gray-700 whitespace-nowrap">Count Date</th>
+                          <th className="text-center px-3 py-2 font-bold text-gray-700">Status</th>
+                          <th className="text-center px-3 py-2 font-bold text-gray-700">Qty</th>
+                          <th className="text-center px-3 py-2 font-bold text-gray-700">Trade Options</th>
+                          <th className="text-center px-3 py-2 font-bold text-gray-700">Net After Trade</th>
+                          <th className="text-center px-3 py-2 font-bold text-gray-700">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {liveSaleCountRecords.map((rec) => {
+                          const recAny = rec as any
+                          const isLoss = (recAny.loss_qty ?? 0) > 0
+                          const isGain = (recAny.gain_qty ?? 0) > 0
+                          const tradeOff = rec.tradeOffWith
+                          const qty = isLoss ? recAny.loss_qty : isGain ? recAny.gain_qty : rec.quantity_counted
+                          const statusLabel = isLoss ? 'Loss' : isGain ? 'Gain' : 'OK'
+                          const statusColor = isLoss ? 'bg-red-100 text-red-700' : isGain ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700'
+                          const netAfterTrade = tradeOff ? (isLoss ? Math.max(0, qty - tradeOff.qty) : 0) : qty
+                          const netLabel = netAfterTrade === 0 ? 'Settled' : isLoss ? `${netAfterTrade} Loss` : `${netAfterTrade} Gain`
+                          const netColor = netAfterTrade === 0 ? 'text-green-600 font-bold' : isLoss ? 'text-red-600' : 'text-amber-600'
+
+                          return (
+                            <tr key={rec.id} className="border-b border-gray-200 hover:bg-gray-50 transition">
+                              <td className="px-3 py-2 text-gray-800 font-semibold max-w-sm truncate">{rec.item_name}</td>
+                              <td className="px-3 py-2 text-center text-gray-600 whitespace-nowrap">{rec.count_date.slice(11, 16) || '—'}</td>
+                              <td className="px-3 py-2 text-center text-gray-600 whitespace-nowrap">{rec.count_date.slice(0, 10)}</td>
+                              <td className="px-3 py-2 text-center">
+                                <span className={`px-2 py-0.5 rounded text-xs font-bold whitespace-nowrap inline-block ${statusColor}`}>
+                                  {statusLabel}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 text-center text-gray-800 font-semibold">{qty !== null ? Math.abs(qty).toFixed(2) : '—'}</td>
+                              <td className="px-3 py-2 text-center">
+                                {tradeOff ? (
+                                  <span className="text-blue-600 font-bold text-xs">
+                                    ↔ {tradeOff.kind === 'gain' ? '🚩' : '📉'} {tradeOff.qty.toFixed(2)}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400 text-xs">—</span>
+                                )}
+                              </td>
+                              <td className={`px-3 py-2 text-center font-bold text-xs ${netColor}`}>
+                                {netLabel}
+                              </td>
+                              <td className="px-3 py-2 text-center flex gap-1 justify-center">
+                                <button
+                                  onClick={() => {
+                                    setLiveEditingCountId(rec.id)
+                                    setLiveEditCountQty(String(recAny.loss_qty ?? recAny.gain_qty ?? rec.quantity_counted ?? ''))
+                                    setLiveEditCountNotes(rec.notes ?? '')
+                                  }}
+                                  className="px-2 py-1 text-blue-600 hover:bg-blue-50 rounded text-xs font-semibold"
+                                  title="Edit count"
+                                >
+                                  ✎
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    if (confirm(`Delete count record for ${rec.item_name}?`)) {
+                                      setLiveCountDeleteLoading(rec.id)
+                                      fetch(`/api/stock/counts/${rec.id}`, {
+                                        method: 'DELETE',
+                                      }).then(async (res) => {
+                                        setLiveCountDeleteLoading(null)
+                                        if (res.ok) {
+                                          window.location.reload()
+                                        } else {
+                                          const data = await res.json()
+                                          alert(`Delete failed: ${data.error || 'Unknown error'}`)
+                                        }
+                                      }).catch(e => {
+                                        setLiveCountDeleteLoading(null)
+                                        alert(`Delete error: ${e.message}`)
+                                      })
+                                    }
+                                  }}
+                                  className="px-2 py-1 text-red-600 hover:bg-red-50 rounded text-xs font-semibold"
+                                  title="Delete count"
+                                >
+                                  🗑
+                                </button>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="flex items-center justify-center py-16">
+                      <p className="text-lg text-gray-500">No count records yet</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
