@@ -4824,6 +4824,12 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                             }
                             const tapCostPrice = liveCostPriceByItemId.get(tap.item_id) ?? 0
                             const tapProfit = (Number(tap.price) - tapCostPrice) * tap.quantity
+                            // Undone taps keep their own muted/struck-through
+                            // look (not renderClickableItemName's blue/
+                            // underline, which would make an undone sale
+                            // look active) but should still open the item's
+                            // modal on tap, same as any other row here.
+                            const tapItem = liveAllItems.find(it => it.name.toLowerCase() === tap.item_name.toLowerCase())
                             return (
                             <tr
                               key={tap.id}
@@ -4833,7 +4839,10 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                             >
                               <td className={`sticky left-0 z-[1] h-[13px] px-0.5 group-hover:bg-gray-50 ${tap.undone ? 'bg-gray-50' : 'bg-white'}`}>
                                 {tap.undone ? (
-                                  <span className="text-[9px] leading-none font-semibold whitespace-nowrap line-through text-gray-400">
+                                  <span
+                                    onClick={tapItem ? () => setLiveViewingItemId(tapItem.id) : undefined}
+                                    className={`text-[9px] leading-none font-semibold whitespace-nowrap line-through text-gray-400 ${tapItem ? 'cursor-pointer hover:text-gray-600' : ''}`}
+                                  >
                                     {tap.item_name}
                                   </span>
                                 ) : (
