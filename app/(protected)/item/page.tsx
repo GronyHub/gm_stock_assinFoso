@@ -5626,84 +5626,104 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               </div>
             )}
 
-            {/* Count Records Display - individual records with trade-off matching */}
-            {liveCountDisplayFilter !== 'all' && liveSaleCountRecords.length > 0 && (
+            {/* Count Records Display - unified table showing all records with trade-off options */}
+            {liveSaleCountRecords.length > 0 && (
               <div className="flex-1 overflow-y-auto">
-                <div className="px-2 pt-2 pb-1 text-xs font-bold text-gray-600 sticky top-0 bg-gray-50">
-                  Count Records
+                <div className="px-2 pt-2 pb-1 text-xs font-bold text-gray-600 sticky top-0 bg-gray-50 z-10">
+                  Count Records & Trade-Off Suggestions
                 </div>
-                <table className="w-full text-[11px]">
+                <table className="w-full text-[10px] border-collapse">
                   <thead>
-                    <tr className="bg-gray-50 sticky top-6">
-                      <th className="text-left px-2 py-1 font-bold">Time of Count</th>
-                      <th className="text-left px-2 py-1 font-bold">Item Name</th>
-                      <th className="text-center px-2 py-1 font-bold">Status</th>
-                      <th className="text-center px-2 py-1 font-bold">Trade-off</th>
-                      <th className="text-center px-2 py-1 font-bold">Actions</th>
+                    <tr className="bg-gray-100 sticky top-6 z-9 border-b border-gray-300">
+                      <th className="text-left px-2 py-1.5 font-bold text-gray-700">Item</th>
+                      <th className="text-center px-2 py-1.5 font-bold text-gray-700 whitespace-nowrap">Count Time</th>
+                      <th className="text-center px-2 py-1.5 font-bold text-gray-700 whitespace-nowrap">Count Date</th>
+                      <th className="text-center px-2 py-1.5 font-bold text-gray-700">Status</th>
+                      <th className="text-center px-2 py-1.5 font-bold text-gray-700">Qty</th>
+                      <th className="text-center px-2 py-1.5 font-bold text-gray-700">Trade Options</th>
+                      <th className="text-center px-2 py-1.5 font-bold text-gray-700">Net After Trade</th>
+                      <th className="text-center px-2 py-1.5 font-bold text-gray-700">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {liveSaleCountRecords.map((rec) => (
-                      <tr key={rec.id} className="border-t border-gray-100 hover:bg-gray-50">
-                        <td className="px-2 py-1 text-gray-600 whitespace-nowrap">{rec.count_date.slice(0, 10)}</td>
-                        <td className="px-2 py-1 text-gray-800 max-w-xs truncate">{rec.item_name}</td>
-                        <td className="px-2 py-1 text-center">
-                          {rec.kind === 'loss' && <span className="text-red-600 font-bold text-[10px]">📉 Loss</span>}
-                          {rec.kind === 'gain' && <span className="text-amber-600 font-bold text-[10px]">🚩 Gain</span>}
-                          {!rec.kind && <span className="text-gray-500 text-[10px]">✓ OK</span>}
-                        </td>
-                        <td className="px-2 py-1 text-center">
-                          {rec.tradeOffWith ? (
-                            <span className="text-blue-600 font-bold text-[10px]">
-                              ↔ {rec.tradeOffWith.kind === 'gain' ? 'Gain' : 'Loss'} ({rec.tradeOffWith.qty})
+                    {liveSaleCountRecords.map((rec) => {
+                      const recAny = rec as any
+                      const isLoss = (recAny.loss_qty ?? 0) > 0
+                      const isGain = (recAny.gain_qty ?? 0) > 0
+                      const tradeOff = rec.tradeOffWith
+                      const qty = isLoss ? recAny.loss_qty : isGain ? recAny.gain_qty : rec.quantity_counted
+                      const statusLabel = isLoss ? 'Loss' : isGain ? 'Gain' : 'OK'
+                      const statusColor = isLoss ? 'bg-red-100 text-red-700' : isGain ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700'
+                      const netAfterTrade = tradeOff ? (isLoss ? Math.max(0, qty - tradeOff.qty) : 0) : qty
+                      const netLabel = netAfterTrade === 0 ? 'Settled' : isLoss ? `${netAfterTrade} Loss` : `${netAfterTrade} Gain`
+                      const netColor = netAfterTrade === 0 ? 'text-green-600 font-bold' : isLoss ? 'text-red-600' : 'text-amber-600'
+
+                      return (
+                        <tr key={rec.id} className="border-b border-gray-200 hover:bg-gray-50 transition">
+                          <td className="px-2 py-1.5 text-gray-800 font-semibold max-w-sm truncate">{rec.item_name}</td>
+                          <td className="px-2 py-1.5 text-center text-gray-600 whitespace-nowrap">{rec.count_date.slice(11, 16) || '—'}</td>
+                          <td className="px-2 py-1.5 text-center text-gray-600 whitespace-nowrap">{rec.count_date.slice(0, 10)}</td>
+                          <td className="px-2 py-1.5 text-center">
+                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold whitespace-nowrap inline-block ${statusColor}`}>
+                              {statusLabel}
                             </span>
-                          ) : (
-                            <span className="text-gray-400 text-[10px]">—</span>
-                          )}
-                        </td>
-                        <td className="px-2 py-1 text-center flex gap-1 justify-center">
-                          <button
-                            onClick={() => {
-                              setLiveEditingCountId(rec.id)
-                              setLiveEditCountQty(String(rec.loss_qty ?? rec.quantity_counted ?? ''))
-                              setLiveEditCountNotes(rec.notes ?? '')
-                            }}
-                            className="px-2 py-0.5 text-blue-600 hover:bg-blue-50 rounded text-[10px] font-semibold"
-                            title="Edit count"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (confirm(`Delete count record for ${rec.item_name}?`)) {
-                                setLiveCountDeleteLoading(rec.id)
-                                fetch(`/api/stock/counts/${rec.id}`, {
-                                  method: 'DELETE',
-                                }).then(async (res) => {
-                                  setLiveCountDeleteLoading(null)
-                                  if (res.ok) {
-                                    // Refresh count records by resetting filters or re-fetching
-                                    window.location.reload()
-                                  } else {
-                                    const data = await res.json()
-                                    alert(`Delete failed: ${data.error || 'Unknown error'}`)
-                                  }
-                                }).catch(e => {
-                                  console.error('Delete failed:', e)
-                                  alert('Delete failed: ' + e.message)
-                                  setLiveCountDeleteLoading(null)
-                                })
-                              }
-                            }}
-                            disabled={liveCountDeleteLoading === rec.id}
-                            className="px-2 py-0.5 text-red-600 hover:bg-red-50 rounded text-[10px] font-semibold disabled:opacity-50"
-                            title="Delete count"
-                          >
-                            {liveCountDeleteLoading === rec.id ? '…' : 'Delete'}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="px-2 py-1.5 text-center font-semibold text-gray-800">{qty !== null ? Math.abs(qty).toFixed(2) : '—'}</td>
+                          <td className="px-2 py-1.5 text-center">
+                            {tradeOff ? (
+                              <span className="text-blue-600 font-bold text-[9px]">
+                                ↔ {tradeOff.kind === 'gain' ? '🚩' : '📉'} {tradeOff.qty.toFixed(2)}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400 text-[9px]">—</span>
+                            )}
+                          </td>
+                          <td className={`px-2 py-1.5 text-center font-bold text-[9px] ${netColor}`}>
+                            {netLabel}
+                          </td>
+                          <td className="px-2 py-1.5 text-center flex gap-1 justify-center">
+                            <button
+                              onClick={() => {
+                                setLiveEditingCountId(rec.id)
+                                setLiveEditCountQty(String(recAny.loss_qty ?? recAny.gain_qty ?? rec.quantity_counted ?? ''))
+                                setLiveEditCountNotes(rec.notes ?? '')
+                              }}
+                              className="px-1.5 py-0.5 text-blue-600 hover:bg-blue-50 rounded text-[9px] font-semibold"
+                              title="Edit count"
+                            >
+                              ✎
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (confirm(`Delete count record for ${rec.item_name}?`)) {
+                                  setLiveCountDeleteLoading(rec.id)
+                                  fetch(`/api/stock/counts/${rec.id}`, {
+                                    method: 'DELETE',
+                                  }).then(async (res) => {
+                                    setLiveCountDeleteLoading(null)
+                                    if (res.ok) {
+                                      window.location.reload()
+                                    } else {
+                                      const data = await res.json()
+                                      alert(`Delete failed: ${data.error || 'Unknown error'}`)
+                                    }
+                                  }).catch(e => {
+                                    console.error('Delete failed:', e)
+                                    alert('Delete failed: ' + e.message)
+                                    setLiveCountDeleteLoading(null)
+                                  })
+                                }
+                              }}
+                              disabled={liveCountDeleteLoading === rec.id}
+                              className="px-1.5 py-0.5 text-red-600 hover:bg-red-50 rounded text-[9px] font-semibold disabled:opacity-50"
+                              title="Delete count"
+                            >
+                              {liveCountDeleteLoading === rec.id ? '…' : '✕'}
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
