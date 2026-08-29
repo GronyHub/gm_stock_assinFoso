@@ -282,9 +282,11 @@ type Props = {
   groupFilter: string | null
   search: string
   violation?: string | null
+  jumpToBillId?: number | null
+  onJumpDone?: () => void
 }
 
-function BillsTab({ items, groupFilter, search, violation = null }: Props) {
+function BillsTab({ items, groupFilter, search, violation = null, jumpToBillId, onJumpDone }: Props) {
   const { data: session } = useSession()
   const isOwnerLevelUser = isOwnerLevel(session?.user as any)
   const [bills, setBills] = useState<Bill[]>([])
@@ -389,6 +391,22 @@ function BillsTab({ items, groupFilter, search, violation = null }: Props) {
     )
     return rows
   }, [bills, linesMap])
+
+  // Incoming jump from Item 360's VCP cell (see LossTab.tsx's VcpCell /
+  // ItemDetailPanel's onBillClick) -- same pattern as SalesTab's own
+  // jumpToDate: expand the group if it's currently collapsed, then scroll
+  // that exact bill row into view.
+  useEffect(() => {
+    if (jumpToBillId == null || loading) return
+    const target = flatRows.find(r => r.billId === jumpToBillId)
+    if (target) {
+      const key = `${target.billDate}|${target.vendorName ?? ''}`
+      if (barsOnly) setExpandedIds(prev => new Set(prev).add(key))
+      setTimeout(() => document.getElementById(`billrow-${jumpToBillId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+    }
+    onJumpDone?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jumpToBillId, loading])
 
   // Total extra cost entered against each representative bill id (see
   // bill_expenses' own comment on why one id stands in for a whole

@@ -771,6 +771,13 @@ function ItemHubPageInner() {
   // Sale's own Sales tab.
   const [jumpToReceiptDate, setJumpToReceiptDate] = useState<string | null>(searchParams.get('jumpDate'))
   const [jumpToReceiptItemName, setJumpToReceiptItemName] = useState<string | null>(searchParams.get('jumpItem'))
+  // Seeded from ?jumpBillId= -- Item 360's VCP cell (see LossTab.tsx's
+  // VcpCell / ItemDetailPanel's onBillClick) opens this in a new tab via
+  // /item?tab=loss&view=sales&mode=bills&jumpBillId=..., same pattern as
+  // jumpToReceiptDate above.
+  const [jumpToBillId, setJumpToBillId] = useState<number | null>(
+    searchParams.get('jumpBillId') ? Number(searchParams.get('jumpBillId')) : null
+  )
   const [showItemsLaws, setShowItemsLaws] = useState(() => {
     if (typeof window === 'undefined') return false
     return localStorage.getItem('showItemsLaws') === 'true'
@@ -5123,7 +5130,8 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                 <div className="px-3 pt-3 flex-1 overflow-auto"><BillsAnalyticsSection /></div>
               ) : (
                 <div className="flex-1 overflow-auto">
-                  <BillsTab items={liveSalesBillsItems} groupFilter={liveGroupFilter} search={liveEmbeddedSearch} violation={liveBillsViolationFilter} />
+                  <BillsTab items={liveSalesBillsItems} groupFilter={liveGroupFilter} search={liveEmbeddedSearch} violation={liveBillsViolationFilter}
+                    jumpToBillId={jumpToBillId} onJumpDone={() => setJumpToBillId(null)} />
                 </div>
               )}
             </div>

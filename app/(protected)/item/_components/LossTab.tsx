@@ -178,6 +178,19 @@ function LossGainCells({ value }: { value: number | null }) {
   )
 }
 
+// VCP (Vendor Cost Price) as of this day, from lib/itemDayRows.ts's own
+// per-day bill lookup -- clickable when a source bill exists (onBillClick
+// jumps there), plain text otherwise (no bill yet, or no handler supplied).
+function VcpCell({ vcp, billId, onBillClick }: { vcp: string | null; billId: number | null; onBillClick?: (billId: number) => void }) {
+  if (vcp == null) return <span className="text-gray-300">—</span>
+  const val = parseFloat(vcp)
+  if (isNaN(val)) return <span className="text-gray-300">—</span>
+  if (billId != null && onBillClick) {
+    return <button onClick={() => onBillClick(billId)} className="hover:underline">{fmtN(val)}</button>
+  }
+  return <>{fmtN(val)}</>
+}
+
 /* Omissions: records that should exist but don't, found by cross-checking the
    singles side against the packs side of the same row AND against earlier
    rows. A gain on singles (counted more than expected, e.g. 3 → 46 overnight)
@@ -1002,7 +1015,7 @@ export function MergeItemPicker({ itemId, itemName, typeLabel, mergePool, onMerg
 // externally. Exported so ItemDetailPanel.tsx can also render it standalone
 // on the Item 360 page, with its own equivalents of the pools/records this
 // file builds from its own full-list fetch.
-export function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, mergePool, isOwnerLevelUser, onSaved, onRelationsSaved, onMerged, onDateClick, showPrices, lossOnly, gainOnly, maxRows }: {
+export function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, mergePool, isOwnerLevelUser, onSaved, onRelationsSaved, onMerged, onDateClick, onBillClick, showPrices, lossOnly, gainOnly, maxRows }: {
   item: SummaryRow; groups: string[]; allItems: { item_id: number; item_name: string }[]
   currentAliases: AliasRecord[]; currentMatches: MatchRecord[]
   candidatePool: CandidateItem[]
@@ -1012,6 +1025,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   onRelationsSaved: (aliases: AliasRecord[], matches: MatchRecord[]) => void
   onMerged: () => void
   onDateClick?: (date: string, itemName: string) => void
+  onBillClick?: (billId: number) => void
   showPrices?: boolean
   gainOnly?: boolean
   lossOnly?: boolean
@@ -1069,10 +1083,6 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   // column there is a permanently-empty column, not real information.
   const isGmcItem = item.gmc_type === 'gmc'
   const sp = parseFloat(item.sp ?? '0') || 0
-  // Cost price is a catalog-level field, not tracked per day -- shown as
-  // the same constant value on every row, same convention the (disabled)
-  // pack-chain table's own CP column already used.
-  const cp = parseFloat(item.cp ?? '0') || 0
   const totalLoss = computed ? parseFloat(computed.reduce((s, r) => s + (r.loss ?? 0), 0).toFixed(4)) : 0
   const totalCost = parseFloat((totalLoss * sp).toFixed(2))
   const displayedRows = maxRows && computed ? computed.slice(0, maxRows) : computed
@@ -1408,8 +1418,9 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                 </th>
               ))}
               <th className="px-1 py-0 text-right" title="Direct GMC (internal use) on this item itself">GMC</th>
-              <th className="px-1 py-0 text-right" title="Average direct sale price that day">SP</th>
-              <th className="px-1 py-0 text-right" title="Purchase/cost price (catalog value, same every row)">CP</th>
+              <th className="px-1 py-0 text-right" title="Average direct sale price that day -- click to jump to that day's sales receipt">SP</th>
+              <th className="px-1 py-0 text-right" title="Vendor Cost Price -- most recent real bill on or before this date. Click to jump to that bill">VCP</th>
+              <th className="px-1 py-0 text-right text-purple-600" title="Adjusted Cost Price = VCP + that bill's apportioned Shared Expenses">ACP</th>
               <th className="px-1 py-0 text-right" title="Direct bills/purchases received">BL</th>
               <th className="px-1 py-0 text-left">Alias</th>
             </tr>
@@ -1461,8 +1472,19 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                     </td>
                   ))}
                   {!isService && <td className="px-1 py-0 text-right text-gray-600">{fmtQs(row.gmc_qty)}</td>}
-                  {!isService && <td className="px-1 py-0 text-right text-blue-500">{fmtQs(row.sell_price)}</td>}
-                  {!isService && <td className="px-1 py-0 text-right text-gray-500">{cp > 0 ? fmtN(cp) : <span className="text-gray-300">—</span>}</td>}
+                  {!isService && (
+                    <td className="px-1 py-0 text-right text-blue-500">
+                      {row.sell_price && onDateClick ? (
+                        <button onClick={() => onDateClick(row.date, item.item_name)} className="hover:underline">{fmtQs(row.sell_price)}</button>
+                      ) : fmtQs(row.sell_price)}
+                    </td>
+                  )}
+                  {!isService && (
+                    <td className="px-1 py-0 text-right text-gray-500">
+                      <VcpCell vcp={row.vcp} billId={row.vcp_bill_id} onBillClick={onBillClick} />
+                    </td>
+                  )}
+                  {!isService && <td className="px-1 py-0 text-right text-purple-700">{row.acp != null ? fmtN(parseFloat(row.acp)) : <span className="text-gray-300">—</span>}</td>}
                   {!isService && <td className="px-1 py-0 text-right text-blue-600">{fmtQs(row.bills_qty)}</td>}
                   <td className="px-1 py-0 text-purple-700 font-medium">
                     <span className="block truncate max-w-[180px]" title={row.aliases ?? ''}>{row.aliases ?? <span className="text-gray-300">—</span>}</span>
@@ -1477,7 +1499,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
               <td colSpan={5} />
               <td className={lgCls}>{totalLoss > 0.001 ? `-${fmtN(totalLoss)}` : totalLoss < -0.001 ? `+${fmtN(Math.abs(totalLoss))}` : '0'}</td>
               <td colSpan={2} className={lgCls}>{totalCost > 0.01 ? `-₵${fmtN(totalCost)}` : totalCost < -0.01 ? `+₵${fmtN(Math.abs(totalCost))}` : '0'}</td>
-              <td colSpan={5 + breakdownNames.length} />
+              <td colSpan={6 + breakdownNames.length} />
             </tr>
           </tfoot>
         </table>
@@ -1501,8 +1523,9 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
               {!isService && <th className="px-1 py-0 text-right">Cnt</th>}
               <th className="px-1 py-0 text-right">WIC</th>
               {!isService && <th className="px-1 py-0 text-right">GMC</th>}
-              {!isService && <th className="px-1 py-0 text-right">SP</th>}
-              {!isService && <th className="px-1 py-0 text-right" title="Purchase/cost price (catalog value, same every row)">CP</th>}
+              {!isService && <th className="px-1 py-0 text-right" title="Click to jump to that day's sales receipt">SP</th>}
+              {!isService && <th className="px-1 py-0 text-right" title="Vendor Cost Price -- most recent real bill on or before this date. Click to jump to that bill">VCP</th>}
+              {!isService && <th className="px-1 py-0 text-right text-purple-600" title="Adjusted Cost Price = VCP + that bill's apportioned Shared Expenses">ACP</th>}
               {!isService && <th className="px-1 py-0 text-right">BL</th>}
               {!isService && isGmcItem && <th className="px-1 py-0 text-right" title="Converted in from another item's GMC take">CNV</th>}
               {!isService && <th className="px-1 py-0 text-right">Exp</th>}
@@ -1539,8 +1562,19 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                   </td>}
                   <td className="px-1 py-0 text-right text-gray-600">{fmtQs(row.wic_qty)}</td>
                   {!isService && <td className="px-1 py-0 text-right text-gray-600">{fmtQs(row.gmc_qty)}</td>}
-                  {!isService && <td className="px-1 py-0 text-right text-blue-500">{fmtQs(row.sell_price)}</td>}
-                  {!isService && <td className="px-1 py-0 text-right text-gray-500">{cp > 0 ? fmtN(cp) : <span className="text-gray-300">—</span>}</td>}
+                  {!isService && (
+                    <td className="px-1 py-0 text-right text-blue-500">
+                      {row.sell_price && onDateClick ? (
+                        <button onClick={() => onDateClick(row.date, item.item_name)} className="hover:underline">{fmtQs(row.sell_price)}</button>
+                      ) : fmtQs(row.sell_price)}
+                    </td>
+                  )}
+                  {!isService && (
+                    <td className="px-1 py-0 text-right text-gray-500">
+                      <VcpCell vcp={row.vcp} billId={row.vcp_bill_id} onBillClick={onBillClick} />
+                    </td>
+                  )}
+                  {!isService && <td className="px-1 py-0 text-right text-purple-700">{row.acp != null ? fmtN(parseFloat(row.acp)) : <span className="text-gray-300">—</span>}</td>}
                   {!isService && <td className="px-1 py-0 text-right text-blue-600">{fmtQs(row.bills_qty)}</td>}
                   {!isService && isGmcItem && <td className="px-1 py-0 text-right text-teal-600"><CnvValue qty={row.converted_in_qty} time={row.converted_in_time} /></td>}
                   {!isService && <td className="px-1 py-0 text-right text-gray-400">{fmtN(row.expected_soh)}</td>}
@@ -1556,7 +1590,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
               <td className="pl-1 pr-1 py-0 text-gray-600 sticky left-0 z-10 bg-gray-50 border-r border-gray-200">Total</td>
               {!isService && <td colSpan={2} className={lgCls}>{totalCost > 0.01 ? `-₵${fmtN(totalCost)}` : totalCost < -0.01 ? `+₵${fmtN(Math.abs(totalCost))}` : '0'}</td>}
               {!isService && <td className={lgCls}>{totalLoss > 0.001 ? `-${fmtN(totalLoss)}` : totalLoss < -0.001 ? `+${fmtN(Math.abs(totalLoss))}` : '0'}</td>}
-              <td colSpan={isService ? 2 : 9} />
+              <td colSpan={isService ? 2 : 10} />
             </tr>
           </tfoot>
         </table>

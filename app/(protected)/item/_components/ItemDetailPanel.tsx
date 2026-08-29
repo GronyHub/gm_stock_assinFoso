@@ -216,10 +216,15 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
         onMerged={() => onItemGone?.()}
         // Opened in a new tab rather than navigated to in place -- this
         // popup can be sitting on top of any page (Live Sale, Bills, a PO,
-        // ...), and jumping the current tab to Sales would silently lose
-        // whatever the user was doing there.
+        // ...), and jumping the current tab to Sales/Bills would silently
+        // lose whatever the user was doing there. &mode= is required (not
+        // just &view=) since `view` only opens the Live Sale hub itself --
+        // `mode` is the separate param that picks which of its six modes
+        // (Sale/Log/Sales/Bills/Loss/Count) actually shows.
         onDateClick={(date, itemName) =>
-          window.open(`/item?tab=loss&view=sales&jumpDate=${encodeURIComponent(date)}&jumpItem=${encodeURIComponent(itemName)}`, '_blank')}
+          window.open(`/item?tab=loss&view=sales&mode=sales&jumpDate=${encodeURIComponent(date)}&jumpItem=${encodeURIComponent(itemName)}`, '_blank')}
+        onBillClick={(billId) =>
+          window.open(`/item?tab=loss&view=sales&mode=bills&jumpBillId=${billId}`, '_blank')}
         maxRows={maxRows} />
     </div>
   )
