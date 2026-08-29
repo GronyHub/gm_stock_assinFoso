@@ -161,6 +161,23 @@ function CnvValue({ qty, time }: { qty: string | null; time?: string | null }) {
   )
 }
 
+// A day's cedis-valued loss/gain used to sit in one column, color alone
+// telling the two apart (red = loss, green = gain) -- split into two real
+// columns instead, each showing only its own side and blank otherwise, so
+// "how much did we gain" doesn't require reading color off a shared cell.
+function LossGainCells({ value }: { value: number | null }) {
+  return (
+    <>
+      <td className="px-1 py-0 text-right font-semibold text-red-500">
+        {value !== null && value > 0.01 ? fmtN(value) : <span className="text-gray-300">—</span>}
+      </td>
+      <td className="px-1 py-0 text-right font-semibold text-green-600">
+        {value !== null && value < -0.01 ? fmtN(Math.abs(value)) : <span className="text-gray-300">—</span>}
+      </td>
+    </>
+  )
+}
+
 /* Omissions: records that should exist but don't, found by cross-checking the
    singles side against the packs side of the same row AND against earlier
    rows. A gain on singles (counted more than expected, e.g. 3 → 46 overnight)
@@ -1052,6 +1069,10 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   // column there is a permanently-empty column, not real information.
   const isGmcItem = item.gmc_type === 'gmc'
   const sp = parseFloat(item.sp ?? '0') || 0
+  // Cost price is a catalog-level field, not tracked per day -- shown as
+  // the same constant value on every row, same convention the (disabled)
+  // pack-chain table's own CP column already used.
+  const cp = parseFloat(item.cp ?? '0') || 0
   const totalLoss = computed ? parseFloat(computed.reduce((s, r) => s + (r.loss ?? 0), 0).toFixed(4)) : 0
   const totalCost = parseFloat((totalLoss * sp).toFixed(2))
   const displayedRows = maxRows && computed ? computed.slice(0, maxRows) : computed
@@ -1379,7 +1400,8 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
               <th className="px-1 py-0 text-right text-blue-500" title="Available = previous stock + bills received + converted in">Avail</th>
               <th className="px-1 py-0 text-right" title="Physical count taken that day">Cnt</th>
               <th className="px-1 py-0 text-right" title="Count Loss = Expected − actual count (only on count days)">Loss</th>
-              <th className="px-1 py-0 text-right" title="Loss valued at selling price">₵</th>
+              <th className="px-1 py-0 text-right text-red-500" title="Loss valued at selling price">Loss ₵</th>
+              <th className="px-1 py-0 text-right text-green-600" title="Gain valued at selling price">Gain ₵</th>
               {breakdownNames.map(n => (
                 <th key={n} title={n} className="px-1 py-0 text-right">
                   {shortSourceName(n)}
@@ -1387,6 +1409,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
               ))}
               <th className="px-1 py-0 text-right" title="Direct GMC (internal use) on this item itself">GMC</th>
               <th className="px-1 py-0 text-right" title="Average direct sale price that day">SP</th>
+              <th className="px-1 py-0 text-right" title="Purchase/cost price (catalog value, same every row)">CP</th>
               <th className="px-1 py-0 text-right" title="Direct bills/purchases received">BL</th>
               <th className="px-1 py-0 text-left">Alias</th>
             </tr>
@@ -1431,12 +1454,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                       : row.loss < -0.001 ? <span className="text-green-600">+{fmtN(Math.abs(row.loss))}</span>
                       : <span className="text-gray-400">0</span>}
                   </td>}
-                  {!isService && <td className="px-1 py-0 text-right font-semibold">
-                    {lossVal === null ? <span className="text-gray-300">—</span>
-                      : lossVal > 0.01 ? <span className="text-red-500">-{fmtN(lossVal)}</span>
-                      : lossVal < -0.01 ? <span className="text-green-600">+{fmtN(Math.abs(lossVal))}</span>
-                      : <span className="text-gray-400">0</span>}
-                  </td>}
+                  {!isService && <LossGainCells value={lossVal} />}
                   {breakdownNames.map(n => (
                     <td key={n} className="px-1 py-0 text-right text-gray-600">
                       {fmtQ(row.wic_breakdown?.find(b => b.name === n)?.qty ?? 0)}
@@ -1444,6 +1462,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                   ))}
                   {!isService && <td className="px-1 py-0 text-right text-gray-600">{fmtQs(row.gmc_qty)}</td>}
                   {!isService && <td className="px-1 py-0 text-right text-blue-500">{fmtQs(row.sell_price)}</td>}
+                  {!isService && <td className="px-1 py-0 text-right text-gray-500">{cp > 0 ? fmtN(cp) : <span className="text-gray-300">—</span>}</td>}
                   {!isService && <td className="px-1 py-0 text-right text-blue-600">{fmtQs(row.bills_qty)}</td>}
                   <td className="px-1 py-0 text-purple-700 font-medium">
                     <span className="block truncate max-w-[180px]" title={row.aliases ?? ''}>{row.aliases ?? <span className="text-gray-300">—</span>}</span>
@@ -1457,8 +1476,8 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
               <td className="pl-1 pr-1 py-0 text-gray-600 sticky left-0 z-10 bg-gray-50 border-r border-gray-200">Total</td>
               <td colSpan={5} />
               <td className={lgCls}>{totalLoss > 0.001 ? `-${fmtN(totalLoss)}` : totalLoss < -0.001 ? `+${fmtN(Math.abs(totalLoss))}` : '0'}</td>
-              <td className={lgCls}>{totalCost > 0.01 ? `-₵${fmtN(totalCost)}` : totalCost < -0.01 ? `+₵${fmtN(Math.abs(totalCost))}` : '0'}</td>
-              <td colSpan={4 + breakdownNames.length} />
+              <td colSpan={2} className={lgCls}>{totalCost > 0.01 ? `-₵${fmtN(totalCost)}` : totalCost < -0.01 ? `+₵${fmtN(Math.abs(totalCost))}` : '0'}</td>
+              <td colSpan={5 + breakdownNames.length} />
             </tr>
           </tfoot>
         </table>
@@ -1476,12 +1495,14 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
             <thead>
               <tr className="bg-gray-50 text-gray-500 text-[8px] font-bold uppercase tracking-tighter border-b border-gray-200">
                 <th className="pl-1 pr-1 py-0 text-left whitespace-nowrap sticky left-0 z-10 bg-gray-50 border-r border-gray-200">Date</th>
-              {!isService && <th className="px-1 py-0 text-right">₵</th>}
+              {!isService && <th className="px-1 py-0 text-right text-red-500">Loss ₵</th>}
+              {!isService && <th className="px-1 py-0 text-right text-green-600">Gain ₵</th>}
               {!isService && <th className="px-1 py-0 text-right">L/G</th>}
               {!isService && <th className="px-1 py-0 text-right">Cnt</th>}
               <th className="px-1 py-0 text-right">WIC</th>
               {!isService && <th className="px-1 py-0 text-right">GMC</th>}
               {!isService && <th className="px-1 py-0 text-right">SP</th>}
+              {!isService && <th className="px-1 py-0 text-right" title="Purchase/cost price (catalog value, same every row)">CP</th>}
               {!isService && <th className="px-1 py-0 text-right">BL</th>}
               {!isService && isGmcItem && <th className="px-1 py-0 text-right" title="Converted in from another item's GMC take">CNV</th>}
               {!isService && <th className="px-1 py-0 text-right">Exp</th>}
@@ -1506,27 +1527,23 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                       </button>
                     ) : shortItemDate(row.date)}
                   </td>
-                  <td className="px-1 py-0 text-right font-semibold">
-                    {lossVal === null ? <span className="text-gray-300">—</span>
-                      : lossVal > 0.01 ? <span className="text-red-500">-{fmtN(lossVal)}</span>
-                      : lossVal < -0.01 ? <span className="text-green-600">+{fmtN(Math.abs(lossVal))}</span>
-                      : <span className="text-gray-400">0</span>}
-                  </td>
-                  <td className="px-1 py-0 text-right font-semibold">
+                  {!isService && <LossGainCells value={lossVal} />}
+                  {!isService && <td className="px-1 py-0 text-right font-semibold">
                     {row.loss === null ? <span className="text-gray-300">—</span>
                       : row.loss > 0.001 ? <span className="text-red-500">-{fmtN(row.loss)}</span>
                       : row.loss < -0.001 ? <span className="text-green-600">+{fmtN(Math.abs(row.loss))}</span>
                       : <span className="text-gray-400">0</span>}
-                  </td>
-                  <td className="px-1 py-0 text-right text-gray-900 whitespace-nowrap">
+                  </td>}
+                  {!isService && <td className="px-1 py-0 text-right text-gray-900 whitespace-nowrap">
                     <CntValue qty={row.qty_counted} countedBy={row.counted_by} countedAt={row.counted_at} history={row.count_history} />
-                  </td>
+                  </td>}
                   <td className="px-1 py-0 text-right text-gray-600">{fmtQs(row.wic_qty)}</td>
-                  <td className="px-1 py-0 text-right text-gray-600">{fmtQs(row.gmc_qty)}</td>
-                  <td className="px-1 py-0 text-right text-blue-500">{fmtQs(row.sell_price)}</td>
-                  <td className="px-1 py-0 text-right text-blue-600">{fmtQs(row.bills_qty)}</td>
+                  {!isService && <td className="px-1 py-0 text-right text-gray-600">{fmtQs(row.gmc_qty)}</td>}
+                  {!isService && <td className="px-1 py-0 text-right text-blue-500">{fmtQs(row.sell_price)}</td>}
+                  {!isService && <td className="px-1 py-0 text-right text-gray-500">{cp > 0 ? fmtN(cp) : <span className="text-gray-300">—</span>}</td>}
+                  {!isService && <td className="px-1 py-0 text-right text-blue-600">{fmtQs(row.bills_qty)}</td>}
                   {!isService && isGmcItem && <td className="px-1 py-0 text-right text-teal-600"><CnvValue qty={row.converted_in_qty} time={row.converted_in_time} /></td>}
-                  <td className="px-1 py-0 text-right text-gray-400">{fmtN(row.expected_soh)}</td>
+                  {!isService && <td className="px-1 py-0 text-right text-gray-400">{fmtN(row.expected_soh)}</td>}
                   <td className="px-1 py-0 text-purple-700 font-medium">
                     <span className="block truncate max-w-[180px]" title={row.aliases ?? ''}>{row.aliases ?? <span className="text-gray-300">—</span>}</span>
                   </td>
@@ -1537,9 +1554,9 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
           <tfoot>
             <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold text-[9px]">
               <td className="pl-1 pr-1 py-0 text-gray-600 sticky left-0 z-10 bg-gray-50 border-r border-gray-200">Total</td>
-              {!isService && <td className={lgCls}>{totalCost > 0.01 ? `-₵${fmtN(totalCost)}` : totalCost < -0.01 ? `+₵${fmtN(Math.abs(totalCost))}` : '0'}</td>}
+              {!isService && <td colSpan={2} className={lgCls}>{totalCost > 0.01 ? `-₵${fmtN(totalCost)}` : totalCost < -0.01 ? `+₵${fmtN(Math.abs(totalCost))}` : '0'}</td>}
               {!isService && <td className={lgCls}>{totalLoss > 0.001 ? `-${fmtN(totalLoss)}` : totalLoss < -0.001 ? `+${fmtN(Math.abs(totalLoss))}` : '0'}</td>}
-              <td colSpan={isService ? 2 : 8} />
+              <td colSpan={isService ? 2 : 9} />
             </tr>
           </tfoot>
         </table>
