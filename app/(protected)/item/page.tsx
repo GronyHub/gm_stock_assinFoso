@@ -832,9 +832,9 @@ function ItemHubPageInner() {
   const [liveItemSortOrder, setLiveItemSortOrder] = useState<ItemSortKey[]>(DEFAULT_ITEM_SORT_ORDER)
   const [liveSortOrderModalOpen, setLiveSortOrderModalOpen] = useState(false)
   const rawLiveMode = searchParams.get('mode')
-  const initialLiveMode = (rawLiveMode as 'sale' | 'sales' | 'bills' | 'log' | 'count' | null) ?? 'sale'
-  const [liveMode, setLiveMode] = useState<'sale' | 'sales' | 'bills' | 'log' | 'count'>(initialLiveMode)
-  const [itemsPageMode, setItemsPageMode] = useState<'sale' | 'sales' | 'bills' | 'log' | 'count'>(initialLiveMode)
+  const initialLiveMode = (rawLiveMode as 'sale' | 'sales' | 'bills' | 'log' | null) ?? 'sale'
+  const [liveMode, setLiveMode] = useState<'sale' | 'sales' | 'bills' | 'log'>(initialLiveMode)
+  const [itemsPageMode, setItemsPageMode] = useState<'sale' | 'sales' | 'bills' | 'log'>(initialLiveMode)
   const rawLiveSalesViolation = searchParams.get('liveSalesViolation')
   const rawLiveBillsViolation = searchParams.get('liveBillsViolation')
   const [liveSalesViolationFilter, setLiveSalesViolationFilter] = useState<string | null>(rawLiveSalesViolation ?? null)
@@ -859,6 +859,9 @@ function ItemHubPageInner() {
   const rawLiveEmbeddedSearch = searchParams.get('liveSearch')
   const [liveEmbeddedSearch, setLiveEmbeddedSearch] = useState(rawLiveEmbeddedSearch ?? '')
   const [liveShowOnlyDueForCount, setLiveShowOnlyDueForCount] = useState(false)
+  const [liveShowCountedNoLoss, setLiveShowCountedNoLoss] = useState(false)
+  const [liveShowCountedWithLoss, setLiveShowCountedWithLoss] = useState(false)
+  const [liveShowCountedWithGains, setLiveShowCountedWithGains] = useState(false)
   const rawSidePaneHidden = searchParams.get('sidebarHidden')
   const initialSidePaneHidden = rawSidePaneHidden === '1'
   const [sidePaneHidden, setSidePaneHidden] = useState(initialSidePaneHidden)
@@ -870,10 +873,10 @@ function ItemHubPageInner() {
   // Live Sale's own tabs). Seq is a plain incrementing counter so the same
   // tab can be jumped to twice in a row and still fire.
   const [liveSaleJumpSeq, setLiveSaleJumpSeq] = useState(0)
-  const [liveSaleJumpTab, setLiveSaleJumpTab] = useState<'sale' | 'sales' | 'bills' | 'count' | 'log'>('sale')
+  const [liveSaleJumpTab, setLiveSaleJumpTab] = useState<'sale' | 'sales' | 'bills' | 'log'>('sale')
   const [liveSaleJumpViolation, setLiveSaleJumpViolation] = useState<string | null>(null)
   const [liveSaleJumpSearch, setLiveSaleJumpSearch] = useState<string | null>(null)
-  function jumpToLiveSaleTab(tab: 'sale' | 'sales' | 'bills' | 'count' | 'log', violation: string | null = null, search: string | null = null) {
+  function jumpToLiveSaleTab(tab: 'sale' | 'sales' | 'bills' | 'log', violation: string | null = null, search: string | null = null) {
     pickLossView('sales')
     setLiveSaleJumpTab(tab)
     setLiveSaleJumpViolation(violation)
@@ -895,7 +898,7 @@ function ItemHubPageInner() {
   // above) -- can't call jumpToLiveSaleTab directly from that initializer
   // since it isn't defined yet that early in the component.
   useEffect(() => {
-    if (rawInitialTab === 'losses') jumpToLiveSaleTab('count')
+    if (rawInitialTab === 'losses') jumpToLiveSaleTab('sale')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -1596,7 +1599,7 @@ function ItemHubPageInner() {
     // The loss-summary rows point at Count Records (the old Loss by Date
     // feed folded into it), one of Live Sale's own embedded tabs now, not a
     // plain lossView.
-    if (key === '__loss_feed') { jumpToLiveSaleTab('count'); return }
+    if (key === '__loss_feed') { jumpToLiveSaleTab('sale'); return }
     // The Advert section's own checks (audio adverts, jingle, equipment)
     // now route straight to their exact row instead of just landing
     // somewhere in Manage's section generally.
@@ -1614,10 +1617,15 @@ function ItemHubPageInner() {
     if (key === 'daily' || key === '7day' || key === '15day') { jumpToLiveSaleTab('sale'); return }
     const targetView = VIOLATION_HOME[key]
     if (!targetView) return
-    // Sales/Bills/gains pills all land inside one of Live Sale's own
+    // Sales/Bills pills all land inside one of Live Sale's own
     // embedded tabs now, rather than a plain lossView -- see jumpToLiveSaleTab.
-    if (targetView === 'sales' || targetView === 'bills' || targetView === 'count') {
+    if (targetView === 'sales' || targetView === 'bills') {
       jumpToLiveSaleTab(targetView, key)
+      return
+    }
+    // Count records now display in Sale mode via checkboxes
+    if (targetView === 'count') {
+      jumpToLiveSaleTab('sale', key)
       return
     }
     pickLossView(targetView)
@@ -2110,14 +2118,6 @@ function ItemHubPageInner() {
     setLiveMode(liveSaleJumpTab)
     setLiveSalesViolationFilter(liveSaleJumpTab === 'sales' ? liveSaleJumpViolation : null)
     setLiveBillsViolationFilter(liveSaleJumpTab === 'bills' ? liveSaleJumpViolation : null)
-    // The 'gains' violation pill is the one way the old Loss by Date's own
-    // filter (not a violation key it understands) needs setting on arrival
-    // -- every other loss-feed jump defaults back to the Losses side, into
-    // Count Records rather than the interval buckets.
-    if (liveSaleJumpTab === 'count') {
-      setLiveCountView({ kind: 'records' })
-      setLiveCountRecordFilter(liveSaleJumpViolation === 'gains' ? 'gain' : 'loss')
-    }
     setLiveEmbeddedSearch(liveSaleJumpSearch ?? '')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveSaleJumpSeq])
@@ -2338,11 +2338,6 @@ function ItemHubPageInner() {
           setLiveBillsViolationFilter(v.key)
         }
       })))
-    }
-
-    // Count interval flags (for Count mode)
-    if (liveMode === 'count') {
-      flags.push(...liveCountIntervalFlags)
     }
 
     return flags
@@ -3722,7 +3717,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         <button type="button" onClick={() => { setItemsPageMode('sale'); setLiveMode('sale') }} title="Sale" className={btnCls(itemsPageMode === 'sale', 'bg-blue-600')}>Sale</button>
         <button type="button" onClick={() => { setItemsPageMode('log'); setLiveMode('log') }} title="Log" className={btnCls(itemsPageMode === 'log', 'bg-gray-700')}>Log</button>
         <button type="button" onClick={() => { setItemsPageMode('sales'); setLiveMode('sales') }} title="Sales" className={btnCls(itemsPageMode === 'sales', 'bg-emerald-600')}>Sales</button>
-        <button type="button" onClick={() => { setItemsPageMode('count'); setLiveMode('count') }} title="Count" className={btnCls(itemsPageMode === 'count', 'bg-indigo-600')}>Count</button>
         <button type="button" onClick={() => { setItemsPageMode('bills'); setLiveMode('bills') }} title="Bills" className={btnCls(itemsPageMode === 'bills', 'bg-orange-600')}>Bills</button>
       </div>
     )
@@ -4694,12 +4688,26 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       </optgroup>
                     )}
                   </select>
-                  {/* "Due for Count" filter for Sale mode */}
+                  {/* "Due for Count" and "Counted" filters for Sale mode */}
                   {liveMode === 'sale' && (
-                    <label className="flex items-center gap-1.5 px-2 py-1 rounded bg-amber-400 hover:bg-amber-500 text-amber-900 font-semibold text-xs cursor-pointer transition whitespace-nowrap">
-                      <input type="checkbox" checked={liveShowOnlyDueForCount} onChange={() => setLiveShowOnlyDueForCount(d => !d)} className="cursor-pointer" />
-                      🔄 Due
-                    </label>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <label className="flex items-center gap-1.5 px-2 py-1 rounded bg-amber-400 hover:bg-amber-500 text-amber-900 font-semibold text-xs cursor-pointer transition whitespace-nowrap">
+                        <input type="checkbox" checked={liveShowOnlyDueForCount} onChange={() => setLiveShowOnlyDueForCount(d => !d)} className="cursor-pointer" />
+                        🔄 Due
+                      </label>
+                      <label className="flex items-center gap-1.5 px-2 py-1 rounded bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold text-xs cursor-pointer transition whitespace-nowrap">
+                        <input type="checkbox" checked={liveShowCountedNoLoss} onChange={() => setLiveShowCountedNoLoss(d => !d)} className="cursor-pointer" />
+                        ✓ Counted
+                      </label>
+                      <label className="flex items-center gap-1.5 px-2 py-1 rounded bg-red-400 hover:bg-red-500 text-red-900 font-semibold text-xs cursor-pointer transition whitespace-nowrap">
+                        <input type="checkbox" checked={liveShowCountedWithLoss} onChange={() => setLiveShowCountedWithLoss(d => !d)} className="cursor-pointer" />
+                        📉 Loss
+                      </label>
+                      <label className="flex items-center gap-1.5 px-2 py-1 rounded bg-amber-500 hover:bg-amber-600 text-amber-900 font-semibold text-xs cursor-pointer transition whitespace-nowrap">
+                        <input type="checkbox" checked={liveShowCountedWithGains} onChange={() => setLiveShowCountedWithGains(d => !d)} className="cursor-pointer" />
+                        🚩 Gains
+                      </label>
+                    </div>
                   )}
                 </div>
               )}
@@ -5184,151 +5192,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               table), and Count History (the audit log of who counted/edited/
               deleted what). Moved to its own tab since they're audit/browse
               views, not part of actually tapping a sale. */}
-          {liveMode === 'count' && (() => {
-            const intervalItems = liveCountView?.kind === 'interval'
-              ? liveAllItems.filter(it => it.count_interval === liveCountView.label)
-              : []
-            return (
-              <div className={liveRootClassName}>
-                {liveExpanded && (
-                  <button
-                    type="button"
-                    onClick={() => setLiveExpanded(false)}
-                    title="Exit large screen"
-                    className="fixed top-2 right-2 z-[60] w-8 h-8 rounded-full bg-gray-900/80 text-white text-sm font-bold flex items-center justify-center shadow-lg hover:bg-gray-900 transition"
-                  >
-                    ✕
-                  </button>
-                )}
-                {renderModeToggleRow()}
-                <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
-                  <h2 className="text-sm font-bold text-gray-900">Count</h2>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {/* Count Records doubles as the old Loss by Date feed -- these
-                        controls (search, the All/Losses/Gains filter, and Analytics)
-                        only make sense there, not on the interval buckets or the
-                        audit log. */}
-                    {liveCountView?.kind === 'records' && (<>
-                      <input
-                        type="text"
-                        value={liveEmbeddedSearch}
-                        onChange={e => setLiveEmbeddedSearch(e.target.value)}
-                        placeholder="Search…"
-                        className="text-xs px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 w-32"
-                      />
-                      <div className="inline-flex bg-gray-200 rounded-lg p-0.5">
-                        <button type="button" onClick={() => setLiveCountRecordFilter('all')}
-                          className={`px-2 py-1 text-[10px] font-bold rounded-md transition ${liveCountRecordFilter === 'all' ? 'bg-gray-700 text-white' : 'text-gray-500 hover:text-gray-700'}`}>
-                          All
-                        </button>
-                        <button type="button" onClick={() => setLiveCountRecordFilter('loss')}
-                          className={`px-2 py-1 text-[10px] font-bold rounded-md transition ${liveCountRecordFilter === 'loss' ? 'bg-red-600 text-white' : 'text-gray-500 hover:text-gray-700'}`}>
-                          Losses
-                        </button>
-                        <button type="button" onClick={() => setLiveCountRecordFilter('gain')}
-                          className={`px-2 py-1 text-[10px] font-bold rounded-md transition ${liveCountRecordFilter === 'gain' ? 'bg-amber-600 text-white' : 'text-gray-500 hover:text-gray-700'}`}>
-                          🚩 Gains
-                        </button>
-                      </div>
-                      <button type="button" onClick={() => setLiveCountShowAnalytics(a => !a)}
-                        title="Analytics"
-                        className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${liveCountShowAnalytics ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                        📊
-                      </button>
-                    </>)}
-                    <button
-                      type="button"
-                      onClick={() => setLiveHelpModalOpen(true)}
-                      className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 font-semibold text-sm flex items-center justify-center transition"
-                      title="Help"
-                    >
-                      ?
-                    </button>
-                  </div>
-                </div>
-                <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 shrink-0"><AssignWidget type="flags" /></div>
-                <div className="px-4 py-2 border-b border-gray-200 bg-white flex items-center gap-1.5 flex-wrap">
-                  {liveCountIntervalFlags.map(f => (
-                    <button key={f.key} type="button" onClick={f.onViewClick}
-                      className={`text-xs font-semibold px-2 py-1 rounded-full transition ${f.active ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                      {f.label} ({f.count})
-                    </button>
-                  ))}
-                  <button type="button" onClick={() => setLiveCountView(liveCountView?.kind === 'records' ? null : { kind: 'records' })}
-                    className={`text-xs font-semibold px-2 py-1 rounded-full transition ${liveCountView?.kind === 'records' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                    Count Records
-                  </button>
-                  <button type="button" onClick={() => setLiveCountView(liveCountView?.kind === 'history' ? null : { kind: 'history' })}
-                    className={`text-xs font-semibold px-2 py-1 rounded-full transition ${liveCountView?.kind === 'history' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                    Count History
-                  </button>
-                </div>
-                <div className="flex-1 min-h-0 overflow-y-auto">
-                  {!liveCountView && (
-                    <p className="py-16 text-center text-gray-400 text-xs">Pick a category above to view its items.</p>
-                  )}
-                  {liveCountView?.kind === 'interval' && (
-                    intervalItems.length === 0 ? (
-                      <p className="py-16 text-center text-gray-400 text-xs">No items in &quot;{liveCountView.label}&quot;.</p>
-                    ) : (
-                      <table className="w-full text-[11px] border-collapse">
-                        <thead className="sticky top-0 bg-gray-100 z-10">
-                          <tr>
-                            <th className="text-left px-2 py-1 font-bold text-gray-600">Item</th>
-                            <th className="text-left px-2 py-1 font-bold text-gray-600">Group</th>
-                            <th className="text-right px-2 py-1 font-bold text-gray-600">SOH</th>
-                            <th className="text-right px-2 py-1 font-bold text-gray-600">SP</th>
-                            <th className="text-right px-2 py-1 font-bold text-gray-600">CP</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {intervalItems.map(it => (
-                            <tr key={it.id} className="border-b border-gray-100 hover:bg-gray-50">
-                              <td className="px-2 py-1 font-medium">{renderClickableItemName(it.name, 'text-gray-900')}</td>
-                              <td className="px-2 py-1 text-gray-500">{it.group ?? '—'}</td>
-                              <td className="px-2 py-1 text-right text-gray-700">{it.soh}</td>
-                              <td className="px-2 py-1 text-right text-gray-700">{it.selling_price}</td>
-                              <td className="px-2 py-1 text-right text-gray-700">{it.cost_price}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )
-                  )}
-                  {liveCountView?.kind === 'records' && (
-                    liveCountShowAnalytics ? (
-                      <div className="px-3 pt-3"><LossFeedAnalyticsSection /></div>
-                    ) : (<>
-                      <div className="grid grid-cols-5 gap-0.5 px-2 pt-1 shrink-0">
-                        {liveCountLossSummary.map(r => (
-                          <div key={r.label} className="bg-white border border-gray-200 rounded px-1 py-0.5 text-center">
-                            <p className="text-[7px] text-gray-400 truncate">{r.label}</p>
-                            <p className={`text-[8px] font-bold ${r.period.n > 0 ? 'text-red-600' : 'text-green-600'}`}>₵{fmtN(r.period.amt)}</p>
-                          </div>
-                        ))}
-                      </div>
-                      {renderCountRecordsTable()}
-                    </>)
-                  )}
-                  {liveCountView?.kind === 'history' && (
-                    <div className="flex-1 min-h-0 flex flex-col px-4 py-4">
-                      <HistoryPanel
-                        keywords={['stock', 'count']}
-                        onEntryClick={(log) => {
-                          if (!log.details) return
-                          // Extract item name from details (format: "Item Name · rest" or "Item Name by rest")
-                          const itemName = log.details.split(/\s*·|\s+by\s+/)[0].trim()
-                          const item = liveAllItems.find(it => it.name.toLowerCase() === itemName.toLowerCase())
-                          if (item) setLiveViewingItemId(item.id)
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
-          })()}
-
           {/* Sale mode (the default/landing mode) */}
           {liveMode === 'sale' && (<>
           {liveDebugLogs.length > 0 && (
@@ -5419,7 +5282,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       <optgroup label="Settings">
                         <option value="settings:sortorder">⇅ Arrange Item Order</option>
                       </optgroup>
-                      <optgroup label={liveMode === 'sale' || liveMode === 'log' ? 'Items' : (liveMode === 'sales' ? 'Sales' : (liveMode === 'bills' ? 'Bills' : 'Count'))}>
+                      <optgroup label={liveMode === 'sale' || liveMode === 'log' ? 'Items' : (liveMode === 'sales' ? 'Sales' : 'Bills')}>
                         {liveComputedFlags.filter(f => f.key.startsWith('flag_') || f.key.startsWith('violation_')).map(f => (
                           <option key={f.key} value={`violation:${f.key}`}>
                             {f.label} ({f.count})
