@@ -862,6 +862,7 @@ function ItemHubPageInner() {
   const [liveShowCountedNoLoss, setLiveShowCountedNoLoss] = useState(false)
   const [liveShowCountedWithLoss, setLiveShowCountedWithLoss] = useState(false)
   const [liveShowCountedWithGains, setLiveShowCountedWithGains] = useState(false)
+  const [liveCountDeleteLoading, setLiveCountDeleteLoading] = useState<number | null>(null)
   const rawSidePaneHidden = searchParams.get('sidebarHidden')
   const initialSidePaneHidden = rawSidePaneHidden === '1'
   const [sidePaneHidden, setSidePaneHidden] = useState(initialSidePaneHidden)
@@ -2892,14 +2893,14 @@ function ItemHubPageInner() {
     return Array.from(groups.entries()).sort(([a], [b]) => b.localeCompare(a))
   }, [liveCountRecords, liveCountRecordFilter, liveEmbeddedSearch])
 
-  // Sale mode count records display - consolidates losses and gains per item
-  // Each item shows: total loss qty, total gain qty, and net (loss - gain).
-  // Eliminates redundant back-and-forth entries and reveals true net variance.
+  // Sale mode count records display - shows individual records with trade-off matching
+  // Each record shows when it was counted, item, status, and whether it can be offset
+  // by a gain/loss of the same item from a different count
   const liveSaleCountRecords = useMemo(() => {
     if (!liveShowCountedNoLoss && !liveShowCountedWithLoss && !liveShowCountedWithGains) return []
     const q = liveEmbeddedSearch.trim().toLowerCase()
 
-    // First filter records by the checkbox filters and search
+    // Filter records by checkbox filters and search
     const filtered = liveCountRecords.filter(rec => {
       const isNoLoss = rec.kind !== 'loss' && rec.kind !== 'gain'
       const isLoss = rec.kind === 'loss'
@@ -2915,63 +2916,37 @@ function ItemHubPageInner() {
       return true
     })
 
-    // Group by item_id and consolidate: sum losses, sum gains, calculate net
-    type ConsolidatedItem = {
-      item_id: number | null
-      item_name: string
-      total_loss: number
-      total_gain: number
-      net: number
-      record_count: number
-      has_unbalanced: boolean
+    // For each record, find potential trade-off opportunities with other records
+    type RecordWithTradeOff = typeof filtered[0] & {
+      tradeOffWith?: { id: number; kind: 'loss' | 'gain' | null; qty: number; date: string }
     }
 
-    const byItemId = new Map<number | null, ConsolidatedItem>()
-    for (const rec of filtered) {
-      const key = rec.item_id
-      if (!byItemId.has(key)) {
-        byItemId.set(key, {
-          item_id: key,
-          item_name: rec.item_name,
-          total_loss: 0,
-          total_gain: 0,
-          net: 0,
-          record_count: 0,
-          has_unbalanced: false,
-        })
-      }
-
-      const entry = byItemId.get(key)!
-      entry.record_count++
-
-      // loss_qty can be positive (loss) or negative (gain), or null
-      const qty = rec.loss_qty ?? 0
-      if (rec.kind === 'loss' && qty > 0) {
-        entry.total_loss += qty
-      } else if (rec.kind === 'gain' && qty !== 0) {
-        entry.total_gain += Math.abs(qty)
-      }
-
-      // Mark items with unbalanced loss/gain as needing attention
+    const withTradeOffs: RecordWithTradeOff[] = filtered.map(rec => {
+      // For loss records, find gains of same item; for gains, find losses
       if (rec.kind === 'loss' || rec.kind === 'gain') {
-        entry.has_unbalanced = true
+        const targetKind = rec.kind === 'loss' ? 'gain' : 'loss'
+        const opposite = liveCountRecords.find(other =>
+          other.item_id === rec.item_id &&
+          other.id !== rec.id &&
+          other.kind === targetKind
+        )
+        if (opposite) {
+          return {
+            ...rec,
+            tradeOffWith: {
+              id: opposite.id,
+              kind: opposite.kind,
+              qty: Math.abs(opposite.loss_qty ?? 0),
+              date: opposite.count_date.slice(0, 10),
+            }
+          }
+        }
       }
-    }
-
-    // Calculate net for each item
-    for (const entry of byItemId.values()) {
-      entry.net = entry.total_loss - entry.total_gain
-    }
-
-    // Return as sorted array, newest items first
-    return Array.from(byItemId.values()).sort((a, b) => {
-      // Prioritize unbalanced items (where loss !== gain)
-      if (a.has_unbalanced !== b.has_unbalanced) return a.has_unbalanced ? -1 : 1
-      // Then by net loss amount (highest first)
-      if (a.net !== b.net) return b.net - a.net
-      // Finally by item name
-      return a.item_name.localeCompare(b.item_name)
+      return rec
     })
+
+    // Sort by count_date descending (newest first)
+    return withTradeOffs.sort((a, b) => b.count_date.localeCompare(a.count_date))
   }, [liveCountRecords, liveShowCountedNoLoss, liveShowCountedWithLoss, liveShowCountedWithGains, liveEmbeddedSearch])
 
   // All-Time/Yesterday/This Week/Month/Year loss totals -- same period
@@ -5544,42 +5519,170 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               </div>
             )}
 
-            {/* Count Records Display - consolidated by item (losses netted against gains) */}
+            {/* Count Records Display - individual records with trade-off matching */}
             {(liveShowCountedNoLoss || liveShowCountedWithLoss || liveShowCountedWithGains) && liveSaleCountRecords.length > 0 && (
               <div className="flex-1 overflow-y-auto">
                 <div className="px-2 pt-2 pb-1 text-xs font-bold text-gray-600 sticky top-0 bg-gray-50">
-                  Count Reconciliation (Losses Netted Against Gains)
+                  Count Records
                 </div>
                 <table className="w-full text-[11px]">
                   <thead>
                     <tr className="bg-gray-50 sticky top-6">
-                      <th className="text-left px-2 py-1 font-bold">Item</th>
-                      <th className="text-right px-2 py-1 font-bold">Loss Qty</th>
-                      <th className="text-right px-2 py-1 font-bold">Gain Qty</th>
-                      <th className="text-right px-2 py-1 font-bold">Net</th>
+                      <th className="text-left px-2 py-1 font-bold">Time of Count</th>
+                      <th className="text-left px-2 py-1 font-bold">Item Name</th>
                       <th className="text-center px-2 py-1 font-bold">Status</th>
+                      <th className="text-center px-2 py-1 font-bold">Trade-off</th>
+                      <th className="text-center px-2 py-1 font-bold">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {liveSaleCountRecords.map((item, idx) => (
-                      <tr key={idx} className="border-t border-gray-100 hover:bg-gray-50">
-                        <td className="px-2 py-1 text-gray-800 max-w-xs truncate">{item.item_name}</td>
-                        <td className="px-2 py-1 text-right text-red-600 font-semibold">{item.total_loss > 0 ? item.total_loss : '–'}</td>
-                        <td className="px-2 py-1 text-right text-amber-600 font-semibold">{item.total_gain > 0 ? item.total_gain : '–'}</td>
-                        <td className="px-2 py-1 text-right font-bold">
-                          {item.net > 0 && <span className="text-red-600">-{item.net}</span>}
-                          {item.net < 0 && <span className="text-amber-600">+{Math.abs(item.net)}</span>}
-                          {item.net === 0 && <span className="text-gray-500">0</span>}
+                    {liveSaleCountRecords.map((rec) => (
+                      <tr key={rec.id} className="border-t border-gray-100 hover:bg-gray-50">
+                        <td className="px-2 py-1 text-gray-600 whitespace-nowrap">{rec.count_date.slice(0, 10)}</td>
+                        <td className="px-2 py-1 text-gray-800 max-w-xs truncate">{rec.item_name}</td>
+                        <td className="px-2 py-1 text-center">
+                          {rec.kind === 'loss' && <span className="text-red-600 font-bold text-[10px]">📉 Loss</span>}
+                          {rec.kind === 'gain' && <span className="text-amber-600 font-bold text-[10px]">🚩 Gain</span>}
+                          {!rec.kind && <span className="text-gray-500 text-[10px]">✓ OK</span>}
                         </td>
                         <td className="px-2 py-1 text-center">
-                          {item.net > 0 && <span className="text-red-600 font-bold">🔴 Loss</span>}
-                          {item.net < 0 && <span className="text-amber-600 font-bold">🟡 Gain</span>}
-                          {item.net === 0 && <span className="text-gray-500 font-bold">✅ Balanced</span>}
+                          {rec.tradeOffWith ? (
+                            <span className="text-blue-600 font-bold text-[10px]">
+                              ↔ {rec.tradeOffWith.kind === 'gain' ? 'Gain' : 'Loss'} ({rec.tradeOffWith.qty})
+                            </span>
+                          ) : (
+                            <span className="text-gray-400 text-[10px]">—</span>
+                          )}
+                        </td>
+                        <td className="px-2 py-1 text-center flex gap-1 justify-center">
+                          <button
+                            onClick={() => {
+                              setLiveEditingCountId(rec.id)
+                              setLiveEditCountQty(String(rec.loss_qty ?? rec.quantity_counted ?? ''))
+                              setLiveEditCountNotes(rec.notes ?? '')
+                            }}
+                            className="px-2 py-0.5 text-blue-600 hover:bg-blue-50 rounded text-[10px] font-semibold"
+                            title="Edit count"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm(`Delete count record for ${rec.item_name}?`)) {
+                                setLiveCountDeleteLoading(rec.id)
+                                fetch(`/api/stock/counts/${rec.id}`, {
+                                  method: 'DELETE',
+                                }).then(async (res) => {
+                                  setLiveCountDeleteLoading(null)
+                                  if (res.ok) {
+                                    // Refresh count records by resetting filters or re-fetching
+                                    window.location.reload()
+                                  } else {
+                                    const data = await res.json()
+                                    alert(`Delete failed: ${data.error || 'Unknown error'}`)
+                                  }
+                                }).catch(e => {
+                                  console.error('Delete failed:', e)
+                                  alert('Delete failed: ' + e.message)
+                                  setLiveCountDeleteLoading(null)
+                                })
+                              }
+                            }}
+                            disabled={liveCountDeleteLoading === rec.id}
+                            className="px-2 py-0.5 text-red-600 hover:bg-red-50 rounded text-[10px] font-semibold disabled:opacity-50"
+                            title="Delete count"
+                          >
+                            {liveCountDeleteLoading === rec.id ? '…' : 'Delete'}
+                          </button>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {/* Edit Count Modal */}
+            {liveEditingCountId !== null && (
+              <div className="fixed inset-0 z-[80] bg-black/40 flex items-center justify-center p-3">
+                <div className="bg-white rounded-lg w-full max-w-sm shadow-lg p-6">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">Edit Count Record</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Quantity</label>
+                      <input
+                        type="number"
+                        value={liveEditCountQty}
+                        onChange={(e) => setLiveEditCountQty(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Notes</label>
+                      <textarea
+                        value={liveEditCountNotes}
+                        onChange={(e) => setLiveEditCountNotes(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Add notes…"
+                        rows={3}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 mt-6">
+                    <button
+                      onClick={() => {
+                        setLiveEditingCountId(null)
+                        setLiveEditCountQty('')
+                        setLiveEditCountNotes('')
+                      }}
+                      className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 font-semibold text-sm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => {
+                        setLiveEditCountSaving(true)
+                        fetch(`/api/stock/counts/${liveEditingCountId}`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            quantity_counted: liveEditCountQty,
+                            notes: liveEditCountNotes
+                          })
+                        }).then(async (res) => {
+                          setLiveEditCountSaving(false)
+                          if (res.ok) {
+                            const data = await res.json()
+                            if (data.requires_loss_reason) {
+                              alert(`${data.error}\n\nPlease confirm the loss reason separately.`)
+                              setLiveEditingCountId(null)
+                              setLiveEditCountQty('')
+                              setLiveEditCountNotes('')
+                            } else {
+                              setLiveEditingCountId(null)
+                              setLiveEditCountQty('')
+                              setLiveEditCountNotes('')
+                              // Refresh count records
+                              window.location.reload()
+                            }
+                          } else {
+                            const data = await res.json()
+                            alert(`Update failed: ${data.error || 'Unknown error'}`)
+                          }
+                        }).catch(e => {
+                          console.error('Edit failed:', e)
+                          alert('Update failed: ' + e.message)
+                          setLiveEditCountSaving(false)
+                        })
+                      }}
+                      disabled={liveEditCountSaving}
+                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-semibold text-sm disabled:opacity-50"
+                    >
+                      {liveEditCountSaving ? 'Saving…' : 'Save'}
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
