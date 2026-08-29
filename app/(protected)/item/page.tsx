@@ -4361,14 +4361,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         ]
       },
       noViolations: {
-        title: '✓ Items (NV) - No Violation Banners',
+        title: '✓ All(NV) - No Violation Banners',
         description: 'Showing all items without violation banners displayed. Perfect for normal sales operations where you don\'t want to be distracted by violation alerts.',
         steps: [
           'All items are shown regardless of violation status',
           'Violation headers and banners are hidden to reduce visual clutter',
           'COUNT NOW, trade-off, and other alert banners are not displayed',
           'Use this mode for efficient sales workflows without distractions',
-          'Switch to "Items (V)" or specific violation filters to address data issues'
+          'Switch to "All(V)" or specific violation filters to address data issues'
         ]
       }
     }
@@ -5100,12 +5100,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   <span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'withViolations'} onChange={() => { setLiveSaleViolationFilter('withViolations'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
-                    <span>Items (V)</span>
+                    <span>All(V)</span>
                   </label>
                   <span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'noViolations'} onChange={() => { setLiveSaleViolationFilter('noViolations'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
-                    <span>Items (NV)</span>
+                    <span>All(NV)</span>
                   </label>
                   <span className="text-gray-400 px-1">·</span>
                   <button
