@@ -2892,12 +2892,15 @@ function ItemHubPageInner() {
     return Array.from(groups.entries()).sort(([a], [b]) => b.localeCompare(a))
   }, [liveCountRecords, liveCountRecordFilter, liveEmbeddedSearch])
 
-  // Sale mode count records display (filtered by the three checkboxes)
+  // Sale mode count records display - consolidates losses and gains per item
+  // Each item shows: total loss qty, total gain qty, and net (loss - gain).
+  // Eliminates redundant back-and-forth entries and reveals true net variance.
   const liveSaleCountRecords = useMemo(() => {
     if (!liveShowCountedNoLoss && !liveShowCountedWithLoss && !liveShowCountedWithGains) return []
     const q = liveEmbeddedSearch.trim().toLowerCase()
+
+    // First filter records by the checkbox filters and search
     const filtered = liveCountRecords.filter(rec => {
-      // Include record if its kind matches any of the enabled filters
       const isNoLoss = rec.kind !== 'loss' && rec.kind !== 'gain'
       const isLoss = rec.kind === 'loss'
       const isGain = rec.kind === 'gain'
@@ -2911,13 +2914,64 @@ function ItemHubPageInner() {
       if (q && !rec.item_name.toLowerCase().includes(q)) return false
       return true
     })
-    const groups = new Map<string, typeof liveCountRecords>()
-    for (const rec of filtered) {
-      const date = rec.count_date.slice(0, 10)
-      if (!groups.has(date)) groups.set(date, [])
-      groups.get(date)!.push(rec)
+
+    // Group by item_id and consolidate: sum losses, sum gains, calculate net
+    type ConsolidatedItem = {
+      item_id: number | null
+      item_name: string
+      total_loss: number
+      total_gain: number
+      net: number
+      record_count: number
+      has_unbalanced: boolean
     }
-    return Array.from(groups.entries()).sort(([a], [b]) => b.localeCompare(a))
+
+    const byItemId = new Map<number | null, ConsolidatedItem>()
+    for (const rec of filtered) {
+      const key = rec.item_id
+      if (!byItemId.has(key)) {
+        byItemId.set(key, {
+          item_id: key,
+          item_name: rec.item_name,
+          total_loss: 0,
+          total_gain: 0,
+          net: 0,
+          record_count: 0,
+          has_unbalanced: false,
+        })
+      }
+
+      const entry = byItemId.get(key)!
+      entry.record_count++
+
+      // loss_qty can be positive (loss) or negative (gain), or null
+      const qty = rec.loss_qty ?? 0
+      if (rec.kind === 'loss' && qty > 0) {
+        entry.total_loss += qty
+      } else if (rec.kind === 'gain' && qty !== 0) {
+        entry.total_gain += Math.abs(qty)
+      }
+
+      // Mark items with unbalanced loss/gain as needing attention
+      if (rec.kind === 'loss' || rec.kind === 'gain') {
+        entry.has_unbalanced = true
+      }
+    }
+
+    // Calculate net for each item
+    for (const entry of byItemId.values()) {
+      entry.net = entry.total_loss - entry.total_gain
+    }
+
+    // Return as sorted array, newest items first
+    return Array.from(byItemId.values()).sort((a, b) => {
+      // Prioritize unbalanced items (where loss !== gain)
+      if (a.has_unbalanced !== b.has_unbalanced) return a.has_unbalanced ? -1 : 1
+      // Then by net loss amount (highest first)
+      if (a.net !== b.net) return b.net - a.net
+      // Finally by item name
+      return a.item_name.localeCompare(b.item_name)
+    })
   }, [liveCountRecords, liveShowCountedNoLoss, liveShowCountedWithLoss, liveShowCountedWithGains, liveEmbeddedSearch])
 
   // All-Time/Yesterday/This Week/Month/Year loss totals -- same period
@@ -5490,43 +5544,42 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               </div>
             )}
 
-            {/* Count Records Display - shown when any count checkbox is enabled */}
+            {/* Count Records Display - consolidated by item (losses netted against gains) */}
             {(liveShowCountedNoLoss || liveShowCountedWithLoss || liveShowCountedWithGains) && liveSaleCountRecords.length > 0 && (
               <div className="flex-1 overflow-y-auto">
                 <div className="px-2 pt-2 pb-1 text-xs font-bold text-gray-600 sticky top-0 bg-gray-50">
-                  Count Records
+                  Count Reconciliation (Losses Netted Against Gains)
                 </div>
-                {liveSaleCountRecords.map(([date, dateRecs]) => (
-                  <div key={date} className="border-b border-gray-200">
-                    <div className="px-2 py-1 bg-gray-100 text-[10px] font-bold text-gray-700 sticky top-6">
-                      {date}
-                    </div>
-                    <table className="w-full text-[11px]">
-                      <thead>
-                        <tr className="bg-gray-50">
-                          <th className="text-left px-2 py-1 font-bold">Item</th>
-                          <th className="text-right px-2 py-1 font-bold">SOH</th>
-                          <th className="text-right px-2 py-1 font-bold">Count</th>
-                          <th className="text-center px-2 py-1 font-bold">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {dateRecs.map((rec, idx) => (
-                          <tr key={idx} className="border-t border-gray-100 hover:bg-gray-50">
-                            <td className="px-2 py-1 text-gray-800">{rec.item_name}</td>
-                            <td className="px-2 py-1 text-right text-gray-600">{rec.expected}</td>
-                            <td className="px-2 py-1 text-right text-gray-600">{rec.quantity_counted}</td>
-                            <td className="px-2 py-1 text-center">
-                              {rec.kind === 'loss' && <span className="text-red-600 font-bold">📉 Loss</span>}
-                              {rec.kind === 'gain' && <span className="text-amber-600 font-bold">🚩 Gain</span>}
-                              {!rec.kind && <span className="text-gray-500">✓ OK</span>}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ))}
+                <table className="w-full text-[11px]">
+                  <thead>
+                    <tr className="bg-gray-50 sticky top-6">
+                      <th className="text-left px-2 py-1 font-bold">Item</th>
+                      <th className="text-right px-2 py-1 font-bold">Loss Qty</th>
+                      <th className="text-right px-2 py-1 font-bold">Gain Qty</th>
+                      <th className="text-right px-2 py-1 font-bold">Net</th>
+                      <th className="text-center px-2 py-1 font-bold">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {liveSaleCountRecords.map((item, idx) => (
+                      <tr key={idx} className="border-t border-gray-100 hover:bg-gray-50">
+                        <td className="px-2 py-1 text-gray-800 max-w-xs truncate">{item.item_name}</td>
+                        <td className="px-2 py-1 text-right text-red-600 font-semibold">{item.total_loss > 0 ? item.total_loss : '–'}</td>
+                        <td className="px-2 py-1 text-right text-amber-600 font-semibold">{item.total_gain > 0 ? item.total_gain : '–'}</td>
+                        <td className="px-2 py-1 text-right font-bold">
+                          {item.net > 0 && <span className="text-red-600">-{item.net}</span>}
+                          {item.net < 0 && <span className="text-amber-600">+{Math.abs(item.net)}</span>}
+                          {item.net === 0 && <span className="text-gray-500">0</span>}
+                        </td>
+                        <td className="px-2 py-1 text-center">
+                          {item.net > 0 && <span className="text-red-600 font-bold">🔴 Loss</span>}
+                          {item.net < 0 && <span className="text-amber-600 font-bold">🟡 Gain</span>}
+                          {item.net === 0 && <span className="text-gray-500 font-bold">✅ Balanced</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
 
