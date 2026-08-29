@@ -367,10 +367,6 @@ export const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCate
     description: 'No sales receipt exists at all for this date. Confirm whether the shop genuinely had no sales that day, or whether a receipt was simply never entered -- and add it if so.',
   },
   {
-    key: 'cost_price', label: 'Cost Price', category: 'sales',
-    description: 'This sale has a cost price equal to or higher than its selling price, so it shows as a loss or break-even on paper. Check whether the selling price, cost price, or quantity was entered incorrectly for this line.',
-  },
-  {
     key: 'dup_receipt', label: 'Dup Receipts', category: 'sales',
     description: 'More than one sales receipt exists for the same day and the same customer type (WIC or GMC). This usually means one was created by mistake -- review both and merge or delete the extra one.',
   },
@@ -432,7 +428,7 @@ const VIOLATION_HOME: Partial<Record<string, LossView | 'sales' | 'bills' | 'cou
   // tab folded into Count's own Count Records (see liveCountRecordFilter
   // above), so this now jumps there instead.
   gains: 'count',
-  no_cash: 'sales', missing_days: 'sales', cost_price: 'sales', dup_receipt: 'sales', no_attachment: 'sales', high_wnw: 'sales',
+  no_cash: 'sales', missing_days: 'sales', dup_receipt: 'sales', no_attachment: 'sales', high_wnw: 'sales',
   no_vendor: 'bills', no_items_bills: 'bills', bill_total_mismatch: 'bills', bill_no_attachment: 'bills',
   unchecked_cab: 'cab',
 }
@@ -456,7 +452,6 @@ const LOSSVIEW_PILL_KEYS: Partial<Record<LossView, string[]>> = {
 const SALES_FLAG_TYPES: { key: string; letter: string; label: string }[] = [
   { key: 'no_cash', letter: 'C', label: 'No Cash Counted' },
   { key: 'missing_days', letter: 'M', label: 'Missing Receipts' },
-  { key: 'cost_price', letter: 'P', label: 'Cost ≥ Selling Price' },
   { key: 'dup_receipt', letter: 'D', label: 'Duplicate Receipts' },
   { key: 'no_attachment', letter: 'A', label: 'No Attachment' },
   { key: 'high_wnw', letter: 'H', label: 'WNW Over ₵200' },
@@ -1197,7 +1192,6 @@ function ItemHubPageInner() {
       alias_name_conflicts: nameConflictsCount,
       no_cash: f?.noCash?.length ?? 0,
       missing_days: f?.missingDays?.length ?? 0,
-      cost_price: f?.costGteSell?.length ?? 0,
       dup_receipt: f?.dupReceipts?.length ?? 0,
       no_attachment: f?.noAttachment?.length ?? 0,
       high_wnw: f?.highWnw?.length ?? 0,
@@ -2479,10 +2473,11 @@ function ItemHubPageInner() {
   const liveUnlinkedNamedIds = useMemo(() => new Set<number>(liveItemsWithViolations.unlinked_named ?? []), [liveItemsWithViolations])
   const liveServiceViolationIdSet = useMemo(() => new Set<number>(liveItemsWithViolations.service_violation ?? []), [liveItemsWithViolations])
   // Item id -> every date it had a past sale line at or under today's cost
-  // price -- the same data source (/api/flags' costGteSell) as the Sales
-  // tab's own "Cost ≥ Selling Price" flag, which only points at the
-  // receipt, not which item on it was the problem or when. Surfacing it
-  // here puts the flag (and the actual dates) on the specific item itself.
+  // price -- sourced from /api/flags' costGteSell. This is now the only
+  // place this violation lives (the old Sales tab flag of the same query
+  // was removed -- all item-level flags start from Live Sale), so it both
+  // drives the item card's "SOLD BELOW COST (history)" banner and the
+  // ACP > SP count in the Sale mode header below.
   const liveSoldBelowCostDatesByItemId = useMemo(() => {
     const m = new Map<number, string[]>()
     for (const r of globalFlags?.costGteSell ?? []) {
@@ -2494,6 +2489,17 @@ function ItemHubPageInner() {
     for (const dates of m.values()) dates.sort()
     return m
   }, [globalFlags])
+  // Distinct-item count behind that map, scoped to items still in the live
+  // catalogue (a merged-away item's old violation shouldn't inflate this) --
+  // shown as "ACP > SP: N items" in Sale mode's own header.
+  const liveAcpGtSpCount = useMemo(() => {
+    const liveIds = new Set(liveAllItems.map(i => i.id))
+    let count = 0
+    for (const id of liveSoldBelowCostDatesByItemId.keys()) {
+      if (liveIds.has(id)) count++
+    }
+    return count
+  }, [liveAllItems, liveSoldBelowCostDatesByItemId])
   // Fourth cross-item check: any item with an outstanding count gain (see
   // liveLossByItemId above), fed straight off the same per-item loss/gain
   // map the grid already fetches for its Loss/Gain badge. Keeps the actual
@@ -3699,12 +3705,23 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
   // get a number -- right now that's just the count-cadence flags task
   // (every countable item has a known cadence and stock_counts rows are
   // dated, so total/doneToday are both real), labeled "Flags" since "Count"
-  // alone reads as a page name rather than a task. Sale/Log/Sales/Bills have
-  // no such total (their violations are open-ended backlogs, not a fixed
-  // today's-list), so they render nothing rather than a fake/misleading
-  // count. Whoever's assigned to it (see AssignWidget type="flags" on the
-  // Count mode's own page) shows right alongside the number.
+  // alone reads as a page name rather than a task. Sale mode gets its own
+  // always-on "ACP > SP" violation count instead (see liveAcpGtSpCount) --
+  // the one item-level violation that's meant to be visible right on Live
+  // Sale's own header rather than buried in a Flags dropdown. Log/Sales/
+  // Bills have no such total (their violations are open-ended backlogs, not
+  // a fixed today's-list), so they render nothing rather than a fake/
+  // misleading count. Whoever's assigned to it (see AssignWidget type="flags"
+  // on the Count mode's own page) shows right alongside the number.
   function renderModeProgressSummary(compact: boolean, dark: boolean) {
+    if (liveMode === 'sale') {
+      return (
+        <div className={`flex items-center justify-center gap-2 ${compact ? 'text-[9px]' : 'text-[10px]'} ${dark ? 'text-white/70' : 'text-gray-500'}`}>
+          <span className={`font-semibold ${dark ? 'text-red-300' : 'text-red-600'}`}>⚠ ACP &gt; SP</span>
+          <span>{liveAcpGtSpCount} item{liveAcpGtSpCount !== 1 ? 's' : ''}</span>
+        </div>
+      )
+    }
     if (!liveCountProgress || liveCountProgress.total === 0) return null
     const assignee = assignments['flags']
     return (

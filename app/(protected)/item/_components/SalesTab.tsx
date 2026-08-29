@@ -279,52 +279,6 @@ function MissingDayFix({ date, onFixed }: { date: string; onFixed: (d: string) =
   )
 }
 
-function CostPriceFix({ r, onFixed }: { r: any; onFixed: (itemId: number) => void }) {
-  const [cost, setCost] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [expanded, setExpanded] = useState(false)
-
-  async function save() {
-    if (!cost) return
-    setSaving(true)
-    await fetch(`/api/items/${r.item_id}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ purchase_rate: Number(cost) }),
-    })
-    setSaving(false)
-    onFixed(r.item_id)
-  }
-
-  return (
-    <div>
-      <button onClick={() => setExpanded(e => !e)} className="w-full text-left px-2 py-1.5 hover:bg-gray-50 transition">
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <span className="text-[10px] font-semibold text-gray-900 truncate block">{r.item_name}</span>
-            <span className="text-[9px] text-gray-400">{fmtDate(r.receipt_date)} · </span>
-            <span className="text-[9px] text-red-500">₵{Number(r.selling_price).toFixed(2)} sell · ₵{Number(r.cost_price).toFixed(2)} cost</span>
-          </div>
-          <span className="shrink-0 text-[9px] text-blue-600 font-semibold">{expanded ? '▲' : '▼'}</span>
-        </div>
-      </button>
-      {expanded && (
-        <div className="px-2 pb-2 border-t border-gray-50 space-y-1.5 pt-1.5">
-          <a href={`/sales?receipt=${r.receipt_id}`} className="text-[9px] text-blue-600 font-semibold hover:underline">
-            Open receipt {r.receipt_number} →
-          </a>
-          <input type="number" min="0" step="0.01" inputMode="decimal"
-            placeholder={`New cost price (currently ₵${Number(r.cost_price).toFixed(2)})`}
-            value={cost} onChange={e => setCost(e.target.value)} className={inputCls} />
-          <button onClick={save} disabled={!cost || saving}
-            className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
-            {saving ? 'Saving…' : 'Update Cost Price'}
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
-
 type Props = {
   items: Item[]
   groupFilter: string | null
@@ -388,8 +342,6 @@ function SalesTab({
   const colPrefs = useColumnPrefs<ColKey>('salesTable', SALES_COLUMNS)
   const attachments = useAttachments()
 
-  const needsFlags = violation === 'no_cash' || violation === 'missing_days' || violation === 'cost_price' || violation === 'dup_receipt' || violation === 'no_attachment' || violation === 'high_wnw'
-
   // Loaded unconditionally now (not just while a violation view is open) --
   // the normal receipt table below flags each affected row inline (see
   // receiptFlagsById), so the data has to be there before any violation is
@@ -419,7 +371,6 @@ function SalesTab({
       if (!m.get(id)!.includes(label)) m.get(id)!.push(label)
     }
     for (const r of flags.noCash ?? []) add(r.id, 'No Cash Counted')
-    for (const r of flags.costGteSell ?? []) add(r.receipt_id, 'Cost ≥ Selling Price')
     for (const r of flags.dupReceipts ?? []) {
       for (const idStr of String(r.receipt_ids ?? '').split(',')) add(parseInt(idStr, 10), 'Duplicate Receipt')
     }
@@ -741,26 +692,6 @@ function SalesTab({
               {flags.missingDays.map((r: any) => (
                 <MissingDayFix key={r.missing_date} date={r.missing_date} onFixed={d =>
                   setFlags((f: any) => f ? { ...f, missingDays: f.missingDays.filter((x: any) => x.missing_date !== d) } : f)
-                } />
-              ))}
-            </div>
-        )}
-      </div>
-    )
-  }
-
-  if (violation === 'cost_price') {
-    return (
-      <div className="overflow-y-auto h-full py-2">
-        <p className="text-[10px] text-gray-400 px-2 mb-1">
-          {flagsLoading || !flags ? 'Loading…' : `${flags.costGteSell.length} line${flags.costGteSell.length !== 1 ? 's' : ''} where cost price ≥ selling price`}
-        </p>
-        {!flagsLoading && flags && (flags.costGteSell.length === 0
-          ? <p className="py-4 text-center text-gray-400 text-[10px]">No items sold at or below cost price.</p>
-          : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
-              {flags.costGteSell.map((r: any, i: number) => (
-                <CostPriceFix key={`${r.item_id}-${i}`} r={r} onFixed={itemId =>
-                  setFlags((f: any) => f ? { ...f, costGteSell: f.costGteSell.filter((x: any) => x.item_id !== itemId) } : f)
                 } />
               ))}
             </div>
