@@ -4850,25 +4850,28 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               )}
               {/* Sale mode filter bar */}
               {showControls && liveMode === 'sale' && (
-                <div className="px-2 py-1 border-b border-green-700 flex flex-wrap items-center gap-2">
-                  <label className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-amber-400 hover:bg-amber-500 text-amber-900 font-semibold text-xs cursor-pointer transition whitespace-nowrap">
-                    <input type="checkbox" checked={liveShowOnlyDueForCount} onChange={() => { setLiveShowOnlyDueForCount(d => !d); setLiveShowCountFullPage(false) }} className="cursor-pointer" />
-                    🔄 Due
+                <div className="px-2 py-0.5 border-b border-green-700 flex items-center gap-0 text-[9px]">
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
+                    <input type="checkbox" checked={liveShowOnlyDueForCount} onChange={() => { setLiveShowOnlyDueForCount(d => !d); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
+                    <span>Due</span>
                   </label>
-                  <label className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-purple-400 hover:bg-purple-500 text-purple-900 font-semibold text-xs cursor-pointer transition whitespace-nowrap">
-                    <input type="checkbox" checked={liveShowTradeOffOnly} onChange={() => { setLiveShowTradeOffOnly(d => !d); setLiveShowCountFullPage(false) }} className="cursor-pointer" />
-                    ↔ Trade Off {liveItemsWithTradeOffs.length > 0 && <span className="ml-1 font-bold">({liveItemsWithTradeOffs.length})</span>}
+                  <span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
+                    <input type="checkbox" checked={liveShowTradeOffOnly} onChange={() => { setLiveShowTradeOffOnly(d => !d); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
+                    <span>Trade Off{liveItemsWithTradeOffs.length > 0 && ` (${liveItemsWithTradeOffs.length})`}</span>
                   </label>
-                  <label className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-red-400 hover:bg-red-500 text-red-900 font-semibold text-xs cursor-pointer transition whitespace-nowrap">
-                    <input type="checkbox" checked={liveShowAcpGtSpOnly} onChange={() => { setLiveShowAcpGtSpOnly(d => !d); setLiveShowCountFullPage(false) }} className="cursor-pointer" />
-                    ⚠ ACP &gt; SP {liveAcpGtSpCount > 0 && <span className="ml-1 font-bold">({liveAcpGtSpCount})</span>}
+                  <span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
+                    <input type="checkbox" checked={liveShowAcpGtSpOnly} onChange={() => { setLiveShowAcpGtSpOnly(d => !d); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
+                    <span>ACP &gt; SP{liveAcpGtSpCount > 0 && ` (${liveAcpGtSpCount})`}</span>
                   </label>
+                  <span className="text-gray-400 px-1">·</span>
                   <button
                     type="button"
                     onClick={() => setLiveShowCountFullPage(true)}
-                    className="px-3 py-1.5 rounded font-semibold text-xs bg-blue-600 hover:bg-blue-700 text-white whitespace-nowrap cursor-pointer transition"
+                    className="text-blue-600 hover:underline cursor-pointer whitespace-nowrap"
                   >
-                    📊 Count {liveSaleCountRecords.length > 0 && <span className="ml-1 font-bold">({liveSaleCountRecords.length})</span>}
+                    Count{liveSaleCountRecords.length > 0 && ` (${liveSaleCountRecords.length})`}
                   </button>
                 </div>
               )}
