@@ -5819,7 +5819,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             )}
 
             {/* Items Grid - 2 Columns */}
-            {liveCurrentView?.kind !== 'aliasWide' && liveCurrentView?.kind !== 'serviceMatches' && liveCurrentView?.kind !== 'newItem' && liveCurrentView?.kind !== 'dailySummary' && liveCurrentView?.kind !== 'gmcPacks' && liveCountDisplayFilter === 'all' && (
+            {liveCurrentView?.kind !== 'aliasWide' && liveCurrentView?.kind !== 'serviceMatches' && liveCurrentView?.kind !== 'newItem' && liveCurrentView?.kind !== 'dailySummary' && liveCurrentView?.kind !== 'gmcPacks' && liveCountDisplayFilter === 'all' && !liveShowCountFullPage && (
             <div className="flex-1 overflow-y-auto">
               {liveItemsLoading ? (
                 <p className="text-xs text-gray-400 text-center py-8">Loading…</p>
