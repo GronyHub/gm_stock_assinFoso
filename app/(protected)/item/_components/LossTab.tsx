@@ -183,7 +183,7 @@ function LossGainCells({ value }: { value: number | null }) {
 // genuine cost swings worth double-checking and likely data-entry typos
 // (an extra/missing digit on a bill's unit price).
 const VCP_JUMP_THRESHOLD_PCT = 20
-type VcpJump = { from: number; to: number; pct: number }
+type VcpJump = { from: number; to: number; pct: number; billId: number | null }
 
 // Walks an item's day rows (any order in, oldest-first internally) and
 // flags each date where a NEW bill's VCP first takes effect and differs
@@ -203,7 +203,7 @@ function computeVcpJumps(rows: { date: string; vcp: string | null; vcp_bill_id: 
       if (lastVcp != null && lastVcp > 0) {
         const pct = ((vcp - lastVcp) / lastVcp) * 100
         if (Math.abs(pct) >= VCP_JUMP_THRESHOLD_PCT) {
-          jumps.set(row.date, { from: lastVcp, to: vcp, pct })
+          jumps.set(row.date, { from: lastVcp, to: vcp, pct, billId: row.vcp_bill_id })
         }
       }
       lastBillId = row.vcp_bill_id
@@ -217,8 +217,15 @@ function computeVcpJumps(rows: { date: string; vcp: string | null; vcp_bill_id: 
 // per-day bill lookup -- clickable when a source bill exists (onBillClick
 // jumps there), plain text otherwise (no bill yet, or no handler supplied).
 // `jump` (see computeVcpJumps) adds a ⚠ badge when this is the day a big
-// price swing from the previous bill took effect.
-function VcpCell({ vcp, billId, onBillClick, jump }: { vcp: string | null; billId: number | null; onBillClick?: (billId: number) => void; jump?: VcpJump }) {
+// price swing from the previous bill took effect -- if the swing is a
+// genuine price change rather than a typo, `onConfirmJump` lets it be
+// marked reviewed (see /api/flags/dismiss-vcp-jump) so it stops flagging.
+function VcpCell({ vcp, billId, onBillClick, jump, onConfirmJump }: {
+  vcp: string | null; billId: number | null
+  onBillClick?: (billId: number) => void
+  jump?: VcpJump
+  onConfirmJump?: () => void
+}) {
   if (vcp == null) return <span className="text-gray-300">—</span>
   const val = parseFloat(vcp)
   if (isNaN(val)) return <span className="text-gray-300">—</span>
@@ -227,9 +234,13 @@ function VcpCell({ vcp, billId, onBillClick, jump }: { vcp: string | null; billI
     : <>{fmtN(val)}</>
   if (!jump) return value
   return (
-    <span className="inline-flex items-center gap-0.5" title={`VCP jumped ${jump.pct > 0 ? '+' : ''}${jump.pct.toFixed(0)}% from ₵${fmtN(jump.from)} to ₵${fmtN(jump.to)} on this bill`}>
+    <span className="inline-flex items-center gap-0.5">
       {value}
-      <span className="text-amber-500">⚠</span>
+      <span className="text-amber-500" title={`VCP jumped ${jump.pct > 0 ? '+' : ''}${jump.pct.toFixed(0)}% from ₵${fmtN(jump.from)} to ₵${fmtN(jump.to)} on this bill`}>⚠</span>
+      {onConfirmJump && (
+        <button onClick={onConfirmJump} title="Confirm this price change is correct -- clears this flag"
+          className="text-green-600 hover:text-green-700 font-bold leading-none">✓</button>
+      )}
     </span>
   )
 }
@@ -1082,6 +1093,25 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
       .catch(() => setDayRows([]))
   }, [item.item_id])
 
+  // Bill ids whose VCP jump was already confirmed as a genuine price change
+  // (see /api/flags/dismiss-vcp-jump) -- fetched per item so computeVcpJumps
+  // below can filter them straight out, same as costGteSell/etc. never
+  // re-flagging something already reviewed.
+  const [dismissedVcpJumpBillIds, setDismissedVcpJumpBillIds] = useState<Set<number>>(new Set())
+  useEffect(() => {
+    fetch(`/api/flags/dismiss-vcp-jump?itemId=${item.item_id}`).then(r => r.json())
+      .then(d => setDismissedVcpJumpBillIds(new Set(Array.isArray(d) ? d : [])))
+      .catch(() => {})
+  }, [item.item_id])
+
+  async function confirmVcpJump(billId: number) {
+    setDismissedVcpJumpBillIds(prev => new Set(prev).add(billId))
+    await fetch('/api/flags/dismiss-vcp-jump', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId: item.item_id, billId }),
+    }).catch(() => {})
+  }
+
   const isPackChain = item.product_type !== 'service' && item.converts_to_item_id != null
   // A "Pack here, I convert to a GMC" item's own Item 360 page should only
   // ever account for ITS OWN physical stock (count/loss/gain) -- the
@@ -1120,6 +1150,9 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
 
   const computed = dayRows ? computeRows(dayRows) : null
   const vcpJumps = computed ? computeVcpJumps(computed) : new Map<string, VcpJump>()
+  for (const [date, jump] of vcpJumps) {
+    if (jump.billId != null && dismissedVcpJumpBillIds.has(jump.billId)) vcpJumps.delete(date)
+  }
   const isService = item.product_type === 'service'
   // CNV (converted-in from another item's GMC take) can only ever be
   // non-zero for the item a pack_to_gmc good actually converts into --
@@ -1525,7 +1558,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                   )}
                   {!isService && (
                     <td className="px-1 py-0 text-right text-gray-500">
-                      <VcpCell vcp={row.vcp} billId={row.vcp_bill_id} onBillClick={onBillClick} jump={vcpJumps.get(row.date)} />
+                      <VcpCell vcp={row.vcp} billId={row.vcp_bill_id} onBillClick={onBillClick} jump={vcpJumps.get(row.date)} onConfirmJump={row.vcp_bill_id != null ? () => confirmVcpJump(row.vcp_bill_id!) : undefined} />
                     </td>
                   )}
                   {!isService && <td className="px-1 py-0 text-right text-purple-700">{row.acp != null ? fmtN(parseFloat(row.acp)) : <span className="text-gray-300">—</span>}</td>}
@@ -1615,7 +1648,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                   )}
                   {!isService && (
                     <td className="px-1 py-0 text-right text-gray-500">
-                      <VcpCell vcp={row.vcp} billId={row.vcp_bill_id} onBillClick={onBillClick} jump={vcpJumps.get(row.date)} />
+                      <VcpCell vcp={row.vcp} billId={row.vcp_bill_id} onBillClick={onBillClick} jump={vcpJumps.get(row.date)} onConfirmJump={row.vcp_bill_id != null ? () => confirmVcpJump(row.vcp_bill_id!) : undefined} />
                     </td>
                   )}
                   {!isService && <td className="px-1 py-0 text-right text-purple-700">{row.acp != null ? fmtN(parseFloat(row.acp)) : <span className="text-gray-300">—</span>}</td>}

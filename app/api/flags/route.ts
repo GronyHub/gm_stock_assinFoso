@@ -5,6 +5,7 @@ import { ensureClosingReports } from '@/lib/closingReports'
 import { ensureSalesAttachmentsColumn } from '@/lib/salesAttachments'
 import { ensureBillAttachmentsColumn } from '@/lib/billAttachments'
 import { ensureBillExpensesTable } from '@/lib/billExpenses'
+import { ensureDismissedVcpJumpsTable } from '@/lib/vcpJumpDismissals'
 import { success } from '@/lib/api'
 import { ensureDbInitialized } from '@/lib/api/dbInitCache'
 import { once } from '@/lib/once'
@@ -116,6 +117,8 @@ export async function GET() {
   // Needed before query #4 (ACP-based cost>=selling check) below, which
   // reads bill_expenses directly.
   await ensureBillExpensesTable()
+  // Needed before query #4b (vcpJumps) below, which reads dismissed_vcp_jumps.
+  await ensureDismissedVcpJumpsTable()
   await ensureBillAttachmentsColumn()
 
   const [
@@ -281,6 +284,12 @@ export async function GET() {
       FROM item_bills_lag
       WHERE prev_vcp IS NOT NULL AND prev_vcp > 0
         AND ABS((unit_price - prev_vcp) / prev_vcp) >= 0.20
+        -- Confirmed-correct jumps (see /api/flags/dismiss-vcp-jump) don't
+        -- come back once reviewed.
+        AND NOT EXISTS (
+          SELECT 1 FROM dismissed_vcp_jumps dvj
+          WHERE dvj.item_id = item_bills_lag.item_id AND dvj.bill_id = item_bills_lag.bill_id
+        )
       ORDER BY bill_date DESC
     `),
 
