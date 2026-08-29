@@ -2590,7 +2590,10 @@ function ItemHubPageInner() {
   // it's the same table, reachable from the Count tab instead.
   const liveViewingCountRecords = liveCountView?.kind === 'records'
   useEffect(() => {
-    if (!liveViewingCountRecords) return
+    if (!liveViewingCountRecords) {
+      setLiveCountRecords([])
+      return
+    }
     fetch('/api/stock/counts')
       .then(r => r.json())
       .then(d => setLiveCountRecords(Array.isArray(d) ? d : []))
