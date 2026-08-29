@@ -6134,11 +6134,27 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                             else if (liveSaleViolationFilter === 'emptyRow') filteredFlags = flags.filter(f => f.label.includes('EMPTY DATA'))
                             else if (liveSaleViolationFilter === 'acpGtSp') filteredFlags = flags.filter(f => f.label.includes('ACP > SP'))
                             else if (liveSaleViolationFilter !== 'withViolations') filteredFlags = []
-                            return filteredFlags.map((f, i) => (
-                              <div key={i} className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide truncate ${f.bg}`}>
-                                {f.label}
-                              </div>
-                            ))
+                            return filteredFlags.map((f, i) => {
+                              let displayLabel = f.label
+                              // Strip violation name prefix and show only relevant detail
+                              if (f.label.includes('DUPLICATE')) displayLabel = ''
+                              else if (f.label.includes('UNLINKED')) displayLabel = ''
+                              else if (f.label.includes('SERVICE')) displayLabel = ''
+                              else if (f.label.includes('NEGATIVE STOCK')) displayLabel = ''
+                              else if (f.label.includes('STOCK GAIN:')) displayLabel = f.label.replace('🔺 STOCK GAIN: ', '')
+                              else if (f.label.includes('ACP > SP')) displayLabel = ''
+                              else if (f.label.includes('SOLD BELOW COST')) displayLabel = f.label.replace('⚠ SOLD BELOW COST (history): ', '')
+                              else if (f.label.includes('VCP JUMP')) displayLabel = f.label.replace('⚠ VCP JUMP (history): ', '')
+                              else if (f.label.includes('MISSING SELLING PRICE')) displayLabel = ''
+                              else if (f.label.includes('MISSING COST PRICE')) displayLabel = ''
+                              else if (f.label.includes('MISSING GROUP')) displayLabel = ''
+                              else if (f.label.includes('EMPTY DATA')) displayLabel = f.label.replace('⚠ EMPTY DATA: ', '')
+                              return displayLabel ? (
+                                <div key={i} className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide truncate ${f.bg}`}>
+                                  {displayLabel}
+                                </div>
+                              ) : null
+                            })
                           })()}
                           {liveSaleViolationFilter !== 'noViolations' && liveSaleViolationFilter === 'tradeOff' && liveTradeOffByItemId.has(item.id) && (() => {
                             const tradeOff = liveTradeOffByItemId.get(item.id)!
