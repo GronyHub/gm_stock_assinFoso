@@ -6064,7 +6064,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             )}
 
             {/* Violation Description Panel */}
-            {liveSaleViolationFilter !== 'all' && (
+            {liveSaleViolationFilter !== 'all' && liveSaleViolationFilter !== 'noViolations' && (
               (() => {
                 const violation = getViolationDescription(liveSaleViolationFilter)
                 return violation ? (
