@@ -154,24 +154,29 @@ function PostRow({ p, showDateHeader, gapMins, canDelete, onLongPressStart, onLo
         // Auto-logged activity row -- Staff/Time/Gap/Dur/Activity each get
         // their own aligned column (same idea as Live Sale's Log mode
         // table), instead of one run-on line that ellipsis-truncated the
-        // activity text. Activity itself wraps rather than clipping, so
-        // the full description is always readable. These are system
-        // records, not user-authored messages, so there's no delete
-        // button here -- that stays on manual posts below, which is a
-        // different kind of content people actually compose and might
+        // activity text. Activity stays single-line (whitespace-nowrap,
+        // not wrapped or truncated) -- when it's long enough to push the
+        // row past the viewport, this row's own container scrolls
+        // horizontally rather than clipping or wrapping it, same
+        // trade-off Live Sale's Log mode makes for its Item column. These
+        // are system records, not user-authored messages, so there's no
+        // delete button here -- that stays on manual posts below, which is
+        // a different kind of content people actually compose and might
         // need to retract.
-        <div
-          onPointerDown={() => onLongPressStart(p)}
-          onPointerUp={onLongPressEnd}
-          onPointerLeave={onLongPressEnd}
-          onContextMenu={e => e.preventDefault()}
-          className="grid grid-cols-[minmax(3rem,auto)_minmax(3.25rem,auto)_minmax(3.25rem,auto)_minmax(3.25rem,auto)_1fr] gap-x-2 items-baseline px-3 py-1 select-none"
-        >
-          <span className="font-semibold text-gray-700 capitalize whitespace-nowrap text-[11px]">{p.author}</span>
-          <span className="text-gray-400 text-[10px] whitespace-nowrap">{fmtAnnTime(p.created_at)}</span>
-          <span className="text-gray-400 text-[10px] whitespace-nowrap">{gapMins != null ? `Gap ${formatGapMins(gapMins)}` : ''}</span>
-          <span className="text-gray-400 text-[10px] whitespace-nowrap">{p.estimated_duration_seconds ? `Dur ${formatDuration(p.estimated_duration_seconds)}` : ''}</span>
-          <span className="text-gray-800 text-[11px] break-words">{p.body}</span>
+        <div className="overflow-x-auto">
+          <div
+            onPointerDown={() => onLongPressStart(p)}
+            onPointerUp={onLongPressEnd}
+            onPointerLeave={onLongPressEnd}
+            onContextMenu={e => e.preventDefault()}
+            className="grid grid-cols-[minmax(3rem,auto)_minmax(3.25rem,auto)_minmax(3.25rem,auto)_minmax(3.25rem,auto)_auto] gap-x-2 items-baseline px-3 py-1 select-none w-max min-w-full"
+          >
+            <span className="font-semibold text-gray-700 capitalize whitespace-nowrap text-[11px]">{p.author}</span>
+            <span className="text-gray-400 text-[10px] whitespace-nowrap">{fmtAnnTime(p.created_at)}</span>
+            <span className="text-gray-400 text-[10px] whitespace-nowrap">{gapMins != null ? `Gap ${formatGapMins(gapMins)}` : ''}</span>
+            <span className="text-gray-400 text-[10px] whitespace-nowrap">{p.estimated_duration_seconds ? `Dur ${formatDuration(p.estimated_duration_seconds)}` : ''}</span>
+            <span className="text-gray-800 text-[11px] whitespace-nowrap">{p.body}</span>
+          </div>
         </div>
       ) : (
         <div

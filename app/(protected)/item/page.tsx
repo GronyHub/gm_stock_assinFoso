@@ -597,11 +597,6 @@ const COMPACT_SELECT_STYLE: CSSProperties = {
   backgroundSize: '6px 6px',
 }
 
-// Log tab's table -- header row, date-header row, and every tap row all
-// share this same column layout, so it's one constant rather than 3 copies
-// that could quietly drift apart when a column gets added/resized.
-const LOG_GRID_COLS = 'grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_2rem_2.25rem_1.25rem_2.25rem_1.5rem_2.25rem_1.5rem]'
-
 // Bold attention banner for an item's own data-integrity problems -- same
 // idea as the COUNT NOW banner (see countStatus/pinnedDueItems below), for
 // every check item/page.tsx's own itemsWithViolations tracks. The first four
@@ -2806,6 +2801,19 @@ function ItemHubPageInner() {
     return Array.from(groups.entries()).sort(([a], [b]) => b.localeCompare(a))
   }, [liveTaps])
 
+  // Item column width, sized to the longest name actually loaded so it
+  // never needs to truncate or wrap -- `ch` sizes off character count
+  // directly, with a little headroom since most letters are wider than
+  // the "0" glyph `ch` measures against. Computed once here (not per grid
+  // instance) since the header/date-header/tap rows are 3 separate grid
+  // divs, not one real <table> -- they'd otherwise size independently and
+  // drift out of alignment with each other.
+  const logItemColWidth = useMemo(() => {
+    const longest = liveTaps.reduce((max, t) => Math.max(max, t?.item_name?.length ?? 0), 8)
+    return `${Math.ceil(longest * 1.15)}ch`
+  }, [liveTaps])
+  const logGridTemplateColumns = `${logItemColWidth} 2.5rem 2.75rem 2rem 2rem 2.25rem 1.25rem 2.25rem 1.5rem 2.25rem 1.5rem`
+
   // Shop open/close bounds for the Log tab's Gap column -- only fetched
   // while Log is actually being looked at (same "not until it's viewed"
   // treatment as Count Records below), and only for dates not already
@@ -4750,12 +4758,15 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                   <p className="text-sm text-gray-400 text-center py-8">No sales recorded</p>
                 ) : (
                   <div>
-                    {/* Fixed, deliberately tiny column widths (not fr units) plus
-                        zero padding between cells -- the point is fitting all 10
-                        columns on screen at once with nothing to scroll. Item is
-                        still frozen (sticky left-0) as a safety net for very
-                        narrow screens or long item names. */}
-                    <div className={`grid ${LOG_GRID_COLS} gap-0 h-[14px] bg-gray-50 border-b border-gray-200 sticky top-0 z-10`}>
+                    {/* Every column but Item is a fixed, deliberately tiny
+                        width with zero padding between cells -- Item itself
+                        is sized to the longest loaded name (logItemColWidth)
+                        so it never truncates or wraps. On a narrow screen or
+                        a long name that pushes the row past the viewport,
+                        this container scrolls horizontally; Item stays
+                        frozen (sticky left-0) so it's never what scrolls
+                        out of view. */}
+                    <div className="grid gap-0 h-[14px] bg-gray-50 border-b border-gray-200 sticky top-0 z-10" style={{ gridTemplateColumns: logGridTemplateColumns }}>
                       <div className="sticky left-0 z-10 flex items-center bg-gray-50 px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase truncate">Item</div>
                       <div className="flex items-center justify-end px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">Total</div>
                       <div className="flex items-center justify-center px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">Time</div>
@@ -4777,7 +4788,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                       return (
                         <div key={date}>
                           {/* Date header */}
-                          <div className={`grid ${LOG_GRID_COLS} gap-0 h-[14px] bg-green-50 border-b border-green-200 sticky top-[14px] z-9`}>
+                          <div className="grid gap-0 h-[14px] bg-green-50 border-b border-green-200 sticky top-[14px] z-9" style={{ gridTemplateColumns: logGridTemplateColumns }}>
                             <div className="col-span-11 flex items-center px-0.5 text-[8px] leading-none font-semibold text-green-700 truncate">
                               {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · Total: ₵{formatPrice(dateTotal)}
                               {' · PF: '}<span className={dateProfitTotal < 0 ? 'text-red-600' : ''}>₵{formatPrice(dateProfitTotal)}</span>
@@ -4818,17 +4829,18 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                             return (
                             <div
                               key={tap.id}
-                              className={`group grid ${LOG_GRID_COLS} gap-0 min-h-[15px] hover:bg-gray-50 transition ${
+                              className={`group grid gap-0 min-h-[15px] hover:bg-gray-50 transition ${
                                 tap.undone ? 'bg-gray-50 opacity-60' : ''
                               }`}
+                              style={{ gridTemplateColumns: logGridTemplateColumns }}
                             >
                               <div className={`sticky left-0 z-[1] flex items-center px-0.5 group-hover:bg-gray-50 ${tap.undone ? 'bg-gray-50' : 'bg-white'}`}>
                                 {tap.undone ? (
-                                  <span className="min-w-0 text-[9px] leading-none font-semibold truncate line-through text-gray-400">
+                                  <span className="text-[9px] leading-none font-semibold whitespace-nowrap line-through text-gray-400">
                                     {tap.item_name}
                                   </span>
                                 ) : (
-                                  renderClickableItemName(tap.item_name, 'min-w-0 text-[9px] leading-none font-semibold truncate text-gray-900')
+                                  renderClickableItemName(tap.item_name, 'text-[9px] leading-none font-semibold whitespace-nowrap text-gray-900')
                                 )}
                               </div>
                               <div className="flex items-center justify-end px-0.5">
