@@ -2947,6 +2947,29 @@ function ItemHubPageInner() {
     return withTradeOffs.sort((a, b) => b.count_date.localeCompare(a.count_date))
   }, [liveCountRecords, liveCountDisplayFilter, liveEmbeddedSearch])
 
+  // Count how many corrections (trade-offs) are needed for each filter type
+  const liveCountTradeOffCounts = useMemo(() => {
+    let lossCount = 0
+    let gainCount = 0
+
+    for (const rec of liveCountRecords) {
+      if (rec.kind === 'loss' || rec.kind === 'gain') {
+        const targetKind = rec.kind === 'loss' ? 'gain' : 'loss'
+        const opposite = liveCountRecords.find(other =>
+          other.item_id === rec.item_id &&
+          other.id !== rec.id &&
+          other.kind === targetKind
+        )
+        if (opposite) {
+          if (rec.kind === 'loss') lossCount++
+          else gainCount++
+        }
+      }
+    }
+
+    return { lossCount, gainCount }
+  }, [liveCountRecords])
+
   // All-Time/Yesterday/This Week/Month/Year loss totals -- same period
   // summary the old Loss by Date tab pinned above its own table, computed
   // from every record regardless of liveCountRecordFilter/search so it
@@ -4769,13 +4792,13 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       onClick={() => setLiveCountDisplayFilter('loss')}
                       className={`px-3 py-1.5 rounded font-semibold text-xs transition whitespace-nowrap ${liveCountDisplayFilter === 'loss' ? 'bg-blue-600 text-white' : 'bg-red-400 text-red-900 hover:bg-red-500'}`}
                     >
-                      📉 Loss
+                      📉 Loss {liveCountTradeOffCounts.lossCount > 0 && <span className="ml-1 font-bold">({liveCountTradeOffCounts.lossCount})</span>}
                     </button>
                     <button
                       onClick={() => setLiveCountDisplayFilter('gains')}
                       className={`px-3 py-1.5 rounded font-semibold text-xs transition whitespace-nowrap ${liveCountDisplayFilter === 'gains' ? 'bg-blue-600 text-white' : 'bg-amber-500 text-amber-900 hover:bg-amber-600'}`}
                     >
-                      🚩 Gains
+                      🚩 Gains {liveCountTradeOffCounts.gainCount > 0 && <span className="ml-1 font-bold">({liveCountTradeOffCounts.gainCount})</span>}
                     </button>
                   </div>
                 </div>
