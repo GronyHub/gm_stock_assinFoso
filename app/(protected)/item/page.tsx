@@ -5526,7 +5526,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       return (
                         <tr key={rec.id} className="border-b border-gray-200 hover:bg-gray-50 transition">
                           <td className="px-2 py-1.5 text-gray-800 font-semibold max-w-sm truncate">{rec.item_name}</td>
-                          <td className="px-2 py-1.5 text-center text-gray-600 whitespace-nowrap">{rec.count_date.slice(11, 16) || '—'}</td>
+                          <td className="px-2 py-1.5 text-center text-gray-600 whitespace-nowrap">{(rec as any).counted_at?.slice(11, 16) || '—'}</td>
                           <td className="px-2 py-1.5 text-center text-gray-600 whitespace-nowrap">{rec.count_date.slice(0, 10)}</td>
                           <td className="px-2 py-1.5 text-center">
                             <span className={`px-2 py-0.5 rounded text-[9px] font-bold whitespace-nowrap inline-block ${statusColor}`}>
