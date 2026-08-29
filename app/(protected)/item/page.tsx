@@ -860,6 +860,7 @@ function ItemHubPageInner() {
   const [liveEmbeddedSearch, setLiveEmbeddedSearch] = useState(rawLiveEmbeddedSearch ?? '')
   const [liveShowOnlyDueForCount, setLiveShowOnlyDueForCount] = useState(false)
   const [liveCountDisplayFilter, setLiveCountDisplayFilter] = useState<'all' | 'counted' | 'loss' | 'gains'>('all')
+  const [liveShowTradeOffOnly, setLiveShowTradeOffOnly] = useState(false)
   const [liveCountDeleteLoading, setLiveCountDeleteLoading] = useState<number | null>(null)
   const rawSidePaneHidden = searchParams.get('sidebarHidden')
   const initialSidePaneHidden = rawSidePaneHidden === '1'
@@ -2970,6 +2971,65 @@ function ItemHubPageInner() {
     return { lossCount, gainCount }
   }, [liveCountRecords])
 
+  // Identify items with trade-off opportunities and calculate their net position
+  type ItemTradeOff = {
+    itemId: number | null
+    itemName: string
+    lossQty: number
+    gainQty: number
+    net: number // positive = net loss, negative = net gain
+    tradeOffRecords: CountRecord[]
+  }
+
+  const liveItemsWithTradeOffs = useMemo(() => {
+    const byItemId = new Map<number | null, ItemTradeOff>()
+
+    for (const rec of liveCountRecords) {
+      if (rec.kind === 'loss' || rec.kind === 'gain') {
+        const key = rec.item_id
+        if (!byItemId.has(key)) {
+          byItemId.set(key, {
+            itemId: key,
+            itemName: rec.item_name,
+            lossQty: 0,
+            gainQty: 0,
+            net: 0,
+            tradeOffRecords: []
+          })
+        }
+        const entry = byItemId.get(key)!
+        entry.tradeOffRecords.push(rec)
+
+        const qty = Math.abs(rec.loss_qty ?? 0)
+        if (rec.kind === 'loss') {
+          entry.lossQty += qty
+        } else {
+          entry.gainQty += qty
+        }
+      }
+    }
+
+    // Calculate net and filter to only items that have both loss and gain
+    const result: ItemTradeOff[] = []
+    for (const entry of byItemId.values()) {
+      if (entry.lossQty > 0 && entry.gainQty > 0) {
+        entry.net = entry.lossQty - entry.gainQty
+        result.push(entry)
+      }
+    }
+
+    return result.sort((a, b) => Math.abs(b.net) - Math.abs(a.net))
+  }, [liveCountRecords])
+
+  // Map of item ID to trade-off info for quick lookup
+  const liveTradeOffByItemId = useMemo(() => {
+    const m = new Map<number | null, ItemTradeOff>()
+    for (const t of liveItemsWithTradeOffs) {
+      m.set(t.itemId, t)
+    }
+    return m
+  }, [liveItemsWithTradeOffs])
+
   // All-Time/Yesterday/This Week/Month/Year loss totals -- same period
   // summary the old Loss by Date tab pinned above its own table, computed
   // from every record regardless of liveCountRecordFilter/search so it
@@ -3024,6 +3084,14 @@ function ItemHubPageInner() {
   // ties fall through to the next criterion in the configured order.
   const liveSortedCatalogueItems = useMemo(() => {
     if (liveMode !== 'sale') return liveCatalogueItems
+
+    // Filter to trade-off items if checkbox is enabled
+    let itemsToSort = liveCatalogueItems
+    if (liveShowTradeOffOnly) {
+      const tradeOffItemIds = new Set(liveItemsWithTradeOffs.map(t => t.itemId))
+      itemsToSort = liveCatalogueItems.filter(item => tradeOffItemIds.has(item.id))
+    }
+
     const scoreFns: Record<ItemSortKey, (item: LiveItem) => number> = {
       count_status: item => {
         const d = liveCountStatus.get(item.id)
@@ -3046,14 +3114,14 @@ function ItemHubPageInner() {
         return hasSoh ? 1_000_000 + sales : sales
       },
     }
-    return [...liveCatalogueItems].sort((a, b) => {
+    return [...itemsToSort].sort((a, b) => {
       for (const key of liveItemSortOrder) {
         const diff = scoreFns[key](b) - scoreFns[key](a)
         if (diff !== 0) return diff
       }
       return 0
     })
-  }, [liveCatalogueItems, liveCountStatus, liveMode, liveViolationCountByItemId, liveSalesCounts, liveItemSortOrder])
+  }, [liveCatalogueItems, liveCountStatus, liveMode, liveViolationCountByItemId, liveSalesCounts, liveItemSortOrder, liveShowTradeOffOnly, liveItemsWithTradeOffs])
 
   // How many leading items are due for a count -- only meaningful (and only
   // used to draw the "N items need counting" header + divider) when count
@@ -4775,6 +4843,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <input type="checkbox" checked={liveShowOnlyDueForCount} onChange={() => setLiveShowOnlyDueForCount(d => !d)} className="cursor-pointer" />
                     🔄 Due
                   </label>
+                  <label className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-purple-400 hover:bg-purple-500 text-purple-900 font-semibold text-xs cursor-pointer transition whitespace-nowrap">
+                    <input type="checkbox" checked={liveShowTradeOffOnly} onChange={() => setLiveShowTradeOffOnly(d => !d)} className="cursor-pointer" />
+                    ↔ Trade Off {liveItemsWithTradeOffs.length > 0 && <span className="ml-1 font-bold">({liveItemsWithTradeOffs.length})</span>}
+                  </label>
                   <div className="flex gap-1.5">
                     <button
                       onClick={() => setLiveCountDisplayFilter('all')}
@@ -5770,6 +5842,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                               {f.label}
                             </div>
                           ))}
+                          {liveTradeOffByItemId.has(item.id) && (() => {
+                            const tradeOff = liveTradeOffByItemId.get(item.id)!
+                            return (
+                              <div className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide truncate ${tradeOff.net > 0 ? 'bg-red-600' : 'bg-amber-600'}`}>
+                                ↔ {tradeOff.net > 0 ? `NET LOSS ${tradeOff.net}` : `NET GAIN ${Math.abs(tradeOff.net)}`}
+                              </div>
+                            )
+                          })()}
                           <div className="px-1 py-0.5 flex flex-col">
                             <div className={`text-[11px] font-semibold leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : ''}`}>
                               {renderClickableItemName(item.name, `text-[11px] leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : 'text-blue-600'}`)}
