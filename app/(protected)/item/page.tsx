@@ -4767,17 +4767,17 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                   <table className="border-collapse">
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200">
-                        <th className="sticky left-0 top-0 z-20 bg-gray-50 h-[14px] px-1 text-[8px] leading-none font-semibold text-gray-600 uppercase text-left whitespace-nowrap">Item</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[14px] px-1 text-[8px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap">Total</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[14px] px-1 text-[8px] leading-none font-semibold text-gray-600 uppercase whitespace-nowrap">Time</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[14px] px-1 text-[8px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap">SP</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[14px] px-1 text-[8px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap">CP</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[14px] px-1 text-[8px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap">PF</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[14px] px-1 text-[8px] leading-none font-semibold text-gray-600 uppercase whitespace-nowrap">Qty</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[14px] px-1 text-[8px] leading-none font-semibold text-gray-600 uppercase text-left whitespace-nowrap">Staff</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[14px] px-1 text-[8px] leading-none font-semibold text-gray-600 uppercase whitespace-nowrap">SOH</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[14px] px-1 text-[8px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap" title="Time since the previous tap -- since shop opening for the day's first, until the last staff signed out for the day's last">Gap</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[14px] px-1" />
+                        <th className="sticky left-0 top-0 z-20 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-left whitespace-nowrap">Item</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap">Total</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase whitespace-nowrap">Time</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap">SP</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap">CP</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap">PF</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase whitespace-nowrap">Qty</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-left whitespace-nowrap">Staff</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase whitespace-nowrap">SOH</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap" title="Time since the previous tap -- since shop opening for the day's first, until the last staff signed out for the day's last">Gap</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5" />
                       </tr>
                     </thead>
                     <tbody>
@@ -4789,7 +4789,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                         <Fragment key={date}>
                           {/* Date header */}
                           <tr className="bg-green-50 border-b border-green-200">
-                            <td colSpan={11} className="sticky top-[14px] z-10 bg-green-50 h-[14px] px-1 text-[8px] leading-none font-semibold text-green-700 whitespace-nowrap">
+                            <td colSpan={11} className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-green-700 whitespace-nowrap">
                               {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · Total: ₵{formatPrice(dateTotal)}
                               {' · PF: '}<span className={dateProfitTotal < 0 ? 'text-red-600' : ''}>₵{formatPrice(dateProfitTotal)}</span>
                             </td>
@@ -4831,7 +4831,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                                 tap.undone ? 'bg-gray-50 opacity-60' : ''
                               }`}
                             >
-                              <td className={`sticky left-0 z-[1] h-[15px] px-1 group-hover:bg-gray-50 ${tap.undone ? 'bg-gray-50' : 'bg-white'}`}>
+                              <td className={`sticky left-0 z-[1] h-[13px] px-0.5 group-hover:bg-gray-50 ${tap.undone ? 'bg-gray-50' : 'bg-white'}`}>
                                 {tap.undone ? (
                                   <span className="text-[9px] leading-none font-semibold whitespace-nowrap line-through text-gray-400">
                                     {tap.item_name}
@@ -4840,45 +4840,45 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                                   renderClickableItemName(tap.item_name, 'text-[9px] leading-none font-semibold whitespace-nowrap text-gray-900')
                                 )}
                               </td>
-                              <td className="h-[15px] px-1 text-right">
+                              <td className="h-[13px] px-0.5 text-right">
                                 <span className={`text-[9px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-gray-400' : 'text-blue-600'}`}>
                                   ₵{formatPrice(Number(tap.price) * tap.quantity)}
                                 </span>
                               </td>
-                              <td className="h-[15px] px-1 text-center">
+                              <td className="h-[13px] px-0.5 text-center">
                                 <span className="text-[8px] leading-none text-gray-500 whitespace-nowrap">{fmtTime(tap.tapped_at)}</span>
                               </td>
-                              <td className="h-[15px] px-1 text-right">
+                              <td className="h-[13px] px-0.5 text-right">
                                 <span className={`text-[9px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
                                   ₵{formatPrice(tap.price)}
                                 </span>
                               </td>
-                              <td className="h-[15px] px-1 text-right">
+                              <td className="h-[13px] px-0.5 text-right">
                                 <span className={`text-[9px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
                                   ₵{formatPrice(tapCostPrice)}
                                 </span>
                               </td>
-                              <td className="h-[15px] px-1 text-right">
+                              <td className="h-[13px] px-0.5 text-right">
                                 <span className={`text-[9px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-gray-400' : tapProfit < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
                                   ₵{formatPrice(tapProfit)}
                                 </span>
                               </td>
-                              <td className="h-[15px] px-1 text-center">
+                              <td className="h-[13px] px-0.5 text-center">
                                 <span className={`text-[9px] leading-none font-semibold ${tap.undone ? 'text-gray-400' : 'text-gray-900'}`}>
                                   {tap.quantity}
                                 </span>
                               </td>
-                              <td className="h-[15px] px-1" title={tap.staff_name}>
+                              <td className="h-[13px] px-0.5" title={tap.staff_name}>
                                 <span className="text-[9px] leading-none text-gray-600 whitespace-nowrap">{staffInitials(tap.staff_name)}</span>
                               </td>
-                              <td className="h-[15px] px-1 text-center">
+                              <td className="h-[13px] px-0.5 text-center">
                                 <span className="text-[9px] leading-none text-gray-500 whitespace-nowrap">{tap.soh !== null && tap.soh !== undefined ? Math.ceil(tap.soh) : '-'}</span>
                               </td>
-                              <td className="h-[15px] px-1 text-right" title={isNewest ? 'Until last sign-out' : isOldest ? 'Since shop opening' : 'Since previous tap'}>
+                              <td className="h-[13px] px-0.5 text-right" title={isNewest ? 'Until last sign-out' : isOldest ? 'Since shop opening' : 'Since previous tap'}>
                                 <span className="text-[9px] leading-none text-gray-500 whitespace-nowrap">{gapMins !== null ? formatGapMins(gapMins) : '-'}</span>
                               </td>
-                              <td className="h-[15px] px-1">
-                                <div className="flex items-center justify-center gap-1">
+                              <td className="h-[13px] px-0.5">
+                                <div className="flex items-center justify-center gap-0.5">
                                   {!tap.undone && (
                                     <>
                                       <button
