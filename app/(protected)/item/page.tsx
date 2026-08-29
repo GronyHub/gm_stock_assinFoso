@@ -4214,6 +4214,132 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     )
   }
 
+  function getViolationDescription(filterType: typeof liveSaleViolationFilter) {
+    const descriptions: Record<string, { title: string; description: string; steps: string[] }> = {
+      countDue: {
+        title: '🔄 Count Due',
+        description: 'Items that are scheduled or overdue for physical inventory counting based on their count cadence.',
+        steps: [
+          '1. Open the item by clicking its card',
+          '2. Navigate to the Counts tab',
+          '3. Enter the actual quantity counted',
+          '4. Record any notes about the count',
+          '5. Confirm the count',
+          '6. The item will be removed from "Count Due" once recorded'
+        ]
+      },
+      tradeOff: {
+        title: '⚖️ Trade Off',
+        description: 'Items with matching losses and gains on the same date that can be offset against each other to simplify adjustments.',
+        steps: [
+          '1. Open the item to view loss/gain details',
+          '2. Look for the trade-off opportunity indicator',
+          '3. Review both the loss and gain transactions',
+          '4. If the amounts match, manually offset them in the appropriate records',
+          '5. Update the loss/gain entries to mark them as reconciled',
+          '6. The trade-off indicator will clear once both sides are resolved'
+        ]
+      },
+      acpGtSp: {
+        title: '📈 ACP > SP',
+        description: 'Items where the Average Cost Price (ACP) is higher than the current Selling Price, indicating a potential loss-making item.',
+        steps: [
+          '1. Open the item to review pricing details',
+          '2. Check the "Item 360" view for ACP and SP trends',
+          '3. Decide whether to: (a) increase selling price, or (b) use up stock and discontinue',
+          '4. If raising price: edit the item\'s selling price',
+          '5. If discontinuing: complete sales of remaining stock',
+          '6. For future purchases, ensure selling price is set above cost'
+        ]
+      },
+      duplicates: {
+        title: '🔄 Duplicates',
+        description: 'Multiple items in the system that represent the same physical product, causing split inventory and sales data.',
+        steps: [
+          '1. Open one of the duplicate items',
+          '2. Click the "Duplicates" violation badge',
+          '3. Click "Fix" on the duplicate item',
+          '4. Select which duplicate to keep and which to merge into it',
+          '5. Choose how to handle the inventory (combine totals)',
+          '6. Confirm the merge - the losing item becomes inactive'
+        ]
+      },
+      unlinked: {
+        title: '🔗 Unlinked',
+        description: 'Items with sales or purchase records that reference a name but no linked item ID, causing fragmented sales data.',
+        steps: [
+          '1. Open the unlinked item',
+          '2. Click the "Unlinked" violation badge',
+          '3. Review the list of unlinked references (sale/bill lines)',
+          '4. Click "Fix" next to each reference',
+          '5. Confirm the link to the correct item',
+          '6. The violation will clear once all references are linked'
+        ]
+      },
+      service: {
+        title: '⚙️ Service',
+        description: 'Service items with invalid configuration, such as missing required linked items or incorrect type settings.',
+        steps: [
+          '1. Open the service item',
+          '2. Click the "Service" violation badge to see specific issues',
+          '3. If missing "converts to": set the item it represents',
+          '4. If type mismatch: verify the "Converts to" item is properly configured',
+          '5. If GMC type is wrong: verify whether it uses GMC materials or not',
+          '6. Save changes - the violation will clear once corrected'
+        ]
+      },
+      gains: {
+        title: '📈 Gains',
+        description: 'Items with unexplained inventory gains from stock counts, indicating either miscounting or unrecorded receipts.',
+        steps: [
+          '1. Open the item and check its count history',
+          '2. Look at the difference between expected and counted quantity',
+          '3. Investigate the cause: miscounting, unrecorded receipt, or data error',
+          '4. If it\'s a legitimate gain, document it in the count notes',
+          '5. If it\'s an error, create a correcting count entry',
+          '6. Once understood, mark the gain as reconciled'
+        ]
+      },
+      soldBelowCost: {
+        title: '💔 Sold Below Cost',
+        description: 'Items that have been sold at prices below their actual cost, resulting in financial loss per unit sold.',
+        steps: [
+          '1. Open the item to review pricing history',
+          '2. Check the ACP (Average Cost Price) in Item 360',
+          '3. Review sales on the dates below cost was detected',
+          '4. Determine if this was intentional (clearance) or a mistake',
+          '5. If a mistake: adjust the selling price immediately',
+          '6. For future prevention, ensure SP > ACP before selling'
+        ]
+      },
+      vcpJump: {
+        title: '📊 VCP Jump',
+        description: 'Items with a sudden significant change in cost price from recent bills, indicating a pricing anomaly to review.',
+        steps: [
+          '1. Open the item to view recent bill history',
+          '2. Click the "VCP JUMP" badge to see the price history',
+          '3. Review the bills on both sides of the jump',
+          '4. Verify if the price change is correct (new supplier, negotiation, etc)',
+          '5. If incorrect: edit the bill line to correct the price',
+          '6. Click "Confirm" on the badge once verified - this dismisses the alert'
+        ]
+      },
+      emptyRow: {
+        title: '⚠️ Empty Row',
+        description: 'Items with incomplete or missing critical data that should be filled in or the item should be deleted.',
+        steps: [
+          '1. Open the item by clicking its card',
+          '2. Review which fields are missing or empty',
+          '3. For each empty field: either fill it in or determine if it\'s required',
+          '4. If the item is incomplete and not needed: delete it (owner-level permission)',
+          '5. If item is a placeholder: fill in the missing details',
+          '6. Save changes - the empty row marker will clear once data is complete'
+        ]
+      }
+    }
+    return descriptions[filterType] || null
+  }
+
   // Item search box + "Clear Item" + WIC/GMC toggle + Sale mode's own
   // Analytics button -- rendered compactly in this component's own footer
   // (in Biz/UK/C&H's usual spot) while liveExpanded is false, or as its own
@@ -5885,6 +6011,27 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   </div>
                 </div>
               </div>
+            )}
+
+            {/* Violation Description Panel */}
+            {liveSaleViolationFilter !== 'all' && (
+              (() => {
+                const violation = getViolationDescription(liveSaleViolationFilter)
+                return violation ? (
+                  <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mx-2 my-2 rounded text-sm">
+                    <h3 className="font-semibold text-blue-900 mb-2">{violation.title}</h3>
+                    <p className="text-blue-800 mb-3">{violation.description}</p>
+                    <div className="text-blue-900">
+                      <p className="font-semibold mb-2">How to fix:</p>
+                      <ol className="list-decimal list-inside space-y-1">
+                        {violation.steps.map((step, i) => (
+                          <li key={i} className="text-blue-800 text-xs">{step}</li>
+                        ))}
+                      </ol>
+                    </div>
+                  </div>
+                ) : null
+              })()
             )}
 
             {/* Items Grid - 2 Columns */}
