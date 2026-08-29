@@ -17,7 +17,7 @@ export type ItemDayRow = {
   converted_in_qty: string | null
   converted_in_time: string | null
   wic_breakdown: { name: string; qty: number; amount: number }[] | null
-  bills_breakdown: { vendor_name: string | null; qty: number; entered_by: string | null }[] | null
+  bills_breakdown: { vendor_name: string | null; qty: number }[] | null
   sold_below_cost: boolean
   vcp: string | null
   vcp_bill_id: number | null
@@ -144,7 +144,7 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
     ),
     daily_bills_by_vendor AS (
       SELECT b.bill_date::date AS d, COALESCE(b.vendor_name, 'Unknown') AS vendor_name,
-             SUM(bl.quantity) AS qty, MAX(b.entered_by) AS entered_by
+             SUM(bl.quantity) AS qty
       FROM bill_lines bl
       JOIN bills b ON b.id = bl.bill_id
       WHERE bl.item_id = ${id}
@@ -152,7 +152,7 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
     ),
     daily_bills AS (
       SELECT d, SUM(qty) AS qty,
-             json_agg(json_build_object('vendor_name', vendor_name, 'qty', qty, 'entered_by', entered_by) ORDER BY vendor_name) AS breakdown
+             json_agg(json_build_object('vendor_name', vendor_name, 'qty', qty) ORDER BY vendor_name) AS breakdown
       FROM daily_bills_by_vendor
       GROUP BY d
     ),

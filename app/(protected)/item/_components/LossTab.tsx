@@ -1585,7 +1585,6 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                           <div key={idx} className="block">
                             <span>{fmtQs(String(bill.qty))}</span>
                             {bill.vendor_name && <span className="text-gray-600">({bill.vendor_name})</span>}
-                            {bill.entered_by && <span className="text-gray-500 text-[7px]"> by {bill.entered_by}</span>}
                           </div>
                         ))}
                       </div>
@@ -1703,7 +1702,6 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                           <div key={idx} className="block">
                             <span>{fmtQs(String(bill.qty))}</span>
                             {bill.vendor_name && <span className="text-gray-600">({bill.vendor_name})</span>}
-                            {bill.entered_by && <span className="text-gray-500 text-[7px]"> by {bill.entered_by}</span>}
                           </div>
                         ))}
                       </div>
