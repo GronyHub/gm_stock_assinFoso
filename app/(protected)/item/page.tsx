@@ -2200,7 +2200,7 @@ function ItemHubPageInner() {
   // else, so this is just a field-name adapter, not a different data
   // source (same trick countsTabItems used to use for CountsTab).
   const liveSalesBillsItems = useMemo(
-    () => liveAllItems.map(i => ({ id: i.id, item_name: i.name, cf_group: i.group })),
+    () => liveAllItems.map(i => ({ id: i.id, item_name: i.name, cf_group: i.group, selling_price: i.selling_price })),
     [liveAllItems]
   )
 

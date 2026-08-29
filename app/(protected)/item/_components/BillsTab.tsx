@@ -8,17 +8,28 @@ import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from
 import { useAttachments, AttachmentPicker, type Attachment } from './attachmentsShared'
 import ItemDetailModal from './ItemDetailModal'
 
-type Item = { id: number; item_name: string; cf_group: string | null }
+type Item = { id: number; item_name: string; cf_group: string | null; selling_price?: string | number | null }
 
-// Item stays sticky/always-visible (first column); these three are the
-// only ones the picker can hide/reorder/rename.
-type ColKey = 'quantity' | 'unitPrice' | 'itemTotal'
+// Item stays sticky/always-visible (first column); these are the ones the
+// picker can hide/reorder/rename. unitPrice is VCP (Vendor Cost Price --
+// straight off this bill's own unit_price, the same value items.purchase_rate
+// now syncs from -- see lib/vcpSync.ts). sharedExpenses/adjustedCost are
+// computed, not stored (see groupedList below); newSp is the one editable
+// cell here, and writes straight to the item's live selling price.
+type ColKey = 'quantity' | 'unitPrice' | 'sharedExpenses' | 'adjustedCost' | 'itemTotal' | 'newSp'
 const COLUMNS: ColumnDef<ColKey>[] = [
-  { key: 'quantity',  label: 'QTY' },
-  { key: 'unitPrice', label: 'CP' },
-  { key: 'itemTotal', label: 'TOTAL' },
+  { key: 'quantity',       label: 'QTY' },
+  { key: 'unitPrice',      label: 'VCP' },
+  { key: 'sharedExpenses', label: 'Shared Exp' },
+  { key: 'adjustedCost',   label: 'ACP' },
+  { key: 'itemTotal',      label: 'TOTAL' },
+  { key: 'newSp',          label: 'New SP' },
 ]
-const BILLS_COL_DEFAULTS: Record<string, number> = { item: 200, quantity: 70, unitPrice: 100, itemTotal: 100 }
+const BILLS_COL_DEFAULTS: Record<string, number> = {
+  item: 200, quantity: 70, unitPrice: 90, sharedExpenses: 90, adjustedCost: 90, itemTotal: 100, newSp: 110,
+}
+
+type BillExpense = { id: number; bill_id: number; description: string | null; amount: string }
 
 type Bill = {
   id: number
@@ -164,6 +175,108 @@ function NoAttachmentFix({ b, onFixed }: { b: NoAttachmentRow; onFixed: (id: num
   )
 }
 
+// Adds one shared extra-cost line (transport, bank charges, ...) against a
+// group's representative bill id -- lives right on the group bar next to
+// ✏️, since that's the same "one id stands for the whole (date, vendor)
+// group" convention edit already uses.
+function AddBillExpenseButton({ billId, onAdded }: { billId: number; onAdded: (e: BillExpense) => void }) {
+  const [open, setOpen] = useState(false)
+  const [description, setDescription] = useState('')
+  const [amount, setAmount] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  async function save() {
+    const amt = Number(amount)
+    if (!amt || amt <= 0) { setError('Enter a positive amount.'); return }
+    setSaving(true)
+    setError('')
+    const res = await fetch('/api/bills/expenses', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ billId, description: description.trim() || null, amount: amt }),
+    })
+    setSaving(false)
+    if (res.ok) {
+      const row = await res.json()
+      onAdded(row)
+      setOpen(false)
+      setDescription('')
+      setAmount('')
+    } else {
+      const d = await res.json().catch(() => ({}))
+      setError(d.error || 'Could not add expense.')
+    }
+  }
+
+  if (!open) {
+    return (
+      <button onClick={e => { e.stopPropagation(); setOpen(true) }}
+        title="Add a shared extra cost (transport, bank charges, ...)"
+        className="leading-none text-gray-400 hover:text-gray-700">
+        ＋💰
+      </button>
+    )
+  }
+  return (
+    <span onClick={e => e.stopPropagation()} className="flex items-center gap-1 bg-white/90 rounded px-1 py-0.5">
+      <input value={description} onChange={e => setDescription(e.target.value)} placeholder="Transport, bank charges…"
+        className="text-[9px] text-gray-900 bg-gray-100 border border-gray-200 rounded px-1 py-0.5 w-24 outline-none" />
+      <input type="number" min="0" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="₵"
+        className="text-[9px] text-gray-900 bg-gray-100 border border-gray-200 rounded px-1 py-0.5 w-14 outline-none" />
+      <button onClick={save} disabled={saving}
+        className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-600 text-white rounded disabled:opacity-40">
+        {saving ? '…' : 'Add'}
+      </button>
+      <button onClick={() => setOpen(false)}
+        className="text-[9px] font-semibold px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">✕</button>
+      {error && <span className="text-[8px] text-red-600 font-semibold">{error}</span>}
+    </span>
+  )
+}
+
+// The one editable cell in this table -- typing a new selling price here
+// writes straight to the item's live selling_rate (the same field Sales
+// reads from), since this is meant to be the moment a fresh delivery's cost
+// gets translated into a decided selling price.
+function NewSpCell({ itemId, currentSp, onSaved }: { itemId: number | null; currentSp: string | number | null | undefined; onSaved: (itemId: number, sp: string) => void }) {
+  const [value, setValue] = useState(currentSp != null ? String(currentSp) : '')
+  const [saving, setSaving] = useState(false)
+  const [savedFlash, setSavedFlash] = useState(false)
+
+  useEffect(() => { setValue(currentSp != null ? String(currentSp) : '') }, [currentSp])
+
+  if (!itemId) return <span className="text-gray-300">—</span>
+  const validItemId = itemId
+
+  async function save() {
+    const n = parseFloat(value)
+    if (!value || isNaN(n) || n < 0) return
+    if (currentSp != null && n === parseFloat(String(currentSp))) return
+    setSaving(true)
+    const res = await fetch(`/api/items/${validItemId}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ selling_rate: n }),
+    })
+    setSaving(false)
+    if (res.ok) {
+      onSaved(validItemId, String(n))
+      setSavedFlash(true)
+      setTimeout(() => setSavedFlash(false), 1200)
+    }
+  }
+
+  return (
+    <input type="number" min="0" step="0.01" value={value}
+      onChange={e => setValue(e.target.value)}
+      onBlur={save}
+      onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+      onClick={e => e.stopPropagation()}
+      title="Type a new selling price to update this item's live selling price"
+      className={`w-full text-right text-[10px] rounded px-1 py-0.5 border outline-none ${savedFlash ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-white'} ${saving ? 'opacity-50' : ''}`}
+    />
+  )
+}
+
 type Props = {
   items: Item[]
   groupFilter: string | null
@@ -179,6 +292,11 @@ function BillsTab({ items, groupFilter, search, violation = null }: Props) {
   const [showHistory, setShowHistory] = useState(false)
   const [viewingItemId, setViewingItemId] = useState<number | null>(null)
   const [linesMap, setLinesMap] = useState<Record<number, BillLine[]>>({})
+  const [billExpenses, setBillExpenses] = useState<BillExpense[]>([])
+  // Overrides the item's own selling_price prop the moment a New SP save
+  // succeeds -- so every row for that same item (it can appear on more than
+  // one bill) reflects it immediately, without waiting on a full refetch.
+  const [sellingPriceOverrides, setSellingPriceOverrides] = useState<Record<number, string>>({})
   // Editing is bill-level now, triggered from the ✏️ on a group's bar
   // rather than by clicking any line -- keyed by bill id directly.
   const [editingBillId, setEditingBillId] = useState<number | null>(null)
@@ -215,7 +333,8 @@ function BillsTab({ items, groupFilter, search, violation = null }: Props) {
     Promise.all([
       fetch('/api/bills').then(r => r.json()),
       fetch('/api/bills/all-lines').then(r => r.json()),
-    ]).then(([billsData, linesData]) => {
+      fetch('/api/bills/expenses').then(r => r.json()),
+    ]).then(([billsData, linesData, expensesData]) => {
       setBills(Array.isArray(billsData) ? billsData : [])
       const map: Record<number, BillLine[]> = {}
       if (Array.isArray(linesData)) {
@@ -225,6 +344,7 @@ function BillsTab({ items, groupFilter, search, violation = null }: Props) {
         }
       }
       setLinesMap(map)
+      setBillExpenses(Array.isArray(expensesData) ? expensesData : [])
       setLoading(false)
     }).catch(() => setLoading(false))
   }
@@ -269,6 +389,21 @@ function BillsTab({ items, groupFilter, search, violation = null }: Props) {
     )
     return rows
   }, [bills, linesMap])
+
+  // Total extra cost entered against each representative bill id (see
+  // bill_expenses' own comment on why one id stands in for a whole
+  // (date, vendor) group).
+  const expensesByBillId = useMemo(() => {
+    const totals: Record<number, number> = {}
+    for (const e of billExpenses) totals[e.bill_id] = (totals[e.bill_id] ?? 0) + (Number(e.amount) || 0)
+    return totals
+  }, [billExpenses])
+
+  const itemsById = useMemo(() => {
+    const m = new Map<number, Item>()
+    for (const it of items) m.set(it.id, it)
+    return m
+  }, [items])
 
   // Vendor/day totals are computed from the full, unfiltered set so the sum
   // always reflects every item bought from that vendor that day -- filtering
@@ -333,6 +468,23 @@ function BillsTab({ items, groupFilter, search, violation = null }: Props) {
     return list
   }, [flatRows, groupItemNames, vendorFilter, monthFilter, yearFilter, search])
 
+  // Per-group (date, vendor) total quantity and "representative" bill id --
+  // computed from the full, unfiltered flatRows same as vendorDayTotals, so
+  // Shared Expenses always divides by every item actually on the bill, not
+  // just whatever a search/group filter currently shows. flatRows is
+  // already sorted with the highest bill id first within a group (see its
+  // own sort comment), so the first row seen per key here is that same
+  // "representative" id the group bar's ✏️ edit has always used.
+  const groupAggregates = useMemo(() => {
+    const map: Record<string, { qty: number; representativeBillId: number }> = {}
+    for (const r of flatRows) {
+      const key = `${r.billDate}|${r.vendorName ?? ''}`
+      if (!map[key]) map[key] = { qty: 0, representativeBillId: r.billId }
+      map[key].qty += Number(r.quantity) || 0
+    }
+    return map
+  }, [flatRows])
+
   // One group per (date, vendor) block -- a bar (Date/Vendor/Total) above
   // its item lines, same pattern as Sales' receipt bar. isDayHead marks the
   // first group of each new day (blue bar); any other vendor billing the
@@ -347,20 +499,26 @@ function BillsTab({ items, groupFilter, search, violation = null }: Props) {
       map.get(gk)!.rows.push(r)
     }
     let prevDate: string | null = null
-    const list: { key: string; billDate: string; vendorName: string | null; total: number; editBillId: number; isDayHead: boolean; rows: FlatRow[] }[] = []
+    const list: { key: string; billDate: string; vendorName: string | null; total: number; editBillId: number; isDayHead: boolean; rows: FlatRow[]; sharedExpensesTotal: number; sharedPerUnit: number }[] = []
     for (const [key, g] of map) {
       const date10 = g.billDate.slice(0, 10)
+      const agg = groupAggregates[key]
+      const repBillId = agg?.representativeBillId ?? g.rows[0].billId
+      const sharedExpensesTotal = expensesByBillId[repBillId] ?? 0
+      const qty = agg?.qty ?? 0
       list.push({
         key, billDate: g.billDate, vendorName: g.vendorName,
         total: vendorDayTotals[key] ?? 0,
-        editBillId: g.rows[0].billId,
+        editBillId: repBillId,
         isDayHead: date10 !== prevDate,
         rows: g.rows,
+        sharedExpensesTotal,
+        sharedPerUnit: qty > 0 ? sharedExpensesTotal / qty : 0,
       })
       prevDate = date10
     }
     return list
-  }, [filtered, vendorDayTotals])
+  }, [filtered, vendorDayTotals, groupAggregates, expensesByBillId])
 
   function toggleEdit(billId: number) {
     if (editingBillId === billId) { setEditingBillId(null); return }
@@ -677,6 +835,13 @@ function BillsTab({ items, groupFilter, search, violation = null }: Props) {
                           className={`leading-none ${g.isDayHead ? 'text-blue-100 hover:text-white' : 'text-gray-400 hover:text-gray-700'}`}>
                           ✏️
                         </button>
+                        <AddBillExpenseButton billId={g.editBillId} onAdded={row => setBillExpenses(prev => [...prev, row])} />
+                        {g.sharedExpensesTotal > 0 && (
+                          <span className={`text-[9px] whitespace-nowrap ${g.isDayHead ? 'text-blue-100' : 'text-gray-400'}`}
+                            title="Total shared extra costs entered against this bill">
+                            +₵{g.sharedExpensesTotal.toFixed(2)}
+                          </span>
+                        )}
                         <span className={`flex-1 text-center font-extrabold truncate ${g.isDayHead ? 'text-white text-base' : 'text-gray-700 text-sm'}`}
                           title={g.vendorName ?? ''}>
                           {g.vendorName ?? '—'}
@@ -706,8 +871,21 @@ function BillsTab({ items, groupFilter, search, violation = null }: Props) {
                         if (c.key === 'unitPrice') return (
                           <td key={c.key} className="px-1 py-1 text-right text-gray-700 truncate">{fmt(row.unitPrice)}</td>
                         )
-                        return (
+                        if (c.key === 'sharedExpenses') return (
+                          <td key={c.key} className="px-1 py-1 text-right text-gray-500 truncate">{g.sharedPerUnit > 0 ? fmt(g.sharedPerUnit.toFixed(2)) : '—'}</td>
+                        )
+                        if (c.key === 'adjustedCost') return (
+                          <td key={c.key} className="px-1 py-1 text-right text-purple-700 truncate">{fmt(((parseFloat(row.unitPrice) || 0) + g.sharedPerUnit).toFixed(2))}</td>
+                        )
+                        if (c.key === 'itemTotal') return (
                           <td key={c.key} className="px-1 py-1 text-right font-semibold text-gray-900 truncate">{fmt(row.itemTotal)}</td>
+                        )
+                        return (
+                          <td key={c.key} className="px-1 py-1" onClick={e => e.stopPropagation()}>
+                            <NewSpCell itemId={row.itemId}
+                              currentSp={row.itemId ? (sellingPriceOverrides[row.itemId] ?? itemsById.get(row.itemId)?.selling_price ?? null) : null}
+                              onSaved={(id, sp) => setSellingPriceOverrides(prev => ({ ...prev, [id]: sp }))} />
+                          </td>
                         )
                       })}
                     </tr>
