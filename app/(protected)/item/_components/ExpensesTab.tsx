@@ -142,6 +142,7 @@ type TableProps = {
   onDeleteStart: (id: number) => void
   onDeleteConfirm: (id: number) => void
   onDeleteCancel: () => void
+  onMigrated: (id: number) => void
   colPrefs: ColumnPrefs<ColKey>
   hideAccount?: boolean
   hideVendor?: boolean
@@ -235,8 +236,89 @@ function FilterHeaderCell({ label, options, value, onChange, onResize, onResetWi
   )
 }
 
+// One-time move of a historical expense into a bill's own bill_expenses
+// (not a lasting link -- see /api/expenses/[id]/migrate-to-bill). Bills are
+// fetched lazily on first open rather than threaded down from ExpensesTab,
+// since most rows never open this picker.
+function MigrateToBillButton({ expenseId, onMigrated }: { expenseId: number; onMigrated: (id: number) => void }) {
+  const [open, setOpen] = useState(false)
+  const [bills, setBills] = useState<{ id: number; bill_number: string; bill_date: string; vendor_name: string | null; total: string }[]>([])
+  const [loadingBills, setLoadingBills] = useState(false)
+  const [query, setQuery] = useState('')
+  const [pickedId, setPickedId] = useState<number | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  function openPicker() {
+    setOpen(true)
+    if (bills.length === 0 && !loadingBills) {
+      setLoadingBills(true)
+      fetch('/api/bills').then(r => r.json())
+        .then(d => { setBills(Array.isArray(d) ? d : []); setLoadingBills(false) })
+        .catch(() => setLoadingBills(false))
+    }
+  }
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    const matches = q
+      ? bills.filter(b => b.bill_number.toLowerCase().includes(q) || (b.vendor_name ?? '').toLowerCase().includes(q))
+      : bills
+    return matches.slice(0, 40)
+  }, [bills, query])
+
+  async function migrate() {
+    if (!pickedId) return
+    setSaving(true)
+    setError('')
+    const res = await fetch(`/api/expenses/${expenseId}/migrate-to-bill`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ billId: pickedId }),
+    })
+    setSaving(false)
+    if (res.ok) {
+      setOpen(false)
+      onMigrated(expenseId)
+    } else {
+      const d = await res.json().catch(() => ({}))
+      setError(d.error || 'Could not migrate this expense.')
+    }
+  }
+
+  if (!open) {
+    return (
+      <button onClick={openPicker}
+        className="px-3 py-1 bg-purple-50 text-purple-700 text-[10px] font-semibold rounded hover:bg-purple-100">
+        Migrate to Bill →
+      </button>
+    )
+  }
+
+  return (
+    <span className="flex items-center gap-1 flex-wrap">
+      <input value={query} onChange={ev => { setQuery(ev.target.value); setPickedId(null) }}
+        placeholder="Search bill # or vendor…"
+        className="text-[10px] bg-gray-100 border border-gray-200 rounded px-1.5 py-1 outline-none w-36" />
+      <select value={pickedId ?? ''} onChange={ev => setPickedId(ev.target.value ? Number(ev.target.value) : null)}
+        className="text-[10px] bg-white border border-gray-200 rounded px-1 py-1 max-w-[180px]">
+        <option value="">{loadingBills ? 'Loading…' : 'Select bill…'}</option>
+        {filtered.map(b => (
+          <option key={b.id} value={b.id}>{b.bill_number} · {b.vendor_name ?? 'No vendor'} · ₵{Number(b.total).toFixed(0)}</option>
+        ))}
+      </select>
+      <button onClick={migrate} disabled={!pickedId || saving}
+        className="px-2 py-1 bg-purple-600 text-white text-[10px] font-bold rounded disabled:opacity-40">
+        {saving ? 'Moving…' : 'Move'}
+      </button>
+      <button onClick={() => setOpen(false)}
+        className="px-2 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
+      {error && <span className="text-[9px] text-red-600 font-semibold w-full">{error}</span>}
+    </span>
+  )
+}
+
 function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, saving, form, saveError, onEdit, onCloseEdit,
-  onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, colPrefs, hideAccount, hideVendor, hidePropertyColumns,
+  onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, onMigrated, colPrefs, hideAccount, hideVendor, hidePropertyColumns,
   accounts, vendors, accountFilter, vendorFilter, onAccountFilter, onVendorFilter, itemsByType, onFetchItemsForType, relatedItems, onFetchRelatedItems, relatedItemsLoading, relatedItemsError,
   accountsData, showAccountsPanel, newAccountName, editingAccountId, editingAccountName, accountError, accountSaving,
   onSetShowAccountsPanel, onSetNewAccountName, onSetEditingAccountId, onSetEditingAccountName, onSetAccountError,
@@ -630,6 +712,7 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
                     </button>
                     <button onClick={onCloseEdit}
                       className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
+                    <MigrateToBillButton expenseId={e.id} onMigrated={onMigrated} />
                     {/* Delete lives here, inside Edit, rather than as its own
                         button on every row -- one extra tap discourages
                         accidental deletes. */}
@@ -1058,6 +1141,14 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
     }
   }
 
+  // The migrate API already deletes the expenses row server-side -- this
+  // just drops it from local state, same shape as a successful delete.
+  function migrateExpense(id: number) {
+    setExpenses(prev => prev.filter(e => e.id !== id))
+    setConfirmDeleteId(null)
+    setEditId(null)
+  }
+
   const tableProps = {
     highlightId, editId, confirmDeleteId, deleting, saving, form, saveError,
     onEdit: openEdit,
@@ -1067,6 +1158,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
     onDeleteStart: (id: number) => setConfirmDeleteId(id),
     onDeleteConfirm: deleteExpense,
     onDeleteCancel: () => setConfirmDeleteId(null),
+    onMigrated: migrateExpense,
     colPrefs,
     accounts: accountOptions,
     vendors: vendorOptions,

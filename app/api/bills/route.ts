@@ -3,6 +3,7 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { ensureBillAttachmentsColumn } from '@/lib/billAttachments'
 import { ensureDbInitialized } from '@/lib/api/dbInitCache'
+import { syncVcpForItems } from '@/lib/vcpSync'
 import { NextRequest } from 'next/server'
 
 export async function GET(req: NextRequest) {
@@ -162,6 +163,7 @@ export async function POST(req: NextRequest) {
     const vendorsUsed = Array.from(new Set(lines.map(l => l.vendorName).filter(Boolean)))
     const vendorNote = vendorsUsed.length === 1 ? ` from ${vendorsUsed[0]}` : vendorsUsed.length > 1 ? ` from ${vendorsUsed.length} vendors` : ''
     await logActivity(enteredBy ?? 'Unknown', 'added bill', `${lines.length} line${lines.length > 1 ? 's' : ''} · ₵${grandTotal.toFixed(2)}${vendorNote}`)
+    await syncVcpForItems(itemIds)
     return success({ ok: true, billNumbers })
   } catch (e) {
     return handleError('bills POST', e)

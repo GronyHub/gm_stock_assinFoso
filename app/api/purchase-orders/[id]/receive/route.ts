@@ -1,6 +1,7 @@
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
+import { syncVcpForItems } from '@/lib/vcpSync'
 import { NextRequest } from 'next/server'
 
 type ReceiveLine = { poLineId: number; qty: number; price: number }
@@ -89,6 +90,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     await logActivity(actor, 'received purchase order items', `${po.po_number} · ₵${total.toFixed(2)} → ${billNumber}`)
+    await syncVcpForItems(received.map(l => poLineById.get(l.poLineId)!.item_id))
     return success({ ok: true, billId: bill.id, billNumber })
   } catch (e) {
     return handleError('purchase-orders/[id]/receive', e)

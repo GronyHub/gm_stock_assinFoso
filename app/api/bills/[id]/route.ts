@@ -4,6 +4,7 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { isOwnerLevel } from '@/lib/roles'
 import { ensureBillAttachmentsColumn, normalizeAttachments } from '@/lib/billAttachments'
+import { syncVcpForItems } from '@/lib/vcpSync'
 import { NextRequest } from 'next/server'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -61,11 +62,14 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const [bill] = await sql`SELECT id, bill_number, vendor_name FROM bills WHERE id = ${billId}`
   if (!bill) return notFound()
 
+  const affectedLines = await sql`SELECT item_id FROM bill_lines WHERE bill_id = ${billId}` as { item_id: number | null }[]
+
   await sql`DELETE FROM bill_lines WHERE bill_id = ${billId}`
   await sql`DELETE FROM bills WHERE id = ${billId}`
 
   const actor = getActorName(session)
   await logActivity(actor, 'deleted bill', `Bill #${billId}${bill.vendor_name ? ` — ${bill.vendor_name}` : ''}`)
+  await syncVcpForItems(affectedLines.map(l => l.item_id))
 
   return success({ ok: true })
 }
