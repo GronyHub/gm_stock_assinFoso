@@ -178,17 +178,60 @@ function LossGainCells({ value }: { value: number | null }) {
   )
 }
 
+// A day where this bill's VCP took over from the previous bill's, more than
+// VCP_JUMP_THRESHOLD_PCT away from it either direction -- catches both
+// genuine cost swings worth double-checking and likely data-entry typos
+// (an extra/missing digit on a bill's unit price).
+const VCP_JUMP_THRESHOLD_PCT = 20
+type VcpJump = { from: number; to: number; pct: number }
+
+// Walks an item's day rows (any order in, oldest-first internally) and
+// flags each date where a NEW bill's VCP first takes effect and differs
+// from the previous bill's VCP by more than the threshold -- everyday rows
+// that just repeat the same still-current VCP are never flagged, only the
+// actual transition day.
+function computeVcpJumps(rows: { date: string; vcp: string | null; vcp_bill_id: number | null }[]): Map<string, VcpJump> {
+  const chrono = [...rows].sort((a, b) => a.date.localeCompare(b.date))
+  const jumps = new Map<string, VcpJump>()
+  let lastBillId: number | null = null
+  let lastVcp: number | null = null
+  for (const row of chrono) {
+    if (row.vcp == null) continue
+    const vcp = parseFloat(row.vcp)
+    if (isNaN(vcp)) continue
+    if (row.vcp_bill_id !== lastBillId) {
+      if (lastVcp != null && lastVcp > 0) {
+        const pct = ((vcp - lastVcp) / lastVcp) * 100
+        if (Math.abs(pct) >= VCP_JUMP_THRESHOLD_PCT) {
+          jumps.set(row.date, { from: lastVcp, to: vcp, pct })
+        }
+      }
+      lastBillId = row.vcp_bill_id
+      lastVcp = vcp
+    }
+  }
+  return jumps
+}
+
 // VCP (Vendor Cost Price) as of this day, from lib/itemDayRows.ts's own
 // per-day bill lookup -- clickable when a source bill exists (onBillClick
 // jumps there), plain text otherwise (no bill yet, or no handler supplied).
-function VcpCell({ vcp, billId, onBillClick }: { vcp: string | null; billId: number | null; onBillClick?: (billId: number) => void }) {
+// `jump` (see computeVcpJumps) adds a ⚠ badge when this is the day a big
+// price swing from the previous bill took effect.
+function VcpCell({ vcp, billId, onBillClick, jump }: { vcp: string | null; billId: number | null; onBillClick?: (billId: number) => void; jump?: VcpJump }) {
   if (vcp == null) return <span className="text-gray-300">—</span>
   const val = parseFloat(vcp)
   if (isNaN(val)) return <span className="text-gray-300">—</span>
-  if (billId != null && onBillClick) {
-    return <button onClick={() => onBillClick(billId)} className="hover:underline">{fmtN(val)}</button>
-  }
-  return <>{fmtN(val)}</>
+  const value = billId != null && onBillClick
+    ? <button onClick={() => onBillClick(billId)} className="hover:underline">{fmtN(val)}</button>
+    : <>{fmtN(val)}</>
+  if (!jump) return value
+  return (
+    <span className="inline-flex items-center gap-0.5" title={`VCP jumped ${jump.pct > 0 ? '+' : ''}${jump.pct.toFixed(0)}% from ₵${fmtN(jump.from)} to ₵${fmtN(jump.to)} on this bill`}>
+      {value}
+      <span className="text-amber-500">⚠</span>
+    </span>
+  )
 }
 
 /* Omissions: records that should exist but don't, found by cross-checking the
@@ -1076,6 +1119,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   }, [isPackChain, item.converts_to_item_id])
 
   const computed = dayRows ? computeRows(dayRows) : null
+  const vcpJumps = computed ? computeVcpJumps(computed) : new Map<string, VcpJump>()
   const isService = item.product_type === 'service'
   // CNV (converted-in from another item's GMC take) can only ever be
   // non-zero for the item a pack_to_gmc good actually converts into --
@@ -1481,7 +1525,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                   )}
                   {!isService && (
                     <td className="px-1 py-0 text-right text-gray-500">
-                      <VcpCell vcp={row.vcp} billId={row.vcp_bill_id} onBillClick={onBillClick} />
+                      <VcpCell vcp={row.vcp} billId={row.vcp_bill_id} onBillClick={onBillClick} jump={vcpJumps.get(row.date)} />
                     </td>
                   )}
                   {!isService && <td className="px-1 py-0 text-right text-purple-700">{row.acp != null ? fmtN(parseFloat(row.acp)) : <span className="text-gray-300">—</span>}</td>}
@@ -1571,7 +1615,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                   )}
                   {!isService && (
                     <td className="px-1 py-0 text-right text-gray-500">
-                      <VcpCell vcp={row.vcp} billId={row.vcp_bill_id} onBillClick={onBillClick} />
+                      <VcpCell vcp={row.vcp} billId={row.vcp_bill_id} onBillClick={onBillClick} jump={vcpJumps.get(row.date)} />
                     </td>
                   )}
                   {!isService && <td className="px-1 py-0 text-right text-purple-700">{row.acp != null ? fmtN(parseFloat(row.acp)) : <span className="text-gray-300">—</span>}</td>}
