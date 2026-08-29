@@ -863,6 +863,13 @@ function ItemHubPageInner() {
   const [liveCountDisplayFilter, setLiveCountDisplayFilter] = useState<'all' | 'counted' | 'loss' | 'gains'>('all')
   const [liveShowTradeOffOnly, setLiveShowTradeOffOnly] = useState(false)
   const [liveShowAcpGtSpOnly, setLiveShowAcpGtSpOnly] = useState(false)
+  const [liveShowDuplicatesOnly, setLiveShowDuplicatesOnly] = useState(false)
+  const [liveShowUnlinkedOnly, setLiveShowUnlinkedOnly] = useState(false)
+  const [liveShowServiceViolationOnly, setLiveShowServiceViolationOnly] = useState(false)
+  const [liveShowGainsOnly, setLiveShowGainsOnly] = useState(false)
+  const [liveShowSoldBelowCostOnly, setLiveShowSoldBelowCostOnly] = useState(false)
+  const [liveShowVcpJumpOnly, setLiveShowVcpJumpOnly] = useState(false)
+  const [liveShowEmptyRowOnly, setLiveShowEmptyRowOnly] = useState(false)
   const [liveCountDeleteLoading, setLiveCountDeleteLoading] = useState<number | null>(null)
   const rawSidePaneHidden = searchParams.get('sidebarHidden')
   const initialSidePaneHidden = rawSidePaneHidden === '1'
@@ -2548,6 +2555,15 @@ function ItemHubPageInner() {
     return counts
   }, [liveLossByItemId])
 
+  // Violation counts for filter bar
+  const liveDuplicateCount = liveDuplicateItemIds.size
+  const liveUnlinkedCount = liveUnlinkedNamedIds.size
+  const liveServiceViolationCount = liveServiceViolationIdSet.size
+  const liveGainCount = liveGainCountByItemId.size
+  const liveSoldBelowCostCount = liveSoldBelowCostDatesByItemId.size
+  const liveVcpJumpCount = liveVcpJumpDatesByItemId.size
+  const liveEmptyRowCount = liveEmptyRowCountByItemId.size
+
   // Fetch taps
   useEffect(() => {
     fetch('/api/sales/live-taps')
@@ -3099,7 +3115,7 @@ function ItemHubPageInner() {
   const liveSortedCatalogueItems = useMemo(() => {
     if (liveMode !== 'sale') return liveCatalogueItems
 
-    // Filter to trade-off items if checkbox is enabled
+    // Filter to violation items if checkboxes are enabled
     let itemsToSort = liveCatalogueItems
     if (liveShowTradeOffOnly) {
       const tradeOffItemIds = new Set(liveItemsWithTradeOffs.map(t => t.itemId))
@@ -3107,6 +3123,27 @@ function ItemHubPageInner() {
     }
     if (liveShowAcpGtSpOnly) {
       itemsToSort = itemsToSort.filter(item => liveAcpGtSpItemIds.has(item.id))
+    }
+    if (liveShowDuplicatesOnly) {
+      itemsToSort = itemsToSort.filter(item => liveDuplicateItemIds.has(item.id))
+    }
+    if (liveShowUnlinkedOnly) {
+      itemsToSort = itemsToSort.filter(item => liveUnlinkedNamedIds.has(item.id))
+    }
+    if (liveShowServiceViolationOnly) {
+      itemsToSort = itemsToSort.filter(item => liveServiceViolationIdSet.has(item.id))
+    }
+    if (liveShowGainsOnly) {
+      itemsToSort = itemsToSort.filter(item => liveGainCountByItemId.has(item.id))
+    }
+    if (liveShowSoldBelowCostOnly) {
+      itemsToSort = itemsToSort.filter(item => liveSoldBelowCostDatesByItemId.has(item.id))
+    }
+    if (liveShowVcpJumpOnly) {
+      itemsToSort = itemsToSort.filter(item => liveVcpJumpDatesByItemId.has(item.id))
+    }
+    if (liveShowEmptyRowOnly) {
+      itemsToSort = itemsToSort.filter(item => liveEmptyRowCountByItemId.has(item.id))
     }
 
     const scoreFns: Record<ItemSortKey, (item: LiveItem) => number> = {
@@ -3138,7 +3175,7 @@ function ItemHubPageInner() {
       }
       return 0
     })
-  }, [liveCatalogueItems, liveCountStatus, liveMode, liveViolationCountByItemId, liveSalesCounts, liveItemSortOrder, liveShowTradeOffOnly, liveItemsWithTradeOffs, liveShowAcpGtSpOnly, liveAcpGtSpItemIds])
+  }, [liveCatalogueItems, liveCountStatus, liveMode, liveViolationCountByItemId, liveSalesCounts, liveItemSortOrder, liveShowTradeOffOnly, liveItemsWithTradeOffs, liveShowAcpGtSpOnly, liveAcpGtSpItemIds, liveShowDuplicatesOnly, liveDuplicateItemIds, liveShowUnlinkedOnly, liveUnlinkedNamedIds, liveShowServiceViolationOnly, liveServiceViolationIdSet, liveShowGainsOnly, liveGainCountByItemId, liveShowSoldBelowCostOnly, liveSoldBelowCostDatesByItemId, liveShowVcpJumpOnly, liveVcpJumpDatesByItemId, liveShowEmptyRowOnly, liveEmptyRowCountByItemId])
 
   // How many leading items are due for a count -- only meaningful (and only
   // used to draw the "N items need counting" header + divider) when count
@@ -4850,7 +4887,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               )}
               {/* Sale mode filter bar */}
               {showControls && liveMode === 'sale' && (
-                <div className="px-2 py-0.5 border-b border-green-700 flex items-center gap-0 text-[9px]">
+                <div className="px-2 py-0.5 border-b border-green-700 flex flex-wrap items-center gap-0 text-[9px]">
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
                     <input type="checkbox" checked={liveShowOnlyDueForCount} onChange={() => { setLiveShowOnlyDueForCount(d => !d); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
                     <span>Due</span>
@@ -4864,6 +4901,41 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
                     <input type="checkbox" checked={liveShowAcpGtSpOnly} onChange={() => { setLiveShowAcpGtSpOnly(d => !d); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
                     <span>ACP &gt; SP{liveAcpGtSpCount > 0 && ` (${liveAcpGtSpCount})`}</span>
+                  </label>
+                  <span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
+                    <input type="checkbox" checked={liveShowDuplicatesOnly} onChange={() => { setLiveShowDuplicatesOnly(d => !d); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
+                    <span>Duplicates{liveDuplicateCount > 0 && ` (${liveDuplicateCount})`}</span>
+                  </label>
+                  <span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
+                    <input type="checkbox" checked={liveShowUnlinkedOnly} onChange={() => { setLiveShowUnlinkedOnly(d => !d); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
+                    <span>Unlinked{liveUnlinkedCount > 0 && ` (${liveUnlinkedCount})`}</span>
+                  </label>
+                  <span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
+                    <input type="checkbox" checked={liveShowServiceViolationOnly} onChange={() => { setLiveShowServiceViolationOnly(d => !d); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
+                    <span>Service{liveServiceViolationCount > 0 && ` (${liveServiceViolationCount})`}</span>
+                  </label>
+                  <span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
+                    <input type="checkbox" checked={liveShowGainsOnly} onChange={() => { setLiveShowGainsOnly(d => !d); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
+                    <span>Gains{liveGainCount > 0 && ` (${liveGainCount})`}</span>
+                  </label>
+                  <span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
+                    <input type="checkbox" checked={liveShowSoldBelowCostOnly} onChange={() => { setLiveShowSoldBelowCostOnly(d => !d); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
+                    <span>Sold Below Cost{liveSoldBelowCostCount > 0 && ` (${liveSoldBelowCostCount})`}</span>
+                  </label>
+                  <span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
+                    <input type="checkbox" checked={liveShowVcpJumpOnly} onChange={() => { setLiveShowVcpJumpOnly(d => !d); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
+                    <span>VCP Jump{liveVcpJumpCount > 0 && ` (${liveVcpJumpCount})`}</span>
+                  </label>
+                  <span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
+                    <input type="checkbox" checked={liveShowEmptyRowOnly} onChange={() => { setLiveShowEmptyRowOnly(d => !d); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
+                    <span>Empty Row{liveEmptyRowCount > 0 && ` (${liveEmptyRowCount})`}</span>
                   </label>
                   <span className="text-gray-400 px-1">·</span>
                   <button
