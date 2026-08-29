@@ -151,26 +151,27 @@ function PostRow({ p, showDateHeader, gapMins, canDelete, onLongPressStart, onLo
         </div>
       )}
       {(p.media_urls ?? []).length === 0 && !p.reply_to_id && p.body && !p.body.includes('\n') && p.body.length <= 60 ? (
-        // Compact single-line row -- for short posts (mostly auto-logged
-        // activity like "clocked out — 7:13pm") that don't need their
-        // own separate line for the message. Long-press to reply.
+        // Auto-logged activity row -- Staff/Time/Gap/Dur/Activity each get
+        // their own aligned column (same idea as Live Sale's Log mode
+        // table), instead of one run-on line that ellipsis-truncated the
+        // activity text. Activity itself wraps rather than clipping, so
+        // the full description is always readable. These are system
+        // records, not user-authored messages, so there's no delete
+        // button here -- that stays on manual posts below, which is a
+        // different kind of content people actually compose and might
+        // need to retract.
         <div
           onPointerDown={() => onLongPressStart(p)}
           onPointerUp={onLongPressEnd}
           onPointerLeave={onLongPressEnd}
           onContextMenu={e => e.preventDefault()}
-          className="flex items-center justify-between gap-2 px-3 py-1 select-none"
+          className="grid grid-cols-[minmax(3rem,auto)_minmax(3.25rem,auto)_minmax(3.25rem,auto)_minmax(3.25rem,auto)_1fr] gap-x-2 items-baseline px-3 py-1 select-none"
         >
-          <p className="min-w-0 truncate text-[11px]">
-            <span className="font-semibold text-gray-700 capitalize">{p.author}</span>
-            <span className="text-gray-400"> · {fmtAnnTime(p.created_at)}</span>
-            <ActivityMeta gapMins={gapMins} durationSeconds={p.estimated_duration_seconds} />
-            <span className="text-gray-400"> · </span>
-            <span className="text-gray-800">{p.body}</span>
-          </p>
-          {canDelete && (
-            <button onClick={() => onDelete(p.id)} className="shrink-0 text-gray-300 hover:text-red-500 font-bold leading-none">×</button>
-          )}
+          <span className="font-semibold text-gray-700 capitalize whitespace-nowrap text-[11px]">{p.author}</span>
+          <span className="text-gray-400 text-[10px] whitespace-nowrap">{fmtAnnTime(p.created_at)}</span>
+          <span className="text-gray-400 text-[10px] whitespace-nowrap">{gapMins != null ? `Gap ${formatGapMins(gapMins)}` : ''}</span>
+          <span className="text-gray-400 text-[10px] whitespace-nowrap">{p.estimated_duration_seconds ? `Dur ${formatDuration(p.estimated_duration_seconds)}` : ''}</span>
+          <span className="text-gray-800 text-[11px] break-words">{p.body}</span>
         </div>
       ) : (
         <div

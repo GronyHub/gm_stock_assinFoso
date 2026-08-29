@@ -37,7 +37,7 @@ class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boole
 }
 import { usePolling } from '@/lib/usePolling'
 import { useViolations } from './_components/useViolations'
-import PaneHomeDaily from './_components/PaneHomeDaily'
+import PaneDaily from './_components/PaneDaily'
 import AddShortcutButton, { type ShortcutKey } from './_components/AddShortcutButton'
 import { MyAssignmentsSummary } from './_components/MyAssignmentsSummary'
 import AssignWidget from './_components/AssignWidget'
@@ -4211,11 +4211,9 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
         {!sidePaneHidden && (
         <SidePaneContainer mode={cashDisplayMode} accent={paneAccent}
             footer={<>
-              <PaneHomeDaily mode={cashDisplayMode}
-                onHome={() => { setLossView('home'); setUnreadAnnouncements(0); setSettingsOpen(false) }}
+              <PaneDaily mode={cashDisplayMode}
                 onDaily={() => { setLossView('dailySummary'); setSettingsOpen(false) }}
-                homeActive={paneActive(lossView === 'home')} dailyActive={paneActive(lossView === 'dailySummary')}
-                unreadAnnouncements={unreadAnnouncements} />
+                dailyActive={paneActive(lossView === 'dailySummary')} />
               {/* Biz/UK/C&H/Search all moved out of this footer -- they now
                   live as small icons at the bottom of the content area (the
                   right side) instead, see below. */}
@@ -4229,10 +4227,18 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
             {outerTab === 'loss' && (<>
             {canSeeCash && (
             <div>
+              {/* Home first, above Items -- used to live in this pane's
+                  footer (paired with Daily) so it stayed on screen
+                  regardless of scroll position; moved to the top of the
+                  list itself instead, same "jump to a view of this same
+                  pane" click behavior as before. */}
+              <SidePaneButton icon="🏠" label="Home" mode={cashDisplayMode}
+                active={paneActive(lossView === 'home')} badge={unreadAnnouncements}
+                onClick={() => { setLossView('home'); setUnreadAnnouncements(0); setSettingsOpen(false) }} />
               {applyPaneOrder(combinedCashItems, paneOrder.cash).filter(v => (v.key !== 'pl' || canSeePL) && !paneHidden[v.key]).map((v, i) => (
                 <Fragment key={v.key}>
                   <SidePaneButton icon={v.icon} label={paneLabel(v.key, v.label)} mode={cashDisplayMode}
-                    active={paneActive(cashItemActive(v.key))} divider={i > 0}
+                    active={paneActive(cashItemActive(v.key))} divider
                     badge={v.key === 'sales' ? (salesFlagsCount + billsFlagsCount + countsFlagsCount + lossByDateFlagsCount)
                       : v.key === 'items' ? itemsFlagsCount
                       : v.key === 'cab' ? cabFlagsCount
