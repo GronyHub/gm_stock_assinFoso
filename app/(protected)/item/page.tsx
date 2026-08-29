@@ -4846,7 +4846,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               )}
               {/* Count filter bar — unified single filter */}
               {showControls && liveMode === 'sale' && (
-                <div className="px-2 py-1 border-b border-green-700 flex items-center gap-2">
+                <div className="px-2 py-1 border-b border-green-700 flex flex-wrap items-center gap-2">
                   <label className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-amber-400 hover:bg-amber-500 text-amber-900 font-semibold text-xs cursor-pointer transition whitespace-nowrap">
                     <input type="checkbox" checked={liveShowOnlyDueForCount} onChange={() => setLiveShowOnlyDueForCount(d => !d)} className="cursor-pointer" />
                     🔄 Due
