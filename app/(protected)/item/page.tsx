@@ -6397,33 +6397,30 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                               </div>
                             ) : (
                               <>
-                                <label className="text-[7px] font-bold text-gray-500 block mb-1">Manual Count</label>
+                                <div className="bg-blue-600 text-white rounded-lg px-4 py-3 mb-2">
+                                  <h3 className="text-lg font-bold">Enter Count here</h3>
+                                </div>
                                 <div className="space-y-1">
                                   <div className="flex gap-1.5 items-stretch">
-                                    <div className="flex-1 min-w-0 flex flex-col">
-                                      <p className="text-[8px] text-gray-500 font-medium mb-1">Quantity</p>
-                                      <input
-                                        type="number"
-                                        inputMode="decimal"
-                                        min="0"
-                                        step="1"
-                                        value={liveGridEditCountQty}
-                                        onChange={e => setLiveGridEditCountQty(e.target.value)}
-                                        placeholder="Qty"
-                                        className="w-full flex-1 text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-1 py-4 outline-none focus:ring-1 focus:ring-blue-400 text-center"
-                                        disabled={liveGridEditCountSaving}
-                                      />
-                                    </div>
-                                    <div className="flex-1 min-w-0 flex flex-col">
-                                      <p className="text-[8px] text-transparent font-medium mb-1 select-none">Record</p>
-                                      <button
-                                        type="button"
-                                        onClick={() => recordCountFromModal()}
-                                        disabled={!liveGridEditCountQty || liveGridEditCountSaving}
-                                        className="w-full flex-1 px-1 py-4 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-semibold rounded-lg transition disabled:opacity-50">
-                                        {liveGridEditCountSaving ? 'Recording…' : 'Record'}
-                                      </button>
-                                    </div>
+                                    <input
+                                      type="number"
+                                      inputMode="decimal"
+                                      min="0"
+                                      step="1"
+                                      value={liveGridEditCountQty}
+                                      onChange={e => setLiveGridEditCountQty(e.target.value)}
+                                      placeholder="Qty"
+                                      className="flex-1 text-lg font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-3 py-4 outline-none focus:ring-1 focus:ring-blue-400 text-center"
+                                      disabled={liveGridEditCountSaving}
+                                      autoFocus
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => recordCountFromModal()}
+                                      disabled={!liveGridEditCountQty || liveGridEditCountSaving}
+                                      className="shrink-0 px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-semibold rounded-lg transition disabled:opacity-50">
+                                      {liveGridEditCountSaving ? 'Recording…' : 'Record'}
+                                    </button>
                                   </div>
                                   {liveGridEditCountError && (
                                     <div className="bg-red-50 border border-red-200 rounded px-1.5 py-0.5 text-[8px] text-red-600">
