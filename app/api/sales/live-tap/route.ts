@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     await ensureLiveSaleTapsTable()
     console.log('[live-tap] Table ensured')
 
-    const [item] = await sql`SELECT id, canonical_name, selling_rate, product_type, gmc_type, converts_to_item_id FROM items WHERE id = ${Number(itemId)}`
+    const [item] = await sql`SELECT id, canonical_name, selling_rate, product_type, gmc_type, converts_to_item_id, unit_time_seconds FROM items WHERE id = ${Number(itemId)}`
     console.log('[live-tap] Item fetched:', item?.canonical_name)
     if (!item) return badRequest('Item not found')
 
@@ -182,7 +182,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    await logActivity(staffName, 'live sale tap', `${item.canonical_name} × ${qty} · ₵${lineAmount.toFixed(2)}`)
+    // Same estimate Live Sale's Log mode used to show in its own Dur column
+    // (item's Time/unit x Qty) -- now recorded on the Home feed's post
+    // instead, since that's meant to cover every activity's duration, not
+    // just sales.
+    const unitTimeSeconds = item.unit_time_seconds != null ? Number(item.unit_time_seconds) : null
+    const estimatedDurationSeconds = unitTimeSeconds != null ? unitTimeSeconds * qty : undefined
+    await logActivity(staffName, 'live sale tap', `${item.canonical_name} × ${qty} · ₵${lineAmount.toFixed(2)}`, estimatedDurationSeconds)
     console.log('[live-tap] Success, returning tap:', tap?.id)
 
     return success({ tap, lineQuantity: line.quantity, lineTotal: line.item_total, targetSohAfterReduction, targetItemName })

@@ -3,6 +3,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { usePolling } from '@/lib/usePolling'
 import { Linkify } from '@/lib/linkify'
+import { formatDuration } from '@/lib/fmtDuration'
+import { formatGapMins } from '@/lib/fmtGap'
 
 // ─── Announcements ────────────────────────────────────────────────────────────
 type MediaItem = { url: string; type: string }
@@ -11,6 +13,11 @@ type Announcement = {
   reply_to_id?: number | null
   reply_to_author?: string | null
   reply_to_body?: string | null
+  // Estimated time the activity itself took -- only set for activity types
+  // that can actually compute one (currently just live sale taps, see
+  // /api/sales/live-tap). Null everywhere else until that type gets its own
+  // rule (see lib/logger.ts's own comment on this column).
+  estimated_duration_seconds?: number | null
 }
 type MediaFile = { file: File | Blob; localUrl: string; uploading: boolean; url?: string; contentType?: string; error?: string; kind: 'image' | 'video' | 'audio' }
 
@@ -43,6 +50,17 @@ function fmtAnnTime(iso: string) {
 
 function dayKey(iso: string) {
   return new Date(iso).toDateString()
+}
+
+// `list` is newest-first (same convention as Live Sale's Log mode dateTaps),
+// so the previous chronological entry relative to index i is at i+1. No
+// gap for the day's oldest loaded entry -- unlike the Log mode's Gap column,
+// this has no "since shop opening" fallback to reach for, since most
+// activity types have nothing resembling shop hours.
+function gapMinsFor(list: Announcement[], i: number): number | null {
+  const prev = list[i + 1]
+  if (!prev || dayKey(prev.created_at) !== dayKey(list[i].created_at)) return null
+  return (new Date(list[i].created_at).getTime() - new Date(prev.created_at).getTime()) / 60000
 }
 
 function dayLabel(iso: string) {
@@ -95,11 +113,29 @@ function MediaGrid({ items }: { items: MediaItem[] }) {
   )
 }
 
+// Gap (time since the previous activity) and Dur (that activity's own
+// estimated duration, when known) -- same two figures Live Sale's Log mode
+// used to show per sale line, generalized to every activity type here.
+// Gap is always computed live from real timestamps; Dur only renders when
+// the row actually has one (see Announcement's own comment on the column).
+function ActivityMeta({ gapMins, durationSeconds }: { gapMins: number | null; durationSeconds?: number | null }) {
+  if (gapMins == null && !durationSeconds) return null
+  return (
+    <>
+      {gapMins != null && <span className="text-gray-400"> · Gap {formatGapMins(gapMins)}</span>}
+      {!!durationSeconds && <span className="text-gray-400"> · Dur {formatDuration(durationSeconds)}</span>}
+    </>
+  )
+}
+
 // One feed row -- shared between the normal live feed and search results so
-// they render identically.
-function PostRow({ p, showDateHeader, canDelete, onLongPressStart, onLongPressEnd, onDelete }: {
+// they render identically. `gapMins` is null for the day's first entry (in
+// whichever list -- live feed or search results -- this row is being drawn
+// from), since there's no earlier same-day activity to diff against.
+function PostRow({ p, showDateHeader, gapMins, canDelete, onLongPressStart, onLongPressEnd, onDelete }: {
   p: Announcement
   showDateHeader: boolean
+  gapMins: number | null
   canDelete: boolean
   onLongPressStart: (p: Announcement) => void
   onLongPressEnd: () => void
@@ -127,7 +163,9 @@ function PostRow({ p, showDateHeader, canDelete, onLongPressStart, onLongPressEn
         >
           <p className="min-w-0 truncate text-[11px]">
             <span className="font-semibold text-gray-700 capitalize">{p.author}</span>
-            <span className="text-gray-400"> · {fmtAnnTime(p.created_at)} · </span>
+            <span className="text-gray-400"> · {fmtAnnTime(p.created_at)}</span>
+            <ActivityMeta gapMins={gapMins} durationSeconds={p.estimated_duration_seconds} />
+            <span className="text-gray-400"> · </span>
             <span className="text-gray-800">{p.body}</span>
           </p>
           {canDelete && (
@@ -145,7 +183,10 @@ function PostRow({ p, showDateHeader, canDelete, onLongPressStart, onLongPressEn
           <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] font-semibold text-gray-700 capitalize">{p.author}</span>
             <div className="flex items-center gap-1.5 shrink-0">
-              <span className="text-[10px] text-gray-400">{fmtAnnTime(p.created_at)}</span>
+              <span className="text-[10px] text-gray-400">
+                {fmtAnnTime(p.created_at)}
+                <ActivityMeta gapMins={gapMins} durationSeconds={p.estimated_duration_seconds} />
+              </span>
               {canDelete && (
                 <button onClick={() => onDelete(p.id)} className="text-gray-300 hover:text-red-500 font-bold leading-none">×</button>
               )}
@@ -645,6 +686,7 @@ function AnnouncementsPanel() {
             {searchResults.map((p, i) => (
               <PostRow key={p.id} p={p}
                 showDateHeader={i === 0 || dayKey(p.created_at) !== dayKey(searchResults[i - 1].created_at)}
+                gapMins={gapMinsFor(searchResults, i)}
                 canDelete={canDelete} onLongPressStart={startLongPress} onLongPressEnd={cancelLongPress} onDelete={removePost} />
             ))}
             {searchHasMore && <div ref={sentinelRef} className="h-1" />}
@@ -658,6 +700,7 @@ function AnnouncementsPanel() {
           {posts.map((p, i) => (
             <PostRow key={p.id} p={p}
               showDateHeader={i === 0 || dayKey(p.created_at) !== dayKey(posts[i - 1].created_at)}
+              gapMins={gapMinsFor(posts, i)}
               canDelete={canDelete} onLongPressStart={startLongPress} onLongPressEnd={cancelLongPress} onDelete={removePost} />
           ))}
           {hasMore && <div ref={sentinelRef} className="h-1" />}

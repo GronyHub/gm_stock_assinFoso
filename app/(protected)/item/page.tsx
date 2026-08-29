@@ -7,7 +7,7 @@ import { usePresenceReporter } from '@/lib/usePresenceReporter'
 import { isOwnerLevel } from '@/lib/roles'
 import { fmtTime } from '@/lib/fmtDate'
 import { trimZeros } from '@/lib/fmtNumber'
-import { formatDuration } from '@/lib/fmtDuration'
+import { formatGapMins } from '@/lib/fmtGap'
 import PageLawsList, { type LawFormKind } from './_components/PageLawsList'
 import ItemDetailModal from './_components/ItemDetailModal'
 import { LossDialog, PairingDialog, type LossExtra, type LossPrompt, type PairingPrompt } from './_components/CountDialogs'
@@ -563,19 +563,6 @@ function daysSince(dateStr: string): number {
   return Math.max(0, Math.floor((Date.now() - Date.parse(dateStr + 'T00:00:00Z')) / 86400000))
 }
 
-// The Log tab's Gap column -- minutes between two clock times, shown as
-// "12m" under an hour or "1h05" past it. Negative gaps (a clock-in/out
-// entered wrong, or a tap logged before the shop's own opening time) show
-// as "-12m" rather than being hidden, since that itself is worth noticing.
-function formatGapMins(mins: number): string {
-  const sign = mins < 0 ? '-' : ''
-  const abs = Math.round(Math.abs(mins))
-  if (abs < 60) return `${sign}${abs}m`
-  const h = Math.floor(abs / 60)
-  const m = abs % 60
-  return `${sign}${h}h${m ? String(m).padStart(2, '0') : ''}`
-}
-
 // lgAmt is the NET loss/gain in cedis (positive = net loss, negative = net
 // gain -- same sign convention Item 360's own loss table uses); lossCount/
 // gainCount are how many separate days came up short/over, each
@@ -613,7 +600,7 @@ const COMPACT_SELECT_STYLE: CSSProperties = {
 // Log tab's table -- header row, date-header row, and every tap row all
 // share this same column layout, so it's one constant rather than 3 copies
 // that could quietly drift apart when a column gets added/resized.
-const LOG_GRID_COLS = 'grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_2rem_2.25rem_1.25rem_2.5rem_2.25rem_1.5rem_2.25rem_1.5rem]'
+const LOG_GRID_COLS = 'grid-cols-[minmax(3.5rem,1fr)_2.5rem_2.75rem_2rem_2rem_2.25rem_1.25rem_2.25rem_1.5rem_2.25rem_1.5rem]'
 
 // Bold attention banner for an item's own data-integrity problems -- same
 // idea as the COUNT NOW banner (see countStatus/pinnedDueItems below), for
@@ -2203,17 +2190,6 @@ function ItemHubPageInner() {
       } else {
         m.set(item.id, parseFloat(String(item.cost_price)) || 0)
       }
-    }
-    return m
-  }, [liveAllItems])
-
-  // Item id -> max seconds to serve one unit (item edit form's Time/unit
-  // field), for the Log tab's Time column -- null when the item has none
-  // set, so the column can tell "not tracked" apart from a real 0.
-  const liveUnitTimeByItemId = useMemo(() => {
-    const m = new Map<number, number | null>()
-    for (const item of liveAllItems) {
-      m.set(item.id, item.unit_time_seconds != null && item.unit_time_seconds !== '' ? parseFloat(String(item.unit_time_seconds)) : null)
     }
     return m
   }, [liveAllItems])
@@ -4781,7 +4757,6 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                       <div className="flex items-center justify-end px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">CP</div>
                       <div className="flex items-center justify-end px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">PF</div>
                       <div className="flex items-center justify-center px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">Qty</div>
-                      <div className="flex items-center justify-end px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase" title="Estimated staff time: item's Time/unit x Qty">Dur</div>
                       <div className="flex items-center px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase truncate">Staff</div>
                       <div className="flex items-center justify-center px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase">SOH</div>
                       <div className="flex items-center justify-end px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase" title="Time since the previous tap -- since shop opening for the day's first, until the last staff signed out for the day's last">Gap</div>
@@ -4793,16 +4768,13 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                       const dateTotal = (dateTaps || []).filter((t): t is Tap => t != null && !t.undone).reduce((s, t) => s + Number(t.price) * t.quantity, 0)
                       const dateProfitTotal = (dateTaps || []).filter((t): t is Tap => t != null && !t.undone)
                         .reduce((s, t) => s + (Number(t.price) - (liveCostPriceByItemId.get(t.item_id) ?? 0)) * t.quantity, 0)
-                      const dateTimeTotal = (dateTaps || []).filter((t): t is Tap => t != null && !t.undone)
-                        .reduce((s, t) => s + (liveUnitTimeByItemId.get(t.item_id) ?? 0) * t.quantity, 0)
                       return (
                         <div key={date}>
                           {/* Date header */}
                           <div className={`grid ${LOG_GRID_COLS} gap-0 h-[14px] bg-green-50 border-b border-green-200 sticky top-[14px] z-9`}>
-                            <div className="col-span-12 flex items-center px-0.5 text-[8px] leading-none font-semibold text-green-700 truncate">
+                            <div className="col-span-11 flex items-center px-0.5 text-[8px] leading-none font-semibold text-green-700 truncate">
                               {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · Total: ₵{formatPrice(dateTotal)}
                               {' · PF: '}<span className={dateProfitTotal < 0 ? 'text-red-600' : ''}>₵{formatPrice(dateProfitTotal)}</span>
-                              {dateTimeTotal > 0 && <> · Time: {formatDuration(dateTimeTotal)}</>}
                             </div>
                           </div>
 
@@ -4841,7 +4813,6 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                             }
                             const tapCostPrice = liveCostPriceByItemId.get(tap.item_id) ?? 0
                             const tapProfit = (Number(tap.price) - tapCostPrice) * tap.quantity
-                            const tapUnitTime = liveUnitTimeByItemId.get(tap.item_id) ?? null
                             return (
                             <div
                               key={tap.id}
@@ -4884,11 +4855,6 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                               <div className="flex items-center justify-center px-0.5">
                                 <span className={`text-[9px] leading-none font-semibold ${tap.undone ? 'text-gray-400' : 'text-gray-900'}`}>
                                   {tap.quantity}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-end px-0.5">
-                                <span className={`text-[8px] leading-none truncate ${tap.undone ? 'text-gray-300' : 'text-gray-500'}`}>
-                                  {tapUnitTime != null ? formatDuration(tapUnitTime * tap.quantity) : ''}
                                 </span>
                               </div>
                               <div className="flex items-center px-0.5">

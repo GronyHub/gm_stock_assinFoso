@@ -16,6 +16,12 @@ const ensureCategoryColumn = once(async () => {
   await sql`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS category TEXT`.catch(() => {})
 })
 
+// See lib/logger.ts's own copy of this migration -- estimated duration for
+// activity types that can compute one (currently just live sale taps).
+const ensureDurationColumn = once(async () => {
+  await sql`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS estimated_duration_seconds INTEGER`.catch(() => {})
+})
+
 // Cursor-paginated: ?before=<ISO timestamp> fetches the next 30 older than
 // that. Without it, returns the latest 30. The client merges pages instead
 // of replacing, so older announcements stay loaded once fetched.
@@ -29,6 +35,7 @@ export async function GET(req: NextRequest) {
   try {
     await initializeDatabase()
     await ensureCategoryColumn()
+    await ensureDurationColumn()
     const before = req.nextUrl.searchParams.get('before')
     const q = req.nextUrl.searchParams.get('q')
     const category = req.nextUrl.searchParams.get('category')
@@ -37,7 +44,7 @@ export async function GET(req: NextRequest) {
 
     const rows = await sql`
       SELECT
-        a.id, a.author, a.body, a.media_urls, a.created_at, a.reply_to_id,
+        a.id, a.author, a.body, a.media_urls, a.created_at, a.reply_to_id, a.estimated_duration_seconds,
         r.author AS reply_to_author, r.body AS reply_to_body
       FROM announcements a
       LEFT JOIN announcements r ON r.id = a.reply_to_id

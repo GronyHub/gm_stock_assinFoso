@@ -3,6 +3,14 @@ import { once } from './once'
 
 const ensureSchema = once(async () => {
   await sql`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS category TEXT`.catch(() => {})
+  // Estimated time an activity took, when a caller can actually compute one
+  // (currently only live sale taps -- item's Time/unit x Qty, the same
+  // figure Live Sale's Log mode used to show in its own Dur column before
+  // that moved here). Other activity types leave this null until their own
+  // estimate rule is defined. Gap (time since the previous logged activity)
+  // needs no stored column -- the Home feed derives it from consecutive
+  // rows' created_at.
+  await sql`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS estimated_duration_seconds INTEGER`.catch(() => {})
 })
 
 
@@ -19,7 +27,7 @@ const ANNOUNCEMENT_EXCLUDED_ACTIONS = new Set([
 // Notified to owner-level (Grony/Joe) only, never broadcast to all staff.
 const OWNER_ONLY_ACTIONS = new Set(['started viewing portal as', 'stopped viewing portal as'])
 
-export async function logActivity(staffName: string, action: string, details?: string) {
+export async function logActivity(staffName: string, action: string, details?: string, estimatedDurationSeconds?: number) {
   try {
     await sql`
       INSERT INTO activity_logs (staff_name, action, details)
@@ -38,8 +46,8 @@ export async function logActivity(staffName: string, action: string, details?: s
       // Manually-typed posts (see /api/announcements POST) leave this null.
       await ensureSchema()
       await sql`
-        INSERT INTO announcements (body, author, media_urls, category)
-        VALUES (${body}, ${staffName}, '[]'::jsonb, ${action})
+        INSERT INTO announcements (body, author, media_urls, category, estimated_duration_seconds)
+        VALUES (${body}, ${staffName}, '[]'::jsonb, ${action}, ${estimatedDurationSeconds ?? null})
       `
     } catch (e) {
       // don't let this break the main action either
