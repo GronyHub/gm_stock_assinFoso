@@ -4781,12 +4781,8 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                           {/* Date's taps -- `group` + an explicit bg on the sticky
                               first cell (not bg-inherit) so scrolled-under columns
                               don't show through it, same fix as Item 360's table. */}
-                          {/* Row height is min- rather than fixed now -- the Item
-                              cell wraps to 2 lines (line-clamp-2) past ~20
-                              characters instead of truncating, so a long name
-                              doesn't need the column stretched wide to read it;
-                              every other cell stays single-line and centers
-                              within whatever height that Item cell grows the row to. */}
+                          {/* Item name stays single-line (truncated with an
+                              ellipsis), same as every other cell in this row. */}
                           {(dateTaps || []).filter((t): t is Tap => t != null).map((tap, i) => {
                             // Gap = time since the previous (chronologically
                             // earlier) tap -- dateTaps is newest-first, so that's
@@ -4822,11 +4818,11 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                             >
                               <div className={`sticky left-0 z-[1] flex items-center px-0.5 group-hover:bg-gray-50 ${tap.undone ? 'bg-gray-50' : 'bg-white'}`}>
                                 {tap.undone ? (
-                                  <span className="text-[9px] leading-[1.1] font-semibold line-clamp-2 break-words line-through text-gray-400">
+                                  <span className="min-w-0 text-[9px] leading-none font-semibold truncate line-through text-gray-400">
                                     {tap.item_name}
                                   </span>
                                 ) : (
-                                  renderClickableItemName(tap.item_name, 'text-[9px] leading-[1.1] font-semibold line-clamp-2 break-words text-gray-900')
+                                  renderClickableItemName(tap.item_name, 'min-w-0 text-[9px] leading-none font-semibold truncate text-gray-900')
                                 )}
                               </div>
                               <div className="flex items-center justify-end px-0.5">
