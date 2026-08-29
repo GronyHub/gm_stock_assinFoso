@@ -4835,7 +4835,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                                 </span>
                               </td>
                               <td className="h-[15px] px-1 text-center">
-                                <span className="text-[8px] leading-none text-gray-500 whitespace-nowrap">{new Date(tap.tapped_at).toLocaleTimeString()}</span>
+                                <span className="text-[8px] leading-none text-gray-500 whitespace-nowrap">{fmtTime(tap.tapped_at)}</span>
                               </td>
                               <td className="h-[15px] px-1 text-right">
                                 <span className={`text-[9px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
