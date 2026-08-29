@@ -656,7 +656,7 @@ function itemAttentionFlags(
   // below) but selling at or below ACP -- every sale of this good either
   // breaks even or loses money, which is worse than a missing price, not
   // an alternative to it.
-  if (item.product_type !== 'service' && sp > 0 && cp > 0 && cp >= sp) flags.push({ label: '⚠ ACP ≥ SELLING PRICE', bg: 'bg-red-600' })
+  if (item.product_type !== 'service' && sp > 0 && cp > 0 && cp >= sp) flags.push({ label: '⚠ ACP > SP', bg: 'bg-red-600' })
   // Distinct from the current-pricing check above -- this fires off actual
   // past sale lines (/api/flags' costGteSell) rather than the item's catalog
   // fields, so it still shows even after today's prices were fixed and the
@@ -861,6 +861,7 @@ function ItemHubPageInner() {
   const [liveShowOnlyDueForCount, setLiveShowOnlyDueForCount] = useState(false)
   const [liveCountDisplayFilter, setLiveCountDisplayFilter] = useState<'all' | 'counted' | 'loss' | 'gains'>('all')
   const [liveShowTradeOffOnly, setLiveShowTradeOffOnly] = useState(false)
+  const [liveShowAcpGtSpOnly, setLiveShowAcpGtSpOnly] = useState(false)
   const [liveCountDeleteLoading, setLiveCountDeleteLoading] = useState<number | null>(null)
   const rawSidePaneHidden = searchParams.get('sidebarHidden')
   const initialSidePaneHidden = rawSidePaneHidden === '1'
@@ -2503,6 +2504,15 @@ function ItemHubPageInner() {
     }
     return count
   }, [liveAllItems, liveSoldBelowCostDatesByItemId])
+
+  const liveAcpGtSpItemIds = useMemo(() => {
+    const liveIds = new Set(liveAllItems.map(i => i.id))
+    const result = new Set<number>()
+    for (const id of liveSoldBelowCostDatesByItemId.keys()) {
+      if (liveIds.has(id)) result.add(id)
+    }
+    return result
+  }, [liveAllItems, liveSoldBelowCostDatesByItemId])
   // Item id -> every bill date where that item's VCP jumped 20%+ from its
   // own previous bill -- sourced from /api/flags' vcpJumps (same threshold
   // as Item 360's own VCP jump badge, see LossTab.tsx's computeVcpJumps).
@@ -3091,6 +3101,9 @@ function ItemHubPageInner() {
       const tradeOffItemIds = new Set(liveItemsWithTradeOffs.map(t => t.itemId))
       itemsToSort = liveCatalogueItems.filter(item => tradeOffItemIds.has(item.id))
     }
+    if (liveShowAcpGtSpOnly) {
+      itemsToSort = itemsToSort.filter(item => liveAcpGtSpItemIds.has(item.id))
+    }
 
     const scoreFns: Record<ItemSortKey, (item: LiveItem) => number> = {
       count_status: item => {
@@ -3121,7 +3134,7 @@ function ItemHubPageInner() {
       }
       return 0
     })
-  }, [liveCatalogueItems, liveCountStatus, liveMode, liveViolationCountByItemId, liveSalesCounts, liveItemSortOrder, liveShowTradeOffOnly, liveItemsWithTradeOffs])
+  }, [liveCatalogueItems, liveCountStatus, liveMode, liveViolationCountByItemId, liveSalesCounts, liveItemSortOrder, liveShowTradeOffOnly, liveItemsWithTradeOffs, liveShowAcpGtSpOnly, liveAcpGtSpItemIds])
 
   // How many leading items are due for a count -- only meaningful (and only
   // used to draw the "N items need counting" header + divider) when count
@@ -3888,12 +3901,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
   // on the Count mode's own page) shows right alongside the number.
   function renderModeProgressSummary(compact: boolean, dark: boolean) {
     if (liveMode === 'sale') {
-      return (
-        <div className={`flex items-center justify-center gap-2 ${compact ? 'text-[9px]' : 'text-[10px]'} ${dark ? 'text-white/70' : 'text-gray-500'}`}>
-          <span className={`font-semibold ${dark ? 'text-red-300' : 'text-red-600'}`}>⚠ ACP &gt; SP</span>
-          <span>{liveAcpGtSpCount} item{liveAcpGtSpCount !== 1 ? 's' : ''}</span>
-        </div>
-      )
+      return null
     }
     if (!liveCountProgress || liveCountProgress.total === 0) return null
     const assignee = assignments['flags']
@@ -4846,6 +4854,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   <label className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-purple-400 hover:bg-purple-500 text-purple-900 font-semibold text-xs cursor-pointer transition whitespace-nowrap">
                     <input type="checkbox" checked={liveShowTradeOffOnly} onChange={() => setLiveShowTradeOffOnly(d => !d)} className="cursor-pointer" />
                     ↔ Trade Off {liveItemsWithTradeOffs.length > 0 && <span className="ml-1 font-bold">({liveItemsWithTradeOffs.length})</span>}
+                  </label>
+                  <label className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-red-400 hover:bg-red-500 text-red-900 font-semibold text-xs cursor-pointer transition whitespace-nowrap">
+                    <input type="checkbox" checked={liveShowAcpGtSpOnly} onChange={() => setLiveShowAcpGtSpOnly(d => !d)} className="cursor-pointer" />
+                    ⚠ ACP &gt; SP {liveAcpGtSpCount > 0 && <span className="ml-1 font-bold">({liveAcpGtSpCount})</span>}
                   </label>
                   <div className="flex gap-1.5">
                     <button
