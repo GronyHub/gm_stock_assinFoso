@@ -859,9 +859,7 @@ function ItemHubPageInner() {
   const rawLiveEmbeddedSearch = searchParams.get('liveSearch')
   const [liveEmbeddedSearch, setLiveEmbeddedSearch] = useState(rawLiveEmbeddedSearch ?? '')
   const [liveShowOnlyDueForCount, setLiveShowOnlyDueForCount] = useState(false)
-  const [liveShowCountedNoLoss, setLiveShowCountedNoLoss] = useState(false)
-  const [liveShowCountedWithLoss, setLiveShowCountedWithLoss] = useState(false)
-  const [liveShowCountedWithGains, setLiveShowCountedWithGains] = useState(false)
+  const [liveCountDisplayFilter, setLiveCountDisplayFilter] = useState<'all' | 'counted' | 'loss' | 'gains'>('all')
   const [liveCountDeleteLoading, setLiveCountDeleteLoading] = useState<number | null>(null)
   const rawSidePaneHidden = searchParams.get('sidebarHidden')
   const initialSidePaneHidden = rawSidePaneHidden === '1'
@@ -2897,19 +2895,19 @@ function ItemHubPageInner() {
   // Each record shows when it was counted, item, status, and whether it can be offset
   // by a gain/loss of the same item from a different count
   const liveSaleCountRecords = useMemo(() => {
-    if (!liveShowCountedNoLoss && !liveShowCountedWithLoss && !liveShowCountedWithGains) return []
     const q = liveEmbeddedSearch.trim().toLowerCase()
 
-    // Filter records by checkbox filters and search
+    // Filter records by selected filter and search
     const filtered = liveCountRecords.filter(rec => {
       const isNoLoss = rec.kind !== 'loss' && rec.kind !== 'gain'
       const isLoss = rec.kind === 'loss'
       const isGain = rec.kind === 'gain'
 
       let matchesFilter = false
-      if (liveShowCountedNoLoss && isNoLoss) matchesFilter = true
-      if (liveShowCountedWithLoss && isLoss) matchesFilter = true
-      if (liveShowCountedWithGains && isGain) matchesFilter = true
+      if (liveCountDisplayFilter === 'all') matchesFilter = true
+      else if (liveCountDisplayFilter === 'counted' && isNoLoss) matchesFilter = true
+      else if (liveCountDisplayFilter === 'loss' && isLoss) matchesFilter = true
+      else if (liveCountDisplayFilter === 'gains' && isGain) matchesFilter = true
 
       if (!matchesFilter) return false
       if (q && !rec.item_name.toLowerCase().includes(q)) return false
@@ -2947,7 +2945,7 @@ function ItemHubPageInner() {
 
     // Sort by count_date descending (newest first)
     return withTradeOffs.sort((a, b) => b.count_date.localeCompare(a.count_date))
-  }, [liveCountRecords, liveShowCountedNoLoss, liveShowCountedWithLoss, liveShowCountedWithGains, liveEmbeddedSearch])
+  }, [liveCountRecords, liveCountDisplayFilter, liveEmbeddedSearch])
 
   // All-Time/Yesterday/This Week/Month/Year loss totals -- same period
   // summary the old Loss by Date tab pinned above its own table, computed
@@ -4747,25 +4745,39 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   </select>
                 </div>
               )}
-              {/* Count filter bar — separate from main filters */}
+              {/* Count filter bar — unified single filter */}
               {showControls && liveMode === 'sale' && (
                 <div className="px-2 py-1 border-b border-green-700 flex items-center gap-2">
                   <label className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-amber-400 hover:bg-amber-500 text-amber-900 font-semibold text-xs cursor-pointer transition whitespace-nowrap">
                     <input type="checkbox" checked={liveShowOnlyDueForCount} onChange={() => setLiveShowOnlyDueForCount(d => !d)} className="cursor-pointer" />
                     🔄 Due
                   </label>
-                  <label className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold text-xs cursor-pointer transition whitespace-nowrap">
-                    <input type="checkbox" checked={liveShowCountedNoLoss} onChange={() => setLiveShowCountedNoLoss(d => !d)} className="cursor-pointer" />
-                    ✓ Counted
-                  </label>
-                  <label className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-red-400 hover:bg-red-500 text-red-900 font-semibold text-xs cursor-pointer transition whitespace-nowrap">
-                    <input type="checkbox" checked={liveShowCountedWithLoss} onChange={() => setLiveShowCountedWithLoss(d => !d)} className="cursor-pointer" />
-                    📉 Loss
-                  </label>
-                  <label className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-amber-500 hover:bg-amber-600 text-amber-900 font-semibold text-xs cursor-pointer transition whitespace-nowrap">
-                    <input type="checkbox" checked={liveShowCountedWithGains} onChange={() => setLiveShowCountedWithGains(d => !d)} className="cursor-pointer" />
-                    🚩 Gains
-                  </label>
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={() => setLiveCountDisplayFilter('all')}
+                      className={`px-3 py-1.5 rounded font-semibold text-xs transition whitespace-nowrap ${liveCountDisplayFilter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-800 hover:bg-gray-400'}`}
+                    >
+                      All
+                    </button>
+                    <button
+                      onClick={() => setLiveCountDisplayFilter('counted')}
+                      className={`px-3 py-1.5 rounded font-semibold text-xs transition whitespace-nowrap ${liveCountDisplayFilter === 'counted' ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-800 hover:bg-gray-400'}`}
+                    >
+                      ✓ Counted
+                    </button>
+                    <button
+                      onClick={() => setLiveCountDisplayFilter('loss')}
+                      className={`px-3 py-1.5 rounded font-semibold text-xs transition whitespace-nowrap ${liveCountDisplayFilter === 'loss' ? 'bg-blue-600 text-white' : 'bg-red-400 text-red-900 hover:bg-red-500'}`}
+                    >
+                      📉 Loss
+                    </button>
+                    <button
+                      onClick={() => setLiveCountDisplayFilter('gains')}
+                      className={`px-3 py-1.5 rounded font-semibold text-xs transition whitespace-nowrap ${liveCountDisplayFilter === 'gains' ? 'bg-blue-600 text-white' : 'bg-amber-500 text-amber-900 hover:bg-amber-600'}`}
+                    >
+                      🚩 Gains
+                    </button>
+                  </div>
                 </div>
               )}
               {/* Row 3: search bar + controls — hidden on report-style submenus. */}
@@ -5520,7 +5532,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             )}
 
             {/* Count Records Display - individual records with trade-off matching */}
-            {(liveShowCountedNoLoss || liveShowCountedWithLoss || liveShowCountedWithGains) && liveSaleCountRecords.length > 0 && (
+            {liveCountDisplayFilter !== 'all' && liveSaleCountRecords.length > 0 && (
               <div className="flex-1 overflow-y-auto">
                 <div className="px-2 pt-2 pb-1 text-xs font-bold text-gray-600 sticky top-0 bg-gray-50">
                   Count Records
@@ -5687,7 +5699,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             )}
 
             {/* Items Grid - 2 Columns */}
-            {liveCurrentView?.kind !== 'aliasWide' && liveCurrentView?.kind !== 'serviceMatches' && liveCurrentView?.kind !== 'newItem' && liveCurrentView?.kind !== 'dailySummary' && liveCurrentView?.kind !== 'gmcPacks' && !(liveShowCountedNoLoss || liveShowCountedWithLoss || liveShowCountedWithGains) && (
+            {liveCurrentView?.kind !== 'aliasWide' && liveCurrentView?.kind !== 'serviceMatches' && liveCurrentView?.kind !== 'newItem' && liveCurrentView?.kind !== 'dailySummary' && liveCurrentView?.kind !== 'gmcPacks' && liveCountDisplayFilter === 'all' && (
             <div className="flex-1 overflow-y-auto">
               {liveItemsLoading ? (
                 <p className="text-xs text-gray-400 text-center py-8">Loading…</p>
