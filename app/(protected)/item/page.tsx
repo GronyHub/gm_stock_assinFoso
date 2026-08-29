@@ -5044,11 +5044,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               {showControls && liveMode === 'sale' && (
                 <div className="px-2 py-0.5 border-b border-green-700 flex flex-wrap items-center gap-0 text-[9px]">
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'all'} onChange={() => { setLiveSaleViolationFilter('all'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
-                    <span>All</span>
-                  </label>
-                  <span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'countDue'} onChange={() => { setLiveSaleViolationFilter('countDue'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
                     <span>Count Due{liveCountStatus.size > 0 && ` (${liveCountStatus.size})`}</span>
                   </label>
