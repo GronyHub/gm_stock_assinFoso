@@ -857,6 +857,7 @@ function ItemHubPageInner() {
   const [liveCountView, setLiveCountView] = useState<{ kind: 'interval'; label: string } | { kind: 'records' } | { kind: 'history' } | null>(initialLiveCountView)
   const rawLiveEmbeddedSearch = searchParams.get('liveSearch')
   const [liveEmbeddedSearch, setLiveEmbeddedSearch] = useState(rawLiveEmbeddedSearch ?? '')
+  const [liveShowOnlyDueForCount, setLiveShowOnlyDueForCount] = useState(false)
   const rawSidePaneHidden = searchParams.get('sidebarHidden')
   const initialSidePaneHidden = rawSidePaneHidden === '1'
   const [sidePaneHidden, setSidePaneHidden] = useState(initialSidePaneHidden)
@@ -2743,6 +2744,11 @@ function ItemHubPageInner() {
       filtered = filtered.filter(item => liveGmcItemIds.has(item.id))
     }
 
+    // Show only items due for count when the filter is active in Sale mode
+    if (liveShowOnlyDueForCount && liveMode === 'sale') {
+      filtered = filtered.filter(item => liveCountStatus.has(item.id))
+    }
+
     // Apply Sale mode's own Loss/Gain/Count/count-interval/flag filter
     if (liveSaleFilter?.kind === 'loss') {
       filtered = filtered.filter(item => (liveLossByItemId.get(item.id)?.lossCount ?? 0) > 0)
@@ -2795,7 +2801,7 @@ function ItemHubPageInner() {
 
     // Sort by sales count (highest to lowest)
     return filtered.sort((a, b) => (liveSalesCounts.get(b.id) ?? 0) - (liveSalesCounts.get(a.id) ?? 0))
-  }, [liveAllItems, liveSalesCounts, liveCurrentView, liveProductTypeFilter, liveGroupFilter, liveGmcTypeFilter, livePickedItemId, liveSaleType, liveGmcItemIds, liveMode, liveSaleFilter, liveLossByItemId, liveItemsWithViolations, liveDuplicateItemIds, liveServiceViolationIdSet, liveUnlinkedNamedIds, liveItemPickerQuery])
+  }, [liveAllItems, liveSalesCounts, liveCurrentView, liveProductTypeFilter, liveGroupFilter, liveGmcTypeFilter, livePickedItemId, liveSaleType, liveGmcItemIds, liveMode, liveSaleFilter, liveLossByItemId, liveItemsWithViolations, liveDuplicateItemIds, liveServiceViolationIdSet, liveUnlinkedNamedIds, liveItemPickerQuery, liveShowOnlyDueForCount, liveCountStatus])
 
   // Log tab's two histories, grouped by date -- computed unconditionally
   // (not inside an `if (liveMode === 'log')` branch) since every mode
@@ -4687,6 +4693,13 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       </optgroup>
                     )}
                   </select>
+                  {/* "Due for Count" filter for Sale mode */}
+                  {liveMode === 'sale' && (
+                    <label className="flex items-center gap-1.5 px-2 py-1 rounded bg-amber-400 hover:bg-amber-500 text-amber-900 font-semibold text-xs cursor-pointer transition whitespace-nowrap">
+                      <input type="checkbox" checked={liveShowOnlyDueForCount} onChange={() => setLiveShowOnlyDueForCount(d => !d)} className="cursor-pointer" />
+                      🔄 Due
+                    </label>
+                  )}
                 </div>
               )}
               {/* Row 3: search bar + controls — hidden on report-style submenus. */}
@@ -5417,9 +5430,15 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     </select>
                   </div>
                 </div>
-                {/* Items Violation Flags Filter */}
-                <div className="flex gap-1 flex-wrap px-0">
-                  {renderLiveItemFlagsFilter()}
+                {/* Due for Count filter + Items Violation Flags Filter */}
+                <div className="flex gap-1 flex-wrap px-0 items-center">
+                  <label className="flex items-center gap-2 px-2 py-1 rounded bg-amber-400 hover:bg-amber-500 text-amber-900 font-semibold text-xs cursor-pointer transition">
+                    <input type="checkbox" checked={liveShowOnlyDueForCount} onChange={() => setLiveShowOnlyDueForCount(d => !d)} className="cursor-pointer" />
+                    🔄 Due for Count
+                  </label>
+                  <div className="flex gap-1 flex-wrap px-0">
+                    {renderLiveItemFlagsFilter()}
+                  </div>
                 </div>
             </div>
             )}
