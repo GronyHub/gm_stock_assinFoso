@@ -43,6 +43,7 @@ type Bill = {
 }
 
 type BillLine = {
+  id: number
   bill_id: number
   item_id: number | null
   item_name: string
@@ -58,6 +59,7 @@ type BillLine = {
 // that day instead of being a single group header hiding the items below it.
 type FlatRow = {
   key: string
+  lineId: number
   billId: number
   billNumber: string
   billDate: string
@@ -277,6 +279,67 @@ function NewSpCell({ itemId, currentSp, onSaved }: { itemId: number | null; curr
   )
 }
 
+type EditedBillLine = { id: number; bill_id: number; item_id: number | null; quantity: string; unit_price: string; item_total: string }
+
+// Click-to-edit QTY/VCP -- bills previously had no way to correct a line
+// after saving (only date/vendor/attachments), which meant a mistyped unit
+// price behind a VCP JUMP flag could only be fixed by deleting and
+// re-entering the whole bill. Saves via /api/bill-lines/[id], which also
+// resyncs the item's VCP/ACP so the jump flag re-evaluates against the
+// corrected price.
+function EditableLineCell({ lineId, field, value, display, onSaved }: {
+  lineId: number
+  field: 'quantity' | 'unit_price'
+  value: string
+  display: (v: string) => React.ReactNode
+  onSaved: (updated: EditedBillLine) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => { setDraft(value) }, [value])
+
+  if (!editing) {
+    return (
+      <button onClick={e => { e.stopPropagation(); setEditing(true) }} title="Click to edit" className="hover:underline decoration-dotted underline-offset-2">
+        {value ? display(value) : '—'}
+      </button>
+    )
+  }
+
+  async function save() {
+    const n = parseFloat(draft)
+    if (!draft || isNaN(n) || n < 0 || (field === 'quantity' && n <= 0)) { setError('Invalid value'); return }
+    setSaving(true)
+    setError('')
+    const res = await fetch(`/api/bill-lines/${lineId}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [field]: n }),
+    })
+    setSaving(false)
+    if (res.ok) {
+      onSaved(await res.json())
+      setEditing(false)
+    } else {
+      const d = await res.json().catch(() => ({}))
+      setError(d.error || 'Could not save.')
+    }
+  }
+
+  return (
+    <span onClick={e => e.stopPropagation()} className="inline-flex flex-col items-end gap-0.5">
+      <input type="number" min="0" step="0.01" autoFocus value={draft} disabled={saving}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={save}
+        onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') setEditing(false) }}
+        className="w-16 text-right text-[10px] bg-white border border-blue-300 rounded px-1 py-0.5 outline-none disabled:opacity-50" />
+      {error && <span className="text-[8px] text-red-600 font-semibold whitespace-nowrap">{error}</span>}
+    </span>
+  )
+}
+
 type Props = {
   items: Item[]
   groupFilter: string | null
@@ -367,6 +430,7 @@ function BillsTab({ items, groupFilter, search, violation = null, jumpToBillId, 
       lines.forEach((l, i) => {
         rows.push({
           key: `${b.id}:${i}`,
+          lineId: l.id,
           billId: b.id,
           billNumber: b.bill_number,
           billDate: b.bill_date,
@@ -552,6 +616,22 @@ function BillsTab({ items, groupFilter, search, violation = null, jumpToBillId, 
       const next = new Set(prev)
       if (next.has(key)) next.delete(key); else next.add(key)
       return next
+    })
+  }
+
+  // Patches just the edited line in linesMap -- flatRows/groupAggregates/
+  // groupedList all derive from it, so the group's total, Shared Expenses,
+  // and ACP recompute automatically without a full refetch.
+  function handleLineSaved(updated: EditedBillLine) {
+    setLinesMap(prev => {
+      const lines = prev[updated.bill_id]
+      if (!lines) return prev
+      return {
+        ...prev,
+        [updated.bill_id]: lines.map(l => l.id === updated.id
+          ? { ...l, quantity: updated.quantity, unit_price: updated.unit_price, item_total: updated.item_total }
+          : l),
+      }
     })
   }
 
@@ -884,10 +964,16 @@ function BillsTab({ items, groupFilter, search, violation = null, jumpToBillId, 
                       </td>
                       {colPrefs.shownColumns.map(c => {
                         if (c.key === 'quantity') return (
-                          <td key={c.key} className="px-1 py-1 text-right text-gray-700 truncate">{row.quantity ? parseFloat(row.quantity) : '—'}</td>
+                          <td key={c.key} className="px-1 py-1 text-right text-gray-700 truncate">
+                            <EditableLineCell lineId={row.lineId} field="quantity" value={row.quantity}
+                              display={v => parseFloat(v)} onSaved={handleLineSaved} />
+                          </td>
                         )
                         if (c.key === 'unitPrice') return (
-                          <td key={c.key} className="px-1 py-1 text-right text-gray-700 truncate">{fmt(row.unitPrice)}</td>
+                          <td key={c.key} className="px-1 py-1 text-right text-gray-700 truncate">
+                            <EditableLineCell lineId={row.lineId} field="unit_price" value={row.unitPrice}
+                              display={fmt} onSaved={handleLineSaved} />
+                          </td>
                         )
                         if (c.key === 'sharedExpenses') return (
                           <td key={c.key} className="px-1 py-1 text-right text-gray-500 truncate">{g.sharedPerUnit > 0 ? fmt(g.sharedPerUnit.toFixed(2)) : '—'}</td>
