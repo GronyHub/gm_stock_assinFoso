@@ -860,7 +860,7 @@ function ItemHubPageInner() {
   const [liveEmbeddedSearch, setLiveEmbeddedSearch] = useState(rawLiveEmbeddedSearch ?? '')
   const [liveShowCountFullPage, setLiveShowCountFullPage] = useState(false)
   const [liveCountDisplayFilter, setLiveCountDisplayFilter] = useState<'all' | 'counted' | 'loss' | 'gains'>('all')
-  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'all' | 'countDue' | 'tradeOff' | 'acpGtSp' | 'duplicates' | 'unlinked' | 'service' | 'gains' | 'soldBelowCost' | 'vcpJump' | 'emptyRow'>('all')
+  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'all' | 'countDue' | 'tradeOff' | 'acpGtSp' | 'duplicates' | 'unlinked' | 'service' | 'gains' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'withViolations' | 'noViolations'>('all')
   const [liveCountDeleteLoading, setLiveCountDeleteLoading] = useState<number | null>(null)
   const rawSidePaneHidden = searchParams.get('sidebarHidden')
   const initialSidePaneHidden = rawSidePaneHidden === '1'
@@ -3128,6 +3128,10 @@ function ItemHubPageInner() {
       itemsToSort = liveCatalogueItems.filter(item => liveVcpJumpDatesByItemId.has(item.id))
     } else if (liveSaleViolationFilter === 'emptyRow') {
       itemsToSort = liveCatalogueItems.filter(item => liveEmptyRowCountByItemId.has(item.id))
+    } else if (liveSaleViolationFilter === 'withViolations') {
+      itemsToSort = liveCatalogueItems.filter(item => liveViolationCountByItemId.has(item.id) && (liveViolationCountByItemId.get(item.id) ?? 0) > 0)
+    } else if (liveSaleViolationFilter === 'noViolations') {
+      itemsToSort = liveCatalogueItems.filter(item => !liveViolationCountByItemId.has(item.id) || (liveViolationCountByItemId.get(item.id) ?? 0) === 0)
     }
 
     const scoreFns: Record<ItemSortKey, (item: LiveItem) => number> = {
@@ -4216,6 +4220,16 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
 
   function getViolationDescription(filterType: typeof liveSaleViolationFilter) {
     const descriptions: Record<string, { title: string; description: string; steps: string[] }> = {
+      all: {
+        title: 'All Items',
+        description: 'Showing all items in the catalogue. Items may have different violation statuses.',
+        steps: [
+          'Use the filter buttons above to narrow down to specific violations',
+          'Click on any item card to view details and fix violations',
+          'Check the violation badges on each item for quick status',
+          'Items with no violations show no violation headers'
+        ]
+      },
       countDue: {
         title: '🔄 Count Due',
         description: 'Items that are scheduled or overdue for physical inventory counting based on their count cadence.',
@@ -4334,6 +4348,28 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           '4. If the item is incomplete and not needed: delete it (owner-level permission)',
           '5. If item is a placeholder: fill in the missing details',
           '6. Save changes - the empty row marker will clear once data is complete'
+        ]
+      },
+      withViolations: {
+        title: '🚩 Items with Violations',
+        description: 'Showing only items that have one or more violations. Each violation type is shown as a badge on the item.',
+        steps: [
+          'Items are grouped by violation type for easier navigation',
+          'Each item shows all violations it has as separate badges',
+          'Click on a violation badge to jump to that specific violation type filter',
+          'Click the item card to view details and start fixing violations',
+          'Work through items from top to bottom to resolve all violations'
+        ]
+      },
+      noViolations: {
+        title: '✓ Items without Violations',
+        description: 'Showing only items that have no violations. These items are clean and compliant with all data requirements.',
+        steps: [
+          'These items have no data integrity issues',
+          'No violation headers will appear on any of these items',
+          'You can still click items to view or edit their details',
+          'Monitor these items to ensure violations don\'t appear in the future',
+          'Use "Items (V)" filter to focus on items that need fixing'
         ]
       }
     }
@@ -5009,6 +5045,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               {showControls && liveMode === 'sale' && (
                 <div className="px-2 py-0.5 border-b border-green-700 flex flex-wrap items-center gap-0 text-[9px]">
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'all'} onChange={() => { setLiveSaleViolationFilter('all'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
+                    <span>All</span>
+                  </label>
+                  <span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'countDue'} onChange={() => { setLiveSaleViolationFilter('countDue'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
                     <span>Count Due{liveCountStatus.size > 0 && ` (${liveCountStatus.size})`}</span>
                   </label>
@@ -5057,6 +5098,16 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'emptyRow'} onChange={() => { setLiveSaleViolationFilter('emptyRow'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
                     <span>Empty Row ({liveEmptyRowCount})</span>
                   </label></>)}
+                  <span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'withViolations'} onChange={() => { setLiveSaleViolationFilter('withViolations'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
+                    <span>Items (V)</span>
+                  </label>
+                  <span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'noViolations'} onChange={() => { setLiveSaleViolationFilter('noViolations'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
+                    <span>Items (NV)</span>
+                  </label>
                   <span className="text-gray-400 px-1">·</span>
                   <button
                     type="button"
