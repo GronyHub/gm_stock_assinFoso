@@ -3578,6 +3578,12 @@ function ItemHubPageInner() {
         fetch(`/api/good-service-matches?name=${encodeURIComponent(item.name)}`)
       ])
 
+      if (!itemRes.ok) {
+        setLiveGridEditError(`Failed to load item: ${itemRes.status}`)
+        setLiveGridEditLoading(false)
+        return
+      }
+
       const d = await itemRes.json()
       setLiveEditForm({
         item_name: d?.canonical_name ?? item.name,
@@ -3597,16 +3603,20 @@ function ItemHubPageInner() {
       setLiveEditCurrentCountInterval(d?.count_interval ?? null)
       setLiveEditCurrentSoh(d?.calculated_soh != null ? parseFloat(d.calculated_soh) : null)
 
-      const aliasesData = await aliasesRes.json()
-      if (Array.isArray(aliasesData)) {
-        const itemAliases = aliasesData.find((row: any) => row.item_id === itemId)
-        const aliases = itemAliases?.aliases ?? []
-        setLiveGridEditAliases(aliases.map((a: any) => ({ id: a.id, name: a.name })).filter((a: AliasRecord) => a.name))
+      if (aliasesRes.ok) {
+        const aliasesData = await aliasesRes.json()
+        if (Array.isArray(aliasesData)) {
+          const itemAliases = aliasesData.find((row: any) => row.item_id === itemId)
+          const aliases = itemAliases?.aliases ?? []
+          setLiveGridEditAliases(aliases.map((a: any) => ({ id: a.id, name: a.name })).filter((a: AliasRecord) => a.name))
+        }
       }
 
-      const matchesData = await matchesRes.json()
-      if (Array.isArray(matchesData)) {
-        setLiveGridEditMatches(matchesData.map((m: any) => ({ id: m.id, name: m.good_name === item.name ? m.service_name : m.good_name })))
+      if (matchesRes.ok) {
+        const matchesData = await matchesRes.json()
+        if (Array.isArray(matchesData)) {
+          setLiveGridEditMatches(matchesData.map((m: any) => ({ id: m.id, name: m.good_name === item.name ? m.service_name : m.good_name })))
+        }
       }
     } catch {
       setLiveGridEditError('Could not load item details.')
