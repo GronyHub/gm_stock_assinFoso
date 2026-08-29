@@ -838,7 +838,7 @@ function SalesTab({
   return (
     <div className="flex flex-col h-full min-h-0">
     <div className="flex items-center justify-between px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
-      <div className="flex items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
         <button onClick={() => setShowHistory(true)}
           className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700 transition">
           History
@@ -859,10 +859,11 @@ function SalesTab({
             className="w-3 h-3 accent-blue-600" />
           G
         </label>
-        <label title="Show only items due for counting" className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
+        <div className="border-l border-gray-300 h-4" />
+        <label title="Show only receipts containing items due for counting" className="flex items-center gap-1 text-[9px] font-semibold text-amber-700 px-1.5 py-0.5 cursor-pointer select-none bg-amber-50 rounded hover:bg-amber-100 transition">
           <input type="checkbox" checked={showOnlyDueForCount} onChange={() => setShowOnlyDueForCount(d => !d)}
-            className="w-3 h-3 accent-blue-600" />
-          Due for Count
+            className="w-3 h-3 accent-amber-600" />
+          🔄 Due for Count
         </label>
       </div>
       <div className="flex items-center gap-1.5">
