@@ -1578,7 +1578,21 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                     </td>
                   )}
                   {!isService && <td className="px-1 py-0 text-right text-purple-700">{row.acp != null ? fmtN(parseFloat(row.acp)) : <span className="text-gray-300">—</span>}</td>}
-                  {!isService && <td className="px-1 py-0 text-right text-blue-600">{fmtQs(row.bills_qty)}</td>}
+                  {!isService && <td className="px-1 py-0 text-right text-blue-600">
+                    {row.bills_breakdown && row.bills_breakdown.length > 0 ? (
+                      <div className="space-y-0.5">
+                        {row.bills_breakdown.map((bill, idx) => (
+                          <div key={idx} className="block">
+                            <span>{fmtQs(String(bill.qty))}</span>
+                            {bill.vendor_name && <span className="text-gray-600">({bill.vendor_name})</span>}
+                            {bill.entered_by && <span className="text-gray-500 text-[7px]"> by {bill.entered_by}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      fmtQs(row.bills_qty)
+                    )}
+                  </td>}
                   {!isService && <td className="px-1 py-0 text-left text-gray-600 text-[8px]">
                     {matchingTradeOffs.length > 0 ? (
                       <div className="space-y-0.5">
@@ -1682,7 +1696,21 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                     </td>
                   )}
                   {!isService && <td className="px-1 py-0 text-right text-purple-700">{row.acp != null ? fmtN(parseFloat(row.acp)) : <span className="text-gray-300">—</span>}</td>}
-                  {!isService && <td className="px-1 py-0 text-right text-blue-600">{fmtQs(row.bills_qty)}</td>}
+                  {!isService && <td className="px-1 py-0 text-right text-blue-600">
+                    {row.bills_breakdown && row.bills_breakdown.length > 0 ? (
+                      <div className="space-y-0.5">
+                        {row.bills_breakdown.map((bill, idx) => (
+                          <div key={idx} className="block">
+                            <span>{fmtQs(String(bill.qty))}</span>
+                            {bill.vendor_name && <span className="text-gray-600">({bill.vendor_name})</span>}
+                            {bill.entered_by && <span className="text-gray-500 text-[7px]"> by {bill.entered_by}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      fmtQs(row.bills_qty)
+                    )}
+                  </td>}
                   {!isService && isGmcItem && <td className="px-1 py-0 text-right text-teal-600"><CnvValue qty={row.converted_in_qty} time={row.converted_in_time} /></td>}
                   {!isService && <td className="px-1 py-0 text-right text-gray-400">{fmtN(row.expected_soh)}</td>}
                   {!isService && <td className="px-1 py-0 text-left text-gray-600 text-[8px]">

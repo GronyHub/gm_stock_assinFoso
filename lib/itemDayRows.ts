@@ -17,6 +17,7 @@ export type ItemDayRow = {
   converted_in_qty: string | null
   converted_in_time: string | null
   wic_breakdown: { name: string; qty: number; amount: number }[] | null
+  bills_breakdown: { vendor_name: string | null; qty: number; entered_by: string | null }[] | null
   sold_below_cost: boolean
   vcp: string | null
   vcp_bill_id: number | null
@@ -141,12 +142,19 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
         AND sr.customer_name = 'Grony Multimedia as Customer'
       GROUP BY sr.receipt_date::date
     ),
-    daily_bills AS (
-      SELECT b.bill_date::date AS d, SUM(bl.quantity) AS qty
+    daily_bills_by_vendor AS (
+      SELECT b.bill_date::date AS d, COALESCE(b.vendor_name, 'Unknown') AS vendor_name,
+             SUM(bl.quantity) AS qty, MAX(b.entered_by) AS entered_by
       FROM bill_lines bl
       JOIN bills b ON b.id = bl.bill_id
       WHERE bl.item_id = ${id}
-      GROUP BY b.bill_date::date
+      GROUP BY b.bill_date::date, b.vendor_name
+    ),
+    daily_bills AS (
+      SELECT d, SUM(qty) AS qty,
+             json_agg(json_build_object('vendor_name', vendor_name, 'qty', qty, 'entered_by', entered_by) ORDER BY vendor_name) AS breakdown
+      FROM daily_bills_by_vendor
+      GROUP BY d
     ),
     daily_sp AS (
       SELECT sr.receipt_date::date AS d, AVG(srl.item_price) AS sp
@@ -260,6 +268,7 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
       dci.qty AS converted_in_qty,
       dcit.tapped_at::text AS converted_in_time,
       dcs.breakdown AS wic_breakdown,
+      db.breakdown AS bills_breakdown,
       COALESCE(dbc.below_cost, false) AS sold_below_cost,
       dvs.vcp,
       dvs.vcp_bill_id,
