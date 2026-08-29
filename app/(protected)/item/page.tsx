@@ -635,7 +635,8 @@ function itemAttentionFlags(
   serviceViolationIds: Set<number>,
   gainCountByItemId: Map<number, number>,
   emptyRowCountByItemId: Map<number, number>,
-  soldBelowCostDatesByItemId: Map<number, string[]>
+  soldBelowCostDatesByItemId: Map<number, string[]>,
+  vcpJumpDatesByItemId: Map<number, string[]>
 ): { label: string; bg: string }[] {
   const soh = Number(item.soh)
   const sp = parseFloat(String(item.selling_price)) || 0
@@ -676,6 +677,18 @@ function itemAttentionFlags(
     const shown = belowCostDates.slice(0, 3).map(fmtShortSaleDate).join(', ')
     const more = belowCostDates.length > 3 ? ` +${belowCostDates.length - 3} more` : ''
     flags.push({ label: `⚠ SOLD BELOW COST (history): ${shown}${more}`, bg: 'bg-red-700' })
+  }
+  // A bill where this item's VCP jumped 20%+ from its own previous bill --
+  // same threshold as Item 360's own per-item VCP jump badge (see
+  // LossTab.tsx's computeVcpJumps), same "affected dates on the label"
+  // convention as SOLD BELOW COST above. Corrected by editing that bill's
+  // line to the right price (see BillsTab.tsx), which resyncs VCP/ACP and
+  // clears this the next time /api/flags is fetched.
+  const vcpJumpDates = vcpJumpDatesByItemId.get(item.id) ?? []
+  if (vcpJumpDates.length > 0) {
+    const shown = vcpJumpDates.slice(0, 3).map(fmtShortSaleDate).join(', ')
+    const more = vcpJumpDates.length > 3 ? ` +${vcpJumpDates.length - 3} more` : ''
+    flags.push({ label: `⚠ VCP JUMP (history): ${shown}${more}`, bg: 'bg-amber-700' })
   }
   if (sp <= 0) flags.push({ label: '⚠ MISSING SELLING PRICE', bg: 'bg-orange-600' })
   if (item.product_type !== 'service' && cp <= 0) flags.push({ label: '⚠ MISSING COST PRICE', bg: 'bg-orange-500' })
@@ -2510,6 +2523,21 @@ function ItemHubPageInner() {
     }
     return count
   }, [liveAllItems, liveSoldBelowCostDatesByItemId])
+  // Item id -> every bill date where that item's VCP jumped 20%+ from its
+  // own previous bill -- sourced from /api/flags' vcpJumps (same threshold
+  // as Item 360's own VCP jump badge, see LossTab.tsx's computeVcpJumps).
+  // Drives the item card's "VCP JUMP (history)" banner below.
+  const liveVcpJumpDatesByItemId = useMemo(() => {
+    const m = new Map<number, string[]>()
+    for (const r of globalFlags?.vcpJumps ?? []) {
+      const date = r.bill_date?.slice(0, 10)
+      if (!date) continue
+      if (!m.has(r.item_id)) m.set(r.item_id, [])
+      if (!m.get(r.item_id)!.includes(date)) m.get(r.item_id)!.push(date)
+    }
+    for (const dates of m.values()) dates.sort()
+    return m
+  }, [globalFlags])
   // Fourth cross-item check: any item with an outstanding count gain (see
   // liveLossByItemId above), fed straight off the same per-item loss/gain
   // map the grid already fetches for its Loss/Gain badge. Keeps the actual
@@ -2920,10 +2948,10 @@ function ItemHubPageInner() {
   const liveViolationCountByItemId = useMemo(() => {
     const m = new Map<number, number>()
     for (const item of liveCatalogueItems) {
-      m.set(item.id, itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId).length)
+      m.set(item.id, itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId).length)
     }
     return m
-  }, [liveCatalogueItems, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveEmptyRowCountByItemId])
+  }, [liveCatalogueItems, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId])
 
   // The Sale-mode grid's arrangement -- a single list sorted by whichever
   // priority order liveItemSortOrder currently holds (see the Arrange
@@ -5573,7 +5601,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                     // gain, a duplicate...) -- surface those the same way
                     // regardless of whether this item is also due, instead
                     // of letting the COUNT NOW banner hide them.
-                    const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId)
+                    const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId)
                     // Darker, thicker borders than the *-100 shades used
                     // before -- those were nearly invisible against the
                     // white/near-white card backgrounds, so items ran
@@ -5676,7 +5704,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
             {/* Modal */}
             {liveSelectedItem && (() => {
               const due = liveCountStatus.get(liveSelectedItem.id)
-              const flags = itemAttentionFlags(liveSelectedItem, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId)
+              const flags = itemAttentionFlags(liveSelectedItem, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId)
               const expected = Number(liveSelectedItem.soh)
               const enteredCount = liveCountQty === '' ? null : Number(liveCountQty)
               const countShort = enteredCount !== null && !isNaN(enteredCount) && enteredCount < expected

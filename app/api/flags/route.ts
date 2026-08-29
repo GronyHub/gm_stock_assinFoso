@@ -123,6 +123,7 @@ export async function GET() {
     missingDays,
     duplicates,
     costGteSell,
+    vcpJumps,
     notInInventory,
     noGroup,
     noStaffTimes,
@@ -254,6 +255,33 @@ export async function GET() {
         AND srl.item_price > 0
         AND (vcp_src.unit_price + CASE WHEN grp.total_qty > 0 THEN COALESCE(be.total, 0) / grp.total_qty ELSE 0 END) >= srl.item_price
       ORDER BY sr.receipt_date DESC
+    `),
+
+    // 4b. Bills where an item's VCP jumped 20%+ from its own previous bill --
+    // same threshold/reasoning as Item 360's own VCP jump badge (see
+    // LossTab.tsx's computeVcpJumps), computed catalog-wide here via a
+    // window function instead of per-item LATERAL lookups, since this runs
+    // for every item at once rather than one item's own history.
+    safeQuery(() => sql`
+      WITH item_bills AS (
+        SELECT bl.item_id, i.canonical_name AS item_name, bl.bill_id, b.bill_date, bl.unit_price, bl.id AS bill_line_id
+        FROM bill_lines bl
+        JOIN bills b ON b.id = bl.bill_id
+        JOIN items i ON i.id = bl.item_id
+        WHERE b.source IS DISTINCT FROM 'live_sale'
+          AND bl.unit_price IS NOT NULL
+      ),
+      item_bills_lag AS (
+        SELECT *, LAG(unit_price) OVER (PARTITION BY item_id ORDER BY bill_date, bill_line_id) AS prev_vcp
+        FROM item_bills
+      )
+      SELECT item_id, item_name, bill_id, bill_date::text AS bill_date,
+             prev_vcp, unit_price AS new_vcp,
+             ROUND(((unit_price - prev_vcp) / prev_vcp) * 100, 1) AS pct
+      FROM item_bills_lag
+      WHERE prev_vcp IS NOT NULL AND prev_vcp > 0
+        AND ABS((unit_price - prev_vcp) / prev_vcp) >= 0.20
+      ORDER BY bill_date DESC
     `),
 
     // 5. Item names in receipts or counts not matching any canonical_name in inventory
@@ -504,7 +532,7 @@ export async function GET() {
     .map((p: any) => ({ staff_name: p.staff_name, due_date: p.tshirt_due_date }))
 
   return success({
-    noCash, missingDays, duplicates: filteredDups, costGteSell, notInInventory, noGroup, noStaffTimes,
+    noCash, missingDays, duplicates: filteredDups, costGteSell, vcpJumps, notInInventory, noGroup, noStaffTimes,
     uncheckedCab, dupReceipts, unlinkedNamed, groupNames: groupNames.map((r: any) => r.group_name),
     noAdvert, jingleOverdue, equipmentCheckOverdue, missingClosingReports,
     shirtNotWorn, shirtOverdue, noAttachment, noVendorBills, noItemsBills, billTotalMismatch, billNoAttachment, highWnw,
