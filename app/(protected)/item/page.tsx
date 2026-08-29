@@ -4844,24 +4844,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   </select>
                 </div>
               )}
-              {/* Items filter checkboxes — Counted, Loss, Gains */}
-              {showControls && lossView === 'items' && (
-                <div className="px-2 py-1 border-b border-green-700 flex flex-wrap items-center gap-2">
-                  <label className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold text-xs cursor-pointer transition whitespace-nowrap">
-                    <input type="checkbox" checked={liveCountDisplayFilter === 'counted'} onChange={() => setLiveCountDisplayFilter(liveCountDisplayFilter === 'counted' ? 'all' : 'counted')} className="cursor-pointer" />
-                    ✓ Counted
-                  </label>
-                  <label className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-red-400 hover:bg-red-500 text-red-900 font-semibold text-xs cursor-pointer transition whitespace-nowrap">
-                    <input type="checkbox" checked={liveCountDisplayFilter === 'loss'} onChange={() => setLiveCountDisplayFilter(liveCountDisplayFilter === 'loss' ? 'all' : 'loss')} className="cursor-pointer" />
-                    📉 Loss
-                  </label>
-                  <label className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-amber-500 hover:bg-amber-600 text-amber-900 font-semibold text-xs cursor-pointer transition whitespace-nowrap">
-                    <input type="checkbox" checked={liveCountDisplayFilter === 'gains'} onChange={() => setLiveCountDisplayFilter(liveCountDisplayFilter === 'gains' ? 'all' : 'gains')} className="cursor-pointer" />
-                    🚩 Gains
-                  </label>
-                </div>
-              )}
-              {/* Count filter bar — unified single filter */}
+              {/* Sale mode filter bar */}
               {showControls && liveMode === 'sale' && (
                 <div className="px-2 py-1 border-b border-green-700 flex flex-wrap items-center gap-2">
                   <label className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-amber-400 hover:bg-amber-500 text-amber-900 font-semibold text-xs cursor-pointer transition whitespace-nowrap">
@@ -4877,6 +4860,18 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     ⚠ ACP &gt; SP {liveAcpGtSpCount > 0 && <span className="ml-1 font-bold">({liveAcpGtSpCount})</span>}
                   </label>
                   <span className="px-3 py-1.5 rounded font-semibold text-xs bg-blue-600 text-white whitespace-nowrap">Count</span>
+                  <label className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold text-xs cursor-pointer transition whitespace-nowrap">
+                    <input type="checkbox" checked={liveCountDisplayFilter === 'counted'} onChange={() => setLiveCountDisplayFilter(liveCountDisplayFilter === 'counted' ? 'all' : 'counted')} className="cursor-pointer" />
+                    ✓ Counted
+                  </label>
+                  <label className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-red-400 hover:bg-red-500 text-red-900 font-semibold text-xs cursor-pointer transition whitespace-nowrap">
+                    <input type="checkbox" checked={liveCountDisplayFilter === 'loss'} onChange={() => setLiveCountDisplayFilter(liveCountDisplayFilter === 'loss' ? 'all' : 'loss')} className="cursor-pointer" />
+                    📉 Loss
+                  </label>
+                  <label className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-amber-500 hover:bg-amber-600 text-amber-900 font-semibold text-xs cursor-pointer transition whitespace-nowrap">
+                    <input type="checkbox" checked={liveCountDisplayFilter === 'gains'} onChange={() => setLiveCountDisplayFilter(liveCountDisplayFilter === 'gains' ? 'all' : 'gains')} className="cursor-pointer" />
+                    🚩 Gains
+                  </label>
                 </div>
               )}
               {/* Row 3: search bar + controls — hidden on report-style submenus. */}
