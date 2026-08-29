@@ -3130,9 +3130,8 @@ function ItemHubPageInner() {
       itemsToSort = liveCatalogueItems.filter(item => liveEmptyRowCountByItemId.has(item.id))
     } else if (liveSaleViolationFilter === 'withViolations') {
       itemsToSort = liveCatalogueItems.filter(item => liveViolationCountByItemId.has(item.id) && (liveViolationCountByItemId.get(item.id) ?? 0) > 0)
-    } else if (liveSaleViolationFilter === 'noViolations') {
-      itemsToSort = liveCatalogueItems.filter(item => !liveViolationCountByItemId.has(item.id) || (liveViolationCountByItemId.get(item.id) ?? 0) === 0)
     }
+    // noViolations shows all items but hides violation banners (handled in render, not filtering)
 
     const scoreFns: Record<ItemSortKey, (item: LiveItem) => number> = {
       count_status: item => {
@@ -4362,14 +4361,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         ]
       },
       noViolations: {
-        title: '✓ Items without Violations',
-        description: 'Showing only items that have no violations. These items are clean and compliant with all data requirements.',
+        title: '✓ Items (NV) - No Violation Banners',
+        description: 'Showing all items without violation banners displayed. Perfect for normal sales operations where you don\'t want to be distracted by violation alerts.',
         steps: [
-          'These items have no data integrity issues',
-          'No violation headers will appear on any of these items',
-          'You can still click items to view or edit their details',
-          'Monitor these items to ensure violations don\'t appear in the future',
-          'Use "Items (V)" filter to focus on items that need fixing'
+          'All items are shown regardless of violation status',
+          'Violation headers and banners are hidden to reduce visual clutter',
+          'COUNT NOW, trade-off, and other alert banners are not displayed',
+          'Use this mode for efficient sales workflows without distractions',
+          'Switch to "Items (V)" or specific violation filters to address data issues'
         ]
       }
     }
@@ -6124,17 +6123,17 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                           onClick={() => openEditGridItem(item.id)}
                           className={`relative flex flex-col border-r-2 border-b-2 group cursor-pointer ${cardBgCls} transition`}
                         >
-                          {due && (
+                          {liveSaleViolationFilter !== 'noViolations' && due && (
                             <div className={`px-2 py-1 text-[8px] font-extrabold text-white tracking-wide flex items-center justify-between gap-2 whitespace-nowrap ${overdue ? 'bg-red-600' : 'bg-amber-500'}`}>
                               <span className="truncate">⚠ COUNT NOW · {due.label} {overdue ? 'OVERDUE' : ''}</span>
                             </div>
                           )}
-                          {flags.map((f, i) => (
+                          {liveSaleViolationFilter !== 'noViolations' && flags.map((f, i) => (
                             <div key={i} className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide truncate ${f.bg}`}>
                               {f.label}
                             </div>
                           ))}
-                          {liveTradeOffByItemId.has(item.id) && (() => {
+                          {liveSaleViolationFilter !== 'noViolations' && liveTradeOffByItemId.has(item.id) && (() => {
                             const tradeOff = liveTradeOffByItemId.get(item.id)!
                             return (
                               <div className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide truncate ${tradeOff.net > 0 ? 'bg-red-600' : 'bg-amber-600'}`}>
