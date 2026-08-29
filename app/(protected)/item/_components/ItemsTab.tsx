@@ -372,10 +372,10 @@ function ItemForm({ form, onChange, groups }: { form: typeof EMPTY_FORM; onChang
         <option value="goods">Goods</option>
         <option value="service">Service</option>
       </select>
-      <div className="grid grid-cols-2 gap-1">
-        <input placeholder="Selling rate" type="number" value={form.selling_rate} onChange={set('selling_rate')} className={inputCls} />
-        <input placeholder="Cost rate" type="number" value={form.purchase_rate} onChange={set('purchase_rate')} className={inputCls} />
-      </div>
+      {/* Cost rate is no longer entered here -- VCP now syncs automatically
+          from the item's most recent bill (see lib/vcpSync.ts), so a new
+          item simply starts with none until its first bill arrives. */}
+      <input placeholder="Selling rate" type="number" value={form.selling_rate} onChange={set('selling_rate')} className={inputCls} />
       <div className="grid grid-cols-2 gap-1">
         <input placeholder="Units/pack" type="number" value={form.units_per_pack} onChange={set('units_per_pack')} className={inputCls} />
         <input placeholder="Unit name" value={form.unit_name} onChange={set('unit_name')} className={inputCls} />
@@ -676,7 +676,7 @@ function ItemsTab({ items, group, productType, search, violation, violationLabel
                 <th className="text-left py-1">Group</th>
                 <th className="text-center py-1">SOH</th>
                 <th className="text-center py-1">SP</th>
-                <th className="text-center py-1">CP</th>
+                <th className="text-center py-1">VCP</th>
                 <th className="text-center py-1">Units/pack</th>
                 <th className="text-center py-1">Edit</th>
               </tr>
@@ -1035,7 +1035,7 @@ function ItemsTab({ items, group, productType, search, violation, violationLabel
               <div className="flex gap-2 text-[9px] mt-0.5">
                 <span className={soh <= 0 ? 'text-red-300 font-bold' : selectedId === item.id ? 'text-blue-100' : 'text-gray-500'}>SOH:{soh % 1 === 0 ? soh : soh.toFixed(2)}</span>
                 <span className={selectedId === item.id ? 'text-blue-200' : 'text-blue-500'}>SP:{item.selling_rate ? fmt(item.selling_rate) : '—'}</span>
-                <span className={selectedId === item.id ? 'text-green-200' : 'text-green-500'}>CP:{item.purchase_rate ? fmt(item.purchase_rate) : '—'}</span>
+                <span className={selectedId === item.id ? 'text-green-200' : 'text-green-500'}>VCP:{item.purchase_rate ? fmt(item.purchase_rate) : '—'}</span>
               </div>
             </div>
           )

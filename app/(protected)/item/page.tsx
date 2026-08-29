@@ -5600,7 +5600,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                               <span className="text-gray-400"> · </span>
                               {item.product_type !== 'service' && (
                                 <>
-                                  <span className="text-green-600 font-semibold">CP ₵{formatPrice(item.cost_price)}</span>
+                                  <span className="text-green-600 font-semibold">VCP ₵{formatPrice(item.cost_price)}</span>
                                   <span className="text-gray-400"> · </span>
                                 </>
                               )}

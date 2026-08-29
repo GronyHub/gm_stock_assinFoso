@@ -225,14 +225,14 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
           )}
         </div>
         <div>
-          <label className={s.label}>Cost price</label>
-          {editMode ? (
-            <input placeholder="CP" type="number" value={form.purchase_rate} onChange={set('purchase_rate')} className={s.input} />
-          ) : (
-            <div className={s.readOnly}>
-              {form.purchase_rate ? trimZeros(form.purchase_rate) : '—'}
-            </div>
-          )}
+          {/* VCP (Vendor Cost Price) is no longer manually typed here -- it
+              syncs automatically from the item's most recent real bill (see
+              lib/vcpSync.ts), so this field is always read-only regardless
+              of editMode. */}
+          <label className={s.label}>Cost price (VCP)</label>
+          <div className={s.readOnly} title="Synced from the item's most recent bill -- add or edit a bill to change it">
+            {form.purchase_rate ? trimZeros(form.purchase_rate) : '—'}
+          </div>
         </div>
         <div>
           <label className={s.label}>Units per pack</label>

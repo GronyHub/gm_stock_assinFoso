@@ -1,4 +1,5 @@
 import sql from '@/lib/db'
+import { ensureBillExpensesTable } from '@/lib/billExpenses'
 
 export type CountRevision = { old_qty: string | number | null; old_by: string | null; changed_by: string | null; action?: string | null; changed_at: string }
 
@@ -17,6 +18,9 @@ export type ItemDayRow = {
   converted_in_time: string | null
   wic_breakdown: { name: string; qty: number; amount: number }[] | null
   sold_below_cost: boolean
+  vcp: string | null
+  vcp_bill_id: number | null
+  acp: string | null
 }
 
 // Per-item day-level activity (counts, WIC/GMC sales, bills, pack-chain
@@ -25,6 +29,7 @@ export type ItemDayRow = {
 // chain loss aggregation in /api/losses/summary (both sides of a chain, for
 // every pack item, on every page load), so the two never drift apart.
 export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
+  await ensureBillExpensesTable()
   const rows = await sql`
     WITH daily_converted_in AS (
       -- Credit from another good's GMC take, if that good declares
@@ -151,21 +156,62 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
         AND (sr.customer_name IS NULL OR sr.customer_name <> 'Grony Multimedia as Customer')
       GROUP BY sr.receipt_date::date
     ),
+    daily_vcp_source AS (
+      -- VCP (Vendor Cost Price) as of each date -- the most recent real
+      -- bill's unit_price for this item on or before that day, not just
+      -- today's catalog value, so history shows what cost actually applied
+      -- back then.
+      SELECT ad.d, lookup.unit_price AS vcp, lookup.bill_id AS vcp_bill_id
+      FROM all_dates ad
+      LEFT JOIN LATERAL (
+        SELECT bl.unit_price, bl.bill_id
+        FROM bill_lines bl
+        JOIN bills b ON b.id = bl.bill_id
+        WHERE bl.item_id = ${id}
+          AND b.source IS DISTINCT FROM 'live_sale'
+          AND bl.unit_price IS NOT NULL
+          AND b.bill_date <= ad.d
+        ORDER BY b.bill_date DESC, bl.id DESC
+        LIMIT 1
+      ) lookup ON true
+    ),
+    vcp_bill_groups AS (
+      -- ACP for each distinct source bill above -- same (date, vendor)
+      -- grouping and "representative bill id" convention BillsTab.tsx uses
+      -- for its own Shared Expenses column (see that file's groupAggregates
+      -- comment): total quantity across every line in the group, and the
+      -- group's bill_expenses total attached to its representative id.
+      SELECT DISTINCT b0.id AS source_bill_id, grp.total_qty, COALESCE(be.total, 0) AS shared_total
+      FROM bills b0
+      JOIN LATERAL (
+        SELECT MAX(b1.id) AS rep_id, SUM(bl1.quantity) AS total_qty
+        FROM bills b1
+        JOIN bill_lines bl1 ON bl1.bill_id = b1.id
+        WHERE b1.bill_date = b0.bill_date
+          AND COALESCE(b1.vendor_name, '') = COALESCE(b0.vendor_name, '')
+          AND b1.source IS DISTINCT FROM 'live_sale'
+      ) grp ON true
+      LEFT JOIN LATERAL (
+        SELECT SUM(amount) AS total FROM bill_expenses WHERE bill_id = grp.rep_id
+      ) be ON true
+      WHERE b0.id IN (SELECT vcp_bill_id FROM daily_vcp_source WHERE vcp_bill_id IS NOT NULL)
+    ),
     daily_below_cost AS (
-      -- Same condition as /api/flags' costGteSell check (Sales tab's own
-      -- "Cost >= Selling Price" flag) and Live Sale's item-card "SOLD BELOW
-      -- COST (history)" banner -- compares each WIC sale line against this
-      -- item's CURRENT cost price (there's no historical cost-price record),
-      -- so a day can flag here even if pricing was fine back when it sold.
+      -- Same condition as /api/flags' costGteSell check (the item-level
+      -- "ACP > SP" violation shown on Live Sale) -- compares each WIC sale
+      -- line against this item's ACP as of that sale's date (reusing
+      -- daily_vcp_source/vcp_bill_groups above, since all_dates already
+      -- covers every date this item sold on), not today's catalog value.
       SELECT sr.receipt_date::date AS d, true AS below_cost
       FROM sales_receipt_lines srl
       JOIN sales_receipts sr ON sr.id = srl.receipt_id
-      JOIN items i ON i.id = srl.item_id
+      JOIN daily_vcp_source dvs ON dvs.d = sr.receipt_date::date
+      LEFT JOIN vcp_bill_groups vbg ON vbg.source_bill_id = dvs.vcp_bill_id
       WHERE srl.item_id = ${id}
-        AND i.purchase_rate IS NOT NULL
+        AND dvs.vcp IS NOT NULL
         AND srl.item_price IS NOT NULL
-        AND i.purchase_rate >= srl.item_price
         AND srl.item_price > 0
+        AND (dvs.vcp + CASE WHEN vbg.total_qty > 0 THEN vbg.shared_total / vbg.total_qty ELSE 0 END) >= srl.item_price
       GROUP BY sr.receipt_date::date
     ),
     daily_aliases AS (
@@ -214,7 +260,12 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
       dci.qty AS converted_in_qty,
       dcit.tapped_at::text AS converted_in_time,
       dcs.breakdown AS wic_breakdown,
-      COALESCE(dbc.below_cost, false) AS sold_below_cost
+      COALESCE(dbc.below_cost, false) AS sold_below_cost,
+      dvs.vcp,
+      dvs.vcp_bill_id,
+      CASE WHEN dvs.vcp IS NOT NULL
+        THEN dvs.vcp + CASE WHEN vbg.total_qty > 0 THEN vbg.shared_total / vbg.total_qty ELSE 0 END
+        ELSE NULL END AS acp
     FROM all_dates ad
     LEFT JOIN daily_counts dc ON dc.d = ad.d
     LEFT JOIN daily_wic    dw ON dw.d = ad.d
@@ -227,6 +278,8 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
     LEFT JOIN daily_consumed_via_service dcs ON dcs.d = ad.d
     LEFT JOIN daily_count_history dch ON dch.d = ad.d
     LEFT JOIN daily_below_cost dbc ON dbc.d = ad.d
+    LEFT JOIN daily_vcp_source dvs ON dvs.d = ad.d
+    LEFT JOIN vcp_bill_groups vbg ON vbg.source_bill_id = dvs.vcp_bill_id
     ORDER BY ad.d ASC
   `
 

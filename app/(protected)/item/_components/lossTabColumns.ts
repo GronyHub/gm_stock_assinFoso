@@ -19,7 +19,7 @@ export const COLUMNS: { key: ColKey; label: string; width: number }[] = [
   { key: 'bl', label: 'BL', width: 36 },
   { key: 'soh', label: 'SOH', width: 40 },
   { key: 'sp', label: 'SP', width: 44 },
-  { key: 'cp', label: 'CP', width: 40 },
+  { key: 'cp', label: 'VCP', width: 44 },
   { key: 'cf_group', label: 'Group', width: 70 },
   { key: 'product_type', label: 'Type', width: 64 },
   // The only place this table's own row can confirm a "Count every N days"

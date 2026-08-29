@@ -4,6 +4,7 @@ import { ensureManageLogs } from '@/lib/manageLogs'
 import { ensureClosingReports } from '@/lib/closingReports'
 import { ensureSalesAttachmentsColumn } from '@/lib/salesAttachments'
 import { ensureBillAttachmentsColumn } from '@/lib/billAttachments'
+import { ensureBillExpensesTable } from '@/lib/billExpenses'
 import { success } from '@/lib/api'
 import { ensureDbInitialized } from '@/lib/api/dbInitCache'
 import { once } from '@/lib/once'
@@ -112,6 +113,9 @@ function shouldKeepPair(n1: string, n2: string): boolean {
 
 export async function GET() {
   await ensureSalesAttachmentsColumn()
+  // Needed before query #4 (ACP-based cost>=selling check) below, which
+  // reads bill_expenses directly.
+  await ensureBillExpensesTable()
   await ensureBillAttachmentsColumn()
 
   const [
@@ -209,19 +213,46 @@ export async function GET() {
       }
     }),
 
-    // 4. Sales lines where cost >= selling price
+    // 4. Sales lines where ACP (Adjusted Cost Price -- VCP + that bill's
+    // apportioned Shared Expenses, as of the sale's own date) >= selling
+    // price. VCP itself comes from the most recent real bill on or before
+    // that date, same "as of that date" reasoning lib/itemDayRows.ts uses
+    // for Item 360's own per-day VCP/ACP -- keep the two in sync if this
+    // ever changes.
     safeQuery(() => sql`
       SELECT sr.id AS receipt_id, sr.receipt_number, sr.receipt_date::text AS receipt_date,
              i.id AS item_id, COALESCE(srl.resolved_name, srl.raw_item_name) AS item_name,
              srl.item_price AS selling_price,
-             i.purchase_rate AS cost_price
+             (vcp_src.unit_price + CASE WHEN grp.total_qty > 0 THEN COALESCE(be.total, 0) / grp.total_qty ELSE 0 END) AS cost_price
       FROM sales_receipt_lines srl
       JOIN sales_receipts sr ON sr.id = srl.receipt_id
       JOIN items i ON i.id = srl.item_id
-      WHERE i.purchase_rate IS NOT NULL
-        AND srl.item_price IS NOT NULL
-        AND i.purchase_rate >= srl.item_price
+      JOIN LATERAL (
+        SELECT bl2.unit_price, bl2.bill_id
+        FROM bill_lines bl2
+        JOIN bills b2 ON b2.id = bl2.bill_id
+        WHERE bl2.item_id = i.id
+          AND b2.source IS DISTINCT FROM 'live_sale'
+          AND bl2.unit_price IS NOT NULL
+          AND b2.bill_date <= sr.receipt_date::date
+        ORDER BY b2.bill_date DESC, bl2.id DESC
+        LIMIT 1
+      ) vcp_src ON true
+      JOIN LATERAL (
+        SELECT MAX(b1.id) AS rep_id, SUM(bl1.quantity) AS total_qty
+        FROM bills b1
+        JOIN bill_lines bl1 ON bl1.bill_id = b1.id
+        JOIN bills vb ON vb.id = vcp_src.bill_id
+        WHERE b1.bill_date = vb.bill_date
+          AND COALESCE(b1.vendor_name, '') = COALESCE(vb.vendor_name, '')
+          AND b1.source IS DISTINCT FROM 'live_sale'
+      ) grp ON true
+      LEFT JOIN LATERAL (
+        SELECT SUM(amount) AS total FROM bill_expenses WHERE bill_id = grp.rep_id
+      ) be ON true
+      WHERE srl.item_price IS NOT NULL
         AND srl.item_price > 0
+        AND (vcp_src.unit_price + CASE WHEN grp.total_qty > 0 THEN COALESCE(be.total, 0) / grp.total_qty ELSE 0 END) >= srl.item_price
       ORDER BY sr.receipt_date DESC
     `),
 

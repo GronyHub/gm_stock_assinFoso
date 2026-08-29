@@ -46,10 +46,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 // "half applied" across the app. Backfilling all three here whenever the
 // name actually changes closes that gap.
 //
-// Several real callers intentionally send a partial body -- e.g. the Sales
-// tab's cost-price editor sends only { purchase_rate }, ItemsTab's quick
-// group reassignment sends only { cf_group } -- relying on every other
-// field staying untouched. Previously every field but item_name used
+// Several real callers intentionally send a partial body -- e.g. BillsTab's
+// New SP cell sends only { selling_rate }, ItemsTab's quick group
+// reassignment sends only { cf_group } -- relying on every other field
+// staying untouched. (VCP itself no longer comes through here at all --
+// lib/vcpSync.ts updates items.purchase_rate directly via SQL after a bill
+// changes.) Previously every field but item_name used
 // `${field ?? null}` directly, which nulled out anything the caller didn't
 // include (indistinguishable from an explicit null), silently wiping the
 // rest of that item's data on every partial save. Reading the current row
