@@ -67,10 +67,14 @@ const CADENCE_PRESETS: { value: string; label: string }[] = [
   { value: '45', label: 'Every 45 Days' },
 ]
 
-export function ItemEditForm({ form, onChange, groups, itemId, isService, allItems, size = 'compact', currentCountInterval, currentSoh, onGmcTypeSave, onConversionTargetSave, editMode: controlledEditMode, onEditModeChange, hideEditButton, hideGmcTick }: {
+export function ItemEditForm({ form, onChange, groups, itemId, isService, allItems, size = 'compact', currentCountInterval, currentSoh, acp, onGmcTypeSave, onConversionTargetSave, editMode: controlledEditMode, onEditModeChange, hideEditButton, hideGmcTick }: {
   form: typeof EMPTY_ITEM_EDIT_FORM; onChange: (f: typeof EMPTY_ITEM_EDIT_FORM) => void; groups: string[]
   itemId: number; isService: boolean; allItems: { item_id: number; item_name: string; gmc_type?: string | null }[]
   size?: 'compact' | 'large'
+  // Adjusted Cost Price (VCP + that bill's apportioned Shared Expenses) --
+  // always a read-only display, never part of `form`, since it's computed/
+  // synced (see lib/vcpSync.ts) rather than typed anywhere.
+  acp?: string | number | null
   // What this item's cadence actually resolves to right now (e.g. "Every
   // 15d", "Dormant", "Daily") -- without this, "Count every ___ days" is a
   // blank field with no way to tell whether leaving it on auto is already
@@ -232,6 +236,16 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
           <label className={s.label}>Cost price (VCP)</label>
           <div className={s.readOnly} title="Synced from the item's most recent bill -- add or edit a bill to change it">
             {form.purchase_rate ? trimZeros(form.purchase_rate) : '—'}
+          </div>
+        </div>
+        <div>
+          {/* ACP = VCP + that bill's apportioned Shared Expenses -- the
+              figure everything except Purchase Orders should read as this
+              item's real current cost. Always read-only, same reasoning as
+              VCP above. */}
+          <label className={s.label}>Cost price (ACP)</label>
+          <div className={s.readOnly} title="VCP + Shared Expenses from that bill -- add expenses on the bill to change it">
+            {acp ? trimZeros(String(acp)) : '—'}
           </div>
         </div>
         <div>

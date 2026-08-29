@@ -503,7 +503,7 @@ const PANE_ACCENT: Record<OuterTab, string> = {
 // cost_price vs. item_name/cf_group/selling_rate/purchase_rate/
 // calculated_soh -- these are two independently-fetched catalogues, not a
 // dedupe opportunity for this pass).
-type LiveItem = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; product_type: string | null; gmc_type?: string | null; count_interval?: string | null; converts_to_item_id?: number | null; converts_to_name?: string | null; units_per_pack?: string | number | null; unit_time_seconds?: string | number | null }
+type LiveItem = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; acp_price?: string | number; product_type: string | null; gmc_type?: string | null; count_interval?: string | null; converts_to_item_id?: number | null; converts_to_name?: string | null; units_per_pack?: string | number | null; unit_time_seconds?: string | number | null }
 type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null }
 type ViolationType = { key: string; label: string; description?: string }
 // Sale mode's due-count queues -- same shape /api/stock/daily,
@@ -639,7 +639,10 @@ function itemAttentionFlags(
 ): { label: string; bg: string }[] {
   const soh = Number(item.soh)
   const sp = parseFloat(String(item.selling_price)) || 0
-  const cp = parseFloat(String(item.cost_price)) || 0
+  // ACP (falling back to VCP if the item has no synced ACP yet) -- this is
+  // the "true" current cost everything except Purchase Orders should read,
+  // per the two-tier VCP/ACP model (see lib/vcpSync.ts).
+  const cp = parseFloat(String(item.acp_price ?? item.cost_price)) || 0
   const flags: { label: string; bg: string }[] = []
   if (item.product_type !== 'service' && soh < 0) flags.push({ label: '⚠ NEGATIVE STOCK', bg: 'bg-red-600' })
   // A gain (count came in ABOVE what records support) is just as much a
@@ -655,19 +658,19 @@ function itemAttentionFlags(
   if (serviceViolationIds.has(item.id)) flags.push({ label: '⚠ SERVICE VIOLATION', bg: 'bg-rose-600' })
   if (unlinkedNamedIds.has(item.id)) flags.push({ label: '⚠ UNLINKED SALE', bg: 'bg-orange-600' })
   // Both prices are actually set (missing-price is its own separate flag
-  // below) but selling at or below cost -- every sale of this good either
+  // below) but selling at or below ACP -- every sale of this good either
   // breaks even or loses money, which is worse than a missing price, not
   // an alternative to it.
-  if (item.product_type !== 'service' && sp > 0 && cp > 0 && cp >= sp) flags.push({ label: '⚠ COST ≥ SELLING PRICE', bg: 'bg-red-600' })
+  if (item.product_type !== 'service' && sp > 0 && cp > 0 && cp >= sp) flags.push({ label: '⚠ ACP ≥ SELLING PRICE', bg: 'bg-red-600' })
   // Distinct from the current-pricing check above -- this fires off actual
-  // past sale lines (Sales tab's own "Cost ≥ Selling Price" flag, /api/flags'
-  // costGteSell) rather than the item's catalog fields, so it still shows
-  // even after today's prices were fixed and the item no longer trips the
-  // check above. Compares each sale's own price against TODAY's cost price
-  // (there's no historical cost-price record), so "once" really means
-  // "at some point sold at or under what it costs right now." The affected
-  // dates ride along on the label itself, same as the STOCK GAIN count above,
-  // so the banner says exactly which day(s) to go check in Item 360.
+  // past sale lines (/api/flags' costGteSell) rather than the item's catalog
+  // fields, so it still shows even after today's prices were fixed and the
+  // item no longer trips the check above. Compares each sale's own price
+  // against ACP as of THAT sale's date (see lib/itemDayRows.ts), not today's
+  // value, so "history" here means "actually happened on that day," not
+  // "would happen if sold today." The affected dates ride along on the
+  // label itself, same as the STOCK GAIN count above, so the banner says
+  // exactly which day(s) to go check in Item 360.
   const belowCostDates = soldBelowCostDatesByItemId.get(item.id) ?? []
   if (belowCostDates.length > 0) {
     const shown = belowCostDates.slice(0, 3).map(fmtShortSaleDate).join(', ')
@@ -5608,7 +5611,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                               <span className="text-gray-400"> · </span>
                               {item.product_type !== 'service' && (
                                 <>
-                                  <span className="text-green-600 font-semibold">VCP ₵{formatPrice(item.cost_price)}</span>
+                                  <span className="text-green-600 font-semibold">ACP ₵{formatPrice(item.acp_price ?? item.cost_price)}</span>
                                   <span className="text-gray-400"> · </span>
                                 </>
                               )}
@@ -5686,7 +5689,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                       <p className="text-xs text-gray-500 mt-1">
                         <span>Selling: ₵{formatPrice(liveSelectedItem.selling_price)}</span>
                         <span className="text-gray-400"> · </span>
-                        <span>Cost: ₵{formatPrice(liveSelectedItem.cost_price)}</span>
+                        <span>Cost (ACP): ₵{formatPrice(liveSelectedItem.acp_price ?? liveSelectedItem.cost_price)}</span>
                         <span className="text-gray-400"> · </span>
                         <span>Stock: {Math.ceil(Number(liveSelectedItem.soh))} pc</span>
                       </p>
@@ -5722,6 +5725,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                           size="large"
                           currentCountInterval={liveEditCurrentCountInterval}
                           currentSoh={liveEditCurrentSoh}
+                          acp={liveSelectedItem.acp_price}
                           onGmcTypeSave={saveGmcTypeOnly}
                           onConversionTargetSave={saveConversionTargetOnly}
                         />
@@ -6239,6 +6243,7 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                           size="compact"
                           currentCountInterval={liveEditCurrentCountInterval}
                           currentSoh={liveEditCurrentSoh}
+                          acp={editItem.acp_price}
                           onConversionTargetSave={saveConversionTargetOnly}
                           hideGmcTick
                           editMode={liveGridEditRelationsOpen}

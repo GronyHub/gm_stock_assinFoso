@@ -27,3 +27,21 @@ async function ensureBillExpensesTableImpl() {
 }
 
 export const ensureBillExpensesTable = once(ensureBillExpensesTableImpl)
+
+// Every item with a bill_lines row anywhere in the (date, vendor) group
+// `billId` belongs to -- the full set an added/removed bill_expenses row
+// against that group's representative id could affect, so callers can pass
+// this straight to lib/vcpSync.ts's syncAcpForItems.
+export async function getItemIdsInBillGroup(billId: number): Promise<number[]> {
+  const rows = await sql`
+    SELECT DISTINCT bl.item_id
+    FROM bill_lines bl
+    JOIN bills b ON b.id = bl.bill_id
+    JOIN bills vb ON vb.id = ${billId}
+    WHERE b.bill_date = vb.bill_date
+      AND COALESCE(b.vendor_name, '') = COALESCE(vb.vendor_name, '')
+      AND b.source IS DISTINCT FROM 'live_sale'
+      AND bl.item_id IS NOT NULL
+  ` as { item_id: number }[]
+  return rows.map(r => r.item_id)
+}

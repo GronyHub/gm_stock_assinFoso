@@ -2,6 +2,8 @@ import { requireAuth, getActorName, notFound, success } from '@/lib/api'
 import { getIdParam } from '@/lib/api/params'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
+import { getItemIdsInBillGroup } from '@/lib/billExpenses'
+import { syncAcpForItems } from '@/lib/vcpSync'
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { session, error } = await requireAuth()
@@ -15,6 +17,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
 
   const actor = getActorName(session)
   await logActivity(actor, 'deleted bill expense', `Bill #${row.bill_id} · ₵${Number(row.amount).toFixed(2)}${row.description ? ` — ${row.description}` : ''}`)
+  await syncAcpForItems(await getItemIdsInBillGroup(row.bill_id))
 
   return success({ ok: true })
 }

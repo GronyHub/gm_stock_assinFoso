@@ -1,7 +1,8 @@
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
-import { ensureBillExpensesTable } from '@/lib/billExpenses'
+import { ensureBillExpensesTable, getItemIdsInBillGroup } from '@/lib/billExpenses'
+import { syncAcpForItems } from '@/lib/vcpSync'
 import { NextRequest } from 'next/server'
 
 // All bill_expenses rows -- fetched in full (like /api/bills/all-lines),
@@ -42,6 +43,7 @@ export async function POST(req: NextRequest) {
     `
     const actor = session!.user?.name || (session!.user as any)?.username || 'Unknown'
     await logActivity(actor, 'added bill expense', `Bill #${billId} · ₵${Number(amount).toFixed(2)}${description ? ` — ${description}` : ''}`)
+    await syncAcpForItems(await getItemIdsInBillGroup(billId))
     return success(row)
   } catch (e) {
     return handleError('bills/expenses POST', e)

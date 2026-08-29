@@ -2,7 +2,8 @@ import { requireAuth, badRequest, notFound, success, getActorName, handleError }
 import { getIdParam } from '@/lib/api/params'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
-import { ensureBillExpensesTable } from '@/lib/billExpenses'
+import { ensureBillExpensesTable, getItemIdsInBillGroup } from '@/lib/billExpenses'
+import { syncAcpForItems } from '@/lib/vcpSync'
 import { NextRequest } from 'next/server'
 
 // A one-time move, not a link: the chosen expense becomes a bill_expenses
@@ -38,6 +39,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const actor = getActorName(session)
     await logActivity(actor, 'migrated expense to bill', `${description ?? 'Expense'} · ₵${Number(expense.amount).toFixed(2)} → Bill ${bill.bill_number}`)
+    await syncAcpForItems(await getItemIdsInBillGroup(billId))
     return success(row)
   } catch (e) {
     return handleError('expenses/[id]/migrate-to-bill POST', e)

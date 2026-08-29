@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { itemCountIntervalLabels, formatCountInterval, ensureUnitTimeColumn } from '@/lib/countRules'
+import { ensureAdjustedCostPriceColumn } from '@/lib/vcpSync'
 import { NextResponse, NextRequest } from 'next/server'
 
 export async function GET(req: NextRequest) {
@@ -19,6 +20,7 @@ export async function GET(req: NextRequest) {
     // fallback queries below select it, so it has to be there before either
     // runs, not just before whichever one happens to succeed.
     await ensureUnitTimeColumn()
+    await ensureAdjustedCostPriceColumn()
     const [rows, intervals] = await Promise.all([
       // items.updated_at doesn't reliably exist (same missing-column class
       // as sales_receipts/bills/staff_times earlier) -- selecting it was
@@ -30,6 +32,7 @@ export async function GET(req: NextRequest) {
                COALESCE(s.calculated_soh, 0) AS soh,
                COALESCE(i.selling_rate, 0) AS selling_price,
                COALESCE(i.purchase_rate, 0) AS cost_price,
+               COALESCE(i.adjusted_cost_price, i.purchase_rate, 0) AS acp_price,
                COALESCE(i.product_type, 'goods') AS product_type,
                COALESCE(i.gmc_type, '') AS gmc_type,
                i.converts_to_item_id,
@@ -63,6 +66,7 @@ export async function GET(req: NextRequest) {
                0 AS soh,
                COALESCE(i.selling_rate, 0) AS selling_price,
                COALESCE(i.purchase_rate, 0) AS cost_price,
+               COALESCE(i.adjusted_cost_price, i.purchase_rate, 0) AS acp_price,
                COALESCE(i.product_type, 'goods') AS product_type,
                COALESCE(i.gmc_type, '') AS gmc_type,
                i.converts_to_item_id,
