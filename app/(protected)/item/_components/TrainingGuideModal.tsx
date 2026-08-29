@@ -1,8 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import PageLawsList, { type LawFormKind } from './PageLawsList'
-import type { LawFilterKey } from './useLawsPanel'
+import { useMemo, useState, type ReactNode } from 'react'
 
 /* ── tiny visual aids -- recreate the real colors/icons/labels used on the
    actual page, without depending on live data (this modal has none) ── */
@@ -424,32 +422,11 @@ const TOPICS: Topic[] = [
   },
 ]
 
-export function TrainingGuideModal({ isOpen, onClose, lawsPanel, initialTab = 'help' }: {
+export function TrainingGuideModal({ isOpen, onClose }: {
   isOpen: boolean
   onClose: () => void
-  lawsPanel?: {
-    show: boolean
-    setShow: (v: boolean | ((prev: boolean) => boolean)) => void
-    openForm: LawFormKind
-    setOpenForm: (v: LawFormKind) => void
-    hideZeroFlags: boolean
-    setHideZeroFlags: (v: boolean | ((prev: boolean) => boolean)) => void
-    activeFilters: Set<LawFilterKey>
-    toggleFilter: (key: LawFilterKey) => void
-    bumpRefresh: () => void
-  }
-  // Which of the two tabs to land on -- the modal stays mounted (just
-  // hidden) between opens, so its own tab state would otherwise carry over
-  // from whichever tab was open last instead of respecting where the
-  // caller (e.g. the Filter dropdown's "Laws & Tasks" entry) meant to go.
-  initialTab?: 'help' | 'laws'
 }) {
   const [query, setQuery] = useState('')
-  const [activeTab, setActiveTab] = useState<'help' | 'laws'>('help')
-
-  useEffect(() => {
-    if (isOpen) setActiveTab(initialTab)
-  }, [isOpen, initialTab])
   // null = no explicit pick yet -- desktop still shows a topic (falls back to
   // the first one below), but on phone this is what makes the list the
   // starting view instead of jumping straight into a topic's detail.
@@ -489,90 +466,51 @@ export function TrainingGuideModal({ isOpen, onClose, lawsPanel, initialTab = 'h
       >
         {/* Header */}
         <div className="shrink-0 border-b border-gray-200 px-4 py-3 flex items-center gap-2">
-          <div className="flex gap-1">
-            <button
-              onClick={() => setActiveTab('help')}
-              className={`px-3 py-1.5 text-sm font-semibold rounded-lg transition ${activeTab === 'help' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}
-            >
-              Help
-            </button>
-            {lawsPanel && (
-              <button
-                onClick={() => setActiveTab('laws')}
-                className={`px-3 py-1.5 text-sm font-semibold rounded-lg transition ${activeTab === 'laws' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}
-              >
-                Laws & Tasks
-              </button>
-            )}
-          </div>
-          {activeTab === 'help' && (
-            <input
-              type="text"
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              placeholder="Search the guide…"
-              className="flex-1 min-w-0 text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400"
-            />
-          )}
+          <h2 className="text-lg font-bold text-gray-900">Help Guide</h2>
+          <input
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search the guide..."
+            className="flex-1 min-w-0 text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400"
+          />
           <button onClick={onClose} className="shrink-0 text-gray-400 hover:text-gray-600 text-xl font-light leading-none px-1 ml-auto" aria-label="Close">✕</button>
         </div>
 
         {/* Body */}
         <div className="flex-1 min-h-0 flex overflow-hidden">
-          {activeTab === 'help' ? (
-            <>
-              {/* Topic list -- hidden on phone once a topic is open, so it's one screen at a time there */}
-              <div className={`${mobileDetailOpen ? 'hidden sm:block' : 'block'} w-full sm:w-56 shrink-0 border-r border-gray-200 overflow-y-auto py-2`}>
-                {grouped.length === 0 ? (
-                  <p className="text-xs text-gray-400 text-center py-8 px-3">No topics match "{query}".</p>
-                ) : grouped.map(([group, topics]) => (
-                  <div key={group} className="mb-2">
-                    <p className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">{group}</p>
-                    {topics.map(t => (
-                      <button
-                        key={t.id}
-                        onClick={() => setActiveId(t.id)}
-                        className={`w-full text-left px-3 py-1.5 text-sm transition ${active?.id === t.id ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}
-                      >
-                        {t.title}
-                      </button>
-                    ))}
-                  </div>
+          {/* Topic list -- hidden on phone once a topic is open, so it's one screen at a time there */}
+          <div className={`${mobileDetailOpen ? 'hidden sm:block' : 'block'} w-full sm:w-56 shrink-0 border-r border-gray-200 overflow-y-auto py-2`}>
+            {grouped.length === 0 ? (
+              <p className="text-xs text-gray-400 text-center py-8 px-3">No topics match "{query}".</p>
+            ) : grouped.map(([group, topics]) => (
+              <div key={group} className="mb-2">
+                <p className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">{group}</p>
+                {topics.map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => setActiveId(t.id)}
+                    className={`w-full text-left px-3 py-1.5 text-sm transition ${active?.id === t.id ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}
+                  >
+                    {t.title}
+                  </button>
                 ))}
               </div>
+            ))}
+          </div>
 
-              {/* Content */}
-              <div className={`${mobileDetailOpen ? 'block' : 'hidden sm:block'} flex-1 min-w-0 overflow-y-auto p-4`}>
-                {active ? (
-                  <div className="space-y-3 max-w-xl">
-                    <button onClick={() => setActiveId(null)} className="sm:hidden text-xs font-semibold text-blue-600 hover:underline">← All topics</button>
-                    <h2 className="text-lg font-bold text-gray-900">{active.title}</h2>
-                    {active.body}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-400 text-center py-10">No topics match "{query}".</p>
-                )}
+          {/* Content */}
+          <div className={`${mobileDetailOpen ? 'block' : 'hidden sm:block'} flex-1 min-w-0 overflow-y-auto p-4`}>
+            {active ? (
+              <div className="space-y-3 max-w-xl">
+                <button onClick={() => setActiveId(null)} className="sm:hidden text-xs font-semibold text-blue-600 hover:underline">← All topics</button>
+                <h3 className="text-lg font-bold text-gray-900">{active.title}</h3>
+                {active.body}
               </div>
-            </>
-          ) : (
-            /* Laws & Tasks tab */
-            <div className="flex-1 min-w-0 overflow-y-auto p-4">
-              {lawsPanel ? (
-                <PageLawsList
-                  scopeKey="Items"
-                  isItemsLaws={true}
-                  onChange={lawsPanel.bumpRefresh}
-                  openForm={lawsPanel.openForm}
-                  setOpenForm={lawsPanel.setOpenForm}
-                  hideZeroFlags={lawsPanel.hideZeroFlags}
-                  setHideZeroFlags={lawsPanel.setHideZeroFlags}
-                  activeFilters={lawsPanel.activeFilters}
-                />
-              ) : (
-                <p className="text-sm text-gray-500">Laws & Tasks not available</p>
-              )}
-            </div>
-          )}
+            ) : (
+              <p className="text-sm text-gray-400 text-center py-10">No topics match "{query}".</p>
+            )}
+          </div>
         </div>
 
         {/* Footer */}

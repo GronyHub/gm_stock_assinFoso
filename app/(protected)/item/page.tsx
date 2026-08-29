@@ -14,6 +14,7 @@ import { LossDialog, GainDialog, PairingDialog, type LossExtra, type LossPrompt,
 import { ItemEditForm, EMPTY_ITEM_EDIT_FORM } from './_components/ItemEditForm'
 import HistoryPanel from './_components/HistoryPanel'
 import { TrainingGuideModal } from './_components/TrainingGuideModal'
+import { LawsTasksModal } from './_components/LawsTasksModal'
 import ItemDetailPanel from './_components/ItemDetailPanel'
 import { AliasPicker, MatchPicker, MergeItemPicker, type AliasRecord, type MatchRecord, type CandidateItem } from './_components/LossTab'
 
@@ -821,7 +822,7 @@ function ItemHubPageInner() {
   const rawLiveGmcType = searchParams.get('liveGmcType')
   const [liveGmcTypeFilter, setLiveGmcTypeFilter] = useState<string | null>(rawLiveGmcType ?? null)
   const [liveHelpModalOpen, setLiveHelpModalOpen] = useState(false)
-  const [liveHelpInitialTab, setLiveHelpInitialTab] = useState<'help' | 'laws'>('help')
+  const [liveShowLawsTasksModal, setLiveShowLawsTasksModal] = useState(false)
   // Priority order the Sale-mode grid arranges items in -- shared across
   // every staff member via /api/item-sort-order (any staff can change it,
   // not just owner), so a reorder here changes what everyone else's app
@@ -4627,13 +4628,13 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                         setLiveSaleFilter(null)
                         setLiveCurrentView(null)
                         setLiveGmcTypeFilter(v.slice('gmc:'.length))
-                      } else if (v.startsWith('help:')) {
-                        // Opens the guide as an overlay rather than changing
-                        // what the grid shows -- reset the select right back
-                        // to blank instead of leaving "Help"/"Laws & Tasks"
-                        // sitting there as if it were the active filter.
-                        setLiveHelpInitialTab(v.slice('help:'.length) as 'help' | 'laws')
+                      } else if (v === 'help:help') {
+                        // Opens the Help Guide modal
                         setLiveHelpModalOpen(true)
+                        selectEl.value = ''
+                      } else if (v === 'help:laws') {
+                        // Opens the Laws & Tasks modal
+                        setLiveShowLawsTasksModal(true)
                         selectEl.value = ''
                       } else if (v === 'settings:sortorder') {
                         setLiveSortOrderModalOpen(true)
@@ -5395,9 +5396,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                           const viewKey = v.slice('view:'.length)
                           if (viewKey === 'lossByItem') setLiveCurrentView({ kind: 'lossByItem' as const })
                           else if (viewKey === 'dailySummary') setLiveCurrentView({ kind: 'dailySummary' as const })
-                        } else if (v.startsWith('help:')) {
-                          setLiveHelpInitialTab(v.slice('help:'.length) as 'help' | 'laws')
+                        } else if (v === 'help:help') {
                           setLiveHelpModalOpen(true)
+                          selectEl.value = ''
+                        } else if (v === 'help:laws') {
+                          setLiveShowLawsTasksModal(true)
                           selectEl.value = ''
                         } else if (v === 'settings:sortorder') {
                           setLiveSortOrderModalOpen(true)
@@ -6492,7 +6495,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           {livePairingPrompt && <PairingDialog prompt={livePairingPrompt} onClose={() => setLivePairingPrompt(null)} />}
           </>)}
 
-          <TrainingGuideModal isOpen={liveHelpModalOpen} onClose={() => setLiveHelpModalOpen(false)} lawsPanel={liveSaleLaws} initialTab={liveHelpInitialTab} />
+          <TrainingGuideModal isOpen={liveHelpModalOpen} onClose={() => setLiveHelpModalOpen(false)} />
+          <LawsTasksModal isOpen={liveShowLawsTasksModal} onClose={() => setLiveShowLawsTasksModal(false)} lawsPanel={liveSaleLaws} />
 
           {liveSortOrderModalOpen && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setLiveSortOrderModalOpen(false)}>
