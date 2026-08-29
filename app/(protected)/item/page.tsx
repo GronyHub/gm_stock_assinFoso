@@ -5068,7 +5068,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   <SalesTab items={liveSalesBillsItems} groupFilter={liveGroupFilter} search={liveEmbeddedSearch}
                     violation={liveSalesViolationFilter}
                     jumpToDate={jumpToReceiptDate} jumpToItemName={jumpToReceiptItemName}
-                    onJumpDone={() => { setJumpToReceiptDate(null); setJumpToReceiptItemName(null) }} />
+                    onJumpDone={() => { setJumpToReceiptDate(null); setJumpToReceiptItemName(null) }}
+                    countStatusByItemId={liveCountStatus} />
                 </div>
               )}
             </div>
