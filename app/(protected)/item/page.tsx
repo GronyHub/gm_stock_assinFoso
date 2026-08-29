@@ -4755,32 +4755,21 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                 {liveTaps.length === 0 ? (
                   <p className="text-sm text-gray-400 text-center py-8">No sales recorded</p>
                 ) : (
-                  // A real <table> instead of independent per-row grid divs --
-                  // table-layout:auto sizes each column to exactly the widest
-                  // cell actually in it (no wasted gap on rows with a shorter
-                  // item name than others), while still keeping every column
-                  // aligned down the page, which independent grids can't do
-                  // on their own. Item's <th>/<td>s stay sticky left-0, the
-                  // header row stays sticky top-0, and each date header
-                  // spans the full row via a real colSpan -- all standard
-                  // table equivalents of what the grid version did by hand.
-                  <table className="border-collapse">
-                    <thead>
-                      <tr className="bg-gray-50 border-b border-gray-200">
-                        <th className="sticky left-0 top-0 z-20 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-left whitespace-nowrap">Item</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap">Total</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase whitespace-nowrap">Time</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap">SP</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap">CP</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap">PF</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase whitespace-nowrap">Qty</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-left whitespace-nowrap">Staff</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase whitespace-nowrap">SOH</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap" title="Time since the previous tap -- since shop opening for the day's first, until the last staff signed out for the day's last">Gap</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5" />
-                      </tr>
-                    </thead>
-                    <tbody>
+                  // Per-row independent grids, not a shared <table> -- a
+                  // <table> (or one grid spanning every row) sizes each
+                  // column to the widest cell ANYWHERE in it, so short-named
+                  // rows still show blank space reserved for whatever the
+                  // longest name/value elsewhere happens to be. Each `<div
+                  // className="grid ...">` below is its OWN single-row grid
+                  // formatting context (same trick the Home feed's compact
+                  // activity rows already use), so a column's width is
+                  // whatever THAT row's own content needs -- no cross-row
+                  // sharing, no reserved gap. The trade-off is rows aren't
+                  // pixel-aligned into columns down the page; SP/CP/PF/Qty/
+                  // Staff/SOH/Gap are folded into one inline-labeled segment
+                  // (same convention as the Home feed's "Gap Xm · Dur Ym")
+                  // so there's no bare column header to keep aligned either.
+                  <div>
                     {liveTapsByDate.map(([date, dateTaps]) => {
                       const dateTotal = (dateTaps || []).filter((t): t is Tap => t != null && !t.undone).reduce((s, t) => s + Number(t.price) * t.quantity, 0)
                       const dateProfitTotal = (dateTaps || []).filter((t): t is Tap => t != null && !t.undone)
@@ -4788,16 +4777,12 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                       return (
                         <Fragment key={date}>
                           {/* Date header */}
-                          <tr className="bg-green-50 border-b border-green-200">
-                            <td colSpan={11} className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-green-700 whitespace-nowrap">
-                              {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · Total: ₵{formatPrice(dateTotal)}
-                              {' · PF: '}<span className={dateProfitTotal < 0 ? 'text-red-600' : ''}>₵{formatPrice(dateProfitTotal)}</span>
-                            </td>
-                          </tr>
+                          <div className="sticky top-0 z-10 bg-green-50 border-b border-t border-green-200 px-1.5 py-0.5 text-[8px] leading-none font-semibold text-green-700 whitespace-nowrap overflow-x-auto">
+                            {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · Total: ₵{formatPrice(dateTotal)}
+                            {' · PF: '}<span className={dateProfitTotal < 0 ? 'text-red-600' : ''}>₵{formatPrice(dateProfitTotal)}</span>
+                          </div>
 
-                          {/* Date's taps -- `group` + an explicit bg on the sticky
-                              first cell (not bg-inherit) so scrolled-under columns
-                              don't show through it, same fix as Item 360's table. */}
+                          {/* Date's taps */}
                           {(dateTaps || []).filter((t): t is Tap => t != null).map((tap, i) => {
                             // Gap = time since the previous (chronologically
                             // earlier) tap -- dateTaps is newest-first, so that's
@@ -4830,14 +4815,14 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                             // look active) but should still open the item's
                             // modal on tap, same as any other row here.
                             const tapItem = liveAllItems.find(it => it.name.toLowerCase() === tap.item_name.toLowerCase())
+                            const gapTitle = isNewest ? 'Until last sign-out' : isOldest ? 'Since shop opening' : 'Since previous tap'
                             return (
-                            <tr
-                              key={tap.id}
-                              className={`group hover:bg-gray-50 transition ${
-                                tap.undone ? 'bg-gray-50 opacity-60' : ''
-                              }`}
-                            >
-                              <td className={`sticky left-0 z-[1] h-[13px] px-0.5 group-hover:bg-gray-50 ${tap.undone ? 'bg-gray-50' : 'bg-white'}`}>
+                            <div key={tap.id} className="overflow-x-auto">
+                              <div
+                                className={`grid grid-cols-[auto_minmax(3rem,auto)_minmax(2.75rem,auto)_auto_auto] gap-x-2 items-baseline px-1.5 py-0.5 w-max min-w-full hover:bg-gray-50 transition ${
+                                  tap.undone ? 'bg-gray-50 opacity-60' : ''
+                                }`}
+                              >
                                 {tap.undone ? (
                                   <span
                                     onClick={tapItem ? () => setLiveViewingItemId(tapItem.id) : undefined}
@@ -4848,46 +4833,20 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                                 ) : (
                                   renderClickableItemName(tap.item_name, 'text-[9px] leading-none font-semibold whitespace-nowrap text-gray-900')
                                 )}
-                              </td>
-                              <td className="h-[13px] px-0.5 text-right">
-                                <span className={`text-[9px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-gray-400' : 'text-blue-600'}`}>
+                                <span className={`text-[9px] leading-none font-semibold whitespace-nowrap text-right ${tap.undone ? 'text-gray-400' : 'text-blue-600'}`}>
                                   ₵{formatPrice(Number(tap.price) * tap.quantity)}
                                 </span>
-                              </td>
-                              <td className="h-[13px] px-0.5 text-center">
                                 <span className="text-[8px] leading-none text-gray-500 whitespace-nowrap">{fmtTime(tap.tapped_at)}</span>
-                              </td>
-                              <td className="h-[13px] px-0.5 text-right">
-                                <span className={`text-[9px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
-                                  ₵{formatPrice(tap.price)}
+                                <span className="text-[9px] leading-none text-gray-500 whitespace-nowrap" title={tap.staff_name}>
+                                  SP<span className={tap.undone ? 'text-gray-400 line-through' : 'text-gray-900 font-semibold'}>₵{formatPrice(tap.price)}</span>
+                                  {' CP'}<span className={tap.undone ? 'text-gray-400 line-through' : 'text-gray-900 font-semibold'}>₵{formatPrice(tapCostPrice)}</span>
+                                  {' PF'}<span className={tap.undone ? 'text-gray-400' : tapProfit < 0 ? 'text-red-600 font-semibold' : 'text-emerald-600 font-semibold'}>₵{formatPrice(tapProfit)}</span>
+                                  {' · Qty '}<span className={tap.undone ? 'text-gray-400' : 'text-gray-900 font-semibold'}>{tap.quantity}</span>
+                                  {' · '}<span className="text-gray-600 font-semibold">{staffInitials(tap.staff_name)}</span>
+                                  {' · SOH '}{tap.soh !== null && tap.soh !== undefined ? Math.ceil(tap.soh) : '-'}
+                                  {' · '}<span title={gapTitle}>Gap {gapMins !== null ? formatGapMins(gapMins) : '-'}</span>
                                 </span>
-                              </td>
-                              <td className="h-[13px] px-0.5 text-right">
-                                <span className={`text-[9px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
-                                  ₵{formatPrice(tapCostPrice)}
-                                </span>
-                              </td>
-                              <td className="h-[13px] px-0.5 text-right">
-                                <span className={`text-[9px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-gray-400' : tapProfit < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                                  ₵{formatPrice(tapProfit)}
-                                </span>
-                              </td>
-                              <td className="h-[13px] px-0.5 text-center">
-                                <span className={`text-[9px] leading-none font-semibold ${tap.undone ? 'text-gray-400' : 'text-gray-900'}`}>
-                                  {tap.quantity}
-                                </span>
-                              </td>
-                              <td className="h-[13px] px-0.5" title={tap.staff_name}>
-                                <span className="text-[9px] leading-none text-gray-600 whitespace-nowrap">{staffInitials(tap.staff_name)}</span>
-                              </td>
-                              <td className="h-[13px] px-0.5 text-center">
-                                <span className="text-[9px] leading-none text-gray-500 whitespace-nowrap">{tap.soh !== null && tap.soh !== undefined ? Math.ceil(tap.soh) : '-'}</span>
-                              </td>
-                              <td className="h-[13px] px-0.5 text-right" title={isNewest ? 'Until last sign-out' : isOldest ? 'Since shop opening' : 'Since previous tap'}>
-                                <span className="text-[9px] leading-none text-gray-500 whitespace-nowrap">{gapMins !== null ? formatGapMins(gapMins) : '-'}</span>
-                              </td>
-                              <td className="h-[13px] px-0.5">
-                                <div className="flex items-center justify-center gap-0.5">
+                                <div className="flex items-center gap-0.5">
                                   {!tap.undone && (
                                     <>
                                       <button
@@ -4910,15 +4869,14 @@ async function recordCountFromModal(lossExtra?: LossExtra) {
                                     </>
                                   )}
                                 </div>
-                              </td>
-                            </tr>
+                              </div>
+                            </div>
                             )
                           })}
                         </Fragment>
                       )
                     })}
-                    </tbody>
-                  </table>
+                  </div>
                 )}
               </div>
               )}
