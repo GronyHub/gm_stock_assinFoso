@@ -232,32 +232,8 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
           )}
         </div>
       )}
-      {countRecords.length > 0 && (
-        <div className="border-t border-gray-200 bg-amber-50 px-3 py-2">
-          <p className="text-[9px] font-bold text-amber-900 mb-2 uppercase">Trade-Off Records</p>
-          <div className="space-y-1">
-            {countRecords.map((rec) => {
-              const isLoss = (rec.loss_qty ?? 0) > 0
-              const isGain = (rec.gain_qty ?? 0) > 0
-              const qty = isLoss ? rec.loss_qty : isGain ? rec.gain_qty : rec.quantity_counted
-              const kind = isLoss ? 'Loss' : isGain ? 'Gain' : 'OK'
-              const kindColor = isLoss ? 'text-red-600' : isGain ? 'text-green-600' : 'text-gray-600'
-              const kindBg = isLoss ? 'bg-red-50' : isGain ? 'bg-green-50' : 'bg-gray-50'
-              return (
-                <div key={rec.id} className={`flex items-center justify-between gap-2 ${kindBg} px-2 py-1 rounded text-[8px]`}>
-                  <div className="flex-1">
-                    <span className="font-semibold">{new Date(rec.count_date).toLocaleDateString()}</span>
-                    <span className={`ml-2 font-bold ${kindColor}`}>{kind}</span>
-                    <span className="ml-2 font-semibold">{qty !== null ? Math.abs(qty).toFixed(2) : '—'}</span>
-                    {rec.notes && <span className="ml-2 text-gray-600 italic">"{rec.notes}"</span>}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
       <ItemDetail item={item} groups={groupNames} allItems={allItemsList}
+        tradeOffRecords={countRecords}
         currentAliases={aliasRecords[item.item_id] ?? []}
         currentMatches={matchRecords[item.item_name.trim().toLowerCase()] ?? []}
         candidatePool={item.product_type === 'service' ? goodsPool : servicesPool}

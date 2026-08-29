@@ -38,6 +38,19 @@ export type SummaryRow = {
 
 type SortDir = 'asc' | 'desc'
 
+interface CountRecord {
+  id: number
+  item_id: number
+  item_name: string
+  count_date: string
+  quantity_counted: number
+  expected: number | null
+  loss_qty: number | null
+  gain_qty: number | null
+  kind?: string
+  notes: string | null
+}
+
 const EMPTY_FORM = EMPTY_ITEM_EDIT_FORM
 
 /* ── helpers ── */
@@ -1069,7 +1082,7 @@ export function MergeItemPicker({ itemId, itemName, typeLabel, mergePool, onMerg
 // externally. Exported so ItemDetailPanel.tsx can also render it standalone
 // on the Item 360 page, with its own equivalents of the pools/records this
 // file builds from its own full-list fetch.
-export function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, mergePool, isOwnerLevelUser, onSaved, onRelationsSaved, onMerged, onDateClick, onBillClick, showPrices, lossOnly, gainOnly, maxRows }: {
+export function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, mergePool, isOwnerLevelUser, onSaved, onRelationsSaved, onMerged, onDateClick, onBillClick, showPrices, lossOnly, gainOnly, maxRows, tradeOffRecords }: {
   item: SummaryRow; groups: string[]; allItems: { item_id: number; item_name: string }[]
   currentAliases: AliasRecord[]; currentMatches: MatchRecord[]
   candidatePool: CandidateItem[]
@@ -1084,6 +1097,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   gainOnly?: boolean
   lossOnly?: boolean
   maxRows?: number
+  tradeOffRecords?: CountRecord[]
 }) {
   const [dayRows, setDayRows] = useState<DayRow[] | null>(null)
 
@@ -1499,12 +1513,14 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
               <th className="px-1 py-0 text-right" title="Vendor Cost Price -- most recent real bill on or before this date. Click to jump to that bill">VCP</th>
               <th className="px-1 py-0 text-right text-purple-600" title="Adjusted Cost Price = VCP + that bill's apportioned Shared Expenses">ACP</th>
               <th className="px-1 py-0 text-right" title="Direct bills/purchases received">BL</th>
+              <th className="px-1 py-0 text-left" title="Trade-off records for this date">Trade-Off</th>
               <th className="px-1 py-0 text-left">Alias</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 text-[9px]">
             {displayedRows!.map((row) => {
               const lossVal = row.loss !== null ? row.loss * sp : null
+              const matchingTradeOffs = tradeOffRecords?.filter(r => r.count_date === row.date) ?? []
               return (
                 <tr key={row.date} title={row.sold_below_cost ? 'Sold at or under cost price this day' : undefined}
                   className={`group transition-colors ${row.sold_below_cost ? 'bg-purple-100 hover:bg-purple-200/70' : row.loss !== null && row.loss > 0.001 ? 'bg-red-50 hover:bg-red-100/70' : 'hover:bg-gray-50'}`}>
@@ -1563,6 +1579,18 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                   )}
                   {!isService && <td className="px-1 py-0 text-right text-purple-700">{row.acp != null ? fmtN(parseFloat(row.acp)) : <span className="text-gray-300">—</span>}</td>}
                   {!isService && <td className="px-1 py-0 text-right text-blue-600">{fmtQs(row.bills_qty)}</td>}
+                  {!isService && <td className="px-1 py-0 text-left text-gray-600 text-[8px]">
+                    {matchingTradeOffs.length > 0 ? (
+                      <div className="space-y-0.5">
+                        {matchingTradeOffs.map(rec => (
+                          <div key={rec.id} className="block">
+                            {rec.kind && <span className={rec.kind === 'loss' ? 'text-red-600' : 'text-green-600'}>{rec.kind.toUpperCase()}</span>}
+                            {' '}{fmtQ(rec.quantity_counted)}
+                          </div>
+                        ))}
+                      </div>
+                    ) : <span className="text-gray-300">—</span>}
+                  </td>}
                   <td className="px-1 py-0 text-purple-700 font-medium">
                     <span className="block truncate max-w-[180px]" title={row.aliases ?? ''}>{row.aliases ?? <span className="text-gray-300">—</span>}</span>
                   </td>
@@ -1606,12 +1634,14 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
               {!isService && <th className="px-1 py-0 text-right">BL</th>}
               {!isService && isGmcItem && <th className="px-1 py-0 text-right" title="Converted in from another item's GMC take">CNV</th>}
               {!isService && <th className="px-1 py-0 text-right">Exp</th>}
+              <th className="px-1 py-0 text-left" title="Trade-off records for this date">Trade-Off</th>
               <th className="px-1 py-0 text-left">Alias</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 text-[9px]">
             {displayedRows!.map((row) => {
               const lossVal = row.loss !== null ? row.loss * sp : null
+              const matchingTradeOffs = tradeOffRecords?.filter(r => r.count_date === row.date) ?? []
               return (
                 <tr key={row.date} title={row.sold_below_cost ? 'Sold at or under cost price this day' : undefined}
                   className={`group transition-colors ${row.sold_below_cost ? 'bg-purple-100 hover:bg-purple-200/70' : row.loss !== null && row.loss > 0.001 ? 'bg-red-50 hover:bg-red-100/70' : 'hover:bg-gray-50'}`}>
@@ -1655,6 +1685,18 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                   {!isService && <td className="px-1 py-0 text-right text-blue-600">{fmtQs(row.bills_qty)}</td>}
                   {!isService && isGmcItem && <td className="px-1 py-0 text-right text-teal-600"><CnvValue qty={row.converted_in_qty} time={row.converted_in_time} /></td>}
                   {!isService && <td className="px-1 py-0 text-right text-gray-400">{fmtN(row.expected_soh)}</td>}
+                  {!isService && <td className="px-1 py-0 text-left text-gray-600 text-[8px]">
+                    {matchingTradeOffs.length > 0 ? (
+                      <div className="space-y-0.5">
+                        {matchingTradeOffs.map(rec => (
+                          <div key={rec.id} className="block">
+                            {rec.kind && <span className={rec.kind === 'loss' ? 'text-red-600' : 'text-green-600'}>{rec.kind.toUpperCase()}</span>}
+                            {' '}{fmtQ(rec.quantity_counted)}
+                          </div>
+                        ))}
+                      </div>
+                    ) : <span className="text-gray-300">—</span>}
+                  </td>}
                   <td className="px-1 py-0 text-purple-700 font-medium">
                     <span className="block truncate max-w-[180px]" title={row.aliases ?? ''}>{row.aliases ?? <span className="text-gray-300">—</span>}</span>
                   </td>
