@@ -6118,17 +6118,29 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                           onClick={() => openEditGridItem(item.id)}
                           className={`relative flex flex-col border-r-2 border-b-2 group cursor-pointer ${cardBgCls} transition`}
                         >
-                          {liveSaleViolationFilter !== 'noViolations' && due && (
+                          {liveSaleViolationFilter !== 'noViolations' && liveSaleViolationFilter === 'countDue' && due && (
                             <div className={`px-2 py-1 text-[8px] font-extrabold text-white tracking-wide flex items-center justify-between gap-2 whitespace-nowrap ${overdue ? 'bg-red-600' : 'bg-amber-500'}`}>
                               <span className="truncate">⚠ COUNT NOW · {due.label} {overdue ? 'OVERDUE' : ''}</span>
                             </div>
                           )}
-                          {liveSaleViolationFilter !== 'noViolations' && flags.map((f, i) => (
-                            <div key={i} className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide truncate ${f.bg}`}>
-                              {f.label}
-                            </div>
-                          ))}
-                          {liveSaleViolationFilter !== 'noViolations' && liveTradeOffByItemId.has(item.id) && (() => {
+                          {liveSaleViolationFilter !== 'noViolations' && liveSaleViolationFilter !== 'countDue' && liveSaleViolationFilter !== 'tradeOff' && (() => {
+                            let filteredFlags = flags
+                            if (liveSaleViolationFilter === 'duplicates') filteredFlags = flags.filter(f => f.label.includes('DUPLICATE'))
+                            else if (liveSaleViolationFilter === 'unlinked') filteredFlags = flags.filter(f => f.label.includes('UNLINKED'))
+                            else if (liveSaleViolationFilter === 'service') filteredFlags = flags.filter(f => f.label.includes('SERVICE'))
+                            else if (liveSaleViolationFilter === 'gains') filteredFlags = flags.filter(f => f.label.includes('STOCK GAIN'))
+                            else if (liveSaleViolationFilter === 'soldBelowCost') filteredFlags = flags.filter(f => f.label.includes('SOLD BELOW COST'))
+                            else if (liveSaleViolationFilter === 'vcpJump') filteredFlags = flags.filter(f => f.label.includes('VCP JUMP'))
+                            else if (liveSaleViolationFilter === 'emptyRow') filteredFlags = flags.filter(f => f.label.includes('EMPTY DATA'))
+                            else if (liveSaleViolationFilter === 'acpGtSp') filteredFlags = flags.filter(f => f.label.includes('ACP > SP'))
+                            else if (liveSaleViolationFilter !== 'withViolations') filteredFlags = []
+                            return filteredFlags.map((f, i) => (
+                              <div key={i} className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide truncate ${f.bg}`}>
+                                {f.label}
+                              </div>
+                            ))
+                          })()}
+                          {liveSaleViolationFilter !== 'noViolations' && liveSaleViolationFilter === 'tradeOff' && liveTradeOffByItemId.has(item.id) && (() => {
                             const tradeOff = liveTradeOffByItemId.get(item.id)!
                             return (
                               <div className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide truncate ${tradeOff.net > 0 ? 'bg-red-600' : 'bg-amber-600'}`}>
