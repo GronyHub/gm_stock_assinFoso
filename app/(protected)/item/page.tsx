@@ -4844,6 +4844,23 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   </select>
                 </div>
               )}
+              {/* Items filter checkboxes — Counted, Loss, Gains */}
+              {showControls && lossView === 'items' && (
+                <div className="px-2 py-1 border-b border-green-700 flex flex-wrap items-center gap-2">
+                  <label className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold text-xs cursor-pointer transition whitespace-nowrap">
+                    <input type="checkbox" checked={liveCountDisplayFilter === 'counted'} onChange={() => setLiveCountDisplayFilter(liveCountDisplayFilter === 'counted' ? 'all' : 'counted')} className="cursor-pointer" />
+                    ✓ Counted
+                  </label>
+                  <label className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-red-400 hover:bg-red-500 text-red-900 font-semibold text-xs cursor-pointer transition whitespace-nowrap">
+                    <input type="checkbox" checked={liveCountDisplayFilter === 'loss'} onChange={() => setLiveCountDisplayFilter(liveCountDisplayFilter === 'loss' ? 'all' : 'loss')} className="cursor-pointer" />
+                    📉 Loss
+                  </label>
+                  <label className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-amber-500 hover:bg-amber-600 text-amber-900 font-semibold text-xs cursor-pointer transition whitespace-nowrap">
+                    <input type="checkbox" checked={liveCountDisplayFilter === 'gains'} onChange={() => setLiveCountDisplayFilter(liveCountDisplayFilter === 'gains' ? 'all' : 'gains')} className="cursor-pointer" />
+                    🚩 Gains
+                  </label>
+                </div>
+              )}
               {/* Count filter bar — unified single filter */}
               {showControls && liveMode === 'sale' && (
                 <div className="px-2 py-1 border-b border-green-700 flex flex-wrap items-center gap-2">
@@ -4859,32 +4876,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <input type="checkbox" checked={liveShowAcpGtSpOnly} onChange={() => setLiveShowAcpGtSpOnly(d => !d)} className="cursor-pointer" />
                     ⚠ ACP &gt; SP {liveAcpGtSpCount > 0 && <span className="ml-1 font-bold">({liveAcpGtSpCount})</span>}
                   </label>
-                  <div className="flex flex-wrap gap-1.5">
-                    <button
-                      onClick={() => setLiveCountDisplayFilter('all')}
-                      className={`px-3 py-1.5 rounded font-semibold text-xs transition whitespace-nowrap ${liveCountDisplayFilter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-800 hover:bg-gray-400'}`}
-                    >
-                      All
-                    </button>
-                    <button
-                      onClick={() => setLiveCountDisplayFilter('counted')}
-                      className={`px-3 py-1.5 rounded font-semibold text-xs transition whitespace-nowrap ${liveCountDisplayFilter === 'counted' ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-800 hover:bg-gray-400'}`}
-                    >
-                      ✓ Counted
-                    </button>
-                    <button
-                      onClick={() => setLiveCountDisplayFilter('loss')}
-                      className={`px-3 py-1.5 rounded font-semibold text-xs transition whitespace-nowrap ${liveCountDisplayFilter === 'loss' ? 'bg-blue-600 text-white' : 'bg-red-400 text-red-900 hover:bg-red-500'}`}
-                    >
-                      📉 Loss {liveCountTradeOffCounts.lossCount > 0 && <span className="ml-1 font-bold">({liveCountTradeOffCounts.lossCount})</span>}
-                    </button>
-                    <button
-                      onClick={() => setLiveCountDisplayFilter('gains')}
-                      className={`px-3 py-1.5 rounded font-semibold text-xs transition whitespace-nowrap ${liveCountDisplayFilter === 'gains' ? 'bg-blue-600 text-white' : 'bg-amber-500 text-amber-900 hover:bg-amber-600'}`}
-                    >
-                      🚩 Gains {liveCountTradeOffCounts.gainCount > 0 && <span className="ml-1 font-bold">({liveCountTradeOffCounts.gainCount})</span>}
-                    </button>
-                  </div>
+                  <span className="px-3 py-1.5 rounded font-semibold text-xs bg-blue-600 text-white whitespace-nowrap">Count</span>
                 </div>
               )}
               {/* Row 3: search bar + controls — hidden on report-style submenus. */}
