@@ -5065,14 +5065,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'emptyRow'} onChange={() => { setLiveSaleViolationFilter('emptyRow'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
                     <span>Empty Row ({liveEmptyRowCount})</span>
                   </label></>)}
-                  <span className="text-gray-400 px-1">·</span>
-                  <button
-                    type="button"
-                    onClick={() => setLiveShowCountFullPage(true)}
-                    className="text-blue-600 hover:underline cursor-pointer whitespace-nowrap"
-                  >
-                    Count{liveSaleCountRecords.length > 0 && ` (${liveSaleCountRecords.length})`}
-                  </button>
                 </div>
               )}
               {/* Row 3: search bar + controls — hidden on report-style submenus. */}
