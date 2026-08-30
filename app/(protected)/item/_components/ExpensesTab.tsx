@@ -6,7 +6,8 @@ import PageLawsList from './PageLawsList'
 import LawsToggleBar from './LawsToggleBar'
 import AccountsManager from './AccountsManager'
 import { useLawsPanel } from './useLawsPanel'
-import { useColumnPrefs, ColumnsPickerButton, ResizableTh, ColResizeHandle, type ColumnDef, type ColumnPrefs } from './columnPrefs'
+import { useColumnPrefs, ColumnsPickerButton, ResizableTh, ColResizeHandle, type ColumnPrefs } from './columnPrefs'
+import { type ColKey, COLUMNS as EXPENSE_COLUMNS } from './expensesTabColumns'
 
 type Expense = {
   id: number
@@ -92,32 +93,6 @@ function looksBundled(description: string | null): boolean {
 const TH = 'text-left px-3 py-0.5 font-bold text-gray-400 text-[10px] uppercase tracking-wide border-b border-gray-200'
 const TD = 'px-3 py-0'
 
-// Account (frozen, first, folds in the description as "Account —
-// Description" -- see bodyCellFor -- so it no longer needs its own
-// column), Group (second, always), then Date, Amt, others. Vendor gets
-// force-hidden while grouped by that field. Property columns are shown
-// only when viewing properties.
-type ColKey = 'date' | 'account' | 'group' | 'is_property' | 'amount' | 'expense_type' | 'vendor' | 'source' | 'by' | 'is_related_expense' | 'related_property' | 'related_reasons' | 'property_status' | 'property_type' | 'availability' | 'working' | 'location' | 'reason'
-const EXPENSE_COLUMNS: ColumnDef<ColKey>[] = [
-  { key: 'account',      label: 'Account' },
-  { key: 'group',        label: 'Group' },
-  { key: 'is_property',  label: 'Is Property?' },
-  { key: 'amount',       label: 'Amount' },
-  { key: 'expense_type', label: 'Expense Type' },
-  { key: 'date',         label: 'Date' },
-  { key: 'vendor',       label: 'Vendor' },
-  { key: 'source',       label: 'Source' },
-  { key: 'by',           label: 'By' },
-  { key: 'is_related_expense', label: 'Related to Property?' },
-  { key: 'related_property', label: 'Related Property' },
-  { key: 'related_reasons', label: 'Relationship' },
-  { key: 'property_status', label: 'Property Status' },
-  { key: 'property_type', label: 'Type' },
-  { key: 'availability', label: 'Available?' },
-  { key: 'working',      label: 'Condition' },
-  { key: 'location',     label: 'Location' },
-  { key: 'reason',       label: 'Reason' },
-]
 const EXPENSES_COL_DEFAULTS: Record<string, number> = {
   date: 92, amt: 90, account: 260, group: 100, is_property: 85, amount: 90, expense_type: 100, vendor: 120, source: 90, by: 80,
   is_related_expense: 95, related_property: 120, related_reasons: 130, property_status: 100,
@@ -743,16 +718,37 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
   )
 }
 
-type Props = { search: string; onFlagCountChange?: (n: number) => void }
+type ExpensesFlag = 'similar' | 'bundled' | 'no_vendor' | 'properties_no_location'
+
+type Props = {
+  search: string
+  onFlagCountChange?: (n: number) => void
+  // History and the four flag filters moved up to the parent's own header
+  // row (so they render alongside New Expense in one mutually-exclusive
+  // radio group there) -- same lift-up treatment Sales/Bills already got.
+  // Optional (defaulting to no-ops below) for any bare embed with no header
+  // row of its own to host these controls in.
+  showHistory?: boolean
+  setShowHistory?: (v: boolean | ((prev: boolean) => boolean)) => void
+  activeFlag?: ExpensesFlag | null
+  setActiveFlag?: (v: ExpensesFlag | null) => void
+  // Reports the four flag counts back up so the parent's radio labels can
+  // show live counts, same idea as Sales/Bills' globalFlags-driven counts
+  // (these aren't in the shared /api/flags -- they're computed locally
+  // from this component's own expenses list).
+  onFlagCountsChange?: (counts: Record<ExpensesFlag, number>) => void
+}
 
 type PropTab = 'all' | 'available' | 'away'
 
-export default function ExpensesTab({ search, onFlagCountChange }: Props) {
+export default function ExpensesTab({
+  search, onFlagCountChange,
+  showHistory = false, setShowHistory = () => {}, activeFlag = null, setActiveFlag = () => {}, onFlagCountsChange,
+}: Props) {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [groupBy, setGroupBy] = useState<'none' | 'account' | 'vendor'>('none')
-  const [showHistory, setShowHistory] = useState(false)
   const [showAccountsManager, setShowAccountsManager] = useState(false)
   const lawsPanel = useLawsPanel('showExpensesLaws')
   const [highlightId, setHighlightId] = useState<number | null>(null)
@@ -768,10 +764,6 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
   // drops that side of the is_property split from the list.
   const [showProperties, setShowProperties] = useState(true)
   const [showNonProperties, setShowNonProperties] = useState(true)
-  // 'similar' narrows to expenses whose account name is part of a
-  // near-duplicate pair; 'bundled' to descriptions that read like more than
-  // one purchase; 'no_vendor' to expenses missing a vendor name.
-  const [activeFlag, setActiveFlag] = useState<'similar' | 'bundled' | 'no_vendor' | 'properties_no_location' | null>(null)
   const [propertyAvailabilityFilter, setPropertyAvailabilityFilter] = useState<'all' | 'available' | 'not_available'>('all')
   const [propertyTypeFilter, setPropertyTypeFilter] = useState<string | null>(null)
   const [customViewNames, setCustomViewNames] = useState<Record<string, string>>({})
@@ -887,7 +879,28 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
   // the Expenses pane row never showed them until this existed.
   useEffect(() => {
     onFlagCountChange?.(flagCounts.similar + flagCounts.bundled + flagCounts.no_vendor + flagCounts.properties_no_location)
+    onFlagCountsChange?.(flagCounts)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flagCounts, onFlagCountChange])
+
+  // activeFlag/showHistory are now selected from the parent's own
+  // mutually-exclusive radio row (alongside New Expense) -- when one of
+  // them turns on from outside, clear this component's own internal
+  // view-switching state (groupBy/property filters/account+vendor
+  // filters) the same way picking a flag used to reset them when this was
+  // all one local click handler.
+  useEffect(() => {
+    if (activeFlag || showHistory) {
+      setGroupBy('none')
+      setPropertyAvailabilityFilter('all')
+      setShowProperties(true)
+      setShowNonProperties(true)
+      setPropertyTypeFilter(null)
+      setAccountFilter(null)
+      setVendorFilter(null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeFlag, showHistory])
 
   const filtered = useMemo(() => {
     let list = expenses
@@ -1203,13 +1216,6 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
     </div>
   )
 
-  const flagButtons: { key: 'similar' | 'bundled' | 'no_vendor' | 'properties_no_location'; letter: string; label: string; description: string }[] = [
-    { key: 'similar', letter: 'S', label: 'Similar Account Names', description: 'Account names that are close variations of each other (e.g., "Office Expense" vs "Office Expenses") — likely duplicates entered different ways.' },
-    { key: 'bundled', letter: 'B', label: 'Description Looks Bundled', description: 'Expense descriptions mentioning multiple items (commas, "&", "and", "etc") — suggests several purchases lumped into one line instead of separate rows.' },
-    { key: 'no_vendor', letter: 'V', label: 'No Vendor Name', description: 'Expenses missing a vendor name — helps identify incomplete expense records that need follow-up.' },
-    { key: 'properties_no_location', letter: 'L', label: 'Properties Without Location', description: 'Available properties that have not been assigned a storage location — need to be placed at a Grony location.' },
-  ]
-
   const isAllExpenses = activeFlag === null && propertyAvailabilityFilter === 'all' && groupBy === 'none' && showProperties && showNonProperties && !propertyTypeFilter
 
   const getActiveViewHeading = () => {
@@ -1232,15 +1238,15 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
   const activeViewHeading = getActiveViewHeading()
 
   const viewButtons: { key: string; letter: string; label: string; description: string; active: boolean; count: number; onChange: () => void }[] = [
-    { key: 'all_expenses', letter: '∑', label: 'All Expenses', description: 'View all expenses without any filters or grouping — returns to the default view.', active: isAllExpenses, count: viewCounts.all_expenses, onChange: () => { setActiveFlag(null); setPropertyAvailabilityFilter('all'); setGroupBy('none'); setShowProperties(true); setShowNonProperties(true); setPropertyTypeFilter(null); setAccountFilter(null); setVendorFilter(null) } },
-    { key: 'by_account', letter: 'A', label: 'By Account', description: 'Group expenses by their account category to see totals and records for each account.', active: groupBy === 'account', count: viewCounts.by_account, onChange: () => { setActiveFlag(null); setPropertyAvailabilityFilter('all'); setShowProperties(true); setShowNonProperties(true); setPropertyTypeFilter(null); setAccountFilter(null); setVendorFilter(null); setGroupBy(g => g === 'account' ? 'none' : 'account') } },
-    { key: 'by_vendor', letter: 'V', label: 'By Vendor', description: 'Group expenses by vendor to see total spending and records for each supplier.', active: groupBy === 'vendor', count: viewCounts.by_vendor, onChange: () => { setActiveFlag(null); setPropertyAvailabilityFilter('all'); setShowProperties(true); setShowNonProperties(true); setPropertyTypeFilter(null); setAccountFilter(null); setVendorFilter(null); setGroupBy(g => g === 'vendor' ? 'none' : 'vendor') } },
-    { key: 'show_properties', letter: 'P', label: 'All Properties', description: 'View only expenses marked as properties/equipment.', active: showProperties && !showNonProperties, count: viewCounts.show_properties, onChange: () => { setActiveFlag(null); setPropertyAvailabilityFilter('all'); setGroupBy('none'); setPropertyTypeFilter(null); setShowProperties(true); setShowNonProperties(false); setAccountFilter(null); setVendorFilter(null) } },
-    { key: 'show_non_properties', letter: 'N', label: 'Non-Properties', description: 'View only regular expenses (non-property expenditures).', active: !showProperties && showNonProperties, count: viewCounts.show_non_properties, onChange: () => { setActiveFlag(null); setPropertyAvailabilityFilter('all'); setGroupBy('none'); setPropertyTypeFilter(null); setShowProperties(false); setShowNonProperties(true); setAccountFilter(null); setVendorFilter(null) } },
-    { key: 'prop_available', letter: 'A', label: 'Properties Available', description: 'View only properties currently at a Grony shop location (marked as available).', active: propertyAvailabilityFilter === 'available', count: viewCounts.prop_available, onChange: () => { setActiveFlag(null); setGroupBy('none'); setShowProperties(true); setShowNonProperties(true); setPropertyTypeFilter(null); setPropertyAvailabilityFilter('available'); setAccountFilter(null); setVendorFilter(null) } },
-    { key: 'prop_not_available', letter: 'U', label: 'Properties Not Available', description: 'View only properties that are currently away from shop (spoilt, stolen, or at Grony\'s house).', active: propertyAvailabilityFilter === 'not_available', count: viewCounts.prop_not_available, onChange: () => { setActiveFlag(null); setGroupBy('none'); setShowProperties(true); setShowNonProperties(true); setPropertyTypeFilter(null); setPropertyAvailabilityFilter('not_available'); setAccountFilter(null); setVendorFilter(null) } },
-    { key: 'printers', letter: 'M', label: 'Printers', description: 'View only printers and printer-related expenses.', active: propertyTypeFilter === 'Printer', count: viewCounts.printers, onChange: () => { setActiveFlag(null); setGroupBy('none'); setShowProperties(true); setShowNonProperties(true); setPropertyAvailabilityFilter('all'); setPropertyTypeFilter('Printer'); setAccountFilter(null); setVendorFilter(null) } },
-    { key: 'computers', letter: 'C', label: 'Computers', description: 'View only computers and computer-related expenses.', active: propertyTypeFilter === 'Computer', count: viewCounts.computers, onChange: () => { setActiveFlag(null); setGroupBy('none'); setShowProperties(true); setShowNonProperties(true); setPropertyAvailabilityFilter('all'); setPropertyTypeFilter('Computer'); setAccountFilter(null); setVendorFilter(null) } },
+    { key: 'all_expenses', letter: '∑', label: 'All Expenses', description: 'View all expenses without any filters or grouping — returns to the default view.', active: isAllExpenses, count: viewCounts.all_expenses, onChange: () => { setActiveFlag(null); setShowHistory(false); setPropertyAvailabilityFilter('all'); setGroupBy('none'); setShowProperties(true); setShowNonProperties(true); setPropertyTypeFilter(null); setAccountFilter(null); setVendorFilter(null) } },
+    { key: 'by_account', letter: 'A', label: 'By Account', description: 'Group expenses by their account category to see totals and records for each account.', active: groupBy === 'account', count: viewCounts.by_account, onChange: () => { setActiveFlag(null); setShowHistory(false); setPropertyAvailabilityFilter('all'); setShowProperties(true); setShowNonProperties(true); setPropertyTypeFilter(null); setAccountFilter(null); setVendorFilter(null); setGroupBy(g => g === 'account' ? 'none' : 'account') } },
+    { key: 'by_vendor', letter: 'V', label: 'By Vendor', description: 'Group expenses by vendor to see total spending and records for each supplier.', active: groupBy === 'vendor', count: viewCounts.by_vendor, onChange: () => { setActiveFlag(null); setShowHistory(false); setPropertyAvailabilityFilter('all'); setShowProperties(true); setShowNonProperties(true); setPropertyTypeFilter(null); setAccountFilter(null); setVendorFilter(null); setGroupBy(g => g === 'vendor' ? 'none' : 'vendor') } },
+    { key: 'show_properties', letter: 'P', label: 'All Properties', description: 'View only expenses marked as properties/equipment.', active: showProperties && !showNonProperties, count: viewCounts.show_properties, onChange: () => { setActiveFlag(null); setShowHistory(false); setPropertyAvailabilityFilter('all'); setGroupBy('none'); setPropertyTypeFilter(null); setShowProperties(true); setShowNonProperties(false); setAccountFilter(null); setVendorFilter(null) } },
+    { key: 'show_non_properties', letter: 'N', label: 'Non-Properties', description: 'View only regular expenses (non-property expenditures).', active: !showProperties && showNonProperties, count: viewCounts.show_non_properties, onChange: () => { setActiveFlag(null); setShowHistory(false); setPropertyAvailabilityFilter('all'); setGroupBy('none'); setPropertyTypeFilter(null); setShowProperties(false); setShowNonProperties(true); setAccountFilter(null); setVendorFilter(null) } },
+    { key: 'prop_available', letter: 'A', label: 'Properties Available', description: 'View only properties currently at a Grony shop location (marked as available).', active: propertyAvailabilityFilter === 'available', count: viewCounts.prop_available, onChange: () => { setActiveFlag(null); setShowHistory(false); setGroupBy('none'); setShowProperties(true); setShowNonProperties(true); setPropertyTypeFilter(null); setPropertyAvailabilityFilter('available'); setAccountFilter(null); setVendorFilter(null) } },
+    { key: 'prop_not_available', letter: 'U', label: 'Properties Not Available', description: 'View only properties that are currently away from shop (spoilt, stolen, or at Grony\'s house).', active: propertyAvailabilityFilter === 'not_available', count: viewCounts.prop_not_available, onChange: () => { setActiveFlag(null); setShowHistory(false); setGroupBy('none'); setShowProperties(true); setShowNonProperties(true); setPropertyTypeFilter(null); setPropertyAvailabilityFilter('not_available'); setAccountFilter(null); setVendorFilter(null) } },
+    { key: 'printers', letter: 'M', label: 'Printers', description: 'View only printers and printer-related expenses.', active: propertyTypeFilter === 'Printer', count: viewCounts.printers, onChange: () => { setActiveFlag(null); setShowHistory(false); setGroupBy('none'); setShowProperties(true); setShowNonProperties(true); setPropertyAvailabilityFilter('all'); setPropertyTypeFilter('Printer'); setAccountFilter(null); setVendorFilter(null) } },
+    { key: 'computers', letter: 'C', label: 'Computers', description: 'View only computers and computer-related expenses.', active: propertyTypeFilter === 'Computer', count: viewCounts.computers, onChange: () => { setActiveFlag(null); setShowHistory(false); setGroupBy('none'); setShowProperties(true); setShowNonProperties(true); setPropertyAvailabilityFilter('all'); setPropertyTypeFilter('Computer'); setAccountFilter(null); setVendorFilter(null) } },
   ]
 
   return (
@@ -1250,18 +1256,18 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
           openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
           hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
           activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
-        <div className="ml-auto flex items-center gap-1.5">
-          <button onClick={() => setShowAccountsManager(true)}
-            className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition
-              ${showAccountsManager ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
+        {/* Column picker stays here (not lifted to item/page.tsx like Sales/
+            Bills') -- its storage key depends on activeFlag/groupBy/property
+            filters, several of which are local-only state that doesn't make
+            sense to lift, so colPrefs has to stay co-located with them.
+            Radio-styled (no icon) to match the header row above it. */}
+        <div className="ml-auto flex items-center gap-2.5">
+          <label className="flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
+            <input type="radio" checked={showAccountsManager} onClick={() => setShowAccountsManager(true)} onChange={() => {}}
+              className="cursor-pointer w-2.5 h-2.5" />
             Accounts
-          </button>
-          <button onClick={() => setShowHistory(h => !h)}
-            className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition
-              ${showHistory ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
-            History
-          </button>
-          <ColumnsPickerButton prefs={colPrefs} />
+          </label>
+          <ColumnsPickerButton prefs={colPrefs} radioStyle />
         </div>
       </div>
       {lawsPanel.show && (
@@ -1270,29 +1276,10 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
               scopeKey="Expenses"
               isItemsLaws={true}
               onChange={lawsPanel.bumpRefresh}
-              flags={[
-                ...flagButtons.map(({ key, label, description }) => ({
-                  key, label, description, count: flagCounts[key], active: activeFlag === key,
-                  onViewClick: () => {
-                    if (activeFlag === key) {
-                      setActiveFlag(null)
-                    } else {
-                      setActiveFlag(key as 'similar' | 'bundled' | 'no_vendor' | 'properties_no_location')
-                      setGroupBy('none')
-                      setPropertyAvailabilityFilter('all')
-                      setShowProperties(true)
-                      setShowNonProperties(true)
-                      setPropertyTypeFilter(null)
-                      setAccountFilter(null)
-                      setVendorFilter(null)
-                    }
-                  },
-                })),
-                ...viewButtons.map(({ key, label, description, count, onChange, active }) => ({
-                  key, label, description, count, active,
-                  onViewClick: onChange,
-                })),
-              ]}
+              flags={viewButtons.map(({ key, label, description, count, onChange, active }) => ({
+                key, label, description, count, active,
+                onViewClick: onChange,
+              }))}
               customViewNames={customViewNames}
               onSaveViewName={saveCustomViewName}
               openForm={lawsPanel.openForm}

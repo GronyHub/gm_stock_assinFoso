@@ -2158,6 +2158,13 @@ function ItemHubPageInner() {
       setLiveBillsAddingNew(false)
       setLiveBillsBarsOnly(false)
     }
+    if (liveSaleJumpTab === 'expenses') {
+      // Keep the Expenses radio row's mutual exclusivity intact -- same
+      // reasoning as the Sales/Bills blocks above.
+      setLiveExpensesShowHistory(false)
+      setLiveExpensesAddingNew(false)
+      setLiveExpensesActiveFlag(null)
+    }
     setLiveEmbeddedSearch(liveSaleJumpSearch ?? '')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveSaleJumpSeq])
@@ -2229,6 +2236,17 @@ function ItemHubPageInner() {
   const [liveBillsAvailableVendors, setLiveBillsAvailableVendors] = useState<string[]>([])
   const [liveBillsAvailableYears, setLiveBillsAvailableYears] = useState<number[]>([])
   const liveBillsColPrefs = useColumnPrefs<BillsColKey>('billsTab', BILLS_COLUMNS)
+  // Expenses tab's own History/flag-violation state -- same lift-up
+  // treatment as Sales/Bills, so they render in one mutually-exclusive
+  // radio row alongside New Expense. colPrefs stays inside ExpensesTab
+  // itself (not lifted) -- its storage key depends on several other
+  // ExpensesTab-local view states (groupBy, property filters) that aren't
+  // being lifted, so colPrefs has to stay co-located with them.
+  const [liveExpensesShowHistory, setLiveExpensesShowHistory] = useState(false)
+  const [liveExpensesActiveFlag, setLiveExpensesActiveFlag] = useState<'similar' | 'bundled' | 'no_vendor' | 'properties_no_location' | null>(null)
+  const [liveExpensesFlagCounts, setLiveExpensesFlagCounts] = useState<Record<'similar' | 'bundled' | 'no_vendor' | 'properties_no_location', number>>({
+    similar: 0, bundled: 0, no_vendor: 0, properties_no_location: 0,
+  })
   // Sale mode's own Analytics toggle -- named distinctly from the generic
   // "live" prefix (source collision: this file's live-prefix convention
   // would otherwise turn the original `liveShowAnalytics` into a name that
@@ -2324,6 +2342,21 @@ function ItemHubPageInner() {
     setLiveBillsAddingNew(value === 'new_bill')
     setLiveBillsBarsOnly(value === 'bars_only')
     setLiveBillsViolationFilter(violationKeys.includes(value) ? value : null)
+  }
+
+  // Same treatment for Expenses: All/New Expense/History/the four flag
+  // violations as one mutually-exclusive radio group. No Bars Only
+  // equivalent -- Expenses' list has no day-bar/item-line grouping like
+  // Sales/Bills' receipts do.
+  const EXPENSES_FLAG_KEYS = ['similar', 'bundled', 'no_vendor', 'properties_no_location'] as const
+  const liveExpensesRadioValue = liveExpensesShowHistory ? 'history'
+    : liveExpensesAddingNew ? 'new_expense'
+    : liveExpensesActiveFlag ? liveExpensesActiveFlag
+    : 'all'
+  function selectLiveExpensesRadio(value: string) {
+    setLiveExpensesShowHistory(value === 'history')
+    setLiveExpensesAddingNew(value === 'new_expense')
+    setLiveExpensesActiveFlag((EXPENSES_FLAG_KEYS as readonly string[]).includes(value) ? value as typeof EXPENSES_FLAG_KEYS[number] : null)
   }
 
   // Merges the 3 due-count queues into one per-item lookup for Count
@@ -6140,42 +6173,64 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 </button>
               )}
               {renderModeToggleRow()}
-              <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
-                <h2 className="text-sm font-bold text-gray-900">Expenses</h2>
-                <div className="flex items-center gap-2">
-                  {!liveExpensesAddingNew && (
-                    <input
-                      type="text"
-                      value={liveEmbeddedSearch}
-                      onChange={e => setLiveEmbeddedSearch(e.target.value)}
-                      placeholder="Search…"
-                      className="text-xs px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 w-32"
-                    />
-                  )}
-                  <button type="button" onClick={() => setLiveExpensesAddingNew(a => !a)}
-                    className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${liveExpensesAddingNew ? 'bg-red-600 text-white' : 'bg-green-600 text-white hover:bg-green-500'}`}>
-                    {liveExpensesAddingNew ? 'Cancel' : '+ New Expense'}
-                  </button>
-                  {!liveExpensesAddingNew && (
-                    <button type="button" onClick={() => setLiveExpensesShowAnalytics(a => !a)}
-                      title="Analytics"
-                      className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${liveExpensesShowAnalytics ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                      📊
-                    </button>
-                  )}
-                  <button type="button" onClick={() => setGlobalSearchOpen(true)} title="Global Search"
-                    className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center justify-center transition">
-                    🔍
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setLiveHelpModalOpen(true)}
-                    className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 font-semibold text-sm flex items-center justify-center transition"
-                    title="Help"
-                  >
-                    ?
-                  </button>
-                </div>
+              <div className="px-1.5 py-1 border-b border-gray-200 bg-gray-50 flex items-center justify-end gap-1 flex-wrap">
+                <input
+                  type="text"
+                  value={liveEmbeddedSearch}
+                  onChange={e => setLiveEmbeddedSearch(e.target.value)}
+                  placeholder="Search…"
+                  className="text-xs px-1.5 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 w-20"
+                />
+                <button type="button" onClick={() => setGlobalSearchOpen(true)} title="Global Search"
+                  className="w-7 h-7 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center justify-center transition">
+                  🔍
+                </button>
+                <label className="flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
+                  <input type="radio" checked={liveExpensesShowAnalytics} onClick={() => setLiveExpensesShowAnalytics(a => !a)} onChange={() => {}}
+                    className="cursor-pointer w-2.5 h-2.5" />
+                  Analytics
+                </label>
+                <label className="flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
+                  <input type="radio" checked={liveHelpModalOpen} onClick={() => setLiveHelpModalOpen(true)} onChange={() => {}}
+                    className="cursor-pointer w-2.5 h-2.5" />
+                  Help
+                </label>
+              </div>
+              {/* Rows 2-3: one mutually-exclusive radio group -- All/New Expense/
+                  History (black) first, then the four flag violations (red, with
+                  live counts, sorted by count descending). No Bars Only here --
+                  Expenses has no day-bar/item-line grouping like Sales/Bills. */}
+              <div className="px-1.5 py-0.5 bg-white border-b border-gray-100 flex items-center gap-1.5 flex-wrap">
+                <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-[10px] shrink-0">
+                  <input type="radio" name="liveExpensesRadio" checked={liveExpensesRadioValue === 'all'} onChange={() => selectLiveExpensesRadio('all')} className="cursor-pointer w-2.5 h-2.5" />
+                  <span>All</span>
+                </label>
+                <label className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
+                  <input type="radio" name="liveExpensesRadio" checked={liveExpensesRadioValue === 'new_expense'} onChange={() => selectLiveExpensesRadio('new_expense')}
+                    className="cursor-pointer w-2.5 h-2.5" />
+                  + New Expense
+                </label>
+                <label className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
+                  <input type="radio" name="liveExpensesRadio" checked={liveExpensesRadioValue === 'history'} onChange={() => selectLiveExpensesRadio('history')}
+                    className="cursor-pointer w-2.5 h-2.5" />
+                  History
+                </label>
+              </div>
+              <div className="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center gap-1 flex-wrap">
+                {[
+                  { key: 'similar', label: 'Similar Accounts', count: liveExpensesFlagCounts.similar },
+                  { key: 'bundled', label: 'Bundled', count: liveExpensesFlagCounts.bundled },
+                  { key: 'no_vendor', label: 'No Vendor', count: liveExpensesFlagCounts.no_vendor },
+                  { key: 'properties_no_location', label: 'No Location', count: liveExpensesFlagCounts.properties_no_location },
+                ].sort((a, b) => b.count - a.count).map((v, i) => (
+                  <Fragment key={v.key}>
+                    {i > 0 && <span className="text-gray-300 text-[10px]">·</span>}
+                    <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600 text-[10px] shrink-0">
+                      <input type="radio" name="liveExpensesRadio" checked={liveExpensesRadioValue === v.key} onChange={() => selectLiveExpensesRadio(v.key)} className="cursor-pointer w-2.5 h-2.5" />
+                      <span>{v.label} ({v.count})</span>
+                    </label>
+                  </Fragment>
+                ))}
               </div>
               {liveExpensesAddingNew ? (
                 <div className="px-4 flex-1 overflow-auto">
@@ -6185,7 +6240,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 <div className="px-3 pt-3 flex-1 overflow-auto"><ExpensesAnalyticsSection /></div>
               ) : (
                 <div className="flex-1 overflow-auto">
-                  <ExpensesTab search={liveEmbeddedSearch} onFlagCountChange={setExpensesFlagsCount} />
+                  <ExpensesTab search={liveEmbeddedSearch} onFlagCountChange={setExpensesFlagsCount}
+                    showHistory={liveExpensesShowHistory} setShowHistory={setLiveExpensesShowHistory}
+                    activeFlag={liveExpensesActiveFlag} setActiveFlag={setLiveExpensesActiveFlag}
+                    onFlagCountsChange={setLiveExpensesFlagCounts} />
                 </div>
               )}
             </div>
