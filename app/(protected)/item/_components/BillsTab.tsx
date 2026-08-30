@@ -924,8 +924,8 @@ function BillsTab({ items, groupFilter, search, violation = null, jumpToBillId, 
                 <Fragment key={g.key}>
                   <tr onClick={() => toggleExpanded(g.key)} title="Show/hide this group's items"
                     className={`cursor-pointer ${g.isDayHead ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-50 hover:bg-gray-100'}`}>
-                    <td colSpan={1 + colPrefs.shownColumns.length} className={`relative ${g.isDayHead ? 'px-1.5 py-2' : 'px-1 py-1'}`}>
-                      <div className="flex items-center gap-2">
+                    <td colSpan={1 + colPrefs.shownColumns.length} className={`relative ${g.isDayHead ? 'px-1.5 py-0.5' : 'px-1 py-0'}`}>
+                      <div className="flex items-center gap-1.5">
                         <span className={`whitespace-nowrap ${g.isDayHead ? 'text-white font-semibold' : 'text-gray-600 font-medium'}`}>
                           {fmtShort(g.billDate)}
                         </span>
@@ -940,7 +940,7 @@ function BillsTab({ items, groupFilter, search, violation = null, jumpToBillId, 
                             +₵{g.sharedExpensesTotal.toFixed(2)}
                           </span>
                         )}
-                        <span className={`flex-1 text-center font-extrabold truncate ${g.isDayHead ? 'text-white text-base' : 'text-gray-700 text-sm'}`}
+                        <span className={`flex-1 text-center font-extrabold truncate ${g.isDayHead ? 'text-white text-xs' : 'text-gray-700 text-[11px]'}`}
                           title={g.vendorName ?? ''}>
                           {g.vendorName ?? '—'}
                         </span>
@@ -952,8 +952,8 @@ function BillsTab({ items, groupFilter, search, violation = null, jumpToBillId, 
                   </tr>
                   {(!barsOnly || expandedIds.has(g.key)) && g.rows.map(row => (
                     <tr key={row.key} id={`billrow-${row.billId}`}
-                      className={`border-b border-gray-100 text-[13px] font-bold ${row.unresolved ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
-                      <td className="px-1 py-1 text-gray-900 overflow-hidden">
+                      className={`border-b border-gray-100 text-[11px] font-bold leading-tight ${row.unresolved ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
+                      <td className="px-1 py-0 text-gray-900 overflow-hidden">
                         {row.itemId ? (
                           <button type="button" onClick={() => setViewingItemId(row.itemId)} className="block truncate text-blue-600 hover:underline text-left">
                             {row.itemName}
@@ -964,28 +964,28 @@ function BillsTab({ items, groupFilter, search, violation = null, jumpToBillId, 
                       </td>
                       {colPrefs.shownColumns.map(c => {
                         if (c.key === 'quantity') return (
-                          <td key={c.key} className="px-1 py-1 text-right text-gray-700 truncate">
+                          <td key={c.key} className="px-1 py-0 text-right text-gray-700 truncate">
                             <EditableLineCell lineId={row.lineId} field="quantity" value={row.quantity}
                               display={v => parseFloat(v)} onSaved={handleLineSaved} />
                           </td>
                         )
                         if (c.key === 'unitPrice') return (
-                          <td key={c.key} className="px-1 py-1 text-right text-gray-700 truncate">
+                          <td key={c.key} className="px-1 py-0 text-right text-gray-700 truncate">
                             <EditableLineCell lineId={row.lineId} field="unit_price" value={row.unitPrice}
                               display={fmt} onSaved={handleLineSaved} />
                           </td>
                         )
                         if (c.key === 'sharedExpenses') return (
-                          <td key={c.key} className="px-1 py-1 text-right text-gray-500 truncate">{g.sharedPerUnit > 0 ? fmt(g.sharedPerUnit.toFixed(2)) : '—'}</td>
+                          <td key={c.key} className="px-1 py-0 text-right text-gray-500 truncate">{g.sharedPerUnit > 0 ? fmt(g.sharedPerUnit.toFixed(2)) : '—'}</td>
                         )
                         if (c.key === 'adjustedCost') return (
-                          <td key={c.key} className="px-1 py-1 text-right text-purple-700 truncate">{fmt(((parseFloat(row.unitPrice) || 0) + g.sharedPerUnit).toFixed(2))}</td>
+                          <td key={c.key} className="px-1 py-0 text-right text-purple-700 truncate">{fmt(((parseFloat(row.unitPrice) || 0) + g.sharedPerUnit).toFixed(2))}</td>
                         )
                         if (c.key === 'itemTotal') return (
-                          <td key={c.key} className="px-1 py-1 text-right font-semibold text-gray-900 truncate">{fmt(row.itemTotal)}</td>
+                          <td key={c.key} className="px-1 py-0 text-right font-semibold text-gray-900 truncate">{fmt(row.itemTotal)}</td>
                         )
                         return (
-                          <td key={c.key} className="px-1 py-1" onClick={e => e.stopPropagation()}>
+                          <td key={c.key} className="px-1 py-0" onClick={e => e.stopPropagation()}>
                             <NewSpCell itemId={row.itemId}
                               currentSp={row.itemId ? (sellingPriceOverrides[row.itemId] ?? itemsById.get(row.itemId)?.selling_price ?? null) : null}
                               onSaved={(id, sp) => setSellingPriceOverrides(prev => ({ ...prev, [id]: sp }))} />
