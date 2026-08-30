@@ -5207,7 +5207,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 </div>
               </div>
               {/* Row 2: filter bar — hidden on report-style submenus. */}
-              {showControls && (outerTab === 'loss' && (lossView === 'sales' || lossView === 'items')) && (
+              {showControls && (outerTab === 'loss' && (lossView === 'sales' || lossView === 'items')) && (liveMode === 'sale' || liveMode === 'log') && (
                 <div className="w-full flex items-center gap-0.5 px-1.5 py-0.5 bg-white border-b border-gray-200">
                   <select
                     value={liveProductTypeFilter}
@@ -5451,7 +5451,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 <div className="px-2 py-1 border-b border-green-700">
                   <div className="flex items-center gap-2 justify-between">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                      {(lossView === 'sales' || lossView === 'items') && renderLiveSearchControls(true)}
+                      {(lossView === 'sales' || lossView === 'items') && (liveMode === 'sale' || liveMode === 'log') && renderLiveSearchControls(true)}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <button onClick={() => setGlobalSearchOpen(true)} title="Search"
