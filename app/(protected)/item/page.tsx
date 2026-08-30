@@ -4098,6 +4098,68 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     )
   }
 
+  // Sales tab filter bar
+  function renderSalesFiltersBar() {
+    return (
+      <div className="w-full flex items-center gap-2 px-2 py-1 bg-gray-100 border-b border-gray-200 flex-wrap">
+        <select
+          value={liveSalesViolationFilter || ''}
+          onChange={e => {
+            const v = e.target.value
+            if (!v || v === 'all') {
+              setLiveSalesViolationFilter(null)
+            } else if (v === 'help:laws') {
+              setLiveSalesShowLawsTasksModal(true)
+            } else {
+              setLiveSalesViolationFilter(v as any)
+            }
+          }}
+          className="text-[10px] px-2 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white flex-1"
+        >
+          <option value="">Filter</option>
+          <optgroup label="Violations">
+            <option value="all">All</option>
+            <option value="no_cash">No Cash</option>
+            <option value="missing_days">Missing Days</option>
+            <option value="dup_receipt">Dup Receipt</option>
+            <option value="high_wnw">High WNW</option>
+            <option value="no_attachment">No Attachment</option>
+          </optgroup>
+          <optgroup label="Help">
+            <option value="help:laws">⚖️ Laws & Tasks</option>
+          </optgroup>
+        </select>
+      </div>
+    )
+  }
+
+  // Bills tab filter bar
+  function renderBillsFiltersBar() {
+    return (
+      <div className="w-full flex items-center gap-2 px-2 py-1 bg-gray-100 border-b border-gray-200 flex-wrap">
+        <select
+          value={liveBillsViolationFilter || ''}
+          onChange={e => {
+            const v = e.target.value
+            if (!v || v === 'all') {
+              setLiveBillsViolationFilter(null)
+            } else if (v === 'help:laws') {
+              setLiveBillsShowLawsTasksModal(true)
+            } else {
+              setLiveBillsViolationFilter(v as any)
+            }
+          }}
+          className="text-[10px] px-2 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white flex-1"
+        >
+          <option value="">Filter</option>
+          <optgroup label="Help">
+            <option value="help:laws">⚖️ Laws & Tasks</option>
+          </optgroup>
+        </select>
+      </div>
+    )
+  }
+
   // The count records table -- also doubles as the old Loss by Date feed
   // (see liveCountRecordFilter/liveCountLossSummary above), since that was
   // always just this same stock_counts history with the reconciliation
@@ -5747,49 +5809,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   </button>
                 </div>
               </div>
-              {/* Sales Violation Filter Radio Buttons */}
-              <div className="w-full flex items-center gap-1.5 px-4 py-2 bg-white border-b border-gray-200 flex-wrap">
-                <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-xs">
-                  <input type="radio" name="liveSalesViolation" checked={!liveSalesViolationFilter} onChange={() => setLiveSalesViolationFilter(null)} className="cursor-pointer w-3 h-3" />
-                  <span>All</span>
-                </label>
-                <span className="text-gray-400 px-1">·</span>
-                <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-xs">
-                  <input type="radio" name="liveSalesViolation" checked={liveSalesViolationFilter === 'no_cash'} onChange={() => setLiveSalesViolationFilter('no_cash')} className="cursor-pointer w-3 h-3" />
-                  <span>No Cash</span>
-                </label>
-                <span className="text-gray-400 px-1">·</span>
-                <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-xs">
-                  <input type="radio" name="liveSalesViolation" checked={liveSalesViolationFilter === 'missing_days'} onChange={() => setLiveSalesViolationFilter('missing_days')} className="cursor-pointer w-3 h-3" />
-                  <span>Missing Days</span>
-                </label>
-                <span className="text-gray-400 px-1">·</span>
-                <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-xs">
-                  <input type="radio" name="liveSalesViolation" checked={liveSalesViolationFilter === 'dup_receipt'} onChange={() => setLiveSalesViolationFilter('dup_receipt')} className="cursor-pointer w-3 h-3" />
-                  <span>Dup Receipt</span>
-                </label>
-                <span className="text-gray-400 px-1">·</span>
-                <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-xs">
-                  <input type="radio" name="liveSalesViolation" checked={liveSalesViolationFilter === 'high_wnw'} onChange={() => setLiveSalesViolationFilter('high_wnw')} className="cursor-pointer w-3 h-3" />
-                  <span>High WNW</span>
-                </label>
-                <span className="text-gray-400 px-1">·</span>
-                <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-xs">
-                  <input type="radio" name="liveSalesViolation" checked={liveSalesViolationFilter === 'no_attachment'} onChange={() => setLiveSalesViolationFilter('no_attachment')} className="cursor-pointer w-3 h-3" />
-                  <span>No Attachment</span>
-                </label>
-              </div>
-              {/* Laws and Tasks Filter Button */}
-              <div className="w-full flex items-center gap-1.5 px-4 py-2 bg-white border-b border-gray-200">
-                <button
-                  type="button"
-                  onClick={() => setLiveSalesShowLawsTasksModal(true)}
-                  className="inline-flex items-center gap-2 px-2.5 py-1 text-xs font-semibold rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 transition"
-                  title="Filter and manage laws & tasks"
-                >
-                  ⚖️ Laws & Tasks
-                </button>
-              </div>
+              {renderSalesFiltersBar()}
               {liveSalesShowAnalytics ? (
                 <div className="px-3 pt-3 flex-1 overflow-auto"><SalesAnalyticsSection /></div>
               ) : (
@@ -5853,19 +5873,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   </button>
                 </div>
               </div>
-              {/* Bills Laws and Tasks Filter Button */}
-              {!liveBillsAddingNew && (
-                <div className="w-full flex items-center gap-1.5 px-4 py-2 bg-white border-b border-gray-200">
-                  <button
-                    type="button"
-                    onClick={() => setLiveBillsShowLawsTasksModal(true)}
-                    className="inline-flex items-center gap-2 px-2.5 py-1 text-xs font-semibold rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 transition"
-                    title="Filter and manage laws & tasks"
-                  >
-                    ⚖️ Laws & Tasks
-                  </button>
-                </div>
-              )}
+              {!liveBillsAddingNew && renderBillsFiltersBar()}
               {liveBillsAddingNew ? (
                 <div className="px-4 flex-1 overflow-auto">
                   <NewBillForm onSuccess={() => setLiveBillsAddingNew(false)} />
