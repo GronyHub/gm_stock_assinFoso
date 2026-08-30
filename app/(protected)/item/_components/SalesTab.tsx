@@ -117,97 +117,6 @@ function FixRow({ label, sub, children }: { label: string; sub?: string; childre
   )
 }
 
-function NoCashFix({ r, onFixed }: { r: any; onFixed: (id: number) => void }) {
-  const [cash, setCash] = useState('')
-  const [saving, setSaving] = useState(false)
-  async function save() {
-    if (!cash) return
-    setSaving(true)
-    await fetch(`/api/sales/${r.id}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cash_counted: Number(cash) }),
-    })
-    setSaving(false)
-    onFixed(r.id)
-  }
-  return (
-    <FixRow label={r.receipt_number} sub={`${fmtDate(r.receipt_date)} · ₵${Number(r.invoice_amount).toFixed(2)}`}>
-      <input type="number" min="0" step="0.01" inputMode="decimal" placeholder="Cash counted (₵)"
-        value={cash} onChange={e => setCash(e.target.value)} className={inputCls} />
-      <button onClick={save} disabled={!cash || saving}
-        className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
-        {saving ? 'Saving…' : 'Save Cash Counted'}
-      </button>
-    </FixRow>
-  )
-}
-
-type HighWnwRow = {
-  id: number; receipt_number: string; receipt_date: string; customer_name: string | null
-  cash_counted: string; invoice_amount: string; wnw: string
-}
-
-function HighWnwFix({ r, onFixed }: { r: HighWnwRow; onFixed: (id: number) => void }) {
-  const [cash, setCash] = useState('')
-  const [saving, setSaving] = useState(false)
-  async function save() {
-    if (!cash) return
-    setSaving(true)
-    await fetch(`/api/sales/${r.id}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cash_counted: Number(cash) }),
-    })
-    setSaving(false)
-    onFixed(r.id)
-  }
-  return (
-    <FixRow label={r.receipt_number}
-      sub={`${fmtDate(r.receipt_date)} · CC ₵${Number(r.cash_counted).toFixed(2)} · Total ₵${Number(r.invoice_amount).toFixed(2)} · WNW +₵${Number(r.wnw).toFixed(2)}`}>
-      <p className="text-[9px] text-gray-400">Recount the cash, or check whether a sale was made but never itemized on this receipt.</p>
-      <input type="number" min="0" step="0.01" inputMode="decimal" placeholder="Corrected cash counted (₵)"
-        value={cash} onChange={e => setCash(e.target.value)} className={inputCls} />
-      <button onClick={save} disabled={!cash || saving}
-        className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
-        {saving ? 'Saving…' : 'Save Cash Counted'}
-      </button>
-    </FixRow>
-  )
-}
-
-type NoAttachmentRow = { id: number; receipt_number: string; receipt_date: string; customer_name: string | null }
-
-function NoAttachmentFix({ r, onFixed }: { r: NoAttachmentRow; onFixed: (id: number) => void }) {
-  const attachments = useAttachments()
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-
-  async function save() {
-    if (attachments.isUploading) { setError('Still uploading, please wait…'); return }
-    if (attachments.hasError) { setError('An attachment failed to upload — remove it or try again.'); return }
-    if (attachments.saved.length === 0) return
-    setSaving(true)
-    setError('')
-    const res = await fetch(`/api/sales/${r.id}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ attachments: attachments.saved }),
-    })
-    setSaving(false)
-    if (res.ok) onFixed(r.id)
-    else setError('Could not save. Please try again.')
-  }
-
-  return (
-    <FixRow label={r.receipt_number} sub={fmtDate(r.receipt_date)}>
-      <AttachmentPicker items={attachments.items} onAdd={attachments.addFiles} onRemove={attachments.remove} disabled={saving} />
-      {error && <p className="text-[9px] text-red-500 font-medium">{error}</p>}
-      <button onClick={save} disabled={saving || attachments.saved.length === 0}
-        className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
-        {saving ? 'Saving…' : 'Save Attachment'}
-      </button>
-    </FixRow>
-  )
-}
-
 function MissingDayFix({ date, onFixed }: { date: string; onFixed: (d: string) => void }) {
   const [total, setTotal] = useState('')
   const [cash, setCash] = useState('')
@@ -392,8 +301,22 @@ function SalesTab({
     return Array.from(years).sort((a, b) => b - a)
   }, [receipts])
 
+  // no_cash/high_wnw/no_attachment narrow the normal bars down to just the
+  // affected receipts (rather than a separate fix-list view) -- the bar's
+  // own edit form already covers cash counted and attachments.
+  const violationReceiptIds = useMemo(() => {
+    if (!flags) return null
+    if (violation === 'no_cash') return new Set<number>((flags.noCash ?? []).map((r: any) => r.id))
+    if (violation === 'high_wnw') return new Set<number>((flags.highWnw ?? []).map((r: any) => r.id))
+    if (violation === 'no_attachment') return new Set<number>((flags.noAttachment ?? []).map((r: any) => r.id))
+    return null
+  }, [violation, flags])
+
   const filtered = useMemo(() => {
     let list = receipts
+    if (violationReceiptIds) {
+      list = list.filter(r => violationReceiptIds.has(r.id))
+    }
     if (!showW || !showG) {
       list = list.filter(r => fmtCust(r.customer_name) === 'W' ? showW : showG)
     }
@@ -428,7 +351,7 @@ function SalesTab({
       return rank(a) - rank(b)
     })
     return list
-  }, [receipts, linesMap, groupItemNames, search, showW, showG, monthFilter, yearFilter])
+  }, [receipts, linesMap, groupItemNames, search, showW, showG, monthFilter, yearFilter, violationReceiptIds])
 
   function toggleExpanded(id: number) {
     setExpandedIds(prev => {
@@ -636,26 +559,6 @@ function SalesTab({
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
 
   // Violation views
-  if (violation === 'no_cash') {
-    return (
-      <div className="overflow-y-auto h-full py-2">
-        <p className="text-[10px] text-gray-400 px-2 mb-1">
-          {flagsLoading || !flags ? 'Loading…' : `${flags.noCash.length} receipt${flags.noCash.length !== 1 ? 's' : ''} missing cash counted`}
-        </p>
-        {!flagsLoading && flags && (flags.noCash.length === 0
-          ? <p className="py-4 text-center text-gray-400 text-[10px]">All walk-in receipts have cash counted.</p>
-          : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
-              {flags.noCash.map((r: any) => (
-                <NoCashFix key={r.id} r={r} onFixed={id =>
-                  setFlags((f: any) => f ? { ...f, noCash: f.noCash.filter((x: any) => x.id !== id) } : f)
-                } />
-              ))}
-            </div>
-        )}
-      </div>
-    )
-  }
-
   if (violation === 'missing_days') {
     return (
       <div className="overflow-y-auto h-full py-2">
@@ -701,72 +604,11 @@ function SalesTab({
     )
   }
 
-  if (violation === 'high_wnw') {
-    const rows: HighWnwRow[] = flags?.highWnw ?? []
-    return (
-      <div className="overflow-y-auto h-full py-2">
-        <p className="text-[10px] text-gray-400 px-2 mb-1">
-          {flagsLoading || !flags ? 'Loading…' : `${rows.length} receipt${rows.length !== 1 ? 's' : ''} with WNW over ₵200`}
-        </p>
-        {!flagsLoading && flags && (rows.length === 0
-          ? <p className="py-4 text-center text-gray-400 text-[10px]">No receipts with an unusually high WNW.</p>
-          : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
-              {rows.map(r => (
-                <HighWnwFix key={r.id} r={r} onFixed={id =>
-                  setFlags((f: { highWnw: HighWnwRow[] } | null) => f ? { ...f, highWnw: f.highWnw.filter(x => x.id !== id) } : f)
-                } />
-              ))}
-            </div>
-        )}
-      </div>
-    )
-  }
-
-  if (violation === 'no_attachment') {
-    const rows: NoAttachmentRow[] = flags?.noAttachment ?? []
-    // Organized by month (most recent first) rather than one flat list --
-    // a backlog spanning several months is much easier to work through a
-    // month at a time than scrolling one long list of individual days.
-    const grouped = new Map<string, NoAttachmentRow[]>()
-    for (const r of rows) {
-      const key = r.receipt_date ? r.receipt_date.slice(0, 7) : 'Unknown'
-      if (!grouped.has(key)) grouped.set(key, [])
-      grouped.get(key)!.push(r)
-    }
-    const monthKeys = Array.from(grouped.keys()).sort((a, b) => b.localeCompare(a))
-    const monthLabel = (key: string) => {
-      if (key === 'Unknown') return 'Unknown Date'
-      const [y, m] = key.split('-').map(Number)
-      return `${MONTH_NAMES[m - 1]} ${y}`
-    }
-    return (
-      <div className="overflow-y-auto h-full py-2">
-        <p className="text-[10px] text-gray-400 px-2 mb-1">
-          {flagsLoading || !flags ? 'Loading…' : `${rows.length} walk-in receipt${rows.length !== 1 ? 's' : ''} with no form attached`}
-        </p>
-        {!flagsLoading && flags && (rows.length === 0
-          ? <p className="py-4 text-center text-gray-400 text-[10px]">Every walk-in receipt has a form attached.</p>
-          : monthKeys.map(key => (
-              <div key={key} className="mb-2">
-                <p className="px-2 py-1 text-[9px] font-bold text-gray-500 uppercase tracking-wide bg-gray-100">
-                  {monthLabel(key)} ({grouped.get(key)!.length})
-                </p>
-                <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
-                  {grouped.get(key)!.map(r => (
-                    <NoAttachmentFix key={r.id} r={r} onFixed={id =>
-                      setFlags((f: { noAttachment: NoAttachmentRow[] } | null) =>
-                        f ? { ...f, noAttachment: f.noAttachment.filter(x => x.id !== id) } : f)
-                    } />
-                  ))}
-                </div>
-              </div>
-            ))
-        )}
-      </div>
-    )
-  }
-
-  // Normal list view
+  // Normal list view -- no_cash, high_wnw and no_attachment used to have
+  // their own dedicated fix-list views here; they now just filter the
+  // normal bars below to the affected receipts (see the filtered-list
+  // useMemo), since the bar's own pencil/edit already covers cash counted
+  // and attachments -- no need for a second, redundant fix form.
   if (showHistory) return (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0">
