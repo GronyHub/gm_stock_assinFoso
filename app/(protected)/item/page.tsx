@@ -2224,15 +2224,15 @@ function ItemHubPageInner() {
   // (each excludes the others' item set server-side), so layering order
   // here only matters as a safety default, not a real precedence rule.
   const liveCountStatus = useMemo(() => {
-    const map = new Map<number, { level: 'due' | 'overdue'; label: string }>()
+    const map = new Map<number, { level: 'due' | 'overdue'; label: string; days_overdue: number | null }>()
     for (const it of liveDailyItems) {
-      map.set(it.item_id, { level: 'due', label: !it.days_overdue || it.days_overdue <= 0 ? 'Today' : `${it.days_overdue}d` })
+      map.set(it.item_id, { level: 'due', label: !it.days_overdue || it.days_overdue <= 0 ? 'Today' : `${it.days_overdue}d`, days_overdue: it.days_overdue })
     }
     for (const it of liveGmcWeeklyItems) {
-      map.set(it.item_id, { level: 'due', label: !it.days_overdue || it.days_overdue <= 0 ? 'Due' : `${it.days_overdue}d` })
+      map.set(it.item_id, { level: 'due', label: !it.days_overdue || it.days_overdue <= 0 ? 'Due' : `${it.days_overdue}d`, days_overdue: it.days_overdue })
     }
     for (const it of liveOverdueItems) {
-      map.set(it.item_id, { level: 'overdue', label: `${it.days_overdue ?? '?'}d` })
+      map.set(it.item_id, { level: 'overdue', label: `${it.days_overdue ?? '?'}d`, days_overdue: it.days_overdue })
     }
     return map
   }, [liveDailyItems, liveGmcWeeklyItems, liveOverdueItems])
@@ -3120,8 +3120,8 @@ function ItemHubPageInner() {
       count_status: item => {
         const d = liveCountStatus.get(item.id)
         if (!d) return 0
-        const n = parseInt(d.label, 10)
-        return (d.level === 'overdue' ? 1000 : 0) + (isNaN(n) ? 0 : n)
+        const days = d.days_overdue ?? 0
+        return (d.level === 'overdue' ? 1000 : 0) + days
       },
       violations: item => liveViolationCountByItemId.get(item.id) ?? 0,
       // Folds in the old "0 SOH sorts last" tie-break as part of this one
