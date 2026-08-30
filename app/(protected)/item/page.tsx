@@ -4218,15 +4218,16 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         ]
       },
       lossGain: {
-        title: '↔️ Loss/Gain',
-        description: 'Count records with inventory losses or gains that need trade-off resolution. Gains reduce losses, so both are shown together to resolve discrepancies.',
+        title: '↔️ Loss/Gain/TradeOff',
+        description: 'Items with inventory discrepancies showing losses or gains. "Net Gain" should NEVER exist — if present, it indicates a counting or data entry error that must be investigated. Losses occur when physical counts fall short of expected quantities; gains (rare) indicate over-counting or prior documentation errors. Trade-offs allow matching losses against gains on different dates to net zero.',
         steps: [
-          '1. Review each loss/gain record in the table',
-          '2. Check the Trade Options column to see potential matches',
-          '3. If a loss and gain can offset: net after trade should reach zero',
-          '4. Edit the record to mark it as reconciled/settled if needed',
-          '5. Work through all records until net values are resolved',
-          '6. All losses and gains together form the complete inventory reconciliation'
+          '1. Review each item showing losses or gains',
+          '2. Identify the total net loss/gain amount for the item (shown in currency)',
+          '3. If any "Net Gain" exists, investigate the root cause immediately',
+          '4. Use Trade-Off suggestions to match losses from one date against gains from another',
+          '5. Work through matches until each item\'s discrepancies are reconciled',
+          '6. Unmatched losses represent actual inventory write-offs that impact margin',
+          '7. All net losses across items should total to the physical variance to investigate'
         ]
       },
       duplicates: {
@@ -5024,7 +5025,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   <span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'lossGain'} onChange={() => { setLiveSaleViolationFilter('lossGain'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
-                    <span>Loss/Gain{liveItemsWithLossOrGainCount > 0 && ` (${liveItemsWithLossOrGainCount})`}</span>
+                    <span>Loss/Gain/TradeOff{liveItemsWithLossOrGainCount > 0 && ` (${liveItemsWithLossOrGainCount})`}</span>
                   </label>
                   <span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
@@ -6165,9 +6166,13 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                           })()}
                           {liveSaleViolationFilter !== 'noViolations' && liveSaleViolationFilter === 'lossGain' && liveTradeOffByItemId.has(item.id) && (() => {
                             const tradeOff = liveTradeOffByItemId.get(item.id)!
+                            const costPrice = Number(item.acp_price ?? item.cost_price ?? 0)
+                            const netAmount = Math.abs(tradeOff.net) * costPrice
+                            const isLoss = tradeOff.net > 0
                             return (
-                              <div className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide truncate ${tradeOff.net > 0 ? 'bg-red-600' : 'bg-amber-600'}`}>
-                                ↔ {tradeOff.net > 0 ? `NET LOSS ${tradeOff.net}` : `NET GAIN ${Math.abs(tradeOff.net)}`}
+                              <div className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide ${isLoss ? 'bg-red-600' : 'bg-amber-600'}`}>
+                                <div className="truncate">↔ {isLoss ? 'NET LOSS' : 'NET GAIN'}</div>
+                                <div className="truncate">{Math.abs(tradeOff.net)} units · ₵{formatPrice(netAmount)}</div>
                               </div>
                             )
                           })()}
