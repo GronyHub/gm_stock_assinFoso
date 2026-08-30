@@ -6165,9 +6165,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                             const netAmount = Math.abs(tradeOff.net) * costPrice
                             const isLoss = tradeOff.net > 0
                             return (
-                              <div className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide ${isLoss ? 'bg-red-600' : 'bg-amber-600'}`}>
-                                <div className="truncate">↔ {isLoss ? 'NET LOSS' : 'NET GAIN'}</div>
-                                <div className="truncate">{Math.abs(tradeOff.net)} units · ₵{formatPrice(netAmount)}</div>
+                              <div className={`px-2 py-1 text-[8px] font-extrabold text-white tracking-wide ${isLoss ? 'bg-red-600' : 'bg-amber-600'}`}>
+                                <div className="text-[9px] font-bold">Current Status</div>
+                                <div className="truncate">{isLoss ? 'Loss' : 'Gain'} of {Math.abs(tradeOff.net)} units · ₵{formatPrice(netAmount)}</div>
+                                <div className="text-[9px] font-bold mt-0.5">Target Status</div>
+                                <div className="truncate">{isLoss ? 'Loss' : 'Gain'} of 0 units (Resolved)</div>
                               </div>
                             )
                           })()}
@@ -6200,21 +6202,23 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                 {item.product_type !== 'service' && (
                                   <>
                                     <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
-                                    {item.count_interval && (
+                                    {item.count_interval && liveSaleViolationFilter !== 'lossGain' && (
                                       <>
                                         <span className="text-gray-400"> · </span>
                                         <span className="text-gray-500">{shortCountInterval(item.count_interval)}</span>
                                       </>
                                     )}
-                                    <span className="text-gray-400"> · </span>
+                                    {liveSaleViolationFilter !== 'lossGain' && (
+                                      <span className="text-gray-400"> · </span>
+                                    )}
                                   </>
                                 )}
-                                {item.product_type !== 'service' && (
+                                {item.product_type !== 'service' && liveSaleViolationFilter !== 'lossGain' && (
                                   <>
                                     <span className={formatLoss(liveLossByItemId.get(item.id)).cls}>{formatLoss(liveLossByItemId.get(item.id)).text}</span>
                                   </>
                                 )}
-                                {item.gmc_type && (
+                                {item.gmc_type && liveSaleViolationFilter !== 'lossGain' && (
                                   <>
                                     <span className="text-gray-400"> · </span>
                                     <span className="inline-block rounded bg-purple-100 px-1 py-0.5 text-[7px] font-bold text-purple-700">
@@ -6225,7 +6229,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                 )}
                               </p>
                             )}
-                            {liveSaleViolationFilter !== 'noViolations' && (() => {
+                            {liveSaleViolationFilter !== 'noViolations' && liveSaleViolationFilter !== 'lossGain' && (() => {
                               const hist = liveSaleHistoryByItemId.get(item.id)
                               if (!hist) return null
                               return (
