@@ -6411,7 +6411,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                 )}
                               </>
                             )}
-                            {liveSaleViolationFilter !== 'noViolations' && liveSaleViolationFilter !== 'lossGain' && (() => {
+                            {liveSaleViolationFilter !== 'noViolations' && liveSaleViolationFilter !== 'lossGain' && liveSaleViolationFilter !== 'countDue' && (() => {
                               const hist = liveSaleHistoryByItemId.get(item.id)
                               if (!hist) return null
                               return (
