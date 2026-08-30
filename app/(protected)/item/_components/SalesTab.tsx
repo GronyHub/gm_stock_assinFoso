@@ -343,9 +343,8 @@ function SalesTab({
   const attachments = useAttachments()
 
   // Loaded unconditionally now (not just while a violation view is open) --
-  // the normal receipt table below flags each affected row inline (see
-  // receiptFlagsById), so the data has to be there before any violation is
-  // ever clicked, not just after.
+  // the dedicated violation views below (no_cash, missing_days, etc.) need
+  // it ready the moment one is opened, not fetched fresh each time.
   useEffect(() => {
     if (!flags && !flagsLoading) {
       setFlagsLoading(true)
@@ -355,29 +354,6 @@ function SalesTab({
         .catch(() => { setFlags({ noCash: [], missingDays: [], costGteSell: [], dupReceipts: [] }); setFlagsLoading(false) })
     }
   }, [flags, flagsLoading])
-
-  // Per-receipt violation labels, straight off the same /api/flags payload
-  // the dedicated violation views already use -- so an affected receipt
-  // shows its own flag right on its own bar in the normal table, not just
-  // inside a separate filtered view reached by clicking a Laws pill.
-  // missing_days has no receipt to attach to (it's "no receipt exists that
-  // day" itself), so it isn't part of this map.
-  const receiptFlagsById = useMemo(() => {
-    const m = new Map<number, string[]>()
-    if (!flags) return m
-    const add = (id: number | null | undefined, label: string) => {
-      if (id == null || isNaN(id)) return
-      if (!m.has(id)) m.set(id, [])
-      if (!m.get(id)!.includes(label)) m.get(id)!.push(label)
-    }
-    for (const r of flags.noCash ?? []) add(r.id, 'No Cash Counted')
-    for (const r of flags.dupReceipts ?? []) {
-      for (const idStr of String(r.receipt_ids ?? '').split(',')) add(parseInt(idStr, 10), 'Duplicate Receipt')
-    }
-    for (const r of flags.noAttachment ?? []) add(r.id, 'No Attachment')
-    for (const r of flags.highWnw ?? []) add(r.id, 'WNW Over ₵200')
-    return m
-  }, [flags])
 
   function loadReceipts() {
     Promise.all([
@@ -1129,15 +1105,6 @@ function SalesTab({
                       📎
                     </a>
                   )}
-                  {/* This exact receipt's own violations, straight on its own
-                      bar -- so the issue shows up where it lives instead of
-                      only inside a separate Laws-panel count. */}
-                  {(receiptFlagsById.get(r.id) ?? []).map(label => (
-                    <span key={label} title={label}
-                      className="shrink-0 bg-red-600 text-white text-[8px] font-extrabold px-1 py-0.5 rounded leading-none whitespace-nowrap">
-                      🚩 {label}
-                    </span>
-                  ))}
                 </span>
               </td>
               {colPrefs.shownColumns.map(c => {
