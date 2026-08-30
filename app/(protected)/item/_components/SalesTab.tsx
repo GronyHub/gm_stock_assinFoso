@@ -311,6 +311,11 @@ function SalesTab({
     if (violation === 'no_attachment') return new Set<number>((flags.noAttachment ?? []).map((r: any) => r.id))
     return null
   }, [violation, flags])
+  // Viewing one of those violation-filtered lists always collapses down to
+  // just the bars -- the whole point is to scan for which days/receipts are
+  // affected, not to browse their item lines -- regardless of the Bars Only
+  // checkbox's own state.
+  const effectiveBarsOnly = barsOnly || violationReceiptIds !== null
 
   const filtered = useMemo(() => {
     let list = receipts
@@ -652,9 +657,9 @@ function SalesTab({
         className="shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700 transition">
         History
       </button>
-      <label title="Show only the date bars, hiding each receipt's item lines"
-        className="shrink-0 flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1 cursor-pointer select-none">
-        <input type="checkbox" checked={barsOnly} onChange={() => setBarsOnly(b => !b)}
+      <label title={violationReceiptIds !== null ? 'Always on while a violation filter is active' : "Show only the date bars, hiding each receipt's item lines"}
+        className={`shrink-0 flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1 select-none ${violationReceiptIds !== null ? 'opacity-50' : 'cursor-pointer'}`}>
+        <input type="checkbox" checked={effectiveBarsOnly} disabled={violationReceiptIds !== null} onChange={() => setBarsOnly(b => !b)}
           className="w-3 h-3 accent-blue-600" />
         Bars Only
       </label>
@@ -969,7 +974,7 @@ function SalesTab({
               })}
             </tr>
             {editingRow}
-            {editingId !== r.id && (!barsOnly || expandedIds.has(r.id)) && rows.map(line => (
+            {editingId !== r.id && (!effectiveBarsOnly || expandedIds.has(r.id)) && rows.map(line => (
               <tr key={line ? line.id : `${r.id}-empty`}
                 className={`border-b border-gray-100 text-[13px] font-bold ${selectedId === r.id ? 'bg-blue-50/40' : 'hover:bg-gray-50'}`}>
                 <td colSpan={1 + lineItemLeadingBlanks} className="px-1 py-1 text-gray-900 align-top sticky left-0 z-[5] bg-inherit">
