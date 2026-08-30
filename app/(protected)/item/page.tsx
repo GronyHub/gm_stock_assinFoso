@@ -2613,12 +2613,10 @@ function ItemHubPageInner() {
   useEffect(loadCountProgress, [])
   usePolling(loadCountProgress, 60000)
 
-  // Count Records -- fetched only once it's actually being looked at, via
-  // Count tab's own "Count Records" view (see renderCountRecordsTable),
-  // unlike the queues above (this is the full all-time history, not a
-  // small due-today list). The Log tab dropped its own Count view since
-  // it's the same table, reachable from the Count tab instead.
-  const liveViewingCountRecords = liveCountView?.kind === 'records'
+  // Count Records -- fetched when viewing the Count Records view OR when
+  // showing the full-page count display in Sale mode. Unlike the queues above,
+  // this is the full all-time history, not a small due-today list.
+  const liveViewingCountRecords = liveCountView?.kind === 'records' || liveShowCountFullPage
   useEffect(() => {
     if (!liveViewingCountRecords) {
       setLiveCountRecords([])
