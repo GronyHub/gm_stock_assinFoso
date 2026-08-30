@@ -6349,12 +6349,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                   <span className="font-semibold text-gray-900">
                                     {liveLastCountDateByItemId.get(item.id) ? fmtDate(liveLastCountDateByItemId.get(item.id)!) : 'Never'}
                                   </span>
-                                  {due && (
-                                    <>
-                                      <span className="text-gray-400"> · </span>
-                                      <span className={`font-semibold ${overdue ? 'text-red-600' : 'text-amber-600'}`}>{due.label} {overdue ? 'overdue' : 'due'}</span>
-                                    </>
-                                  )}
                                   {item.count_interval && (
                                     <>
                                       <span className="text-gray-400"> · </span>
