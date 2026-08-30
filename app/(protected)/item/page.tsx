@@ -859,7 +859,7 @@ function ItemHubPageInner() {
   const rawLiveEmbeddedSearch = searchParams.get('liveSearch')
   const [liveEmbeddedSearch, setLiveEmbeddedSearch] = useState(rawLiveEmbeddedSearch ?? '')
   const [liveShowCountFullPage, setLiveShowCountFullPage] = useState(false)
-  const [liveCountDisplayFilter, setLiveCountDisplayFilter] = useState<'all' | 'counted' | 'loss' | 'gains'>('all')
+  const [liveCountDisplayFilter, setLiveCountDisplayFilter] = useState<'all' | 'counted' | 'loss' | 'gains' | 'unsettled'>('all')
   const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'all' | 'countDue' | 'tradeOff' | 'duplicates' | 'unlinked' | 'service' | 'gains' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'withViolations' | 'noViolations'>('all')
   const [liveCountDeleteLoading, setLiveCountDeleteLoading] = useState<number | null>(null)
   const rawSidePaneHidden = searchParams.get('sidebarHidden')
@@ -2877,112 +2877,6 @@ function ItemHubPageInner() {
       .catch(() => setLiveGmcTargetItem(null))
   }, [liveSelectedItem])
 
-  const liveCountsByDate = useMemo(() => {
-    const q = liveEmbeddedSearch.trim().toLowerCase()
-    const filtered = liveCountRecords.filter(rec => {
-      if (liveCountRecordFilter === 'loss' && rec.kind !== 'loss') return false
-      if (liveCountRecordFilter === 'gain' && rec.kind !== 'gain') return false
-      if (q && !rec.item_name.toLowerCase().includes(q)) return false
-      return true
-    })
-    const groups = new Map<string, typeof liveCountRecords>()
-    for (const rec of filtered) {
-      const date = rec.count_date.slice(0, 10)
-      if (!groups.has(date)) groups.set(date, [])
-      groups.get(date)!.push(rec)
-    }
-    return Array.from(groups.entries()).sort(([a], [b]) => b.localeCompare(a))
-  }, [liveCountRecords, liveCountRecordFilter, liveEmbeddedSearch])
-
-  // Sale mode count records display - shows individual records with trade-off matching
-  // Each record shows when it was counted, item, status, and whether it can be offset
-  // by a gain/loss of the same item from a different count
-  const liveSaleCountRecords = useMemo(() => {
-    const q = liveEmbeddedSearch.trim().toLowerCase()
-
-    // Filter records by selected filter and search
-    const filtered = liveCountRecords.filter(rec => {
-      const isNoLoss = rec.kind !== 'loss' && rec.kind !== 'gain'
-      const isLoss = rec.kind === 'loss'
-      const isGain = rec.kind === 'gain'
-
-      let matchesFilter = false
-      if (liveCountDisplayFilter === 'all') matchesFilter = true
-      else if (liveCountDisplayFilter === 'counted' && isNoLoss) matchesFilter = true
-      else if (liveCountDisplayFilter === 'loss' && isLoss) matchesFilter = true
-      else if (liveCountDisplayFilter === 'gains' && isGain) matchesFilter = true
-
-      if (!matchesFilter) return false
-      if (q && !rec.item_name.toLowerCase().includes(q)) return false
-      return true
-    })
-
-    // For each record, find potential trade-off opportunities with other records
-    type RecordWithTradeOff = typeof filtered[0] & {
-      tradeOffWith?: { id: number; kind: 'loss' | 'gain' | null; qty: number; date: string }
-    }
-
-    const withTradeOffs: RecordWithTradeOff[] = filtered.map(rec => {
-      // For loss records, find gains of same item; for gains, find losses
-      if (rec.kind === 'loss' || rec.kind === 'gain') {
-        const targetKind = rec.kind === 'loss' ? 'gain' : 'loss'
-        const opposite = liveCountRecords.find(other =>
-          other.item_id === rec.item_id &&
-          other.id !== rec.id &&
-          other.kind === targetKind
-        )
-        if (opposite) {
-          return {
-            ...rec,
-            tradeOffWith: {
-              id: opposite.id,
-              kind: opposite.kind,
-              qty: Math.abs(opposite.loss_qty ?? 0),
-              date: opposite.count_date.slice(0, 10),
-            }
-          }
-        }
-      }
-      return rec
-    })
-
-    // Sort by count_date descending (newest first)
-    return withTradeOffs.sort((a, b) => b.count_date.localeCompare(a.count_date))
-  }, [liveCountRecords, liveCountDisplayFilter, liveEmbeddedSearch])
-
-  // Count how many corrections (trade-offs) are needed for each filter type
-  const liveCountTradeOffCounts = useMemo(() => {
-    let lossCount = 0
-    let gainCount = 0
-
-    for (const rec of liveCountRecords) {
-      if (rec.kind === 'loss' || rec.kind === 'gain') {
-        const targetKind = rec.kind === 'loss' ? 'gain' : 'loss'
-        const opposite = liveCountRecords.find(other =>
-          other.item_id === rec.item_id &&
-          other.id !== rec.id &&
-          other.kind === targetKind
-        )
-        if (opposite) {
-          if (rec.kind === 'loss') lossCount++
-          else gainCount++
-        }
-      }
-    }
-
-    return { lossCount, gainCount }
-  }, [liveCountRecords])
-
-  // Identify items with trade-off opportunities and calculate their net position
-  type ItemTradeOff = {
-    itemId: number | null
-    itemName: string
-    lossQty: number
-    gainQty: number
-    net: number // positive = net loss, negative = net gain
-    tradeOffRecords: CountRecord[]
-  }
-
   const liveItemsWithTradeOffs = useMemo(() => {
     const byItemId = new Map<number | null, ItemTradeOff>()
 
@@ -3023,14 +2917,154 @@ function ItemHubPageInner() {
     return result.sort((a, b) => Math.abs(b.net) - Math.abs(a.net))
   }, [liveCountRecords])
 
-  // Map of item ID to trade-off info for quick lookup
   const liveTradeOffByItemId = useMemo(() => {
-    const m = new Map<number | null, ItemTradeOff>()
-    for (const t of liveItemsWithTradeOffs) {
-      m.set(t.itemId, t)
+    const map = new Map<number | null, ItemTradeOff>()
+    for (const item of liveItemsWithTradeOffs) {
+      map.set(item.itemId, item)
     }
-    return m
+    return map
   }, [liveItemsWithTradeOffs])
+
+  // Items with unsettled trade-offs (where net is not zero)
+  const liveItemsWithUnsettledNet = useMemo(() => {
+    const unsettledItemIds = new Set<number | null>()
+
+    // Add items where trade-off net is not zero (unbalanced)
+    for (const t of liveItemsWithTradeOffs) {
+      if (t.net !== 0) {
+        unsettledItemIds.add(t.itemId)
+      }
+    }
+
+    // Also add items with only loss or only gain (no matching opposite)
+    const byItemId = new Map<number | null, { hasLoss: boolean; hasGain: boolean }>()
+    for (const rec of liveCountRecords) {
+      if (rec.kind === 'loss' || rec.kind === 'gain') {
+        if (!byItemId.has(rec.item_id)) {
+          byItemId.set(rec.item_id, { hasLoss: false, hasGain: false })
+        }
+        const entry = byItemId.get(rec.item_id)!
+        if (rec.kind === 'loss') entry.hasLoss = true
+        else entry.hasGain = true
+      }
+    }
+
+    // Add items that have only loss or only gain (not both)
+    for (const [itemId, entry] of byItemId.entries()) {
+      if ((entry.hasLoss && !entry.hasGain) || (!entry.hasLoss && entry.hasGain)) {
+        unsettledItemIds.add(itemId)
+      }
+    }
+
+    return unsettledItemIds
+  }, [liveItemsWithTradeOffs, liveCountRecords])
+
+  const liveCountsByDate = useMemo(() => {
+    const q = liveEmbeddedSearch.trim().toLowerCase()
+    const filtered = liveCountRecords.filter(rec => {
+      if (liveCountRecordFilter === 'loss' && rec.kind !== 'loss') return false
+      if (liveCountRecordFilter === 'gain' && rec.kind !== 'gain') return false
+      if (q && !rec.item_name.toLowerCase().includes(q)) return false
+      return true
+    })
+    const groups = new Map<string, typeof liveCountRecords>()
+    for (const rec of filtered) {
+      const date = rec.count_date.slice(0, 10)
+      if (!groups.has(date)) groups.set(date, [])
+      groups.get(date)!.push(rec)
+    }
+    return Array.from(groups.entries()).sort(([a], [b]) => b.localeCompare(a))
+  }, [liveCountRecords, liveCountRecordFilter, liveEmbeddedSearch])
+
+  // Sale mode count records display - shows individual records with trade-off matching
+  // Each record shows when it was counted, item, status, and whether it can be offset
+  // by a gain/loss of the same item from a different count
+  const liveSaleCountRecords = useMemo(() => {
+    const q = liveEmbeddedSearch.trim().toLowerCase()
+
+    // Filter records by selected filter and search
+    const filtered = liveCountRecords.filter(rec => {
+      const isNoLoss = rec.kind !== 'loss' && rec.kind !== 'gain'
+      const isLoss = rec.kind === 'loss'
+      const isGain = rec.kind === 'gain'
+
+      let matchesFilter = false
+      if (liveCountDisplayFilter === 'all') matchesFilter = true
+      else if (liveCountDisplayFilter === 'counted' && isNoLoss) matchesFilter = true
+      else if (liveCountDisplayFilter === 'loss' && isLoss) matchesFilter = true
+      else if (liveCountDisplayFilter === 'gains' && isGain) matchesFilter = true
+      else if (liveCountDisplayFilter === 'unsettled' && (isLoss || isGain) && liveItemsWithUnsettledNet.has(rec.item_id)) matchesFilter = true
+
+      if (!matchesFilter) return false
+      if (q && !rec.item_name.toLowerCase().includes(q)) return false
+      return true
+    })
+
+    // For each record, find potential trade-off opportunities with other records
+    type RecordWithTradeOff = typeof filtered[0] & {
+      tradeOffWith?: { id: number; kind: 'loss' | 'gain' | null; qty: number; date: string }
+    }
+
+    const withTradeOffs: RecordWithTradeOff[] = filtered.map(rec => {
+      // For loss records, find gains of same item; for gains, find losses
+      if (rec.kind === 'loss' || rec.kind === 'gain') {
+        const targetKind = rec.kind === 'loss' ? 'gain' : 'loss'
+        const opposite = liveCountRecords.find(other =>
+          other.item_id === rec.item_id &&
+          other.id !== rec.id &&
+          other.kind === targetKind
+        )
+        if (opposite) {
+          return {
+            ...rec,
+            tradeOffWith: {
+              id: opposite.id,
+              kind: opposite.kind,
+              qty: Math.abs(opposite.loss_qty ?? 0),
+              date: opposite.count_date.slice(0, 10),
+            }
+          }
+        }
+      }
+      return rec
+    })
+
+    // Sort by count_date descending (newest first)
+    return withTradeOffs.sort((a, b) => b.count_date.localeCompare(a.count_date))
+  }, [liveCountRecords, liveCountDisplayFilter, liveEmbeddedSearch, liveItemsWithUnsettledNet])
+
+  // Count how many corrections (trade-offs) are needed for each filter type
+  const liveCountTradeOffCounts = useMemo(() => {
+    let lossCount = 0
+    let gainCount = 0
+
+    for (const rec of liveCountRecords) {
+      if (rec.kind === 'loss' || rec.kind === 'gain') {
+        const targetKind = rec.kind === 'loss' ? 'gain' : 'loss'
+        const opposite = liveCountRecords.find(other =>
+          other.item_id === rec.item_id &&
+          other.id !== rec.id &&
+          other.kind === targetKind
+        )
+        if (opposite) {
+          if (rec.kind === 'loss') lossCount++
+          else gainCount++
+        }
+      }
+    }
+
+    return { lossCount, gainCount }
+  }, [liveCountRecords])
+
+  // Identify items with trade-off opportunities and calculate their net position
+  type ItemTradeOff = {
+    itemId: number | null
+    itemName: string
+    lossQty: number
+    gainQty: number
+    net: number // positive = net loss, negative = net gain
+    tradeOffRecords: CountRecord[]
+  }
 
   // All-Time/Yesterday/This Week/Month/Year loss totals -- same period
   // summary the old Loss by Date tab pinned above its own table, computed
