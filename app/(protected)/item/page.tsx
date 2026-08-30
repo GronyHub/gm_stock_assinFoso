@@ -5835,22 +5835,25 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   </Fragment>
                 ))}
                 <div className="shrink-0 border-l border-gray-300 h-3 mx-0.5" />
-                <button type="button" onClick={() => setLiveSalesShowHistory(true)}
-                  className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700 transition">
+                <label className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
+                  <input type="radio" checked={liveSalesShowHistory} onClick={() => setLiveSalesShowHistory(v => !v)} onChange={() => {}}
+                    className="cursor-pointer w-2.5 h-2.5" />
                   History
-                </button>
+                </label>
                 <label title={liveSalesForcedBarsOnly ? 'Always on while a violation filter is active' : "Show only the date bars, hiding each receipt's item lines"}
                   className={`shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 select-none ${liveSalesForcedBarsOnly ? 'opacity-50' : 'cursor-pointer'}`}>
-                  <input type="checkbox" checked={liveSalesBarsOnly || liveSalesForcedBarsOnly} disabled={liveSalesForcedBarsOnly}
-                    onChange={() => setLiveSalesBarsOnly(b => !b)} className="w-2.5 h-2.5 accent-blue-600" />
+                  <input type="radio" checked={liveSalesBarsOnly || liveSalesForcedBarsOnly} disabled={liveSalesForcedBarsOnly}
+                    onClick={() => setLiveSalesBarsOnly(b => !b)} onChange={() => {}} className="cursor-pointer w-2.5 h-2.5" />
                   Bars Only
                 </label>
                 <label title="Show Walk-In receipts" className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
-                  <input type="checkbox" checked={liveSalesShowW} onChange={() => setLiveSalesShowW(w => !w)} className="w-2.5 h-2.5 accent-blue-600" />
+                  <input type="radio" checked={liveSalesShowW} onClick={() => setLiveSalesShowW(w => !w)} onChange={() => {}}
+                    className="cursor-pointer w-2.5 h-2.5" />
                   W
                 </label>
                 <label title="Show Grony Multimedia receipts" className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
-                  <input type="checkbox" checked={liveSalesShowG} onChange={() => setLiveSalesShowG(g => !g)} className="w-2.5 h-2.5 accent-blue-600" />
+                  <input type="radio" checked={liveSalesShowG} onClick={() => setLiveSalesShowG(g => !g)} onChange={() => {}}
+                    className="cursor-pointer w-2.5 h-2.5" />
                   G
                 </label>
               </div>
