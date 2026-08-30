@@ -3097,7 +3097,9 @@ function ItemHubPageInner() {
 
     // Filter to violation items based on selected violation filter
     let itemsToSort = liveCatalogueItems
-    if (liveSaleViolationFilter === 'lossGain') {
+    if (liveSaleViolationFilter === 'countDue') {
+      itemsToSort = liveCatalogueItems.filter(item => liveCountStatus.has(item.id))
+    } else if (liveSaleViolationFilter === 'lossGain') {
       itemsToSort = liveCatalogueItems.filter(item => liveItemsWithLossOrGainIds.has(item.id))
     } else if (liveSaleViolationFilter === 'duplicates') {
       itemsToSort = liveCatalogueItems.filter(item => liveDuplicateItemIds.has(item.id))
