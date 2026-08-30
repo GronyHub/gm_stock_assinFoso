@@ -859,7 +859,7 @@ function ItemHubPageInner() {
   const rawLiveEmbeddedSearch = searchParams.get('liveSearch')
   const [liveEmbeddedSearch, setLiveEmbeddedSearch] = useState(rawLiveEmbeddedSearch ?? '')
   const [liveShowCountFullPage, setLiveShowCountFullPage] = useState(false)
-  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'all' | 'countDue' | 'lossGain' | 'duplicates' | 'unlinked' | 'service' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'withViolations' | 'noViolations'>('all')
+  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'all' | 'countDue' | 'counts' | 'lossGain' | 'duplicates' | 'unlinked' | 'service' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'withViolations' | 'noViolations'>('all')
   const [liveCountDeleteLoading, setLiveCountDeleteLoading] = useState<number | null>(null)
   const rawSidePaneHidden = searchParams.get('sidebarHidden')
   const initialSidePaneHidden = rawSidePaneHidden === '1'
@@ -4190,7 +4190,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
       },
       countDue: {
         title: '🔄 Count Due',
-        description: 'Items that are scheduled or overdue for physical inventory counting based on their count cadence.',
+        description: 'Items that are scheduled or overdue for physical inventory counting based on their count cadence. Focus on these first to keep inventory current.',
         steps: [
           '1. Open the item by clicking its card',
           '2. Navigate to the Counts tab',
@@ -4200,16 +4200,28 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           '6. The item will be removed from "Count Due" once recorded'
         ]
       },
-      tradeOff: {
-        title: '⚖️ Trade Off',
-        description: 'Items with matching losses and gains on the same date that can be offset against each other to simplify adjustments.',
+      counts: {
+        title: '📋 Counts',
+        description: 'All physical count records taken. Shows completed counts with expected vs counted quantities, helping verify inventory accuracy over time.',
         steps: [
-          '1. Open the item to view loss/gain details',
-          '2. Look for the trade-off opportunity indicator',
-          '3. Review both the loss and gain transactions',
-          '4. If the amounts match, manually offset them in the appropriate records',
-          '5. Update the loss/gain entries to mark them as reconciled',
-          '6. The trade-off indicator will clear once both sides are resolved'
+          '1. Review count records by date to track counting activity',
+          '2. Each row shows item, quantity counted, expected amount, and time recorded',
+          '3. Click Edit to adjust count time or notes if needed',
+          '4. Use this view to audit counting patterns and identify trends',
+          '5. Compare with Loss/Gain view to see which counts created discrepancies',
+          '6. Archive or delete counts only after they have been reconciled'
+        ]
+      },
+      lossGain: {
+        title: '↔️ Loss/Gain',
+        description: 'Count records with inventory losses or gains that need trade-off resolution. Gains reduce losses, so both are shown together to resolve discrepancies.',
+        steps: [
+          '1. Review each loss/gain record in the table',
+          '2. Check the Trade Options column to see potential matches',
+          '3. If a loss and gain can offset: net after trade should reach zero',
+          '4. Edit the record to mark it as reconciled/settled if needed',
+          '5. Work through all records until net values are resolved',
+          '6. All losses and gains together form the complete inventory reconciliation'
         ]
       },
       duplicates: {
@@ -5008,6 +5020,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'lossGain'} onChange={() => { setLiveSaleViolationFilter('lossGain'); setLiveShowCountFullPage(true) }} className="cursor-pointer w-3 h-3" />
                     <span>Loss/Gain{liveItemsWithLossOrGainCount > 0 && ` (${liveItemsWithLossOrGainCount})`}</span>
+                  </label>
+                  <span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'counts'} onChange={() => { setLiveSaleViolationFilter('counts'); setLiveShowCountFullPage(true) }} className="cursor-pointer w-3 h-3" />
+                    <span>Counts{liveCountRecords.length > 0 && ` (${liveCountRecords.filter(r => r.kind !== 'loss' && r.kind !== 'gain').length})`}</span>
                   </label>
                   {liveDuplicateCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
