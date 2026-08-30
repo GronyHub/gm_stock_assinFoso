@@ -3,9 +3,10 @@
 import PageLawsList, { type LawFormKind } from './PageLawsList'
 import type { LawFilterKey } from './useLawsPanel'
 
-export function LawsTasksModal({ isOpen, onClose, lawsPanel }: {
+export function LawsTasksModal({ isOpen, onClose, lawsPanel, scopeKey = 'Items' }: {
   isOpen: boolean
   onClose: () => void
+  scopeKey?: string
   lawsPanel?: {
     show: boolean
     setShow: (v: boolean | ((prev: boolean) => boolean)) => void
@@ -64,8 +65,8 @@ export function LawsTasksModal({ isOpen, onClose, lawsPanel }: {
           <div className="p-6">
             {lawsPanel ? (
               <PageLawsList
-                scopeKey="Items"
-                isItemsLaws={true}
+                scopeKey={scopeKey}
+                isItemsLaws={scopeKey === 'Items'}
                 onChange={lawsPanel.bumpRefresh}
                 openForm={lawsPanel.openForm}
                 setOpenForm={lawsPanel.setOpenForm}

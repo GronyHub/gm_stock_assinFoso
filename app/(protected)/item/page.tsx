@@ -7460,9 +7460,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           </>)}
 
           <TrainingGuideModal isOpen={liveHelpModalOpen} onClose={() => setLiveHelpModalOpen(false)} />
-          <LawsTasksModal isOpen={liveShowLawsTasksModal} onClose={() => setLiveShowLawsTasksModal(false)} lawsPanel={liveSaleLaws} />
-          <LawsTasksModal isOpen={liveSalesShowLawsTasksModal} onClose={() => setLiveSalesShowLawsTasksModal(false)} lawsPanel={salesLaws} />
-          <LawsTasksModal isOpen={liveBillsShowLawsTasksModal} onClose={() => setLiveBillsShowLawsTasksModal(false)} lawsPanel={billsLaws} />
+          <LawsTasksModal isOpen={liveShowLawsTasksModal} onClose={() => setLiveShowLawsTasksModal(false)} lawsPanel={liveSaleLaws} scopeKey="Items" />
+          <LawsTasksModal isOpen={liveSalesShowLawsTasksModal} onClose={() => setLiveSalesShowLawsTasksModal(false)} lawsPanel={salesLaws} scopeKey="Sales" />
+          <LawsTasksModal isOpen={liveBillsShowLawsTasksModal} onClose={() => setLiveBillsShowLawsTasksModal(false)} lawsPanel={billsLaws} scopeKey="Bills" />
 
           {liveSortOrderModalOpen && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setLiveSortOrderModalOpen(false)}>
