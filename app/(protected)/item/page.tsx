@@ -5444,12 +5444,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   </label></>)}
                 </div>
               )}
-              {/* Row 3: search bar + controls — hidden on report-style submenus. */}
-              {showControls && (
+              {/* Row 3: search bar + controls — hidden on report-style submenus, and on
+                  Sales/Bills (they render their own title+search+analytics+help row
+                  inside their own liveMode block instead). */}
+              {showControls && (liveMode === 'sale' || liveMode === 'log') && (
                 <div className="px-2 py-1 border-b border-green-700">
                   <div className="flex items-center gap-2 justify-between">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                      {(lossView === 'sales' || lossView === 'items') && (liveMode === 'sale' || liveMode === 'log') && renderLiveSearchControls(true)}
+                      {(lossView === 'sales' || lossView === 'items') && renderLiveSearchControls(true)}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <button onClick={() => setGlobalSearchOpen(true)} title="Search"
@@ -5768,33 +5770,35 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 </button>
               )}
               {renderModeToggleRow()}
-              {/* Row 1: Title, Search, Analytics, Help */}
-              <div className="px-4 py-2 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-3">
-                <h2 className="text-sm font-bold text-gray-900">Sales</h2>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={liveEmbeddedSearch}
-                    onChange={e => setLiveEmbeddedSearch(e.target.value)}
-                    placeholder="Search…"
-                    className="text-xs px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 w-32"
-                  />
-                  <button type="button" onClick={() => setLiveSalesShowAnalytics(a => !a)}
-                    title="Analytics"
-                    className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${liveSalesShowAnalytics ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                    📊
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setLiveHelpModalOpen(true)}
-                    className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 font-semibold text-sm flex items-center justify-center transition"
-                    title="Help"
-                  >
-                    ?
-                  </button>
-                </div>
+              {/* Row 1: Search, Analytics, global search, Help -- no title text,
+                  the tab switcher above already says "Sales". */}
+              <div className="px-4 py-2 border-b border-gray-200 bg-gray-50 flex items-center justify-end gap-2">
+                <input
+                  type="text"
+                  value={liveEmbeddedSearch}
+                  onChange={e => setLiveEmbeddedSearch(e.target.value)}
+                  placeholder="Search…"
+                  className="text-xs px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 w-32"
+                />
+                <button type="button" onClick={() => setLiveSalesShowAnalytics(a => !a)}
+                  title="Analytics"
+                  className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${liveSalesShowAnalytics ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                  📊
+                </button>
+                <button type="button" onClick={() => setGlobalSearchOpen(true)} title="Global Search"
+                  className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center justify-center transition">
+                  🔍
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLiveHelpModalOpen(true)}
+                  className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 font-semibold text-sm flex items-center justify-center transition"
+                  title="Help"
+                >
+                  ?
+                </button>
               </div>
-              {/* Rows 2-3: Violation filters and filter dropdown */}
+              {/* Rows 2-3: Violation filters (red, with live counts) and filter dropdown */}
               <div className="px-4 py-2 bg-white border-b border-gray-200 flex flex-wrap items-center gap-2">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-xs">
@@ -5802,30 +5806,30 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <span>All</span>
                   </label>
                   <span className="text-gray-400">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-xs">
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600 text-xs">
                     <input type="radio" name="liveSalesViolation" checked={liveSalesViolationFilter === 'no_cash'} onChange={() => setLiveSalesViolationFilter('no_cash')} className="cursor-pointer w-3 h-3" />
-                    <span>No Cash</span>
+                    <span>No Cash ({globalFlags?.noCash?.length ?? 0})</span>
                   </label>
                   <span className="text-gray-400">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-xs">
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600 text-xs">
                     <input type="radio" name="liveSalesViolation" checked={liveSalesViolationFilter === 'missing_days'} onChange={() => setLiveSalesViolationFilter('missing_days')} className="cursor-pointer w-3 h-3" />
-                    <span>Missing Days</span>
+                    <span>Missing Days ({globalFlags?.missingDays?.length ?? 0})</span>
                   </label>
                   <span className="text-gray-400">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-xs">
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600 text-xs">
                     <input type="radio" name="liveSalesViolation" checked={liveSalesViolationFilter === 'dup_receipt'} onChange={() => setLiveSalesViolationFilter('dup_receipt')} className="cursor-pointer w-3 h-3" />
-                    <span>Dup Receipt</span>
+                    <span>Dup Receipt ({globalFlags?.dupReceipts?.length ?? 0})</span>
                   </label>
                 </div>
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-xs">
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600 text-xs">
                     <input type="radio" name="liveSalesViolation" checked={liveSalesViolationFilter === 'high_wnw'} onChange={() => setLiveSalesViolationFilter('high_wnw')} className="cursor-pointer w-3 h-3" />
-                    <span>High WNW</span>
+                    <span>High WNW ({globalFlags?.highWnw?.length ?? 0})</span>
                   </label>
                   <span className="text-gray-400">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-xs">
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600 text-xs">
                     <input type="radio" name="liveSalesViolation" checked={liveSalesViolationFilter === 'no_attachment'} onChange={() => setLiveSalesViolationFilter('no_attachment')} className="cursor-pointer w-3 h-3" />
-                    <span>No Attachment</span>
+                    <span>No Attachment ({globalFlags?.noAttachment?.length ?? 0})</span>
                   </label>
                   <span className="text-gray-400 px-1">·</span>
                   {renderSalesFiltersBar()}
@@ -5838,8 +5842,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   <SalesTab items={liveSalesBillsItems} groupFilter={liveGroupFilter} search={liveEmbeddedSearch}
                     violation={liveSalesViolationFilter}
                     jumpToDate={jumpToReceiptDate} jumpToItemName={jumpToReceiptItemName}
-                    onJumpDone={() => { setJumpToReceiptDate(null); setJumpToReceiptItemName(null) }}
-                    countStatusByItemId={liveCountStatus} />
+                    onJumpDone={() => { setJumpToReceiptDate(null); setJumpToReceiptItemName(null) }} />
                 </div>
               )}
             </div>
@@ -5884,6 +5887,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       📊
                     </button>
                   )}
+                  <button type="button" onClick={() => setGlobalSearchOpen(true)} title="Global Search"
+                    className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center justify-center transition">
+                    🔍
+                  </button>
                   <button
                     type="button"
                     onClick={() => setLiveHelpModalOpen(true)}

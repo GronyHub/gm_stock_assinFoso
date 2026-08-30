@@ -287,11 +287,10 @@ type Props = {
   jumpToDate?: string | null
   jumpToItemName?: string | null
   onJumpDone?: () => void
-  countStatusByItemId?: Map<number, { level: 'due' | 'overdue'; label: string }>
 }
 
 function SalesTab({
-  items, groupFilter, search, violation, jumpToDate, jumpToItemName, onJumpDone, countStatusByItemId,
+  items, groupFilter, search, violation, jumpToDate, jumpToItemName, onJumpDone,
 }: Props) {
   const [receipts, setReceipts] = useState<Receipt[]>([])
   const [loading, setLoading] = useState(true)
@@ -315,8 +314,6 @@ function SalesTab({
   // whatever this narrows down to.
   const [monthFilter, setMonthFilter] = useState<number | null>(null)
   const [yearFilter, setYearFilter] = useState<number | null>(null)
-  // Show only receipts containing items that are due for counting
-  const [showOnlyDueForCount, setShowOnlyDueForCount] = useState(false)
   const [linesMap, setLinesMap] = useState<Record<number, Line[]>>({})
   // 'new-gmc' is a not-yet-created receipt -- the same edit panel below
   // (date/customer/cash fields + line items) doubles as its create form,
@@ -445,11 +442,6 @@ function SalesTab({
         (linesMap[r.id] ?? []).some(l => l.item_name.toLowerCase().includes(q))
       )
     }
-    if (showOnlyDueForCount && countStatusByItemId) {
-      list = list.filter(r =>
-        (linesMap[r.id] ?? []).some(l => l.item_id && countStatusByItemId.has(l.item_id))
-      )
-    }
     // Within the same day, Walk-In (W) receipts come before Grony
     // Multimedia (G) ones -- Array.prototype.sort is stable, and the list
     // is already date-desc from the API, so this only reorders same-day
@@ -460,7 +452,7 @@ function SalesTab({
       return rank(a) - rank(b)
     })
     return list
-  }, [receipts, linesMap, groupItemNames, search, showW, showG, monthFilter, yearFilter, showOnlyDueForCount, countStatusByItemId])
+  }, [receipts, linesMap, groupItemNames, search, showW, showG, monthFilter, yearFilter])
 
   function toggleExpanded(id: number) {
     setExpandedIds(prev => {
@@ -858,12 +850,6 @@ function SalesTab({
           <input type="checkbox" checked={showG} onChange={() => setShowG(g => !g)}
             className="w-3 h-3 accent-blue-600" />
           G
-        </label>
-        <div className="border-l border-gray-300 h-4" />
-        <label title="Show only receipts containing items due for counting" className="flex items-center gap-1 text-[9px] font-semibold text-amber-700 px-1.5 py-0.5 cursor-pointer select-none bg-amber-50 rounded hover:bg-amber-100 transition">
-          <input type="checkbox" checked={showOnlyDueForCount} onChange={() => setShowOnlyDueForCount(d => !d)}
-            className="w-3 h-3 accent-amber-600" />
-          🔄 Due for Count
         </label>
       </div>
       <div className="flex items-center gap-1.5">
