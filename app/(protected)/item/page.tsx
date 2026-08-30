@@ -6354,6 +6354,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                     </>
                                   )}
                                 </p>
+                                <p className="text-[9px] text-gray-600 leading-tight">
+                                  <span>SOH: </span>
+                                  <span className="font-semibold text-gray-900">{Math.ceil(Number(item.soh))} pc</span>
+                                </p>
                               </>
                             ) : (
                               <>
