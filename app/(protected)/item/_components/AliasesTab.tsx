@@ -132,22 +132,22 @@ function PreZohoPanel({ tab, items }: { tab: Tab; items: Item[] }) {
           <table className="w-full border-collapse text-[10px]">
             <thead className="sticky top-0 bg-gray-100 z-10">
               <tr>
-                <th className="text-left px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">RAW NAME</th>
-                <th className="text-right px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">CNT</th>
-                <th className="text-left px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">MAP TO ITEM</th>
-                <th className="px-2 py-1 border-b border-gray-200"></th>
+                <th className="text-left px-2 py-0.5 font-semibold text-gray-500 border-b border-gray-200">RAW NAME</th>
+                <th className="text-right px-2 py-0.5 font-semibold text-gray-500 border-b border-gray-200">CNT</th>
+                <th className="text-left px-2 py-0.5 font-semibold text-gray-500 border-b border-gray-200">MAP TO ITEM</th>
+                <th className="px-2 py-0.5 border-b border-gray-200"></th>
               </tr>
             </thead>
             <tbody>
               {display.map(r => (
                 <tr key={r.name} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="px-2 py-1 text-gray-900 max-w-[160px] truncate">{r.name}</td>
-                  <td className="px-2 py-1 text-right text-gray-500">{r.cnt}</td>
-                  <td className="px-2 py-1">
+                  <td className="px-2 py-0 text-gray-900 max-w-[160px] truncate">{r.name}</td>
+                  <td className="px-2 py-0 text-right text-gray-500">{r.cnt}</td>
+                  <td className="px-2 py-0">
                     <InlineItemPicker items={items} value={picked[r.name] ?? null}
                       onChange={item => setPicked(p => ({ ...p, [r.name]: item }))} />
                   </td>
-                  <td className="px-2 py-1">
+                  <td className="px-2 py-0">
                     <button onClick={() => confirmMatch(r)} disabled={!picked[r.name] || saving === r.name}
                       className="text-[9px] font-bold text-white bg-green-600 hover:bg-green-500 disabled:opacity-40 rounded px-2 py-1 transition">
                       {saving === r.name ? '…' : '✓ Confirm'}
@@ -225,11 +225,11 @@ function FlaggedPanel({ items }: { items: Item[] }) {
           <table className="w-full border-collapse text-[10px]">
             <thead className="sticky top-0 bg-gray-100 z-10">
               <tr>
-                <th className="text-left px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">RAW NAME</th>
-                <th className="text-left px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">CURRENTLY MATCHED TO</th>
-                <th className="text-right px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">CNT</th>
-                <th className="text-left px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">REASSIGN TO</th>
-                <th className="px-2 py-1 border-b border-gray-200"></th>
+                <th className="text-left px-2 py-0.5 font-semibold text-gray-500 border-b border-gray-200">RAW NAME</th>
+                <th className="text-left px-2 py-0.5 font-semibold text-gray-500 border-b border-gray-200">CURRENTLY MATCHED TO</th>
+                <th className="text-right px-2 py-0.5 font-semibold text-gray-500 border-b border-gray-200">CNT</th>
+                <th className="text-left px-2 py-0.5 font-semibold text-gray-500 border-b border-gray-200">REASSIGN TO</th>
+                <th className="px-2 py-0.5 border-b border-gray-200"></th>
               </tr>
             </thead>
             <tbody>
@@ -237,14 +237,14 @@ function FlaggedPanel({ items }: { items: Item[] }) {
                 const k = key(r)
                 return (
                   <tr key={k} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="px-2 py-1 text-gray-900 max-w-[120px] truncate">{r.raw_name}</td>
-                    <td className="px-2 py-1 text-red-600 max-w-[120px] truncate">{r.canonical_name}</td>
-                    <td className="px-2 py-1 text-right text-gray-500">{r.cnt}</td>
-                    <td className="px-2 py-1">
+                    <td className="px-2 py-0 text-gray-900 max-w-[120px] truncate">{r.raw_name}</td>
+                    <td className="px-2 py-0 text-red-600 max-w-[120px] truncate">{r.canonical_name}</td>
+                    <td className="px-2 py-0 text-right text-gray-500">{r.cnt}</td>
+                    <td className="px-2 py-0">
                       <InlineItemPicker items={items} value={picked[k] ?? null}
                         onChange={item => setPicked(p => ({ ...p, [k]: item }))} />
                     </td>
-                    <td className="px-2 py-1">
+                    <td className="px-2 py-0">
                       <div className="flex gap-1">
                         <button onClick={() => reassign(r)} disabled={!picked[k] || saving === k}
                           className="text-[9px] font-bold text-white bg-green-600 hover:bg-green-500 disabled:opacity-40 rounded px-2 py-1 transition">
@@ -330,10 +330,10 @@ function AmbiguousPanel() {
           <table className="w-full border-collapse text-[10px]">
             <thead className="sticky top-0 bg-gray-100 z-10">
               <tr>
-                <th className="text-left px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">ALIAS NAME</th>
-                <th className="text-left px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">CANDIDATE ITEM</th>
-                <th className="text-right px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">LINES</th>
-                <th className="px-2 py-1 border-b border-gray-200"></th>
+                <th className="text-left px-2 py-0.5 font-semibold text-gray-500 border-b border-gray-200">ALIAS NAME</th>
+                <th className="text-left px-2 py-0.5 font-semibold text-gray-500 border-b border-gray-200">CANDIDATE ITEM</th>
+                <th className="text-right px-2 py-0.5 font-semibold text-gray-500 border-b border-gray-200">LINES</th>
+                <th className="px-2 py-0.5 border-b border-gray-200"></th>
               </tr>
             </thead>
             <tbody>
@@ -341,10 +341,10 @@ function AmbiguousPanel() {
                 const allZero = g.candidates.every(c => c.line_count === 0)
                 return g.candidates.map(c => (
                   <tr key={c.alias_id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="px-2 py-1 text-gray-900 max-w-[130px] truncate">{g.candidates[0]?.alias_name}</td>
-                    <td className="px-2 py-1 text-gray-700 max-w-[130px] truncate">{c.canonical_name}</td>
-                    <td className="px-2 py-1 text-right text-gray-500">{c.line_count}</td>
-                    <td className="px-2 py-1">
+                    <td className="px-2 py-0 text-gray-900 max-w-[130px] truncate">{g.candidates[0]?.alias_name}</td>
+                    <td className="px-2 py-0 text-gray-700 max-w-[130px] truncate">{c.canonical_name}</td>
+                    <td className="px-2 py-0 text-right text-gray-500">{c.line_count}</td>
+                    <td className="px-2 py-0">
                       <div className="flex gap-1 justify-end">
                         <button onClick={() => keep(g, c.item_id)} disabled={resolving !== null}
                           className="text-[9px] font-bold text-white bg-green-600 hover:bg-green-500 disabled:opacity-40 rounded px-2 py-1 transition">
@@ -450,22 +450,22 @@ function NameConflictsPanel({ items }: { items: Item[] }) {
           <table className="w-full border-collapse text-[10px]">
             <thead className="sticky top-0 bg-gray-100 z-10">
               <tr>
-                <th className="text-left px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">ALIAS</th>
-                <th className="text-left px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">CURRENTLY POINTS TO</th>
-                <th className="text-left px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">CONFLICTS WITH</th>
-                <th className="text-left px-2 py-1 font-semibold text-gray-500 border-b border-gray-200">REMAP TO</th>
-                <th className="px-2 py-1 border-b border-gray-200"></th>
+                <th className="text-left px-2 py-0.5 font-semibold text-gray-500 border-b border-gray-200">ALIAS</th>
+                <th className="text-left px-2 py-0.5 font-semibold text-gray-500 border-b border-gray-200">CURRENTLY POINTS TO</th>
+                <th className="text-left px-2 py-0.5 font-semibold text-gray-500 border-b border-gray-200">CONFLICTS WITH</th>
+                <th className="text-left px-2 py-0.5 font-semibold text-gray-500 border-b border-gray-200">REMAP TO</th>
+                <th className="px-2 py-0.5 border-b border-gray-200"></th>
               </tr>
             </thead>
             <tbody>
               {rows.map(r => (
                 <tr key={r.alias_id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="px-2 py-1 text-gray-900 max-w-[110px] truncate">{r.alias_name}</td>
-                  <td className="px-2 py-1 text-blue-600 max-w-[100px]">
+                  <td className="px-2 py-0 text-gray-900 max-w-[110px] truncate">{r.alias_name}</td>
+                  <td className="px-2 py-0 text-blue-600 max-w-[100px]">
                     <p className="truncate">{r.aliased_to_item_name}</p>
                     <p className="text-[8px] text-gray-400">SP {fmtRate(r.aliased_to_sp)} · CP {fmtRate(r.aliased_to_cp)}</p>
                   </td>
-                  <td className="px-2 py-1 max-w-[110px]">
+                  <td className="px-2 py-0 max-w-[110px]">
                     <p className="text-gray-900 truncate">{r.conflicting_item_name}</p>
                     <p className="text-[8px] text-gray-400">SP {fmtRate(r.conflicting_sp)} · CP {fmtRate(r.conflicting_cp)}</p>
                     <span className={`text-[8px] font-bold px-1 py-0.5 rounded ${
@@ -474,11 +474,11 @@ function NameConflictsPanel({ items }: { items: Item[] }) {
                       {r.conflicting_item_status ?? 'no status'}
                     </span>
                   </td>
-                  <td className="px-2 py-1">
+                  <td className="px-2 py-0">
                     <InlineItemPicker items={items} value={picked[r.alias_id] ?? null}
                       onChange={item => setPicked(p => ({ ...p, [r.alias_id]: item }))} />
                   </td>
-                  <td className="px-2 py-1">
+                  <td className="px-2 py-0">
                     <div className="flex gap-1">
                       <button onClick={() => remap(r)} disabled={!picked[r.alias_id] || busy === r.alias_id}
                         className="text-[9px] font-bold text-white bg-green-600 hover:bg-green-500 disabled:opacity-40 rounded px-2 py-1 transition">

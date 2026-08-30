@@ -228,7 +228,7 @@ export default function GmcPacksPage() {
         <tbody>
           {groupedRows.map((row: any, idx: number) => (
             <tr key={idx} className="hover:bg-blue-50 border-b border-gray-200">
-              <td className="border border-gray-200 px-1.5 py-0.5">
+              <td className="border border-gray-200 px-1.5 py-0">
                 <div className="space-y-0.5">
                   {row.packToGmc.length > 0 ? (
                     row.packToGmc.map((source: any, sourceIdx: number) => (
@@ -246,10 +246,10 @@ export default function GmcPacksPage() {
                   )}
                 </div>
               </td>
-              <td className="border border-gray-200 px-1.5 py-0.5 text-center text-gray-900 font-semibold">
+              <td className="border border-gray-200 px-1.5 py-0 text-center text-gray-900 font-semibold">
                 <div className="text-[9px]">{row.target_name || '?'}</div>
               </td>
-              <td className="border border-gray-200 px-1.5 py-0.5">
+              <td className="border border-gray-200 px-1.5 py-0">
                 <div className="space-y-0.5">
                   {row.serviceUsingGmc.length > 0 ? (
                     row.serviceUsingGmc.map((source: any, sourceIdx: number) => (

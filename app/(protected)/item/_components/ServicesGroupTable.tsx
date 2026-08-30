@@ -21,7 +21,7 @@ const COLUMNS: ColumnDef<ColKey>[] = [
 ]
 const COL_DEFAULTS: Record<string, number> = { item: 220, type: 70, soh: 60, sp: 80, cp: 80 }
 
-const TD = 'px-3 py-2'
+const TD = 'px-3 py-0'
 
 function fmtMoney(v: string | null) {
   return v ? `₵${parseFloat(v).toLocaleString('en-GH')}` : '—'
@@ -63,7 +63,7 @@ export default function ServicesGroupTable({ items }: { items: ServiceItem[] }) 
         <ColumnsPickerButton prefs={colPrefs} />
       </div>
       <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-        <table className="border-collapse text-xs" style={{ tableLayout: 'fixed', width: tableWidth }}>
+        <table className="border-collapse text-[11px]" style={{ tableLayout: 'fixed', width: tableWidth }}>
           <colgroup>
             <col style={{ width: colPrefs.getWidth('item', COL_DEFAULTS.item) }} />
             {visibleKeys.map(k => <col key={k} style={{ width: colPrefs.getWidth(k, COL_DEFAULTS[k] ?? 80) }} />)}

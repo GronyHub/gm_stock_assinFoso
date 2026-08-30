@@ -49,8 +49,8 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-const TH = 'text-left px-3 py-2 font-bold text-gray-400 text-[10px] uppercase tracking-wide border-b border-gray-200'
-const TD = 'px-3 py-2'
+const TH = 'text-left px-3 py-0.5 font-bold text-gray-400 text-[10px] uppercase tracking-wide border-b border-gray-200'
+const TD = 'px-3 py-0'
 
 // Shared between the standalone /personal page and CAB's embedded Personal
 // panel -- embedded hides the page-level heading, since the host tab
@@ -312,7 +312,7 @@ export default function PersonalTab({ embedded = false }: { embedded?: boolean }
 
           {filtered.length > 0 && (
             <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-              <table className="w-full border-collapse text-xs">
+              <table className="w-full border-collapse text-[11px]">
                 <thead>
                   <tr className="bg-gray-50">
                     <th className={`${TH} whitespace-nowrap`}>Date</th>

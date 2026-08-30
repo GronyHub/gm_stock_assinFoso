@@ -156,22 +156,22 @@ export default function LossFeedTab({ search, kind = 'loss' }: { search: string;
                 const newDay = i === 0 || filtered[i - 1].date !== e.date
                 return (
                   <tr key={`${e.item_id}-${e.date}`} className={`${newDay ? 'border-t-2 border-gray-300' : ''} bg-white ${isGain ? 'hover:bg-amber-50/50' : 'hover:bg-red-50/50'}`}>
-                    <td className="px-0.5 py-0.5 font-bold text-gray-600 truncate text-[9px]">
+                    <td className="px-0.5 py-0 font-bold text-gray-600 truncate text-[9px]">
                       {newDay ? fmtDate(e.date) : <span className="text-gray-300">〃</span>}
                     </td>
-                    <td className="px-0.5 py-0.5 font-semibold text-gray-900 overflow-hidden text-[9px]">
+                    <td className="px-0.5 py-0 font-semibold text-gray-900 overflow-hidden text-[9px]">
                       <button type="button" onClick={() => setViewingItemId(e.item_id)} className="block truncate text-blue-600 hover:underline text-left">{e.item_name}</button>
                     </td>
                     {colPrefs.shownColumns.map(c => {
-                      if (c.key === 'expected') return <td key={c.key} className="px-0.5 py-0.5 text-center text-gray-500 text-[9px]">{fmtN(e.expected)}</td>
-                      if (c.key === 'counted') return <td key={c.key} className="px-0.5 py-0.5 text-center text-gray-900 font-semibold text-[9px]">{fmtN(e.counted)}</td>
-                      if (c.key === 'lossQty') return <td key={c.key} className={`px-0.5 py-0.5 text-center font-bold ${valueCls} text-[9px]`}>{sign}{fmtN(e.loss_qty)}</td>
+                      if (c.key === 'expected') return <td key={c.key} className="px-0.5 py-0 text-center text-gray-500 text-[9px]">{fmtN(e.expected)}</td>
+                      if (c.key === 'counted') return <td key={c.key} className="px-0.5 py-0 text-center text-gray-900 font-semibold text-[9px]">{fmtN(e.counted)}</td>
+                      if (c.key === 'lossQty') return <td key={c.key} className={`px-0.5 py-0 text-center font-bold ${valueCls} text-[9px]`}>{sign}{fmtN(e.loss_qty)}</td>
                       if (c.key === 'reason') return (
-                        <td key={c.key} className="px-0.5 py-0.5 text-gray-600 text-[9px] overflow-hidden" title={e.reason ?? undefined}>
+                        <td key={c.key} className="px-0.5 py-0 text-gray-600 text-[9px] overflow-hidden" title={e.reason ?? undefined}>
                           <span className="block truncate">{e.reason ?? <span className="text-gray-300">—</span>}</span>
                         </td>
                       )
-                      return <td key={c.key} className={`px-0.5 py-0.5 text-right font-bold whitespace-nowrap ${valueCls} text-[9px]`}>{sign}₵{fmtN(e.loss_amt)}</td>
+                      return <td key={c.key} className={`px-0.5 py-0 text-right font-bold whitespace-nowrap ${valueCls} text-[9px]`}>{sign}₵{fmtN(e.loss_amt)}</td>
                     })}
                   </tr>
                 )

@@ -32,13 +32,13 @@ export default function HistoryPanel({ keywords, onEntryClick }: Props) {
 
   return (
     <div className="flex-1 overflow-y-auto min-h-0">
-      <table className="w-full border-collapse text-[10px] border border-black">
+      <table className="w-full border-collapse text-[9px] border border-black">
         <thead className="sticky top-0 bg-gray-100 z-10">
           <tr>
-            <th className="text-left px-1 py-1 font-semibold text-gray-700 border border-black whitespace-nowrap">TIME</th>
-            <th className="text-left px-1 py-1 font-semibold text-gray-700 border border-black">STAFF</th>
-            <th className="text-left px-1 py-1 font-semibold text-gray-700 border border-black">ACTION</th>
-            <th className="text-left px-1 py-1 font-semibold text-gray-700 border border-black">DETAILS</th>
+            <th className="text-left px-1 py-0 font-semibold text-gray-700 border border-black whitespace-nowrap">TIME</th>
+            <th className="text-left px-1 py-0 font-semibold text-gray-700 border border-black">STAFF</th>
+            <th className="text-left px-1 py-0 font-semibold text-gray-700 border border-black">ACTION</th>
+            <th className="text-left px-1 py-0 font-semibold text-gray-700 border border-black">DETAILS</th>
           </tr>
         </thead>
         <tbody>
@@ -46,10 +46,10 @@ export default function HistoryPanel({ keywords, onEntryClick }: Props) {
             <tr key={log.id}
               onClick={() => onEntryClick?.(log)}
               className={`hover:bg-yellow-50 ${onEntryClick ? 'cursor-pointer' : ''}`}>
-              <td className="px-1 py-1 text-gray-500 whitespace-nowrap border border-black">{fmtTime(log.created_at)}</td>
-              <td className="px-1 py-1 font-semibold text-blue-600 border border-black">{log.staff_name}</td>
-              <td className="px-1 py-1 text-gray-800 border border-black">{log.action}</td>
-              <td className="px-1 py-1 text-gray-600 border border-black">{log.details ?? '—'}</td>
+              <td className="px-1 py-0 text-gray-500 whitespace-nowrap border border-black">{fmtTime(log.created_at)}</td>
+              <td className="px-1 py-0 font-semibold text-blue-600 border border-black">{log.staff_name}</td>
+              <td className="px-1 py-0 text-gray-800 border border-black">{log.action}</td>
+              <td className="px-1 py-0 text-gray-600 border border-black">{log.details ?? '—'}</td>
             </tr>
           ))}
         </tbody>

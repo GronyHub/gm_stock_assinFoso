@@ -103,7 +103,7 @@ export default function ProfitLossTab() {
         </div>
         <p className="text-[10px] text-gray-400 mb-2">CC − (Cash Out + Daily Loss), one row per day. Cash Out = Bills + Expenses.</p>
         <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-          <table className="table-fixed border-collapse text-xs" style={{
+          <table className="table-fixed border-collapse text-[11px]" style={{
             width: colPrefs.getWidth('date', PL_COL_DEFAULTS.date)
               + colPrefs.shownColumns.reduce((s, c) => s + colPrefs.getWidth(c.key, PL_COL_DEFAULTS[c.key] ?? 90), 0),
           }}>
@@ -125,9 +125,9 @@ export default function ProfitLossTab() {
             <tbody className="divide-y divide-gray-100">
               {daily.map((d, i) => (
                 <tr key={d.date} className={i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
-                  <td className="px-3 py-2 text-gray-600 whitespace-nowrap truncate">{dayLabel(d.date)}</td>
+                  <td className="px-3 py-0 text-gray-600 whitespace-nowrap truncate">{dayLabel(d.date)}</td>
                   {colPrefs.shownColumns.map(c => (
-                    <td key={c.key} className="px-3 py-2 text-right truncate">{PL_COL_BY_KEY.get(c.key)!.render(d)}</td>
+                    <td key={c.key} className="px-3 py-0 text-right truncate">{PL_COL_BY_KEY.get(c.key)!.render(d)}</td>
                   ))}
                 </tr>
               ))}

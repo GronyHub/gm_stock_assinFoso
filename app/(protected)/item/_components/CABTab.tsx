@@ -721,30 +721,30 @@ export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: numb
         <div className="flex-1 overflow-auto min-h-0 p-2">
           <p className="text-[10px] text-gray-400 mb-1.5">Last {weeks.length} week{weeks.length !== 1 ? 's' : ''} (Mon–Sun), most recent first.</p>
           <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-            <table className="w-full border-collapse text-xs">
+            <table className="w-full border-collapse text-[11px]">
               <thead>
                 <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
-                  <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Week</th>
-                  <th className="text-right px-3 py-2 font-bold border-b border-gray-200">Net</th>
-                  <th className="text-right px-3 py-2 font-bold border-b border-gray-200">Week-End Balance</th>
-                  <th className="text-center px-3 py-2 font-bold border-b border-gray-200">Status</th>
-                  <th className="text-right px-3 py-2 font-bold text-blue-500 border-b border-gray-200">Confirmed</th>
-                  <th className="text-right px-3 py-2 font-bold text-red-400 border-b border-gray-200">Diff</th>
+                  <th className="text-left px-3 py-0.5 font-bold border-b border-gray-200 whitespace-nowrap">Week</th>
+                  <th className="text-right px-3 py-0.5 font-bold border-b border-gray-200">Net</th>
+                  <th className="text-right px-3 py-0.5 font-bold border-b border-gray-200">Week-End Balance</th>
+                  <th className="text-center px-3 py-0.5 font-bold border-b border-gray-200">Status</th>
+                  <th className="text-right px-3 py-0.5 font-bold text-blue-500 border-b border-gray-200">Confirmed</th>
+                  <th className="text-right px-3 py-0.5 font-bold text-red-400 border-b border-gray-200">Diff</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {visibleWeeks.map((w, i) => (
                   <tr key={w.weekStart} className={i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'}>
-                    <td className="px-3 py-2 text-gray-700 whitespace-nowrap font-medium">{fmtDate(w.weekStart)} – {fmtDate(w.weekEnd)}</td>
-                    <td className={`px-3 py-2 text-right font-semibold ${w.net >= 0 ? 'text-gray-800' : 'text-red-500'}`}>{fmtn(w.net)}</td>
-                    <td className="px-3 py-2 text-right font-bold text-gray-900">{fmtn(w.runningEnd)}</td>
-                    <td className="px-3 py-2 text-center">
+                    <td className="px-3 py-0 text-gray-700 whitespace-nowrap font-medium">{fmtDate(w.weekStart)} – {fmtDate(w.weekEnd)}</td>
+                    <td className={`px-3 py-0 text-right font-semibold ${w.net >= 0 ? 'text-gray-800' : 'text-red-500'}`}>{fmtn(w.net)}</td>
+                    <td className="px-3 py-0 text-right font-bold text-gray-900">{fmtn(w.runningEnd)}</td>
+                    <td className="px-3 py-0 text-center">
                       {w.confirmed
                         ? <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-green-50 text-green-600">✓ CONFIRMED</span>
                         : <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-50 text-red-500">NOT CONFIRMED</span>}
                     </td>
-                    <td className="px-3 py-2 text-right text-blue-600">{w.confirmed ? fmtn(w.cabTotal) : ''}</td>
-                    <td className={`px-3 py-2 text-right font-semibold ${w.deficit != null && Number(w.deficit) < 0 ? 'text-red-500' : 'text-green-600'}`}>
+                    <td className="px-3 py-0 text-right text-blue-600">{w.confirmed ? fmtn(w.cabTotal) : ''}</td>
+                    <td className={`px-3 py-0 text-right font-semibold ${w.deficit != null && Number(w.deficit) < 0 ? 'text-red-500' : 'text-green-600'}`}>
                       {w.deficit != null ? fmtn(w.deficit) : ''}
                     </td>
                   </tr>
@@ -762,65 +762,65 @@ export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: numb
         <div className="flex-1 overflow-auto min-h-0 p-2">
           <p className="text-[10px] text-gray-400 mb-1.5">Last 90 days, most recent first.</p>
           <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-          <table className="w-full border-collapse text-xs">
+          <table className="w-full border-collapse text-[11px]">
             <thead className="sticky top-0 z-10">
               {gpOutOnly && byCategory ? (
                 <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
-                  <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Date</th>
+                  <th className="text-left px-3 py-0.5 font-bold border-b border-gray-200 whitespace-nowrap">Date</th>
                   {pivotCategories.map(cat => (
-                    <th key={cat} className="text-right px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">{CAT_ICON[cat] ?? '🏷️'} {cat}</th>
+                    <th key={cat} className="text-right px-3 py-0.5 font-bold border-b border-gray-200 whitespace-nowrap">{CAT_ICON[cat] ?? '🏷️'} {cat}</th>
                   ))}
                 </tr>
               ) : gpOutOnly ? (
                 <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
-                  <th className="text-left px-3 py-2 font-bold border-b border-gray-200 whitespace-nowrap">Date</th>
-                  <th className={`text-right px-3 py-2 font-bold border-b border-gray-200 ${personalAmountCls}`} title={personalDirection === 'out' ? "Cash taken out for Grony's personal use" : "Cash received by Grony personally"}>{personalAmountLabel}</th>
-                  <th className="text-left px-3 py-2 font-bold border-b border-gray-200 border-l-2 border-gray-300">Item</th>
-                  <th className="text-left px-3 py-2 font-bold border-b border-gray-200">Category</th>
+                  <th className="text-left px-3 py-0.5 font-bold border-b border-gray-200 whitespace-nowrap">Date</th>
+                  <th className={`text-right px-3 py-0.5 font-bold border-b border-gray-200 ${personalAmountCls}`} title={personalDirection === 'out' ? "Cash taken out for Grony's personal use" : "Cash received by Grony personally"}>{personalAmountLabel}</th>
+                  <th className="text-left px-3 py-0.5 font-bold border-b border-gray-200 border-l-2 border-gray-300">Item</th>
+                  <th className="text-left px-3 py-0.5 font-bold border-b border-gray-200">Category</th>
                 </tr>
               ) : confirmedColsOnly ? (
                 <>
                   <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
-                    <th rowSpan={2} className="text-left px-3 py-2 font-bold border-b border-gray-200 align-bottom whitespace-nowrap">Date</th>
-                    <th colSpan={hideBankMomoPhysical ? 2 : 5} className="text-center px-3 py-1.5 font-bold border-b border-gray-100 border-x-2 border-gray-300">Confirmed (physical count)</th>
+                    <th rowSpan={2} className="text-left px-3 py-0.5 font-bold border-b border-gray-200 align-bottom whitespace-nowrap">Date</th>
+                    <th colSpan={hideBankMomoPhysical ? 2 : 5} className="text-center px-3 py-0.5 font-bold border-b border-gray-100 border-x-2 border-gray-300">Confirmed (physical count)</th>
                   </tr>
                   <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
                     {!hideBankMomoPhysical && (
                       <>
-                        <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 border-l-2 border-gray-300">Bank</th>
-                        <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200">MoMo</th>
-                        <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200">Physical</th>
+                        <th className="text-right px-3 py-0.5 font-bold border-b border-gray-200 border-l-2 border-gray-300">Bank</th>
+                        <th className="text-right px-3 py-0.5 font-bold border-b border-gray-200">MoMo</th>
+                        <th className="text-right px-3 py-0.5 font-bold border-b border-gray-200">Physical</th>
                       </>
                     )}
-                    <th className={`text-right px-3 py-1.5 font-bold border-b border-gray-200 text-blue-500 ${hideBankMomoPhysical ? 'border-l-2 border-gray-300' : ''}`}>Total</th>
-                    <th className="text-center px-3 py-1.5 font-bold border-b border-gray-200 border-r-2 border-gray-300" title="Checks this confirmation against the previous one: prior confirmed total + net movement since then">Verify</th>
+                    <th className={`text-right px-3 py-0.5 font-bold border-b border-gray-200 text-blue-500 ${hideBankMomoPhysical ? 'border-l-2 border-gray-300' : ''}`}>Total</th>
+                    <th className="text-center px-3 py-0.5 font-bold border-b border-gray-200 border-r-2 border-gray-300" title="Checks this confirmation against the previous one: prior confirmed total + net movement since then">Verify</th>
                   </tr>
                 </>
               ) : (
                 <>
                   <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
-                    <th rowSpan={2} className="text-left px-3 py-2 font-bold border-b border-gray-200 align-bottom whitespace-nowrap">Date</th>
-                    <th colSpan={hideBankMomoPhysical ? 2 : 5} className="text-center px-3 py-1.5 font-bold border-b border-gray-100 border-x-2 border-gray-300">Confirmed (physical count)</th>
-                    <th rowSpan={2} className="text-right px-3 py-2 font-bold border-b border-gray-200 align-bottom" title="Cash Counted">CC</th>
-                    <th rowSpan={2} className="text-right px-3 py-2 font-bold text-green-500 border-b border-gray-200 align-bottom" title="Grony Personal cash paid into the business that day">GP In</th>
-                    <th rowSpan={2} className="text-right px-3 py-2 font-bold text-green-500 border-b border-gray-200 align-bottom" title="Debtor repayments received that day">Debtors</th>
-                    <th rowSpan={2} className="text-right px-3 py-2 font-bold border-b border-gray-200 align-bottom" title="Bills paid to vendors">Bills</th>
-                    <th rowSpan={2} className="text-right px-3 py-2 font-bold border-b border-gray-200 align-bottom" title="Expenses">Exp</th>
-                    <th rowSpan={2} className="text-right px-3 py-2 font-bold text-orange-500 border-b border-gray-200 align-bottom" title="Cash taken out for Grony's personal use">GP Out</th>
-                    <th rowSpan={2} className="text-right px-3 py-2 font-bold border-b border-gray-200 align-bottom" title="Net cash movement for the day">Net</th>
-                    <th rowSpan={2} className="text-right px-3 py-2 font-bold border-b border-gray-200 align-bottom" title="Running cash-at-bank balance, carried day to day">Running</th>
-                    <th rowSpan={2} className="text-right px-3 py-2 font-bold text-red-400 border-b border-gray-200 align-bottom" title="Confirmed total minus Running balance">Diff</th>
+                    <th rowSpan={2} className="text-left px-3 py-0.5 font-bold border-b border-gray-200 align-bottom whitespace-nowrap">Date</th>
+                    <th colSpan={hideBankMomoPhysical ? 2 : 5} className="text-center px-3 py-0.5 font-bold border-b border-gray-100 border-x-2 border-gray-300">Confirmed (physical count)</th>
+                    <th rowSpan={2} className="text-right px-3 py-0.5 font-bold border-b border-gray-200 align-bottom" title="Cash Counted">CC</th>
+                    <th rowSpan={2} className="text-right px-3 py-0.5 font-bold text-green-500 border-b border-gray-200 align-bottom" title="Grony Personal cash paid into the business that day">GP In</th>
+                    <th rowSpan={2} className="text-right px-3 py-0.5 font-bold text-green-500 border-b border-gray-200 align-bottom" title="Debtor repayments received that day">Debtors</th>
+                    <th rowSpan={2} className="text-right px-3 py-0.5 font-bold border-b border-gray-200 align-bottom" title="Bills paid to vendors">Bills</th>
+                    <th rowSpan={2} className="text-right px-3 py-0.5 font-bold border-b border-gray-200 align-bottom" title="Expenses">Exp</th>
+                    <th rowSpan={2} className="text-right px-3 py-0.5 font-bold text-orange-500 border-b border-gray-200 align-bottom" title="Cash taken out for Grony's personal use">GP Out</th>
+                    <th rowSpan={2} className="text-right px-3 py-0.5 font-bold border-b border-gray-200 align-bottom" title="Net cash movement for the day">Net</th>
+                    <th rowSpan={2} className="text-right px-3 py-0.5 font-bold border-b border-gray-200 align-bottom" title="Running cash-at-bank balance, carried day to day">Running</th>
+                    <th rowSpan={2} className="text-right px-3 py-0.5 font-bold text-red-400 border-b border-gray-200 align-bottom" title="Confirmed total minus Running balance">Diff</th>
                   </tr>
                   <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
                     {!hideBankMomoPhysical && (
                       <>
-                        <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200 border-l-2 border-gray-300">Bank</th>
-                        <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200">MoMo</th>
-                        <th className="text-right px-3 py-1.5 font-bold border-b border-gray-200">Physical</th>
+                        <th className="text-right px-3 py-0.5 font-bold border-b border-gray-200 border-l-2 border-gray-300">Bank</th>
+                        <th className="text-right px-3 py-0.5 font-bold border-b border-gray-200">MoMo</th>
+                        <th className="text-right px-3 py-0.5 font-bold border-b border-gray-200">Physical</th>
                       </>
                     )}
-                    <th className={`text-right px-3 py-1.5 font-bold border-b border-gray-200 text-blue-500 ${hideBankMomoPhysical ? 'border-l-2 border-gray-300' : ''}`}>Total</th>
-                    <th className="text-center px-3 py-1.5 font-bold border-b border-gray-200 border-r-2 border-gray-300" title="Checks this confirmation against the previous one: prior confirmed total + net movement since then">Verify</th>
+                    <th className={`text-right px-3 py-0.5 font-bold border-b border-gray-200 text-blue-500 ${hideBankMomoPhysical ? 'border-l-2 border-gray-300' : ''}`}>Total</th>
+                    <th className="text-center px-3 py-0.5 font-bold border-b border-gray-200 border-r-2 border-gray-300" title="Checks this confirmation against the previous one: prior confirmed total + net movement since then">Verify</th>
                   </tr>
                 </>
               )}
@@ -832,11 +832,11 @@ export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: numb
                 return (
                   <Fragment key={e.id}>
                     <tr className={isOpen ? 'bg-blue-50' : i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'}>
-                      <td className="px-3 py-2 text-gray-600 whitespace-nowrap align-top">{fmtDate(date)}</td>
+                      <td className="px-3 py-0 text-gray-600 whitespace-nowrap align-top">{fmtDate(date)}</td>
                       {pivotCategories.map(pc => (
                         <td key={pc}
                           onClick={() => pc === cat && toggleEntryRow(e.id)}
-                          className={`px-3 py-2 text-right align-top ${pc === cat ? 'cursor-pointer hover:bg-blue-50/60' : ''}`}>
+                          className={`px-3 py-0 text-right align-top ${pc === cat ? 'cursor-pointer hover:bg-blue-50/60' : ''}`}>
                           {pc === cat && (
                             <>
                               <div className="font-semibold text-gray-800">{fmtn(parseFloat(e.amount))}</div>
@@ -862,15 +862,15 @@ export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: numb
                 return (
                   <Fragment key={e.id}>
                     <tr className={`cursor-pointer ${isOpen ? 'bg-blue-50' : i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'}`} onClick={() => toggleEntryRow(e.id)}>
-                      <td className="px-3 py-2 text-gray-600 whitespace-nowrap align-top">{fmtDate(date)}</td>
-                      <td className={`px-3 py-2 text-right align-top ${personalAmountCls}`}>{fmtn(parseFloat(e.amount))}</td>
-                      <td className="px-3 py-2 text-gray-800 border-l-2 border-gray-300 align-top">
+                      <td className="px-3 py-0 text-gray-600 whitespace-nowrap align-top">{fmtDate(date)}</td>
+                      <td className={`px-3 py-0 text-right align-top ${personalAmountCls}`}>{fmtn(parseFloat(e.amount))}</td>
+                      <td className="px-3 py-0 text-gray-800 border-l-2 border-gray-300 align-top">
                         {e.description}
                         {e.needs_review && (
                           <span className="ml-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">⚠ Needs split</span>
                         )}
                       </td>
-                      <td className="px-3 py-2 align-top">
+                      <td className="px-3 py-0 align-top">
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${CAT_COLOR[e.category ?? 'Other'] ?? CAT_COLOR['Other']}`}>
                           {CAT_ICON[e.category ?? 'Other'] ?? '🏷️'} {e.category ?? 'Other'}{e.subcategory ? ` · ${e.subcategory}` : ''}
                         </span>
@@ -893,7 +893,7 @@ export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: numb
                 const dateKey = String(r.entry_date).slice(0, 10)
                 const verify = verifyMap.get(dateKey)
                 const verifyCell = (
-                  <td className="px-3 py-2 text-center border-r-2 border-gray-300" title={verify ? `Expected ${fmtn(verify.expected)}, diff ${fmtn(verify.diff)}` : undefined}>
+                  <td className="px-3 py-0 text-center border-r-2 border-gray-300" title={verify ? `Expected ${fmtn(verify.expected)}, diff ${fmtn(verify.diff)}` : undefined}>
                     {verify && (verify.ok
                       ? <span className="text-green-600 font-bold">✓</span>
                       : (
@@ -910,36 +910,36 @@ export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: numb
                 )
                 const bmpCells = !hideBankMomoPhysical && (
                   <>
-                    <td className="px-3 py-2 text-right text-gray-500 border-l-2 border-gray-300">{nz(r.cab_bank)}</td>
-                    <td className="px-3 py-2 text-right text-gray-500">{nz(r.cab_momo)}</td>
-                    <td className="px-3 py-2 text-right text-gray-500">{nz(r.cab_physical)}</td>
+                    <td className="px-3 py-0 text-right text-gray-500 border-l-2 border-gray-300">{nz(r.cab_bank)}</td>
+                    <td className="px-3 py-0 text-right text-gray-500">{nz(r.cab_momo)}</td>
+                    <td className="px-3 py-0 text-right text-gray-500">{nz(r.cab_physical)}</td>
                   </>
                 )
-                const totalCls = `px-3 py-2 text-right text-blue-600 font-semibold ${hideBankMomoPhysical ? 'border-l-2 border-gray-300' : ''}`
+                const totalCls = `px-3 py-0 text-right text-blue-600 font-semibold ${hideBankMomoPhysical ? 'border-l-2 border-gray-300' : ''}`
                 return confirmedColsOnly ? (
                   <tr key={r.entry_date} className={stripe}>
-                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmtDate(dateKey)}</td>
+                    <td className="px-3 py-0 text-gray-600 whitespace-nowrap">{fmtDate(dateKey)}</td>
                     {bmpCells}
                     <td className={totalCls}>{fmtn(r.cab_total)}</td>
                     {verifyCell}
                   </tr>
                 ) : (
                   <tr key={r.entry_date} className={stripe}>
-                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmtDate(dateKey)}</td>
+                    <td className="px-3 py-0 text-gray-600 whitespace-nowrap">{fmtDate(dateKey)}</td>
                     {bmpCells}
                     <td className={totalCls}>{hasConfirm ? fmtn(r.cab_total) : ''}</td>
                     {verifyCell}
-                    <td className="px-3 py-2 text-right text-gray-700">{nz(r.cash_counted)}</td>
-                    <td className="px-3 py-2 text-right text-green-600">{nz(r.grony_personal_cash_in)}</td>
-                    <td className="px-3 py-2 text-right text-green-600">{nz(r.debtors_cash_in)}</td>
-                    <td className="px-3 py-2 text-right text-red-500">{nz(r.bills)}</td>
-                    <td className="px-3 py-2 text-right text-red-500">{nz(r.expenses)}</td>
-                    <td className="px-3 py-2 text-right text-orange-500">{nz(r.grony_personal_expenses)}</td>
-                    <td className={`px-3 py-2 text-right font-semibold ${net >= 0 ? 'text-gray-800' : 'text-red-500'}`}>
+                    <td className="px-3 py-0 text-right text-gray-700">{nz(r.cash_counted)}</td>
+                    <td className="px-3 py-0 text-right text-green-600">{nz(r.grony_personal_cash_in)}</td>
+                    <td className="px-3 py-0 text-right text-green-600">{nz(r.debtors_cash_in)}</td>
+                    <td className="px-3 py-0 text-right text-red-500">{nz(r.bills)}</td>
+                    <td className="px-3 py-0 text-right text-red-500">{nz(r.expenses)}</td>
+                    <td className="px-3 py-0 text-right text-orange-500">{nz(r.grony_personal_expenses)}</td>
+                    <td className={`px-3 py-0 text-right font-semibold ${net >= 0 ? 'text-gray-800' : 'text-red-500'}`}>
                       {fmtn(r.daily_net)}
                     </td>
-                    <td className="px-3 py-2 text-right font-bold text-gray-900">{fmtn(r.running_cash_at_bank)}</td>
-                    <td className={`px-3 py-2 text-right font-semibold ${r.deficit != null && Number(r.deficit) < 0 ? 'text-red-500' : 'text-green-600'}`}>
+                    <td className="px-3 py-0 text-right font-bold text-gray-900">{fmtn(r.running_cash_at_bank)}</td>
+                    <td className={`px-3 py-0 text-right font-semibold ${r.deficit != null && Number(r.deficit) < 0 ? 'text-red-500' : 'text-green-600'}`}>
                       {r.deficit != null ? fmtn(r.deficit) : ''}
                     </td>
                   </tr>
