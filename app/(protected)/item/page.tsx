@@ -5233,7 +5233,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 </div>
               )}
               {/* Filter dropdown for items view only */}
-              {showControls && outerTab === 'loss' && (
+              {showControls && outerTab === 'loss' && (liveMode === 'sale' || liveMode === 'log') && (
                 <div className="w-full flex items-center gap-0.5 px-1.5 py-0.5 bg-white border-b border-gray-200">
                   <select
                     value={liveGmcTypeFilter ? `gmc:${liveGmcTypeFilter}` : liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind === 'flag' ? `flag:${liveSaleFilter.key}` : liveSaleFilter.kind : liveCurrentView?.kind === 'violation' ? `violation:${liveCurrentView.key}` : liveCurrentView?.kind === 'aliasWide' ? 'view:aliasWide' : liveCurrentView?.kind === 'serviceMatches' ? 'view:serviceMatches' : liveCurrentView?.kind === 'gmcPacks' ? 'view:gmcPacks' : liveCurrentView?.kind === 'newItem' ? 'view:newItem' : ''}
