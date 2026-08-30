@@ -6352,7 +6352,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                   {item.count_interval && (
                                     <>
                                       <span className="text-gray-400"> · </span>
-                                      <span className="text-gray-500">{shortCountInterval(item.count_interval)}</span>
+                                      <span className="text-gray-500">Interval {shortCountInterval(item.count_interval)}</span>
                                     </>
                                   )}
                                 </p>
