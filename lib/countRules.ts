@@ -99,11 +99,8 @@ async function itemRows(itemIds: number[]) {
       SELECT item_id,
              COUNT(*) FILTER (WHERE rn <= 2) AS n2,
              BOOL_AND(quantity_counted = 0) FILTER (WHERE rn <= 2) AS zeros2,
-             MIN(d) FILTER (WHERE rn <= 2) AS since2,
-             COUNT(*) FILTER (WHERE rn <= 3) AS n3,
-             COUNT(DISTINCT quantity_counted) FILTER (WHERE rn <= 3) AS distinct3,
-             MIN(d) FILTER (WHERE rn <= 3) AS since3
-      FROM ranked WHERE rn <= 3
+             MIN(d) FILTER (WHERE rn <= 2) AS since2
+      FROM ranked WHERE rn <= 2
       GROUP BY item_id
     ),
     last_bill AS (
@@ -111,11 +108,6 @@ async function itemRows(itemIds: number[]) {
       FROM bill_lines bl JOIN bills b ON b.id = bl.bill_id
       WHERE bl.item_id = ANY(${itemIds})
       GROUP BY bl.item_id
-    ),
-    lastc AS (
-      SELECT item_id, MAX(count_date) AS last_count_date
-      FROM stock_counts
-      GROUP BY item_id
     )
     SELECT
       s.item_id,
@@ -124,17 +116,18 @@ async function itemRows(itemIds: number[]) {
       s.calculated_soh,
       c.last_count_date,
       CASE
-        WHEN c.last_count_date IS NULL THEN NULL
-        ELSE (CURRENT_DATE - c.last_count_date::date - cad.days)
+        WHEN c.last_count_date::date = CURRENT_DATE THEN 0
+        ELSE (CURRENT_DATE - COALESCE(c.last_count_date::date, '1900-01-01'))
       END AS days_overdue
     FROM item_stock_summary s
     LEFT JOIN items i ON i.id = s.item_id
-    LEFT JOIN lastc c ON c.item_id = s.item_id
+    LEFT JOIN (
+      SELECT item_id, MAX(count_date) AS last_count_date
+      FROM stock_counts
+      GROUP BY item_id
+    ) c ON c.item_id = s.item_id
     LEFT JOIN recent r ON r.item_id = s.item_id
     LEFT JOIN last_bill lb ON lb.item_id = s.item_id
-    CROSS JOIN LATERAL (
-      SELECT COALESCE(i.count_cadence_days, 1) AS days
-    ) cad
     WHERE s.item_id = ANY(${itemIds})
       AND s.cf_group IS DISTINCT FROM 'Large Format'
       AND COALESCE(i.product_type, 'goods') <> 'service'
