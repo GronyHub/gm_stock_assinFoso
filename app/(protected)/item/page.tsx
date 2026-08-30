@@ -860,7 +860,7 @@ function ItemHubPageInner() {
   const [liveEmbeddedSearch, setLiveEmbeddedSearch] = useState(rawLiveEmbeddedSearch ?? '')
   const [liveShowCountFullPage, setLiveShowCountFullPage] = useState(false)
   const [liveCountDisplayFilter, setLiveCountDisplayFilter] = useState<'all' | 'counted' | 'loss' | 'gains'>('all')
-  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'all' | 'countDue' | 'tradeOff' | 'duplicates' | 'unlinked' | 'service' | 'gains' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'withViolations' | 'noViolations'>('all')
+  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'all' | 'countDue' | 'tradeOff' | 'lossOrGain' | 'duplicates' | 'unlinked' | 'service' | 'gains' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'withViolations' | 'noViolations'>('all')
   const [liveCountDeleteLoading, setLiveCountDeleteLoading] = useState<number | null>(null)
   const rawSidePaneHidden = searchParams.get('sidebarHidden')
   const initialSidePaneHidden = rawSidePaneHidden === '1'
@@ -3032,6 +3032,54 @@ function ItemHubPageInner() {
     return m
   }, [liveItemsWithTradeOffs])
 
+  // Items with any loss or gain records (not just both like Trade Off)
+  const liveItemsWithLossOrGain = useMemo(() => {
+    const byItemId = new Map<number | null, ItemTradeOff>()
+
+    for (const rec of liveCountRecords) {
+      if (rec.kind === 'loss' || rec.kind === 'gain') {
+        const key = rec.item_id
+        if (!byItemId.has(key)) {
+          byItemId.set(key, {
+            itemId: key,
+            itemName: rec.item_name,
+            lossQty: 0,
+            gainQty: 0,
+            net: 0,
+            tradeOffRecords: []
+          })
+        }
+        const entry = byItemId.get(key)!
+        entry.tradeOffRecords.push(rec)
+
+        const qty = Math.abs(rec.loss_qty ?? 0)
+        if (rec.kind === 'loss') {
+          entry.lossQty += qty
+        } else {
+          entry.gainQty += qty
+        }
+      }
+    }
+
+    // Return all items with either loss or gain (not just those with both)
+    const result: ItemTradeOff[] = []
+    for (const entry of byItemId.values()) {
+      entry.net = entry.lossQty - entry.gainQty
+      result.push(entry)
+    }
+
+    return result.sort((a, b) => Math.abs(b.net) - Math.abs(a.net))
+  }, [liveCountRecords])
+
+  // Map of item ID to loss/gain info for quick lookup
+  const liveLossOrGainByItemId = useMemo(() => {
+    const m = new Map<number | null, ItemTradeOff>()
+    for (const t of liveItemsWithLossOrGain) {
+      m.set(t.itemId, t)
+    }
+    return m
+  }, [liveItemsWithLossOrGain])
+
   // All-Time/Yesterday/This Week/Month/Year loss totals -- same period
   // summary the old Loss by Date tab pinned above its own table, computed
   // from every record regardless of liveCountRecordFilter/search so it
@@ -3092,6 +3140,9 @@ function ItemHubPageInner() {
     if (liveSaleViolationFilter === 'tradeOff') {
       const tradeOffItemIds = new Set(liveItemsWithTradeOffs.map(t => t.itemId))
       itemsToSort = liveCatalogueItems.filter(item => tradeOffItemIds.has(item.id))
+    } else if (liveSaleViolationFilter === 'lossOrGain') {
+      const lossOrGainItemIds = new Set(liveItemsWithLossOrGain.map(t => t.itemId))
+      itemsToSort = liveCatalogueItems.filter(item => lossOrGainItemIds.has(item.id))
     } else if (liveSaleViolationFilter === 'duplicates') {
       itemsToSort = liveCatalogueItems.filter(item => liveDuplicateItemIds.has(item.id))
     } else if (liveSaleViolationFilter === 'unlinked') {
@@ -3140,7 +3191,7 @@ function ItemHubPageInner() {
       }
       return 0
     })
-  }, [liveCatalogueItems, liveCountStatus, liveMode, liveViolationCountByItemId, liveSalesCounts, liveItemSortOrder, liveSaleViolationFilter, liveItemsWithTradeOffs, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveEmptyRowCountByItemId])
+  }, [liveCatalogueItems, liveCountStatus, liveMode, liveViolationCountByItemId, liveSalesCounts, liveItemSortOrder, liveSaleViolationFilter, liveItemsWithTradeOffs, liveItemsWithLossOrGain, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveEmptyRowCountByItemId])
 
   // How many leading items are due for a count -- only meaningful (and only
   // used to draw the "N items need counting" header + divider) when count
@@ -5028,6 +5079,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'tradeOff'} onChange={() => { setLiveSaleViolationFilter('tradeOff'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
                     <span>Trade Off{liveItemsWithTradeOffs.length > 0 && ` (${liveItemsWithTradeOffs.length})`}</span>
                   </label>
+                  <span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'lossOrGain'} onChange={() => { setLiveSaleViolationFilter('lossOrGain'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
+                    <span>Loss/Gain{liveItemsWithLossOrGain.length > 0 && ` (${liveItemsWithLossOrGain.length})`}</span>
+                  </label>
                   {liveDuplicateCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'duplicates'} onChange={() => { setLiveSaleViolationFilter('duplicates'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
@@ -6122,6 +6178,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                             return (
                               <div className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide truncate ${tradeOff.net > 0 ? 'bg-red-600' : 'bg-amber-600'}`}>
                                 ↔ {tradeOff.net > 0 ? `NET LOSS ${tradeOff.net}` : `NET GAIN ${Math.abs(tradeOff.net)}`}
+                              </div>
+                            )
+                          })()}
+                          {liveSaleViolationFilter !== 'noViolations' && liveSaleViolationFilter === 'lossOrGain' && liveLossOrGainByItemId.has(item.id) && (() => {
+                            const lg = liveLossOrGainByItemId.get(item.id)!
+                            return (
+                              <div className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide truncate ${lg.net > 0 ? 'bg-red-600' : 'bg-amber-600'}`}>
+                                {lg.lossQty > 0 && lg.gainQty > 0 ? (lg.net > 0 ? `NET LOSS ${lg.net}` : `NET GAIN ${Math.abs(lg.net)}`) : (lg.lossQty > 0 ? `LOSS ${lg.lossQty}` : `GAIN ${lg.gainQty}`)}
                               </div>
                             )
                           })()}
