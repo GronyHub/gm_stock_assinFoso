@@ -5338,7 +5338,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   </label>
                   <span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'counts'} onChange={() => { setLiveSaleViolationFilter('counts'); setLiveShowCountFullPage(true); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'counts'} onChange={() => { setLiveSaleViolationFilter('counts'); setLiveShowCountFullPage(true); setLiveSaleView(null); setLiveCountView(null) }} className="cursor-pointer w-3 h-3" />
                     <span>Counts{liveCountRecords.length > 0 && ` (${liveCountRecords.filter(r => r.kind !== 'loss' && r.kind !== 'gain').length})`}</span>
                   </label>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
