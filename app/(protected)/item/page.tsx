@@ -6282,11 +6282,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                           onClick={() => openEditGridItem(item.id)}
                           className={`relative flex flex-col border-r-2 border-b-2 group cursor-pointer ${cardBgCls} transition`}
                         >
-                          {liveSaleViolationFilter !== 'noViolations' && liveSaleViolationFilter === 'countDue' && due && (
-                            <div className={`px-2 py-1 text-[8px] font-extrabold text-white tracking-wide flex items-center justify-between gap-2 whitespace-nowrap ${overdue ? 'bg-red-600' : 'bg-amber-500'}`}>
-                              <span className="truncate">⚠ {due.label} {overdue ? 'OVERDUE' : ''}</span>
-                            </div>
-                          )}
                           {liveSaleViolationFilter !== 'noViolations' && liveSaleViolationFilter !== 'countDue' && liveSaleViolationFilter !== 'lossGain' && (() => {
                             let filteredFlags = flags
                             if (liveSaleViolationFilter === 'duplicates') filteredFlags = flags.filter(f => f.label.includes('DUPLICATE'))
