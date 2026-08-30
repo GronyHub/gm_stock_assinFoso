@@ -4849,13 +4849,13 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               Expenses, CAB, Opener, etc.) has nothing to do with this
               switcher, so it no longer shows there. */}
           {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales') && (
-            <div className="shrink-0 bg-green-800 border-b border-green-900">
+            <div className="shrink-0 bg-white border-b border-gray-200">
               {/* Tab switcher: Items vs Live Sale modes -- a 3-column grid
                   (rather than flex+justify-between) so the tabs stay
                   centered in the row even when the right-side controls
                   aren't there (most lossViews) or are (Items' columns
                   picker), instead of always hugging the left edge. */}
-              <div className="px-6 py-1.5 border-b border-green-700">
+              <div className="px-6 py-1.5 border-b border-gray-200">
                 {liveMode === 'sale' && renderModeProgressSummary(true, true)}
                 <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 min-w-0">
                   <div />
@@ -5620,7 +5620,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 once liveExpanded, so it needs its own copy here too rather
                 than losing the type/group filters entirely). */}
             {liveExpanded && (
-            <div className="bg-green-700 -mx-0 px-1.5 py-0.5 flex flex-col gap-0.5">
+            <div className="bg-white border-b border-gray-200 -mx-0 px-1.5 py-0.5 flex flex-col gap-0.5">
                 <div className="flex items-center justify-between gap-0.5 flex-wrap">
                   <div className="flex gap-0.5 items-center">
                     <select
