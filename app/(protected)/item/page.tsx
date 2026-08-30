@@ -6344,6 +6344,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                   <span className="font-semibold text-gray-900">
                                     {liveLastCountDateByItemId.get(item.id) ? fmtDate(liveLastCountDateByItemId.get(item.id)!) : 'Never'}
                                   </span>
+                                  {item.count_interval && (
+                                    <>
+                                      <span className="text-gray-400"> · </span>
+                                      <span className="text-gray-500">{shortCountInterval(item.count_interval)}</span>
+                                    </>
+                                  )}
                                 </p>
                               </>
                             ) : (
