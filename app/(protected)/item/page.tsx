@@ -860,6 +860,7 @@ function ItemHubPageInner() {
   const [liveEmbeddedSearch, setLiveEmbeddedSearch] = useState(rawLiveEmbeddedSearch ?? '')
   const [liveShowCountFullPage, setLiveShowCountFullPage] = useState(false)
   const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'all' | 'countDue' | 'counts' | 'lossGain' | 'duplicates' | 'unlinked' | 'service' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'withViolations' | 'noViolations'>('all')
+  const [liveCountsRecordStatusFilter, setLiveCountsRecordStatusFilter] = useState<Set<'loss' | 'gain' | 'ok'>>(new Set(['loss', 'gain', 'ok']))
   const [liveCountDeleteLoading, setLiveCountDeleteLoading] = useState<number | null>(null)
   const rawSidePaneHidden = searchParams.get('sidebarHidden')
   const initialSidePaneHidden = rawSidePaneHidden === '1'
@@ -5691,6 +5692,51 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     ✕
                   </button>
                 </div>
+                <div className="px-2 py-1.5 bg-gray-50 border-b border-gray-200 sticky top-7 z-9 flex gap-1 flex-wrap items-center">
+                  <span className="text-[9px] font-semibold text-gray-600">Filter:</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:bg-gray-200 px-1.5 py-0.5 rounded text-[9px]">
+                    <input
+                      type="checkbox"
+                      checked={liveCountsRecordStatusFilter.has('loss')}
+                      onChange={() => {
+                        const newFilter = new Set(liveCountsRecordStatusFilter)
+                        if (newFilter.has('loss')) newFilter.delete('loss')
+                        else newFilter.add('loss')
+                        setLiveCountsRecordStatusFilter(newFilter)
+                      }}
+                      className="cursor-pointer"
+                    />
+                    📉 Loss
+                  </label>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:bg-gray-200 px-1.5 py-0.5 rounded text-[9px]">
+                    <input
+                      type="checkbox"
+                      checked={liveCountsRecordStatusFilter.has('gain')}
+                      onChange={() => {
+                        const newFilter = new Set(liveCountsRecordStatusFilter)
+                        if (newFilter.has('gain')) newFilter.delete('gain')
+                        else newFilter.add('gain')
+                        setLiveCountsRecordStatusFilter(newFilter)
+                      }}
+                      className="cursor-pointer"
+                    />
+                    🚩 Gain
+                  </label>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:bg-gray-200 px-1.5 py-0.5 rounded text-[9px]">
+                    <input
+                      type="checkbox"
+                      checked={liveCountsRecordStatusFilter.has('ok')}
+                      onChange={() => {
+                        const newFilter = new Set(liveCountsRecordStatusFilter)
+                        if (newFilter.has('ok')) newFilter.delete('ok')
+                        else newFilter.add('ok')
+                        setLiveCountsRecordStatusFilter(newFilter)
+                      }}
+                      className="cursor-pointer"
+                    />
+                    ✓ OK
+                  </label>
+                </div>
                 <table className="w-full text-[10px] border-collapse flex-1">
                   <thead>
                     <tr className="bg-gray-100 sticky top-6 z-9 border-b border-gray-300">
@@ -5705,7 +5751,13 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     </tr>
                   </thead>
                   <tbody>
-                    {liveSaleCountRecords.map((rec) => {
+                    {liveSaleCountRecords.filter((rec) => {
+                      const recAny = rec as any
+                      const isLoss = (recAny.loss_qty ?? 0) > 0
+                      const isGain = (recAny.gain_qty ?? 0) > 0
+                      const status = isLoss ? 'loss' : isGain ? 'gain' : 'ok'
+                      return liveCountsRecordStatusFilter.has(status)
+                    }).map((rec) => {
                       const recAny = rec as any
                       const isLoss = (recAny.loss_qty ?? 0) > 0
                       const isGain = (recAny.gain_qty ?? 0) > 0
