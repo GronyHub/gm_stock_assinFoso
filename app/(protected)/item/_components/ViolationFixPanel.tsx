@@ -7,6 +7,7 @@ import LossFeedTab from './LossFeedTab'
 import CABTab from './CABTab'
 import { useColumnPrefs } from './columnPrefs'
 import { SALES_COLUMNS, type ColKey as SalesColKey } from './salesTabColumns'
+import { COLUMNS as BILLS_COLUMNS, type ColKey as BillsColKey } from './billsTabColumns'
 
 type Item = {
   id: number
@@ -39,12 +40,14 @@ type Props = {
 }
 
 export default function ViolationFixPanel({ type, items, onItemsChanged }: Props) {
-  // Called unconditionally (hooks can't be conditional) even though only
-  // the SALES_TYPES branch below actually uses it -- SalesTab's colPrefs
-  // prop is required now that item/page.tsx's own Sales tab also owns a
-  // useColumnPrefs() instance to render the Columns picker in its own
-  // header, so every caller has to bring its own.
+  // Called unconditionally (hooks can't be conditional) even though only one
+  // of the SALES_TYPES/BILLS_TYPES branches below actually uses either --
+  // SalesTab/BillsTab's colPrefs prop is required now that item/page.tsx's
+  // own Sales/Bills tabs also own their own useColumnPrefs() instance to
+  // render the Columns picker in their own header, so every caller has to
+  // bring its own.
   const salesColPrefs = useColumnPrefs<SalesColKey>('salesTable', SALES_COLUMNS)
+  const billsColPrefs = useColumnPrefs<BillsColKey>('billsTab', BILLS_COLUMNS)
 
   if (ITEMS_TYPES.has(type)) {
     return (
@@ -56,7 +59,7 @@ export default function ViolationFixPanel({ type, items, onItemsChanged }: Props
     return <SalesTab items={items} groupFilter={null} search="" violation={type} colPrefs={salesColPrefs} />
   }
   if (BILLS_TYPES.has(type)) {
-    return <BillsTab items={items} groupFilter={null} search="" violation={type} />
+    return <BillsTab items={items} groupFilter={null} search="" violation={type} colPrefs={billsColPrefs} />
   }
   if (COUNTS_TYPES.has(type)) {
     return <CountsTab items={items} groupFilter={null} search="" violation={type} />

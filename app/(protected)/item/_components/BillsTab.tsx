@@ -4,27 +4,13 @@ import { useSession } from 'next-auth/react'
 import { isOwnerLevel } from '@/lib/roles'
 import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
-import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from './columnPrefs'
+import { type ColumnPrefs, ResizableTh } from './columnPrefs'
+import { type ColKey, COLUMNS } from './billsTabColumns'
 import { useAttachments, AttachmentPicker, type Attachment } from './attachmentsShared'
 import ItemDetailModal from './ItemDetailModal'
 
 type Item = { id: number; item_name: string; cf_group: string | null; selling_price?: string | number | null }
 
-// Item stays sticky/always-visible (first column); these are the ones the
-// picker can hide/reorder/rename. unitPrice is VCP (Vendor Cost Price --
-// straight off this bill's own unit_price, the same value items.purchase_rate
-// now syncs from -- see lib/vcpSync.ts). sharedExpenses/adjustedCost are
-// computed, not stored (see groupedList below); newSp is the one editable
-// cell here, and writes straight to the item's live selling price.
-type ColKey = 'quantity' | 'unitPrice' | 'sharedExpenses' | 'adjustedCost' | 'itemTotal' | 'newSp'
-const COLUMNS: ColumnDef<ColKey>[] = [
-  { key: 'quantity',       label: 'QTY' },
-  { key: 'unitPrice',      label: 'VCP' },
-  { key: 'sharedExpenses', label: 'Shared Exp' },
-  { key: 'adjustedCost',   label: 'ACP' },
-  { key: 'itemTotal',      label: 'TOTAL' },
-  { key: 'newSp',          label: 'New SP' },
-]
 const BILLS_COL_DEFAULTS: Record<string, number> = {
   item: 200, quantity: 70, unitPrice: 90, sharedExpenses: 90, adjustedCost: 90, itemTotal: 100, newSp: 110,
 }
@@ -75,7 +61,6 @@ type FlatRow = {
 
 const MONTHS = ['Ja','Fe','Mr','Ap','My','Ju','Jl','Au','Se','Oc','No','De']
 const DAYS   = ['Su','Mo','Tu','We','Th','Fr','Sa']
-const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
 function fmtShort(dateStr: string) {
   const d = new Date(dateStr)
@@ -347,14 +332,38 @@ type Props = {
   violation?: string | null
   jumpToBillId?: number | null
   onJumpDone?: () => void
+  // History/Bars Only/Vendor/Month/Year/colPrefs moved up to the parent's
+  // own header row (so they render alongside the violation radios there,
+  // not a second row of their own) -- same treatment SalesTab already got.
+  // Optional (defaulting to no-ops below) for ViolationFixPanel's bare
+  // embed, which has no header row of its own to host these controls in.
+  // colPrefs is required though -- there's no harmless no-op default for a
+  // hook result, so every caller creates its own useColumnPrefs() now.
+  showHistory?: boolean
+  setShowHistory?: (v: boolean | ((prev: boolean) => boolean)) => void
+  barsOnly?: boolean
+  setBarsOnly?: (v: boolean | ((prev: boolean) => boolean)) => void
+  vendorFilter?: string | null
+  setVendorFilter?: (v: string | null) => void
+  monthFilter?: number | null
+  setMonthFilter?: (v: number | null) => void
+  yearFilter?: number | null
+  setYearFilter?: (v: number | null) => void
+  colPrefs: ColumnPrefs<ColKey>
+  onAvailableVendorsChange?: (vendors: string[]) => void
+  onAvailableYearsChange?: (years: number[]) => void
 }
 
-function BillsTab({ items, groupFilter, search, violation = null, jumpToBillId, onJumpDone }: Props) {
+function BillsTab({
+  items, groupFilter, search, violation = null, jumpToBillId, onJumpDone,
+  showHistory = false, setShowHistory = () => {}, barsOnly = false, setBarsOnly = () => {},
+  vendorFilter = null, setVendorFilter = () => {}, monthFilter = null, setMonthFilter = () => {},
+  yearFilter = null, setYearFilter = () => {}, colPrefs, onAvailableVendorsChange, onAvailableYearsChange,
+}: Props) {
   const { data: session } = useSession()
   const isOwnerLevelUser = isOwnerLevel(session?.user as any)
   const [bills, setBills] = useState<Bill[]>([])
   const [loading, setLoading] = useState(true)
-  const [showHistory, setShowHistory] = useState(false)
   const [viewingItemId, setViewingItemId] = useState<number | null>(null)
   const [linesMap, setLinesMap] = useState<Record<number, BillLine[]>>({})
   const [billExpenses, setBillExpenses] = useState<BillExpense[]>([])
@@ -369,24 +378,13 @@ function BillsTab({ items, groupFilter, search, violation = null, jumpToBillId, 
   const editAttachments = useAttachments([], '/api/bills/upload')
   const [saving, setSaving] = useState(false)
   const [editError, setEditError] = useState('')
-  // Collapses every group down to just its header bar (Date/Vendor/Total) --
-  // the item lines beneath stay hidden until toggled back on, same pattern
-  // as Sales' Bars Only.
-  const [barsOnly, setBarsOnly] = useState(false)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
-  // Narrows the list to one vendor and/or one month/year, independent of the
-  // text search box above (which still searches within whatever this
-  // narrows down to).
-  const [vendorFilter, setVendorFilter] = useState<string | null>(null)
-  const [monthFilter, setMonthFilter] = useState<number | null>(null)
-  const [yearFilter, setYearFilter] = useState<number | null>(null)
   // null doubles as "loading" -- no separate loading flag needed since
   // there's nothing to distinguish "not fetched yet" from "fetching".
   const [flags, setFlags] = useState<{
     noVendorBills: NoVendorRow[]; noItemsBills: NoItemsRow[]
     billTotalMismatch: MismatchRow[]; billNoAttachment: NoAttachmentRow[]
   } | null>(null)
-  const colPrefs = useColumnPrefs<ColKey>('billsTab', COLUMNS)
 
   useEffect(() => {
     if (violation && BILLS_FLAG_VIOLATIONS.has(violation) && !flags) {
@@ -520,6 +518,16 @@ function BillsTab({ items, groupFilter, search, violation = null, jumpToBillId, 
     }
     return Array.from(years).sort((a, b) => b - a)
   }, [bills])
+
+  useEffect(() => {
+    onAvailableVendorsChange?.(availableVendors)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableVendors])
+
+  useEffect(() => {
+    onAvailableYearsChange?.(availableYears)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableYears])
 
   const filtered = useMemo(() => {
     let list = flatRows
@@ -812,49 +820,6 @@ function BillsTab({ items, groupFilter, search, violation = null, jumpToBillId, 
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="flex items-center justify-between px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
-        <div className="flex items-center gap-1.5">
-          <button onClick={() => setShowHistory(true)}
-            className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700 transition">
-            History
-          </button>
-          <label title="Show only the date/vendor bars, hiding each bill's item lines"
-            className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
-            <input type="checkbox" checked={barsOnly} onChange={() => setBarsOnly(b => !b)}
-              className="w-3 h-3 accent-blue-600" />
-            Bars Only
-          </label>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <ColumnsPickerButton prefs={colPrefs} />
-        </div>
-      </div>
-      {/* Own row, separate from the toggle above -- narrows the list by
-          vendor and/or month/year independently of the search box, which
-          still applies within whatever this narrows down to. */}
-      <div className="flex items-center flex-wrap gap-1.5 px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
-        <select value={vendorFilter ?? ''} onChange={e => setVendorFilter(e.target.value || null)}
-          className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1.5 py-0.5 outline-none max-w-[120px]">
-          <option value="">All Vendors</option>
-          {availableVendors.map(v => <option key={v} value={v}>{v}</option>)}
-        </select>
-        <select value={monthFilter ?? ''} onChange={e => setMonthFilter(e.target.value ? Number(e.target.value) : null)}
-          className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1.5 py-0.5 outline-none">
-          <option value="">All Months</option>
-          {MONTH_NAMES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-        </select>
-        <select value={yearFilter ?? ''} onChange={e => setYearFilter(e.target.value ? Number(e.target.value) : null)}
-          className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1.5 py-0.5 outline-none">
-          <option value="">All Years</option>
-          {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
-        </select>
-        {(vendorFilter !== null || monthFilter !== null || yearFilter !== null) && (
-          <button onClick={() => { setVendorFilter(null); setMonthFilter(null); setYearFilter(null) }}
-            className="text-[9px] font-semibold text-blue-600 hover:text-blue-700">
-            Clear
-          </button>
-        )}
-      </div>
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="overflow-x-auto">
         <table className="border-collapse text-[10px]" style={{

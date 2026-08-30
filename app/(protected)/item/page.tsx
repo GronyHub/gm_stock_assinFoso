@@ -46,6 +46,7 @@ import LawsToggleBar from './_components/LawsToggleBar'
 import { useLawsPanel, useLawFilterState } from './_components/useLawsPanel'
 import { COLUMNS, type ColKey } from './_components/lossTabColumns'
 import { SALES_COLUMNS, type ColKey as SalesColKey } from './_components/salesTabColumns'
+import { COLUMNS as BILLS_COLUMNS, type ColKey as BillsColKey } from './_components/billsTabColumns'
 import { useColumnPrefs, ColumnsPickerButton } from './_components/columnPrefs'
 import { MANAGE_LIST_ITEMS, MANAGE_GROUP_LABELS, MANAGE_GROUP_ICONS, GRONY_CHECKS_ITEMS, GRONY_CHECKS_KEYS, ADVERT_ITEMS, ADVERT_KEYS, useFixedCategoryIds, type ManageView } from './_components/manageViewData'
 import { STAFF_PERSONAL_ITEMS, STAFF_TEAM_ITEMS, STAFF_ADMIN_TEAM_ITEMS, type StaffView } from './_components/staffViewData'
@@ -2150,6 +2151,13 @@ function ItemHubPageInner() {
       setLiveSalesShowG(true)
     }
     setLiveBillsViolationFilter(liveSaleJumpTab === 'bills' ? liveSaleJumpViolation : null)
+    if (liveSaleJumpTab === 'bills') {
+      // Keep the Bills radio row's mutual exclusivity intact -- same
+      // reasoning as the Sales block above.
+      setLiveBillsShowHistory(false)
+      setLiveBillsAddingNew(false)
+      setLiveBillsBarsOnly(false)
+    }
     setLiveEmbeddedSearch(liveSaleJumpSearch ?? '')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveSaleJumpSeq])
@@ -2210,6 +2218,17 @@ function ItemHubPageInner() {
   const [liveSalesShowBulkAttach, setLiveSalesShowBulkAttach] = useState(false)
   const [liveSalesAvailableYears, setLiveSalesAvailableYears] = useState<number[]>([])
   const liveSalesColPrefs = useColumnPrefs<SalesColKey>('salesTable', SALES_COLUMNS)
+  // Bills tab's own History/Bars Only/Vendor/Month/Year/colPrefs -- same
+  // lift-up treatment Sales already got, for the same reason (render
+  // alongside the violation radios in this component's own header row).
+  const [liveBillsShowHistory, setLiveBillsShowHistory] = useState(false)
+  const [liveBillsBarsOnly, setLiveBillsBarsOnly] = useState(false)
+  const [liveBillsVendorFilter, setLiveBillsVendorFilter] = useState<string | null>(null)
+  const [liveBillsMonthFilter, setLiveBillsMonthFilter] = useState<number | null>(null)
+  const [liveBillsYearFilter, setLiveBillsYearFilter] = useState<number | null>(null)
+  const [liveBillsAvailableVendors, setLiveBillsAvailableVendors] = useState<string[]>([])
+  const [liveBillsAvailableYears, setLiveBillsAvailableYears] = useState<number[]>([])
+  const liveBillsColPrefs = useColumnPrefs<BillsColKey>('billsTab', BILLS_COLUMNS)
   // Sale mode's own Analytics toggle -- named distinctly from the generic
   // "live" prefix (source collision: this file's live-prefix convention
   // would otherwise turn the original `liveShowAnalytics` into a name that
@@ -2287,6 +2306,24 @@ function ItemHubPageInner() {
     setLiveSalesViolationFilter(violationKeys.includes(value) ? value : null)
     setLiveSalesShowW(value !== 'gmc')
     setLiveSalesShowG(value !== 'wic')
+  }
+
+  // Same mutually-exclusive-radio-row treatment for Bills: All/violations/
+  // New Bill/Bars Only/History. New Bill fits the same "exclusive view
+  // selector" set as History -- both swap the whole content area out for
+  // something other than the plain bill list (a create form vs. an audit
+  // log), same as a violation filter swaps it for a filtered list.
+  const liveBillsRadioValue = liveBillsShowHistory ? 'history'
+    : liveBillsAddingNew ? 'new_bill'
+    : liveBillsBarsOnly ? 'bars_only'
+    : liveBillsViolationFilter ? liveBillsViolationFilter
+    : 'all'
+  function selectLiveBillsRadio(value: string) {
+    const violationKeys = ['no_vendor', 'no_items_bills', 'bill_total_mismatch', 'bill_no_attachment']
+    setLiveBillsShowHistory(value === 'history')
+    setLiveBillsAddingNew(value === 'new_bill')
+    setLiveBillsBarsOnly(value === 'bars_only')
+    setLiveBillsViolationFilter(violationKeys.includes(value) ? value : null)
   }
 
   // Merges the 3 due-count queues into one per-item lookup for Count
@@ -4178,30 +4215,23 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     )
   }
 
-  // Bills tab filter bar
+  // Bills tab filter bar (Laws & Tasks only -- violations moved to their own
+  // radio buttons in the header, same as Sales' filter bar)
   function renderBillsFiltersBar() {
     return (
-      <div className="w-full flex items-center gap-2 px-2 py-1 bg-gray-100 border-b border-gray-200 flex-wrap">
-        <select
-          value={liveBillsViolationFilter || ''}
-          onChange={e => {
-            const v = e.target.value
-            if (!v || v === 'all') {
-              setLiveBillsViolationFilter(null)
-            } else if (v === 'help:laws') {
-              setLiveBillsShowLawsTasksModal(true)
-            } else {
-              setLiveBillsViolationFilter(v as any)
-            }
-          }}
-          className="text-[10px] px-2 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white flex-1"
-        >
-          <option value="">Filter</option>
-          <optgroup label="Help">
-            <option value="help:laws">⚖️ Laws & Tasks</option>
-          </optgroup>
-        </select>
-      </div>
+      <select
+        value=""
+        onChange={e => {
+          const v = e.target.value
+          if (v === 'help:laws') {
+            setLiveBillsShowLawsTasksModal(true)
+          }
+        }}
+        className="text-xs px-1.5 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white w-16 shrink-0"
+      >
+        <option value="">Filter</option>
+        <option value="help:laws">⚖️ Laws & Tasks</option>
+      </select>
     )
   }
 
@@ -5963,7 +5993,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
 
           {/* Bills tab -- BillsTab itself has no "add new" flow of its own; it always
               relied on a sibling NewBillForm rendered externally, which now lives
-              inside this tab's own header instead. */}
+              inside this tab's own header instead. Same compact-header/radio-row
+              treatment as Sales. */}
           {liveMode === 'bills' && (
             <div className={liveRootClassName}>
               {liveExpanded && (
@@ -5977,44 +6008,97 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 </button>
               )}
               {renderModeToggleRow()}
-              <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
-                <h2 className="text-sm font-bold text-gray-900">Bills</h2>
-                <div className="flex items-center gap-2">
-                  {!liveBillsAddingNew && (
-                    <input
-                      type="text"
-                      value={liveEmbeddedSearch}
-                      onChange={e => setLiveEmbeddedSearch(e.target.value)}
-                      placeholder="Search…"
-                      className="text-xs px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 w-32"
-                    />
-                  )}
-                  <button type="button" onClick={() => setLiveBillsAddingNew(a => !a)}
-                    className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${liveBillsAddingNew ? 'bg-red-600 text-white' : 'bg-green-600 text-white hover:bg-green-500'}`}>
-                    {liveBillsAddingNew ? 'Cancel' : '+ New Bill'}
+              <div className="px-1.5 py-1 border-b border-gray-200 bg-gray-50 flex items-center justify-end gap-1 flex-wrap">
+                <select value={liveBillsVendorFilter ?? ''} onChange={e => setLiveBillsVendorFilter(e.target.value || null)}
+                  className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1 py-0.5 outline-none max-w-[100px]">
+                  <option value="">All Vendors</option>
+                  {liveBillsAvailableVendors.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+                <select value={liveBillsMonthFilter ?? ''} onChange={e => setLiveBillsMonthFilter(e.target.value ? Number(e.target.value) : null)}
+                  className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1 py-0.5 outline-none">
+                  <option value="">All Months</option>
+                  {['January','February','March','April','May','June','July','August','September','October','November','December'].map((m, i) => (
+                    <option key={m} value={i + 1}>{m}</option>
+                  ))}
+                </select>
+                <select value={liveBillsYearFilter ?? ''} onChange={e => setLiveBillsYearFilter(e.target.value ? Number(e.target.value) : null)}
+                  className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1 py-0.5 outline-none">
+                  <option value="">All Years</option>
+                  {liveBillsAvailableYears.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+                {(liveBillsVendorFilter !== null || liveBillsMonthFilter !== null || liveBillsYearFilter !== null) && (
+                  <button onClick={() => { setLiveBillsVendorFilter(null); setLiveBillsMonthFilter(null); setLiveBillsYearFilter(null) }}
+                    className="text-[9px] font-semibold text-blue-600 hover:text-blue-700">
+                    Clear
                   </button>
-                  {!liveBillsAddingNew && (
-                    <button type="button" onClick={() => setLiveBillsShowAnalytics(a => !a)}
-                      title="Analytics"
-                      className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${liveBillsShowAnalytics ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                      📊
-                    </button>
-                  )}
-                  <button type="button" onClick={() => setGlobalSearchOpen(true)} title="Global Search"
-                    className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center justify-center transition">
-                    🔍
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setLiveHelpModalOpen(true)}
-                    className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 font-semibold text-sm flex items-center justify-center transition"
-                    title="Help"
-                  >
-                    ?
-                  </button>
-                </div>
+                )}
+                <div className="border-l border-gray-300 h-4 mx-0.5" />
+                <input
+                  type="text"
+                  value={liveEmbeddedSearch}
+                  onChange={e => setLiveEmbeddedSearch(e.target.value)}
+                  placeholder="Search…"
+                  className="text-xs px-1.5 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 w-20"
+                />
+                {renderBillsFiltersBar()}
+                <button type="button" onClick={() => setGlobalSearchOpen(true)} title="Global Search"
+                  className="w-7 h-7 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center justify-center transition">
+                  🔍
+                </button>
+                <label className="flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
+                  <input type="radio" checked={liveBillsShowAnalytics} onClick={() => setLiveBillsShowAnalytics(a => !a)} onChange={() => {}}
+                    className="cursor-pointer w-2.5 h-2.5" />
+                  Analytics
+                </label>
+                <ColumnsPickerButton prefs={liveBillsColPrefs} radioStyle />
+                <label className="flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
+                  <input type="radio" checked={liveHelpModalOpen} onClick={() => setLiveHelpModalOpen(true)} onChange={() => {}}
+                    className="cursor-pointer w-2.5 h-2.5" />
+                  Help
+                </label>
               </div>
-              {!liveBillsAddingNew && renderBillsFiltersBar()}
+              {/* Rows 2-3: one mutually-exclusive radio group -- All/New Bill/Bars
+                  Only/History (black) first, then the violation filters (red, with
+                  live counts, sorted by count descending). Same treatment as
+                  Sales' row; see liveBillsRadioValue/selectLiveBillsRadio above. */}
+              <div className="px-1.5 py-0.5 bg-white border-b border-gray-100 flex items-center gap-1.5 flex-wrap">
+                <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-[10px] shrink-0">
+                  <input type="radio" name="liveBillsRadio" checked={liveBillsRadioValue === 'all'} onChange={() => selectLiveBillsRadio('all')} className="cursor-pointer w-2.5 h-2.5" />
+                  <span>All</span>
+                </label>
+                <label className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
+                  <input type="radio" name="liveBillsRadio" checked={liveBillsRadioValue === 'new_bill'} onChange={() => selectLiveBillsRadio('new_bill')}
+                    className="cursor-pointer w-2.5 h-2.5" />
+                  + New Bill
+                </label>
+                <label title="Show only the date/vendor bars, hiding each bill's item lines"
+                  className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
+                  <input type="radio" name="liveBillsRadio" checked={liveBillsRadioValue === 'bars_only'} onChange={() => selectLiveBillsRadio('bars_only')}
+                    className="cursor-pointer w-2.5 h-2.5" />
+                  Bars Only
+                </label>
+                <label className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
+                  <input type="radio" name="liveBillsRadio" checked={liveBillsRadioValue === 'history'} onChange={() => selectLiveBillsRadio('history')}
+                    className="cursor-pointer w-2.5 h-2.5" />
+                  History
+                </label>
+              </div>
+              <div className="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center gap-1 flex-wrap">
+                {[
+                  { key: 'no_vendor', label: 'No Vendor', count: globalFlags?.noVendorBills?.length ?? 0 },
+                  { key: 'no_items_bills', label: 'No Item List', count: globalFlags?.noItemsBills?.length ?? 0 },
+                  { key: 'bill_total_mismatch', label: 'Total Mismatch', count: globalFlags?.billTotalMismatch?.length ?? 0 },
+                  { key: 'bill_no_attachment', label: 'No Attachment', count: globalFlags?.billNoAttachment?.length ?? 0 },
+                ].sort((a, b) => b.count - a.count).map((v, i) => (
+                  <Fragment key={v.key}>
+                    {i > 0 && <span className="text-gray-300 text-[10px]">·</span>}
+                    <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600 text-[10px] shrink-0">
+                      <input type="radio" name="liveBillsRadio" checked={liveBillsRadioValue === v.key} onChange={() => selectLiveBillsRadio(v.key)} className="cursor-pointer w-2.5 h-2.5" />
+                      <span>{v.label} ({v.count})</span>
+                    </label>
+                  </Fragment>
+                ))}
+              </div>
               {liveBillsAddingNew ? (
                 <div className="px-4 flex-1 overflow-auto">
                   <NewBillForm onSuccess={() => setLiveBillsAddingNew(false)} />
@@ -6024,7 +6108,15 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               ) : (
                 <div className="flex-1 overflow-auto">
                   <BillsTab items={liveSalesBillsItems} groupFilter={liveGroupFilter} search={liveEmbeddedSearch} violation={liveBillsViolationFilter}
-                    jumpToBillId={jumpToBillId} onJumpDone={() => setJumpToBillId(null)} />
+                    jumpToBillId={jumpToBillId} onJumpDone={() => setJumpToBillId(null)}
+                    showHistory={liveBillsShowHistory} setShowHistory={setLiveBillsShowHistory}
+                    barsOnly={liveBillsBarsOnly} setBarsOnly={setLiveBillsBarsOnly}
+                    vendorFilter={liveBillsVendorFilter} setVendorFilter={setLiveBillsVendorFilter}
+                    monthFilter={liveBillsMonthFilter} setMonthFilter={setLiveBillsMonthFilter}
+                    yearFilter={liveBillsYearFilter} setYearFilter={setLiveBillsYearFilter}
+                    colPrefs={liveBillsColPrefs}
+                    onAvailableVendorsChange={setLiveBillsAvailableVendors}
+                    onAvailableYearsChange={setLiveBillsAvailableYears} />
                 </div>
               )}
             </div>
