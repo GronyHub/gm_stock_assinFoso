@@ -6244,14 +6244,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 <table className="w-full text-[10px] border-collapse flex-1">
                   <thead>
                     <tr className="bg-gray-100 sticky top-6 z-9 border-b border-gray-300">
-                      <th className="text-left px-2 py-1.5 font-bold text-gray-700">Item</th>
-                      <th className="text-center px-2 py-1.5 font-bold text-gray-700 whitespace-nowrap">Count Time</th>
-                      <th className="text-center px-2 py-1.5 font-bold text-gray-700 whitespace-nowrap">Count Date</th>
-                      <th className="text-center px-2 py-1.5 font-bold text-gray-700">Status</th>
-                      <th className="text-center px-2 py-1.5 font-bold text-gray-700">Qty</th>
-                      <th className="text-center px-2 py-1.5 font-bold text-gray-700">Trade Options</th>
-                      <th className="text-center px-2 py-1.5 font-bold text-gray-700">Net After Trade</th>
-                      <th className="text-center px-2 py-1.5 font-bold text-gray-700">Actions</th>
+                      <th className="text-left px-2 py-0.5 font-bold text-gray-700">Item</th>
+                      <th className="text-center px-2 py-0.5 font-bold text-gray-700 whitespace-nowrap">Count Time</th>
+                      <th className="text-center px-2 py-0.5 font-bold text-gray-700 whitespace-nowrap">Count Date</th>
+                      <th className="text-center px-2 py-0.5 font-bold text-gray-700">Status</th>
+                      <th className="text-center px-2 py-0.5 font-bold text-gray-700">Qty</th>
+                      <th className="text-center px-2 py-0.5 font-bold text-gray-700">Trade Options</th>
+                      <th className="text-center px-2 py-0.5 font-bold text-gray-700">Net After Trade</th>
+                      <th className="text-center px-2 py-0.5 font-bold text-gray-700">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -6275,16 +6275,16 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
 
                       return (
                         <tr key={rec.id} className="border-b border-gray-200 hover:bg-gray-50 transition">
-                          <td className="px-2 py-1.5 text-gray-800 font-semibold max-w-sm truncate">{rec.item_name}</td>
-                          <td className="px-2 py-1.5 text-center text-gray-600 whitespace-nowrap">{(rec as any).counted_at?.slice(11, 16) || '—'}</td>
-                          <td className="px-2 py-1.5 text-center text-gray-600 whitespace-nowrap">{rec.count_date.slice(0, 10)}</td>
-                          <td className="px-2 py-1.5 text-center">
+                          <td className="px-2 py-0 text-gray-800 font-semibold max-w-sm truncate">{rec.item_name}</td>
+                          <td className="px-2 py-0 text-center text-gray-600 whitespace-nowrap">{(rec as any).counted_at?.slice(11, 16) || '—'}</td>
+                          <td className="px-2 py-0 text-center text-gray-600 whitespace-nowrap">{rec.count_date.slice(0, 10)}</td>
+                          <td className="px-2 py-0 text-center">
                             <span className={`px-2 py-0.5 rounded text-[9px] font-bold whitespace-nowrap inline-block ${statusColor}`}>
                               {statusLabel}
                             </span>
                           </td>
-                          <td className="px-2 py-1.5 text-center font-semibold text-gray-800">{qty !== null ? Math.abs(qty).toFixed(2) : '—'}</td>
-                          <td className="px-2 py-1.5 text-center">
+                          <td className="px-2 py-0 text-center font-semibold text-gray-800">{qty !== null ? Math.abs(qty).toFixed(2) : '—'}</td>
+                          <td className="px-2 py-0 text-center">
                             {tradeOff ? (
                               <span className="text-blue-600 font-bold text-[9px]">
                                 ↔ {tradeOff.kind === 'gain' ? '🚩' : '📉'} {tradeOff.qty.toFixed(2)}
@@ -6293,10 +6293,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                               <span className="text-gray-400 text-[9px]">—</span>
                             )}
                           </td>
-                          <td className={`px-2 py-1.5 text-center font-bold text-[9px] ${netColor}`}>
+                          <td className={`px-2 py-0 text-center font-bold text-[9px] ${netColor}`}>
                             {netLabel}
                           </td>
-                          <td className="px-2 py-1.5 text-center flex gap-1 justify-center">
+                          <td className="px-2 py-0 text-center flex gap-1 justify-center">
                             <button
                               onClick={() => {
                                 setLiveEditingCountId(rec.id)
