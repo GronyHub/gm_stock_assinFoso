@@ -45,6 +45,7 @@ import AssignWidget from './_components/AssignWidget'
 import LawsToggleBar from './_components/LawsToggleBar'
 import { useLawsPanel, useLawFilterState } from './_components/useLawsPanel'
 import { COLUMNS, type ColKey } from './_components/lossTabColumns'
+import { SALES_COLUMNS, type ColKey as SalesColKey } from './_components/salesTabColumns'
 import { useColumnPrefs, ColumnsPickerButton } from './_components/columnPrefs'
 import { MANAGE_LIST_ITEMS, MANAGE_GROUP_LABELS, MANAGE_GROUP_ICONS, GRONY_CHECKS_ITEMS, GRONY_CHECKS_KEYS, ADVERT_ITEMS, ADVERT_KEYS, useFixedCategoryIds, type ManageView } from './_components/manageViewData'
 import { STAFF_PERSONAL_ITEMS, STAFF_TEAM_ITEMS, STAFF_ADMIN_TEAM_ITEMS, type StaffView } from './_components/staffViewData'
@@ -2189,6 +2190,16 @@ function ItemHubPageInner() {
   const [liveSalesBarsOnly, setLiveSalesBarsOnly] = useState(false)
   const [liveSalesShowW, setLiveSalesShowW] = useState(true)
   const [liveSalesShowG, setLiveSalesShowG] = useState(true)
+  // Period (month/year), the Columns picker, and the bulk-attach toggle,
+  // moved up the same way so they render on the same bar as Search/Filter
+  // instead of a second row inside SalesTab. colPrefs itself is owned here
+  // too (not just its button) -- useColumnPrefs is a hook, so the button
+  // and the table it controls have to share the exact same instance.
+  const [liveSalesMonthFilter, setLiveSalesMonthFilter] = useState<number | null>(null)
+  const [liveSalesYearFilter, setLiveSalesYearFilter] = useState<number | null>(null)
+  const [liveSalesShowBulkAttach, setLiveSalesShowBulkAttach] = useState(false)
+  const [liveSalesAvailableYears, setLiveSalesAvailableYears] = useState<number[]>([])
+  const liveSalesColPrefs = useColumnPrefs<SalesColKey>('salesTable', SALES_COLUMNS)
   // Sale mode's own Analytics toggle -- named distinctly from the generic
   // "live" prefix (source collision: this file's live-prefix convention
   // would otherwise turn the original `liveShowAnalytics` into a name that
@@ -5811,7 +5822,27 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               {renderModeToggleRow()}
               {/* Row 1: Search, Filter dropdown, Analytics, global search, Help -- no
                   title text, the tab switcher above already says "Sales". */}
-              <div className="px-2 py-1.5 border-b border-gray-200 bg-gray-50 flex items-center justify-end gap-1">
+              <div className="px-1.5 py-1 border-b border-gray-200 bg-gray-50 flex items-center justify-end gap-1 flex-wrap">
+                <span className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide">Period</span>
+                <select value={liveSalesMonthFilter ?? ''} onChange={e => setLiveSalesMonthFilter(e.target.value ? Number(e.target.value) : null)}
+                  className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1 py-0.5 outline-none">
+                  <option value="">All Months</option>
+                  {['January','February','March','April','May','June','July','August','September','October','November','December'].map((m, i) => (
+                    <option key={m} value={i + 1}>{m}</option>
+                  ))}
+                </select>
+                <select value={liveSalesYearFilter ?? ''} onChange={e => setLiveSalesYearFilter(e.target.value ? Number(e.target.value) : null)}
+                  className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1 py-0.5 outline-none">
+                  <option value="">All Years</option>
+                  {liveSalesAvailableYears.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+                {(liveSalesMonthFilter !== null || liveSalesYearFilter !== null) && (
+                  <button onClick={() => { setLiveSalesMonthFilter(null); setLiveSalesYearFilter(null) }}
+                    className="text-[9px] font-semibold text-blue-600 hover:text-blue-700">
+                    Clear
+                  </button>
+                )}
+                <div className="border-l border-gray-300 h-4 mx-0.5" />
                 <input
                   type="text"
                   value={liveEmbeddedSearch}
@@ -5829,6 +5860,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   className="w-7 h-7 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center justify-center transition">
                   🔍
                 </button>
+                <button onClick={() => setLiveSalesShowBulkAttach(true)} title="Bulk-attach a folder of form photos/scans, matched by date"
+                  className="w-7 h-7 rounded-md bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-700 flex items-center justify-center transition">
+                  📎+
+                </button>
+                <ColumnsPickerButton prefs={liveSalesColPrefs} />
                 <button
                   type="button"
                   onClick={() => setLiveHelpModalOpen(true)}
@@ -5839,32 +5875,17 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 </button>
               </div>
               {/* Rows 2-3: one mutually-exclusive radio group, split across two fixed
-                  rows (violation filters, then History/Bars Only/WIC/GMC) instead of
-                  one scrolling row, so every option stays visible with no
-                  horizontal scroll. Only one of the whole group can be selected at
-                  a time; see liveSalesRadioValue / selectLiveSalesRadio above. */}
-              <div className="px-2 py-1 bg-white border-b border-gray-100 flex items-center gap-1 flex-wrap">
+                  rows -- "All" plus the non-violation toggles (History/Bars Only/
+                  WIC/GMC) first, then the violation filters (red, with live counts,
+                  sorted by count descending) -- instead of one scrolling row, so
+                  every option stays visible with no horizontal scroll. Only one of
+                  the whole group can be selected at a time; see liveSalesRadioValue
+                  / selectLiveSalesRadio above. */}
+              <div className="px-1.5 py-0.5 bg-white border-b border-gray-100 flex items-center gap-1.5 flex-wrap">
                 <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-[10px] shrink-0">
                   <input type="radio" name="liveSalesRadio" checked={liveSalesRadioValue === 'all'} onChange={() => selectLiveSalesRadio('all')} className="cursor-pointer w-2.5 h-2.5" />
                   <span>All</span>
                 </label>
-                {[
-                  { key: 'no_cash', label: 'No Cash', count: globalFlags?.noCash?.length ?? 0 },
-                  { key: 'missing_days', label: 'Missing Days', count: globalFlags?.missingDays?.length ?? 0 },
-                  { key: 'dup_receipt', label: 'Dup Receipt', count: globalFlags?.dupReceipts?.length ?? 0 },
-                  { key: 'high_wnw', label: 'High WNW', count: globalFlags?.highWnw?.length ?? 0 },
-                  { key: 'no_attachment', label: 'No Attachment', count: globalFlags?.noAttachment?.length ?? 0 },
-                ].sort((a, b) => b.count - a.count).map(v => (
-                  <Fragment key={v.key}>
-                    <span className="text-gray-300 text-[10px]">·</span>
-                    <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600 text-[10px] shrink-0">
-                      <input type="radio" name="liveSalesRadio" checked={liveSalesRadioValue === v.key} onChange={() => selectLiveSalesRadio(v.key)} className="cursor-pointer w-2.5 h-2.5" />
-                      <span>{v.label} ({v.count})</span>
-                    </label>
-                  </Fragment>
-                ))}
-              </div>
-              <div className="px-2 py-1 bg-white border-b border-gray-200 flex items-center gap-2.5 flex-wrap">
                 <label className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
                   <input type="radio" name="liveSalesRadio" checked={liveSalesRadioValue === 'history'} onChange={() => selectLiveSalesRadio('history')}
                     className="cursor-pointer w-2.5 h-2.5" />
@@ -5887,6 +5908,23 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   GMC
                 </label>
               </div>
+              <div className="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center gap-1 flex-wrap">
+                {[
+                  { key: 'no_cash', label: 'No Cash', count: globalFlags?.noCash?.length ?? 0 },
+                  { key: 'missing_days', label: 'Missing Days', count: globalFlags?.missingDays?.length ?? 0 },
+                  { key: 'dup_receipt', label: 'Dup Receipt', count: globalFlags?.dupReceipts?.length ?? 0 },
+                  { key: 'high_wnw', label: 'High WNW', count: globalFlags?.highWnw?.length ?? 0 },
+                  { key: 'no_attachment', label: 'No Attachment', count: globalFlags?.noAttachment?.length ?? 0 },
+                ].sort((a, b) => b.count - a.count).map((v, i) => (
+                  <Fragment key={v.key}>
+                    {i > 0 && <span className="text-gray-300 text-[10px]">·</span>}
+                    <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600 text-[10px] shrink-0">
+                      <input type="radio" name="liveSalesRadio" checked={liveSalesRadioValue === v.key} onChange={() => selectLiveSalesRadio(v.key)} className="cursor-pointer w-2.5 h-2.5" />
+                      <span>{v.label} ({v.count})</span>
+                    </label>
+                  </Fragment>
+                ))}
+              </div>
               {liveSalesShowAnalytics ? (
                 <div className="px-3 pt-3 flex-1 overflow-auto"><SalesAnalyticsSection /></div>
               ) : (
@@ -5898,7 +5936,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     showHistory={liveSalesShowHistory} setShowHistory={setLiveSalesShowHistory}
                     barsOnly={liveSalesBarsOnly} setBarsOnly={setLiveSalesBarsOnly}
                     showW={liveSalesShowW} setShowW={setLiveSalesShowW}
-                    showG={liveSalesShowG} setShowG={setLiveSalesShowG} />
+                    showG={liveSalesShowG} setShowG={setLiveSalesShowG}
+                    colPrefs={liveSalesColPrefs}
+                    monthFilter={liveSalesMonthFilter} setMonthFilter={setLiveSalesMonthFilter}
+                    yearFilter={liveSalesYearFilter} setYearFilter={setLiveSalesYearFilter}
+                    showBulkAttach={liveSalesShowBulkAttach} setShowBulkAttach={setLiveSalesShowBulkAttach}
+                    onAvailableYearsChange={setLiveSalesAvailableYears} />
                 </div>
               )}
             </div>

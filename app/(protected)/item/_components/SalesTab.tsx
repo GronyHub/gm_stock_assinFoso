@@ -3,10 +3,11 @@ import { Fragment, useState, useEffect, useMemo, memo } from 'react'
 import { fmtDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
-import { useColumnPrefs, ColumnsPickerButton, type ColumnDef } from './columnPrefs'
+import type { ColumnPrefs } from './columnPrefs'
 import { useAttachments, AttachmentPicker, type Attachment } from './attachmentsShared'
 import BulkAttachForms from './BulkAttachForms'
 import ItemDetailModal from './ItemDetailModal'
+import { type ColKey } from './salesTabColumns'
 
 type Item = { id: number; item_name: string; cf_group: string | null }
 
@@ -37,7 +38,6 @@ type EditLine = { id: number | null; itemId: number | null; item_name: string; q
 
 const MONTHS = ['Ja','Fe','Mr','Ap','My','Ju','Jl','Au','Se','Oc','No','De']
 const DAYS   = ['Su','Mo','Tu','We','Th','Fr','Sa']
-const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
 function fmtShort(dateStr: string) {
   const d = new Date(dateStr)
@@ -74,23 +74,6 @@ function wnwColor(wnw: string | null, light = false) {
 }
 
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 placeholder-gray-400 outline-none focus:ring-1 focus:ring-blue-400'
-
-// Item stays sticky/always-visible (first column); these five are the only
-// ones the picker can hide/reorder/rename. CC/WNW only ever get filled in
-// on a receipt's own bar row (blank on its item lines); QTY/SP/TOTAL are
-// the reverse -- blank on the bar, filled on each line. Widths are
-// percentages of the table -- table-layout:fixed scales them proportionally
-// when fewer columns are shown, so every column stays visible at once with
-// no horizontal scrolling, instead of drag-resizable pixel widths like
-// every other table in the app.
-type ColKey = 'cc' | 'wnw' | 'qty' | 'sp' | 'total'
-const SALES_COLUMNS: ColumnDef<ColKey>[] = [
-  { key: 'cc',    label: 'CC',    width: 13 },
-  { key: 'wnw',   label: 'WNW',   width: 13 },
-  { key: 'qty',   label: 'QTY',   width: 10 },
-  { key: 'sp',    label: 'SP',    width: 10 },
-  { key: 'total', label: 'TOTAL', width: 14 },
-]
 
 const NO_WORK_REASONS = [
   'No work — Public Holiday','No work — Christmas Day','No work — Good Friday',
@@ -215,12 +198,34 @@ type Props = {
   setShowW?: BoolSetter
   showG?: boolean
   setShowG?: BoolSetter
+  // Period (month/year), the Columns picker, and the bulk-attach toggle
+  // moved up the same way -- colPrefs is required (not optional) since,
+  // unlike the booleans above, there's no harmless no-op default for it;
+  // every call site (including TaskViewPanel's bare embed) now creates its
+  // own useColumnPrefs() and passes it down, since this component can't
+  // call the hook itself only when a prop is missing (hooks can't be
+  // conditional).
+  colPrefs: ColumnPrefs<ColKey>
+  monthFilter?: number | null
+  setMonthFilter?: (v: number | null) => void
+  yearFilter?: number | null
+  setYearFilter?: (v: number | null) => void
+  showBulkAttach?: boolean
+  setShowBulkAttach?: BoolSetter
+  // Reports the receipt-derived list of years back up to the parent, which
+  // renders the Year <select> itself now -- receipts (and thus this list)
+  // stay owned here, not lifted, since the whole rest of the table's data
+  // fetching depends on it.
+  onAvailableYearsChange?: (years: number[]) => void
 }
 
 function SalesTab({
   items, groupFilter, search, violation, jumpToDate, jumpToItemName, onJumpDone,
   showHistory = false, setShowHistory = () => {}, barsOnly = false, setBarsOnly = () => {},
   showW = true, setShowW = () => {}, showG = true, setShowG = () => {},
+  colPrefs,
+  monthFilter = null, setMonthFilter = () => {}, yearFilter = null, setYearFilter = () => {},
+  showBulkAttach = false, setShowBulkAttach = () => {}, onAvailableYearsChange,
 }: Props) {
   const [receipts, setReceipts] = useState<Receipt[]>([])
   const [loading, setLoading] = useState(true)
@@ -230,11 +235,6 @@ function SalesTab({
   // (a second click hides them again) without leaving the collapsed view --
   // the pencil icon still opens the full edit form.
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
-  // Narrows the list to one month/year (either alone, or combined) --
-  // independent of the text search box above, which still searches within
-  // whatever this narrows down to.
-  const [monthFilter, setMonthFilter] = useState<number | null>(null)
-  const [yearFilter, setYearFilter] = useState<number | null>(null)
   const [linesMap, setLinesMap] = useState<Record<number, Line[]>>({})
   // 'new-gmc' is a not-yet-created receipt -- the same edit panel below
   // (date/customer/cash fields + line items) doubles as its create form,
@@ -254,13 +254,7 @@ function SalesTab({
   const [newItemQuery, setNewItemQuery] = useState('')
   const [flags, setFlags] = useState<any | null>(null)
   const [flagsLoading, setFlagsLoading] = useState(false)
-  // Catches up a whole folder of form photos/scans at once (e.g. after the
-  // fact for a month entered before attachments existed) instead of
-  // opening Edit Receipt per day -- see BulkAttachForms.
-  const [showBulkAttach, setShowBulkAttach] = useState(false)
 
-
-  const colPrefs = useColumnPrefs<ColKey>('salesTable', SALES_COLUMNS)
   const attachments = useAttachments()
 
   // Loaded unconditionally now (not just while a violation view is open) --
@@ -312,6 +306,11 @@ function SalesTab({
     }
     return Array.from(years).sort((a, b) => b - a)
   }, [receipts])
+
+  useEffect(() => {
+    onAvailableYearsChange?.(availableYears)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableYears])
 
   // no_cash/high_wnw/no_attachment narrow the normal bars down to just the
   // affected receipts (rather than a separate fix-list view) -- the bar's
@@ -664,32 +663,6 @@ function SalesTab({
 
   return (
     <div className="flex flex-col h-full min-h-0">
-    <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0 flex-nowrap overflow-x-auto">
-      <span className="shrink-0 text-[9px] font-semibold text-gray-400 uppercase tracking-wide">Period</span>
-      <select value={monthFilter ?? ''} onChange={e => setMonthFilter(e.target.value ? Number(e.target.value) : null)}
-        className="shrink-0 text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1.5 py-0.5 outline-none">
-        <option value="">All Months</option>
-        {MONTH_NAMES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-      </select>
-      <select value={yearFilter ?? ''} onChange={e => setYearFilter(e.target.value ? Number(e.target.value) : null)}
-        className="shrink-0 text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1.5 py-0.5 outline-none">
-        <option value="">All Years</option>
-        {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
-      </select>
-      {(monthFilter !== null || yearFilter !== null) && (
-        <button onClick={() => { setMonthFilter(null); setYearFilter(null) }}
-          className="shrink-0 text-[9px] font-semibold text-blue-600 hover:text-blue-700">
-          Clear
-        </button>
-      )}
-      <div className="flex-1" />
-      <button onClick={() => setShowBulkAttach(true)} title="Bulk-attach a folder of form photos/scans, matched by date"
-        className="shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-700 transition">
-        📎+
-      </button>
-      <ColumnsPickerButton prefs={colPrefs} />
-    </div>
-
     {/* overflow-auto (not just -y) so this single element handles both
         scroll directions -- nesting a separate overflow-x-auto div inside
         breaks position:sticky (thead/ITEM column stop sticking once the

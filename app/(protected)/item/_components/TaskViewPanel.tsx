@@ -4,6 +4,8 @@ import SalesTab from './SalesTab'
 import CountsTab from './CountsTab'
 import LossFeedTab from './LossFeedTab'
 import CABTab from './CABTab'
+import { useColumnPrefs } from './columnPrefs'
+import { SALES_COLUMNS, type ColKey as SalesColKey } from './salesTabColumns'
 
 type Item = {
   id: number
@@ -37,6 +39,13 @@ type Props = {
 }
 
 export default function TaskViewPanel({ view, items, onItemsChanged }: Props) {
+  // Called unconditionally (hooks can't be conditional) even though only
+  // the 'sales' branch below actually uses it -- SalesTab's colPrefs prop
+  // is required now that item/page.tsx's own Sales tab also owns a
+  // useColumnPrefs() instance to render the Columns picker in its own
+  // header, so every caller has to bring its own.
+  const salesColPrefs = useColumnPrefs<SalesColKey>('salesTable', SALES_COLUMNS)
+
   if (view === 'items') {
     return (
       <ItemsTab items={items} group={null} productType="all" search="" violation={null}
@@ -44,7 +53,7 @@ export default function TaskViewPanel({ view, items, onItemsChanged }: Props) {
     )
   }
   if (view === 'sales') {
-    return <SalesTab items={items} groupFilter={null} search="" violation={null} />
+    return <SalesTab items={items} groupFilter={null} search="" violation={null} colPrefs={salesColPrefs} />
   }
   if (view === 'counts') {
     return <CountsTab items={items} groupFilter={null} search="" violation={null} />
