@@ -84,7 +84,7 @@ export async function GET() {
       AND COALESCE(i.count_excluded, false) = false
       AND NOT (COALESCE(r.n2, 0) >= 2 AND COALESCE(r.zeros2, false) AND (lb.d IS NULL OR lb.d <= r.since2))
       AND (c.last_count_date IS NULL
-       OR c.last_count_date::date < CURRENT_DATE - cad.days)
+       OR c.last_count_date::date <= CURRENT_DATE - cad.days)
     ORDER BY
       CASE WHEN c.last_count_date IS NULL THEN 999999
            ELSE (CURRENT_DATE - c.last_count_date::date)
