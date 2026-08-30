@@ -1776,46 +1776,46 @@ function renderCell(key: ColKey, row: SummaryRow) {
     case 'lgAmt': {
       const lossAmt = row.lgAmt > 0, gainAmt = row.lgAmt < 0
       return (
-        <td key={key} className={`text-center py-1.5 font-semibold tabular-nums ${lossAmt ? 'text-red-500' : gainAmt ? 'text-green-600' : 'text-gray-300'}`}>
+        <td key={key} className={`text-center py-0 font-semibold tabular-nums ${lossAmt ? 'text-red-500' : gainAmt ? 'text-green-600' : 'text-gray-300'}`}>
           {fmtAmt(row.lgAmt)}
         </td>
       )
     }
     case 'lossCount':
       return (
-        <td key={key} className={`text-center py-1.5 font-semibold tabular-nums ${row.lossCount > 0 ? 'text-red-500' : 'text-gray-300'}`}>
+        <td key={key} className={`text-center py-0 font-semibold tabular-nums ${row.lossCount > 0 ? 'text-red-500' : 'text-gray-300'}`}>
           {row.lossCount}
         </td>
       )
     case 'gainAmt':
       return (
-        <td key={key} className={`text-center py-1.5 font-semibold tabular-nums ${row.gainAmt > 0.001 ? 'text-green-600' : 'text-gray-300'}`}>
+        <td key={key} className={`text-center py-0 font-semibold tabular-nums ${row.gainAmt > 0.001 ? 'text-green-600' : 'text-gray-300'}`}>
           {row.gainAmt > 0.001 ? `+${fmtN(row.gainAmt)}` : '—'}
         </td>
       )
     case 'wic':
-      return <td key={key} className="text-center py-1.5 text-gray-600 tabular-nums">{fmtQ(row.wic)}</td>
+      return <td key={key} className="text-center py-0 text-gray-600 tabular-nums">{fmtQ(row.wic)}</td>
     case 'gmc':
-      return <td key={key} className="text-center py-1.5 text-gray-600 tabular-nums">{fmtQ(row.gmc)}</td>
+      return <td key={key} className="text-center py-0 text-gray-600 tabular-nums">{fmtQ(row.gmc)}</td>
     case 'bl':
-      return <td key={key} className="text-center py-1.5 text-blue-600 tabular-nums">{fmtQ(row.bl)}</td>
+      return <td key={key} className="text-center py-0 text-blue-600 tabular-nums">{fmtQ(row.bl)}</td>
     case 'soh': {
       const soh = parseFloat(row.soh ?? '0') || 0
       return (
-        <td key={key} className={`text-center py-1.5 font-semibold tabular-nums ${soh <= 0 ? 'text-red-500' : 'text-gray-700'}`}>
+        <td key={key} className={`text-center py-0 font-semibold tabular-nums ${soh <= 0 ? 'text-red-500' : 'text-gray-700'}`}>
           {soh % 1 === 0 ? soh : soh.toFixed(1)}
         </td>
       )
     }
     case 'sp':
-      return <td key={key} className="text-center py-1.5 text-blue-600 tabular-nums">{fmtCcy(row.sp)}</td>
+      return <td key={key} className="text-center py-0 text-blue-600 tabular-nums">{fmtCcy(row.sp)}</td>
     case 'cp':
-      return <td key={key} className="text-center py-1.5 text-green-600 tabular-nums">{fmtCcy(row.cp)}</td>
+      return <td key={key} className="text-center py-0 text-green-600 tabular-nums">{fmtCcy(row.cp)}</td>
     case 'cf_group':
-      return <td key={key} className="text-center py-1.5 text-gray-500 truncate" title={row.cf_group ?? undefined}>{row.cf_group ?? '—'}</td>
+      return <td key={key} className="text-center py-0 text-gray-500 truncate" title={row.cf_group ?? undefined}>{row.cf_group ?? '—'}</td>
     case 'product_type':
       return (
-        <td key={key} className="text-center py-1.5">
+        <td key={key} className="text-center py-0">
           <span className={`inline-block px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${
             row.product_type === 'service' ? 'bg-purple-50 text-purple-600' : 'bg-teal-50 text-teal-600'}`}>
             {row.product_type === 'service' ? 'Service' : 'Good'}
@@ -1824,7 +1824,7 @@ function renderCell(key: ColKey, row: SummaryRow) {
       )
     case 'count_interval':
       return (
-        <td key={key} className="text-center py-1.5 text-gray-500 truncate" title={row.count_interval ?? undefined}>
+        <td key={key} className="text-center py-0 text-gray-500 truncate" title={row.count_interval ?? undefined}>
           {row.count_interval ?? '—'}
         </td>
       )
@@ -1936,7 +1936,7 @@ function LossTab({ onOpenItem: _onOpenItem, search = '', group = 'All', productT
     return (
       <tr key={row.item_id} onClick={() => setViewingItemId(row.item_id)}
         className={`cursor-pointer hover:bg-blue-50/60 transition ${stripe}`}>
-        <td className={`pl-2 pr-2 py-1.5 font-bold truncate sticky left-0 z-10 ${stripe}`}
+        <td className={`pl-2 pr-2 py-0 font-bold truncate sticky left-0 z-10 ${stripe}`}
           style={{ width: itemColWidth, maxWidth: itemColWidth }} title={row.item_name}>
           <span className="text-blue-600">{row.item_name}</span>
         </td>
@@ -1983,7 +1983,7 @@ function LossTab({ onOpenItem: _onOpenItem, search = '', group = 'All', productT
                       and the heading visibly drifts while scrolling instead
                       of staying put like the Item column does. */}
                   <td colSpan={1 + shownColumns.length} className="p-0">
-                    <div className="sticky left-0 z-10 w-fit bg-gray-100 px-1 py-1 font-bold text-gray-700 text-[10px] uppercase tracking-wide">
+                    <div className="sticky left-0 z-10 w-fit bg-gray-100 px-1 py-0.5 font-bold text-gray-700 text-[10px] uppercase tracking-wide">
                       {groupName} <span className="text-gray-400 font-normal normal-case">({items.length})</span>
                     </div>
                   </td>

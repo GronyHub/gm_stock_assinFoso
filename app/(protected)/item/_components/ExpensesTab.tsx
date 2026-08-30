@@ -89,8 +89,8 @@ function looksBundled(description: string | null): boolean {
   return /[,&]|\band\b|\betc\b/i.test(description)
 }
 
-const TH = 'text-left px-3 py-2 font-bold text-gray-400 text-[10px] uppercase tracking-wide border-b border-gray-200'
-const TD = 'px-3 py-2'
+const TH = 'text-left px-3 py-0.5 font-bold text-gray-400 text-[10px] uppercase tracking-wide border-b border-gray-200'
+const TD = 'px-3 py-0'
 
 // Account (frozen, first, folds in the description as "Account —
 // Description" -- see bodyCellFor -- so it no longer needs its own
@@ -376,7 +376,7 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-    <table className="border-collapse text-xs" style={{ tableLayout: 'fixed', width: tableWidth }}>
+    <table className="border-collapse text-[11px]" style={{ tableLayout: 'fixed', width: tableWidth }}>
       <colgroup>
         <col style={{ width: accountWidth }} />
         <col style={{ width: groupWidth }} />
@@ -406,7 +406,7 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
           <Fragment key={e.id}>
             <tr id={`expense-${e.id}`}
               onClick={() => { if (e.amount_hidden) return; if (editId === e.id) onCloseEdit(); else onEdit(e) }}
-              className={`transition-colors ${e.amount_hidden ? '' : 'cursor-pointer'} ${highlightId === e.id ? 'bg-yellow-100' : i % 2 === 1 ? 'bg-gray-50' : 'bg-white'} hover:bg-blue-50/60`}>
+              className={`transition-colors text-[11px] font-bold leading-tight ${e.amount_hidden ? '' : 'cursor-pointer'} ${highlightId === e.id ? 'bg-yellow-100' : i % 2 === 1 ? 'bg-gray-50' : 'bg-white'} hover:bg-blue-50/60`}>
               {/* Display only -- expense_account/description stay separate
                   columns in the database and in the edit form below; this
                   just folds the description into what the frozen Account
@@ -1342,7 +1342,7 @@ export default function ExpensesTab({ search, onFlagCountChange }: Props) {
             : <div className="space-y-3">
               {grouped.map(([label, rows]) => (
                 <div key={label}>
-                  <div className="flex items-center justify-between px-3 py-2 bg-blue-600 rounded-t-xl sticky top-0 z-20">
+                  <div className="flex items-center justify-between px-3 py-0.5 bg-blue-600 rounded-t-xl sticky top-0 z-20">
                     <p className="text-xs font-bold text-white">{label}</p>
                     <p className="text-[10px] text-blue-100">
                       {rows.length} record{rows.length !== 1 ? 's' : ''} · {rows.some(r => r.amount_hidden) ? '🔒 Hidden' : `₵${fmtTotal(rows)}`}

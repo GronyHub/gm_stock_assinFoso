@@ -672,13 +672,13 @@ function ItemsTab({ items, group, productType, search, violation, violationLabel
             </colgroup>
             <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200">
               <tr className="text-[8px] font-bold text-gray-500">
-                <th className="text-left pl-2 py-1">Item</th>
-                <th className="text-left py-1">Group</th>
-                <th className="text-center py-1">SOH</th>
-                <th className="text-center py-1">SP</th>
-                <th className="text-center py-1">VCP</th>
-                <th className="text-center py-1">Units/pack</th>
-                <th className="text-center py-1">Edit</th>
+                <th className="text-left pl-2 py-0.5">Item</th>
+                <th className="text-left py-0.5">Group</th>
+                <th className="text-center py-0.5">SOH</th>
+                <th className="text-center py-0.5">SP</th>
+                <th className="text-center py-0.5">VCP</th>
+                <th className="text-center py-0.5">Units/pack</th>
+                <th className="text-center py-0.5">Edit</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
@@ -691,19 +691,19 @@ function ItemsTab({ items, group, productType, search, violation, violationLabel
                 return (
                   <>
                     <tr key={item.id} className={isEditing ? 'bg-blue-50' : 'hover:bg-gray-50'}>
-                      <td className="pl-2 py-1 font-semibold text-gray-900 truncate overflow-hidden">{item.item_name}</td>
-                      <td className="py-1 text-gray-500 truncate overflow-hidden">{item.cf_group ?? <span className="text-red-400">—</span>}</td>
-                      <td className={`text-center py-1 font-bold tabular-nums ${soh <= 0 ? 'text-red-600' : 'text-gray-700'}`}>{soh % 1 === 0 ? soh : soh.toFixed(2)}</td>
-                      <td className={`text-center py-1 tabular-nums ${!item.selling_rate || parseFloat(item.selling_rate) === 0 ? 'text-red-500 font-bold' : 'text-blue-600'}`}>
+                      <td className="pl-2 py-0 font-semibold text-gray-900 truncate overflow-hidden">{item.item_name}</td>
+                      <td className="py-0 text-gray-500 truncate overflow-hidden">{item.cf_group ?? <span className="text-red-400">—</span>}</td>
+                      <td className={`text-center py-0 font-bold tabular-nums ${soh <= 0 ? 'text-red-600' : 'text-gray-700'}`}>{soh % 1 === 0 ? soh : soh.toFixed(2)}</td>
+                      <td className={`text-center py-0 tabular-nums ${!item.selling_rate || parseFloat(item.selling_rate) === 0 ? 'text-red-500 font-bold' : 'text-blue-600'}`}>
                         {item.selling_rate && parseFloat(item.selling_rate) !== 0 ? trimZeros(item.selling_rate) : '—'}
                       </td>
-                      <td className={`text-center py-1 tabular-nums ${!item.purchase_rate || parseFloat(item.purchase_rate) === 0 ? 'text-red-500 font-bold' : 'text-green-600'}`}>
+                      <td className={`text-center py-0 tabular-nums ${!item.purchase_rate || parseFloat(item.purchase_rate) === 0 ? 'text-red-500 font-bold' : 'text-green-600'}`}>
                         {item.purchase_rate && parseFloat(item.purchase_rate) !== 0 ? trimZeros(item.purchase_rate) : '—'}
                       </td>
-                      <td className="text-center py-1 text-gray-500">
+                      <td className="text-center py-0 text-gray-500">
                         {item.units_per_pack ? `${trimZeros(item.units_per_pack)}${item.unit_name ? ' ' + item.unit_name : ''}` : '—'}
                       </td>
-                      <td className="text-center py-1">
+                      <td className="text-center py-0">
                         {isEditing ? (
                           <div className="flex gap-0.5 justify-center">
                             <button onClick={saveEdit} disabled={saving} className="text-[8px] font-bold text-white bg-green-600 px-1.5 py-0.5 rounded disabled:opacity-50">{saving ? '…' : 'Save'}</button>
@@ -1127,25 +1127,25 @@ function ItemsTab({ items, group, productType, search, violation, violationLabel
                             const lossVal = row.loss !== null && sp !== null ? row.loss * sp : null
                             return (
                             <tr key={row.date} className={`border-b-2 border-gray-300 ${row.loss !== null && row.loss > 0.001 ? 'bg-red-50' : ''}`}>
-                              <td className="pr-1 py-0.5 font-bold text-gray-500 whitespace-nowrap">{fmtDate(row.date)}</td>
-                              <td className="px-0 py-0.5 text-center font-bold border-l-2 border-l-gray-400">
+                              <td className="pr-1 py-0 font-bold text-gray-500 whitespace-nowrap">{fmtDate(row.date)}</td>
+                              <td className="px-0 py-0 text-center font-bold border-l-2 border-l-gray-400">
                                 {lossVal === null ? <span className="text-gray-300">—</span>
                                   : lossVal > 0.01 ? <span className="text-red-600">-{fmtN(lossVal)}</span>
                                   : lossVal < -0.01 ? <span className="text-green-600">+{fmtN(Math.abs(lossVal))}</span>
                                   : <span className="text-gray-400">0</span>}
                               </td>
-                              <td className="px-0 py-0.5 text-center font-bold border-l-2 border-l-gray-400">
+                              <td className="px-0 py-0 text-center font-bold border-l-2 border-l-gray-400">
                                 {row.loss === null ? <span className="text-gray-300">—</span>
                                   : row.loss > 0.001 ? <span className="text-red-600">-{fmtN(row.loss)}</span>
                                   : row.loss < -0.001 ? <span className="text-green-600">+{fmtN(Math.abs(row.loss))}</span>
                                   : <span className="text-gray-400">0</span>}
                               </td>
-                              <td className="px-0 py-0.5 text-center font-bold border-l-2 border-l-gray-400 text-gray-900">{fmtQ(row.qty_counted)}</td>
-                              <td className="px-0 py-0.5 text-center font-bold border-l-2 border-l-gray-400 text-gray-600">{fmtQ(row.wic_qty)}</td>
-                              <td className="px-0 py-0.5 text-center font-bold border-l-2 border-l-gray-400 text-gray-600">{fmtQ(row.gmc_qty)}</td>
-                              <td className="px-0 py-0.5 text-center font-bold border-l-2 border-l-gray-400 text-blue-500">{fmtQ(row.sell_price)}</td>
-                              <td className="px-0 py-0.5 text-center font-bold border-l-2 border-l-gray-400 text-blue-600">{fmtQ(row.bills_qty)}</td>
-                              <td className="px-0 py-0.5 text-center font-bold border-l-2 border-l-gray-400 text-gray-400">{fmtN(row.expected_soh)}</td>
+                              <td className="px-0 py-0 text-center font-bold border-l-2 border-l-gray-400 text-gray-900">{fmtQ(row.qty_counted)}</td>
+                              <td className="px-0 py-0 text-center font-bold border-l-2 border-l-gray-400 text-gray-600">{fmtQ(row.wic_qty)}</td>
+                              <td className="px-0 py-0 text-center font-bold border-l-2 border-l-gray-400 text-gray-600">{fmtQ(row.gmc_qty)}</td>
+                              <td className="px-0 py-0 text-center font-bold border-l-2 border-l-gray-400 text-blue-500">{fmtQ(row.sell_price)}</td>
+                              <td className="px-0 py-0 text-center font-bold border-l-2 border-l-gray-400 text-blue-600">{fmtQ(row.bills_qty)}</td>
+                              <td className="px-0 py-0 text-center font-bold border-l-2 border-l-gray-400 text-gray-400">{fmtN(row.expected_soh)}</td>
                             </tr>
                             )
                           })}
@@ -1154,10 +1154,10 @@ function ItemsTab({ items, group, productType, search, violation, violationLabel
                           {(() => {
                             const sp2 = item.selling_rate ? parseFloat(String(item.selling_rate)) : 0
                             const totalCost = parseFloat(lossRows.reduce((s, r) => s + (r.loss !== null ? r.loss * sp2 : 0), 0).toFixed(2))
-                            const cls = `px-0 py-1 text-center font-bold border-l-2 border-l-gray-400 ${totalLoss > 0 ? 'text-red-600' : totalLoss < 0 ? 'text-green-600' : 'text-gray-400'}`
+                            const cls = `px-0 py-0.5 text-center font-bold border-l-2 border-l-gray-400 ${totalLoss > 0 ? 'text-red-600' : totalLoss < 0 ? 'text-green-600' : 'text-gray-400'}`
                             return (
                               <tr className="border-t-2 border-gray-200 bg-gray-50">
-                                <td className="pr-1 py-1 font-bold text-gray-500">Total</td>
+                                <td className="pr-1 py-0.5 font-bold text-gray-500">Total</td>
                                 <td className={cls}>{totalCost > 0.01 ? `-₵${fmtN(totalCost)}` : totalCost < -0.01 ? `+₵${fmtN(Math.abs(totalCost))}` : '₵0'}</td>
                                 <td className={cls}>{totalLoss > 0.001 ? `-${fmtN(totalLoss)}` : totalLoss < -0.001 ? `+${fmtN(Math.abs(totalLoss))}` : '0'}</td>
                                 <td colSpan={6} />

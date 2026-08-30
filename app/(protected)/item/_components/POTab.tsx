@@ -341,11 +341,11 @@ export default function POTab({ search }: Props) {
               {filtered.map(p => (
                 <tr key={p.id} onClick={() => select(p)}
                   className={`cursor-pointer border-b border-gray-100 transition ${selectedId === p.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-                  <td className="px-0.5 py-0.5 text-gray-700 truncate">{fmtShort(p.order_date)}</td>
+                  <td className="px-0.5 py-0 text-gray-700 truncate">{fmtShort(p.order_date)}</td>
                   {colPrefs.shownColumns.map(c => c.key === 'vendor' ? (
-                    <td key={c.key} className="px-0.5 py-0.5 text-gray-700 truncate">{p.vendor_name ?? '—'}</td>
+                    <td key={c.key} className="px-0.5 py-0 text-gray-700 truncate">{p.vendor_name ?? '—'}</td>
                   ) : (
-                    <td key={c.key} className="px-0.5 py-0.5 overflow-hidden">
+                    <td key={c.key} className="px-0.5 py-0 overflow-hidden">
                       <div className="flex flex-col items-end gap-0.5">
                         <StatusBadge status={p.status} />
                         {p.status !== 'draft' && p.status !== 'cancelled' && <ProgressBadge lines={p.lines} />}
@@ -562,27 +562,27 @@ export default function POTab({ search }: Props) {
                   <table className="w-full border-collapse text-[10px]">
                     <thead>
                       <tr>
-                        <th className="text-left px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">item</th>
-                        <th className="text-right px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">ord</th>
-                        <th className="text-right px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">recv</th>
-                        <th className="text-right px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">price</th>
+                        <th className="text-left px-1.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">item</th>
+                        <th className="text-right px-1.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">ord</th>
+                        <th className="text-right px-1.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">recv</th>
+                        <th className="text-right px-1.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">price</th>
                       </tr>
                     </thead>
                     <tbody>
                       {detail.lines.map((l, i) => (
                         <tr key={i} className="border-b border-gray-100">
-                          <td className="px-1.5 py-0.5 text-gray-900">
+                          <td className="px-1.5 py-0 text-gray-900">
                             {l.item_id ? (
                               <button type="button" onClick={() => setViewingItemId(l.item_id!)} className="text-blue-600 hover:underline">
                                 {l.item_name}
                               </button>
                             ) : l.item_name}
                           </td>
-                          <td className="px-1.5 py-0.5 text-right text-gray-700">{fmt(l.qty_ordered)}</td>
-                          <td className={`px-1.5 py-0.5 text-right font-semibold ${parseFloat(l.qty_received) >= parseFloat(l.qty_ordered) ? 'text-green-600' : parseFloat(l.qty_received) > 0 ? 'text-amber-600' : 'text-gray-400'}`}>
+                          <td className="px-1.5 py-0 text-right text-gray-700">{fmt(l.qty_ordered)}</td>
+                          <td className={`px-1.5 py-0 text-right font-semibold ${parseFloat(l.qty_received) >= parseFloat(l.qty_ordered) ? 'text-green-600' : parseFloat(l.qty_received) > 0 ? 'text-amber-600' : 'text-gray-400'}`}>
                             {fmt(l.qty_received)}
                           </td>
-                          <td className="px-1.5 py-0.5 text-right text-gray-700">{fmt(l.unit_price)}</td>
+                          <td className="px-1.5 py-0 text-right text-gray-700">{fmt(l.unit_price)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -590,9 +590,9 @@ export default function POTab({ search }: Props) {
 
                   {detail.receipts.length > 0 && (
                     <div className="border-t border-gray-200">
-                      <p className="text-[9px] font-bold text-gray-500 px-1.5 py-1 bg-gray-50">Receiving History</p>
+                      <p className="text-[9px] font-bold text-gray-500 px-1.5 py-0.5 bg-gray-50">Receiving History</p>
                       {detail.receipts.map(r => (
-                        <div key={r.id} className="px-1.5 py-1 border-b border-gray-100 text-[9px]">
+                        <div key={r.id} className="px-1.5 py-0.5 border-b border-gray-100 text-[9px]">
                           <p className="text-gray-700">
                             <span className="font-semibold text-gray-900">{fmtShort(r.received_date)}</span>
                             {r.received_by && <span className="text-gray-400"> · {r.received_by}</span>}

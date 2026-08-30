@@ -116,15 +116,15 @@ function CountRow({ item, onSaved, onLoss, onPairing, onLog }: {
 
   return (
     <tr className="border-b border-gray-100 last:border-0">
-      <td className="px-1.5 py-1 min-w-0">
+      <td className="px-1.5 py-0.5 min-w-0">
         <p className="text-[10px] text-gray-900 font-semibold leading-tight truncate max-w-[110px]">{item.item_name}</p>
         {item.cf_group && <p className="text-[9px] text-gray-400 leading-tight truncate">{item.cf_group}</p>}
       </td>
-      <td className="px-1 py-1 text-center text-[10px] font-bold text-gray-900 whitespace-nowrap">{soh}</td>
-      <td className="px-1 py-1">
+      <td className="px-1 py-0.5 text-center text-[10px] font-bold text-gray-900 whitespace-nowrap">{soh}</td>
+      <td className="px-1 py-0.5">
         <span className={`text-[9px] font-semibold px-1 py-0.5 rounded-full whitespace-nowrap ${badgeClass}`}>{badgeLabel}</span>
       </td>
-      <td className="px-1 py-1">
+      <td className="px-1 py-0.5">
         <div className="flex items-center gap-1">
           <button onClick={() => submit(soh)} disabled={saving}
             className="bg-green-700 hover:bg-green-600 disabled:opacity-40 text-white text-[9px] font-semibold rounded px-1.5 py-1 whitespace-nowrap transition">
@@ -450,10 +450,10 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
           <table className="w-full border-collapse text-[10px]">
             <thead className="sticky top-0 bg-gray-100 z-10">
               <tr>
-                <th className="text-left px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">Item</th>
-                <th className="text-center px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">SOH</th>
-                <th className="px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">Status</th>
-                <th className="px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">Count</th>
+                <th className="text-left px-1.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">Item</th>
+                <th className="text-center px-1 py-0.5 font-semibold text-gray-500 border-b border-gray-200">SOH</th>
+                <th className="px-1 py-0.5 font-semibold text-gray-500 border-b border-gray-200">Status</th>
+                <th className="px-1 py-0.5 font-semibold text-gray-500 border-b border-gray-200">Count</th>
               </tr>
             </thead>
             <tbody>
@@ -596,20 +596,20 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
               <>
                 <tr key={r.id} id={`count-${r.id}`}
                   className={`transition-colors ${highlightId === r.id ? 'bg-yellow-50' : i % 2 === 1 ? 'bg-gray-50/60' : 'bg-white'} hover:bg-blue-50/40`}>
-                  <td className="px-2.5 py-1.5 text-gray-500 truncate border-b border-gray-100">{fmtShort(r.count_date)}</td>
-                  <td className="px-2.5 py-1.5 text-gray-900 font-semibold border-b border-gray-100 overflow-hidden">
+                  <td className="px-2.5 py-0 text-gray-500 truncate border-b border-gray-100">{fmtShort(r.count_date)}</td>
+                  <td className="px-2.5 py-0 text-gray-900 font-semibold border-b border-gray-100 overflow-hidden">
                     {r.item_id ? (
                       <button type="button" onClick={() => setViewingItemId(r.item_id!)} className="block truncate text-blue-600 hover:underline text-left">{r.item_name}</button>
                     ) : <span className="block truncate">{r.item_name}</span>}
                   </td>
                   {colPrefs.shownColumns.map(c => {
-                    if (c.key === 'group') return <td key={c.key} className="px-2.5 py-1.5 text-gray-500 truncate border-b border-gray-100">{r.cf_group ?? '—'}</td>
-                    if (c.key === 'qty') return <td key={c.key} className="px-2.5 py-1.5 text-center font-bold text-gray-900 truncate border-b border-gray-100">{Number(r.quantity_counted)}</td>
-                    if (c.key === 'by') return <td key={c.key} className="px-2.5 py-1.5 text-blue-600 font-medium truncate border-b border-gray-100">{r.counted_by ?? '—'}</td>
-                    if (c.key === 'src') return <td key={c.key} className="px-2.5 py-1.5 text-gray-500 truncate border-b border-gray-100">{r.source ?? '—'}</td>
-                    return <td key={c.key} className="px-2.5 py-1.5 text-gray-500 italic truncate border-b border-gray-100">{r.notes ?? '—'}</td>
+                    if (c.key === 'group') return <td key={c.key} className="px-2.5 py-0 text-gray-500 truncate border-b border-gray-100">{r.cf_group ?? '—'}</td>
+                    if (c.key === 'qty') return <td key={c.key} className="px-2.5 py-0 text-center font-bold text-gray-900 truncate border-b border-gray-100">{Number(r.quantity_counted)}</td>
+                    if (c.key === 'by') return <td key={c.key} className="px-2.5 py-0 text-blue-600 font-medium truncate border-b border-gray-100">{r.counted_by ?? '—'}</td>
+                    if (c.key === 'src') return <td key={c.key} className="px-2.5 py-0 text-gray-500 truncate border-b border-gray-100">{r.source ?? '—'}</td>
+                    return <td key={c.key} className="px-2.5 py-0 text-gray-500 italic truncate border-b border-gray-100">{r.notes ?? '—'}</td>
                   })}
-                  <td className="px-2.5 py-1.5 border-b border-gray-100 overflow-hidden">
+                  <td className="px-2.5 py-0 border-b border-gray-100 overflow-hidden">
                     <div className="flex gap-1 justify-end whitespace-nowrap">
                       <button onClick={() => editingId === r.id ? setEditingId(null) : startEdit(r)}
                         className="text-[9px] text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded-full hover:bg-blue-100 transition">
