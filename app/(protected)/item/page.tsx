@@ -5008,6 +5008,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               {/* Sale mode filter bar */}
               {showControls && liveMode === 'sale' && (
                 <div className="px-2 py-0.5 border-b border-green-700 flex flex-wrap items-center gap-0 text-[9px]">
+                  {/* View-only filters (black) */}
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'withViolations'} onChange={() => { setLiveSaleViolationFilter('withViolations'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
                     <span>All(V)</span>
@@ -5023,34 +5024,36 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <span>Count Due{liveCountStatus.size > 0 && ` (${liveCountStatus.size})`}</span>
                   </label>
                   <span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'lossGain'} onChange={() => { setLiveSaleViolationFilter('lossGain'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
-                    <span>Loss/Gain/TradeOff{liveItemsWithLossOrGainCount > 0 && ` (${liveItemsWithLossOrGainCount})`}</span>
-                  </label>
-                  <span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'counts'} onChange={() => { setLiveSaleViolationFilter('counts'); setLiveShowCountFullPage(true) }} className="cursor-pointer w-3 h-3" />
                     <span>Counts{liveCountRecords.length > 0 && ` (${liveCountRecords.filter(r => r.kind !== 'loss' && r.kind !== 'gain').length})`}</span>
+                  </label>
+
+                  {/* Action-required filters (red) - arranged by priority */}
+                  <span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'lossGain'} onChange={() => { setLiveSaleViolationFilter('lossGain'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
+                    <span>Loss/Gain/TradeOff{liveItemsWithLossOrGainCount > 0 && ` (${liveItemsWithLossOrGainCount})`}</span>
                   </label>
                   {liveDuplicateCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'duplicates'} onChange={() => { setLiveSaleViolationFilter('duplicates'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
                     <span>Duplicates ({liveDuplicateCount})</span>
                   </label></>)}
-                  {liveUnlinkedCount > 0 && (<><span className="text-gray-400 px-1">·</span>
+                  {liveSoldBelowCostCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'unlinked'} onChange={() => { setLiveSaleViolationFilter('unlinked'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
-                    <span>Unlinked ({liveUnlinkedCount})</span>
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'soldBelowCost'} onChange={() => { setLiveSaleViolationFilter('soldBelowCost'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
+                    <span>Sold Below Cost ({liveSoldBelowCostCount})</span>
                   </label></>)}
                   {liveServiceViolationCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'service'} onChange={() => { setLiveSaleViolationFilter('service'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
                     <span>Service ({liveServiceViolationCount})</span>
                   </label></>)}
-                  {liveSoldBelowCostCount > 0 && (<><span className="text-gray-400 px-1">·</span>
+                  {liveUnlinkedCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'soldBelowCost'} onChange={() => { setLiveSaleViolationFilter('soldBelowCost'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
-                    <span>Sold Below Cost ({liveSoldBelowCostCount})</span>
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'unlinked'} onChange={() => { setLiveSaleViolationFilter('unlinked'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
+                    <span>Unlinked ({liveUnlinkedCount})</span>
                   </label></>)}
                   {liveVcpJumpCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
