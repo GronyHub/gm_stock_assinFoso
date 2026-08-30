@@ -2133,6 +2133,15 @@ function ItemHubPageInner() {
     if (!liveSaleJumpSeq || !liveSaleJumpTab) return
     setLiveMode(liveSaleJumpTab)
     setLiveSalesViolationFilter(liveSaleJumpTab === 'sales' ? liveSaleJumpViolation : null)
+    if (liveSaleJumpTab === 'sales') {
+      // Keep the Sales radio row's mutual exclusivity intact -- jumping
+      // straight to a violation should win over whatever History/Bars
+      // Only/WIC/GMC was left selected from before.
+      setLiveSalesShowHistory(false)
+      setLiveSalesBarsOnly(false)
+      setLiveSalesShowW(true)
+      setLiveSalesShowG(true)
+    }
     setLiveBillsViolationFilter(liveSaleJumpTab === 'bills' ? liveSaleJumpViolation : null)
     setLiveEmbeddedSearch(liveSaleJumpSearch ?? '')
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2236,11 +2245,28 @@ function ItemHubPageInner() {
     [liveAllItems]
   )
 
-  // These three violation filters narrow the Sales list down to just the
-  // affected receipts' bars (see SalesTab's own violationReceiptIds), which
-  // only makes sense with Bars Only forced on -- there's no separate fix
-  // list to browse anymore, so item lines would just be noise.
-  const liveSalesForcedBarsOnly = liveSalesViolationFilter === 'no_cash' || liveSalesViolationFilter === 'high_wnw' || liveSalesViolationFilter === 'no_attachment'
+  // The Sales header's whole radio row (All/violations/History/Bars Only/
+  // WIC/GMC) behaves as one mutually-exclusive group even though it's
+  // backed by several separate state variables (kept separate rather than
+  // merged into one enum, since liveSalesViolationFilter alone is already
+  // read/written elsewhere -- URL persistence, deep-link jumps, the Sale
+  // mode Filter dropdown's flag list). liveSalesRadioValue derives which
+  // single option is "selected" from that state, and selectLiveSalesRadio
+  // is the one place that changes it, always clearing every other option.
+  const liveSalesRadioValue = liveSalesShowHistory ? 'history'
+    : liveSalesBarsOnly ? 'bars_only'
+    : liveSalesViolationFilter ? liveSalesViolationFilter
+    : (liveSalesShowW && !liveSalesShowG) ? 'wic'
+    : (!liveSalesShowW && liveSalesShowG) ? 'gmc'
+    : 'all'
+  function selectLiveSalesRadio(value: string) {
+    const violationKeys = ['no_cash', 'missing_days', 'dup_receipt', 'high_wnw', 'no_attachment']
+    setLiveSalesShowHistory(value === 'history')
+    setLiveSalesBarsOnly(value === 'bars_only')
+    setLiveSalesViolationFilter(violationKeys.includes(value) ? value : null)
+    setLiveSalesShowW(value !== 'gmc')
+    setLiveSalesShowG(value !== 'wic')
+  }
 
   // Merges the 3 due-count queues into one per-item lookup for Count
   // mode's grid badges -- daily/7-day GMC items are "due", 15-day items
@@ -5812,11 +5838,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   ?
                 </button>
               </div>
-              {/* Row 2: Violation filters (red, with live counts) -- compact, one line,
-                  sorted by count descending so the biggest backlog leads. */}
+              {/* Row 2: one mutually-exclusive radio group -- violation filters (red,
+                  with live counts, sorted by count descending so the biggest
+                  backlog leads), History, Bars Only, WIC and GMC. Only one of the
+                  whole row can be selected at a time; see liveSalesRadioValue /
+                  selectLiveSalesRadio above. */}
               <div className="px-2 py-1 bg-white border-b border-gray-200 flex items-center gap-1 flex-nowrap overflow-x-auto">
                 <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-[10px] shrink-0">
-                  <input type="radio" name="liveSalesViolation" checked={!liveSalesViolationFilter} onChange={() => setLiveSalesViolationFilter(null)} className="cursor-pointer w-2.5 h-2.5" />
+                  <input type="radio" name="liveSalesRadio" checked={liveSalesRadioValue === 'all'} onChange={() => selectLiveSalesRadio('all')} className="cursor-pointer w-2.5 h-2.5" />
                   <span>All</span>
                 </label>
                 {[
@@ -5829,30 +5858,30 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   <Fragment key={v.key}>
                     <span className="text-gray-300 text-[10px]">·</span>
                     <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600 text-[10px] shrink-0">
-                      <input type="radio" name="liveSalesViolation" checked={liveSalesViolationFilter === v.key} onChange={() => setLiveSalesViolationFilter(v.key as any)} className="cursor-pointer w-2.5 h-2.5" />
+                      <input type="radio" name="liveSalesRadio" checked={liveSalesRadioValue === v.key} onChange={() => selectLiveSalesRadio(v.key)} className="cursor-pointer w-2.5 h-2.5" />
                       <span>{v.label} ({v.count})</span>
                     </label>
                   </Fragment>
                 ))}
                 <div className="shrink-0 border-l border-gray-300 h-3 mx-0.5" />
                 <label className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
-                  <input type="radio" checked={liveSalesShowHistory} onClick={() => setLiveSalesShowHistory(v => !v)} onChange={() => {}}
+                  <input type="radio" name="liveSalesRadio" checked={liveSalesRadioValue === 'history'} onChange={() => selectLiveSalesRadio('history')}
                     className="cursor-pointer w-2.5 h-2.5" />
                   History
                 </label>
-                <label title={liveSalesForcedBarsOnly ? 'Always on while a violation filter is active' : "Show only the date bars, hiding each receipt's item lines"}
-                  className={`shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 select-none ${liveSalesForcedBarsOnly ? 'opacity-50' : 'cursor-pointer'}`}>
-                  <input type="radio" checked={liveSalesBarsOnly || liveSalesForcedBarsOnly} disabled={liveSalesForcedBarsOnly}
-                    onClick={() => setLiveSalesBarsOnly(b => !b)} onChange={() => {}} className="cursor-pointer w-2.5 h-2.5" />
+                <label title="Show only the date bars, hiding each receipt's item lines"
+                  className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
+                  <input type="radio" name="liveSalesRadio" checked={liveSalesRadioValue === 'bars_only'} onChange={() => selectLiveSalesRadio('bars_only')}
+                    className="cursor-pointer w-2.5 h-2.5" />
                   Bars Only
                 </label>
-                <label title="Show Walk-In receipts" className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
-                  <input type="radio" checked={liveSalesShowW} onClick={() => setLiveSalesShowW(w => !w)} onChange={() => {}}
+                <label title="Show only Walk-In receipts" className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
+                  <input type="radio" name="liveSalesRadio" checked={liveSalesRadioValue === 'wic'} onChange={() => selectLiveSalesRadio('wic')}
                     className="cursor-pointer w-2.5 h-2.5" />
                   WIC
                 </label>
-                <label title="Show Grony Multimedia receipts" className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
-                  <input type="radio" checked={liveSalesShowG} onClick={() => setLiveSalesShowG(g => !g)} onChange={() => {}}
+                <label title="Show only Grony Multimedia receipts" className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
+                  <input type="radio" name="liveSalesRadio" checked={liveSalesRadioValue === 'gmc'} onChange={() => selectLiveSalesRadio('gmc')}
                     className="cursor-pointer w-2.5 h-2.5" />
                   GMC
                 </label>
