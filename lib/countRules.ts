@@ -140,7 +140,7 @@ async function itemRows(itemIds: number[]) {
       AND COALESCE(i.product_type, 'goods') <> 'service'
       AND COALESCE(i.count_excluded, false) = false
       AND NOT (COALESCE(r.n2, 0) >= 2 AND COALESCE(r.zeros2, false) AND (lb.d IS NULL OR lb.d <= r.since2))
-      AND (c.last_count_date IS NULL OR (CURRENT_DATE - c.last_count_date::date - cad.days) >= 0)
+      AND (c.last_count_date IS NULL OR c.last_count_date::date < CURRENT_DATE)
     ORDER BY COALESCE(i.canonical_name, s.item_name) ASC
   `
 }
