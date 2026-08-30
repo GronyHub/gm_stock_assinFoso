@@ -4877,11 +4877,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               </div>
               {/* Row 2: filter bar — hidden on report-style submenus. */}
               {showControls && (outerTab === 'loss' && (lossView === 'sales' || lossView === 'items')) && (
-                <div className="w-full flex items-center gap-0.5 px-1.5 py-0.5 bg-green-700 border-b border-green-800">
+                <div className="w-full flex items-center gap-0.5 px-1.5 py-0.5 bg-white border-b border-gray-200">
                   <select
                     value={liveProductTypeFilter}
                     onChange={e => setLiveProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
-                    className={`${COMPACT_SELECT_CLS} border-green-500 bg-white text-gray-900 flex-1 min-w-0`}
+                    className={`${COMPACT_SELECT_CLS} border-gray-300 bg-white text-gray-900 flex-1 min-w-0`}
                     style={COMPACT_SELECT_STYLE}
                   >
                     <option value="all">All</option>
@@ -4891,7 +4891,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   <select
                     value={liveGroupFilter || ''}
                     onChange={e => setLiveGroupFilter(e.target.value || null)}
-                    className={`${COMPACT_SELECT_CLS} border-green-500 bg-white text-gray-900 flex-1 min-w-0`}
+                    className={`${COMPACT_SELECT_CLS} border-gray-300 bg-white text-gray-900 flex-1 min-w-0`}
                     style={COMPACT_SELECT_STYLE}
                   >
                     <option value="">Groups</option>
@@ -4989,7 +4989,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                         setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'count_0' | 'count_1' })
                       }
                     }}
-                    className={`${COMPACT_SELECT_CLS} border-green-500 bg-white text-gray-900 flex-1 min-w-0`}
+                    className={`${COMPACT_SELECT_CLS} border-gray-300 bg-white text-gray-900 flex-1 min-w-0`}
                     style={COMPACT_SELECT_STYLE}
                   >
                     <option value="">Filter</option>
