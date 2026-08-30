@@ -5849,12 +5849,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 <label title="Show Walk-In receipts" className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
                   <input type="radio" checked={liveSalesShowW} onClick={() => setLiveSalesShowW(w => !w)} onChange={() => {}}
                     className="cursor-pointer w-2.5 h-2.5" />
-                  W
+                  WIC
                 </label>
                 <label title="Show Grony Multimedia receipts" className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
                   <input type="radio" checked={liveSalesShowG} onClick={() => setLiveSalesShowG(g => !g)} onChange={() => {}}
                     className="cursor-pointer w-2.5 h-2.5" />
-                  G
+                  GMC
                 </label>
               </div>
               {liveSalesShowAnalytics ? (
