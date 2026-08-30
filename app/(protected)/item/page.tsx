@@ -5866,28 +5866,27 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   className="text-xs px-1.5 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 w-20"
                 />
                 {renderSalesFiltersBar()}
-                <button type="button" onClick={() => setLiveSalesShowAnalytics(a => !a)}
-                  title="Analytics"
-                  className={`w-7 h-7 text-xs font-bold rounded-md transition flex items-center justify-center ${liveSalesShowAnalytics ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                  📊
-                </button>
                 <button type="button" onClick={() => setGlobalSearchOpen(true)} title="Global Search"
                   className="w-7 h-7 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center justify-center transition">
                   🔍
                 </button>
-                <button onClick={() => setLiveSalesShowBulkAttach(true)} title="Bulk-attach a folder of form photos/scans, matched by date"
-                  className="w-7 h-7 rounded-md bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-700 flex items-center justify-center transition">
-                  📎+
-                </button>
-                <ColumnsPickerButton prefs={liveSalesColPrefs} />
-                <button
-                  type="button"
-                  onClick={() => setLiveHelpModalOpen(true)}
-                  className="w-7 h-7 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 font-semibold text-sm flex items-center justify-center transition"
-                  title="Help"
-                >
-                  ?
-                </button>
+                <label className="flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
+                  <input type="radio" checked={liveSalesShowAnalytics} onClick={() => setLiveSalesShowAnalytics(a => !a)} onChange={() => {}}
+                    className="cursor-pointer w-2.5 h-2.5" />
+                  Analytics
+                </label>
+                <label title="Bulk-attach a folder of form photos/scans, matched by date"
+                  className="flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
+                  <input type="radio" checked={liveSalesShowBulkAttach} onClick={() => setLiveSalesShowBulkAttach(true)} onChange={() => {}}
+                    className="cursor-pointer w-2.5 h-2.5" />
+                  Attach
+                </label>
+                <ColumnsPickerButton prefs={liveSalesColPrefs} radioStyle />
+                <label className="flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
+                  <input type="radio" checked={liveHelpModalOpen} onClick={() => setLiveHelpModalOpen(true)} onChange={() => {}}
+                    className="cursor-pointer w-2.5 h-2.5" />
+                  Help
+                </label>
               </div>
               {/* Rows 2-3: one mutually-exclusive radio group, split across two fixed
                   rows -- "All" plus the non-violation toggles (History/Bars Only/

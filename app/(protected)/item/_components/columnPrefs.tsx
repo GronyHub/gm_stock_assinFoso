@@ -214,8 +214,13 @@ export type ExtraToggle = { key: string; label: string; active: boolean; onToggl
 // group rather than more columns. The trigger button itself picks up an
 // accent color whenever one of them is on, so that's visible without
 // opening the panel.
-export function ColumnsPickerButton<K extends string>({ prefs, dark = false, extraToggles }: {
+export function ColumnsPickerButton<K extends string>({ prefs, dark = false, extraToggles, radioStyle = false }: {
   prefs: ColumnPrefs<K>; dark?: boolean; extraToggles?: ExtraToggle[]
+  // Renders the trigger as a radio + text label instead of the icon button --
+  // for callers (Sales tab) that put this alongside a row of other radios and
+  // want it to match visually. Opt-in, defaults to the icon button everywhere
+  // else so this doesn't change any other caller's look.
+  radioStyle?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [renamingCol, setRenamingCol] = useState<K | null>(null)
@@ -235,15 +240,23 @@ export function ColumnsPickerButton<K extends string>({ prefs, dark = false, ext
 
   return (
     <div className="relative shrink-0" ref={ref}>
-      <button onClick={() => setOpen(o => !o)} title="Columns"
-        className={`flex items-center justify-center w-7 h-7 rounded-lg transition
-          ${anyExtraActive ? 'bg-blue-600 text-white' : dark ? 'text-white hover:bg-white/10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="4" width="18" height="16" rx="2" />
-          <line x1="9" y1="4" x2="9" y2="20" />
-          <line x1="15" y1="4" x2="15" y2="20" />
-        </svg>
-      </button>
+      {radioStyle ? (
+        <label className="flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
+          <input type="radio" checked={open || anyExtraActive} onClick={() => setOpen(o => !o)} onChange={() => {}}
+            className="cursor-pointer w-2.5 h-2.5" />
+          Columns
+        </label>
+      ) : (
+        <button onClick={() => setOpen(o => !o)} title="Columns"
+          className={`flex items-center justify-center w-7 h-7 rounded-lg transition
+            ${anyExtraActive ? 'bg-blue-600 text-white' : dark ? 'text-white hover:bg-white/10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="4" width="18" height="16" rx="2" />
+            <line x1="9" y1="4" x2="9" y2="20" />
+            <line x1="15" y1="4" x2="15" y2="20" />
+          </svg>
+        </button>
+      )}
       {open && (
         <div className={`absolute top-full mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg z-30 min-w-[200px] max-h-72 overflow-y-auto
           ${dark ? 'left-0' : 'right-0'}`}>
