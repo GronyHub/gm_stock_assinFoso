@@ -5391,6 +5391,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'counts'} onChange={() => { setLiveSaleViolationFilter('counts'); setLiveShowCountFullPage(true); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
                     <span>Counts{liveCountRecords.length > 0 && ` (${liveCountRecords.filter(r => r.kind !== 'loss' && r.kind !== 'gain').length})`}</span>
                   </label>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'lossbydate'} onChange={() => { setLiveSaleViolationFilter('lossbydate'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'loss_by_date' }) }} className="cursor-pointer w-3 h-3" />
+                    <span>Loss by Date</span>
+                  </label>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'lossbyitems'} onChange={() => { setLiveSaleViolationFilter('lossbyitems'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'loss_by_items' }) }} className="cursor-pointer w-3 h-3" />
+                    <span>Loss by Items</span>
+                  </label>
 
                   {/* Action-required filters (red) - arranged by priority */}
                   <span className="text-gray-400 px-1">·</span>
@@ -5433,15 +5441,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'emptyRow'} onChange={() => { setLiveSaleViolationFilter('emptyRow'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
                     <span>Empty Row ({liveEmptyRowCount})</span>
                   </label></>)}
-                  <span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'lossbydate'} onChange={() => { setLiveSaleViolationFilter('lossbydate'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'loss_by_date' }) }} className="cursor-pointer w-3 h-3" />
-                    <span>Loss by Date</span>
-                  </label>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'lossbyitems'} onChange={() => { setLiveSaleViolationFilter('lossbyitems'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'loss_by_items' }) }} className="cursor-pointer w-3 h-3" />
-                    <span>Loss by Items</span>
-                  </label>
                 </div>
               )}
               {/* Row 3: search bar + controls — hidden on report-style submenus. */}
