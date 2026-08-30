@@ -5838,12 +5838,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   ?
                 </button>
               </div>
-              {/* Row 2: one mutually-exclusive radio group -- violation filters (red,
-                  with live counts, sorted by count descending so the biggest
-                  backlog leads), History, Bars Only, WIC and GMC. Only one of the
-                  whole row can be selected at a time; see liveSalesRadioValue /
-                  selectLiveSalesRadio above. */}
-              <div className="px-2 py-1 bg-white border-b border-gray-200 flex items-center gap-1 flex-nowrap overflow-x-auto">
+              {/* Rows 2-3: one mutually-exclusive radio group, split across two fixed
+                  rows (violation filters, then History/Bars Only/WIC/GMC) instead of
+                  one scrolling row, so every option stays visible with no
+                  horizontal scroll. Only one of the whole group can be selected at
+                  a time; see liveSalesRadioValue / selectLiveSalesRadio above. */}
+              <div className="px-2 py-1 bg-white border-b border-gray-100 flex items-center gap-1 flex-wrap">
                 <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-[10px] shrink-0">
                   <input type="radio" name="liveSalesRadio" checked={liveSalesRadioValue === 'all'} onChange={() => selectLiveSalesRadio('all')} className="cursor-pointer w-2.5 h-2.5" />
                   <span>All</span>
@@ -5863,7 +5863,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     </label>
                   </Fragment>
                 ))}
-                <div className="shrink-0 border-l border-gray-300 h-3 mx-0.5" />
+              </div>
+              <div className="px-2 py-1 bg-white border-b border-gray-200 flex items-center gap-2.5 flex-wrap">
                 <label className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
                   <input type="radio" name="liveSalesRadio" checked={liveSalesRadioValue === 'history'} onChange={() => selectLiveSalesRadio('history')}
                     className="cursor-pointer w-2.5 h-2.5" />
