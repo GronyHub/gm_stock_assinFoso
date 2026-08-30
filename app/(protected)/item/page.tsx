@@ -2613,10 +2613,10 @@ function ItemHubPageInner() {
   useEffect(loadCountProgress, [])
   usePolling(loadCountProgress, 60000)
 
-  // Count Records -- fetched when viewing the Count Records view OR when
-  // showing the full-page count display in Sale mode. Unlike the queues above,
-  // this is the full all-time history, not a small due-today list.
-  const liveViewingCountRecords = liveCountView?.kind === 'records' || liveShowCountFullPage
+  // Count Records -- fetched when viewing the Count Records view, showing full-page
+  // count display in Sale mode, or viewing Loss by Date/Items views. Unlike the queues
+  // above, this is the full all-time history, not a small due-today list.
+  const liveViewingCountRecords = liveCountView?.kind === 'records' || liveShowCountFullPage || liveSaleView?.kind === 'loss_by_date' || liveSaleView?.kind === 'loss_by_items'
   useEffect(() => {
     if (!liveViewingCountRecords) {
       setLiveCountRecords([])
