@@ -2962,11 +2962,15 @@ function ItemHubPageInner() {
 
     // Filter records by Loss/Gain violation and search
     const filtered = liveCountRecords.filter(rec => {
-      // Only show loss/gain records when lossGain violation is active
+      // Show different record types based on the active filter
       if (liveSaleViolationFilter === 'lossGain') {
+        // Loss/Gain filter: show only loss/gain records
         if (rec.kind !== 'loss' && rec.kind !== 'gain') return false
+      } else if (liveSaleViolationFilter === 'counts') {
+        // Counts filter: show ALL records (loss/gain/ok)
+        // No filtering by kind needed
       } else {
-        // Otherwise show all counted records (no loss/gain)
+        // Other filters: show only counted records (no loss/gain)
         if (rec.kind === 'loss' || rec.kind === 'gain') return false
       }
 
