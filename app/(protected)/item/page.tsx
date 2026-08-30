@@ -5665,7 +5665,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                 tap.undone ? 'bg-gray-50 opacity-60' : ''
                               }`}
                             >
-                              <td className={`sticky left-0 z-[1] h-[13px] px-0.5 group-hover:bg-gray-50 ${tap.undone ? 'bg-gray-50' : 'bg-white'}`}>
+                              <td className={`sticky left-0 z-[1] leading-none px-0.5 py-0 group-hover:bg-gray-50 ${tap.undone ? 'bg-gray-50' : 'bg-white'}`}>
                                 {tap.undone ? (
                                   <span
                                     onClick={tapItem ? () => setLiveViewingItemId(tapItem.id) : undefined}
@@ -5677,44 +5677,44 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                   renderClickableItemName(tap.item_name, 'text-[9px] leading-none font-semibold whitespace-nowrap text-gray-900')
                                 )}
                               </td>
-                              <td className="h-[13px] px-0.5 text-right">
+                              <td className="leading-none px-0.5 py-0 text-right">
                                 <span className={`text-[9px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-gray-400' : 'text-blue-600'}`}>
                                   ₵{formatPrice(Number(tap.price) * tap.quantity)}
                                 </span>
                               </td>
-                              <td className="h-[13px] px-0.5 text-center">
+                              <td className="leading-none px-0.5 py-0 text-center">
                                 <span className="text-[8px] leading-none text-gray-500 whitespace-nowrap">{fmtTime(tap.tapped_at)}</span>
                               </td>
-                              <td className="h-[13px] px-0.5 text-right">
+                              <td className="leading-none px-0.5 py-0 text-right">
                                 <span className={`text-[9px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
                                   ₵{formatPrice(tap.price)}
                                 </span>
                               </td>
-                              <td className="h-[13px] px-0.5 text-right">
+                              <td className="leading-none px-0.5 py-0 text-right">
                                 <span className={`text-[9px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
                                   ₵{formatPrice(tapCostPrice)}
                                 </span>
                               </td>
-                              <td className="h-[13px] px-0.5 text-right">
+                              <td className="leading-none px-0.5 py-0 text-right">
                                 <span className={`text-[9px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-gray-400' : tapProfit < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
                                   ₵{formatPrice(tapProfit)}
                                 </span>
                               </td>
-                              <td className="h-[13px] px-0.5 text-center">
+                              <td className="leading-none px-0.5 py-0 text-center">
                                 <span className={`text-[9px] leading-none font-semibold ${tap.undone ? 'text-gray-400' : 'text-gray-900'}`}>
                                   {tap.quantity}
                                 </span>
                               </td>
-                              <td className="h-[13px] px-0.5" title={tap.staff_name}>
+                              <td className="leading-none px-0.5 py-0" title={tap.staff_name}>
                                 <span className="text-[9px] leading-none text-gray-600 whitespace-nowrap">{staffInitials(tap.staff_name)}</span>
                               </td>
-                              <td className="h-[13px] px-0.5 text-center">
+                              <td className="leading-none px-0.5 py-0 text-center">
                                 <span className="text-[9px] leading-none text-gray-500 whitespace-nowrap">{tap.soh !== null && tap.soh !== undefined ? Math.ceil(tap.soh) : '-'}</span>
                               </td>
-                              <td className="h-[13px] px-0.5 text-right" title={isNewest ? 'Until last sign-out' : isOldest ? 'Since shop opening' : 'Since previous tap'}>
+                              <td className="leading-none px-0.5 py-0 text-right" title={isNewest ? 'Until last sign-out' : isOldest ? 'Since shop opening' : 'Since previous tap'}>
                                 <span className="text-[9px] leading-none text-gray-500 whitespace-nowrap">{gapMins !== null ? formatGapMins(gapMins) : '-'}</span>
                               </td>
-                              <td className="h-[13px] px-0.5">
+                              <td className="leading-none px-0.5 py-0">
                                 <div className="flex items-center justify-center gap-0.5">
                                   {!tap.undone && (
                                     <>
@@ -5724,14 +5724,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                           setLiveEditingTapTime(tap.tapped_at.slice(0, 16))
                                         }}
                                         title="Edit time"
-                                        className="text-[10px] font-bold text-blue-600 hover:bg-blue-100 rounded leading-none p-0"
+                                        className="text-[10px] font-bold text-blue-600 hover:bg-blue-100 rounded leading-none p-0 border-0"
                                       >
                                         🕐
                                       </button>
                                       <button
                                         onClick={() => undoTap(tap.id)}
                                         title="Undo"
-                                        className="text-[10px] font-bold text-red-600 hover:bg-red-100 rounded leading-none p-0"
+                                        className="text-[10px] font-bold text-red-600 hover:bg-red-100 rounded leading-none p-0 border-0"
                                       >
                                         ↩
                                       </button>
